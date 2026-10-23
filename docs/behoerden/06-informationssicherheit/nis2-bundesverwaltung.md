@@ -1,77 +1,72 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# NIS2 in der Bundesverwaltung: Hinweise zu OPAA
+# NIS2 in der Bundesverwaltung
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-## Hinweise zur Verwendung
+**Gilt für:** nur Einrichtungen der Bundesverwaltung. Länder und Kommunen erfasst das Gesetz nicht;
+für sie gilt Landesrecht, die Seite kann ihnen als Orientierung dienen.
 
-Diese Seite richtet sich an Einrichtungen der Bundesverwaltung, die OPAA einsetzen wollen. Sie ordnet
-OPAA den Vorgaben zu, die aus der NIS2-Umsetzung folgen, und beantwortet die Lieferkettenfragen, die
-eine Einrichtung an ein eingesetztes Produkt stellt. Ob und mit welchen Pflichten eine Einrichtung
-erfasst ist, stellt sie selbst fest; diese Seite nimmt das nicht vorweg.
+NIS2 ist eine EU-Richtlinie zur Cybersicherheit; Deutschland hat sie mit einem Gesetz umgesetzt, das
+seit dem 6.12.2025 gilt. Einrichtungen der Bundesverwaltung gelten danach als *besonders wichtige
+Einrichtungen* mit Pflichten zu Risikomanagement, Lieferkette und Meldung von Vorfällen.
+Bundesministerien wenden dafür den IT-Grundschutz an, die übrige Bundesverwaltung die
+*Mindeststandards* des BSI, verbindliche Vorgaben zu einzelnen Themen wie Protokollierung. Ob und mit
+welchen Pflichten sie erfasst ist, stellt jede Einrichtung selbst fest.
 
-## Quellen und Prüfstand
+> **Beispiel.** Ein Bundesamt prüft OPAA vor der Einführung. Die Informationssicherheit ordnet es den
+> Mindeststandards zu Protokollierung, TLS und externen Cloud-Diensten zu. Weil das Bundesamt die
+> Modelle im eigenen Haus betreibt, entfällt der Cloud-Standard. Die Fragen zur Lieferkette
+> beantwortet sie aus den Unterlagen des Projekts.
 
-Grundlage ist die Rechtsrecherche vom 13.10.2026 (erster Kommentar in Epic
-[#2542](https://github.com/criew/opaa/issues/2542)):
+## Was OPAA liefert
 
-| Aussage | Fundstelle | Art |
-|---|---|---|
-| Das NIS2-Umsetzungs- und Cybersicherheitsstärkungsgesetz (NIS2UmsuCG) gilt seit 6.12.2025 | [BGBl. I 2025 Nr. 301](https://www.recht.bund.de/bgbl/1/2025/301/VO.html) | Normtext |
-| Einrichtungen der Bundesverwaltung gelten als besonders wichtige Einrichtungen | [Heuking](https://www.heuking.de/de/news-events/newsletter-fachbeitraege/artikel/ab-jetzt-gilts-nis2-umsetzungsgesetz-in-kraft.html) | Fachbeitrag |
-| Bundesministerien wenden den IT-Grundschutz an, die übrige Bundesverwaltung die Mindeststandards des BSI | [Heuking](https://www.heuking.de/de/news-events/newsletter-fachbeitraege/artikel/ab-jetzt-gilts-nis2-umsetzungsgesetz-in-kraft.html) | Fachbeitrag |
-| Länder und Kommunen erfasst das Gesetz nicht; für sie gilt Landesrecht | [Heuking](https://www.heuking.de/de/news-events/newsletter-fachbeitraege/artikel/ab-jetzt-gilts-nis2-umsetzungsgesetz-in-kraft.html) | Fachbeitrag |
-
-Die Aussagen aus dem Fachbeitrag sind vor der Übernahme gegen das BSI-Gesetz in der Fassung des
-NIS2UmsuCG zu prüfen; diese Vorlage nennt deshalb keine Paragrafen.
-
-Eine Landes- oder Kommunalbehörde kann diese Seite als Orientierung nutzen, prüft aber die Vorgaben
-ihres Landes.
-
-## Zuordnung zu IT-Grundschutz und Mindeststandards
-
-| Vorgabe | Wann sie OPAA betrifft | Beitrag von OPAA | Unterlage |
-|---|---|---|---|
-| IT-Grundschutz (BSI-Standards 200-1 bis 200-4, Kompendium) | Bundesministerien; alle, die den Grundschutz freiwillig anwenden | Bausteinzuordnung mit Produkt- und Betreiberanteil | [Grundschutz-Modellierung](grundschutz-modellierung.md) |
-| [Mindeststandard zur Protokollierung und Detektion von Cyberangriffen](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | jede Installation | Anwendungsprotokoll auf der Standardausgabe, optional strukturiert; Nachweisprotokoll; Metriken und Alarme. Eine eigene Ausleitung an ein Sicherheitsmonitoring ist nicht gebaut | [Protokollierung](sicherheitsnachweise.md#protokollierung), {{faktenblatt:protokollereignisse}} |
-| [Mindeststandard zur Nutzung externer Cloud-Dienste](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | wenn ein Modelldienst außerhalb der Einrichtung liegt oder ein Dienstleister OPAA als Cloud-Dienst betreibt | Ziele ausgehender Verbindungen sind je Version beschrieben; jeder Modell-Endpunkt ist frei wählbar, auch im Haus | {{faktenblatt:datenfluesse}}, [C5:2026](c5-cloud-betrieb.md) |
-| [Mindeststandard zur Verwendung von Transport Layer Security](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | jede Installation | TLS wird am vorgelagerten Proxy oder Ingress abgeschlossen; das Zertifikat jeder Quelle wird geprüft | [Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang), [Zielprüfung](../../handbuch/betrieb.md#zielprüfung-abrufe-des-servers) |
-
-Welche Mindeststandards in welcher Fassung gelten, steht auf der Übersichtsseite des BSI; die Behörde
-prüft dort den aktuellen Stand.
-
-## Lieferkette: Fragen an das Produkt
-
-Die NIS2-Richtlinie zählt die Sicherheit der Lieferkette zu den Risikomanagementmaßnahmen. Für
-OPAA als quelloffenes Produkt ohne Vertragspartner beantwortet das Projekt die üblichen Fragen so:
-
-| Frage | Antwort |
+| Vorgabe | Beitrag von OPAA |
 |---|---|
-| Wer liefert, und gibt es einen Vertrag? | Das Projekt stellt OPAA quelloffen bereit, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit. Wer Zusagen braucht, schließt sie mit einem Dienstleister ([Gewährleistung und Haftung](../03-vergabe/gewaehrleistung-haftung.md), [Anforderungskatalog](../03-vergabe/anforderungskatalog.md)) |
-| Woraus besteht das Produkt? | Software-Stückliste je Image und je Ökosystem ([SBOM](sicherheitsnachweise.md#software-stückliste-sbom)) |
-| Ist das Ausgelieferte das Geprüfte? | Provenance-Attestierungen der Images und eine signierte Attestierung des Helm-Charts; Release-Images werden nie überschrieben ([Release-Verfahren](../../releases.md#was-ein-release-erzeugt)) |
-| Wie werden Schwachstellen erkannt und behoben? | [Schwachstellen und Sicherheitsupdates](sicherheitsnachweise.md#schwachstellen-und-sicherheitsupdates) |
-| Wie erfährt die Einrichtung von einer Lücke? | über die [Security Advisories](https://github.com/criew/opaa/security/advisories) des Projekts; ein Abonnement des Repositorys auf Sicherheitsmeldungen ist Sache der Einrichtung |
-| Wohin fließen Daten, und an welche Dritten? | nur zu den Zielen, die die Installation einträgt; die Liste je Version steht in {{faktenblatt:datenfluesse}} |
-| Kann OPAA ohne Internet betrieben werden? | Ja, mit Modelldiensten im Haus; der Weg ins Netz geht auf Wunsch nur über einen Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)) |
-| Welche Pflichten hat das Projekt nach dem Cyber Resilience Act? | [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md) |
+| IT-Grundschutz | Bausteinzuordnung: [IT-Grundschutz](grundschutz-modellierung.md) |
+| Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); eine Ausleitung an ein Sicherheitsmonitoring ist nicht gebaut |
+| Mindeststandard externe Cloud-Dienste | ausgehende Ziele je Version ({{faktenblatt:datenfluesse}}); Modelle auch im Haus betreibbar; bei Cloud-Betrieb [C5](c5-cloud-betrieb.md) |
+| Mindeststandard TLS | TLS am vorgelagerten Proxy, Zertifikatsprüfung bei Quellen ([Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang), [Zielprüfung](../../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)) |
 
-## Was bei der Einrichtung bleibt
+Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 
-- **Meldung erheblicher Sicherheitsvorfälle** an das BSI nach den Fristen des Gesetzes. Das
-  Nachweisprotokoll und das Anwendungsprotokoll liefern Anhaltspunkte, die Bewertung und Meldung
-  trifft die Einrichtung.
-- **Risikomanagement, Notfallvorsorge und Wiederherstellung:** [Notfallkonzept](../09-betrieb-update/notfallkonzept.md)
-  und [Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md).
-- **Updates** einspielen, solange nur das jüngste Release Sicherheitskorrekturen erhält
-  ([Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
-- **Steuerung eines Dienstleisters**, der OPAA betreibt, einschließlich seiner eigenen
-  Lieferkette.
+- OPAA ist quelloffen, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit; Zusagen gibt
+  nur ein Dienstleister ([Gewährleistung und Haftung](../03-vergabe/gewaehrleistung-haftung.md)).
+- Bestandteile, Herkunftsnachweise der Images und der Umgang mit Schwachstellen stehen in den
+  [Sicherheitsnachweisen](sicherheitsnachweise.md), Pflichten des Projekts in der
+  [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md).
+- Daten fließen nur zu den Zielen, die die Installation einträgt ({{faktenblatt:datenfluesse}}).
+  Ohne Internet geht es mit Modellen im Haus, auf Wunsch über einen
+  [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy).
+
+## Was die Behörde tun muss
+
+1. **Betroffenheit und Pflichten feststellen.**
+2. **Vorgaben zuordnen:** IT-Grundschutz oder die geltenden Mindeststandards, mit der Tabelle oben.
+3. **Lieferkette bewerten:** OPAA und, falls vorhanden, Dienstleister und Modellanbieter.
+4. **Erhebliche Sicherheitsvorfälle an das BSI melden.** Die Protokolle liefern Anhaltspunkte; die
+   Bewertung trifft die Einrichtung.
+5. **Updates zeitnah einspielen**, weil nur das jüngste Release Sicherheitskorrekturen erhält, und
+   Notfallvorsorge betreiben ([Notfallkonzept](../09-betrieb-update/notfallkonzept.md)).
+
+## Zum Nachlesen
+
+**Arbeitshilfen:**
+
+- [Mindeststandards des BSI](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html):
+  welche Standards in welcher Fassung gelten.
+
+**Rechtsgrundlagen und Quellen:**
+
+| Worum es geht | Fundstelle |
+|---|---|
+| NIS2-Umsetzungs- und Cybersicherheitsstärkungsgesetz (NIS2UmsuCG), gilt seit 6.12.2025 | [BGBl. I 2025 Nr. 301](https://www.recht.bund.de/bgbl/1/2025/301/VO.html) |
+| Bundesverwaltung als besonders wichtige Einrichtungen; Grundschutz für Ministerien, Mindeststandards für die übrige Bundesverwaltung; Länder und Kommunen nicht erfasst | Fachbeitrag [Heuking](https://www.heuking.de/de/news-events/newsletter-fachbeitraege/artikel/ab-jetzt-gilts-nis2-umsetzungsgesetz-in-kraft.html); gegen das BSI-Gesetz in der Fassung des NIS2UmsuCG zu prüfen |
+| Sicherheit der Lieferkette als Risikomanagementmaßnahme | [Richtlinie (EU) 2022/2555](https://eur-lex.europa.eu/eli/dir/2022/2555/oj/deu), Artikel zu prüfen |

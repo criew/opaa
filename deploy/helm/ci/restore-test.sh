@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore test of the OPAA chart, run by .github/workflows/helm-chart.yml after install-test.sh and
 # locally from the repository root. Automates the restore drill of
-# docs/behoerden/09-betrieb-update/wiederherstellungsprobe.md on the reference setup: a source
+# docs/handbuch/betrieb.md (section "Wiederherstellungsprobe") on the reference setup: a source
 # release is filled through the API, backed up with the commands of the handbook (kubernetes.md,
 # "Sicherung und Wiederherstellung" and "Erprobungsdatenbank sichern"), changed after the backup and
 # restored into a second, empty namespace with the same encryption keys and a new signing secret.

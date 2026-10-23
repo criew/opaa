@@ -1,37 +1,41 @@
 ---
-stand: 2026-10-22
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-01-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Erfüllungsmatrix: OPAA und die Anforderungsbausteine
+# Erfüllungsmatrix
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-## Hinweise zur Verwendung
+**Gilt für:** öffentliche Auftraggeber, also Behörden und auch kommunale Gesellschaften, die
+ausschreiben müssen, oberhalb und unterhalb der EU-Schwellenwerte.
 
-Die Matrix ordnet jedem Baustein des [Anforderungskatalogs](anforderungskatalog.md) den Nachweis
-zu, mit dem OPAA ihn erfüllt. Sie gehört **nicht** in die Leistungsbeschreibung, die nach § 31 Abs. 6
-VgV produktneutral bleibt, sondern in die Markterkundung, die Teststellung und die Prüfung eines
-Angebots, das OPAA anbietet.
+Die Matrix ordnet jedem Baustein des [Anforderungskatalogs](anforderungskatalog.md) den Nachweis zu,
+mit dem OPAA ihn erfüllt. Sie gehört **nicht** in die Leistungsbeschreibung, die produktneutral
+bleiben muss, sondern in Markterkundung, Teststellung und die Prüfung eines Angebots, das OPAA
+anbietet.
 
-- **Erfüllung:** „ja“ ist belegt; „teilweise“ nennt, was fehlt; „Dienstleister“ heißt, die
-  Anforderung richtet sich an den Bieter, OPAA liefert nur die Grundlage.
-- **Art des Nachweises:** Handbuch (Kapitel der Betriebsdokumentation), Faktenblatt (aus dem Code
-  erzeugt, je Version), Test (Prüfung, die in der CI des Projekts läuft), Konfiguration
-  (Einstellung der Installation), Projektunterlage (Richtlinie oder Verfahren des Projekts).
-- Ein Faktenblatt-Platzhalter steht für das Faktenblatt der Version, die angeboten wird. Es
-  liegt im Update-Paket am GitHub-Release der Version ([Faktenblätter](../README.md#faktenblätter));
-  die Behörde legt es der Prüfung bei, statt Werte aus dieser Matrix abzuschreiben.
+> **Beispiel.** Ein Landratsamt prüft ein Angebot, das OPAA einführen will. Die Vergabestelle öffnet
+> für jede Muss-Anforderung den Nachweis und legt die Faktenblätter der angebotenen Version zur Akte.
+> F-02 ist nur „teilweise“ erfüllt; die Teststellung klärt, ob das für die eigenen Ablagen reicht.
 
-**Wie die Matrix aktuell bleibt:** Die CI prüft bei jeder Änderung unter `docs/behoerden/`, dass jede
-Nummer des Katalogs hier eine Zeile hat und umgekehrt, dass jeder Faktenblatt-Platzhalter auf einen
-Eintrag zeigt, den der Generator erzeugt, und dass jeder Verweis auf Handbuch und Projektunterlagen
-eine vorhandene Überschrift trifft ([Automatische Prüfung](../README.md#automatische-prüfung)). Ob
-ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsicht`.
+## Was OPAA liefert
+
+Je Baustein einen Nachweis: Handbuch, Projektunterlage, eine Prüfung in der CI des Projekts oder ein
+Faktenblatt. Ein Platzhalter wie {{faktenblatt:datenkatalog}} steht für das Blatt der angebotenen
+Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
+
+## Was die Behörde tun muss
+
+1. **Faktenblätter der angebotenen Version** der Prüfung beilegen, statt Werte abzuschreiben.
+2. **Nachweise öffnen,** besonders bei Muss-Anforderungen.
+3. **Lücken klären:** „teilweise“ nennt, was fehlt; das klärt die Teststellung oder der Bieter.
+4. **Zusagen des Bieters prüfen,** wo „Dienstleister“ steht: Dort liefert das Projekt nur die
+   Grundlage.
 
 ## F · Fachliche Funktion
 
@@ -112,10 +116,22 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 | L-07 | Dienstleister | [Sicherung und Wiederherstellung](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung), Speicherorte in {{faktenblatt:datenkatalog}} | Handbuch, Faktenblatt |
 | L-08 | Dienstleister | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) | Projektunterlage |
 
-## Quellen und Prüfstand
+## Gut zu wissen
 
-| Aussage | Fundstelle | Herkunft |
-|---|---|---|
-| Die Leistungsbeschreibung bleibt produktneutral; die Matrix steht deshalb getrennt vom Katalog | [§ 31 Abs. 6 VgV](https://www.gesetze-im-internet.de/vgv_2016/__31.html) | Recherche vom 13.10.2026; Wortlaut zu prüfen |
+- Die CI prüft bei jeder Änderung, dass Katalog und Matrix dieselben Nummern führen und jeder
+  Verweis sein Ziel trifft ([Automatische Prüfung](../README.md#automatische-prüfung)). Ob ein
+  Nachweis inhaltlich noch trägt, prüft die regelmäßige Durchsicht.
+- „Konfiguration“ in der Spalte „Art“ heißt: eine Einstellung der Installation.
 
-Alle übrigen Angaben sind Fakten über OPAA und verweisen auf die jeweilige Projektunterlage.
+## Zum Nachlesen
+
+**Arbeitshilfen** für die Projektleitung:
+
+- [Wo die Faktenblätter liegen](../../handbuch/nachvollziehbarkeit.md#wo-die-faktenblätter-liegen):
+  Faktenblätter und Update-Paket einer Version finden.
+
+**Rechtsgrundlagen** für die Vergabestelle:
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Leistungsbeschreibung produktneutral, Matrix deshalb getrennt vom Katalog (Wortlaut zu prüfen) | § 31 Abs. 6 [VgV](https://www.gesetze-im-internet.de/vgv_2016/__31.html) |

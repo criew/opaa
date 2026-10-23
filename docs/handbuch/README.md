@@ -63,7 +63,8 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 
 - **Betrieb**
   - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, eine oder mehrere Backend-Instanzen, Images,
-    Bereitschaft, Härtung, Schlüssel, Sicherung, Aktualisierung, Logs und Metriken, Fehlerbehebung
+    Bereitschaft, Härtung, Schlüssel, Sicherung und Wiederherstellungsprobe, Aktualisierung, Logs und
+    Metriken, Fehlerbehebung
     - [Docker Compose](docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](kubernetes.md) — Betrieb mit dem Helm-Chart

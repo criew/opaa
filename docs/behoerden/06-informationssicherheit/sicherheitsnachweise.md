@@ -1,90 +1,71 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Sicherheitsnachweise des Projekts
+# Sicherheitsnachweise
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-Diese Seite sammelt, wo das Projekt die Nachweise führt, die eine Behörde für ihr Sicherheitskonzept,
-eine Lieferkettenprüfung oder eine Vergabe braucht. Sie beschreibt die Nachweise nicht nach, sondern
-verweist auf die Stelle, die mit dem Code gepflegt wird. Die Nachweise belegen das Verfahren des
-Projekts; sie sind keine Zertifizierung und kein Testat.
+**Gilt für:** alle Behörden.
 
-## Härtung
+Für ihr Sicherheitskonzept, eine Prüfung der Lieferkette oder eine Vergabe braucht eine Behörde
+Belege, wie das Projekt OPAA absichert. Diese Seite sagt, wo sie stehen; gepflegt werden sie mit dem
+Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizierung und kein Testat.
 
-Die Härtung einer Installation beschreibt das Handbuch im Abschnitt
-[Härtung für erreichbare Deployments](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments),
-mit einer Tabelle, welche Maßnahmen zwingend sind. Je Betriebsweg kommen hinzu:
+> **Beispiel.** Die Informationssicherheit eines Landratsamts arbeitet vor dem Start die
+> Härtungstabelle des Handbuchs durch und vermerkt je Zeile „umgesetzt“ oder „trifft nicht zu, weil
+> …“. Der Betrieb sammelt das Anwendungsprotokoll mit dem vorhandenen Log-Sammler ein und abonniert
+> die Sicherheitsmeldungen des Projekts.
 
-- Docker Compose: [Härtung des Compose-Stapels](../../handbuch/docker-compose.md#härtung-des-compose-stapels)
-- Kubernetes: [Netz und Sicherheit](../../handbuch/kubernetes.md#netz-und-sicherheit) mit
-  NetworkPolicies und Pod Security; die Vorgaben selbst stehen im Helm-Chart unter
-  [`deploy/helm/opaa`](../../../deploy/helm/opaa/)
-- Identitätsanbieter: [Härtung des mitgelieferten Keycloak](../../handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak)
+## Was OPAA liefert
 
-Welche Voreinstellungen die eingesetzte Version mitbringt, steht in {{faktenblatt:voreinstellungen}};
-Ports, Netzwege und Ziele ausgehender Verbindungen im
-[Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang) und in {{faktenblatt:datenfluesse}}.
-Diese Vorlage nennt bewusst keine Ports und keine Ziele, weil sie sich mit dem Code ändern können.
-
-**Prüfpunkt für das Haus:** Jede Zeile der Härtungstabelle im Handbuch ist entweder umgesetzt oder
-mit Begründung als nicht zutreffend vermerkt. Das Ergebnis gehört zum IT-Grundschutz-Check der
-Anwendung ([Grundschutz-Modellierung](grundschutz-modellierung.md)).
-
-## Protokollierung
-
-OPAA führt drei Arten von Aufzeichnungen:
-
-| Aufzeichnung | Inhalt | Wo beschrieben |
+| Nachweis | Was er belegt | Wo er steht |
 |---|---|---|
-| Anwendungsprotokoll | Betriebsmeldungen auf der Standardausgabe, auf Wunsch als JSON je Zeile | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken) |
-| Nachweis- und Revisionsprotokoll | Handlungen von Personen: Rechtevergaben, Verwaltungsaktionen, Zugriffe auf Protokolldaten | {{faktenblatt:protokollereignisse}}, Fristen in {{faktenblatt:fristen}} |
-| Metriken und Alarme | Zustand, Fehlerquoten, Anmeldeversuche, Indexierung | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken), [Alarme des Helm-Charts](../../handbuch/kubernetes.md#alarme) |
+| Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
+| Protokollierung | Anwendungsprotokoll, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
+| Software-Stückliste (SBOM) | woraus jedes Image besteht, Herkunftsnachweise, Lizenzprüfung | [SBOM](../../sbom.md), [Was ein Release erzeugt](../../releases.md#was-ein-release-erzeugt) |
+| Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [CVE-Erkennung](../../cve-scanning.md), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
+| Sicherheitsupdates | Patch-Releases, veröffentlichte Lücken | [Sicherheitsupdates](../../releases.md#sicherheitsupdates-für-releases), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
+| Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
 
-Welche Ereignisse das Nachweisprotokoll der eingesetzten Version schreibt, steht ausschließlich im
-Faktenblatt. Für die Behörde wichtig:
+## Was die Behörde tun muss
 
-- **Einsammeln und Aufbewahren** des Anwendungsprotokolls ist Sache des Betriebs; OPAA schreibt auf
-  die Standardausgabe, ein Log-Sammler nimmt es dort ab.
-- **Eine eigene Ausleitung** des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist im
-  Konzept beschrieben, aber nicht gebaut
-  ([Sicherheit, Nachweis & Prüfbarkeit](../../features/security-and-compliance.md#anbindung-an-ein-zentrales-sicherheitsmonitoring)).
-- **Das Anwendungsprotokoll über der Stufe `INFO`** kann Inhalte enthalten; das Handbuch nennt die
-  Grenzen ([Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken)).
-- **Auswertung und Mitbestimmung:** Wer Protokolle wie auswerten darf, regelt die Dienstvereinbarung
-  ([#2566](https://github.com/criew/opaa/issues/2566)).
+1. **Härtungstabelle abarbeiten:** jede Zeile umgesetzt oder begründet als nicht zutreffend
+   vermerkt; das Ergebnis gehört zum [IT-Grundschutz](grundschutz-modellierung.md)-Check.
+2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Anwendungsprotokoll auf die
+   Standardausgabe; ein Log-Sammler des Betriebs nimmt es dort ab.
+3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die Dienstvereinbarung.
+4. **Updates zeitnah einspielen.** Sicherheitskorrekturen erhalten nur das jüngste Release und `main`
+   ([unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
+5. **Lücken vertraulich melden** über den [Meldeweg](../../../SECURITY.md#meldeweg), nie in einem
+   öffentlichen Issue.
 
-## Software-Stückliste (SBOM)
+## Gut zu wissen
 
-Jedes veröffentlichte Image trägt eine SBOM- und eine Provenance-Attestierung, dazu entstehen
-CycloneDX-SBOMs je Ökosystem; der Helm-Chart eines Release trägt eine signierte
-Provenance-Attestierung. Abruf und Prüfung: [Software Bill of Materials](../../sbom.md) und
-[Was ein Release erzeugt](../../releases.md#was-ein-release-erzeugt). Die Lizenzen der Abhängigkeiten
-prüft die CI ([Lizenzprüfung](../../sbom.md#lizenzprüfung)).
+- Gemeldete Lücken bearbeitet das Projekt nach bestem Bemühen, ohne zugesagte Frist. Wer eine Version
+  länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
+- Schreibt das Anwendungsprotokoll ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
+  ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken)).
+- Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist
+  [beschrieben](../../features/security-and-compliance.md#anbindung-an-ein-zentrales-sicherheitsmonitoring),
+  aber nicht gebaut.
 
-## Schwachstellen und Sicherheitsupdates
+## Zum Nachlesen
 
-| Frage | Antwort des Projekts |
+**Arbeitshilfen:**
+
+- [`SECURITY.md`](../../../SECURITY.md): Meldeweg, unterstützte Versionen und Ablauf bis zur
+  Veröffentlichung einer Lücke.
+- [Triage von Image-Alerts](../../cve-scanning.md#triage-von-image-alerts): wie schnell das Projekt
+  auf Befunde des eigenen Scans reagiert.
+
+**Rechtsgrundlagen:**
+
+| Worum es geht | Fundstelle |
 |---|---|
-| Wie werden bekannte Schwachstellen in Abhängigkeiten erkannt? | Dependabot-Alerts und ein nächtlicher Image-Scan von `main` und dem jüngsten Release ([CVE-Erkennung](../../cve-scanning.md)) |
-| Wie schnell reagiert das Projekt? | Reaktionszeiten nach Schwere für Befunde des eigenen Scans ([Triage von Image-Alerts](../../cve-scanning.md#triage-von-image-alerts)); gemeldete Lücken nach bestem Bemühen ohne zugesagte Frist ([`SECURITY.md`](../../../SECURITY.md#ablauf)) |
-| Welche Versionen erhalten Sicherheitskorrekturen? | nur das jüngste Release und `main` ([Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)) |
-| Wie kommt eine Korrektur zur Behörde? | als Patch-Release ([Sicherheitsupdates für Releases](../../releases.md#sicherheitsupdates-für-releases)), veröffentlicht als [GitHub Security Advisory](https://github.com/criew/opaa/security/advisories) |
-| Wie meldet die Behörde eine Lücke? | vertraulich über den [Meldeweg](../../../SECURITY.md#meldeweg), nie in einem öffentlichen Issue |
-| Welche Pflichten hat das Projekt nach dem Cyber Resilience Act? | [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md) |
-
-**Folge für die Behörde:** Weil nur das jüngste Release Sicherheitskorrekturen erhält, muss der
-Betrieb Updates zeitnah einspielen können. Wer eine Version länger festhalten will oder muss,
-vereinbart das mit einem Dienstleister; das Projekt sagt keinen längeren Zeitraum zu.
-
-## Weitere Unterlagen dieses Ordners
-
-- [IT-Grundschutz-Modellierung](grundschutz-modellierung.md)
-- [NIS2 in der Bundesverwaltung](nis2-bundesverwaltung.md)
-- [C5:2026 für das Betriebsmodell Cloud-Anbieter](c5-cloud-betrieb.md)
+| Pflichten des Projekts als Open-Source-Steward | Art. 24 [Cyber Resilience Act](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu), siehe [Rollenklärung](rollenklaerung-cra.md) |

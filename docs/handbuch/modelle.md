@@ -506,6 +506,26 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 - Für Entwicklung und Tests (nur Profil `dev`) ist ein fester, **nicht für den Betrieb gedachter**
   Schlüssel voreingestellt.
 
+## Ausfall eines Modells
+
+Fällt ein Modell aus, arbeiten Anmeldung, Verwaltung und der Zugriff auf Dokumente weiter, weil kein
+Modell die Bereitschaft des Backends bestimmt ([Bereitschaft und Lebendigkeit](betrieb.md#bereitschaft-und-lebendigkeit)).
+Je Rolle wirkt der Ausfall anders:
+
+| Rolle | Wirkung | Vorsorge | Wiederanlauf |
+|---|---|---|---|
+| Chat | Fragen im Chat scheitern | ein Ersatzmodell vorab anlegen und testen, nicht aktivieren ([Chat-Modelle in der Oberfläche anlegen](#chat-modelle-in-der-oberfläche-anlegen)) | Ersatzmodell aktivieren, wirkt ohne Neustart; nach dem Ausfall zurückschalten |
+| Embedding | Fragen scheitern, weil die Suche die Frage nicht einbetten kann; neue Dokumente enden als fehlgeschlagen | einen Ersatz-Endpunkt mit demselben Modell vorhalten; ein Wechsel nur des Endpunkts ist kein Modellwechsel | Endpunkt umstellen und Backend neu starten; in der Zwischenzeit fehlgeschlagene Dokumente erneut verarbeiten lassen, bei Quellen mit dem nächsten Lauf. Ein anderes Modell verlangt eine Neueinbettung, bis dahin nur Volltextsuche ([Modell wechseln](#modell-wechseln)) |
+| Reranking | Suche läuft ohne Reranking, die Reihenfolge der Treffer ist schlechter | keine | von selbst, sobald der Endpunkt antwortet |
+| Transkription | Spracheingabe nicht verfügbar | keine | von selbst |
+
+Ein Ersatzmodell bei einem anderen Anbieter schickt Fragen und Textausschnitte an einen anderen
+Empfänger; ob es aktiviert werden darf, klärt das Haus vorher mit Datenschutz und
+Personalvertretung. Erkennbar ist ein Ausfall an den Stellen unter [Fehlerbilder](#fehlerbilder),
+unter Kubernetes zusätzlich am Alarm für eine hohe Fehlerquote. Die Gesundheitsgruppe des
+Chat-Modells ruft das Modell nicht auf; ein Ausfall des Chat-Modells zeigt sich an scheiternden
+Fragen und an der Fehlerquote.
+
 ## Fehlerbilder
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"

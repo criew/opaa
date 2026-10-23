@@ -1437,7 +1437,10 @@ bei angehaltenem Backend, *Wiederherstellung auf einem neuen Cluster* in einen z
 Namespace mit neuem Signaturgeheimnis, danach Vergleich der Zeilenzahlen aller Tabellen und der
 Prüfsummen aller Originale, Prüfung der Version und der Lesbarkeit beider Verschlüsselungsschlüssel.
 Nicht geprüft sind das Zurückspielen in derselben Installation, das Ersetzen des Signaturgeheimnisses
-im vorhandenen Secret und das Leeren und Neuanlegen der Erprobungsdatenbank.
+im vorhandenen Secret und das Leeren und Neuanlegen der Erprobungsdatenbank. Die Probe folgt der
+[Wiederherstellungsprobe auf einem Testcluster](#wiederherstellungsprobe-auf-einem-testcluster), ohne
+Modell-Endpunkt und über die API statt über die Oberfläche. Sie prüft P1 bis P4, P6 und P9 bis P12;
+P5, P7 und P8 brauchen ein Chat- und ein Embedding-Modell und bleiben der Probe von Hand.
 
 ### Erprobungsdatenbank sichern
 
@@ -1462,6 +1465,75 @@ Die Rolle `opaa_audit_owner` gehört zur PostgreSQL-Instanz, nicht zur Datenbank
 oben, *Was eine Datenbanksicherung nicht enthält*). Nach dem Zurückspielen gilt die übliche
 Nacharbeit, zuerst ein neues `OPAA_AUTH_JWT_SECRET`, bevor das Backend wieder startet (siehe oben,
 *Signaturgeheimnis im vorhandenen Secret ersetzen*).
+
+### Wiederherstellungsprobe auf einem Testcluster
+
+Die Befehle zur [Wiederherstellungsprobe](betrieb.md#wiederherstellungsprobe) auf einem Testcluster.
+Quelle und Ziel sind zwei Namespaces mit je einem Release `opaa`, beide mit der Werte-Datei aus
+[Erprobung ohne Eingang und ohne eigene Datenbank](#erprobung-ohne-eingang-und-ohne-eigene-datenbank).
+Voraussetzung ist ein Modell-Endpunkt mit dem Chat- und dem Embedding-Modell dieser Werte-Datei.
+
+```bash
+QUELLE=opaa-probe-quelle
+ZIEL=opaa-probe-ziel
+VERSION=<X.Y.Z>
+```
+
+**Sichern.** Backend anhalten, Datenbank sichern und Originale kopieren wie oben. Im Kopier-Pod
+steht der Namespace der Quelle statt `opaa`, und unter `securityContext` kommt `fsGroup: 65532`
+hinzu, wie in der Werte-Datei. Dazu die Zeilenzählung mit der Abfrage aus der Probe, gespeichert als
+`zaehlung.sql`, und die Prüfsummenliste der Originale, bevor der Kopier-Pod gelöscht wird:
+
+```bash
+kubectl -n "$QUELLE" exec -i opaa-postgresql-0 -- \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -F";" -f -' < zaehlung.sql > zaehlung-quelle.txt
+kubectl -n "$QUELLE" exec opaa-uploads-kopie -- \
+  sh -c 'cd /uploads && find . -type f -exec sha256sum {} \;' | sort -k2 > originale-quelle.txt
+sha256sum opaa-db.dump opaa-uploads.tar
+```
+
+**Ziel aufbauen.** Namespace anlegen wie bei der [Installation](#1-namespace-anlegen), den Chart in
+derselben Version mit angehaltenem Backend und einem neuen Signaturgeheimnis installieren:
+
+```bash
+NEUES_JWT="$(openssl rand -base64 48 | tr -d '\n')"
+helm install opaa oci://ghcr.io/criew/charts/opaa --version "$VERSION" -n "$ZIEL" \
+  -f opaa-erprobung.yaml --set backend.replicas=0 --set-string secrets.jwtSecret="$NEUES_JWT"
+```
+
+**Zurückspielen.** Die Originale mit dem Kopier-Pod im Namespace des Ziels in das leere Volume
+zurückspielen, dort dieselbe Prüfsummenliste erzeugen (`originale-ziel.txt`) und den Kopier-Pod
+löschen. Dann die Rolle anlegen, die Datenbank einspielen und vor dem Start zählen
+(`zaehlung-ziel.txt`):
+
+```bash
+kubectl -n "$ZIEL" wait --for=condition=Ready pod/opaa-postgresql-0 --timeout=5m
+kubectl -n "$ZIEL" exec opaa-postgresql-0 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "CREATE ROLE opaa_audit_owner NOLOGIN" -c "GRANT opaa_audit_owner TO \"$POSTGRES_USER\""'
+kubectl -n "$ZIEL" exec -i opaa-postgresql-0 -- \
+  sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --exit-on-error' < opaa-db.dump
+echo "pg_restore: $?"
+```
+
+**Starten.** Mit demselben neuen Signaturgeheimnis; ohne `--set-string` setzte das Upgrade wieder das
+der Werte-Datei, also das der Quelle:
+
+```bash
+helm upgrade opaa oci://ghcr.io/criew/charts/opaa --version "$VERSION" -n "$ZIEL" \
+  -f opaa-erprobung.yaml --set-string secrets.jwtSecret="$NEUES_JWT"
+kubectl -n "$ZIEL" rollout status deploy/opaa-backend --timeout=15m
+```
+
+**Prüfen.** Die Portweiterleitung von der Quelle auf das Ziel umstellen, unter derselben Adresse wie
+`publicBaseUrl` (`kubectl -n "$ZIEL" port-forward svc/opaa-frontend 8080:80`). P2 und P3 sind ein
+`diff` der beiden Zählungen bzw. Prüfsummenlisten. Die Gesundheitsgruppen für P5 antworten nur auf
+dem [Management-Port](#management-port) und verlangen ein gültiges Zugangstoken:
+
+```bash
+kubectl -n "$ZIEL" port-forward deploy/opaa-backend 8081:8081
+curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health/embedding-model
+curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health/vector-store
+```
 
 ## Betriebsüberwachung
 

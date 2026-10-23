@@ -614,6 +614,107 @@ Nicht zu sichern sind Container und Pods, `/tmp`, das Frontend und die herunterg
 Die Befehle stehen je Betriebsweg unter [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung)
 und [Kubernetes](kubernetes.md#sicherung-und-wiederherstellung).
 
+### Wiederherstellungsprobe
+
+Eine Sicherung, deren Wiederherstellung nie geprüft wurde, ist keine Sicherung. Die Probe zeigt, dass
+Datenbank, Index und Originale aus einer Sicherung zueinander passend zurückkommen, und misst
+Wiederherstellungszeit und Wiederherstellungspunkt. Sie folgt den Wegen dieses Abschnitts und baut
+keinen eigenen. Die Befehle für einen Testcluster stehen unter
+[Wiederherstellungsprobe auf einem Testcluster](kubernetes.md#wiederherstellungsprobe-auf-einem-testcluster);
+mit Docker Compose oder mit eigener PostgreSQL und eigenem Objektspeicher gilt derselbe Ablauf mit
+deren Werkzeugen.
+
+- **Auf ein leeres System.** Zurückgespielt wird in eine zweite, leere Installation, nie in die
+  laufende. Nur so zeigt sich, ob die Sicherung vollständig ist.
+- **Dieselbe Version** und dasselbe Embedding-Modell in derselben Dimension in Quelle und Ziel.
+- **Dieselben Verschlüsselungsschlüssel, ein neues Signaturgeheimnis.** Das Ziel bekommt beide
+  Verschlüsselungsschlüssel und das Datenbankpasswort der Quelle, aber ein neu erzeugtes
+  `OPAA_AUTH_JWT_SECRET`.
+- **Testbestand statt Echtdaten.** Wer mit einer Kopie echter Daten probt, behandelt Sicherung und
+  Ziel wie die Produktivdaten und löscht beides danach.
+
+**Testbestand.** Vor der Sicherung legt die Systemverwaltung in der Quelle an:
+
+| Nr. | Objekt | Zweck |
+|---|---|---|
+| T1 | eine Upload-Bibliothek mit mindestens drei einfachen Dateien (etwa PDF, DOCX, TXT), ohne Archive und E-Mails mit Anhängen | Originale und Index; einfache Dateien haben genau ein Original je Dokument |
+| T2 | in einer dieser Dateien der Satz „Probe-Marker vor der Sicherung: [zufälliges Wort M1]“ | belegte Antwort nach der Wiederherstellung |
+| T3 | ein Space mit zwei Mitgliedern, T1 zugeordnet | Rechte und Mitgliedschaften |
+| T4 | eine Testperson ohne Zugriff auf T1 | Rechteprobe |
+| T5 | ein Chat mit einer Frage nach M1 | Chats |
+| T6 | ein zweiter, nicht aktiver Chat-Modell-Eintrag auf denselben Endpunkt, mit einem beliebigen Zugangsschlüssel; „Verbindung testen“ gelingt | Schlüssel der Einstellungen (P11) |
+| T7 | eine Bibliothek mit Webquelle und hinterlegten Zugangsdaten für die Basic-Anmeldung, am besten gegen eine Quelle, die sie verlangt | Schlüssel der Zugangsdaten (P12) |
+
+Nutzt die Installation weitere Bausteine, etwa eine angebundene Quelle oder den Zugriff externer
+KI-Werkzeuge, kommen sie dazu.
+
+**Ablauf.** Die Zeitpunkte `tS`, `tA` und `t0` bis `t4` werden fortlaufend in eine Datei
+geschrieben, etwa mit `echo "t0 $(date -u +%FT%TZ)" >> zeiten.txt`.
+
+1. **Ausgangsstand festhalten:** Version unter `/actuator/info` ([Diagnose ohne Shell](#diagnose-ohne-shell))
+   und Image-Digests, Embedding-Modell und Indexstatus auf der Seite „Suche & Indexierung“, Zahl
+   der Dokumente in T1. Als T4 oder Mitglied von T3 angemeldet bleiben; der Browser behält die
+   Sitzung für P10.
+2. **Sichern (`tS`):** Backend anhalten, `tS` notieren, die Zeilen aller Tabellen zählen (Abfrage
+   unten), die Datenbank sichern, eine Prüfsummenliste aller Originale erzeugen und die Originale
+   sichern, die Prüfsummen beider Sicherungsdateien festhalten, das Backend wieder starten.
+3. **Datenverlust erzeugen (`tA`):** in T1 eine Datei mit „Probe-Marker nach der Sicherung:
+   [zufälliges Wort M2]“ hochladen, einen Chat mit einer Frage nach M2 führen, `tA` notieren.
+4. **Wiederherstellen (ab `t0`):** das Ziel mit angehaltenem Backend aufbauen; die Originale
+   zurückspielen und dieselbe Prüfsummenliste im Ziel erzeugen (`t1`); die Datenbank zurückspielen,
+   vorher die Rolle `opaa_audit_owner` anlegen, und den Rückgabewert festhalten (`t2`); die Zeilen
+   im Ziel zählen, **bevor** das Backend startet; das Backend mit dem neuen Signaturgeheimnis
+   starten, bis die Bereitschaft `UP` meldet (`t3`); die Prüfungen P4 bis P12 durchführen (`t4`).
+
+Die Abfrage zählt die Zeilen jeder Tabelle, ohne Tabellennamen zu kennen, und bleibt deshalb über
+Versionen gültig:
+
+```sql
+SELECT format('%I.%I', n.nspname, c.relname) AS tabelle,
+       (xpath('/row/n/text()',
+              query_to_xml(format('SELECT count(*) AS n FROM %I.%I', n.nspname, c.relname),
+                           false, true, '')))[1]::text AS zeilen
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE c.relkind = 'r'
+   AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+   AND n.nspname NOT LIKE 'pg\_toast%'
+ ORDER BY 1;
+```
+
+**Prüfkriterien:**
+
+| Nr. | Prüfung | Erwartet |
+|---|---|---|
+| P1 | `pg_restore --exit-on-error` | Rückgabewert 0, keine Fehlermeldung |
+| P2 | Zeilenzählung von Quelle und Ziel vergleichen | gleich für jede Tabelle, einschließlich Vektor- und Volltextindex und Nachweisprotokoll |
+| P3 | Prüfsummenlisten der Originale vergleichen | gleich: jedes Original ist bitgleich zurück |
+| P4 | Version nach dem Start; Zahl der Zeilen in `databasechangelog` vor und nach dem Start | Version wie in Schritt 1; die Zahl bleibt gleich. Einzige Ausnahme: War das Backend der Quelle vor der Sicherung nur ein einziges Mal gestartet, holt der erste Start des Ziels zwei Indizes auf dem Vektorindex nach, und die Zahl wächst um genau zwei ([Rückweg](kubernetes.md#rückweg)) |
+| P5 | Seite „Suche & Indexierung“; Gesundheitsgruppen `embedding-model` und `vector-store` ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)) | gleiches Embedding-Modell wie in Schritt 1, kein Hinweis „Index veraltet“, Vektorsuche aktiv; beide Gruppen `UP` |
+| P6 | Bericht verwaister Originale für T1 ([Originale einer vorhandenen Bibliothek](originalablage.md#originale-einer-vorhandenen-bibliothek)) | keine verwaisten Originale; so viele referenzierte Originale wie Dokumente in Schritt 1 |
+| P7 | Anmeldung, Space T3 mit seinen Mitgliedern, Frage nach M1, „Original öffnen“ an der Fundstelle | belegte Antwort mit Fundstelle in T1; das geöffnete Original hat die Prüfsumme der hochgeladenen Datei; Chat T5 ist vorhanden |
+| P8 | Testperson T4 fragt nach M1 | T1 ist für sie nicht sichtbar, die Antwort nennt keine Fundstelle aus T1 |
+| P9 | Frage nach M2, Chatliste | M2 ist nicht auffindbar, der Chat aus Schritt 3 fehlt |
+| P10 | Sitzung aus Schritt 1 im selben Browser gegen das Ziel | gilt nicht, eine neue Anmeldung ist nötig |
+| P11 | Chat-Modell T6: „Verbindung testen“ ohne neuen Schlüssel | gelingt wie in der Quelle. Dass der Schlüssel als hinterlegt angezeigt wird, genügt nicht: Die Anzeige prüft nur, ob ein Geheimtext gespeichert ist |
+| P12 | Bibliothek T7: Quelle bearbeiten, bei einer Quelle mit Anmeldung „Verbindung testen“ ohne neue Zugangsdaten | Die Zugangsdaten gelten als hinterlegt; ein unlesbarer Wert erschiene als „nicht gesetzt“ mit einer Warnung im Protokoll ([Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung)). Der Verbindungstest gelingt wie in der Quelle |
+
+P2 und P3 zeigen, dass die Sicherung vollständig zurückkam; P5 und P6, dass Index, Datenbank und
+Originale zueinander passen; P7 und P8, dass Inhalte und Rechte stimmen; P11 und P12, dass beide
+Verschlüsselungsschlüssel zur Datenbank passen.
+
+**Messung.** Die Wiederherstellungszeit der Probe ist `t4 − t0`, davon Originale `t1 − t0`,
+Datenbank `t2 − t1` und Start `t3 − t2`. Sie misst nur die technische Wiederherstellung; im Ernstfall
+kommen Erkennung, Entscheidung und gegebenenfalls Beschaffung hinzu. Der Wiederherstellungspunkt ist
+`tA − tS`, in der Probe gesetzt, im Betrieb höchstens der Abstand zweier Sicherungen; P9 belegt, dass
+alles nach `tS` fehlt. Die Laufzeiten von Datenbank und Originalen wachsen etwa linear mit ihrer
+Größe. Größe der Datenbank, Menge der Originale und Zahl der Dokumente gehören deshalb zum Ergebnis:
+Eine Probe mit dem Testbestand belegt das Verfahren, eine mit einer Kopie des Produktivbestands die
+Wiederherstellungszeit.
+
+Zeigt die Probe eine Abweichung von diesem Handbuch, ist das ein Fehler in Dokumentation oder
+Produkt. Danach werden das Ziel samt Volumes und die Sicherungsdateien des Testbestands gelöscht.
+
 ## Aktualisierung
 
 Eine Aktualisierung tauscht die Images von Backend und Frontend gegen einen neuen Stand und startet

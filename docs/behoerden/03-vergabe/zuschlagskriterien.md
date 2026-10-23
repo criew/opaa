@@ -1,23 +1,40 @@
 ---
-stand: 2026-10-17
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-01-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Zuschlagskriterien einschließlich digitaler Souveränität
+# Zuschlagskriterien
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-## Hinweise zur Verwendung
+**Gilt für:** öffentliche Auftraggeber, also Behörden und auch kommunale Gesellschaften, die
+ausschreiben müssen, oberhalb und unterhalb der EU-Schwellenwerte.
 
-Die Kriterien bewerten Angebote, die alle Muss-Anforderungen des
-[Anforderungskatalogs](anforderungskatalog.md) erfüllen. Sie nennen kein Produkt. Kriterien und
-Gewichtung stehen vor der Veröffentlichung fest und werden mit den Vergabeunterlagen bekannt gegeben;
-jedes Kriterium muss mit dem Auftragsgegenstand zusammenhängen (siehe Quellen). Die Gewichtung unten
-ist ein Beispiel, keine Empfehlung.
+Zuschlagskriterien legen fest, wie die Behörde unter den Angeboten, die alle Muss-Anforderungen des
+[Anforderungskatalogs](anforderungskatalog.md) erfüllen, das wirtschaftlichste auswählt. Kriterien und
+Gewichtung stehen vor der Veröffentlichung fest, werden mit den Vergabeunterlagen bekannt gegeben und
+müssen mit dem Auftragsgegenstand zusammenhängen. Verantwortlich ist die Vergabestelle.
+
+> **Beispiel.** Ein Landratsamt gewichtet den Preis mit 50 %, weil der Haushalt knapp ist. Zwei
+> Angebote erfüllen alle Muss-Anforderungen; das teurere gewinnt, weil es ein Exit-Konzept mit festen
+> Fristen zusagt und bei SO1 drei Punkte erhält.
+
+## Was die Vorlage liefert
+
+Drei Hauptkriterien mit Preisformel und Punkteskala sowie Unterkriterien für Qualität und digitale
+Souveränität, also die Fähigkeit der Behörde, ihre IT selbst zu steuern und den Anbieter zu wechseln.
+
+## Was die Behörde tun muss
+
+1. **Gewichtung festlegen;** die Werte unten sind ein Beispiel, keine Empfehlung.
+2. **Unterkriterien anpassen** an die Kann-Anforderungen, die im Katalog bleiben.
+3. **SO1 bis SO4 dem Kriterienkatalog C3A des BSI zuordnen** und dessen Wortlaut übernehmen, wo er
+   passt.
+4. **Alles vor der Veröffentlichung festschreiben.**
 
 ## Kriterien und Gewichtung
 
@@ -30,7 +47,7 @@ ist ein Beispiel, keine Empfehlung.
 **Preis:** Das niedrigste Angebot erhält die volle Punktzahl, jedes andere anteilig:
 Punkte = Höchstpunktzahl × niedrigster Preis ÷ Preis des Angebots.
 
-**Qualität und Souveränität:** Jedes Unterkriterium wird mit 0 bis 3 Punkten bewertet:
+**Qualität und Souveränität:** Jedes Unterkriterium erhält 0 bis 3 Punkte:
 
 | Punkte | Bedeutung |
 |---|---|
@@ -53,13 +70,6 @@ Punkte = Höchstpunktzahl × niedrigster Preis ÷ Preis des Angebots.
 
 ## Digitale Souveränität
 
-Der Kriterienkatalog C3A des BSI zur digitalen Souveränität ist als Beschaffungsinstrument gedacht,
-veröffentlicht für die Beschaffung von Cloud-Diensten; ob er auf den Betrieb im eigenen Haus oder
-durch einen Dienstleister übertragbar ist, prüft die Behörde.
-Die Behörde ordnet die Unterkriterien unten den Kriterien von C3A zu und übernimmt dessen Wortlaut,
-wo er passt. Diese Vorlage gibt den Katalog nicht wieder; seine Kriterien sind gegen die aktuelle
-Fassung beim BSI zu prüfen.
-
 | Nr. | Unterkriterium | Bezug im Katalog |
 |---|---|---|
 | SO1 | Wechselbarkeit: Übergabe an Behörde oder Nachfolger, Vollständigkeit der Übergabe, Aufwand eines Wechsels | L-07, O-03 |
@@ -67,12 +77,21 @@ Fassung beim BSI zu prüfen.
 | SO3 | Offenheit: Anpassungen unter der Lizenz der Software, Angebot zur Übernahme ins Projekt | O-01, L-06 |
 | SO4 | Lieferkette: Umgang mit Software-Stückliste und Schwachstellenmeldungen der eingesetzten Software, Pflichten nach dem Cyber Resilience Act | S-02, S-04, L-08 |
 
-## Quellen und Prüfstand
+## Gut zu wissen
 
-| Aussage | Fundstelle | Herkunft |
-|---|---|---|
-| Kriterienkatalog C3A des BSI (27.4.2026) als Beschaffungsinstrument für digitale Souveränität, veröffentlicht für die Cloud-Beschaffung; Übertragbarkeit zu prüfen | [vergabeblog.de, 30.4.2026](https://vergabeblog.de/2026-04-30/bsi-veroeffentlicht-c3a-neuer-massstab-fuer-digitale-souveraenitaet-in-der-cloud-beschaffung/); amtliche Fundstelle beim BSI zu prüfen | Fachblog, kein Normtext; Recherche vom 13.10.2026 |
-| Zuschlag auf das wirtschaftlichste Angebot; Kriterien und Gewichtung vorab bekannt geben; Bezug zum Auftragsgegenstand | GWB und VgV oberhalb, UVgO bzw. Landesrecht unterhalb der EU-Schwellenwerte; Paragrafen zu prüfen | nicht Teil der Recherche |
-| Pflichten eines kommerziellen Bereitstellers als Hersteller | [VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu) | Normtext; Recherche vom 13.10.2026 |
+- C3A wurde für die Beschaffung von Cloud-Diensten veröffentlicht. Ob er auf den Betrieb im eigenen
+  Haus oder durch einen Dienstleister passt, prüft die Behörde gegen die aktuelle Fassung beim BSI.
+## Zum Nachlesen
 
-Die Angaben stammen aus der Rechtsrecherche vom 13.10.2026.
+**Arbeitshilfen** für die Projektleitung:
+
+- [Bericht zum Kriterienkatalog C3A](https://vergabeblog.de/2026-04-30/bsi-veroeffentlicht-c3a-neuer-massstab-fuer-digitale-souveraenitaet-in-der-cloud-beschaffung/)
+  im vergabeblog (30.4.2026): worum es im Katalog geht; die aktuelle Fassung steht beim BSI.
+
+**Rechtsgrundlagen** für die Vergabestelle:
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Kriterienkatalog C3A des BSI (27.4.2026), amtliche Fundstelle | beim BSI, zu prüfen |
+| Zuschlag auf das wirtschaftlichste Angebot; Kriterien und Gewichtung vorab bekannt geben; Bezug zum Auftragsgegenstand | GWB und VgV oberhalb, UVgO bzw. Landesrecht unterhalb der EU-Schwellenwerte; Paragrafen zu prüfen |
+| Pflichten eines kommerziellen Bereitstellers als Hersteller | [VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu) (Cyber Resilience Act) |

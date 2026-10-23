@@ -1,68 +1,73 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Technische und organisatorische Maßnahmen: Produktanteil
+# Technische und organisatorische Maßnahmen (TOM)
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-Die technischen und organisatorischen Maßnahmen (TOM) nach Art. 32 DSGVO trifft der Verantwortliche,
-also die Behörde, und bei Auftragsverarbeitung auch ihr Dienstleister. Ein Teil davon steckt im
-Produkt. Dieser Baustein trennt beide: **Produktanteil** heißt, OPAA bringt die Maßnahme mit;
-**Betreiberanteil** heißt, die Behörde oder ihr Dienstleister muss sie selbst treffen. Die Spalte
-„Betreiberanteil“ füllt die Behörde in ihrem Sicherheitskonzept; Angaben in eckigen Klammern **[…]**
-sind Beispiele.
+**Gilt für:** Behörden, deren Datenschutzaufsicht die oder der BfDI oder die
+Landesdatenschutzbeauftragten sind.
 
-Der Produktanteil ist hier nur benannt. Wie eine Maßnahme wirkt und wie sie eingestellt wird, steht in
-der verlinkten Stelle des Handbuchs oder im Faktenblatt der eingesetzten Version.
+TOM sind die Vorkehrungen, mit denen personenbezogene Daten gegen Verlust, Missbrauch und unbefugten
+Zugriff geschützt werden. Verantwortlich ist die Behörde, bei Auftragsverarbeitung auch ihr
+Dienstleister. Ein Teil der Maßnahmen steckt im Produkt; diese Vorlage trennt, was OPAA mitbringt und
+was der Betrieb selbst leisten muss.
 
-## Quellen und Prüfstand
+> **Beispiel.** Ein Landratsamt schreibt sein Sicherheitskonzept für OPAA. Die Projektleitung übernimmt
+> die Spalte „OPAA bringt mit“ als Verweis und füllt mit dem IT-Betrieb die Spalte „Betrieb leistet“:
+> verschlüsselte Sicherungen, Anbindung an das Active Directory, Netzregeln für ausgehende
+> Verbindungen. Die Tabelle wird Anlage zum Verzeichnis von Verarbeitungstätigkeiten.
 
-| Fundstelle | Inhalt | Herkunft |
+## Was OPAA liefert
+
+| Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |
 |---|---|---|
-| Art. 32 Abs. 1 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) | Sicherheit der Verarbeitung, Buchstaben a bis d | Normtext |
-| Art. 25 Abs. 1 und 2 DSGVO | Datenschutz durch Technikgestaltung und datenschutzfreundliche Voreinstellungen | Recherche vom 13.10.2026 |
-| [Standard-Datenschutzmodell](https://www.datenschutzzentrum.de/sdm/) der Datenschutzkonferenz | Methode, um Maßnahmen Gewährleistungszielen zuzuordnen | Muster |
+| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht)) | Datenbankzugriff beschränken, damit die Trennung hält |
+| **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert ([Sichere Voreinstellungen](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)) | TLS am Eingang ([Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |
+| **Vertraulichkeit** | Rechte je Arbeitsmittel und Space ([Berechtigungen](../../handbuch/berechtigungen.md)), Sichtbarkeit je Rolle ({{faktenblatt:rollensicht}}), Anmeldung mit Sperren und Fristen ([Authentifizierung](../../handbuch/authentifizierung.md)) | Rollenkonzept, Anbindung an den Identitätsanbieter, Vier-Augen-Prinzip für die Revision |
+| **Integrität** | Protokoll, an das nur angefügt wird ({{faktenblatt:protokollereignisse}}), Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}) | Datenbankrechte, Weiterleitung an ein Sicherheitsmonitoring |
+| **Verfügbarkeit** | Bereitschafts- und Lebendigkeitsprüfung ([Betrieb](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
+| **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}) | Netzregeln, Zielliste am Proxy |
+| **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
+| **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../sbom.md)), [CVE-Scanning](../../cve-scanning.md), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
 
-Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
-[#2542](https://github.com/criew/opaa/issues/2542). Wie das Sicherheitskonzept der Behörde nach
-IT-Grundschutz aufgebaut wird, ist nicht Teil dieses Bausteins
-([#2567](https://github.com/criew/opaa/issues/2567)).
+## Was die Behörde tun muss
 
-## Maßnahmen nach Art. 32 Abs. 1 DSGVO
+1. **Spalte „Betrieb leistet“ füllen** im eigenen Sicherheitskonzept, gemeinsam mit IT-Betrieb oder
+   Dienstleister.
+2. **Voreinstellungen dokumentieren:** Datenschutzfreundliche Voreinstellungen, also Werkseinstellungen,
+   die nur das Nötige erheben, stehen im {{faktenblatt:voreinstellungen#einstellungen}}, die
+   KI-Funktionen im {{faktenblatt:voreinstellungen#ki-funktionen}}. Die Behörde hält fest, welche sie
+   unverändert übernimmt, welche sie mit Begründung ändert und welche ab Werk ausgeschalteten
+   Funktionen sie einschaltet.
+3. **Bei jedem Update nachprüfen:** Das Update-Paket weist geänderte Voreinstellungen aus. Sie wirken
+   nur dort, wo die Behörde den Wert nicht selbst gesetzt hat.
 
-| Art. 32 Abs. 1 | Produktanteil | Betreiberanteil |
-|---|---|---|
-| **lit. a** Pseudonymisierung | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten: {{faktenblatt:datenkatalog#audit-pseudonyms}}, [Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht) | [Zugriff auf die Datenbank beschränken, damit die Trennung nicht umgangen wird] |
-| **lit. a** Verschlüsselung | Zugangsdaten von Quellen, Zugängen und Modellen verschlüsselt gespeichert ([Handbuch, Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse)); Passwörter lokaler Konten nur als Prüfwert ([Sichere Voreinstellungen](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)) | [TLS am Eingang ([Handbuch, Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang)); verschlüsselte Datenträger und Sicherungen; Schlüssel getrennt von der Datenbank verwahren] |
-| **lit. b** Vertraulichkeit | Rechte je Arbeitsmittel und Space ([Handbuch, Berechtigungen](../../handbuch/berechtigungen.md)); Sichtbarkeit je Rolle: {{faktenblatt:rollensicht}}; Anmeldung über Identitätsanbieter oder lokale Konten mit Sperren und Fristen ([Handbuch, Authentifizierung](../../handbuch/authentifizierung.md)) | [Rollenvergabe nach Rollenkonzept; Anbindung an den Identitätsanbieter des Hauses; Vier-Augen-Prinzip für die Revision] |
-| **lit. b** Integrität | Revisionssicheres Protokoll, nur anfügend: {{faktenblatt:protokollereignisse}}; Rechtehistorie: {{faktenblatt:datenkatalog#permission-history}} | [Datenbankrechte; Weiterleitung an ein zentrales Sicherheitsmonitoring] |
-| **lit. b** Verfügbarkeit und Belastbarkeit | Bereitschafts- und Lebendigkeitsprüfung ([Handbuch, Betrieb](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)); Begrenzungen am Anmeldeweg ([Sichere Voreinstellungen](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)) | [Betrieb, Überwachung, Kapazität; Ausfall des Modellanbieters einplanen] |
-| **lit. b** Schutz ausgehender Verbindungen | Zieladressprüfung für eingetragene Adressen ([Handbuch, Zielprüfung](../../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)); ein Ausgangsproxy für alle HTTP(S)-Verbindungen ([Handbuch, Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)); Datenflüsse: {{faktenblatt:datenfluesse#datenfluesse}} | [Egress-Regeln auf Netzebene; Zielliste am Proxy] |
-| **lit. c** Wiederherstellung | Sicherungsumfang und Reihenfolge beschrieben ([Handbuch, Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung)) | [Sicherungen durchführen, Wiederherstellung regelmäßig proben] |
-| **lit. d** Überprüfung und Bewertung | Stückliste und Attestierung je Image ([SBOM](../../sbom.md)); CVE-Erkennung und Triage ([CVE-Scanning](../../cve-scanning.md)); Meldeweg für Sicherheitslücken ([SECURITY.md](../../../SECURITY.md)); Faktenblätter und Update-Paket je Version | [Updates zeitnah einspielen; Update-Paket lesen; Prüfungen im eigenen Turnus] |
+## Gut zu wissen
 
-## Datenschutzfreundliche Voreinstellungen (Art. 25 Abs. 2 DSGVO)
+- Was die eigene Installation anders eingestellt hat, zeigt die
+  [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+- Die Grundsätze hinter den Voreinstellungen beschreibt die Spezifikation unter
+  [Sichere Voreinstellungen](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)
+  und [Mitbestimmungsfähigkeit](../../features/security-and-compliance.md#mitbestimmungsfähigkeit).
+- Wie das Sicherheitskonzept nach IT-Grundschutz aufgebaut wird, ist nicht Teil dieser Vorlage.
 
-Welche Voreinstellungen OPAA mit Wirkung auf Daten, Sichtbarkeit, Auswertung oder Datenflüsse
-ausliefert, steht mit Standardwert und Wirkung im {{faktenblatt:voreinstellungen#einstellungen}}; die
-KI-Funktionen mit ihrer Kennzeichnung im {{faktenblatt:voreinstellungen#ki-funktionen}}. Die
-Grundsätze dahinter beschreibt die Spezifikation unter
-[Sichere Voreinstellungen und Produkthärtung](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)
-und [Mitbestimmungsfähigkeit](../../features/security-and-compliance.md#mitbestimmungsfähigkeit).
+## Zum Nachlesen
 
-Für ihre Dokumentation nach Art. 25 hält die Behörde fest:
+**Arbeitshilfen** für die Projektleitung:
 
-- welche Voreinstellungen sie **unverändert** übernimmt (Verweis auf das Faktenblatt der Version),
-- welche sie **ändert**, mit neuem Wert und Begründung [aus dem Konfigurationsexport,
-  [#2558](https://github.com/criew/opaa/issues/2558)],
-- welche Funktionen sie **einschaltet**, die ab Werk aus sind.
+- [Standard-Datenschutzmodell](https://www.datenschutzzentrum.de/sdm/) der Datenschutzkonferenz:
+  Methode, um Maßnahmen den Schutzzielen zuzuordnen.
 
-Ein Update kann Voreinstellungen ändern. Das betrifft nur Instanzen, die den Wert nicht überschrieben
-haben; das Update-Paket weist geänderte Voreinstellungen aus
-([Spezifikation, Instanzbezug](../../features/behoerdenunterlagen.md#instanzbezug)).
+**Rechtsgrundlagen** für die oder den DSB:
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Sicherheit der Verarbeitung; Schutzziele der Tabelle (Buchstaben a bis d) | Art. 32 Abs. 1 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) |
+| Datenschutz durch Technikgestaltung und datenschutzfreundliche Voreinstellungen | Art. 25 Abs. 1 und 2 DSGVO |

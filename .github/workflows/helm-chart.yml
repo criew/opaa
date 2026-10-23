@@ -204,7 +204,7 @@ jobs:
       - name: Chart installieren und helm test ausführen
         run: deploy/helm/ci/install-test.sh
 
-      # The restore drill of docs/behoerden/09-betrieb-update/wiederherstellungsprobe.md: backup with
+      # The restore drill of docs/handbuch/betrieb.md (section "Wiederherstellungsprobe"): backup with
       # the handbook's commands, restore into a second namespace, checks; results, times and sizes go
       # to the job summary.
       - name: Wiederherstellungsprobe

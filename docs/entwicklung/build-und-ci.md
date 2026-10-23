@@ -85,8 +85,8 @@ deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der 
                                         #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
                                         # In CI bei Änderungen am Chart und an den Image-Dateien,
                                         # nightly und per Label "helm-suite"
-deploy/helm/ci/restore-test.sh          # Wiederherstellungsprobe (docs/behoerden/09-betrieb-update/
-                                        # wiederherstellungsprobe.md): Quelle installieren und über
+deploy/helm/ci/restore-test.sh          # Wiederherstellungsprobe (docs/handbuch/betrieb.md,
+                                        # Abschnitt „Wiederherstellungsprobe“): Quelle installieren und über
                                         # die API füllen, mit den Befehlen des Handbuchs sichern, in
                                         # einen zweiten Namespace zurückspielen, P1-P4, P6, P9-P12
                                         # prüfen; Ergebnis, Zeiten und Größen in der Job-
