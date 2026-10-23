@@ -186,21 +186,23 @@ Verbindung an eine Adresse außerhalb des Subnetzes scheitert sofort.
   Drittimages gezogen; danach startet der Stack mit `--pull never`. Das Modell ist `ai-stub` im
   selben Netz.
 - **Ablauf:** Anmeldung des lokalen Notanker-Kontos, Bibliothek über den Assistenten, Upload,
-  Frage mit `@`-Referenz, Fundstelle im Belegfenster.
+  Zuordnung der Bibliothek zum Standard-Space über die API, Frage ohne Referenz, Fundstelle im
+  Belegfenster.
 - **Erkennung:** Jeder Container der Installation löst Namen über `egress-dns` auf
   (`e2e/offline/egress-dns.mjs`). Dockers eingebautes DNS beantwortet die Dienstnamen selbst und
   reicht nur fremde Namen weiter; der Wächter zeichnet sie auf und antwortet mit NXDOMAIN. Der
   Browser-Kontext bricht jeden Abruf einer fremden Origin ab und zeichnet ihn auf. Nach dem Lauf
   durchsucht `offline.mjs` die Container-Logs nach Verbindungsversuchen ohne Route
   (`Network is unreachable`, `No route to host`) — der Weg einer Verbindung an eine IP-Adresse ohne
-  Namensauflösung, den der Wächter nicht sieht.
+  Namensauflösung, den der Wächter nicht sieht. Ein solcher Versuch fällt nur auf, wenn sein Fehler
+  im Log steht; eine Positivprobe für diesen Weg gibt es nicht.
 - **Positivprobe:** Der Verbindungstest des Assistenten gegen `egress-probe.offline-check.example`
   lässt das Backend einen fremden Namen auflösen; der Lauf scheitert, wenn der Wächter ihn nicht
   aufzeichnet. Alle anderen Aufzeichnungen müssen leer bleiben.
 - **Zugang von außen:** nur über `relay` (`e2e/offline/relay.mjs`), das als Testgerüst in beiden
   Netzen steht und Port 13003 an das Frontend und 18053 an das Protokoll des Wächters weiterreicht.
-- **Ergebnis:** `e2e/test-results/offline-result.json` mit Version, Datum und den Aufzeichnungen;
-  die CI schreibt es in die Zusammenfassung des Laufs.
+- **Ergebnis:** `e2e/test-results/offline-result.json` mit Version, Datum, den Aufzeichnungen und
+  den Funden der Logsuche; die CI schreibt es in die Zusammenfassung des Laufs.
 
 ```bash
 # aus e2e/: eigenes Compose-Projekt opaa-offline, Subnetz 172.24.0.0/16, nach dem Lauf abgebaut

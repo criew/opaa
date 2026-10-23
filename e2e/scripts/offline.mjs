@@ -6,7 +6,7 @@
 // tear down. Everything the installation needs is on the machine before the stack starts; from
 // then on nothing is fetched, and the run fails on any name or address outside the stack.
 import { spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const isWindows = process.platform === 'win32'
@@ -59,6 +59,7 @@ export async function runOffline({ repoRoot, e2eDir, extraTestArgs }) {
   const teardown = () => compose(['down', '-v', '--remove-orphans'])
 
   teardown()
+  rmSync(join(e2eDir, 'test-results', 'offline-result.json'), { force: true })
   console.log('\n> offline: providing images before the stack starts')
   let status = 0
   if (process.env.E2E_SKIP_BUILD !== 'true') {
@@ -84,7 +85,6 @@ export async function runOffline({ repoRoot, e2eDir, extraTestArgs }) {
         extraEnv: {
           E2E_BASE_URL: baseUrl,
           E2E_EGRESS_DNS_URL: `http://localhost:${dnsLogPort}`,
-          E2E_OFFLINE_SUBNET: SUBNET,
           E2E_BOOTSTRAP_ADMIN_EMAIL: envFileValue(repoRoot, 'OPAA_INITIAL_ADMIN_EMAIL'),
           E2E_BOOTSTRAP_ADMIN_PASSWORD: envFileValue(repoRoot, 'OPAA_INITIAL_ADMIN_PASSWORD'),
         },
@@ -102,9 +102,23 @@ export async function runOffline({ repoRoot, e2eDir, extraTestArgs }) {
     }
     status = status || 1
   }
+  recordLogFindings(e2eDir, unreachable)
   writeFileSync(join(e2eDir, 'docker-compose.offline.log'), logs)
   teardown()
   return status
+}
+
+/** Adds the log findings to the result of the scenario, or writes them alone if it has none. */
+function recordLogFindings(e2eDir, unreachable) {
+  const dir = join(e2eDir, 'test-results')
+  const file = join(dir, 'offline-result.json')
+  const result = existsSync(file)
+    ? JSON.parse(readFileSync(file, 'utf8'))
+    : { date: new Date().toISOString() }
+  result.unreachableInLogs = unreachable
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(file, `${JSON.stringify(result, null, 2)}
+`)
 }
 
 /** One value of e2e/offline.env, which only the Compose stack reads. */

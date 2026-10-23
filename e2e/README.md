@@ -47,15 +47,15 @@ e2e/
   docker-compose.multi-instance.yml  Compose-Overlay auf docker-compose.multi.yml: Images, Ports der
                                  Instanzen, ai-stub, mailpit, Korpus im Objektspeicher
   scripts/multi-instance.mjs     Lebenszyklus des Ziels "multi-instance"
+  scripts/previous-version.mjs   bestimmt die Vorgängerversion des Rolling Updates
   offline/                       Ziel "offline": Ablauf ohne Internetzugang, siehe unten
     playwright.config.ts
     tests/offline.spec.ts
     egress-dns.mjs               zeichnet jede Namensauflösung außerhalb des Stacks auf
     relay.mjs                    einziger Weg vom Host in das abgeschottete Netz
-  offline.env                Environment des Ziels "offline"
-  docker-compose.offline.yml Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
+  offline.env                    Environment des Ziels "offline"
+  docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
   scripts/offline.mjs            Lebenszyklus des Ziels "offline"
-  scripts/previous-version.mjs   bestimmt die Vorgängerversion des Rolling Updates
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare

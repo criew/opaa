@@ -2,9 +2,9 @@
 
 Dieses Kapitel beschreibt, wie Anfragen eine Installation erreichen, was eine erreichbare
 Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was ein Betrieb ohne
-Internet voraussetzt und wie OPAA Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg und gehört zum Teil Betrieb des
-[Handbuchs](../README.md); die Bausteine einer Installation beschreibt die
-[Betriebsübersicht](README.md).
+Internet voraussetzt und wie OPAA Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
+und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
+beschreibt die [Betriebsübersicht](README.md).
 
 ## Netzwerkzugang
 
@@ -115,11 +115,11 @@ und `http.proxyHost` wertet OPAA nicht aus.
 
 ## Betrieb ohne Internet
 
-OPAA arbeitet in einem Netz ohne jeden Internetzugang vollständig — Anmeldung, Aufnahme von
-Dokumenten, Fragen mit Antwort und Fundstelle —, wenn alles, was es braucht, im Haus steht. Die
-Oberfläche lädt Schriften, Skripte und Bilder nur von der eigenen Installation; das Backend ruft
-nur die Ziele auf, die die Installation selbst einträgt. Die Nutzungsstatistik der eingebauten
-Bibliothek für Datenbankmigrationen (Liquibase) ist abgeschaltet.
+OPAA ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
+Haus steht: Anmeldung, Aufnahme von Dokumenten, Fragen mit Antwort und Fundstelle. Die Oberfläche
+lädt Schriften, Skripte und Bilder von der eigenen Installation. Die Nutzungsstatistik der
+eingebauten Bibliothek für Datenbankmigrationen (Liquibase) ist abgeschaltet. Was davon belegt ist,
+nennen Nachweis und Grenzen unten.
 
 **Voraussetzungen:**
 
@@ -143,10 +143,17 @@ einer fremden Adresse lässt ihn scheitern; ein absichtlicher Abruf einer fremde
 dass diese Erkennung greift. Das Ergebnis steht mit Version und Datum in der Zusammenfassung des
 Laufs.
 
-**Grenzen des Nachweises:** Der Lauf prüft die Compose-Installation mit lokaler Anmeldung und dem
-Upload. Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
-Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb. Konnektoren zu Quellen,
-Identitätsanbieter, Mailversand und der Betrieb unter Kubernetes sind nicht Teil des Laufs.
+**Grenzen des Nachweises:**
+
+- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload eines Textdokuments, in
+  einem Lauf von rund einer Minute. Andere Formate, Reranking, Transkription und zeitgesteuerte
+  Aufgaben sind nicht Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter,
+  Mailversand und der Betrieb unter Kubernetes.
+- **Modelle:** Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
+  Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb.
+- **Erkennung:** Verbindungen an feste IP-Adressen ohne Namensauflösung scheitern im Netz ebenfalls.
+  Der Lauf erkennt sie aber nur, wenn das Log sie als nicht erreichbares Netz meldet; ein Fehler,
+  der nicht oder nur auf niedriger Stufe protokolliert wird, bleibt unbemerkt.
 
 ## Schlüssel und Geheimnisse
 
