@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastructure.md)
 
 ## Kontext
@@ -139,7 +139,7 @@ Aktualisierung mit einer Instanz bleibt eine Unterbrechung. Ingress, Gateway API
 müssen geprüft werden, nicht nur behauptet. PostgreSQL mit pgvector stellt der Betreiber. Ein
 Chart-Fix erzeugt ein Anwendungsrelease. Versions-Tags werden nie überschrieben; Sicherheitsupdates
 des Basis-Images erreichen ein Release nur als Patch-Release, und der CVE-Scan deckt neben `main` das
-jüngste Release ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
+jüngste Patch-Release jeder unterstützten Linie ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
 
 ## Verworfene Alternativen
 

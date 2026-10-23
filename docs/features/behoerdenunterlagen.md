@@ -41,7 +41,7 @@
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
 > (#2562, #2563, #2566) und die
 > Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3018–#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die

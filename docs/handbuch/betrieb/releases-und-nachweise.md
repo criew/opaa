@@ -71,8 +71,8 @@ ebenso wie ältere. Eine Korrektur im Code kommt zuerst in den laufenden Entwick
 und von dort auf jede unterstützte Linie, die sie betrifft. Jedes Patch-Release entsteht auf dem
 Wartungsbranch seiner Linie; ein Patch-Release aus `main` lehnt der Release-Lauf ab. So enthält
 ein Patch-Release nie Funktionen einer neueren Linie. Ältere Linien gibt es ab dem zweiten finalen
-Release. Der nächtliche Scan prüft
-ältere Linien [noch nicht](#was-nicht-gebaut-ist).
+Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstützten Linie
+([Schwachstellen](#schwachstellen)).
 
 ## Was ein Release liefert
 
@@ -140,7 +140,8 @@ Update-Paket.
 ## Schwachstellen
 
 - **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
-  prüft die Images von `main` und des jüngsten Release.
+  prüft die Images von `main` und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
+  deren Supportende.
 - **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
 - **Melden:** Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
@@ -160,8 +161,6 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Der Schwachstellen-Scan aller unterstützten Linien; heute prüft er nur das jüngste Release
-  ([#3018](https://github.com/criew/opaa/issues/3018)).
 - Im Update-Paket eines LTS das Delta zur vorigen LTS-Linie; heute enthält es das Delta zum vorigen
   finalen Release ([#3020](https://github.com/criew/opaa/issues/3020)).
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang

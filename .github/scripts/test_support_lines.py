@@ -8,6 +8,7 @@ the validation of the file and the wiring in workflow and configuration.
 """
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -192,3 +193,301 @@ def test_only_explicit_exceptions_follow_the_disabling_rule() -> None:
         assert rule.get("matchBaseBranches")
         assert rule.get("matchPackageNames")
         assert rule.get("automerge") is False
+
+
+# scan-targets: the release images cve-scan.yml scans besides main.
+
+
+def releases_file(tmp_path: Path, tags: list[str]) -> Path:
+    path = tmp_path / "releases.jsonl"
+    path.write_text(
+        "".join(
+            json.dumps({"tag_name": t, "prerelease": "-" in t, "draft": False}) + "\n" for t in tags
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def scan_targets(tmp_path: Path, lines: object, tags: list[str], date: str) -> subprocess.CompletedProcess:
+    return run(
+        "scan-targets",
+        "--file", write(tmp_path, lines).as_posix(),
+        "--releases", releases_file(tmp_path, tags).as_posix(),
+        "--image-prefix", "ghcr.io/criew/opaa",
+        "--date", date,
+    )
+
+
+def target_images(result: subprocess.CompletedProcess) -> list[tuple[str, str]]:
+    assert result.returncode == 0, result.stderr
+    return [(t["name"], t["image"]) for t in json.loads(result.stdout)]
+
+
+def test_scan_targets_take_the_newest_final_release_of_every_supported_line(tmp_path: Path) -> None:
+    tags = ["v0.2.0", "v0.2.1", "v0.2.10", "v0.3.0", "v0.3.1-rc.1", "v0.4.0-rc.1", "v0.3.0-rc.2"]
+
+    result = scan_targets(tmp_path, THREE_LINES[:2], tags, "2027-01-15")
+
+    assert target_images(result) == [
+        ("backend-0.2", "ghcr.io/criew/opaa-backend:0.2.10"),
+        ("frontend-0.2", "ghcr.io/criew/opaa-frontend:0.2.10"),
+        ("backend-0.3", "ghcr.io/criew/opaa-backend:0.3.0"),
+        ("frontend-0.3", "ghcr.io/criew/opaa-frontend:0.3.0"),
+    ]
+
+
+def test_scan_targets_drop_a_line_after_its_support_end(tmp_path: Path) -> None:
+    result = scan_targets(tmp_path, THREE_LINES[:2], ["v0.2.3", "v0.3.0"], "2027-02-01")
+
+    assert [name for name, _ in target_images(result)] == ["backend-0.3", "frontend-0.3"]
+
+
+def test_scan_targets_keep_the_line_of_the_highest_final_release_even_if_unlisted(
+    tmp_path: Path,
+) -> None:
+    # The list may lag behind a release; the newest line is never left unscanned.
+    result = scan_targets(tmp_path, [], ["v0.1.0", "v0.2.0", "v0.2.1"], "2027-02-01")
+
+    assert target_images(result) == [
+        ("backend-0.2", "ghcr.io/criew/opaa-backend:0.2.1"),
+        ("frontend-0.2", "ghcr.io/criew/opaa-frontend:0.2.1"),
+    ]
+
+
+def test_scan_targets_without_any_final_release_are_empty(tmp_path: Path) -> None:
+    result = scan_targets(tmp_path, [], ["v0.1.0-rc.1", "v0.1.0-rc.4"], "2027-02-01")
+
+    assert target_images(result) == []
+
+
+def test_scan_targets_warn_about_a_supported_line_without_release(tmp_path: Path) -> None:
+    lines = [{"line": "0.5", "kind": "normal", "supportEnd": None}]
+
+    result = scan_targets(tmp_path, lines, ["v0.4.0"], "2027-02-01")
+
+    assert [name for name, _ in target_images(result)] == ["backend-0.4", "frontend-0.4"]
+    assert "::warning::" in result.stderr and "0.5" in result.stderr
+
+
+def test_scan_targets_ignore_drafts_and_marked_pre_releases(tmp_path: Path) -> None:
+    path = tmp_path / "releases.jsonl"
+    path.write_text(
+        json.dumps({"tag_name": "v0.3.0", "prerelease": False, "draft": True}) + "\n"
+        + json.dumps({"tag_name": "v0.2.2", "prerelease": True, "draft": False}) + "\n"
+        + json.dumps({"tag_name": "v0.2.1", "prerelease": False, "draft": False}) + "\n",
+        encoding="utf-8",
+    )
+
+    result = run(
+        "scan-targets", "--file", write(tmp_path, []).as_posix(), "--releases", path.as_posix(),
+        "--image-prefix", "ghcr.io/criew/opaa", "--date", "2027-02-01",
+    )
+
+    assert [image for _, image in target_images(result)] == [
+        "ghcr.io/criew/opaa-backend:0.2.1",
+        "ghcr.io/criew/opaa-frontend:0.2.1",
+    ]
+
+
+# check-roadmap: the roadmap in docs/releases.md and the list cannot drift apart.
+
+ROADMAP_HEAD = """# Releases
+
+### Roadmap
+
+| Linie | Erscheint | Spring Boot | Art | Patch-Releases bis |
+|---|---|---|---|---|
+"""
+
+ROWS = (
+    "| `0.2` | 15.12.2026 | 4.2 | normal | 31.01.2027 |\n"
+    "| `0.3` | 20.06.2027 | 4.3 | LTS | 30.06.2028 |\n"
+    "| `0.4` | 15.12.2027 | 4.4 | normal | einen Monat nach dem Juni-Release 2028 |\n"
+    "| Juni-Release 2028 | 4–6 Wochen nach Spring Boot | Mai-Version 2028 | LTS | Ende des kostenlosen Supports |\n"
+)
+
+
+def check_roadmap(tmp_path: Path, lines: object, rows: str) -> subprocess.CompletedProcess:
+    doc = tmp_path / "releases.md"
+    doc.write_text(ROADMAP_HEAD + rows + "\nText danach.\n", encoding="utf-8")
+    return run(
+        "check-roadmap", "--file", write(tmp_path, lines).as_posix(), "--releases-doc", doc.as_posix()
+    )
+
+
+def test_roadmap_matching_the_list_passes(tmp_path: Path) -> None:
+    result = check_roadmap(tmp_path, THREE_LINES, ROWS)
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    ("lines", "rows"),
+    [
+        # A line in the list without its row.
+        (THREE_LINES, ROWS.replace("| `0.4` |", "| Dezember-Release 2027 |")),
+        # A released row without a list entry.
+        (THREE_LINES[:2], ROWS),
+        # Different support end.
+        (THREE_LINES, ROWS.replace("31.01.2027", "28.02.2027")),
+        # An open support end in the list, a date in the roadmap.
+        (THREE_LINES, ROWS.replace("einen Monat nach dem Juni-Release 2028", "15.07.2028")),
+        # Kind differs.
+        (THREE_LINES, ROWS.replace("| 4.3 | LTS |", "| 4.3 | normal |")),
+    ],
+)
+def test_roadmap_drifting_from_the_list_fails(tmp_path: Path, lines: object, rows: str) -> None:
+    result = check_roadmap(tmp_path, lines, rows)
+
+    assert result.returncode == 1
+    assert "::error::" in result.stderr
+
+
+CVE_SCAN = ROOT / ".github" / "workflows" / "cve-scan.yml"
+
+
+def test_cve_scan_takes_its_release_targets_from_the_list() -> None:
+    text = CVE_SCAN.read_text(encoding="utf-8")
+
+    assert "python3 .github/scripts/support_lines.py scan-targets" in text
+    assert "releases/latest" not in text
+
+
+def test_cve_scan_alarm_runs_when_a_single_leg_fails_but_never_clears_then() -> None:
+    # An unreachable image of one line must neither skip the alarm nor let it close unseen.
+    text = CVE_SCAN.read_text(encoding="utf-8")
+    alarm = text[text.index("  critical-alert:"):]
+
+    assert "!cancelled()" in alarm
+    assert "needs.targets.result == 'success'" in alarm
+    assert "EXPECTED_LEGS: ${{ needs.targets.outputs.legs }}" in alarm
+    assert "missing.length" in alarm
+
+
+def test_the_repository_roadmap_matches_the_list() -> None:
+    result = run(
+        "check-roadmap", "--file", LINES_FILE.as_posix(),
+        "--releases-doc", (ROOT / "docs" / "releases.md").as_posix(),
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_roadmap_check_reads_only_its_own_section(tmp_path: Path) -> None:
+    # A table with a line in its first cell further down, e.g. a backport example, is no roadmap row.
+    later = "\n### Backport\n\n| Linie | Branch |\n|---|---|\n| `0.5` | release/0.5 |\n"
+
+    result = check_roadmap(tmp_path, THREE_LINES, ROWS + later)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_roadmap_check_names_a_missing_heading(tmp_path: Path) -> None:
+    doc = tmp_path / "releases.md"
+    doc.write_text("# Releases\n\nKeine Roadmap.\n", encoding="utf-8")
+
+    result = run("check-roadmap", "--file", write(tmp_path, []).as_posix(), "--releases-doc", doc.as_posix())
+
+    assert result.returncode == 1
+    assert "::error::" in result.stderr and "### Roadmap" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+# The alarm script of cve-scan.yml, run by Node with GitHub's API stubbed.
+
+ALARM_HARNESS = r"""
+const fs = require('fs');
+const [scriptFile, stateFile] = process.argv.slice(2);
+const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+const calls = [];
+const summary = { addRaw() { return summary; }, write() { return summary; } };
+const core = {
+  summary,
+  notice: m => calls.push(['notice', m]),
+  warning: m => calls.push(['warning', m]),
+};
+const github = {
+  paginate: async () => state.issues,
+  rest: { issues: {
+    listForRepo: null,
+    createComment: async a => calls.push(['comment', a.issue_number]),
+    update: async a => calls.push(['update', a.issue_number, a.state]),
+    create: async () => calls.push(['create']),
+  } },
+};
+const context = {
+  serverUrl: 'https://github.com', runId: 1, ref: state.ref, eventName: 'schedule',
+  repo: { owner: 'criew', repo: 'opaa' },
+};
+const body = fs.readFileSync(scriptFile, 'utf8');
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+new AsyncFunction('require', 'github', 'context', 'core', body)(require, github, context, core)
+  .then(() => process.stdout.write(JSON.stringify(calls)))
+  .catch(e => { console.error(e); process.exit(1); });
+"""
+
+
+def alarm_script() -> str:
+    """The script: block of the alarm step, dedented as YAML would."""
+    lines = CVE_SCAN.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, l in enumerate(lines) if l.strip() == "- name: Alarm-Issue bei critical-Befunden")
+    head = next(i for i in range(start, len(lines)) if lines[i].strip() == "script: |")
+    indent = len(lines[head + 1]) - len(lines[head + 1].lstrip())
+    body = []
+    for line in lines[head + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) < indent:
+            break
+        body.append(line[indent:])
+    return "\n".join(body)
+
+
+REPORT = {"Metadata": {"OS": {"Family": "debian"}}, "Results": []}
+CRITICAL = {
+    "Metadata": {"OS": {"Family": "debian"}},
+    "Results": [{"Target": "x", "Vulnerabilities": [{
+        "Severity": "CRITICAL", "VulnerabilityID": "CVE-1", "PkgName": "p", "InstalledVersion": "1",
+    }]}],
+}
+OPEN_ALARM = {"number": 7, "state": "open", "body": "<!-- cve-critical-alert -->"}
+
+
+def run_alarm(tmp_path: Path, reports: dict[str, dict], legs: list[str], issues: list[dict],
+              ref: str = "refs/heads/main") -> list[list]:
+    node = shutil.which("node")
+    assert node, "the check needs Node.js"
+    (tmp_path / "critical").mkdir()
+    for leg, report in reports.items():
+        (tmp_path / "critical" / f"trivy-critical-{leg}.json").write_text(json.dumps(report), encoding="utf-8")
+    script = tmp_path / "alarm.js"
+    script.write_text(alarm_script(), encoding="utf-8")
+    harness = tmp_path / "harness.js"
+    harness.write_text(ALARM_HARNESS, encoding="utf-8")
+    state = tmp_path / "state.json"
+    state.write_text(json.dumps({"issues": issues, "ref": ref}), encoding="utf-8")
+    result = subprocess.run(
+        [node, harness.as_posix(), script.as_posix(), state.as_posix()], cwd=tmp_path,
+        capture_output=True, text=True, env={**os.environ, "EXPECTED_LEGS": json.dumps(legs)},
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_alarm_keeps_the_issue_open_while_a_leg_is_missing(tmp_path: Path) -> None:
+    calls = run_alarm(tmp_path, {"backend": REPORT}, ["backend", "backend-0.2"], [OPEN_ALARM])
+
+    assert not [c for c in calls if c[0] in ("update", "comment")]
+    assert any(c[0] == "warning" and "backend-0.2" in c[1] for c in calls)
+
+
+def test_alarm_closes_the_issue_when_every_leg_is_clean(tmp_path: Path) -> None:
+    calls = run_alarm(tmp_path, {"backend": REPORT, "backend-0.2": REPORT}, ["backend", "backend-0.2"], [OPEN_ALARM])
+
+    assert ["update", 7, "closed"] in calls
+
+
+def test_alarm_reports_findings_of_the_scanned_legs_despite_a_missing_one(tmp_path: Path) -> None:
+    calls = run_alarm(tmp_path, {"backend-0.2": CRITICAL}, ["backend", "backend-0.2"], [OPEN_ALARM])
+
+    assert ["comment", 7] in calls
+    assert not [c for c in calls if c[0] == "update"]

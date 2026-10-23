@@ -149,7 +149,9 @@ jobs:
             # test_check_licenses.py loads the policy files. requirements-ci.txt pins the pytest this
             # job and seed-script install, so a Renovate bump of it runs both; requirements-release.txt
             # the packages of update_package.py, which this job tests. support-lines.json belongs
-            # here because test_support_lines.py validates it.
+            # here because test_support_lines.py validates it, docs/releases.md because it checks
+            # the roadmap there against the list, cve-scan.yml because it checks its scan targets
+            # and alarm.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -157,7 +159,9 @@ jobs:
               - '.github/data-impact-paths.txt'
               - '.github/licenses/**'
               - '.github/support-lines.json'
+              - 'docs/releases.md'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/cve-scan.yml'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'

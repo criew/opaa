@@ -249,8 +249,7 @@ Der Job `release` bestimmt mit `.github/scripts/release_line_info.sh` zweierlei:
 
 - **„Latest“** bekommt ein Release nur, wenn kein anderes finales Tag `v*` höher ist; sonst setzt
   der Job `--latest=false`, ein Vorab-Release ist es nie. Ein Patch-Release einer älteren Linie
-  nimmt der jüngsten Linie die Markierung also nicht weg. Darauf verlässt sich der nächtliche
-  [CVE-Scan](cve-scanning.md), der das Release mit dieser Markierung prüft.
+  nimmt der jüngsten Linie die Markierung also nicht weg.
 - **Vergleichsstand der generierten Notizen** (`--notes-start-tag`) ist das höchste finale Tag
   unter der eigenen Version, das der getaggte Commit enthält, nach derselben Regel wie der
   [Vorgänger des Update-Pakets](#update-paket). Ein Patch-Release auf `release/0.2` vergleicht so
@@ -860,15 +859,13 @@ Wer neue Funktionen vor dem nächsten Funktionsrelease braucht, folgt `main`.
 finalen Release. Jede unterstützte Linie bekommt Patch-Releases: ein Sicherheitsupdate des
 Basis-Images als neues Tag auf dem Commit ihres letzten Release, eine Korrektur im Code per
 [Backport](#backport) auf ihren Wartungsbranch. Ein Patch-Release einer älteren Linie wird nicht
-„Latest“, die jüngste Linie behält die Markierung und damit ihren Platz im CVE-Scan. Noch nicht
-gebaut sind:
+„Latest“, die jüngste Linie behält die Markierung. Der nächtliche CVE-Scan prüft jede
+unterstützte Linie ([Sicherheitsupdates für Releases](#sicherheitsupdates-für-releases)). Noch nicht
+gebaut ist:
 
 | Baustein | Bis dahin | Issue |
 |---|---|---|
-| CVE-Scan aller unterstützten Linien | der Scan prüft nur das jüngste Release ([cve-scanning.md](cve-scanning.md)) | [#3018](https://github.com/criew/opaa/issues/3018) |
 | Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
-
-Bis zum zweiten finalen Release gibt es nur eine Linie; dafür reichen Scan und Renovate wie heute.
 
 ### Kritische Fehler
 
@@ -907,7 +904,8 @@ eine ausgelaufene Linie bleibt mit ihrem Ende stehen.
 
 ### Liste der Linien
 
-Maschinenlesbar stehen die veröffentlichten Linien in `.github/support-lines.json`, je Linie `line`
+Maschinenlesbar stehen die veröffentlichten Linien in `.github/support-lines.json`; Renovate und
+der nächtliche CVE-Scan lesen sie. Darin stehen je Linie `line`
 (`X.Y`), `kind` (`lts` oder `normal`) und `supportEnd`, der letzte Tag mit Patch-Releases als
 `JJJJ-MM-TT`. Bei einer normalen Linie bleibt `supportEnd` `null`, bis ihr Nachfolger erscheint;
 dann ist es der Tag einen Monat nach dessen Erscheinen. Eine LTS-Linie trägt ihr Ende von Anfang
@@ -929,9 +927,9 @@ unterstützt; danach pflegt Renovate ihren Branch nicht mehr, ohne dass jemand `
 
 Weil Release-Images nie neu gebaut werden, tragen sie den Sicherheitsstand ihres Bautags. Der
 nächtliche CVE-Scan prüft deshalb neben `main` auch Release-Images (ohne Vorab-Releases, siehe
-[cve-scanning.md](cve-scanning.md)): heute die des jüngsten Release, mit
-[#3018](https://github.com/criew/opaa/issues/3018) das jüngste Patch-Release jeder unterstützten
-[Linie](#supportlinien). Für jede unterstützte Linie gilt:
+[cve-scanning.md](cve-scanning.md)): das jüngste Patch-Release jeder unterstützten
+[Linie](#supportlinien) nach der [Liste der Linien](#liste-der-linien) und immer die Linie des
+höchsten finalen Release. Für jede unterstützte Linie gilt:
 
 | Befund in einer unterstützten Linie | Reaktion |
 |---|---|
