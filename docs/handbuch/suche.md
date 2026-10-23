@@ -797,6 +797,15 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 (Abschnitt 2). Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
 (Abschnitt 10.2).
 
+**Kennzeichnung als KI-erzeugt.** Jede erzeugte Antwort trägt in der Schnittstelle das Feld
+`generatedByAi` mit dem Wert `true`, im Chatverlauf ebenso jede Assistenten-Nachricht (Nutzernachrichten
+tragen `false`). Das Feld erlaubt es Programmen, die Antworten über `POST /api/v1/query` oder den
+Chatverlauf weiterverarbeiten, die Herkunft eindeutig zu erkennen (Art. 50 KI-Verordnung). Es ist
+**keine Markierung im Antworttext**: Wird der Text kopiert oder weitergegeben, bleibt das Feld
+zurück. Ein Text-Wasserzeichen kann nur der Anbieter des Modells setzen; OPAA fügt keines hinzu. Der
+Modellname steht weiterhin nur in den Angaben zur Antwort. Suche ohne Antwort
+(`POST /api/v1/search`) und der MCP-Server liefern nur Fundstellen und tragen das Feld nicht.
+
 ## 7. Belege prüfen und Fundstellen bilden
 
 Belegprüfung und Fundstellen gehen vom **Antwortkontext** aus (Abschnitt 6), also von der
