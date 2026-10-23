@@ -120,11 +120,11 @@ Handlung; ein optionaler Satz aus dem Sperrdialog wird darin zitiert.
 
 Drei Dinge sperren ein Konto:
 
-| Anlass | Hinweis am Info-Symbol | Wer hebt sie auf | Nachricht an die Person |
-|---|---|---|---|
-| **Die Verwaltung** | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja |
-| **Fehlversuche** — mehrere falsche Passwörter in Folge | Nach mehreren falschen Passwörtern gesperrt | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein |
-| **Inaktivität** — das Konto war lange nicht in Gebrauch | Wegen Inaktivität gesperrt | Die Verwaltung, über „Entsperren" | ja |
+| Anlass | Hinweis am Info-Symbol | Wer hebt sie auf | Nachricht an die Person | Chats werden nach einer Frist gelöscht |
+|---|---|---|---|---|
+| **Die Verwaltung** — auch über eine Sperre wegen Inaktivität oder Fehlversuchen hinweg | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja, mit dem frühesten Löschdatum der Chats | ja (Abschnitt „Löschen oder sperren") |
+| **Fehlversuche** — mehrere falsche Passwörter in Folge | Nach mehreren falschen Passwörtern gesperrt | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein | nein |
+| **Inaktivität** — das Konto war lange nicht in Gebrauch | Wegen Inaktivität gesperrt | Die Verwaltung, über „Entsperren" | ja | nein |
 
 In der Spalte „Zustand" der Kontenliste steht in allen drei Fällen nur „Gesperrt"; den Anlass nennt
 das Info-Symbol dahinter, wenn die Maus darüber steht oder es per Tastatur angesteuert wird.
@@ -132,7 +132,12 @@ das Info-Symbol dahinter, wenn die Maus darüber steht oder es per Tastatur ange
 Für verbundene Konten und private Bibliotheken (Abschnitt 12) zählt nur die Sperre durch die
 Verwaltung als Deaktivierung: Sie beendet etwaige verbundene Konten und startet die Löschfrist. Die
 Sperre wegen Inaktivität ist eine Abwesenheit; die Verbindungen ruhen nur. Die Fehlversuch-Sperre
-berührt sie nicht.
+berührt sie nicht. Dasselbe gilt für die Chats: Nur die Sperre durch die Verwaltung startet die
+Frist, nach der sie gelöscht werden — wer in Elternzeit, krank oder abgeordnet ist, verliert sie
+nicht über eine Inaktivitätssperre. Ist das Konto einer ausgeschiedenen Person schon wegen
+Inaktivität gesperrt, bietet das Zeilenmenü neben „Entsperren“ auch „Sperren“ an: Die Sperre wird
+damit zur Sperre durch die Verwaltung, ohne dass das Konto dazwischen frei wird und ohne
+Freischaltungs-Mail; die Frist beginnt dann.
 
 Die Fehlversuch-Sperre schickt **bewusst keine** Nachricht: Sie wäre sonst ein Belästigungskanal für
 jeden, der eine Adresse kennt. Sie schneidet die Selbsthilfe auch nicht ab — „Passwort vergessen"
@@ -310,6 +315,48 @@ Abschnitt 8.4 („Wie lange die Rechtehistorie liegt"). Das
 ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für alle diese
 Fälle ist die Sperre der vorgesehene Weg.
 
+### Was mit den Chats eines gesperrten Kontos geschieht
+
+Sperrt die Verwaltung ein lokales Konto, löscht OPAA seine Chats nach einer Frist ab der Sperre
+(`opaa.chat.locked-account-cleanup.*`, Werte im Kapitel [Suche](../spaces/suche.md), Abschnitt zur
+Chat-Bereinigung). Beispiel: Eine Sachbearbeiterin scheidet aus, ihr Konto wird gesperrt; nach Ablauf
+der Frist sind ihre Chats in allen Spaces fort, auch angeheftete und die im persönlichen Space. Das
+Konto und der persönliche Space bleiben.
+
+- **Das Löschdatum** steht im Dialog „Bearbeiten“ des Kontos unter „Chats nach der Sperre“ als
+  „frühestens am …“ — für jedes von der Verwaltung gesperrte Konto, ob es Chats hat oder nicht. In
+  der Kontenliste steht es bewusst nicht. Die Mail an die Person nennt es ebenfalls. So fällt eine
+  irrtümliche Sperre auf, bevor etwas verloren geht; **Entsperren** beendet die Frist, eine neue
+  Sperre beginnt sie von vorn.
+- **Anhalten:** „Löschung anhalten“ im selben Dialog hält die Löschung für das Konto an, etwa für ein
+  Disziplinarverfahren oder einen Rechtsstreit; „Löschung fortsetzen“ hebt das auf. Beides steht im
+  Nachweisprotokoll, ohne Begründung. Ist die Frist beim Fortsetzen abgelaufen, löscht die nächste
+  Nacht.
+- **Anlassbezogene Klärung:** Steht das Konto in einem offenen Antrag oder einer noch nutzbaren
+  Freigabe, wird nicht gelöscht; danach holt die nächste Nacht nach. Am angezeigten Datum ändert das
+  nichts.
+- **Konten eines Identitätsanbieters** lassen sich hier nicht sperren; für sie greift die Frist
+  nicht. Eine Deaktivierung nur beim Anbieter lässt die Chats unbegrenzt liegen.
+- **Endgültig:** Gelöschte Chats lassen sich über die Oberfläche nicht wiederherstellen. In
+  Sicherungen bleiben sie, bis diese nach dem Sicherungskonzept des Betriebs ablaufen. Wird eine
+  Sicherung eingespielt, löscht die nächste Nacht wieder auftauchende Chats erneut. Wer die Chats
+  einer zu Unrecht gesperrten Person zurückholen will, geht in drei Schritten vor: die Sicherung
+  einspielen, **vor dem nächsten nächtlichen Lauf** das Konto entsperren oder die Löschung anhalten,
+  danach prüfen, dass die Chats da sind. Andersherum geht es nicht: Die Sicherung bringt auch den
+  alten Stand von Sperre und Anhalten zurück.
+- **Selbstauskunft:** Nach der Sperre kann sich die Person nicht mehr anmelden und keine
+  Selbstauskunft mehr ziehen. Bei planbarem Ausscheiden gibt die Dienststelle ihr vorher Gelegenheit
+  dazu.
+- **Kontolöschung:** Sind die Chats gelöscht, hält ein Chat die Löschung des Kontos nicht mehr auf;
+  meist hält sie dann noch ein Nachweiseintrag auf (oben). Wird das Konto gelöscht, bleiben die
+  Protokolleinträge über die Löschung stehen, ohne Zuordnung zur Person.
+- **Geteilte Chats** bleiben, bis die Bereinigung ihres Space oder eine Löschung von Hand sie
+  erfasst. Teilen lassen sich Chats derzeit nicht.
+
+Abschalten kann nur der Betrieb, mit `opaa.chat.locked-account-cleanup.enabled`; nach dem
+Wiedereinschalten beginnt jede Frist neu. Bei der Einführung zählt die Frist frühestens ab dem
+Update, auch für Konten, die schon länger gesperrt sind.
+
 Das Notanker-Konto der Systemverwaltung lässt sich **weder löschen noch sperren, befristen, in der
 Rolle herabsetzen oder übergeben**, und die Verwaltung kann ihm **weder ein Passwort erzeugen noch
 einen Link zum Zurücksetzen schicken** — auch dann nicht, wenn weitere Systemverwalter anmeldefähig
@@ -426,6 +473,67 @@ Ohne Anmeldung, wenn der Fluss eingeschaltet ist:
 - **„Konto registrieren"** — siehe Abschnitt 10.
 
 Ein Konto eines Identitätsanbieters sieht keinen dieser Punkte; sein Passwort verwaltet der Anbieter.
+
+### Meine Daten: die Selbstauskunft
+
+Jede angemeldete Person, ob mit lokalem Konto oder über einen Identitätsanbieter, lädt unter
+**Einstellungen → Meine Daten** die zu ihr gespeicherten Daten selbst herunter. Sie erhält eine
+ZIP-Datei mit einer lesbaren Übersicht und je Kategorie einer maschinenlesbaren Datei: Konto, Chats,
+Rechte, Gruppen, Spaces, verbundene Konten, Zugangstokens, Benachrichtigungen, Protokolleinträge über
+sie und weitere. Andere Personen stehen darin nur als „andere Person“. Niemand sonst kann die
+Auskunft auslösen, auch die Systemverwaltung nicht.
+
+Nicht enthalten sind Inhalte von Dokumenten und Originaldateien (eigene Uploads erscheinen nur als
+Verzeichnis), Sicherungen, das technische Log des Betriebs, Geheimnisse wie Passwörter und Tokens,
+Begründungen von Verwaltungs- und Prüfhandeln und Inhalte anlassbezogener Klärungen über die Person;
+über Letztere gibt die oder der Datenschutzbeauftragte Auskunft. Die Selbstauskunft ersetzt nicht die
+förmliche Bearbeitung eines Auskunftsantrags; ein Antrag bei der Behörde bleibt möglich. Im Bereich
+steht wörtlich:
+
+> „Diese Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen oder weitergeben.“
+
+So läuft ein Download:
+
+1. „Daten herunterladen“ wählen.
+2. Die Anmeldung bestätigen: ein lokales Konto mit dem Passwort, ein Konto eines
+   Identitätsanbieters mit einer erneuten Anmeldung dort; danach kehrt die Seite zu „Meine Daten“
+   zurück und setzt den Download selbst fort
+   ([Authentifizierung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
+3. Der Browser speichert die Datei. Die Seite zeigt, dass der Download läuft, und danach das
+   Ergebnis. Ob die Datei vollständig ausgeliefert wurde, erfährt sie vom Server: Sie fragt den Stand
+   in kurzen Abständen ab und sofort, wenn man in den Tab zurückkehrt. Auch bei einem späteren Besuch
+   steht dort, wenn der letzte Download abgebrochen wurde.
+
+Mit jedem Start erhält die Person eine Benachrichtigung in OPAA und, wo Mail eingerichtet ist und
+das Konto eine Adresse hat, eine Mail. So fällt ein Download auf, den sie nicht selbst ausgelöst hat.
+
+Die **Tagesgrenze** legt fest, wie viele vollständige Downloads je Person und Kalendertag möglich
+sind. Ein abgebrochener Download zählt nicht, die Zahl der Starts je Tag ist aber begrenzt. Ist eine
+Grenze erreicht, nennt die Seite, ab wann der nächste Download möglich ist.
+
+| Meldung | Bedeutung |
+|---|---|
+| „Der Download wurde abgebrochen und nicht gezählt. Sie können es erneut versuchen.“ | Die Verbindung brach ab, der Browser hat den Download abgebrochen oder die Instanz wurde dabei beendet. Fehlt der zweite Satz, ist heute kein weiterer Start möglich. |
+| „Für heute ist kein weiterer Download möglich. Der nächste ist ab … möglich.“ | Die Tagesgrenze ist erreicht. |
+| „Starts für heute erschöpft: …“ | Der Download wurde heute zu oft abgebrochen; der nächste Versuch ist am nächsten Tag möglich. |
+| „Gerade laden viele Personen ihre Daten herunter. …“ | Die Instanz liefert gerade so viele Auskünfte aus, wie sie darf; nach einer Minute erneut versuchen. |
+| „Die Selbstauskunft ist in dieser Installation derzeit abgeschaltet. …“ | Die Systemverwaltung hat die Notabschaltung umgelegt; die Person kann die Auskunft bei der Behörde beantragen. |
+
+**In der Administration** stellt die Systemverwaltung unter **Administration → Datenschutz** die
+Notabschaltung („Selbstauskunft anbieten“) und die Tagesgrenze ein. Beides wirkt ohne Neustart auf
+allen Instanzen, ein laufender Download läuft zu Ende, und jede Änderung steht im Nachweisprotokoll.
+Wann eine Person zuletzt ihre Daten heruntergeladen hat, zeigt keine Konten- oder
+Einstellungsansicht der Verwaltung. Start und Ende jedes Downloads stehen pseudonymisiert im
+Nachweisprotokoll, das nur die Revision liest
+([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#was-opaa-automatisch-nachweist)).
+
+| Einstellung | Vorgabe | Grenzen |
+|---|---|---|
+| Selbstauskunft anbieten (Notabschaltung) | an | an / aus |
+| Tagesgrenze | 1 vollständiger Download je Person und Tag | 1 bis 10; Starts je Tag höchstens Tagesgrenze plus 4 |
+
+Gleichzeitige Auskünfte je Instanz und Höchstdauer einer Auskunft stehen in der
+[Variablenliste](../betrieb/konfiguration.md).
 
 ## 12. Verbundene Konten
 

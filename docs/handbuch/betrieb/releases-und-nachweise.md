@@ -81,6 +81,7 @@ Zu jeder Version gehören:
 | GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM und Provenance |
 | GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance |
 | GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
+| GitHub-Release `OPAA vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
 
 Die **Release-Notizen** enthalten:
 
@@ -107,6 +108,10 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Lizenzübersicht und die SBOMs je Ökosystem
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
+- unter `handbuch/` dieses Handbuch im Stand der Version
+
+Neben jeder Markdown-Datei liegt dieselbe Seite als HTML; `index.html` öffnet das ganze Paket im
+Browser, ohne Internetzugang.
 
 Aufbau im Einzelnen, Prüfung der Provenance und Delta über mehrere Versionen:
 [Das Update-Paket eines Release](nachvollziehbarkeit.md#das-update-paket-eines-release).

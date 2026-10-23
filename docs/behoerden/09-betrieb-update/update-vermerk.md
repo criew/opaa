@@ -15,12 +15,13 @@ naechste-durchsicht: 2027-04-23
 
 Der Update-Vermerk hält fest, wie die Behörde ein Update von OPAA bewertet und entschieden hat. Er
 gehört zu den Unterlagen der Installation, neben Verzeichnis von Verarbeitungstätigkeiten (VVT),
-Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und Dienstvereinbarung. Grundlage ist das
-Update-Paket, das am GitHub-Release jeder Version hängt und diese Vorlage enthält.
+Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und
+[Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md). Grundlage ist das Update-Paket der
+Zielversion.
 
 ## Was OPAA liefert
 
-Das Update-Paket der Zielversion enthält:
+Das Update-Paket enthält:
 
 - `delta/manifest-delta.md`: jede Änderung der Fakten seit dem vorigen finalen Release, mit
   Stufenvorschlag (Bagatelle, Anzeige, Zustimmung mit den Klassen Z1 bis Z7) und dem Hinweis, ob VVT,

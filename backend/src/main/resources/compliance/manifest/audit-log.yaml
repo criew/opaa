@@ -85,12 +85,18 @@ data:
           note: >-
             Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
             Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
-            Klärung über die Person gehören nicht dazu, object_label nur an eigenen Kontoobjekten
+            Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
+            entfällt, Bezeichnungen anderer Objekte (Spaces, Gruppen, Bibliotheken) bleiben
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
       settings: [audit_retention_settings.retention_months]
-    visibility: [AUDITOR]
+    visibility:
+      - AUDITOR
+      - >-
+        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen oder
+        Kontoobjekt ist, ohne Pseudonyme und Begründungen, andere Beteiligte als „andere Person“
+        oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
@@ -247,6 +253,24 @@ auditEvents:
     trigger: Name oder Beschreibung einer Wissensbibliothek ändert sich
   - id: LIBRARY_DELETED
     trigger: Eine Wissensbibliothek wird gelöscht
+  - id: LOCKED_ACCOUNT_CHATS_DELETED
+    trigger: >-
+      Der nächtliche Lauf löscht Chats eines lokalen Kontos, dessen Frist nach der Sperre durch
+      die Verwaltung abgelaufen ist; ein Eintrag je Konto und Lauf
+    details: >-
+      Beginn der Frist und Sperrgrund, nie Zahl, Titel, Inhalt oder Space der Chats; betroffene
+      Person ist das gesperrte Konto
+    purpose: >-
+      Allein der Nachweis, dass die Chats eines gesperrten Kontos fristgerecht gelöscht wurden;
+      keine Aussage über Nutzung oder Umfang
+    evaluations: >-
+      Wie jedes Ereignis nur nach Objekt, Zeitraum, Ereignisart oder Vorgang, ohne Zählung je
+      Person; die Zahl der gelöschten Chats steht nur als Gesamtzahl im Anwendungslog
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HELD
+    trigger: Die Systemverwaltung hält die Löschung der Chats eines Kontos nach der Sperre an
+    details: Keine Begründung
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED
+    trigger: Die Systemverwaltung setzt die angehaltene Löschung der Chats eines Kontos fort
   - id: PRIVATE_LIBRARY_ERASED
     trigger: Eine private Bibliothek wird mit ihrem Inhalt gelöscht
     details: Zeitpunkt des Antrags, Anlass und Zahlen des Entfernten, nie Name, Pfad oder Inhalt

@@ -261,8 +261,9 @@ jobs:
 
   # The update package for authorities (docs/releases.md, "Update-Paket"): runs the completeness
   # guard of the compliance manifest, then update_package.py builds fact sheets, delta to the
-  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend and the
-  # templates for authorities into one archive; the SBOMs also lie beside it for the release.
+  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend, the
+  # templates for authorities and the handbook, each also as HTML, into one archive; the SBOMs also
+  # lie beside it for the release.
   # publish waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
   # image builds of a release it takes nothing from a cache: no Gradle, pnpm or gha cache.
   update-package:
@@ -315,6 +316,16 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      # markdown-it-py renders the HTML version of the package: wheels only, every package with
+      # its dependencies pinned by hash, nothing resolved at install time.
+      - name: Python-Pakete des Update-Pakets installieren
+        run: |
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
 
       # The same guard as in every backend test run: manifest against schema, audit events, roles,
       # prompts, data flows and configuration keys, and the placeholder targets of docs/behoerden/.
@@ -616,16 +627,33 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
-  # The GitHub release follows images, chart and update package, so its notes never announce an
-  # artifact that failed to publish. Notes are generated from the merged PRs, grouped by
+  # The offline bundle (docs/releases.md, "Offline-Bündel"): the published images of both
+  # architectures as OCI archives, chart, update package, SBOMs, their attestations and SHA256SUMS,
+  # attested as a whole. Pulled back from GHCR, so it holds exactly what was published.
+  offline-bundle:
+    needs: [prepare, chart-attestation, update-package-attestation]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/offline-bundle.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      update-package-from-run: true
+
+  # The GitHub release follows images, chart, update package and offline bundle, so its notes never
+  # announce an artifact that failed to publish. Notes are generated from the merged PRs, grouped by
   # .github/release.yml; the fixed part with images, chart, installation and update package comes
-  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file and the attested
-  # SBOMs become assets.
+  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file, the attested
+  # SBOMs and the offline bundle with its .sha256 file and Sigstore bundle become assets.
   release:
-    needs: [publish, chart, chart-attestation, update-package-attestation]
+    needs: [publish, chart, chart-attestation, update-package-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The offline bundle is several hundred megabytes to upload.
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -638,6 +666,11 @@ jobs:
         with:
           name: update-package
           path: ${{ runner.temp }}/update-package/
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: offline-bundle
+          path: ${{ runner.temp }}/offline-bundle/
 
       - name: GitHub-Release anlegen
         env:
@@ -655,4 +688,4 @@ jobs:
             flags+=(--generate-notes --notes "$notes")
           fi
           if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
-          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/*
+          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/* "$RUNNER_TEMP"/offline-bundle/*

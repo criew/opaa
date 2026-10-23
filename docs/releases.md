@@ -18,6 +18,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
 | `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-offline-X.Y.Z.tar` mit `….tar.sha256` und `….tar.sigstore.json`, am GitHub-Release | das [Offline-Bündel](#offline-bündel) für Netze ohne Internetzugang: Images beider Architekturen als OCI-Archive, Chart, Update-Paket, SBOMs, ihre Attestierungen und `SHA256SUMS`; **attestiert** |
 | `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
@@ -177,9 +178,11 @@ in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
 
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
 und Architektur, `publish` je Image) und daneben das Update-Paket (`update-package`, seine
-Attestierung in `update-package-attestation`), dann der Chart, dann seine Attestierung, zuletzt das
-GitHub-Release mit dem Update-Paket als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
-den Lauf rot. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
+Attestierung in `update-package-attestation`), dann der Chart, dann seine Attestierung, dann das
+[Offline-Bündel](#offline-bündel) (`offline-bundle`), zuletzt das GitHub-Release mit Update-Paket und
+Bündel als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
+den Lauf rot. Ein gescheitertes Bündel hält deshalb das GitHub-Release auf, obwohl Images und Chart
+schon veröffentlicht sind. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
 GitHub-Release kündigt nichts an, was fehlt. Wie die Images für zwei Architekturen entstehen,
 beschreibt [Mehrere Architekturen](#mehrere-architekturen).
 
@@ -195,6 +198,9 @@ schon teilweise gesetzt und ist erst danach gescheitert, ist die Version vergebe
 erscheint mit der nächsten Patch-Version. Hat der Job
 `chart` den Chart schon gepusht und ist erst danach gescheitert, überspringt die Wiederholung den
 Push und liest den Digest aus der Registry, damit Attestierung und GitHub-Release folgen können.
+Scheitert `offline-bundle` an einer Störung, hilft ebenfalls *Re-run failed jobs*. Bricht `pack` an
+der Größengrenze ab, hilft keine Wiederholung, weil der Workflow am Tag fixiert ist: Die Version ist
+vergeben, das Release erscheint nach einer Korrektur auf `main` mit der nächsten Patch-Version.
 *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
 
 Bevor der Job `chart` einen Digest an die Attestierung weitergibt, vergleicht er den Chart aus der
@@ -439,7 +445,9 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
 | `sbom/opaa-backend-X.Y.Z.cdx.json`, `sbom/opaa-frontend-X.Y.Z.cdx.json` | die [CycloneDX-SBOMs](sbom.md#ebene-2--ökosystem-sboms-cyclonedx) der ausgelieferten Abhängigkeiten, dieselben Dateien wie am GitHub-Release |
 | `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |
+| `handbuch/` | alle Markdown-Dateien aus `docs/handbuch/` in derselben Ordnerstruktur, ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene |
 | `update-vermerk.md` | die Vorlage aus `docs/behoerden/09-betrieb-update/` noch einmal, zum direkten Ausfüllen |
+| `index.html`, `style.css`, `<datei>.html` | die HTML-Fassung: neben jeder Markdown-Datei dieselbe Seite als HTML, `index.html` als Startseite |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
 Daneben liegen `opaa-update-paket-X.Y.Z.tar.gz.sha256` und die beiden SBOMs. Die Backend-SBOM
@@ -464,25 +472,40 @@ bekommt zusätzlich das Delta zum jüngsten Patch-Release der vorigen LTS-Linie
 [#3020](https://github.com/criew/opaa/issues/3020).
 
 **Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
-jeder Vorlage unter `vorlagen/` und in `update-vermerk.md` wird beim Zusammenstellen
+jeder Vorlage unter `vorlagen/`, in `update-vermerk.md` und in jedem Kapitel unter `handbuch/` wird
+beim Zusammenstellen
 
 - jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` ein relativer Link auf
   `faktenblaetter/<name>.md`, passend zur Tiefe der Datei; ein Blatt oder Anker, das es im Paket
-  nicht gibt, bricht den Lauf ab,
-- ein relativer Link auf eine Datei oder einen Ordner im Paket ein relativer Link dorthin; Links
-  zwischen den Vorlagen bleiben so, wie sie geschrieben sind,
-- ein relativer Link auf alles andere im Repository, etwa Handbuch, `SECURITY.md` oder diese
+  nicht gibt, bricht den Lauf ab (nur in Vorlagen),
+- ein relativer Link auf eine Datei oder einen Ordner im Paket ein relativer Link dorthin, auch
+  zwischen Vorlagen und Handbuch; Links, die im Paket schon treffen, bleiben so, wie sie
+  geschrieben sind,
+- ein relativer Link auf alles andere im Repository, etwa `SECURITY.md`, ein ADR oder diese
   Datei, ein absoluter Link auf GitHub im Stand des Release-Tags
   (`https://github.com/<repository>/blob/vX.Y.Z/<pfad>`, bei einem Probelauf auf den Commit);
   ein Ziel, das es im Checkout nicht gibt, bricht den Lauf ab.
 
 Anker innerhalb einer Datei und externe Links bleiben unverändert. Platzhalter und Links in
-Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage stammt, etwa
-Titel von Pull Requests im Delta oder Upgrade-Hinweise in den Betriebsfolgen. Neue Vorlagen und
-Ordner unter `docs/behoerden/` kommen ohne Änderung am Skript ins Paket. Der Link
+Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage oder dem
+Handbuch stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den
+Betriebsfolgen. Neue Vorlagen, Kapitel und Ordner unter `docs/behoerden/` und `docs/handbuch/`
+kommen ohne Änderung am Skript ins Paket. Der Link
 des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
 (`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
 auf `main`.
+
+**HTML-Fassung.** Danach erzeugt `.github/scripts/package_html.py` mit markdown-it-py (mit
+allen Abhängigkeiten per Hash gepinnt in `.github/requirements-release.txt`, nur als Wheel installiert) zu jeder Markdown-Datei des Pakets eine HTML-Seite daneben, dazu
+`index.html` mit allen Teilen und `style.css` (helles und dunkles Farbschema). Überschriften tragen
+Anker in der Schreibweise von GitHub, `<a id>` bleiben erhalten, ein Front-Matter-Kopf erscheint als
+kleiner Kasten. Links auf Markdown-Dateien führen auf deren HTML-Seite, Links auf einen Ordner auf
+seine `README`. Die Seiten laden nichts aus dem Internet; Mermaid-Diagramme stehen als Code da. Ein
+relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
+Attestierung decken die HTML-Dateien wie alle anderen ab. Jeder PR prüft
+dieselben Verweise vorab: Der Job `changes` der CI ruft `update_package.py links` auf, ohne
+Faktenblätter und ohne Pfadfilter, sodass ein umbenannter Anker im Handbuch nicht erst das Release
+anhält.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
 im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
@@ -505,8 +528,8 @@ gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
 ```
 
 **Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
-Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
-Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
+Cache: kein `setup-gradle`, kein Cache von pnpm, `setup-node` oder `setup-python`. Gradle, pnpm
+und pip laden ihre Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
 kommt samt aller transitiven Abhängigkeiten aus der Lockfile unter `.github/tools/cdxgen/`, ohne
 Installationsskripte ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)). Rechte: nur Lesen des Repositorys und
 der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
@@ -515,8 +538,9 @@ läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 **Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
 Gebraucht werden Java, `pnpm install` in `frontend/`,
-`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/` und die
-Historie mit Tags:
+`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/`,
+`pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt`
+und die Historie mit Tags:
 
 ```bash
 gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >/tmp/prs.json
@@ -581,6 +605,76 @@ auch aus einem Unterverzeichnis gestartet; relative Pfade gelten ab dem Startver
 python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0 --out /tmp/betrieb \
   --delta-json backend/build/compliance/delta/manifest-delta.json
 ```
+
+## Offline-Bündel
+
+Für Netze ohne Internetzugang hängt an jedem Release, auch an einem Vorab-Release,
+`opaa-offline-X.Y.Z.tar`. Das Bündel enthält alles von OPAA selbst, was hinter einer Schleuse
+gebraucht wird, und lässt sich dort ohne Netz prüfen. Der Job `offline-bundle` ruft dafür den
+wiederverwendbaren Workflow `.github/workflows/offline-bundle.yml` auf; die Logik steht in
+`.github/scripts/offline_bundle.sh`. Das Archiv enthält unter `opaa-offline-X.Y.Z/`:
+
+| Datei | Inhalt |
+|---|---|
+| `images/opaa-backend-X.Y.Z.oci.tar`, `images/opaa-frontend-X.Y.Z.oci.tar` | die veröffentlichten Images als OCI-Archiv, je mit `linux/amd64` und `linux/arm64` und ihren SBOM- und Provenance-Manifesten; der Digest des Index ist derselbe wie in GHCR |
+| `DIGESTS` | Image-Referenz und Digest des Index je Image |
+| `chart/opaa-X.Y.Z.tgz` | das Helm-Chart aus GHCR |
+| `update-paket/` | das [Update-Paket](#update-paket) samt Handbuch der Version |
+| `sbom/` | die beiden CycloneDX-SBOMs |
+| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs und Chart, wie sie der Release-Lauf erzeugt hat (`gh attestation download`) |
+| `LIESMICH.md` | Inhalt und Kurzfassung der Prüfung |
+| `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und die Attestierung dieser Datei |
+
+Daneben liegen `opaa-offline-X.Y.Z.tar.sha256` und `opaa-offline-X.Y.Z.tar.sigstore.json`, die
+Attestierung des Archivs.
+
+**Ablauf.** Der Job `collect` holt Images und Chart nach ihrer Veröffentlichung aus GHCR zurück
+(`skopeo copy --all --preserve-digests`) und bricht ab, wenn der Digest eines Index im Archiv von
+dem in GHCR abweicht. Das Bündel enthält also genau das Veröffentlichte. Update-Paket und SBOMs
+kommen aus dem Artefakt desselben Laufs; fehlt eine der beiden SBOMs, bricht `collect` ab. Der Job `attest` attestiert `SHA256SUMS`, legt das
+Sigstore-Bundle dazu, packt das Archiv und attestiert es ebenfalls. Nur dieser Job hält das
+OIDC-Token; er führt außer `tar` und `sha256sum` nichts aus. Der Job `release` hängt Archiv,
+Prüfsumme und Sigstore-Bundle an das GitHub-Release.
+
+**Ablage als Release-Asset.** Das Bündel hängt am GitHub-Release, nicht als OCI-Artefakt in
+GHCR:
+
+- Wer es herunterlädt, braucht nur `gh release download` oder den Browser, kein `oras` und keinen
+  Registry-Zugang.
+- Es liegt neben Update-Paket und SBOMs, die Behörden dort schon holen.
+- Ein Asset darf höchstens 2 GiB groß sein. Das Bündel bleibt mit rund 600 MB deutlich darunter
+  (gemessen an `v0.1.0-rc.4`). `pack` bricht oberhalb von 1,9 GiB ab; dann wäre die Ablage neu
+  zu entscheiden, etwa ein Archiv je Architektur.
+
+**Prüfung ohne Netz.** Sie steht für Betreiber im Handbuch
+([Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang)):
+
+1. Vertrauensanker je Release vorab holen (`gh attestation trusted-root`).
+2. Das Archiv vor dem Entpacken gegen `opaa-offline-X.Y.Z.tar.sigstore.json` prüfen, mit
+   `--custom-trusted-root`.
+3. `SHA256SUMS` gegen ihr Sigstore-Bundle prüfen, danach `sha256sum -c SHA256SUMS`.
+
+Die Schritte 2 und 3 binden das Bündel an `offline-bundle.yml` und an das Tag `vX.Y.Z` (`--signer-workflow`,
+`--source-ref`). Diese Identität entsteht nur im Release-Lauf: Auf einem Tag-Ref bricht
+`offline-bundle.yml` ab, wenn das Tag nicht `v` plus die verlangte Version ist oder der Aufrufer nicht
+`publish-images.yml` (`GITHUB_WORKFLOW_REF`). Der Probelauf startet auf einem Tag gar nicht. Seine
+Attestierungen nennen den Ref eines Branches oder PRs und bestehen die Prüfung deshalb nicht.
+
+**Probelauf.** `.github/workflows/offline-bundle-probe.yml` baut das Bündel des jüngsten Release
+zwischen zwei Releases, auf Zuruf und an einem PR über das Label `offline-bundle-suite`. Danach
+prüft der Lauf das Bündel nach dem Handbuch in einem Netz-Namespace ohne Schnittstelle außer
+Loopback (`unshare --net`), mit `offline_bundle.sh check`:
+
+- Prüfsumme und Attestierung von Archiv, `SHA256SUMS` und Update-Paket
+- Digests der Image-Archive
+- Lesbarkeit des Charts
+- zwei Manipulationen: ein geändertes Byte eines Image-Archivs scheitert an `SHA256SUMS`, eine
+  daran angepasste `SHA256SUMS` an ihrer Attestierung
+
+`.github/scripts/test_offline_bundle.py` prüft Prüfsummen, Packen, Größengrenze und die
+Verdrahtung im Release-Lauf in jedem PR.
+
+Nicht im Bündel sind Drittimages (Datenbank, Modellserver, Identitätsanbieter) und Modellgewichte.
 
 ## Versionsnummern
 

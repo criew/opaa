@@ -24,6 +24,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
   List<ChatMessage> findByChatIdOrderBySequenceDesc(UUID chatId, Limit limit);
 
   /**
+   * The next at most {@code limit} messages of {@code chatId} after {@code sequence}, in order - a
+   * page of a chat's transcript for reading it in bounded parts.
+   */
+  List<ChatMessage> findByChatIdAndSequenceGreaterThanOrderBySequenceAsc(
+      UUID chatId, int sequence, Limit limit);
+
+  /**
    * The highest existing {@code sequence} for {@code chatId}, or {@code null} for a chat with no
    * messages yet - {@code ChatMessageWriter#nextSequenceFor} adds 1 to this. Never undercounts
    * after a gap, unlike a row count over a table a deletion can leave gaps in.

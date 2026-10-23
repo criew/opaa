@@ -335,6 +335,24 @@ helm install opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml \
   --set backend.image.tag=main --set frontend.image.tag=main
 ```
 
+#### Installation ohne Internetzugang
+
+Erreicht der Cluster GHCR nicht, kommen Chart und Images aus dem Offline-Bündel des Release. Prüfen
+und Einspielen in die interne Registry beschreibt
+[Images und Laufzeit](images-und-laufzeit.md#installation-ohne-internetzugang). Installiert wird
+dann aus der Datei im Bündel, mit den Image-Adressen der internen Registry:
+
+```bash
+helm install opaa chart/opaa-<x.y.z>.tgz -n opaa -f opaa-werte.yaml \
+  --set backend.image.repository=registry.intern/opaa/opaa-backend \
+  --set frontend.image.repository=registry.intern/opaa/opaa-frontend
+```
+
+Die Tags bleiben die Version des Charts. Wer per Digest pinnt, nimmt die Werte aus `DIGESTS` im
+Bündel (`backend.image.digest`, `frontend.image.digest`); sie gelten unverändert in der internen
+Registry. Verlangt die Registry eine Anmeldung, gehört ein Secret in `imagePullSecrets`. Die
+Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in die Registry.
+
 ### 6. Auf das Backend warten und prüfen
 
 Der erste Start legt das Datenbankschema an. Das Backend meldet sich erst danach bereit:

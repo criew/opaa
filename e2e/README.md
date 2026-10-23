@@ -48,6 +48,14 @@ e2e/
                                  Instanzen, ai-stub, mailpit, Korpus im Objektspeicher
   scripts/multi-instance.mjs     Lebenszyklus des Ziels "multi-instance"
   scripts/previous-version.mjs   bestimmt die Vorgängerversion des Rolling Updates
+  offline/                       Ziel "offline": Ablauf ohne Internetzugang, siehe unten
+    playwright.config.ts
+    tests/offline.spec.ts
+    egress-dns.mjs               zeichnet jede Namensauflösung außerhalb des Stacks auf
+    relay.mjs                    einziger Weg vom Host in das abgeschottete Netz
+  offline.env                    Environment des Ziels "offline"
+  docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
+  scripts/offline.mjs            Lebenszyklus des Ziels "offline"
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
@@ -807,6 +815,21 @@ Systemverwaltung in die Outbox; die Szenarien 03 und 05 zählen darüber die Mai
 
 `.github/workflows/multi-instance.yml` fährt das Ziel nächtlich, auf Zuruf und an einem Pull Request
 über das Label `multi-instance-suite`, je einmal unter Compose und auf kind; kein Required Check.
+
+## Betrieb ohne Internet
+
+Ein fünftes Ziel: der Stack in einem Compose-Netz ohne Weg nach außen, vom Anmelden bis zur
+Antwort mit Fundstelle. Aufbau, Erkennung von Verbindungsversuchen und Grenzen stehen in
+[docs/entwicklung/build-und-ci.md](../docs/entwicklung/build-und-ci.md#betrieb-ohne-internet).
+
+```bash
+cd e2e
+pnpm install
+pnpm run test:offline
+```
+
+`.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem Pull Request über
+das Label `offline-suite`; kein Required Check.
 
 ## CI
 

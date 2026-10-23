@@ -1,5 +1,8 @@
 # Unterlagen für Behörden
 
+> Die Fassung im Repository ist der Entwicklungsstand. Für eine Installation gelten die Vorlagen im
+> Update-Paket der eingesetzten Version, siehe [Wo man die Vorlagen liest](#wo-man-die-vorlagen-liest).
+
 Dieser Ordner enthält Vorlagen für die Einführung und den Betrieb von OPAA in einer Behörde, geordnet
 nach dem Einführungsweg.
 
@@ -26,12 +29,12 @@ Titel, für wen sie gilt. Bei Mischformen klärt das die Rechtsabteilung.
 
 | Verzeichnis | Phase |
 |---|---|
-| `00-entscheidung/` | Entscheidung der Hausleitung (folgt) |
-| `01-markterkundung/` | Markterkundung (folgt) |
-| `02-pilot-teststellung/` | Pilot und Teststellung (folgt) |
+| `00-entscheidung/` | [Entscheidung der Hausleitung](00-entscheidung/README.md) |
+| `01-markterkundung/` | [Markterkundung](01-markterkundung/README.md) |
+| `02-pilot-teststellung/` | [Pilot und Teststellung](02-pilot-teststellung/README.md) |
 | `03-vergabe/` | [Vergabe](03-vergabe/README.md) |
 | `04-datenschutz/` | [Datenschutz](04-datenschutz/README.md) |
-| `05-mitbestimmung/` | Mitbestimmung (folgt) |
+| `05-mitbestimmung/` | [Mitbestimmung](05-mitbestimmung/README.md) |
 | `06-informationssicherheit/` | [Informationssicherheit, Cyber Resilience Act](06-informationssicherheit/README.md) |
 | `07-ki-verordnung/` | [KI-Verordnung](07-ki-verordnung/README.md) |
 | `08-nutzung/` | [Barrierefreiheit und Nutzungsrichtlinie](08-nutzung/README.md) |
@@ -42,15 +45,18 @@ welche Aufgaben bei der Behörde liegen und am Ende Arbeitshilfen und Rechtsgrun
 Datei steht, wann sie zuletzt durchgesehen wurde, auf welchem Rechtsstand sie beruht und dass sie
 nicht rechtlich geprüft ist.
 
-## Faktenblätter
+## Wo man die Vorlagen liest
 
-Verweise wie `{{faktenblatt:datenkatalog}}` zeigen auf die Faktenblätter. Das sind Übersichten, die
-aus dem Programmcode erzeugt werden: welche Daten gespeichert werden, wer was sieht, was protokolliert
-wird, welche Daten das Haus verlassen, welche Fristen und Voreinstellungen gelten. Weil sie erzeugt
-werden, stimmen sie immer mit der Version überein. Die Vorlagen nennen deshalb keine Werte selbst.
+Die Vorlagen gehen davon aus, dass sie im
+[Update-Paket](../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) der eingesetzten
+Version gelesen werden. Es hängt an der GitHub-Seite der Version (Releases) als
+`opaa-update-paket-X.Y.Z.tar.gz`. Nach dem Entpacken öffnet `index.html` alles im Browser, auch ohne
+Internetzugang: die Vorlagen, das Handbuch und die Faktenblätter dieser Version, untereinander
+verlinkt. Daneben liegt jede Datei als Markdown zum Weiterbearbeiten.
 
-Am besten liest man die Vorlagen im [Update-Paket](../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) der eingesetzten
-Version: Auf der GitHub-Seite der Version (Releases) die Datei `opaa-update-paket-X.Y.Z.tar.gz`
-herunterladen und entpacken. Im Ordner `vorlagen/` liegen dort alle Vorlagen, und jeder Verweis ist
-ein Link auf das passende Faktenblatt unter `faktenblaetter/`.
+Die Faktenblätter werden aus dem Programmcode erzeugt: welche Daten gespeichert werden, wer was
+sieht, was protokolliert wird, welche Daten das Haus verlassen, welche Fristen und Voreinstellungen
+gelten. Sie stimmen deshalb immer mit der Version überein, und die Vorlagen nennen keine Werte
+selbst, sondern verweisen auf sie. Im Repository stehen an diesen Stellen Platzhalter wie
+`{{faktenblatt:datenkatalog}}`, im Paket Links.
 

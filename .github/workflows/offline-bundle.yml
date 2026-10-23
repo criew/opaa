@@ -1,0 +1,157 @@
+name: Offline-Bündel
+
+# The offline bundle of a release (docs/releases.md, "Offline-Bündel"), called by publish-images.yml
+# after images, chart and update package are published, and by offline-bundle-probe.yml for an
+# existing release. The attestations of this workflow name it as signer, with the ref of the caller:
+# a release tag in the release run, so only those pass the verification of the handbook.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version X.Y.Z[-<pre>] of an existing set of images, chart and update package
+        required: true
+        type: string
+      update-package-from-run:
+        description: Take update package and SBOMs from the artifact update-package of this run instead of the GitHub release
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  # Gathers the published artifacts and their attestations; holds no OIDC token.
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    steps:
+      # On a tag the attestations carry the identity the handbook verifies; only the release run of
+      # that very tag may produce them. GITHUB_WORKFLOW_REF names the calling workflow.
+      - name: Aufrufer prüfen
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            if [[ "$GITHUB_REF_NAME" != "v$VERSION" ]]; then
+              echo "::error::Auf dem Tag $GITHUB_REF_NAME entsteht nur das Bündel von v$GITHUB_REF_NAME, nicht von $VERSION"
+              exit 1
+            fi
+            if [[ "$GITHUB_WORKFLOW_REF" != "$GITHUB_REPOSITORY/.github/workflows/publish-images.yml@"* ]]; then
+              echo "::error::Auf einem Tag erzeugt nur publish-images.yml das Bündel, nicht $GITHUB_WORKFLOW_REF"
+              exit 1
+            fi
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          # renovate: datasource=github-releases depName=helm/helm
+          version: v4.3.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: inputs.update-package-from-run
+        with:
+          name: update-package
+          path: ${{ runner.temp }}/update-package
+
+      - name: Update-Paket des Release laden
+        if: ${{ !inputs.update-package-from-run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: >-
+          gh release download "v$VERSION" --dir "$RUNNER_TEMP/update-package"
+          --pattern 'opaa-update-paket-*' --pattern '*.cdx.json'
+
+      - name: Bündel zusammenstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+          OWNER: ${{ github.repository_owner }}
+          # A release run always has both SBOMs; a trial of an older release may lack them.
+          REQUIRE_SBOMS: ${{ inputs.update-package-from-run }}
+        run: |
+          owner="$(tr '[:upper:]' '[:lower:]' <<<"$OWNER")"
+          export IMAGE_PREFIX="ghcr.io/$owner/opaa" CHART_REPOSITORY="ghcr.io/$owner/charts"
+          export UPDATE_PACKAGE_DIR="$RUNNER_TEMP/update-package"
+          dir="$RUNNER_TEMP/bundle/opaa-offline-$VERSION"
+          .github/scripts/offline_bundle.sh collect "$VERSION" "$dir"
+          .github/scripts/offline_bundle.sh sums "$dir"
+          cat "$dir/DIGESTS" "$dir/SHA256SUMS"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: offline-bundle-content
+          path: ${{ runner.temp }}/bundle/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+          # The image archives are compressed already.
+          compression-level: 0
+
+  # Attests SHA256SUMS, packs the bundle with its Sigstore bundle and attests the archive. Runs only
+  # tar and sha256sum next to the attest action, no code that builds or installs anything.
+  attest:
+    needs: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: offline-bundle-content
+          path: ${{ runner.temp }}/bundle
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        id: sums
+        with:
+          subject-path: ${{ runner.temp }}/bundle/opaa-offline-${{ inputs.version }}/SHA256SUMS
+
+      - name: Bündel packen
+        id: pack
+        env:
+          SUMS_BUNDLE: ${{ steps.sums.outputs.bundle-path }}
+        run: |
+          dir="$RUNNER_TEMP/bundle/opaa-offline-$VERSION"
+          cp "$SUMS_BUNDLE" "$dir/SHA256SUMS.sigstore.json"
+          tar=$(.github/scripts/offline_bundle.sh pack "$dir" "$RUNNER_TEMP/out")
+          echo "tar=$tar" >>"$GITHUB_OUTPUT"
+          ls -l "$RUNNER_TEMP/out"
+          echo "Offline-Bündel $VERSION: $(du -h "$tar" | cut -f1)" >>"$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        id: archive
+        with:
+          subject-path: ${{ steps.pack.outputs.tar }}
+
+      - name: Attestierung des Archivs ablegen
+        env:
+          ARCHIVE_BUNDLE: ${{ steps.archive.outputs.bundle-path }}
+        run: cp "$ARCHIVE_BUNDLE" "$RUNNER_TEMP/out/opaa-offline-$VERSION.tar.sigstore.json"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: offline-bundle
+          path: ${{ runner.temp }}/out/*
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+          compression-level: 0

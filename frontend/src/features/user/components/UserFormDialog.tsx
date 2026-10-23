@@ -27,6 +27,7 @@ import type {
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import LocalUserChatCleanupSection from './LocalUserChatCleanupSection'
 import {
   SYSTEM_ROLES,
   SYSTEM_ROLE_LABEL,
@@ -344,6 +345,7 @@ export default function UserFormDialog({
               helperText={fieldErrors.createdReason ?? CREATED_REASON_HELP}
             />
           </Box>
+          {isEdit && <LocalUserChatCleanupSection user={user} />}
           {!isEdit && (
             <FormControl>
               <FormLabel id="user-form-mode-label" sx={{ fontSize: 12, mb: '5px' }}>

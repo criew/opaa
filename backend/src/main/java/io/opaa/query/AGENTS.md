@@ -25,6 +25,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
   Verbindung über den LLM-Aufruf.
 - **Ein Chat gehört seinem Autor.** Weder Raum- noch Systemverwaltung sieht ihn. Neue Fragen
   verlangen weiter die Raummitgliedschaft (`requireStillSpaceMember`).
+- **Chats gesperrter Konten** löscht `LockedAccountChatCleanupService`, nur nach Sperre durch die Verwaltung.
 - **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt außer dem
   Entity-Mapping keine Abfrage.
 - **`prompt` baut auf der Asset-Schale auf** und fragt `io.opaa.permission` nur nach Rollen. Es
