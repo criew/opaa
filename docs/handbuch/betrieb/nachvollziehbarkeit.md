@@ -261,12 +261,8 @@ woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
   ([#2559](https://github.com/criew/opaa/issues/2559)).
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
-- Die Ausgabe der meisten Kategorien der Selbstauskunft: Enthalten sind bisher die
-  Benachrichtigungen und der Stand der Selbstauskunft selbst; Konten, Protokoll, Rechte,
-  Zusammenarbeit, Chats, Bibliotheken und Diagnosen folgen
-  ([#2990](https://github.com/criew/opaa/issues/2990), [#2991](https://github.com/criew/opaa/issues/2991),
-  [#2992](https://github.com/criew/opaa/issues/2992)), ebenso die Oberfläche
-  ([#2993](https://github.com/criew/opaa/issues/2993)).
+- Die Ausgabe von Konto und Protokoll in der Selbstauskunft
+  ([#2990](https://github.com/criew/opaa/issues/2990)); die übrigen Kategorien sind gebaut.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

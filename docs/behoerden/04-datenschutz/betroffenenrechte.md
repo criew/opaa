@@ -24,13 +24,18 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
 - Welche Daten zu einer Person entstehen und wie man an sie kommt: {{faktenblatt:datenkatalog}},
   Zeilen „Spalten mit Personenbezug“ und „Zugriffsweg“.
 - Wer sie sieht: {{faktenblatt:rollensicht}}.
-- Was jede Person selbst einsehen kann: eigene Angaben
+- Die **Selbstauskunft**: Jede angemeldete Person lädt ihre Daten nach erneuter Anmeldung selbst als
+  ZIP herunter ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)).
+  Was enthalten ist und was nicht, steht je Datum im {{faktenblatt:datenkatalog}}, Zeile „Zuordnung
+  zur Person“.
+- Was jede Person außerdem einsehen kann: eigene Angaben
   ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#11-was-nutzende-selbst-können)), eigene
   Chats ([Suche in eigenen Chats](../../handbuch/spaces/suche.md#72-suche-in-eigenen-chats)), eigene
   Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md#5-zugangstokens-aus-sicht-der-person)).
 
-Einen gebündelten Export aller Daten einer Person gibt es noch nicht; die Behörde stellt die
-Auskunft aus den genannten Wegen zusammen.
+Nicht in der Selbstauskunft sind Daten über die Person in Dokumenten, Inhalte anlassbezogener
+Klärungen über sie, das technische Log und Sicherungen beim Betrieb sowie Begründungen von
+Verwaltungs- und Prüfhandeln. Das stellt bei einem Antrag weiterhin die Behörde zusammen.
 
 ## Aufgaben der Behörde
 
@@ -43,7 +48,7 @@ Auskunft aus den genannten Wegen zusammen.
 
 | Recht | Was die Behörde in OPAA tut |
 |---|---|
-| **Auskunft** | Daten nach dem Datenkatalog zusammenstellen |
+| **Auskunft** | auf die Selbstauskunft hinweisen; ergänzen, was sie nicht enthält; bei Bedarf alles nach dem Datenkatalog zusammenstellen |
 | **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md)), sonst im Identitätsanbieter |
 | **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** | Konto sperren; [Regel der Behörde für Dokumente] |
@@ -64,6 +69,17 @@ Antwort am:           [Datum]          durch: [ ]
 
 ## Gut zu wissen
 
+- **Die Selbstauskunft ersetzt keinen Antrag.** Sie ist ein Angebot an die Person, nicht die
+  förmliche Bearbeitung eines Auskunftsantrags. Ein Antrag auf anderem Weg wird bearbeitet wie
+  bisher. Niemand darf verlangen, dass die Person ihre Auskunft vorlegt; das sagt auch die
+  Oberfläche.
+- **Notabschaltung:** Die Systemverwaltung kann die Selbstauskunft abschalten
+  ({{faktenblatt:voreinstellungen#self-disclosure-settings-enabled}}). Die Oberfläche verweist dann auf den Antrag bei der Behörde;
+  Anträge sind dann ganz auf dem Weg oben zu bearbeiten.
+- **Protokoll der Selbstauskunft:** Start und Ende jedes Downloads stehen im Protokoll, ohne Inhalt
+  ({{faktenblatt:protokollereignisse#self-disclosure-export-started}},
+  {{faktenblatt:protokollereignisse#self-disclosure-export-finished}}). Die eigenen Protokolleinträge,
+  ohne Pseudonyme und Begründungen, erhält die Person mit ihrer Selbstauskunft.
 - **Konten lassen sich oft nur sperren.** Ein benutztes Konto ist meist nicht löschbar, weil
   Nachweiseinträge darauf verweisen. Dann bleibt der Personenbezug im Protokoll bestehen; die Behörde
   berücksichtigt das bei der Antwort auf ein Löschbegehren.

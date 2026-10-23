@@ -437,7 +437,8 @@ Unter Kubernetes setzt der Abschnitt `features` der Werte-Datei die Variablen (s
 
 Die **Selbstauskunft**, mit der jede Person die zu ihr gespeicherten Daten selbst herunterlädt, hat
 keinen solchen Schalter. Sie ist ab Werk an und hat stattdessen eine **Notabschaltung** in der
-Datenbank, die die Systemverwaltung über die Schnittstelle der Verwaltung umlegt: Sie wirkt ohne
+Datenbank, die die Systemverwaltung unter **Administration → Datenschutz** umlegt
+([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)): Sie wirkt ohne
 Neustart auf allen Instanzen, eine laufende Auskunft läuft zu Ende, und jede Änderung steht im
 Nachweisprotokoll. Ist sie abgeschaltet, erfährt die Person, dass sie die Auskunft bei ihrer Behörde
 beantragen kann.
@@ -467,7 +468,7 @@ feste Grenzen stehen hier mit ihrem Wert.
 | Verbundene Konten und Zugänge | Warnschwelle abgelaufener Konten, Inaktivität, Löschfrist privater Bibliotheken | `OPAA_CONNECTION_*` ([Zugänge](../arbeitsmittel/zugaenge.md#9-konfiguration)) |
 | Chats | Archivieren und Löschen nach Tagen | `OPAA_CHAT_AUTO_CLEANUP_*` |
 | Chats gesperrter Konten | Löschen nach Tagen ab der Sperre durch die Verwaltung | `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_*` |
-| Selbstauskunft | vollständige Auskünfte je Person und Kalendertag, Starts je Tag, gleichzeitige Auskünfte je Instanz, Dauer einer Auskunft | Tagesgrenze und Notabschaltung in der Datenbank (Vorgabe 1, Grenzen 1 bis 10); fest höchstens Tagesgrenze plus 4 Starts je Tag; `OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS`, `OPAA_SELF_DISCLOSURE_MAX_DURATION`; darüber `429` bzw. `503` ([mehrere Instanzen](mehrere-instanzen.md#grenzen-und-budgets)) |
+| Selbstauskunft | vollständige Auskünfte je Person und Kalendertag, Starts je Tag, gleichzeitige Auskünfte je Instanz, Dauer einer Auskunft | Tagesgrenze und Notabschaltung unter Administration → Datenschutz (Vorgabe 1, Grenzen 1 bis 10); fest höchstens Tagesgrenze plus 4 Starts je Tag; `OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS`, `OPAA_SELF_DISCLOSURE_MAX_DURATION`; darüber `429` bzw. `503` ([mehrere Instanzen](mehrere-instanzen.md#grenzen-und-budgets)) |
 | Branding | Größe und Abmessungen der Bilder | fest ([Branding](branding.md#die-drei-bilder)) |
 | Laufzeit | Wartezeit des Frontends auf das Backend, Zeitfenster beim Herunterfahren, Timeouts des Mailversands | `OPAA_BACKEND_READ_TIMEOUT`, `OPAA_SHUTDOWN_TIMEOUT`, `OPAA_MAIL_*_TIMEOUT`; `/tmp` des Frontends unter Compose fest 512 MiB |
 
