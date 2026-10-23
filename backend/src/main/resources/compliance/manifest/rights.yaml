@@ -247,11 +247,11 @@ data:
           - asset_type
         person:
           columns: [closed_by_user_id]
-          via: assets
+          via: asset_ownership_history
           note: >-
-            Der Weg über assets gilt nur für Fälle mit object_type ASSET: Fälle an Assets der Person
-            über deren Eigentum; Fälle an Spaces und Gruppen erreichen die Person nur über
-            closed_by_user_id
+            Der Weg über asset_ownership_history gilt nur für Fälle mit object_type ASSET: Fälle an
+            Assets, die der Person beim ersten Erkennen des Falls gehörten; Fälle an Spaces und
+            Gruppen erreichen die Person nur über closed_by_user_id
     storage: Anwendungsdatenbank
     retention:
       rule: Geschlossene Fälle nach der Protokollfrist

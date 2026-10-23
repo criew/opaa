@@ -24,7 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 public final class SelfDisclosureSectionReader {
 
-  /** Rows per page. */
+  /** Rows per page of the exporters. */
   public static final int PAGE_SIZE = 500;
 
   /** The time of the keyset, a {@link Instant}; removed before the row is written. */
@@ -37,10 +37,17 @@ public final class SelfDisclosureSectionReader {
   private static final UUID START_ID = new UUID(0, 0);
 
   private final TransactionTemplate readOnly;
+  private final int pageSize;
 
   public SelfDisclosureSectionReader(PlatformTransactionManager transactionManager) {
+    this(transactionManager, PAGE_SIZE);
+  }
+
+  /** A reader with {@code pageSize} rows per page, for tests of the page boundary. */
+  SelfDisclosureSectionReader(PlatformTransactionManager transactionManager, int pageSize) {
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
+    this.pageSize = pageSize;
   }
 
   /**
@@ -61,7 +68,7 @@ public final class SelfDisclosureSectionReader {
       Timestamp cursorTime = Timestamp.from(afterTime);
       UUID cursorId = afterId;
       List<Map<String, Object>> page =
-          readOnly.execute(status -> query.page(cursorTime, cursorId, PAGE_SIZE));
+          readOnly.execute(status -> query.page(cursorTime, cursorId, pageSize));
       if (page == null || page.isEmpty()) {
         return;
       }
@@ -73,7 +80,7 @@ public final class SelfDisclosureSectionReader {
         afterId = (UUID) row.remove(KEY_ID);
         writer.write(row);
       }
-      if (page.size() < PAGE_SIZE) {
+      if (page.size() < pageSize) {
         return;
       }
     }

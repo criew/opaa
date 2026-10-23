@@ -10,8 +10,8 @@ Kern erreicht es über die Ports `SourceConnectionResolver` (`ProfileSourceConne
 
 ## Invarianten und Stolpersteine
 
-- **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
-  Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
+- **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (Transaktion des Aufrufers), liest nur
+  `ConnectionLogQueryService` (`AUDITOR`) und die Selbstauskunft (eigene Einträge), löscht nur die DB-Funktion.
   Die Verbindung einer privaten Bibliothek ist immer die der Person (`ConnectionLogOwner.Person`).
 - **Geheimnisse liest, speichert und verwirft nur `ConnectionSecrets`** (token) über `SecretOwner.of`,
   library nur über den Port. Das Geheimnis einer Person geht nur heraus, solange ihr Konto nutzbar ist

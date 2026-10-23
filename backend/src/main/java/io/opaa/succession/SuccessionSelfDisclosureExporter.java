@@ -21,8 +21,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The category {@code succession} of the self-disclosure: succession cases at assets the person
- * owns ({@code object_type ASSET}) and cases she closed, with the name of their object. Whoever
- * closed a case is "Sie" or "andere Person".
+ * owned when the case was first seen (from the ownership history, so a successor never gets her
+ * predecessor's case) and cases she closed, with the name of their object. Whoever closed a case is
+ * "Sie" or "andere Person".
  */
 @Component
 public class SuccessionSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -85,7 +86,11 @@ public class SuccessionSelfDisclosureExporter implements SelfDisclosureExporter 
                     + " LEFT JOIN spaces s ON c.object_type = 'SPACE' AND s.id = c.object_id"
                     + " LEFT JOIN groups g ON c.object_type = 'GROUP' AND g.id = c.object_id"
                     + " WHERE c.organization_id = ?"
-                    + " AND (c.closed_by_user_id = ? OR a.owner_user_id = ?)"
+                    + " AND (c.closed_by_user_id = ? OR (c.object_type = 'ASSET' AND EXISTS"
+                    + " (SELECT 1 FROM asset_ownership_history h WHERE h.asset_id = c.object_id"
+                    + " AND h.asset_type = c.asset_type AND h.owner_user_id = ?"
+                    + " AND h.valid_from <= c.first_seen_at"
+                    + " AND (h.valid_to IS NULL OR h.valid_to > c.first_seen_at))))"
                     + " AND (c.created_at, c.id) > (?, ?) ORDER BY c.created_at, c.id LIMIT ?",
                 (rs, i) -> {
                   Map<String, Object> record = keyed(rs, "created_at", "id");

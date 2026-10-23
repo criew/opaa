@@ -2,6 +2,7 @@ package io.opaa.selfdisclosure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.common.SelfDisclosureSectionReader;
 import io.opaa.compliance.SelfDisclosureCategory;
 import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSubject;
@@ -25,12 +26,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The exporters of the modules rights, workspace, connections and external (#2991) through the real
- * archive and its positive-list sink, against Postgres: a person and a second account in a
- * throwaway organization, each with data in every category and in shared groups, spaces and
- * libraries, and every secret column filled with a marker. Each module's categories appear with
- * German titles and the person's own data; nothing of the second account, no id, pseudonym or
- * secret.
+ * The exporters of the modules rights, workspace, connections and external through the real archive
+ * and its positive-list sink, against Postgres: a person and a second account in a throwaway
+ * organization, each with data in every category and in shared groups, spaces and libraries, and
+ * every secret column filled with a marker. Each module's categories appear with German titles and
+ * the person's own data; nothing of the second account, no id, pseudonym or secret.
  */
 @OpaaIntegrationTest
 class RightsCollaborationSelfDisclosureIntegrationTest {
@@ -85,6 +85,7 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
   private UUID organization;
   private UUID person;
   private UUID other;
+  private UUID third;
   private UUID personPseudonym;
   private UUID otherPseudonym;
   private UUID profile;
@@ -96,6 +97,7 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     organization = UUID.randomUUID();
     person = UUID.randomUUID();
     other = UUID.randomUUID();
+    third = UUID.randomUUID();
     personPseudonym = UUID.randomUUID();
     otherPseudonym = UUID.randomUUID();
     profile = UUID.randomUUID();
@@ -178,7 +180,10 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         .contains("\"asset\":\"sd2991 Geteiltes Asset\"", "\"grantedBy\":\"andere Person\"")
         .contains("\"recipient\":\"andere Person\"", "\"recipientGroup\":\"sd2991 Gruppe Mein\"")
         .contains("\"capability\":\"CREATE_SPACE\"")
+        .contains("\"name\":\"sd2991 Angelegt für andere\"", "\"createdBy\":\"Sie\"")
         .doesNotContain("Prompttext");
+    // a grant another person gave a third one on the person's asset is not hers
+    assertThat(records(entries.get("rights.json"), "updatedAt")).isEqualTo(3);
     assertThat(entries.get("permission-history.json"))
         .contains("\"actor\":\"andere Person\"", "\"actor\":\"Sie\"", "\"actor\":\"System\"")
         .contains("\"group\":\"sd2991 Gruppe Mein\"", "\"cause\":\"EXTERNAL_ACCESS_CHANGED\"");
@@ -193,6 +198,47 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     assertThat(records(entries.get("succession.json"), "firstSeenAt")).isEqualTo(2);
     assertThat(entries.get("favorites.json")).contains("\"asset\":\"sd2991 Geteiltes Asset\"");
     assertThat(records(entries.get("favorites.json"), "asset")).isEqualTo(1);
+  }
+
+  @Test
+  void aSuccessionCaseGoesToWhoOwnedTheAssetWhenItWasFirstSeenNotToTheSuccessor()
+      throws IOException {
+    UUID takenOver = asset("PROMPT_LIBRARY", "sd2991 Übernommenes Asset", person);
+    UUID handedOn = asset("PROMPT_LIBRARY", "sd2991 Abgegebenes Asset", other);
+    transferredCase(takenOver, other, person);
+    transferredCase(handedOn, person, other);
+
+    String mine = export(person).get("succession.json");
+    String theirs = export(other).get("succession.json");
+
+    assertThat(mine)
+        .contains("\"object\":\"sd2991 Abgegebenes Asset\"")
+        .doesNotContain("sd2991 Übernommenes Asset");
+    assertThat(theirs)
+        .contains("\"object\":\"sd2991 Übernommenes Asset\"")
+        .doesNotContain("sd2991 Abgegebenes Asset");
+  }
+
+  @Test
+  void aSectionLongerThanOnePageArrivesCompleteAlsoWithOneSharedTime() throws IOException {
+    UUID group =
+        jdbc.queryForObject(
+            "SELECT id FROM groups WHERE name = ? AND organization_id = ?",
+            UUID.class,
+            "sd2991 Gruppe Mein",
+            organization);
+    jdbc.update(
+        "INSERT INTO group_membership_history (id, group_id, organization_id, user_id, cause,"
+            + " actor_user_id, valid_from, valid_to) SELECT gen_random_uuid(), ?, ?, ?, 'ADDED', NULL,"
+            + " now(), now() FROM generate_series(1, ?)",
+        group,
+        organization,
+        person,
+        2 * SelfDisclosureSectionReader.PAGE_SIZE + 1);
+
+    String history = export(person).get("permission-history.json");
+
+    assertThat(records(history, "member")).isEqualTo(2 * SelfDisclosureSectionReader.PAGE_SIZE + 2);
   }
 
   @Test
@@ -244,6 +290,7 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         .doesNotContain(other.toString(), otherPseudonym.toString())
         .doesNotContain("sd2991-fremd", "fremd.person@sd2991.example", "Frieda Fremdperson")
         .doesNotContain(person.toString(), personPseudonym.toString())
+        .doesNotContain(third.toString(), "Theo Dritter", "sd2991-dritt")
         .doesNotContain("ida.ich@sd2991.example", "Ida Ichperson");
     for (String foreign : FOREIGN_OBJECTS) {
       assertThat(all).as(foreign).doesNotContain(foreign);
@@ -294,6 +341,7 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     jdbc.update("INSERT INTO organizations (id, name) VALUES (?, ?)", organization, "sd2991");
     user(person, "sd2991-ich-" + person, "ida.ich@sd2991.example", "Ida Ichperson");
     user(other, "sd2991-fremd-" + other, "fremd.person@sd2991.example", "Frieda Fremdperson");
+    user(third, "sd2991-dritt-" + third, "dritte.person@sd2991.example", "Theo Dritter");
     jdbc.update(
         "INSERT INTO audit_actor_pseudonyms (pseudonym_id, user_id, organization_id)"
             + " VALUES (?, ?, ?), (?, ?, ?)",
@@ -331,6 +379,8 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
     grant(prompts, "USER", other, null, person);
     grant(prompts, "GROUP", null, ownGroup, person);
     grant(foreign, "GROUP", null, foreignGroup, other);
+    grant(prompts, "USER", third, null, other);
+    asset("PROMPT_LIBRARY", "sd2991 Angelegt für andere", other, person);
     jdbc.update(
         "INSERT INTO capability_grants (id, organization_id, capability, subject_type,"
             + " subject_user_id, granted_by_user_id) VALUES (?, ?, 'CREATE_SPACE', 'USER', ?, ?),"
@@ -607,6 +657,37 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         other);
   }
 
+  /**
+   * {@code asset} belonged to {@code before} two days ago and to {@code after} since yesterday; a
+   * succession case opened in between and closed with the transfer, by nobody of the two.
+   */
+  private void transferredCase(UUID asset, UUID before, UUID after) {
+    String ownership =
+        "INSERT INTO asset_ownership_history (id, asset_type, asset_id, organization_id,"
+            + " owner_type, owner_user_id, cause, actor_user_id, valid_from, valid_to)"
+            + " VALUES (?, 'PROMPT_LIBRARY', ?, ?, 'USER', ?, ?, NULL, now() - ?::interval,"
+            + " now() - ?::interval)";
+    jdbc.update(
+        ownership, UUID.randomUUID(), asset, organization, before, "CREATED", "2 days", "1 day");
+    jdbc.update(
+        ownership.replace(", now() - ?::interval)", ", NULL)"),
+        UUID.randomUUID(),
+        asset,
+        organization,
+        after,
+        "TRANSFERRED",
+        "1 day");
+    jdbc.update(
+        "INSERT INTO succession_cases (id, organization_id, kind, object_type, object_id,"
+            + " asset_type, first_seen_at, last_seen_at, closed_at, closed_by_user_id)"
+            + " VALUES (?, ?, 'OPEN_SUCCESSION', 'ASSET', ?, 'PROMPT_LIBRARY',"
+            + " now() - interval '36 hours', now() - interval '1 day', now() - interval '1 day',"
+            + " NULL)",
+        UUID.randomUUID(),
+        organization,
+        asset);
+  }
+
   private void user(UUID id, String subject, String email, String name) {
     jdbc.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
@@ -639,6 +720,10 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
   }
 
   private UUID asset(String type, String name, UUID owner) {
+    return asset(type, name, owner, owner);
+  }
+
+  private UUID asset(String type, String name, UUID owner, UUID creator) {
     UUID id = UUID.randomUUID();
     jdbc.update(
         "INSERT INTO assets (id, asset_type, organization_id, name, description, owner_type,"
@@ -648,7 +733,7 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
         organization,
         name,
         owner,
-        owner);
+        creator);
     return id;
   }
 
