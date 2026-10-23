@@ -28,7 +28,7 @@ Titel, für wen sie gilt. Bei Mischformen klärt das die Rechtsabteilung.
 |---|---|
 | `00-entscheidung/` | Entscheidung der Hausleitung (folgt) |
 | `01-markterkundung/` | Markterkundung (folgt) |
-| `02-pilot-teststellung/` | Pilot und Teststellung (folgt) |
+| `02-pilot-teststellung/` | [Pilot und Teststellung](02-pilot-teststellung/README.md) |
 | `03-vergabe/` | [Vergabe](03-vergabe/README.md) |
 | `04-datenschutz/` | [Datenschutz](04-datenschutz/README.md) |
 | `05-mitbestimmung/` | Mitbestimmung (folgt) |
