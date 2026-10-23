@@ -115,8 +115,8 @@ class IdentitySelfDisclosureIntegrationTest {
 
   @Test
   void theCategoriesCarryGermanTitlesAndOnlyThePersonsOwnRowsAndNoSecret() throws Exception {
-    seedLocalAccount(person, "Anlagegrund-2990-eigen", "Übergabe-Anlass-2990-eigen");
-    seedLocalAccount(admin, "Anlagegrund-2990-fremd", "Übergabe-Anlass-2990-fremd");
+    seedLocalAccount(person, "Anlagegrund-2990-eigen");
+    seedLocalAccount(admin, "Anlagegrund-2990-fremd");
     jdbc.update(
         "UPDATE mail_settings SET password_ciphertext = ?, username = ?, from_address = ?,"
             + " from_name = ?, updated_by = ?, updated_at = now()",
@@ -135,8 +135,7 @@ class IdentitySelfDisclosureIntegrationTest {
     assertThat(zip.get("local-credentials.json"))
         .contains("\"title\":\"Lokales Konto\"", "Anlagegrund-2990-eigen");
     assertThat(zip.get("local-sessions-and-links.json"))
-        .contains("\"title\":\"Sitzungen und Links\"", "ACCOUNT_LOCKED")
-        .contains("Übergabe-Anlass-2990-eigen");
+        .contains("\"title\":\"Sitzungen und Links\"", "ACCOUNT_LOCKED", "RESET_PASSWORD");
     assertThat(zip.get("account-state-history.json"))
         .contains("\"title\":\"Kontozustände\"", "DIRECTORY_LOCKED");
     assertThat(zip.get("settings-editors.json")).contains("E-Mail-Versand");
@@ -193,7 +192,7 @@ class IdentitySelfDisclosureIntegrationTest {
         .doesNotContain("Klärungsgrund 2990", "Abfrage 2990", grant.toString());
   }
 
-  private void seedLocalAccount(User user, String createdReason, String handoverReason) {
+  private void seedLocalAccount(User user, String createdReason) {
     Instant now = Instant.now();
     jdbc.update(
         "INSERT INTO local_credentials (user_id, password_hash, created_reason, email_verified_at)"
@@ -219,14 +218,12 @@ class IdentitySelfDisclosureIntegrationTest {
         user.getId(),
         Timestamp.from(now.plus(Duration.ofHours(1))));
     jdbc.update(
-        "INSERT INTO local_action_tokens (id, user_id, purpose, token_hash, expires_at,"
-            + " provider_id, reason) VALUES (?, ?, 'HANDOVER', ?, ?, ?, ?)",
+        "INSERT INTO local_action_tokens (id, user_id, purpose, token_hash, expires_at)"
+            + " VALUES (?, ?, 'RESET_PASSWORD', ?, ?)",
         UUID.randomUUID(),
         user.getId(),
         user == person ? "SECRET-ACTION-2990" : "fremd-action-2990",
-        Timestamp.from(now.plus(Duration.ofDays(1))),
-        UUID.randomUUID(),
-        handoverReason);
+        Timestamp.from(now.plus(Duration.ofDays(1))));
     jdbc.update(
         "INSERT INTO account_state_history (id, user_id, organization_id, state, cause,"
             + " valid_from, valid_to) VALUES (?, ?, ?, 'LOCKED', 'DIRECTORY_LOCKED',"
