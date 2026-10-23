@@ -44,6 +44,9 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/suche.md#71-suchen-ohne-antwort) | Handbuch |
 | F-06 | ja | [Spracheingabe einschalten](../../handbuch/modelle.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/modelle.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
 | F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht), [Externe KI-Werkzeuge abschalten](../../handbuch/fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten), [Ein eigenes Werkzeug anschließen](../../handbuch/fremdzugaenge.md#ein-eigenes-werkzeug-anschließen) | Handbuch, Konfiguration |
+| F-08 | ja; Vektor- und Volltextsuche laufen zusammen und werden fusioniert, Verfahren und Gewichtung stellt der Betrieb in der Konfiguration ein | [Die Suchstrecke](../../handbuch/suche.md#4-die-suchstrecke-stufe-für-stufe), [Konfiguration der Suche](../../handbuch/suche.md#103-konfiguration) | Handbuch, Konfiguration |
+| F-09 | ja; ab Werk aus, braucht einen eigenen Modell-Endpunkt | [Reranking](../../handbuch/suche.md#stufe-8-reranking), [Reranking einschalten](../../handbuch/modelle.md#reranking-einschalten) | Handbuch, Konfiguration |
+| F-10 | teilweise; regelbasiert aus Dateieigenschaften und Bibliotheksfeldern, wirkt als Filter in der Suche; die modellgestützte Ermittlung ist gebaut, aber nicht abgenommen | [Automatische Ermittlung](../../handbuch/metadaten.md#5-automatische-ermittlung), [Wirkung in der Suche](../../handbuch/metadaten.md#8-wirkung-in-der-suche), [Gebaut, aber nicht abgenommen](../../handbuch/metadaten.md#14-gebaut-aber-nicht-abgenommen) | Handbuch |
 
 ## M · Modelle und Datenflüsse
 
