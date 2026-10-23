@@ -19,6 +19,10 @@ Zugriff geschützt werden. Verantwortlich ist die Behörde, bei Auftragsverarbei
 Dienstleister. Ein Teil der Maßnahmen steckt im Produkt; diese Vorlage trennt, was OPAA mitbringt und
 was der Betrieb selbst leisten muss.
 
+Neben Vertraulichkeit zählen Verfügbarkeit und Wiederherstellung ausdrücklich dazu: Gehen Daten
+verloren oder lassen sie sich nach einem Ausfall nicht zurückholen, ist auch das eine
+Datenschutzverletzung.
+
 ## Was OPAA liefert
 
 | Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |

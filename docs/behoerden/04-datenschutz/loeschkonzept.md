@@ -36,9 +36,19 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbar
 ## Aufgaben der Behörde
 
 1. **Fristen wählen:** je einstellbarer Frist entscheiden, ob die Voreinstellung bleibt, und die Wahl
-   mit dem Zweck begründen (Tabelle unten). Festhalten, in welchen Spaces die Chat-Bereinigung
-   eingeschaltet ist ([Spaces: Chats](../../handbuch/spaces.md#7-chats)).
-2. **Anlässe regeln, die OPAA nicht kennt:**
+   mit dem Zweck begründen (Tabelle unten).
+2. **Regel für Chats wählen:** Chats werden nur dort automatisch archiviert und gelöscht, wo ein
+   Space das einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
+   ([Spaces: Chats](../../handbuch/spaces.md#7-chats)). Die Behörde wählt und begründet eine von zwei
+   Varianten:
+   - **Ohne automatische Frist:** Chats löscht die Person selbst, wenn sie sie nicht mehr braucht.
+     Einfach und üblich bei vergleichbaren Anwendungen; der Personalrat wird aber nach einer Frist
+     fragen, weil Chats zeigen, wer wann was gefragt hat. Chats ausgeschiedener Personen bleiben
+     bestehen, solange ihr Konto nur gesperrt ist; dafür braucht es eine eigene Regel.
+   - **Mit Frist in gemeinsamen Spaces:** In allen gemeinsamen Spaces ist die Bereinigung
+     eingeschaltet, mit den Fristen der Installation. Leichter zu verantworten, weil Chats
+     Arbeitsmaterial sind und Aktenrelevantes ohnehin in die Akte gehört.
+3. **Anlässe regeln, die OPAA nicht kennt:**
    - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
      nicht gelöscht ([Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)).
    - Dokumente: Sie folgen ihrer Quelle
@@ -47,11 +57,11 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbar
    - Anwendungslog: die Frist festlegen, wenn sie laut Faktenblatt beim Betrieb liegt.
    - Sicherungen: Aufbewahrung festlegen und wie eine Rücksicherung mit bereits gelöschten Daten
      umgeht.
-3. **Mit dem Archiv klären**, ob vor der Löschung Daten anzubieten sind, etwa das Protokoll.
+4. **Mit dem Archiv klären**, ob vor der Löschung Daten anzubieten sind, etwa das Protokoll.
    Chatverläufe sind meist nicht aktenrelevant, übernommene Ergebnisse schon; deshalb gehören sie nach
    der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md#6-ergebnisse-in-die-akte) in die Akte.
-4. **Nachweis regeln** für Löschungen außerhalb von OPAA: Sicherungen, Quellen, Anwendungslog.
-5. **Bei jedem Update nachziehen:** Das Update-Paket weist geänderte Fristen, Daten und Löschwege aus.
+5. **Nachweis regeln** für Löschungen außerhalb von OPAA: Sicherungen, Quellen, Anwendungslog.
+6. **Bei jedem Update nachziehen:** Das Update-Paket weist geänderte Fristen, Daten und Löschwege aus.
 
 ## Ergebnis festhalten
 
