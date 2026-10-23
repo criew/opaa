@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -59,6 +59,33 @@ Behörde übernimmt jede Zeile in diese Tabelle:
 
 Die Chat-Bereinigung wirkt nur in Spaces, in denen sie eingeschaltet ist
 ([Handbuch, Spaces: Chats](../../handbuch/spaces.md#7-chats)); die Behörde hält fest, in welchen.
+
+### Chats gesperrter Konten
+
+Die Chats eines lokalen Kontos löscht OPAA nach einer Frist ab der Sperre durch die Verwaltung, ab
+Werk eingeschaltet; Frist, Untergrenze und Schalter stehen im
+{{faktenblatt:fristen#opaa-chat-locked-account-cleanup-delete-after-days}} und im
+{{faktenblatt:voreinstellungen#opaa-chat-locked-account-cleanup-enabled}}, was dabei gilt im
+[Handbuch, Benutzerverwaltung](../../handbuch/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht).
+Die Behörde hält im Löschkonzept fest:
+
+- **Wer sperrt und wann:** Die Frist beginnt nur mit der Sperre durch die Verwaltung, nicht mit
+  einer Sperre wegen Inaktivität. Die Behörde legt fest, binnen welcher Zeit nach dem Ausscheiden
+  das Konto in OPAA gesperrt wird, und dass bloße Abwesenheit (Elternzeit, Krankheit, Abordnung)
+  kein Anlass für diese Sperre ist.
+- **Konten eines Identitätsanbieters:** Sie lassen sich in OPAA nicht sperren; für sie greift die
+  Frist nicht, eine Deaktivierung beim Anbieter allein lässt die Chats unbegrenzt liegen. Die Behörde
+  hält fest, wie sie diese Chats behandelt [Regelung der Behörde].
+- **Anhalten:** Die Systemverwaltung kann die Löschung je Konto anhalten, etwa für ein
+  Disziplinarverfahren; die Behörde legt fest, wer das veranlassen darf und wie es dokumentiert wird.
+- **Selbstauskunft:** Nach der Sperre kann die Person keine Selbstauskunft mehr ziehen. Bei
+  planbarem Ausscheiden gibt die Behörde ihr vorher Gelegenheit dazu; danach Auskunft über die oder
+  den Datenschutzbeauftragten bis zum Löschdatum.
+- **Sicherungen:** Gelöschte Chats bleiben in Sicherungen bis zu deren Ablauf; wird eine Sicherung
+  eingespielt, löscht die nächste Nacht sie erneut. Die Rechtsfolge der Löschung in Sicherungen
+  (Art. 17 DSGVO) prüft die Behörde.
+- **Verlängerung der Frist:** eine längere Speicherfrist und damit in der Regel Gegenstand der
+  Dienstvereinbarung ([#2566](https://github.com/criew/opaa/issues/2566)).
 
 ### Anlässe, die OPAA nicht kennt
 

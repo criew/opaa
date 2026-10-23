@@ -265,6 +265,131 @@ Löschfrist bestimmt.
 
 ---
 
+## Löschung der Chats gesperrter Konten
+
+Entschieden vom Maintainer am 23.10.2026 (#2997), nach dem Stakeholder-Review mit Personalrat und
+Betrieb (Kommentare am Issue). Für das Ausscheiden einer Person ist die Sperre der Regelweg, nicht
+die Löschung; ein vorhandener Chat verhindert die Löschung des Kontos sogar. Ohne diese Regel blieben
+die Chats einer ausgeschiedenen Person unbegrenzt liegen, denn die Bereinigung je Space ist ab Werk
+aus und im persönlichen Standard-Space legt sie nur die Person selbst um. Chats sind der größte und
+aussagekräftigste Teil der Daten über eine Person.
+
+### Regel
+
+- **Auslöser ist allein die Sperre durch die Verwaltung** (`local_credentials.locked_reason =
+  ADMIN`). Die Sperre wegen Inaktivität ist eine Abwesenheit (Elternzeit, Krankheit, Abordnung), die
+  Fehlversuch-Sperre ein Angriff Dritter; Ablaufdatum, abgeschaltete lokale Konten, abgeschaltete
+  oder gelöschte Anbieter und der Verzeichnisabgleich sind Sammel- oder Betriebszustände. Keiner
+  davon startet die Frist. Die Positivliste ist abschließend, je ausgeschlossenem Anlass belegt ein
+  Test, dass die Chats bleiben.
+- **Konten eines Identitätsanbieters** lassen sich in OPAA nicht sperren; die Frist greift für sie
+  nicht. Maßgeblich ist nur die Sperre in OPAA, eine Deaktivierung beim Anbieter zählt nicht
+  (Entscheidung 5). Eine Sperre von Anbieterkonten in OPAA ist ein eigenes Thema (#3025).
+- **Frist** `opaa.chat.locked-account-cleanup.delete-after-days`, ab Werk **365 Tage**, Untergrenze
+  **90 Tage**: Eine irrtümliche Sperre muss über Urlaub und Vertretung hinweg auffallen können. Ein
+  kleinerer Wert bricht den Start ab. Die wirksame Frist steht beim Start im Anwendungslog.
+- **Abschaltbar** mit `opaa.chat.locked-account-cleanup.enabled` (ab Werk an). Abgeschaltet löscht
+  nichts; nach dem Wiedereinschalten beginnt jede Frist neu.
+- **Fristbeginn** ist der Beginn der aktuellen, ununterbrochenen Sperre durch die Verwaltung
+  (`locked_at`), **frühestens die Einführung** bzw. das letzte Einschalten
+  (`chat_locked_account_cleanup_state.counting_since`, einmalig gesetzt mit der Datenbankuhr). Ein
+  Entsperren beendet die Frist, eine erneute Sperre beginnt von vorn. Keine Rückwirkung: Ein Konto,
+  das bei der Einführung seit 400 Tagen gesperrt ist, behält seine Chats bis 365 Tage nach der
+  Einführung.
+- **Gelöscht werden alle Chats, deren Autor das Konto ist**, in allen Spaces einschließlich des
+  persönlichen Standard-Space, angeheftete eingeschlossen (Entscheidung 3), auf demselben Weg wie
+  durch die Person: mit Verlauf, Gesprächsnotiz und persönlichen Merkmalen. Konto und Standard-Space
+  bleiben. Unabhängig vom Schalter der Bereinigung im Space.
+- **Geteilte Chats bleiben**, bis die Bereinigung ihres Space oder eine Löschung von Hand sie
+  erfasst. Solange Chats nicht geteilt werden können, sind alle Chats einer Person privat und fallen
+  unter die Regel; kommt das Teilen, nimmt der Lauf geteilte Chats aus.
+- **Aussetzen bei anlassbezogener Klärung** (Entscheidung 4): Solange das Konto in einem offenen
+  Antrag oder einer noch nutzbaren Freigabe steht, gleich in welcher Rolle, löscht der Lauf nicht;
+  dieselbe Regel wie bei der Kontolöschung. Nach dem Ende holt der nächste Lauf nach, die Aussetzung
+  verlängert nichts.
+- **Anhalten je Konto** durch die Systemverwaltung, etwa für ein Disziplinarverfahren oder einen
+  Rechtsstreit außerhalb von OPAA: „Löschung anhalten“ und „Löschung fortsetzen“ in der
+  Einzelansicht des Kontos, ohne Begründung (sie wäre selbst ein sensibles Datum über die Person),
+  beide protokolliert. Ist die Frist beim Fortsetzen abgelaufen, löscht der nächste Lauf.
+
+### Lauf
+
+Täglich um **02:30 Uhr** Serverzeit, auf einer Instanz unter der ShedLock-Sperre (ADR-0053), nicht
+gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ ist die Datenbankuhr.
+
+- **Obergrenze je Lauf:** höchstens 5.000 Chats, in Stapeln zu je 200 in eigener Transaktion. Bei
+  der Einführung starten alle schon gesperrten Konten mit demselben Fristbeginn; die Welle verteilt
+  sich so auf mehrere Nächte, und der Lauf bleibt weit unter der Sperrdauer von zwei Stunden.
+- **Erneute Prüfung unter Sperre:** Jeder Stapel prüft das Konto unter einer Lesesperre auf seine
+  Zugangsdaten erneut; ein Entsperren oder Anhalten wartet auf den Stapel oder wird von ihm gesehen.
+  Der Lauf ist zustandsbasiert: Bricht er ab, setzt die nächste Nacht fort.
+- **Wiederherstellung aus einer Sicherung:** Tauchen gelöschte Chats wieder auf, löscht der nächste
+  Lauf sie erneut und schreibt ein neues Ereignis. Wer Chats einer zu Unrecht gesperrten Person
+  zurückholen will, entsperrt oder hält vor dem Einspielen an.
+
+### Protokoll und Anwendungslog
+
+- Ein Ereignis `LOCKED_ACCOUNT_CHATS_DELETED` **je Konto und Lauf**, der für das Konto etwas
+  löscht, geschrieben in der Transaktion des ersten Stapels. Betroffene Person ist das Konto; es
+  trägt den **Fristbeginn** und den **Sperrgrund**, **keine Zahl**, keinen Titel, keinen Inhalt,
+  keinen Space. Die Zahl gelöschter Chats je Person wäre ein Nutzungsmaß, das nach der Löschung als
+  einzige Spur bliebe. Verteilt sich ein Konto auf mehrere Nächte, entsteht je Nacht ein Ereignis.
+- `LOCKED_ACCOUNT_CHAT_CLEANUP_HELD` und `…_RESUMED` für Anhalten und Fortsetzen, ohne Begründung;
+  ein wiederholtes Anhalten schreibt nichts.
+- Aufbewahrung: allgemeine Protokollfrist (Voreinstellung 36 Monate, wie die Rechtehistorie).
+  Wird das Konto später gelöscht, bleibt das Ereignis mit dem Pseudonym ohne Zuordnung stehen.
+- Im **Auszug für die Personalvertretung** mit Zweck, Zugriff und Frist
+  ([security-and-compliance.md](./security-and-compliance.md#der-auszug-für-die-personalvertretung)).
+- Anwendungslog: nur Gesamtzahlen (Chats, Konten); ein gescheitertes Konto oder ein Lauf, der die
+  fälligen Konten nicht lesen kann, als **ERROR**.
+
+### Sichtbarkeit des Löschdatums
+
+- „Frühestens am …“ steht **nur in der Einzelansicht** des Kontos in der Verwaltung (Dialog
+  „Bearbeiten“), für jedes durch die Verwaltung gesperrte Konto, **unabhängig davon, ob und wie
+  viele Chats es hat**. Eine laufende Klärung ändert die Anzeige nicht. Ein Anhalten zeigt die
+  Ansicht, weil es ein Akt der Verwaltung selbst ist.
+- **Keine Spalte, kein Filter, keine Sortierung, kein Export** in der Kontenliste: Eine Liste „wird
+  bald gelöscht“ wäre eine Liste der Ausgeschiedenen samt Zeitpunkt.
+- **Nachricht bei der Sperre:** Die Mail der Sperre durch die Verwaltung nennt das früheste
+  Löschdatum. Den Hinweis auf die Selbstauskunft trägt sie nicht: Nach der Sperre kann sich die
+  Person nicht mehr anmelden, die Selbstauskunft ist für sie nicht mehr erreichbar. Die Gelegenheit
+  zur Selbstauskunft vor einem planbaren Ausscheiden ist deshalb eine Aufgabe der Dienststelle
+  (Handbuch, Dienstvereinbarung #2566). Die Mail der Inaktivitätssperre nennt kein Datum.
+
+### Wirkung auf Behördenunterlagen
+
+- [x] Neue oder geänderte personenbezogene Daten oder Protokollereignisse — Datum
+  `chat-cleanup-holds` (angehaltene Löschung je Konto), Ereignisse `LOCKED_ACCOUNT_CHATS_DELETED`,
+  `LOCKED_ACCOUNT_CHAT_CLEANUP_HELD`, `LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED`
+- [x] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar — die
+  Systemverwaltung sieht in der Einzelansicht das Löschdatum und ob die Löschung angehalten ist
+- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten
+- [x] Geänderte Aufbewahrungs- oder Löschfrist — Chats: 365 Tage nach der Sperre durch die
+  Verwaltung statt unbegrenzt
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [x] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt — ab Werk an
+  mit Datenwirkung
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Voraussichtliche Stufe:** Zustimmung (Z1 neue Ereignisart, Z7 ab Werk an mit Datenwirkung); das
+Stakeholder-Review mit Personalrat und Betrieb ist erledigt (Kommentare an #2997 vom 23.10.2026),
+die Muss-Auflagen beider Reviews sind umgesetzt.
+
+**Betroffene Vorlagen in `docs/behoerden/`:** `04-datenschutz/` (Löschkonzept), die Faktenblätter
+Fristen, Voreinstellungen und Protokollereignisse aus dem Fakten-Manifest und die
+Muster-Dienstvereinbarung (#2566) mit den Bedingungen des Personalrats: Frist mit Untergrenze und
+Anknüpfung an die Sperre durch die Verwaltung, Verlängerung nur mit Zustimmung; Pflicht der
+Dienststelle, Konten Ausgeschiedener zu sperren; keine Sperre wegen bloßer Abwesenheit; Gelegenheit
+zur Selbstauskunft vor der Sperre; Verwertungsverbot für das Löschereignis.
+
+**Nicht umgesetzt (Soll-Auflagen):** eine Vorschau „in den nächsten 30 Tagen fällig“ für den
+Betrieb, ein Startlog-Hinweis auf eine verkürzte Frist und die Zahl ausgesetzter Löschungen im
+Jahresbericht an die Personalvertretung (#3026).
+
+---
+
 ## Chatsuche
 
 ### Was durchsucht wird
