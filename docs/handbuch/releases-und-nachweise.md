@@ -116,27 +116,15 @@ Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Pak
 
 ## Schwachstellen
 
-**Erkennen.** Zwei Prüfungen suchen nach bekannten Schwachstellen (CVEs):
-
-- GitHub meldet neu bekannt werdende Schwachstellen in den Bibliotheken von Backend und Frontend.
-- Ein nächtlicher Scan prüft die Images von `main` und des jüngsten Release, für beide
-  Architekturen, einschließlich der Betriebssystempakete. Ein kritischer Befund öffnet automatisch
-  einen Alarm; betrifft er das Release, bleibt der Alarm offen, bis das Patch-Release erschienen ist.
-
-**Behandeln.** Jeder Befund wird gesichtet und endet in einem von vier Zuständen: behoben (neuer
-Bau oder angehobene Version), Komponente entfernt oder Version festgelegt, mit Begründung und
-Ablaufdatum unterdrückt, wenn es keine Korrektur gibt und die Lücke im Container nicht erreichbar
-ist, oder offen mit eigenem Folge-Issue. Die Unterdrückungen stehen mit ihrer Begründung öffentlich
-in `.trivyignore.yaml` im Repository. Wie schnell ein Release folgt, steht unter
-[Sicherheitsupdates](#sicherheitsupdates).
-
-**Melden.** Wer eine Lücke in OPAA findet, meldet sie vertraulich über das [Private Vulnerability
-Reporting](https://github.com/criew/opaa/security/advisories/new) von GitHub, nicht über
-öffentliche Issues; eine E-Mail-Adresse gibt es nicht. Gemeldete Lücken bearbeitet das Projekt nach
-bestem Bemühen, ohne feste Antwort- oder Behebungsfristen. Behobene Lücken erscheinen als [Security
-Advisory](https://github.com/criew/opaa/security/advisories), wo sinnvoll mit CVE-Kennung.
-Meldeweg, Ablauf und die Rolle des Projekts nach dem Cyber Resilience Act regelt die
-Sicherheitsrichtlinie `SECURITY.md` im Repository.
+- **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
+  prüft die Images von `main` und des jüngsten Release.
+- **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
+  Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
+- **Melden:** Lücken in OPAA vertraulich über das [Private Vulnerability
+  Reporting](https://github.com/criew/opaa/security/advisories/new) von GitHub, nicht über
+  öffentliche Issues. Behobene Lücken erscheinen als [Security
+  Advisory](https://github.com/criew/opaa/security/advisories). Einzelheiten regelt `SECURITY.md` im
+  Repository.
 
 ## Lizenzen
 
