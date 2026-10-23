@@ -92,5 +92,11 @@ public enum NotificationType {
    * The system administration ended a library's own OAuth consent - a changed, shut down or deleted
    * profile. Sent to those responsible; its object is the library.
    */
-  SOURCE_CONNECTION_ENDED
+  SOURCE_CONNECTION_ENDED,
+
+  /**
+   * An export of the person's self-disclosure began - sent at the start, so it reaches her also
+   * when the export aborts. Sent to that person only, without content and without a link.
+   */
+  SELF_DISCLOSURE_STARTED
 }

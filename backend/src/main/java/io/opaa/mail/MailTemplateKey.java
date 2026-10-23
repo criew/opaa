@@ -333,6 +333,28 @@ public enum MailTemplateKey {
       "tokenName",
       "expiresAtHuman"),
 
+  SELF_DISCLOSURE_STARTED(
+      "Selbstauskunft gestartet",
+      "Selbstauskunft Ihrer Daten in {{productName}} gestartet",
+      """
+      Guten Tag {{displayName}},
+
+      für Ihren Zugang zu {{productName}} wurde {{occurredAtHuman}} eine Selbstauskunft Ihrer Daten gestartet.
+
+      Falls Sie das nicht waren, ändern Sie Ihr Passwort und wenden Sie sich an Ihre Systemverwaltung.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Selbstauskunft gestartet</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">für Ihren Zugang zu <strong>{{productName}}</strong> wurde {{occurredAtHuman}} eine Selbstauskunft Ihrer Daten gestartet.</p>
+      <p style="margin:0;font-size:13px;">Falls Sie das nicht waren, ändern Sie Ihr Passwort und wenden Sie sich an Ihre Systemverwaltung.</p>
+      """,
+      null,
+      "Eine Selbstauskunft Ihrer Daten in {{productName}} wurde gestartet.",
+      "productName",
+      "displayName",
+      "occurredAtHuman"),
+
   TEST_MAIL(
       "Testnachricht",
       "Testnachricht von {{productName}}",

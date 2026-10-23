@@ -548,3 +548,33 @@ auditEvents:
       Die Auskunft über die Datenerhebung samt Konfigurationsexport der Installation wird
       abgerufen, auch abgewiesen
     details: Das Format (JSON oder Markdown); nie der Inhalt der Auskunft
+  - id: SELF_DISCLOSURE_EXPORT_STARTED
+    trigger: Eine Person beginnt den Export ihrer Selbstauskunft (Einlösen des Einmal-Tickets)
+    details: >-
+      Handelnde, betroffene Person und Kontoobjekt sind die Person selbst; after nennt die
+      Kategorien, correlation_ref den Export. Kein Inhalt, keine Datensatzzahlen, keine Netzadresse.
+      Ein Beginn ohne Ende heißt abgebrochen mit der Instanz; abgewiesene Versuche schreiben kein
+      Ereignis
+    purpose: >-
+      Nachweis gegenüber der Revision, dass und wann eine Selbstauskunft gestartet wurde, etwa
+      wenn eine Person bestreitet, sie selbst ausgelöst zu haben
+    readers:
+      - AUDITOR über die Wege nach Zeitraum, Ereignisart und Vorgang, nicht nach Objekt
+      - AUDITOR in der freigegebenen anlassbezogenen Klärung über die Person
+      - die Person selbst in ihrer nächsten Selbstauskunft
+  - id: SELF_DISCLOSURE_EXPORT_FINISHED
+    trigger: Der Export einer Selbstauskunft endet, vollständig ausgeliefert oder abgebrochen
+    details: >-
+      after trägt Ergebnis (COMPLETED oder ABORTED), Abbruchgrund (CLIENT_DISCONNECTED, TIMEOUT,
+      SHUTDOWN, ERROR), ausgelieferte Bytes, deren SHA-256-Prüfsumme und die Kategorien; die
+      Prüfsumme steht nicht im ZIP. Kein Inhalt, keine Datensatzzahlen, keine Netzadresse
+    purpose: >-
+      Nachweis gegenüber der Revision, was als Selbstauskunft ausgeliefert wurde (Größe und
+      Prüfsumme), ohne den Inhalt zu speichern
+    readers:
+      - AUDITOR über die Wege nach Zeitraum, Ereignisart und Vorgang, nicht nach Objekt
+      - AUDITOR in der freigegebenen anlassbezogenen Klärung über die Person
+      - die Person selbst in ihrer nächsten Selbstauskunft
+  - id: SELF_DISCLOSURE_SETTINGS_CHANGED
+    trigger: Die Systemverwaltung schaltet die Selbstauskunft um oder ändert ihre Tagesgrenze
+    details: Vorher/Nachher der geänderten Schlüssel (enabled, dailyLimit)

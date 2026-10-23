@@ -574,5 +574,22 @@ public enum AuditEventType {
    * retrieved, or the attempt refused; {@code after} names the format. Carries no content of the
    * disclosure itself.
    */
-  DATA_COLLECTION_DISCLOSURE_EXPORTED
+  DATA_COLLECTION_DISCLOSURE_EXPORTED,
+
+  // Selbstauskunft (docs/features/security-and-compliance.md#protokoll-der-selbstauskunft)
+  /**
+   * A person began the export of her self-disclosure; actor, object and subject are her own
+   * account, {@code after} lists the categories, {@code correlation_ref} names the export. A start
+   * without a {@link #SELF_DISCLOSURE_EXPORT_FINISHED} ended with the instance.
+   */
+  SELF_DISCLOSURE_EXPORT_STARTED,
+
+  /**
+   * The export of a self-disclosure ended; {@code after} carries result, abort cause, delivered
+   * bytes, their SHA-256 and the categories, never content or record counts.
+   */
+  SELF_DISCLOSURE_EXPORT_FINISHED,
+
+  /** The system administration switched the self-disclosure or changed its daily limit. */
+  SELF_DISCLOSURE_SETTINGS_CHANGED
 }

@@ -26,6 +26,11 @@ backend/src/main/java/io/opaa/permission/**/*.java
 # API surface: new fields, endpoints and exports
 opaa-api/src/main/openapi/**
 
+# Self-disclosure: its flow, its port and every exporter of a category
+backend/src/main/java/io/opaa/selfdisclosure/**/*.java
+backend/src/main/java/io/opaa/compliance/SelfDisclosure*.java
+backend/src/main/java/**/*SelfDisclosureExporter.java
+
 # Configuration keys and defaults
 backend/src/main/resources/application*.yml
 backend/src/main/java/**/*Properties.java

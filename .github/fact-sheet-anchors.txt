@@ -38,6 +38,7 @@ datenkatalog#original-storage
 datenkatalog#permission-history
 datenkatalog#permission-transfers
 datenkatalog#rights
+datenkatalog#self-disclosure
 datenkatalog#settings-editors
 datenkatalog#space-membership-history
 datenkatalog#spaces
@@ -174,6 +175,9 @@ protokollereignisse#prompt-library-changed
 protokollereignisse#prompt-library-created
 protokollereignisse#prompt-library-deleted
 protokollereignisse#search-diagnosis-profile-run
+protokollereignisse#self-disclosure-export-finished
+protokollereignisse#self-disclosure-export-started
+protokollereignisse#self-disclosure-settings-changed
 protokollereignisse#space-archived
 protokollereignisse#space-changed
 protokollereignisse#space-created
@@ -305,6 +309,8 @@ voreinstellungen#prompt-mcp-tool-descriptions
 voreinstellungen#prompt-metadata-extraction
 voreinstellungen#prompt-query-decomposition
 voreinstellungen#prompt-tool-loop-spike
+voreinstellungen#self-disclosure-settings-daily-limit
+voreinstellungen#self-disclosure-settings-enabled
 voreinstellungen#spring-ai-openai-base-url
 voreinstellungen#spring-ai-openai-chat-base-url
 voreinstellungen#spring-ai-openai-chat-model

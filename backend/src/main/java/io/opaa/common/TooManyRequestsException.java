@@ -13,6 +13,7 @@ public class TooManyRequestsException extends RuntimeException {
       "Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.";
 
   private final long retryAfterSeconds;
+  private final String code;
 
   public TooManyRequestsException(String message) {
     this(message, 0);
@@ -21,6 +22,7 @@ public class TooManyRequestsException extends RuntimeException {
   public TooManyRequestsException(String message, Throwable cause) {
     super(message, cause);
     this.retryAfterSeconds = 0;
+    this.code = null;
   }
 
   /** A rate-limit refusal with {@link #MESSAGE} and the seconds a client should wait. */
@@ -29,8 +31,19 @@ public class TooManyRequestsException extends RuntimeException {
   }
 
   public TooManyRequestsException(String message, long retryAfterSeconds) {
+    this(message, retryAfterSeconds, null);
+  }
+
+  /** A refusal by an operation's own limit with the stable {@code code} a client acts on. */
+  public TooManyRequestsException(String message, long retryAfterSeconds, String code) {
     super(message);
     this.retryAfterSeconds = retryAfterSeconds;
+    this.code = code;
+  }
+
+  /** The stable code the response carries, or {@code null}. */
+  public String getCode() {
+    return code;
   }
 
   /** Seconds until a repetition may succeed, or {@code 0} when unknown. */
