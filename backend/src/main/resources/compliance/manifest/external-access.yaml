@@ -9,6 +9,11 @@ data:
         personalColumns: [user_id, name, created_at, expires_at, last_used_on, revoked_at]
         nonPersonalColumns:
           [id, token_prefix, token_lookup_hash, revocation_reason, lapse_recorded_at, expiry_reminded_days]
+        person:
+          columns: [user_id]
+          excludedColumns:
+            token_prefix: Bestandteil des Geheimnisses
+            token_lookup_hash: Geheimnis (Prüfwert des Tokens)
     storage: Anwendungsdatenbank; Token nur als Hash
     retention:
       rule: >-

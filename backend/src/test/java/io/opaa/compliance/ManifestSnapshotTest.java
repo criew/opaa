@@ -53,6 +53,34 @@ class ManifestSnapshotTest {
     assertThat(snapshot.areas()).containsEntry("test", "Testbereich");
   }
 
+  /** The path to a person nests under its table; a changed exclusion is a change of its own. */
+  @Test
+  void thePathToAPersonIsReadPerTableAndAChangedExclusionShowsInTheDelta() {
+    String older =
+        ManifestDeltaTest.edit(
+            ManifestDeltaTest.BASE,
+            "        nonPersonalColumns: [id]\n",
+            "        nonPersonalColumns: [id]\n"
+                + "        person:\n"
+                + "          columns: [subject]\n"
+                + "          excludedColumns:\n"
+                + "            email: Grund\n");
+    String newer = ManifestDeltaTest.edit(older, "            email: Grund\n", "");
+
+    assertThat(ManifestDeltaTest.version(older, "v1").sections().get("data").get("accounts"))
+        .containsEntry("tables[users].person.columns", List.of("subject"))
+        .containsEntry("tables[users].person.excludedColumns.email", "Grund");
+    ManifestDelta.Change change =
+        ManifestDeltaTest.delta(older, newer).changes().stream()
+            .filter(c -> c.field() != null && c.field().contains("person"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(change.field()).isEqualTo("tables[users].person.excludedColumns.email");
+    assertThat(change.assessment().undecided()).isTrue();
+    assertThat(ManifestDeltaRenderer.label(change.field()))
+        .isEqualTo("Tabelle `users`: Zuordnung zur Person, ausgenommene Spalte `email`");
+  }
+
   @Test
   void aReferenceIsReadFromGitHistoryAndOneWithoutManifestIsEmpty() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));

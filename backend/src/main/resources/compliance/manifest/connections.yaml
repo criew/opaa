@@ -9,6 +9,8 @@ data:
         personalColumns:
           [user_id, account_label_ciphertext, connected_at, reconnected_at, expired_at, last_used_at]
         nonPersonalColumns: [id, organization_id, profile_id, state, ended_cause, version]
+        person:
+          columns: [user_id]
       - name: connection_tokens
         personalColumns: [pending_user_id, pending_account_label, issued_for]
         nonPersonalColumns:
@@ -26,6 +28,8 @@ data:
           - version
           - expiry_warned_at
           - pending_expires_at
+        person:
+          excluded: Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus, kurzlebig
       - name: connection_authorizations
         personalColumns: [user_id, responsible_id]
         nonPersonalColumns:
@@ -45,6 +49,8 @@ data:
           - account_change_confirmed_at
           - expected_issuer
           - issuer_required
+        person:
+          excluded: Zwischenstand eines laufenden Verbindungsaufbaus mit Geheimnis, kurzlebig
       - name: library_connections
         personalColumns: [account_label, connected_by, responsible_id]
         nonPersonalColumns:
@@ -57,9 +63,13 @@ data:
           - responsible_type
           - ended_cause
           - ended_at
+        person:
+          columns: [connected_by]
       - name: connection_grant_revocations
         personalColumns: [order_ciphertext, created_at]
         nonPersonalColumns: [id, profile_id, attempts, next_attempt_at]
+        person:
+          excluded: Verschlüsselter Widerrufsauftrag an den Anbieter mit Geheimnis, kurzlebig
     storage: Anwendungsdatenbank; Geheimnisse verschlüsselt
     retention:
       rule: >-
@@ -80,6 +90,8 @@ data:
     tables:
       - name: connection_person_states
         personalColumns: [user_id, deactivated_since, dormant_since, checked_at]
+        person:
+          columns: [user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis die Person wieder aktiv ist oder gelöscht wird
@@ -107,6 +119,14 @@ data:
           - cause
           - owner_kind
           - library_id
+        person:
+          columns: [actor_ref, person_ref]
+          excludedColumns:
+            actor_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            person_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+          note: Pseudonyme des Protokolls, der Person zugeordnet über audit_actor_pseudonyms
     storage: Anwendungsdatenbank
     retention:
       rule: Voreinstellung 12 Monate, einstellbar 6 bis 24 Monate

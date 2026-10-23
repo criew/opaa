@@ -53,6 +53,7 @@ public final class ManifestDeltaRenderer {
           .build();
 
   private static final Map<String, String> FIELD_LABELS = fieldLabels();
+  private static final String EXCLUDED_COLUMN = "person.excludedColumns.";
   private static final Set<String> CODE_FIELDS =
       Set.of(
           "columns",
@@ -65,7 +66,9 @@ public final class ManifestDeltaRenderer {
           "defaultValue",
           "helm.values",
           "helm.defaultValue",
-          "area");
+          "area",
+          "person.columns",
+          "person.via");
   private static final Set<String> BOOLEAN_FIELDS =
       Set.of("viaOutboundProxy", "interactsWithPersons", "assessesPersons");
 
@@ -438,10 +441,15 @@ public final class ManifestDeltaRenderer {
     if (field.startsWith("tables[")) {
       String table = field.substring("tables[".length(), field.indexOf(']'));
       String rest = field.substring(field.indexOf("].") + 2);
-      return "Tabelle "
-          + FactSheetRenderer.code(table)
-          + ": "
-          + FIELD_LABELS.getOrDefault(rest, FactSheetRenderer.code(rest));
+      return "Tabelle " + FactSheetRenderer.code(table) + ": " + fieldLabel(rest);
+    }
+    return fieldLabel(field);
+  }
+
+  private static String fieldLabel(String field) {
+    if (field.startsWith(EXCLUDED_COLUMN)) {
+      return "Zuordnung zur Person, ausgenommene Spalte "
+          + FactSheetRenderer.code(field.substring(EXCLUDED_COLUMN.length()));
     }
     return FIELD_LABELS.getOrDefault(field, FactSheetRenderer.code(field));
   }
@@ -594,6 +602,11 @@ public final class ManifestDeltaRenderer {
     labels.put("personalColumns", "personenbezogene Spalten");
     labels.put("nonPersonalColumns", "Spalten ohne Personenbezug");
     labels.put("columns", "Spalten");
+    labels.put("person.columns", "Zuordnung zur Person über Spalten");
+    labels.put("person.via", "Zuordnung zur Person über Tabelle");
+    labels.put("person.excluded", "Nicht Teil der Selbstauskunft, Grund");
+    labels.put("person.note", "Hinweis zur Zuordnung zur Person");
+    labels.put("personExcluded", "Nicht Teil der Selbstauskunft, Grund");
     labels.put("storage", "Speicherort");
     labels.put("retention.rule", "Frist");
     labels.put("retention.settings", "Einstellung der Frist");

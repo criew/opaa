@@ -8,6 +8,7 @@ import io.opaa.compliance.ComplianceManifest.DataEntry;
 import io.opaa.compliance.ComplianceManifest.DataFacts;
 import io.opaa.compliance.ComplianceManifest.DataFlowEntry;
 import io.opaa.compliance.ComplianceManifest.OutputKind;
+import io.opaa.compliance.ComplianceManifest.PersonPath;
 import io.opaa.compliance.ComplianceManifest.PersonalReference;
 import io.opaa.compliance.ComplianceManifest.PromptEntry;
 import io.opaa.compliance.ComplianceManifest.RoleEntry;
@@ -146,8 +147,10 @@ public final class FactSheetRenderer {
             FactSheet.DATENKATALOG,
             provenance,
             "Alle Daten, die OPAA speichert, je Bereich mit Zweck, Personenbezug, Speicherort, Frist,"
-                + " Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen. Am Ende"
-                + " stehen die Tabellen ohne Personenbezug.");
+                + " Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen sowie der"
+                + " Zuordnung zur Person: über welche Spalten ein Eintrag einer Person zugeordnet"
+                + " wird oder warum er nicht Teil der Selbstauskunft ist. Am Ende stehen die"
+                + " Tabellen ohne Personenbezug.");
     Map<String, SettingEntry> settings = settingsByKey(manifest);
 
     sheet.heading(2, null, "Übersicht");
@@ -181,6 +184,7 @@ public final class FactSheetRenderer {
                     List.of(
                         "Spalten ohne Personenbezug",
                         columns(entry.tables(), TableRef::nonPersonalColumns)));
+                rows.add(List.of("Zuordnung zur Person", personPath(entry)));
                 rows.addAll(factRows(entry, settings));
                 sheet.table(List.of("Angabe", "Inhalt"), rows);
               }
@@ -711,6 +715,51 @@ public final class FactSheetRenderer {
             .map(table -> code(table.name()) + ": " + codes(columns.apply(table)))
             .collect(Collectors.joining("; "));
     return listed.isEmpty() ? "keine" : listed;
+  }
+
+  /**
+   * How the datum is assigned to a person for the self-disclosure, per table: the columns naming
+   * the person or the table it goes through, with the columns left out, or why it is left out.
+   */
+  private static String personPath(DataEntry entry) {
+    if (entry.tables().isEmpty()) {
+      return "nicht Teil der Selbstauskunft: " + orNotNamed(entry.personExcluded());
+    }
+    return entry.tables().stream()
+        .map(table -> code(table.name()) + ": " + personPath(table.person()))
+        .collect(Collectors.joining("; "));
+  }
+
+  private static String personPath(PersonPath person) {
+    if (person == null) {
+      return NOT_NAMED;
+    }
+    if (person.excluded() != null && !person.excluded().isBlank()) {
+      return "nicht Teil der Selbstauskunft: " + text(person.excluded());
+    }
+    List<String> ways = new ArrayList<>();
+    if (person.columns() != null && !person.columns().isEmpty()) {
+      ways.add("über " + codes(person.columns()));
+    }
+    if (person.via() != null && !person.via().isBlank()) {
+      ways.add("über Tabelle " + code(person.via()));
+    }
+    StringBuilder path = new StringBuilder(ways.isEmpty() ? NOT_NAMED : String.join(" und ", ways));
+    if (person.note() != null && !person.note().isBlank()) {
+      path.append(" (").append(text(person.note())).append(')');
+    }
+    String excluded =
+        person.excludedColumnsOrEmpty().entrySet().stream()
+            .map(column -> code(column.getKey()) + " (" + text(column.getValue()) + ")")
+            .collect(Collectors.joining(", "));
+    if (!excluded.isEmpty()) {
+      path.append(", ohne ").append(excluded);
+    }
+    return path.toString();
+  }
+
+  private static String orNotNamed(String value) {
+    return value == null || value.isBlank() ? NOT_NAMED : text(value);
   }
 
   private static <T> Map<String, List<T>> byArea(List<T> entries, Function<T, String> area) {

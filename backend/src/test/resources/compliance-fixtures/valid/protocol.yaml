@@ -22,6 +22,11 @@ data:
       - name: audit_log
         personalColumns: [actor_ref, subject_ref]
         nonPersonalColumns: [event_id, recorded_at]
+        person:
+          columns: [actor_ref, subject_ref]
+          excludedColumns:
+            actor_ref: Pseudonymkennung
+          note: Pseudonyme, zugeordnet über die Pseudonymtabelle
     storage: Datenbank
     retention:
       rule: 36 Monate

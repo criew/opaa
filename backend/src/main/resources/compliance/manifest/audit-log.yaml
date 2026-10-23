@@ -69,6 +69,20 @@ data:
           - subject_kind
           - outcome
           - correlation_ref
+        person:
+          columns: [actor_ref, subject_ref, object_id]
+          excludedColumns:
+            actor_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            subject_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            reason: >-
+              Begründungsfreitext, auch der eigene, der andere Personen nennen kann; die Auskunft
+              sagt nur, ob ein Anlass angegeben war
+          note: >-
+            Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id, wenn das
+            Objekt ihr Konto ist. Ereignisse einer anlassbezogenen Klärung über die Person gehören
+            nicht dazu, object_label nur an eigenen Kontoobjekten
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
@@ -92,6 +106,10 @@ data:
       - name: audit_actor_pseudonyms
         personalColumns: [user_id, pseudonym_id]
         nonPersonalColumns: [organization_id, created_at]
+        person:
+          excluded: >-
+            Die eigene Kennung machte die Auskunft zum Schlüssel ins Protokoll; wer ihre Vorlage
+            erzwingt, hätte den ausgeschlossenen Personeneinstieg
     storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
     retention:
       rule: Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet
@@ -128,6 +146,10 @@ data:
           - approved_at
           - usable_until
           - status
+        person:
+          excluded: >-
+            Die Auskunft über anlassbezogene Klärungen läuft über die oder den
+            Datenschutzbeauftragten; die Übersicht sagt nur, dass es sie geben kann
     storage: Anwendungsdatenbank
     retention:
       rule: >-
