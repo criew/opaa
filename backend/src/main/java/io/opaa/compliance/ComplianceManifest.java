@@ -150,15 +150,67 @@ public record ComplianceManifest(
    * A table of the schema with every one of its columns, split by whether it points at a person.
    *
    * @param nonPersonalColumns the remaining columns; absent when every column points at a person
+   * @param person how a row is assigned to a person for the self-disclosure ("Weg zur Person"), or
+   *     why the table is left out of it; mandatory, which {@code ComplianceManifestTest} checks so
+   *     that a gap is reported with the YAML to paste
    */
   public record TableRef(
       @NotBlank String name,
       @NotNull List<@NotBlank String> personalColumns,
-      List<@NotBlank String> nonPersonalColumns) {}
+      List<@NotBlank String> nonPersonalColumns,
+      @Valid PersonPath person) {
+
+    /**
+     * The columns the self-disclosure of a person holds: the personal columns minus those excluded
+     * by {@link PersonPath#excludedColumns()}; none when the table has no path to the person. A new
+     * personal column is therefore part of the disclosure until it is excluded with a reason.
+     */
+    public List<String> disclosedColumns() {
+      if (person == null || !person.reachesPerson()) {
+        return List.of();
+      }
+      Map<String, String> excluded = person.excludedColumnsOrEmpty();
+      return personalColumns.stream().filter(column -> !excluded.containsKey(column)).toList();
+    }
+  }
+
+  /**
+   * How the rows of a table are assigned to a person ("Weg zur Person"): a path by {@code columns},
+   * {@code via} or both (two paths), or {@code excluded}.
+   *
+   * @param columns personal columns of the table that name the person (id, pseudonym)
+   * @param via another table, of this or another data entry, through which a row reaches the
+   *     person; it has a path of its own
+   * @param excluded why the whole table is not part of the self-disclosure, in German
+   * @param excludedColumns column of the table to why it is not part of the self-disclosure, only
+   *     with {@code columns} or {@code via}
+   * @param note what the path does not say by itself, in German
+   */
+  public record PersonPath(
+      List<@NotBlank String> columns,
+      String via,
+      String excluded,
+      Map<@NotBlank String, @NotBlank String> excludedColumns,
+      String note) {
+
+    /** Whether a row reaches the person, through its own columns or another table. */
+    public boolean reachesPerson() {
+      return (columns != null && !columns.isEmpty()) || (via != null && !via.isBlank());
+    }
+
+    /** {@link #excludedColumns()}, empty when absent. */
+    public Map<String, String> excludedColumnsOrEmpty() {
+      return excludedColumns == null ? Map.of() : excludedColumns;
+    }
+  }
 
   /**
    * A category of stored data ("Datum"), spanning the tables that hold it; {@code tables} is empty
-   * for data held outside the database (object storage, logs).
+   * for data held outside the database (object storage, logs). A datum with at least one table
+   * reaching the person is a category of the self-disclosure, named by its {@code id}.
+   *
+   * @param personExcluded why a datum without table is not part of the self-disclosure; only and
+   *     always when {@code tables} is empty
    */
   public record DataEntry(
       @NotBlank String area,
@@ -173,8 +225,15 @@ public record ComplianceManifest(
       @NotEmpty List<@NotNull AccessPath> accessPaths,
       @NotBlank String deletion,
       @NotBlank String evaluations,
-      List<@NotBlank String> notes)
-      implements DataFacts {}
+      List<@NotBlank String> notes,
+      String personExcluded)
+      implements DataFacts {
+
+    /** Whether the datum is a category of the self-disclosure. */
+    public boolean selfDisclosed() {
+      return tables.stream().anyMatch(t -> t.person() != null && t.person().reachesPerson());
+    }
+  }
 
   /**
    * A table without any column pointing at a person, marked as such as a whole; {@code columns}

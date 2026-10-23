@@ -233,6 +233,14 @@ public final class StageRules {
 
   private static Assessment dataFact(String field, Object before, Object after, ListChange list) {
     String name = field.contains("].") ? field.substring(field.indexOf("].") + 2) : field;
+    if (name.startsWith("person.") || name.equals("personExcluded")) {
+      return undecided(
+          List.of(),
+          "Die Zuordnung zur Person für die Selbstauskunft ist neu beschrieben; ob die Auskunft"
+              + " mehr oder weniger umfasst, lässt sich daraus nicht ablesen.",
+          false,
+          false);
+    }
     return switch (name) {
       case "personalReference" -> {
         int from = PERSONAL_REFERENCE_RANK.indexOf(String.valueOf(before));

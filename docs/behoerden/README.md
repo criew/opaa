@@ -52,7 +52,7 @@ Die Faktenblätter entstehen aus dem Fakten-Manifest und beschreiben die Voreins
 
 | Name | Inhalt |
 |---|---|
-| `datenkatalog` | alle gespeicherten Daten mit Zweck, Personenbezug, Speicherort, Frist, Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen; Tabellen ohne Personenbezug |
+| `datenkatalog` | alle gespeicherten Daten mit Zweck, Personenbezug, Speicherort, Frist, Sichtbarkeit, Zugriffsweg, Löschmechanismus, möglichen Auswertungen und Zuordnung zur Person (Weg oder Grund des Ausschlusses von der Selbstauskunft); Tabellen ohne Personenbezug |
 | `protokollereignisse` | jedes Ereignis des revisionssicheren Protokolls mit Auslöser, Feldern des Protokollsatzes und Lesern |
 | `rollensicht` | was jede Systemrolle und Fähigkeit über andere sieht, Matrix Rolle × Datenkategorie |
 | `datenfluesse` | Datenflüsse nach außen, mit einem daraus erzeugten Übersichtsbild |

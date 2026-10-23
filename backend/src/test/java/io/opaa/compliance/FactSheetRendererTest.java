@@ -154,6 +154,31 @@ class FactSheetRendererTest {
             "| `external_access_token_libraries` | `token_id`, `library_id`, `extinguished_at` |");
   }
 
+  @Test
+  void theDataCatalogueNamesThePathToAPersonOfEveryDatum() {
+    String catalogue = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.DATENKATALOG);
+
+    for (ComplianceManifest.DataEntry entry : SHIPPED.data()) {
+      assertThat(section(catalogue, entry.id()))
+          .as(entry.id())
+          .contains("| Zuordnung zur Person |");
+    }
+    assertThat(section(catalogue, "chats"))
+        .contains(
+            "| Zuordnung zur Person | `chats`: über `author_id`; `chat_messages`: über Tabelle"
+                + " `chats` (Aus sources gehen nur");
+    assertThat(section(catalogue, "external-access-tokens"))
+        .contains(
+            "`external_access_tokens`: über `user_id`, ohne `token_prefix` (Bestandteil des"
+                + " Geheimnisses), `token_lookup_hash` (Geheimnis (Prüfwert des Tokens))");
+    assertThat(section(catalogue, "documents"))
+        .contains("`documents`: über `uploaded_by_user_id` und über Tabelle `assets` (");
+    assertThat(section(catalogue, "audit-pseudonyms"))
+        .contains("`audit_actor_pseudonyms`: nicht Teil der Selbstauskunft: Die eigene Kennung");
+    assertThat(section(catalogue, "application-log"))
+        .contains("| Zuordnung zur Person | nicht Teil der Selbstauskunft: Liegt beim Betrieb");
+  }
+
   /** Data held in the operator's log or file store name that store, not the database. */
   @Test
   void theDataCatalogueNamesTheOperatorsStoreForDataOutsideTheDatabase() {

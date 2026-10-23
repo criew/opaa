@@ -9,15 +9,28 @@ data:
         personalColumns: [author_id, title, metadata_filter, created_at, updated_at]
         nonPersonalColumns:
           [id, space_id, organization_id, use_knowledge, status, title_source, import_key]
+        person:
+          columns: [author_id]
       - name: chat_messages
         personalColumns: [content, content_tsv, sources, used_prompt_title, created_at]
         nonPersonalColumns: [id, chat_id, sequence, role, used_prompt_id]
+        person:
+          via: chats
+          excludedColumns:
+            content_tsv: Abgeleiteter Suchindex desselben Inhalts
+          note: >-
+            Aus sources gehen nur Dokumenttitel, Bibliothek und Seite der Fundstellen heraus, nie
+            ihre Textausschnitte (Dokumentinhalt)
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
+        person:
+          via: chats
       - name: chat_personal_marks
         personalColumns: [user_id, pinned_at, archived_at, unarchived_at]
         nonPersonalColumns: [chat_id, organization_id]
+        person:
+          columns: [user_id]
     storage: Anwendungsdatenbank; Inhalte gehen an das Sprachmodell (Datenfluss)
     retention:
       rule: >-

@@ -19,6 +19,7 @@ Schnipsel lässt sich übernehmen, nur Platzhalter in `<…>` sind auszufüllen.
 | geänderter Prompt-Text (auch Log- oder Fehlertext derselben Klasse) | neue `sha256` beim Prompt in `prompts.yaml` |
 | neue Tabelle | unter `tables` eines Datums oder, ganz ohne Personenbezug, unter `nonPersonalTables` |
 | neue Spalte | in `personalColumns` oder `nonPersonalColumns` ihrer Tabelle bzw. in die Spaltenliste unter `nonPersonalTables` |
+| neue Tabelle unter `tables` eines Datums, neues Datum ohne Tabelle | Weg zur Person unter `person` der Tabelle bzw. `personExcluded` am Datum (siehe [Weg zur Person](#weg-zur-person)) |
 | neuer ausgehender Client (`ModularArchitectureTest` verlangt `@DataFlow("<kennung>")` an der Klasse) | `dataFlows` in `outbound.yaml`: `id`, `group` (Gruppe im Übersichtsbild des Faktenblatts), `target`, `data`, `trigger`, `switchOff`, `settings`, `viaOutboundProxy` (ob die Verbindung über den Ausgangsproxy geht; gegen den Code prüfen: über `OutboundProxySelector` laufen nur `http`/`https`, nie `socket://` wie SMB und SMTP, das AWS SDK nur, wo es `proxyFor` bekommt); beide Felder je Eintrag, nie unter `defaults`; eine bestehende Kennung braucht keinen neuen Eintrag |
 | entfernte oder umbenannte Tabelle, Spalte, Konstante | Eintrag entfernen oder umbenennen |
 | neuer `opaa.*`-Schlüssel | Beschreibung und Markierung im Code, bei Datenwirkung ein Eintrag unter `settings` (siehe unten) |
@@ -55,6 +56,44 @@ nonPersonalTables:
 
 Bekommt eine solche Tabelle eine Spalte mit Personenbezug, wandert sie unter die `tables` eines Datums. Eine Tabelle,
 die nicht zu einem bestehenden Datum passt, bekommt ein neues Datum mit allen Pflichtfeldern des Records `DataEntry`.
+
+## Weg zur Person
+
+Die Selbstauskunft gibt einer Person die zu ihr gespeicherten Daten heraus; jede Tabelle unter `tables` sagt deshalb
+unter `person`, wie ein Eintrag einer Person zugeordnet wird, oder warum sie nicht dazugehört:
+
+```yaml
+      - name: chats
+        personalColumns: [author_id, title, metadata_filter, created_at, updated_at]
+        person:
+          columns: [author_id]
+      - name: chat_messages
+        personalColumns: [content, content_tsv, sources, used_prompt_title, created_at]
+        person:
+          via: chats
+          excludedColumns:
+            content_tsv: Abgeleiteter Suchindex desselben Inhalts
+      - name: vector_store
+        personalColumns: [content, metadata]
+        person:
+          excluded: Dokumentinhalt und Einbettungen, keine Daten über die Person
+```
+
+- **`columns`**: personenbezogene Spalten der Tabelle, die die Person bezeichnen (Kennung, Pseudonym).
+- **`via`**: eine Tabelle desselben oder eines anderen Datums mit eigenem Weg, über die ein Eintrag die Person erreicht
+  (`documents` über `assets`, das Eigentum an einer privaten Bibliothek). `columns` und `via` zusammen sind zwei Wege.
+- **`excluded`**: Grund in einem Satz, warum die ganze Tabelle nicht Teil der Selbstauskunft ist; nie zusammen mit
+  einem Weg.
+- **`excludedColumns`**: nur mit einem Weg; Spalte der Tabelle mit Grund, warum sie nicht herausgeht (Geheimnisse,
+  Pseudonymkennungen, Freitext Dritter). Jede andere personenbezogene Spalte ist Teil der Auskunft, auch eine neue.
+- **`note`**: was der Weg nicht selbst sagt, etwa dass ein Pseudonym über die Pseudonymtabelle zugeordnet wird oder
+  eine Spalte nur teilweise herausgeht.
+
+Ein Datum ohne Tabelle (`tables: []`) nennt den Grund am Datum: `personExcluded: <Grund>`. Ein Datum mit mindestens
+einer Tabelle mit Weg ist eine Kategorie der Selbstauskunft, ihre Kennung ist die `id` des Datums. `ComplianceManifestTest`
+scheitert bei einer Tabelle ohne Angabe, bei Weg und Ausschluss zugleich, bei einer Spalte unter `columns`, die nicht
+unter `personalColumns` steht, bei `via` auf eine Tabelle ohne eigenen Weg und bei einer ausgenommenen Spalte, die die
+Tabelle nicht hat. Das Faktenblatt Datenkatalog zeigt die Angabe je Datum als „Zuordnung zur Person“.
 
 ## Zugriffsweg
 

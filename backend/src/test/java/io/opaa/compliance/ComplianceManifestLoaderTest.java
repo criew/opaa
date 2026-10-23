@@ -8,6 +8,7 @@ import io.opaa.compliance.ComplianceManifest.AuditEventEntry;
 import io.opaa.compliance.ComplianceManifest.OutputKind;
 import io.opaa.compliance.ComplianceManifest.PersonalReference;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** The schema check of {@link ComplianceManifestLoader}, against fixtures that break one rule. */
@@ -31,6 +32,10 @@ class ComplianceManifestLoaderTest {
               assertThat(data.tables().getFirst().personalColumns()).contains("actor_ref");
               assertThat(data.tables().getFirst().nonPersonalColumns())
                   .containsExactly("event_id", "recorded_at");
+              assertThat(data.tables().getFirst().person().columns())
+                  .containsExactly("actor_ref", "subject_ref");
+              assertThat(data.tables().getFirst().person().excludedColumns())
+                  .containsExactly(Map.entry("actor_ref", "Pseudonymkennung"));
             });
     assertThat(manifest.nonPersonalTables())
         .singleElement()

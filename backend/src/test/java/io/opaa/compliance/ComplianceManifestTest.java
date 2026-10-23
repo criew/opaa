@@ -24,8 +24,9 @@ import org.junit.jupiter.api.Test;
  * The completeness guard on the manifest delivered with the build (ADR-0052, Entscheidung 7): one
  * entry per value of the protocol, role and capability enums, per table and per column of the
  * Liquibase schema, a current checksum per prompt and one entry per {@link DataFlow} id
- * (Entscheidung 8) - and no entry without its counterpart. A failure names the gap, the area file
- * and the YAML to paste ({@link ManifestCompleteness}).
+ * (Entscheidung 8), a path to a person per table (Entscheidung 12) - and no entry without its
+ * counterpart. A failure names the gap, the area file and the YAML to paste ({@link
+ * ManifestCompleteness}).
  */
 class ComplianceManifestTest {
 
@@ -86,6 +87,19 @@ class ComplianceManifestTest {
 
     assertThat(gaps)
         .withFailMessage(() -> ManifestCompleteness.report("Liquibase schema", gaps))
+        .isEmpty();
+  }
+
+  /**
+   * Every table of a data entry reaches the person or is excluded with a reason, so that the
+   * self-disclosure considers every table with personal data, a future one too.
+   */
+  @Test
+  void everyTableHasAPathToAPersonOrIsExcludedWithAReason() {
+    List<String> gaps = ManifestCompleteness.personPathGaps(MANIFEST);
+
+    assertThat(gaps)
+        .withFailMessage(() -> ManifestCompleteness.report("paths to a person", gaps))
         .isEmpty();
   }
 

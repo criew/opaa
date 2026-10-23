@@ -9,6 +9,9 @@ data:
         personalColumns:
           [subject, issuer, email, display_name, last_login_at, system_role, directory_locked_at]
         nonPersonalColumns: [id, created_at, organization_id]
+        person:
+          columns: [subject, issuer]
+          note: Die Zeile ist das Konto der Person selbst
     storage: Anwendungsdatenbank
     retention:
       rule: >-
@@ -58,6 +61,17 @@ data:
           - created_at
           - updated_at
           - version
+        person:
+          columns: [user_id]
+          excludedColumns:
+            password_hash: >-
+              Geheimnis, nur als Hash gespeichert; seine Ausgabe wäre ein Sicherheitsrisiko
+            failed_login_attempts: >-
+              Nach der erneuten Anmeldung vor der Auskunft stets zurückgesetzt, ohne Aussage
+            lockout_until: >-
+              Nach der erneuten Anmeldung vor der Auskunft stets zurückgesetzt, ohne Aussage
+            session_generation: Technischer Merker ohne Aussage über die Person
+            expiry_reminded_for: Technischer Merker ohne Aussage über die Person
     storage: Anwendungsdatenbank; Passwort nur als Hash
     retention:
       rule: >-
@@ -83,12 +97,26 @@ data:
         personalColumns: [user_id, issued_at, revoked_at, revocation_reason]
         nonPersonalColumns:
           [id, family_id, token_lookup_hash, expires_at, family_expires_at, rotated_to_id]
+        person:
+          columns: [user_id]
+          excludedColumns:
+            family_id: Technische Kennung der Sitzungsfamilie
+            token_lookup_hash: Geheimnis (Prüfwert des Tokens)
+            rotated_to_id: Technische Verkettung innerhalb der Sitzungsfamilie
       - name: local_revoked_tokens
         personalColumns: [user_id]
         nonPersonalColumns: [jti_hash, expires_at, revoked_at]
+        person:
+          excluded: >-
+            Hält nur Prüfwert und Ablauf eines widerrufenen Zugriffstokens; der Widerruf steht schon
+            bei der Sitzung
       - name: local_action_tokens
         personalColumns: [user_id, reason, provider_id]
         nonPersonalColumns: [id, purpose, token_hash, created_at, expires_at, consumed_at]
+        person:
+          columns: [user_id]
+          excludedColumns:
+            token_hash: Geheimnis (Prüfwert des Links)
     storage: Anwendungsdatenbank; Token nur als Hash
     retention:
       rule: >-
@@ -119,6 +147,8 @@ data:
       - name: account_state_history
         personalColumns: [user_id, state, cause, valid_from, valid_to]
         nonPersonalColumns: [id, organization_id, created_at]
+        person:
+          columns: [user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: >-
@@ -153,6 +183,8 @@ data:
           - inactive_days
           - updated_at
           - version
+        person:
+          columns: [updated_by]
       - name: mail_settings
         personalColumns: [updated_by, username, from_address, from_name]
         nonPersonalColumns:
@@ -166,9 +198,18 @@ data:
           - last_failure_at
           - last_failure_reason
           - updated_at
+        person:
+          columns: [updated_by]
+          excludedColumns:
+            username: Gehört dem Dienstkonto des Mailversands, keine Angabe über die Person
+            from_address: Gehört dem Dienstkonto des Mailversands, keine Angabe über die Person
+            from_name: Gehört dem Dienstkonto des Mailversands, keine Angabe über die Person
+            password_ciphertext: Geheimnis (verschlüsseltes Passwort des Mailservers)
       - name: mail_templates
         personalColumns: [updated_by]
         nonPersonalColumns: [id, template_key, locale, subject, body_plain, body_html, updated_at]
+        person:
+          columns: [updated_by]
       - name: external_access_settings
         personalColumns: [updated_by]
         nonPersonalColumns:
@@ -181,6 +222,8 @@ data:
           - server_instructions
           - updated_at
           - version
+        person:
+          columns: [updated_by]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur nächsten Änderung der Einstellung
@@ -200,6 +243,10 @@ data:
         personalColumns:
           [recipient_ciphertext, subject_ciphertext, body_plain_ciphertext, body_html_ciphertext, created_at]
         nonPersonalColumns: [id, template_key, attempts, next_attempt_at, last_failure_reason]
+        person:
+          excluded: >-
+            Zustellpuffer von höchstens rund zwei Stunden; die Mails selbst liegen im Postfach der
+            Person
     storage: Anwendungsdatenbank, Empfänger und Inhalt verschlüsselt mit dem Einstellungsschlüssel
     retention:
       rule: >-
@@ -218,6 +265,8 @@ data:
       - name: notifications
         personalColumns: [recipient_user_id, title, body, read_at]
         nonPersonalColumns: [id, organization_id, type, object_type, object_id, created_at]
+        person:
+          columns: [recipient_user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: >-
@@ -233,6 +282,7 @@ data:
     purpose: Betrieb und Fehlersuche; enthält u. a. einzelne fehlgeschlagene Anmeldungen
     personalReference: IDENTIFIABLE
     tables: []
+    personExcluded: Liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde
     storage: Standardausgabe des Prozesses, abgelegt durch den Betrieb (Container-Log)
     retention:
       rule: Legt der Betrieb fest; OPAA speichert das Log nicht selbst

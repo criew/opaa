@@ -3,6 +3,7 @@ package io.opaa.compliance;
 import io.opaa.compliance.ChangelogSchema.Table;
 import io.opaa.compliance.ComplianceManifest.DataEntry;
 import io.opaa.compliance.ComplianceManifest.NonPersonalTable;
+import io.opaa.compliance.ComplianceManifest.PersonPath;
 import io.opaa.compliance.ComplianceManifest.PromptEntry;
 import io.opaa.compliance.ComplianceManifest.TableRef;
 import java.util.ArrayList;
@@ -170,6 +171,200 @@ final class ManifestCompleteness {
           }
         });
     return gaps;
+  }
+
+  /**
+   * Gaps in the path to a person ("Weg zur Person"): every table of a data entry states a path by
+   * {@code columns}, {@code via} or both, or is {@code excluded}; a named column is a personal one,
+   * a {@code via} ends in a table of the manifest with columns, an excluded column exists in the
+   * table, and a data entry without table says why it is not part of the self-disclosure.
+   */
+  static List<String> personPathGaps(ComplianceManifest manifest) {
+    List<String> gaps = new ArrayList<>();
+    Map<String, TableRef> all = new LinkedHashMap<>();
+    manifest.data().forEach(entry -> entry.tables().forEach(t -> all.putIfAbsent(t.name(), t)));
+    for (DataEntry entry : manifest.data()) {
+      String where = file(entry.area()) + ", data entry '" + entry.id() + "'";
+      boolean reasoned = entry.personExcluded() != null && !entry.personExcluded().isBlank();
+      if (entry.tables().isEmpty() && !reasoned) {
+        gaps.add(
+            "Data entry '"
+                + entry.id()
+                + "' in "
+                + file(entry.area())
+                + " has no table, so nothing in it reaches a person. Add to the entry why it is"
+                + " not part of the self-disclosure:\n"
+                + "    personExcluded: <reason, in German>");
+      }
+      if (!entry.tables().isEmpty() && entry.personExcluded() != null) {
+        gaps.add(
+            "Data entry '"
+                + entry.id()
+                + "' in "
+                + file(entry.area())
+                + " has tables but sets personExcluded. Remove personExcluded and decide per"
+                + " table; a table left out of the self-disclosure says so under person:\n"
+                + "        person:\n"
+                + "          excluded: <reason, in German>");
+      }
+      List<String> siblings = entry.tables().stream().map(TableRef::name).toList();
+      for (TableRef table : entry.tables()) {
+        tablePathGaps(table, siblings, all, where, gaps);
+      }
+    }
+    return gaps;
+  }
+
+  private static void tablePathGaps(
+      TableRef table,
+      List<String> siblings,
+      Map<String, TableRef> all,
+      String where,
+      List<String> gaps) {
+    PersonPath person = table.person();
+    String head = "Table " + table.name() + " in " + where;
+    if (person == null) {
+      gaps.add(head + " has no path to a person. " + pathChoices(table, siblings));
+      return;
+    }
+    boolean byColumns = person.columns() != null && !person.columns().isEmpty();
+    boolean byVia = person.via() != null && !person.via().isBlank();
+    boolean isExcluded = person.excluded() != null && !person.excluded().isBlank();
+    if (isExcluded == (byColumns || byVia)) {
+      gaps.add(
+          head
+              + (isExcluded
+                  ? " states both a path to a person and an exclusion under person; keep one. "
+                  : " states neither a path to a person nor an exclusion under person. ")
+              + pathChoices(table, siblings));
+      return;
+    }
+    if (byColumns) {
+      for (String column : person.columns()) {
+        if (!table.personalColumns().contains(column)) {
+          gaps.add(
+              "Column "
+                  + table.name()
+                  + "."
+                  + column
+                  + " under person.columns in "
+                  + where
+                  + " is no personal column of the table. Name the columns that identify the"
+                  + " person:\n"
+                  + "          columns: [<of "
+                  + String.join(", ", table.personalColumns())
+                  + ">]\n"
+                  + "  or, if '"
+                  + column
+                  + "' names a person, move it into\n"
+                  + "        personalColumns: "
+                  + flow(append(table.personalColumns(), List.of(column))));
+        }
+      }
+    }
+    if (byVia) {
+      String problem = viaProblem(table, all);
+      if (problem != null) {
+        gaps.add(
+            head
+                + " reaches the person via '"
+                + person.via()
+                + "', which "
+                + problem
+                + ". Give that table its own columns, or name a table that has them:\n"
+                + "        person:\n"
+                + "          via: "
+                + tablesWithColumns(siblings, all));
+      }
+    }
+    Map<String, String> excludedColumns = person.excludedColumnsOrEmpty();
+    if (isExcluded && !excludedColumns.isEmpty()) {
+      gaps.add(
+          head
+              + " is excluded as a whole; remove person.excludedColumns, it applies only to a"
+              + " table with columns or via.");
+      return;
+    }
+    for (String column : excludedColumns.keySet()) {
+      if (!table.personalColumns().contains(column) && !nonNull(table).contains(column)) {
+        gaps.add(
+            "Column "
+                + table.name()
+                + "."
+                + column
+                + " under person.excludedColumns in "
+                + where
+                + " is no column of the table. Remove '"
+                + column
+                + "' there, or rename it if the column was renamed.");
+      }
+    }
+  }
+
+  /**
+   * Why {@code table}'s {@code via} does not end in a table with columns, {@code null} when it
+   * does; {@code all} holds every table of the manifest's data entries.
+   */
+  private static String viaProblem(TableRef table, Map<String, TableRef> all) {
+    Set<String> seen = new LinkedHashSet<>(List.of(table.name()));
+    TableRef current = table;
+    while (true) {
+      String via = current.person().via();
+      TableRef next = all.get(via);
+      String prefix = current == table ? "" : "leads to '" + via + "', which ";
+      if (next == null) {
+        return prefix + "is no table of a data entry";
+      }
+      if (!seen.add(via)) {
+        return "leads back to '" + via + "' without reaching columns";
+      }
+      PersonPath path = next.person();
+      if (path == null
+          || (path.excluded() != null && !path.excluded().isBlank())
+          || !path.reachesPerson()) {
+        return prefix + "has no path of its own";
+      }
+      if (path.columns() != null && !path.columns().isEmpty()) {
+        return null;
+      }
+      current = next;
+    }
+  }
+
+  private static String tablesWithColumns(List<String> siblings, Map<String, TableRef> all) {
+    List<String> names =
+        siblings.stream()
+            .map(all::get)
+            .filter(t -> t != null && t.person() != null && t.person().columns() != null)
+            .filter(t -> !t.person().columns().isEmpty())
+            .map(TableRef::name)
+            .toList();
+    return names.isEmpty()
+        ? "<table with columns, of this or another data entry>"
+        : "<one of " + String.join(", ", names) + ", or a table of another data entry>";
+  }
+
+  private static String pathChoices(TableRef table, List<String> siblings) {
+    List<String> others = siblings.stream().filter(n -> !n.equals(table.name())).toList();
+    return "Add under table '"
+        + table.name()
+        + "' either the personal columns that identify the person\n"
+        + "        person:\n"
+        + "          columns: [<of "
+        + String.join(", ", table.personalColumns())
+        + ">]\n"
+        + "  or, when a row reaches the person through another table, that table\n"
+        + "        person:\n"
+        + "          via: <"
+        + (others.isEmpty() ? "" : "one of " + String.join(", ", others) + ", or ")
+        + "a table of another data entry>\n"
+        + "  (columns and via together state two paths) or, when the table is not part of the"
+        + " self-disclosure,\n"
+        + "        person:\n"
+        + "          excluded: <reason, in German>\n"
+        + "  With columns or via, a personal column left out of the self-disclosure goes under\n"
+        + "          excludedColumns:\n"
+        + "            <column>: <reason, in German>";
   }
 
   private static String missingColumns(Table table, List<String> missing, Place place) {
