@@ -84,7 +84,7 @@ data:
       rule: Ohne eigene Löschfrist
       settings: []
     visibility: [SYSTEM_ADMIN]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Mit dem Konto
     evaluations: keine
   - id: diagnostic-context-log
@@ -116,7 +116,7 @@ data:
       rule: Voreinstellung 12 Monate, einstellbar 1 bis 24 Monate
       settings: [diagnostic_context_retention_settings.retention_months]
     visibility: [AUDITOR]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatlicher Retention-Lauf
     evaluations: keine Auswertung je Person
 nonPersonalTables:
