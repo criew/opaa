@@ -25,6 +25,8 @@ const DOCUMENT_PATH = join(here, "..", "..", "..", "demo", "seed", "e2e-data", "
 const DOCUMENT_NAME = "wissensdokument.txt";
 /** A name outside the stack the backend is made to look up; reserved, never resolvable. */
 const PROBE_HOST = "egress-probe.offline-check.example";
+/** The probe name, also with a search domain the host's resolver configuration appends. */
+const isProbe = (name: string) => name === PROBE_HOST || name.startsWith(`${PROBE_HOST}.`);
 
 const baseUrl = process.env.E2E_BASE_URL ?? "http://localhost:13003";
 const egressDnsUrl = process.env.E2E_EGRESS_DNS_URL ?? "http://localhost:18053";
@@ -110,7 +112,7 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
     ).toBeVisible({ timeout: 30_000 });
 
     const seen = await eventually(
-      async () => (await recordedQueries()).some((query) => query.name === PROBE_HOST),
+      async () => (await recordedQueries()).some((query) => isProbe(query.name)),
       15_000,
     );
     expect(seen, `egress-dns hat die Abfrage von ${PROBE_HOST} nicht aufgezeichnet`).toBe(true);
@@ -124,7 +126,7 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
       "/api/v1/admin/compliance/data-collection-disclosure",
       { token: session.token },
     );
-    const queries = (await recordedQueries()).filter((query) => query.name !== PROBE_HOST);
+    const queries = (await recordedQueries()).filter((query) => !isProbe(query.name));
     const result = {
       date: new Date().toISOString(),
       versions: [...new Set(disclosure.instance.instances.map((instance) => instance.version))],
