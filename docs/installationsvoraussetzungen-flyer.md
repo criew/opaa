@@ -107,4 +107,4 @@ Für den Erststart wird die **E-Mail-Adresse des ersten Systemverwalters** benö
 
 ---
 
-*Ausführliche Anleitung: `docs/handbuch/betrieb.md` im Projekt-Repository.*
+*Ausführliche Anleitung: `docs/handbuch/betrieb/README.md` im Projekt-Repository.*

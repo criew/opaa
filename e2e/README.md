@@ -207,8 +207,8 @@ format-pipelines` bleibt als zweite, von der Fenstergröße unabhängige Verteid
 zitatprüfenden Kontos bei, selbst falls eine künftige Änderung das Fenster wieder verengen sollte.
 
 Einordnung dieser vier Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
-Quellenzugangsdaten): [`docs/handbuch/authentifizierung.md`, Abschnitt „Testkonten im
-Überblick"](../docs/handbuch/authentifizierung.md#testkonten-im-überblick).
+Quellenzugangsdaten): [`docs/handbuch/betrieb/authentifizierung.md`, Abschnitt „Testkonten im
+Überblick"](../docs/handbuch/betrieb/authentifizierung.md#testkonten-im-überblick).
 
 ### KI-Stub statt echtem Modell
 
@@ -405,7 +405,7 @@ lassen.
 
 - `tests/connection-profiles.spec.ts` (#2175, Szenarien 1 und 2, Teil von Epic #2147) — Zugänge,
   Freigabe und Profilpflicht über den vollen Stack, mit der Quellart RSS-Feed gegen den
-  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/zugaenge.md`. Die Systemverwaltung legt unter „Administration → Anbindungen → Zugänge“ einen Zugang
+  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/arbeitsmittel/zugaenge.md`. Die Systemverwaltung legt unter „Administration → Anbindungen → Zugänge“ einen Zugang
   „ohne Anmeldung“ an und erteilt einer Gruppe unter „Anlegerechte“ das Recht „Konnektorbibliotheken
   anlegen“ für ihn. Ein Mitglied (`dev-user`) wählt ihn im Assistenten, bekommt die Adresse aus dem
   Zugang, testet die Verbindung, indiziert und findet den Eintrag per `@`-Referenz im Chat;
@@ -425,7 +425,7 @@ lassen.
 
 - `tests/connected-accounts-private-libraries.spec.ts` (#2175, Szenarien 3 bis 5, Teil von Epic
   \#2147) — verbundene Konten und private Bibliotheken über den vollen Stack, gegen die echte
-  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/benutzerverwaltung.md`,
+  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/konten-und-rechte/benutzerverwaltung.md`,
   Abschnitt „Verbundene Konten“, und `private-bibliotheken.md`.
   `dev-user` verbindet unter „Einstellungen → Verbundene Konten“ ihr Nextcloud-Konto mit einem
   App-Passwort — ein falsches wird abgewiesen und nichts gespeichert, das Passwortfeld ist danach
@@ -476,7 +476,7 @@ lassen.
   und löscht die selbst angelegten, damit kein späterer Chat-Test in dieser Suite (insbesondere
   `space-chats.spec.ts`) auf einem hier hinterlassenen Zwischenstand sitzt. Anders als das Issue
   ursprünglich annahm, läuft im Compose-Stack dieser Suite **kein** eigener `ollama`-Dienst (siehe
-  `docs/handbuch/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
+  `docs/handbuch/betrieb/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
   enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
   OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
 

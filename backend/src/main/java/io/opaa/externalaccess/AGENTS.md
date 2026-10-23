@@ -48,7 +48,7 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/fremdzugaenge.md`
+- Handbuch: `docs/handbuch/spaces/fremdzugaenge.md`
 
 ## Tests bei Änderungen
 

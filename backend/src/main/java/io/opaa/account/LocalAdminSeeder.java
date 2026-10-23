@@ -201,7 +201,7 @@ public class LocalAdminSeeder {
       log.info(
           "Notanker-Konto der Systemverwaltung als INVITED angelegt (Bestandsinstallation, kein"
               + " Passwort). Aktivierung bei Bedarf mit {}=force und Neustart, siehe"
-              + " docs/handbuch/authentifizierung.md.",
+              + " docs/handbuch/betrieb/authentifizierung.md.",
           LocalAuthProperties.ADMIN_RESET_VARIABLE);
       return Outcome.SEEDED_INVITED;
     }
@@ -361,7 +361,7 @@ public class LocalAdminSeeder {
         "Kein Notanker-Konto der Systemverwaltung angelegt ({}): Bis es existiert, ist keine"
             + " lokale Anmeldung als Systemverwalter möglich. {} auf ein zustellbares Postfach"
             + " setzen (am besten ein Funktionspostfach der IT) und neu starten - die Anlage wird"
-            + " dann nachgeholt. Siehe docs/handbuch/authentifizierung.md.",
+            + " dann nachgeholt. Siehe docs/handbuch/betrieb/authentifizierung.md.",
         problem,
         INITIAL_ADMIN_EMAIL_VARIABLE);
     return null;

@@ -183,7 +183,7 @@ gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist.
 
 Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
 getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
-[modelle.md](../handbuch/modelle.md#llm-anbieter).
+[modelle.md](../handbuch/betrieb/modelle.md#llm-anbieter).
 
 Für das **Chat-Modell** wird diese Konfiguration mit
 [Stufe 1](#stufe-1-verwaltete-chat-modelle-gebaut) von der Verwaltung in der Anwendung abgelöst; sie

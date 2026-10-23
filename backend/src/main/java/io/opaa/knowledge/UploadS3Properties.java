@@ -106,7 +106,7 @@ public record UploadS3Properties(
               + property
               + " (OPAA_UPLOAD_S3_"
               + property.toUpperCase(Locale.ROOT).replace('-', '_')
-              + "). See docs/handbuch/originalablage.md.");
+              + "). See docs/handbuch/betrieb/originalablage.md.");
     }
   }
 
