@@ -29,15 +29,15 @@ Titel, für wen sie gilt. Bei Mischformen klärt das die Rechtsabteilung.
 | `00-entscheidung/` | Entscheidung der Hausleitung (folgt) |
 | `01-markterkundung/` | Markterkundung (folgt) |
 | `02-pilot-teststellung/` | Pilot und Teststellung (folgt) |
-| [`03-vergabe/`](03-vergabe/) | Vergabe |
-| [`04-datenschutz/`](04-datenschutz/) | Datenschutz |
+| `03-vergabe/` | [Vergabe](03-vergabe/README.md) |
+| `04-datenschutz/` | [Datenschutz](04-datenschutz/README.md) |
 | `05-mitbestimmung/` | Mitbestimmung (folgt) |
-| [`06-informationssicherheit/`](06-informationssicherheit/) | Informationssicherheit, Cyber Resilience Act |
-| [`07-ki-verordnung/`](07-ki-verordnung/) | KI-Verordnung |
-| [`08-nutzung/`](08-nutzung/) | Barrierefreiheit und Nutzungsrichtlinie |
-| [`09-betrieb-update/`](09-betrieb-update/) | Notfall, Wiederherstellung und Updates |
+| `06-informationssicherheit/` | [Informationssicherheit, Cyber Resilience Act](06-informationssicherheit/README.md) |
+| `07-ki-verordnung/` | [KI-Verordnung](07-ki-verordnung/README.md) |
+| `08-nutzung/` | [Barrierefreiheit und Nutzungsrichtlinie](08-nutzung/README.md) |
+| `09-betrieb-update/` | [Notfall, Wiederherstellung und Updates](09-betrieb-update/README.md) |
 
-Jede Vorlage ist gleich aufgebaut: für wen sie gilt, worum es geht, ein Beispiel, was OPAA liefert,
+Jede Vorlage ist gleich aufgebaut: für wen sie gilt, worum es geht, was OPAA liefert,
 welche Aufgaben bei der Behörde liegen und am Ende Arbeitshilfen und Rechtsgrundlagen zum Nachlesen. Oben in jeder
 Datei steht, wann sie zuletzt durchgesehen wurde, auf welchem Rechtsstand sie beruht und dass sie
 nicht rechtlich geprüft ist.

@@ -20,10 +20,6 @@ den Leistungen eines Dienstleisters: Einführung, Betrieb, Pflege, Support, Schu
 (Gruppe L im [Anforderungskatalog](anforderungskatalog.md)). Die Schätzung erstellt die Behörde und
 hält die Herleitung im Vergabevermerk fest.
 
-> **Beispiel.** Ein Landratsamt kommt mit dem Rechenbeispiel auf rund 170.000 € netto. Weil das
-> eigene Rechenzentrum Betrieb und Pflege übernimmt, schreibt es nur Einführung und Schulung aus und
-> prüft die Wertgrenze für Direktaufträge nach Landesrecht.
-
 ## Was OPAA liefert
 
 OPAA kostet kein Lizenzentgelt. Das Rechenbeispiel zeigt den Aufbau; alle Zahlen darin sind

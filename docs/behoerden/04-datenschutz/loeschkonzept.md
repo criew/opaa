@@ -18,11 +18,6 @@ Ein Löschkonzept legt fest, wann welche Daten gelöscht werden, wer das auslös
 nachgewiesen wird. Die Fristen gehören auch ins Verzeichnis von Verarbeitungstätigkeiten. Verantwortlich
 ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 
-> **Beispiel.** Ein Landratsamt übernimmt für OPAA die meisten voreingestellten Fristen, wählt für eine
-> aber einen kürzeren Wert und begründet das mit dem Zweck. Die Wahl stimmt die Projektleitung mit
-> dem Personalrat ab, weil sie auch in die Dienstvereinbarung gehört. Mit dem Kreisarchiv klärt sie,
-> dass Chatverläufe nicht angeboten werden müssen, übernommene Ergebnisse aber in die Akte gehören.
-
 ## Was OPAA liefert
 
 | Angabe im Löschkonzept | Quelle |

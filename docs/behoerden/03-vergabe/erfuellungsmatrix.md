@@ -19,10 +19,6 @@ mit dem OPAA ihn erfüllt. Sie gehört **nicht** in die Leistungsbeschreibung, d
 bleiben muss, sondern in Markterkundung, Teststellung und die Prüfung eines Angebots, das OPAA
 anbietet.
 
-> **Beispiel.** Ein Landratsamt prüft ein Angebot, das OPAA einführen will. Die Vergabestelle öffnet
-> für jede Muss-Anforderung den Nachweis und legt die Faktenblätter der angebotenen Version zur Akte.
-> F-02 ist nur „teilweise“ erfüllt; die Teststellung klärt, ob das für die eigenen Ablagen reicht.
-
 ## Was OPAA liefert
 
 Je Baustein einen Nachweis: Handbuch, Projektunterlage, eine Prüfung in der CI des Projekts oder ein

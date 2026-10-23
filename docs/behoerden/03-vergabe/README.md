@@ -6,10 +6,10 @@ Anforderungen erfüllt, steht getrennt in der Erfüllungsmatrix.
 
 | Dokument | Worum es geht |
 |---|---|
-| [Auftragswertschätzung](auftragswertschaetzung.md) | den Wert des Auftrags schätzen und daraus das Vergabeverfahren ableiten |
-| [Anforderungskatalog](anforderungskatalog.md) | Anforderungen an einen KI-Assistenten zum Übernehmen in die Leistungsbeschreibung |
-| [Zuschlagskriterien](zuschlagskriterien.md) | wie Angebote bewertet werden, einschließlich digitaler Souveränität |
-| [Erfüllungsmatrix](erfuellungsmatrix.md) | wie OPAA jede Anforderung des Katalogs erfüllt, mit Beleg |
-| [EVB-IT](evb-it-hinweise.md) | welcher Mustervertrag der öffentlichen Hand für welche Leistung passt |
-| [Gewährleistung und Haftung](gewaehrleistung-haftung.md) | wer bei quelloffener Software wofür einsteht |
-| [Kein Angebot eingegangen](ohne-angebot.md) | Wege, wenn auf eine Ausschreibung kein Angebot eingeht |
+| [Auftragswertschätzung](auftragswertschaetzung.md) | Auftragswert und Verfahren |
+| [Anforderungskatalog](anforderungskatalog.md) | Anforderungen für die Leistungsbeschreibung |
+| [Zuschlagskriterien](zuschlagskriterien.md) | Bewertung der Angebote |
+| [Erfüllungsmatrix](erfuellungsmatrix.md) | wie OPAA die Anforderungen erfüllt |
+| [EVB-IT](evb-it-hinweise.md) | passender Mustervertrag |
+| [Gewährleistung und Haftung](gewaehrleistung-haftung.md) | wer wofür einsteht |
+| [Kein Angebot eingegangen](ohne-angebot.md) | Vorgehen ohne Angebot |

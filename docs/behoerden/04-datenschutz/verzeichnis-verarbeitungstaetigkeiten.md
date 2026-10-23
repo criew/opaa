@@ -19,11 +19,6 @@ werden, jeweils mit Zweck, Datenarten, Empfängern und Löschfristen. OPAA wird 
 eingetragen. Verantwortlich ist die Behörde; die Vorlage ersetzt nicht ihr Formular, sondern sagt je
 Angabe, woher sie kommt.
 
-> **Beispiel.** Ein Landratsamt trägt OPAA als eine Tätigkeit „Betrieb des KI-Assistenten“ in sein VVT
-> ein. Fast alle Angaben verweisen auf die Faktenblätter der eingesetzten Version, die neben dem
-> Eintrag abgelegt sind. Beim nächsten Update meldet das Update-Paket einen neuen Empfänger; die
-> Projektleitung trägt die neue Version ein und ergänzt nur diese Zeile.
-
 ## Was OPAA liefert
 
 | Angabe im VVT | Woher |

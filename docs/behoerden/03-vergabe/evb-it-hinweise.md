@@ -20,10 +20,6 @@ Open Source als Regelfall behandelt und Regeln zu Software-Stücklisten (SBOM, e
 enthaltenen Softwarebestandteile) und zu Programmständen enthält. Die Behörde verwendet die amtlichen
 Muster in der aktuellen Fassung und füllt sie selbst aus.
 
-> **Beispiel.** Ein Landratsamt vergibt Einführung und Schulung als Dienstleistung, die Pflege als
-> Pflege S. Weil das Projekt nur das jüngste Release mit Korrekturen versorgt, verpflichtet es den
-> Dienstleister, neue Versionen in festen Fristen einzuspielen.
-
 ## Was OPAA liefert
 
 OPAA steht unter der GNU Affero General Public License v3.0 ohne Lizenzentgelt; eine Überlassung der

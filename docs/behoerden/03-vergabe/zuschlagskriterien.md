@@ -19,10 +19,6 @@ Zuschlagskriterien legen fest, wie die Behörde unter den Angeboten, die alle Mu
 Gewichtung stehen vor der Veröffentlichung fest, werden mit den Vergabeunterlagen bekannt gegeben und
 müssen mit dem Auftragsgegenstand zusammenhängen. Verantwortlich ist die Vergabestelle.
 
-> **Beispiel.** Ein Landratsamt gewichtet den Preis mit 50 %, weil der Haushalt knapp ist. Zwei
-> Angebote erfüllen alle Muss-Anforderungen; das teurere gewinnt, weil es ein Exit-Konzept mit festen
-> Fristen zusagt und bei SO1 drei Punkte erhält.
-
 ## Was die Vorlage liefert
 
 Drei Hauptkriterien mit Preisformel und Punkteskala sowie Unterkriterien für Qualität und digitale

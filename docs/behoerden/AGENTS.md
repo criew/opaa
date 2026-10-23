@@ -93,11 +93,10 @@ Jede Vorlage folgt demselben Aufbau, damit man sie schnell durcharbeiten kann. M
 2. **Gilt für:** eine Zeile, für wen die Vorlage passt.
 3. **Einleitung** in zwei bis drei Sätzen: was das ist, wann man es braucht, wer verantwortlich ist.
    Fachbegriffe werden beim ersten Auftreten in einem Halbsatz erklärt.
-4. **Beispiel** als Zitatblock: ein Landratsamt oder Bundesamt in wenigen Sätzen.
-5. **Was OPAA liefert:** Verweise auf Faktenblätter, Handbuch und andere Vorlagen.
-6. **Aufgaben der Behörde:** eine kurze, nummerierte Liste, sachlich statt im Befehlston.
-7. Je nach Vorlage ein Block zum Ausfüllen (**Ergebnis festhalten**) und **Gut zu wissen**.
-8. **Zum Nachlesen:** zuerst Arbeitshilfen, dann die Rechtsgrundlagen als Tabelle.
+4. **Was OPAA liefert:** Verweise auf Faktenblätter, Handbuch und andere Vorlagen.
+5. **Aufgaben der Behörde:** eine kurze, nummerierte Liste, sachlich statt im Befehlston.
+6. Je nach Vorlage ein Block zum Ausfüllen (**Ergebnis festhalten**) und **Gut zu wissen**.
+7. **Zum Nachlesen:** zuerst Arbeitshilfen, dann die Rechtsgrundlagen als Tabelle.
 
 Der Lesetext bis „Zum Nachlesen“ bleibt kurz, als Richtwert 300 bis 500 Wörter. Paragrafen stehen
 nur im Abschnitt „Zum Nachlesen“, nicht im Lesetext. Vorlagen verweisen nicht auf Issues oder Epics.

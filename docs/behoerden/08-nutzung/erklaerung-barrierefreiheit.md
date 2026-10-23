@@ -19,12 +19,6 @@ Behinderungen nutzbar ist, wo es Lücken hat und wie man Barrieren meldet. Die B
 nach dem amtlichen Muster und verantwortet sie. Diese Vorlage liefert die Angaben zum Produkt: was
 geprüft ist, womit, auf welchem Stand und mit welchen Lücken.
 
-> **Beispiel.** Ein Bundesamt stellt OPAA im Intranet bereit. Die Projektleitung nimmt die
-> Mustererklärung der Überwachungsstelle des Bundes, übernimmt Prüfstand und bekannte Einschränkungen
-> aus dieser Vorlage und ergänzt eigene Punkte: das Logo in Hausfarbe und die Anmeldeseite des eigenen
-> Anmeldedienstes. Weil das letzte Audit keine veröffentlichte Version betraf, erklärt sie das Angebot
-> als „teilweise vereinbar“.
-
 ## Was OPAA liefert
 
 - **Prüfmaßstab:** BITV 2.0 bzw. WCAG 2.1, Stufe AA (die verbindlichen Anforderungen an barrierefreie

@@ -21,13 +21,6 @@ birgt. Bei einem KI-Assistenten, der auch Daten über Beschäftigte speichert, i
 Fall. Verantwortlich ist die Behörde; ihre Datenschutzbeauftragte oder ihr Datenschutzbeauftragter
 (DSB) berät und nimmt Stellung.
 
-> **Beispiel.** Ein Landratsamt will OPAA für 300 Beschäftigte einführen. Die Projektleitung sieht in
-> der Muss-Liste der Landesdatenschutzbeauftragten nach: KI-Verfahren stehen darauf, eine DSFA ist
-> also nötig. Die Beschreibung der Verarbeitung füllt sie zum größten Teil aus den Faktenblättern der
-> eingesetzten Version. Die Risikotabelle bespricht sie in einer zweistündigen Runde mit DSB,
-> Informationssicherheit und Personalrat und legt das Ergebnis der Amtsleitung vor. Ein Jahr später
-> meldet das Update-Paket eine neue Auswertung; die Runde prüft nur diese eine Änderung nach.
-
 ## Brauchen wir eine DSFA?
 
 Maßgeblich ist die **Muss-Liste der zuständigen Aufsichtsbehörde**: für Bundesbehörden die Liste der

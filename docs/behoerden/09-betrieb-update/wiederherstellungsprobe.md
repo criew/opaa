@@ -19,12 +19,6 @@ Datenbank, Suchindex und Originale zueinander passen und ob Rechte erhalten blei
 Werte, die das [Notfallkonzept](notfallkonzept.md) festlegt; die Behörde veranlasst sie, der
 Betrieb führt sie durch.
 
-> **Beispiel.** Ein Landratsamt lässt seinen Dienstleister die Probe einmal im Jahr fahren, mit
-> einer Kopie des Bestands auf einem Testsystem. Die Projektleitung bekommt das ausgefüllte
-> Protokoll: Alle Prüfungen bestanden, Wiederherstellung in drei Stunden, verloren ist nur, was
-> nach der Sicherung kam. Sie trägt Datum und Dauer ins Notfallkonzept ein und legt das Protokoll
-> zum Sicherheitskonzept.
-
 ## Was OPAA liefert
 
 - **Das Verfahren** mit Testbestand, Ablauf, zwölf Prüfungen (P1 bis P12) und Messung:

@@ -19,10 +19,6 @@ Vergabeunterlagen, der festlegt, was gekauft wird. Die Bausteine beschreiben ein
 Wissensassistenten für die Dokumente einer Behörde und die Leistungen eines Dienstleisters rund um
 ihn. Verantwortlich sind Fachbereich und Vergabestelle.
 
-> **Beispiel.** Ein Landratsamt übernimmt die Bausteine, trägt seine Ablagen in die eckigen Klammern
-> ein und streicht L-02, weil das eigene Rechenzentrum den Betrieb übernimmt. Warum S-05 ein Muss
-> ist, steht im Vergabevermerk.
-
 ## Was die Vorlage liefert
 
 Bausteine in sieben Gruppen mit Nummer, vorgeschlagener Stufe und verlangtem Nachweis. Die

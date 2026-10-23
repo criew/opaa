@@ -6,6 +6,6 @@ zurückspielen lassen, und wie ein Update bewertet wird. Die technischen Anleitu
 
 | Dokument | Worum es geht |
 |---|---|
-| [Notfallkonzept](notfallkonzept.md) | das Kapitel für OPAA im Notfallkonzept: Ausfälle, Ausfallzeiten, Zuständigkeiten |
-| [Wiederherstellungsprobe](wiederherstellungsprobe.md) | regelmäßig prüfen, ob eine Sicherung vollständig zurückgespielt werden kann |
-| [Update-Vermerk](update-vermerk.md) | festhalten, wie die Behörde ein Update bewertet und entschieden hat; liegt jedem Update-Paket bei |
+| [Notfallkonzept](notfallkonzept.md) | Vorgehen bei Ausfällen |
+| [Wiederherstellungsprobe](wiederherstellungsprobe.md) | Sicherung zurückspielen und prüfen |
+| [Update-Vermerk](update-vermerk.md) | Bewertung eines Updates |

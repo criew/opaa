@@ -20,11 +20,6 @@ bringen; eine Behörde, die OPAA für sich betreibt, trifft er nach der Rechtsre
 nicht. Für sie zählt, welche Pflichten das Projekt und ein Dienstleister haben und was sie in der
 Vergabe fragt. Die Meldepflichten gelten seit dem 11.9.2026, der ganze CRA ab dem 11.12.2027.
 
-> **Beispiel.** Ein Landratsamt beauftragt einen Dienstleister, der OPAA als gepacktes Produkt
-> liefert. In der Vergabe fragt die Projektleitung, wie er die Meldepflichten eines Herstellers
-> erfüllt und wie das Amt von einer Meldung erfährt. Eine Lücke, die die eigene IT später findet,
-> meldet das Amt vertraulich an das Projekt.
-
 ## Die Rollen im Überblick
 
 | Beteiligte | Rolle nach dem CRA | Pflichten im Kern |

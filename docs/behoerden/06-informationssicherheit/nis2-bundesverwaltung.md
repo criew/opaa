@@ -21,11 +21,6 @@ Bundesministerien wenden dafür den IT-Grundschutz an, die übrige Bundesverwalt
 *Mindeststandards* des BSI, verbindliche Vorgaben zu einzelnen Themen wie Protokollierung. Ob und mit
 welchen Pflichten sie erfasst ist, stellt jede Einrichtung selbst fest.
 
-> **Beispiel.** Ein Bundesamt prüft OPAA vor der Einführung. Die Informationssicherheit ordnet es den
-> Mindeststandards zu Protokollierung, TLS und externen Cloud-Diensten zu. Weil das Bundesamt die
-> Modelle im eigenen Haus betreibt, entfällt der Cloud-Standard. Die Fragen zur Lieferkette
-> beantwortet sie aus den Unterlagen des Projekts.
-
 ## Was OPAA liefert
 
 | Vorgabe | Beitrag von OPAA |

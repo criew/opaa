@@ -19,11 +19,6 @@ Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Wid
 ergänzt den Ablauf, den die Behörde für alle Verfahren hat, um das, was für OPAA gilt. Verantwortlich
 ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
 
-> **Beispiel.** Eine Sachbearbeiterin eines Landratsamts fragt, was OPAA über sie gespeichert hat. Die
-> Datenschutzstelle notiert den Eingang, prüft ihre Identität über ihr Anmeldekonto und stellt die
-> Daten anhand des Datenkatalogs zusammen. Ihre Chats sieht die Sachbearbeiterin selbst; ob
-> Protokolleinträge in die Auskunft gehören, klärt die Stelle mit der oder dem DSB.
-
 ## Was OPAA liefert
 
 - Welche Daten zu einer Person entstehen und wie man an sie kommt: {{faktenblatt:datenkatalog}},

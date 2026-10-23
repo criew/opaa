@@ -20,12 +20,6 @@ Partner mit den Daten tun darf. Diese Matrix zeigt, mit wem das beim Einsatz von
 kann. Ob im Einzelfall Auftragsverarbeitung oder eine andere Form der Verantwortung vorliegt,
 bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 
-> **Beispiel.** Ein Landratsamt lässt OPAA vom kommunalen IT-Dienstleister betreiben, die Modelle
-> laufen dort im Rechenzentrum, die Dokumente kommen aus dem eigenen Dateiserver. Ein AVV ist nur mit
-> dem Dienstleister nötig; der Modellbetrieb gehört in denselben Vertrag. Als später eine Bibliothek
-> aus einem Cloud-Speicher dazukommt, prüft die Projektleitung, ob der bestehende Vertrag mit dem
-> Cloud-Anbieter den Abruf durch OPAA abdeckt.
-
 ## Was OPAA liefert
 
 Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}} der

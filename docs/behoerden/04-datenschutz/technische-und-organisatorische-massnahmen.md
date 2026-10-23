@@ -19,11 +19,6 @@ Zugriff geschützt werden. Verantwortlich ist die Behörde, bei Auftragsverarbei
 Dienstleister. Ein Teil der Maßnahmen steckt im Produkt; diese Vorlage trennt, was OPAA mitbringt und
 was der Betrieb selbst leisten muss.
 
-> **Beispiel.** Ein Landratsamt schreibt sein Sicherheitskonzept für OPAA. Die Projektleitung übernimmt
-> die Spalte „OPAA bringt mit“ als Verweis und füllt mit dem IT-Betrieb die Spalte „Betrieb leistet“:
-> verschlüsselte Sicherungen, Anbindung an das Active Directory, Netzregeln für ausgehende
-> Verbindungen. Die Tabelle wird Anlage zum Verzeichnis von Verarbeitungstätigkeiten.
-
 ## Was OPAA liefert
 
 | Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |

@@ -19,12 +19,6 @@ Werte für Wiederherstellungszeit (RTO, wie lange der Dienst höchstens steht) u
 Wiederherstellungspunkt (RPO, wie viel Arbeit höchstens verloren geht) legt sie fest, nicht das
 Projekt.
 
-> **Beispiel.** Ein Bundesamt sichert OPAA jede Nacht und legt einen Wiederherstellungspunkt von 24
-> Stunden und eine Wiederherstellungszeit von vier Stunden fest. Die Projektleitung trägt die
-> Zuständigen ein und lässt den Betrieb eine Wiederherstellungsprobe fahren: Sie dauert mit einer
-> Kopie des Bestands zweieinhalb Stunden. Die Werte sind damit belegt; nach dem nächsten Update mit
-> Vorbereitungsschritten wird die Probe wiederholt.
-
 ## Was OPAA liefert
 
 - **Was zu sichern ist** und in welcher Reihenfolge: [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung),

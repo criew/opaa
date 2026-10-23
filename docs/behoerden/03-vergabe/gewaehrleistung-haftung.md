@@ -19,10 +19,6 @@ Schäden aufkommt. Eine Behörde, die OPAA einsetzt, hat keinen Vertrag mit dem 
 Haftung und feste Reaktionszeiten erhält sie nur von einem Dienstleister, mit dem sie einen Vertrag
 schließt.
 
-> **Beispiel.** Ein Landratsamt meldet einen Fehler, der im Code des Projekts liegt. Der
-> Pflegevertrag verpflichtet den Dienstleister, ihn in der vereinbarten Frist zu beheben. Er tut das
-> und bietet die Korrektur dem Projekt an.
-
 ## Was OPAA liefert
 
 | Thema | Projekt OPAA | Fundstelle |

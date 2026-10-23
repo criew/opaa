@@ -18,12 +18,6 @@ Die KI-Verordnung der EU legt fest, welche Pflichten beim Einsatz eines KI-Syste
 sind, hängt von der Rolle der Behörde und vom Einsatzzweck ab, nicht von der Software allein. Die
 Einstufung trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
 
-> **Beispiel.** Ein Landratsamt führt OPAA als „Wissensassistent des Landratsamts“ ein, um Fragen zu
-> Dienstanweisungen und Fachvorschriften zu beantworten. Weil es das System unter eigenem Namen
-> betreibt, plant es die Pflichten eines Anbieters ein. Der Zweck gehört zu keinem Hochrisiko-Bereich;
-> einen Space mit Bewerbungsunterlagen richtet das Amt bewusst nicht ein. Dass die Antworten von einer
-> KI stammen, erfahren die Beschäftigten bei der Freischaltung und aus der Nutzungsrichtlinie.
-
 ## Was OPAA liefert
 
 - **KI-Funktionen und Modelle** der Version: {{faktenblatt:voreinstellungen#ki-funktionen}}; welche

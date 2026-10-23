@@ -20,11 +20,6 @@ Cloud-Dienstes prüft und ein *Testat* (Prüfbescheinigung) ausstellt. Geprüft 
 Personal und Verfahren des Anbieters, nicht eine Software: **OPAA selbst ist nicht C5-testiert und
 wird es nie.** Das Testat erhält der Anbieter, der OPAA betreibt.
 
-> **Beispiel.** Ein Landratsamt bezieht OPAA vom kommunalen Rechenzentrum. Die Projektleitung fragt
-> nach dem C5-Testat: Fassung, Prüfzeitraum und ob OPAA samt Datenbank und Modelldiensten im
-> Prüfumfang liegt. Sie lässt sich bestätigen, dass das Landratsamt eine eigene Installation erhält,
-> und regelt im Haus, wer in der Anwendung Rechte vergibt.
-
 ## Was OPAA liefert
 
 OPAA ist so gebaut und dokumentiert, dass ein Anbieter die Prüfung mit OPAA im Prüfumfang bestehen

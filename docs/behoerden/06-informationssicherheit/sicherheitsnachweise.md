@@ -17,11 +17,6 @@ Für ihr Sicherheitskonzept, eine Prüfung der Lieferkette oder eine Vergabe bra
 Belege, wie das Projekt OPAA absichert. Diese Seite sagt, wo sie stehen; gepflegt werden sie mit dem
 Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizierung und kein Testat.
 
-> **Beispiel.** Die Informationssicherheit eines Landratsamts arbeitet vor dem Start die
-> Härtungstabelle des Handbuchs durch und vermerkt je Zeile „umgesetzt“ oder „trifft nicht zu, weil
-> …“. Der Betrieb sammelt das Anwendungsprotokoll mit dem vorhandenen Log-Sammler ein und abonniert
-> die Sicherheitsmeldungen des Projekts.
-
 ## Was OPAA liefert
 
 | Nachweis | Was er belegt | Wo er steht |

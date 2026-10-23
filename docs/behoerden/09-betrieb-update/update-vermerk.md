@@ -18,13 +18,6 @@ gehört zu den Unterlagen der Installation, neben Verzeichnis von Verarbeitungst
 Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und Dienstvereinbarung. Grundlage ist das
 Update-Paket, das am GitHub-Release jeder Version hängt und diese Vorlage enthält.
 
-> **Beispiel.** Ein Landratsamt will von Version 1.2 auf 1.3 gehen. Das Delta im Update-Paket
-> schlägt für eine neue Auswertung „Zustimmung“ vor und meldet ein neues Ziel für ausgehende
-> Verbindungen. Die Projektleitung reicht den Vermerk an Datenschutz, Personalrat,
-> Informationssicherheit und Betrieb.
-> Der Personalrat stimmt zu, der Betrieb plant die Sicherung vor dem Update; die Amtsleitung gibt
-> frei, das Update läuft zwei Wochen später.
-
 ## Was OPAA liefert
 
 Das Update-Paket der Zielversion enthält:

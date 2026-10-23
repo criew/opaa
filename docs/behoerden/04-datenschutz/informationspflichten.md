@@ -18,11 +18,6 @@ Wer Daten über Menschen erhebt, muss ihnen sagen, welche Daten das sind, wozu, 
 Rechte sie haben. Diese Vorlage enthält solche Datenschutzhinweise für Beschäftigte, die OPAA nutzen.
 Die Behörde passt sie an und stellt sie vor der ersten Nutzung bereit.
 
-> **Beispiel.** Ein Landratsamt schaltet OPAA für ein erstes Amt frei. Die Projektleitung füllt die
-> Hinweise unten aus, fasst die Faktenblätter in Alltagssprache zusammen und lässt den Text von der
-> oder dem Datenschutzbeauftragten (DSB) prüfen. Die Hinweise stehen im Intranet neben der
-> Nutzungsrichtlinie; die Freischaltungsmail verlinkt beide.
-
 ## Was OPAA liefert
 
 Die Faktenblätter der eingesetzten Version liefern den Stoff für die Abschnitte 3 bis 7 des Textes:

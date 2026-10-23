@@ -20,12 +20,6 @@ Installation, ordnet also jedem ihrer Teile die passenden *Bausteine* zu – Kap
 IT-Grundschutz-Kompendiums mit Anforderungen zu einem Thema wie Datenbanken oder Protokollierung.
 Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt.
 
-> **Beispiel.** Ein Bundesamt führt OPAA ein. Die ISB übernimmt die Teile der Installation in die
-> Strukturanalyse, ordnet die Bausteine aus der Tabelle unten zu und prüft im Grundschutz-Check, was
-> der eigene Betrieb umsetzt. Für die Risiken des Sprachmodells, für die das Kompendium keinen
-> Baustein hat, ergänzt sie eine kurze Risikoanalyse. Bei jedem Update vergleicht sie die
-> Datenflüsse der neuen Version mit denen der alten.
-
 ## Was OPAA liefert
 
 - **Teile einer Installation** (Zielobjekte): Anwendung, Datenbank, Originalablage, Modelldienste,

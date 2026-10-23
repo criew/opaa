@@ -18,10 +18,6 @@ Für quelloffene Software gibt es oft wenige Dienstleister. Geht auf eine Aussch
 wertbares Angebot ein, bleiben mehrere Wege. Welcher im Einzelfall zulässig ist, entscheidet die
 Vergabestelle nach dem für sie geltenden Recht.
 
-> **Beispiel.** Auf die Ausschreibung eines Landratsamts geht kein Angebot ein. Zwei Unternehmen aus
-> der Markterkundung sagen, das Paket aus Einführung, Betrieb und vier Jahren Pflege sei zu groß. Das
-> Amt schreibt in zwei Losen neu aus und erhält Angebote.
-
 ## Was OPAA liefert
 
 Jedem Betreiber stehen dieselben Unterlagen offen: das [Handbuch](../../handbuch/README.md), die

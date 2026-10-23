@@ -18,10 +18,6 @@ Die Nutzungsrichtlinie sagt den Beschäftigten in einfachen Worten, wie sie OPAA
 nicht hineingehört, wie sie Antworten prüfen und wohin Ergebnisse gehören. Die Behörde erlässt sie
 vor der ersten Nutzung; sie dient zugleich als Hinweis, dass die Antworten von einer KI stammen.
 
-> **Beispiel.** Ein Landratsamt übernimmt den Mustertext unten, setzt Namen und Stellen ein und
-> streicht den Abschnitt zu fremden Inhalten, weil es nur eigene Unterlagen anbindet. Der Personalrat
-> sieht den Entwurf vor der Freigabe. Neue Beschäftigte bekommen die Richtlinie mit dem Zugang.
-
 ## Was OPAA liefert
 
 - Welche Daten bei der Nutzung entstehen und wer sie sieht: {{faktenblatt:datenkatalog}},
