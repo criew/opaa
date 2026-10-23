@@ -170,6 +170,49 @@ def test_origin_refuses_a_patch_on_a_branch_without_the_lines_first_release(repo
     assert "v0.4.0" in result.stderr
 
 
+@pytest.mark.parametrize(
+    ("release_tag", "at"),
+    [
+        # Patch of the newest line on main: D carries the unreleased functions of the next line.
+        ("v0.3.1", "D"),
+        ("v0.3.1-rc.1", "D"),
+        # A line without any v0.4.0.
+        ("v0.4.1", "D"),
+        # Patch without code change, but the line has no maintenance branch yet.
+        ("v0.3.1", "C"),
+    ],
+)
+def test_origin_refuses_every_patch_on_main(repo: dict, release_tag: str, at: str) -> None:
+    result = run(ORIGIN, repo["work"], release_tag, repo[at])
+
+    assert result.returncode == 1
+    assert "release/" in result.stderr
+
+
+def test_origin_refuses_a_patch_on_main_below_a_newer_pre_release(repo: dict) -> None:
+    # Only v0.3.0-rc.1 in the history, no final tag above v0.2.1.
+    work = repo["work"]
+    git(work, "tag", "-d", "v0.3.0")
+    tag(work, "v0.3.0-rc.1", repo["C"])
+
+    result = run(ORIGIN, work, "v0.2.1", repo["C"])
+
+    assert result.returncode == 1
+    assert "release/0.2" in result.stderr
+
+
+def test_origin_admits_a_patch_without_code_change_on_the_branch_of_the_line(repo: dict) -> None:
+    # release/0.3 forks at v0.3.0 (C), which therefore lies on main and on the branch.
+    work = repo["work"]
+    git(work, "push", "-q", "origin", f"{repo['C']}:refs/heads/release/0.3")
+    git(work, "fetch", "-q", "origin")
+
+    result = run(ORIGIN, work, "v0.3.1", repo["C"])
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "release/0.3"
+
+
 def test_origin_matches_the_line_exactly(repo: dict) -> None:
     work = repo["work"]
     git(work, "push", "-q", "origin", f"{repo['F']}:refs/heads/release/0.20")
