@@ -31,24 +31,26 @@ Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt
 - **Je Release ein [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket)**, das bei jeder Änderung angibt,
   ob das Sicherheitskonzept fortzuschreiben ist.
 
-Bausteine, zu denen das Produkt beiträgt:
+Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums:
 
-| Baustein | Beitrag von OPAA |
-|---|---|
-| ORP.4 Identitäts- und Berechtigungsmanagement | [Berechtigungen](../../handbuch/berechtigungen.md), {{faktenblatt:rollensicht}} |
-| CON.1 Kryptokonzept | [Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse) |
-| CON.3 Datensicherungskonzept | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung) |
-| CON.6 Löschen und Vernichten | {{faktenblatt:fristen}} |
-| OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates), Update-Paket |
-| OPS.1.1.5 Protokollierung, DER.1 Detektion | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken) |
-| DER.2.1 Sicherheitsvorfälle | Meldeweg in [`SECURITY.md`](../../../SECURITY.md) |
-| DER.4 Notfallmanagement | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md) |
-| APP.3.1 Webanwendungen | [Härtung](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments) |
-| APP.4.3 Relationale Datenbanken | [Eigene PostgreSQL](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
-| APP.4.4 Kubernetes, SYS.1.6 Containerisierung | [Netz und Sicherheit](../../handbuch/kubernetes.md#netz-und-sicherheit), [Laufzeitimage](../../handbuch/betrieb.md#backend-laufzeitimage) |
-| NET.1.1 Netzarchitektur, NET.3.2 Firewall | {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) |
-| OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate)); keine eigene Virenprüfung |
-| OPS.2.2 Cloud-Nutzung, OPS.2.3 Nutzung von Outsourcing | bei externem Modellanbieter oder Betrieb durch einen Dienstleister; Ziele in {{faktenblatt:datenfluesse}} |
+| Schicht | Baustein | Beitrag von OPAA |
+|---|---|---|
+| ORP – Organisation und Personal | ORP.4 Identitäts- und Berechtigungsmanagement | [Berechtigungen](../../handbuch/berechtigungen.md), {{faktenblatt:rollensicht}} |
+| CON – Konzepte und Vorgehensweisen | CON.1 Kryptokonzept | [Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse) |
+| | CON.3 Datensicherungskonzept | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung) |
+| | CON.6 Löschen und Vernichten | {{faktenblatt:fristen}} |
+| OPS – Betrieb | OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates), Update-Paket |
+| | OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate)); keine eigene Virenprüfung |
+| | OPS.1.1.5 Protokollierung | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken) |
+| | OPS.2.2 Cloud-Nutzung, OPS.2.3 Nutzung von Outsourcing | bei externem Modellanbieter oder Betrieb durch einen Dienstleister; Ziele in {{faktenblatt:datenfluesse}} |
+| DER – Detektion und Reaktion | DER.1 Detektion von sicherheitsrelevanten Ereignissen | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken) |
+| | DER.2.1 Behandlung von Sicherheitsvorfällen | Meldeweg in [`SECURITY.md`](../../../SECURITY.md) |
+| | DER.4 Notfallmanagement | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md) |
+| APP – Anwendungen | APP.3.1 Webanwendungen und Webservices | [Härtung](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments) |
+| | APP.4.3 Relationale Datenbanken | [Eigene PostgreSQL](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
+| | APP.4.4 Kubernetes | [Netz und Sicherheit](../../handbuch/kubernetes.md#netz-und-sicherheit) |
+| SYS – IT-Systeme | SYS.1.6 Containerisierung | [Laufzeitimage](../../handbuch/betrieb.md#backend-laufzeitimage) |
+| NET – Netze und Kommunikation | NET.1.1 Netzarchitektur und -design, NET.3.2 Firewall | {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) |
 
 Ein Baustein ist nicht erfüllt, nur weil OPAA seinen Anteil liefert; der Grundschutz-Check bewertet
 das laufende System.
