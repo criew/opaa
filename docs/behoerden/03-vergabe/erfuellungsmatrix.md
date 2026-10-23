@@ -26,10 +26,9 @@ Faktenblatt.
 
 ## Aufgaben der Behörde
 
-1. **Faktenblätter der angebotenen Version** der Prüfung beilegen, statt Werte abzuschreiben.
-2. **Nachweise öffnen,** besonders bei Muss-Anforderungen.
-3. **Lücken klären:** „teilweise“ nennt, was fehlt; das klärt die Teststellung oder der Bieter.
-4. **Zusagen des Bieters prüfen,** wo „Dienstleister“ steht: Dort liefert das Projekt nur die
+1. **Nachweise öffnen,** besonders bei Muss-Anforderungen.
+2. **Lücken klären:** „teilweise“ nennt, was fehlt; das klärt die Teststellung oder der Bieter.
+3. **Zusagen des Bieters prüfen,** wo „Dienstleister“ steht: Dort liefert das Projekt nur die
    Grundlage.
 
 ## F · Fachliche Funktion
@@ -123,11 +122,6 @@ Faktenblatt.
 - „Konfiguration“ in der Spalte „Art“ heißt: eine Einstellung der Installation.
 
 ## Zum Nachlesen
-
-**Arbeitshilfen** für die Projektleitung:
-
-- [Wo die Faktenblätter liegen](../../handbuch/betrieb/nachvollziehbarkeit.md#wo-die-faktenblätter-liegen):
-  Faktenblätter und Update-Paket einer Version finden.
 
 **Rechtsgrundlagen** für die Vergabestelle:
 

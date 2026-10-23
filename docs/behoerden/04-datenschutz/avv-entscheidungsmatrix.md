@@ -22,8 +22,7 @@ bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 
 ## Was OPAA liefert
 
-Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}} der
-eingesetzten Version. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
+Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}}. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
 [Modelle](../../handbuch/betrieb/modelle.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
 [Konnektoren im Überblick](../../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md#3-die-konnektoren-im-überblick).
 

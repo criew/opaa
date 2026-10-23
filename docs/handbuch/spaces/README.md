@@ -270,7 +270,7 @@ Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab,
 im Eingabefeld, vor dem schon geschriebenen Text.
 
 Ein per `/` eingesetzter Prompt gehört zu seinem Space: Wechselt der Chat in einen anderen Space,
-entfällt der Chip „Prompt: <Titel>", der Text bleibt stehen.
+entfällt der Chip „`Prompt: <Titel>`", der Text bleibt stehen.
 
 ## 8. Weiterführende Kapitel
 
