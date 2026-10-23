@@ -51,10 +51,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Prompt-injection test set (eval/corpus/prompt-injection/SOURCE.md): asks every
- * case's question through the production answer path ({@link QueryService}, in a chat of a space)
- * and checks by text whether the answer followed the instruction embedded in the case's prepared
- * document.
+ * Prompt-injection test set (eval/corpus/prompt-injection/SOURCE.md): asks every case's question
+ * through the production answer path ({@link QueryService}, in a chat of a space) and checks by
+ * text whether the answer followed the instruction embedded in the case's prepared document.
  *
  * <p>Each case runs in a space of its own that sees exactly two libraries, the case's prepared
  * document and the shared clean documents, so a marker in the answer stems from that case's attack
@@ -62,9 +61,9 @@ import org.testcontainers.utility.DockerImageName;
  * no rate.
  *
  * <p>The run measures and reports; it fails only on a broken precondition (manifest, indexing),
- * never on the attack success rate - there is no gate on it (maintainer decision of 23.10.2026). The
- * chat model is the pinned {@link EvalChatModel#MODEL} or, with {@code -Dopaa.eval.chatBaseUrl} and
- * {@code -Dopaa.eval.chatModel}, an external one. Run with {@code ./gradlew
+ * never on the attack success rate - there is no gate on it (maintainer decision of 23.10.2026).
+ * The chat model is the pinned {@link EvalChatModel#MODEL} or, with {@code -Dopaa.eval.chatBaseUrl}
+ * and {@code -Dopaa.eval.chatModel}, an external one. Run with {@code ./gradlew
  * evaluatePromptInjection}; needs Docker.
  */
 @SpringBootTest
