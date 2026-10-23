@@ -63,7 +63,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.
 
 | Risiko | Was OPAA mitbringt | Was die Behörde festlegt | Bewertung |
 |---|---|---|---|
-| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ({{faktenblatt:datenkatalog#audit-pseudonyms}}), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | Dienstvereinbarung, Rollenvergabe | [ ] |
+| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | Dienstvereinbarung, Rollenvergabe | [ ] |
 | Fragen und Antworten werden anderen bekannt | Sichtbarkeit und Löschung von Chats ({{faktenblatt:datenkatalog#chats}}) | Regeln der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) | [ ] |
 | Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/berechtigungen.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
 | Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/modelle.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |

@@ -45,7 +45,7 @@ Auskunft aus den genannten Wegen zusammen.
 |---|---|
 | **Auskunft** | Daten nach dem Datenkatalog zusammenstellen |
 | **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/benutzerverwaltung.md)), sonst im Identitätsanbieter |
-| **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
+| **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** | Konto sperren; [Regel der Behörde für Dokumente] |
 | **Datenübertragbarkeit** | [prüfen, ob das Recht greift; dann aus den Wegen der Auskunft] |
 | **Widerspruch** | [Prüfung durch die Behörde] |

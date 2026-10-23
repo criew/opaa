@@ -27,7 +27,7 @@ Datenschutzverletzung.
 
 | Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |
 |---|---|---|
-| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)) | Datenbankzugriff beschränken, damit die Trennung hält |
+| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Pseudonymisierung im Protokoll](../../handbuch/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)) | Datenbankzugriff beschränken, damit die Trennung hält |
 | **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert | TLS am Eingang ([Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |
 | **Vertraulichkeit** | Rechte je Arbeitsmittel und Space ([Berechtigungen](../../handbuch/berechtigungen.md)), Sichtbarkeit je Rolle ({{faktenblatt:rollensicht}}), Anmeldung mit Sperren und Fristen ([Authentifizierung](../../handbuch/authentifizierung.md)) | Rollenkonzept, Anbindung an den Identitätsanbieter, Vier-Augen-Prinzip für die Revision |
 | **Integrität** | Protokoll, an das nur angefügt wird ({{faktenblatt:protokollereignisse}}), Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}) | Datenbankrechte, Weiterleitung an ein Sicherheitsmonitoring |
