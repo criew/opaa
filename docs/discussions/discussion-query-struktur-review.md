@@ -5,7 +5,7 @@ Kommentarbestand und Lücken zwischen Implementierung, Spezifikation und Handbuc
 
 **Status (10.09.2026):** Befundliste zu [#1444](https://github.com/criew/opaa/issues/1444). Analog zum
 Struktur-Review der Indexing-Pipeline (#1316). Quellen: die 52 Klassen des Pakets (6 470 Zeilen), ihre
-Nutzer in `api`, `searchadmin`, `chat` und `eval`, das Handbuchkapitel [Suche](../handbuch/suche.md),
+Nutzer in `api`, `searchadmin`, `chat` und `eval`, das Handbuchkapitel [Suche](../handbuch/spaces/suche.md),
 die Spezifikationen [Retrieval-Algorithmus](../features/retrieval-algorithm.md) und
 [Hybride Suche](../features/hybrid-retrieval.md) sowie eine Bytecode-Abhängigkeitsanalyse
 (`jdeps -verbose:class` auf `build/classes/java/main`, danach Tarjan-SCC; Muster aus dem Kommentar an #1295).
@@ -24,7 +24,7 @@ flächig verletzt; und ein Dutzend Methoden hat keinen produktiven Aufrufer mehr
 Die Tabelle ordnet jede Stufe des Handbuchs den Klassen zu, die sie heute umsetzen. Sie ist zugleich
 die Begründung des Paketschnitts in Abschnitt 4: Was hier in einer Zeile steht, gehört in ein Paket.
 
-| Handbuch [Suche](../handbuch/suche.md) | Spec-Schritt | `RetrievalStageName` | Klassen |
+| Handbuch [Suche](../handbuch/spaces/suche.md) | Spec-Schritt | `RetrievalStageName` | Klassen |
 |---|---|---|---|
 | Abschnitt 2, Suchbereich auflösen (Chat, Rechte, Leiste) | 1 | vor der Pipeline | `QueryService#resolveSearchScope`, `#intersectWithReadable`, `#validatedMetadataFilter`, `#seedConversationMemoryFromPersistedHistory`, `#maybeCheckAgainstPermissionHistory` |
 | Stufe 1 Suchbereich → Rechtefilter | 1 | `SEARCH_SCOPE` | `SearchScopeStage` |

@@ -73,7 +73,7 @@ Mechanismen jeden Serverpfad und jede Zieladresse: die Pfad-Allowlist
 Prüfung läuft bei Anlage und erneut bei jedem Lauf) und die Zieladressprüfung
 (`TargetAddressValidator`, `opaa.indexing.target-validation`, lehnt aufgelöste Adressen im Loopback-,
 Link-Local-, privaten oder nicht routbaren Bereich ab, siehe
-[betrieb.md](../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)). Die Fähigkeit ersetzt keine
+[netz-und-sicherheit.md](../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Die Fähigkeit ersetzt keine
 der beiden Sicherungen und macht keine entbehrlich.
 
 ### 7. Zeitplan je Bibliothek

@@ -45,7 +45,7 @@ Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll.
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/suche.md`; Spezifikation: `docs/features/retrieval-algorithm.md`,
+- Handbuch: `docs/handbuch/spaces/suche.md`; Spezifikation: `docs/features/retrieval-algorithm.md`,
   `docs/features/hybrid-retrieval.md`; Evaluierung: `eval/README.md`
 
 ## Tests bei Änderungen

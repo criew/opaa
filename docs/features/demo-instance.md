@@ -77,7 +77,7 @@ Quelle, die alle lesen. Jede Wissensbibliothek demonstriert einen Konnektortyp u
 Dateiformat. Der Formatvorrat ist durch `SupportedDocumentFormats` gesetzt — `.md`, `.txt`, `.csv`,
 `.pdf`, `.docx`, `.doc`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.html`, `.eml` und `.msg`
 (#1058/#1057/#1059, Mail seit #1189; maßgebliche Liste:
-[`../handbuch/formate/README.md`](../handbuch/formate/README.md)). Die sechs
+[`../handbuch/formate/README.md`](../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md)). Die sechs
 fachlichen Bibliotheken nutzen davon nur eine Teilmenge; die siebte, technische Bibliothek deckt den
 Vorrat vollständig ab (#1519/#1520):
 

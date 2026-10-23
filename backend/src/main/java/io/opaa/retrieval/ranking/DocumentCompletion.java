@@ -16,7 +16,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * Completes a fused chunk selection with sibling chunks of documents it already represents
- * (docs/handbuch/suche.md, Stufe 9): a represented document is topped up to {@link
+ * (docs/handbuch/spaces/suche.md, Stufe 9): a represented document is topped up to {@link
  * QueryProperties#maxChunksPerDocument} chunks from the permission-scoped candidate pool the search
  * stages filled, in preference to a chunk of a different document. A fill target, not a cap: a
  * document holding more is never trimmed to it.

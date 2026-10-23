@@ -124,11 +124,11 @@ jobs:
             pnpm exec playwright install --with-deps chromium
           fi
 
-      # Establishes exactly the state docs/handbuch/docker-compose.md documents for an installation:
-      # the bind-mounted upload directory belongs to uid 65532, the account the backend container
-      # runs under. Without this the suite would run against a world-writable directory instead and
-      # never exercise the ownership an installation actually has. Linux-only and therefore here,
-      # not in the cross-platform runner script, whose own chmod then declines.
+      # Establishes exactly the state docs/handbuch/betrieb/docker-compose.md documents for an
+      # installation: the bind-mounted upload directory belongs to uid 65532, the account the
+      # backend container runs under. Without this the suite would run against a world-writable
+      # directory instead and never exercise the ownership an installation actually has. Linux-only
+      # and therefore here, not in the cross-platform runner script, whose own chmod then declines.
       - name: Eigentümer der Bind-Mounts wie in einer Installation setzen
         run: |
           mkdir -p documents uploads
