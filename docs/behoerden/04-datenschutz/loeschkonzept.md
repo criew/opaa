@@ -64,7 +64,7 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
 
 ## Gut zu wissen
 
-- Die Fristwahl ist meist auch Gegenstand der Dienstvereinbarung mit dem Personalrat.
+- Die Fristwahl ist meist auch Gegenstand der [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) mit dem Personalrat.
 - Gelöschte Daten bleiben in Sicherungen, bis diese ablaufen.
 
 ## Zum Nachlesen

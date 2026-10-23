@@ -146,8 +146,9 @@ mit `§` oder `Art.` in der Quellentabelle steht und jede Zeile dort einen Link 
 trägt, und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel jedes
 Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
 [SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
-`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
-Vorlagen der Phasen 0 bis 3 und die Mitbestimmung.
+`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(gebaut, #2566)**
+Muster-Dienstvereinbarung und Informationsmappe für den Personalrat liegen in
+`docs/behoerden/05-mitbestimmung/`. **(Zielbild)** Die übrigen Vorlagen der Phasen 0 bis 3.
 
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
@@ -586,8 +587,9 @@ beteiligungsrelevant wie eine Produktänderung. Deshalb:
 
 ## Das Modell der Dienstvereinbarung
 
-**(Zielbild, #2566)** Die Muster-Dienstvereinbarung soll nicht bei jedem Release neu verhandelt
-werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
+**(gebaut, #2566)** Die Muster-Dienstvereinbarung
+([`docs/behoerden/05-mitbestimmung/dienstvereinbarung.md`](../behoerden/05-mitbestimmung/dienstvereinbarung.md))
+soll nicht bei jedem Release neu verhandelt werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
 
 **Haupttext.** Zweck; Verbot der Leistungs- und Verhaltenskontrolle mit Verwertungsverbot;
 Auswertungsverbot einschließlich Datenbank- und Protokollzugriff, mit benannten Rollen und
@@ -611,7 +613,12 @@ enthalten — deshalb verweist die Vereinbarung auf die
 [Supportlinien](../releases.md#supportlinien) mit festem Zeitraum: Patch-Releases einer Linie
 bringen keine neue Funktion. Bis die Wartungsbranches gebaut sind (#3017), entsteht ein
 Patch-Release mit Codeänderung nur, solange `main` keine neue Funktion trägt
-([releases.md](../releases.md#versionsnummern)).
+([releases.md](../releases.md#versionsnummern)). Ein **Funktionsupdate** wird erst nach Abschluss
+der Stufe eingespielt, vorher nur, wenn jede Funktion der Stufe Zustimmung in der Installation
+abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Den **Wechsel der
+Linie** beginnt die Beteiligung mit dem Release-Kandidaten und seinem Update-Paket; steht eine
+Sicherheitskorrektur nur in einem Funktionsupdate bereit, ist es eine vorläufige Maßnahme der
+Dienststellenleitung mit derselben Abschaltauflage.
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
 Auswertungen, Datenfluss zum Modellanbieter, Wirkung des Abschaltens einzelner Funktionen, Glossar,
@@ -688,11 +695,10 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
 
 - **R1 „standardmäßig aus“** (abgelehnt, Beschluss 1): Neue Funktionen mit Datenwirkung sollten nach
   dem ersten Konzeptentwurf ausgeschaltet ausgeliefert werden. Stattdessen werden sie in
-  Release-Notizen und Update-Paket sichtbar. Offen bleibt die Folge für die Dienstvereinbarung: Reicht
-  die Abschaltbarkeit in der Konfiguration, wenn ein Release eine beteiligungspflichtige Funktion
-  sofort aktiv mitbringt, oder genügt es, dass die Supportlinien aus ADR-0054 Sicherheitsupdates
-  ohne neue Funktionen liefern und Funktionsreleases planbar zweimal im Jahr kommen? Klärung mit
-  #2566.
+  Release-Notizen und Update-Paket sichtbar. Die Folge für die Dienstvereinbarung ist mit #2566
+  geregelt: Sicherheitsupdates kommen über die Supportlinien aus ADR-0054 ohne neue Funktion, und ein
+  Funktionsupdate wartet, bis zugestimmt oder die Funktion abgeschaltet ist (siehe
+  [Das Modell der Dienstvereinbarung](#das-modell-der-dienstvereinbarung)).
 - **Unternehmen** (zurückgestellt, Beschluss 6): Unterlagen für Betriebsrat (§ 87 Abs. 1 Nr. 6
   BetrVG), ISO 27001, NIS2 für Unternehmen und die CRA-Herstellerrolle folgen in einem eigenen
   Vorhaben.

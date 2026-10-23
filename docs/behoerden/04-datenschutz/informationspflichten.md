@@ -32,7 +32,7 @@ Text verweisen auf sie.
 3. **Eigene Festlegungen eintragen:** Empfänger nach der [AVV-Entscheidungsmatrix](./avv-entscheidungsmatrix.md),
    abweichende Fristen nach dem [Löschkonzept](./loeschkonzept.md), Verweis auf den
    [Ablauf für Betroffenenrechte](./betroffenenrechte.md) und, falls vorhanden, auf die
-   Dienstvereinbarung.
+   [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md).
 4. **Bereitstellen** vor der ersten Nutzung, etwa mit der Freischaltung, im Intranet oder zusammen mit
    der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md).
 5. **Bei jedem Update nachprüfen**, ob sich die Faktenblätter geändert haben.
