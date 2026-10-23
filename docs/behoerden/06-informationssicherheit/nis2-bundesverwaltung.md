@@ -46,7 +46,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
   Ohne Internet geht es mit Modellen im Haus, auf Wunsch über einen
   [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy).
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Betroffenheit und Pflichten feststellen.**
 2. **Vorgaben zuordnen:** IT-Grundschutz oder die geltenden Mindeststandards, mit der Tabelle oben.

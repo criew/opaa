@@ -823,7 +823,7 @@ def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
     """`text` of the package file `path` with every {{faktenblatt:<name>[#<anchor>]}} outside code
     replaced by a link relative to `path` to faktenblaetter/<name>.md. `sheets` holds the text of
     each sheet by name; an unknown sheet or anchor, or anything left that looks like a placeholder,
-    fails the run (docs/behoerden/README.md)."""
+    fails the run (docs/behoerden/AGENTS.md)."""
 
     def link(match: re.Match) -> str:
         name, anchor = match.group(1), match.group(2)

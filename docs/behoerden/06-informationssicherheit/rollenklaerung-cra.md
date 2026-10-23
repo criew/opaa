@@ -55,7 +55,7 @@ Vergabe fragt. Die Meldepflichten gelten seit dem 11.9.2026, der ganze CRA ab de
 Eine Meldung über den vertraulichen [Meldeweg](../../../SECURITY.md#meldeweg) löst die Prüfung aus,
 ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Rolle des Dienstleisters klären** und die Anforderungen in der Vergabe festlegen
    ([Anforderungskatalog](../03-vergabe/anforderungskatalog.md), Baustein L-08). Mögliche Fragen:

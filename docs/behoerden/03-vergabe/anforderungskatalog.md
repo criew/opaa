@@ -29,7 +29,7 @@ Bausteine in sieben Gruppen mit Nummer, vorgeschlagener Stufe und verlangtem Nac
 [Zuschlagskriterien](zuschlagskriterien.md) werten die Kann-Anforderungen; wie ein bestimmtes Produkt
 die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmatrix.md).
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Platzhalter** in eckigen Klammern ausfüllen.
 2. **Stufen prüfen:** **Muss** schließt ein Angebot aus, das die Anforderung nicht erfüllt; **Kann**

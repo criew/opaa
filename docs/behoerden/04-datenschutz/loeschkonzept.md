@@ -38,7 +38,7 @@ ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt
 hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Fristen wählen:** je einstellbarer Frist entscheiden, ob die Voreinstellung bleibt, und die Wahl
    mit dem Zweck begründen (Tabelle unten). Festhalten, in welchen Spaces die Chat-Bereinigung

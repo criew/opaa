@@ -51,7 +51,7 @@ Spalte; die Partner aller drei Antworten zusammen sind die AVV-Partner.
 Mischformen, etwa Betrieb durch einen Dienstleister und Wartung durch einen weiteren, ergeben sich als
 Summe der Antworten.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Einordnen:** je Frage eine Antwort wählen und die Partner ablesen.
 2. **Weitere Ziele prüfen:** jedes Ziel aus dem Faktenblatt Datenflüsse, das die eigene Installation

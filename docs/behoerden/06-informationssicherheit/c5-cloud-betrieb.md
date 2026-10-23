@@ -35,7 +35,7 @@ Notfallvorsorge kann er das [Handbuch](../../handbuch/betrieb.md), die
 {{faktenblatt:datenfluesse}} und {{faktenblatt:rollensicht}}. Kein Prüfbereich ist durch OPAA allein
 erfüllt.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Testat erfragen:** Fassung, Typ 1 oder Typ 2 (Prüfung zu einem Stichtag oder über einen
    Zeitraum), Prüfzeitraum, und ob OPAA ausdrücklich im Prüfumfang liegt.

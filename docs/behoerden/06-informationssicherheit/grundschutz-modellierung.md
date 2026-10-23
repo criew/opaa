@@ -57,7 +57,7 @@ Bausteine, zu denen das Produkt beiträgt:
 Ein Baustein ist nicht erfüllt, nur weil OPAA seinen Anteil liefert; der Grundschutz-Check bewertet
 das laufende System.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Zielobjekte und Schutzbedarf festlegen.** Der Schutzbedarf richtet sich nach den sensibelsten
    angebundenen Dokumenten und Chats.

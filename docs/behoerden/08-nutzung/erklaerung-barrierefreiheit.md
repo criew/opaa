@@ -50,7 +50,7 @@ Version steht aus.
 - 200 % Zoom über eine gleich breite Fensteransicht geprüft, nicht über den Browser-Zoom,
 - Änderungen seit dem Audit nur automatisch geprüft.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Amtliches Muster holen:** für den Bund von der Überwachungsstelle BFIT-Bund, für Landesbehörden
    von der Überwachungsstelle des Landes.

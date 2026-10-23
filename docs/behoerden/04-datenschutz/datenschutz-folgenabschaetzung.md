@@ -52,7 +52,7 @@ liegen im Update-Paket am GitHub-Release der Version.
 Die Faktenblätter zeigen die Voreinstellungen. Was die eigene Installation anders eingestellt hat,
 zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Muss-Liste prüfen** und das Ergebnis festhalten
 2. **Verarbeitung beschreiben:** Einsatzzweck, eingesetzte Version, Betrieb im eigenen Haus oder bei

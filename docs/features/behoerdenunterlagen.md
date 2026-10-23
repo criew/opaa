@@ -301,7 +301,7 @@ Richtigkeit durch Prüfung.
 Die KI-Funktionen stehen mit den System-Prompts im Blatt Voreinstellungen. Erzeugt werden die Blätter
 mit `./gradlew complianceDocs`; der Job `backend-build` der CI legt sie als Artefakt
 `compliance-faktenblaetter` ab. Namen, Kopf und Anker beschreibt
-[`docs/behoerden/README.md`](../behoerden/README.md#faktenblätter), die Sicht des Betriebs das
+[`docs/behoerden/AGENTS.md`](../behoerden/AGENTS.md#faktenblätter), die Sicht des Betriebs das
 Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md). Die Lizenzübersicht
 entsteht getrennt davon in der Lizenzprüfung (#2551) als Artefakte `license-report-backend` und
 `license-report-frontend`.
@@ -351,7 +351,7 @@ Schemaänderung.
 
 Daneben prüft die CI die Vorlagen in `docs/behoerden/`: Kopfvermerk, Haftungshinweis und jeden
 Verweis auf ein Faktenblatt gegen die aus dem Manifest erzeugte Liste gültiger Ziele
-(`.github/fact-sheet-anchors.txt`, [Regeln](../behoerden/README.md#automatische-prüfung)).
+(`.github/fact-sheet-anchors.txt`, [Regeln](../behoerden/AGENTS.md#automatische-prüfung)).
 
 ### Schicht 2: Kennzeichnung datenrelevanter Änderungen am PR
 

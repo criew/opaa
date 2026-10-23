@@ -36,7 +36,7 @@ schließt.
 
 Für die Planung zählt: Gegenüber dem Projekt kann die Behörde keine Ansprüche einplanen.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 Die Lizenz erlaubt ausdrücklich, Support und Gewährleistung gegen Entgelt anzubieten. Im Vertrag mit
 dem Dienstleister legt die Behörde fest:

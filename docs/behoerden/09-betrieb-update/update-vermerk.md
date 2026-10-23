@@ -38,7 +38,7 @@ Das Update-Paket der Zielversion enthält:
   neue Ports und Ziele.
 - `betrieb/antwortqualitaet.md`: die Suchqualität beider Versionen.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Paket prüfen lassen:** Prüfsumme und Herkunft, wie in `LIESMICH.md` beschrieben.
 2. **Übersprungene Versionen beachten:** Das Paket vergleicht nur mit dem vorigen finalen Release.

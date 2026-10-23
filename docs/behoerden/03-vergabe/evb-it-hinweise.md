@@ -30,7 +30,7 @@ OPAA steht unter der GNU Affero General Public License v3.0 ohne Lizenzentgelt; 
 Software ist deshalb meist unnötig. Zu jeder Version gibt es unveränderliche Images, SBOMs und eine
 Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Leistungen zuordnen** nach der Tabelle unten und die amtlichen Muster verwenden.
 2. **Support und Übergabe** im passenden Vertrag regeln, meist Service oder Pflege S (zu prüfen).

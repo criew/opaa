@@ -42,7 +42,7 @@ Die Faktenblätter zeigen die Voreinstellungen ({{faktenblatt:voreinstellungen#e
 zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 im VVT gilt der Wert der Installation.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Zuschnitt wählen:** eine Tätigkeit für ganz OPAA oder je Bereich des Datenkatalogs eine, etwa
    Konten ({{faktenblatt:datenkatalog#bereich-accounts}}), Protokoll

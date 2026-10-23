@@ -29,7 +29,7 @@ vor der ersten Nutzung; sie dient zugleich als Hinweis, dass die Antworten von e
   Protokolle liegen: {{faktenblatt:fristen}}.
 - Antworten mit Fundstellen und Belegprüfung, beschrieben im Handbuch.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Mustertext anpassen:** Angaben in eckigen Klammern **[…]** ersetzen, unpassende Abschnitte
    streichen.

@@ -37,7 +37,7 @@ Betrieb führt sie durch.
   bleiben der eigenen Probe. Die Zeiten dort stammen aus einem kleinen Testbestand und sagen nichts
   über die eigene Installation.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Probe beauftragen**, beim eigenen Betrieb oder beim Dienstleister, und den Turnus festlegen.
 2. **Echtdaten oder Testbestand entscheiden:** Nur eine Kopie des Produktivbestands belegt die

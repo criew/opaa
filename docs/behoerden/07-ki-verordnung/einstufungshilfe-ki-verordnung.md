@@ -35,7 +35,7 @@ Einstufung trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ä
 - **Kein Schulungsmaterial;** das Handbuch zur Suche taugt als Grundlage einer Einweisung.
 - **Updates:** Das Update-Paket weist geänderte Standardmodelle und Prompts aus.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Einsatzzweck schriftlich festlegen:** wofür, für wen, mit welchen Bibliotheken und Spaces. Der
    natürliche Ort ist die [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md).

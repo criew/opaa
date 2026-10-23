@@ -33,7 +33,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 | Sicherheitsupdates | Patch-Releases, veröffentlichte Lücken | [Sicherheitsupdates](../../releases.md#sicherheitsupdates-für-releases), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
 | Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Härtungstabelle abarbeiten:** jede Zeile umgesetzt oder begründet als nicht zutreffend
    vermerkt; das Ergebnis gehört zum [IT-Grundschutz](grundschutz-modellierung.md)-Check.

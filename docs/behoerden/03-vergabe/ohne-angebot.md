@@ -7,7 +7,7 @@ pruefvermerk: nicht rechtlich geprüft
 naechste-durchsicht: 2027-04-23
 ---
 
-# Wenn sich niemand bewirbt
+# Kein Angebot eingegangen
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
@@ -30,12 +30,12 @@ jeder Version und diese Vorlagen. Fragen nimmt das Projekt auf [GitHub](https://
 entgegen, ohne Zusage zu Reaktionszeiten. Es bietet selbst keine Leistungen an und führt kein
 Verzeichnis von Dienstleistern.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Ursache klären,** etwa durch Nachfrage bei den Unternehmen aus der Markterkundung:
    - **Zuschnitt:** Schließt ein Gesamtpaket über mehrere Jahre kleine Anbieter aus?
    - **Muss-Anforderungen:** Engen sie den Bieterkreis stärker ein als nötig
-     ([Anforderungskatalog](anforderungskatalog.md#was-die-behörde-tun-muss))?
+     ([Anforderungskatalog](anforderungskatalog.md#aufgaben-der-behörde))?
    - **Risiko:** Sind Zusagen für fremden Code verlangt, die niemand kalkulieren kann
      ([Gewährleistung und Haftung](gewaehrleistung-haftung.md))?
    - **Wert:** Deckt die [Auftragswertschätzung](auftragswertschaetzung.md) den Aufwand?

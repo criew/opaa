@@ -29,7 +29,7 @@ hält die Herleitung im Vergabevermerk fest.
 OPAA kostet kein Lizenzentgelt. Das Rechenbeispiel zeigt den Aufbau; alle Zahlen darin sind
 **Annahmen**, keine Marktpreise.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Annahmen ersetzen** durch eigene Erfahrungswerte oder Ergebnisse der Markterkundung.
 2. **Gesamte Laufzeit rechnen,** einschließlich aller Verlängerungen und Optionen.
@@ -89,7 +89,7 @@ Behörde Betrieb und Pflege tatsächlich selbst übernimmt.
 
 - [Beitrag der IHK Schwerin zum Vergabebeschleunigungsgesetz](https://www.ihk.de/schwerin/recht/aktuelles/vergabebeschleunigungsgesetz-ab-01-07-2026-7060088):
   was sich zum 1.7.2026 bei den Wertgrenzen geändert hat.
-- [Wenn sich niemand bewirbt](ohne-angebot.md): Wege, wenn kein Angebot eingeht.
+- [Kein Angebot eingegangen](ohne-angebot.md): Wege, wenn kein Angebot eingeht.
 
 **Rechtsgrundlagen** für die Vergabestelle:
 

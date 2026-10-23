@@ -28,7 +28,7 @@ müssen mit dem Auftragsgegenstand zusammenhängen. Verantwortlich ist die Verga
 Drei Hauptkriterien mit Preisformel und Punkteskala sowie Unterkriterien für Qualität und digitale
 Souveränität, also die Fähigkeit der Behörde, ihre IT selbst zu steuern und den Anbieter zu wechseln.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Gewichtung festlegen;** die Werte unten sind ein Beispiel, keine Empfehlung.
 2. **Unterkriterien anpassen** an die Kann-Anforderungen, die im Katalog bleiben.

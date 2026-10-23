@@ -37,7 +37,7 @@ was der Betrieb selbst leisten muss.
 | **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
 | **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../sbom.md)), [CVE-Scanning](../../cve-scanning.md), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Spalte „Betrieb leistet“ füllen** im eigenen Sicherheitskonzept, gemeinsam mit IT-Betrieb oder
    Dienstleister.

@@ -38,7 +38,7 @@ Einen gebündelten Export aller Daten einer Person gibt es noch nicht
 ([Zielbild](../../features/security-and-compliance.md#export-und-auskunft)); die Behörde stellt die
 Auskunft aus den genannten Wegen zusammen.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Eingang festhalten:** Die Antwortfrist läuft ab Eingang.
 2. **Identität prüfen**, bei Beschäftigten etwa über ihr Anmeldekonto.

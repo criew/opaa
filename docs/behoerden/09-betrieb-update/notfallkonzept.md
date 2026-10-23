@@ -45,7 +45,7 @@ Projekt.
 | Modellanbieter | je nach Rolle, Anmeldung und Dokumente bleiben | keiner | [Ausfall eines Modells](../../handbuch/modelle.md#ausfall-eines-modells) |
 | Verdacht auf Kompromittierung | nach Vorfallbehandlung des Hauses | je nach Sicherung | Neuaufbau aus einer Sicherung von vor dem Vorfall, alle Geheimnisse wechseln, Meldepflichten prüfen ([NIS2](../06-informationssicherheit/nis2-bundesverwaltung.md)) |
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Annahmen bestätigen**, unter denen die Tabelle gilt (siehe unten), und eigene ergänzen.
 2. **RTO und RPO festlegen**, abgeleitet aus der maximal tolerierbaren Ausfallzeit der

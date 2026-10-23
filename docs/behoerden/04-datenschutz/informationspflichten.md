@@ -29,7 +29,7 @@ Die Faktenblätter der eingesetzten Version liefern den Stoff für die Abschnitt
 Daten und Zwecke, Protokoll, Sichtbarkeit, Empfänger, Fristen und KI-Funktionen. Die Platzhalter im
 Text verweisen auf sie.
 
-## Was die Behörde tun muss
+## Aufgaben der Behörde
 
 1. **Angaben in eckigen Klammern ergänzen.**
 2. **Faktenblätter übersetzen:** jeden Platzhalter durch eine kurze Zusammenfassung in Alltagssprache
