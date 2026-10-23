@@ -22,7 +22,7 @@ class LinkTargetOriginsTest {
     "http://intranet.stadt.example:80, http://intranet.stadt.example",
     "https://intranet.stadt.example:8443, https://intranet.stadt.example:8443",
     "'  https://www.service.bund.de  ', https://www.service.bund.de",
-    "https://bücher.example, https://xn--bcher-kva.example"
+    "https://XN--STRAE-OQA.example, https://xn--strae-oqa.example"
   })
   void normalizesSchemeHostAndDefaultPort(String input, String expected) {
     assertThat(LinkTargetOrigins.normalize(input)).isEqualTo(expected);
@@ -41,7 +41,13 @@ class LinkTargetOriginsTest {
         "https://*.stadt.example",
         "https://nutzer:geheim@intranet.stadt.example",
         "https://",
-        "https://intra net.example"
+        "https://intra net.example",
+        "https://straße.example",
+        "https://bücher.example",
+        "https://intranet.stadt.example:99999",
+        "https://intranet.stadt.example:0",
+        "https://[::1]",
+        "https://[0:0::1]:8443"
       })
   void refusesEverythingButAnOriginWithAGermanMessage(String input) {
     assertThatThrownBy(() -> LinkTargetOrigins.normalize(input))

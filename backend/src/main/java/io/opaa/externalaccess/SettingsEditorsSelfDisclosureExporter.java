@@ -43,7 +43,8 @@ public class SettingsEditorsSelfDisclosureExporter implements SelfDisclosureExpo
                           "mail_settings.updated_by",
                           "mail_templates.updated_by",
                           "external_access_settings.updated_by",
-                          "self_disclosure_settings.updated_by"),
+                          "self_disclosure_settings.updated_by",
+                          "link_target_settings.updated_by"),
                       Field.of("template", "Vorlage", "mail_templates.template_key"),
                       Field.of("locale", "Sprache der Vorlage", "mail_templates.locale"),
                       Field.of(
@@ -53,7 +54,8 @@ public class SettingsEditorsSelfDisclosureExporter implements SelfDisclosureExpo
                           "mail_settings.updated_at",
                           "mail_templates.updated_at",
                           "external_access_settings.updated_at",
-                          "self_disclosure_settings.updated_at")))));
+                          "self_disclosure_settings.updated_at",
+                          "link_target_settings.updated_at")))));
 
   private static final String SQL =
       "SELECT 'Lokale Konten' AS area, NULL AS template, NULL AS locale, updated_at"
@@ -66,6 +68,8 @@ public class SettingsEditorsSelfDisclosureExporter implements SelfDisclosureExpo
           + " FROM external_access_settings WHERE updated_by = ?"
           + " UNION ALL SELECT 'Selbstauskunft', NULL, NULL, updated_at"
           + " FROM self_disclosure_settings WHERE updated_by = ?"
+          + " UNION ALL SELECT 'Erlaubte Linkziele', NULL, NULL, updated_at"
+          + " FROM link_target_settings WHERE updated_by = ?"
           + " ORDER BY updated_at, area, template, locale";
 
   private final JdbcTemplate jdbc;
@@ -100,6 +104,7 @@ public class SettingsEditorsSelfDisclosureExporter implements SelfDisclosureExpo
                       record.put("updatedAt", updatedAt == null ? null : updatedAt.toInstant());
                       return record;
                     },
+                    person,
                     person,
                     person,
                     person,

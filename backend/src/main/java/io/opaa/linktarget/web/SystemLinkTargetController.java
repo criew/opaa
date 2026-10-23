@@ -5,6 +5,7 @@ import io.opaa.api.dto.LinkTargetsUpdate;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.linktarget.LinkTargetSettingsService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,7 +26,7 @@ public class SystemLinkTargetController {
 
   @PutMapping
   public LinkTargets updateLinkTargets(
-      @Caller CurrentUser caller, @RequestBody LinkTargetsUpdate update) {
+      @Caller CurrentUser caller, @Valid @RequestBody LinkTargetsUpdate update) {
     return LinkTargetResponseMapper.toResponse(
         settings.replace(caller.organizationId(), caller.id(), update.getAllowedOrigins()));
   }

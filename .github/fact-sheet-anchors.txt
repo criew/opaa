@@ -122,6 +122,7 @@ protokollereignisse#library-detached-from-space
 protokollereignisse#library-diagnostics-lock-changed
 protokollereignisse#library-shared-to-space
 protokollereignisse#library-source-updated
+protokollereignisse#link-targets-changed
 protokollereignisse#llm-model-activated
 protokollereignisse#llm-model-changed
 protokollereignisse#llm-model-created
@@ -252,6 +253,7 @@ voreinstellungen#ki-funktion-metadata-extraction
 voreinstellungen#ki-funktion-speech-transcription
 voreinstellungen#ki-funktion-tool-loop-spike
 voreinstellungen#ki-funktionen
+voreinstellungen#link-target-settings-allowed-origins
 voreinstellungen#local-auth-settings-default-expiry-days
 voreinstellungen#local-auth-settings-inactive-days
 voreinstellungen#local-auth-settings-invitation-token-ttl-hours

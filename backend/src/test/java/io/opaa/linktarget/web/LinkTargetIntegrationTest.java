@@ -130,6 +130,21 @@ class LinkTargetIntegrationTest {
     assertThat(events()).isEmpty();
   }
 
+  /** A request without the list never empties it. */
+  @Test
+  void aRequestWithoutTheListIsRefused() throws Exception {
+    for (String body : java.util.List.of("{}", "{\"allowedOrigins\":null}")) {
+      mockMvc
+          .perform(
+              put(WRITE)
+                  .with(dev("dev-admin"))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body))
+          .andExpect(status().isBadRequest());
+    }
+    assertThat(events()).isEmpty();
+  }
+
   /** Another instance writes the same row; this one reads it on the next call, no cache between. */
   @Test
   void aChangeMadeElsewhereIsVisibleOnTheNextRead() throws Exception {

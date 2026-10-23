@@ -1,7 +1,6 @@
 package io.opaa.linktarget;
 
 import io.opaa.common.ValidationException;
-import java.net.IDN;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -12,9 +11,10 @@ import java.util.Set;
 
 /**
  * Validates and normalizes the origins of the allowed link targets: scheme {@code https} or {@code
- * http}, a host and an optional port, nothing else. The host is lower-cased and in ASCII form, a
- * default port is dropped, so two spellings of one origin are one entry. Messages are German, they
- * reach the administration surface.
+ * http}, an ASCII host (an internationalized one in its {@code xn--} form, as the browser's {@code
+ * URL.origin} reports it) and an optional port, nothing else. The host is lower-cased and a default
+ * port is dropped, so two spellings of one origin are one entry. Messages are German, they reach
+ * the administration surface.
  */
 public final class LinkTargetOrigins {
 
@@ -54,10 +54,16 @@ public final class LinkTargetOrigins {
     if (input.contains("*")) {
       throw invalid(input, "Platzhalter wie * sind nicht erlaubt.");
     }
+    if (!input.chars().allMatch(c -> c < 0x80)) {
+      throw invalid(
+          input,
+          "Nur ASCII-Zeichen sind erlaubt; einen internationalisierten Host bitte in der Form"
+              + " xn--… eintragen.");
+    }
     URI uri;
     try {
-      uri = new URI(withAsciiHost(input));
-    } catch (URISyntaxException | IllegalArgumentException e) {
+      uri = new URI(input);
+    } catch (URISyntaxException e) {
       throw invalid(input, "Das ist keine gültige Adresse.");
     }
     String scheme = uri.getScheme() == null ? null : uri.getScheme().toLowerCase(Locale.ROOT);
@@ -77,45 +83,19 @@ public final class LinkTargetOrigins {
       throw invalid(
           input, "Nur Schema, Host und Port sind erlaubt, ohne Pfad, Abfrage oder Anker.");
     }
-    String host;
-    try {
-      host = IDN.toASCII(uri.getHost(), IDN.ALLOW_UNASSIGNED).toLowerCase(Locale.ROOT);
-    } catch (IllegalArgumentException e) {
-      throw invalid(input, "Der Host ist ungültig.");
+    if (uri.getHost().startsWith("[")) {
+      throw invalid(input, "IPv6-Adressen sind als Linkziel nicht erlaubt.");
     }
+    String host = uri.getHost().toLowerCase(Locale.ROOT);
     int port = uri.getPort();
+    if (port == 0 || port > 65535) {
+      throw invalid(input, "Der Port muss zwischen 1 und 65535 liegen.");
+    }
     boolean defaultPort =
         port == -1
             || ("https".equals(scheme) && port == 443)
             || ("http".equals(scheme) && port == 80);
     return scheme + "://" + host + (defaultPort ? "" : ":" + port);
-  }
-
-  /**
-   * {@code input} with an internationalized host in its ASCII form, which {@link URI} requires and
-   * a browser's {@code URL.origin} reports; any other input unchanged.
-   */
-  private static String withAsciiHost(String input) {
-    int start = input.indexOf("://");
-    if (start < 0 || input.chars().allMatch(c -> c < 0x80)) {
-      return input;
-    }
-    int hostStart = start + 3;
-    int end = hostStart;
-    while (end < input.length() && "/?#".indexOf(input.charAt(end)) < 0) {
-      end++;
-    }
-    String authority = input.substring(hostStart, end);
-    if (authority.contains("@") || authority.startsWith("[")) {
-      return input;
-    }
-    int colon = authority.lastIndexOf(':');
-    String host = colon < 0 ? authority : authority.substring(0, colon);
-    String port = colon < 0 ? "" : authority.substring(colon);
-    return input.substring(0, hostStart)
-        + IDN.toASCII(host, IDN.ALLOW_UNASSIGNED)
-        + port
-        + input.substring(end);
   }
 
   private static ValidationException invalid(String input, String reason) {
