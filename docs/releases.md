@@ -392,8 +392,12 @@ Ablauf:
 
    Verglichen wird nach der Regel unter [Update-Paket](#update-paket) mit dem vorigen finalen
    Release, das der Commit enthält; bei einem Patch-Release ist das das vorige Release seiner
-   [Linie](#supportlinien). Das zusätzliche Delta eines LTS-Release zur vorigen LTS-Linie erzeugt
-   das Paket erst mit [#3020](https://github.com/criew/opaa/issues/3020).
+   [Linie](#supportlinien). Ein LTS-Release und seine Kandidaten bekommen zusätzlich das Delta zum
+   jüngsten Release der vorigen LTS-Linie; dessen Tag nennt
+   `python3 .github/scripts/update_package.py lts-previous --tag v0.5.0 --commit "$commit"`, und
+   Delta und Betriebsfolgen dafür entstehen mit demselben Block, `prev` durch dieses Tag ersetzt.
+   Damit ein Kandidat als LTS erkannt wird, steht seine Linie vor dem Tag in der
+   [Liste der Linien](#liste-der-linien).
 5. Den in Schritt 4 begutachteten Commit taggen und das Tag pushen:
 
    ```bash
@@ -411,7 +415,8 @@ Ablauf:
    ([Backport](#backport), Schritt 1; beim ersten Mal vorher die beiden Rulesets oben anlegen) und
    per PR auf `main` die [Liste der Linien](#liste-der-linien)
    nachziehen: die neue Linie eintragen und beim Vorgänger, einer normalen Linie, das Supportende
-   setzen; dazu die Zeile in der Roadmap.
+   setzen; dazu die Zeile in der Roadmap. Eine LTS-Linie steht schon seit ihrem ersten
+   Release-Kandidaten in der Liste (unten).
 
 Von Hand nachbearbeiten muss man die Notizen nur für bekannte Befunde aus Schritt 4: Was ein
 Release von Bestandsinstallationen verlangt, kommt über Schritt 3 aus dem Repository,
@@ -584,10 +589,23 @@ leer. Gibt es kein finales Tag davor (das erste finale Release), vergleicht das 
 Fakten-Manifest (Commit `abc1234`)“, nicht mit der rohen Commit-ID; das gilt für jeden Commit ohne
 Manifest, der als Vergleich angegeben ist. Die Regel trägt auch mehrere
 [Supportlinien](#supportlinien): Ein Patch-Release auf `release/X.Y` enthält die Tags seiner Linie,
-nicht die neuerer Linien, und vergleicht so mit dem vorigen Release seiner Linie. Ein LTS-Release
-bekommt zusätzlich das Delta zum jüngsten Patch-Release der vorigen LTS-Linie
-([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5); das baut
-[#3020](https://github.com/criew/opaa/issues/3020).
+nicht die neuerer Linien, und vergleicht so mit dem vorigen Release seiner Linie.
+
+**Zweiter Vergleich eines LTS-Release.** Ein LTS-Release `vX.Y.0` und seine Kandidaten
+`vX.Y.0-rc.N` vergleichen zusätzlich mit dem jüngsten finalen Release der vorigen LTS-Linie
+([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5): Wer nur LTS-Linien
+betreibt, springt von dort direkt auf das neue LTS. Ob ein Tag ein LTS ist, sagt die
+[Liste der Linien](#liste-der-linien) im getaggten Commit (`kind: "lts"` für `X.Y`); die vorige
+LTS-Linie ist die höchste LTS-Linie darunter, ihr jüngstes finales Tag wird unter allen Tags
+gesucht, denn ihre Patch-Releases liegen auf `release/A.B` und nicht im Verlauf von `main`. Das Paket
+legt diesen Vergleich getrennt ab, in `delta-lts/` und `betrieb-lts/`, und `LIESMICH.md` sagt im
+Abschnitt „Welcher Vergleich für wen“, welcher für wen gilt. Der zweite Lauf von `complianceDelta`
+vergleicht die Manifeste beider Stände unabhängig von ihrer Ahnenreihe; die Liste der als
+datenrelevant gekennzeichneten PRs dazwischen nimmt die Commits, die das neue Release enthält und die
+vorige LTS-Linie nicht, und kann deshalb auch PRs nennen, die als Backport schon in der LTS-Linie
+stecken. Ohne vorige LTS-Linie mit finalem Release, bei einem normalen Release und bei einem
+Patch-Release entfällt der zweite Vergleich, ebenso wenn er auf dasselbe Tag fiele wie der erste.
+`update_package.py lts-previous --tag <tag> --commit <commit>` nennt das Tag.
 
 **Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
 jeder Vorlage unter `vorlagen/`, in `update-vermerk.md` und in jedem Kapitel unter `handbuch/` wird
@@ -866,7 +884,6 @@ gebaut sind:
 | Baustein | Bis dahin | Issue |
 |---|---|---|
 | CVE-Scan aller unterstützten Linien | der Scan prüft nur das jüngste Release ([cve-scanning.md](cve-scanning.md)) | [#3018](https://github.com/criew/opaa/issues/3018) |
-| Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
 
 Bis zum zweiten finalen Release gibt es nur eine Linie; dafür reichen Scan und Renovate wie heute.
 
@@ -924,6 +941,13 @@ unterstützt; danach pflegt Renovate ihren Branch nicht mehr, ohne dass jemand `
   ]
 }
 ```
+
+**Eine LTS-Linie kommt früher in die Liste:** per PR auf `main` vor dem Tag ihres ersten
+Release-Kandidaten, mit `kind: "lts"` und dem Supportende, das mit der Spring-Boot-Version schon
+feststeht, dazu ihre Zeile in der Roadmap. Nur so erkennt das Update-Paket den Kandidaten als LTS
+und legt den [zweiten Vergleich](#update-paket) mit der vorigen LTS-Linie bei, auf dem die Behörde die
+Beteiligung beginnt. Bis zum finalen Release hat die Linie noch keinen Wartungsbranch, den Renovate
+überspringt, und kein finales Release, das der Scan prüfen könnte.
 
 ## Sicherheitsupdates für Releases
 

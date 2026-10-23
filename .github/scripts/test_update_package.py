@@ -1512,7 +1512,7 @@ def test_the_lts_delta_compares_with_the_given_release_in_gradle() -> None:
 def lts_inputs(tmp_path: Path, inputs: dict) -> dict:
     delta = tmp_path / "in" / "delta-lts"
     delta.mkdir()
-    (delta / "manifest-delta.md").write_text("# Delta LTS\n")
+    (delta / "manifest-delta.md").write_bytes(b"# Delta LTS\n")
     (delta / "manifest-delta.json").write_text("{}\n")
     operations = tmp_path / "in" / "betrieb-lts"
     operations.mkdir()
