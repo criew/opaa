@@ -44,15 +44,14 @@ nicht rechtlich geprüft ist.
 
 ## Faktenblätter
 
-Verweise wie {{faktenblatt:datenkatalog}} zeigen auf die Faktenblätter. Das sind Übersichten, die
+Verweise wie `{{faktenblatt:datenkatalog}}` zeigen auf die Faktenblätter. Das sind Übersichten, die
 aus dem Programmcode erzeugt werden: welche Daten gespeichert werden, wer was sieht, was protokolliert
 wird, welche Daten das Haus verlassen, welche Fristen und Voreinstellungen gelten. Weil sie erzeugt
-werden, stimmen sie immer mit der Version überein.
+werden, stimmen sie immer mit der Version überein. Die Vorlagen nennen deshalb keine Werte selbst.
 
-Die Vorlagen nennen deshalb keine Werte selbst. Ein Verweis wie {{faktenblatt:datenkatalog}} steht
-für die Datei `datenkatalog.md` der Version, die die Behörde einsetzt. Diese Dateien liegen im
-[Update-Paket](../releases.md#update-paket): Auf der GitHub-Seite der Version (Releases) die Datei
-`opaa-update-paket-X.Y.Z.tar.gz` herunterladen und entpacken, die Faktenblätter stehen im Ordner
-`faktenblaetter/`.
+Am besten liest man die Vorlagen im [Update-Paket](../releases.md#update-paket) der eingesetzten
+Version: Auf der GitHub-Seite der Version (Releases) die Datei `opaa-update-paket-X.Y.Z.tar.gz`
+herunterladen und entpacken. Im Ordner `vorlagen/` liegen dort alle Vorlagen, und jeder Verweis ist
+ein Link auf das passende Faktenblatt unter `faktenblaetter/`.
 
 Wer Vorlagen schreibt oder ändert, findet die Regeln in [AGENTS.md](AGENTS.md).
