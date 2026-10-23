@@ -90,7 +90,12 @@ data:
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
       settings: [audit_retention_settings.retention_months]
-    visibility: [AUDITOR]
+    visibility:
+      - AUDITOR
+      - >-
+        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen oder
+        Kontoobjekt ist, ohne Pseudonyme und Begründungen, andere Beteiligte als „andere Person“
+        oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
