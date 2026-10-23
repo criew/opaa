@@ -110,7 +110,7 @@ Zugriffsregeln laut GitHub-Dokumentation („Dependency caching reference“, Ab
 | Lauf | darf lesen | darf schreiben |
 |---|---|---|
 | `push`, `schedule`, `workflow_dispatch` auf `main` | Cache von `main` | Cache von `main` |
-| `push` auf einen Wartungsbranch `release/X.Y` (nur `ci.yml`) | Cache des Branches, `main` | Cache des Branches; lesen dürfen ihn nur er selbst und PRs gegen ihn |
+| `push` auf einen Wartungsbranch `release/X.Y` (`ci.yml`) und manueller E2E-Lauf dort (`gh workflow run e2e.yml --ref release/X.Y`, schreibt `type=gha`) | Cache des Branches, `main` | Cache des Branches; lesen dürfen ihn nur er selbst und PRs gegen ihn, kein Release-Tag |
 | `pull_request`, auch aus einem Fork | eigener Merge-Ref, Basis-Branch, `main` | nur den eigenen Merge-Ref; sichtbar nur für erneute Läufe desselben PRs |
 | `pull_request_target`, `issue_comment`, `workflow_run` auf `main` (hier `cla.yml`) | Cache von `main` | nichts, solange der Workflow kein schreibendes `cache-mode` setzt; keiner tut das |
 | Release-Tag `vX.Y.Z` | eigener Tag, `main` | eigener Tag; kein anderer Tag sieht ihn |

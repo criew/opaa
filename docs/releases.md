@@ -137,6 +137,12 @@ Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
 - der getaggte Commit weder auf `main` liegt noch auf dem Wartungsbranch genau der Linie des Tags
   (`v0.2.1` auf `release/0.2` ja, `v0.3.1` auf `release/0.2` nein; Prüfung in
   `.github/scripts/release_origin.sh`),
+- der getaggte Commit schon ein höheres finales Release enthält, bei einem Vorab-Release auch das
+  finale Release derselben Version: `v0.2.1` auf einem Commit von `main`, der `v0.3.0` enthält,
+  brächte die Funktionen von 0.3 in die Linie 0.2,
+- auf `release/X.Y` ein Tag `vX.Y.0` (auch als Vorab-Tag) gesetzt wird, denn eine Linie eröffnet
+  nur `main`, oder der Commit `vX.Y.0` nicht enthält, der Branch also nicht vom Tag der Linie
+  abzweigt,
 - `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
@@ -307,7 +313,7 @@ Schutzregel (*Settings → Branches*) dieselben Prüfungen verlangt. Beide legt 
 | Ruleset | Regeln | Ausnahme (*Bypass list*) |
 |---|---|---|
 | `release-branches-create` | *Restrict creations* | Repository-Rollen *Admin* und *Maintain* |
-| `release-branches` | *Restrict deletions*; *Block force pushes*; *Require a pull request before merging* mit *Required approvals* 1 und *Require conversation resolution before merging*; *Require status checks to pass* mit `backend`, `backend-integration`, `frontend`, `changes` (Workflow CI) und `check` (Workflow Datenwirkung), Quelle *GitHub Actions*, ohne *Require branches to be up to date* | Repository-Rolle *Admin*, wie bei `main` (dort *Do not allow bypassing the above settings* aus) |
+| `release-branches` | *Restrict deletions*; *Block force pushes*; *Require a pull request before merging* mit *Required approvals* 1 und *Require conversation resolution before merging*; *Require status checks to pass* mit `backend`, `backend-integration`, `frontend`, `changes` (Workflow CI) und `check` (Workflow Datenwirkung), Quelle *GitHub Actions*, ohne *Require branches to be up to date*, mit *Do not require status checks on creation* (der Commit von `vX.Y.0` trägt keinen Check `check`, der nur bei PRs läuft) | Repository-Rolle *Admin*, wie bei `main` (dort *Do not allow bypassing the above settings* aus) |
 
 Ein Wartungsbranch entsteht damit nur durch einen Maintainer, und jede Änderung darauf kommt per PR
 mit denselben Required Checks wie auf `main`; `ci.yml` und `data-impact.yml` laufen dafür auch bei
@@ -329,14 +335,22 @@ Ablauf:
    keine Datei.
 4. Den Stand aus Behördensicht lesen lassen. Das Update-Paket entsteht erst im Lauf des Tags;
    vorher werden deshalb sein Delta und die Faktenblätter lokal erzeugt, auf dem Commit, der das
-   Tag bekommt, und gegen denselben Vorgänger wie das Paket (Beispiel `v0.3.0`; bei einem
-   Patch-Release ohne Codeänderung ist `commit` der Commit des vorigen Release, bei einem
-   Backport `origin/release/X.Y` statt `origin/main`):
+   Tag bekommt, und gegen denselben Vorgänger wie das Paket. Welcher Commit das ist, hängt von der
+   Art des Release ab; das Beispiel zeigt ein Funktionsrelease `v0.3.0`:
+
+   | Release | `commit` |
+   |---|---|
+   | Funktionsrelease `vX.Y.0` und seine Kandidaten | `origin/main` |
+   | Patch-Release mit Codeänderung (Backport) | `origin/release/X.Y`, nie `origin/main` |
+   | Patch-Release ohne Codeänderung | der Commit des vorigen Release der Linie |
+
+   Ein Patch-Release auf einem Commit von `main`, der schon eine neuere Linie enthält, lehnt der
+   Workflow ab (siehe [Schutzregeln](#schutzregeln-im-workflow)).
 
    ```bash
    git fetch origin --tags
    if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow origin; fi
-   commit=$(git rev-parse origin/main)
+   commit=$(git rev-parse origin/main)   # Patch-Release: siehe Tabelle oben
    git switch --detach "$commit"
    prev=$(python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit "$commit") \
      || { echo "Vorgänger nicht bestimmbar" >&2; exit 1; }
