@@ -194,8 +194,22 @@ def inputs(tmp_path: Path) -> dict:
     operations.mkdir()
     for name in update_package.OPERATIONS_FILES:
         (operations / name).write_text(f"# {name}\n")
+    sboms = {}
+    for name in ("backend", "frontend"):
+        sboms[name] = tmp_path / "in" / f"{name}.cdx.json"
+        sboms[name].write_text(cyclonedx(f"pkg:npm/{name}-dependency@1.0.0"), encoding="utf-8")
     return dict(fact_sheets=sheets, delta=delta, operations=operations, licenses=licenses,
-                templates=templates)
+                sboms=sboms, templates=templates)
+
+
+def cyclonedx(*purls: str, **fields) -> str:
+    """A CycloneDX BOM as a generator writes it, with its own serial number and time of the run."""
+    bom = {"bomFormat": "CycloneDX", "specVersion": "1.6",
+           "serialNumber": "urn:uuid:00000000-0000-4000-8000-000000000000", "version": 1,
+           "metadata": {"timestamp": "2099-01-01T00:00:00Z"},
+           "components": [{"type": "library", "name": purl, "purl": purl} for purl in purls]}
+    bom.update(fields)
+    return json.dumps(bom)
 
 
 def put_template(inputs: dict, path: str, text: str) -> None:
@@ -231,6 +245,8 @@ def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Pa
         "opaa-update-paket-1.2.3/faktenblaetter/fristen.md",
         "opaa-update-paket-1.2.3/lizenzen/lizenzen-backend.md",
         "opaa-update-paket-1.2.3/lizenzen/lizenzen-frontend.md",
+        "opaa-update-paket-1.2.3/sbom/opaa-backend-1.2.3.cdx.json",
+        "opaa-update-paket-1.2.3/sbom/opaa-frontend-1.2.3.cdx.json",
         "opaa-update-paket-1.2.3/update-vermerk.md",
         "opaa-update-paket-1.2.3/vorlagen/09-betrieb-update/update-vermerk.md",
         "opaa-update-paket-1.2.3/vorlagen/README.md",
@@ -242,8 +258,9 @@ def test_the_checksum_files_match_the_package(tmp_path: Path, inputs: dict) -> N
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     sums = read(archive, "opaa-update-paket-1.2.3/SHA256SUMS").decode().splitlines()
-    assert len(sums) == 14
+    assert len(sums) == 16
     assert any(line.endswith("  vorlagen/04-datenschutz/loeschkonzept.md") for line in sums)
+    assert any(line.endswith("  sbom/opaa-frontend-1.2.3.cdx.json") for line in sums)
     for line in sums:
         digest, path = line.split("  ")
         assert hashlib.sha256(read(archive, f"opaa-update-paket-1.2.3/{path}")).hexdigest() == digest
@@ -276,6 +293,7 @@ def test_the_readme_names_version_previous_release_and_the_verification(tmp_path
     assert "Probelauf" not in text
     assert "| `betrieb/betriebsfolgen.md` |" in text
     assert "| `betrieb/antwortqualitaet.md` |" in text
+    assert "| `sbom/` |" in text
     assert "update_package.py operations --from <älteres Tag> --to v1.2.3" in text
     assert "Betriebsfolgen (Bruch" not in text
 
@@ -607,9 +625,11 @@ def test_operations_name_a_comparison_without_manifest_readably(interval: dict) 
     assert f"| Kennzahl | {readable} | v1.2.3 |" in files["antwortqualitaet.md"]
 
 
-@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations"])
+@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations", "sbom"])
 def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing: str) -> None:
-    if missing == "operations":
+    if missing == "sbom":
+        inputs["sboms"]["frontend"].unlink()
+    elif missing == "operations":
         (inputs["operations"] / "antwortqualitaet.md").unlink()
     elif missing == "delta":
         (inputs["delta"] / "manifest-delta.json").unlink()
@@ -624,6 +644,67 @@ def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing:
         update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
 
+def sbom(archive: Path, name: str) -> dict:
+    return json.loads(read(archive, f"opaa-update-paket-1.2.3/sbom/{name}-1.2.3.cdx.json"))
+
+
+def test_the_sboms_of_backend_and_frontend_lie_in_the_package_and_beside_it(
+        tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    for name in ("backend", "frontend"):
+        packaged = read(archive, f"opaa-update-paket-1.2.3/sbom/opaa-{name}-1.2.3.cdx.json")
+        assert (tmp_path / "out" / f"opaa-{name}-1.2.3.cdx.json").read_bytes() == packaged
+        assert sbom(archive, f"opaa-{name}")["components"][0]["purl"] == f"pkg:npm/{name}-dependency@1.0.0"
+    assert sorted(p.name for p in (tmp_path / "out").iterdir()) == [
+        "opaa-backend-1.2.3.cdx.json", "opaa-frontend-1.2.3.cdx.json",
+        "opaa-update-paket-1.2.3.tar.gz", "opaa-update-paket-1.2.3.tar.gz.sha256"]
+
+
+def test_an_sbom_carries_the_commit_time_and_a_serial_number_of_its_release(
+        tmp_path: Path, inputs: dict) -> None:
+    first = update_package.assemble(release(), out=tmp_path / "first", **inputs)
+    for path in inputs["sboms"].values():
+        path.write_text(cyclonedx(f"pkg:npm/{path.name.split('.')[0]}-dependency@1.0.0",
+                                  serialNumber="urn:uuid:11111111-1111-4111-8111-111111111111"))
+    second = update_package.assemble(release(), out=tmp_path / "second", **inputs)
+    other = update_package.assemble(release(commit="c" * 40), out=tmp_path / "other", **inputs)
+
+    assert first.read_bytes() == second.read_bytes()
+    backend, frontend = sbom(first, "opaa-backend"), sbom(first, "opaa-frontend")
+    assert backend["metadata"]["timestamp"] == "2026-09-21T14:13:20Z"
+    assert re.fullmatch(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+                        backend["serialNumber"])
+    assert backend["serialNumber"] != frontend["serialNumber"]
+    assert sbom(other, "opaa-backend")["serialNumber"] != backend["serialNumber"]
+
+
+@pytest.mark.parametrize("content", [
+    "not json",
+    json.dumps({"bomFormat": "SPDX", "components": [{"name": "x"}]}),
+    cyclonedx(),
+])
+def test_an_sbom_that_is_no_cyclonedx_bom_with_components_fails_the_package(
+        tmp_path: Path, inputs: dict, content: str) -> None:
+    inputs["sboms"]["backend"].write_text(content, encoding="utf-8")
+
+    with pytest.raises(update_package.PackageError, match="backend"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def test_the_frontend_sbom_of_a_release_is_generated_like_the_one_of_main(tmp_path: Path) -> None:
+    """sbom.yml writes the SBOM of main; a release must not differ in tool, version or scope."""
+    workflow = (HERE.parent / "workflows" / "sbom.yml").read_text(encoding="utf-8")
+    main = re.search(r"run: pnpm dlx (@cyclonedx/cdxgen@\S+ .*)$", workflow, re.M).group(1).split()
+    release_command = update_package.frontend_sbom_command(tmp_path / "bom.json")
+
+    assert release_command[:2] == ["pnpm", "dlx"]
+    output = release_command.index("-o")
+    assert release_command[output + 1] == str(tmp_path / "bom.json")
+    assert release_command[2:output] + release_command[output + 2:] == main[:main.index("-o")] + main[main.index("-o") + 2:]
+    assert "--required-only" in release_command
+
+
 def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path) -> None:
     notes = subprocess.run(
         ["bash", str(RELEASE_NOTES), "criew/opaa", "v1.2.4"],
@@ -633,6 +714,7 @@ def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path)
 
     assert f"`{update_package.PREFIX}1.2.4.tar.gz`" in notes
     assert f"gh attestation verify {update_package.PREFIX}1.2.4.tar.gz --repo criew/opaa" in notes
+    assert "`opaa-backend-1.2.4.cdx.json`" in notes and "`opaa-frontend-1.2.4.cdx.json`" in notes
     assert "./gradlew complianceDelta -PfromRef=" in notes
 
 
@@ -684,7 +766,8 @@ def test_publication_waits_for_the_package_and_the_release_carries_it() -> None:
     assert "needs.update-package.result" in job("publish")
     attestation = job("update-package-attestation")
     assert permissions(attestation) == ["id-token: write", "attestations: write"]
-    assert "subject-path:" in attestation
+    subjects = attestation[attestation.index("subject-path:"):]
+    assert "update-package/*.tar.gz" in subjects and "update-package/*.cdx.json" in subjects
     release_job = job("release")
     assert "persist-credentials: false" in release_job
     assert "GH_TOKEN: ${{ github.token }}" in release_job
