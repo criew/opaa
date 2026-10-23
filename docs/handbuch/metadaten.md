@@ -602,10 +602,10 @@ abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; a
   nach dem Wiedereinschalten je Bibliothek über „Kernfelder nachrüsten" und danach, wo der
   Indexstatus Dokumente mit veraltetem Kontextpräfix meldet, den Kontextpräfix-Nachlauf.
 
-## 14. Gebaut, aber nicht abgenommen
+## 14. Güte der modellgestützten Ermittlung
 
-**Die modellgestützte Ermittlung der Dokumentart ist gebaut und arbeitet — abgenommen ist sie
-nicht.** Eine handausgewertete Stichprobe über 100 Dokumente der Demo-Instanz (05.09.2026,
+**Die modellgestützte Ermittlung der Dokumentart ist abgenommen (23.10.2026); ihre Güte hängt am
+Vokabular des Bestands.** Eine handausgewertete Stichprobe über 100 Dokumente der Demo-Instanz (05.09.2026,
 `eval/reports/metadata-extraction-sample-2026-09-05.md`) hat gemessen: Von 49 modellbefüllten Werten
 waren **46 falsch** (93,9 %), während die **regelbasiert** ermittelte Dokumentart auf derselben
 Stichprobe fehlerfrei blieb (0 von 23). Fehlerfrei ist damit die Dokumentart, nicht die

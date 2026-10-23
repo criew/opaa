@@ -49,7 +49,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | F-07 | Bietet eine dokumentierte Programmierschnittstelle und eine Anbindung für KI-Assistenten über ein offenes Protokoll (z. B. Model Context Protocol), beide abschaltbar. | Kann | Schnittstellenbeschreibung |
 | F-08 | Sucht semantisch (nach Bedeutung) und nach Stichworten und kombiniert beide; Gewichtung und Verfahren sind konfigurierbar. | Muss | Beschreibung der Suche und ihrer Einstellungen |
 | F-09 | Ermöglicht eine Neubewertung der Treffer durch ein eigenes Modell (Reranking), das sich im eigenen Haus betreiben lässt. | Muss | Beschreibung |
-| F-10 | Ermittelt beim Aufnehmen Metadaten aus den Dokumenten, etwa Titel, Datum und Dokumentart, und nutzt sie als Filter in der Suche. | Muss | Beschreibung, Vorführung in der Teststellung |
+| F-10 | Ermittelt beim Aufnehmen Metadaten aus den Dokumenten, etwa Titel, Datum und Dokumentart, und nutzt sie als Filter in der Suche. | Kann | Beschreibung, Vorführung in der Teststellung |
 
 ## M · Modelle und Datenflüsse
 
