@@ -51,15 +51,28 @@ HSTS setzt der Container nicht; das gehört an den äußeren Proxy.
 Ein präpariertes Dokument kann das Chat-Modell dazu bringen, einen Link auszugeben, in dessen
 Adresse Inhalte aus Dokumenten oder dem Gesprächsverlauf stecken. Ein Klick darauf genügt, und die
 Inhalte liegen beim fremden Server. Die **erlaubten Linkziele** begrenzen das: Ein Link in einer
-Antwort ist nur zur eigenen Adresse der Anwendung und zu den eingetragenen Zielen klickbar, so
-bleiben Links ins Intranet oder auf ein Fachportal nutzbar.
+Antwort oder in der Dokumentvorschau ist nur zur eigenen Adresse der Anwendung und zu den
+eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachportal nutzbar.
+
+- **Was die Person sieht:** Ein Link zu einem anderen Ziel erscheint als Text, hinter dem Linktext
+  steht die vollständige Adresse in Klammern, damit kein Linktext ein Ziel verbirgt. Dasselbe gilt
+  für `mailto:` und jedes andere Schema. Verglichen wird der Ursprung genau: Eine Subdomain oder
+  eine längere Domain mit demselben Anfang ist ein anderes Ziel, ebenso `http` statt `https`.
+- **Bilder** lädt die Oberfläche in Antworten und Vorschau nie, auch nicht von der eigenen Adresse;
+  an ihrer Stelle steht „[Bild: …]“ mit der Adresse. Unabhängig davon blockiert die
+  `Content-Security-Policy` fremde Bilder.
+- **Bedienung:** Verwaltung › Anbindungen › Einstellungen, Abschnitt „Erlaubte Linkziele“. Jedes
+  Hinzufügen und Entfernen speichert die ganze Liste sofort; eine abgewiesene Eingabe zeigt die
+  Meldung und bleibt im Feld stehen.
 
 - **Vorgabe:** leer. Dann ist nur die eigene Adresse der Anwendung klickbar.
 - **Format:** je Eintrag ein Ursprung aus Schema, Host und optional Port, etwa
   `https://intranet.stadt.example` oder `https://portal.stadt.example:8443`. Erlaubt sind nur `https`
   und `http`; Pfad, Abfrage, Anker, Platzhalter wie `*` und Anmeldedaten in der Adresse werden mit
-  einer Meldung abgewiesen. Der Host wird kleingeschrieben und der Standardport weggelassen, doppelte
-  Einträge fallen zusammen. Die Zahl der Einträge ist begrenzt (höchstens 50).
+  einer Meldung abgewiesen, ebenso IPv6-Adressen und Ports außerhalb 1 bis 65535. Ein Host mit
+  Umlauten wird in seiner `xn--`-Form eingetragen, so wie der Browser ihn meldet; Eingaben mit
+  anderen als ASCII-Zeichen werden abgewiesen. Der Host wird kleingeschrieben und der Standardport
+  weggelassen, doppelte Einträge fallen zusammen. Die Zahl der Einträge ist begrenzt (höchstens 50).
 - **Wer:** Lesen darf jede angemeldete Person, weil die Oberfläche die Liste zum Darstellen braucht;
   ändern nur die Systemverwaltung.
 - Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
