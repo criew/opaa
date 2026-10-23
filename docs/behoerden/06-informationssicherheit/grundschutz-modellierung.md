@@ -47,18 +47,42 @@ Bausteine, zu denen das Produkt beiträgt:
 | APP.4.3 Relationale Datenbanken | [Eigene PostgreSQL](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
 | APP.4.4 Kubernetes, SYS.1.6 Containerisierung | [Netz und Sicherheit](../../handbuch/kubernetes.md#netz-und-sicherheit), [Laufzeitimage](../../handbuch/betrieb.md#backend-laufzeitimage) |
 | NET.1.1 Netzarchitektur, NET.3.2 Firewall | {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) |
+| OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate)); keine eigene Virenprüfung |
+| OPS.2.2 Cloud-Nutzung, OPS.2.3 Nutzung von Outsourcing | bei externem Modellanbieter oder Betrieb durch einen Dienstleister; Ziele in {{faktenblatt:datenfluesse}} |
 
 Ein Baustein ist nicht erfüllt, nur weil OPAA seinen Anteil liefert; der Grundschutz-Check bewertet
 das laufende System.
 
+## Vorschlag zum Schutzbedarf
+
+Der Schutzbedarf wird je Schutzziel festgelegt und von den Daten auf die Systeme vererbt. Für einen
+typischen Einsatz als Wissensassistent:
+
+| Schutzziel | Vorschlag | Begründung |
+|---|---|---|
+| Vertraulichkeit | hoch | folgt den sensibelsten angebundenen Dokumenten; Chats zeigen, wer was gefragt hat |
+| Integrität | normal bis hoch | falsche oder veränderte Antworten können in Entscheidungen einfließen |
+| Verfügbarkeit | normal | Hilfsmittel, kein zeitkritisches Fachverfahren; die Arbeit geht ohne OPAA weiter |
+
+Ab „hoch“ verlangt der IT-Grundschutz zusätzlich eine Risikoanalyse.
+
+## KI-Risiken
+
+Für KI-Risiken gibt es keinen Baustein; sie gehören in die Risikoanalyse.
+
+| Risiko | Was OPAA mitbringt | Was die Behörde festlegt |
+|---|---|---|
+| Falsche oder erfundene Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/suche.md#7-belege-prüfen-und-fundstellen-bilden)) | Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
+| Prompt-Injection: in Dokumenten versteckte Anweisungen an das Modell | keine eigene Erkennung | nur geprüfte Quellen anbinden, Schreibrechte an Quellen begrenzen |
+| Abfluss von Inhalten an einen Modellanbieter | Modelle im Haus betreibbar, Ziele in {{faktenblatt:datenfluesse}} | Wahl des Anbieters, Vertrag, Netzregeln |
+| Antworten aus Dokumenten ohne Leserecht | Suche nur in Dokumenten, die die Person lesen darf ([Berechtigungen](../../handbuch/berechtigungen.md)) | Rechtevergabe je Bibliothek |
+
 ## Aufgaben der Behörde
 
-1. **Zielobjekte und Schutzbedarf festlegen.** Der Schutzbedarf richtet sich nach den sensibelsten
-   angebundenen Dokumenten und Chats.
+1. **Zielobjekte und Schutzbedarf festlegen**, etwa nach dem Vorschlag oben.
 2. **Bausteine zuordnen** und den Anteil des Betriebs im Grundschutz-Check prüfen, etwa jede Zeile
    der Härtungstabelle im Handbuch.
-3. **KI-Risiken ergänzend analysieren:** falsche Antworten, Prompt-Injection (in Dokumenten versteckte
-   Anweisungen an das Modell) und der Abfluss von Inhalten an einen Modellanbieter.
+3. **Risikoanalyse durchführen**, mindestens für die KI-Risiken oben.
 4. **Bei jedem Update fortschreiben:** Release-Notizen und Update-Paket lesen, ein neues Ziel in den
    Datenflüssen als neue Verbindung aufnehmen, vorher sichern.
 
