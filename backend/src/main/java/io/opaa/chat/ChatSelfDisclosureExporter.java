@@ -76,7 +76,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                       Field.of(
                           "prompt",
                           "Verwendeter Prompt",
-                          "chat_messages." + ChatMessage.USED_PROMPT_TITLE_COLUMN),
+                          "chat_messages." + ChatMessage.TITLE_OF_USED_COLUMN),
                       Field.of("createdAt", "Zeitpunkt", "chat_messages.created_at"),
                       Field.of(
                           "sources",
