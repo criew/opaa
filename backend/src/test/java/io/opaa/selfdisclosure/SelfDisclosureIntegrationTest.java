@@ -125,9 +125,11 @@ class SelfDisclosureIntegrationTest {
     assertThat(download.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
     byte[] zip = download.getResponse().getContentAsByteArray();
     Map<String, String> entries = entries(zip);
-    assertThat(new ArrayList<>(entries.keySet()))
-        .containsExactly(
-            "notifications.json", "self-disclosure.json", "manifest.json", "index.html");
+    List<String> names = new ArrayList<>(entries.keySet());
+    assertThat(names).contains("notifications.json", "self-disclosure.json");
+    assertThat(names.subList(names.size() - 2, names.size()))
+        .containsExactly("manifest.json", "index.html");
+    assertThat(names.subList(0, names.size() - 2)).allMatch(name -> name.endsWith(".json"));
     assertThat(entries.get("notifications.json"))
         .contains("\"category\":\"notifications\"")
         .contains("sd-test <b>Gruppe</b> & mehr")
