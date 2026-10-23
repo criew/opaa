@@ -17,9 +17,9 @@ für sie gilt Landesrecht, die Seite kann ihnen als Orientierung dienen.
 NIS2 ist eine EU-Richtlinie zur Cybersicherheit; Deutschland hat sie mit einem Gesetz umgesetzt, das
 seit dem 6.12.2025 gilt. Einrichtungen der Bundesverwaltung gelten danach als *besonders wichtige
 Einrichtungen* mit Pflichten zu Risikomanagement, Lieferkette und Meldung von Vorfällen.
-Bundesministerien wenden dafür den IT-Grundschutz an, die übrige Bundesverwaltung die
-*Mindeststandards* des BSI, verbindliche Vorgaben zu einzelnen Themen wie Protokollierung. Ob und mit
-welchen Pflichten sie erfasst ist, stellt jede Einrichtung selbst fest.
+Ihre Mindestanforderungen ergeben sich aus dem IT-Grundschutz und den *Mindeststandards* des BSI,
+verbindlichen Vorgaben zu einzelnen Themen wie Protokollierung. Ob und mit welchen Pflichten sie
+erfasst ist, stellt jede Einrichtung selbst fest.
 
 ## Was OPAA liefert
 
@@ -44,7 +44,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 ## Aufgaben der Behörde
 
 1. **Betroffenheit und Pflichten feststellen.**
-2. **Vorgaben zuordnen:** IT-Grundschutz oder die geltenden Mindeststandards, mit der Tabelle oben.
+2. **Vorgaben zuordnen:** IT-Grundschutz und die geltenden Mindeststandards, mit der Tabelle oben.
 3. **Lieferkette bewerten:** OPAA und, falls vorhanden, Dienstleister und Modellanbieter.
 4. **Erhebliche Sicherheitsvorfälle an das BSI melden.** Die Protokolle liefern Anhaltspunkte; die
    Bewertung trifft die Einrichtung.
@@ -63,5 +63,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 | Worum es geht | Fundstelle |
 |---|---|
 | NIS2-Umsetzungs- und Cybersicherheitsstärkungsgesetz (NIS2UmsuCG), gilt seit 6.12.2025 | [BGBl. I 2025 Nr. 301](https://www.recht.bund.de/bgbl/1/2025/301/VO.html) |
-| Bundesverwaltung als besonders wichtige Einrichtungen; Grundschutz für Ministerien, Mindeststandards für die übrige Bundesverwaltung; Länder und Kommunen nicht erfasst | Fachbeitrag [Heuking](https://www.heuking.de/de/news-events/newsletter-fachbeitraege/artikel/ab-jetzt-gilts-nis2-umsetzungsgesetz-in-kraft.html); gegen das BSI-Gesetz in der Fassung des NIS2UmsuCG zu prüfen |
+| Bundesverwaltung als besonders wichtige Einrichtungen | [§ 29 Abs. 1 und 2 BSIG](https://www.gesetze-im-internet.de/bsig_2025/__29.html) |
+| Mindestanforderungen aus IT-Grundschutz und Mindeststandards | [§ 44 Abs. 1 BSIG](https://www.gesetze-im-internet.de/bsig_2025/__44.html) |
+| Behörden der Länder und Kommunen nicht erfasst | [§ 28 Abs. 8 BSIG](https://www.gesetze-im-internet.de/bsig_2025/__28.html) |
 | Sicherheit der Lieferkette als Risikomanagementmaßnahme | [Richtlinie (EU) 2022/2555](https://eur-lex.europa.eu/eli/dir/2022/2555/oj/deu), Artikel zu prüfen |

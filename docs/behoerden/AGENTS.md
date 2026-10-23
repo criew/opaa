@@ -166,6 +166,9 @@ wird es verlinkt. Die Vorlage ergänzt nur, was für OPAA spezifisch ist.
 
 Fundstellen aus Fachblogs, Kanzlei-Beiträgen oder Pressemitteilungen sind vor der Übernahme in eine
 Vorlage gegen den Normtext zu prüfen. Das Datum dieser Prüfung steht im Feld `rechtsstand`.
+Als Fundstelle stehen nur amtliche Quellen (Normtexte, Veröffentlichungen von Bund, Ländern und
+EU); Fachbeiträge, Kanzlei- und Beraterseiten dienen höchstens der Recherche und werden nicht
+verlinkt.
 
 ### Rechtsangaben mit Fundstelle
 

@@ -72,8 +72,8 @@ Geprüft am:            [ ]        durch: [ ]
 
 - Die Transparenzpflichten gelten seit August 2026, die Hochrisiko-Pflichten für Behördenbereiche ab
   Dezember 2027.
-- Aussagen zur Änderungsverordnung von 2026 (Digital-Omnibus) stammen teils aus Fachbeiträgen, nicht
-  aus dem geprüften Normtext; vor der Übernahme im Amtsblatt nachlesen.
+- Die Angaben zur Änderungsverordnung von 2026 (Digital-Omnibus) folgen der konsolidierten Fassung
+  im KI-VO-Explorer der EU-Kommission; maßgeblich ist der Wortlaut im Amtsblatt.
 - Die Pflichten des Modellanbieters liegen außerhalb dieser Hilfe.
 
 ## Zum Nachlesen
@@ -95,8 +95,8 @@ Geprüft am:            [ ]        durch: [ ]
 | Hochrisiko-Bereiche und Ausnahmen | Anhang III, Art. 6 Abs. 3 KI-VO |
 | Behörde wird Anbieter durch hochriskanten Einsatz | Art. 25 Abs. 1 lit. c KI-VO |
 | Transparenzpflichten (Hinweis, Kennzeichnung, Veröffentlichung, Form) | Art. 50 Abs. 1, 2, 4 und 5 KI-VO |
-| KI-Kompetenz, Neufassung durch den Digital-Omnibus | Art. 4 KI-VO; [buzer.de](https://www.buzer.de/4_KI-VO.htm), [KPMG](https://kpmg.com/at/de/insights/2026/07/digital-omnibus-on-ai.html) (Fachbeitrag) |
-| Geltungsbeginn von Art. 4, Art. 5 und Art. 50 | Art. 113 KI-VO; [mbkanzlei](https://mbkanzlei.digital/blog/digital-omnibus-ki-vo-was-verschoben-wurde/) (Fachbeitrag) |
+| KI-Kompetenz, Neufassung durch den Digital-Omnibus | [Art. 4 KI-VO](https://ai-act-service-desk.ec.europa.eu/de/ai-act/article-4) (konsolidiert) |
+| Geltungsbeginn von Art. 4, Art. 5 und Art. 50 | [Art. 113 KI-VO](https://ai-act-service-desk.ec.europa.eu/de/ai-act/article-113) (konsolidiert) |
 | Änderungsverordnung (Digital-Omnibus) | [VO (EU) 2026/1744](https://eur-lex.europa.eu/eli/reg/2026/1744/oj/deu) |
-| Übergangsfrist Kennzeichnung bis 2.12.2026, nur Anbieter von Altsystemen | [mbkanzlei](https://mbkanzlei.digital/blog/digital-omnibus-ki-vo-was-verschoben-wurde/) (Fachbeitrag) |
-| Hochrisiko-Pflichten ab 2.12.2027 (Anhang III) bzw. 2.8.2028 (Anhang I) | [KPMG](https://kpmg.com/at/de/insights/2026/07/digital-omnibus-on-ai.html), [scheja](https://scheja-partners.de/insights/trends-and-takeaways/digital-omnibus-zur-ki-verordnung-mehr-zeit-fuer-hochrisiko-ki/) (Fachbeitrag) |
+| Übergangsfrist Kennzeichnung bis 2.12.2026, nur Anbieter von Altsystemen | [Art. 111 Abs. 4 KI-VO](https://ai-act-service-desk.ec.europa.eu/de/ai-act/article-111) (konsolidiert) |
+| Hochrisiko-Pflichten ab 2.12.2027 (Anhang III) bzw. 2.8.2028 (Anhang I) | [Art. 113 lit. c KI-VO](https://ai-act-service-desk.ec.europa.eu/de/ai-act/article-113) (konsolidiert) |

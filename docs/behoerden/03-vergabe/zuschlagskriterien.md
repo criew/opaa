@@ -81,13 +81,13 @@ Punkte = Höchstpunktzahl × niedrigster Preis ÷ Preis des Angebots.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Bericht zum Kriterienkatalog C3A](https://vergabeblog.de/2026-04-30/bsi-veroeffentlicht-c3a-neuer-massstab-fuer-digitale-souveraenitaet-in-der-cloud-beschaffung/)
-  im vergabeblog (30.4.2026): worum es im Katalog geht; die aktuelle Fassung steht beim BSI.
+- [Kriterienkatalog C3A](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/C3A/C3A_node.html) beim BSI: der Katalog
+  selbst und worum es darin geht.
 
 **Rechtsgrundlagen** für die Vergabestelle:
 
 | Worum es geht | Fundstelle |
 |---|---|
-| Kriterienkatalog C3A des BSI (27.4.2026), amtliche Fundstelle | beim BSI, zu prüfen |
+| Kriterienkatalog C3A des BSI (27.4.2026) | [BSI, Pressemitteilung zum C3A](https://www.bsi.bund.de/DE/Service-Navi/Presse/Pressemitteilungen/Presse2026/260427_C3A.html) |
 | Zuschlag auf das wirtschaftlichste Angebot; Kriterien und Gewichtung vorab bekannt geben; Bezug zum Auftragsgegenstand | GWB und VgV oberhalb, UVgO bzw. Landesrecht unterhalb der EU-Schwellenwerte; Paragrafen zu prüfen |
 | Pflichten eines kommerziellen Bereitstellers als Hersteller | [VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu) (Cyber Resilience Act) |

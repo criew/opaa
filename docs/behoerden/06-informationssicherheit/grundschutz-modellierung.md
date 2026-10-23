@@ -11,8 +11,8 @@ naechste-durchsicht: 2027-04-23
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-**Gilt für:** Bundesministerien verpflichtend; andere Behörden, wenn Landesrecht oder das eigene Haus
-den IT-Grundschutz vorgibt oder sie ihn freiwillig anwenden.
+**Gilt für:** Einrichtungen der Bundesverwaltung verpflichtend; andere Behörden, wenn Landesrecht
+oder das eigene Haus den IT-Grundschutz vorgibt oder sie ihn freiwillig anwenden.
 
 Der IT-Grundschutz ist die Methode des BSI, mit der eine Behörde ihr Sicherheitskonzept aufstellt.
 Die oder der Informationssicherheitsbeauftragte (ISB) nimmt OPAA darin auf und *modelliert* die
@@ -141,5 +141,5 @@ Nächste Fortschreibung: mit dem nächsten Update, spätestens [Datum]
 
 | Worum es geht | Fundstelle |
 |---|---|
-| IT-Grundschutz für Bundesministerien, Mindeststandards für die übrige Bundesverwaltung | BSI-Gesetz in der Fassung des [NIS2UmsuCG](https://www.recht.bund.de/bgbl/1/2025/301/VO.html), Paragraf zu prüfen |
+| IT-Grundschutz und Mindeststandards als Mindestanforderung der Bundesverwaltung | [§ 44 Abs. 1 BSIG](https://www.gesetze-im-internet.de/bsig_2025/__44.html) |
 | Länder und Kommunen | Landesrecht, zu prüfen |

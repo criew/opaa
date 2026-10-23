@@ -67,10 +67,11 @@ ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
 
 ## Gut zu wissen
 
-- Die Einordnung des Projekts als Open-Source-Steward hat der Maintainer am 13.10.2026 beschlossen;
-  rechtlich geprüft ist sie nicht. Der CRA setzt dafür eine juristische Person voraus; wie das
-  Projekt das erfüllt, sollte die Behörde in der Vergabe erfragen.
-- Die Einordnung der Dienstleister stützt sich auf einen Fachbeitrag, nicht auf den Normtext.
+- Das Projekt ordnet sich nach bestem Wissen als Open-Source-Steward ein, obwohl der CRA dafür eine
+  juristische Person voraussetzt und es eine solche hinter dem Projekt nicht gibt. Rechtlich geprüft
+  ist die Einordnung nicht; wer die Pflichten wahrnimmt, sollte die Behörde in der Vergabe erfragen.
+- Die Einordnung der Dienstleister leitet das Projekt aus den Begriffsbestimmungen des CRA ab;
+  rechtlich geprüft ist sie nicht.
 - Für ihre eigene Informationssicherheit bleibt die Behörde verantwortlich
   ([IT-Grundschutz](grundschutz-modellierung.md)).
 
@@ -78,8 +79,8 @@ ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
 
 **Arbeitshilfen:**
 
-- [OpenSSF: CRA und Open-Source-Stewards](https://policy.openssf.org/CRA/stewards-one-pager.html):
-  kurze Übersicht, wer nach dem CRA welche Rolle hat (englisch).
+- [EU-Kommission: CRA und Open Source](https://digital-strategy.ec.europa.eu/en/policies/cra-open-source):
+  kurze Übersicht zu Open-Source-Stewards und zur Geschäftstätigkeit (englisch).
 
 **Rechtsgrundlagen** ([VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu)):
 
@@ -91,4 +92,4 @@ ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
 | Meldepflichten des Herstellers: Fristen, Information der Nutzer | Art. 14 Abs. 1 bis 4 und 8 CRA |
 | Hersteller meldet Schwachstellen in Komponenten an deren Pfleger | Art. 13 Abs. 6 CRA |
 | Grundlegende Anforderungen an Produkte | Anhang I CRA |
-| Rolle von SaaS-Betreiber und kommerziellem Anbieter | Fachbeitrag [OpenSSF](https://policy.openssf.org/CRA/stewards-one-pager.html) |
+| Rolle von SaaS-Betreiber und kommerziellem Anbieter | Art. 3 Nr. 1, 2, 13 und 22 CRA; [EU-Kommission, Zusammenfassung des CRA](https://digital-strategy.ec.europa.eu/en/policies/cra-summary); reines SaaS: Erwägungsgrund 12 CRA, am Text zu prüfen |
