@@ -1133,7 +1133,10 @@ Eine **Kategorie** ist ein Datum des Fakten-Manifests (`id`) mit mindestens eine
 Weg zur Person hat (#2988); der Zustand der Selbstauskunft je Person ist ein neues Datum
 `self-disclosure`, das #2989 anlegt. Die Spalte „Exporteur“ nennt das Issue, das die Kategorie
 liefert. Für #2988: `diagnostic_context_log.target_ref` enthält bei `target_kind = USER` ein
-Pseudonym und wird personenbezogene Spalte mit Weg zur Person. Je Kategorie eine JSON-Datei; ausgegeben werden nur Felder einer
+Pseudonym und wird personenbezogene Spalte mit Weg zur Person; ein Weg darf über eine Tabelle eines
+anderen Datums führen (`documents` über `assets.owner_user_id`); eine Spalte, die nur unter einer
+Bedingung befüllt herausgeht, gilt als Teil der Auskunft, die Bedingung trägt die Positivliste des
+Exporteurs. Je Kategorie eine JSON-Datei; ausgegeben werden nur Felder einer
 **Positivliste** des Exporteurs, nie eine ganze Zeile. Geheimnisse (Passwort-Hashes, Token-Werte und
 -Hashes, verschlüsselte Zugangsdaten) stehen in keiner Positivliste. Spalten, die die Tabelle unten
 nicht als ausgeschlossen nennt, sind Teil der Auskunft.
@@ -1154,7 +1157,7 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `connection-log` | #2991 | Einträge, in denen die Person handelt oder betroffen ist | Pseudonymkennungen |
 | `external-access-tokens` | #2991 | eigene Zugangstokens: Name, Anlage, Ablauf, letzter Nutzungstag, Widerruf mit Anlass | `token_prefix`, `token_lookup_hash` (Geheimnisbestandteile) |
 | `library-settings` | #2992 | Bibliotheken, deren Freigabe für externe KI-Werkzeuge die Person gesetzt hat, mit Zeitpunkt; private Bibliotheken der Person mit Quelladresse ohne Zugangsdaten und Abfrageteil | `source_credentials` (Geheimnis) |
-| `documents` | #2992 | **nur Verzeichnis**, zwei Wege: eigene Uploads (`uploaded_by_user_id`) mit Dateiname, Datum, Bibliothek; Dokumente in privaten Bibliotheken der Person (Nur-Besitzerin-Bibliothek, auch konnektor-gespeist) zusätzlich mit Pfad und Ordner (`file_path`, `source_hierarchy_path`) | `file_path`, `source_hierarchy_path` bei Uploads in geteilte Bibliotheken (Ablage der Organisation, keine Aussage über die Person); `context_prefix_title` (aus dem Inhalt abgeleitet); `source_container_key`, `source_entry_url` (technische Schlüssel und Verweise der Quelle); Inhalte, `chunk_full_text`, `vector_store`, `document_metadata_values` (Dokumentinhalt und Einbettungen; Handänderungen an Metadaten stehen im Protokoll); `indexing_run_events`, `source_sync_revisits`, `source_event_batches` (Betriebsdaten des Bestands, kein Weg zur Person) |
+| `documents` | #2992 | **nur Verzeichnis**, zwei Wege zur Person: `documents.uploaded_by_user_id` (eigene Uploads) und `documents.library_id` → `assets.owner_user_id` des Datums `rights` bei privaten Bibliotheken (Nur-Besitzerin-Bibliothek, auch konnektor-gespeist). Enthalten: Dateiname, Datum, Bibliothek; `file_path` und `source_hierarchy_path` (Pfad, Ordner) enthalten, nur bei privaten Bibliotheken befüllt — bei Uploads in geteilte Bibliotheken bleiben sie leer, weil sie dort die Ablage der Organisation beschreiben | `context_prefix_title` (aus dem Inhalt abgeleitet); `source_container_key`, `source_entry_url` (technische Schlüssel und Verweise der Quelle); Inhalte, `chunk_full_text`, `vector_store`, `document_metadata_values` (Dokumentinhalt und Einbettungen; Handänderungen an Metadaten stehen im Protokoll); `indexing_run_events`, `source_sync_revisits`, `source_event_batches` (Betriebsdaten des Bestands, kein Weg zur Person) |
 | `indexing-runs` | #2992 | von der Person ausgelöste Indexierungs- und Neueinbettungsläufe: Bibliothek, Art, Beginn, Ende, Ergebnis | — |
 | `rights` | #2991 | eigene Assets mit Art und Name, **eigene Prompt-Bibliotheken eingeschlossen**; Grants an die Person und von ihr erteilte, Anlegerechte; Empfänger und Erteilende außer ihr nur als „andere Person“ bzw. Gruppenname | Grants Dritter an fremden Assets (kein Weg zur Person); Inhalte der Assets, etwa Prompt-Texte (Sachdaten ohne Personenbezug) |
 | `permission-history` | #2991 | Intervalle, in denen die Person Subjekt, Eigentümerin oder Gruppenmitglied war, und von ihr bewirkte Änderungen | — |
@@ -1193,7 +1196,10 @@ nebenbei andere nennen können, liegt am Inhalt der Arbeit, nicht am Feld. **Beg
 Verwaltungs- und Prüfhandeln** gehen nie heraus, auch die eigenen nicht: `reason` im Protokoll und
 die Begründung einer Suchdiagnose. Ihr Zweck ist es, einen Fall zu benennen, und der betrifft
 regelmäßig andere Personen; maschinell bereinigen lässt sich ein solcher Freitext nicht. Ausgegeben
-wird nur, ob eine Begründung angegeben war. Freitexte anderer gehen nie heraus. Die Oberfläche zeigt
+wird nur, ob eine Begründung angegeben war. Freitexte anderer gehen nie heraus. **Ausgenommen** ist
+der Anlagegrund eines lokalen Kontos (`local_credentials.created_reason`): Er ist der Person ohnehin
+offengelegt und steht in ihren Einstellungen ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md),
+Entscheidung 11). Die Oberfläche zeigt
 der Person Diagnosen in ihrem Rechtekontext heute mit Namen und Begründung; der Export als Datei, die
 OPAA verlässt, ist bewusst knapper und schreibt „andere Person“.
 
@@ -1211,8 +1217,11 @@ OPAA verlässt, ist bewusst knapper und schreibt „andere Person“.
 - `index.html`: lesbare Übersicht, eine Datei ohne Skript und ohne externe Ressourcen, `lang="de"`,
   Zeitpunkte in der Zeitzone der Installation. Oben der Hinweistext. Je Kategorie Titel, Erklärung,
   Zahl der Datensätze, Ausschlüsse mit Grund und die **ersten höchstens 200 Datensätze** lesbar als
-  Tabelle; bei mehr der Verweis auf `<kategorie>.json` für den Rest. Die 200 Datensätze merkt sich
-  der Export beim Schreiben der JSON-Datei; die Übersicht bleibt damit klein, auch beim Vielnutzer.
+  Tabelle; bei mehr der Verweis auf `<kategorie>.json` für den Rest. Ein Datensatz der Übersicht ist
+  eine flache Zeile der Positivliste ohne verschachtelte Teile (bei `chats` je Nachricht eine Zeile,
+  nicht ein ganzer Chat), jedes Textfeld darin höchstens **2000 Zeichen**, gekürzt mit dem Hinweis
+  „vollständig in `<kategorie>.json`“. Die gekürzten 200 Zeilen merkt sich der Export beim Schreiben
+  der JSON-Datei; der Puffer ist damit je Kategorie begrenzt, auch beim Vielnutzer.
   Danach die ganz ausgeschlossenen Daten mit Grund, der Hinweis auf anlassbezogene Klärungen und die
   oder den DSB, die Abgrenzung zum Auskunftsantrag und der Satz, dass die Kategorien nacheinander
   gelesen werden.
@@ -1259,7 +1268,9 @@ Fehler in die Antwort geschrieben und geleert.
 **Starts je Tag.** Unabhängig davon sind je Person und Kalendertag höchstens **Tagesgrenze + 4**
 Starts möglich (Voreinstellung 5); darüber antwortet OPAA mit `429`. Ohne diese Grenze wären Abbrüche
 unbegrenzt wiederholbar. Kein eigener Schalter: Die vier zusätzlichen Starts decken Abbrüche durch
-Rolling Update oder VPN ab, mehr braucht kein Mensch an einem Tag.
+Rolling Update oder VPN ab, mehr braucht kein Mensch an einem Tag. Folge: Nach fünf Abbrüchen ist
+der Tag auch ohne vollständigen Export erschöpft; der Status sagt das („Starts für heute
+erschöpft“).
 
 **Restunschärfe in beiden Richtungen.**
 
