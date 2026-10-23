@@ -37,6 +37,9 @@ public class OpaaApplication {
    * OPAA_MODE=await-migration} only waits for that migration and ends.
    */
   public static void main(String[] args) {
+    // Liquibase otherwise fetches its analytics configuration from config.liquibase.com on every
+    // migration and may send usage data there; OPAA contacts no service of a library vendor.
+    System.setProperty("liquibase.analytics.enabled", "false");
     DatabaseMigrationMode.Mode mode = DatabaseMigrationMode.mode(args);
     if (mode != DatabaseMigrationMode.Mode.SERVE) {
       System.exit(DatabaseMigrationMode.run(mode, args));
