@@ -31,7 +31,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
-| Fremde Objekte direkt in der Zeile | bis 7 flache Einträge als Checkboxen ohne Suche; ab 8 oder bei jeder Hierarchie der Auswahldialog mit Suche | Sicht in `small` und `scale` (P20, P35) |
+| Fremde Objekte direkt in der Zeile | Schwelle nach [guidelines.md](./guidelines.md), 5.11 | Sicht in `small` und `scale` (P20, P35) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
 
 ## Visuell
@@ -79,17 +79,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 17. Schaltflächen tragen das Verb: [guidelines.md](./guidelines.md), 5.1 und 5.10.
 18. **Keine Redundanz:** „Sind Sie sicher?“, „nicht rückgängig“ und „dauerhaft und unwiderruflich“
     werden ein Satz. – Sicht
-19. **Begriffsregel:**
-    - Eigene Konzepte tragen überall denselben eigenen Begriff: Verbindung, Umfang, Zeitplan,
-      Zugang, „Gesetzt · Ersetzen“.
-    - Werte, die man aus einem Herstellerportal abschreibt oder dort wiederfinden muss, tragen den
-      Begriff des Herstellers in dessen offiziellem Deutsch: API-Token, App-Passwort, Access Key,
-      Secret Key, Endpoint, Space, Dokumentbibliothek, Geteilte Ablage.
-    - Keine Doppel-Labels in Klammern und kein künstlich allgemeines „Kennwort“ für ein Token.
-
-    Maßgeblich sind daneben [guidelines.md](./guidelines.md), 6 und das
-    [Glossar](../handbuch/glossar.md); die Regel wird mit #3102 in 6 übernommen. – Sicht über
-    alle Arten einer Variante
+19. **Begriffsregel** (eigener Begriff oder Herstellerbegriff): [guidelines.md](./guidelines.md), 6,
+    und das [Glossar](../handbuch/glossar.md). – Sicht über alle Arten einer Variante
 
 ## Große Mengen
 
@@ -98,10 +89,8 @@ Jede Variante wird mit den Mock-Szenarien geprüft (`?mockScenario=`, siehe
 zwei Einträgen.
 
 20. **Viele Einträge** (Szenario `scale`: 17 Sites mit je 25 Bibliotheken, 450 Spaces, 200 Ordner
-    je Ebene): bis 7 flache Einträge stehen als Checkboxen direkt in der Zeile, ohne Suche; ab 8
-    Einträgen oder bei jeder Hierarchie öffnet sich ein gemeinsamer Auswahldialog mit
-    Brotkrumen, Suche und Teilauswahl. Die Mehrfachauswahl bleibt sichtbar (Chips oder
-    „12 ausgewählt“). – Sicht
+    je Ebene): Schwelle und Auswahldialog nach [guidelines.md](./guidelines.md), 5.11. Die
+    Mehrfachauswahl bleibt sichtbar (Chips oder „12 ausgewählt“). – Sicht
 21. **Hierarchie** (Site → Bibliothek → Ordner) ohne Kontextverlust, über Brotkrumen oder Baum;
     die Auswahl bleibt über Ebenen hinweg nachvollziehbar. – Sicht und Video
 22. **Lange Namen** (80 und mehr Zeichen): gekürzt mit Tooltip, kein Layoutbruch. – gemessen
@@ -133,18 +122,8 @@ zwei Einträgen.
     Verbindungsfeld geändert wird. – Sicht und Video
 34. **Geheimnisse** erscheinen beim Bearbeiten als „Gesetzt“ mit „Ersetzen“
     ([guidelines.md](./guidelines.md), 5.2). – Sicht
-35. **Auswahlmuster nach Art der Menge**, nicht nach fester Obergrenze:
-    - *geschlossene Menge von Arten* (Quellart, Asset-Art): Kacheln nach
-      [guidelines.md](./guidelines.md), 5.11; wächst sie über 12, gruppieren statt durchsuchen;
-    - *offene Menge eigener Objekte* (Katalog, Zuordnung, Token): Asset-Kacheln mit Filterzeile
-      nach 5.11; Stresstest mit 300 Assets;
-    - *fremde Objekte aus einer Quelle* (Sites, Spaces, Buckets, Ordner): Liste oder Baum, nie
-      Kacheln; bis 7 flache Einträge in der Zeile, ab 8 oder bei Hierarchie der Auswahldialog
-      (P20). Dieser Fall steht noch nicht in 5.11; die Ergänzung der Guideline läuft in #3102.
-      Bis dahin begründet ein Entwurf, der ihm folgt, die Abweichung von 5.11 im PR.
-    - *gleichartige Wahl ohne unterscheidendes Icon* (z. B. Zugänge): siehe P49.
-
-    – Sicht im Szenario `scale`
+35. **Auswahlmuster nach Art der Menge** (Mengenarten, Gruppierung, Schwelle):
+    [guidelines.md](./guidelines.md), 5.11. Stresstest mit 300 Assets. – Sicht im Szenario `scale`
 36. **Tri-State im Baum** (`aria-checked="mixed"`). – Tastatur oder Screenreader
 37. **„Alle auswählen“ nennt den Umfang**; ein Filter löscht nie die Auswahl. – Sicht
 38. **Drei Leerzustände** unterscheidbar: erstmals leer · 0 Treffer (mit „Filter zurücksetzen“)
@@ -153,14 +132,13 @@ zwei Einträgen.
     Knopf. – Video im Szenario `slow`
 40. **Indizierungsstatus** überall gleich: Zustand, „n von m“, letzter Lauf, „Teilweise
     fehlgeschlagen“. – Sicht
-41. **Fehler, die Handeln verlangen, nie nur als Popup-Benachrichtigung**
-    ([guidelines.md](./guidelines.md), 5.9). – Sicht in `failed`
+41. Popup-Benachrichtigungen: [guidelines.md](./guidelines.md), 5.9. – Sicht in `failed`
 42. **Nur-Lesen-Zustand** überall gleich dargestellt. – Sicht
 43. **Deutsche Textlänge:** +40 % Textlänge und das 35-Zeichen-Kompositum
     „Grundstücksverkehrsgenehmigungsakte“ bei 320 px ohne Abschneiden. – gemessen
     (`clippedText` im Szenario `scale`)
-44. **Automatik:** axe ohne Befund (WCAG 2.0–2.2 A/AA, `target-size` ab 24 px), Kontrast nach
-    [guidelines.md](./guidelines.md), 2.4, in beiden Schemata; Screenshots hell und dunkel bei
+44. **Automatik:** axe ohne Befund gegen das Zielniveau nach [accessibility.md](./accessibility.md),
+    1, Kontrast nach [guidelines.md](./guidelines.md), 2.4, in beiden Schemata; Screenshots hell und dunkel bei
     320 und 1280 px. – gemessen (`axe`; das dunkle Schema wird direkt geladen, siehe
     [README der Werkzeuge](../../e2e/ui-lab/README.md#kalibrierung))
 
@@ -174,9 +152,7 @@ zwei Einträgen.
     je ein Trenner zwischen den Abschnitten und einer vor den Knöpfen. – Sicht
 48. **Zeilenraster** Titel | Inhalt | „Ändern“ für zusammengefasste Abschnitte, gleich in
     Assistent, Prüfen und Detail. – Sicht (Querbögen)
-49. **Gleichartige Wahl ohne unterscheidendes Icon** (z. B. Zugänge) als Radioliste statt Kacheln;
-    gibt es nur eine Option, gibt es keine Wahl, sondern eine Zeile. Wird mit #3102 Teil von
-    [guidelines.md](./guidelines.md), 5.11. – Sicht
+49. Gleichartige Wahl ohne unterscheidendes Icon: [guidelines.md](./guidelines.md), 5.11. – Sicht
 50. **Dieselbe Information nie zweimal auf einer Fläche** – weder als Kopfzeile und Abschnitt noch
     als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt. – Sicht
     (Konsistenz-Review, Kategorie A)

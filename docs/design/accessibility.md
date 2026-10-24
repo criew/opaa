@@ -11,7 +11,27 @@ _wie geprüft_ wird.
 
 ## 1 · Zielniveau
 
-**BITV 2.0 / WCAG 2.1, Konformitätsstufe AA** (über EN 301 549). Das Zielniveau gilt:
+**Rechtliche Untergrenze bleibt BITV 2.0 / WCAG 2.1, Konformitätsstufe AA** (über EN 301 549).
+**Zielniveau ist WCAG 2.2, Konformitätsstufe AA.** Ob BITV und EN 301 549 v4 WCAG 2.2 bereits
+verbindlich machen, ist bewusst nicht vorab geprüft; 2.2 AA ist deshalb Ziel, nicht Pflicht:
+
+- Ein Verstoß gegen **WCAG 2.1 AA** ist ein Mangel und wird im PR behoben.
+- Verfehlt ein PR eines der **sechs mit WCAG 2.2 neuen AA-Kriterien**, begründet er das und legt ein
+  Issue an (Abschnitt 4), statt es stillschweigend zu übergehen.
+
+Die sechs neuen Kriterien stehen in der Prüfliste bei ihrem Thema und tragen den Vermerk
+„WCAG 2.2, Ziel":
+
+| Kriterium | Kurz | Prüfliste |
+| --- | --- | --- |
+| 2.4.11 Fokus nicht verdeckt (Minimum) | fokussiertes Element nie ganz verdeckt | 2.2 |
+| 2.5.7 Ziehbewegungen | jede Ziehbewegung auch mit einem Klick bedienbar | 2.9 |
+| 2.5.8 Zielgröße (Minimum) | Klickziele mindestens 24 × 24 px oder mit Abstand | 2.9 |
+| 3.2.6 Konsistente Hilfe | Hilfe überall an derselben Stelle | 2.3 |
+| 3.3.7 Redundante Eingabe | nichts zweimal eingeben müssen | 2.7 |
+| 3.3.8 Barrierefreie Authentifizierung (Minimum) | Anmeldung ohne Gedächtnis- oder Rätseltest | 2.7 |
+
+Das Zielniveau gilt:
 
 - in **beiden Farbschemata** — ein PR, der nur eines prüft, ist unvollständig;
 - auch **mit konfiguriertem Branding**: Die Akzentfarbe ist Betreiber-Konfiguration, deshalb
@@ -43,6 +63,10 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 - [ ] Jedes fokussierbare Element zeigt den Fokusring des Designsystems
       ([Guidelines 4.4](./guidelines.md)) — in beiden Farbschemata deutlich sichtbar.
 - [ ] Fokus wird nie per `outline: none` ohne gleichwertigen Ersatz unterdrückt.
+- [ ] _WCAG 2.2, Ziel — 2.4.11 Fokus nicht verdeckt:_ Ein fokussiertes Element wird nie ganz von
+      eigenen Ebenen verdeckt (feste Kopf- und Fußleisten, Popup-Benachrichtigungen, Cookie- oder
+      Hinweisleisten). Prüfung: im Tastatur-Durchgang (3.2) bis ans Seitenende tabben, bei
+      200 % Zoom und offener Benachrichtigung.
 
 ### 2.3 Name, Rolle, Wert
 
@@ -55,6 +79,9 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 - [ ] Überschriftenhierarchie ohne Sprünge; Landmarken (`header`/`nav`/`main`) vorhanden und
       benannt, sobald mehrere gleichartige existieren.
 - [ ] Jede Seite setzt einen deutschen `document.title`.
+- [ ] _WCAG 2.2, Ziel — 3.2.6 Konsistente Hilfe:_ Hilfe-Angebote (Hilfelink, Kontakt,
+      Handbuch-Verweis) stehen auf allen Seiten, die sie anbieten, an derselben relativen Stelle und
+      in derselben Reihenfolge. Prüfung: zwei Seiten mit Hilfe-Angebot nebeneinander vergleichen.
 
 ### 2.4 Kontrast
 
@@ -99,6 +126,14 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
       ([Guidelines 5.2](./guidelines.md)).
 - [ ] Nach einem Abschickfehler bleibt die Eingabe erhalten; der Fokus geht auf die erste
       Fehlermeldung oder eine Fehlerzusammenfassung.
+- [ ] _WCAG 2.2, Ziel — 3.3.7 Redundante Eingabe:_ Was die Person im selben Vorgang schon
+      eingegeben hat, wird vorbelegt oder zur Auswahl angeboten, nicht erneut abgefragt — auch
+      nach einem Schritt zurück im Assistenten. Ausnahme: Sicherheitsabfragen (Kennwort
+      bestätigen). Prüfung: Assistenten vor und zurück durchlaufen.
+- [ ] _WCAG 2.2, Ziel — 3.3.8 Barrierefreie Authentifizierung:_ Die Anmeldung verlangt keinen
+      kognitiven Test (Rätsel, Abtippen eines Bilds, Merken von Zeichen); Einfügen und
+      Passwortmanager funktionieren in Kennungs-, Kennwort- und Codefeldern (kein Blockieren von
+      `paste`, passendes `autocomplete`). Prüfung: Anmeldung mit Passwortmanager und per Einfügen.
 
 ### 2.8 Statusmeldungen und asynchrone Vorgänge
 
@@ -107,6 +142,18 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
       `role="status"`).
 - [ ] Ladezustände sind benannt (z. B. `aria-busy`, Skeleton mit Text-Alternative), nicht
       nur visuell.
+- [ ] Popup-Benachrichtigungen pausieren ihren Timer bei Hover und Fokus (WCAG 2.2.1); Fehler,
+      die eine Handlung verlangen, stehen auch am Ort ([Guidelines 5.9](./guidelines.md)).
+
+### 2.9 Zeiger und Touch
+
+- [ ] _WCAG 2.2, Ziel — 2.5.7 Ziehbewegungen:_ Was sich per Ziehen bedienen lässt (Sortieren,
+      Verschieben, Schieberegler, Splitter), geht auch mit einzelnen Klicks oder Tippen, ohne
+      Tastatur vorauszusetzen. Prüfung: jede Ziehfunktion einmal ohne Ziehen ausführen.
+- [ ] _WCAG 2.2, Ziel — 2.5.8 Zielgröße:_ Klickziele messen mindestens 24 × 24 CSS-px, oder ein
+      Kreis von 24 px Durchmesser um ihre Mitte überschneidet kein anderes Ziel. Ausgenommen sind
+      Links im Fließtext und vom Browser gestaltete Elemente. Prüfung: kleine Ziele (Icon-Knöpfe,
+      Chips, Checkboxen, Schließen-Kreuz) in den DevTools ausmessen.
 
 ## 3 · Prüfverfahren
 
@@ -125,7 +172,9 @@ Ausschnitt.
   Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich, Benutzer-Einstellungen.
   Verstöße der Stufen
   „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als
-  Annotation im Report.
+  Annotation im Report. Geprüft wird gegen die Regelsätze WCAG 2.0 und 2.1, A und AA
+  (`e2e/fixtures/a11y.ts`) — also die rechtliche Untergrenze; die neuen Kriterien von WCAG 2.2
+  prüft der Handdurchgang (3.2).
 - Gemessen wird stets der **ausklingende** Zustand: Vor jedem axe-Lauf wartet die Prüfung auf das
   Ende der laufenden endlichen Animationen und Übergänge der Seite (`e2e/fixtures/a11y.ts`), in
   mehreren Durchgängen, damit gestaffelte Ketten mitgenommen werden. axe leitet die wirksame Farbe
@@ -147,8 +196,8 @@ Ausschnitt.
 
 Vom Einstiegspunkt der geänderten Oberfläche aus, ohne Maus:
 
-1. Mit Tab durch alle interaktiven Elemente — Reihenfolge, Sichtbarkeit des Fokus,
-   Erreichbarkeit prüfen.
+1. Mit Tab durch alle interaktiven Elemente — Reihenfolge, Sichtbarkeit des Fokus (auch: nicht
+   verdeckt), Erreichbarkeit prüfen.
 2. Jede Aktion ausführen (Enter/Leertaste/Pfeiltasten), Overlays öffnen und mit Escape
    schließen, Fokus-Rückkehr beobachten.
 3. Einmal in beiden Farbschemata, wenn der PR Farben oder Zustände berührt.
