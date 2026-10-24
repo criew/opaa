@@ -277,10 +277,10 @@ public class SelfDisclosureService {
   /**
    * Streams the ZIP of {@code run} into {@code out} and ends it: counted and recorded as completed
    * once the central directory is written and flushed, otherwise recorded as aborted without
-   * consuming anything. Returns whether it was completed, so the caller can end an aborted one
-   * visibly on the connection; the slot of this instance is released in every case.
+   * consuming anything. The outcome tells the caller whether to end an aborted one visibly on the
+   * connection; the slot of this instance is released in every case.
    */
-  public boolean stream(Run run, OutputStream out) {
+  public Outcome stream(Run run, OutputStream out) {
     if (TransactionSynchronizationManager.isActualTransactionActive()) {
       registry.release();
       throw new IllegalStateException("The self-disclosure must stream outside a transaction");
@@ -313,7 +313,7 @@ public class SelfDisclosureService {
       }
       finish(run, archive, "COMPLETED", null);
       metrics.completed(elapsed(run), archive.bytes());
-      return true;
+      return Outcome.DELIVERED;
     } catch (Exception | Error failure) {
       AbortCause cause = causeOf(failure);
       if (cause == AbortCause.ERROR) {
@@ -329,7 +329,9 @@ public class SelfDisclosureService {
             "Could not record the abort of self-disclosure export {}", run.runId(), recording);
       }
       metrics.aborted(cause.name(), elapsed(run), archive.bytes());
-      return false;
+      return cause == AbortCause.CLIENT_DISCONNECTED
+          ? Outcome.CLIENT_DISCONNECTED
+          : Outcome.ABORTED_BY_SERVER;
     } finally {
       registry.unwatch(control);
       registry.release();
@@ -493,6 +495,16 @@ public class SelfDisclosureService {
     } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256 is part of every JRE", e);
     }
+  }
+
+  /** How {@link #stream} ended. */
+  public enum Outcome {
+    /** Completed and counted. */
+    DELIVERED,
+    /** The client went away; nobody listens any more. */
+    CLIENT_DISCONNECTED,
+    /** Ended by the server (deadline, shutdown, lost reservation, failure). */
+    ABORTED_BY_SERVER
   }
 
   /**

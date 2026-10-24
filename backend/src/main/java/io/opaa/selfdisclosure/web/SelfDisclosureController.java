@@ -65,7 +65,8 @@ public class SelfDisclosureController {
             .toString());
     response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     response.setHeader("X-Accel-Buffering", "no");
-    if (!service.stream(run, response.getOutputStream())) {
+    if (service.stream(run, response.getOutputStream())
+        != SelfDisclosureService.Outcome.DELIVERED) {
       // Once the ZIP has begun, GlobalExceptionHandler cannot answer any more and lets the
       // failure reach the container, which breaks the connection instead of ending it cleanly.
       if (!response.isCommitted()) {
