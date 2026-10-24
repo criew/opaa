@@ -38,8 +38,8 @@ und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei de
    Sicherheitsmeldungen ([Security Advisories](https://github.com/criew/opaa/security/advisories)).
 2. **Supportzeitraum abgleichen** mit dem eigenen Update-Takt. Ein jährlicher Takt mit LTS-Linien
    setzt voraus, dass ältere Linien weiter Patches bekommen; das geschieht über eigene
-   Wartungsbranches. Das Update-Paket enthält bisher nur das Delta zum vorigen finalen Release
-   ([Was nicht gebaut ist](../../handbuch/betrieb/releases-und-nachweise.md#was-nicht-gebaut-ist)).
+   Wartungsbranches. Das Update-Paket eines LTS-Release vergleicht auch mit der vorigen LTS-Linie
+   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 3. **Zusagen vertraglich holen,** die das Projekt nicht gibt: Reaktionszeiten, längere Pflege einer
    Version, Weiterführung bei Ende des Projekts. Das leistet ein Dienstleister oder der eigene
    Betrieb.

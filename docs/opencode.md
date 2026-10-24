@@ -77,7 +77,7 @@ Kontos.
 
 | Datei | Zweck | Pflege |
 |---|---|---|
-| `publiccode.yml` | Metadaten für das Softwareverzeichnis: Name, Beschreibung auf Deutsch und Englisch, Kategorien, Lizenz, Entwicklungsstand, Kontakt | beschreibt den gebauten Stand von `main`; neue Hauptfunktionen und ein geänderter Entwicklungsstand ziehen die Datei nach. Mit dem ersten finalen Release kommen `softwareVersion` und `releaseDate` hinzu und wandern mit jedem finalen Release |
+| `publiccode.yml` | Metadaten für das Softwareverzeichnis: Name, Beschreibung auf Deutsch und Englisch, Kategorien, Lizenz `AGPL-3.0-only` (ohne „or any later version“), Entwicklungsstand `beta` bis zum ersten finalen Release, der Maintainer als Kontakt | beschreibt den gebauten Stand von `main`; neue Hauptfunktionen und ein geänderter Entwicklungsstand ziehen die Datei nach. Mit dem ersten finalen Release kommen `softwareVersion` und `releaseDate` hinzu und wandern mit jedem finalen Release |
 | `.github/workflows/opencode-mirror.yml` | Spiegel von `main`, `release/*` und `v*` | aktiv erst mit Variable `OPENCODE_MIRROR_URL` und Secret `OPENCODE_MIRROR_TOKEN` in der Environment `opencode` |
 
 `url` in `publiccode.yml` zeigt auf GitHub, das Hauptrepository. Die Vorlage von openCode nennt dort
@@ -134,7 +134,3 @@ behoben ist. Nach der Behebung den Workflow auf `main` von Hand starten.
 - Bietet openCode Pull-Spiegel an, und nimmt das Softwareverzeichnis `url` auf GitHub an?
 - Zählt ein Projekt-Token als technisches Konto, das nach Abschnitt 4 der Nutzungsbedingungen nur
   eine juristische Person registrieren darf? OPAA ist keine juristische Person.
-- `legal.license` lautet `AGPL-3.0-only`; die Entscheidung des Maintainers, ob „only“ oder
-  „or later“ gilt, steht aus.
-- Wer steht als Kontakt in `publiccode.yml`, und reicht der Entwicklungsstand `beta`, solange es nur
-  Vorab-Releases gibt?

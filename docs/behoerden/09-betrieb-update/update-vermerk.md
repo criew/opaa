@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -31,13 +31,21 @@ Das Update-Paket enthält:
 - `betrieb/betriebsfolgen.md`: Vorbereitung, Neuindizierung mit Dauerschätzung, Schemaänderungen,
   neue Ports und Ziele.
 - `betrieb/antwortqualitaet.md`: die Suchqualität beider Versionen.
+- Nur bei einem LTS-Release und seinen Release-Kandidaten: `delta-lts/` und `betrieb-lts/` mit
+  denselben Angaben gegenüber dem jüngsten Release der vorigen LTS-Linie. Sie gelten für eine
+  Installation, die nur LTS-Linien betreibt und von dort direkt wechselt; `delta/` und `betrieb/`
+  gelten für eine Installation, die jedem Funktionsrelease folgt. `LIESMICH.md` nennt beide
+  Vergleichsstände. Eine Änderung, die schon unverändert als Backport in der vorigen LTS-Linie
+  steckt, führt `delta-lts/` nicht noch einmal auf; musste der Backport angepasst werden, steht sie
+  dort ein zweites Mal, obwohl die Installation sie schon hat.
 
 ## Aufgaben der Behörde
 
 1. **Paket prüfen lassen:** Prüfsumme und Provenance, wie in `LIESMICH.md` beschrieben.
-2. **Übersprungene Versionen beachten:** Das Paket vergleicht nur mit dem vorigen finalen Release.
-   Für einen größeren Sprung erzeugt der Betrieb Delta und Betriebsfolgen zwischen eingesetzter und
-   Zielversion und legt sie bei.
+2. **Übersprungene Versionen beachten:** Das Paket vergleicht mit dem vorigen finalen Release, ein
+   LTS-Release zusätzlich mit dem jüngsten Release der vorigen LTS-Linie. Den Vergleich wählen, der
+   von der eingesetzten Version ausgeht. Passt keiner, erzeugt der Betrieb Delta und Betriebsfolgen
+   zwischen eingesetzter und Zielversion und legt sie bei.
 3. **Vermerk an die Stellen geben**, die nach eigener Organisation beteiligt sind. Die Stufen im
    Delta sind Vorschläge; die Bewertung trifft jede Stelle selbst.
 4. **Entscheiden lassen** und Auflagen vor dem Update erledigen.
