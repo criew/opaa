@@ -12,13 +12,24 @@ import CheckIcon from '@mui/icons-material/Check'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
-import { answerAsMarkdown, answerAsPlainText, answerWithSources } from './copyFormats'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
+import {
+  answerAsMarkdown,
+  answerAsPlainText,
+  answerWithSources,
+  copyNote,
+  markdownWithNote,
+  plainTextWithNote,
+} from './copyFormats'
+import { answerAsHtml } from './copyHtml'
 import { useClipboardCopy } from './useClipboardCopy'
 import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
 
 interface CopyAnswerButtonProps {
   content: string
   citations: CitationIndex
+  /** The date the note names - when the answer was given. */
+  answeredAt: Date
 }
 
 function segmentSx(theme: Theme) {
@@ -41,14 +52,26 @@ function segmentSx(theme: Theme) {
  * offers the answer with its sources as Markdown footnotes, or as plain text. A split pill in the
  * answer's foot, the same shape as "Belege anzeigen" but quieter - copying is the side action.
  */
-export default function CopyAnswerButton({ content, citations }: CopyAnswerButtonProps) {
+export default function CopyAnswerButton({
+  content,
+  citations,
+  answeredAt,
+}: CopyAnswerButtonProps) {
   const { copied, copy } = useClipboardCopy('Die Antwort')
+  const branding = useBrandingStore((s) => s.branding)
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const menuId = useId()
 
-  function copyVariant(text: string) {
-    setMenuAnchor(null)
-    void copy(text)
+  // Every format ends with the note; the two Markdown formats also travel as HTML. Text the
+  // person marks by hand and copies themselves is not touched - there is no copy handler.
+  function copyMarkdown(markdown: string) {
+    const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
+    void copy(markdownWithNote(markdown, note), answerAsHtml(markdown, note))
+  }
+
+  function copyPlainText() {
+    const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
+    void copy(plainTextWithNote(answerAsPlainText(content), note))
   }
 
   return (
@@ -68,7 +91,7 @@ export default function CopyAnswerButton({ content, citations }: CopyAnswerButto
       <Tooltip title={copied ? 'Kopiert' : 'Als Markdown kopieren, ohne Fußnoten'}>
         <ButtonBase
           aria-label={copied ? 'Antwort kopiert' : 'Antwort kopieren'}
-          onClick={() => void copy(answerAsMarkdown(content))}
+          onClick={() => copyMarkdown(answerAsMarkdown(content))}
           sx={(theme) => ({ ...segmentSx(theme), gap: 0.75, pl: 1.25, pr: 1 })}
         >
           {copied ? (
@@ -103,13 +126,23 @@ export default function CopyAnswerButton({ content, citations }: CopyAnswerButto
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{ list: { 'aria-label': 'Kopieroptionen' } }}
       >
-        <MenuItem onClick={() => copyVariant(answerWithSources(content, citations))}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null)
+            copyMarkdown(answerWithSources(content, citations))
+          }}
+        >
           <ListItemText
             primary="Mit Quellenangaben"
             secondary="Markdown mit Fußnoten und Quellenliste"
           />
         </MenuItem>
-        <MenuItem onClick={() => copyVariant(answerAsPlainText(content))}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null)
+            copyPlainText()
+          }}
+        >
           <ListItemText primary="Nur Text" secondary="Ohne Markdown-Formatierung" />
         </MenuItem>
       </Menu>

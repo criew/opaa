@@ -112,3 +112,28 @@ export function answerAsPlainText(content: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
+
+/**
+ * The note appended when an answer is copied with the copy button: the authority's notice from
+ * the branding, the product name and the date of the answer (German format). Deliberately without
+ * a model name - that would reveal the installation's configuration. It is visible text, not a
+ * machine-readable marking.
+ */
+export function copyNote(notice: string, productName: string, answeredAt: Date): string {
+  const date = answeredAt.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+  return `${notice.trim()} – ${productName.trim()}, ${date}`
+}
+
+/** Markdown followed by a rule and the note as its own paragraph. */
+export function markdownWithNote(markdown: string, note: string): string {
+  return `${markdown}\n\n---\n\n${note}`
+}
+
+/** Plain text followed by the note as its own paragraph. */
+export function plainTextWithNote(text: string, note: string): string {
+  return `${text}\n\n${note}`
+}

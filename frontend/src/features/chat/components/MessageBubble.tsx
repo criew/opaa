@@ -229,7 +229,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <EvidenceFooter
               citations={citations}
               onOpen={openAllEvidence}
-              actions={<CopyAnswerButton content={message.content} citations={citations} />}
+              actions={
+                <CopyAnswerButton
+                  content={message.content}
+                  citations={citations}
+                  answeredAt={message.timestamp}
+                />
+              }
             />
           )}
           {!isUser && (

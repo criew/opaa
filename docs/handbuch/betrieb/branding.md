@@ -13,8 +13,9 @@ Reihenfolge, steht unter [Authentifizierung](authentifizierung.md#anmeldewege-im
 Das Feld **Hinweis zur KI-Nutzung** enthält den Text, mit dem das Haus seinen Nutzenden sagt, dass
 Antworten von einer KI erzeugt werden (Art. 50 KI-Verordnung). Es ist **ein** Text für beide Orte,
 an denen er gebraucht wird: als Hinweis im Chat vor der ersten Frage und als Vermerk, den der
-Kopierknopf einer Antwort anfügt. Beide Anzeigen sind noch nicht gebaut (#2826, #3012); bis dahin
-wird der Text gepflegt und über die Schnittstelle bereitgestellt, aber nicht angezeigt.
+Kopierknopf einer Antwort anfügt. Der Vermerk beim Kopierknopf ist gebaut und nennt außer dem Text
+den Produktnamen und das Datum der Antwort. Der Hinweis im Chat ist noch nicht gebaut (#2826); bis
+dahin wird der Text dafür nur gepflegt und über die Schnittstelle bereitgestellt.
 
 Ohne eigenen Text gilt der Standard: „Antworten werden von einer KI erzeugt und können Fehler
 enthalten. Prüfen Sie wichtige Angaben anhand der Belege." Das Haus kann ihn in eigenen Worten
