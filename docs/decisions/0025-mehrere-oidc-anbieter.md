@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -23,8 +23,8 @@ Abmeldung und Rollen je Anbieter.
 Die SPA führt den Autorisierungscode-Fluss mit PKCE gegen den gewählten Anbieter (`oidc-client-ts`,
 ein `UserManager` je Anbieter, nur Public Clients ohne Secret). Das Backend prüft jedes Bearer-Token
 über `OidcSecurityConfig` (`authenticationManagerResolver`): ein `JwtDecoder` je aktiviertem Anbieter
-in der prozesslokalen `OidcProviderRegistry`, nach jedem Commit einer Anbieteränderung neu aufgebaut
-(ADR-0021); der lokale Issuer aus ADR-0033 ist ein weiterer Decoder daneben
+in der `OidcProviderRegistry` jeder Instanz, nach jedem Commit einer Anbieteränderung über den
+Invalidierungsbus neu aufgebaut (ADR-0053 Entscheidung 5); der lokale Issuer aus ADR-0033 ist ein weiterer Decoder daneben
 (`LocalIssuerAuthenticationManagerResolver`). Ein unbekannter `iss` ergibt `401` mit
 `error_description="unknown_issuer"`, worauf die SPA lokal abmeldet statt zu erneuern; ein nicht
 baubarer Decoder wird übersprungen und nach `RETRY_INTERVAL` erneut versucht. `AuthorizedPartyValidator`:
@@ -39,7 +39,7 @@ OAuth-Ablauf für Quellen sind `state` und PKCE-Verifier an die angemeldete Pers
 (`ConnectionAuthorization.user_id`; ein fremder `state` wird abgewiesen). Preis: Ein neuer
 Anbieter-Origin wirkt in der CSP (`OPAA_CSP_CONNECT_SRC_EXTRA`) erst nach Frontend-Neustart, den
 weder der Verbindungstest (Backend-Sicht) noch das E2E-Szenario prüft; Client-Einrichtung:
-[Handbuch](../handbuch/authentifizierung.md#oidc-keycloak).
+[Handbuch](../handbuch/betrieb/authentifizierung.md#oidc-keycloak).
 
 ### 2. Identitätsmodell: `(issuer, subject)` bleibt der Schlüssel, der Anbieter ist über den Issuer eindeutig
 
@@ -83,7 +83,7 @@ Die Adressprüfung (`OidcAddressPolicy`) hat einen eigenen Block `opaa.auth.oidc
 damit das Abschalten der Konnektorprüfung die Anmeldung nicht mitnimmt; sie gilt beim Speichern, beim
 Registry-Aufbau, im Verbindungstest und für die `jwks_uri` der Discovery, ohne Weiterleitungen, und
 jeder Decoder trägt einen Issuer-Validator. Startmeldungen (#2396) und Betrieb:
-[Handbuch](../handbuch/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
+[Handbuch](../handbuch/betrieb/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
 
 ### 4. Claim-Zuordnung, Rollen, Gruppen und Organisation je Anbieter
 

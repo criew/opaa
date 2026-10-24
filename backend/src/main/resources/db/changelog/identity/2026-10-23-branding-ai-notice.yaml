@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-23-branding-ai-notice
+      author: opaa
+      comment: "The authority's notice on AI use (Art. 50 AI Act) in the branding. Additive: a nullable column without default; null means the OPAA standard text."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              ALTER TABLE branding_settings ADD COLUMN ai_notice varchar(500);

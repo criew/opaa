@@ -2,17 +2,18 @@ package io.opaa.directory.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
+import io.opaa.common.DatabaseClock;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The schedule of #1816: a run starts without anyone triggering it. The tick is called here rather
@@ -37,6 +39,8 @@ class DirectorySyncSchedulerIntegrationTest {
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private DatabaseClock databaseClock;
 
   private static final UUID ORGANIZATION_ID = Organization.DEFAULT_ID;
 
@@ -55,7 +59,7 @@ class DirectorySyncSchedulerIntegrationTest {
             statusRepository,
             directorySyncService,
             Runnable::run,
-            Clock.systemUTC());
+            databaseClock);
     directoryClient.respondWith();
   }
 
@@ -100,7 +104,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aProviderWhoseLastRunIsNewerThanItsIntervalIsNotDueYet() {
     OidcProvider provider = createProvider(true, true, 360);
     DirectorySyncStatus status = new DirectorySyncStatus(ORGANIZATION_ID, provider.getId());
-    Instant lastRun = Instant.now().minusSeconds(60);
+    Instant lastRun = databaseClock.now().minusSeconds(60);
     status.recordRun(lastRun, DirectorySyncOutcome.APPLIED, "Voriger Lauf", 0.0);
     statusRepository.save(status);
     directoryClient.respondWithFor(
@@ -123,7 +127,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aProviderWhoseIntervalHasElapsedRunsAgain() {
     OidcProvider provider = createProvider(true, true, 5);
     DirectorySyncStatus status = new DirectorySyncStatus(ORGANIZATION_ID, provider.getId());
-    Instant lastRun = Instant.now().minusSeconds(600);
+    Instant lastRun = databaseClock.now().minusSeconds(600);
     status.recordRun(lastRun, DirectorySyncOutcome.APPLIED, "Voriger Lauf", 0.0);
     statusRepository.save(status);
     directoryClient.respondWithFor(
@@ -188,9 +192,13 @@ class DirectorySyncSchedulerIntegrationTest {
 
     scheduler.triggerDueProviders();
 
-    assertThat(statusRepository.findByOrganizationIdAndProviderId(ORGANIZATION_ID, failing.getId()))
-        .as("the defective provider recorded nothing")
-        .isEmpty();
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(ORGANIZATION_ID, failing.getId())
+                .orElseThrow()
+                .getLastOutcome())
+        .as("the defective provider's run is on record as failed")
+        .isEqualTo(DirectorySyncOutcome.FAILED);
     assertThat(
             statusRepository
                 .findByOrganizationIdAndProviderId(ORGANIZATION_ID, healthy.getId())
@@ -198,6 +206,47 @@ class DirectorySyncSchedulerIntegrationTest {
                 .getLastOutcome())
         .isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(groupsOf(healthy.getId())).hasSize(1);
+  }
+
+  /**
+   * Regression guard for #2902: a run whose apply the database refuses is on record as failed, so
+   * the schedule waits for the interval instead of fetching the whole directory on every tick.
+   */
+  @Test
+  void aRunThatFailsToApplyIsRecordedAsFailedAndWaitsForItsInterval() {
+    OidcProvider provider = createProvider(true, true, 360);
+    // groups.source_path is varchar(1000): a real directory value the database refuses at commit.
+    String tooLongPath = "/" + "x".repeat(1000);
+    directoryClient.respondWithFor(
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, tooLongPath, Set.of()));
+
+    scheduler.triggerDueProviders();
+
+    DirectorySyncStatus failed =
+        statusRepository
+            .findByOrganizationIdAndProviderId(ORGANIZATION_ID, provider.getId())
+            .orElseThrow();
+    assertThat(failed.getLastOutcome()).isEqualTo(DirectorySyncOutcome.FAILED);
+    assertThat(failed.getLastRunAt()).isNotNull();
+    assertThat(failed.getLastAppliedAt()).isNull();
+    assertThat(failed.getLastMessage()).isEqualTo(DirectorySyncService.FAILED_MESSAGE);
+    assertThat(groupsOf(provider.getId())).isEmpty();
+    assertThat(failedRunEntriesOf(provider)).isEqualTo(1);
+
+    directoryClient.respondWithFor(
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
+    scheduler.triggerDueProviders();
+
+    assertThat(groupsOf(provider.getId()))
+        .as("the next tick within the interval does not run again")
+        .isEmpty();
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(ORGANIZATION_ID, provider.getId())
+                .orElseThrow()
+                .getLastOutcome())
+        .isEqualTo(DirectorySyncOutcome.FAILED);
+    assertThat(failedRunEntriesOf(provider)).isEqualTo(1);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -221,6 +270,18 @@ class DirectorySyncSchedulerIntegrationTest {
     providerRepository.save(provider);
     createdProviderIds.add(provider.getId());
     return provider;
+  }
+
+  /** The provider's header entries of failed runs; the label carries its unique display name. */
+  private int failedRunEntriesOf(OidcProvider provider) {
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM audit_log WHERE event_type = ? AND outcome = 'FAILURE'"
+                + " AND object_label LIKE ? AND after LIKE '%FAILED%'",
+            Integer.class,
+            AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED.name(),
+            "%(" + provider.getDisplayName() + ")");
+    return count == null ? 0 : count;
   }
 
   private List<Group> groupsOf(UUID providerId) {

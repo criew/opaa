@@ -946,10 +946,88 @@
         "replicas": {
           "type": "integer",
           "minimum": 0,
-          "description": "1, or 0 to stop the backend; more than one instance is refused (ADR-0021)"
+          "description": "Number of backend pods, 0 stops the backend; more than 1 needs backend.migration.enabled and originals every pod sees (ADR-0053)"
+        },
+        "updateStrategy": {
+          "type": "string",
+          "enum": [
+            "",
+            "Recreate",
+            "RollingUpdate"
+          ],
+          "description": "Empty: Recreate for one pod, RollingUpdate for more"
+        },
+        "migration": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "backoffLimit": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "activeDeadlineSeconds": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "resources": {
+              "type": "object"
+            }
+          }
+        },
+        "databasePoolSize": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Connections of the database pool per pod (OPAA_DB_POOL_SIZE); null keeps 10"
+        },
+        "installationBudgets": {
+          "type": "object",
+          "description": "Budgets of the whole installation for limits that count per pod; each variable is set to the budget divided by replicas, rounded down, at least 1 (ADR-0053, Entscheidung 12)",
+          "propertyNames": {
+            "enum": [
+              "OPAA_INDEXING_EMBEDDING_CONCURRENCY",
+              "OPAA_TRANSCRIPTION_MAX_CONCURRENT",
+              "OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT",
+              "OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS"
+            ]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
         },
         "shutdownTimeoutSeconds": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1
         },
         "managementPort": {
@@ -971,8 +1049,16 @@
           ]
         },
         "terminationGracePeriodSeconds": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1
+        },
+        "preStopSleepSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120
         },
         "maxRamPercentage": {
           "type": [
@@ -984,6 +1070,10 @@
         },
         "javaToolOptions": {
           "type": "string"
+        },
+        "timeZone": {
+          "type": "string",
+          "minLength": 1
         },
         "resources": {
           "type": "object"
@@ -1116,6 +1206,17 @@
         "affinity": {
           "type": "object"
         },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "maxSkew",
+              "topologyKey",
+              "whenUnsatisfiable"
+            ]
+          }
+        },
         "extraEnv": {
           "type": "array"
         },
@@ -1163,10 +1264,16 @@
           "type": "integer",
           "minimum": 1
         },
+        "preStopSleepSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60,
+          "description": "Seconds a stopping frontend pod keeps serving while the endpoints drop it (lifecycle.preStop.sleep); 0 renders no preStop"
+        },
         "cspConnectSrcExtra": {
           "type": "string",
-          "pattern": "^[^;\"'{}$\\\\\\x00-\\x1f\\x7f]*$",
-          "description": "Origins for connect-src, space-separated; spliced into the nginx configuration, so no quotes, semicolons, braces or $"
+          "pattern": "^ *(((([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://)?(\\*\\.)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*(:([0-9]{1,5}|\\*))?(/[A-Za-z0-9._~%!&()*+=:@/-]*)?|([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):|\\*)( +((([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://)?(\\*\\.)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*(:([0-9]{1,5}|\\*))?(/[A-Za-z0-9._~%!&()*+=:@/-]*)?|([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):|\\*))*)? *$",
+          "description": "Sources for connect-src, space-separated, each [scheme://][*.]host[:port|:*][/path] with scheme http, https, ws or wss, a scheme such as https: or *; the same rule the image checks at start, since the value is spliced into the nginx configuration"
         },
         "backendReadTimeout": {
           "type": "string",

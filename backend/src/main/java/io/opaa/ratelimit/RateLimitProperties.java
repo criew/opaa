@@ -1,8 +1,11 @@
 package io.opaa.ratelimit;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 
 /**
@@ -32,20 +35,25 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param chatSearch per-endpoint limits for the chat search ({@code POST
  *     /api/v1/spaces/{spaceId}/chats/search}) - its own budget, because the search runs while the
  *     person types and would exhaust the query budget within seconds
+ * @param search per-endpoint limits for the search without an answer ({@code POST /api/v1/search})
+ *     and the fetch of a hit ({@code GET /api/v1/search/hits/{hitId}}), one budget for both: every
+ *     search embeds its question with the configured model, every fetch reads stored chunks
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
  */
+@PerInstance("budgets of this process (ADR-0053, Entscheidung 12)")
 @NoDataImpact("request limits")
 @ConfigurationProperties(prefix = "opaa.rate-limit")
 public record RateLimitProperties(
     @NoDataImpact("a protection switch; it keeps no data") boolean enabled,
-    List<String> trustedProxyCidrs,
+    @InstallationWide List<String> trustedProxyCidrs,
     EndpointLimit query,
     EndpointLimit indexing,
     EndpointLimit sourceTest,
     EndpointLimit documentContent,
     EndpointLimit webhook,
     EndpointLimit chatSearch,
+    EndpointLimit search,
     LocalAuthLimits localAuth) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
@@ -114,10 +122,21 @@ public record RateLimitProperties(
    *
    * @param maxRequests maximum requests per IP within the window. Must be at least 1.
    * @param windowSeconds sliding window duration in seconds. Must be at least 1.
-   * @param globalMaxRequests maximum requests across all IPs within the window. Must be at least 1.
+   * @param globalMaxRequests maximum requests across all IPs within the window; only requests that
+   *     authenticated count ({@code RateLimitFilter.Counting}). Must be at least 1.
+   * @param maxRequestsPerAccount maximum requests per signed-in account, per access token and per
+   *     person over all her access tokens within the window, whatever address they come from;
+   *     {@code 0} for none. Primitive on purpose: an empty value fails the binding at start-up
+   *     instead of switching the limit off.
    */
-  public record EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
+  public record EndpointLimit(
+      int maxRequests, int windowSeconds, int globalMaxRequests, int maxRequestsPerAccount) {
 
+    public EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
+      this(maxRequests, windowSeconds, globalMaxRequests, 0);
+    }
+
+    @ConstructorBinding
     public EndpointLimit {
       if (maxRequests < 1) {
         throw new IllegalArgumentException("maxRequests must be at least 1, got " + maxRequests);
@@ -130,6 +149,14 @@ public record RateLimitProperties(
         throw new IllegalArgumentException(
             "globalMaxRequests must be at least 1, got " + globalMaxRequests);
       }
+      if (maxRequestsPerAccount < 0) {
+        throw new IllegalArgumentException(
+            "maxRequestsPerAccount must not be negative, got " + maxRequestsPerAccount);
+      }
+    }
+
+    public boolean hasAccountLimit() {
+      return maxRequestsPerAccount > 0;
     }
   }
 
@@ -172,7 +199,8 @@ public record RateLimitProperties(
    * @param maxRequests requests per key (client address or account) within the window
    * @param windowSeconds sliding window in seconds
    * @param globalMaxRequests requests across all keys within the window, or {@code null} for no
-   *     global ceiling; exceeding it is a {@code WARN} line and a metric
+   *     global ceiling. Every attempt counts, failed ones included; past it the answer is {@code
+   *     429} for every client, with a {@code WARN} line and a metric
    * @param maxRequestsPerAddress requests naming the same e-mail address within the window, or
    *     {@code null} when the endpoint names none
    */

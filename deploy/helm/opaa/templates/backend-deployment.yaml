@@ -18,9 +18,19 @@ metadata:
     {{- include "opaa.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
 spec:
   replicas: {{ .Values.backend.replicas }}
-  # Liquibase migrates the schema on start: the old and the new version must never run side by side.
   strategy:
+    {{- if include "opaa.backend.rolling" . }}
+    # Pod by pod, the next one only after the new one is ready; the migration job has extended the
+    # schema beforehand, so the old version keeps working next to the new (ADR-0053).
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+    {{- else }}
+    # The old pods end before the new ones start; without the migration job every pod migrates the
+    # schema on its start.
     type: Recreate
+    {{- end }}
   selector:
     matchLabels:
       {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 6 }}
@@ -46,61 +56,27 @@ spec:
         {{- end }}
     spec:
       {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.backend "podSecurityContext" $podSecurityContext) | nindent 6 }}
-      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
-      {{- if or .Values.evaluationDatabase.enabled (include "opaa.extraCACertificates.enabled" .) }}
+      terminationGracePeriodSeconds: {{ include "opaa.backend.terminationGracePeriodSeconds" . }}
+      {{- with .Values.backend.topologySpreadConstraints }}
+      {{- $selector := fromYaml (include "opaa.componentSelectorLabels" (dict "root" $ "component" "backend")) }}
+      {{- $constraints := list }}
+      {{- range . }}
+      {{- $constraints = append $constraints (merge (deepCopy .) (dict "labelSelector" (dict "matchLabels" $selector))) }}
+      {{- end }}
+      topologySpreadConstraints:
+        {{- toYaml $constraints | nindent 8 }}
+      {{- end }}
+      {{- $prepare := include "opaa.backend.prepareContainers" . }}
+      {{- if or $prepare .Values.backend.migration.enabled }}
       initContainers:
-      {{- end }}
-      {{- if .Values.evaluationDatabase.enabled }}
-        # Holds the backend back until the evaluation database accepts connections through its
-        # service; on the first start initdb takes longer than the backend needs to reach the
-        # database. Uses the database image, whose postgres account (999) satisfies runAsNonRoot.
-        - name: wait-for-database
-          image: {{ include "opaa.image" (dict "root" . "image" .Values.evaluationDatabase.image) | quote }}
-          imagePullPolicy: {{ .Values.evaluationDatabase.image.pullPolicy }}
-          securityContext:
-            {{- toYaml (merge (dict "runAsUser" 999 "runAsGroup" 999) .Values.containerSecurityContext) | nindent 12 }}
-          command:
-            - sh
-            - -c
-            - echo "Waiting for $PGHOST:$PGPORT"; until pg_isready --quiet; do sleep 2; done
-          env:
-            - name: PGHOST
-              value: {{ include "opaa.evaluationDatabase.fullname" . | quote }}
-            - name: PGPORT
-              value: {{ .Values.database.port | quote }}
-            - name: PGUSER
-              value: {{ .Values.database.username | quote }}
-            - name: PGDATABASE
-              value: {{ .Values.database.name | quote }}
-          resources:
-            {{- toYaml .Values.backend.initResources | nindent 12 }}
-      {{- end }}
-      {{- if include "opaa.extraCACertificates.enabled" . }}
-        # Writes the runtime's CAs plus extraCACertificates into a fresh truststore on every start; a
-        # main class of the backend image, because the image has no shell.
-        - name: truststore
-          image: {{ include "opaa.image" (dict "root" . "image" .Values.backend.image) | quote }}
-          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
-          securityContext:
-            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
-          command:
-            - /opt/java/openjdk/bin/java
-            - -cp
-            - /app/app.jar
-            - -Dloader.main=io.opaa.config.TrustStoreBuilder
-            - org.springframework.boot.loader.launch.PropertiesLauncher
-            - /etc/opaa/truststore/cacerts
-            - /etc/opaa/ca-certificates
-          resources:
-            {{- toYaml .Values.backend.initResources | nindent 12 }}
-          volumeMounts:
-            - name: truststore
-              mountPath: /etc/opaa/truststore
-            - name: ca-certificates
-              mountPath: /etc/opaa/ca-certificates
-              readOnly: true
-            - name: tmp
-              mountPath: /tmp
+        {{- with $prepare }}
+        {{- . | trim | nindent 8 }}
+        {{- end }}
+        {{- if .Values.backend.migration.enabled }}
+        # Started without migrating: waits, reading only, until the migration job has applied every
+        # changeset of this version, so a new pod never meets an older schema.
+        {{- include "opaa.backend.databaseStep" (dict "root" . "name" "await-migration" "mode" "await-migration") | trim | nindent 8 }}
+        {{- end }}
       {{- end }}
       containers:
         - name: backend
@@ -126,9 +102,16 @@ spec:
             # rather than the ConfigMap, because env takes precedence over every envFrom source.
             - name: SPRING_PROFILES_ACTIVE
               value: oidc
+            - name: TZ
+              value: {{ .Values.backend.timeZone | quote }}
             {{- with include "opaa.backend.javaToolOptions" . }}
             - name: JAVA_TOOL_OPTIONS
               value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.backend.migration.enabled }}
+            # The migration job migrates; a pod never runs Liquibase itself.
+            - name: SPRING_LIQUIBASE_ENABLED
+              value: "false"
             {{- end }}
             # Required keys carry no "optional": a missing key keeps the pod from starting
             # (CreateContainerConfigError) instead of surfacing at first use (ADR-0042, Entscheidung 5).
@@ -150,6 +133,14 @@ spec:
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- with int (include "opaa.backend.preStopSeconds" .) }}
+          # Keeps serving while the endpoints drop the pod, so no new request meets a pod that
+          # already refuses connections; a sleep action, because the image has no shell.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: {{ . }}
+          {{- end }}
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -203,18 +194,8 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "opaa.uploads.claimName" . }}
         {{- end }}
-        {{- if include "opaa.extraCACertificates.enabled" . }}
-        - name: truststore
-          emptyDir:
-            sizeLimit: 16Mi
-        - name: ca-certificates
-          {{- if .Values.extraCACertificates.configMap }}
-          configMap:
-            name: {{ .Values.extraCACertificates.configMap }}
-          {{- else }}
-          secret:
-            secretName: {{ .Values.extraCACertificates.secret }}
-          {{- end }}
+        {{- with include "opaa.backend.truststoreVolumes" . }}
+        {{- . | trim | nindent 8 }}
         {{- end }}
         {{- range .Values.filesystemSources }}
         - name: {{ printf "source-%s" .name }}

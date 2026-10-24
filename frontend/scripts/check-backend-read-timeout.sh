@@ -3,7 +3,8 @@
 # capabilities) in front of a stand-in backend that answers every /api/ and /mcp request only after
 # DELAY seconds, then asserts the status code nginx returns. Needs Docker and curl on the host.
 # With EXPECT_READ_TIMEOUT it also asserts that the rendered configuration sets exactly that
-# proxy_read_timeout for /api/, /api/v1/transcriptions and /mcp - the way to check the image default without waiting for it.
+# proxy_read_timeout for /api/, /api/v1/transcriptions, the self-disclosure download, /mcp and
+# /_opaa_once/ - the way to check the image default without waiting for it.
 #
 #   frontend/scripts/check-backend-read-timeout.sh [image]
 #
@@ -12,8 +13,8 @@
 #   EXPECT           expected HTTP status (default: 200)
 #   REQUEST_PATH     path requested through the frontend (default: /api/v1/query)
 #   OPAA_BACKEND_READ_TIMEOUT  passed to the frontend container when set
-#   EXPECT_READ_TIMEOUT        expected proxy_read_timeout of /api/, /api/v1/transcriptions and
-#                              /mcp, e.g. 600s (optional)
+#   EXPECT_READ_TIMEOUT        expected proxy_read_timeout of /api/, /api/v1/transcriptions, the
+#                              self-disclosure download, /mcp and /_opaa_once/, e.g. 600s (optional)
 #   BACKEND_IMAGE    image of the stand-in backend (default: python:3.13-alpine)
 set -euo pipefail
 
@@ -106,8 +107,8 @@ if [ -n "${EXPECT_READ_TIMEOUT:-}" ]; then
   total_count="$(printf '%s\n' "$rendered" | grep -c 'proxy_read_timeout' || true)"
   echo "rendered proxy_read_timeout lines:"
   printf '%s\n' "$rendered"
-  if [ "$expected_count" != 3 ] || [ "$total_count" != 3 ]; then
-    echo "FAIL: expected proxy_read_timeout $EXPECT_READ_TIMEOUT for /api/, /api/v1/transcriptions and /mcp" >&2
+  if [ "$expected_count" != 5 ] || [ "$total_count" != 5 ]; then
+    echo "FAIL: expected proxy_read_timeout $EXPECT_READ_TIMEOUT for /api/, /api/v1/transcriptions, the self-disclosure download, /mcp and /_opaa_once/" >&2
     exit 1
   fi
 fi

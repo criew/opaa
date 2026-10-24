@@ -15,6 +15,7 @@ import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * The personal-space half of {@link UserProvisionedEvent}, carrying over the contract {@code
@@ -62,6 +63,23 @@ class PersonalSpaceProvisionerTest {
 
     verify(spaceService).ensureDefaultSpace(user.getId(), Organization.DEFAULT_ID);
     verify(spaceService, never()).ensureDefaultSpaceForNewUser(any(), any());
+  }
+
+  /** A publisher inside a transaction gets the space in it, not on a second connection. */
+  @Test
+  void anAccountCreatedInsideATransactionGetsItsSpaceInThatTransaction() {
+    User user = user();
+    TransactionSynchronizationManager.setActualTransactionActive(true);
+    try {
+      provisioner.onUserProvisioned(UserProvisionedEvent.withoutTokenGroups(user, true));
+    } finally {
+      TransactionSynchronizationManager.setActualTransactionActive(false);
+    }
+
+    verify(spaceService)
+        .ensureDefaultSpaceInCurrentTransaction(user.getId(), Organization.DEFAULT_ID);
+    verify(spaceService, never()).ensureDefaultSpaceForNewUser(any(), any());
+    verify(spaceService, never()).ensureDefaultSpace(any(), any());
   }
 
   /**

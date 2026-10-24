@@ -3,6 +3,9 @@ package io.opaa.indexing.job;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,10 +23,11 @@ public class IndexingJobService {
   private static final Logger log = LoggerFactory.getLogger(IndexingJobService.class);
 
   /**
-   * Error message a run that was still {@link JobStatus#RUNNING} at the previous application
-   * startup gets - see {@link #recoverJobsOrphanedByRestart}.
+   * Error message a run gets once the instance that ran it is dead - see {@link
+   * #recoverJobsOfDeadInstances}.
    */
-  static final String RESTART_ABORTED_MESSAGE = "Durch Neustart abgebrochen";
+  static final String RESTART_ABORTED_MESSAGE =
+      "Durch Neustart oder Ausfall der ausführenden Instanz abgebrochen";
 
   /**
    * Error message a run gets when it is still {@link JobStatus#RUNNING} well past {@code
@@ -42,12 +46,29 @@ public class IndexingJobService {
   private final IndexingJobRepository indexingJobRepository;
   private final AssetRepository assetRepository;
   private final Clock clock;
+  private final DatabaseClock databaseClock;
+  private final CurrentInstance currentInstance;
+  private final InstanceRegistry instanceRegistry;
 
+  /**
+   * {@code databaseClock} stamps the progress heartbeat {@code lastProgressAt} and judges it stale:
+   * another instance may read and compare it (ADR-0053, Entscheidung 9). A job belongs to the
+   * {@code currentInstance} that started it; {@code instanceRegistry} tells whether its owner lives
+   * (Entscheidung 8).
+   */
   public IndexingJobService(
-      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository, Clock clock) {
+      IndexingJobRepository indexingJobRepository,
+      AssetRepository assetRepository,
+      Clock clock,
+      DatabaseClock databaseClock,
+      CurrentInstance currentInstance,
+      InstanceRegistry instanceRegistry) {
     this.indexingJobRepository = indexingJobRepository;
     this.assetRepository = assetRepository;
     this.clock = clock;
+    this.databaseClock = databaseClock;
+    this.currentInstance = currentInstance;
+    this.instanceRegistry = instanceRegistry;
   }
 
   /**
@@ -76,6 +97,8 @@ public class IndexingJobService {
     job.setOrganizationId(organizationId);
     job.setTriggeredBy(triggeredBy);
     job.setRunMode(runMode);
+    job.setOwnerInstanceId(currentInstance.id());
+    job.setLastProgressAt(databaseClock.now());
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);
@@ -160,6 +183,35 @@ public class IndexingJobService {
     }
   }
 
+  /**
+   * Ends the caller's run unless it still holds {@code jobId}: the job is {@link JobStatus#RUNNING}
+   * and this instance's heartbeat is current. Asked before a run removes anything, so a run another
+   * instance already took over never reconciles the bestand of the run that followed it.
+   *
+   * @throws RunAbandonedException when the run no longer holds its job
+   */
+  public void requireHeld(UUID jobId) {
+    requireHeartbeat(jobId);
+    boolean running =
+        indexingJobRepository
+            .findById(jobId)
+            .filter(job -> job.getStatus() == JobStatus.RUNNING)
+            .isPresent();
+    if (!running) {
+      throw new RunAbandonedException(jobId, "its job is no longer RUNNING");
+    }
+  }
+
+  /**
+   * An instance whose heartbeat lapsed counts as replaced; its runs end instead of competing with
+   * the instance that may already have taken them over (ADR-0053, Entscheidung 3).
+   */
+  private void requireHeartbeat(UUID jobId) {
+    if (!currentInstance.heartbeatCurrent()) {
+      throw new RunAbandonedException(jobId, "the heartbeat of this instance has lapsed");
+    }
+  }
+
   /** Whether {@code jobId} is a {@link JobStatus#RUNNING} job started for {@code libraryId}. */
   public boolean isRunningFor(UUID jobId, UUID libraryId) {
     return indexingJobRepository
@@ -206,21 +258,21 @@ public class IndexingJobService {
     }
   }
 
+  /** Records the run's total; a no-op once the job is no longer {@link JobStatus#RUNNING}. */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void setTotalDocuments(UUID jobId, int totalDocuments) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-    job.setDocumentsTotal(totalDocuments);
-    indexingJobRepository.save(job);
+    int updated = indexingJobRepository.setTotalIfRunning(jobId, totalDocuments);
+    requireJobExistedIfNoRowsUpdated(jobId, updated);
   }
 
   /**
    * Reports progress and touches {@link IndexingJob#getLastProgressAt()}, the heartbeat {@link
    * #recoverStaleJobs} compares against. Called once per file or entry an active run processes, so
-   * a genuinely active run's heartbeat never falls behind however long the run grows. A no-op once
-   * the job is no longer {@link JobStatus#RUNNING}.
+   * a genuinely active run's heartbeat never falls behind however long the run grows. One
+   * conditional {@code UPDATE}: a job the recovery failed meanwhile stays failed.
+   *
+   * @throws RunAbandonedException when the job is no longer {@link JobStatus#RUNNING} or the
+   *     heartbeat of this instance lapsed - the run ends there
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateProgress(
@@ -229,19 +281,19 @@ public class IndexingJobService {
       int documentsFailed,
       int documentsSkipped,
       int documentsIndexedTotal) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
-    if (job.getStatus() != JobStatus.RUNNING) {
-      return;
+    requireHeartbeat(jobId);
+    int updated =
+        indexingJobRepository.updateProgressIfRunning(
+            jobId,
+            documentsProcessed,
+            documentsFailed,
+            documentsSkipped,
+            documentsIndexedTotal,
+            databaseClock.now());
+    requireJobExistedIfNoRowsUpdated(jobId, updated);
+    if (updated == 0) {
+      throw new RunAbandonedException(jobId, "its job is no longer RUNNING");
     }
-    job.setDocumentsProcessed(documentsProcessed);
-    job.setDocumentsFailed(documentsFailed);
-    job.setDocumentsSkipped(documentsSkipped);
-    job.setDocumentsIndexedTotal(documentsIndexedTotal);
-    job.setLastProgressAt(Instant.now(clock));
-    indexingJobRepository.save(job);
   }
 
   /**
@@ -251,10 +303,7 @@ public class IndexingJobService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordRunMetrics(UUID jobId, IndexingRunCost metrics) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    var job = lockedJob(jobId);
     if (job.getStatus() != JobStatus.RUNNING) {
       return;
     }
@@ -270,10 +319,7 @@ public class IndexingJobService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordListingAssessment(UUID jobId, boolean complete, List<String> unlistedKeys) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    var job = lockedJob(jobId);
     if (job.getStatus() != JobStatus.RUNNING) {
       return;
     }
@@ -287,10 +333,7 @@ public class IndexingJobService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordUnreadableScopes(UUID jobId, int count) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    var job = lockedJob(jobId);
     if (job.getStatus() != JobStatus.RUNNING) {
       return;
     }
@@ -319,12 +362,22 @@ public class IndexingJobService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordEventsTruncated(UUID jobId, int truncatedCount) {
-    var job =
-        indexingJobRepository
-            .findById(jobId)
-            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    var job = lockedJob(jobId);
+    if (job.getStatus() != JobStatus.RUNNING) {
+      return;
+    }
     job.setEventsTruncatedCount(truncatedCount);
     indexingJobRepository.save(job);
+  }
+
+  /**
+   * {@code jobId} locked for the caller's transaction: a recovery committed meanwhile is read, and
+   * the caller's save cannot write the row back over it.
+   */
+  private IndexingJob lockedJob(UUID jobId) {
+    return indexingJobRepository
+        .findByIdForUpdate(jobId)
+        .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
   }
 
   /**
@@ -381,16 +434,37 @@ public class IndexingJobService {
   }
 
   /**
-   * Fails every row still {@link JobStatus#RUNNING} from a previous application run. Called once at
-   * startup: a fresh JVM cannot be running the {@code @Async} task such a row refers to, so no age
-   * threshold applies, unlike {@link #recoverStaleJobs}. Assumes exactly one backend process; under
-   * genuine multi-instance operation this would abort another instance's live jobs (ADR-0021).
+   * Fails every row still {@link JobStatus#RUNNING} whose owner the instance register counts as
+   * dead - signed off, or without heartbeat for {@code opaa.instance.dead-after} (ADR-0053,
+   * Entscheidung 8). Neither the start of this process nor "not mine" is a criterion: a replaced
+   * pod has a new identity, and the live run of another instance stays. A dead instance stays dead,
+   * so judging it before the {@code UPDATE} cannot fail the run of a live one.
    *
    * @return the number of rows recovered
    */
   @Transactional
-  public int recoverJobsOrphanedByRestart() {
-    return indexingJobRepository.failAllRunningJobs(RESTART_ABORTED_MESSAGE, Instant.now(clock));
+  public int recoverJobsOfDeadInstances() {
+    int recovered = 0;
+    for (UUID owner : indexingJobRepository.findOwnersOfRunningJobs()) {
+      if (!instanceRegistry.isAlive(owner)) {
+        recovered +=
+            indexingJobRepository.failRunningJobsOwnedBy(
+                owner, RESTART_ABORTED_MESSAGE, Instant.now(clock));
+      }
+    }
+    return recovered;
+  }
+
+  /**
+   * Fails every row still {@link JobStatus#RUNNING} that names no owner: it was written before
+   * owners were recorded, by a process gone since this version took over. Called once at startup.
+   *
+   * @return the number of rows recovered
+   */
+  @Transactional
+  public int recoverJobsWithoutOwner() {
+    return indexingJobRepository.failRunningJobsWithoutOwner(
+        RESTART_ABORTED_MESSAGE, Instant.now(clock));
   }
 
   /**
@@ -403,8 +477,8 @@ public class IndexingJobService {
    */
   @Transactional
   public int recoverStaleJobs(Duration staleAfter) {
-    Instant cutoff = Instant.now(clock).minus(staleAfter);
+    Instant now = databaseClock.now();
     return indexingJobRepository.failStaleRunningJobs(
-        STALE_RUN_MESSAGE, cutoff, Instant.now(clock));
+        STALE_RUN_MESSAGE, now.minus(staleAfter), now);
   }
 }

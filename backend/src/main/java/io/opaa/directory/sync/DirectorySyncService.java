@@ -9,6 +9,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
 import io.opaa.common.NotFoundException;
 import java.time.Clock;
 import java.time.Instant;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -72,6 +74,14 @@ public class DirectorySyncService {
   /** The 409 code when the confirmed plan no longer matches a fresh snapshot (ADR-0036/3). */
   public static final String PLAN_CHANGED_CODE = "DIRECTORY_SYNC_PLAN_CHANGED";
 
+  /**
+   * The status message of a run that broke off with an error. Names no cause: the exception may
+   * carry SQL, directory values or connection details, which belong in the log only.
+   */
+  static final String FAILED_MESSAGE =
+      "Der Abgleich ist mit einem Fehler abgebrochen und hat nichts geändert. Der letzte bekannte"
+          + " Stand bleibt in Kraft; die Ursache steht im Anwendungsprotokoll.";
+
   private final DirectoryClient directoryClient;
   private final DirectorySyncPlanExecutor planExecutor;
   private final DirectorySyncStatusRecorder statusRecorder;
@@ -82,6 +92,7 @@ public class DirectorySyncService {
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncRunLock runLock;
   private final Clock clock;
+  private final DatabaseClock databaseClock;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
@@ -93,7 +104,8 @@ public class DirectorySyncService {
       DirectorySyncProperties properties,
       AuditEventRecorder auditEventRecorder,
       DirectorySyncRunLock runLock,
-      Clock clock) {
+      Clock clock,
+      DatabaseClock databaseClock) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
@@ -104,6 +116,7 @@ public class DirectorySyncService {
     this.auditEventRecorder = auditEventRecorder;
     this.runLock = runLock;
     this.clock = clock;
+    this.databaseClock = databaseClock;
   }
 
   /**
@@ -129,12 +142,21 @@ public class DirectorySyncService {
   }
 
   /**
-   * The schedule's entry point: the caller has already established that this provider is enabled
-   * and due, so the state checks of {@link #run} would only repeat its own query. A second run
-   * already in flight is not an error here - the tick simply skips it.
+   * The schedule's entry point: the caller has already established that this provider is enabled,
+   * so the state checks of {@link #run} would only repeat its own query. Whether it is still due is
+   * asked again under the run lock: a run of another instance that finished in between has stamped
+   * its last run by then, and this one is skipped instead of repeated.
+   *
+   * @return the report, or {@code null} when the provider was no longer due under the lock
    */
-  SyncReport runScheduled(SyncTarget target) {
-    return runExclusivelyApplying(target);
+  SyncReport runScheduled(SyncTarget target, BooleanSupplier stillDue) {
+    return runLock.runExclusively(
+        target.providerId(),
+        () ->
+            stillDue.getAsBoolean()
+                ? execute(
+                    target, (snapshot, now) -> planExecutor.planAndApply(target, now, snapshot))
+                : null);
   }
 
   private SyncReport runExclusivelyApplying(SyncTarget target) {
@@ -279,41 +301,62 @@ public class DirectorySyncService {
 
   /**
    * Reads the provider's directory and hands the snapshot to {@code plan}. An unreachable directory
-   * never reaches {@link DirectorySyncPlanExecutor} at all, so the header entry of such a run is
-   * written here - "Kopfeintrag des Laufs mit Ergebnis" is otherwise not written for this outcome.
-   * No ambient transaction is open here (this class deliberately holds none - see the class
-   * Javadoc), so that call commits immediately on its own.
+   * never reaches {@link DirectorySyncPlanExecutor} at all, and a failed run leaves nothing of the
+   * executor's behind, so the header entry of both is written here. No ambient transaction is open
+   * here (this class deliberately holds none - see the class Javadoc), so each write commits on its
+   * own, and a failure is recorded only after the executor's transaction has rolled back. The run's
+   * start is recorded by the database clock: the schedule of every instance compares against it.
    */
   private SyncReport execute(
       SyncTarget target, BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
     Instant now = Instant.now(clock);
+    Instant runAt = databaseClock.now();
     DirectorySnapshot snapshot;
     try {
       snapshot = directoryClient.fetchSnapshot(target.organizationId(), target.providerId());
     } catch (DirectoryUnavailableException e) {
-      return recordUnreachable(target, now, e);
+      return recordUnreachable(target, now, runAt, e);
+    } catch (RuntimeException e) {
+      recordFailed(target, runAt, e);
+      throw e;
     }
-
-    // If the executor's transaction fails to commit (e.g. a directory-supplied value that violates
-    // a column constraint), the exception propagates from here and nothing below runs - so a failed
-    // apply can never be recorded as APPLIED.
-    SyncReport report = plan.apply(snapshot, now);
-    recordStatusSafely(target, now, report.outcome(), report.message(), report.changedFraction());
+    SyncReport report;
+    try {
+      report = plan.apply(snapshot, now);
+    } catch (RuntimeException e) {
+      recordFailed(target, runAt, e);
+      throw e;
+    }
+    recordStatusSafely(target, runAt, report.outcome(), report.message(), report.changedFraction());
     return report;
   }
 
-  private SyncReport recordUnreachable(
-      SyncTarget target, Instant now, DirectoryUnavailableException cause) {
-    String message = "Verzeichnis nicht erreichbar. Der letzte bekannte Stand bleibt in Kraft.";
-    log.warn(
-        "Directory sync: directory unreachable for provider {} of organization {}: {}",
-        target.providerId(),
-        target.organizationId(),
-        cause.getMessage());
-    recordStatusSafely(target, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+  /**
+   * Records a run that broke off with an error - while reading the directory (other than an
+   * unreachable one) or while planning and applying - as {@code FAILED}, so the schedule waits for
+   * the interval instead of fetching the directory on every tick. The caller rethrows {@code
+   * cause}, which is logged there; neither the status nor the audit entry names it. A failure of
+   * either write is logged and attached to {@code cause} rather than replacing it.
+   */
+  private void recordFailed(SyncTarget target, Instant runAt, RuntimeException cause) {
+    recordStatusSafely(target, runAt, DirectorySyncOutcome.FAILED, FAILED_MESSAGE, 0.0)
+        .ifPresent(cause::addSuppressed);
+    try {
+      recordFailureEntry(target, DirectorySyncOutcome.FAILED, FAILED_MESSAGE);
+    } catch (RuntimeException auditFailure) {
+      log.error(
+          "Directory sync: failed to record the audit entry of the failed run for provider {}",
+          target.providerId(),
+          auditFailure);
+      cause.addSuppressed(auditFailure);
+    }
+  }
+
+  /** The header entry of a run for which {@link DirectorySyncPlanExecutor} wrote none. */
+  private void recordFailureEntry(SyncTarget target, DirectorySyncOutcome outcome, String message) {
     UUID correlationRef = UUID.randomUUID();
     Map<String, Object> after = new HashMap<>();
-    after.put("outcome", DirectorySyncOutcome.UNREACHABLE.name());
+    after.put("outcome", outcome.name());
     after.put("providerId", target.providerId().toString());
     auditEventRecorder.recordSystemProcessAction(
         AuditEvent.builder()
@@ -329,6 +372,18 @@ public class DirectorySyncService {
             .reason(message)
             .correlationRef(correlationRef.toString())
             .build());
+  }
+
+  private SyncReport recordUnreachable(
+      SyncTarget target, Instant now, Instant runAt, DirectoryUnavailableException cause) {
+    String message = "Verzeichnis nicht erreichbar. Der letzte bekannte Stand bleibt in Kraft.";
+    log.warn(
+        "Directory sync: directory unreachable for provider {} of organization {}: {}",
+        target.providerId(),
+        target.organizationId(),
+        cause.getMessage());
+    recordStatusSafely(target, runAt, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+    recordFailureEntry(target, DirectorySyncOutcome.UNREACHABLE, message);
     return new SyncReport(
         DirectorySyncOutcome.UNREACHABLE,
         now,
@@ -355,25 +410,26 @@ public class DirectorySyncService {
    * needs the report. Under-recording the status is the safer direction of the two failure modes: a
    * missing or stale status line is visible and prompts an operator to check, whereas swallowing
    * the report behind an exception here would additionally invite a retry of a run that already
-   * applied.
+   * applied. Returns the failure, so a caller that rethrows a run's own error can attach it.
    */
-  private void recordStatusSafely(
+  private Optional<RuntimeException> recordStatusSafely(
       SyncTarget target,
-      Instant now,
+      Instant runAt,
       DirectorySyncOutcome outcome,
       String message,
       double changedFraction) {
     try {
       statusRecorder.record(
-          target.organizationId(), target.providerId(), now, outcome, message, changedFraction);
+          target.organizationId(), target.providerId(), runAt, outcome, message, changedFraction);
+      return Optional.empty();
     } catch (RuntimeException e) {
       log.error(
-          "Directory sync: failed to record the outcome ({}) for provider {} - the run itself"
-              + " completed and its report is still returned, but the status table may now be"
-              + " stale",
+          "Directory sync: failed to record the outcome ({}) for provider {} - the run's own"
+              + " result is unaffected, but the status table may now be stale",
           outcome,
           target.providerId(),
           e);
+      return Optional.of(e);
     }
   }
 }

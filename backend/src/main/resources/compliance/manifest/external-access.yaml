@@ -1,4 +1,4 @@
-title: Fremdzugänge
+title: Externe KI-Werkzeuge
 data:
   - id: external-access-tokens
     title: Persönliche Zugangstokens für fremde Werkzeuge
@@ -8,7 +8,12 @@ data:
       - name: external_access_tokens
         personalColumns: [user_id, name, created_at, expires_at, last_used_on, revoked_at]
         nonPersonalColumns:
-          [id, token_prefix, token_lookup_hash, revocation_reason, lapse_recorded_at]
+          [id, token_prefix, token_lookup_hash, revocation_reason, lapse_recorded_at, expiry_reminded_days]
+        person:
+          columns: [user_id]
+          excludedColumns:
+            token_prefix: Bestandteil des Geheimnisses
+            token_lookup_hash: Geheimnis (Prüfwert des Tokens)
     storage: Anwendungsdatenbank; Token nur als Hash
     retention:
       rule: >-
@@ -18,7 +23,7 @@ data:
         - external_access_settings.token_max_lifetime_days
         - audit_retention_settings.retention_months
     visibility: [die Person selbst, "SYSTEM_ADMIN (Kennung, Ablauf, Zustand)"]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Retention-Schritt gekoppelt an die Protokollfrist
     evaluations: >-
       Letzter Nutzungstag je Token; die Nutzung selbst wird nicht protokolliert, der Zähler des
@@ -35,7 +40,7 @@ settings:
   - key: opaa.external-access.max-release-days
     source: PROPERTY
     defaultValue: "365"
-    effect: Längste Befristung der Fremdzugangsfreigabe einer Bibliothek
+    effect: Längste Befristung der Freigabe einer Bibliothek für externe KI-Werkzeuge
     bearings: [VISIBILITY, DATA_FLOW]
   - key: io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION
     source: CONSTANT

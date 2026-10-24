@@ -1,5 +1,7 @@
 package io.opaa.audit;
 
+import io.opaa.instance.ScheduledRunLocks;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,10 @@ public class AuditRetentionScheduler {
   }
 
   @Scheduled(cron = "0 0 3 1 * *")
+  @SchedulerLock(
+      name = "audit-retention",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void deleteExpiredAuditLogPartitions() {
     deletionService.runOnce();
   }

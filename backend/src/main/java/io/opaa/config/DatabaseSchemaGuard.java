@@ -1,5 +1,6 @@
 package io.opaa.config;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import java.util.Objects;
 import java.util.Set;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
  * DEFINER functions' pinned {@code search_path} and into native SQL naming {@code vector_store}.
  * Runs as a {@link BeanFactoryPostProcessor} so the check precedes the data source and Liquibase.
  */
+@InstallationWide
 @NoDataImpact("the database schema name")
 @Component
 public class DatabaseSchemaGuard implements BeanFactoryPostProcessor, EnvironmentAware {
@@ -152,7 +154,7 @@ public class DatabaseSchemaGuard implements BeanFactoryPostProcessor, Environmen
           """
           %s (OPAA_DB_SCHEMA) must be a plain lower-case PostgreSQL identifier - letters a-z, \
           digits and underscores, not starting with a digit, at most 63 characters, and no reserved           keyword. Configured: \
-          "%s". See docs/handbuch/datenbank.md."""
+          "%s". See docs/handbuch/betrieb/datenbank.md."""
               .formatted(SCHEMA_PROPERTY, schema));
     }
     String vectorStoreSchema = environment.getProperty(VECTOR_STORE_SCHEMA_PROPERTY, schema);

@@ -2,6 +2,7 @@ package io.opaa.format.config;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -18,6 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     default. Valid range: {@value HeadingSectionSplitter#MIN_SOFT_CHUNK_CHAR_LIMIT}–{@value
  *     HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT}.
  */
+@InstallationWide
 @NoDataImpact("chunk size of the structure-aware cut")
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record ChunkTargetProperties(int chunkTargetCharacters) {

@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.common.DatabaseClock;
 import org.springframework.stereotype.Service;
 
 /**
@@ -21,14 +22,20 @@ import org.springframework.stereotype.Service;
  * <p>Verified by {@code AuditLogServiceIntegrationTest}, against a real transaction manager and
  * real Postgres, not a mocked one: committing the surrounding transaction persists the entry,
  * rolling it back leaves no trace of it.
+ *
+ * <p>{@code recordedAt} comes from the {@link DatabaseClock}: the order of the log is one order for
+ * every instance of the installation, not the order of their host clocks (ADR-0053, Entscheidung
+ * 9).
  */
 @Service
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
+  private final DatabaseClock databaseClock;
 
-  public AuditLogService(AuditLogRepository auditLogRepository) {
+  public AuditLogService(AuditLogRepository auditLogRepository, DatabaseClock databaseClock) {
     this.auditLogRepository = auditLogRepository;
+    this.databaseClock = databaseClock;
   }
 
   /**
@@ -37,6 +44,7 @@ public class AuditLogService {
    * repository call in this codebase.
    */
   public AuditLogEntry record(AuditLogEntry entry) {
+    entry.stampRecordedAt(databaseClock.now());
     return auditLogRepository.save(entry);
   }
 }

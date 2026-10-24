@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-20-library-maintenance-skips
+      author: opaa
+      comment: "What the most recent call of a maintenance run (metadata backfill, context prefix re-run, schema change) could not advance, per library (ADR-0053, Entscheidung 12): the status page shows the same number whichever instance ran the call or answers the page. Additive: a new table."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE library_maintenance_skips (
+                  library_id uuid NOT NULL,
+                  maintenance character varying(32) NOT NULL,
+                  skipped_documents bigint NOT NULL,
+                  recorded_at timestamp with time zone NOT NULL,
+                  CONSTRAINT library_maintenance_skips_pkey PRIMARY KEY (library_id, maintenance),
+                  CONSTRAINT fk_library_maintenance_skips_library FOREIGN KEY (library_id)
+                      REFERENCES knowledge_libraries(id) ON DELETE CASCADE
+              );

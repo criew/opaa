@@ -163,6 +163,40 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/auth/local/reauthenticate:
+    post:
+      operationId: localReauthenticate
+      tags: [auth]
+      summary: >
+        Confirm the caller's own sign-in with the password before an operation that requires a
+        recent sign-in (response RecentLoginRequired). Verifies the password like a sign-in - a
+        wrong one counts as a failed attempt towards the lockout, and every refusal (wrong
+        password, an account no longer login-capable, a local SYSTEM_ADMIN outside
+        OPAA_LOCAL_ADMIN_ALLOWED_CIDRS) is the same 400 with fieldErrors[password] = NOT_CONFIRMED
+        and a neutral message - and answers with a fresh access token whose
+        auth_time is now; the refresh cookie and its family stay as they are. Shares the
+        per-account budget of localChangePassword. 409 for an account of an identity provider,
+        which confirms its sign-in at the provider (prompt=login, max_age=0) instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalReauthenticateRequest"
+      responses:
+        "200":
+          description: Sign-in confirmed; an access token with a current auth_time
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/auth/local/set-password:
     post:
       operationId: localSetPassword
@@ -421,6 +455,19 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
 
 components:
+  responses:
+    RecentLoginRequired:
+      description: >
+        The operation requires a recent sign-in and the token's auth_time is missing or older than
+        opaa.auth.recent-login.max-age (5 minutes by default): code RECENT_LOGIN_REQUIRED, reason
+        AUTH_TIME_MISSING or AUTH_TIME_TOO_OLD. A token from a refresh carries no recent sign-in. A
+        local account confirms with localReauthenticate, an account of an identity provider with a
+        sign-in forced at the provider (prompt=login, max_age=0); a provider that ignores the
+        demand leaves the token as it was, and the operation keeps refusing it.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     AuthConfigResponse:
       type: object
@@ -526,7 +573,9 @@ components:
           format: password
           description: >
             HS256 JWT with iss urn:opaa:local, sub = the account id, jti, iat, exp, email, name,
-            pcr. A bearer secret - format password keeps it out of the DTO's toString().
+            pcr, and auth_time when the password was verified for it (sign-in, password change,
+            localReauthenticate) - never after a refresh. A bearer secret - format password keeps
+            it out of the DTO's toString().
         expiresInSeconds:
           type: integer
           format: int64
@@ -560,6 +609,16 @@ components:
             local_auth_settings.password_min_length characters, at most 64 characters and 72 bytes,
             not equal to the account's e-mail address, not on the shipped list of the most common
             passwords (compared in lower case). No complexity rules.
+
+    LocalReauthenticateRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 1024
 
     LocalSetPasswordRequest:
       type: object

@@ -21,8 +21,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The vector half of the hybrid search (docs/handbuch/suche.md, Stufe 4): the nearest chunks to the
- * query within the request's filter, best first, in the {@link Document} shape of {@code
+ * The vector half of the hybrid search (docs/handbuch/spaces/suche.md, Stufe 4): the nearest chunks
+ * to the query within the request's filter, best first, in the {@link Document} shape of {@code
  * PgVectorStore#similaritySearch} (same filter translation, distance, score and threshold).
  *
  * <p>The filter sits in the query, never on its result. With an HNSW index it is evaluated per

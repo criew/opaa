@@ -260,8 +260,8 @@ components:
           example: true
         previewId:
           type: string
-          format: uuid
-          description: The id of the preview this confirmation answers.
+          maxLength: 1024
+          description: The id of the preview this confirmation answers, exactly as the preview returned it.
 
     PermissionTransferCountsResponse:
       type: object
@@ -308,14 +308,14 @@ components:
       properties:
         previewId:
           type: string
-          format: uuid
+          maxLength: 1024
           description: >
-            What the execution has to show. The transfer runs only against a preview that was
-            taken, belongs to the same caller and still describes the same rows - compared by a
-            print over the affected rows, so a role changed in between is caught although the
-            figures stay the same. Otherwise it is refused with 409 and the caller previews again.
-            Valid for 30 minutes and held in the running process (ADR-0021), so a restart means one
-            more preview.
+            What the execution has to show, an opaque signed value. The transfer runs only against
+            a preview that was taken, belongs to the same caller and still describes the same rows -
+            compared by a print over the affected rows, so a role changed in between is caught
+            although the figures stay the same, and a preview already carried out is refused.
+            Otherwise it is refused with 409 and the caller previews again. Valid for 30 minutes on
+            every instance; nothing about it is stored (ADR-0053, Entscheidung 10).
         sourceType:
           $ref: "#/components/schemas/PermissionSubjectType"
         sourceId:
@@ -451,6 +451,16 @@ components:
       enum: [SPACE_ADMINS, GROUP_STEWARDS, SYSTEM_ADMINISTRATION]
       example: SYSTEM_ADMINISTRATION
 
+    SuccessionOwnerType:
+      type: string
+      description: >
+        Who holds an asset of the operational list - the kind, never the party. USER for a person,
+        GROUP for a group, UNKNOWN when the owning group can no longer be resolved. It decides
+        which way out of the entry can move the asset; it is no filter, no sort key and no count
+        (Personalrat E1).
+      enum: [USER, GROUP, UNKNOWN]
+      example: GROUP
+
     SuccessionEntryResponse:
       type: object
       required: [objectType, objectId, objectName, addressee, highlighted, affectedObjects]
@@ -486,6 +496,22 @@ components:
           description: >
             Who holds the object today - readable here for the administration's orientation, and
             deliberately no query parameter, no sort key and no count (Personalrat E1).
+        ownerType:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionOwnerType"
+          description: >
+            The kind of owner of an asset - set exactly when objectType is ASSET. Names the kind
+            only, never the person, and is no query parameter, no sort key and no count
+            (Personalrat E1).
+        ownerGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The owning group - set exactly when ownerType is GROUP, as the source of a transfer of
+            its ownership and rights (ADR-0036 Entscheidung 10), which also accepts a dissolved
+            group. A person as the owner is never identified here.
         membershipHints:
           type: array
           description: >

@@ -94,6 +94,77 @@ describe('BrandingSettingsPage', () => {
     expect(useBrandingStore.getState().branding.productName).toBe('Landesamt-Assistent')
   })
 
+  it('shows the AI notice in effect and labels it as changeable but not switchable off', () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+
+    const field = screen.getByLabelText('Hinweis zur KI-Nutzung')
+    expect(field).toHaveValue(OPAA_BRANDING.aiNotice)
+    expect(field).toHaveAccessibleDescription(/nicht abschalten/i)
+    expect(screen.getByRole('button', { name: 'Hinweis auf Standard zurücksetzen' })).toBeDisabled()
+  })
+
+  it('saves a changed AI notice and restores the standard text on reset', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+
+    const field = screen.getByLabelText('Hinweis zur KI-Nutzung')
+    await user.clear(field)
+    await user.type(field, 'Diese Antworten stammen von einer KI.')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => {
+      expect(useBrandingStore.getState().branding.aiNotice).toBe(
+        'Diese Antworten stammen von einer KI.',
+      )
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Hinweis auf Standard zurücksetzen' }))
+    expect(field).toHaveValue(OPAA_BRANDING.aiNotice)
+    // the reset button turns disabled; keyboard focus must not fall back to the document body
+    expect(field).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => {
+      expect(useBrandingStore.getState().branding.aiNotice).toBe(OPAA_BRANDING.aiNotice)
+    })
+  })
+
+  it('does not let a cleared AI notice switch the notice off', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+
+    await user.clear(screen.getByLabelText('Hinweis zur KI-Nutzung'))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/gespeichert und ist sofort wirksam/i)).toBeInTheDocument()
+    })
+    expect(useBrandingStore.getState().branding.aiNotice).toBe(OPAA_BRANDING.aiNotice)
+    // the field shows the notice in effect, not the empty value that was sent
+    expect(screen.getByLabelText('Hinweis zur KI-Nutzung')).toHaveValue(OPAA_BRANDING.aiNotice)
+  })
+
+  it('keeps a line break out of the AI notice, typed or pasted', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+
+    const field = screen.getByLabelText('Hinweis zur KI-Nutzung')
+    await user.clear(field)
+    await user.type(field, 'Erste{Enter}Zeile')
+    expect(field).toHaveValue('ErsteZeile')
+
+    await user.clear(field)
+    await user.click(field)
+    await user.paste('Erste Zeile\nZweite Zeile')
+    expect(field).toHaveValue('Erste Zeile Zweite Zeile')
+  })
+
   it('rejects a malformed colour before sending it anywhere', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -240,6 +311,8 @@ describe('BrandingSettingsPage', () => {
       branding: {
         productName: 'Landesamt-Assistent',
         claim: 'Kurz und klar',
+        aiNotice: 'Hinweis der Behörde',
+        aiNoticeDefault: 'Standardhinweis',
         primaryColor: '#0B6FBC',
         defaultColorScheme: 'DARK',
       },

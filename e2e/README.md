@@ -39,6 +39,23 @@ e2e/
     tests/*.spec.ts
   local-auth.env             Environment für den local-auth-Stack (Betriebsmodus oidc ohne Keycloak)
   docker-compose.local-auth.yml  Compose-Overlay: Mail-Fänger, öffentliche Basis-URL, weitere Grenzen
+  multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
+    playwright.config.ts         Konfiguration, ohne Browser
+    tests/*.spec.ts
+    load.mjs                     Lastgenerator des Rolling Updates, läuft im Netz der Plattform
+  multi-instance.env         Environment des Zwei-Instanzen-Stacks
+  docker-compose.multi-instance.yml  Compose-Overlay auf docker-compose.multi.yml: Images, Ports der
+                                 Instanzen, ai-stub, mailpit, Korpus im Objektspeicher
+  scripts/multi-instance.mjs     Lebenszyklus des Ziels "multi-instance"
+  scripts/previous-version.mjs   bestimmt die Vorgängerversion des Rolling Updates
+  offline/                       Ziel "offline": Ablauf ohne Internetzugang, siehe unten
+    playwright.config.ts
+    tests/offline.spec.ts
+    egress-dns.mjs               zeichnet jede Namensauflösung außerhalb des Stacks auf
+    relay.mjs                    einziger Weg vom Host in das abgeschottete Netz
+  offline.env                    Environment des Ziels "offline"
+  docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
+  scripts/offline.mjs            Lebenszyklus des Ziels "offline"
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
@@ -198,8 +215,8 @@ format-pipelines` bleibt als zweite, von der Fenstergröße unabhängige Verteid
 zitatprüfenden Kontos bei, selbst falls eine künftige Änderung das Fenster wieder verengen sollte.
 
 Einordnung dieser vier Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
-Quellenzugangsdaten): [`docs/handbuch/authentifizierung.md`, Abschnitt „Testkonten im
-Überblick"](../docs/handbuch/authentifizierung.md#testkonten-im-überblick).
+Quellenzugangsdaten): [`docs/handbuch/betrieb/authentifizierung.md`, Abschnitt „Testkonten im
+Überblick"](../docs/handbuch/betrieb/authentifizierung.md#testkonten-im-überblick).
 
 ### KI-Stub statt echtem Modell
 
@@ -220,7 +237,8 @@ für echte Chat-/Embedding-Läufe bleibt eigenes, noch offenes Issue (#256).
 (`QueryDecompositionService`), Chat-Titel (`ChatTitleGenerationService`), Modellmetadaten
 (`ModelMetadataExtractor`), der Verbindungstest der Modellverwaltung (`LlmModelService`) und
 `ChatHealthIndicator`. **Die Gesprächsnotiz ist der einzige Prompt mit einer eigenen Regel; alle
-übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben.** Praktisch sichtbar ist das beim
+übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben;** nur der Antwort-Prompt kennt
+zusätzlich Auslösewörter für die Linkregel (siehe unten). Praktisch sichtbar ist das beim
 Chat-Titel: Sein Prompt trägt keine Zitationsmarkierung, also bekommt jeder erzeugte Titel dieser
 Suite denselben Text — Szenarien verankern sich deshalb nie an einem Titelwortlaut (siehe
 `fixtures/chat.ts`, `chatSidebarEntries`).
@@ -232,6 +250,13 @@ einem festen Textstück und beantwortet ihn als reine Funktion der Nutzernachric
 ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Punkt „Möchte knappe
 Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort (Art-Präfix,
 200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
+
+Für die **Linkregel** (#3051) hängt der Stub an die Antwort einen festen Markdown-Teil, wenn die
+Frage der Person ein Auslösewort enthält; erkannt wird der Antwort-Prompt an seinen Zitierregeln,
+Zerlegung, Titel und Notiz bleiben unberührt. `E2E-ANTWORT-LINKS` ergibt einen Link auf das
+Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANTWORT-BILD` ein
+Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
+des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
 ### Nextcloud statt Testkonnektor
 
@@ -396,7 +421,7 @@ lassen.
 
 - `tests/connection-profiles.spec.ts` (#2175, Szenarien 1 und 2, Teil von Epic #2147) — Zugänge,
   Freigabe und Profilpflicht über den vollen Stack, mit der Quellart RSS-Feed gegen den
-  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/zugaenge.md`. Die Systemverwaltung legt unter „Administration → Anbindungen → Zugänge“ einen Zugang
+  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/arbeitsmittel/zugaenge.md`. Die Systemverwaltung legt unter „Administration → Anbindungen → Zugänge“ einen Zugang
   „ohne Anmeldung“ an und erteilt einer Gruppe unter „Anlegerechte“ das Recht „Konnektorbibliotheken
   anlegen“ für ihn. Ein Mitglied (`dev-user`) wählt ihn im Assistenten, bekommt die Adresse aus dem
   Zugang, testet die Verbindung, indiziert und findet den Eintrag per `@`-Referenz im Chat;
@@ -416,7 +441,7 @@ lassen.
 
 - `tests/connected-accounts-private-libraries.spec.ts` (#2175, Szenarien 3 bis 5, Teil von Epic
   \#2147) — verbundene Konten und private Bibliotheken über den vollen Stack, gegen die echte
-  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/benutzerverwaltung.md`,
+  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/konten-und-rechte/benutzerverwaltung.md`,
   Abschnitt „Verbundene Konten“, und `private-bibliotheken.md`.
   `dev-user` verbindet unter „Einstellungen → Verbundene Konten“ ihr Nextcloud-Konto mit einem
   App-Passwort — ein falsches wird abgewiesen und nichts gespeichert, das Passwortfeld ist danach
@@ -467,7 +492,7 @@ lassen.
   und löscht die selbst angelegten, damit kein späterer Chat-Test in dieser Suite (insbesondere
   `space-chats.spec.ts`) auf einem hier hinterlassenen Zwischenstand sitzt. Anders als das Issue
   ursprünglich annahm, läuft im Compose-Stack dieser Suite **kein** eigener `ollama`-Dienst (siehe
-  `docs/handbuch/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
+  `docs/handbuch/betrieb/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
   enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
   OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
 
@@ -568,8 +593,8 @@ lassen.
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
-- `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — die Fremdzugänge über den vollen
-  Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
+- `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — der Zugriff externer KI-Werkzeuge über
+  den vollen Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
   Zugangstoken bis zum Treffer, und die Gegenprobe zu jedem der vier Faktoren der effektiven Sicht.
   Die Systemverwaltung schaltet den Kanal ein, eine Bibliotheksverantwortliche gibt ihre Bibliothek
   befristet frei, die Person erzeugt dafür ein Token — und ein MCP-Aufruf gegen den laufenden Stack
@@ -623,6 +648,39 @@ lassen.
   (`AssetCatalogServiceIntegrationTest`). Vorbedingungen (Gruppe, zweite Bibliothek) legt
   `fixtures/promptLibraries.ts` über die API an; `dev-format-pipelines` stellt nie eine Frage und
   bekommt keinen durchsuchbaren Bestand, bleibt also für seinen eigentlichen Zweck unberührt.
+- `tests/self-disclosure.spec.ts` (#2994, Epic #2986) — die Selbstauskunft aus „Einstellungen →
+  Meine Daten“ über den vollen Stack. `dev-user` (Person A) und `dev-outsider` (Person B) sind
+  Mitglied eines eigenen Space; A fragt dort mit Belegen aus einem zur Laufzeit erzeugten PDF und
+  einem Markdown-Vermerk, B stellt eine eigene Frage. Das ZIP von A enthält `index.html`,
+  `manifest.json`, die Kategorien Konto und Chats und die Frage von A. Die Fundstellen stehen als
+  „Titel · Bibliothek: … · S. 1 · zitiert“ bzw. ohne Ort darin. Die Überschrift des Vermerks ist
+  laut Chat-API Teil der gespeicherten Fundstelle (`chunkLocations`), im ZIP steht sie nirgends,
+  ebenso wenig der Text der Dokumente; weder der Chat noch Name oder Adresse von B kommen vor. Ein
+  Download, dessen Verbindung abbricht (`route.abort()` auf dem Formular-POST), wird gemeldet und
+  nicht gezählt, der nächste am selben Tag gelingt. Nach einem vollständigen Download ist die
+  Tagesgrenze erreicht: Die Seite nennt den nächsten möglichen Zeitpunkt, der Knopf startet nichts
+  mehr, und das Ticket antwortet mit `429 SELF_DISCLOSURE_DAILY_LIMIT`. Danach hat die Person die
+  Benachrichtigung „Selbstauskunft gestartet“. Schaltet die Systemverwaltung die Selbstauskunft unter
+  „Administration → Datenschutz“ ab, steht auf „Meine Daten“ der Hinweis statt des Knopfs.
+
+  Der ZIP-Download läuft als Formular-POST in einen versteckten Frame; Playwright meldet ihn als
+  Download der Seite, `fixtures/selfDisclosure.ts` liest das Archiv ohne weitere Abhängigkeit
+  über sein Zentralverzeichnis. Tagesgrenze und Schalter sind installationsweit: Jedes Szenario
+  setzt über die Verwaltungs-API eine Grenze, die genau einen weiteren Download zulässt, und
+  `afterAll` stellt den Stand vor der Datei wieder her. Die Bestätigung mit dem Passwort prüft das
+  Ziel `local-auth` (`09-selbstauskunft.spec.ts`), weil im `dev`-Modus jede Anfrage als frisch
+  angemeldet gilt. Nicht abgedeckt ist die Startgrenze (Tagesgrenze plus vier Starts): Ein Start
+  zählt erst, wenn der Server das Ticket einlöst, und ein Export dieses Umfangs ist geschrieben,
+  bevor ein Abbruch im Browser ihn erreichen kann; sie prüft der Backend-Test.
+
+- `tests/link-rule.spec.ts` (#3051, Epic #3008) — die Linkregel in Antworten mit festen
+  Stub-Antworten (Auslösewörter oben): Nach dem Eintragen von `https://intranet.e2e.example` als
+  erlaubtes Linkziel ist der Link dorthin klickbar, der fremde erscheint als Text mit Adresse; ein
+  Markdown-Bild erscheint als „[Bild: …]“, und der Browser fragt seine Adresse nie an; `dev-user`
+  erreicht die Verwaltung der Linkziele nicht; aus einem präparierten Merkblatt
+  (`praepariertes-merkblatt.txt`) übernommene Links bleiben Text, und der Beleg zeigt das Merkblatt.
+  Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
+  her.
 
 ## Demo-Smoke (#232)
 
@@ -763,6 +821,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `06-selbstregistrierung.spec.ts` | Einschalten nur mit Domänenliste, Registrierung innerhalb und außerhalb der Liste, Bestätigung der Adresse, erste Anmeldung |
 | `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
+| `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 
 `/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das
@@ -771,6 +830,48 @@ davor läuft.
 `.github/workflows/local-auth-e2e.yml` fährt den Lauf nächtlich und auf Zuruf
 (`workflow_dispatch`), dazu an einem Pull Request über das Label `local-auth-suite` — kein Required
 Check, Muster der Confluence-Suite (#1171).
+
+## Zwei Instanzen (#2952)
+
+Ein viertes Ziel, ohne Browser: zwei Backend-Instanzen gegen eine Datenbank
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)). Szenarien, Phasen und die
+Bestimmung der Vorgängerversion stehen in
+[docs/entwicklung/build-und-ci.md](../docs/entwicklung/build-und-ci.md#zwei-instanzen-suite).
+
+```bash
+cd e2e
+pnpm install
+pnpm run test:multi-instance
+```
+
+`pnpm run test:multi-instance` (→ `scripts/run-e2e.mjs --target multi-instance`) startet
+`docker-compose.yml` mit `docker-compose.multi.yml` und `docker-compose.multi-instance.yml` als
+Projekt `opaa-multi`, also genau die Mehrinstanz-Variante des Handbuchs mit Migrationsschritt,
+`backend-a` und `backend-b`. Die Szenarien sprechen jede Instanz über einen eigenen Host-Port an und
+führen Neustart, Rolling Update und Last über `fixtures/multiInstance.ts`, das dieselben Szenarien
+auch auf kind treibt (`deploy/helm/ci/multi-instance-test.sh`). Der Betriebsmodus ist `oidc` ohne
+Keycloak wie im Ziel `local-auth`; ai-stub hält auf Zuruf die Einbettungen eines Laufs zurück
+(`POST /control/embedding-hold`), damit Szenario 04 eine Instanz neu starten kann, während die
+andere mitten in einem Lauf steht. Jede Anmeldung des Notanker-Kontos legt eine Mail an jede weitere
+Systemverwaltung in die Outbox; die Szenarien 03 und 05 zählen darüber die Mails.
+
+`.github/workflows/multi-instance.yml` fährt das Ziel nächtlich, auf Zuruf und an einem Pull Request
+über das Label `multi-instance-suite`, je einmal unter Compose und auf kind; kein Required Check.
+
+## Betrieb ohne Internet
+
+Ein fünftes Ziel: der Stack in einem Compose-Netz ohne Weg nach außen, vom Anmelden bis zur
+Antwort mit Fundstelle. Aufbau, Erkennung von Verbindungsversuchen und Grenzen stehen in
+[docs/entwicklung/build-und-ci.md](../docs/entwicklung/build-und-ci.md#betrieb-ohne-internet).
+
+```bash
+cd e2e
+pnpm install
+pnpm run test:offline
+```
+
+`.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem Pull Request über
+das Label `offline-suite`; kein Required Check.
 
 ## CI
 

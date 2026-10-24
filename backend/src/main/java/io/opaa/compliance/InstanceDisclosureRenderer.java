@@ -11,6 +11,7 @@ import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
 import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
+import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import java.time.Instant;
 import java.util.List;
@@ -27,6 +28,8 @@ import tools.jackson.databind.json.JsonMapper;
 public final class InstanceDisclosureRenderer {
 
   private static final String NOT_DETERMINED = "nicht ermittelt";
+
+  private static final String DIFFERS_BETWEEN_INSTANCES = "abweichend zwischen Instanzen";
 
   /** The same record reading as the JSON form of the fact sheets, so both carry one object. */
   private static final JsonMapper JSON =
@@ -54,6 +57,7 @@ public final class InstanceDisclosureRenderer {
         "Die Auskunft verbindet das Fakten-Manifest dieser Version mit den Werten dieser"
             + " Installation. Sie enthält keine Geheimnisse, keine personenbezogenen Daten und keine"
             + " Inhalte; Adressen erscheinen ohne Zugangsdaten und Abfrageteil.\n\n");
+    instances(out, disclosure.instances());
     deviations(out, disclosure.deviations());
     settings(out, disclosure.settings());
     dataFlows(out, disclosure.dataFlows());
@@ -62,6 +66,24 @@ public final class InstanceDisclosureRenderer {
     data(out, disclosure.manifest().data());
     protocol(out, disclosure.manifest().auditEvents(), disclosure.protocol());
     return out.toString();
+  }
+
+  private static void instances(StringBuilder out, List<RunningInstance> instances) {
+    out.append("## Laufende Instanzen\n\n");
+    if (instances.isEmpty()) {
+      out.append("Das Instanzregister nennt keine laufende Instanz.\n\n");
+      return;
+    }
+    out.append(
+        "Die Werte gelten für die ganze Installation. Eine Einstellung, deren Wert sich zwischen"
+            + " laufenden Instanzen unterscheidet, erscheint ohne Wert und ist als abweichend"
+            + " markiert.\n\n");
+    out.append("| Version | Gestartet am |\n");
+    out.append("|---|---|\n");
+    for (RunningInstance instance : instances) {
+      row(out, shown(instance.version()), time(instance.startedAt()));
+    }
+    out.append('\n');
   }
 
   private static void deviations(StringBuilder out, List<SettingValue> deviations) {
@@ -95,7 +117,9 @@ public final class InstanceDisclosureRenderer {
           FactSheetRenderer.code(value.key()),
           value.source().name(),
           shown(value.defaultValue()),
-          value.effectiveValue() == null ? NOT_DETERMINED : shown(value.effectiveValue()),
+          value.sameOnAllInstances()
+              ? value.effectiveValue() == null ? NOT_DETERMINED : shown(value.effectiveValue())
+              : DIFFERS_BETWEEN_INSTANCES,
           value.deviates() ? "ja" : "nein",
           time(value.changedAt()),
           FactSheetRenderer.text(value.effect()));

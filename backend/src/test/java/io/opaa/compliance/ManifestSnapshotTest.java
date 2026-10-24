@@ -53,6 +53,34 @@ class ManifestSnapshotTest {
     assertThat(snapshot.areas()).containsEntry("test", "Testbereich");
   }
 
+  /** The path to a person nests under its table; a changed exclusion is a change of its own. */
+  @Test
+  void thePathToAPersonIsReadPerTableAndAChangedExclusionShowsInTheDelta() {
+    String older =
+        ManifestDeltaTest.edit(
+            ManifestDeltaTest.BASE,
+            "        nonPersonalColumns: [id]\n",
+            "        nonPersonalColumns: [id]\n"
+                + "        person:\n"
+                + "          columns: [subject]\n"
+                + "          excludedColumns:\n"
+                + "            email: Grund\n");
+    String newer = ManifestDeltaTest.edit(older, "            email: Grund\n", "");
+
+    assertThat(ManifestDeltaTest.version(older, "v1").sections().get("data").get("accounts"))
+        .containsEntry("tables[users].person.columns", List.of("subject"))
+        .containsEntry("tables[users].person.excludedColumns.email", "Grund");
+    ManifestDelta.Change change =
+        ManifestDeltaTest.delta(older, newer).changes().stream()
+            .filter(c -> c.field() != null && c.field().contains("person"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(change.field()).isEqualTo("tables[users].person.excludedColumns.email");
+    assertThat(change.assessment().undecided()).isTrue();
+    assertThat(ManifestDeltaRenderer.label(change.field()))
+        .isEqualTo("Tabelle `users`: Zuordnung zur Person, ausgenommene Spalte `email`");
+  }
+
   @Test
   void aReferenceIsReadFromGitHistoryAndOneWithoutManifestIsEmpty() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));
@@ -100,6 +128,24 @@ class ManifestSnapshotTest {
     }
   }
 
+  /** A change backported unchanged to the older line is already installed there. */
+  @Test
+  void aCommitBackportedUnchangedToTheOlderSideIsNotListedAgain() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    GitFixture.git(repository, "checkout", "-q", "-b", "release", "v2");
+    GitFixture.git(repository, "cherry-pick", "-x", "v3");
+    GitFixture.git(repository, "tag", "lts");
+    GitFixture.git(repository, "checkout", "-q", "--detach", "v3");
+    Files.writeString(repository.resolve("README.md"), "test\nmore\n");
+    GitFixture.git(repository, "commit", "-q", "-a", "-m", "feat: Weiteres (#14)");
+    GitFixture.git(repository, "tag", "v4");
+
+    assertThat(ManifestSnapshot.Git.subjects(repository, "lts", "v4"))
+        .containsExactly("feat: Weiteres (#14)");
+    assertThat(ManifestSnapshot.Git.subjects(repository, "v1", "v3"))
+        .containsExactly("feat(audit): Längere Frist (#13)", "feat(compliance): Manifest (#12)");
+  }
+
   @Test
   void anUnknownReferenceFails() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));
@@ -139,7 +185,7 @@ class ManifestSnapshotTest {
       return root;
     }
 
-    private static void git(Path root, String... args) throws IOException {
+    static void git(Path root, String... args) throws IOException {
       List<String> command =
           new ArrayList<>(
               List.of(

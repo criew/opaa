@@ -35,6 +35,9 @@ export function notificationTarget({
     case 'PRIVATE_LIBRARY_RELEASED':
     case 'SOURCE_FULL_SYNC_FORCED':
       return null
+    // a warning without a link, on purpose: it must not lead to the download
+    case 'SELF_DISCLOSURE_STARTED':
+      return null
     default: {
       const unknown: never = type
       throw new Error(`Unknown notification type ${String(unknown)}`)

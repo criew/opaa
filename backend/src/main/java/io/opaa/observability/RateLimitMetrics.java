@@ -5,9 +5,9 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Micrometer counters of the rate limits: one series per limit and scope, so a dashboard can tell a
- * throttled client ({@code scope=client}, {@code subject}, {@code address}) from the global ceiling
- * ({@code scope=global}) that ADR-0033 names the operator's early warning against distributed
- * credential stuffing.
+ * throttled client ({@code scope=client}, {@code subject}, {@code address}, {@code account}, {@code
+ * token}) from the global ceiling ({@code scope=global}) that ADR-0033 names the operator's early
+ * warning against distributed credential stuffing.
  */
 public class RateLimitMetrics {
 
@@ -21,8 +21,8 @@ public class RateLimitMetrics {
 
   /**
    * @param limit the rule's name (e.g. {@code query}, {@code local-auth-login})
-   * @param scope what was exhausted: {@code client}, {@code global}, {@code subject} or {@code
-   *     address}
+   * @param scope what was exhausted: {@code client}, {@code global}, {@code subject}, {@code
+   *     address}, {@code account} (a signed-in account) or {@code token} (an access token)
    */
   public void recordRejected(String limit, String scope) {
     Counter.builder(REJECTED_METRIC)

@@ -320,8 +320,9 @@ class S3UploadedOriginalStoreIntegrationTest {
   }
 
   private static List<Path> ownTempFiles() {
-    try (Stream<Path> entries = Files.list(tempDir)) {
+    try (Stream<Path> entries = Files.walk(tempDir)) {
       return entries
+          .filter(Files::isRegularFile)
           .filter(
               p -> p.getFileName().toString().startsWith(S3UploadedOriginalStore.TEMP_FILE_PREFIX))
           .toList();

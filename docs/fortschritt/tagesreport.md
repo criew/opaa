@@ -153,7 +153,7 @@ Die Tests laufen im CI-Job `report-script` bei jedem Push und Pull Request.
 Ohne sie fiele ein Fehler erst beim nächtlichen Lauf auf.
 
 ```bash
-pip install pytest
+pip install -r .github/requirements-ci.txt
 pytest .github/scripts/test_daily_report.py
 ```
 

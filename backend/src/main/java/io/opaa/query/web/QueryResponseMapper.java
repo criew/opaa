@@ -24,6 +24,7 @@ final class QueryResponseMapper {
   static QueryResponse toResponse(QueryResult result) {
     return new QueryResponse(
             result.answer(),
+            true,
             ChatResponseMapper.toSourceReferences(result.sources()),
             ChatSource.anyPrivate(result.sources()),
             toMetadata(result.metadata()),

@@ -6,6 +6,7 @@ import static io.opaa.common.PropertyDefaults.requireNotNegative;
 
 import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -49,6 +50,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     run's client ({@code ConfluenceClientFactory#createForRun}), never to the wizard's probes.
  *     Zero disables the budget; the default is {@link #DEFAULT_REQUEST_BUDGET_PER_RUN}
  */
+@PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.confluence")
 public record ConfluenceProperties(

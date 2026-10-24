@@ -1,7 +1,9 @@
 package io.opaa.knowledge;
 
 import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
@@ -31,6 +33,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     switching the connectors' check off never switches this one off (ADR-0030, Entscheidung 8);
  *     the configured endpoint itself always passes
  */
+@InstallationWide
 @NoDataImpact("addressing and credentials of the object store")
 @ConfigurationProperties(prefix = "opaa.upload.s3")
 public record UploadS3Properties(
@@ -39,9 +42,11 @@ public record UploadS3Properties(
     String bucket,
     String keyPrefix,
     Boolean pathStyle,
-    String accessKey,
-    String secretKey,
-    Path tempDirectory,
+    @PerInstance("credentials of the shared bucket may rotate instance by instance")
+        String accessKey,
+    @PerInstance("credentials of the shared bucket may rotate instance by instance")
+        String secretKey,
+    @PerInstance("working files of this process") Path tempDirectory,
     TargetValidation targetValidation) {
 
   public static final String DEFAULT_REGION = "us-east-1";
@@ -101,7 +106,7 @@ public record UploadS3Properties(
               + property
               + " (OPAA_UPLOAD_S3_"
               + property.toUpperCase(Locale.ROOT).replace('-', '_')
-              + "). See docs/handbuch/originalablage.md.");
+              + "). See docs/handbuch/betrieb/originalablage.md.");
     }
   }
 

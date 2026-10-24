@@ -116,7 +116,7 @@ class TranscriptionControllerTest {
     return MockMvcBuilders.standaloneSetup(controller(enabled, timeout))
         .setControllerAdvice(
             new GlobalExceptionHandler(
-                new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC()))
+                new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC()))
         .addFilters(new TranscriptionMultipartGuard(new ObjectMapper()), new RequestLoggingFilter())
         .build();
   }

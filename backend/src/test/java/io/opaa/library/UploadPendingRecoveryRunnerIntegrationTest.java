@@ -8,6 +8,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.instance.CurrentInstance;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
@@ -17,9 +18,12 @@ import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.ScheduledRunLockRelease;
 import io.opaa.test.SourceTypes;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -41,6 +45,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * already run once at this test class's own {@code @SpringBootTest} context startup - the rows this
  * test cares about do not exist yet at that point, so the automatic startup run is a harmless
  * no-op, and the assertions below need a run that happens after {@link #setUp} has seeded data.
+ * Other instances are rows of the instance register whose heartbeat lies as far back as each test
+ * needs (ADR-0053, Entscheidung 8).
  */
 @OpaaIntegrationTest
 class UploadPendingRecoveryRunnerIntegrationTest {
@@ -57,9 +63,12 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
 
+  @Autowired private CurrentInstance currentInstance;
+
   private UUID organizationId;
   private User editor;
   private UUID libraryId;
+  private final List<UUID> ownInstances = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
@@ -77,6 +86,9 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    ownInstances.forEach(
+        id -> jdbcTemplate.update("DELETE FROM backend_instances WHERE id = ?", id));
+    ownInstances.clear();
     ownLibraryFixtures.removeLibraries(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
@@ -90,57 +102,110 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   }
 
   @Test
-  void marksOnlyStalePendingUploadsAsFailedOnStartup() {
-    UUID stalePendingId =
-        savePendingDocument("staleUpload.pdf", Instant.now().minus(2, ChronoUnit.HOURS));
-    UUID freshPendingId = savePendingDocument("freshUpload.pdf", Instant.now());
-    UUID staleIndexedId =
-        saveIndexedDocument("staleIndexed.pdf", Instant.now().minus(2, ChronoUnit.HOURS));
-    UUID staleConnectorPendingId =
-        savePendingDocument(
-            "staleConnector.pdf", Instant.now().minus(2, ChronoUnit.HOURS), SourceTypes.FILESYSTEM);
+  void marksOnlyPendingUploadsOfDeadInstancesAsFailedOnStartup() {
+    UUID dead = registerInstance(Duration.ofMinutes(10));
+    UUID deadUpload = savePendingDocument("deadUpload.pdf", hoursAgo(2), dead);
+    UUID ownUpload = savePendingDocument("ownUpload.pdf", hoursAgo(2), currentInstance.id());
+    UUID legacyUpload = savePendingDocument("legacyUpload.pdf", hoursAgo(2), null);
+    UUID deadIndexed = saveIndexedDocument("deadIndexed.pdf", hoursAgo(2), dead);
+    UUID deadConnectorPending =
+        savePendingDocument("deadConnector.pdf", hoursAgo(2), dead, SourceTypes.FILESYSTEM);
 
     runner.run(NO_ARGS);
 
-    Document staleUpload = documentRepository.findById(stalePendingId).orElseThrow();
-    assertThat(staleUpload.getStatus()).isEqualTo(DocumentStatus.FAILED);
-    assertThat(staleUpload.getErrorMessage()).isEqualTo(UploadPendingRecoveryRunner.FAILURE_REASON);
-
-    Document freshUpload = documentRepository.findById(freshPendingId).orElseThrow();
-    assertThat(freshUpload.getStatus())
-        .as("A PENDING row younger than the threshold is still legitimately in flight")
+    Document failed = documentRepository.findById(deadUpload).orElseThrow();
+    assertThat(failed.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    assertThat(failed.getErrorMessage()).isEqualTo(UploadPendingRecoveryRunner.FAILURE_REASON);
+    assertThat(statusOf(legacyUpload))
+        .as("An upload written before the processing instance was recorded has no task left")
+        .isEqualTo(DocumentStatus.FAILED);
+    assertThat(statusOf(ownUpload))
+        .as("An upload of a live instance is still in flight, however old")
         .isEqualTo(DocumentStatus.PENDING);
-
-    Document staleIndexed = documentRepository.findById(staleIndexedId).orElseThrow();
-    assertThat(staleIndexed.getStatus())
+    assertThat(statusOf(deadIndexed))
         .as("Recovery only ever touches PENDING rows, never a row that already finished")
         .isEqualTo(DocumentStatus.INDEXED);
-
-    Document staleConnectorPending =
-        documentRepository.findById(staleConnectorPendingId).orElseThrow();
-    assertThat(staleConnectorPending.getStatus())
-        .as(
-            "#614 covers only the upload path - a stuck connector row"
-                + " is #501's still-open RUNNING recovery to fix, not this runner's")
+    assertThat(statusOf(deadConnectorPending))
+        .as("Only the upload path - a stuck connector row is the indexing recovery's")
         .isEqualTo(DocumentStatus.PENDING);
   }
 
-  private UUID savePendingDocument(String fileName, Instant createdAt) {
-    return savePendingDocument(fileName, createdAt, SourceType.UPLOAD);
+  /**
+   * Regression guard: a starting instance failed every upload accepted before it started, also
+   * those another, live instance had accepted seconds earlier and was still processing. Only the
+   * heartbeat of the processing instance decides.
+   */
+  @Test
+  void aStartingInstanceLeavesAFreshUploadOfAnotherLiveInstanceAlone() {
+    UUID other = registerInstance(Duration.ZERO);
+    UUID upload = savePendingDocument("acceptedByOther.pdf", hoursAgo(1), other);
+
+    runner.run(NO_ARGS);
+
+    assertThat(statusOf(upload))
+        .as("The other instance is alive and still processing the upload")
+        .isEqualTo(DocumentStatus.PENDING);
   }
 
-  private UUID savePendingDocument(String fileName, Instant createdAt, SourceType sourceType) {
+  /** Without any restart, the uploads of an instance that died are failed by the next sweep. */
+  @Test
+  void theSweepFailsTheUploadsOfAnInstanceOnceItsHeartbeatLapsed() {
+    UUID other = registerInstance(Duration.ZERO);
+    UUID upload = savePendingDocument("acceptedByOther.pdf", Instant.now(), other);
+
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
+
+    runner.recoverUploadsOfDeadInstances();
+    assertThat(statusOf(upload)).isEqualTo(DocumentStatus.PENDING);
+
+    jdbcTemplate.update(
+        "UPDATE backend_instances SET heartbeat_at = clock_timestamp() - interval '10 minutes'"
+            + " WHERE id = ?",
+        other);
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
+    runner.recoverUploadsOfDeadInstances();
+
+    assertThat(statusOf(upload)).isEqualTo(DocumentStatus.FAILED);
+  }
+
+  private UUID registerInstance(Duration silentFor) {
+    UUID id = UUID.randomUUID();
+    ownInstances.add(id);
+    jdbcTemplate.update(
+        "INSERT INTO backend_instances (id, host_name, version, oldest_compatible_version,"
+            + " started_at, heartbeat_at, fingerprint, fingerprint_hash) VALUES (?, 'fixture',"
+            + " '0.0.0-dev', '0.0.0-dev', clock_timestamp() - interval '1 hour',"
+            + " clock_timestamp() - make_interval(secs => ?), '{}', 'x')",
+        id,
+        (double) silentFor.toSeconds());
+    return id;
+  }
+
+  private DocumentStatus statusOf(UUID documentId) {
+    return documentRepository.findById(documentId).orElseThrow().getStatus();
+  }
+
+  private static Instant hoursAgo(int hours) {
+    return Instant.now().minus(hours, ChronoUnit.HOURS);
+  }
+
+  private UUID savePendingDocument(String fileName, Instant createdAt, UUID instance) {
+    return savePendingDocument(fileName, createdAt, instance, SourceType.UPLOAD);
+  }
+
+  private UUID savePendingDocument(
+      String fileName, Instant createdAt, UUID instance, SourceType sourceType) {
     Document document = newDocument(fileName, sourceType);
     document = documentRepository.save(document);
-    backdateCreatedAt(document.getId(), createdAt);
+    backdate(document.getId(), createdAt, instance);
     return document.getId();
   }
 
-  private UUID saveIndexedDocument(String fileName, Instant createdAt) {
+  private UUID saveIndexedDocument(String fileName, Instant createdAt, UUID instance) {
     Document document = newDocument(fileName, SourceType.UPLOAD);
     document.setStatus(DocumentStatus.INDEXED);
     document = documentRepository.save(document);
-    backdateCreatedAt(document.getId(), createdAt);
+    backdate(document.getId(), createdAt, instance);
     return document.getId();
   }
 
@@ -153,10 +218,12 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     return document;
   }
 
-  private void backdateCreatedAt(UUID documentId, Instant createdAt) {
+  /** Set by SQL, so the rows look the same to a build whose entity does not map the column. */
+  private void backdate(UUID documentId, Instant createdAt, UUID instance) {
     jdbcTemplate.update(
-        "UPDATE documents SET created_at = ? WHERE id = ?",
+        "UPDATE documents SET created_at = ?, processing_instance_id = ? WHERE id = ?",
         java.sql.Timestamp.from(createdAt),
+        instance,
         documentId);
   }
 }

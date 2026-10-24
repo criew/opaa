@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.openai.core.http.Headers;
 import com.openai.errors.InternalServerException;
@@ -17,9 +19,12 @@ import com.openai.errors.UnauthorizedException;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
+import java.io.EOFException;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.util.List;
+import org.apache.catalina.connector.ClientAbortException;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
@@ -28,21 +33,78 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.util.DisconnectedClientHelper;
 
 class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler =
       new GlobalExceptionHandler(
-          new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC());
+          new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC());
+
+  /**
+   * A committed response takes no envelope: the original failure goes back unchanged, so Spring
+   * logs no failure of the handler, and a write the response refused is recognised as a client that
+   * went away.
+   */
+  @Test
+  void aCommittedResponseHandsTheOriginalFailureBack() {
+    MockHttpServletResponse committed = new MockHttpServletResponse();
+    committed.setCommitted(true);
+    RequestContextHolder.setRequestAttributes(
+        new ServletRequestAttributes(new MockHttpServletRequest(), committed));
+    try {
+      var aborted = new io.opaa.common.ServiceUnavailableException("abgebrochen", 60);
+      assertSame(
+          aborted,
+          assertThrows(
+              io.opaa.common.ServiceUnavailableException.class,
+              () -> handler.handleServiceUnavailableException(aborted)));
+      var clientGone = new ClientAbortException(new IOException("Broken pipe"));
+      assertSame(
+          clientGone,
+          assertThrows(IOException.class, () -> handler.handleGenericException(clientGone)));
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+  }
+
+  /**
+   * A read failure behind a committed download - the storage connection reset mid-document - must
+   * break the connection: Spring would take its original form for a client that went away and end
+   * the truncated body cleanly.
+   */
+  @Test
+  void aCommittedResponseKeepsAReadFailureFromLookingLikeAClientThatWentAway() {
+    MockHttpServletResponse committed = new MockHttpServletResponse();
+    committed.setCommitted(true);
+    RequestContextHolder.setRequestAttributes(
+        new ServletRequestAttributes(new MockHttpServletRequest(), committed));
+    try {
+      for (Exception readFailure :
+          List.of(
+              new EOFException("storage ended early"),
+              new java.net.SocketException("Connection reset by peer"))) {
+        Throwable thrown =
+            assertThrows(Throwable.class, () -> handler.handleGenericException(readFailure));
+        assertFalse(DisconnectedClientHelper.isClientDisconnectedException(thrown));
+      }
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+  }
 
   /** ADR-0033: a conflict may carry a stable code the client acts on; without one, none is sent. */
   @Test
@@ -383,7 +445,8 @@ class GlobalExceptionHandlerTest {
         handler.handleTooManyRequestsException(
             new io.opaa.common.TooManyRequestsException(
                 "Es werden gerade zu viele Anhänge geöffnet."
-                    + " Bitte versuchen Sie es in einem Moment erneut."));
+                    + " Bitte versuchen Sie es in einem Moment erneut."),
+            new MockHttpServletRequest());
     assertEquals(429, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);

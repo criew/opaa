@@ -2,36 +2,37 @@ package io.opaa.knowledge;
 
 import io.opaa.common.ByteSizes;
 import java.util.UUID;
-import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 /**
  * Enforces the per-library storage quota ({@link LibraryProperties#quotaBytes}) for uploads and
  * connector runs alike, scoped to a library, never to a person who uploaded. The library check is
  * not reserved: concurrent uploads may overshoot by at most one file each (accepted). A private
  * library also counts against its owner's {@link PersonalStorageQuota}, checked under {@link
- * #holdIntake}, which serializes one owner's intake in this single instance (ADR-0021).
+ * #holdIntake}, which serializes one owner's intake across every instance with a transaction-scoped
+ * advisory lock (ADR-0053, Entscheidung 10).
  */
 @Service
 public class LibraryStorageQuotaService {
 
-  private static final int OWNER_STRIPES = 64;
-
   private final DocumentRepository documentRepository;
   private final LibraryProperties libraryProperties;
   private final PersonalStorageQuota personalQuota;
-  private final ReentrantLock[] ownerLocks = new ReentrantLock[OWNER_STRIPES];
+  private final PlatformTransactionManager transactionManager;
 
   public LibraryStorageQuotaService(
       DocumentRepository documentRepository,
       LibraryProperties libraryProperties,
-      PersonalStorageQuota personalQuota) {
+      PersonalStorageQuota personalQuota,
+      PlatformTransactionManager transactionManager) {
     this.documentRepository = documentRepository;
     this.libraryProperties = libraryProperties;
     this.personalQuota = personalQuota;
-    for (int i = 0; i < OWNER_STRIPES; i++) {
-      ownerLocks[i] = new ReentrantLock();
-    }
+    this.transactionManager = transactionManager;
   }
 
   /** The configured per-library quota in bytes; {@code <= 0} means unlimited. */
@@ -79,17 +80,31 @@ public class LibraryStorageQuotaService {
   }
 
   /**
-   * Serializes the intake of all private libraries of {@code library}'s owner until closed; for a
-   * shared library it holds nothing.
+   * Serializes the intake of all private libraries of {@code library}'s owner until closed, on
+   * every instance; for a shared library it holds nothing. The hold is a transaction (joining the
+   * caller's, if any) that takes the owner's advisory lock first, so the check and the rows written
+   * under the hold commit together on close - or roll back, if a write marked it rollback-only.
    */
   public IntakeHold holdIntake(KnowledgeLibrary library) {
     if (!library.isOwnerOnly()) {
       return () -> {};
     }
-    ReentrantLock lock =
-        ownerLocks[Math.floorMod(library.getOwnerUserId().hashCode(), OWNER_STRIPES)];
-    lock.lock();
-    return lock::unlock;
+    TransactionStatus status =
+        transactionManager.getTransaction(
+            new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_REQUIRED));
+    try {
+      documentRepository.lockPersonalIntake(library.getOwnerUserId());
+    } catch (RuntimeException e) {
+      transactionManager.rollback(status);
+      throw e;
+    }
+    return () -> {
+      if (status.isRollbackOnly()) {
+        transactionManager.rollback(status);
+      } else {
+        transactionManager.commit(status);
+      }
+    };
   }
 
   /**

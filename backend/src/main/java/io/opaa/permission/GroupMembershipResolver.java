@@ -4,6 +4,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.account.AccountActivityService;
 import io.opaa.auth.UserRepository;
+import io.opaa.instance.BusBoundCache;
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -27,25 +30,28 @@ import org.springframework.stereotype.Component;
  * rather than the Spring Cache abstraction, to avoid introducing a second caching mechanism into
  * the codebase for a single use case.
  *
- * <p>The cache is process-local. A single instance is all the MVP runs (see {@code
- * docs/MVP-STATUS.md}); horizontal scaling is out of scope for now, but would require either a
- * shared cache or a way to broadcast invalidations, since only the instance that wrote a membership
- * change would otherwise evict it.
+ * <p>Bound to the {@link InvalidationBus} (ADR-0053, Entscheidung 5): a change of {@code groups} or
+ * {@code group_memberships} on any instance - a deactivation included - empties the cache on every
+ * instance, and while the bus does not listen it is read past.
  */
 @Component
-public class GroupMembershipResolver {
+public class GroupMembershipResolver implements InvalidationSubscriber {
+
+  /** The topic the triggers on the group, membership and grant tables announce. */
+  public static final String RIGHTS_TOPIC = "rights";
 
   private final GroupMembershipSource membershipSource;
   private final UserRepository userRepository;
   private final AccountActivityService accountActivity;
   private final ObjectProvider<GroupMembershipChangeListener> changeListeners;
-  private final Cache<UUID, Set<UUID>> groupIdsByUser;
+  private final BusBoundCache<UUID, Set<UUID>> groupIdsByUser;
 
   public GroupMembershipResolver(
       GroupMembershipSource membershipSource,
       UserRepository userRepository,
       AccountActivityService accountActivity,
-      ObjectProvider<GroupMembershipChangeListener> changeListeners) {
+      ObjectProvider<GroupMembershipChangeListener> changeListeners,
+      InvalidationBus bus) {
     this.membershipSource = membershipSource;
     this.userRepository = userRepository;
     this.accountActivity = accountActivity;
@@ -55,8 +61,20 @@ public class GroupMembershipResolver {
     // called post-commit, are the primary correctness mechanism. The time-based expiry is a safety
     // net for eviction paths this class does not yet know about (e.g. a future bulk directory
     // sync).
-    this.groupIdsByUser =
+    Cache<UUID, Set<UUID>> cache =
         Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
+    this.groupIdsByUser = new BusBoundCache<>(cache, bus);
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(RIGHTS_TOPIC);
+  }
+
+  /** Empties the cache; the change listeners hear of it through their own binding to the bus. */
+  @Override
+  public void invalidateAll() {
+    groupIdsByUser.invalidateAll();
   }
 
   /**

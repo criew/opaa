@@ -202,7 +202,7 @@ class LibraryDocumentServiceTest {
             mock(FullTextChunkStore.class),
             new EmbeddingRateEstimator(4.0),
             2048);
-    uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0);
+    uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0);
     // The real adapter, not a mock: every assertion below about where a file ends up (or stops
     // existing) is about what it actually does with opaa.upload.storage-path.
     uploadedOriginalStore = new FilesystemUploadedOriginalStore(uploadProperties);
@@ -301,6 +301,7 @@ class LibraryDocumentServiceTest {
         NO_OP_TRANSACTION_MANAGER,
         new LibrarySourceConnectionResolver(),
         mock(SourceSyncStateRepository.class),
+        mock(io.opaa.instance.CurrentInstance.class),
         Clock.systemUTC());
   }
 
@@ -1716,7 +1717,7 @@ class LibraryDocumentServiceTest {
             checksumService,
             documentIngestService,
             vectorChunkStore,
-            new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0),
+            new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0),
             uploadedOriginalStore,
             storageQuotaService,
             folderRepository,
@@ -1736,6 +1737,7 @@ class LibraryDocumentServiceTest {
             NO_OP_TRANSACTION_MANAGER,
             new LibrarySourceConnectionResolver(),
             mock(SourceSyncStateRepository.class),
+            mock(io.opaa.instance.CurrentInstance.class),
             Clock.systemUTC());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

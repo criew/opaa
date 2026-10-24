@@ -35,9 +35,8 @@ const BASIS_LABELS: Record<AccessBasis, string> = {
 
 const SOURCE_LABELS: Record<AccessAsOfSource, string> = {
   SYSTEM_ROLE: 'Systemrolle (eine Systemverwaltung erreicht jede Bibliothek ihrer Organisation)',
-  OWNERSHIP: 'Eigentum an Bibliothek oder Space',
-  CAPABILITY: 'Anlegerechte',
-  ACCOUNT_STATE: 'Kontozustand (aktiv oder gesperrt)',
+  ACCOUNT_STATE:
+    'Kontozustand vor Einführung seines vollständigen Nachweises (bis dahin nur Sperren aus dem Verzeichnisabgleich, nicht Sperre oder Ablauf eines lokalen Kontos oder ein abgeschalteter Anmeldeanbieter)',
 }
 
 function formatInstant(value: string | null | undefined, fallback: string): string {
@@ -170,9 +169,13 @@ export default function RightsHistoryPage() {
             )}
             {result.sourcesNotCovered.length > 0 && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                Diese Auskunft deckt noch nicht jede Rechtequelle ab. Nicht nachgewiesen sind:{' '}
-                {result.sourcesNotCovered.map((source) => SOURCE_LABELS[source]).join('; ')}. Eine
-                leere oder kurze Liste ist deshalb kein Beleg dafür, dass niemand zugreifen konnte.
+                Diese Auskunft deckt noch nicht jede Rechtequelle ab. Nicht nachgewiesen{' '}
+                {result.sourcesNotCovered.length === 1 ? 'ist' : 'sind'}:{' '}
+                {result.sourcesNotCovered
+                  .map((source) => SOURCE_LABELS[source] ?? source)
+                  .join('; ')}
+                . Eine leere oder kurze Liste ist deshalb kein Beleg dafür, dass niemand zugreifen
+                konnte.
               </Alert>
             )}
             {result.entries.length === 0 ? (

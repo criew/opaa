@@ -69,7 +69,7 @@ describe('SettingsPage', () => {
 
     expect(screen.getByRole('group', { name: 'Farbschema' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Dunkles Farbschema' }))
+    await user.click(screen.getByRole('button', { name: 'Dunkel' }))
 
     expect(useUiStore.getState().themeMode).toBe('dark')
 
@@ -211,7 +211,24 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Zugang Nextcloud intern')).toBeInTheDocument()
   })
 
-  describe('ohne Fremdzugänge (Feature-Flag aus)', () => {
+  it('has the own data as a tab of their own, with the hint against compelled disclosure', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/settings/:tab" element={<SettingsPage />} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/settings/data' },
+    )
+
+    expect(screen.getByRole('tab', { name: 'Meine Daten', selected: true })).toBeVisible()
+    expect(
+      screen.getByText(
+        'Diese Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen oder weitergeben.',
+      ),
+    ).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Daten herunterladen' })).toBeInTheDocument()
+  })
+
+  describe('ohne externe KI-Werkzeuge (Feature-Flag aus)', () => {
     afterEach(() => {
       useAuthStore.setState({ features: {} })
     })

@@ -2,21 +2,35 @@
 """Builds the update package of a release (docs/releases.md, "Update-Paket").
 
     update_package.py previous --tag <vX.Y.Z[-pre]> [--commit <ref>]
+    update_package.py lts-previous --tag <vX.Y.Z[-pre]> [--commit <ref>]
     update_package.py build --tag <vX.Y.Z[-pre]> --out <dir> [--previous <ref>]
                             [--labelled-prs <file>] [--repository <owner/name>]
     update_package.py operations --from <ref> [--to <ref>] --out <dir> [--delta-json <file>]
+    update_package.py links
 
 `previous` prints the final release tag vX.Y.Z the package compares with: the highest one below
 the version of --tag among the tags reachable from --commit (default: the tag). Pre-release tags
 never count; it prints nothing before the first final release.
 
+`lts-previous` prints, for an LTS release X.Y.0 or its candidates, the newest final tag of the
+previous LTS line, wherever it lies; which lines are LTS says .github/support-lines.json of --commit.
+It prints nothing for any other release. `build` compares with it a second time into delta-lts/ and
+betrieb-lts/.
+
 `build` describes the checked-out commit. If the tag exists it must point there; otherwise the run
-is a trial and the package says so. It renders fact sheets and manifest delta with Gradle, checks
-the licenses of backend and frontend (frontend/node_modules must be installed) and writes
-opaa-update-paket-<version>.tar.gz with its .sha256 file into --out. Without a previous final
-release the delta starts from the oldest root commit, which has no manifest. Fact sheet
-placeholders in update-vermerk.md become links to faktenblaetter/, outside code; an unknown sheet
-or anchor fails the run. Links of the delta point into --repository. Dates and file metadata come from the commit, so the same commit
+is a trial and the package says so. It renders fact sheets, manifest delta and backend SBOM with
+Gradle and the frontend SBOM with cdxgen, checks the licenses of backend and frontend (the
+node_modules of frontend/ and .github/tools/cdxgen/ must be installed) and writes
+opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --out; the package
+holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
+commit, which has no manifest.
+The templates of docs/behoerden/ go to vorlagen/, the update note also to the top, the handbook of
+docs/handbuch/ to handbuch/. In templates, fact sheet placeholders become links to faktenblaetter/;
+in templates and handbook, links into the package stay relative and links out of it point to the
+tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
+nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
+(package_html.py); a link of the HTML version to a missing file or anchor fails the run. Links of
+the delta point into --repository. Dates and file metadata come from the commit, so the same commit
 yields the same files.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
@@ -26,7 +40,12 @@ data flows come from the manifest delta (--delta-json, as `./gradlew complianceD
 and are reported as not determined without it. A delta of other commits or a missing --delta-json
 file fails the run. `build` writes the same files for its interval into the package.
 
-Exit codes: 0 success, 1 failure, 2 usage. Standard library only.
+`links` checks the links of docs/behoerden/ and docs/handbuch/ as the package and its HTML version
+would hold them, without fact sheets, and prints every link that would fail `build`; CI runs it on
+every pull request.
+
+Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build` and `links`, which
+need markdown-it-py for the HTML version (.github/requirements-release.txt).
 """
 
 from __future__ import annotations
@@ -44,18 +63,35 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.parse
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_VERSION = ROOT / "deploy" / "helm" / "ci" / "release-version.sh"
 CHECK_LICENSES = ROOT / ".github" / "scripts" / "check_licenses.py"
-TEMPLATE = ROOT / "docs" / "behoerden" / "09-betrieb-update" / "update-vermerk.md"
+TEMPLATES = ROOT / "docs" / "behoerden"
+HANDBOOK = ROOT / "docs" / "handbuch"
+UPDATE_NOTE = "09-betrieb-update/update-vermerk.md"
+TEMPLATE_DIR = "vorlagen/"
+HANDBOOK_DIR = "handbuch/"
+# Rules for authors of docs/behoerden/ and docs/handbuch/, no content; excluded at their top level only.
+AUTHOR_RULES = ("AGENTS.md", "CLAUDE.md")
 MANIFEST_PATH = "backend/src/main/resources/compliance/manifest/"
+SUPPORT_LINES = ".github/support-lines.json"
+LTS_DELTA_DIR = "delta-lts/"
+LTS_OPERATIONS_DIR = "betrieb-lts/"
 FACT_SHEETS = Path("backend/build/compliance/faktenblaetter")
 DELTA = Path("backend/build/compliance/delta")
 DELTA_FILES = ("manifest-delta.md", "manifest-delta.json")
 CYCLONEDX = Path("backend/build/reports/cyclonedx/application.cdx.json")
+# cdxgen as installed from its own lockfile (CDXGEN_INSTALL in that directory); sbom.yml for main
+# installs and calls it the same way, test_update_package.py holds both equal.
+CDXGEN_TOOL = Path(".github/tools/cdxgen")
+CDXGEN = CDXGEN_TOOL / "node_modules" / ".bin" / "cdxgen"
+CDXGEN_INSTALL = "pnpm install --frozen-lockfile --ignore-scripts --no-optional"
+SBOM_DIR = "sbom/"
 DEFAULT_REPOSITORY = "criew/opaa"
 PREFIX = "opaa-update-paket-"
 NOTICE = "> Fakten aus dem Code; rechtliche Bewertung bleibt bei der Behörde."
@@ -74,9 +110,9 @@ LEFTOVER = re.compile(r"\{\{\s*faktenblatt[^\n]{0,40}", re.IGNORECASE)
 ANCHOR = re.compile(r'<a id="([^"]+)"></a>')
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})")
 CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.DOTALL)
-# Package files whose text comes from a template; only there placeholders are resolved, never in
-# text from elsewhere such as pull request titles or upgrade notes.
-TEMPLATED = ("update-vermerk.md",)
+INLINE_LINK = re.compile(r"(\]\(\s*)(<[^>\n]*>|[^\s()<>]+)")
+REFERENCE_LINK = re.compile(r"^( {0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]*>|\S+)", re.MULTILINE)
+SCHEME = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*:")
 COMMIT_ID = re.compile(r"[0-9a-f]{7,64}")
 
 
@@ -131,6 +167,66 @@ def previous_final_tag(repo: Path, tag: str, commit: str) -> str | None:
             continue
         key = core(candidate_version)
         if key < core(version) and (best is None or key > best[0]):
+            best = (key, candidate)
+    return best[1] if best else None
+
+
+def line_key(line: str) -> tuple[int, int]:
+    major, minor = line.split(".")
+    return int(major), int(minor)
+
+
+def support_lines(repo: Path, commit: str) -> dict[str, str]:
+    """The kind ("lts" or "normal") of every line in the list of lines at `commit`, empty without it."""
+    if not git(repo, "ls-tree", "--name-only", "--full-tree", commit, "--", SUPPORT_LINES):
+        return {}
+    try:
+        entries = json.loads(read_at(repo, commit, SUPPORT_LINES))["lines"]
+        kinds = {entry["line"]: entry["kind"] for entry in entries}
+        for line in kinds:
+            line_key(line)
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        raise PackageError(f"{SUPPORT_LINES} at {commit} is malformed: {error!r}") from error
+    return kinds
+
+
+def lts_previous_tag(repo: Path, tag: str, commit: str) -> str | None:
+    """For an LTS release X.Y.0 and its candidates, the newest final tag of the previous LTS line,
+    wherever it lies (its patch releases are on release/A.B, outside the history of main); None for
+    any other release or without a previous LTS line with a final release. Which lines are LTS says
+    the list of lines in `commit` (docs/releases.md, "Liste der Linien")."""
+    version = release_version(tag)
+    if version is None:
+        raise PackageError(f"{tag} is no release tag vX.Y.Z or vX.Y.Z-<pre> (docs/releases.md)")
+    sha = resolve(repo, commit)
+    if sha is None:
+        raise PackageError(f"unknown commit {commit!r} (checked out with tags and history?)")
+    major, minor, patch = core(version)
+    own = f"{major}.{minor}"
+    kinds = support_lines(repo, sha)
+    if patch != 0 or kinds.get(own) != "lts":
+        return None
+    earlier = [line for line, kind in kinds.items() if kind == "lts" and line_key(line) < line_key(own)]
+    if not earlier:
+        return None
+    line = max(earlier, key=line_key)
+    found = newest_final_of_line(repo, line)
+    if found is None and any(newest_final_of_line(repo, older) for older in earlier if older != line):
+        # The comparison never falls back to an older LTS line; the run says so instead of staying silent.
+        print(f"::warning::Kein LTS-Vergleich für {tag}: die vorige LTS-Linie {line} hat kein finales"
+              " Release, eine ältere LTS-Linie schon", file=sys.stderr)
+    return found
+
+
+def newest_final_of_line(repo: Path, line: str) -> str | None:
+    """The highest final tag vX.Y.Z of the line X.Y, wherever it lies."""
+    best: tuple[tuple[int, int, int], str] | None = None
+    for candidate in git(repo, "tag", "--list", f"v{line}.*").splitlines():
+        candidate_version = release_version(candidate)
+        if candidate_version is None or "-" in candidate_version:
+            continue
+        key = core(candidate_version)
+        if (key[0], key[1]) == line_key(line) and (best is None or key > best[0]):
             best = (key, candidate)
     return best[1] if best else None
 
@@ -695,6 +791,10 @@ class Release:
     previous_given: bool = False
     # True when the given comparison is a commit id without manifest (Side.bare).
     previous_bare: bool = False
+    # An LTS release and its candidates: the newest release of the previous LTS line, compared
+    # with a second time under delta-lts/ and betrieb-lts/.
+    lts_previous: str | None = None
+    lts_previous_commit: str | None = None
 
 
 def readme(release: Release) -> str:
@@ -707,6 +807,8 @@ def readme(release: Release) -> str:
         f"commit: {release.commit}",
         f"vorgaenger: {release.previous or 'keiner'}",
         f"vorgaenger-commit: {release.previous_commit}",
+        *([f"vorgaenger-lts: {release.lts_previous}",
+           f"vorgaenger-lts-commit: {release.lts_previous_commit}"] if release.lts_previous else []),
         "---",
         "",
         f"# Update-Paket OPAA {release.version}",
@@ -736,8 +838,13 @@ def readme(release: Release) -> str:
     )
     lines += [
         "",
+        "Zum Lesen im Browser `index.html` öffnen: Neben jeder Markdown-Datei liegt dieselbe Seite als"
+        " HTML, alle Verweise innerhalb des Pakets funktionieren ohne Internetzugang. Die Markdown-Dateien"
+        " dienen zum Weiterbearbeiten und Vergleichen.",
+        "",
         "| Datei | Inhalt |",
         "|---|---|",
+        "| `index.html` | Startseite der HTML-Fassung |",
         "| `delta/manifest-delta.md` | Änderungen der Fakten mit Stufenvorschlag, Bezug zu VVT, DSFA"
         " und Sicherheitskonzept und den als datenrelevant gekennzeichneten Pull Requests |",
         "| `delta/manifest-delta.json` | dieselben Änderungen einzeln, für Werkzeuge |",
@@ -745,11 +852,45 @@ def readme(release: Release) -> str:
         " Ports und Egress-Ziele, je mit Quelle |",
         "| `betrieb/antwortqualitaet.md` | Kennzahlen der Retrieval-Regression beider Versionen mit"
         " Messdatum; fehlende Werte stehen als „nicht gemessen“ da |",
+        *([
+            f"| `{LTS_DELTA_DIR}manifest-delta.md` | wie `delta/manifest-delta.md`, aber gegenüber"
+            f" {release.lts_previous}, dem jüngsten Release der vorigen LTS-Linie |",
+            f"| `{LTS_DELTA_DIR}manifest-delta.json` | dieselben Änderungen einzeln, für Werkzeuge |",
+            f"| `{LTS_OPERATIONS_DIR}betriebsfolgen.md` | Betriebsfolgen gegenüber {release.lts_previous} |",
+            f"| `{LTS_OPERATIONS_DIR}antwortqualitaet.md` | Antwortqualität gegenüber {release.lts_previous} |",
+        ] if release.lts_previous else []),
         "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
         "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
+        f"| `{SBOM_DIR}` | Stücklisten (SBOM, CycloneDX) der ausgelieferten Abhängigkeiten,"
+        f" `{sbom_name('backend', release)}` und `{sbom_name('frontend', release)}`;"
+        " dieselben Dateien hängen am GitHub-Release |",
         "| `update-vermerk.md` | Vorlage für den Update-Vermerk der Behörde |",
+        "| [`vorlagen/`](vorlagen/README.md) | alle Vorlagen für Behörden mit ihren Ordnerübersichten;"
+        " Faktenblatt-Verweise führen auf `faktenblaetter/`, Handbuch-Verweise auf `handbuch/`, andere"
+        " Verweise ins Repository auf den Stand dieser Version |",
+        f"| [`{HANDBOOK_DIR}`]({HANDBOOK_DIR}README.md) | das Handbuch dieser Version; Verweise auf andere"
+        " Dokumentation führen auf deren Stand in dieser Version |",
         "| `SHA256SUMS` | Prüfsummen aller Dateien des Pakets |",
         "",
+        *([
+            "## Welcher Vergleich für wen",
+            "",
+            ("Dieser Release-Kandidat" if "-" in release.version else "Dieses Release")
+            + " eröffnet eine LTS-Linie. Das Paket vergleicht deshalb zweimal:",
+            "",
+            f"- `delta/` und `betrieb/` gegenüber {release.previous or 'dem Vergleichsstand oben'}:"
+            f" für eine Installation auf {release.previous or 'diesem Stand'}, die jedem"
+            " Funktionsrelease folgt.",
+            f"- `{LTS_DELTA_DIR}` und `{LTS_OPERATIONS_DIR}` gegenüber {release.lts_previous}, dem"
+            " jüngsten Release der vorigen LTS-Linie: für eine Installation, die nur LTS-Linien"
+            " betreibt und von dort direkt auf dieses Release wechselt. Dieses Delta umfasst alle"
+            " Änderungen dazwischen, auch die des dazwischenliegenden Funktionsrelease. Eine Änderung,"
+            " die als Backport schon unverändert in der vorigen LTS-Linie steckt, führt es nicht noch"
+            " einmal auf; musste der Backport angepasst werden, steht sie dort ein zweites Mal.",
+            "",
+            "Wer eine andere Version betreibt, erzeugt das Delta für sein Versionspaar selbst (unten).",
+            "",
+        ] if release.lts_previous else []),
         "## Prüfen",
         "",
         "```bash",
@@ -819,11 +960,8 @@ def outside_code(text: str, transform) -> str:
     return "".join(out)
 
 
-def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
-    """`text` of the package file `path` with every {{faktenblatt:<name>[#<anchor>]}} outside code
-    replaced by a link relative to `path` to faktenblaetter/<name>.md. `sheets` holds the text of
-    each sheet by name; an unknown sheet or anchor, or anything left that looks like a placeholder,
-    fails the run (docs/behoerden/README.md)."""
+def placeholder_links(path: str, sheets: dict[str, str]):
+    """The transform of prose in the package file `path` that resolve_placeholders applies."""
 
     def link(match: re.Match) -> str:
         name, anchor = match.group(1), match.group(2)
@@ -844,7 +982,167 @@ def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
                                " {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}}")
         return resolved
 
-    return outside_code(text, prose)
+    return prose
+
+
+def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
+    """`text` of the package file `path` with every {{faktenblatt:<name>[#<anchor>]}} outside code
+    replaced by a link relative to `path` to faktenblaetter/<name>.md. `sheets` holds the text of
+    each sheet by name; an unknown sheet or anchor, or anything left that looks like a placeholder,
+    fails the run (docs/behoerden/AGENTS.md)."""
+    return outside_code(text, placeholder_links(path, sheets))
+
+
+@dataclass(frozen=True)
+class Links:
+    """Where links of templates and handbook lead: `packaged` maps the repository path of every file
+    of both to its package path, `checkout` is the working tree they come from, `ref` the tag or
+    commit in `repository` that links to anything outside the package point to."""
+
+    checkout: Path
+    packaged: dict[str, str]
+    repository: str
+    ref: str
+
+    def directories(self) -> dict[str, str]:
+        """Repository path of every directory the package holds files of, to its package path."""
+        found: dict[str, str] = {}
+        for source, path in self.packaged.items():
+            source, path = posixpath.dirname(source), posixpath.dirname(path)
+            while path:
+                found[source] = path
+                source, path = posixpath.dirname(source), posixpath.dirname(path)
+        return found
+
+
+def relative_links(source: str, path: str, links: Links):
+    """The transform of prose that rewrites the relative links of the repository file `source` for its
+    package file `path`: a target in the package stays relative, anything else in the repository
+    becomes an absolute link at `links.ref`. Anchors, external links and targets that already
+    resolve in the package stay as written; a target the checkout lacks fails the run."""
+    directories = links.directories()
+    here = posixpath.dirname(path) or "."
+
+    def rewrite(match: re.Match) -> str:
+        written = match.group(2)
+        bracketed = written.startswith("<")
+        target = written[1:-1] if bracketed else written
+        if not target or target.startswith("#") or SCHEME.match(target):
+            return match.group(0)
+        file, hash_sign, anchor = target.partition("#")
+        name = urllib.parse.unquote(file)
+        repository_path = posixpath.normpath(
+            name.lstrip("/") if name.startswith("/") else posixpath.join(posixpath.dirname(source), name))
+        if repository_path == ".." or repository_path.startswith("../"):
+            raise PackageError(f"{path}: link {target} leaves the repository")
+        packaged = links.packaged.get(repository_path) or directories.get(repository_path)
+        if packaged is not None:
+            if posixpath.normpath(posixpath.join(here, name)) == packaged:
+                return match.group(0)
+            new = posixpath.relpath(packaged, here) + ("/" if file.endswith("/") else "")
+        elif (links.checkout / repository_path).exists():
+            kind = "tree" if (links.checkout / repository_path).is_dir() else "blob"
+            new = (f"https://github.com/{links.repository}/{kind}/{links.ref}/"
+                   f"{urllib.parse.quote(repository_path)}")
+        else:
+            raise PackageError(f"{path}: link {target} points to nothing in the repository"
+                               f" ({repository_path})")
+        new += hash_sign + anchor
+        return match.group(1) + (f"<{new}>" if bracketed else new)
+
+    def prose(chunk: str) -> str:
+        return REFERENCE_LINK.sub(rewrite, INLINE_LINK.sub(rewrite, chunk))
+
+    return prose
+
+
+def render_template(text: str, source: str, path: str, sheets: dict[str, str], links: Links) -> str:
+    """The template `source` as package file `path`: links rewritten, then placeholders resolved,
+    both outside code only."""
+    resolve = placeholder_links(path, sheets)
+    rewrite = relative_links(source, path, links)
+    return outside_code(text, lambda chunk: resolve(rewrite(chunk)))
+
+
+def markdown_of(directory: Path) -> list[Path]:
+    """Every Markdown file below `directory`, without the author rules at its top level."""
+    return sorted(p for p in directory.rglob("*.md")
+                  if p.is_file() and not (p.parent == directory and p.name in AUTHOR_RULES))
+
+
+def sbom_name(part: str, release: Release) -> str:
+    return f"opaa-{part}-{release.version}.cdx.json"
+
+
+def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
+    """The CycloneDX SBOM `source` of `part` with time and serial number of the release instead of
+    the generator run and without the generator's annotations, which name the day of the run (cdxgen
+    adds a summary); so the same commit yields the same file. The described component carries the
+    release version, also in its purl; its bom-ref stays. Anything else fails the run."""
+    try:
+        bom = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise PackageError(f"{part} SBOM {source} is unreadable: {error}") from error
+    if not isinstance(bom, dict) or bom.get("bomFormat") != "CycloneDX" or not bom.get("components"):
+        raise PackageError(f"{part} SBOM {source} is no CycloneDX SBOM with components")
+    identity = f"https://github.com/{release.repository}/commit/{release.commit}#{sbom_name(part, release)}"
+    bom["serialNumber"] = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, identity)}"
+    bom.pop("annotations", None)
+    if not isinstance(bom.get("metadata"), dict):
+        bom["metadata"] = {}
+    bom["metadata"]["timestamp"] = datetime.datetime.fromtimestamp(
+        release.epoch, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    component = bom["metadata"].get("component")
+    if isinstance(component, dict):
+        written = component.get("version")
+        purl = component.get("purl")
+        if written and isinstance(purl, str) and f"@{written}" in purl:
+            component["purl"] = purl.replace(f"@{written}", f"@{release.version}", 1)
+        component["version"] = release.version
+    return (json.dumps(bom, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def documents(templates: Path, handbook: Path, repository: str, ref: str,
+              sheets: dict[str, str] | None) -> dict[str, bytes]:
+    """Templates under vorlagen/, the update note at the top and the handbook under handbuch/, by
+    package path, with links rewritten (relative_links) and, given the text of each fact sheet by
+    name in `sheets`, placeholders resolved; without `sheets` placeholders stay as written. Both
+    directories lie two levels below the checkout."""
+    checkout = templates.parents[1]
+    sources: dict[str, Path] = {}
+    packaged: dict[str, str] = {}
+    for directory, target in ((templates, TEMPLATE_DIR), (handbook, HANDBOOK_DIR)):
+        prefix = directory.relative_to(checkout).as_posix() + "/"
+        for file in markdown_of(directory):
+            source = prefix + file.relative_to(directory).as_posix()
+            sources[source], packaged[source] = file, target + source[len(prefix):]
+    note = templates.relative_to(checkout).as_posix() + "/" + UPDATE_NOTE
+    if note not in sources:
+        raise PackageError(f"update note template {templates / UPDATE_NOTE} is missing")
+    if HANDBOOK_DIR + "README.md" not in packaged.values():
+        raise PackageError(f"handbook {handbook / 'README.md'} is missing")
+    links = Links(checkout, packaged, repository, ref)
+    files: dict[str, bytes] = {}
+    for source, path in [*packaged.items(), (note, "update-vermerk.md")]:
+        text = sources[source].read_bytes().decode("utf-8")
+        rendered = (render_template(text, source, path, sheets, links)
+                    if sheets is not None and not path.startswith(HANDBOOK_DIR)
+                    else outside_code(text, relative_links(source, path, links)))
+        files[path] = rendered.encode("utf-8")
+    return files
+
+
+def check_links(templates: Path, handbook: Path) -> list[str]:
+    """What would stop the package for links of templates and handbook: a relative link to nothing
+    in the checkout, or a link of the HTML version to a missing file or anchor. Needs no fact
+    sheets, so a pull request can run it; placeholders are left to check_behoerden_headers.sh."""
+    from package_html import broken_links, render
+
+    try:
+        files = documents(templates, handbook, DEFAULT_REPOSITORY, "HEAD", None)
+    except PackageError as error:
+        return [str(error)]
+    return broken_links({**files, **render(files, "Linkprüfung")})
 
 
 def assemble(
@@ -853,10 +1151,20 @@ def assemble(
     delta: Path,
     operations: Path,
     licenses: list[Path],
-    template: Path,
+    sboms: dict[str, Path],
+    templates: Path,
+    handbook: Path,
     out: Path,
+    lts_delta: Path | None = None,
+    lts_operations: Path | None = None,
 ) -> Path:
-    """Writes <name>.tar.gz and <name>.tar.gz.sha256 into `out`; returns the archive."""
+    """Writes <name>.tar.gz, <name>.tar.gz.sha256 and the SBOMs, by part such as "backend", into
+    `out`; returns the archive. `templates` and `handbook` are docs/behoerden/ and docs/handbuch/ of
+    the checkout the release is built from. Placeholders are resolved in template text only, links
+    in template and handbook text only, never in text from elsewhere such as pull request titles or
+    upgrade notes."""
+    from package_html import broken_links, render
+
     name = PREFIX + release.version
     files: dict[str, bytes] = {"LIESMICH.md": readme(release).encode()}
     sheets = sorted(p for p in fact_sheets.glob("*") if p.is_file()) if fact_sheets.is_dir() else []
@@ -872,22 +1180,42 @@ def assemble(
         if not (operations / file).is_file():
             raise PackageError(f"{operations / file} is missing")
         files[f"betrieb/{file}"] = (operations / file).read_bytes()
+    if release.lts_previous:
+        if lts_delta is None or lts_operations is None:
+            raise PackageError(f"the LTS comparison with {release.lts_previous} needs both"
+                               f" {LTS_DELTA_DIR} and {LTS_OPERATIONS_DIR}")
+        for directory, prefix, names in ((lts_delta, LTS_DELTA_DIR, DELTA_FILES),
+                                         (lts_operations, LTS_OPERATIONS_DIR, OPERATIONS_FILES)):
+            for file in names:
+                if not (directory / file).is_file():
+                    raise PackageError(f"{directory / file} of the LTS comparison is missing")
+                files[prefix + file] = (directory / file).read_bytes()
     for report in licenses:
         if not report.is_file():
             raise PackageError(f"license overview {report} is missing")
         files[f"lizenzen/{report.name}"] = report.read_bytes()
-    if not template.is_file():
-        raise PackageError(f"update note template {template} is missing")
-    files["update-vermerk.md"] = template.read_bytes()
+    loose = {sbom_name(part, release): pinned_sbom(source, part, release)
+             for part, source in sorted(sboms.items())}
+    for file, content in loose.items():
+        files[SBOM_DIR + file] = content
     sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
               if path.startswith("faktenblaetter/") and path.endswith(".md")}
-    for path in TEMPLATED:
-        files[path] = resolve_placeholders(files[path].decode("utf-8"), path, sheets).encode("utf-8")
+    files.update(documents(templates, handbook, release.repository,
+                           release.commit if release.trial else release.tag, sheets))
+    site = render(files, f"Update-Paket OPAA {release.version}",
+                  f"Probelauf: kein veröffentlichtes Release, Commit {release.commit}" if release.trial else None,
+                  pending=("SHA256SUMS",))
+    files.update(site)
+    broken = broken_links({**files, "SHA256SUMS": b""})
+    if broken:
+        raise PackageError("links of the HTML version lead nowhere: " + "; ".join(broken))
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(content).hexdigest()}  {path}\n" for path, content in sorted(files.items())
     ).encode()
 
     out.mkdir(parents=True, exist_ok=True)
+    for file, content in loose.items():
+        (out / file).write_bytes(content)
     archive = out / f"{name}.tar.gz"
     with open(archive, "wb") as raw, gzip.GzipFile(
         filename="", mode="wb", fileobj=raw, mtime=release.epoch, compresslevel=9
@@ -924,7 +1252,69 @@ def gradle_command(version: str, day: str, from_ref: str, to_ref: str, repositor
     return gradle
 
 
-def build(args: argparse.Namespace) -> Path:
+def lts_gradle_command(from_ref: str, to_ref: str, repository: str, labelled_prs: str | None) -> list[str]:
+    """The second delta of an LTS release, against a release that may lie outside its history."""
+    gradle = ["./gradlew", "complianceDelta", f"-PfromRef={from_ref}", f"-PtoRef={to_ref}",
+              f"-Prepository={repository}"]
+    if labelled_prs:
+        gradle.append(f"-PlabelledPrs={Path(labelled_prs).resolve()}")
+    return gradle
+
+
+def frontend_sbom_command(target: Path) -> list[str]:
+    """The cdxgen run in frontend/ for the SBOM of what ships: the pnpm lockfile without
+    devDependencies (docs/sbom.md)."""
+    return [str(ROOT / CDXGEN), "-t", "pnpm", "--no-babel", "--required-only",
+            "--project-name", "opaa-frontend", "-o", str(target), "."]
+
+
+def lts_comparison(repo: Path, tag: str, head: str, previous: str | None) -> str | None:
+    """The base of the second comparison, None if there is none or it equals `previous`. The
+    decision shows in the run: a June release whose line the list does not mark as LTS would
+    otherwise look like a normal one (docs/releases.md, step 4 of the release)."""
+    lts_previous = lts_previous_tag(repo, tag, head)
+    if lts_previous == previous:
+        lts_previous = None
+    if lts_previous:
+        print(f"::notice::Zweiter Vergleich mit {lts_previous}, dem jüngsten Release der vorigen LTS-Linie")
+    else:
+        print(f"::notice::Kein LTS-Vergleich für {tag}: Linie nicht als lts in {SUPPORT_LINES} geführt,"
+              " keine vorige LTS-Linie mit finalem Release oder derselbe Vergleichsstand wie das Delta")
+    return lts_previous
+
+
+def copy_delta(target: Path) -> Path:
+    target.mkdir()
+    for file in DELTA_FILES:
+        (target / file).write_bytes((ROOT / DELTA / file).read_bytes())
+    return target
+
+
+def comparisons(release: Release, previous: Side, current: Side, reports: Path, repository: str,
+                labelled_prs: str | None) -> tuple[Path, Path, Path | None, Path | None]:
+    """Copies the delta Gradle has built against `previous` and writes its operations; for an LTS
+    release then builds and writes the second comparison. complianceDelta writes both deltas to
+    the same directory, so the first is copied before the second is built."""
+    delta_dir = copy_delta(reports / "delta")
+    operations_dir = reports / "betrieb"
+    write_operations(operations(ROOT, previous, current, delta_dir / "manifest-delta.json"), operations_dir)
+    if not release.lts_previous:
+        return delta_dir, operations_dir, None, None
+    run(lts_gradle_command(release.lts_previous, current.label, repository, labelled_prs),
+        ROOT / "backend", stdout=None)
+    lts_delta = copy_delta(reports / "delta-lts")
+    lts_operations = reports / "betrieb-lts"
+    write_operations(
+        operations(ROOT, Side(release.lts_previous, release.lts_previous_commit,
+                              release_version(release.lts_previous)),
+                   current, lts_delta / "manifest-delta.json"),
+        lts_operations,
+    )
+    return delta_dir, operations_dir, lts_delta, lts_operations
+
+
+def build(args: argparse.Namespace) -> list[Path]:
+    """Builds the package; returns archive, its .sha256 file and the SBOMs beside it."""
     version = release_version(args.tag)
     if version is None:
         raise PackageError(f"{args.tag} is no release tag vX.Y.Z or vX.Y.Z-<pre> (docs/releases.md)")
@@ -941,6 +1331,7 @@ def build(args: argparse.Namespace) -> Path:
         previous = previous_final_tag(ROOT, args.tag, head)
         from_commit = resolve(ROOT, previous) if previous else empty_base(ROOT, head)
     epoch = int(git(ROOT, "show", "-s", "--format=%ct", head))
+    lts_previous = lts_comparison(ROOT, args.tag, head, previous)
     release = Release(
         version=version,
         tag=args.tag,
@@ -952,14 +1343,32 @@ def build(args: argparse.Namespace) -> Path:
         previous_bare=bool(args.previous) and is_bare(ROOT, previous, from_commit),
         repository=args.repository,
         epoch=epoch,
+        lts_previous=lts_previous,
+        lts_previous_commit=resolve(ROOT, lts_previous) if lts_previous else None,
     )
     day = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
     gradle = gradle_command(version, day, previous or from_commit, args.tag if tag_commit else head,
                             args.repository, args.labelled_prs)
-    run(gradle, ROOT / "backend", stdout=None)
+    if not (ROOT / CDXGEN).exists():
+        raise PackageError(f"{CDXGEN} is missing; run `{CDXGEN_INSTALL}` in {CDXGEN_TOOL}")
 
     with tempfile.TemporaryDirectory() as work:
         reports = Path(work)
+        frontend_sbom = reports / "frontend.cdx.json"
+        # cdxgen reads only the lockfile and node_modules, so it runs while Gradle builds.
+        with open(reports / "cdxgen.log", "w+", encoding="utf-8") as log:
+            cdxgen = subprocess.Popen(frontend_sbom_command(frontend_sbom), cwd=ROOT / "frontend",
+                                      stdout=log, stderr=subprocess.STDOUT)
+            try:
+                run(gradle, ROOT / "backend", stdout=None)
+            except BaseException:
+                cdxgen.kill()
+                raise
+            finally:
+                code = cdxgen.wait()
+            if code != 0:
+                log.seek(0)
+                raise PackageError(f"{' '.join(cdxgen.args)} failed ({code}): {log.read().strip()}")
         pnpm = reports / "pnpm-licenses.json"
         pnpm.write_text(run(["pnpm", "licenses", "list", "--prod", "--json"], ROOT / "frontend"),
                         encoding="utf-8")
@@ -972,21 +1381,19 @@ def build(args: argparse.Namespace) -> Path:
             ROOT, stdout=None)
         run([sys.executable, str(CHECK_LICENSES), *policy, "--pnpm", str(pnpm),
              "--title", "Frontend", "--report", str(frontend)], ROOT, stdout=None)
-        operations_dir = reports / "betrieb"
-        write_operations(
-            operations(
-                ROOT,
-                Side(previous or from_commit, from_commit,
-                     release_version(previous) if previous else None,
-                     bare=is_bare(ROOT, previous or from_commit, from_commit)),
-                Side(args.tag if tag_commit else head, head, version),
-                ROOT / DELTA / "manifest-delta.json",
-            ),
-            operations_dir,
-        )
-        return assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
-                        operations=operations_dir, licenses=[backend, frontend], template=TEMPLATE,
-                        out=Path(args.out))
+        current = Side(args.tag if tag_commit else head, head, version)
+        delta_dir, operations_dir, lts_delta, lts_operations = comparisons(
+            release,
+            Side(previous or from_commit, from_commit, release_version(previous) if previous else None,
+                 bare=is_bare(ROOT, previous or from_commit, from_commit)),
+            current, reports, args.repository, args.labelled_prs)
+        sboms ={"backend": ROOT / CYCLONEDX, "frontend": frontend_sbom}
+        archive = assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=delta_dir,
+                           operations=operations_dir, licenses=[backend, frontend], sboms=sboms,
+                           templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out),
+                           lts_delta=lts_delta, lts_operations=lts_operations)
+        return [archive, archive.with_name(archive.name + ".sha256"),
+                *(archive.with_name(sbom_name(part, release)) for part in sorted(sboms))]
 
 
 def main(argv: list[str]) -> int:
@@ -995,6 +1402,9 @@ def main(argv: list[str]) -> int:
     previous = commands.add_parser("previous")
     previous.add_argument("--tag", required=True)
     previous.add_argument("--commit")
+    lts = commands.add_parser("lts-previous")
+    lts.add_argument("--tag", required=True)
+    lts.add_argument("--commit")
     package = commands.add_parser("build")
     package.add_argument("--tag", required=True)
     package.add_argument("--out", required=True)
@@ -1006,6 +1416,7 @@ def main(argv: list[str]) -> int:
     consequences.add_argument("--to", dest="to_ref", default="HEAD")
     consequences.add_argument("--out", required=True)
     consequences.add_argument("--delta-json")
+    commands.add_parser("links")
     args = parser.parse_args(argv)
     try:
         if args.command == "previous":
@@ -1013,6 +1424,18 @@ def main(argv: list[str]) -> int:
             found = previous_final_tag(repo, args.tag, args.commit or args.tag)
             if found:
                 print(found)
+        elif args.command == "lts-previous":
+            found = lts_previous_tag(Path.cwd(), args.tag, args.commit or args.tag)
+            if found:
+                print(found)
+        elif args.command == "links":
+            broken = check_links(TEMPLATES, HANDBOOK)
+            for problem in broken:
+                print(problem)
+            if broken:
+                return 1
+            print(f"links of {TEMPLATES.relative_to(ROOT).as_posix()} and"
+                  f" {HANDBOOK.relative_to(ROOT).as_posix()} resolve in the package")
         elif args.command == "operations":
             repo = Path(git(Path.cwd(), "rev-parse", "--show-toplevel"))
             sides = []
@@ -1025,9 +1448,8 @@ def main(argv: list[str]) -> int:
             for written in write_operations(operations(repo, *sides, delta_json), Path(args.out)):
                 print(written)
         else:
-            archive = build(args)
-            print(archive)
-            print(f"{archive}.sha256")
+            for written in build(args):
+                print(written)
     except PackageError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

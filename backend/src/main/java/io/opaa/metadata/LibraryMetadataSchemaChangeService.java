@@ -8,6 +8,8 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryMaintenanceSkips;
+import io.opaa.knowledge.LibraryMaintenanceSkips.Maintenance;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -77,8 +78,8 @@ public class LibraryMetadataSchemaChangeService {
   private final TransactionTemplate transactionTemplate;
   private final FeatureFlags featureFlags;
 
-  /** Skipped count of the most recent Charge per library; process lifetime only (ADR-0021). */
-  private final Map<UUID, Long> lastSkippedByLibrary = new ConcurrentHashMap<>();
+  /** Skipped count of the most recent Charge per library, shared by every instance. */
+  private final LibraryMaintenanceSkips skips;
 
   public LibraryMetadataSchemaChangeService(
       LibraryMetadataSchemaChangeRepository changeRepository,
@@ -92,8 +93,10 @@ public class LibraryMetadataSchemaChangeService {
       ApplicationEventPublisher eventPublisher,
       JdbcTemplate jdbcTemplate,
       PlatformTransactionManager transactionManager,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      LibraryMaintenanceSkips skips) {
     this.featureFlags = featureFlags;
+    this.skips = skips;
     this.changeRepository = changeRepository;
     this.fieldRepository = fieldRepository;
     this.valueRepository = valueRepository;
@@ -165,7 +168,7 @@ public class LibraryMetadataSchemaChangeService {
       CurrentUser caller,
       UUID confirmedChangeId) {
     if (changes.isEmpty()) {
-      lastSkippedByLibrary.remove(library.getId());
+      skips.clear(Maintenance.SCHEMA_CHANGE, library.getId());
       return LibraryMetadataSchemaRunResult.nothingToDo();
     }
     long processed = 0;
@@ -182,11 +185,7 @@ public class LibraryMetadataSchemaChangeService {
       budget -= (int) outcome.processed();
       advancedAnything |= outcome.processed() > 0 || outcome.completed();
     }
-    if (skipped == 0) {
-      lastSkippedByLibrary.remove(library.getId());
-    } else {
-      lastSkippedByLibrary.put(library.getId(), skipped);
-    }
+    skips.record(Maintenance.SCHEMA_CHANGE, library.getId(), skipped);
     if (advancedAnything) {
       // The offered filter values are derived from the bestand, so every rewritten document
       // changes them - and a completed change removed a value the cache would still offer.
@@ -524,6 +523,7 @@ public class LibraryMetadataSchemaChangeService {
     }
     List<Object> parameters = new ArrayList<>(libraryIds);
     Map<UUID, LibraryMetadataSchemaChangeProgress> byLibrary = new HashMap<>();
+    Map<UUID, Long> skipped = skips.skippedFor(Maintenance.SCHEMA_CHANGE, libraryIds);
     // Summed per change, exactly like the settings page reads it - a document that two changes
     // of one library have to rewrite is two pieces of remaining work, and the two displays must
     // not disagree about it. Each branch counts over its own index rather than one OR over both
@@ -549,7 +549,7 @@ public class LibraryMetadataSchemaChangeService {
                   libraryId,
                   rs.getLong("pending_changes"),
                   rs.getLong("pending_documents"),
-                  lastSkippedByLibrary.getOrDefault(libraryId, 0L)));
+                  skipped.getOrDefault(libraryId, 0L)));
         },
         parameters.toArray());
     return byLibrary;

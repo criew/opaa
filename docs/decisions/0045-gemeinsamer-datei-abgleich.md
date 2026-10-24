@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ersetzt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
+Akzeptiert · zuletzt geändert 2026-10-20 · ersetzt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
 · ergänzt [ADR-0027](0027-s3-konnektor.md) · ergänzt durch [ADR-0046](0046-smb-konnektor.md) und
 [ADR-0047](0047-sharepoint-konnektor.md)
 
@@ -151,7 +151,8 @@ gelistet hat, gleicht ab.
   Gedächtnis. `FileSyncRandomizedRoundTest` prüft die Invariante „kein Dokument entfernt, dessen Datei
   existiert“ über zufällige Folgen, `FileSyncRoundTest` die Fälle einzeln.
 
-Prozesslokaler Zustand entsteht nicht; die Tiefensuche eines Stores lebt nur im Lauf (ADR-0021).
+Prozesslokaler Zustand entsteht nicht; die Tiefensuche eines Stores lebt nur im Lauf (ADR-0053
+Entscheidung 16).
 
 ### 7. Abwesenheitsbeweis
 

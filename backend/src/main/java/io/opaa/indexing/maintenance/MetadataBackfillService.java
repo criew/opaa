@@ -15,6 +15,8 @@ import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryMaintenanceSkips;
+import io.opaa.knowledge.LibraryMaintenanceSkips.Maintenance;
 import io.opaa.knowledge.SourceType;
 import io.opaa.metadata.CoreMetadataExtractor;
 import io.opaa.metadata.CoreMetadataField;
@@ -34,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -72,12 +73,12 @@ public class MetadataBackfillService {
   /**
    * The library of the call in flight. The batch loop hands {@link #advance} only a document id,
    * and re-reading the library per document would be one query per document for a value that is
-   * constant for the whole call; single-instance, single-threaded per call (ADR-0021).
+   * constant for the whole call; a call runs on one thread of one instance (ADR-0053).
    */
   private final ThreadLocal<KnowledgeLibrary> currentLibrary = new ThreadLocal<>();
 
-  /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
-  private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
+  /** Skipped count of the most recent call per library, shared by every instance. */
+  private final LibraryMaintenanceSkips skips;
 
   public MetadataBackfillService(
       JdbcTemplate jdbcTemplate,
@@ -90,8 +91,10 @@ public class MetadataBackfillService {
       MetadataFillCounter fillCounter,
       ModelMetadataExtractor modelMetadataExtractor,
       VectorChunkStore vectorChunkStore,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      LibraryMaintenanceSkips skips) {
     this.featureFlags = featureFlags;
+    this.skips = skips;
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
@@ -139,7 +142,7 @@ public class MetadataBackfillService {
       currentLibrary.remove();
     }
     int skipped = counts.get(Advance.SKIPPED);
-    lastSkippedByLibrary.put(library.getId(), skipped);
+    skips.record(Maintenance.METADATA_BACKFILL, library.getId(), skipped);
     return new MetadataBackfillResult(
         counts.get(Advance.PROCESSED), counts.get(Advance.MARKED_FOR_NEXT_RUN), skipped);
   }
@@ -352,6 +355,7 @@ public class MetadataBackfillService {
     List<String> fieldKeys =
         Arrays.stream(CoreMetadataField.values()).map(CoreMetadataField::key).toList();
     Map<UUID, Map<String, MetadataFieldFill>> fills = fillCounter.countFor(libraryIds, fieldKeys);
+    Map<UUID, Long> skipped = skips.skippedFor(Maintenance.METADATA_BACKFILL, libraryIds);
 
     Map<UUID, MetadataBackfillProgress> byLibrary = new HashMap<>();
     for (KnowledgeLibrary library : libraryRepository.findAllById(libraryIds)) {
@@ -397,7 +401,7 @@ public class MetadataBackfillService {
                     rs.getLong("current_count"),
                     rs.getLong("pending_count"),
                     rs.getLong("awaiting_count"),
-                    lastSkippedByLibrary.getOrDefault(libraryId, 0),
+                    skipped.getOrDefault(libraryId, 0L),
                     byField));
           },
           parameters.toArray());

@@ -108,7 +108,7 @@ class DataCollectionDisclosureIntegrationTest {
         .andExpect(
             jsonPath("$.instance.settings[?(@.key == '" + RETENTION_KEY + "')].effectiveValue")
                 .value("36"))
-        .andExpect(jsonPath("$.protocol.queryPaths.length()").value(5))
+        .andExpect(jsonPath("$.protocol.queryPaths.length()").value(6))
         .andExpect(jsonPath("$.protocol.absentQueryPaths").isNotEmpty());
   }
 
@@ -263,18 +263,37 @@ class DataCollectionDisclosureIntegrationTest {
     assertThat(fields).containsExactlyInAnyOrderElementsOf(columns);
   }
 
-  /** The incident scope is the one query path that filters by the acting person, and says so. */
+  /**
+   * The incident scope is the one query path by person for third parties, the self-disclosure the
+   * one for the person herself, and the absent paths name both exceptions.
+   */
   @Test
-  void theIncidentScopeIsNamedAsTheOnePathByPerson() throws Exception {
+  void theIncidentScopeAndTheSelfDisclosureAreNamedAsThePathsByPerson() throws Exception {
     JsonNode protocol = exportAsAdmin().path("protocol");
 
     List<String> names = new ArrayList<>();
     for (JsonNode path : protocol.path("queryPaths")) {
       names.add(path.path("name").asString());
     }
-    assertThat(names).contains("anlassbezogene Klärung");
-    assertThat(protocol.path("absentQueryPaths").get(0).asString())
-        .contains("außer in der freigegebenen anlassbezogenen Klärung");
+    assertThat(names).contains("anlassbezogene Klärung", "Selbstauskunft");
+    List<String> absent = new ArrayList<>();
+    for (JsonNode path : protocol.path("absentQueryPaths")) {
+      absent.add(path.asString());
+    }
+    assertThat(absent.get(0))
+        .contains("außer in der freigegebenen anlassbezogenen Klärung")
+        .contains("Selbstauskunft über die eigene Person");
+    assertThat(absent)
+        .anySatisfy(
+            path ->
+                assertThat(path)
+                    .startsWith("Kein Vollabzug")
+                    .contains("einzige Ausnahme die Selbstauskunft"))
+        .anySatisfy(
+            path ->
+                assertThat(path)
+                    .startsWith("Keine Sicht")
+                    .contains("für die Person selbst ihre Selbstauskunft"));
   }
 
   @Test

@@ -1,13 +1,13 @@
-# ADR-0042: Kubernetes-Lieferung mit Helm — Single-Instance-Chart neben den Images
+# ADR-0042: Kubernetes-Lieferung mit Helm — Chart neben den Images
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-09 · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastructure.md)
 
 ## Kontext
 
-Der einzige beschriebene Betriebsweg war der Compose-Stapel ([docker-compose.md](../handbuch/docker-compose.md)).
+Der einzige beschriebene Betriebsweg war der Compose-Stapel ([docker-compose.md](../handbuch/betrieb/docker-compose.md)).
 Häuser mit Kubernetes mussten sich Manifeste selbst erarbeiten und fanden erst im Betrieb heraus, was
 das Backend voraussetzt: genau eine Instanz ([ADR-0021](0021-single-instance-betrieb.md)), eine
 Schemamigration beim Start, beschreibbare Pfade, eine Proxy-Kette, die das Rate-Limit nicht verfälscht.
@@ -29,14 +29,16 @@ werden Helm 4 und Helm 3 ab 3.8 (OCI-Unterstützung), solange es Sicherheitskorr
 `values.schema.json` folgt deshalb JSON Schema draft-07. Die CI prüft die älteste zugesagte und die
 jüngste Version.
 
-### 2. Umfang: genau eine Backend-Instanz, Aktualisierung mit kurzer Unterbrechung
+### 2. Umfang: eine Backend-Instanz als Vorgabe, Aktualisierung mit kurzer Unterbrechung
 
-Der Chart setzt ADR-0021 technisch durch: `backend.replicas` größer 1 bricht das Rendern ab
-(`_helpers.tpl`), Strategie `Recreate`, Liquibase migriert beim Start des Backends (kein Hook, kein
-Job), eine Startup-Probe gibt der Migration Zeit. Ein `helm rollback` über eine Schemaänderung hinweg
-ist kein Rückweg; zurück geht es über die Datenbanksicherung. Das Spring-Profil ist fest `oidc`; `dev`
-wird nicht angeboten (ADR-0005). Die Werte sind so geschnitten, dass #1292 sie auf mehrere Replikate
-erweitern kann, ohne Neuinstallation.
+In der Vorgabe läuft der Chart mit einem Replikat: Strategie `Recreate`, Liquibase migriert beim
+Start des Backends (kein Hook, kein Job), eine Startup-Probe gibt der Migration Zeit. Ein
+`helm rollback` über eine Schemaänderung hinweg ist dann kein Rückweg; zurück geht es über die
+Datenbanksicherung. Das Spring-Profil ist fest `oidc`; `dev` wird nicht angeboten (ADR-0005).
+`backend.replicas` größer 1 rendert nur unter den Bedingungen von ADR-0053 Entscheidung 15
+(Migrations-Job, `RollingUpdate`, PDB, gemeinsame Originalablage), sonst bricht das Rendern ab
+(`_helpers.tpl`); eine bestehende Installation wechselt dorthin mit `helm upgrade`, ohne
+Neuinstallation.
 
 ### 3. Externe Dienste werden angebunden, nicht ausgeliefert
 
@@ -128,22 +130,22 @@ werden weder geprüft noch durch Rücksichten im Template gestützt.
 
 ## Konsequenzen
 
-**Einfacher:** Installation mit einem Befehl gegen einen geprüften Stand; ADR-0021 wird im Betrieb
-durchgesetzt; versionierte Images nützen auch Compose; GitOps-Werkzeuge nutzen den Chart unverändert
+**Einfacher:** Installation mit einem Befehl gegen einen geprüften Stand; die Voraussetzungen von
+ADR-0053 werden beim Rendern geprüft; versionierte Images nützen auch Compose; GitOps-Werkzeuge nutzen den Chart unverändert
 (keine Zufallswerte, nur `helm test` als Hook).
 
 **Schwieriger:** Der Chart muss mit jeder betriebsrelevanten Änderung mitgepflegt werden. Eine
-Aktualisierung bleibt eine Unterbrechung (#1292). Ingress, Gateway API und drei Kubernetes-Versionen
+Aktualisierung mit einer Instanz bleibt eine Unterbrechung. Ingress, Gateway API und drei Kubernetes-Versionen
 müssen geprüft werden, nicht nur behauptet. PostgreSQL mit pgvector stellt der Betreiber. Ein
 Chart-Fix erzeugt ein Anwendungsrelease. Versions-Tags werden nie überschrieben; Sicherheitsupdates
 des Basis-Images erreichen ein Release nur als Patch-Release, und der CVE-Scan deckt neben `main` das
-jüngste Release ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
+jüngste Patch-Release jeder unterstützten Linie ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
 
 ## Verworfene Alternativen
 
 - Fremder PostgreSQL-Sub-Chart — kein verlässlicher freier Bezugsweg mehr.
 - Zufallsschlüssel bei `helm install` — gehen bei `helm template`, GitOps und Neuinstallation verloren.
-- Migration in Helm-Hook oder Job — siehe Entscheidung 2.
+- Migration in Helm-Hook oder Job bei einer Instanz — siehe Entscheidung 2; bei mehreren ADR-0053 Entscheidung 14.
 - Getrennte Chart-Versionierung — Zuordnungstabelle, die Betreiber pflegen müssten.
 
 ## Offen

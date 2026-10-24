@@ -1,7 +1,9 @@
 package io.opaa.account;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
@@ -21,15 +23,21 @@ import org.springframework.stereotype.Service;
  * Mints the access tokens of local accounts (ADR-0033, Entscheidung 6): HS256 under the
  * access-token key, with {@code jti} (revocable), {@code iss}, {@code sub} = the account id, {@code
  * iat}, {@code exp} after {@code opaa.auth.local.access-token-ttl}, {@code email} and {@code name}
- * - read by {@code TokenClaims} like any provider's - and {@code pcr}. No role: roles come from
- * {@code users} on every request. The encoder is built on first use so a {@code dev} start without
- * a secret is unaffected.
+ * - read by {@code TokenClaims} like any provider's - {@code pcr} and {@value
+ * #SESSION_GENERATION_CLAIM}, the account's session generation (ADR-0053, Entscheidung 6), and
+ * {@code auth_time} only when the password was verified for this very token ({@link
+ * #issueForSignIn}) - a refresh is no sign-in and never counts as a recent one. No role: roles come
+ * from {@code users} on every request. The encoder is built on first use so a {@code dev} start
+ * without a secret is unaffected.
  */
 @Service
 public class LocalAccessTokenService {
 
   /** Boolean claim: the account must change its password before anything else is reachable. */
   public static final String PCR_CLAIM = "pcr";
+
+  /** Number claim: the session generation of the account the token was minted under. */
+  public static final String SESSION_GENERATION_CLAIM = "sgen";
 
   private static final String EMAIL_CLAIM = "email";
   private static final String NAME_CLAIM = "name";
@@ -46,15 +54,27 @@ public class LocalAccessTokenService {
     this.clock = clock;
   }
 
-  public IssuedAccessToken issue(User user, boolean passwordChangeRequired) {
-    return issue(user, passwordChangeRequired, clock.instant());
+  /**
+   * Mints a token for the account's current state: its forced change, its session generation, and
+   * {@code iat} no earlier than its cutoff - the replacement token of a password change, whose
+   * cutoff lies in the next whole second, must pass the previous version's check during a rolling
+   * update. Carries no {@code auth_time}: for a session that continues without a password.
+   */
+  public IssuedAccessToken issue(User user, LocalCredentials credentials) {
+    return mint(user, credentials, false);
   }
 
   /**
-   * Mints with {@code iat} no earlier than {@code notBefore} - the replacement token of a password
-   * change, whose cutoff lies in the next whole second (at most one second ahead of the clock).
+   * Like {@link #issue}, for a token whose password was just verified: {@code auth_time} = {@code
+   * iat}, so it passes {@code io.opaa.auth.RecentLoginPolicy} for the configured window.
    */
-  public IssuedAccessToken issue(User user, boolean passwordChangeRequired, Instant notBefore) {
+  public IssuedAccessToken issueForSignIn(User user, LocalCredentials credentials) {
+    return mint(user, credentials, true);
+  }
+
+  private IssuedAccessToken mint(User user, LocalCredentials credentials, boolean signedIn) {
+    boolean passwordChangeRequired = credentials.isPasswordChangeRequired();
+    Instant notBefore = credentials.getPasswordInvalidatedBefore();
     Instant now = clock.instant();
     if (notBefore != null && notBefore.isAfter(now)) {
       now = notBefore;
@@ -68,7 +88,11 @@ public class LocalAccessTokenService {
             .subject(user.getId().toString())
             .issuedAt(now)
             .expiresAt(expiresAt)
-            .claim(PCR_CLAIM, passwordChangeRequired);
+            .claim(PCR_CLAIM, passwordChangeRequired)
+            .claim(SESSION_GENERATION_CLAIM, credentials.getSessionGeneration());
+    if (signedIn) {
+      claims.claim(RecentLoginPolicy.AUTH_TIME_CLAIM, now.getEpochSecond());
+    }
     if (user.getEmail() != null) {
       claims.claim(EMAIL_CLAIM, user.getEmail());
     }

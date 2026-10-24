@@ -4,9 +4,11 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.PrivateLibraryErased;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -29,7 +31,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * Spring calls, marked {@link Autowired} because more than one constructor exists.
  */
 @Service
-public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
+public class CaffeineChatMemoryRepository implements ChatMemoryRepository, InvalidationSubscriber {
+
+  /**
+   * The topic {@link ChatMemoryErasureAnnouncement} sends when a private library was erased on any
+   * instance (ADR-0053, Entscheidung 5).
+   */
+  static final String INVALIDATION_TOPIC = "chat-memory";
 
   private static final Logger log = LoggerFactory.getLogger(CaffeineChatMemoryRepository.class);
 
@@ -126,6 +134,21 @@ public class CaffeineChatMemoryRepository implements ChatMemoryRepository {
   public void onPrivateLibraryErased(PrivateLibraryErased event) {
     String prefix = event.ownerUserId() + ":";
     cache.asMap().keySet().removeIf(key -> key.startsWith(prefix));
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(INVALIDATION_TOPIC);
+  }
+
+  /**
+   * A private library was erased somewhere: the announcement names no person, so every conversation
+   * goes. A stored chat reads its history anew on the next turn; an ephemeral one loses its context
+   * (ADR-0053, Entscheidung 10).
+   */
+  @Override
+  public void invalidateAll() {
+    cache.invalidateAll();
   }
 
   /** Returns the number of active conversations in the cache. */

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -17,9 +18,13 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -35,13 +40,33 @@ import org.springframework.dao.QueryTimeoutException;
 @ExtendWith(MockitoExtension.class)
 class IndexingJobServiceTest {
 
+  /** The database clock of these tests, which the host clock need not agree with. */
+  private static final Instant DATABASE_NOW = Instant.parse("2026-10-19T08:00:00Z");
+
+  /** The identity of this instance in these tests. */
+  private static final UUID THIS_INSTANCE = UUID.randomUUID();
+
   @Mock private IndexingJobRepository indexingJobRepository;
   @Mock private AssetRepository assetRepository;
+  @Mock private CurrentInstance currentInstance;
+  @Mock private InstanceRegistry instanceRegistry;
   private IndexingJobService service;
 
   @BeforeEach
   void setUp() {
-    service = new IndexingJobService(indexingJobRepository, assetRepository, Clock.systemUTC());
+    lenient().when(currentInstance.id()).thenReturn(THIS_INSTANCE);
+    lenient().when(currentInstance.heartbeatCurrent()).thenReturn(true);
+    service = serviceOn(Clock.systemUTC(), Instant::now);
+  }
+
+  private IndexingJobService serviceOn(Clock clock, DatabaseClock databaseClock) {
+    return new IndexingJobService(
+        indexingJobRepository,
+        assetRepository,
+        clock,
+        databaseClock,
+        currentInstance,
+        instanceRegistry);
   }
 
   @Test
@@ -79,8 +104,8 @@ class IndexingJobServiceTest {
     // keeps its state - the same conditional guard updateProgress has.
     var running = new IndexingJob(JobStatus.RUNNING);
     var failed = new IndexingJob(JobStatus.FAILED);
-    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
-    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+    when(indexingJobRepository.findByIdForUpdate(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findByIdForUpdate(failed.getId())).thenReturn(Optional.of(failed));
     IndexingRunCost cost = new IndexingRunCost(1842, 3, 95_000L, 120, 800, 2, true, 0L);
 
     service.recordRunMetrics(running.getId(), cost);
@@ -100,8 +125,8 @@ class IndexingJobServiceTest {
     // failed keeps its state - the same conditional guard recordRunMetrics has.
     var running = new IndexingJob(JobStatus.RUNNING);
     var failed = new IndexingJob(JobStatus.FAILED);
-    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
-    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+    when(indexingJobRepository.findByIdForUpdate(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findByIdForUpdate(failed.getId())).thenReturn(Optional.of(failed));
 
     service.recordListingAssessment(running.getId(), false, List.of("SEC", "IT"));
     service.recordListingAssessment(failed.getId(), false, List.of("SEC"));
@@ -117,8 +142,8 @@ class IndexingJobServiceTest {
   void recordUnreadableScopesWritesTheCountOntoARunningJobOnly() {
     var running = new IndexingJob(JobStatus.RUNNING);
     var failed = new IndexingJob(JobStatus.FAILED);
-    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
-    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+    when(indexingJobRepository.findByIdForUpdate(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findByIdForUpdate(failed.getId())).thenReturn(Optional.of(failed));
 
     service.recordUnreadableScopes(running.getId(), 3);
     service.recordUnreadableScopes(failed.getId(), 2);
@@ -132,7 +157,7 @@ class IndexingJobServiceTest {
   @Test
   void aCompleteListingAssessmentCarriesNoKeys() {
     var running = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findByIdForUpdate(running.getId())).thenReturn(Optional.of(running));
 
     service.recordListingAssessment(running.getId(), true, List.of());
 
@@ -286,56 +311,68 @@ class IndexingJobServiceTest {
   }
 
   @Test
-  void setTotalDocumentsSetsCount() {
+  void setTotalDocumentsSetsCountWhileTheJobRuns() {
     UUID jobId = UUID.randomUUID();
-    var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
-    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+    when(indexingJobRepository.setTotalIfRunning(jobId, 15)).thenReturn(1);
 
     service.setTotalDocuments(jobId, 15);
 
-    assertThat(job.getDocumentsTotal()).isEqualTo(15);
+    verify(indexingJobRepository).setTotalIfRunning(jobId, 15);
+    verify(indexingJobRepository, never()).save(any());
   }
 
   @Test
-  void updateProgressSetsCountsWithoutCompletingJob() {
+  void updateProgressWritesCountsAndHeartbeatConditionallyOnTheJobStillRunning() {
     UUID jobId = UUID.randomUUID();
-    var job = new IndexingJob(JobStatus.RUNNING);
-    Instant previousHeartbeat = job.getLastProgressAt();
-    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
-    when(indexingJobRepository.save(any(IndexingJob.class))).thenReturn(job);
+    when(indexingJobRepository.updateProgressIfRunning(
+            eq(jobId), eq(5), eq(1), eq(3), eq(6), any(Instant.class)))
+        .thenReturn(1);
 
     service.updateProgress(jobId, 5, 1, 3, 6);
 
-    assertThat(job.getDocumentsProcessed()).isEqualTo(5);
-    assertThat(job.getDocumentsFailed()).isEqualTo(1);
-    assertThat(job.getDocumentsSkipped()).isEqualTo(3);
-    assertThat(job.getDocumentsIndexedTotal()).isEqualTo(6);
-    assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
-    assertThat(job.getCompletedAt()).isNull();
-    // every progress report is also the heartbeat the stale-run sweep
-    // compares against its cutoff.
-    assertThat(job.getLastProgressAt()).isNotNull().isAfterOrEqualTo(previousHeartbeat);
+    verify(indexingJobRepository)
+        .updateProgressIfRunning(eq(jobId), eq(5), eq(1), eq(3), eq(6), any(Instant.class));
+    verify(indexingJobRepository, never()).save(any());
   }
 
   /**
-   * once the sweep has already failed a job, its executor thread's further progress reports (it is
-   * unaware of the recovery) must not resurrect its counters or heartbeat.
+   * Once the recovery has failed a job, the further progress reports of its executor thread (it is
+   * unaware of the recovery) end the run instead of resurrecting its counters or heartbeat.
    */
   @Test
-  void updateProgressDoesNothingWhenTheJobIsNoLongerRunning() {
+  void updateProgressEndsTheRunWhenTheJobIsNoLongerRunning() {
     UUID jobId = UUID.randomUUID();
-    var job = new IndexingJob(JobStatus.RUNNING);
-    job.setStatus(JobStatus.FAILED);
-    job.setErrorMessage("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)");
-    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+    when(indexingJobRepository.updateProgressIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(0);
+    when(indexingJobRepository.existsById(jobId)).thenReturn(true);
 
-    service.updateProgress(jobId, 5, 1, 3, 6);
-
-    assertThat(job.getDocumentsProcessed()).isZero();
-    assertThat(job.getErrorMessage())
-        .isEqualTo("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)");
+    assertThatThrownBy(() -> service.updateProgress(jobId, 5, 1, 3, 6))
+        .isInstanceOf(RunAbandonedException.class);
     verify(indexingJobRepository, never()).save(any());
+  }
+
+  @Test
+  void updateProgressEndsTheRunOnceTheHeartbeatOfThisInstanceLapsed() {
+    UUID jobId = UUID.randomUUID();
+    when(currentInstance.heartbeatCurrent()).thenReturn(false);
+
+    assertThatThrownBy(() -> service.updateProgress(jobId, 5, 1, 3, 6))
+        .isInstanceOf(RunAbandonedException.class);
+    verify(indexingJobRepository, never())
+        .updateProgressIfRunning(any(), anyInt(), anyInt(), anyInt(), anyInt(), any());
+  }
+
+  @Test
+  void aRunThatNoLongerHoldsItsJobIsStoppedBeforeItReconciles() {
+    var running = new IndexingJob(JobStatus.RUNNING);
+    var failed = new IndexingJob(JobStatus.FAILED);
+    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+
+    assertThatCode(() -> service.requireHeld(running.getId())).doesNotThrowAnyException();
+    assertThatThrownBy(() -> service.requireHeld(failed.getId()))
+        .isInstanceOf(RunAbandonedException.class);
   }
 
   @Test
@@ -439,14 +476,36 @@ class IndexingJobServiceTest {
   // --- recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---
 
   @Test
-  void recoverJobsOrphanedByRestartFailsEveryRunningRowWithARestartMessage() {
-    when(indexingJobRepository.failAllRunningJobs(anyString(), any(Instant.class))).thenReturn(3);
+  void theRecoveryFailsOnlyTheRunsOfDeadInstances() {
+    UUID live = UUID.randomUUID();
+    UUID dead = UUID.randomUUID();
+    when(indexingJobRepository.findOwnersOfRunningJobs()).thenReturn(List.of(live, dead));
+    when(instanceRegistry.isAlive(live)).thenReturn(true);
+    when(instanceRegistry.isAlive(dead)).thenReturn(false);
+    when(indexingJobRepository.failRunningJobsOwnedBy(eq(dead), anyString(), any(Instant.class)))
+        .thenReturn(2);
 
-    int recovered = service.recoverJobsOrphanedByRestart();
+    int recovered = service.recoverJobsOfDeadInstances();
 
-    assertThat(recovered).isEqualTo(3);
+    assertThat(recovered).isEqualTo(2);
     verify(indexingJobRepository)
-        .failAllRunningJobs(eq("Durch Neustart abgebrochen"), any(Instant.class));
+        .failRunningJobsOwnedBy(
+            eq(dead),
+            eq("Durch Neustart oder Ausfall der ausführenden Instanz abgebrochen"),
+            any(Instant.class));
+    verify(indexingJobRepository, never()).failRunningJobsOwnedBy(eq(live), any(), any());
+  }
+
+  @Test
+  void startJobRecordsThisInstanceAsTheOwner() {
+    when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    IndexingJob result =
+        service.startJob(
+            UUID.randomUUID(), UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
+
+    assertThat(result.getOwnerInstanceId()).isEqualTo(THIS_INSTANCE);
   }
 
   @Test
@@ -463,6 +522,35 @@ class IndexingJobServiceTest {
             eq("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)"),
             any(Instant.class),
             any(Instant.class));
+  }
+
+  @Test
+  void aStaleHeartbeatIsJudgedByTheDatabaseClockNotByTheHostClock() {
+    // regression guard for ADR-0053, Entscheidung 9: a host clock ten minutes ahead must not move
+    // the cutoff, or another instance's healthy run would count as hanging.
+    IndexingJobService aheadOfTheDatabase =
+        serviceOn(
+            Clock.fixed(DATABASE_NOW.plus(Duration.ofMinutes(10)), ZoneOffset.UTC),
+            () -> DATABASE_NOW);
+
+    aheadOfTheDatabase.recoverStaleJobs(Duration.ofHours(4));
+
+    verify(indexingJobRepository)
+        .failStaleRunningJobs(
+            anyString(), eq(DATABASE_NOW.minus(Duration.ofHours(4))), eq(DATABASE_NOW));
+  }
+
+  @Test
+  void theProgressHeartbeatIsStampedByTheDatabaseClock() {
+    UUID jobId = UUID.randomUUID();
+    when(indexingJobRepository.updateProgressIfRunning(
+            eq(jobId), anyInt(), anyInt(), anyInt(), anyInt(), any(Instant.class)))
+        .thenReturn(1);
+    IndexingJobService onTheDatabaseClock = serviceOn(Clock.systemUTC(), () -> DATABASE_NOW);
+
+    onTheDatabaseClock.updateProgress(jobId, 1, 0, 0, 1);
+
+    verify(indexingJobRepository).updateProgressIfRunning(jobId, 1, 0, 0, 1, DATABASE_NOW);
   }
 
   @Test

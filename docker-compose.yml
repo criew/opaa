@@ -2,7 +2,7 @@
 # It contains insecure defaults (e.g., admin/admin and placeholder secrets)
 # and must not be used as-is for production deployments.
 # Before running this reachable from outside localhost, see
-# docs/handbuch/docker-compose.md, section "Härtung des Compose-Stapels".
+# docs/handbuch/betrieb/docker-compose.md, section "Härtung des Compose-Stapels".
 services:
   postgres:
     image: pgvector/pgvector:pg18
@@ -45,8 +45,9 @@ services:
     # the *host* directory, so ./uploads must belong to that uid - a directory Docker creates for a
     # missing mount path belongs to root, and the first upload then fails with an
     # AccessDeniedException on /app/uploads. Setup and migration step for an existing installation:
-    # docs/handbuch/docker-compose.md, "Nicht-root-Betrieb des Backend-Containers". Whoever cannot give
-    # the directory away uncomments the line below instead and names the uid it already belongs to.
+    # docs/handbuch/betrieb/docker-compose.md, "Nicht-root-Betrieb des Backend-Containers". Whoever
+    # cannot give the directory away uncomments the line below instead and names the uid it already
+    # belongs to.
     # user: "1000:1000"
     volumes:
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
@@ -57,6 +58,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Readiness without a shell (backend/docker/HealthProbe.java, beside the jar): healthy once
+    # /actuator/health/readiness answers 200. The start period covers the schema migration of a
+    # first start; the frontend waits for "healthy".
+    healthcheck:
+      test: ["CMD", "/opt/java/openjdk/bin/java", "-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC",
+        "-Xmx32m", "-cp", "/app/probe", "HealthProbe"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 2s
     # Docker kills a container that has not stopped within this period. Kept above
     # OPAA_SHUTDOWN_TIMEOUT - which is a window per shutdown phase, not a budget for the whole stop
     # - so the graceful shutdown runs its course instead of being cut short by SIGKILL.
@@ -83,8 +95,13 @@ services:
     networks:
       default:
         ipv4_address: ${OPAA_COMPOSE_FRONTEND_ADDRESS:-172.28.0.10}
+    # Docker's own DNS server: nginx resolves the backend name again at runtime, so a recreated or
+    # added backend container is reached without restarting the frontend.
+    environment:
+      OPAA_BACKEND_RESOLVER: 127.0.0.11
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     # The same restrictions the Helm chart applies (ADR-0042): the image must start with a read-only
     # root filesystem and no capabilities, writing only below /tmp.
     read_only: true
@@ -226,7 +243,7 @@ services:
   # reports. The two source buckets are unaffected by it - "aws s3 sync --delete" forces them back
   # to the committed corpus on every start, whatever the volume held before.
   objectstore:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.3
     environment:
       RUSTFS_ACCESS_KEY: rheinfurt-archiv
       RUSTFS_SECRET_KEY: RheinfurtDemo!2026
@@ -314,7 +331,7 @@ services:
   # "Originalablage" block - whoever changes them changes them on both sides, here (process
   # environment or .env) and for the backend (.env.docker).
   upload-store:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.3
     environment:
       RUSTFS_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
       RUSTFS_SECRET_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
@@ -362,21 +379,23 @@ services:
   # started with `docker compose --profile ollama up`. Without the profile, this service does not
   # exist and the stack behaves exactly as before - the backend's own defaults still assume a
   # reachable Ollama server (application.yml, "docker" profile: OPAA_OPENAI_BASE_URL defaults to
-  # http://ollama:11434/v1), see docs/handbuch/modelle.md, section "LLM-Anbieter", for the alternatives
-  # (an external Ollama, host.docker.internal, or a different openai-compatible provider).
+  # http://ollama:11434/v1), see docs/handbuch/betrieb/modelle.md, section "LLM-Anbieter", for the
+  # alternatives (an external Ollama, host.docker.internal, or a different openai-compatible
+  # provider).
   #
   # Serves both chat and embedding through Ollama's own OpenAI-compatible /v1 endpoint - no
   # provider-specific configuration exists, so activating this profile needs no
   # environment variable changes at all: the application defaults already point here.
   ollama:
-    image: ollama/ollama:0.40.5
+    image: ollama/ollama:0.40.6
     volumes:
       - opaa-ollama-data:/root/.ollama
     # Not published to the host: the backend and the ollama-pull init step below reach this
     # service over the Compose network under its service name ("ollama"), never through a host
     # port. Uncomment to additionally reach it directly from the host (e.g. to run `ollama` CLI
     # commands against it) - bind to 127.0.0.1 only, per the port-exposure rule this repository
-    # otherwise follows (see docs/handbuch/docker-compose.md, "Härtung des Compose-Stapels").
+    # otherwise follows (see docs/handbuch/betrieb/docker-compose.md, "Härtung des
+    # Compose-Stapels").
     # ports:
     #   - "127.0.0.1:11434:11434"
     healthcheck:
@@ -402,7 +421,7 @@ services:
   # opaa-ollama-data, and the create reuses them. Runs to completion and exits (no restart); watch
   # `docker compose logs -f ollama-pull` for progress.
   ollama-pull:
-    image: ollama/ollama:0.40.5
+    image: ollama/ollama:0.40.6
     environment:
       OLLAMA_HOST: "ollama:11434"
     entrypoint: ["/bin/sh", "-c"]

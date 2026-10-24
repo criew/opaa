@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-/** The one-thread timer behind the event intake's debounce. */
+/** The one thread on which the event intake drains the due batches of this instance. */
 @Configuration
 @EnableConfigurationProperties(SourceEventProperties.class)
 public class SourceEventConfiguration {
@@ -14,7 +14,7 @@ public class SourceEventConfiguration {
   /**
    * A dedicated scheduler rather than the shared one: the drain only starts a job and hands the
    * work to {@code indexingTaskExecutor}, so one thread is enough for every connector together, and
-   * a pending batch must not compete with the schedule sweep or the rerank probe for a slot.
+   * a due batch must not compete with the schedule sweep or the rerank probe for a slot.
    */
   @Bean(destroyMethod = "shutdown")
   TaskScheduler sourceEventScheduler() {

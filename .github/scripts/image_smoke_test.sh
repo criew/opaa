@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Smoke test of the two OPAA images on the architecture of the Docker host: starts PostgreSQL with
-# pgvector, the backend hardened as in production (read-only root, /tmp and /app/uploads as tmpfs,
-# no capabilities, profile "oidc") and the frontend hardened the same way in front of it. Passes when
-# the backend reports readiness UP, /api/health answers through the frontend's nginx and the
-# frontend serves index.html. Model endpoints do not exist; readiness does not depend on them.
+# pgvector, migrates it with the backend image in its migration mode (OPAA_MODE=migrate, which must
+# end with exit code 0, as must the wait for it), then the backend without migration, hardened as
+# in production (read-only root, /tmp and /app/uploads as tmpfs, no capabilities, profile "oidc"),
+# and the frontend hardened the same way in front of it. Passes when the backend reports readiness
+# UP, its health probe agrees, /api/health answers through the frontend's nginx and the frontend
+# serves index.html. Model endpoints do not exist; readiness does not depend on them.
 #
 #   .github/scripts/image_smoke_test.sh <backend image> <frontend image>
 #
@@ -30,17 +32,18 @@ suffix="$$"
 network="opaa-smoke-$suffix"
 postgres="opaa-smoke-postgres-$suffix"
 backend="opaa-smoke-backend-$suffix"
+migration="opaa-smoke-migration-$suffix"
 frontend="opaa-smoke-frontend-$suffix"
 
 cleanup() {
-  docker rm -f "$frontend" "$backend" "$postgres" >/dev/null 2>&1 || true
+  docker rm -f "$frontend" "$backend" "$migration" "$postgres" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
 fail() {
   echo "FAIL: $1" >&2
-  for container in "$backend" "$frontend"; do
+  for container in "$migration" "$backend" "$frontend"; do
     if docker container inspect "$container" >/dev/null 2>&1; then
       echo "--- log of $container (last 80 lines)" >&2
       docker logs --tail 80 "$container" >&2 2>&1 || true
@@ -75,25 +78,48 @@ done
 [[ "$db_ready" == true ]] || fail "PostgreSQL did not become ready"
 
 # Throwaway secrets, valid in form only: the jwt secret's minimum length and two Base64 AES-256 keys.
+backend_environment=(
+  -e SPRING_PROFILES_ACTIVE=oidc
+  -e OPAA_SERVER_ADDRESS=0.0.0.0
+  -e OPAA_PUBLIC_BASE_URL=https://opaa.example.org
+  -e OPAA_CORS_ALLOWED_ORIGINS=https://opaa.example.org
+  -e OPAA_DB_URL=jdbc:postgresql://postgres:5432/opaa
+  -e OPAA_DB_USERNAME=opaa
+  -e OPAA_DB_PASSWORD=smoke-only-password
+  -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop
+  -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
+  -e OPAA_SETTINGS_ENCRYPTION_KEY=CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  -e OPAA_INITIAL_ADMIN_EMAIL=it-postfach@example.org
+  -e OPAA_OPENAI_EMBEDDING_BASE_URL=http://models.invalid/v1
+  -e OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text
+  -e OPAA_PGVECTOR_DIMENSIONS=768
+  -e OPAA_OPENAI_CHAT_BASE_URL=http://models.invalid/v1
+  -e OPAA_OPENAI_CHAT_MODEL=qwen2.5:3b
+)
+hardening=(--read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700
+  --cap-drop ALL --security-opt no-new-privileges)
+
+# The migration step: only Liquibase, then exit 0 - also with SPRING_LIQUIBASE_ENABLED=false, which
+# it shares with the instances.
+docker run --name "$migration" --network "$network" "${hardening[@]}" "${backend_environment[@]}" \
+  -e OPAA_MODE=migrate -e SPRING_LIQUIBASE_ENABLED=false "$backend_image" >/dev/null 2>&1 &&
+  migration_exit=0 || migration_exit=$?
+[[ "$migration_exit" == 0 ]] || fail "the migration mode ended with exit code $migration_exit"
+migration_log="$(docker logs "$migration" 2>&1)"
+[[ "$migration_log" == *'Started DatabaseMigrationMode'* && "$migration_log" != *'Started OpaaApplication'* ]] ||
+  fail "the migration mode did not end as the migration alone"
+echo "migration mode: exit code 0"
+
+# The wait for the migration step, which an instance's init container runs: on the migrated
+# database it reads the changelog out of the jar and ends at once with exit code 0.
+docker run --rm --network "$network" "${hardening[@]}" "${backend_environment[@]}" \
+  -e OPAA_MODE=await-migration "$backend_image" >/dev/null 2>&1 &&
+  await_exit=0 || await_exit=$?
+[[ "$await_exit" == 0 ]] || fail "the await-migration mode ended with exit code $await_exit on the migrated database"
+echo "await-migration mode: exit code 0"
+
 docker run -d --name "$backend" --network "$network" --network-alias backend \
-  --read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700 \
-  --cap-drop ALL --security-opt no-new-privileges \
-  -e SPRING_PROFILES_ACTIVE=oidc \
-  -e OPAA_SERVER_ADDRESS=0.0.0.0 \
-  -e OPAA_PUBLIC_BASE_URL=https://opaa.example.org \
-  -e OPAA_CORS_ALLOWED_ORIGINS=https://opaa.example.org \
-  -e OPAA_DB_URL=jdbc:postgresql://postgres:5432/opaa \
-  -e OPAA_DB_USERNAME=opaa \
-  -e OPAA_DB_PASSWORD=smoke-only-password \
-  -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop \
-  -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY= \
-  -e OPAA_SETTINGS_ENCRYPTION_KEY=CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw= \
-  -e OPAA_INITIAL_ADMIN_EMAIL=it-postfach@example.org \
-  -e OPAA_OPENAI_EMBEDDING_BASE_URL=http://models.invalid/v1 \
-  -e OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text \
-  -e OPAA_PGVECTOR_DIMENSIONS=768 \
-  -e OPAA_OPENAI_CHAT_BASE_URL=http://models.invalid/v1 \
-  -e OPAA_OPENAI_CHAT_MODEL=qwen2.5:3b \
+  "${hardening[@]}" "${backend_environment[@]}" -e SPRING_LIQUIBASE_ENABLED=false \
   -p 127.0.0.1::8080 "$backend_image" >/dev/null
 backend_port="$(docker port "$backend" 8080/tcp | head -n 1 | sed 's/.*://')"
 
@@ -111,6 +137,15 @@ while (($(date +%s) - start < ready_timeout)); do
 done
 [[ "$readiness" == *'"status":"UP"'* ]] || fail "backend not ready within ${ready_timeout}s: ${readiness:-no answer}"
 echo "backend ready after $(($(date +%s) - start))s: $readiness"
+
+# The Compose health check: a class beside the jar, run without a shell inside the container.
+docker exec "$backend" /opt/java/openjdk/bin/java -cp /app/probe HealthProbe ||
+  fail "the health probe of the image does not report the ready backend as healthy"
+if docker exec "$backend" /opt/java/openjdk/bin/java -cp /app/probe HealthProbe \
+  http://127.0.0.1:1/actuator/health/readiness 2>/dev/null; then
+  fail "the health probe of the image reports an address nobody listens on as healthy"
+fi
+echo "health probe: healthy, and unhealthy without an answer"
 
 if [[ -n "$expect_version" ]]; then
   start_line="$(docker logs "$backend" 2>&1 | grep -m 1 'Starting OpaaApplication' || true)"

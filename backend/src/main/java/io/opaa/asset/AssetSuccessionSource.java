@@ -5,6 +5,7 @@ import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.api.types.SuccessionOwnerType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.permission.GroupCapabilityService;
@@ -31,7 +32,9 @@ import org.springframework.stereotype.Component;
  * An owner-only asset has no succession and is never reported.
  *
  * <p>The addressee follows the object, not the finder: an asset of an internal group is the
- * business of that group's stewards, everything else of the system administration.
+ * business of that group's stewards, everything else of the system administration. Each finding
+ * names the kind of owner, and a group owner by its id - the source a transfer of the asset names;
+ * a person is never identified.
  */
 @Component
 public class AssetSuccessionSource implements SuccessionFindingSource {
@@ -160,10 +163,15 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
                 ? SuccessionAddressee.GROUP_STEWARDS
                 : SuccessionAddressee.SYSTEM_ADMINISTRATION);
     if (ownerGroup != null) {
-      return finding.withOwnerHint(
-          ownerGroup.protectedGroup() ? "Geschützte Gruppe" : ownerGroup.name());
+      return finding
+          .withOwnerHint(ownerGroup.protectedGroup() ? "Geschützte Gruppe" : ownerGroup.name())
+          .withOwner(SuccessionOwnerType.GROUP, ownerGroup.id());
+    }
+    if (asset.getOwnerType() == AssetOwnerType.GROUP) {
+      return finding.withOwner(SuccessionOwnerType.UNKNOWN, null);
     }
     return finding
+        .withOwner(SuccessionOwnerType.USER, null)
         .withOwnerHint(
             users.findById(asset.getOwnerUserId()).map(AssetSuccessionSource::nameOf).orElse(null))
         .withMembershipHints(

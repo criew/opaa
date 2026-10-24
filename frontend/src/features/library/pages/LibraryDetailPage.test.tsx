@@ -1751,6 +1751,68 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
   })
 
+  it('shows an unknown run status with a retry instead of a failed run (#2908)', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByLabelText('Dokumente durchsuchen')
+
+    act(() => {
+      useIndexingStore.setState({
+        runsByLibrary: {
+          [managerLibrary.id]: {
+            ...IDLE_RUN_STATE,
+            status: 'RUNNING',
+            sourceType: 'FILESYSTEM',
+            statusUnknown: true,
+          },
+        },
+      })
+    })
+
+    const notice = await screen.findByText('Status unbekannt')
+    expect(notice.closest('[role="status"]')).not.toBeNull()
+    expect(screen.queryByText(/Letzter Lauf: Fehlgeschlagen/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Indizierungsstatus konnte nicht abgerufen werden/),
+    ).not.toBeInTheDocument()
+    const statusCallsBefore = mockGetIndexingStatus.mock.calls.length
+
+    await userEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+
+    await waitFor(() => {
+      expect(mockGetIndexingStatus.mock.calls.length).toBeGreaterThan(statusCallsBefore)
+    })
+    expect(screen.queryByText('Status unbekannt')).not.toBeInTheDocument()
+  })
+
+  it('shows a hint with a reload once the document polling stopped (#2908)', async () => {
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByLabelText('Dokumente durchsuchen')
+    const loadsBefore = mockGetLibraryDocuments.mock.calls.length
+
+    act(() => {
+      useDocumentStore.setState({
+        pollingStoppedMessage:
+          'Die Dokumentliste wird nicht mehr automatisch aktualisiert, weil der Abruf fehlgeschlagen ist.',
+      })
+    })
+
+    const hint = await screen.findByText(/nicht mehr automatisch aktualisiert/)
+    expect(hint.closest('[role="status"]')).not.toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Aktualisieren' }))
+
+    await waitFor(() => {
+      expect(mockGetLibraryDocuments.mock.calls.length).toBeGreaterThan(loadsBefore)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText(/nicht mehr automatisch aktualisiert/)).not.toBeInTheDocument()
+    })
+  })
+
   it('reloads the document list once a run finishes, without a manual page reload', async () => {
     setLibraryState(
       managerLibrary,
@@ -4014,7 +4076,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  describe('ohne Fremdzugänge (Feature-Flag aus)', () => {
+  describe('ohne externe KI-Werkzeuge (Feature-Flag aus)', () => {
     afterEach(() => {
       useAuthStore.setState({ features: {} })
     })
@@ -4039,7 +4101,7 @@ describe('LibraryDetailPage', () => {
 
       expect(await screen.findByRole('heading', { name: 'Diagnosesperre' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
-      expect(screen.queryByText(/Fremdzugang/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
       unmount()
 
       const privateLibrary: LibraryListResponse = {
@@ -4057,7 +4119,7 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
       expect(await screen.findByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
-      expect(screen.queryByText(/Fremdzugang/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
     })
   })
 })

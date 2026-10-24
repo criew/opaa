@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-20-grant-revocations
+      author: opaa
+      comment: "A discarded OAuth grant waits for its revocation at the provider in a table, written with the discard and taken by any instance, so a stopped instance loses no revocation; the order holds tokens and client secret and is stored encrypted."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE connection_grant_revocations (
+                  id uuid NOT NULL,
+                  profile_id uuid NOT NULL,
+                  order_ciphertext text NOT NULL,
+                  attempts integer DEFAULT 0 NOT NULL,
+                  next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT connection_grant_revocations_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_connection_grant_revocations_attempts CHECK ((attempts >= 0))
+              );
+
+              CREATE INDEX idx_connection_grant_revocations_next_attempt_at
+                  ON connection_grant_revocations (next_attempt_at);

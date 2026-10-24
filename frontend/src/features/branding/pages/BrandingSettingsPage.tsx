@@ -28,6 +28,7 @@ const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
 
 const MAX_PRODUCT_NAME_LENGTH = 60
 const MAX_CLAIM_LENGTH = 120
+const MAX_AI_NOTICE_LENGTH = 500
 
 const colorSchemeOptions: Array<{ value: ColorScheme; label: string; icon: React.ReactNode }> = [
   { value: 'LIGHT', label: 'Hell', icon: <LightModeIcon fontSize="small" /> },
@@ -60,6 +61,8 @@ export default function BrandingSettingsPage() {
 
   const [productName, setProductName] = useState(branding.productName)
   const [claim, setClaim] = useState(branding.claim)
+  const [aiNotice, setAiNotice] = useState(branding.aiNotice)
+  const aiNoticeRef = useRef<HTMLTextAreaElement | null>(null)
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor)
   const [colorScheme, setColorScheme] = useState<ColorScheme>(branding.defaultColorScheme)
   // One pending file per slot; the upload happens with the rest of the form, so a single
@@ -77,6 +80,7 @@ export default function BrandingSettingsPage() {
     hydrated.current = true
     setProductName(branding.productName)
     setClaim(branding.claim)
+    setAiNotice(branding.aiNotice)
     setPrimaryColor(branding.primaryColor)
     setColorScheme(branding.defaultColorScheme)
   }, [branding])
@@ -155,6 +159,9 @@ export default function BrandingSettingsPage() {
       await saveBranding({
         productName: productName.trim(),
         claim: claim.trim(),
+        // The standard text is sent as "unset", so a later change to the standard reaches this
+        // installation too.
+        aiNotice: aiNotice.trim() === branding.aiNoticeDefault ? '' : aiNotice.trim(),
         primaryColor: primaryColor.trim(),
         defaultColorScheme: colorScheme,
       })
@@ -167,6 +174,7 @@ export default function BrandingSettingsPage() {
         setPendingImages((files) => ({ ...files, [kind]: undefined }))
         clearInput(kind)
       }
+      setAiNotice(useBrandingStore.getState().branding.aiNotice)
       setSaved(true)
     } catch {
       // The store already holds the message; the alert below renders it.
@@ -252,6 +260,43 @@ export default function BrandingSettingsPage() {
             helperText={`Kurzer Satz unter dem Produktnamen. Leer lassen für „${OPAA_BRANDING.claim}“.`}
             fullWidth
           />
+
+          <Box>
+            <TextField
+              label="Hinweis zur KI-Nutzung"
+              value={aiNotice}
+              onChange={(e) => setAiNotice(e.target.value.replace(/[\r\n\u2028\u2029]+/g, ' '))}
+              inputRef={aiNoticeRef}
+              onKeyDown={(e) => {
+                // Enter would insert a break the server rejects; swallowing it here keeps the
+                // cursor where it is, the replace in onChange only has to deal with pasted text.
+                if (e.key === 'Enter') e.preventDefault()
+              }}
+              slotProps={{ htmlInput: { maxLength: MAX_AI_NOTICE_LENGTH } }}
+              helperText={
+                'Erscheint im Chat vor der ersten Frage und unter dem Eingabefeld sowie als Vermerk ' +
+                'beim Kopieren einer Antwort. Der Hinweis ' +
+                'lässt sich ändern, aber nicht abschalten: Ein leeres Feld stellt den ' +
+                'Standardtext wieder her. Zeilenumbrüche werden durch Leerzeichen ersetzt.'
+              }
+              multiline
+              minRows={2}
+              fullWidth
+            />
+            <Button
+              size="small"
+              sx={{ mt: 1 }}
+              onClick={() => {
+                // Focus moves to the field before the button turns disabled, so keyboard focus
+                // never falls back to the document body.
+                aiNoticeRef.current?.focus()
+                setAiNotice(branding.aiNoticeDefault)
+              }}
+              disabled={isSaving || aiNotice === branding.aiNoticeDefault}
+            >
+              Hinweis auf Standard zurücksetzen
+            </Button>
+          </Box>
 
           <Box>
             <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
@@ -405,6 +450,7 @@ export default function BrandingSettingsPage() {
               onClick={() => {
                 setProductName('')
                 setClaim('')
+                setAiNotice(branding.aiNoticeDefault)
                 setPrimaryColor('')
                 setColorScheme(OPAA_BRANDING.defaultColorScheme)
                 setPendingImages({})

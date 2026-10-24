@@ -896,7 +896,7 @@ ebenso die Verarbeitungseinheit (Neu-Zerlegen dort, `reextractFromFile` hier).
 (die Obermenge der Laufauswahl), davon **wartend auf den nächsten Konnektorlauf** (entfernte
 Dokumente mit geleerten Änderungsmarkern — der Grund, warum „ausstehend" nach einem vollständigen
 Lauf über 0 bleiben kann, ohne dass ein weiterer Aufruf etwas daran ändert),
-zuletzt übersprungen (Zähler des letzten Aufrufs, prozesslebenslang — ADR-0021, Single-Instance),
+zuletzt übersprungen (Zähler des letzten Aufrufs, in der Datenbank für alle Instanzen — ADR-0053),
 `complete` und den **Füllgrad je Kernfeld** (Dokumente mit Wert, absolut und anteilig, deutsches
 Label). Der Füllgrad wird bei jeder Abfrage aus `document_metadata_values` gebildet, nie
 vorberechnet; im Verwaltungskontext ist die Organisation der Rechtekontext (Beschluss 1 des
@@ -1601,7 +1601,8 @@ niemand beauftragt hat. Gespeichert wird das an der Bibliothek
 geplante Änderung mit betroffenen Dokumenten, betroffenen Chunks, der daraus folgenden Zahl der
 Einbettungsaufrufe (einer je Chunk) und der erwarteten Laufzeit — „4.812 Abschnitte in 12 Dokumenten
 neu einzubetten, rund 40 Minuten". Die Rate dahinter ist die **gemessene** mittlere Dauer je Chunk der
-Einbettungsaufrufe dieses Prozesses (`EmbeddingRateEstimator`); gemessen wird nur, was allein lief —
+Einbettungsaufrufe aller Instanzen mit dem eingestellten Embedding-Modell (`EmbeddingRateEstimator`,
+in der Datenbank summiert, damit jede Instanz dieselbe Dauer nennt); gemessen wird nur, was allein lief —
 die Wandzeiten nebenläufiger Teilchargen überlappen und ergäben summiert eine bis zum
 Nebenläufigkeitsfaktor zu pessimistische Rate. Solange zu wenige Aufrufe gemessen sind, gilt die
 konfigurierte `opaa.indexing.embedding-rate-estimate` (Chunks je Sekunde, Voreinstellung 4). Die

@@ -1,7 +1,5 @@
 package io.opaa.permission;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
@@ -98,14 +96,7 @@ public class PermissionTransferService {
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
   private final SuccessionCaseCloser successionCases;
-
-  /**
-   * The previews shown but not yet acted upon, keyed by the id the caller gets back. Bounded by
-   * {@link #PREVIEW_VALIDITY} and by a size cap, so a caller who previews and walks away leaks
-   * nothing.
-   */
-  private final Cache<UUID, ShownPreview> shownPreviews =
-      Caffeine.newBuilder().expireAfterWrite(PREVIEW_VALIDITY).maximumSize(1_000).build();
+  private final PermissionTransferPreviewToken previewTokens;
 
   PermissionTransferService(
       PermissionTransferRepository transferRepository,
@@ -122,7 +113,8 @@ public class PermissionTransferService {
       AssetAccessService assetAccessService,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder,
-      SuccessionCaseCloser successionCases) {
+      SuccessionCaseCloser successionCases,
+      PermissionTransferPreviewToken previewTokens) {
     this.transferRepository = transferRepository;
     this.transferObjectRepository = transferObjectRepository;
     this.grantRepository = grantRepository;
@@ -138,6 +130,7 @@ public class PermissionTransferService {
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
     this.successionCases = successionCases;
+    this.previewTokens = previewTokens;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -154,12 +147,13 @@ public class PermissionTransferService {
     Parties parties = resolve(order, caller);
     requireWithinTheWorkLimit(parties);
     PermissionTransferSnapshot snapshot = snapshot(parties);
-    UUID previewId = UUID.randomUUID();
+    String previewId =
+        previewTokens.issue(
+            caller.id(),
+            signatureOf(parties).canonical(),
+            PermissionTransferFingerprint.of(snapshot),
+            Instant.now(clock).plus(PREVIEW_VALIDITY));
     PermissionTransferPreview preview = describe(parties, snapshot, previewId);
-    shownPreviews.put(
-        previewId,
-        new ShownPreview(
-            caller.id(), signatureOf(parties), PermissionTransferFingerprint.of(snapshot)));
     recordEvent(AuditEventType.PERMISSION_TRANSFER_PREVIEWED, parties, preview.counts(), caller);
     return preview;
   }
@@ -209,7 +203,7 @@ public class PermissionTransferService {
    * than the operation delivers.
    */
   private PermissionTransferPreview describe(
-      Parties parties, PermissionTransferSnapshot snapshot, UUID previewId) {
+      Parties parties, PermissionTransferSnapshot snapshot, String previewId) {
     Instant now = Instant.now(clock);
     List<AssetGrant> effective =
         snapshot.grants().stream().filter(grant -> !grant.isExpired(now)).toList();
@@ -248,7 +242,7 @@ public class PermissionTransferService {
    */
   @Transactional
   public PermissionTransfer transfer(
-      PermissionTransferOrder order, boolean confirmed, UUID previewId, CurrentUser caller) {
+      PermissionTransferOrder order, boolean confirmed, String previewId, CurrentUser caller) {
     Parties parties = resolve(order, caller);
     if (!confirmed) {
       throw new ValidationException(
@@ -298,7 +292,6 @@ public class PermissionTransferService {
                 assetId -> successionCases.closeForAsset(assetType, assetId, caller.id())));
     stewarded.forEach(groupId -> successionCases.closeForGroup(groupId, caller.id()));
 
-    shownPreviews.invalidate(previewId);
     recordEvent(AuditEventType.PERMISSION_TRANSFER_EXECUTED, parties, transfer.counts(), caller);
     invalidateAfterCompletion(touched);
     return transfer;
@@ -310,23 +303,26 @@ public class PermissionTransferService {
    * with a conflict and a fresh preview - the treatment a directory-sync plan gets when the
    * snapshot moved under it (ADR-0036, Entscheidung 3).
    *
-   * <p>Held in memory rather than in a table: a preview is one step of one session, valid for
-   * {@link #PREVIEW_VALIDITY}. ADR-0021 (one process) carries that; after a restart the caller
-   * previews again, which costs one request and one more protocol entry.
+   * <p>Stored nowhere: the preview id is signed ({@link PermissionTransferPreviewToken}), so any
+   * instance can check it for {@link #PREVIEW_VALIDITY}. Once the transfer ran, the rows it showed
+   * are gone and a second confirmation of the same preview is refused as outdated.
    */
   private void requireUnchangedPreview(
-      UUID previewId, Parties parties, PermissionTransferSnapshot snapshot, CurrentUser caller) {
-    ShownPreview shown = previewId == null ? null : shownPreviews.getIfPresent(previewId);
-    if (shown == null
-        || !shown.callerUserId().equals(caller.id())
-        || !shown.signature().equals(signatureOf(parties))) {
+      String previewId, Parties parties, PermissionTransferSnapshot snapshot, CurrentUser caller) {
+    PermissionTransferPreviewToken.Check check =
+        previewTokens.check(
+            previewId,
+            caller.id(),
+            signatureOf(parties).canonical(),
+            PermissionTransferFingerprint.of(snapshot),
+            Instant.now(clock));
+    if (check == PermissionTransferPreviewToken.Check.NONE) {
       throw new ConflictException(
           "Zu dieser Übertragung liegt keine gültige Vorschau vor. Rufen Sie die Vorschau erneut"
               + " ab und bestätigen Sie sie.",
           PREVIEW_REQUIRED);
     }
-    if (!shown.fingerprint().equals(PermissionTransferFingerprint.of(snapshot))) {
-      shownPreviews.invalidate(previewId);
+    if (check == PermissionTransferPreviewToken.Check.OUTDATED) {
       throw new ConflictException(
           "Der Stand hat sich seit der Vorschau geändert. Die Übertragung wurde nicht ausgeführt;"
               + " rufen Sie die Vorschau erneut ab.",
@@ -822,10 +818,21 @@ public class PermissionTransferService {
       UUID sourceId,
       PermissionSubjectType targetType,
       UUID targetId,
-      Set<PermissionTransferScope> scope) {}
+      Set<PermissionTransferScope> scope) {
 
-  /** One preview shown to one caller, with the print of the rows it showed. */
-  private record ShownPreview(UUID callerUserId, PreviewSignature signature, String fingerprint) {}
+    /** Stable text of the signature for the preview id; the scope in its declaration order. */
+    String canonical() {
+      return sourceType
+          + ":"
+          + sourceId
+          + ">"
+          + targetType
+          + ":"
+          + targetId
+          + ":"
+          + String.join(",", scope.stream().sorted().map(Enum::name).toList());
+    }
+  }
 
   /** The validated, resolved form of a {@link PermissionTransferOrder}. */
   private record Parties(

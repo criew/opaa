@@ -1,6 +1,7 @@
 package io.opaa.search;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -20,6 +21,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     the cap is the difference between "I asked for a document" and "I asked for the holdings".
  * @param contextPassages how many passages on each side of the hit the default fetch adds.
  */
+@PerInstance("search tuning of this process")
 @NoDataImpact("result sizes of the search")
 @ConfigurationProperties(prefix = "opaa.search")
 public record SearchProperties(

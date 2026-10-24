@@ -4,14 +4,15 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Configuration properties of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 10.3 lists
- * the operator-facing form of every value below). Ebene-1 values: overridable per environment
+ * Configuration properties of the retrieval pipeline (docs/handbuch/spaces/suche.md Abschnitt 10.3
+ * lists the operator-facing form of every value below). Ebene-1 values: overridable per environment
  * variable, absent from every administration surface.
  *
  * @param topK the number of chunks that reach the answer prompt. {@link
@@ -67,6 +68,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param fusion how {@link RetrievalStageName#RANK_FUSION} fuses the candidate lists, see {@link
  *     Fusion}.
  */
+@PerInstance("search tuning of this process")
 @NoDataImpact("search quality; the answer uses only what the person may read")
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(

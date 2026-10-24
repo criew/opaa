@@ -1,75 +1,101 @@
 package io.opaa.library;
 
+import io.opaa.instance.InstanceRegistry;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.knowledge.DocumentRepository;
-import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
+import java.util.UUID;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Recovers uploads left stuck at {@code PENDING} by a process that died mid-{@code
+ * Recovers uploads left stuck at {@code PENDING} by an instance that died mid-{@code
  * uploadTaskExecutor} task. {@code DocumentIngestService#processUploadedFileAsync} always leaves a
  * row at either {@code INDEXED} or {@code FAILED} when it runs to completion - but if the JVM stops
  * before that (a crash, an operator-initiated restart, an out-of-memory kill), the in-flight task
- * simply vanishes with it, and nothing was ever running to finish the row on the next start.
- * Without this recovery, such a row would poll {@code PENDING} forever in the frontend, and a retry
- * of the same file would answer {@code 409} because only a {@code FAILED} row is replaced by a new
- * upload ({@code LibraryDocumentService#uploadDocument}) - a dead end the caller cannot resolve on
- * their own.
+ * vanishes with it, since the executor's queue lives only in memory. Without this recovery, such a
+ * row would poll {@code PENDING} forever in the frontend, and a retry of the same file would answer
+ * {@code 409} because only a {@code FAILED} row is replaced by a new upload ({@code
+ * LibraryDocumentService#uploadDocument}).
  *
- * <p>Runs once, synchronously, at application startup, before any request can be served - so a row
- * genuinely still being processed by this same, freshly-started JVM can never be caught here: no
- * upload could have begun before this runner ran. Only rows older than {@link
- * UploadProperties#pendingRecoveryThresholdMinutes} are touched, so a row created moments before an
- * unrelated restart (already {@code PENDING}, its own worker task simply not scheduled yet) is left
- * alone rather than being failed the instant the new process comes up.
+ * <p>An upload is failed once the instance processing it is dead by the instance register, however
+ * young the upload (ADR-0053, Entscheidung 8): at startup, and every {@value #SWEEP_MILLIS} ms
+ * after on one instance at a time under its scheduler lock. The uploads of a live instance stay,
+ * whenever it accepted them.
  */
 @Component
 public class UploadPendingRecoveryRunner implements ApplicationRunner {
 
+  /** How often the uploads of dead instances are failed, well below {@code dead-after}. */
+  static final long SWEEP_MILLIS = 60_000L;
+
   private static final Logger log = LoggerFactory.getLogger(UploadPendingRecoveryRunner.class);
 
-  static final String FAILURE_REASON = "Die Verarbeitung wurde durch einen Neustart abgebrochen";
+  static final String FAILURE_REASON =
+      "Die Verarbeitung wurde durch einen Neustart oder Ausfall der verarbeitenden Instanz"
+          + " abgebrochen";
 
   private final DocumentRepository documentRepository;
-  private final UploadProperties uploadProperties;
   private final UploadedOriginalStore uploadedOriginalStore;
-  private final Clock clock;
+  private final InstanceRegistry instanceRegistry;
 
   public UploadPendingRecoveryRunner(
       DocumentRepository documentRepository,
-      UploadProperties uploadProperties,
       UploadedOriginalStore uploadedOriginalStore,
-      Clock clock) {
+      InstanceRegistry instanceRegistry) {
     this.documentRepository = documentRepository;
-    this.uploadProperties = uploadProperties;
     this.uploadedOriginalStore = uploadedOriginalStore;
-    this.clock = clock;
+    this.instanceRegistry = instanceRegistry;
   }
 
   /**
-   * The rows first, then the store's own leftovers ({@link
-   * UploadedOriginalStore#recoverAfterRestart}): both are what a process that died mid-task leaves
-   * behind, and both are settled before the first request (ADR-0030, Entscheidung 7).
+   * The rows first - also those naming no instance, written before it was recorded - then the
+   * store's own leftovers ({@link UploadedOriginalStore#recoverAfterRestart}): both are what an
+   * instance that died mid-task leaves behind (ADR-0030, Entscheidung 7).
    */
   @Override
   public void run(ApplicationArguments args) {
-    Instant threshold =
-        Instant.now(clock)
-            .minus(Duration.ofMinutes(uploadProperties.pendingRecoveryThresholdMinutes()));
-    int recovered = documentRepository.failStalePending(FAILURE_REASON, threshold);
+    int recovered =
+        documentRepository.failPendingUploadsWithoutInstance(FAILURE_REASON)
+            + failUploadsOfDeadInstances();
+    report(recovered);
+    uploadedOriginalStore.recoverAfterRestart();
+  }
+
+  /**
+   * The uploads of instances that died since, without waiting for a restart; their working files
+   * wait for the next start of any instance, the tick touches the database only.
+   */
+  @Scheduled(fixedDelay = SWEEP_MILLIS, initialDelay = SWEEP_MILLIS)
+  @SchedulerLock(
+      name = "upload-dead-owner-recovery",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
+  public void recoverUploadsOfDeadInstances() {
+    report(failUploadsOfDeadInstances());
+  }
+
+  /** A dead instance stays dead, so judging it before the {@code UPDATE} spares every live one. */
+  int failUploadsOfDeadInstances() {
+    int recovered = 0;
+    for (UUID instance : documentRepository.findInstancesProcessingPendingRows()) {
+      if (!instanceRegistry.isAlive(instance)) {
+        recovered += documentRepository.failPendingUploadsProcessedBy(instance, FAILURE_REASON);
+      }
+    }
+    return recovered;
+  }
+
+  private static void report(int recovered) {
     if (recovered > 0) {
       log.warn(
-          "Marked {} upload(s) stuck at PENDING for more than {} minute(s) as FAILED on startup",
-          recovered,
-          uploadProperties.pendingRecoveryThresholdMinutes());
+          "Marked {} upload(s) left PENDING by instances that are no longer alive as FAILED",
+          recovered);
     }
-    uploadedOriginalStore.recoverAfterRestart();
   }
 }

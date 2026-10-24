@@ -79,6 +79,20 @@ function page(
   }
 }
 
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T) => void
+  reject: (reason: unknown) => void
+} {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('documentStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -504,6 +518,183 @@ describe('documentStore', () => {
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toBeUndefined()
+  })
+
+  describe('superseded responses (#2907)', () => {
+    it('keeps the missing-metadata filter on a poll tick during indexing', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument], { totalElements: 3 }))
+      await useDocumentStore
+        .getState()
+        .loadDocuments('library-1', { missingMetadataField: 'author' })
+
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument], { totalElements: 3 }))
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(mockGetLibraryDocuments).toHaveBeenCalledTimes(2)
+      expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith('library-1', {
+        page: 0,
+        size: 20,
+        q: '',
+        folderId: null,
+        missingMetadataField: 'author',
+      })
+      expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toMatchObject({
+        missingMetadataField: 'author',
+        totalElements: 3,
+      })
+    })
+
+    it('a poll tick resolving after a page change does not overwrite the new page', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument], { totalElements: 30 }))
+      await useDocumentStore.getState().loadDocuments('library-1')
+
+      const tick = deferred<LibraryDocumentPageResponse>()
+      mockGetLibraryDocuments.mockReturnValueOnce(tick.promise)
+      await vi.advanceTimersByTimeAsync(3000)
+
+      const secondPageDocument = { ...pendingDocument, id: 'document-21' }
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        page([secondPageDocument], { page: 1, totalElements: 30 }),
+      )
+      await useDocumentStore.getState().loadDocuments('library-1', { page: 1 })
+
+      tick.resolve(page([pendingDocument], { page: 0, totalElements: 31 }))
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
+        secondPageDocument,
+      ])
+      expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toMatchObject({
+        page: 1,
+        totalElements: 30,
+      })
+    })
+
+    it('an older response arriving last overwrites neither list nor page state', async () => {
+      const older = deferred<LibraryDocumentPageResponse>()
+      const newer = deferred<LibraryDocumentPageResponse>()
+      mockGetLibraryDocuments.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+      const olderLoad = useDocumentStore.getState().loadDocuments('library-1', { q: 'dien' })
+      const newerLoad = useDocumentStore.getState().loadDocuments('library-1', { page: 2 })
+
+      const newerDocument = { ...indexedDocument, id: 'document-newer' }
+      newer.resolve(page([newerDocument], { page: 2, totalElements: 50 }))
+      await newerLoad
+      older.resolve(page([indexedDocument], { page: 0, totalElements: 1 }))
+      await olderLoad
+
+      expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([newerDocument])
+      expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toMatchObject({
+        page: 2,
+        q: 'dien',
+        totalElements: 50,
+      })
+      expect(useDocumentStore.getState().isLoading).toBe(false)
+    })
+
+    it('stays loading while the newest request runs, even after an older one resolved', async () => {
+      const older = deferred<LibraryDocumentPageResponse>()
+      const newer = deferred<LibraryDocumentPageResponse>()
+      mockGetLibraryDocuments.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+      const olderLoad = useDocumentStore.getState().loadDocuments('library-1', { q: 'dien' })
+      const newerLoad = useDocumentStore.getState().loadDocuments('library-1', { q: 'dienst' })
+
+      older.resolve(page([indexedDocument]))
+      await olderLoad
+
+      expect(useDocumentStore.getState().isLoading).toBe(true)
+      expect(useDocumentStore.getState().documentsByLibrary['library-1']).toBeUndefined()
+
+      newer.resolve(page([pendingDocument]))
+      await newerLoad
+      useDocumentStore.getState().stopPolling('library-1')
+
+      expect(useDocumentStore.getState().isLoading).toBe(false)
+      expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([pendingDocument])
+    })
+
+    it('an older request failing last neither sets an error nor ends the loading state', async () => {
+      const older = deferred<LibraryDocumentPageResponse>()
+      const newer = deferred<LibraryDocumentPageResponse>()
+      mockGetLibraryDocuments.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+      const olderLoad = useDocumentStore.getState().loadDocuments('library-1', { q: 'dien' })
+      const newerLoad = useDocumentStore.getState().loadDocuments('library-1', { q: 'dienst' })
+
+      older.reject(new Error('Dokumente konnten nicht geladen werden'))
+      await olderLoad
+
+      expect(useDocumentStore.getState().error).toBeNull()
+      expect(useDocumentStore.getState().isLoading).toBe(true)
+
+      newer.resolve(page([indexedDocument]))
+      await newerLoad
+
+      expect(useDocumentStore.getState().error).toBeNull()
+      expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([indexedDocument])
+    })
+
+    it('a page change while a search is still loading keeps the requested search term', async () => {
+      const search = deferred<LibraryDocumentPageResponse>()
+      mockGetLibraryDocuments
+        .mockReturnValueOnce(search.promise)
+        .mockResolvedValueOnce(page([indexedDocument], { page: 1, totalElements: 30 }))
+      const searchLoad = useDocumentStore
+        .getState()
+        .loadDocuments('library-1', { page: 0, q: 'dienst' })
+      await useDocumentStore.getState().loadDocuments('library-1', { page: 1 })
+
+      expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith('library-1', {
+        page: 1,
+        size: 20,
+        q: 'dienst',
+        folderId: null,
+        missingMetadataField: null,
+      })
+
+      search.resolve(page([pendingDocument], { totalElements: 30 }))
+      await searchLoad
+
+      expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toMatchObject({
+        page: 1,
+        q: 'dienst',
+      })
+    })
+  })
+
+  describe('document polling stopping (#2908)', () => {
+    it('shows a hint when a poll tick fails and polling stops', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1')
+      expect(useDocumentStore.getState().pollingStoppedMessage).toBeNull()
+
+      mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Network Error'))
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(useDocumentStore.getState().pollingStoppedMessage).toMatch(
+        /nicht mehr automatisch aktualisiert/,
+      )
+      expect(useDocumentStore.getState().error).toBeNull()
+      mockGetLibraryDocuments.mockClear()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(mockGetLibraryDocuments).not.toHaveBeenCalled()
+    })
+
+    it('drops the hint once the list was loaded again', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1')
+      mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Network Error'))
+      await vi.advanceTimersByTimeAsync(3000)
+      expect(useDocumentStore.getState().pollingStoppedMessage).not.toBeNull()
+
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1', {})
+
+      expect(useDocumentStore.getState().pollingStoppedMessage).toBeNull()
+    })
   })
 
   describe('folder CRUD (#822)', () => {

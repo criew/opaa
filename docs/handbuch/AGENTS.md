@@ -7,10 +7,13 @@ nicht Entwickler; das Handbuch beschreibt den gebauten Ist-Stand.
 
 - **Ein Baum.** Die Gliederung steht in `README.md`, Abschnitt „Aufbau des Handbuchs". Ein neues
   Kapitel bekommt dort seinen Platz, bevor es geschrieben wird.
-- **Allgemeines oben, Besonderes unten.** Was für alle Arbeitsmittel gilt, steht in `katalog.md`
-  und `berechtigungen.md`; was nur eine Art betrifft, in deren Kapitel. Was einen Konnektor oder ein
-  Format betrifft, gehört in `konnektoren/<typ>.md` bzw. `formate/<format>.md`, nie in das
-  Elternkapitel.
+- **Die Ordner folgen dem Kapitelbaum.** Ein Elternkapitel mit Unterkapiteln ist die `README.md`
+  seines Ordners, etwa `betrieb/README.md` oder `arbeitsmittel/wissensbibliotheken/README.md`.
+  Das Glossar (`glossar.md`) steht als Nachschlagekapitel auf oberster Ebene.
+- **Allgemeines oben, Besonderes unten.** Was für alle Arbeitsmittel gilt, steht in
+  `arbeitsmittel/katalog.md` und `konten-und-rechte/berechtigungen.md`; was nur eine Art betrifft,
+  in deren Kapitel. Was einen Konnektor oder ein Format betrifft, gehört in `konnektoren/<typ>.md` bzw. `formate/<format>.md` unter
+  `arbeitsmittel/wissensbibliotheken/`, nie in das Elternkapitel.
 - **Übersichten statt Vollaufzählungen.** Alle Konnektoren bzw. Formate listen nur
   `konnektoren/README.md` und `formate/README.md`. Andere Kapitel nennen wenige Beispiele und
   verweisen dorthin, damit ein neuer Typ nur an einer Stelle nachzutragen ist.
@@ -25,8 +28,8 @@ an. Ein Abschnitt, der für den Konnektor nicht zutrifft, entfällt; die Nummern
    was nicht, woran ein Dokument hängt (Identität, Beleg-Link, „Original öffnen") und dass Rechte
    nicht übernommen werden. **Pflicht ist ein Verbindungsbild** als Mermaid mit höchstens sechs
    Knoten (Wissensbibliothek → Zugang → Schnittstelle → System) und ein Satz, welchem Anmeldemuster
-   aus `zugaenge.md`, „Wie sich OPAA bei einer Quelle anmeldet", er folgt. Das Muster wird nur
-   verwiesen; ausgeführt wird nur das Konnektor-Eigene.
+   aus `arbeitsmittel/zugaenge.md`, „Wie sich OPAA bei einer Quelle anmeldet", er folgt. Das
+   Muster wird nur verwiesen; ausgeführt wird nur das Konnektor-Eigene.
 2. **Einrichtung** — was beim Anbieter und im Haus vorzubereiten ist, als kurze Schrittfolge.
 3. **Quellkonfiguration** — die Angaben im Formular, mit den Beschriftungen der Oberfläche,
    Verbindungstest, Besonderheiten über einen Zugang.
@@ -53,13 +56,17 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 
 1. Nach unten frei: ein Kapitel auf seine Kinder.
 2. Nach oben einmal in der Einleitung, sonst nur, wo ein Begriff von dort gebraucht wird.
-3. `berechtigungen.md` und `konfiguration.md` (Variablenliste) sind Nachschlagekapitel: Alle
-   dürfen auf sie verweisen; sie selbst verweisen zurück nur in „Weiterführende Kapitel" und dort,
-   wo eine Zeile ihre Bedeutung erklärt.
+3. `glossar.md`, `konten-und-rechte/berechtigungen.md` und `betrieb/konfiguration.md`
+   (Variablenliste) sind Nachschlagekapitel: Alle dürfen auf sie verweisen; sie selbst verweisen
+   zurück nur in „Weiterführende Kapitel" und dort, wo eine Zeile ihre Bedeutung erklärt.
 4. Geschwister nur bei echtem Bedarf.
 5. „Weiterführende Kapitel" nennt nur Kinder und nächste Geschwister.
 6. Lieber Kapitel und benannte Abschnitte als Abschnittsnummern; Nummern veralten bei jeder
    Umgliederung.
+7. Das Handbuch geht als Markdown und HTML ins Update-Paket. Jeder relative Link und jeder Anker
+   muss treffen; der CI-Schritt `update_package.py links` prüft das in jedem PR, auch die Verweise
+   aus `docs/behoerden/`. Eine umbenannte Überschrift zieht deshalb alle Verweise auf sie nach.
+   Spitze Klammern im Fließtext (`<Titel>`) stehen in Backticks, sonst verschluckt sie die HTML-Fassung.
 
 ## Stil
 
@@ -72,6 +79,11 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
   sich unterscheidet.
 - **Begriffe:** „Space", nie „Raum"; „Arbeitsmittel" für alles, was angelegt, geteilt und einem
   Space zugeordnet wird; Oberflächentexte wörtlich in „…".
+- **Etablierte englische Fachbegriffe** aus Betrieb und Technik werden nicht eingedeutscht:
+  Readiness und Liveness, Graceful Shutdown, Read-only Filesystem, Health Check, Load Balancer,
+  Rolling Update, Connection Pool, Timeout, Redirect, OOM-Kill, Provenance, Log, Egress. Deutsch
+  bleibt, was die Oberfläche deutsch nennt („Ausgangsproxy", „Zielprüfung", „Netzbereiche"), und
+  eingeführte Begriffe der Verwaltung wie Datenschutz oder Mitbestimmung.
 - Tabellen und Abbildungen tragen weder Nummer noch Titel; Kapitel haben kein Verzeichnis davon.
 
 ## Weitere Regeln
@@ -81,12 +93,13 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 - **Verweise nur innerhalb des Handbuchs.** Ausnahme ist der Hinweis auf das Repository im README.
 - **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
 - **Konfigurierbare Werte stehen nur in Konfigurationstabellen** der Kapitel und in der
-  Variablenliste in `konfiguration.md`; Fließtext nennt Parameternamen.
+  Variablenliste in `betrieb/konfiguration.md`; Fließtext nennt Parameternamen.
 - **Grafiken sind Mermaid**, mit kurzen Knoten: höchstens etwa 15 Zeichen je Zeile, mit `<br/>`
   umbrechen. Sonst schneidet GitHub die Beschriftung ab. In den Knoten steht das Stichwort, die
   Erläuterung im Text darunter.
-- **„Entwurf"** am Kapitelanfang: gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+- **„Entwurf"** am Kapitelanfang trägt ein neues oder grundlegend geändertes Kapitel: gegen den
+  Code geprüft, vom Maintainer noch nicht abgenommen. Abgenommene Kapitel tragen keinen Vermerk.
 - **Kapitel werden mit dem Code gepflegt**, im selben Pull Request wie die Verhaltensänderung.
 - **Verschieben oder Umbenennen** zieht alle Verweise im Repo nach, auch Code-Kommentare,
   `AGENTS.md`-Dateien und Leser wie `demo/generator/generate_corpus.py` (liest
-  `formate/README.md`, Abschnitt „Zugelassene Formate").
+  `arbeitsmittel/wissensbibliotheken/formate/README.md`, Abschnitt „Zugelassene Formate").

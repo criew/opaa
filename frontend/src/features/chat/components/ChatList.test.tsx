@@ -40,7 +40,7 @@ describe('ChatList', () => {
     expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
   })
 
-  // "Neuer Chat" must not eagerly persist an empty chat - it only navigates to
+  // "Neu" must not eagerly persist an empty chat - it only navigates to
   // the not-yet-created "new" chat state, so the implicit creation on the first sent message
   // (chatStore#sendMessage) stays the single chat-creation path.
   it('navigates to the not-yet-created chat instead of eagerly creating one', async () => {
@@ -48,7 +48,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
+    await user.click(screen.getByRole('button', { name: 'Neu: Chat beginnen' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new')
     // The existing chats are untouched - nothing was created.
@@ -179,11 +179,11 @@ describe('ChatList', () => {
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
     await user.type(field, 'Neuer Titel')
-    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
+    await user.click(screen.getByRole('button', { name: 'Neu: Chat beginnen' }))
 
     expect(await screen.findByText('Neuer Titel')).toBeInTheDocument()
     await screen.findByLabelText('Aktionen für Chat „Neuer Titel“')
-    expect(screen.getByRole('button', { name: 'Neuer Chat' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Neu: Chat beginnen' })).toHaveFocus()
   })
 })
 

@@ -70,6 +70,7 @@ public final class ModularArchitecture {
           "compliance",
           "common",
           "observability",
+          "instance",
           "organization",
           "notification",
           "outbound",
@@ -80,6 +81,8 @@ public final class ModularArchitecture {
           "mail",
           "auth",
           "account",
+          "selfdisclosure",
+          "linktarget",
           "permission",
           "asset",
           "group",
@@ -134,6 +137,7 @@ public final class ModularArchitecture {
           entry("common", FOUNDATION),
           entry("compliance", FOUNDATION),
           entry("observability", FOUNDATION),
+          entry("instance", FOUNDATION),
           entry("organization", FOUNDATION),
           entry("outbound", FOUNDATION),
           entry("security", FOUNDATION),
@@ -148,6 +152,8 @@ public final class ModularArchitecture {
           entry("auth", IDENTITY),
           entry("account", IDENTITY),
           entry("notification", IDENTITY),
+          entry("selfdisclosure", IDENTITY),
+          entry("linktarget", IDENTITY),
           entry("permission", RIGHTS),
           entry("asset", RIGHTS),
           entry("group", RIGHTS),
@@ -330,11 +336,8 @@ public final class ModularArchitecture {
           "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOrganizationId",
           "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOwnerUserIdIn",
           "knowledge.KnowledgeLibraryRepository#findIdsByErasureRequested",
-          "knowledge.KnowledgeLibraryRepository"
-              + "#findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual",
-          "knowledge.KnowledgeLibraryRepository"
-              + "#findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAnd"
-              + "ExternalAccessExpiresAtBetween");
+          "knowledge.KnowledgeLibraryRepository#lockExpiredExternalAccess",
+          "knowledge.KnowledgeLibraryRepository#lockExternalAccessReminderDue");
 
   /**
    * The system processes that may enumerate private libraries, relative to the root: each one shows

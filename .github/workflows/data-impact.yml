@@ -10,7 +10,8 @@ name: Datenwirkung
 # checked before it entered the queue.
 on:
   pull_request:
-    branches: [main]
+    # A required check on the maintenance branches release/X.Y as on main.
+    branches: [main, 'release/**']
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   merge_group:
 
@@ -54,7 +55,7 @@ jobs:
       - name: Pfadliste gegen den Code prüfen
         if: github.event_name == 'pull_request'
         run: |
-          pip install pytest
+          pip install -r .github/requirements-ci.txt
           pytest .github/scripts/test_check_data_impact.py
 
       - name: Datenwirkung prüfen

@@ -12,6 +12,7 @@ import io.opaa.connection.profile.ConnectionProfileService;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.ConnectionSecrets.EndingConsent;
 import io.opaa.connection.token.ConnectionSecrets.EndingGrant;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.notification.NotificationService;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -71,7 +73,11 @@ public class ConnectionExpiryWatch {
   }
 
   @Scheduled(cron = "0 45 4 * * *")
-  void daily() {
+  @SchedulerLock(
+      name = "connection-expiry-watch",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
+  public void daily() {
     try {
       Warned warned = warn();
       log.info(
@@ -134,8 +140,7 @@ public class ConnectionExpiryWatch {
     Instant now = clock.instant();
     LocalDate today = LocalDate.ofInstant(now, clock.getZone());
     List<UUID> due =
-        profiles.lockSecretsExpiringUnwarned(
-            today.plusDays(ConnectionProfileService.SECRET_EXPIRY_WARNING_DAYS));
+        profiles.lockSecretsExpiringUnwarned(ConnectionProfileService.lastSecretWarningDay(clock));
     if (due.isEmpty()) {
       return 0;
     }

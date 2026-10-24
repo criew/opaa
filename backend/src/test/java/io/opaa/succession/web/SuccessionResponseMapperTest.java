@@ -6,6 +6,7 @@ import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.api.types.SuccessionOwnerType;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.succession.SuccessionEntry;
@@ -54,6 +55,33 @@ class SuccessionResponseMapperTest {
     assertThat(response.getMembershipHints())
         .containsExactly("Referat 50", "Projektgruppe Digitalisierung");
     assertThat(response.getFirstSeenAt()).isEqualTo(firstSeenAt);
+  }
+
+  /** The kind of owner and, for a group, the group a transfer names as its source. */
+  @Test
+  void theKindOfOwnerAndTheOwningGroupArrive() {
+    UUID groupId = UUID.randomUUID();
+    SuccessionFinding finding =
+        SuccessionFinding.ofAsset(
+                AssetType.of("KNOWLEDGE_LIBRARY"),
+                UUID.randomUUID(),
+                "Bauakten Referat 51",
+                SuccessionAddressee.SYSTEM_ADMINISTRATION)
+            .withOwnerHint("Referat 51")
+            .withOwner(SuccessionOwnerType.GROUP, groupId);
+
+    SuccessionEntryResponse response =
+        SuccessionResponseMapper.toResponse(new SuccessionEntry(null, finding, null, false));
+
+    assertThat(response.getOwnerType()).isEqualTo(SuccessionOwnerType.GROUP);
+    assertThat(response.getOwnerGroupId()).isEqualTo(groupId);
+
+    SuccessionEntryResponse ofAPerson =
+        SuccessionResponseMapper.toResponse(
+            new SuccessionEntry(
+                null, finding.withOwner(SuccessionOwnerType.USER, null), null, false));
+    assertThat(ofAPerson.getOwnerType()).isEqualTo(SuccessionOwnerType.USER);
+    assertThat(ofAPerson.getOwnerGroupId()).as("a person is never identified").isNull();
   }
 
   /** A finding the detection run has not seen yet is a line like any other, without a record. */

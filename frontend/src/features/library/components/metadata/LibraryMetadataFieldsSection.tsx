@@ -3,167 +3,34 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
-import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Checkbox from '@mui/material/Checkbox'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import Switch from '@mui/material/Switch'
 import { Link as RouterLink } from 'react-router'
 import { plural } from '@/shared/utils/format'
 import Link from '@mui/material/Link'
 import {
-  addLibraryMetadataFieldValue,
-  createLibraryMetadataField,
   deleteLibraryMetadataField,
   getLibraryMetadataFieldUsage,
   getLibraryMetadataFieldValueUsage,
-  getMetadataChangeImpact,
   listLibraryMetadataFields,
   relabelLibraryMetadataFieldValue,
   remapLibraryMetadataFieldValue,
   runLibraryMetadataSchemaChanges,
   updateCoreContextPrefix,
-  updateLibraryMetadataField,
 } from '../../api/libraryMetadataApi'
 import type {
   CoreContextPrefixResponse,
   LibraryMetadataFieldResponse,
   LibraryMetadataSchemaChangeResponse,
-  LibraryMetadataFieldType,
-  MetadataChangeImpactResponse,
-  MetadataChangeKind,
 } from '@/shared/api/types'
-
-const TYPE_LABELS: Record<LibraryMetadataFieldType, string> = {
-  SELECT: 'Auswahl aus einer Werteliste',
-  DATE: 'Jahr oder Datum',
-  PATTERN: 'Kennung nach Muster',
-}
-
-/** The Wirkstellen of a field as short chips - what the Aufnahmeregel makes visible. */
-function effectChips(field: LibraryMetadataFieldResponse) {
-  const chips: string[] = []
-  if (field.filter) chips.push('Filter')
-  if (field.contextPrefix) chips.push('Kontextpräfix')
-  if (field.citationPosition != null) chips.push(`Beleg ${field.citationPosition}`)
-  return chips
-}
-
-/**
- * A running schema change in one sentence: what is retired and how far the run is. The
- * field is named with its configured name, not with its key — the key is a
- * technical identifier that has no place in the interface.
- */
-function describeChange(
-  change: LibraryMetadataSchemaChangeResponse,
-  fields: LibraryMetadataFieldResponse[],
-): string {
-  const fieldLabel =
-    fields.find((field) => field.fieldKey === change.fieldKey)?.label ?? change.fieldKey
-  const progress = `${plural(change.remainingDocuments, 'Dokument offen', 'Dokumente offen')}, ${change.processedDocuments} umgeschrieben.`
-  if (change.kind === 'FIELD_DELETION') {
-    return `Feld „${fieldLabel}“ wird gelöscht: ${progress}`
-  }
-  const target = change.targetCode == null ? 'leer' : `„${change.targetCode}“`
-  return `Wert „${change.valueCode}“ des Feldes „${fieldLabel}“ wird auf ${target} abgebildet: ${progress}`
-}
-
-/** "rund 40 Minuten" - a runtime a decision can be made on, never a raw number of seconds. */
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return 'unter einer Minute'
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 90) return `rund ${minutes} Minute${minutes === 1 ? '' : 'n'}`
-  const hours = Math.round(minutes / 60)
-  return `rund ${hours} Stunde${hours === 1 ? '' : 'n'}`
-}
-
-/**
- * The Folgekosten of a planned change, as concrete as the specification demands: documents,
- * chunks and the expected runtime of the Nachlauf - or the explicit statement that it costs
- * nothing. Loads on mount and on every change of the planned operation.
- */
-function ChangeImpactNotice({
-  libraryId,
-  fieldKey,
-  change,
-  valueCode,
-}: {
-  libraryId: string
-  fieldKey: string
-  change: MetadataChangeKind
-  valueCode?: string
-}) {
-  // Keyed by the planned operation instead of reset in the effect: an answer to an earlier
-  // operation is then simply not the current one, and nothing has to be cleared synchronously.
-  const requestKey = `${libraryId}|${fieldKey}|${change}|${valueCode ?? ''}`
-  const [answer, setAnswer] = useState<{
-    key: string
-    impact: MetadataChangeImpactResponse | null
-    failed: boolean
-  }>({ key: '', impact: null, failed: false })
-
-  useEffect(() => {
-    let cancelled = false
-    getMetadataChangeImpact(libraryId, fieldKey, change, valueCode)
-      .then((result) => {
-        if (!cancelled) setAnswer({ key: requestKey, impact: result, failed: false })
-      })
-      .catch(() => {
-        if (!cancelled) setAnswer({ key: requestKey, impact: null, failed: true })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [requestKey, libraryId, fieldKey, change, valueCode])
-
-  const current = answer.key === requestKey ? answer : { impact: null, failed: false }
-  const impact = current.impact
-  const failed = current.failed
-
-  if (failed) {
-    return (
-      <Alert severity="warning" sx={{ mt: 2 }}>
-        Die Folgekosten konnten nicht ermittelt werden.
-      </Alert>
-    )
-  }
-  if (!impact) {
-    return (
-      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
-        Folgekosten werden ermittelt …
-      </Typography>
-    )
-  }
-  if (!impact.reembeddingRequired) {
-    return (
-      <Alert severity="success" sx={{ mt: 2 }}>
-        {impact.affectedDocuments === 0
-          ? 'Diese Änderung hat keine Folgekosten.'
-          : `${plural(impact.affectedDocuments, 'Dokument ist', 'Dokumente sind')} betroffen; neu eingebettet werden muss nichts.`}
-      </Alert>
-    )
-  }
-  return (
-    <Alert severity="warning" sx={{ mt: 2 }}>
-      {`${plural(impact.affectedChunks, 'Abschnitt', 'Abschnitte')} in `}
-      {`${plural(impact.affectedDocuments, 'Dokument', 'Dokumenten')} neu einzubetten, `}
-      {formatDuration(impact.estimatedSeconds)}
-      {impact.rateSource === 'CONFIGURED' ? ' (geschätzte Rate)' : ' (gemessene Rate)'}. Das
-      Speichern setzt nichts in Bewegung — der Nachlauf wird auf der Seite „Suche &amp; Indexierung“
-      ausdrücklich gestartet.
-    </Alert>
-  )
-}
+import { TYPE_LABELS, describeChange, effectChips } from './metadataFieldText'
+import CoreContextPrefixSwitch from './CoreContextPrefixSwitch'
+import AddValueButton from './AddValueButton'
+import CreateFieldDialog from './CreateFieldDialog'
+import EditFieldDialog from './EditFieldDialog'
+import RemapValueDialog from './RemapValueDialog'
+import DeleteFieldDialog from './DeleteFieldDialog'
 
 interface Props {
   libraryId: string
@@ -544,64 +411,19 @@ export default function LibraryMetadataFieldsSection({
         onError={setError}
       />
 
-      <Dialog open={remapField != null} onClose={() => setRemapField(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Wert bearbeiten</DialogTitle>
-        <DialogContent>
-          <Stack direction="row" spacing={1} sx={{ mb: 2, mt: 1, alignItems: 'flex-start' }}>
-            <TextField
-              size="small"
-              fullWidth
-              label="Bezeichnung"
-              helperText="Der Code bleibt; eine Bezeichnung zu korrigieren hat keine Rückwirkung."
-              value={valueLabel}
-              onChange={(e) => setValueLabel(e.target.value)}
-            />
-            <Button onClick={() => void saveValueLabel()}>Bezeichnung speichern</Button>
-          </Stack>
-          <Divider sx={{ mb: 2 }} />
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            {remapUsage == null
-              ? 'Betroffene Dokumente werden ermittelt …'
-              : `${remapUsage} Dokument(e) tragen „${remapCode}“. Der Wert wird nur zusammen mit einer Abbildung entfernt.`}
-          </Typography>
-          <FormControl fullWidth size="small">
-            <InputLabel id="remap-target-label">Abbilden auf</InputLabel>
-            <Select
-              labelId="remap-target-label"
-              label="Abbilden auf"
-              value={remapTarget}
-              onChange={(e) => setRemapTarget(e.target.value)}
-            >
-              <MenuItem value="">leer (kein Wert)</MenuItem>
-              {(remapField?.values ?? [])
-                .filter((value) => value.code !== remapCode)
-                .map((value) => (
-                  <MenuItem key={value.code} value={value.code}>
-                    {value.label}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
-          {remapField && remapCode && (
-            <ChangeImpactNotice
-              libraryId={libraryId}
-              fieldKey={remapField.fieldKey}
-              change="VALUE_REMOVED"
-              valueCode={remapCode}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRemapField(null)}>Abbrechen</Button>
-          <Button
-            variant="contained"
-            disabled={remapUsage == null}
-            onClick={() => void confirmRemap()}
-          >
-            Abbildung bestätigen
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RemapValueDialog
+        libraryId={libraryId}
+        remapField={remapField}
+        remapCode={remapCode}
+        remapUsage={remapUsage}
+        remapTarget={remapTarget}
+        valueLabel={valueLabel}
+        onValueLabelChange={setValueLabel}
+        onRemapTargetChange={setRemapTarget}
+        onSaveValueLabel={() => void saveValueLabel()}
+        onConfirm={() => void confirmRemap()}
+        onClose={() => setRemapField(null)}
+      />
 
       {editField && (
         <EditFieldDialog
@@ -618,412 +440,13 @@ export default function LibraryMetadataFieldsSection({
         />
       )}
 
-      <Dialog open={deleteField != null} onClose={() => setDeleteField(null)}>
-        <DialogTitle>Feld löschen</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            {deleteUsage == null
-              ? 'Betroffene Dokumente werden ermittelt …'
-              : `${deleteUsage} Dokument(e) tragen einen Wert für „${deleteField?.label}“. Mit dem Feld werden diese Werte und seine Werteliste entfernt.`}
-          </Typography>
-          {deleteField && (
-            <ChangeImpactNotice
-              libraryId={libraryId}
-              fieldKey={deleteField.fieldKey}
-              change="FIELD_REMOVED"
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteField(null)}>Abbrechen</Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={deleteUsage == null}
-            onClick={() => void confirmDelete()}
-          >
-            Endgültig löschen
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  )
-}
-
-/**
- * One switchable core field. The Folgekosten of the planned switch stand in a confirmation dialog
- * before it is saved - the same rule every prefix-effective change follows.
- */
-function CoreContextPrefixSwitch({
-  libraryId,
-  label,
-  fieldKey,
-  checked,
-  disabled,
-  onSave,
-}: {
-  libraryId: string
-  label: string
-  fieldKey: string
-  checked: boolean
-  disabled: boolean
-  onSave: (next: boolean) => void
-}) {
-  const [pending, setPending] = useState<boolean | null>(null)
-
-  return (
-    <>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={checked}
-            disabled={disabled}
-            onChange={(e) => setPending(e.target.checked)}
-          />
-        }
-        label={label}
+      <DeleteFieldDialog
+        libraryId={libraryId}
+        deleteField={deleteField}
+        deleteUsage={deleteUsage}
+        onConfirm={() => void confirmDelete()}
+        onClose={() => setDeleteField(null)}
       />
-      <Dialog open={pending != null} onClose={() => setPending(null)} fullWidth maxWidth="sm">
-        <DialogTitle>{`${label} im Kontextpräfix ${pending ? 'einschalten' : 'ausschalten'}`}</DialogTitle>
-        <DialogContent>
-          <ChangeImpactNotice
-            libraryId={libraryId}
-            fieldKey={fieldKey}
-            change={pending ? 'CONTEXT_PREFIX_ENABLED' : 'CONTEXT_PREFIX_DISABLED'}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPending(null)}>Abbrechen</Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              const next = pending
-              setPending(null)
-              if (next != null) onSave(next)
-            }}
-          >
-            Speichern
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
-  )
-}
-
-function AddValueButton({
-  libraryId,
-  fieldKey,
-  onAdded,
-  onError,
-}: {
-  libraryId: string
-  fieldKey: string
-  onAdded: () => void
-  onError: (message: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [code, setCode] = useState('')
-  const [label, setLabel] = useState('')
-
-  async function submit() {
-    try {
-      await addLibraryMetadataFieldValue(libraryId, fieldKey, { code, label })
-      setOpen(false)
-      setCode('')
-      setLabel('')
-      onAdded()
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Der Wert konnte nicht ergänzt werden')
-    }
-  }
-
-  return (
-    <>
-      <Button size="small" onClick={() => setOpen(true)}>
-        Wert ergänzen
-      </Button>
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Wert ergänzen</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              size="small"
-              label="Code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <TextField
-              size="small"
-              label="Bezeichnung"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Abbrechen</Button>
-          <Button variant="contained" onClick={() => void submit()}>
-            Ergänzen
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
-  )
-}
-
-function CreateFieldDialog({
-  open,
-  libraryId,
-  onClose,
-  onCreated,
-  onError,
-}: {
-  open: boolean
-  libraryId: string
-  onClose: () => void
-  onCreated: () => void
-  onError: (message: string) => void
-}) {
-  const [fieldKey, setFieldKey] = useState('')
-  const [label, setLabel] = useState('')
-  const [type, setType] = useState<LibraryMetadataFieldType>('SELECT')
-  const [valuePattern, setValuePattern] = useState('')
-  const [filter, setFilter] = useState(true)
-  const [contextPrefix, setContextPrefix] = useState(false)
-  const [citationPosition, setCitationPosition] = useState('')
-  const [values, setValues] = useState('')
-
-  const noEffect = !filter && !contextPrefix
-
-  async function submit() {
-    try {
-      await createLibraryMetadataField(libraryId, {
-        fieldKey,
-        label,
-        type,
-        valuePattern: type === 'PATTERN' ? valuePattern : null,
-        filter,
-        contextPrefix,
-        citationPosition: citationPosition === '' ? null : Number(citationPosition),
-        values:
-          type === 'SELECT'
-            ? values
-                .split('\n')
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0)
-                .map((line) => {
-                  const [code, ...rest] = line.split('=')
-                  return { code: code.trim(), label: (rest.join('=') || code).trim() }
-                })
-            : undefined,
-      })
-      onCreated()
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Das Feld konnte nicht angelegt werden')
-    }
-  }
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Metadatenfeld anlegen</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
-            size="small"
-            label="Feldschlüssel"
-            helperText="Kleinbuchstaben, Ziffern und Unterstriche, z. B. fassung"
-            value={fieldKey}
-            onChange={(e) => setFieldKey(e.target.value)}
-          />
-          <TextField
-            size="small"
-            label="Feldname"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel id="field-type-label">Typ</InputLabel>
-            <Select
-              labelId="field-type-label"
-              label="Typ"
-              value={type}
-              onChange={(e) => setType(e.target.value as LibraryMetadataFieldType)}
-            >
-              {(Object.keys(TYPE_LABELS) as LibraryMetadataFieldType[]).map((option) => (
-                <MenuItem key={option} value={option}>
-                  {TYPE_LABELS[option]}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {type === 'SELECT' && (
-            <TextField
-              size="small"
-              label="Werteliste"
-              helperText="Eine Zeile je Wert, Format CODE=Bezeichnung"
-              multiline
-              minRows={3}
-              value={values}
-              onChange={(e) => setValues(e.target.value)}
-            />
-          )}
-          {type === 'PATTERN' && (
-            <TextField
-              size="small"
-              label="Muster"
-              helperText="Regulärer Ausdruck, gegen den jeder Wert geprüft wird"
-              value={valuePattern}
-              onChange={(e) => setValuePattern(e.target.value)}
-            />
-          )}
-          <FormControlLabel
-            control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
-            label="Wirkt im Filter"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={contextPrefix}
-                onChange={(e) => setContextPrefix(e.target.checked)}
-              />
-            }
-            label="Wirkt im Kontextpräfix"
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel id="citation-position-label">Zitierposition</InputLabel>
-            <Select
-              labelId="citation-position-label"
-              label="Zitierposition"
-              value={citationPosition}
-              onChange={(e) => setCitationPosition(e.target.value)}
-            >
-              <MenuItem value="">nicht in der Belegzeile</MenuItem>
-              <MenuItem value="1">1</MenuItem>
-              <MenuItem value="2">2</MenuItem>
-            </Select>
-          </FormControl>
-          {noEffect && (
-            <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur Beleg-Anzeige“
-              genügt nicht.
-            </Alert>
-          )}
-          {contextPrefix && (
-            <ChangeImpactNotice libraryId={libraryId} fieldKey={fieldKey} change="FIELD_ADDED" />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
-          Anlegen
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
-}
-
-/**
- * Label, Wirkstellen and citation position of an existing field. Type, key and value list stay -
- * the type is what every stored value was checked against, and the value list has its own
- * operations with the confirmed mapping.
- */
-function EditFieldDialog({
-  libraryId,
-  field,
-  onClose,
-  onSaved,
-  onError,
-}: {
-  libraryId: string
-  field: LibraryMetadataFieldResponse
-  onClose: () => void
-  onSaved: () => void
-  onError: (message: string) => void
-}) {
-  // Seeded from the field once; the caller remounts this dialog per field (key), so there is no
-  // effect that copies props into state.
-  const [label, setLabel] = useState(field.label)
-  const [filter, setFilter] = useState(field.filter)
-  const [contextPrefix, setContextPrefix] = useState(field.contextPrefix)
-  const [citationPosition, setCitationPosition] = useState(
-    field.citationPosition == null ? '' : String(field.citationPosition),
-  )
-
-  const noEffect = !filter && !contextPrefix
-
-  async function submit() {
-    try {
-      await updateLibraryMetadataField(libraryId, field.fieldKey, {
-        label,
-        filter,
-        contextPrefix,
-        citationPosition: citationPosition === '' ? null : Number(citationPosition),
-      })
-      onSaved()
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Das Feld konnte nicht geändert werden')
-    }
-  }
-
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Metadatenfeld bearbeiten</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
-            size="small"
-            label="Feldname"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-          <FormControlLabel
-            control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
-            label="Wirkt im Filter"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={contextPrefix}
-                onChange={(e) => setContextPrefix(e.target.checked)}
-              />
-            }
-            label="Wirkt im Kontextpräfix"
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel id="edit-citation-position-label">Zitierposition</InputLabel>
-            <Select
-              labelId="edit-citation-position-label"
-              label="Zitierposition"
-              value={citationPosition}
-              onChange={(e) => setCitationPosition(e.target.value)}
-            >
-              <MenuItem value="">nicht in der Belegzeile</MenuItem>
-              <MenuItem value="1">1</MenuItem>
-              <MenuItem value="2">2</MenuItem>
-            </Select>
-          </FormControl>
-          {noEffect && (
-            <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur Beleg-Anzeige“
-              genügt nicht.
-            </Alert>
-          )}
-          {contextPrefix !== field.contextPrefix && (
-            <ChangeImpactNotice
-              libraryId={libraryId}
-              fieldKey={field.fieldKey}
-              change={contextPrefix ? 'CONTEXT_PREFIX_ENABLED' : 'CONTEXT_PREFIX_DISABLED'}
-            />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Abbrechen</Button>
-        <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
-          Speichern
-        </Button>
-      </DialogActions>
-    </Dialog>
+    </Box>
   )
 }

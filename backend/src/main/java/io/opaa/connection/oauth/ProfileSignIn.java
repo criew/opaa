@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * A profile's own sign-in (client credentials, service account key): the access token for its
- * registration, held in the process until shortly before it expires (ADR-0021). A service account
+ * registration, held in the process until shortly before it expires (ADR-0053). A service account
  * key is signed only in the core ({@link ServiceAccountTokens}). A rejected registration marks the
  * profile; from then on no ask reaches the provider until a new secret or {@link #test} lifts it.
  */

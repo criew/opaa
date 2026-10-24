@@ -728,7 +728,7 @@ components:
 
     ChatMessageResponse:
       type: object
-      required: [id, chatId, role, content, createdAt]
+      required: [id, chatId, role, content, generatedByAi, createdAt]
       properties:
         id:
           type: string
@@ -740,6 +740,12 @@ components:
           $ref: "#/components/schemas/ChatRole"
         content:
           type: string
+        generatedByAi:
+          type: boolean
+          description: >
+            Machine-readable label (Art. 50 AI Act): true on every ASSISTANT message, false on a
+            USER message. Set by role alone, so answers taken over by the demo chat import carry it
+            as well. A field of the API, not a marking inside the content text.
         sources:
           type: array
           nullable: true

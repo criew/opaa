@@ -13,8 +13,11 @@ import java.util.Deque;
  * grow memory without bound. The cap fails open: beyond it the least valuable keys are forgotten
  * and their next request counts as the first of a fresh window - which is why the cap is far above
  * any legitimate client count and why the login endpoint carries a global ceiling as well.
+ *
+ * <p>The window lives in this process (ADR-0053): with N instances each holds its own, so a budget
+ * per key is configured as the installation's budget divided by N (ADR-0053, Entscheidung 12).
  */
-public class RateLimitService {
+public class RateLimitService implements RequestLimiter {
 
   /** Upper bound on the keys held per limiter, against high-cardinality key spaces. */
   static final long MAX_TRACKED_KEYS = 100_000;
@@ -59,6 +62,7 @@ public class RateLimitService {
    * the seconds until the oldest request leaves the window - the {@code Retry-After} a client
    * should honour.
    */
+  @Override
   public Decision tryAcquire(String key) {
     long now = System.currentTimeMillis();
     Deque<Long> timestamps = requestLog.get(key, k -> new ArrayDeque<>());
@@ -70,7 +74,26 @@ public class RateLimitService {
         return Decision.reject((waitMillis + 999) / 1000);
       }
       timestamps.addLast(now);
-      return Decision.allow();
+      return Decision.allowAt(now);
+    }
+  }
+
+  /**
+   * Gives back the request {@code granted} counted for {@code key} - for a request that, once
+   * answered, turns out not to belong to this scope. Only that request's own entry is removed; one
+   * that has already left the window, a refusal and an unknown key change nothing.
+   */
+  @Override
+  public void release(String key, Decision granted) {
+    if (!granted.allowed()) {
+      return;
+    }
+    Deque<Long> timestamps = requestLog.getIfPresent(key);
+    if (timestamps == null) {
+      return;
+    }
+    synchronized (timestamps) {
+      timestamps.removeLastOccurrence(granted.acquiredAtMillis());
     }
   }
 
@@ -82,16 +105,21 @@ public class RateLimitService {
   }
 
   /**
-   * The answer of {@link #tryAcquire}: allowed, or refused with the seconds to wait (at least one).
+   * The answer of {@link #tryAcquire}: allowed, with the instant the request was counted at, or
+   * refused with the seconds to wait (at least one).
    */
-  public record Decision(boolean allowed, long retryAfterSeconds) {
+  public record Decision(boolean allowed, long retryAfterSeconds, long acquiredAtMillis) {
 
     public static Decision allow() {
-      return new Decision(true, 0);
+      return allowAt(0);
+    }
+
+    static Decision allowAt(long acquiredAtMillis) {
+      return new Decision(true, 0, acquiredAtMillis);
     }
 
     public static Decision reject(long retryAfterSeconds) {
-      return new Decision(false, Math.max(1, retryAfterSeconds));
+      return new Decision(false, Math.max(1, retryAfterSeconds), 0);
     }
   }
 }

@@ -553,6 +553,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
    */
   private LocalAccountsSwitch.Result switchLocalAccounts(
       UUID organizationId, UUID actorUserId, OidcProvider local, boolean enabled) {
+    credentials.lockLocalAccountsInIdOrder();
     Map<String, Object> after = new HashMap<>();
     after.put("enabled", enabled);
     int revokedSessions = 0;
@@ -585,6 +586,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
   @Transactional
   public LocalAccountsSwitch.Result setLocalAccountsEnabled(
       UUID organizationId, UUID actorUserId, boolean enabled) {
+    credentials.lockLocalAccountsInIdOrder();
     OidcProvider local =
         repository
             .findLocalRow()

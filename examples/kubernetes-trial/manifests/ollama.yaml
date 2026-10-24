@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: ollama
-          image: ollama/ollama:0.40.5
+          image: ollama/ollama:0.40.6
           env:
             - name: OLLAMA_MODELS
               value: /models

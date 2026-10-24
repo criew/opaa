@@ -22,6 +22,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The reminder before a token expires (docs/features/external-access.md, "Eigenschaften"): every
@@ -33,8 +36,10 @@ import org.springframework.stereotype.Component;
  * extended.
  *
  * <p>Sent once per lead time because an expiry falls on exactly one calendar day, computed in the
- * zone of the run so a daylight-saving change neither doubles nor skips a day. A day on which the
- * run did not happen is a reminder not sent, not one sent twice - the same trade-off {@code
+ * zone of the run so a daylight-saving change neither doubles nor skips a day, and because the
+ * reminder is claimed in {@code external_access_tokens.expiry_reminded_days} in the transaction
+ * that queues the mail, so a second run - on another instance - finds it claimed. A day on which
+ * the run did not happen is a reminder not sent, not one sent twice - the same trade-off {@code
  * ExpiryReminderStep} makes for accounts.
  */
 @ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
@@ -52,6 +57,7 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
   private final UserRepository users;
   private final ExternalAccessTokenMailer mailer;
   private final ExternalAccessSettingsService settings;
+  private final TransactionOperations transactions;
   private final ZoneId zone;
 
   @Autowired
@@ -60,8 +66,15 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
       UserRepository users,
       ExternalAccessTokenMailer mailer,
       ExternalAccessSettingsService settings,
+      PlatformTransactionManager transactionManager,
       Clock clock) {
-    this(tokens, users, mailer, settings, clock.getZone());
+    this(
+        tokens,
+        users,
+        mailer,
+        settings,
+        new TransactionTemplate(transactionManager),
+        clock.getZone());
   }
 
   ExternalAccessTokenExpiryReminderStep(
@@ -69,13 +82,17 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
       UserRepository users,
       ExternalAccessTokenMailer mailer,
       ExternalAccessSettingsService settings,
+      TransactionOperations transactions,
       ZoneId zone) {
     this.tokens = tokens;
     this.users = users;
     this.mailer = mailer;
     this.settings = settings;
+    this.transactions = transactions;
     this.zone = zone;
   }
+
+  private record Due(ExternalAccessToken token, int leadDays) {}
 
   @Override
   public String name() {
@@ -89,14 +106,15 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
       // and "Ihr Zugangstoken läuft ab" would be an odd thing to read while the channel is off.
       return;
     }
-    Map<UUID, List<ExternalAccessToken>> due = new LinkedHashMap<>();
+    Map<UUID, List<Due>> due = new LinkedHashMap<>();
     for (int leadDays : LEAD_DAYS) {
       LocalDate day = LocalDate.ofInstant(now, zone).plusDays(leadDays);
       List<ExternalAccessToken> expiring =
           tokens.findExpiringBetween(
               day.atStartOfDay(zone).toInstant(), day.plusDays(1).atStartOfDay(zone).toInstant());
       for (ExternalAccessToken token : expiring) {
-        due.computeIfAbsent(token.getUserId(), id -> new ArrayList<>()).add(token);
+        due.computeIfAbsent(token.getUserId(), id -> new ArrayList<>())
+            .add(new Due(token, leadDays));
       }
     }
     if (due.isEmpty()) {
@@ -106,16 +124,31 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
         users.findAllById(due.keySet()).stream()
             .collect(Collectors.toMap(User::getId, Function.identity()));
     int sent = 0;
-    for (Map.Entry<UUID, List<ExternalAccessToken>> entry : due.entrySet()) {
+    for (Map.Entry<UUID, List<Due>> entry : due.entrySet()) {
       User owner = owners.get(entry.getKey());
       if (owner == null) {
         continue;
       }
-      for (ExternalAccessToken token : entry.getValue()) {
-        mailer.sendExpiring(owner, token.getName(), token.getExpiresAt());
-        sent++;
+      for (Due reminder : entry.getValue()) {
+        if (remindOnce(owner, reminder)) {
+          sent++;
+        }
       }
     }
     log.info("External access tokens: {} expiry reminder(s) sent", sent);
+  }
+
+  /** Claims the reminder and queues the mail in one transaction; false when already claimed. */
+  private boolean remindOnce(User owner, Due reminder) {
+    ExternalAccessToken token = reminder.token();
+    return Boolean.TRUE.equals(
+        transactions.execute(
+            status -> {
+              if (tokens.claimExpiryReminder(token.getId(), reminder.leadDays()) == 0) {
+                return false;
+              }
+              mailer.sendExpiring(owner, token.getName(), token.getExpiresAt());
+              return true;
+            }));
   }
 }

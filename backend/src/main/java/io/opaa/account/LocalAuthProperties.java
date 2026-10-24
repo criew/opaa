@@ -1,7 +1,9 @@
 package io.opaa.account;
 
 import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import io.opaa.security.ValidSecret;
 import java.time.Duration;
 import java.util.List;
@@ -38,10 +40,11 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
  *     SYSTEM_ADMIN} may sign in from (Entscheidung 9); empty means no restriction
  */
+@PerInstance("session limits and seed values of this process")
 @NoDataImpact("signing secret, cookie and bootstrap of local accounts")
 @ConfigurationProperties(prefix = "opaa.auth.local")
 public record LocalAuthProperties(
-    @ValidSecret String jwtSecret,
+    @InstallationWide(secret = true) @ValidSecret String jwtSecret,
     @DataImpact Duration accessTokenTtl,
     @DataImpact Duration refreshTokenTtl,
     @DataImpact Duration sessionMaxLifetime,
@@ -50,7 +53,7 @@ public record LocalAuthProperties(
     Boolean cookieSecure,
     String initialAdminPassword,
     String adminReset,
-    List<String> adminAllowedCidrs) {
+    @InstallationWide List<String> adminAllowedCidrs) {
 
   public static final Duration MAX_REFRESH_TOKEN_TTL = Duration.ofDays(30);
   public static final Duration MAX_SESSION_MAX_LIFETIME = Duration.ofDays(90);

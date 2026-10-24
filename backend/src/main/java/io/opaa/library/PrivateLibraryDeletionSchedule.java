@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.instance.ScheduledRunLocks;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.TaskScheduler;
@@ -44,11 +46,19 @@ public class PrivateLibraryDeletionSchedule {
   }
 
   @Scheduled(cron = "0 45 4 * * *", scheduler = SCHEDULER)
+  @SchedulerLock(
+      name = "private-library-deletion",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void daily() {
     run.daily();
   }
 
   @Scheduled(fixedDelayString = "PT5M", initialDelayString = "PT2M", scheduler = SCHEDULER)
+  @SchedulerLock(
+      name = "private-library-deletion-continuation",
+      lockAtLeastFor = "PT4M",
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void continuePending() {
     run.continuePending();
   }

@@ -17,6 +17,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
 import io.opaa.notification.NotificationService;
+import io.opaa.test.InMemoryInstallationCounters;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -36,6 +37,7 @@ class ExternalAccessMassRetrievalAlarmTest {
   private UserRepository users;
   private NotificationService notifications;
   private MovableClock clock;
+  private InMemoryInstallationCounters counters;
   private ExternalAccessMassRetrievalAlarm alarm;
   private UUID administratorId;
 
@@ -50,7 +52,8 @@ class ExternalAccessMassRetrievalAlarmTest {
     administratorId = administrator.getId();
     when(users.findByOrganizationIdAndSystemRole(ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN))
         .thenReturn(List.of(administrator));
-    alarm = new ExternalAccessMassRetrievalAlarm(settings, users, notifications, clock);
+    counters = new InMemoryInstallationCounters(clock);
+    alarm = new ExternalAccessMassRetrievalAlarm(settings, users, notifications, counters, clock);
   }
 
   private void threshold(int value) {
@@ -134,12 +137,16 @@ class ExternalAccessMassRetrievalAlarmTest {
         .notify(any(), any(), any(), any(), any(), anyString(), anyString());
   }
 
+  /**
+   * The previous hour weighs into the estimate by the share of it still inside the sliding window
+   * (InstallationCounters); two hours later nothing of it is left.
+   */
   @Test
   void retrievalsSlideOutOfTheWindow() {
     for (int i = 0; i < 3; i++) {
       alarm.record(ORGANIZATION_ID, UUID.randomUUID());
     }
-    clock.advance(ExternalAccessMassRetrievalAlarm.WINDOW.plusMinutes(1));
+    clock.advance(ExternalAccessMassRetrievalAlarm.WINDOW.multipliedBy(2));
     for (int i = 0; i < 3; i++) {
       alarm.record(ORGANIZATION_ID, UUID.randomUUID());
     }
@@ -157,17 +164,28 @@ class ExternalAccessMassRetrievalAlarmTest {
     verifyNoInteractions(users);
   }
 
+  /**
+   * Two instances count into the one window of the channel, and only one of them raises the alert:
+   * two retrievals on each exceed a threshold of three. Fails the moment the count lives per
+   * instance - where each would see two.
+   */
   @Test
-  void theCountLivesInMemoryAndDoesNotSurviveAFreshInstance() {
+  void twoInstancesCountIntoOneWindowAndOnlyOneRaisesTheAlert() {
+    var secondInstance =
+        new ExternalAccessMassRetrievalAlarm(settings, users, notifications, counters, clock);
     UUID token = UUID.randomUUID();
-    for (int i = 0; i < 3; i++) {
+
+    for (int i = 0; i < 2; i++) {
       alarm.record(ORGANIZATION_ID, token);
+      secondInstance.record(ORGANIZATION_ID, token);
+    }
+    for (int i = 0; i < 2; i++) {
+      alarm.record(ORGANIZATION_ID, token);
+      secondInstance.record(ORGANIZATION_ID, token);
     }
 
-    var restarted = new ExternalAccessMassRetrievalAlarm(settings, users, notifications, clock);
-    restarted.record(ORGANIZATION_ID, token);
-
-    verifyNoInteractions(notifications);
+    verify(notifications, times(1))
+        .notify(any(), any(), any(), any(), any(), anyString(), anyString());
   }
 
   /** A clock a test moves by hand; {@link Clock#millis()} is all the alarm reads. */

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-17
+Akzeptiert · zuletzt geändert 2026-10-23
 
 ## Kontext
 
@@ -79,7 +79,8 @@ Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 ### 7. Vollständigkeitswächter ohne Datenbank
 
 `ComplianceManifestTest` gleicht das Manifest in beiden Richtungen ab: Werte von `AuditEventType`,
-`SystemRole` und `Capability`, Prompt-Prüfsummen sowie jede Tabelle und jede Spalte des Schemas. Jede
+`SystemRole` und `Capability`, Prompt-Prüfsummen, den Weg zur Person je Tabelle (Entscheidung 12)
+sowie jede Tabelle und jede Spalte des Schemas. Jede
 Spalte steht genau einmal, als `personalColumns` oder `nonPersonalColumns` ihrer Tabelle oder in der
 Spaltenliste unter `nonPersonalTables`; so fällt auch eine neue Spalte einer Tabelle ohne
 Personenbezug auf. Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs
@@ -156,6 +157,30 @@ Eine Negativliste geheimer Schlüssel veraltet unbemerkt, das Manifest führt oh
 datenwirksamen Schlüssel. Der Port hält foundation frei von Abhängigkeiten nach oben und legt jede
 Auskunft in das Modul, dem die Daten gehören.
 
+### 12. Weg zur Person je Tabelle
+
+Jede Tabelle unter `tables` eines Datums nennt unter `person`, wie ein Eintrag einer Person
+zugeordnet wird: über eigene personenbezogene Spalten (`columns`), über eine Tabelle desselben oder
+eines anderen Datums mit eigenem Weg (`via`) oder beides, oder sie ist mit Grund von der
+Selbstauskunft ausgeschlossen (`excluded`). Bei einem Weg ist jede personenbezogene Spalte Teil der
+Auskunft, außer sie steht mit Grund unter `excludedColumns`; eine neue Spalte zählt damit
+automatisch zur Auskunft. Ein Datum ohne Tabelle nennt den Grund in `personExcluded`. Ein Datum mit
+mindestens einer Tabelle mit Weg ist eine Kategorie der Selbstauskunft unter seiner `id`.
+
+Die Pflicht prüft `ComplianceManifestTest`, nicht der Lader: So nennt auch diese Lücke Datei und
+einzufügendes YAML (Entscheidung 7). Das Faktenblatt Datenkatalog zeigt die Angabe je Datum, das
+Delta jede geänderte Angabe als eigene Änderung.
+
+Jede Kategorie liefert genau ein Exporteur des Ports `SelfDisclosureExporter` im Modul ihrer Daten,
+mit einer Positivliste von Feldern und den Spalten, aus denen sie stammen. `SelfDisclosureCoverageTest`
+hält beide Seiten ohne Datenbank gleich: Jede Spalte der Auskunft ist von einem Feld abgedeckt (die
+Spalten des Wegs deckt die Auswahl selbst ab), kein Feld nennt eine unbekannte oder ausgeschlossene
+Spalte, außer es sagt über sie nur ja/nein oder eine feste Bezeichnung, und ein Datum mit Exporteur
+führt `EXPORT` unter `accessPaths`.
+
+Der Weg steht an der Tabelle, weil die Tabelle die Einheit ist, an der eine neue Spalte oder Tabelle
+auffällt; eine Liste der Kategorien neben dem Manifest wüchse nicht mit.
+
 ## Konsequenzen
 
 Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter und
@@ -195,3 +220,5 @@ Beschreibung schlägt es mit offener Zuordnung als Zustimmung vor (Entscheidung 
 - Negativliste geheimer Schlüssel im Export — ein neues Geheimnis ginge unbemerkt hinaus.
 - Ein Export in einem oberen Modul, das alle Fachpakete liest — neue Kanten über alle Module.
 - Delta nur aus zwei JSON-Fassungen — ältere Releases haben keine als Anhang.
+- Neue personenbezogene Spalten ausgeschlossen, bis sie freigegeben sind — eine vergessene Spalte
+  fehlte still in der Auskunft.

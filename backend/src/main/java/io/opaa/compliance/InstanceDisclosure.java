@@ -22,6 +22,7 @@ import java.util.Objects;
  * @param dataFlows every outbound data flow of the manifest with whether it is switched on
  * @param connectorTypes the connector types libraries or connection profiles use, by type
  * @param modelProviders the configured model endpoints of every model role
+ * @param instances the running instances of the installation, the answering one included
  * @param protocol the description of the audit log for the staff council
  */
 public record InstanceDisclosure(
@@ -33,6 +34,7 @@ public record InstanceDisclosure(
     List<DataFlowState> dataFlows,
     List<ConnectorUsage> connectorTypes,
     List<ModelProvider> modelProviders,
+    List<RunningInstance> instances,
     Protocol protocol) {
 
   public InstanceDisclosure {
@@ -45,6 +47,7 @@ public record InstanceDisclosure(
     dataFlows = List.copyOf(dataFlows);
     connectorTypes = List.copyOf(connectorTypes);
     modelProviders = List.copyOf(modelProviders);
+    instances = List.copyOf(instances);
   }
 
   /** The settings whose effective value differs from the delivered default. */
@@ -55,9 +58,11 @@ public record InstanceDisclosure(
   /**
    * One setting of the manifest in this instance.
    *
-   * @param effectiveValue the value in use; {@code null} when the instance could not determine it
+   * @param effectiveValue the value of the installation; {@code null} when it could not be
+   *     determined or differs between the running instances
    * @param deviates whether {@code effectiveValue} differs from {@code defaultValue}
    * @param changedAt the last change of the settings row holding a {@code DATABASE} setting
+   * @param sameOnAllInstances whether every running instance holds the same value
    */
   public record SettingValue(
       String area,
@@ -68,7 +73,22 @@ public record InstanceDisclosure(
       boolean deviates,
       Instant changedAt,
       String range,
-      String effect) {}
+      String effect,
+      boolean sameOnAllInstances) {}
+
+  /**
+   * A running instance of the installation (ADR-0053, Entscheidung 3).
+   *
+   * @param version its version; two differ only during a rolling update
+   * @param startedAt when it joined, by the database clock
+   */
+  public record RunningInstance(String version, Instant startedAt) {
+
+    public RunningInstance {
+      Objects.requireNonNull(version, "version");
+      Objects.requireNonNull(startedAt, "startedAt");
+    }
+  }
 
   /**
    * The value a module holds for a {@code DATABASE} setting.

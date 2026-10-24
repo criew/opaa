@@ -15,6 +15,8 @@ on:
 permissions:
   contents: read
   issues: write
+  # the alarm step looks up whether a newer run on main has passed already
+  actions: read
 
 # One group per commit: a main push and the nightly schedule never cancel each other, and a
 # workflow_dispatch on the same SHA queues behind the run already in flight.
@@ -35,6 +37,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -120,11 +124,11 @@ jobs:
             pnpm exec playwright install --with-deps chromium
           fi
 
-      # Establishes exactly the state docs/handbuch/docker-compose.md documents for an installation:
-      # the bind-mounted upload directory belongs to uid 65532, the account the backend container
-      # runs under. Without this the suite would run against a world-writable directory instead and
-      # never exercise the ownership an installation actually has. Linux-only and therefore here,
-      # not in the cross-platform runner script, whose own chmod then declines.
+      # Establishes exactly the state docs/handbuch/betrieb/docker-compose.md documents for an
+      # installation: the bind-mounted upload directory belongs to uid 65532, the account the
+      # backend container runs under. Without this the suite would run against a world-writable
+      # directory instead and never exercise the ownership an installation actually has. Linux-only
+      # and therefore here, not in the cross-platform runner script, whose own chmod then declines.
       - name: Eigentümer der Bind-Mounts wie in einer Installation setzen
         run: |
           mkdir -p documents uploads
@@ -174,6 +178,9 @@ jobs:
       # an existing issue is never overwritten, so an analysis someone added there survives.
       # Both alarm steps are gated on main: a workflow_dispatch on a feature branch must neither
       # report its failure as a main failure nor close the alarm issue while main is still red.
+      # Runs of different commits do not wait for each other, so an older run can fail after a
+      # newer one has already passed and closed the issue; such a superseded failure reports
+      # nothing.
       - name: Fehlschlag als Issue melden
         if: (failure() || cancelled()) && github.ref == 'refs/heads/main'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -182,6 +189,25 @@ jobs:
             const fs = require('fs');
             const marker = '<!-- e2e-alert -->';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const { data: thisRun } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+            const { data: laterRuns } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: thisRun.workflow_id,
+              branch: 'main',
+              status: 'success',
+              created: `>${thisRun.created_at}`,
+              per_page: 1,
+            });
+            if (laterRuns.total_count > 0) {
+              core.notice(`Superseded: ${laterRuns.workflow_runs[0].html_url} passed on a newer commit, no alarm`);
+              return;
+            }
 
             // Failed and timed-out scenarios by name from Playwright's JSON report; a run that
             // never reached the suite (image build, stack start, timeout) has no report.

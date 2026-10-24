@@ -9,6 +9,7 @@ import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../types/chat'
 import { blue, motion } from '@/shared/theme/tokens'
 import { buildCitationIndex } from '@/shared/ui/markdown/citations'
+import { AiAnswerMark } from './AiNotice'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import EvidenceFooter from './EvidenceFooter'
@@ -229,7 +230,16 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <EvidenceFooter
               citations={citations}
               onOpen={openAllEvidence}
-              actions={<CopyAnswerButton content={message.content} citations={citations} />}
+              actions={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {message.generatedByAi !== false && <AiAnswerMark />}
+                  <CopyAnswerButton
+                    content={message.content}
+                    citations={citations}
+                    answeredAt={message.timestamp}
+                  />
+                </Box>
+              }
             />
           )}
           {!isUser && (

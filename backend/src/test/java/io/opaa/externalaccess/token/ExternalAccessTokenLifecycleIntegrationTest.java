@@ -17,7 +17,6 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
-import io.opaa.mail.SendResult;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.sql.Timestamp;
@@ -37,8 +36,10 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The three daily steps of the access tokens: the reminder before an expiry, the Ausserkrafttreten
@@ -53,6 +54,7 @@ class ExternalAccessTokenLifecycleIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UserRepository users;
   @Autowired private KnowledgeLibraryService libraryService;
@@ -184,12 +186,15 @@ class ExternalAccessTokenLifecycleIntegrationTest {
         new ExternalAccessTokenLapseStep(
             tokens,
             new ExternalAccessTokenLapseService(tokens, users, audit, clock) {
+              // In its own transaction like the bean's REQUIRES_NEW: the token row is locked.
               @Override
               public boolean recordLapse(UUID tokenId, Instant now) {
                 if (tokenId.equals(stubborn.getId())) {
                   throw new IllegalStateException("the audit write failed");
                 }
-                return super.recordLapse(tokenId, now);
+                return Boolean.TRUE.equals(
+                    new TransactionTemplate(transactionManager)
+                        .execute(status -> super.recordLapse(tokenId, now)));
               }
             });
 
@@ -271,7 +276,8 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     ExternalAccessToken inSeven = store("In sieben Tagen", noonOn(now, 7, zone));
     RecordingMailer recording = new RecordingMailer();
     ExternalAccessTokenExpiryReminderStep step =
-        new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, settings, zone);
+        new ExternalAccessTokenExpiryReminderStep(
+            tokens, users, recording, settings, new TransactionTemplate(transactionManager), zone);
 
     step.run(now);
 
@@ -288,7 +294,9 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     setChannelEnabled(false);
     RecordingMailer recording = new RecordingMailer();
 
-    new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, settings, zone).run(now);
+    new ExternalAccessTokenExpiryReminderStep(
+            tokens, users, recording, settings, new TransactionTemplate(transactionManager), zone)
+        .run(now);
 
     assertThat(recording.reminded).isEmpty();
   }
@@ -303,9 +311,8 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     }
 
     @Override
-    public SendResult sendExpiring(User owner, String tokenName, Instant expiresAt) {
+    public void sendExpiring(User owner, String tokenName, Instant expiresAt) {
       reminded.add(tokenName);
-      return new SendResult.Sent(owner.getEmail());
     }
   }
 

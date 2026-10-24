@@ -50,7 +50,7 @@ describe('SuccessionPage', () => {
       '/libraries/lib-1',
     )
     const row = rowOf('Bauakten Referat 50')
-    expect(row).toHaveTextContent('Wem die Bibliothek gehört, kann nicht mehr handeln.')
+    expect(row).toHaveTextContent('Das Konto, dem die Bibliothek gehört, ist nicht mehr aktiv.')
     expect(row).toHaveTextContent('Zuständig: die Systemverwaltung')
     expect(row).toHaveTextContent(/offen seit \d+ Tagen/)
     expect(row).toHaveTextContent('lange offen')
@@ -100,7 +100,7 @@ describe('SuccessionPage', () => {
       '/prompts/prompt-library-1',
     )
     expect(rowOf('Formulierungshilfen')).toHaveTextContent(
-      'Wem die Prompt-Bibliothek gehört, kann nicht mehr handeln.',
+      'Das Konto, dem die Prompt-Bibliothek gehört, ist nicht mehr aktiv.',
     )
   })
 
@@ -146,6 +146,64 @@ describe('SuccessionPage', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('button', { name: /vorschau erstellen/i })).toBeInTheDocument()
+  })
+
+  // regression guard for #2340: no account holds the asset of a dissolved directory group, so the
+  // handover between two accounts cannot move it - the transfer names the owning group as source.
+  it('hands an asset of a dissolved directory group over with that group as the source', async () => {
+    const [template] = mockSuccessionEntries.OPEN_SUCCESSION
+    const previews: unknown[] = []
+    server.use(
+      http.get('/api/v1/admin/succession', () =>
+        HttpResponse.json({
+          entries: [
+            {
+              ...template,
+              objectId: 'lib-51',
+              objectName: 'Bauakten Referat 51',
+              ownerHint: 'Referat 51',
+              membershipHints: [],
+              ownerType: 'GROUP',
+              ownerGroupId: 'group-referat-51',
+            },
+          ],
+          page: 0,
+          size: 50,
+          totalElements: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.post('/api/v1/permission-transfers/preview', async ({ request }) => {
+        previews.push(await request.json())
+        return HttpResponse.json({}, { status: 400 })
+      }),
+    )
+    renderPage()
+    const user = userEvent.setup()
+
+    await screen.findByText('Bauakten Referat 51')
+    const row = rowOf('Bauakten Referat 51')
+    expect(row).toHaveTextContent(
+      'Die Gruppe, der die Bibliothek gehört, gibt es nicht mehr oder sie hat keine aktiven Mitglieder.',
+    )
+    expect(within(row).queryByRole('button', { name: 'Nachfolge bestimmen' })).toBeNull()
+    await user.click(within(row).getByRole('button', { name: 'Rechte übergeben' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText('Bisherige Gruppe')).toHaveValue('Referat 51')
+    await user.type(within(dialog).getByLabelText('Neue Gruppe'), 'Referat 5')
+    await user.click(
+      await screen.findByRole('option', { name: /Referat 5 Projektteam/ }, { timeout: 3000 }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: /vorschau erstellen/i }))
+
+    await waitFor(() => expect(previews).toHaveLength(1))
+    expect(previews[0]).toMatchObject({
+      sourceType: 'GROUP',
+      sourceId: 'group-referat-51',
+      targetType: 'GROUP',
+    })
+    expect((previews[0] as { scope: string[] }).scope).toContain('OWNERSHIP')
   })
 
   // A group that holds nothing has nothing to hand over: the way out is the group management.

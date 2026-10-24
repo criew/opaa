@@ -30,7 +30,7 @@ import java.util.UUID;
  * format); a house whose rules require the <em>service account's</em> password to be rotated
  * regularly can do so freely - that is a write through {@link DirectoryConnectorService}, which
  * re-encrypts with the current key - but must keep {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} itself
- * stable. See {@code docs/handbuch/authentifizierung.md}, "Keycloak als Verzeichnis".
+ * stable. See {@code docs/handbuch/betrieb/authentifizierung.md}, "Keycloak als Verzeichnis".
  */
 @Entity
 @Table(name = "directory_connectors")

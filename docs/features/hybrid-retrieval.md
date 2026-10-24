@@ -1131,7 +1131,7 @@ der Eingabelisten begrenzt. `RerankStage` wiederum nimmt als Fenster
 bei 100 exakt dasselbe wäre wie bei 50: derselbe Kandidatensatz, dieselbe Bewertung, nur doppelte
 Rerank-Laufzeit. Eine Variante `rerank-100` hätte deshalb keine neue Messung geliefert, sondern eine
 bereits durch den Code bewiesene Wiederholung von `rerank-50` — ein Fenster über 50 zu prüfen setzt
-voraus, `OPAA_QUERY_FETCH_K` mitzuheben (siehe [„Reranking einschalten"](../handbuch/modelle.md#reranking-einschalten)),
+voraus, `OPAA_QUERY_FETCH_K` mitzuheben (siehe [„Reranking einschalten"](../handbuch/betrieb/modelle.md#reranking-einschalten)),
 was eine andere Frage (Abrufbreite) als die dieses Issues (Rerank-Fenstergröße bei gegebener
 Abrufbreite) beantworten würde.
 
@@ -1770,6 +1770,9 @@ Nachvollziehbarkeit einzelner Befugnisausübungen. Daraus folgt:
 - Eine Auswertung „Diagnosen je Nutzer" DARF es nicht geben; ein Bezug zur Leistungs- oder
   Verhaltensbewertung ist ausgeschlossen.
 - Eine Auswertung erfolgt ausschließlich **einzelfall- und anlassbezogen**.
+- **Einzige Ausnahme:** Die [Selbstauskunft](security-and-compliance.md#selbstauskunft-stufe-1) liest
+  die Einträge, in denen die angemeldete Person selbst diagnostiziert hat oder deren Rechtekontext
+  eingenommen wurde, nur für sie selbst und ohne Gruppierung oder Zählung.
 
 **(h) Einsichtsrecht.** Jede Person MUSS jederzeit einsehen können, wann und von wem ihr Rechtekontext
 eingenommen wurde — als eigene Ansicht in der Anwendung, ohne Antragsweg und ohne Beteiligung Dritter.

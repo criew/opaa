@@ -45,12 +45,20 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
 
   /**
    * Every table of the schema and its module - the module whose package holds its entity, and whose
-   * changelog directory creates it. {@code vector_store} is created by Spring AI, not Liquibase; it
-   * belongs to knowledge, whose changelog indexes it.
+   * changelog directory creates it. {@code vector_store} belongs to knowledge, whose changelog
+   * creates and indexes it; Spring AI only reads and writes it.
    */
   static final Map<String, Module> TABLE_MODULES =
       tables(
-          Map.entry(FOUNDATION, List.of("organizations", "outbound_proxy_settings")),
+          Map.entry(
+              FOUNDATION,
+              List.of(
+                  "organizations",
+                  "outbound_proxy_settings",
+                  "backend_instances",
+                  "backend_instance_fingerprint_key",
+                  "shedlock",
+                  "installation_counters")),
           Map.entry(
               IDENTITY,
               List.of(
@@ -59,6 +67,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "oidc_provider_seed_marker",
                   "oidc_provider_removals",
                   "local_credentials",
+                  "admin_review_reminders",
                   "local_refresh_tokens",
                   "local_revoked_tokens",
                   "local_action_tokens",
@@ -67,12 +76,17 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "branding_settings",
                   "mail_settings",
                   "mail_templates",
+                  "mail_outbox",
                   "notifications",
                   "audit_log",
                   "audit_actor_pseudonyms",
                   "audit_retention_settings",
                   "audit_incident_scope_grants",
-                  "audit_incident_scope_monthly_counts")),
+                  "audit_incident_scope_case_counts",
+                  "audit_incident_scope_monthly_counts",
+                  "self_disclosure_settings",
+                  "self_disclosure_usage",
+                  "link_target_settings")),
           Map.entry(
               RIGHTS,
               List.of(
@@ -106,6 +120,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "indexing_run_events",
                   "source_sync_state",
                   "source_sync_revisits",
+                  "source_event_batches",
                   "source_sync_presence",
                   "chunk_full_text",
                   "embedding_index",
@@ -123,7 +138,10 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "llm_models",
                   "llm_model_seed_marker",
                   "private_storage_quota_settings",
-                  "vector_store")),
+                  "vector_store",
+                  "model_role_observations",
+                  "library_maintenance_skips",
+                  "embedding_rate_measurements")),
           Map.entry(CONNECTORS, List.of("rss_feed_state")),
           Map.entry(
               CONNECTIONS,
@@ -136,7 +154,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "connected_accounts",
                   "connection_tokens",
                   "connection_person_states",
-                  "connection_authorizations")),
+                  "connection_authorizations",
+                  "connection_grant_revocations")),
           Map.entry(
               WORKSPACE,
               List.of(
@@ -150,11 +169,14 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
           Map.entry(
               ASSISTANT,
               List.of(
+                  "search_status_probes",
                   "chats",
                   "chat_messages",
                   "chat_library_references",
                   "chat_note_items",
                   "chat_personal_marks",
+                  "chat_cleanup_holds",
+                  "chat_locked_account_cleanup_state",
                   "prompt_libraries",
                   "prompts")),
           Map.entry(
@@ -183,12 +205,15 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
   }
 
   /**
-   * Starts from a {@code vector_store} as Spring AI leaves it, so the knowledge module's guarded
-   * index changeSets run and are judged too.
+   * Starts from a {@code vector_store} as Spring AI left it on an older installation, so the
+   * knowledge module's guarded index changeSets run and are judged too.
    */
   @Test
   void everyModuleDirectoryKeepsToItsModule() throws Exception {
-    execute("CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata jsonb)");
+    execute("CREATE EXTENSION IF NOT EXISTS vector");
+    execute(
+        "CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata json,"
+            + " embedding vector(1024))");
     ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, TABLE_MODULES);
 
     for (Map.Entry<String, List<String>> module : filesPerModuleDirectory().entrySet()) {

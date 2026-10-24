@@ -8,7 +8,7 @@ import {
 import { gotoLibraries, gotoLibraryDetail } from './chat'
 
 /**
- * Bausteine der Fremdzugangs-Szenarien (test(e2e) #1723, Epic #1715): der Schalter der
+ * Bausteine der Szenarien zu externen KI-Werkzeugen (test(e2e) #1723, Epic #1715): der Schalter der
  * Systemverwaltung, die Freigabe einer Bibliothek, die eigene Tokenverwaltung - und der MCP-Server,
  * der als einziger Prüfgegenstand dieser Suite kein Browser ist.
  *
@@ -236,13 +236,13 @@ export async function setLibraryReleaseViaApi(
 
 /**
  * Öffnet den Reiter „Freigaben" einer Bibliothek, auf dem der Abschnitt „Externer
- * Zugang" mit der Freigabe für Fremdzugänge steht - ohne Dialog davor.
+ * Zugang" mit der Freigabe für externe KI-Werkzeuge steht - ohne Dialog davor.
  */
 export async function openLibraryAccessDialog(page: Page, libraryName: string): Promise<void> {
   await gotoLibraries(page)
   await gotoLibraryDetail(page, libraryName)
   await page.getByRole('tab', { name: 'Freigaben' }).click()
-  await expect(page.getByRole('heading', { name: 'Fremdzugänge' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Externe KI-Werkzeuge' })).toBeVisible()
 }
 
 /** Der Abschnitt steht auf der Seite; zu schließen gibt es nichts. */
@@ -269,7 +269,7 @@ export async function setLibraryReleaseInDialog(
   if (enabled) {
     await page.getByLabel('Freigabe bis').fill(dateInputValue(daysFromNow ?? 30))
   }
-  const toggle = page.getByRole('switch', { name: 'Über Fremdzugänge nutzbar' })
+  const toggle = page.getByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' })
   if ((await toggle.isChecked()) !== enabled) {
     await toggle.click()
   }

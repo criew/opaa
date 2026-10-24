@@ -6,8 +6,6 @@ import io.opaa.search.SearchRequestScope;
 import io.opaa.search.SearchScopeSource;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
 
 /**
  * The effective view of one search request (ADR-0035 Entscheidung 5).
@@ -20,19 +18,12 @@ import org.springframework.web.context.request.RequestContextHolder;
  * depends on bean-registration order, and the quiet outcome of the wrong one winning is a token
  * call served with the person's full readable set.
  *
- * <p>Which of the two it is comes from the request attribute {@link #TOKEN_ID_ATTRIBUTE}, set by
- * {@code ExternalAccessTokenAuthenticationFilter} and by nothing else, and it is read per call.
- * Outside a request (a scheduled run, a test calling the service directly) there is no attribute
- * and therefore no token - the person's view applies, which is the safe direction: a missing
- * attribute can only ever fail to narrow for a caller that has no token anyway, never widen one
- * that has.
+ * <p>Which of the two it is comes from the caller alone ({@link CurrentUser#accessTokenId()}),
+ * never from the request or the thread: a token caller cannot be built without its token, so a call
+ * that has lost its request context still gets the token's view and quota.
  */
 @Component
 public class ExternalAccessSearchScopeSource implements SearchScopeSource {
-
-  /** Request attribute holding the id of the access token a call arrived on. */
-  public static final String TOKEN_ID_ATTRIBUTE =
-      ExternalAccessSearchScopeSource.class.getName() + ".tokenId";
 
   private final LibraryAccessService libraryAccess;
   private final ExternalAccessTokenScopeService tokenScope;
@@ -45,20 +36,11 @@ public class ExternalAccessSearchScopeSource implements SearchScopeSource {
 
   @Override
   public SearchRequestScope scopeFor(CurrentUser caller) {
-    UUID tokenId = currentAccessTokenId();
+    UUID tokenId = caller.accessTokenId();
     if (tokenId == null) {
       return SearchRequestScope.ofPerson(
           libraryAccess.readableLibraryIds(caller.id(), caller.organizationId()));
     }
     return new SearchRequestScope(tokenScope.effectiveLibraryIds(tokenId), tokenId);
-  }
-
-  private static UUID currentAccessTokenId() {
-    RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
-    if (attributes == null) {
-      return null;
-    }
-    Object tokenId = attributes.getAttribute(TOKEN_ID_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
-    return tokenId instanceof UUID id ? id : null;
   }
 }

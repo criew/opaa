@@ -18,13 +18,9 @@ class IncidentScopeRetentionMigrationTest extends AbstractBaselineTest {
   private static final String FILE =
       "db/changelog/identity/2026-10-15-incident-scope-retention.yaml";
 
-  /** Replaces the yearly count this file creates, so an installation receiving it lacks both. */
-  private static final String MONTHLY_COUNTS =
-      "db/changelog/identity/2026-10-17-incident-scope-monthly-counts.yaml";
-
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE, MONTHLY_COUNTS);
+    return MasterChangelog.filesExcept(FILE);
   }
 
   private UUID requester;

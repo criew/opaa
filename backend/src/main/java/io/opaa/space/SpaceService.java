@@ -48,6 +48,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
@@ -57,6 +59,7 @@ public class SpaceService {
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
   private static final int MAX_MODEL_INSTRUCTION_LENGTH = 1000;
+  private static final String PERSONAL_SPACE_NAME = "Privater Bereich";
 
   private final SpaceRepository spaceRepository;
   private final UserRepository userRepository;
@@ -942,11 +945,31 @@ public class SpaceService {
     insertDefaultSpace(userId, organizationId);
   }
 
+  /**
+   * The personal space of an account the caller's open transaction just created, written in that
+   * transaction: the {@code users} row is visible there, the space commits or rolls back with the
+   * account, and no second pooled connection is borrowed while the first is held. An insert after
+   * the commit would borrow one, because the committed transaction keeps its connection until its
+   * synchronizations have run; enough concurrent creations then exhaust the pool.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void ensureDefaultSpaceInCurrentTransaction(UUID userId, UUID organizationId) {
+    spaceRepository.insertDefaultSpaceIfAbsent(
+        UUID.randomUUID(), UUID.randomUUID(), PERSONAL_SPACE_NAME, userId, organizationId);
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            personalSpaceProvisioned.put(userId, Boolean.TRUE);
+          }
+        });
+  }
+
   private void insertDefaultSpace(UUID userId, UUID organizationId) {
     requiresNewTransactionTemplate.executeWithoutResult(
         status ->
             spaceRepository.insertDefaultSpaceIfAbsent(
-                UUID.randomUUID(), UUID.randomUUID(), "Privater Bereich", userId, organizationId));
+                UUID.randomUUID(), UUID.randomUUID(), PERSONAL_SPACE_NAME, userId, organizationId));
     personalSpaceProvisioned.put(userId, Boolean.TRUE);
   }
 

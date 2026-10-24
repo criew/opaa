@@ -195,8 +195,8 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 ablöst.
   `GET /api/v1/me/capabilities` liefert der Oberfläche die eigenen Fähigkeiten, damit sie das schon vor
   dem Versuch sagen kann.
 - **Der Entzug wirkt ohne Neuanmeldung.** Die Fähigkeit wird je Anfrage aus der Datenbank ausgewertet.
-  Diese Zusage trägt, weil [ADR-0021](../decisions/0021-single-instance-betrieb.md) einen einzigen
-  Prozess voraussetzt; fällt diese Annahme, fällt die Zusage mit.
+  Die Zusage gilt auf jeder Instanz: Die Gruppenmitgliedschaft dahinter hängt am Invalidierungsbus
+  ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 5).
 - **Vergabe und Entzug sind Governance-Ereignisse** (`CAPABILITY_GRANTED`/`CAPABILITY_REVOKED`) und
   bekommen zusätzlich ein Intervall in `capability_grant_history` — die Stichtagsauskunft „wer durfte
   am 3. März Konnektorbibliotheken anlegen" ist damit innerhalb der Aufbewahrungshöchstdauer
@@ -205,7 +205,7 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 ablöst.
 - **Verwaltet wird die Fähigkeit von `SYSTEM_ADMIN`** (`/api/v1/admin/capabilities`). Eine Fähigkeit zu
   *halten* heißt nicht, sie *vergeben* zu dürfen.
 - **Was keine Fähigkeit ist:** „Space organisationsweit sichtbar machen", „Bibliothek organisationsweit
-  freigeben" und „Fremdzugang freigeben" sind Reichweitenentscheidungen am Objekt und bleiben bei
+  freigeben" und „Für externe KI-Werkzeuge freigeben" sind Reichweitenentscheidungen am Objekt und bleiben bei
   `MANAGER`/`OWNER`. „Sicht als" und Vorfallsbereich bleiben Befugnisse und werden nie Fähigkeiten.
 
 ### Verwalten ist nicht Lesen: die Asymmetrie bei Wissensbibliotheken
@@ -267,7 +267,7 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
   vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
   im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung)),
-  ohne die Freigabe für Fremdzugänge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
+  ohne die Freigabe für externe KI-Werkzeuge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
   hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt), und ohne
   erteilte Rechte an **Personen und Gruppen** — ein bestehender Grant an eine benannte Person oder
   Gruppe bleibt auch nach dem Senken der Obergrenze bestehen und muss gesondert zurückgenommen
@@ -298,7 +298,7 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   **sofort zurück**: Ein bestehender Grant an „Alle Konten" wird über den gewöhnlichen
   Widerrufsweg entzogen (`ASSET_GRANT_REVOKED`, ein Grant-Intervall). Das Setzen der
   Obergrenze selbst steht getrennt daneben (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED`). Erteilte
-  Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben unberührt (siehe
+  Rechte an Personen und Gruppen sowie eine bestehende Freigabe für externe KI-Werkzeuge bleiben unberührt (siehe
   oben) und sind gesondert zu prüfen. Es gibt bewusst **keinen** Zustand „verletzt, aber geduldet" —
   eine frühere Fassung sah ein Aussetzen ohne Entzug vor; das ist mit der Maintainer-Festlegung
   entschieden anders: Die Bibliothek liegt in der Hand der Systemverwaltung, die die Obergrenze
@@ -332,7 +332,7 @@ Benutzer authentifizieren sich über:
 - **Single Sign-On (SSO)** — OIDC (empfohlen für den Regelbetrieb; SAML nur über eine Föderation)
 - **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus;
   das Konto der Systemverwaltung ist immer ein lokales Konto)
-- **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für fremde KI-Werkzeuge
+- **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für externe KI-Werkzeuge
   über den MCP-Server; entschieden am 18.09.2026, noch nicht gebaut. Nur lesend, mit Pflicht-Ablauf,
   installationsweit abschaltbar und nur für Bibliotheken, die dafür ausdrücklich freigegeben sind —
   siehe [external-access.md](./external-access.md)
@@ -432,6 +432,42 @@ und Ablauf-Erinnerungen hängen sich dort ein. Aussteller, Anmelde-Endpunkte und
 `pcr`-Filter existieren nur im `oidc`-Betriebsmodus; die Verwaltungs-Endpunkte lokaler Konten und
 der Schalter (#1537) sind profilunabhängig, damit die Oberfläche und die E2E-Suite im
 `dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht anmelden.
+
+### Erneute Anmeldung vor sensiblen Vorgängen (gebaut, #2996)
+
+Ein Vorgang kann eine **frische Anmeldung** verlangen; als erster und vorerst einziger tut das der
+Download der Selbstauskunft (#2989). Das Backend hält dafür keinen Zustand: Der Nachweis steht im
+Token, als Anmeldezeitpunkt `auth_time` (OIDC Core). Ein Handler mit der Annotation
+`@RequiresRecentLogin` (Methode oder ganzer Controller, `io.opaa.auth`) läuft nur, wenn `auth_time`
+höchstens `opaa.auth.recent-login.max-age` zurückliegt (Vorgabe 5 Minuten,
+`OPAA_AUTH_RECENT_LOGIN_MAX_AGE`; 60 Sekunden Uhrentoleranz in die Zukunft); sonst antwortet er mit
+`403`, Code `RECENT_LOGIN_REQUIRED` und Grund `AUTH_TIME_MISSING` oder `AUTH_TIME_TOO_OLD`
+(OpenAPI-Antwort `RecentLoginRequired` in `auth.yaml`). Ein Dienst kann dieselbe Prüfung über die
+Bean `RecentLoginPolicy` auch direkt aufrufen. Ein Token ohne `auth_time` zählt nie — ein Token aus
+einer Erneuerung, ein Zugangstoken für externe KI-Werkzeuge, ein Anbieter, der den Claim nicht
+liefert.
+
+- **Lokale Konten:** Der lokale Aussteller setzt `auth_time` nur, wenn er das Passwort für genau
+  dieses Token geprüft hat — bei der Anmeldung, beim Passwortwechsel und bei
+  `POST /api/v1/auth/local/reauthenticate` (Bearer, Passwort im Körper). Die Bestätigung prüft wie
+  eine Anmeldung: Ein falsches Passwort zählt auf die Fehlversuch-Sperre. Jede Ablehnung — falsches
+  Passwort, nicht mehr anmeldefähiges Konto, lokaler Systemverwalter außerhalb der freigegebenen
+  Netze — ist dieselbe Antwort `400` mit `fieldErrors[password] = NOT_CONFIRMED` und dem Satz „Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.“,
+  der nicht mehr preisgibt als die Anmeldung selbst; sie teilt das Budget je Konto mit dem Passwortwechsel
+  und lässt das Refresh-Cookie unverändert. Ein durch `refresh` erneuertes Token trägt keinen
+  Anmeldezeitpunkt und besteht die Prüfung nie, auch Sekunden nach einer Anmeldung nicht.
+- **Konten eines Identitätsanbieters:** Die Oberfläche leitet zu einer erzwungenen Anmeldung beim
+  Anbieter weiter (`prompt=login`, `max_age=0`) und kehrt auf die Seite zurück, von der aus sie
+  angestoßen wurde. Ignoriert der Anbieter die Aufforderung, bleibt der alte Anmeldezeitpunkt im
+  Token, und der Vorgang wird weiter abgewiesen; die Oberfläche sagt dann, dass der Anmeldedienst
+  die erneute Anmeldung nicht bestätigt hat. Ein Anbieter-Token behält bei der Erneuerung seinen
+  `auth_time`, macht eine alte Anmeldung also nicht wieder frisch.
+- **Entwicklungsmodus:** Ohne Anmeldung gilt jede Anfrage als frisch angemeldet.
+
+In der Oberfläche steht der Baustein als `RecentLoginDialog` (`frontend/src/shared/ui/`) bereit:
+Passwortabfrage bzw. Weiterleitung, per Tastatur bedienbar, Zustandswechsel in einer
+`aria-live`-Region. Die aufrufende Seite erfährt die Rückkehr von der Anbieteranmeldung über
+`consumeRecentLoginReturn()`.
 
 ### Sitzungsführung in der Oberfläche
 
@@ -1159,8 +1195,10 @@ gar nicht mehr meldet**, wird beim nächsten Lauf gesperrt. Dabei gilt:
   Laufs. Zusätzlich wird der **Kontozustand historisiert** (aktiv/gesperrt mit `valid_from`/`valid_to`):
   Sie belegt beide Zeitpunkte lückenlos und trägt die Stichtagsauskunft, wenn die Protokollfrist
   abgelaufen ist. Die Kette eines Kontos beginnt mit seiner ersten Zustandsänderung und reicht ab da
-  bis zu seiner Anlage zurück; ein nie gesperrtes Konto war seit seiner Anlage aktiv. Einen zweiten
-  Lesepfad — einen „Verlauf" am Konto in der Benutzerverwaltung — gibt es bewusst nicht.
+  bis zu seiner Anlage zurück; ein nie gesperrtes Konto war seit seiner Anlage aktiv. Dieselbe Kette
+  hält jeden anderen Grund fest, aus dem ein Konto nicht nutzbar ist (lokale Sperre, Ablauf,
+  Einladung, abgeschalteter Anbieter; bewusst nicht die Anmeldesperre nach Fehlversuchen; [Der Lesepfad](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822)).
+  Einen zweiten Lesepfad — einen „Verlauf" am Konto in der Benutzerverwaltung — gibt es bewusst nicht.
 
 ### Gruppensynchronisation ist ein Rechteereignis
 
@@ -1189,6 +1227,12 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
   gemeldet. Ein leeres Abgleichergebnis darf nie als „alle Gruppenmitgliedschaften entfallen" gedeutet
   werden — und es ist der eine Fall, der **nicht** bestätigungsfähig ist: „Die Quelle hat nicht
   geantwortet, wie sie soll" darf niemand wegklicken.
+- Bricht ein Lauf beim Lesen des Verzeichnisses oder danach mit einem anderen Fehler als „nicht
+  erreichbar" ab, etwa an einem Wert, den die Datenbank ablehnt, gilt ebenfalls der **letzte bekannte Stand weiter**. Der Lauf steht mit
+  Zeitpunkt und Ergebnis „fehlgeschlagen" (`FAILED`) in der Statuszeile und als Kopfeintrag im
+  Nachweisprotokoll, beides ohne die Ursache; die steht im Anwendungsprotokoll. Er zählt als Lauf,
+  der Zeitplan wartet also das Intervall ab, statt das Verzeichnis jede Minute erneut abzurufen
+  (#2902).
 - **Der Wechsel des Mechanismus entzieht nichts still.** Token-Gruppen und Verzeichnisgruppen sind
   verschiedene Objekte. Wird der Abgleich für einen Anbieter eingeschaltet, weist der
   Differenzbericht des ersten Laufs seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie
@@ -1521,7 +1565,7 @@ Zuständigkeit in der Meldung (`409`, Code `SUCCESSION_OPEN`):
 
 - eine neue oder geänderte Berechtigung an der Bibliothek,
 - eine größere Sichtbarkeit (eine Freigabe an „Alle Konten" ist eine neue Berechtigung, siehe oben),
-- eine Freigabe für Fremdzugänge,
+- eine Freigabe für externe KI-Werkzeuge,
 - eine neue Bereitstellung in einem Space (beide Seiten),
 - ein neues Mitglied im Space.
 
@@ -1581,6 +1625,14 @@ lesbar, ist aber keine Auswertungsachse. Ein
 Spezifikationstest hält das fest: Die Liste nimmt genau `kind`, `page` und `size` entgegen und keinen
 Sortierparameter.
 
+**Die Art der Eigentümerin bestimmt den Ausgang.** Eine Zeile zu einem Arbeitsmittel nennt, ob es einer
+Person, einer Gruppe oder einer nicht mehr auflösbaren Eigentümerin gehört (`ownerType`), und bei einer
+Gruppe deren Kennung (`ownerGroupId`) — eine Person nie. Auch die Art ist weder Filter noch
+Sortierschlüssel noch Zählung (Personalrat E1). Sie entscheidet über den einen nächsten Schritt: Ein
+Objekt einer Person geht über die Übergabe von Person zu Person an eine Nachfolge; ein Objekt einer
+Gruppe eines Anbieters bewegt nur eine Übertragung mit dieser Gruppe als Quelle (Entscheidung 10), die
+auch eine aufgelöste Gruppe zulässt — eine Übergabe zwischen zwei Konten fände kein Konto, das es hält.
+
 **Alterungsschwelle ohne Zwang.** Einträge älter als
 `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` (Vorgabe 12 Monate, orientiert an der Höchstfrist der
 Vollmacht) werden als „lange offen“ hervorgehoben. Keine Frist, keine Eskalation, keine Mail. Einen
@@ -1628,7 +1680,7 @@ Anmeldung und für API-Identitäten:
 ```
 Netzbereiche (organisationsweite Vorgabe):
   interaktiv:    Hausnetz + VPN-Bereich der Dienststelle
-  Fremdzugänge:  für den ganzen Kanal gesetzt, Voreinstellung: nur Hausnetz
+  externe KI-Werkzeuge:  für den ganzen Zugriffsweg gesetzt, Voreinstellung: nur Hausnetz
   Ausnahmen:     benannt, befristet, begründet
 ```
 
@@ -1660,7 +1712,7 @@ Verbindungsversuch wird als Sicherheitsereignis festgehalten, der zulässige nic
 kurzlebiges Zugangstoken, dazu ein rotierendes Refresh-Token mit einer Leerlauffrist und einer
 absoluten Höchstdauer, die keine Rotation verlängert — für lokale Systemverwalterkonten mit eigenen,
 deutlich kürzeren Werten. Die Zahlen sind organisationsweite Betriebseinstellungen und stehen in der
-Variablenliste des Handbuchs (`docs/handbuch/konfiguration.md`). Widerruf wirkt **sofort**, nicht erst mit dem Ablauf: einzeln
+Variablenliste des Handbuchs (`docs/handbuch/betrieb/konfiguration.md`). Widerruf wirkt **sofort**, nicht erst mit dem Ablauf: einzeln
 über die Sperrliste der Zugangstokens (Abmeldung), auf einen Schlag über einen Zeitstempel am Konto
 (Passwortwechsel, Sperre, Zurücksetzen, Abschalten der Verwaltung). Die Vorlage eines bereits
 rotierten Refresh-Tokens gilt als Wiederverwendung und beendet **alle** Sitzungen des Kontos. Eine
@@ -1694,7 +1746,7 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 ## API-Tokens und Service-Accounts
 
 > **Erste Stufe entschieden (18.09.2026):** Gebaut wird zunächst nur das **persönliche Zugangstoken**
-> für lesende Fremdzugänge — fest auf Suchen und Abrufen begrenzt (kein Umfangsmenü), mit
+> für lesende Zugriffe externer KI-Werkzeuge — fest auf Suchen und Abrufen begrenzt (kein Umfangsmenü), mit
 > Pflicht-Ablaufdatum unter einer systemweiten Obergrenze, mit einer konkreten und danach
 > unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
 > Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
@@ -1809,7 +1861,7 @@ automatisch greift.
 - **Daten-Indizierung:** Zuordnung von Quellen zu Wissensbibliotheken →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
-- **Fremdzugänge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
+- **Externe KI-Werkzeuge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
   Freigabe je Bibliothek → [external-access.md](./external-access.md)
 - **Modelle:** zentrale Vorgaben gelten je Organisation → [llm-integration.md](./llm-integration.md)
 - **Sicherheit und Nachweis:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →

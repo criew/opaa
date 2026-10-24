@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
@@ -12,6 +13,8 @@ import io.opaa.indexing.chunk.EmbeddingIndexStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.maintenance.EmbeddingReindexService.Step;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -22,6 +25,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,10 +39,12 @@ class EmbeddingReindexServiceTest {
 
   private final ContextPrefixRerunService rerunService = mock(ContextPrefixRerunService.class);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
+  private final EmbeddingIndexStore store = mock(EmbeddingIndexStore.class);
+  private final CurrentInstance currentInstance = mock(CurrentInstance.class);
   private final EmbeddingReindexService service =
       new EmbeddingReindexService(
           new EmbeddingIndexState(),
-          mock(EmbeddingIndexStore.class),
+          store,
           mock(VectorIndexSchema.class),
           rerunService,
           documentRepository,
@@ -48,7 +54,18 @@ class EmbeddingReindexServiceTest {
           mock(KnowledgeLibraryRepository.class),
           mock(PersonThreshold.class),
           new VectorTable("public", "vector_store"),
-          Clock.systemUTC());
+          Clock.systemUTC(),
+          currentInstance,
+          mock(InstanceRegistry.class));
+
+  /** This instance owns the run throughout. */
+  @BeforeEach
+  void ownTheRun() {
+    UUID self = UUID.randomUUID();
+    when(currentInstance.id()).thenReturn(self);
+    when(currentInstance.heartbeatCurrent()).thenReturn(true);
+    when(store.ownsRunningRun(self)).thenReturn(true);
+  }
 
   @Test
   void documentsWhoseRowsAnotherWriterHoldsAreSkippedWithoutStoppingTheRun() {
@@ -91,5 +108,13 @@ class EmbeddingReindexServiceTest {
     when(document.getId()).thenReturn(documentId);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
     return documentId;
+  }
+
+  @Test
+  void aRunCancelledOrTakenOverElsewhereStopsBeforeTheNextDocument() {
+    when(store.ownsRunningRun(currentInstance.id())).thenReturn(false);
+
+    assertThat(service.reembed(document(), new HashSet<>(), new int[] {0})).isEqualTo(Step.STOPPED);
+    verifyNoInteractions(rerunService);
   }
 }

@@ -521,6 +521,41 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       expect(sourceLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
     })
 
+    // regression guard for #2912: a source address from third-party metadata only becomes a
+    // link target with an http(s) scheme.
+    it.each([
+      ['sourceUrl', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='],
+      ['sourceUrl', 'javascript:alert(1)'],
+      ['sourceEntryUrl', ' JaVaScRiPt:alert(1)'],
+      ['sourceEntryUrl', 'data:text/html,<script>alert(1)</script>'],
+    ] as const)('renders no "Quelle" link for a %s with the address %j', async (field, url) => {
+      const { drawer } = await openDrawerWith(
+        source('doc.pdf', true, 0.9, true, {
+          documentId: 'doc-1',
+          sourceType: 'HTTP_DIRECTORY',
+          [field]: url,
+        }),
+      )
+
+      expect(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' })).toBeVisible()
+      expect(within(drawer).queryByRole('link', { name: /^Quelle/ })).not.toBeInTheDocument()
+      expect(within(drawer).queryByText('Quelle')).not.toBeInTheDocument()
+    })
+
+    it('keeps the "Quelle" link for an https sourceEntryUrl', async () => {
+      const { drawer } = await openDrawerWith(
+        source('anhang.pdf', true, 0.9, true, {
+          documentId: 'doc-1',
+          sourceType: 'RSS_FEED',
+          sourceEntryUrl: 'https://example.gov/feed/eintrag-7',
+        }),
+      )
+
+      expect(
+        within(drawer).getByRole('link', { name: 'Quelle: https://example.gov/feed/eintrag-7' }),
+      ).toHaveAttribute('href', 'https://example.gov/feed/eintrag-7')
+    })
+
     it('hides the action for a synthetic entry with no documentId at all', async () => {
       const { drawer } = await openDrawerWith(source('doc.pdf', true, 0.9))
 

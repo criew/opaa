@@ -27,7 +27,7 @@
 > - die [Pflichten der Rollen](#verankerung-in-der-agentenorganisation) für Spezifikation (#2571),
 >   Umsetzung und Review (#2572) und die Rolle „Behördenkontakt“
 >   ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573)
-> - das Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md)
+> - das Handbuchkapitel [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md)
 > - das [kumulierte Delta](#das-kumulierte-delta) des Manifests zwischen zwei Versionen mit
 >   Stufenvorschlag nach den [Stufenregeln](#die-stufenregeln), lokal mit
 >   `./gradlew complianceDelta` (#2554)
@@ -35,12 +35,12 @@
 >   zum vorigen finalen Release, Lizenzübersicht und Vorlage Update-Vermerk, attestiert; der
 >   Release-Lauf bricht vorher bei unvollständigem Manifest ab (#2556)
 > - Betriebsfolgen und Antwortqualität im Update-Paket (#2555)
+> - das Offline-Bündel für Netze ohne Internetzugang am GitHub-Release jeder Version (#2557)
 >
 > **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
-> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
+> Konfigurationsexport der Instanz (#2558, #2559); außerdem der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
-> (#2562, #2563, #2566) und die
-> Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -106,7 +106,7 @@ Ende angefügt, damit die bestehenden Verweise gültig bleiben.
 | # | Beschluss | Wirkung in dieser Spezifikation |
 |---|---|---|
 | 1 | **Kein „standardmäßig aus“** für neue Funktionen. Änderungen mit Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen werden stattdessen in den Release-Notizen und im Update-Paket sichtbar | [Update-Paket](#das-update-paket), [Automatisierung](#automatisierung-und-drift-erkennung); der Vorschlag R1 steht unter [Offene Fragen](#offene-fragen--zukünftige-erweiterungen) als abgelehnt |
-| 2 | **Sicherheitsupdates für bestimmte Versionen mit festem Supportzeitraum** sind gewollt; die Ausgestaltung prüft #2575 | [Dienstvereinbarung](#das-modell-der-dienstvereinbarung), Abschnitt Sicherheitsupdates |
+| 2 | **Sicherheitsupdates für bestimmte Versionen mit festem Supportzeitraum** sind gewollt; ausgestaltet in [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md): das Juni-Release als LTS-Linie, jedes andere bis einen Monat nach dem Nachfolger, Patch-Releases ohne neue Funktion | [Dienstvereinbarung](#das-modell-der-dienstvereinbarung), Abschnitt Sicherheitsupdates |
 | 3 | **Kein rechtlicher Prüfer.** Redaktionelle Vorlagen tragen den Hinweis „Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.“ | [Kopfvermerk und Haftungshinweis](#kopfvermerk-und-haftungshinweis) |
 | 4 | **Keine Aussage zur Codeentstehung durch KI-Agenten** in den Markterkundungsunterlagen. Auf ausdrückliche Nachfrage lautet die Antwort: hauptsächlich KI-generiert und menschlich kuratiert | [Behördenreise](#die-behördenreise), Phase 1 |
 | 5 | **Ablage als Markdown in `docs/behoerden/`**, nicht im Handbuch, kein eigener Branch (Ordner und Konventionen: #2545) | [Erzeugungsarten und Ablage](#erzeugungsarten-und-ablage) |
@@ -145,8 +145,9 @@ mit `§` oder `Art.` in der Quellentabelle steht und jede Zeile dort einen Link 
 trägt, und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel jedes
 Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
 [SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
-`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
-Vorlagen der Phasen 0 bis 3 und die Mitbestimmung.
+`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(gebaut, #2566)**
+Muster-Dienstvereinbarung und Informationsmappe für den Personalrat liegen in
+`docs/behoerden/05-mitbestimmung/`. **(Zielbild)** Die übrigen Vorlagen der Phasen 0 bis 3.
 
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
@@ -229,7 +230,7 @@ Kopfvermerk hält das Datum dieser Prüfung als `rechtsstand` fest.
 
 **(gebaut, #2546, #2548, #2549)** Das Fakten-Manifest beschreibt in einer Datei je Bereich
 (Protokoll; Konten, Anmeldung und Rollen; Rechte und Gruppen; Spaces; Chats; Bibliotheken und
-Indexierung; Verbindungen; Fremdzugänge; Konfiguration und Standardmodelle; System-Prompts und
+Indexierung; Verbindungen; Externe KI-Werkzeuge; Konfiguration und Standardmodelle; System-Prompts und
 KI-Funktionen; ausgehende Datenflüsse), welche Daten OPAA erhebt und verarbeitet. Jeder Eintrag hat
 feste Pflichtfelder:
 
@@ -301,8 +302,8 @@ Richtigkeit durch Prüfung.
 Die KI-Funktionen stehen mit den System-Prompts im Blatt Voreinstellungen. Erzeugt werden die Blätter
 mit `./gradlew complianceDocs`; der Job `backend-build` der CI legt sie als Artefakt
 `compliance-faktenblaetter` ab. Namen, Kopf und Anker beschreibt
-[`docs/behoerden/README.md`](../behoerden/README.md#faktenblätter), die Sicht des Betriebs das
-Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md). Die Lizenzübersicht
+[`docs/behoerden/AGENTS.md`](../behoerden/AGENTS.md#faktenblätter), die Sicht des Betriebs das
+Handbuchkapitel [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md). Die Lizenzübersicht
 entsteht getrennt davon in der Lizenzprüfung (#2551) als Artefakte `license-report-backend` und
 `license-report-frontend`.
 
@@ -351,7 +352,7 @@ Schemaänderung.
 
 Daneben prüft die CI die Vorlagen in `docs/behoerden/`: Kopfvermerk, Haftungshinweis und jeden
 Verweis auf ein Faktenblatt gegen die aus dem Manifest erzeugte Liste gültiger Ziele
-(`.github/fact-sheet-anchors.txt`, [Regeln](../behoerden/README.md#automatische-prüfung)).
+(`.github/fact-sheet-anchors.txt`, [Regeln](../behoerden/AGENTS.md#automatische-prüfung)).
 
 ### Schicht 2: Kennzeichnung datenrelevanter Änderungen am PR
 
@@ -415,7 +416,7 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 Paket zu jedem Release, hängt es an und attestiert es (#2556); Faktenblätter und Lizenzübersicht
 stammen aus #2550 und #2551, das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den
 gekennzeichneten Pull Requests aus #2553 und #2554, Betriebsfolgen und Antwortqualität aus #2555.
-**(Zielbild)** Teil 7 (#2558, #2559) und das Offline-Bündel (#2557).
+**(gebaut, #2557)** Das Offline-Bündel. **(Zielbild)** Teil 7 (#2558, #2559).
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -442,6 +443,11 @@ Faktenblätter, die Lizenzübersicht,
 die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
 [releases.md](../releases.md#update-paket).
 
+**(gebaut, #3028)** Das Paket enthält außerdem alle Behördenvorlagen und das Handbuch der Version,
+untereinander und mit den Faktenblättern relativ verlinkt, und neben jeder Markdown-Datei eine
+HTML-Seite mit `index.html` als Startseite. So lässt es sich hinter der Schleuse ohne
+Internetzugang lesen; die Vorlagen setzen voraus, dass sie dort gelesen werden.
+
 **(gebaut, #2555)** Die Teile 3 und 4 liegen als `betrieb/betriebsfolgen.md` und
 `betrieb/antwortqualitaet.md` im Archiv, für dasselbe Intervall wie das Delta und jede Angabe mit
 Quelle. Sie stehen neben dem Delta, nicht darin: Ihre Quellen sind keine Fakten des Manifests.
@@ -453,8 +459,9 @@ Retrieval-Regression beider Versionen mit Messdatum; einen Messlauf auf dem Rele
 Projekt nicht ab, das Paket sagt das als „nicht gemessen“. Quellen, Regeln und Grenzen im Einzelnen:
 [releases.md](../releases.md#betriebsfolgen-und-antwortqualität). Gleicher Commit ergibt gleiche Dateien, bis auf die
 gekennzeichneten Pull Requests im Delta, die dem Label-Stand zum Zeitpunkt des Laufs folgen.
-**(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
-Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
+**(gebaut, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
+Chart, SBOMs und Attestierungen für Netze ohne Internetzugang; Aufbau und Prüfung ohne Netz
+beschreibt [releases.md](../releases.md#offline-bündel).
 
 ### Das kumulierte Delta
 
@@ -467,8 +474,12 @@ Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas
 **(gebaut, #2556)** Am Release wird das Delta zum vorigen finalen Release erzeugt, bei
 Vorab-Releases ebenso: zum höchsten finalen Tag unter der eigenen Version, das der getaggte Commit
 enthält. Vor dem ersten finalen Release vergleicht es mit einem Stand ohne Manifest, jeder Eintrag
-erscheint als neu. Welches Release bei mehreren Supportlinien als Vorgänger gilt, folgt aus der
-Entscheidung in #2575; bis dahin gilt diese Regel.
+erscheint als neu. Die Regel trägt auch mehrere [Supportlinien](../releases.md#supportlinien): Ein
+Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(gebaut, #3020)** Ein
+LTS-Release und seine Kandidaten bekommen zusätzlich Delta, Betriebsfolgen und Antwortqualität
+gegenüber dem jüngsten Release der vorigen LTS-Linie, getrennt in `delta-lts/` und `betrieb-lts/`
+([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5;
+[Update-Paket](../releases.md#update-paket)).
 
 **(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
 ([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):
@@ -549,7 +560,7 @@ redaktionell sein kann.
 | neuer Datenfluss, neues Ziel eines Datenflusses, geänderte Adresse einer Modellrolle oder eines Konnektors | Zustimmung Z5 (Adresse auch Z7) | ja | ja |
 | neue KI-Funktion; geänderte Ausgabeart, Interaktion, Bewertung von Personen, Kennzeichnung oder Prompts einer KI-Funktion | Zustimmung Z6 | — | — |
 | neue Voreinstellung (als Frist auch Z4), geänderter Standardwert oder geänderte Helm-Voreinstellung | Zustimmung Z7 | bei neuer Frist | — |
-| neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; geänderte Gruppe eines Datenflusses (Z5); neuer System-Prompt; neues Datum ohne Personenbezug und ohne Tabelle; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel | Zustimmung, offen | bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle | beim Weg über den Ausgangsproxy |
+| neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; geänderte Zuordnung zur Person (Weg, Ausschluss, ausgenommene Spalte); geänderte Gruppe eines Datenflusses (Z5); neuer System-Prompt; neues Datum ohne Personenbezug und ohne Tabelle; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel | Zustimmung, offen | bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle | beim Weg über den Ausgangsproxy |
 | kürzere Frist, entfallene Daten, Spalten, Ereignisse, Rollen, Datenflüsse, KI-Funktionen, Prompts oder Zugriffswege, eingeschränkte Sichtbarkeit, schwächerer Personenbezug | Anzeige | außer bei Spalten ohne Personenbezug, Zugriffswegen, KI-Funktionen und Prompts | — |
 | geänderter System-Prompt (Prüfsumme), geändertes Standardmodell bei gleicher Adresse | Anzeige | — | — |
 | neue Tabelle oder Spalte ohne Personenbezug, neues Datum, dessen Tabellen keine personenbezogene Spalte haben | Bagatelle (Liste, Punkt 3: neue Spalte oder Tabelle ohne Personenbezug) | — | — |
@@ -583,8 +594,9 @@ beteiligungsrelevant wie eine Produktänderung. Deshalb:
 
 ## Das Modell der Dienstvereinbarung
 
-**(Zielbild, #2566)** Die Muster-Dienstvereinbarung soll nicht bei jedem Release neu verhandelt
-werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
+**(gebaut, #2566)** Die Muster-Dienstvereinbarung
+([`docs/behoerden/05-mitbestimmung/dienstvereinbarung.md`](../behoerden/05-mitbestimmung/dienstvereinbarung.md))
+soll nicht bei jedem Release neu verhandelt werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
 
 **Haupttext.** Zweck; Verbot der Leistungs- und Verhaltenskontrolle mit Verwertungsverbot;
 Auswertungsverbot einschließlich Datenbank- und Protokollzugriff, mit benannten Rollen und
@@ -604,8 +616,23 @@ passenden Vorschlag, und die neue Fassung der Anlagen ersetzt die alte erst nach
 
 **Sicherheitsupdates (Beschluss 2).** Kritische Sicherheitsupdates werden sofort eingespielt, mit
 nachträglicher Unterrichtung des Personalrats. Das trägt nur, wenn sie keine neuen Funktionen
-enthalten — deshalb verweist die Vereinbarung auf die Supportlinien mit festem Zeitraum aus #2575. Heute entsteht ein Patch-Release mit
-Codeänderung nur, solange `main` keine neue Funktion trägt ([releases.md](../releases.md#versionsnummern)).
+enthalten — deshalb verweist die Vereinbarung auf die
+[Supportlinien](../releases.md#supportlinien) mit festem Zeitraum: Patch-Releases einer Linie
+bringen keine neue Funktion; eine Korrektur im Code kommt per
+[Backport](../releases.md#backport) auf den Wartungsbranch der Linie. Ein **Funktionsupdate** wird erst nach Abschluss
+der Stufe eingespielt, vorher nur, wenn jede Funktion der Stufe Zustimmung in der Installation
+abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Beim **Wechsel der
+Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
+eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
+(bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
+erneut gestuft. Das Delta von der vorigen LTS-Linie zum Kandidaten liegt dem Paket bei; ein Delta
+von einer anderen Version erzeugt der Betrieb. Steht eine
+Sicherheitskorrektur nur in einem Funktionsupdate bereit (etwa weil die eingesetzte Linie ausgelaufen
+ist oder sich die Korrektur nicht zurückportieren lässt), darf die Dienststellenleitung es als
+vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine
+nicht abschaltbare zustimmungspflichtige Änderung wird bis zur Zustimmung weder genutzt noch
+ausgewertet, der Personalrat wird unverzüglich unterrichtet und die Beteiligung nachgeholt
+(Entscheidung des Maintainers vom 23.10.2026).
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
 Auswertungen, Datenfluss zum Modellanbieter, Wirkung des Abschaltens einzelner Funktionen, Glossar,
@@ -666,7 +693,7 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
 - **[public-sector.md](./public-sector.md)** — Barrierefreiheit (Erklärung zur Barrierefreiheit,
   #2569) und Revisionssicherheit (Anbietungspflicht an das Archiv im Löschkonzept, #2565)
 - **[releases.md](../releases.md)** — Release-Workflow, Attestierung, Upgrade-Hinweise als Quelle der
-  Betriebsfolgen, Supportlinien nach #2575
+  Betriebsfolgen, Supportlinien nach ADR-0054
 - **[sbom.md](../sbom.md)**, **[cve-scanning.md](../cve-scanning.md)** — Nachweise, auf die
   Vergabe- und Sicherheitsvorlagen verweisen
 - **[search-quality-evaluation.md](./search-quality-evaluation.md)** — Quelle der Antwortqualität im
@@ -682,10 +709,10 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
 
 - **R1 „standardmäßig aus“** (abgelehnt, Beschluss 1): Neue Funktionen mit Datenwirkung sollten nach
   dem ersten Konzeptentwurf ausgeschaltet ausgeliefert werden. Stattdessen werden sie in
-  Release-Notizen und Update-Paket sichtbar. Offen bleibt die Folge für die Dienstvereinbarung: Reicht
-  die Abschaltbarkeit in der Konfiguration, wenn ein Release eine beteiligungspflichtige Funktion
-  sofort aktiv mitbringt, oder braucht es dafür die Supportlinien aus #2575? Klärung gemeinsam mit
-  #2566 und #2575.
+  Release-Notizen und Update-Paket sichtbar. Die Folge für die Dienstvereinbarung ist mit #2566
+  geregelt: Sicherheitsupdates kommen über die Supportlinien aus ADR-0054 ohne neue Funktion, und ein
+  Funktionsupdate wartet, bis zugestimmt oder die Funktion abgeschaltet ist (siehe
+  [Das Modell der Dienstvereinbarung](#das-modell-der-dienstvereinbarung)).
 - **Unternehmen** (zurückgestellt, Beschluss 6): Unterlagen für Betriebsrat (§ 87 Abs. 1 Nr. 6
   BetrVG), ISO 27001, NIS2 für Unternehmen und die CRA-Herstellerrolle folgen in einem eigenen
   Vorhaben.

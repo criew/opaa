@@ -24,6 +24,7 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.test.TestInvalidationBus;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -50,7 +51,8 @@ class LibraryAccessServiceTest {
             grantRepository,
             membershipResolver,
             mock(GroupSubjectDirectory.class),
-            Clock.systemUTC());
+            Clock.systemUTC(),
+            TestInvalidationBus.listening());
     accessService =
         new LibraryAccessService(
             assetAccessService,

@@ -24,6 +24,8 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
 - **Die wirksame Sicht wird je Aufruf berechnet, nie im Token eingefroren:** Rechte der Person,
   Freigabe der Bibliothek, Auswahl des Tokens, Schalter der Installation
   (`ExternalAccessTokenScopeService`).
+- **Die Token-ID reist am Aufrufer** (`CurrentUser#accessTokenId`), nie über Request-Attribut oder
+  Thread; ein Tokenaufrufer ohne Token-ID lässt sich nicht bauen, ein MCP-Aufruf ohne sie wird abgewiesen.
 - **Kein Tokenpräfix ins Log:** Mit einem Zeitstempel ergäbe es die personenbezogene
   Abfragehistorie, die das Revisionsprotokoll bewusst ausschließt
   (`ExternalAccessTokenAuthenticationIntegrationTest#thePrefixAppearsInNoLogLineOfTheApplication`).
@@ -46,7 +48,7 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/fremdzugaenge.md`
+- Handbuch: `docs/handbuch/spaces/fremdzugaenge.md`
 
 ## Tests bei Änderungen
 

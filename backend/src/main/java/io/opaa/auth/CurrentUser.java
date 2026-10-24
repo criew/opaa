@@ -39,6 +39,7 @@ public final class CurrentUser {
   private final SystemRole systemRole;
   private final String displayName;
   private final String email;
+  private final UUID accessTokenId;
 
   /**
    * Reflection guard, never called by application code - see the class Javadoc. Spring's data
@@ -51,12 +52,18 @@ public final class CurrentUser {
   }
 
   private CurrentUser(
-      UUID id, UUID organizationId, SystemRole systemRole, String displayName, String email) {
+      UUID id,
+      UUID organizationId,
+      SystemRole systemRole,
+      String displayName,
+      String email,
+      UUID accessTokenId) {
     this.id = id;
     this.organizationId = organizationId;
     this.systemRole = systemRole;
     this.displayName = displayName;
     this.email = email;
+    this.accessTokenId = accessTokenId;
   }
 
   public UUID id() {
@@ -80,6 +87,16 @@ public final class CurrentUser {
     return email;
   }
 
+  /**
+   * The access token this call arrived on, or {@code null} for a signed-in person. Carried by the
+   * caller itself rather than by the request or the thread, so the effective view and the quota key
+   * of a token call travel wherever the caller goes. Only {@link #forExternalAccess} sets it, and
+   * never to {@code null}.
+   */
+  public UUID accessTokenId() {
+    return accessTokenId;
+  }
+
   public boolean isSystemAdmin() {
     return systemRole == SystemRole.SYSTEM_ADMIN;
   }
@@ -99,14 +116,19 @@ public final class CurrentUser {
    * system role. A token reaches the paths of {@code ExternalAccessPathAllowlist} and nothing else,
    * whatever the person may do in the web interface - and an endpoint that authorises out of this
    * snapshot rather than out of {@code @PreAuthorize} must not be able to undo that.
+   *
+   * <p>The token id is mandatory: a token caller without one cannot exist, so no reader can mistake
+   * a token call for a signed-in person and serve it the person's full view.
    */
-  static CurrentUser forExternalAccess(User user) {
+  static CurrentUser forExternalAccess(User user, UUID accessTokenId) {
+    Objects.requireNonNull(accessTokenId, "An access-token caller needs the id of its token");
     return new CurrentUser(
         user.getId(),
         user.getOrganizationId(),
         SystemRole.USER,
         user.getDisplayName(),
-        user.getEmail());
+        user.getEmail(),
+        accessTokenId);
   }
 
   static CurrentUser from(User user) {
@@ -115,7 +137,8 @@ public final class CurrentUser {
         user.getOrganizationId(),
         user.getSystemRole(),
         user.getDisplayName(),
-        user.getEmail());
+        user.getEmail(),
+        null);
   }
 
   /**
@@ -123,12 +146,12 @@ public final class CurrentUser {
    */
   public static CurrentUser of(
       UUID id, UUID organizationId, SystemRole systemRole, String displayName) {
-    return new CurrentUser(id, organizationId, systemRole, displayName, null);
+    return new CurrentUser(id, organizationId, systemRole, displayName, null, null);
   }
 
   public static CurrentUser of(
       UUID id, UUID organizationId, SystemRole systemRole, String displayName, String email) {
-    return new CurrentUser(id, organizationId, systemRole, displayName, email);
+    return new CurrentUser(id, organizationId, systemRole, displayName, email, null);
   }
 
   @Override
@@ -143,12 +166,13 @@ public final class CurrentUser {
         && Objects.equals(organizationId, that.organizationId)
         && systemRole == that.systemRole
         && Objects.equals(displayName, that.displayName)
-        && Objects.equals(email, that.email);
+        && Objects.equals(email, that.email)
+        && Objects.equals(accessTokenId, that.accessTokenId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, organizationId, systemRole, displayName, email);
+    return Objects.hash(id, organizationId, systemRole, displayName, email, accessTokenId);
   }
 
   @Override
@@ -163,6 +187,8 @@ public final class CurrentUser {
         + displayName
         + ", email="
         + email
+        + ", accessToken="
+        + (accessTokenId != null)
         + "]";
   }
 }

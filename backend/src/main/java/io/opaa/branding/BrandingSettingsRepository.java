@@ -54,7 +54,7 @@ public interface BrandingSettingsRepository extends JpaRepository<BrandingSettin
   /** Everything except the image bytes - see the interface Javadoc for why that matters. */
   @Query(
       "SELECT new io.opaa.branding.BrandingSettingsView("
-          + "b.productName, b.claim, b.primaryColor, b.defaultColorScheme,"
+          + "b.productName, b.claim, b.aiNotice, b.primaryColor, b.defaultColorScheme,"
           + " b.logoContentType, b.logoVersion, b.logoUpdatedAt,"
           + " b.loginLogoContentType, b.loginLogoVersion, b.loginLogoUpdatedAt,"
           + " b.loginBackgroundContentType, b.loginBackgroundVersion, b.loginBackgroundUpdatedAt)"

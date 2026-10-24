@@ -1,0 +1,94 @@
+# Fixtures for RollingUpdateGuardTest: every changeSet leaves the release that still runs while it
+# is applied intact, although several of them name a forbidden statement in a comment, a string
+# literal or a function body. Applied in order to an empty schema.
+databaseChangeLog:
+  - changeSet:
+      id: setup
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE guard_fixture (
+                  id uuid PRIMARY KEY,
+                  legacy text,
+                  defaulted text DEFAULT 'x',
+                  narrow character varying(100),
+                  state character varying(10),
+                  CONSTRAINT chk_guard_fixture_state CHECK (state IN ('A', 'B'))
+              );
+  - changeSet:
+      id: add-nullable-column
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ADD COLUMN extra text;
+  - changeSet:
+      id: add-not-null-column-with-default
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ADD COLUMN flag boolean NOT NULL DEFAULT false;
+  - changeSet:
+      id: set-not-null-with-lasting-default
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ALTER COLUMN defaulted SET NOT NULL;
+  - changeSet:
+      id: widen-type
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ALTER COLUMN narrow TYPE text;
+  - changeSet:
+      id: widen-check
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE guard_fixture DROP CONSTRAINT chk_guard_fixture_state;
+              ALTER TABLE guard_fixture ADD CONSTRAINT chk_guard_fixture_state CHECK (state IN ('A', 'B', 'C'));
+  - changeSet:
+      id: check-on-new-column
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE guard_fixture ADD COLUMN level integer;
+              ALTER TABLE guard_fixture ADD CONSTRAINT chk_guard_fixture_level CHECK (level > 0);
+  - changeSet:
+      id: new-table-with-index
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE guard_fixture_child (id uuid PRIMARY KEY, parent_id uuid NOT NULL REFERENCES guard_fixture (id));
+              CREATE INDEX ix_guard_fixture_child_parent ON guard_fixture_child (parent_id);
+  - changeSet:
+      id: forbidden-words-that-do-not-run
+      author: opaa
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- ALTER TABLE guard_fixture DROP COLUMN legacy;
+              /* DROP TABLE guard_fixture; ALTER TABLE guard_fixture RENAME TO x; */
+              COMMENT ON COLUMN guard_fixture.legacy IS 'ALTER TABLE guard_fixture DROP COLUMN legacy';
+              CREATE FUNCTION guard_fixture_cleanup() RETURNS void LANGUAGE plpgsql AS $body$
+              BEGIN
+                DROP TABLE guard_fixture_child;
+              END $body$;
+  - changeSet:
+      id: drop-check
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture DROP CONSTRAINT chk_guard_fixture_state;
+  - changeSet:
+      id: table-created-and-dropped-within
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE guard_fixture_scratch (id integer);
+              DROP TABLE guard_fixture_scratch;

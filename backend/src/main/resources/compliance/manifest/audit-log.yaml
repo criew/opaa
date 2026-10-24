@@ -69,11 +69,34 @@ data:
           - subject_kind
           - outcome
           - correlation_ref
+        person:
+          columns: [actor_ref, subject_ref, object_id]
+          excludedColumns:
+            actor_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            subject_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            object_id: >-
+              Bei Kontoobjekten Pseudonymkennung, auch die eigene; sie machte die Auskunft zum
+              Schlüssel ins Protokoll
+            reason: >-
+              Begründungsfreitext, auch der eigene, der andere Personen nennen kann; die Auskunft
+              sagt nur, ob ein Anlass angegeben war
+          note: >-
+            Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
+            Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
+            Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
+            entfällt, Bezeichnungen anderer Objekte (Spaces, Gruppen, Bibliotheken) bleiben
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
       settings: [audit_retention_settings.retention_months]
-    visibility: [AUDITOR]
+    visibility:
+      - AUDITOR
+      - >-
+        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen oder
+        Kontoobjekt ist, ohne Pseudonyme und Begründungen, andere Beteiligte als „andere Person“
+        oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
@@ -92,6 +115,10 @@ data:
       - name: audit_actor_pseudonyms
         personalColumns: [user_id, pseudonym_id]
         nonPersonalColumns: [organization_id, created_at]
+        person:
+          excluded: >-
+            Die eigene Kennung machte die Auskunft zum Schlüssel ins Protokoll; wer ihre Vorlage
+            erzwingt, hätte den ausgeschlossenen Personeneinstieg
     storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
     retention:
       rule: Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet
@@ -128,6 +155,10 @@ data:
           - approved_at
           - usable_until
           - status
+        person:
+          excluded: >-
+            Die Auskunft über anlassbezogene Klärungen läuft über die oder den
+            Datenschutzbeauftragten; die Übersicht sagt nur, dass es sie geben kann
     storage: Anwendungsdatenbank
     retention:
       rule: >-
@@ -166,6 +197,7 @@ data:
         Löschung der Anträge und Freigaben unbefristet erhalten. Eine Ablehnung gibt es nicht. In
         der Auskunft erscheinen Zahlen von 1 bis 2 nur als „weniger als 3“
 nonPersonalTables:
+  audit_incident_scope_case_counts: [organization_id, case_year, purpose, case_count]
   audit_incident_scope_monthly_counts:
     [organization_id, case_month, purpose, transition, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
@@ -206,10 +238,10 @@ auditEvents:
       Nicht mehr geschrieben; frühere Änderung der Katalog-Auffindbarkeit, lesbar bis zum
       Fristablauf
   - id: ASSET_EXTERNAL_ACCESS_CHANGED
-    trigger: Die Freigabe einer Bibliothek für Fremdzugänge wird gesetzt oder zurückgenommen
+    trigger: Die Freigabe einer Bibliothek für externe KI-Werkzeuge wird gesetzt oder zurückgenommen
     details: Richtung und Ablaufdatum, nie ein Name von Token-Inhabern
   - id: ASSET_EXTERNAL_ACCESS_EXPIRED
-    trigger: Die Fremdzugangsfreigabe einer Bibliothek erlischt durch Fristablauf (Systemvorgang)
+    trigger: Die Freigabe einer Bibliothek für externe KI-Werkzeuge erlischt durch Fristablauf (Systemvorgang)
   - id: SPACE_CREATED
     trigger: Ein Space wird angelegt
   - id: SPACE_CHANGED
@@ -227,6 +259,24 @@ auditEvents:
     trigger: Name oder Beschreibung einer Wissensbibliothek ändert sich
   - id: LIBRARY_DELETED
     trigger: Eine Wissensbibliothek wird gelöscht
+  - id: LOCKED_ACCOUNT_CHATS_DELETED
+    trigger: >-
+      Der nächtliche Lauf löscht Chats eines lokalen Kontos, dessen Frist nach der Sperre durch
+      die Verwaltung abgelaufen ist; ein Eintrag je Konto und Lauf
+    details: >-
+      Beginn der Frist und Sperrgrund, nie Zahl, Titel, Inhalt oder Space der Chats; betroffene
+      Person ist das gesperrte Konto
+    purpose: >-
+      Allein der Nachweis, dass die Chats eines gesperrten Kontos fristgerecht gelöscht wurden;
+      keine Aussage über Nutzung oder Umfang
+    evaluations: >-
+      Wie jedes Ereignis nur nach Objekt, Zeitraum, Ereignisart oder Vorgang, ohne Zählung je
+      Person; die Zahl der gelöschten Chats steht nur als Gesamtzahl im Anwendungslog
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HELD
+    trigger: Die Systemverwaltung hält die Löschung der Chats eines Kontos nach der Sperre an
+    details: Keine Begründung
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED
+    trigger: Die Systemverwaltung setzt die angehaltene Löschung der Chats eines Kontos fort
   - id: PRIVATE_LIBRARY_ERASED
     trigger: Eine private Bibliothek wird mit ihrem Inhalt gelöscht
     details: Zeitpunkt des Antrags, Anlass und Zahlen des Entfernten, nie Name, Pfad oder Inhalt
@@ -311,7 +361,7 @@ auditEvents:
   - id: ACCOUNT_REAUTHENTICATION_FORCED
     trigger: Eine erneute Anmeldung wird erzwungen (noch nicht verdrahtet)
   - id: API_TOKEN_ISSUED
-    trigger: Ein persönliches Zugangstoken für Fremdzugänge wird ausgestellt
+    trigger: Ein persönliches Zugangstoken für externe KI-Werkzeuge wird ausgestellt
     details: Bibliotheksauswahl und Ablauf; Token-Kennung statt Tokenname
   - id: API_TOKEN_REVOKED
     trigger: Ein Zugangstoken wird von der Person oder der Systemverwaltung widerrufen
@@ -323,8 +373,11 @@ auditEvents:
     trigger: Ein Verzeichnisabgleich bewirkt eine einzelne Rechteänderung
     details: Je Änderung ein Eintrag, verbunden über correlation_ref
   - id: DIRECTORY_SYNC_RUN_COMPLETED
-    trigger: Ein Verzeichnislauf endet (Kopfeintrag mit Ergebnis)
-    details: Oberhalb der Schwelle mit bestätigender Person und Anlass in reason
+    trigger: Ein Verzeichnislauf endet (Kopfeintrag mit Ergebnis), auch wenn er mit einem Fehler abbricht
+    details: >-
+      Oberhalb der Schwelle mit bestätigender Person und Anlass in reason; ein nicht erreichbares
+      Verzeichnis und ein abgebrochener Lauf mit Ergebnis FAILURE und fester Meldung, ohne die
+      Fehlerursache
   - id: DIRECTORY_SYNC_PLAN_DISCARDED
     trigger: Ein vorgelegter Abgleichsplan oberhalb der Schwelle wird verworfen
   - id: DIRECTORY_SYNC_REPORT_READ
@@ -479,7 +532,7 @@ auditEvents:
   - id: LOCAL_USER_HANDED_OVER
     trigger: Die Person schließt die Übergabe an die Anbieteridentität ab
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
-    trigger: Die Kanaleinstellungen der Fremdzugänge ändern sich
+    trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
     details: Vorher/Nachher der geänderten Schlüssel; der Einleitungstext erzeugt keinen Eintrag
   - id: CONNECTION_PROFILE_CREATED
     trigger: Ein Verbindungsprofil wird angelegt
@@ -509,3 +562,36 @@ auditEvents:
     details: >-
       Das Format (JSON oder Markdown) und der Berichtszeitraum (erster und letzter Tag); nie der
       Inhalt der Auskunft
+  - id: SELF_DISCLOSURE_EXPORT_STARTED
+    trigger: Eine Person beginnt den Export ihrer Selbstauskunft (Einlösen des Einmal-Tickets)
+    details: >-
+      Handelnde, betroffene Person und Kontoobjekt sind die Person selbst; after nennt die
+      Kategorien, correlation_ref den Export. Kein Inhalt, keine Datensatzzahlen, keine Netzadresse.
+      Ein Beginn ohne Ende heißt abgebrochen mit der Instanz; abgewiesene Versuche schreiben kein
+      Ereignis
+    purpose: >-
+      Nachweis gegenüber der Revision, dass und wann eine Selbstauskunft gestartet wurde, etwa
+      wenn eine Person bestreitet, sie selbst ausgelöst zu haben
+    readers:
+      - AUDITOR über die Wege nach Zeitraum, Ereignisart und Vorgang, nicht nach Objekt
+      - AUDITOR in der freigegebenen anlassbezogenen Klärung über die Person
+      - die Person selbst in ihrer nächsten Selbstauskunft
+  - id: SELF_DISCLOSURE_EXPORT_FINISHED
+    trigger: Der Export einer Selbstauskunft endet, vollständig ausgeliefert oder abgebrochen
+    details: >-
+      after trägt Ergebnis (COMPLETED oder ABORTED), Abbruchgrund (CLIENT_DISCONNECTED, TIMEOUT,
+      SHUTDOWN, ERROR), ausgelieferte Bytes, deren SHA-256-Prüfsumme und die Kategorien; die
+      Prüfsumme steht nicht im ZIP. Kein Inhalt, keine Datensatzzahlen, keine Netzadresse
+    purpose: >-
+      Nachweis gegenüber der Revision, was als Selbstauskunft ausgeliefert wurde (Größe und
+      Prüfsumme), ohne den Inhalt zu speichern
+    readers:
+      - AUDITOR über die Wege nach Zeitraum, Ereignisart und Vorgang, nicht nach Objekt
+      - AUDITOR in der freigegebenen anlassbezogenen Klärung über die Person
+      - die Person selbst in ihrer nächsten Selbstauskunft
+  - id: SELF_DISCLOSURE_SETTINGS_CHANGED
+    trigger: Die Systemverwaltung schaltet die Selbstauskunft um oder ändert ihre Tagesgrenze
+    details: Vorher/Nachher der geänderten Schlüssel (enabled, dailyLimit)
+  - id: LINK_TARGETS_CHANGED
+    trigger: Die Systemverwaltung ändert die erlaubten Linkziele in Antworten
+    details: Vorher/Nachher der ganzen Liste (allowedOrigins)

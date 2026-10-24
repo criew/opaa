@@ -8,13 +8,16 @@ stand-in inputs and check the release job of publish-images.yml as text.
 
 import gzip
 import hashlib
+import html
 import importlib.util
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
 import tarfile
+import urllib.parse
 from pathlib import Path
 
 import pytest
@@ -176,14 +179,54 @@ def inputs(tmp_path: Path) -> dict:
     licenses = [tmp_path / "in" / "lizenzen-backend.md", tmp_path / "in" / "lizenzen-frontend.md"]
     for report in licenses:
         report.write_text("| Paket |\n")
-    template = tmp_path / "in" / "update-vermerk.md"
-    template.write_text("# Update-Vermerk\n")
+    checkout = tmp_path / "in" / "checkout"
+    templates = checkout / "docs" / "behoerden"
+    for path, text in {
+        "README.md": "# Behördenunterlagen\n\n[Update-Vermerk](09-betrieb-update/update-vermerk.md)\n",
+        "AGENTS.md": "# Regeln für Autoren\n",
+        "CLAUDE.md": "@AGENTS.md\n",
+        "09-betrieb-update/update-vermerk.md": "# Update-Vermerk\n\n## Zweck\n",
+    }.items():
+        (templates / path).parent.mkdir(parents=True, exist_ok=True)
+        (templates / path).write_text(text, encoding="utf-8")
+    handbook = checkout / "docs" / "handbuch"
+    for path, text in {
+        "README.md": "# Handbuch\n\n[Betrieb](betrieb.md#ports)\n",
+        "AGENTS.md": "# Regeln für Autoren\n",
+        "CLAUDE.md": "@AGENTS.md\n",
+        "betrieb.md": "# Betrieb\n\n## Ports\n",
+    }.items():
+        (handbook / path).parent.mkdir(parents=True, exist_ok=True)
+        (handbook / path).write_bytes(text.encode("utf-8"))
+    for path in ("SECURITY.md", "docs/releases.md"):
+        (checkout / path).parent.mkdir(parents=True, exist_ok=True)
+        (checkout / path).write_text("# x\n")
     operations = tmp_path / "in" / "betrieb"
     operations.mkdir()
     for name in update_package.OPERATIONS_FILES:
         (operations / name).write_text(f"# {name}\n")
+    sboms = {}
+    for name in ("backend", "frontend"):
+        sboms[name] = tmp_path / "in" / f"{name}.cdx.json"
+        sboms[name].write_text(cyclonedx(f"pkg:npm/{name}-dependency@1.0.0"), encoding="utf-8")
     return dict(fact_sheets=sheets, delta=delta, operations=operations, licenses=licenses,
-                template=template)
+                sboms=sboms, templates=templates, handbook=handbook)
+
+
+def cyclonedx(*purls: str, **fields) -> str:
+    """A CycloneDX BOM as a generator writes it, with its own serial number and time of the run."""
+    bom = {"bomFormat": "CycloneDX", "specVersion": "1.6",
+           "serialNumber": "urn:uuid:00000000-0000-4000-8000-000000000000", "version": 1,
+           "metadata": {"timestamp": "2099-01-01T00:00:00Z"},
+           "components": [{"type": "library", "name": purl, "purl": purl} for purl in purls]}
+    bom.update(fields)
+    return json.dumps(bom)
+
+
+def put_template(inputs: dict, path: str, text: str) -> None:
+    target = inputs["templates"] / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(text.encode("utf-8"))
 
 
 def members(archive: Path) -> dict[str, tarfile.TarInfo]:
@@ -200,7 +243,8 @@ def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Pa
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     assert archive.name == "opaa-update-paket-1.2.3.tar.gz"
-    files = sorted(n for n, m in members(archive).items() if m.isfile())
+    every = sorted(n for n, m in members(archive).items() if m.isfile())
+    files = [n for n in every if not n.endswith((".html", ".css"))]
     assert files == [
         "opaa-update-paket-1.2.3/LIESMICH.md",
         "opaa-update-paket-1.2.3/SHA256SUMS",
@@ -211,17 +255,32 @@ def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Pa
         "opaa-update-paket-1.2.3/faktenblaetter/datenkatalog.md",
         "opaa-update-paket-1.2.3/faktenblaetter/faktenblaetter.json",
         "opaa-update-paket-1.2.3/faktenblaetter/fristen.md",
+        "opaa-update-paket-1.2.3/handbuch/README.md",
+        "opaa-update-paket-1.2.3/handbuch/betrieb.md",
         "opaa-update-paket-1.2.3/lizenzen/lizenzen-backend.md",
         "opaa-update-paket-1.2.3/lizenzen/lizenzen-frontend.md",
+        "opaa-update-paket-1.2.3/sbom/opaa-backend-1.2.3.cdx.json",
+        "opaa-update-paket-1.2.3/sbom/opaa-frontend-1.2.3.cdx.json",
         "opaa-update-paket-1.2.3/update-vermerk.md",
+        "opaa-update-paket-1.2.3/vorlagen/09-betrieb-update/update-vermerk.md",
+        "opaa-update-paket-1.2.3/vorlagen/README.md",
     ]
+    assert [n for n in every if n not in files] == sorted(
+        [n[:-3] + ".html" for n in files if n.endswith(".md")]
+        + ["opaa-update-paket-1.2.3/index.html", "opaa-update-paket-1.2.3/style.css"])
 
 
 def test_the_checksum_files_match_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "# Löschkonzept\n")
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     sums = read(archive, "opaa-update-paket-1.2.3/SHA256SUMS").decode().splitlines()
-    assert len(sums) == 11
+    every = {n.split("/", 1)[1] for n, m in members(archive).items() if m.isfile()}
+    assert {line.split("  ")[1] for line in sums} == every - {"SHA256SUMS"}
+    assert any(line.endswith("  index.html") for line in sums)
+    assert any(line.endswith("  handbuch/betrieb.md") for line in sums)
+    assert any(line.endswith("  vorlagen/04-datenschutz/loeschkonzept.md") for line in sums)
+    assert any(line.endswith("  sbom/opaa-frontend-1.2.3.cdx.json") for line in sums)
     for line in sums:
         digest, path = line.split("  ")
         assert hashlib.sha256(read(archive, f"opaa-update-paket-1.2.3/{path}")).hexdigest() == digest
@@ -254,6 +313,7 @@ def test_the_readme_names_version_previous_release_and_the_verification(tmp_path
     assert "Probelauf" not in text
     assert "| `betrieb/betriebsfolgen.md` |" in text
     assert "| `betrieb/antwortqualitaet.md` |" in text
+    assert "| `sbom/` |" in text
     assert "update_package.py operations --from <älteres Tag> --to v1.2.3" in text
     assert "Betriebsfolgen (Bruch" not in text
 
@@ -315,7 +375,7 @@ def with_placeholders(inputs: dict, template: str, operations: str = "") -> dict
         "# Faktenblatt: Fristen\n\n| <a id=\"audit-retention\"></a>`audit` |\n")
     (inputs["fact_sheets"] / "datenkatalog.md").write_text(
         "# Faktenblatt: Datenkatalog\n\n## <a id=\"bereich-audit-log\"></a>Protokoll\n")
-    inputs["template"].write_text(template)
+    put_template(inputs, "09-betrieb-update/update-vermerk.md", template)
     if operations:
         (inputs["operations"] / "betriebsfolgen.md").write_text(operations)
     return inputs
@@ -399,6 +459,339 @@ def test_an_upgrade_note_with_a_placeholder_stays_as_written(tmp_path: Path, inp
     assert package_markdown(archive)["betrieb/betriebsfolgen.md"] == operations
 
 
+def relative_targets(files: dict[str, str]) -> list[tuple[str, str]]:
+    """(file, target path) of every link outside code in the package that has no scheme and is no
+    bare anchor; code here means the plain ``` blocks and single-backtick spans of these cases."""
+    found = []
+    for path, text in files.items():
+        text = re.sub(r"`[^`\n]*`", "", re.sub(r"```.*?```", "", text, flags=re.DOTALL))
+        for target in re.findall(r"\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)|^ {0,3}\[[^\]]+\]:\s*(\S+)",
+                                 text, re.MULTILINE):
+            target = next(t for t in target if t).split("#", 1)[0]
+            if target and not re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:", target):
+                found.append((path, target))
+    return found
+
+
+def test_every_template_lands_under_vorlagen_with_its_folder_and_without_author_rules(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "# Löschkonzept\n")
+    put_template(inputs, "04-datenschutz/AGENTS.md", "# Kein Autorenregelwerk dieser Ebene\n")
+    put_template(inputs, "04-datenschutz/notizen.txt", "kein Markdown\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert sorted(p for p in files if p.startswith("vorlagen/")) == [
+        "vorlagen/04-datenschutz/AGENTS.md",
+        "vorlagen/04-datenschutz/README.md",
+        "vorlagen/04-datenschutz/loeschkonzept.md",
+        "vorlagen/09-betrieb-update/update-vermerk.md",
+        "vorlagen/README.md",
+    ]
+    assert files["vorlagen/04-datenschutz/loeschkonzept.md"] == "# Löschkonzept\n"
+    assert files["update-vermerk.md"] == files["vorlagen/09-betrieb-update/update-vermerk.md"]
+
+
+def test_placeholders_in_every_template_link_to_the_sheets_from_its_depth(
+        tmp_path: Path, inputs: dict) -> None:
+    with_placeholders(inputs, "Frist: {{faktenblatt:fristen#audit-retention}}\n")
+    put_template(inputs, "README.md", "Daten: {{faktenblatt:datenkatalog}}, `{{faktenblatt:<name>}}`\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md",
+                 "Siehe {{faktenblatt:datenkatalog#bereich-audit-log}}.\n\n```text\n{{faktenblatt:x}}\n```\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert files["vorlagen/README.md"] == (
+        "Daten: [Faktenblatt Datenkatalog](../faktenblaetter/datenkatalog.md), `{{faktenblatt:<name>}}`\n")
+    assert files["vorlagen/04-datenschutz/loeschkonzept.md"] == (
+        "Siehe [Faktenblatt Datenkatalog](../../faktenblaetter/datenkatalog.md#bereich-audit-log)."
+        "\n\n```text\n{{faktenblatt:x}}\n```\n")
+    assert ("[Faktenblatt Fristen](../../faktenblaetter/fristen.md#audit-retention)"
+            in files["vorlagen/09-betrieb-update/update-vermerk.md"])
+    assert "[Faktenblatt Fristen](faktenblaetter/fristen.md#audit-retention)" in files["update-vermerk.md"]
+
+
+def test_an_unknown_placeholder_in_any_template_fails_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "Siehe {{faktenblatt:speicherorte}}.\n")
+
+    with pytest.raises(update_package.PackageError, match="04-datenschutz/loeschkonzept.md.*placeholder"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+LINKS = (
+    "# Löschkonzept\n\n## Fristen\n\n"
+    "Notfall: [Notfallkonzept](../09-betrieb-update/update-vermerk.md#zweck), [hier](#fristen),\n"
+    "[Übersicht](../README.md), [Ordner](./), [Nachbar](./README.md \"Titel\").\n"
+    "Betrieb: [Handbuch](../../handbuch/betrieb.md#ports) und\n"
+    "[Meldewege](../../../SECURITY.md), [Releases](<../../releases.md#update-paket>),\n"
+    "[Handbuch-Ordner](../../handbuch/), [Regeln](../AGENTS.md).\n"
+    "Extern: [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu), [Mail](mailto:a@example.org).\n"
+    "Code: `[x](../../handbuch/betrieb.md)`\n\n"
+    "```markdown\n[y](../../../SECURITY.md)\n```\n\n"
+    "[ref]: ../../handbuch/betrieb.md#ports\n"
+)
+
+
+def test_links_inside_the_package_stay_relative_and_links_out_of_it_point_to_the_release(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", LINKS)
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    blob = "https://github.com/criew/opaa/blob/v1.2.3/"
+    assert package_markdown(archive)["vorlagen/04-datenschutz/loeschkonzept.md"] == (
+        "# Löschkonzept\n\n## Fristen\n\n"
+        "Notfall: [Notfallkonzept](../09-betrieb-update/update-vermerk.md#zweck), [hier](#fristen),\n"
+        "[Übersicht](../README.md), [Ordner](./), [Nachbar](./README.md \"Titel\").\n"
+        "Betrieb: [Handbuch](../../handbuch/betrieb.md#ports) und\n"
+        f"[Meldewege]({blob}SECURITY.md), [Releases](<{blob}docs/releases.md#update-paket>),\n"
+        f"[Handbuch-Ordner](../../handbuch/), [Regeln]({blob}docs/behoerden/AGENTS.md).\n"
+        "Extern: [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu), [Mail](mailto:a@example.org).\n"
+        "Code: `[x](../../handbuch/betrieb.md)`\n\n"
+        "```markdown\n[y](../../../SECURITY.md)\n```\n\n"
+        "[ref]: ../../handbuch/betrieb.md#ports\n"
+    )
+
+
+def test_links_of_the_update_note_at_the_top_of_the_package_follow_its_place(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "# Löschkonzept\n\n## Fristen\n")
+    with_placeholders(inputs, "[Löschkonzept](../04-datenschutz/loeschkonzept.md#fristen),"
+                              " [Releases](../../releases.md), [hier](#zweck),"
+                              " [Handbuch](../../handbuch/betrieb.md#ports)\n\n## Zweck\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert files["update-vermerk.md"] == (
+        "[Löschkonzept](vorlagen/04-datenschutz/loeschkonzept.md#fristen),"
+        " [Releases](https://github.com/criew/opaa/blob/v1.2.3/docs/releases.md), [hier](#zweck),"
+        " [Handbuch](handbuch/betrieb.md#ports)\n\n## Zweck\n")
+    assert files["vorlagen/09-betrieb-update/update-vermerk.md"].startswith(
+        "[Löschkonzept](../04-datenschutz/loeschkonzept.md#fristen),")
+
+
+def test_a_trial_links_out_of_the_templates_to_its_commit(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "README.md", "[Meldewege](../../SECURITY.md)\n")
+
+    archive = update_package.assemble(release(trial=True), out=tmp_path / "out", **inputs)
+
+    assert package_markdown(archive)["vorlagen/README.md"] == (
+        f"[Meldewege](https://github.com/criew/opaa/blob/{'a' * 40}/SECURITY.md)\n")
+
+
+def test_no_relative_link_in_the_package_points_nowhere(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", LINKS)
+    with_placeholders(inputs, "[Löschkonzept](../04-datenschutz/loeschkonzept.md), {{faktenblatt:fristen}}\n"
+                              "\n## Zweck\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    directories = {posixpath.dirname(p) for p in files}
+    targets = relative_targets(files)
+    assert ("vorlagen/04-datenschutz/loeschkonzept.md", "../README.md") in targets
+    for path, target in targets:
+        resolved = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
+        assert resolved in files or resolved in directories, (path, target)
+
+
+@pytest.mark.parametrize("link", [
+    "../gibt-es-nicht.md",
+    "../../handbuch/gibt-es-nicht.md#x",
+    "../../../../ausserhalb.md",
+])
+def test_a_relative_link_to_nothing_fails_the_package(tmp_path: Path, inputs: dict, link: str) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", f"[Ziel]({link})\n")
+
+    with pytest.raises(update_package.PackageError, match="04-datenschutz/loeschkonzept.md.*link"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def put_handbook(inputs: dict, path: str, text: str) -> None:
+    target = inputs["handbook"] / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(text.encode("utf-8"))
+
+
+def test_the_handbook_of_the_version_lands_under_handbuch_without_author_rules(
+        tmp_path: Path, inputs: dict) -> None:
+    put_handbook(inputs, "betrieb/README.md", "# Betrieb\n")
+    put_handbook(inputs, "betrieb/notizen.txt", "kein Markdown\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert sorted(p for p in files if p.startswith("handbuch/")) == [
+        "handbuch/README.md", "handbuch/betrieb.md", "handbuch/betrieb/README.md"]
+    assert files["handbuch/betrieb.md"] == "# Betrieb\n\n## Ports\n"
+
+
+def test_links_of_the_handbook_stay_in_the_package_or_point_to_the_release(
+        tmp_path: Path, inputs: dict) -> None:
+    put_handbook(inputs, "betrieb/nachweise.md",
+                 "# Nachweise\n\n[Ports](../betrieb.md#ports), [Vermerk](../../behoerden/09-betrieb-update/"
+                 "update-vermerk.md#zweck), [Behörden](../../behoerden/), [ADR](../../releases.md#x),"
+                 " [Meldewege](../../../SECURITY.md), [Regeln](../AGENTS.md), [Code](../../../docs/)\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    blob = "https://github.com/criew/opaa/blob/v1.2.3/"
+    assert package_markdown(archive)["handbuch/betrieb/nachweise.md"] == (
+        "# Nachweise\n\n[Ports](../betrieb.md#ports), [Vermerk](../../vorlagen/09-betrieb-update/"
+        f"update-vermerk.md#zweck), [Behörden](../../vorlagen/), [ADR]({blob}docs/releases.md#x),"
+        f" [Meldewege]({blob}SECURITY.md), [Regeln]({blob}docs/handbuch/AGENTS.md),"
+        " [Code](https://github.com/criew/opaa/tree/v1.2.3/docs)\n")
+
+
+def test_no_link_of_templates_update_note_or_readme_leads_to_the_handbook_on_github(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", LINKS)
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n\n[Handbuch](../../handbuch/README.md)\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    for path in [p for p in files if p.startswith("vorlagen/")] + ["update-vermerk.md", "LIESMICH.md"]:
+        assert "docs/handbuch" not in files[path], path
+    assert "](handbuch/README.md)" in files["LIESMICH.md"]
+    assert "[Handbuch](../../handbuch/README.md)" in files["vorlagen/04-datenschutz/README.md"]
+
+
+@pytest.mark.parametrize("link", ["gibt-es-nicht.md", "../../gibt-es-nicht.md#x", "../../../ausserhalb.md"])
+def test_a_relative_link_to_nothing_in_the_handbook_fails_the_package(
+        tmp_path: Path, inputs: dict, link: str) -> None:
+    put_handbook(inputs, "betrieb.md", f"# Betrieb\n\n## Ports\n\n[Ziel]({link})\n")
+
+    with pytest.raises(update_package.PackageError, match="handbuch/betrieb.md.*link"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def html_references(files: dict[str, str]) -> tuple[dict[str, set[str]], list[tuple[str, str]]]:
+    """Ids of every HTML page and (page, link) of every href and src in them."""
+    ids, links = {}, []
+    for path, text in files.items():
+        if path.endswith(".html"):
+            ids[path] = {html.unescape(i) for i in re.findall(r'<[a-z0-9]+[^>]*?\s(?:id|name)="([^"]+)"', text)}
+            links += [(path, html.unescape(t)) for t in re.findall(r'\s(?:href|src)="([^"]*)"', text)]
+    return ids, links
+
+
+def package_files(archive: Path) -> dict[str, str]:
+    with tarfile.open(archive) as tar:
+        return {m.name.split("/", 1)[1]: tar.extractfile(m).read().decode("utf-8", "replace")
+                for m in tar.getmembers() if m.isfile()}
+
+
+def test_the_package_holds_an_html_version_whose_links_and_anchors_resolve(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", LINKS)
+    with_placeholders(inputs, "---\nstand: 2026-10-23\n---\n\n# Update-Vermerk\n\n## Zweck\n\n"
+                              "Frist: {{faktenblatt:fristen#audit-retention}},"
+                              " [Löschkonzept](../04-datenschutz/loeschkonzept.md#fristen)\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_files(archive)
+    assert "index.html" in files
+    for path in [p for p in files if p.endswith(".md")]:
+        assert path[:-3] + ".html" in files, path
+    ids, links = html_references(files)
+    checked = 0
+    for path, link in links:
+        if re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:|//", link):
+            continue
+        file, _, anchor = link.partition("#")
+        target = posixpath.normpath(posixpath.join(posixpath.dirname(path), urllib.parse.unquote(file))) \
+            if file else path
+        assert target in files, (path, link)
+        if anchor:
+            assert urllib.parse.unquote(anchor) in ids[target], (path, link)
+        checked += 1
+    assert checked > 20
+    vermerk = files["update-vermerk.html"]
+    assert 'href="faktenblaetter/fristen.html#audit-retention"' in vermerk
+    assert 'href="vorlagen/04-datenschutz/loeschkonzept.html#fristen"' in vermerk
+    assert "<dt>stand</dt><dd>2026-10-23</dd>" in vermerk
+    assert 'href="../../handbuch/betrieb.html#ports"' in files["vorlagen/04-datenschutz/loeschkonzept.html"]
+    assert not re.search(r'<(script|link|img)[^>]+(src|href)="(https?:)?//', "".join(files.values()))
+
+
+@pytest.mark.parametrize("link", ["../betrieb.md#gibt-es-nicht", "#gibt-es-nicht"])
+def test_a_link_to_an_anchor_the_package_lacks_fails_the_package(
+        tmp_path: Path, inputs: dict, link: str) -> None:
+    put_handbook(inputs, "betrieb/kapitel.md", f"# Kapitel\n\n[Ziel]({link})\n")
+
+    with pytest.raises(update_package.PackageError, match="handbuch/betrieb/kapitel.html.*gibt-es-nicht"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def test_the_readme_names_the_handbook_and_the_html_start_page(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "`index.html`" in text
+    assert "| [`handbuch/`](handbuch/README.md) |" in text
+
+
+RELEASE_INSTALL = "pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt"
+
+
+def test_the_package_job_installs_only_hash_pinned_wheels() -> None:
+    body = job("update-package")
+    requirements = (HERE.parent / "requirements-release.txt").read_text(encoding="utf-8")
+    entries = [e for e in requirements.replace("\\\n", " ").splitlines() if e and not e.startswith("#")]
+
+    assert sorted(e.split("==", 1)[0] for e in entries) == ["markdown-it-py", "mdurl"]
+    for entry in entries:
+        assert re.fullmatch(r"[a-z-]+==\d+(\.\d+)+( +--hash=sha256:[0-9a-f]{64})+", entry), entry
+    assert "actions/setup-python@" in body
+    assert "requirements-ci.txt" not in body and "pytest" not in body
+    install = body.index(RELEASE_INSTALL)
+    assert body.index("gh pr list") < install < body.index("update_package.py build")
+
+
+def ci_job(name: str) -> str:
+    text = (HERE.parent / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    match = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  [a-z][a-z-]*:\n|\Z)", text, re.M | re.S)
+    assert match, f"job {name} missing"
+    return match.group(1)
+
+
+def test_every_pull_request_checks_the_links_the_package_would_refuse() -> None:
+    body = ci_job("changes")
+    step = body[body.index("update_package.py links") - 400:body.index("update_package.py links")]
+
+    assert RELEASE_INSTALL in body
+    assert body.index(RELEASE_INSTALL) < body.index("update_package.py links")
+    assert "if:" not in step.rsplit("- name:", 1)[1]
+    assert RELEASE_INSTALL in ci_job("report-script")
+
+
+def test_the_link_check_finds_what_would_stop_the_package(inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n\n[Handbuch](../../handbuch/betrieb.md#ports)\n")
+    assert update_package.check_links(inputs["templates"], inputs["handbook"]) == []
+
+    put_handbook(inputs, "betrieb/kapitel.md", "# Kapitel\n\n[Ziel](../betrieb.md#gibt-es-nicht)\n")
+    assert update_package.check_links(inputs["templates"], inputs["handbook"]) == [
+        "handbuch/betrieb/kapitel.html: ../betrieb.html#gibt-es-nicht"]
+
+    put_handbook(inputs, "betrieb/kapitel.md", "# Kapitel\n\n[Ziel](gibt-es-nicht.md)\n")
+    assert "handbuch/betrieb/kapitel.md" in update_package.check_links(inputs["templates"], inputs["handbook"])[0]
+
+
+def test_the_start_page_of_the_package_links_the_checksums(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert '<a href="SHA256SUMS">SHA256SUMS</a>' in read(archive, "opaa-update-paket-1.2.3/index.html").decode()
+
+
 def test_the_delta_is_rendered_for_the_given_repository() -> None:
     command = update_package.gradle_command(
         version="1.2.3", day="2026-01-01", from_ref="v1.2.2", to_ref="v1.2.3",
@@ -433,21 +826,133 @@ def test_operations_name_a_comparison_without_manifest_readably(interval: dict) 
     assert f"| Kennzahl | {readable} | v1.2.3 |" in files["antwortqualitaet.md"]
 
 
-@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations"])
+@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations", "sbom"])
 def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing: str) -> None:
-    if missing == "operations":
+    if missing == "sbom":
+        inputs["sboms"]["frontend"].unlink()
+    elif missing == "operations":
         (inputs["operations"] / "antwortqualitaet.md").unlink()
     elif missing == "delta":
         (inputs["delta"] / "manifest-delta.json").unlink()
     elif missing == "fact_sheets":
         (inputs["fact_sheets"] / "faktenblaetter.json").unlink()
     elif missing == "template":
-        inputs["template"].unlink()
+        (inputs["templates"] / "09-betrieb-update" / "update-vermerk.md").unlink()
     else:
         inputs["licenses"][1].unlink()
 
     with pytest.raises(update_package.PackageError):
         update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def sbom(archive: Path, name: str) -> dict:
+    return json.loads(read(archive, f"opaa-update-paket-1.2.3/sbom/{name}-1.2.3.cdx.json"))
+
+
+def test_the_sboms_of_backend_and_frontend_lie_in_the_package_and_beside_it(
+        tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    for name in ("backend", "frontend"):
+        packaged = read(archive, f"opaa-update-paket-1.2.3/sbom/opaa-{name}-1.2.3.cdx.json")
+        assert (tmp_path / "out" / f"opaa-{name}-1.2.3.cdx.json").read_bytes() == packaged
+        assert sbom(archive, f"opaa-{name}")["components"][0]["purl"] == f"pkg:npm/{name}-dependency@1.0.0"
+    assert sorted(p.name for p in (tmp_path / "out").iterdir()) == [
+        "opaa-backend-1.2.3.cdx.json", "opaa-frontend-1.2.3.cdx.json",
+        "opaa-update-paket-1.2.3.tar.gz", "opaa-update-paket-1.2.3.tar.gz.sha256"]
+
+
+def test_an_sbom_carries_the_commit_time_and_a_serial_number_of_its_release(
+        tmp_path: Path, inputs: dict) -> None:
+    first = update_package.assemble(release(), out=tmp_path / "first", **inputs)
+    for path in inputs["sboms"].values():
+        path.write_text(cyclonedx(f"pkg:npm/{path.name.split('.')[0]}-dependency@1.0.0",
+                                  serialNumber="urn:uuid:11111111-1111-4111-8111-111111111111"))
+    second = update_package.assemble(release(), out=tmp_path / "second", **inputs)
+    other = update_package.assemble(release(commit="c" * 40), out=tmp_path / "other", **inputs)
+
+    assert first.read_bytes() == second.read_bytes()
+    backend, frontend = sbom(first, "opaa-backend"), sbom(first, "opaa-frontend")
+    assert backend["metadata"]["timestamp"] == "2026-09-21T14:13:20Z"
+    assert re.fullmatch(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+                        backend["serialNumber"])
+    assert backend["serialNumber"] != frontend["serialNumber"]
+    assert sbom(other, "opaa-backend")["serialNumber"] != backend["serialNumber"]
+
+
+def test_an_sbom_leaves_out_the_annotations_naming_the_day_of_its_generator_run(
+        tmp_path: Path, inputs: dict) -> None:
+    summary = {"bom-ref": "metadata-annotations", "timestamp": "2099-01-01T00:00:00Z",
+               "text": "This SBOM document was created on Thursday, January 1, 2099 with cdxgen."}
+    inputs["sboms"]["frontend"].write_text(
+        cyclonedx("pkg:npm/react@19.0.0", annotations=[summary]), encoding="utf-8")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    frontend = sbom(archive, "opaa-frontend")
+    assert "annotations" not in frontend
+    assert "2099" not in json.dumps(frontend)
+    assert frontend["components"][0]["purl"] == "pkg:npm/react@19.0.0"
+
+
+@pytest.mark.parametrize("content", [
+    "not json",
+    json.dumps({"bomFormat": "SPDX", "components": [{"name": "x"}]}),
+    cyclonedx(),
+])
+def test_an_sbom_that_is_no_cyclonedx_bom_with_components_fails_the_package(
+        tmp_path: Path, inputs: dict, content: str) -> None:
+    inputs["sboms"]["backend"].write_text(content, encoding="utf-8")
+
+    with pytest.raises(update_package.PackageError, match="backend"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def test_the_frontend_sbom_of_a_release_is_generated_like_the_one_of_main(tmp_path: Path) -> None:
+    """sbom.yml writes the SBOM of main; a release must not differ in tool, install or scope."""
+    workflow = (HERE.parent / "workflows" / "sbom.yml").read_text(encoding="utf-8")
+    main = re.search(r"run: \.\./(\S+/cdxgen) (.*)$", workflow, re.M)
+    release_command = update_package.frontend_sbom_command(tmp_path / "bom.json")
+
+    assert Path(release_command[0]) == update_package.ROOT / main.group(1)
+    assert Path(main.group(1)) == update_package.CDXGEN
+    output = release_command.index("-o")
+    assert release_command[output + 1] == str(tmp_path / "bom.json")
+    arguments = main.group(2).split()
+    position = arguments.index("-o")
+    assert release_command[1:output] + release_command[output + 2:] == arguments[:position] + arguments[position + 2:]
+    assert "--required-only" in release_command
+    install = f"working-directory: {update_package.CDXGEN_TOOL.as_posix()}\n        run: {update_package.CDXGEN_INSTALL}\n"
+    assert install in workflow
+    assert install in job("update-package")
+
+
+def test_cdxgen_and_everything_it_loads_are_fixed_by_a_lockfile() -> None:
+    tool = update_package.ROOT / update_package.CDXGEN_TOOL
+    manifest = json.loads((tool / "package.json").read_text(encoding="utf-8"))
+    version = manifest["dependencies"]["@cyclonedx/cdxgen"]
+
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version)
+    assert manifest["packageManager"] == json.loads(
+        (update_package.ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))["packageManager"]
+    lockfile = (tool / "pnpm-lock.yaml").read_text(encoding="utf-8")
+    assert f"'@cyclonedx/cdxgen@{version}':" in lockfile
+    assert "--frozen-lockfile" in update_package.CDXGEN_INSTALL
+    assert "--ignore-scripts" in update_package.CDXGEN_INSTALL
+
+
+def test_the_frontend_sbom_describes_the_release_version(tmp_path: Path, inputs: dict) -> None:
+    root = {"name": "frontend", "version": "0.0.0", "purl": "pkg:npm/frontend@0.0.0",
+            "bom-ref": "pkg:npm/frontend@0.0.0"}
+    inputs["sboms"]["frontend"].write_text(
+        cyclonedx("pkg:npm/react@19.0.0", metadata={"component": root}), encoding="utf-8")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    component = sbom(archive, "opaa-frontend")["metadata"]["component"]
+    assert component["version"] == "1.2.3"
+    assert component["purl"] == "pkg:npm/frontend@1.2.3"
+    assert component["bom-ref"] == "pkg:npm/frontend@0.0.0"
 
 
 def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path) -> None:
@@ -459,6 +964,7 @@ def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path)
 
     assert f"`{update_package.PREFIX}1.2.4.tar.gz`" in notes
     assert f"gh attestation verify {update_package.PREFIX}1.2.4.tar.gz --repo criew/opaa" in notes
+    assert "`opaa-backend-1.2.4.cdx.json`" in notes and "`opaa-frontend-1.2.4.cdx.json`" in notes
     assert "./gradlew complianceDelta -PfromRef=" in notes
 
 
@@ -510,7 +1016,8 @@ def test_publication_waits_for_the_package_and_the_release_carries_it() -> None:
     assert "needs.update-package.result" in job("publish")
     attestation = job("update-package-attestation")
     assert permissions(attestation) == ["id-token: write", "attestations: write"]
-    assert "subject-path:" in attestation
+    subjects = attestation[attestation.index("subject-path:"):]
+    assert "update-package/*.tar.gz" in subjects and "update-package/*.cdx.json" in subjects
     release_job = job("release")
     assert "persist-credentials: false" in release_job
     assert "GH_TOKEN: ${{ github.token }}" in release_job
@@ -530,7 +1037,7 @@ BASELINE = "eval/baseline/"
 def put(repo: Path, path: str, text: str) -> None:
     target = repo / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8")
+    target.write_bytes(text.encode("utf-8"))
 
 
 def snapshot(repo: Path, message: str) -> str:
@@ -868,3 +1375,246 @@ def test_a_bold_reindexing_line_keeps_no_asterisks_in_the_estimate(interval: dic
     reindexing = section(report(interval, current=now)["betriebsfolgen.md"], "Neuindizierung")
 
     assert "Dauerschätzung (1.2.3): rund 2 h\n" in reindexing
+
+
+# --- Second comparison of an LTS release (docs/releases.md, "Update-Paket") -----------------------
+
+LINES = ".github/support-lines.json"
+
+
+def lines_json(*entries: tuple[str, str, str | None]) -> str:
+    return json.dumps({"lines": [{"line": l, "kind": k, "supportEnd": e} for l, k, e in entries]})
+
+
+@pytest.fixture
+def lts_repo(tmp_path: Path) -> dict:
+    """main: a (v0.3.0, LTS) - b (v0.4.0) - c (v0.5.0-rc.1, LTS); release/0.3 forks at a and carries
+    v0.3.1 and v0.3.2, which main never contains. Each commit holds the list of lines of its day."""
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, CHANGELOG + "foundation/2026-06-01-start.yaml", changeset_file("foundation-start"))
+    put(work, LINES, lines_json(("0.3", "lts", "2028-06-30")))
+    a = snapshot(work, "a")
+    git(work, "tag", "v0.3.0", a)
+    git(work, "checkout", "-q", "-b", "release/0.3")
+    put(work, CHANGELOG + "foundation/2026-07-01-fix.yaml", changeset_file("foundation-fix"))
+    git(work, "tag", "v0.3.1", snapshot(work, "p1"))
+    p2 = commit(work, "p2")
+    git(work, "tag", "v0.3.2", p2)
+    git(work, "tag", "v0.3.3-rc.1", commit(work, "p3"))
+    git(work, "checkout", "-q", "main")
+    put(work, CHANGELOG + "foundation/2026-07-01-fix.yaml", changeset_file("foundation-fix"))
+    put(work, CHANGELOG + "workspace/2026-11-01-spaces.yaml", changeset_file("workspace-spaces"))
+    put(work, NOTES + "0.4.0.md", "- Vorbereitung des Dezember-Release.\n")
+    put(work, LINES, lines_json(("0.3", "lts", "2028-06-30"), ("0.4", "normal", None)))
+    b = snapshot(work, "b")
+    git(work, "tag", "v0.4.0", b)
+    put(work, CHANGELOG + "workspace/2027-05-01-more.yaml", changeset_file("workspace-more"))
+    put(work, NOTES + "0.5.0-rc.1.md", "- Vorbereitung des LTS-Kandidaten.\n")
+    put(work, LINES, lines_json(("0.3", "lts", "2028-06-30"), ("0.4", "normal", "2027-07-31"),
+                                ("0.5", "lts", "2029-06-30")))
+    c = snapshot(work, "c")
+    git(work, "tag", "v0.5.0-rc.1", c)
+    return dict(repo=work, a=a, b=b, c=c, p2=p2)
+
+
+def lts_previous(lts: dict, tag: str, at: str) -> str | None:
+    return update_package.lts_previous_tag(lts["repo"], tag, lts[at])
+
+
+@pytest.mark.parametrize("tag", ["v0.5.0-rc.1", "v0.5.0"])
+def test_an_lts_release_and_its_candidates_compare_also_with_the_newest_release_of_the_previous_lts(
+        lts_repo: dict, tag: str) -> None:
+    # v0.3.2 lies on release/0.3, outside the history of c; the candidate v0.3.3-rc.1 never counts.
+    assert lts_previous(lts_repo, tag, "c") == "v0.3.2"
+    assert previous(lts_repo["repo"], "v0.5.0-rc.1") == "v0.4.0"
+
+
+def test_a_normal_release_has_no_second_comparison(lts_repo: dict) -> None:
+    assert lts_previous(lts_repo, "v0.4.0", "b") is None
+
+
+def test_the_first_lts_release_has_no_second_comparison(lts_repo: dict) -> None:
+    assert lts_previous(lts_repo, "v0.3.0", "a") is None
+
+
+def test_a_patch_release_of_an_lts_line_has_no_second_comparison(lts_repo: dict) -> None:
+    git(lts_repo["repo"], "tag", "v0.5.1", lts_repo["c"])
+
+    assert lts_previous(lts_repo, "v0.5.1", "c") is None
+
+
+def test_a_line_missing_from_the_list_of_the_commit_is_no_lts(lts_repo: dict) -> None:
+    assert lts_previous(lts_repo, "v0.6.0", "c") is None
+
+
+def test_the_list_is_read_from_the_tagged_commit_not_the_working_tree(lts_repo: dict) -> None:
+    put(lts_repo["repo"], LINES, lines_json(("0.4", "lts", "2028-06-30")))
+
+    assert lts_previous(lts_repo, "v0.4.0", "b") is None
+
+
+def test_a_previous_lts_line_without_final_release_gives_no_second_comparison(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, lines_json(("0.2", "lts", "2027-06-30"), ("0.5", "lts", "2029-06-30")))
+    git(work, "tag", "v0.5.0", snapshot(work, "x"))
+
+    assert update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0") is None
+
+
+def test_a_malformed_list_fails_the_package(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, "{\"lines\": \"0.5\"}")
+    git(work, "tag", "v0.5.0", snapshot(work, "x"))
+
+    with pytest.raises(update_package.PackageError, match="support-lines.json"):
+        update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0")
+
+
+def test_the_command_prints_the_lts_comparison_or_nothing(lts_repo: dict) -> None:
+    def cli(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(SCRIPT), "lts-previous", *args],
+                              cwd=lts_repo["repo"], capture_output=True, text=True)
+
+    assert cli("--tag", "v0.5.0-rc.1").stdout == "v0.3.2\n"
+    normal = cli("--tag", "v0.4.0")
+    assert (normal.returncode, normal.stdout) == (0, "")
+
+
+def test_operations_compare_with_a_release_outside_the_history(lts_repo: dict) -> None:
+    # The backport foundation-fix is in both; the notes count by version, the changesets by id.
+    files = update_package.operations(
+        lts_repo["repo"],
+        update_package.Side("v0.3.2", lts_repo["p2"], "0.3.2"),
+        update_package.Side("v0.5.0-rc.1", lts_repo["c"], "0.5.0-rc.1"),
+        None,
+    )
+    text = files["betriebsfolgen.md"]
+
+    assert "Vorbereitung des Dezember-Release." in text
+    assert "Vorbereitung des LTS-Kandidaten." in text
+    migration = section(text, "Schemamigration")
+    assert "2 neue Changesets" in migration
+    assert "| workspace | 2 |" in migration and "foundation" not in migration.split("|", 1)[1]
+
+
+def test_the_lts_delta_compares_with_the_given_release_in_gradle() -> None:
+    command = update_package.lts_gradle_command("v0.3.2", "v0.5.0", "criew/opaa", "prs.json")
+
+    assert command[:2] == ["./gradlew", "complianceDelta"]
+    assert "-PfromRef=v0.3.2" in command and "-PtoRef=v0.5.0" in command
+    assert "-Prepository=criew/opaa" in command
+    assert any(arg.startswith("-PlabelledPrs=") for arg in command)
+
+
+def lts_inputs(tmp_path: Path, inputs: dict) -> dict:
+    delta = tmp_path / "in" / "delta-lts"
+    delta.mkdir()
+    (delta / "manifest-delta.md").write_bytes(b"# Delta LTS\n")
+    (delta / "manifest-delta.json").write_text("{}\n")
+    operations = tmp_path / "in" / "betrieb-lts"
+    operations.mkdir()
+    for name in update_package.OPERATIONS_FILES:
+        (operations / name).write_text(f"# LTS {name}\n")
+    return {**inputs, "lts_delta": delta, "lts_operations": operations}
+
+
+def test_an_lts_package_holds_both_comparisons_apart(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(
+        release(version="1.4.0", tag="v1.4.0", previous="v1.3.0", lts_previous="v1.2.7",
+                lts_previous_commit="c" * 40),
+        out=tmp_path / "out", **lts_inputs(tmp_path, inputs))
+
+    root = "opaa-update-paket-1.4.0/"
+    names = set(members(archive))
+    for part in ("delta-lts/manifest-delta.md", "delta-lts/manifest-delta.json",
+                 "betrieb-lts/betriebsfolgen.md", "betrieb-lts/antwortqualitaet.md",
+                 "delta/manifest-delta.md", "betrieb/betriebsfolgen.md"):
+        assert root + part in names
+    assert read(archive, root + "delta-lts/manifest-delta.md") == b"# Delta LTS\n"
+    text = read(archive, root + "LIESMICH.md").decode()
+    assert "vorgaenger-lts: v1.2.7\n" in text
+    assert "| `delta-lts/manifest-delta.md` |" in text and "| `betrieb-lts/betriebsfolgen.md` |" in text
+    assert "v1.2.7" in section(text, "Welcher Vergleich für wen")
+    assert "v1.3.0" in section(text, "Welcher Vergleich für wen")
+
+
+def test_a_package_without_lts_comparison_names_none(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "delta-lts" not in text and "vorgaenger-lts" not in text
+    assert not [n for n in members(archive) if "-lts/" in n]
+
+
+def test_an_lts_comparison_needs_both_parts(tmp_path: Path, inputs: dict) -> None:
+    parts = lts_inputs(tmp_path, inputs)
+    del parts["lts_operations"]
+
+    with pytest.raises(update_package.PackageError, match="LTS"):
+        update_package.assemble(release(lts_previous="v1.2.7", lts_previous_commit="c" * 40),
+                                out=tmp_path / "out", **parts)
+
+
+def test_a_second_comparison_with_the_base_of_the_first_is_dropped(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
+    monkeypatch.setattr(update_package, "lts_previous_tag", lambda repo, tag, head: "v0.3.2")
+
+    assert update_package.lts_comparison(Path("."), "v0.5.0", "c" * 40, "v0.3.2") is None
+    assert "Kein LTS-Vergleich für v0.5.0" in capsys.readouterr().out
+    assert update_package.lts_comparison(Path("."), "v0.5.0", "c" * 40, "v0.4.0") == "v0.3.2"
+    assert "Zweiter Vergleich mit v0.3.2" in capsys.readouterr().out
+
+
+def test_the_first_delta_is_kept_before_the_second_overwrites_its_directory(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # complianceDelta writes both deltas to the same directory.
+    root = tmp_path / "root"
+    built = root / update_package.DELTA
+    built.mkdir(parents=True)
+    for name in update_package.DELTA_FILES:
+        (built / name).write_text("first\n")
+
+    def gradle(args: list[str], cwd: Path, stdout=None) -> str:
+        assert "-PfromRef=v0.3.2" in args
+        for name in update_package.DELTA_FILES:
+            (built / name).write_text("lts\n")
+        return ""
+
+    def operations(repo: Path, previous, current, delta_json: Path) -> dict[str, str]:
+        return {name: f"{previous.label} {delta_json.read_text()}" for name in update_package.OPERATIONS_FILES}
+
+    monkeypatch.setattr(update_package, "ROOT", root)
+    monkeypatch.setattr(update_package, "run", gradle)
+    monkeypatch.setattr(update_package, "operations", operations)
+    reports = tmp_path / "reports"
+    reports.mkdir()
+
+    delta, betrieb, lts_delta, lts_betrieb = update_package.comparisons(
+        release(version="0.5.0", tag="v0.5.0", previous="v0.4.0", lts_previous="v0.3.2",
+                lts_previous_commit="c" * 40),
+        update_package.Side("v0.4.0", "b" * 40, "0.4.0"),
+        update_package.Side("v0.5.0", "a" * 40, "0.5.0"),
+        reports, "criew/opaa", None)
+
+    assert (delta / "manifest-delta.md").read_text() == "first\n"
+    assert (lts_delta / "manifest-delta.md").read_text() == "lts\n"
+    assert (betrieb / "betriebsfolgen.md").read_text() == "v0.4.0 first\n"
+    assert (lts_betrieb / "betriebsfolgen.md").read_text() == "v0.3.2 lts\n"
+
+
+def test_a_previous_lts_line_without_final_release_above_one_with_releases_warns(
+        tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, lines_json(("0.2", "lts", "2027-06-30"), ("0.3", "lts", "2028-06-30"),
+                                ("0.5", "lts", "2029-06-30")))
+    x = snapshot(work, "x")
+    git(work, "tag", "v0.2.0", x)
+    git(work, "tag", "v0.3.0-rc.1", x)
+    git(work, "tag", "v0.5.0", x)
+
+    assert update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0") is None
+    assert "::warning::Kein LTS-Vergleich für v0.5.0: die vorige LTS-Linie 0.3" in capsys.readouterr().err

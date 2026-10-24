@@ -107,7 +107,10 @@ class S3UploadedOriginalStoreTest {
     UploadedOriginalStore.AcceptedUpload accepted =
         store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
 
-    assertThat(accepted.workingFile()).hasParent(tempDir).hasContent("inhalt");
+    assertThat(accepted.workingFile()).hasContent("inhalt");
+    assertThat(accepted.workingFile().getParent())
+        .as("the subdirectory of this instance")
+        .hasParent(tempDir);
     assertThat(accepted.workingFile().getFileName().toString())
         .startsWith(S3UploadedOriginalStore.TEMP_FILE_PREFIX)
         .endsWith(".pdf");
@@ -264,7 +267,7 @@ class S3UploadedOriginalStoreTest {
         store.withLocalFile(
             ref,
             file -> {
-              assertThat(file).hasParent(tempDir);
+              assertThat(file.getParent()).hasParent(tempDir);
               assertThat(file.getFileName().toString()).endsWith(".pdf");
               return readString(file);
             });
@@ -425,6 +428,45 @@ class S3UploadedOriginalStoreTest {
     assertThat(inFlight).exists();
     assertThat(somebodyElses).exists();
     assertThat(ownDirectory).exists();
+  }
+
+  /**
+   * Several instances share the temp directory: the working files of a live instance stay whatever
+   * their age, those of a dead one go with its subdirectory.
+   */
+  @Test
+  void recoveringAfterARestartSweepsTheWorkingFilesOfDeadInstancesOnly() throws IOException {
+    UUID live = UUID.randomUUID();
+    UUID dead = UUID.randomUUID();
+    S3UploadedOriginalStore shared =
+        new S3UploadedOriginalStore(
+            properties(""),
+            UploadS3TargetPolicy.of(properties("")),
+            java.time.Duration.ofSeconds(5),
+            1,
+            java.time.Duration.ofMillis(1),
+            S3UploadedOriginalStore.LIST_PAGE_SIZE,
+            new WorkingDirectoryOwner(() -> live, live::equals));
+    try {
+      Path ofTheLive =
+          Files.writeString(
+              Files.createDirectories(tempDir.resolve(live.toString()))
+                  .resolve(S3UploadedOriginalStore.TEMP_FILE_PREFIX + "live.pdf"),
+              "x");
+      Path deadDirectory = Files.createDirectories(tempDir.resolve(dead.toString()));
+      Path ofTheDead =
+          Files.writeString(
+              deadDirectory.resolve(S3UploadedOriginalStore.TEMP_FILE_PREFIX + "dead.pdf"), "x");
+      Files.setLastModifiedTime(ofTheLive, java.nio.file.attribute.FileTime.fromMillis(0));
+
+      shared.recoverAfterRestart();
+
+      assertThat(ofTheLive).exists();
+      assertThat(ofTheDead).doesNotExist();
+      assertThat(deadDirectory).doesNotExist();
+    } finally {
+      shared.close();
+    }
   }
 
   @Test
@@ -627,8 +669,9 @@ class S3UploadedOriginalStoreTest {
   }
 
   private List<Path> ownTempFiles() {
-    try (Stream<Path> entries = Files.list(tempDir)) {
+    try (Stream<Path> entries = Files.walk(tempDir)) {
       return entries
+          .filter(Files::isRegularFile)
           .filter(
               p -> p.getFileName().toString().startsWith(S3UploadedOriginalStore.TEMP_FILE_PREFIX))
           .toList();

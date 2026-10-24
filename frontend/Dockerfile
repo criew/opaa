@@ -37,6 +37,9 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # substitute the file's own nginx variables ($scheme, $host, $remote_addr, ...) against any
 # matching container environment variable, which is not the intent here.
 COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
+# Ends up in /tmp/nginx/conf.d/snippets/, below the http-level include of /tmp/nginx/conf.d/*.conf,
+# so only the blocks of nginx.conf that name it include it.
+COPY frontend/nginx-security-headers.conf /etc/nginx/templates/snippets/security-headers.conf.template
 # 05-opaa-runtime.sh writes the IPv6 listen for port 8080; the build fails if nginx.conf moves away from it.
 RUN grep -q '^    listen 8080;$' /etc/nginx/templates/default.conf.template
 COPY --chmod=755 frontend/docker-entrypoint.d/05-opaa-runtime.sh /docker-entrypoint.d/
@@ -47,6 +50,9 @@ ENV OPAA_CSP_CONNECT_SRC_EXTRA=""
 ENV OPAA_DEMO_MODE="false"
 # Where /api/ and /mcp are forwarded to, as host[:port]; validated at start by 05-opaa-runtime.sh.
 ENV OPAA_BACKEND_UPSTREAM="backend:8080"
+# DNS servers that resolve OPAA_BACKEND_UPSTREAM again at runtime (127.0.0.11 under Docker); empty
+# resolves it once at start, enough for a Kubernetes service. Validated by 05-opaa-runtime.sh.
+ENV OPAA_BACKEND_RESOLVER=""
 # How long nginx waits for the backend's answer on /api/ and /mcp; validated by 05-opaa-runtime.sh.
 ENV OPAA_BACKEND_READ_TIMEOUT="600s"
 # Numeric, so Kubernetes can verify runAsNonRoot without a runAsUser override.

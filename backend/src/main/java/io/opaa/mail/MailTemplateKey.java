@@ -134,19 +134,23 @@ public enum MailTemplateKey {
       Grund: {{reason}}
 
       Bestehende Sitzungen wurden beendet. Wenden Sie sich für die Freischaltung an Ihre Systemverwaltung.
+
+      {{chatDeletionNotice}}
       """,
       """
       <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Ihr Zugang wurde gesperrt</h1>
       <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
       <p style="margin:0 0 14px;">Ihr Zugang zu <strong>{{productName}}</strong> wurde gesperrt.</p>
       <p style="margin:0 0 14px;">Grund: {{reason}}</p>
-      <p style="margin:0;font-size:13px;">Bestehende Sitzungen wurden beendet. Wenden Sie sich für die Freischaltung an Ihre Systemverwaltung.</p>
+      <p style="margin:0 0 14px;font-size:13px;">Bestehende Sitzungen wurden beendet. Wenden Sie sich für die Freischaltung an Ihre Systemverwaltung.</p>
+      <p style="margin:0;font-size:13px;">{{chatDeletionNotice}}</p>
       """,
       null,
       "Ihr Zugang zu {{productName}} wurde gesperrt.",
       "productName",
       "displayName",
-      "reason"),
+      "reason",
+      "chatDeletionNotice"),
 
   ACCOUNT_UNLOCKED(
       "Konto freigeschaltet",
@@ -282,25 +286,25 @@ public enum MailTemplateKey {
       "actionUrl"),
 
   EXTERNAL_ACCESS_RELEASE_EXPIRING(
-      "Ablauf einer Fremdzugangsfreigabe",
-      "Freigabe von „{{libraryName}}“ für Fremdzugänge läuft ab",
+      "Ablauf einer Freigabe für externe KI-Werkzeuge",
+      "Freigabe von „{{libraryName}}“ für externe KI-Werkzeuge läuft ab",
       """
       Guten Tag {{displayName}},
 
-      die Freigabe der Bibliothek „{{libraryName}}“ für Fremdzugänge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.
+      die Freigabe der Bibliothek „{{libraryName}}“ für externe KI-Werkzeuge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.
 
       Ob die Freigabe erneuert wird, entscheiden Sie:
 
       {{actionUrl}}
       """,
       """
-      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Eine Freigabe für Fremdzugänge läuft ab</h1>
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Eine Freigabe für externe KI-Werkzeuge läuft ab</h1>
       <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
-      <p style="margin:0 0 14px;">die Freigabe der Bibliothek <strong>{{libraryName}}</strong> für Fremdzugänge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.</p>
+      <p style="margin:0 0 14px;">die Freigabe der Bibliothek <strong>{{libraryName}}</strong> für externe KI-Werkzeuge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.</p>
       <p style="margin:0;font-size:13px;">Ob die Freigabe erneuert wird, entscheiden Sie.</p>
       """,
       "Freigabe prüfen",
-      "Die Freigabe von „{{libraryName}}“ für Fremdzugänge endet {{expiresAtDate}}.",
+      "Die Freigabe von „{{libraryName}}“ für externe KI-Werkzeuge endet {{expiresAtDate}}.",
       "productName",
       "displayName",
       "libraryName",
@@ -328,6 +332,28 @@ public enum MailTemplateKey {
       "displayName",
       "tokenName",
       "expiresAtHuman"),
+
+  SELF_DISCLOSURE_STARTED(
+      "Selbstauskunft gestartet",
+      "Selbstauskunft Ihrer Daten in {{productName}} gestartet",
+      """
+      Guten Tag {{displayName}},
+
+      für Ihren Zugang zu {{productName}} wurde {{occurredAtHuman}} eine Selbstauskunft Ihrer Daten gestartet.
+
+      Falls Sie das nicht waren, ändern Sie Ihr Passwort und wenden Sie sich an Ihre Systemverwaltung.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Selbstauskunft gestartet</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">für Ihren Zugang zu <strong>{{productName}}</strong> wurde {{occurredAtHuman}} eine Selbstauskunft Ihrer Daten gestartet.</p>
+      <p style="margin:0;font-size:13px;">Falls Sie das nicht waren, ändern Sie Ihr Passwort und wenden Sie sich an Ihre Systemverwaltung.</p>
+      """,
+      null,
+      "Eine Selbstauskunft Ihrer Daten in {{productName}} wurde gestartet.",
+      "productName",
+      "displayName",
+      "occurredAtHuman"),
 
   TEST_MAIL(
       "Testnachricht",
@@ -363,6 +389,10 @@ public enum MailTemplateKey {
           Map.entry("actionUrl", "https://opaa.example.org/set-password?token=BEISPIEL"),
           Map.entry("expiresAtHuman", "noch 24 Stunden"),
           Map.entry("reason", "Zu viele fehlgeschlagene Anmeldeversuche"),
+          Map.entry(
+              "chatDeletionNotice",
+              "Ihre Chats werden frühestens am 23.10.2027 gelöscht, sofern die Sperre bis dahin"
+                  + " besteht."),
           Map.entry("count", "7"),
           Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"),
           Map.entry("libraryName", "Baugenehmigungen 2024"),

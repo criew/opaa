@@ -3,9 +3,16 @@ package io.opaa.indexing.maintenance;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.SystemRole;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.chunk.EmbeddingIndexReconciler;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord;
@@ -13,28 +20,35 @@ import io.opaa.indexing.chunk.EmbeddingIndexRecord.Run;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunStatus;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.indexing.chunk.EmbeddingIndexStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.PersonThreshold;
 import io.opaa.searchadmin.SearchPathStatus;
 import io.opaa.searchadmin.SearchStatusService;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.ScheduledRunLockRelease;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -42,6 +56,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,8 +69,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The re-embedding after a change of the embedding model, end to end against pgvector with the
  * Liquibase schema: documents indexed as usual, then their vectors replaced by vectors of an "old
  * model" - another size, or the same size under another name. Runs in the property-variant
- * signature because it builds, alters and drops {@code vector_store} itself; with Spring AI's
- * schema initialisation off nothing else touches that table there.
+ * signature because it builds, alters and drops {@code vector_store} itself; after the migration at
+ * the context's start nothing else touches that table there.
  */
 @OpaaPropertyVariantIntegrationTest
 class EmbeddingReindexIntegrationTest {
@@ -75,6 +92,12 @@ class EmbeddingReindexIntegrationTest {
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private SearchStatusService searchStatusService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private AuditEventRecorder auditEventRecorder;
+  @Autowired private PersonThreshold personThreshold;
+  @Autowired private VectorTable vectorTable;
+  @Autowired private Clock clock;
+  @Autowired private InstanceRegistry instanceRegistry;
 
   private KnowledgeLibrary library;
   private UUID ownerId;
@@ -263,6 +286,144 @@ class EmbeddingReindexIntegrationTest {
 
     assertThatThrownBy(() -> reindexService.start(ownerId, Organization.DEFAULT_ID))
         .isInstanceOf(ConflictException.class);
+  }
+
+  /**
+   * Abbruch über eine andere Instanz wirkt auf den laufenden Worker: the worker of instance B holds
+   * its first document while this instance - A - is asked; a start on A is refused, a cancel on A
+   * stops B's worker after that document, and nothing is switched.
+   */
+  @Test
+  void aCancelOnAnotherInstanceStopsTheWorkerAfterItsCurrentDocument() throws Exception {
+    indexed("satzung-a.md");
+    indexed("satzung-b.md");
+    indexed("satzung-c.md");
+    replaceVectorsByAnOldModel(768);
+    reconciler.reconcile();
+    OtherInstance b = otherInstance();
+    try {
+      b.service().start(ownerId, Organization.DEFAULT_ID);
+      assertThat(b.entered().await(10, TimeUnit.SECONDS)).isTrue();
+
+      assertThatThrownBy(() -> reindexService.start(ownerId, Organization.DEFAULT_ID))
+          .isInstanceOf(ConflictException.class);
+      assertThat(reindexService.progress().running()).as("A sees B's run").isTrue();
+      reindexService.cancel();
+      b.release().countDown();
+      await().atMost(RUN_TIMEOUT).until(() -> !b.service().progress().running());
+
+      assertThat(store.load().orElseThrow().run().status()).isEqualTo(RunStatus.CANCELLED);
+      assertThat(schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN)).isEqualTo(768);
+      verify(b.rerun(), times(1)).reembedInPlace(any());
+    } finally {
+      b.close();
+    }
+  }
+
+  /**
+   * Neustart über eine andere Instanz: once B is dead - its heartbeat lapsed - its worker stops,
+   * and A takes the run over and completes it.
+   */
+  @Test
+  void aRunOfAnInstanceThatDiedIsTakenOverAndCompletedByAnother() throws Exception {
+    indexed("satzung-a.md");
+    indexed("satzung-b.md");
+    replaceVectorsByAnOldModel(768);
+    reconciler.reconcile();
+    OtherInstance b = otherInstance();
+    try {
+      b.service().start(ownerId, Organization.DEFAULT_ID);
+      assertThat(b.entered().await(10, TimeUnit.SECONDS)).isTrue();
+      ScheduledRunLockRelease.releaseAll(jdbcTemplate);
+      reindexService.takeOverOrphanedRun();
+      assertThat(store.runOwner()).as("B is alive: its run stays its own").contains(b.id());
+
+      b.fail();
+      b.release().countDown();
+      await().atMost(RUN_TIMEOUT).until(() -> !b.service().progress().running());
+      ScheduledRunLockRelease.releaseAll(jdbcTemplate);
+      reindexService.takeOverOrphanedRun();
+      awaitTheRun();
+
+      assertThat(store.load().orElseThrow().run().status()).isEqualTo(RunStatus.COMPLETED);
+      assertThat(schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN)).isEqualTo(1536);
+      verify(b.rerun(), times(1)).reembedInPlace(any());
+    } finally {
+      b.close();
+    }
+  }
+
+  /**
+   * Another instance, B: a second re-embedding service over the same beans, with its own identity
+   * in the register and a worker whose first document waits for {@link OtherInstance#release}.
+   */
+  private OtherInstance otherInstance() {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO backend_instances (id, host_name, version, oldest_compatible_version,"
+            + " started_at, heartbeat_at, fingerprint, fingerprint_hash) VALUES (?, 'fixture',"
+            + " '0.0.0-dev', '0.0.0-dev', clock_timestamp(), clock_timestamp(), '{}', 'x')",
+        id);
+    CurrentInstance identity = mock(CurrentInstance.class);
+    when(identity.id()).thenReturn(id);
+    AtomicBoolean heartbeat = new AtomicBoolean(true);
+    when(identity.heartbeatCurrent()).thenAnswer(invocation -> heartbeat.get());
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    ContextPrefixRerunService rerun = mock(ContextPrefixRerunService.class);
+    doAnswer(
+            invocation -> {
+              entered.countDown();
+              assertThat(release.await(RUN_TIMEOUT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+              rerunService.reembedInPlace(invocation.getArgument(0));
+              return null;
+            })
+        .when(rerun)
+        .reembedInPlace(any());
+    EmbeddingReindexService service =
+        new EmbeddingReindexService(
+            state,
+            store,
+            schema,
+            rerun,
+            documentRepository,
+            vectorChunkStore,
+            auditEventRecorder,
+            jdbcTemplate,
+            libraryRepository,
+            personThreshold,
+            vectorTable,
+            clock,
+            identity,
+            instanceRegistry);
+    return new OtherInstance(id, service, rerun, entered, release, heartbeat, jdbcTemplate);
+  }
+
+  private record OtherInstance(
+      UUID id,
+      EmbeddingReindexService service,
+      ContextPrefixRerunService rerun,
+      CountDownLatch entered,
+      CountDownLatch release,
+      AtomicBoolean heartbeat,
+      JdbcTemplate jdbc)
+      implements AutoCloseable {
+
+    /** Dead by the register and, as it notices itself, without a current heartbeat. */
+    void fail() {
+      heartbeat.set(false);
+      jdbc.update(
+          "UPDATE backend_instances SET heartbeat_at = clock_timestamp() - interval '1 day'"
+              + " WHERE id = ?",
+          id);
+    }
+
+    @Override
+    public void close() {
+      release.countDown();
+      service.shutdown();
+      jdbc.update("DELETE FROM backend_instances WHERE id = ?", id);
+    }
   }
 
   private void awaitTheRun() {

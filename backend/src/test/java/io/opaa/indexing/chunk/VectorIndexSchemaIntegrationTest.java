@@ -72,8 +72,9 @@ class VectorIndexSchemaIntegrationTest {
     boolean[] afterSwitchRan = {false};
 
     schema.buildTargetIndex();
-    schema.switchToTarget(() -> afterSwitchRan[0] = true);
+    boolean switched = schema.switchToTarget(() -> true, () -> afterSwitchRan[0] = true);
 
+    assertThat(switched).isTrue();
     assertThat(afterSwitchRan[0]).isTrue();
     assertThat(schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN)).isEqualTo(4);
     assertThat(schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN)).isNull();
@@ -99,11 +100,25 @@ class VectorIndexSchemaIntegrationTest {
     assertThatThrownBy(
             () ->
                 schema.switchToTarget(
+                    () -> true,
                     () -> {
                       throw new IllegalStateException("rolled back");
                     }))
         .hasMessage("rolled back");
 
+    assertThat(schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN)).isEqualTo(3);
+    assertThat(schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN)).isEqualTo(4);
+  }
+
+  @Test
+  void aSwitchNoLongerWantedUnderTheLockChangesNothing() {
+    schema.recreateTargetColumn(4);
+    boolean[] afterSwitchRan = {false};
+
+    boolean switched = schema.switchToTarget(() -> false, () -> afterSwitchRan[0] = true);
+
+    assertThat(switched).isFalse();
+    assertThat(afterSwitchRan[0]).isFalse();
     assertThat(schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN)).isEqualTo(3);
     assertThat(schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN)).isEqualTo(4);
   }

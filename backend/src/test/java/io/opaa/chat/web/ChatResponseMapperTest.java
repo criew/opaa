@@ -285,6 +285,7 @@ class ChatResponseMapperTest {
     assertThat(mappedUserTurn.getChatId()).isEqualTo(chat.getId());
     assertThat(mappedUserTurn.getRole()).isEqualTo(ChatRole.USER);
     assertThat(mappedUserTurn.getContent()).isEqualTo("Frage?");
+    assertThat(mappedUserTurn.getGeneratedByAi()).isFalse();
     // A turn with no sources maps to a null (absent), not empty, sources list - matches the
     // generated DTO's "present on ASSISTANT messages that used document context; absent
     // otherwise" contract.
@@ -292,6 +293,7 @@ class ChatResponseMapperTest {
     ChatMessageResponse mappedAssistantTurn = response.getMessages().get(1);
     assertThat(mappedAssistantTurn.getId()).isEqualTo(assistantTurnId);
     assertThat(mappedAssistantTurn.getChatId()).isEqualTo(chat.getId());
+    assertThat(mappedAssistantTurn.getGeneratedByAi()).isTrue();
     assertThat(mappedAssistantTurn.getSources()).hasSize(2);
     assertThat(mappedAssistantTurn.getSources().getFirst().getFileName()).isEqualTo("bericht.pdf");
     assertThat(mappedAssistantTurn.getSources().getFirst().getPrivateSource()).isFalse();

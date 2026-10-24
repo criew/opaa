@@ -3,12 +3,12 @@ package io.opaa.externalaccess.security;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.CurrentUserArgumentResolver;
 import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
-import io.opaa.externalaccess.token.ExternalAccessSearchScopeSource;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator.Result;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
+import io.opaa.ratelimit.OwnQuotaAuthentication;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,10 +31,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Authenticates a bearer value carrying the access-token prefix (ADR-0035, Entscheidung 2) and
- * attaches the person plus the token id to the request. Sits in its own filter chain ({@link
- * ExternalAccessSecurityConfig}), because the resource server's bearer filter would reject an
- * opaque value as a malformed JWT before it ever got here, and because {@code DevAuthFilter} would
- * authenticate the request as the development user under {@code local,dev}.
+ * attaches the caller - the person plus the token id - to the request. Sits in its own filter chain
+ * ({@link ExternalAccessSecurityConfig}), because the resource server's bearer filter would reject
+ * an opaque value as a malformed JWT before it ever got here, and because {@code DevAuthFilter}
+ * would authenticate the request as the development user under {@code local,dev}.
  *
  * <p>A refusal answers {@code 401} with the reason in {@code WWW-Authenticate}, the way the local
  * issuer does (ADR-0033, Entscheidung 8) - a tool that gets {@code channel_closed} waits, one that
@@ -123,8 +123,7 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     }
     Result.Authenticated authenticated = (Result.Authenticated) result;
     UUID tokenId = authenticated.tokenId();
-    CurrentUserArgumentResolver.bindExternalAccessCaller(request, authenticated.user());
-    request.setAttribute(ExternalAccessSearchScopeSource.TOKEN_ID_ATTRIBUTE, tokenId);
+    CurrentUserArgumentResolver.bindExternalAccessCaller(request, authenticated.user(), tokenId);
     SecurityContextHolder.getContext()
         .setAuthentication(
             new ExternalAccessTokenAuthentication(authenticated.user().getId(), tokenId));
@@ -182,8 +181,13 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
             Instant.now(clock).toString()));
   }
 
-  /** The authentication an access-token call carries: the person, the token, one authority. */
-  static final class ExternalAccessTokenAuthentication extends AbstractAuthenticationToken {
+  /**
+   * The authentication an access-token call carries: the person, the token, one authority. The
+   * token has a quota of its own, so the rate limits count it apart from its account and spend no
+   * budget of its address.
+   */
+  static final class ExternalAccessTokenAuthentication extends AbstractAuthenticationToken
+      implements OwnQuotaAuthentication {
 
     private final UUID userId;
     private final transient UUID tokenId;
@@ -208,6 +212,16 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
 
     UUID tokenId() {
       return tokenId;
+    }
+
+    @Override
+    public String quotaKey() {
+      return tokenId.toString();
+    }
+
+    @Override
+    public String ownerKey() {
+      return userId.toString();
     }
   }
 }

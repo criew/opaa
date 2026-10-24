@@ -6,7 +6,7 @@ set -eu
 
 ME=$(basename "$0")
 
-# The value is spliced verbatim into proxy_pass by envsubst; anything beyond host[:port] could
+# The value becomes the server line of the upstream block; anything beyond host[:port] could
 # inject nginx directives. Hostnames may contain "_" (Docker container names), ports run 1-65535.
 # grep matches line by line, so a line break is rejected separately.
 NEWLINE='
@@ -41,7 +41,79 @@ if [ "$VALID" != true ]; then
   exit 1
 fi
 
+# Spliced into the Content-Security-Policy of every response the same way; a ";" would append
+# directives, a quote or "$" break the nginx configuration. Each space-separated entry is a CSP
+# source of the http/https/ws/wss family: [scheme://][*.]host[:port|:*][/path], a scheme such as
+# "https:", or "*". Keywords such as 'self' need quotes and are therefore not accepted.
+SOURCE='(((https?|wss?)://)?(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:([0-9]{1,5}|\*))?(/[a-z0-9._~%!&()*+=:@/-]*)?|(https?|wss?):|\*)'
+INVALID_SOURCE=""
+case "$OPAA_CSP_CONNECT_SRC_EXTRA" in
+  *"$NEWLINE"*) INVALID_SOURCE="(line break)" ;;
+  *)
+    # Entries are separated by spaces only; a tab stays part of an entry and fails the check.
+    set -f
+    SAVED_IFS=$IFS
+    IFS=' '
+    for CSP_SOURCE in $OPAA_CSP_CONNECT_SRC_EXTRA; do
+      if ! printf '%s' "$CSP_SOURCE" | grep -Eiqx "$SOURCE"; then
+        INVALID_SOURCE="$CSP_SOURCE"
+        break
+      fi
+    done
+    IFS=$SAVED_IFS
+    set +f ;;
+esac
+if [ -n "$INVALID_SOURCE" ]; then
+  echo "$ME: ERROR: OPAA_CSP_CONNECT_SRC_EXTRA must be a space-separated list of sources such as https://login.example.org, got '$OPAA_CSP_CONNECT_SRC_EXTRA', invalid entry: '$INVALID_SOURCE'" >&2
+  exit 1
+fi
+
+# Spliced into the resolver directive: space-separated DNS servers, IPv4 or [IPv6], each with an
+# optional port. Empty resolves OPAA_BACKEND_UPSTREAM once at start.
+OPAA_BACKEND_RESOLVER="${OPAA_BACKEND_RESOLVER:-}"
+ADDRESS='([0-9]{1,3}(\.[0-9]{1,3}){3}|\[[0-9A-Fa-f:.]+\])(:[1-9][0-9]{0,4})?'
+case "$OPAA_BACKEND_RESOLVER" in
+  "") VALID=true ;;
+  *"$NEWLINE"*) VALID=false ;;
+  *) if printf '%s' "$OPAA_BACKEND_RESOLVER" | grep -Eqx "$ADDRESS( +$ADDRESS)*"; then
+    VALID=true
+  else
+    VALID=false
+  fi ;;
+esac
+if [ "$VALID" != true ]; then
+  echo "$ME: ERROR: OPAA_BACKEND_RESOLVER must be empty or name DNS servers as address[:port], e.g. 127.0.0.11, got '$OPAA_BACKEND_RESOLVER'" >&2
+  exit 1
+fi
+
 mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
+
+# The upstream blocks of nginx.conf include these files. With a resolver nginx looks the name up
+# again every 5 s and starts even while it does not resolve yet; an address literal needs no lookup.
+# Why opaa_backend keeps failed peers (max_fails=0) and opaa_backend_once parks them with all
+# addresses as backup: nginx.conf, at the two upstream blocks.
+UPSTREAM_DIR=/tmp/nginx/upstream.d
+UPSTREAM_ONCE_DIR=/tmp/nginx/upstream-once.d
+mkdir -p "$UPSTREAM_DIR" "$UPSTREAM_ONCE_DIR"
+UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%:*}"
+case "$OPAA_BACKEND_UPSTREAM" in
+  \[*) UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%]*}]" ;;
+esac
+if [ -n "$OPAA_BACKEND_RESOLVER" ] \
+  && ! printf '%s' "$UPSTREAM_HOST" | grep -Eqx '[0-9.]+|\[.*\]'; then
+  RESOLVE='resolve '
+  printf 'resolver %s valid=5s;\nresolver_timeout 5s;\n' "$OPAA_BACKEND_RESOLVER" \
+    | tee "$UPSTREAM_DIR/backend.conf" > "$UPSTREAM_ONCE_DIR/backend.conf"
+  echo "$ME: info: resolving $OPAA_BACKEND_UPSTREAM at runtime through $OPAA_BACKEND_RESOLVER"
+else
+  RESOLVE=''
+  : > "$UPSTREAM_DIR/backend.conf"
+  : > "$UPSTREAM_ONCE_DIR/backend.conf"
+fi
+printf 'server %s %smax_fails=0;\n' "$OPAA_BACKEND_UPSTREAM" "$RESOLVE" >> "$UPSTREAM_DIR/backend.conf"
+printf 'server %s %smax_fails=1 fail_timeout=1s;\nserver %s %smax_fails=0 backup;\n' \
+  "$OPAA_BACKEND_UPSTREAM" "$RESOLVE" "$OPAA_BACKEND_UPSTREAM" "$RESOLVE" \
+  >> "$UPSTREAM_ONCE_DIR/backend.conf"
 
 # nginx.conf includes /tmp/nginx/listen.d/*.conf in its server block. The IPv6 listen is only
 # written where the kernel offers IPv6 - the same /proc/net/if_inet6 check the base image uses -

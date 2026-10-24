@@ -4,7 +4,6 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.compliance.DataFlow;
-import io.opaa.mail.MailDispatchExecutor;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import java.time.Clock;
@@ -13,19 +12,17 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * Tells every <em>other</em> system administrator of the organization that the bootstrap account
  * was used (ADR-0033, Entscheidung 5: mail {@code BOOTSTRAP_ACCOUNT_USED}), next to the audit event
- * {@link BootstrapAccountLoginListener} writes. The sends run on the {@link MailDispatchExecutor}:
- * the emergency sign-in must not wait for a mail server, and a failed send is the mail subsystem's
- * business ({@code MailService} logs and records it). One WARN line with the account id - never the
- * address - stays, so an operator reading the log sees the emergency access was used.
+ * {@link BootstrapAccountLoginListener} writes. The mails go to the outbox ({@link
+ * MailService#enqueue}): the emergency sign-in waits for no mail server, and a failed delivery is
+ * the mail subsystem's business. One WARN line with the account id - never the address - stays, so
+ * an operator reading the log sees the emergency access was used.
  */
 @DataFlow("mail")
 @Component
@@ -37,20 +34,11 @@ public class MailingBootstrapLoginNotifier implements BootstrapLoginNotifier {
 
   private final UserRepository users;
   private final MailService mail;
-  private final Executor executor;
   private final Clock clock;
 
-  @Autowired
-  public MailingBootstrapLoginNotifier(
-      UserRepository users, MailService mail, MailDispatchExecutor dispatch, Clock clock) {
-    this(users, mail, (Executor) dispatch, clock);
-  }
-
-  MailingBootstrapLoginNotifier(
-      UserRepository users, MailService mail, Executor executor, Clock clock) {
+  public MailingBootstrapLoginNotifier(UserRepository users, MailService mail, Clock clock) {
     this.users = users;
     this.mail = mail;
-    this.executor = executor;
     this.clock = clock;
   }
 
@@ -71,19 +59,16 @@ public class MailingBootstrapLoginNotifier implements BootstrapLoginNotifier {
             .filter(admin -> admin.getEmail() != null && !admin.getEmail().isBlank())
             .toList();
     String occurredAt = OCCURRED_AT.format(at.atZone(clock.getZone()));
-    executor.execute(
-        () -> {
-          for (User admin : recipients) {
-            mail.send(
-                MailTemplateKey.BOOTSTRAP_ACCOUNT_USED,
-                Locale.GERMAN,
-                admin.getEmail(),
-                Map.of(
-                    "displayName",
-                    admin.getDisplayName() == null ? "" : admin.getDisplayName(),
-                    "occurredAtHuman",
-                    occurredAt));
-          }
-        });
+    for (User admin : recipients) {
+      mail.enqueue(
+          MailTemplateKey.BOOTSTRAP_ACCOUNT_USED,
+          Locale.GERMAN,
+          admin.getEmail(),
+          Map.of(
+              "displayName",
+              admin.getDisplayName() == null ? "" : admin.getDisplayName(),
+              "occurredAtHuman",
+              occurredAt));
+    }
   }
 }

@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
+  /** The first key of {@link #lockPersonalIntake}; see {@code AssetGrantRepository} for others. */
+  int PERSONAL_INTAKE_LOCK_NAMESPACE = 209;
+
   /**
    * Document identity is scoped to {@code (library_id, file_path)}, enforced by {@code
    * uk_documents_library_path}: the same path or URL indexed into two different libraries is two
@@ -366,6 +369,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long sumFileSizeOfPrivateLibrariesOwnedBy(@Param("ownerUserId") UUID ownerUserId);
 
   /**
+   * Serializes the intake into the private libraries of {@code ownerUserId} until the end of the
+   * transaction, across every instance: the personal quota is a sum over rows the intake itself
+   * writes, so its check holds only when no second intake of the same owner checks in between.
+   */
+  @Query(
+      value =
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + PERSONAL_INTAKE_LOCK_NAMESPACE
+              + ", hashtext(CAST(:ownerUserId AS text)))) acquired",
+      nativeQuery = true)
+  int lockPersonalIntake(@Param("ownerUserId") UUID ownerUserId);
+
+  /**
    * The bytes the private libraries of one organization occupy together - a sum over persons, for
    * the masked view of the administration only.
    */
@@ -420,10 +436,20 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("indexedAt") Instant indexedAt);
 
   /**
-   * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload created before {@code
-   * threshold} is stuck for good - the process that would have finished it died. A bulk {@code
-   * UPDATE}, for the same reason as {@link #deleteByLibraryId}, scoped to {@code UPLOAD}: a
-   * connector run's transient {@code PENDING} row belongs to {@code indexing_jobs}' own recovery.
+   * The distinct instances processing a {@code PENDING} row - backs {@code
+   * UploadPendingRecoveryRunner}, which fails the uploads of those that are dead.
+   */
+  @Query(
+      "select distinct d.processingInstanceId from Document d where d.status ="
+          + " io.opaa.api.types.DocumentStatus.PENDING and d.processingInstanceId is not null")
+  List<UUID> findInstancesProcessingPendingRows();
+
+  /**
+   * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload of the instance {@code
+   * instanceId}, which the caller found dead, is stuck for good - the task that would have finished
+   * it is gone. A bulk {@code UPDATE}, for the same reason as {@link #deleteByLibraryId}, scoped to
+   * {@code UPLOAD}: a connector run's transient {@code PENDING} row belongs to {@code
+   * indexing_jobs}' own recovery.
    *
    * @return the number of rows transitioned to {@code FAILED}
    */
@@ -432,15 +458,33 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query(
       "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
           + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
-          + " d.sourceType = :sourceType and d.createdAt <"
-          + " :threshold")
-  int failStalePendingOfType(
+          + " d.sourceType = :sourceType and d.processingInstanceId = :instanceId")
+  int failPendingOfTypeProcessedBy(
       @Param("sourceType") SourceType sourceType,
-      @Param("errorMessage") String errorMessage,
-      @Param("threshold") Instant threshold);
+      @Param("instanceId") UUID instanceId,
+      @Param("errorMessage") String errorMessage);
 
-  default int failStalePending(String errorMessage, Instant threshold) {
-    return failStalePendingOfType(SourceType.UPLOAD, errorMessage, threshold);
+  default int failPendingUploadsProcessedBy(UUID instanceId, String errorMessage) {
+    return failPendingOfTypeProcessedBy(SourceType.UPLOAD, instanceId, errorMessage);
+  }
+
+  /**
+   * Every {@code PENDING} upload that names no processing instance, written before it was recorded
+   * - the same contract as {@link #failPendingUploadsProcessedBy}.
+   *
+   * @return the number of rows transitioned to {@code FAILED}
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
+          + " d.sourceType = :sourceType and d.processingInstanceId is null")
+  int failPendingOfTypeWithoutInstance(
+      @Param("sourceType") SourceType sourceType, @Param("errorMessage") String errorMessage);
+
+  default int failPendingUploadsWithoutInstance(String errorMessage) {
+    return failPendingOfTypeWithoutInstance(SourceType.UPLOAD, errorMessage);
   }
 
   /**

@@ -9,17 +9,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.CurrentUserArgumentResolver;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.externalaccess.security.ExternalAccessTokenAuthenticationFilter;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.LibraryExternalAccessService;
+import io.opaa.search.SearchRequestScope;
 import io.opaa.search.SearchScopeSource;
 import io.opaa.test.OpaaIntegrationTest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,6 +33,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,8 +44,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.context.request.RequestContextHolder;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * What a bearer access token actually reaches on the reading path of #1720 - the point of the whole
@@ -67,6 +78,9 @@ class ExternalAccessSearchIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
   @Autowired private SearchScopeSource searchScopeSource;
+  @Autowired private ExternalAccessTokenAuthenticator authenticator;
+  @Autowired private ExternalAccessNetworkPolicy networkPolicy;
+  @Autowired private JsonMapper jsonMapper;
 
   private User owner;
   private User administrator;
@@ -121,6 +135,38 @@ class ExternalAccessSearchIntegrationTest {
     // bean-registration order, and losing that race serves a token call the person's full readable
     // set - past the very intersection this channel promises.
     assertThat(searchScopeSource).isExactlyInstanceOf(ExternalAccessSearchScopeSource.class);
+  }
+
+  /**
+   * Regression guard for #2909: the caller a token call hands on carries the token itself. Resolved
+   * on a thread without any request context - where a tool would land if it ever left the request
+   * thread - it still gets the token's view and quota key, never the person's full readable set.
+   */
+  @Test
+  void theCallerOfATokenCallKeepsTheTokensViewOffTheRequestThread() throws Exception {
+    CurrentUser caller = callerAuthenticatedBy(rawValue);
+
+    SearchRequestScope scope =
+        CompletableFuture.supplyAsync(
+                () -> {
+                  assertThat(RequestContextHolder.getRequestAttributes()).isNull();
+                  return searchScopeSource.scopeFor(caller);
+                })
+            .get();
+
+    assertThat(scope.accessTokenId()).isEqualTo(tokenId);
+    assertThat(scope.libraryIds()).containsExactly(selectedLibraryId);
+  }
+
+  @Test
+  void aSignedInPersonKeepsHerFullViewWithoutAQuotaKey() {
+    CurrentUser person =
+        CurrentUser.of(owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "Person");
+
+    SearchRequestScope scope = searchScopeSource.scopeFor(person);
+
+    assertThat(scope.accessTokenId()).isNull();
+    assertThat(scope.libraryIds()).contains(selectedLibraryId, otherLibraryId);
   }
 
   @Test
@@ -274,6 +320,23 @@ class ExternalAccessSearchIntegrationTest {
                 tokenId.toString()))
         .isEqualTo(before);
     assertThat(tokens.findById(tokenId).orElseThrow().getLastUsedOn()).isNotNull();
+  }
+
+  /** Runs the channel's real access-token filter and returns the caller it binds. */
+  private CurrentUser callerAuthenticatedBy(String value) throws Exception {
+    ExternalAccessTokenAuthenticationFilter filter =
+        new ExternalAccessTokenAuthenticationFilter(
+            authenticator, tokenService, networkPolicy, List.of(), jsonMapper, clock);
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/search");
+    request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + value);
+    AtomicReference<CurrentUser> bound = new AtomicReference<>();
+    filter.doFilter(
+        request,
+        new MockHttpServletResponse(),
+        (chainRequest, chainResponse) ->
+            bound.set(CurrentUserArgumentResolver.callerOf((HttpServletRequest) chainRequest)));
+    assertThat(bound.get()).isNotNull();
+    return bound.get();
   }
 
   private String search() throws Exception {

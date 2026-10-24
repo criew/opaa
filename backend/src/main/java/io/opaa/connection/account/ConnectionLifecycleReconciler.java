@@ -10,6 +10,7 @@ import io.opaa.connection.account.ConnectedAccountService.Ended;
 import io.opaa.connection.log.ConnectionLogActor;
 import io.opaa.connection.token.ConnectionLifecycleProperties;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.instance.ScheduledRunLocks;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -103,6 +105,10 @@ public class ConnectionLifecycleReconciler {
   }
 
   @Scheduled(cron = "0 15 4 * * *")
+  @SchedulerLock(
+      name = "connection-lifecycle-reconciliation",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void daily() {
     logged("daily", reconciledAll());
   }

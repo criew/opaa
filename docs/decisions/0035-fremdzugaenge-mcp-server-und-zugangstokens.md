@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005, ADR-0021, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -106,10 +106,14 @@ Tests, die jeden Faktor einzeln entziehen. Seit ADR-0039 lautet die Gleichheitsz
 laufen über denselben Suchweg mit derselben Rechteprüfung; was sie durchsuchen, bestimmt im Chat die
 Zuordnung des Space, im Fremdzugang die Auswahl des Tokens** — der Fremdzugang bleibt bewusst ohne
 Space. Der Kanal erbt die Last des vollen Suchwegs je Aufruf, daher das Kontingent je Token
-(`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher) und der Abflussalarm
-(`ExternalAccessMassRetrievalAlarm`, Zählfenster im Arbeitsspeicher, Meldung mit Token-Kennung und
-Fenster, aber ohne Messwerte, nach `ExternalAccessAlertRetention` gelöscht) — zwei Einträge in der
-Liste aus ADR-0021. `spring.ai.mcp.server.request-timeout` wirkt nur sitzungsbehaftet; ein Deckel
+(`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher jeder Instanz, die den Wert
+der Einstellung durch die lebenden Instanzen teilt; auf den REST-Lesewegen zählt ein Tokenaufruf
+dazu gegen die Grenzen je Token und je Person (alle ihre Tokens) und die Gesamtgrenze der Suche,
+nicht gegen die seiner Netzadresse, weil hinter einem gemeinsamen Ausgang sonst ein Skript alle
+anderen aussperrt; eine Abweisung durch das Kontingent gibt die Gesamtmarke zurück) und der Abflussalarm
+(`ExternalAccessMassRetrievalAlarm`, ein Zähler des ganzen Kanals in der Datenbank, Meldung mit
+Token-Kennung und Fenster, aber ohne Messwerte, nach `ExternalAccessAlertRetention` gelöscht); beide
+nach ADR-0053 Entscheidung 12. `spring.ai.mcp.server.request-timeout` wirkt nur sitzungsbehaftet; ein Deckel
 gehört auf die HTTP-Ebene oder in den Domain-Dienst.
 
 ### 6. Der Fassungswechsel der MCP-Spezifikation ist geplant, nicht abgewartet
@@ -132,7 +136,7 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
   MCP-Lebenszyklus-Richtlinie; unterschritten nur bei einer Sicherheitslücke, mit Ankündigung.
 - **d) Fassungswache:** Eine benannte Rolle (Maintainer oder Benannter) prüft vierteljährlich
   Spezifikationsstand und Abkündigungsliste, die Fassungsliste der Bibliothek und das
-  Konfigurationsformat der Client-Anleitungen im [Handbuch](../handbuch/fremdzugaenge.md); das
+  Konfigurationsformat der Client-Anleitungen im [Handbuch](../handbuch/spaces/fremdzugaenge.md); das
   Ergebnis wird festgehalten. Renovate leistet das nicht; ein Versionssprung des MCP-Starters ist
   kein gewöhnliches Update und gehört in `renovate.json5` in eine Regel ohne Auto-Merge.
 

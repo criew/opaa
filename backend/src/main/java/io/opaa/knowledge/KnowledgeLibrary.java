@@ -171,6 +171,18 @@ public class KnowledgeLibrary extends Asset {
   private String scheduleCron;
 
   /**
+   * The last due time of the schedule some instance booked, and the cron it was booked under
+   * (ADR-0053, Entscheidung 7). Read-only here: only {@link
+   * KnowledgeLibraryRepository#bookScheduledRun} writes them, so a library saved from a stale
+   * entity never undoes a booking.
+   */
+  @Column(name = "schedule_booked_at", insertable = false, updatable = false)
+  private Instant scheduleBookedAt;
+
+  @Column(name = "schedule_booked_cron", length = 100, insertable = false, updatable = false)
+  private String scheduleBookedCron;
+
+  /**
    * Diagnosesperre (docs/features/hybrid-retrieval.md, Leitplanke (e)): while {@code true}, a
    * search diagnosis in a <em>foreign</em> rights context ("Sicht als") yields nothing from this
    * library - no hits, no titles, no counts. It says nothing about ordinary access; reading,
@@ -461,8 +473,8 @@ public class KnowledgeLibrary extends Asset {
    * Whether a Fremdzugang may reach this library at {@code at}. The Befristung takes effect the
    * moment it passes, not when {@code LibraryExternalAccessExpiryService} gets round to writing it
    * down: that run is a Nachtrag for the protocol and the history, never the condition of the
-   * effect - a single instance (ADR-0021) can be down for days, and the release must not outlive
-   * its end for that long.
+   * effect - an installation can be down for days, and the release must not outlive its end for
+   * that long.
    */
   public boolean isExternalAccessActive(Instant at) {
     return externalAccessState == ExternalAccessState.ACTIVE
@@ -558,6 +570,14 @@ public class KnowledgeLibrary extends Asset {
 
   public String getScheduleCron() {
     return scheduleCron;
+  }
+
+  public Instant getScheduleBookedAt() {
+    return scheduleBookedAt;
+  }
+
+  public String getScheduleBookedCron() {
+    return scheduleBookedCron;
   }
 
   public boolean isCoreContextPrefixDocumentType() {

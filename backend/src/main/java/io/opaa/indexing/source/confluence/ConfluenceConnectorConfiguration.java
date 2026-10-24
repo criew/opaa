@@ -5,6 +5,7 @@ import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;
@@ -72,7 +73,7 @@ public class ConfluenceConnectorConfiguration {
       DocumentIngestService documentIngestService,
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
-      SourceSyncStateRepository sourceSyncStateRepository,
+      ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
       Clock clock) {
     return new ConfluenceIndexingExecutor(
@@ -81,7 +82,7 @@ public class ConfluenceConnectorConfiguration {
         documentIngestService,
         attachmentIndexer,
         documentRepository,
-        sourceSyncStateRepository,
+        scanJournal,
         clock,
         indexingRunTemplate);
   }

@@ -18,13 +18,15 @@ jederzeit auch lokal ausführen (unten).
 | Gradle-Wrapper | `gradle-wrapper` | `backend` |
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
+| cdxgen für die Frontend-SBOM (`.github/tools/cdxgen/package.json` + `pnpm-lock.yaml`); eigene Gruppe ohne Auto-Merge, weil kein Required Check den Aufruf des Release-Laufs ausübt | `npm` | `frontend`, `ci` |
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
+| pytest und PyYAML der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`) und die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`, je Version mit `--hash`; Renovate erneuert die Hashes beim Bump, die Jobs installieren mit `--require-hashes`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle —
@@ -34,9 +36,9 @@ sieht eine Version ohne `module` überhaupt nicht. Der Pin bekäme dann nie eine
 bliebe auf dem Stand stehen, auf den ihn die damalige CVE gehoben hat. Deshalb steht zu jedem
 solchen Pin ein `[libraries]`-Eintrag mit `version.ref`, den der Override über `libs.*` verwendet.
 
-Achtung bei den Demo-Requirements: Für Änderungen ausschließlich unter `demo/` läuft derzeit
-**kein** CI-Job (die Pfadfilter in `ci.yml` kennen `demo/` nicht) — solche Update-PRs vor dem
-Merge lokal gegen `demo/seed/seed.py` bzw. den Generator prüfen.
+Achtung bei den Demo-Requirements: Ein Update von `demo/seed/requirements.txt` übt der Job
+`seed-script` in `ci.yml` aus, für `demo/generator/requirements.txt` läuft **kein** CI-Job. Solche
+Update-PRs vor dem Merge lokal gegen den Generator prüfen.
 
 Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/PR-Texte im
 Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels (unten), höchstens fünf
@@ -65,6 +67,79 @@ erscheint als „Pending" in der Abhängigkeits-Übersicht.
 Bump als PR sichtbar statt als stilles Lockfile-only-Update. Der allererste Lauf erzeugt dafür
 einmalig einen „Pin dependencies"-PR, der alle Caret-Ranges auf exakte Versionen umschreibt;
 `engines` bleibt bewusst eine Range, `packageManager` ist bereits exakt gepinnt.
+
+## Wartungsbranches
+
+Neben `main` pflegt Renovate den Wartungsbranch `release/X.Y` jeder unterstützten
+[Linie](releases.md#supportlinien) ([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md),
+Entscheidung 7), dort aber nur mit Updates, die eine Linie nach
+[Versionsnummern](releases.md#versionsnummern) tragen darf:
+
+| | `main` | `release/X.Y` |
+|---|---|---|
+| Update-Arten | alle, Majors ohne Auto-Merge | `patch`, `digest`, `pin`; `minor`, `major`, `replacement`, `rollback`, `bump` und `lockFileMaintenance` sind aus. Patch- und Minor-Versionen kommen getrennt (`separateMinorPatch`), damit eine neuere Minor-Version den Patch nicht mitnimmt |
+| Spring Boot | jede neue Version | nur Patch-Versionen der Minor-Version der Linie |
+| Basis-Images | neue Tags; der Stand des Tags kommt mit jedem Bau | Tag-Wechsel nur innerhalb der Patch-Versionen; aktuelle Pakete der Basis-Images bringt ein Patch-Release ohne Codeänderung ([Versionsnummern](releases.md#versionsnummern)) |
+| Auto-Merge | wie in den Regeln unten | dieselben Regeln: Was auf `main` automatisch mergt, mergt auch dort, sobald die Required Checks des Rulesets `release-branches` grün sind; wie auf `main` verlangt es keine Freigabe ([releases.md](releases.md#wer-ein-release-anlegt)). Majors, Minors und Ausnahmen nie |
+| Branch-Name, PR-Titel | `renovate/main-<Thema>`, Titel mit „(main)“ | `renovate/release/0.2-<Thema>`, Titel mit „(release/0.2)“ |
+
+**Welche Linien.** Die einzige Liste der Linien mit ihrem Supportende ist
+`.github/support-lines.json` (Pflege im Release-Ablauf, [releases.md](releases.md#supportlinien)).
+`renovate.yml` liest sie vor jedem Lauf mit `.github/scripts/support_lines.py base-branches` und
+übergibt `main` und `release/X.Y` jeder Linie, deren Supportende heute noch nicht überschritten
+ist, als globales `force` (`RENOVATE_FORCE='{"baseBranchPatterns":[…]}'`). Das ersetzt
+`baseBranchPatterns: ['main']` aus `renovate.json5`; ohne den Workflow, etwa im lokalen
+[Probelauf](#probelauf-ohne-schreibzugriff-dry-run), bleibt es bei `main`. Eine Linie fällt am Tag
+nach ihrem Supportende heraus, ohne dass jemand `renovate.json5` ändert; offene Update-PRs gegen
+ihren Branch schließt Renovate im nächsten Lauf wie jeden verwaisten Update-Branch
+(`pruneStaleBranches`, Vorgabe). Fehlt ein Branch noch, überspringt Renovate ihn mit einer
+Warnung im Log.
+
+**Namen.** Solange nur `main` gepflegt wird, heißen Branches und Titel wie bisher
+(`renovate/<Thema>`, ohne Zusatz). Sobald die erste Linie dazukommt, hängt Renovate den
+Basis-Branch an jeden Namen, auch an die von `main`: Offene PRs von `main` entstehen dann einmal
+unter neuem Namen neu, die alten schließt Renovate. Die Prüfung der Datenwirkung erkennt
+Renovate-PRs weiter am Präfix `renovate/`. **Abgelehnte PRs vergisst Renovate dabei:** Ob ein
+Update schon einmal abgelehnt wurde, erkennt es am geschlossenen PR mit demselben Branch-Namen und
+Titel, und beide ändern sich. Ein von Hand geschlossener PR, heute der Major-PR #1158, kommt beim
+Wechsel deshalb einmal neu; er wird erneut geschlossen oder als Regel mit `enabled: false` in
+`renovate.json5` festgehalten.
+
+**Grenzen.** `prConcurrentLimit` (fünf offene Update-PRs) gilt für alle Basis-Branches zusammen;
+Renovate kennt kein Limit je Basis-Branch. Ein Patch-Update für eine Linie kann deshalb hinter
+offenen PRs von `main` warten, bis einer davon gemergt oder geschlossen ist. Steht ein dringendes
+Update einer Linie so in der Abhängigkeits-Übersicht, legt der Maintainer es dort per Häkchen
+sofort an oder bringt es als [Backport](releases.md#backport). Die Übersicht führt die anstehenden
+Updates je Basis-Branch.
+
+**Ausnahme für Sicherheitsupdates.** Braucht eine Linie eine Sicherheitskorrektur, die es nur mit
+einer neuen Minor-Version einer Abhängigkeit gibt, und ist das kein
+[Bruch](releases.md#versionsnummern), schaltet der Maintainer sie mit einer ausdrücklichen Regel
+frei, die hinter der Sperrregel am Ende von `packageRules` steht (ADR-0054, Restrisiken):
+
+```json5
+{
+  matchBaseBranches: ['release/0.2'],
+  matchPackageNames: ['org.example:paket'],
+  matchUpdateTypes: ['minor'],
+  enabled: true,
+  automerge: false,
+}
+```
+
+**Woher der Anlass kommt.** Renovate selbst meldet einen solchen Fall nicht. Seine
+Sicherheits-PRs (`vulnerabilityAlerts`) entstehen aus den offenen Dependabot-Alerts, und die
+berechnet GitHub nur für `main`: Ist eine Lücke dort behoben, ist der Alert geschlossen, und für
+eine Linie entsteht kein Sicherheits-PR mehr. Gibt es den Fix nur als neue Minor-Version, verwirft
+ihn die Sperre ohne PR und ohne Eintrag in der Übersicht. Der Anlass kommt deshalb aus dem
+nächtlichen [CVE-Scan](cve-scanning.md) des jüngsten Patch-Release jeder Linie; er sieht, was im
+Image steckt, auch die Java-Bibliotheken des Backends, nicht aber Frontend-Bibliotheken, die im
+gebündelten JavaScript aufgehen.
+Die Regel wird mit dem Supportende der Linie wieder entfernt. `test_support_lines.py` liest `renovate.json5` mit Node und prüft, dass die
+Sperrregel die Update-Arten oben abdeckt, dass `separateMinorPatch` nur für die Wartungsbranches und
+vor der Sperre gilt, dass nach ihr nur solche Ausnahmen mit `matchPackageNames` und
+`automerge: false` stehen,
+dass `renovate.json5` nur `main` als Basis-Branch nennt und dass `renovate.yml` die Liste übergibt.
 
 ## Actions per Commit-SHA
 
@@ -108,6 +183,7 @@ Zugriffsregeln laut GitHub-Dokumentation („Dependency caching reference“, Ab
 | Lauf | darf lesen | darf schreiben |
 |---|---|---|
 | `push`, `schedule`, `workflow_dispatch` auf `main` | Cache von `main` | Cache von `main` |
+| `push` auf einen Wartungsbranch `release/X.Y` (`ci.yml`) und manueller E2E-Lauf dort (`gh workflow run e2e.yml --ref release/X.Y`, schreibt `type=gha`) | Cache des Branches, `main` | Cache des Branches; lesen dürfen ihn nur er selbst und PRs gegen ihn, kein Release-Tag |
 | `pull_request`, auch aus einem Fork | eigener Merge-Ref, Basis-Branch, `main` | nur den eigenen Merge-Ref; sichtbar nur für erneute Läufe desselben PRs |
 | `pull_request_target`, `issue_comment`, `workflow_run` auf `main` (hier `cla.yml`) | Cache von `main` | nichts, solange der Workflow kein schreibendes `cache-mode` setzt; keiner tut das |
 | Release-Tag `vX.Y.Z` | eigener Tag, `main` | eigener Tag; kein anderer Tag sieht ihn |
@@ -129,7 +205,8 @@ Daraus folgt:
 Deshalb gilt zusätzlich zu den Pins:
 
 - **Releases bauen ohne gha-Cache.** `publish-images.yml` setzt `cache-from` und `cache-to` nur
-  bei Läufen, die nicht von einem Tag kommen. Ein Release-Image entsteht damit nur aus Checkout,
+  bei Läufen, die nicht von einem Tag kommen; das gilt auch für Tags auf einem Wartungsbranch, und
+  auf dem Branch selbst baut der Workflow nicht. Ein Release-Image entsteht damit nur aus Checkout,
   Basis-Images und Paketquellen, unabhängig davon, was ein Job auf `main` in den Cache gelegt
   hat. `test_publish_images_cache.py` hält die Bedingung fest. Gemessen an den ersten Läufen mit
   den Scopes je Architektur, die keinen Cache-Treffer hatten (#2411, Läufe 37980307632 und
@@ -157,9 +234,9 @@ Workflows, ohne Dateiliste:
 - **`minimumReleaseAge: '3 days'`.** Ein neues Release wird frühestens drei Tage nach seinem
   Zeitstempel vorgeschlagen; bis dahin steht es als „Pending“ in der Abhängigkeits-Übersicht, und
   Renovate legt keinen Branch an (`internalChecksFilter` steht auf der Vorgabe `strict`). Ohne
-  Branch gibt es auch keinen PR-Lauf. Das ist wichtig, weil `cve-scan.yml` und
-  `dependency-graph.yml` auch bei `pull_request` laufen, und zwar in der Fassung des PRs mit ihren
-  Schreibrechten. Ein späteres `automerge: false` käme dafür zu spät.
+  Branch gibt es auch keinen PR-Lauf. Das ist wichtig, weil `cve-scan.yml` auch bei
+  `pull_request` läuft, und zwar in der Fassung des PRs mit seinem Schreibrecht
+  (`security-events: write`). Ein späteres `automerge: false` käme dafür zu spät.
   **Der Schutz ist nur teilweise:** Der Zeitstempel der Datasource `github-tags` ist das
   Commit-Datum (leichtgewichtiger Tag) bzw. das Tagger-Datum (annotierter Tag), angehoben auf das
   Datum eines GitHub-Releases, falls es eins gibt und es später liegt. Commit- und Tagger-Datum
@@ -277,7 +354,6 @@ trifft, hat gar keine Zeile** — das ist der Befund. Erwartet:
 ```
 DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/s3/S3TestFixture.java
 DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/integration/keycloak/KeycloakFixture.java
-DEBUG: Matched 1 file(s) for manager regex: .github/workflows/sbom.yml
 DEBUG: Matched 2 file(s) for manager regex: .github/workflows/helm-chart.yml, .github/workflows/publish-images.yml
 ```
 

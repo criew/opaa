@@ -6,17 +6,18 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.notification.NotificationService;
+import io.opaa.ratelimit.InstallationCounters;
 import io.opaa.search.MassRetrievalAlarm;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.TransactionException;
 
 /**
  * The mass-retrieval alert of the external-access channel (docs/features/external-access.md,
@@ -24,13 +25,15 @@ import org.springframework.stereotype.Component;
  * sliding window and, when the threshold from the channel settings is exceeded, raises exactly one
  * message to the system administration plus one line in the technical application log.
  *
- * <p>What it deliberately is not. The count lives <b>in memory only</b> (ADR-0021, single
- * instance): no table, no time series, no history, and it does not survive a restart. It writes
- * <b>no entry into the Nachweisprotokoll</b> - the alert is a security event and belongs into
- * security monitoring, the same shape a failed sign-in already has; what reaches the audit trail is
- * only the token suspension that may follow. It is <b>not per person</b>: the message names the
- * token id, without which the access could not be switched off at all, and nothing is ever
- * aggregated into a per-person evaluation.
+ * <p>What it deliberately is not. The count is <b>one counter of the whole installation</b> in
+ * {@link InstallationCounters} (ADR-0053, Entscheidung 12): one row for the channel, with the
+ * events of the current and the previous hour and the cooldown, without any token, person or
+ * history - every instance counts into it and sees what the others counted, and the cooldown lets
+ * exactly one of them raise the alert. It writes <b>no entry into the Nachweisprotokoll</b> - the
+ * alert is a security event and belongs into security monitoring, the same shape a failed sign-in
+ * already has; what reaches the audit trail is only the token suspension that may follow. It is
+ * <b>not per person</b>: the message names the token id, without which the access could not be
+ * switched off at all, and nothing is ever aggregated into a per-person evaluation.
  *
  * <p>A cooldown follows every alert. Without it a sustained event would decay into a series of
  * messages, and a series of messages is a history by another name.
@@ -53,26 +56,27 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
   /** After an alert, the channel stays quiet for this long - see the class comment. */
   static final Duration COOLDOWN = Duration.ofHours(6);
 
-  private static final String TITLE = "Auffällig viele Abrufe über Fremdzugänge";
+  private static final String TITLE = "Auffällig viele Abrufe durch externe KI-Werkzeuge";
+
+  /** The one counter of the channel; it names no token and no person. */
+  static final String COUNTER_KEY = "external-access:retrievals";
 
   private final ExternalAccessSettingsService settings;
   private final UserRepository users;
   private final NotificationService notifications;
+  private final InstallationCounters counters;
   private final Clock clock;
-
-  /** The channel-wide window. Guarded by its own monitor; nothing else reads it. */
-  private final Deque<Long> retrievals = new ArrayDeque<>();
-
-  private long quietUntil;
 
   public ExternalAccessMassRetrievalAlarm(
       ExternalAccessSettingsService settings,
       UserRepository users,
       NotificationService notifications,
+      InstallationCounters counters,
       Clock clock) {
     this.settings = settings;
     this.users = users;
     this.notifications = notifications;
+    this.counters = counters;
     this.clock = clock;
   }
 
@@ -87,25 +91,22 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
       return;
     }
     int threshold = settings.current().values().massRetrievalAlertThreshold();
-    long now = clock.millis();
-    int measured;
-    synchronized (retrievals) {
-      long cutoff = now - WINDOW.toMillis();
-      while (!retrievals.isEmpty() && retrievals.peekFirst() < cutoff) {
-        retrievals.pollFirst();
-      }
-      retrievals.addLast(now);
-      measured = retrievals.size();
-      if (measured <= threshold || now < quietUntil) {
+    double measured;
+    try {
+      measured = counters.count(COUNTER_KEY, WINDOW);
+      if (measured <= threshold || !counters.claimQuietPeriod(COUNTER_KEY, WINDOW, COOLDOWN)) {
         return;
       }
-      quietUntil = now + COOLDOWN.toMillis();
+    } catch (DataAccessException | TransactionException e) {
+      // The retrieval itself stands; the alert cannot count it, which the log says.
+      log.warn("External access mass-retrieval counter unavailable: {}", e.getMessage());
+      return;
     }
-    raise(organizationId, accessTokenId, threshold, measured, Instant.ofEpochMilli(now));
+    raise(organizationId, accessTokenId, threshold, (long) Math.ceil(measured), clock.instant());
   }
 
   private void raise(
-      UUID organizationId, UUID accessTokenId, int threshold, int measured, Instant at) {
+      UUID organizationId, UUID accessTokenId, int threshold, long measured, Instant at) {
     log.warn(
         "External access mass-retrieval threshold exceeded: {} retrievals within {} minutes,"
             + " threshold {}, access token {}",
@@ -117,7 +118,7 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
     // turn a sequence of kept messages into a usage curve per token. It stands in the application
     // log, which is where the incident is investigated.
     String body =
-        "Der Fremdzugangskanal hat die Schwelle für Massenabrufe in der Stunde bis "
+        "Der Zugriff externer KI-Werkzeuge hat die Schwelle für Massenabrufe in der Stunde bis "
             + at
             + " überschritten. Betroffenes Zugangstoken: "
             + accessTokenId
@@ -141,13 +142,11 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
 
   /**
    * Forgets the window and the cooldown - for a test, and for nothing else. Public because the
-   * window is one shared singleton: a class that drives the alert has to leave it as it found it,
-   * and one that asserts on it has to start from a known state, whichever package it sits in.
+   * window is one counter of the installation: a class that drives the alert has to leave it as it
+   * found it, and one that asserts on it has to start from a known state, whichever package it sits
+   * in.
    */
   public void reset() {
-    synchronized (retrievals) {
-      retrievals.clear();
-      quietUntil = 0;
-    }
+    counters.reset(COUNTER_KEY, WINDOW);
   }
 }

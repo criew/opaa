@@ -1,3 +1,16 @@
+# Korpus-Generator: Prompt-Injection (Issue #3044)
+
+Erzeugt die präparierten Dokumente unter `eval/corpus/prompt-injection/` samt Manifest und die
+Fälle `eval/golden/prompt-injection.json` aus einer Falltabelle im Skript. PDF und DOCX schreibt
+das Skript selbst, ohne Fremdbibliothek und mit festen ZIP-Zeitstempeln; zwei Läufe erzeugen
+byte-identische Ausgabe. Aufbau: [`../corpus/prompt-injection/SOURCE.md`](../corpus/prompt-injection/SOURCE.md).
+
+```bash
+python eval/generator/generate_prompt_injection_corpus.py
+```
+
+---
+
 # Korpus-Generator: Verwaltung (Issue #1042)
 
 Erzeugt den Evaluierungskorpus unter `eval/corpus/verwaltung/` — vollständig synthetisch, ohne

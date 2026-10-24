@@ -102,7 +102,7 @@ Version (Löschmarker gilt als Löschung, `versionId` wird nie gespeichert); Ord
 (`S3ArchiveState`, `GLACIER_IR` wird gelesen) und per Endung oder Größe vorab ausgefilterte Schlüssel
 gelten als gesehen. Anhänge von Mail-Objekten hängen per `parent_document_id` am Objekt (ADR-0022,
 Entscheidung 3) und fallen nur mit einem neu verarbeiteten Elternobjekt weg (`markReprocessed` statt
-`markPresent` in `FileSync`). Einzelheiten: [Handbuch](../handbuch/konnektoren/s3.md), „Ordner“ bis
+`markPresent` in `FileSync`). Einzelheiten: [Handbuch](../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/s3.md), „Ordner“ bis
 „Grenzen und Schutzmechanismen“.
 
 ### 6. Der Push-Weg: ein Endpunkt je Bibliothek, drei Absicherungsformen, jedes Ereignis ein Hinweis

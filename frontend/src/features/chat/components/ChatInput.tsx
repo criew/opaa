@@ -1,7 +1,6 @@
 import type { ChangeEvent, KeyboardEvent } from 'react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
@@ -19,33 +18,25 @@ import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { useAuthStore } from '@/shared/session/authStore'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
-import {
-  metadataFilterScopeKey,
-  useMetadataFilterOptionsStore,
-} from '../stores/metadataFilterOptionsStore'
-import { useSpaceStore } from '@/features/space'
 import { SpaceKnowledgeNotice } from '@/features/space'
-import { spaceKnowledgeGap } from '@/features/space'
-import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import MetadataFilterPopover from './MetadataFilterPopover'
+import { AiNotice } from './AiNotice'
 import ChatActionMenu from './ChatActionMenu'
+import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
 import { withDictatedText } from './dictationText'
 import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
 import { CHAT_ACTION_SOURCES } from './chatActionSources'
 import { useChatActions } from './useChatActions'
+import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
+import { useMentionSuggestions } from './useMentionSuggestions'
+import { useSpaceLibraryScope } from './useSpaceLibraryScope'
 import {
-  dateChipLabel,
-  formatFieldChipLabel,
-  formatFieldLabel,
-  libraryFieldChipLabel,
-  libraryFieldLabel,
-  withoutDateWindow,
-  withoutDocumentTypes,
-  withoutFormatField,
-  withoutLibraryField,
-} from './metadataFilterText'
+  inputHint,
+  lengthAnnouncement,
+  lengthCounterText,
+  withRestoredQuestion,
+} from './chatInputText'
 
 /**
  * What became of a sent message; `restoreDraft` hands a refused question back to the input, and
@@ -80,91 +71,6 @@ interface ChatInputProps {
   actionSources?: readonly ChatActionSource[]
 }
 
-interface ActiveMention {
-  /** Index of the '@' character that opened the mention in the current text value. */
-  start: number
-  /** Text typed after '@', used to filter suggestions. */
-  query: string
-}
-
-/**
- * The chip bar's special entry: every knowledge library associated with the chat's space that the
- * person may read - never more, always offered first.
- */
-const SPACE_KNOWLEDGE_LABEL = 'Space-Wissen'
-
-/** A knowledge library associated with the chat's space and readable by the person. */
-interface SpaceLibrary {
-  id: string
-  name: string
-}
-
-type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibrary }
-
-/**
- * The neutral hint under the input: the input triggers more than a question - prompts,
- * later agents and skills - so the line names the prefixes instead of counting libraries. '/' is
- * named only while some action source is active. What the next question searches is stated by
- * the chip bar above it.
- */
-const INPUT_HINT = '@ für Quellen'
-const ACTIONS_HINT = '/ für Aktionen'
-
-/** The hint while an answer is pending: '@' changes the search scope and stays closed until then. */
-function inputHint(answerPending: boolean, actions: boolean): string {
-  if (answerPending) return actions ? ACTIONS_HINT : ''
-  return actions ? `${INPUT_HINT}, ${ACTIONS_HINT}` : INPUT_HINT
-}
-
-/** A refused question goes back before whatever the person has typed since. */
-function withRestoredQuestion(question: string, draft: string): string {
-  return draft.trim() === '' ? question : `${question}\n\n${draft}`
-}
-
-/** From this share of {@link QUESTION_MAX_LENGTH} on, the input counts the characters. */
-const LENGTH_COUNTER_THRESHOLD = 0.9
-
-/**
- * The counter under the input, measured on the trimmed text that is actually sent; `null` while
- * the question is well below the limit.
- */
-function lengthCounterText(length: number): string | null {
-  if (length < QUESTION_MAX_LENGTH * LENGTH_COUNTER_THRESHOLD) return null
-  const counted = `${length} von ${QUESTION_MAX_LENGTH} Zeichen`
-  if (length <= QUESTION_MAX_LENGTH) return counted
-  return `${counted} – bitte um ${length - QUESTION_MAX_LENGTH} Zeichen kürzen, damit sich die Frage senden lässt.`
-}
-
-/**
- * The screen reader announcement for the length: one fixed sentence per threshold state, so it
- * changes - and is announced - only when the question crosses 90 % or the limit, not per keystroke.
- */
-function lengthAnnouncement(length: number): string {
-  if (length > QUESTION_MAX_LENGTH) {
-    return `Die Frage ist länger als ${QUESTION_MAX_LENGTH} Zeichen und lässt sich nicht senden.`
-  }
-  if (length >= QUESTION_MAX_LENGTH * LENGTH_COUNTER_THRESHOLD) {
-    return `Die Frage nähert sich der Grenze von ${QUESTION_MAX_LENGTH} Zeichen und lässt sich senden.`
-  }
-  return ''
-}
-
-/**
- * Finds an in-progress '@' mention ending at the cursor, or null if none is active. Only
- * triggers when '@' starts a word (start of text or preceded by whitespace) and the fragment
- * typed so far contains no whitespace - typing a space closes the mention.
- */
-function findActiveMention(text: string, cursor: number): ActiveMention | null {
-  const upToCursor = text.slice(0, cursor)
-  const atIndex = upToCursor.lastIndexOf('@')
-  if (atIndex === -1) return null
-  const charBefore = atIndex === 0 ? '' : text[atIndex - 1]
-  if (charBefore && !/\s/.test(charBefore)) return null
-  const query = upToCursor.slice(atIndex + 1)
-  if (/\s/.test(query)) return null
-  return { start: atIndex, query }
-}
-
 export default function ChatInput({
   onSend,
   disabled = false,
@@ -174,15 +80,6 @@ export default function ChatInput({
   actionSources = CHAT_ACTION_SOURCES,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
-  const [mention, setMention] = useState<ActiveMention | null>(null)
-  // -1 means "nothing explicitly highlighted yet" - Enter only selects once ArrowDown/ArrowUp/
-  // hover has set an index, so a bare '@' at the end of the text does not select the first
-  // suggestion out from under the user on a plain Enter.
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
-  // Start index of a mention dismissed via Escape - suppresses reopening the list while the
-  // cursor stays inside that same '@'-fragment, until the fragment is left (space, deletion past
-  // '@', or a new '@' elsewhere).
-  const [dismissedMentionStart, setDismissedMentionStart] = useState<number | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
@@ -211,7 +108,6 @@ export default function ChatInput({
   const chatId = useChatStore((s) => s.chatId)
   const metadataFilter = useChatStore((s) => s.metadataFilter)
   const setMetadataFilter = useChatStore((s) => s.setMetadataFilter)
-  const filterOptions = useMetadataFilterOptionsStore((s) => s.options)
 
   // '/' at the start of a line opens the actions of every active source - a prompt, for one: its
   // text lands in the input, marked by a removable chip; sending stays a separate action.
@@ -252,45 +148,28 @@ export default function ChatInput({
     onReturnedQuestionHandled?.()
   }, [returnedQuestion, seenReturned, returnedTaken, onReturnedQuestionHandled])
 
-  // What the chip bar offers mirrors ChatService#effectiveLibraryScope: the space's associated
-  // knowledge libraries the person may read, nothing else. Loaded per current chat's space via the
-  // same spaceStore SpaceSettingsPage/SpacePage use (their routes never render at the same time as
-  // this one) - but that store write-back is asynchronous and per-space, so
-  // this component must not simply trust whatever is currently in assetAssociations.
-  // assetAssociationsSpaceId names which space that data actually describes;
-  // isAssetAssociationsCurrent below is false while it does not match chatSpaceId - covering the
-  // load still being in flight, a load that failed (spaceStore leaves it null rather than
-  // defaulting to "no associations"), and the moment right after switching to a
-  // chat in a different space, before its own load has even started.
-  const chatSpaceId = useChatStore((s) => s.spaceId)
-  const hasKnowledge = useSpaceStore((s) => s.hasKnowledge)
-  const hasReadableKnowledge = useSpaceStore((s) => s.hasReadableKnowledge)
-  const assetAssociations = useSpaceStore((s) => s.assetAssociations)
-  const assetAssociationsSpaceId = useSpaceStore((s) => s.assetAssociationsSpaceId)
-  const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
-  const spaceRole = useSpaceStore(
-    (s) => s.spaces.find((space) => space.id === chatSpaceId)?.userRole,
-  )
-  const isAssetAssociationsCurrent = assetAssociationsSpaceId === chatSpaceId
-  const spaceLibraries = useMemo(
-    (): SpaceLibrary[] =>
-      isAssetAssociationsCurrent
-        ? assetAssociations
-            .filter((a) => a.assetType === 'KNOWLEDGE_LIBRARY')
-            .map((a) => ({ id: a.assetId, name: a.name ?? '' }))
-        : [],
-    [assetAssociations, isAssetAssociationsCurrent],
-  )
-  const knowledgeGap =
-    chatSpaceId && isAssetAssociationsCurrent
-      ? spaceKnowledgeGap(hasKnowledge, hasReadableKnowledge)
-      : null
-
-  useEffect(() => {
-    if (chatSpaceId) {
-      void loadAssetAssociations(chatSpaceId)
-    }
-  }, [chatSpaceId, loadAssetAssociations])
+  const { chatSpaceId, spaceRole, spaceLibraries, knowledgeGap, libraryChips, scopeNotice } =
+    useSpaceLibraryScope(scope, referencedLibraryIds)
+  const {
+    mention,
+    highlightedIndex,
+    setHighlightedIndex,
+    suggestions,
+    closeMention,
+    selectSuggestion,
+    trackMention,
+    dismissMention,
+    resetMention,
+  } = useMentionSuggestions({
+    value,
+    setValue,
+    inputRef,
+    spaceLibraries,
+    scope,
+    referencedLibraryIds,
+    setScopeAll,
+    addReferencedLibrary,
+  })
 
   useEffect(() => {
     if (wasDisabled.current && !disabled) {
@@ -299,138 +178,29 @@ export default function ChatInput({
     wasDisabled.current = disabled
   }, [disabled])
 
-  // One entry per referenced id, in the order the ids were added - not per matched library, so a
-  // reference that is (still, or no longer) missing from the space's libraries keeps its own chip
-  // instead of silently disappearing. An empty-looking bar for scope 'libraries' would otherwise
-  // be indistinguishable from a deliberately emptied one.
-  const libraryChips = useMemo(() => {
-    if (scope !== 'libraries') return []
-    return referencedLibraryIds.map((libraryId) => {
-      const library = spaceLibraries.find((l) => l.id === libraryId)
-      if (library) return { kind: 'known' as const, libraryId, library }
-      if (!isAssetAssociationsCurrent) return { kind: 'loading' as const, libraryId }
-      // Known, and still not found - no longer associated, no longer readable or deleted.
-      // Removable like any other chip, so a stale reference does not get stuck in the bar.
-      return { kind: 'missing' as const, libraryId }
-    })
-  }, [spaceLibraries, isAssetAssociationsCurrent, referencedLibraryIds, scope])
-
-  // While the space's associations are not known yet (still loading, or the load failed), the
-  // @Space-Wissen chip must not quietly promise a scope; the line under the input says so. An
-  // empty scope is stated by SpaceKnowledgeNotice above the chip bar.
-  const scopeNotice =
-    scope === 'all' && !isAssetAssociationsCurrent ? 'Suchbereich wird ermittelt …' : null
-
-  // The scope the next question searches - the filter options are loaded for exactly this scope,
-  // resolved server-side with the query's own rules: the chat's own settings, or for a chat not yet
-  // created its space with the chip bar's settings.
-  const filterScope = useMemo(
-    () => ({
-      chatId,
-      spaceId: chatSpaceId,
-      useKnowledge: scope === 'all',
-      libraryIds: scope === 'libraries' ? referencedLibraryIds : [],
-    }),
-    [chatId, chatSpaceId, referencedLibraryIds, scope],
-  )
-
-  // A chat loaded with a Dokumentart condition needs the labels before the popover was ever
-  // opened; loading the options for the current scope resolves them.
-  // Without metadata (ADR-0044) the chat offers no filter and shows no stored one.
-  const metadataEnabled = useFeatureEnabled('metadata')
-  const filterOptionsScopeKey = useMetadataFilterOptionsStore((s) => s.optionsScopeKey)
-  const loadFilterOptions = useMetadataFilterOptionsStore((s) => s.loadOptions)
-  const filterScopeKey = metadataFilterScopeKey(filterScope)
-  const hasTypeFilter = (metadataFilter?.documentTypes ?? []).length > 0
-  useEffect(() => {
-    if (metadataEnabled && hasTypeFilter && filterOptionsScopeKey !== filterScopeKey) {
-      void loadFilterOptions(filterScope)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metadataEnabled, hasTypeFilter, filterOptionsScopeKey, filterScopeKey])
-
-  const documentTypeChipLabel = useMemo(() => {
-    const codes = metadataFilter?.documentTypes ?? []
-    if (codes.length === 0) return undefined
-    const labels = codes.map(
-      (code) => filterOptions?.documentTypes.find((type) => type.code === code)?.label ?? code,
-    )
-    return `Dokumentart: ${labels.join(', ')}`
-  }, [filterOptions, metadataFilter])
-  const dateChip = metadataFilter ? dateChipLabel(metadataFilter) : undefined
-
-  const removeDocumentTypeFilter = () => {
-    if (metadataFilter) setMetadataFilter(withoutDocumentTypes(metadataFilter))
-  }
-  const removeDateFilter = () => {
-    if (metadataFilter) setMetadataFilter(withoutDateWindow(metadataFilter))
-  }
-
-  const suggestions = useMemo((): MentionSuggestion[] => {
-    if (mention === null) return []
-    const query = mention.query.toLowerCase()
-    const suggestions: MentionSuggestion[] = []
-    // @Space-Wissen is always offered first, regardless of the current scope - re-selecting
-    // it while already active is a harmless no-op, and it is the only way back once removed.
-    if (SPACE_KNOWLEDGE_LABEL.toLowerCase().includes(query)) {
-      suggestions.push({ kind: 'all' })
-    }
-    const alreadyReferenced = scope === 'libraries' ? referencedLibraryIds : []
-    spaceLibraries
-      .filter((library) => !alreadyReferenced.includes(library.id))
-      .filter((library) => library.name.toLowerCase().includes(query))
-      .slice(0, 8 - suggestions.length)
-      .forEach((library) => suggestions.push({ kind: 'library', library }))
-    return suggestions
-  }, [spaceLibraries, mention, referencedLibraryIds, scope])
-
-  /** Closes the suggestion popup without recording a dismissal (used on selection/send). */
-  const closeMention = () => {
-    setMention(null)
-    setHighlightedIndex(-1)
-  }
-
-  const selectSuggestion = (suggestion: MentionSuggestion) => {
-    if (mention === null) return
-    const cursor = inputRef.current?.selectionStart ?? value.length
-    const before = value.slice(0, mention.start)
-    const after = value.slice(cursor)
-    const nextValue = `${before}${after}`
-    setValue(nextValue)
-    if (suggestion.kind === 'all') {
-      setScopeAll()
-    } else {
-      addReferencedLibrary(suggestion.library.id)
-    }
-    setDismissedMentionStart(null)
-    closeMention()
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-      inputRef.current?.setSelectionRange(before.length, before.length)
-    })
-  }
+  const {
+    filterScope,
+    metadataEnabled,
+    filterOptions,
+    documentTypeChipLabel,
+    dateChip,
+    removeDocumentTypeFilter,
+    removeDateFilter,
+  } = useChatMetadataFilterChips({
+    chatId,
+    chatSpaceId,
+    scope,
+    referencedLibraryIds,
+    metadataFilter,
+    setMetadataFilter,
+  })
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const nextValue = e.target.value
     setValue(nextValue)
     const cursor = e.target.selectionStart ?? nextValue.length
     actions.track(nextValue, cursor)
-    // The '@' selection changes the search scope, so it stays closed while the scope is locked.
-    const detected = scopeLocked ? null : findActiveMention(nextValue, cursor)
-    if (detected === null) {
-      // Left the fragment entirely (space, deleted past '@', ...) - any earlier dismissal no
-      // longer applies.
-      setMention(null)
-      setDismissedMentionStart(null)
-    } else if (detected.start === dismissedMentionStart) {
-      // Still inside the '@'-fragment the user dismissed via Escape - keep it closed instead of
-      // reopening on the very next keystroke.
-      setMention(null)
-    } else {
-      setMention(detected)
-      setHighlightedIndex(-1)
-      setDismissedMentionStart(null)
-    }
+    trackMention(nextValue, cursor, scopeLocked)
   }
 
   const handleSend = () => {
@@ -444,8 +214,7 @@ export default function ChatInput({
         ? onSend(trimmed, { id: selected.mark.id, title: selected.mark.title })
         : onSend(trimmed)
     setValue('')
-    setDismissedMentionStart(null)
-    closeMention()
+    resetMention()
     actions.reset()
     // Sending by button would leave the focus on the button, which is locked from now on.
     inputRef.current?.focus()
@@ -504,8 +273,7 @@ export default function ChatInput({
     if (mention !== null) {
       if (e.key === 'Escape') {
         e.preventDefault()
-        setDismissedMentionStart(mention.start)
-        closeMention()
+        dismissMention()
         return
       }
       if (suggestions.length > 0) {
@@ -563,168 +331,26 @@ export default function ChatInput({
           <SpaceKnowledgeNotice spaceId={chatSpaceId} gap={knowledgeGap} role={spaceRole} />
         </Box>
       )}
-      <Box
-        sx={{
-          maxWidth: CHAT_MAX_WIDTH,
-          mx: 'auto',
-          mb: 1,
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 0.75,
-        }}
-      >
-        {actions.selected && (
-          <Chip
-            icon={<actions.selected.source.Icon />}
-            label={actions.selected.source.markLabel(actions.selected.mark)}
-            size="small"
-            variant="outlined"
-            onDelete={disabled ? undefined : actions.clearSelected}
-            aria-label={`Kennzeichnung ${actions.selected.source.markLabel(actions.selected.mark)} entfernen`}
-            data-testid="used-prompt-chip"
-          />
-        )}
-        {scope === 'all' && (
-          <Chip
-            icon={<AllInclusiveIcon />}
-            label="@Space-Wissen"
-            size="small"
-            color="primary"
-            onDelete={scopeLocked ? undefined : clearScope}
-            // The default delete icon carries aria-hidden from MUI, so the accessible name has to
-            // sit on the chip itself rather than on that icon.
-            aria-label="Referenz Space-Wissen entfernen"
-          />
-        )}
-        {scope === 'libraries' &&
-          libraryChips.map((chip) => {
-            if (chip.kind === 'known') {
-              return (
-                <Chip
-                  key={chip.libraryId}
-                  label={chip.library.name}
-                  size="small"
-                  variant="filled"
-                  color="primary"
-                  onDelete={scopeLocked ? undefined : () => removeReferencedLibrary(chip.libraryId)}
-                  aria-label={`Bibliotheksreferenz ${chip.library.name} entfernen`}
-                />
-              )
-            }
-            if (chip.kind === 'loading') {
-              return (
-                <Chip
-                  key={chip.libraryId}
-                  label="Bibliothek wird geladen …"
-                  size="small"
-                  variant="outlined"
-                  disabled
-                  aria-label="Bibliotheksreferenz wird geladen"
-                />
-              )
-            }
-            return (
-              <Chip
-                key={chip.libraryId}
-                label="Nicht verfügbare Bibliothek"
-                size="small"
-                variant="outlined"
-                color="warning"
-                onDelete={scopeLocked ? undefined : () => removeReferencedLibrary(chip.libraryId)}
-                aria-label="Nicht verfügbare Bibliotheksreferenz entfernen"
-              />
-            )
-          })}
-        {scope === 'none' && (
-          <>
-            {/* The statement is a warning in itself; it needs no signal colour in the text
-               (design guidelines 2.3). */}
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Antwortet ohne Dokumente.
-            </Typography>
-            <Chip
-              icon={<AllInclusiveIcon />}
-              label="@Space-Wissen nutzen"
-              size="small"
-              variant="outlined"
-              onClick={scopeLocked ? undefined : setScopeAll}
-              disabled={scopeLocked}
-              aria-label="Wieder das Wissen des Space durchsuchen"
-            />
-          </>
-        )}
-        {scope !== 'none' && metadataEnabled && (
-          <>
-            {documentTypeChipLabel && (
-              <Chip
-                label={documentTypeChipLabel}
-                size="small"
-                variant="outlined"
-                color="secondary"
-                onDelete={scopeLocked ? undefined : removeDocumentTypeFilter}
-                aria-label="Filter nach Dokumentart entfernen"
-                data-testid="metadata-filter-chip-document-type"
-              />
-            )}
-            {dateChip && (
-              <Chip
-                label={dateChip}
-                size="small"
-                variant="outlined"
-                color="secondary"
-                onDelete={scopeLocked ? undefined : removeDateFilter}
-                aria-label="Filter nach Datum entfernen"
-                data-testid="metadata-filter-chip-document-date"
-              />
-            )}
-            {(metadataFilter?.libraryFields ?? []).map((condition) => (
-              <Chip
-                key={`${condition.libraryId}/${condition.fieldKey}`}
-                label={libraryFieldChipLabel(condition, filterOptions)}
-                size="small"
-                variant="outlined"
-                color="secondary"
-                onDelete={
-                  scopeLocked
-                    ? undefined
-                    : () => {
-                        if (metadataFilter)
-                          setMetadataFilter(withoutLibraryField(metadataFilter, condition))
-                      }
-                }
-                aria-label={`Filter nach ${libraryFieldLabel(condition, filterOptions)} entfernen`}
-                data-testid="metadata-filter-chip-library-field"
-              />
-            ))}
-            {(metadataFilter?.formatFields ?? []).map((condition) => (
-              <Chip
-                key={condition.fieldKey}
-                label={formatFieldChipLabel(condition, filterOptions)}
-                size="small"
-                variant="outlined"
-                color="secondary"
-                onDelete={
-                  scopeLocked
-                    ? undefined
-                    : () => {
-                        if (metadataFilter)
-                          setMetadataFilter(withoutFormatField(metadataFilter, condition))
-                      }
-                }
-                aria-label={`Filter nach ${formatFieldLabel(condition, filterOptions)} entfernen`}
-                data-testid="metadata-filter-chip-format-field"
-              />
-            ))}
-            <MetadataFilterPopover
-              scope={filterScope}
-              filter={metadataFilter}
-              onChange={setMetadataFilter}
-              disabled={scopeLocked}
-            />
-          </>
-        )}
-      </Box>
+      <ChatScopeChipBar
+        selected={actions.selected}
+        onClearSelected={actions.clearSelected}
+        disabled={disabled}
+        scope={scope}
+        scopeLocked={scopeLocked}
+        libraryChips={libraryChips}
+        onClearScope={clearScope}
+        onSetScopeAll={setScopeAll}
+        onRemoveLibrary={removeReferencedLibrary}
+        metadataEnabled={metadataEnabled}
+        metadataFilter={metadataFilter}
+        filterOptions={filterOptions}
+        filterScope={filterScope}
+        onMetadataFilterChange={setMetadataFilter}
+        documentTypeChipLabel={documentTypeChipLabel}
+        dateChip={dateChip}
+        onRemoveDocumentTypeFilter={removeDocumentTypeFilter}
+        onRemoveDateFilter={removeDateFilter}
+      />
 
       <Box
         ref={setInputBoxEl}
@@ -937,6 +563,7 @@ export default function ChatInput({
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? inputHint(answerPending, actions.enabled)}
         </Typography>
+        <AiNotice variant="line" />
         {dictationError && (
           <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
             {dictationError}

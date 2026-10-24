@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Restore test of the OPAA chart, run by .github/workflows/helm-chart.yml after install-test.sh and
 # locally from the repository root. Automates the restore drill of
-# docs/behoerden/09-betrieb-update/wiederherstellungsprobe.md on the reference setup: a source
-# release is filled through the API, backed up with the commands of the handbook (kubernetes.md,
-# "Sicherung und Wiederherstellung" and "Erprobungsdatenbank sichern"), changed after the backup and
-# restored into a second, empty namespace with the same encryption keys and a new signing secret.
+# docs/handbuch/betrieb/sicherung-und-wiederherstellung.md (section "Wiederherstellungsprobe") on
+# the reference setup: a source release is filled through the API, backed up with the commands of
+# the handbook (kubernetes.md, "Sicherung und Wiederherstellung" and "Erprobungsdatenbank sichern"),
+# changed after the backup and restored into a second, empty namespace with the same encryption
+# keys and a new signing secret.
 # Checks P1 to P4, P6 and P9 to P12; P5, P7 and P8 need a model endpoint and stay manual. Any
 # deviation fails the run. Expects the current kubectl context to point at a kind cluster that
 # already holds the images named in install-values.yaml. Writes checks, times and sizes to

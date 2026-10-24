@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.test.TestInvalidationBus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -41,7 +42,8 @@ class AssetAccessServiceTest {
         grantRepository,
         membershipResolver,
         mock(GroupSubjectDirectory.class),
-        Clock.fixed(now, ZoneOffset.UTC));
+        Clock.fixed(now, ZoneOffset.UTC),
+        TestInvalidationBus.listening());
   }
 
   @Test

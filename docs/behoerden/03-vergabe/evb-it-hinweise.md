@@ -1,24 +1,39 @@
 ---
-stand: 2026-10-17
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-01-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Hinweise zu den EVB-IT (Fassung 2026)
+# EVB-IT
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-## Hinweise zur Verwendung
+**Gilt für:** öffentliche Auftraggeber, also Behörden und auch kommunale Gesellschaften, die
+ausschreiben müssen und die EVB-IT verwenden.
 
-Die Ergänzenden Vertragsbedingungen für die Beschaffung von IT-Leistungen (EVB-IT) liegen seit März
-2026 in einer neuen Fassung vor (Beschluss 2025/48 des IT-Planungsrats). Sie behandeln Open Source
-als Regelfall und enthalten neue Regeln zu Software-Stücklisten (SBOM) und zu Programmständen im
-Vertragstyp Pflege S. Diese Seite ordnet die Leistungen rund um OPAA den Vertragstypen zu und nennt,
-was OPAA zu SBOM und Programmständen beiträgt. Sie baut keine Vertragsmuster nach: Die Behörde
-verwendet die amtlichen Muster in der aktuellen Fassung und füllt sie selbst aus.
+Die EVB-IT (Ergänzende Vertragsbedingungen für die Beschaffung von IT-Leistungen) sind die
+Vertragsmuster der öffentlichen Hand für IT-Leistungen. Seit März 2026 gilt eine neue Fassung, die
+Open Source als Regelfall behandelt und Regeln zu Software-Stücklisten (SBOM, eine Liste aller
+enthaltenen Softwarebestandteile) und zu Programmständen enthält. Die Behörde verwendet die amtlichen
+Muster in der aktuellen Fassung und füllt sie selbst aus.
+
+## Was OPAA liefert
+
+OPAA steht unter der GNU Affero General Public License v3.0 ohne Lizenzentgelt; eine Überlassung der
+Software ist deshalb meist unnötig. Zu jeder Version gibt es unveränderliche Images, SBOMs und eine
+Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
+
+## Aufgaben der Behörde
+
+1. **Leistungen zuordnen** nach der Tabelle unten und die amtlichen Muster verwenden.
+2. **Support und Übergabe** im passenden Vertrag regeln, meist Service oder Pflege S (zu prüfen).
+3. **Quellcode-Angebot sichern:** Wer eine angepasste Fassung über ein Netz anbietet, muss den
+   Quellcode anbieten. Ein Dienstleister sichert das zu; im Eigenbetrieb plant die Behörde es ein.
+4. **Supportzeitraum vereinbaren,** wenn ein Programmstand länger halten soll, als das Projekt ihn
+   pflegt; sonst rechtzeitig vor dem Supportende auf die nächste Linie wechseln.
 
 ## Zuordnung der Leistungen
 
@@ -31,46 +46,38 @@ verwendet die amtlichen Muster in der aktuellen Fassung und füllt sie selbst au
 | Anpassungen und Erweiterungen | EVB-IT Erstellung | L-06 |
 | Überlassung der Software | EVB-IT Überlassung Typ A oder B; bei kostenloser Lizenz meist unnötig | O-01 |
 
-Für Support (L-04) und die Übergabe am Vertragsende (L-07) nennt die Recherche keine eigene
-Zuordnung; die Behörde regelt sie in dem Vertrag, zu dem sie gehören, meist Service oder Pflege S
-(zu prüfen).
-
-**Lizenz bei Anpassungen und SaaS:** OPAA steht unter der GNU Affero General Public License v3.0.
-Wer OPAA verändert und Nutzern über ein Netz zugänglich macht, muss ihnen den Quellcode der
-veränderten Fassung anbieten (Abschnitt 13 der [Lizenz](../../../LICENSE)). Das betrifft Erstellung
-und Cloud, und es trifft auch die Behörde selbst, wenn sie eine angepasste Fassung für ihre
-Beschäftigten betreibt. Von einem Dienstleister lässt sie sich die Einhaltung zusichern; für den
-Eigenbetrieb einer angepassten Fassung plant sie das Quellcode-Angebot selbst ein.
-
 ## Programmstände, SBOM und Supportzeiträume
 
 | Thema | Was OPAA liefert | Fundstelle |
 |---|---|---|
-| Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release erzeugt](../../releases.md#was-ein-release-erzeugt), [Versionsnummern](../../releases.md#versionsnummern) |
-| SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Ökosystem eine CycloneDX-SBOM als CI-Artefakt von `main` | [Image-Attestierungen](../../sbom.md#ebene-1--image-attestierungen), [Ökosystem-SBOMs](../../sbom.md#ebene-2--ökosystem-sboms-cyclonedx-ci-artefakte) |
-| Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../sbom.md#lizenzprüfung), [Update-Paket](../../releases.md#update-paket) |
-| Sicherheitskorrekturen | nur für das jüngste Release und `main`; ältere Linien werden nicht nachgepflegt | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
-| Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../releases.md#update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
+| Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen) |
+| SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Release eine CycloneDX-SBOM für Backend und Frontend am GitHub-Release und im Update-Paket | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) |
+| Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
+| Sicherheitskorrekturen und Behebungen kritischer Fehler | Patch-Releases ohne neue Funktion für jede unterstützte Linie: LTS-Linie (Juni-Release) rund 12 Monate, normale Linie bis einen Monat nach dem nächsten Release; Supportende in den Release-Notizen | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
+| Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
 
-**Offene Entscheidung: Supportzeiträume.** Ob es Supportlinien mit festen Zeiträumen geben wird,
-ist im Projekt noch nicht entschieden ([#2575](https://github.com/criew/opaa/issues/2575)). Bis
-dahin gilt: Nur das jüngste Release erhält Korrekturen. Ein Pflegevertrag, der einen Programmstand
-länger als bis zum nächsten Release halten soll, braucht dafür eine Zusage des Dienstleisters; das
-Projekt gibt sie nicht. Diese Seite wird nach der Entscheidung durchgesehen.
+## Gut zu wissen
 
-## Was diese Seite nicht enthält
+- Die Supportzeiträume gelten ab dem ersten finalen Release; ältere Linien bekommen Korrekturen
+  über eigene Wartungsbranches, nach bestem Bemühen. Eine längere oder festere Zusage kann nur ein
+  Dienstleister geben.
+- Der Release-Kandidat des nächsten LTS erscheint mit Update-Paket einige Wochen vor dem
+  Supportende der laufenden LTS-Linie; auf seiner Grundlage kann die Beteiligung für den Wechsel
+  beginnen.
+- Das Quellcode-Angebot betrifft Erstellung und Cloud, und auch die Behörde selbst, wenn sie eine
+  angepasste Fassung für ihre Beschäftigten betreibt.
 
-- ausgefüllte EVB-IT-Verträge oder eigene Vertragsmuster,
-- die Wertung konkreter Angebote,
-- ein Verzeichnis von Dienstleistern.
+## Zum Nachlesen
 
-## Quellen und Prüfstand
+**Arbeitshilfen** für die Projektleitung:
 
-| Aussage | Fundstelle | Herkunft |
-|---|---|---|
-| Neue Fassung der EVB-IT seit März 2026; Open Source als Regelfall; Regeln zu SBOM und Programmständen in Pflege S; Zuordnung der Vertragstypen; Überlassung bei kostenloser Lizenz meist unnötig | [IT-Planungsrat, Beschluss 2025/48, Übersicht der Anpassungen](https://www.it-planungsrat.de/fileadmin/beschluesse/2025/Beschluss_2025_48_EVB-IT_%C3%9Cbersicht_Anpassungen.pdf) | amtliche Veröffentlichung; Recherche vom 13.10.2026 |
-| Amtliche Vertragsmuster in der aktuellen Fassung | Veröffentlichungsstelle der EVB-IT; Fundstelle zu prüfen | nicht Teil der Recherche |
-| Quellcode-Angebot bei Nutzung über ein Netz | [GNU AGPL v3.0, Abschnitt 13](../../../LICENSE) | Lizenztext |
+- [Übersicht der Anpassungen der EVB-IT](https://www.it-planungsrat.de/fileadmin/beschluesse/2025/Beschluss_2025_48_EVB-IT_%C3%9Cbersicht_Anpassungen.pdf)
+  des IT-Planungsrats (Beschluss 2025/48): was sich mit der Fassung 2026 geändert hat.
 
-Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
-[#2542](https://github.com/criew/opaa/issues/2542).
+**Rechtsgrundlagen** für die Vergabestelle:
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Neue Fassung seit März 2026; Open Source als Regelfall; SBOM und Programmstände in Pflege S; Zuordnung der Vertragstypen | [IT-Planungsrat, Beschluss 2025/48](https://www.it-planungsrat.de/fileadmin/beschluesse/2025/Beschluss_2025_48_EVB-IT_%C3%9Cbersicht_Anpassungen.pdf) |
+| Amtliche Vertragsmuster in der aktuellen Fassung | Veröffentlichungsstelle der EVB-IT, zu prüfen |
+| Quellcode-Angebot bei Nutzung über ein Netz | [GNU AGPL v3.0](../../../LICENSE), Abschnitt 13 |

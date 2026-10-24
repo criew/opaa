@@ -1,0 +1,117 @@
+title: Wege zur Person
+defaults:
+  data:
+    title: Testdatum
+    purpose: Test
+    personalReference: IDENTIFIABLE
+    storage: Datenbank
+    retention:
+      rule: unbegrenzt
+      settings: []
+    visibility: [die Person selbst]
+    accessPaths: [UI]
+    deletion: Mit dem Konto
+    evaluations: keine
+data:
+  - id: complete
+    tables:
+      - name: chats
+        personalColumns: [author_id, title]
+        nonPersonalColumns: [id]
+        person:
+          columns: [author_id]
+      - name: chat_messages
+        personalColumns: [content, sources]
+        nonPersonalColumns: [id, chat_id]
+        person:
+          via: chats
+          excludedColumns:
+            sources: Textausschnitte sind Dokumentinhalt
+      - name: chat_reactions
+        personalColumns: [emoji]
+        person:
+          via: chat_messages
+      - name: chat_embeddings
+        personalColumns: [content]
+        person:
+          excluded: Einbettungen, kein Auskunftswert
+  - id: cross
+    tables:
+      - name: attachments
+        personalColumns: [uploader_id, file_name]
+        person:
+          columns: [uploader_id]
+          via: chats
+  - id: outside
+    tables: []
+    personExcluded: liegt beim Betrieb
+  - id: missing-path
+    tables:
+      - name: notes
+        personalColumns: [author_id, text]
+        nonPersonalColumns: [id]
+  - id: two-paths
+    tables:
+      - name: drafts
+        personalColumns: [author_id]
+        person:
+          columns: [author_id]
+          excluded: Entwurf
+  - id: unknown-column
+    tables:
+      - name: memos
+        personalColumns: [author_id]
+        nonPersonalColumns: [id]
+        person:
+          columns: [id]
+  - id: dangling-via
+    tables:
+      - name: threads
+        personalColumns: [starter_id]
+        person:
+          excluded: Grund
+      - name: posts
+        personalColumns: [text]
+        person:
+          via: threads
+  - id: unlisted-column
+    tables:
+      - name: logs
+        personalColumns: [user_id, phone]
+        person:
+          columns: [user_id]
+          excludedColumns:
+            fax: Grund
+  - id: no-table
+    tables: []
+  - id: via-loop
+    tables:
+      - name: ring_a
+        personalColumns: [text]
+        person:
+          via: ring_b
+      - name: ring_b
+        personalColumns: [text]
+        person:
+          via: ring_a
+  - id: unknown-via
+    tables:
+      - name: comments
+        personalColumns: [text]
+        person:
+          via: missing_table
+  - id: excluded-with-columns
+    tables:
+      - name: caches
+        personalColumns: [owner_id, payload]
+        person:
+          excluded: Zwischenspeicher
+          excludedColumns:
+            payload: Inhalt
+  - id: excluded-but-tables
+    personExcluded: Grund
+    tables:
+      - name: receipts
+        personalColumns: [user_id]
+        person:
+          columns: [user_id]

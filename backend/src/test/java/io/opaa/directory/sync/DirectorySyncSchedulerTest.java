@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
-import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -40,7 +40,7 @@ class DirectorySyncSchedulerTest {
           statusRepository,
           directorySyncService,
           new DirectorySyncConfiguration().directorySyncExecutor(),
-          Clock.systemUTC());
+          () -> Instant.parse("2026-10-19T08:00:00Z"));
 
   @AfterEach
   void tearDown() {
@@ -70,7 +70,7 @@ class DirectorySyncSchedulerTest {
               return null;
             })
         .when(directorySyncService)
-        .runScheduled(any());
+        .runScheduled(any(), any());
 
     scheduler.triggerDueProviders();
 

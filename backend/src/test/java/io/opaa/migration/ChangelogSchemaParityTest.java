@@ -25,7 +25,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
  * {@link ChangelogSchema} reads the changelog without a database, so the compliance guard runs in
  * every unit test run. This test holds its reading against the catalog of a database the master
  * changelog migrated - the same tables, partitions counted as their parent, and the same columns -
- * and its fixed columns of {@code vector_store} against the table Spring AI creates.
+ * and the changelog's {@code vector_store} against the table Spring AI creates.
  */
 class ChangelogSchemaParityTest extends AbstractMigrationTest {
 
@@ -45,12 +45,20 @@ class ChangelogSchemaParityTest extends AbstractMigrationTest {
     }
   }
 
-  /** Built as application.yml configures {@code spring.ai.vectorstore.pgvector}. */
+  /**
+   * The changelog creates {@code vector_store} with the columns and types Spring AI's {@code
+   * PgVectorStore} creates and reads, built as application.yml configures {@code
+   * spring.ai.vectorstore.pgvector}: a table Spring AI created on an older installation and one the
+   * changelog creates are the same to the application.
+   */
   @Test
-  void springAiCreatesVectorStoreWithTheColumnsTheGuardAssumes() throws SQLException {
-    try (Connection connection = connect()) {
+  void theChangelogCreatesVectorStoreAsSpringAiDoes() throws SQLException {
+    Map<String, String> springAi;
+    try (Connection sibling = connectToSiblingDatabase();
+        Statement statement = sibling.createStatement()) {
+      statement.execute("DROP TABLE vector_store");
       PgVectorStore.builder(
-              new JdbcTemplate(new SingleConnectionDataSource(connection, true)),
+              new JdbcTemplate(new SingleConnectionDataSource(sibling, true)),
               mock(EmbeddingModel.class))
           .schemaName("public")
           .dimensions(1024)
@@ -59,15 +67,29 @@ class ChangelogSchemaParityTest extends AbstractMigrationTest {
           .initializeSchema(true)
           .build()
           .afterPropertiesSet();
-
-      Map<String, Set<String>> expected = new TreeMap<>();
-      ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG.forEach(
-          (table, columns) -> expected.put(table, new TreeSet<>(columns)));
-      Map<String, Set<String>> created = catalog(connection);
-      created.keySet().retainAll(expected.keySet());
-
-      assertThat(created).isEqualTo(expected);
+      springAi = vectorStoreColumns(sibling);
     }
+
+    try (Connection connection = connect()) {
+      assertThat(vectorStoreColumns(connection))
+          .containsOnlyKeys("id", "content", "metadata", "embedding")
+          .isEqualTo(springAi);
+    }
+  }
+
+  private static Map<String, String> vectorStoreColumns(Connection connection) throws SQLException {
+    Map<String, String> columns = new TreeMap<>();
+    try (Statement statement = connection.createStatement();
+        ResultSet rows =
+            statement.executeQuery(
+                "SELECT attname, format_type(atttypid, atttypmod) FROM pg_attribute"
+                    + " WHERE attrelid = 'vector_store'::regclass AND attnum > 0"
+                    + " AND NOT attisdropped")) {
+      while (rows.next()) {
+        columns.put(rows.getString(1), rows.getString(2));
+      }
+    }
+    return columns;
   }
 
   private static Map<String, Set<String>> catalog(Connection connection) throws SQLException {

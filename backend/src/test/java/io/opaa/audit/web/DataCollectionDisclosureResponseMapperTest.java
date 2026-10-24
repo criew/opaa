@@ -19,6 +19,7 @@ import io.opaa.compliance.InstanceDisclosure.ProtocolField;
 import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
 import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
+import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,6 +33,7 @@ class DataCollectionDisclosureResponseMapperTest {
   private static final Instant CHANGED = Instant.parse("2026-10-01T10:00:00Z");
   private static final LocalDate FROM = LocalDate.parse("2025-01-01");
   private static final LocalDate TO = LocalDate.parse("2026-12-31");
+  private static final Instant STARTED = Instant.parse("2026-10-16T06:00:00Z");
 
   @Test
   void mapsEveryField() {
@@ -51,10 +53,12 @@ class DataCollectionDisclosureResponseMapperTest {
                     true,
                     CHANGED,
                     "12 bis 120 Monate",
-                    "Frist")),
+                    "Frist",
+                    true)),
             List.of(new DataFlowState("model-endpoint", DataFlowGroup.MODEL, "Formular", null)),
             List.of(new ConnectorUsage("CONFLUENCE", 2, 1)),
             List.of(new ModelProvider("CHAT", "Hausmodell", "https://llm.example/v1", "m", true)),
+            List.of(new RunningInstance("1.4.0", STARTED)),
             new Protocol(
                 List.of(new ProtocolField("recorded_at", "Mikrosekunde", "Zeitachse", "24")),
                 List.of(new QueryPath("nach Objekt", "Objekt")),
@@ -89,6 +93,10 @@ class DataCollectionDisclosureResponseMapperTest {
     assertThat(setting.getChangedAt()).isEqualTo(CHANGED);
     assertThat(setting.getRange()).isEqualTo("12 bis 120 Monate");
     assertThat(setting.getEffect()).isEqualTo("Frist");
+    assertThat(setting.getSameOnAllInstances()).isTrue();
+    var instance = response.getInstance().getInstances().get(0);
+    assertThat(instance.getVersion()).isEqualTo("1.4.0");
+    assertThat(instance.getStartedAt()).isEqualTo(STARTED);
     var flow = response.getInstance().getDataFlows().get(0);
     assertThat(flow.getId()).isEqualTo("model-endpoint");
     assertThat(flow.getGroup()).isEqualTo("MODEL");

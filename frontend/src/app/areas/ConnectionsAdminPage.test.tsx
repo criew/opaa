@@ -80,7 +80,7 @@ describe('ConnectionsAdminPage', () => {
   })
 
   // ADR-0044: switched off, the external tools are named nowhere, also not for the administration.
-  it('führt ohne Fremdzugänge keinen Reiter der externen KI-Werkzeuge', async () => {
+  it('führt bei ausgeschalteter Funktion keinen Reiter der externen KI-Werkzeuge', async () => {
     signInAs('SYSTEM_ADMIN')
     useAuthStore.setState({ features: { externalAccess: false } })
     render('/admin/connections/external-tools')

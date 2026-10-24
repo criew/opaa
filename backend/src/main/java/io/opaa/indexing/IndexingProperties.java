@@ -2,7 +2,9 @@ package io.opaa.indexing;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import io.opaa.format.chunk.ChunkSizing;
 import io.opaa.indexing.document.EmbeddingBatching;
 import io.opaa.indexing.job.JobStatus;
@@ -51,16 +53,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     (its embedding computation serializes), while a network-latency-bound API/GPU backend scales
  *     close to linearly with concurrency; 3 stays conservative for the former without giving up all
  *     of the latter's headroom. An operator fronting a GPU-backed or hosted embedding API can raise
- *     this (8-16 is a reasonable starting point - see docs/handbuch/konfiguration.md). A value of 1
- *     reproduces the exact sequential behaviour - {@code
+ *     this (8-16 is a reasonable starting point - see docs/handbuch/betrieb/konfiguration.md). A
+ *     value of 1 reproduces the exact sequential behaviour - {@code
  *     io.opaa.indexing.document.DocumentIngestService#storeChunks} takes an entirely different code
  *     path in that case, not merely a pool of size one. Valid range: 1–32.
  */
+@PerInstance("pools, batches and run timeouts of this process")
 @NoDataImpact("chunking, batching, pools and timeouts of indexing")
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
-    int chunkSize,
-    int chunkOverlap,
+    @InstallationWide int chunkSize,
+    @InstallationWide int chunkOverlap,
     int batchSize,
     ThreadPool threadPool,
     @NoDataImpact("marks a stuck run failed; it deletes nothing") Duration staleJobTimeout,
@@ -142,6 +145,7 @@ public record IndexingProperties(
    *     true} - lets an operator name specific internal sources without disabling the check for
    *     every other target. Empty by default.
    */
+  @InstallationWide
   public record TargetValidation(
       @NoDataImpact("SSRF hardening of source addresses") boolean enabled, List<String> allowlist) {
 

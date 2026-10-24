@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.asset.AssetRepository;
+import io.opaa.common.DatabaseClock;
 import io.opaa.common.FeatureFlags;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.SupportedDocumentFormats;
@@ -35,6 +36,8 @@ import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.indexing.trigger.LibraryIndexingScheduler;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -79,8 +82,19 @@ public class IndexingConfiguration {
 
   @Bean
   IndexingJobService indexingJobService(
-      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository, Clock clock) {
-    return new IndexingJobService(indexingJobRepository, assetRepository, clock);
+      IndexingJobRepository indexingJobRepository,
+      AssetRepository assetRepository,
+      Clock clock,
+      DatabaseClock databaseClock,
+      CurrentInstance currentInstance,
+      InstanceRegistry instanceRegistry) {
+    return new IndexingJobService(
+        indexingJobRepository,
+        assetRepository,
+        clock,
+        databaseClock,
+        currentInstance,
+        instanceRegistry);
   }
 
   @Bean
@@ -442,12 +456,14 @@ public class IndexingConfiguration {
       DocumentIndexingService documentIndexingService,
       IndexingJobService indexingJobService,
       IndexingRunEventRepository indexingRunEventRepository,
+      DatabaseClock databaseClock,
       Clock clock) {
     return new LibraryIndexingScheduler(
         libraryRepository,
         documentIndexingService,
         indexingJobService,
         indexingRunEventRepository,
+        databaseClock,
         clock);
   }
 }

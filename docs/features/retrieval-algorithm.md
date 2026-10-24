@@ -88,7 +88,7 @@ Stufenname: `SEARCH_SCOPE`. `QueryService#query` unterscheidet zunächst zwei F�
 nicht nur überschrieben. Eine ephemere Anfrage hat keinen Space und durchsucht **kein Wissen**, gleich
 was `useKnowledge` und `requestedLibraryIds` sagen (`SearchScopeResolver#resolveSearchScope`); ihre
 Antwort trägt `noSpaceContext`. Jede Anfrage der Weboberfläche braucht einen Space-Bezug; ohne Space
-suchen nur der Fremdzugang und `POST /api/v1/search` ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
+suchen nur externe KI-Werkzeuge und `POST /api/v1/search` ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 Die lesbaren Bibliotheken selbst liefert
 `LibraryAccessService#readableLibraryIds`; der resultierende Suchbereich (`searchScope`, eine Menge von
 Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#libraryFilter`) **Teil der
@@ -666,7 +666,7 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   (comic-characters bit-identisch, city-landmarks vollständig erholt). Details und alle drei
   Messreihen in der Beschreibung von PR [#940](https://github.com/criew/opaa/pull/940). Erfordert
   einen vollständigen Reindex jeder Bibliothek (siehe
-  [Deployment-Handbuch](../handbuch/betrieb.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
+  [Handbuch: Was ein Update mit dem Index macht](../handbuch/betrieb/aktualisierung.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
   ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
 
 ### Bekannte offene Schwächen (aus den #912-Verifikationen)

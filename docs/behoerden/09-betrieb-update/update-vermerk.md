@@ -1,86 +1,103 @@
 ---
-stand: 2026-10-17
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Update-Vermerk für OPAA
+# Update-Vermerk
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-## Hinweise zur Verwendung
+**Gilt für:** alle Behörden; die beteiligten Stellen richten sich nach der eigenen Organisation.
 
-Der Vermerk hält fest, wie die Behörde ein Update von OPAA bewertet und entschieden hat. Er gehört zu
-den Unterlagen der Installation, neben Verzeichnis von Verarbeitungstätigkeiten (VVT),
-Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und Dienstvereinbarung. Grundlage ist das
-**Update-Paket** der Zielversion, das am GitHub-Release jeder Version hängt und in dem diese Vorlage
-liegt:
+Der Update-Vermerk hält fest, wie die Behörde ein Update von OPAA bewertet und entschieden hat. Er
+gehört zu den Unterlagen der Installation, neben Verzeichnis von Verarbeitungstätigkeiten (VVT),
+Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und
+[Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md). Grundlage ist das Update-Paket der
+Zielversion.
 
-- `delta/manifest-delta.md`: jede Änderung der Fakten seit dem vorigen finalen Release mit
-  Stufenvorschlag (Bagatelle, Anzeige, Zustimmung mit den Klassen Z1 bis Z7) und dem Hinweis, ob
-  VVT, DSFA oder Sicherheitskonzept betroffen sind, dazu die als datenrelevant gekennzeichneten
-  Änderungen, deren Wirkung nicht im Manifest steht,
+## Was OPAA liefert
+
+Das Update-Paket enthält:
+
+- `delta/manifest-delta.md`: jede Änderung der Fakten seit dem vorigen finalen Release, mit
+  Stufenvorschlag (Bagatelle, Anzeige, Zustimmung mit den Klassen Z1 bis Z7) und dem Hinweis, ob VVT,
+  DSFA oder Sicherheitskonzept betroffen sind.
 - `faktenblaetter/`: die Fakten der Zielversion, etwa {{faktenblatt:datenfluesse}} und
-  {{faktenblatt:fristen}},
-- `betrieb/betriebsfolgen.md`: Bruch und Vorbereitung aus den Upgrade-Hinweisen aller Versionen
-  seit dem vorigen finalen Release, Neuindizierung mit Dauerschätzung, Schemamigration, neue Ports
-  und Egress-Ziele,
-- `betrieb/antwortqualitaet.md`: die Kennzahlen der Suchqualität beider Versionen mit Messdatum.
+  {{faktenblatt:fristen}}.
+- `betrieb/betriebsfolgen.md`: Vorbereitung, Neuindizierung mit Dauerschätzung, Schemaänderungen,
+  neue Ports und Ziele.
+- `betrieb/antwortqualitaet.md`: die Suchqualität beider Versionen.
+- Nur bei einem LTS-Release und seinen Release-Kandidaten: `delta-lts/` und `betrieb-lts/` mit
+  denselben Angaben gegenüber dem jüngsten Release der vorigen LTS-Linie. Sie gelten für eine
+  Installation, die nur LTS-Linien betreibt und von dort direkt wechselt; `delta/` und `betrieb/`
+  gelten für eine Installation, die jedem Funktionsrelease folgt. `LIESMICH.md` nennt beide
+  Vergleichsstände. Eine Änderung, die schon unverändert als Backport in der vorigen LTS-Linie
+  steckt, führt `delta-lts/` nicht noch einmal auf; musste der Backport angepasst werden, steht sie
+  dort ein zweites Mal, obwohl die Installation sie schon hat.
 
-Überspringt die Behörde Versionen, vergleicht das Paket nur mit dem vorigen finalen Release. Für den
-ganzen Sprung erzeugt der Betrieb Delta und Betriebsfolgen zwischen eingesetzter und Zielversion
-(Aufrufe in `LIESMICH.md` des Pakets) und legt sie diesem Vermerk bei.
+## Aufgaben der Behörde
 
-Stufen und Bezüge im Delta sind Vorschläge; die Bewertung trifft die Behörde. Angaben in eckigen
-Klammern **[…]** ersetzt die Behörde. Eine Stelle, die nicht beteiligt ist, wird gestrichen oder mit
-„nicht beteiligt“ vermerkt.
+1. **Paket prüfen lassen:** Prüfsumme und Provenance, wie in `LIESMICH.md` beschrieben.
+2. **Übersprungene Versionen beachten:** Das Paket vergleicht mit dem vorigen finalen Release, ein
+   LTS-Release zusätzlich mit dem jüngsten Release der vorigen LTS-Linie. Den Vergleich wählen, der
+   von der eingesetzten Version ausgeht. Passt keiner, erzeugt der Betrieb Delta und Betriebsfolgen
+   zwischen eingesetzter und Zielversion und legt sie bei.
+3. **Vermerk an die Stellen geben**, die nach eigener Organisation beteiligt sind. Die Stufen im
+   Delta sind Vorschläge; die Bewertung trifft jede Stelle selbst.
+4. **Entscheiden lassen** und Auflagen vor dem Update erledigen.
+5. **Nach dem Update** Datum und angezeigte Version eintragen und den Vermerk ablegen.
 
-## Version
+## Ergebnis festhalten
+
+Angaben in eckigen Klammern ersetzt die Behörde; eine Stelle, die nicht beteiligt ist, wird
+gestrichen oder mit „nicht beteiligt“ vermerkt.
 
 | Feld | Eintrag |
 |---|---|
-| Eingesetzte Version | [X.Y.Z] |
-| Zielversion | [X.Y.Z] |
+| Eingesetzte Version / Zielversion | [X.Y.Z] / [X.Y.Z] |
 | Update-Paket | [Dateiname, Prüfsumme aus der `.sha256`-Datei] |
-| Herkunft geprüft | [ja, mit `gh attestation verify` am TT.MM.JJJJ / nein, Begründung] |
-| Geplanter Termin des Updates | [TT.MM.JJJJ] |
-
-## Delta
-
-| Feld | Eintrag |
-|---|---|
+| Provenance geprüft | [ja, mit `gh attestation verify` am TT.MM.JJJJ / nein, Begründung] |
+| Geplanter Termin | [TT.MM.JJJJ] |
 | Verglichene Versionen | [von … bis …, wie im Kopf von `manifest-delta.md`] |
-| Änderungen mit Vorschlag Zustimmung | [Anzahl, Klassen Z1 bis Z7] |
-| Änderungen mit Vorschlag Anzeige | [Anzahl] |
-| Änderungen mit Vorschlag Bagatelle | [Anzahl] |
-| Weitere gekennzeichnete Änderungen | [Pull Requests aus dem Abschnitt im Delta, oder „keine“] |
-| Vorbereitung für Bestandsinstallationen | [aus `betrieb/betriebsfolgen.md`, Abschnitt „Bruch und Vorbereitung“, oder „keine“] |
-| Neuindizierung, Nachzug, Neueinbettung | [aus `betrieb/betriebsfolgen.md`, mit Dauerschätzung, oder „keine“] |
-| Schemamigration und Sicherung | [Anzahl der Changesets; Sicherung erstellt am TT.MM.JJJJ] |
-| Neue Ports und Egress-Ziele | [aus `betrieb/betriebsfolgen.md`; Freigaben beantragt am TT.MM.JJJJ, oder „keine“] |
-| Antwortqualität | [Kennzahlen beider Versionen aus `betrieb/antwortqualitaet.md`, oder „nicht gemessen“] |
-| Abweichende Einstellungen der Installation | [Voreinstellungen, die die Installation überschrieben hat und die das Delta deshalb anders trifft] |
-
-## Bewertung je Stelle
+| Vorschläge im Delta | [Zustimmung: Anzahl, Klassen; Anzeige: Anzahl; Bagatelle: Anzahl] |
+| Weitere gekennzeichnete Änderungen | [aus dem Abschnitt im Delta, oder „keine“] |
+| Vorbereitung, Neuindizierung | [aus `betrieb/betriebsfolgen.md`, mit Dauerschätzung, oder „keine“] |
+| Schemaänderungen und Sicherung | [Anzahl; Sicherung erstellt am TT.MM.JJJJ] |
+| Neue Ports und Ziele | [aus `betrieb/betriebsfolgen.md`; Freigaben beantragt am TT.MM.JJJJ, oder „keine“] |
+| Antwortqualität | [beide Versionen aus `betrieb/antwortqualitaet.md`, oder „nicht gemessen“] |
+| Abweichende Einstellungen | [Voreinstellungen, die die Installation überschrieben hat und die das Delta deshalb anders trifft] |
 
 | Stelle | Bewertung | Folge für die eigenen Unterlagen | Name, Datum |
 |---|---|---|---|
-| Datenschutzbeauftragte Person | [Bewertung der Änderungen mit Bezug zu VVT und DSFA] | [VVT anpassen ja/nein; DSFA überprüfen ja/nein] | [Name, TT.MM.JJJJ] |
-| Personalvertretung | [Stufe nach der Dienstvereinbarung: Bagatelle, Anzeige, Zustimmung] | [Anzeige erfolgt am … / Zustimmung beantragt am … / erteilt am …] | [Name, TT.MM.JJJJ] |
-| Informationssicherheitsbeauftragte Person | [Bewertung neuer Datenflüsse, Ports, Ziele, Rollen und Protokollereignisse] | [Sicherheitskonzept fortschreiben ja/nein] | [Name, TT.MM.JJJJ] |
-| Betrieb | [Vorbereitung, Sicherung vor dem Update, Wartungsfenster] | [Notfallkonzept betroffen ja/nein] | [Name, TT.MM.JJJJ] |
+| Datenschutzbeauftragte Person | [Änderungen mit Bezug zu VVT und DSFA] | [VVT anpassen ja/nein; DSFA überprüfen ja/nein] | [ ] |
+| Personalvertretung | [Stufe nach der Dienstvereinbarung] | [Anzeige am … / Zustimmung beantragt am … / erteilt am …] | [ ] |
+| Informationssicherheit | [neue Datenflüsse, Ports, Ziele, Rollen, Protokollereignisse] | [Sicherheitskonzept fortschreiben ja/nein] | [ ] |
+| Betrieb | [Vorbereitung, Sicherung vor dem Update, Wartungsfenster] | [Notfallkonzept betroffen ja/nein] | [ ] |
 | [weitere Stelle] | | | |
-
-## Entscheidung
 
 | Feld | Eintrag |
 |---|---|
-| Entscheidung | [Update freigegeben / freigegeben mit Auflagen / zurückgestellt / abgelehnt] |
-| Auflagen | [etwa: Voreinstellung vor dem Update ändern, Funktion abschalten, Beschäftigte informieren] |
+| Entscheidung | [freigegeben / freigegeben mit Auflagen / zurückgestellt / abgelehnt] |
+| Auflagen | [etwa: Voreinstellung vorher ändern, Funktion abschalten, Beschäftigte informieren] |
 | Begründung | [kurz] |
-| Entschieden durch | [Name, Funktion] |
-| Datum | [TT.MM.JJJJ] |
+| Entschieden durch, am | [Name, Funktion, TT.MM.JJJJ] |
 | Update eingespielt am | [TT.MM.JJJJ, Version laut Anzeige der Installation] |
+
+## Gut zu wissen
+
+- Das Delta misst an den Voreinstellungen. Hat die Installation eine Einstellung überschrieben,
+  trifft eine Änderung sie womöglich anders; das prüft die Behörde selbst.
+- Auch ohne Datenänderung kann ein Update den Betrieb betreffen, etwa durch eine Neuindizierung.
+
+## Zum Nachlesen
+
+**Arbeitshilfen** für die Projektleitung:
+
+- [Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)
+  im Handbuch: Inhalt des Pakets, Provenance-Prüfung, Delta für übersprungene Versionen.
+- [Aktualisierung](../../handbuch/betrieb/aktualisierung.md)
+  im Handbuch: wie der Betrieb ein Update einspielt.

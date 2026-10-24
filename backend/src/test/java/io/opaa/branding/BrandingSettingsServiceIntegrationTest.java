@@ -78,15 +78,138 @@ class BrandingSettingsServiceIntegrationTest {
 
     assertThat(branding.productName()).isEqualTo(BrandingDefaults.PRODUCT_NAME);
     assertThat(branding.claim()).isEqualTo(BrandingDefaults.CLAIM);
+    assertThat(branding.aiNotice()).isEqualTo(BrandingDefaults.AI_NOTICE);
     assertThat(branding.primaryColor()).isEqualTo(BrandingDefaults.PRIMARY_COLOR);
     assertThat(branding.defaultColorScheme()).isEqualTo(BrandingDefaults.COLOR_SCHEME);
     assertThat(branding.images()).isEmpty();
   }
 
   @Test
+  void aConfiguredAiNoticeIsServedAndResettingRestoresTheStandard() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "  Antworten stammen von einer KI.  ", null, null);
+    assertThat(brandingSettingsService.currentBranding().aiNotice())
+        .isEqualTo("Antworten stammen von einer KI.");
+
+    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null, null);
+    assertThat(brandingSettingsService.currentBranding().aiNotice())
+        .isEqualTo(BrandingDefaults.AI_NOTICE);
+  }
+
+  @Test
+  void aBlankAiNoticeCannotSwitchTheNoticeOff() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "Eigener Hinweis", null, null);
+
+    brandingSettingsService.updateBranding(organizationId, userId, null, null, "   ", null, null);
+
+    assertThat(brandingSettingsService.currentBranding().aiNotice())
+        .isEqualTo(BrandingDefaults.AI_NOTICE);
+    assertThat(jdbcTemplate.queryForObject(storedColumn("ai_notice"), String.class)).isNull();
+  }
+
+  @Test
+  void aNoticeWithoutAVisibleCharacterCannotSwitchTheNoticeOff() {
+    for (String invisible :
+        new String[] {
+          "\u00A0",
+          "\u3000",
+          "\u200B",
+          " \u200B\u00A0 ",
+          "\u2028",
+          "\u3164",
+          "\u2800",
+          "\u034F",
+          "\uFE0F",
+          "\uDB40\uDD00",
+          "\u180B",
+          "\u17B4"
+        }) {
+      brandingSettingsService.updateBranding(
+          organizationId, userId, null, null, "Eigener Hinweis", null, null);
+
+      brandingSettingsService.updateBranding(
+          organizationId, userId, null, null, invisible, null, null);
+
+      assertThat(brandingSettingsService.currentBranding().aiNotice())
+          .as("value %s", invisible.codePoints().boxed().toList())
+          .isEqualTo(BrandingDefaults.AI_NOTICE);
+    }
+  }
+
+  @Test
+  void invisibleCharactersAtTheEdgesOfANoticeAreNotStored() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "\u200B\u00A0Hinweis\u3164 ", null, null);
+
+    assertThat(brandingSettingsService.currentBranding().aiNotice()).isEqualTo("Hinweis");
+  }
+
+  @Test
+  void aVariationSelectorOrTagSequenceAtTheEndBelongsToTheCharacterBeforeIt() {
+    String warning = "Hinweis \u26A0\uFE0F";
+    String flag =
+        "Hinweis \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F";
+
+    for (String text : new String[] {warning, flag}) {
+      brandingSettingsService.updateBranding(organizationId, userId, null, null, text, null, null);
+
+      assertThat(brandingSettingsService.currentBranding().aiNotice()).isEqualTo(text);
+    }
+  }
+
+  @Test
+  void aNoticeEqualToTheStandardIsStoredAsNotSetEvenWithInvisibleEdges() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "\u200B" + BrandingDefaults.AI_NOTICE, null, null);
+
+    assertThat(jdbcTemplate.queryForObject(storedColumn("ai_notice"), String.class)).isNull();
+    assertThat(brandingSettingsService.currentBranding().aiNotice())
+        .isEqualTo(BrandingDefaults.AI_NOTICE);
+  }
+
+  @Test
+  void aNoticeWithABidiOverrideIsRejected() {
+    for (String text : new String[] {"Text \u202Eumgedreht", "Text \u2067x"}) {
+      assertThatThrownBy(
+              () ->
+                  brandingSettingsService.updateBranding(
+                      organizationId, userId, null, null, text, null, null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("Steuerzeichen");
+    }
+  }
+
+  @Test
+  void aNoticeWithALineBreakIsRejectedWithAGermanMessage() {
+    for (String text :
+        new String[] {"Zeile\nUmbruch", "Zeile\u2028Umbruch", "Zeile\u2029Umbruch"}) {
+      assertThatThrownBy(
+              () ->
+                  brandingSettingsService.updateBranding(
+                      organizationId, userId, null, null, text, null, null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("Hinweis zur KI-Nutzung")
+          .hasMessageContaining("Zeilenumbruch");
+    }
+  }
+
+  @Test
+  void anAiNoticeBeyondTheLengthLimitIsRejected() {
+    String tooLong = "x".repeat(BrandingDefaults.MAX_AI_NOTICE_LENGTH + 1);
+
+    assertThatThrownBy(
+            () ->
+                brandingSettingsService.updateBranding(
+                    organizationId, userId, null, null, tooLong, null, null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Hinweis zur KI-Nutzung");
+  }
+
+  @Test
   void eachFieldFallsBackToTheStandardIndependentlyOfTheOthers() {
     brandingSettingsService.updateBranding(
-        organizationId, userId, "Landesamt-Assistent", null, null, null);
+        organizationId, userId, "Landesamt-Assistent", null, null, null, null);
 
     EffectiveBranding branding = brandingSettingsService.currentBranding();
     assertThat(branding.productName()).isEqualTo("Landesamt-Assistent");
@@ -102,10 +225,11 @@ class BrandingSettingsServiceIntegrationTest {
         userId,
         "Landesamt-Assistent",
         "Kurz und klar",
+        "Hinweis der Behörde",
         "#7A1FA2",
         ColorScheme.DARK);
 
-    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null);
+    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null, null);
 
     EffectiveBranding branding = brandingSettingsService.currentBranding();
     assertThat(branding.productName()).isEqualTo(BrandingDefaults.PRODUCT_NAME);
@@ -116,7 +240,7 @@ class BrandingSettingsServiceIntegrationTest {
 
   @Test
   void aBlankFieldIsTreatedAsBackToTheStandardRatherThanAsAValue() {
-    brandingSettingsService.updateBranding(organizationId, userId, "   ", "  ", "  ", null);
+    brandingSettingsService.updateBranding(organizationId, userId, "   ", "  ", "  ", "  ", null);
 
     assertThat(brandingSettingsService.currentBranding().productName())
         .isEqualTo(BrandingDefaults.PRODUCT_NAME);
@@ -126,7 +250,7 @@ class BrandingSettingsServiceIntegrationTest {
   @Test
   void aChangeIsAuditedExactlyOnceWithTheEffectiveBeforeAndAfterState() {
     brandingSettingsService.updateBranding(
-        organizationId, userId, "Landesamt-Assistent", null, "#7A1FA2", ColorScheme.LIGHT);
+        organizationId, userId, "Landesamt-Assistent", null, null, "#7A1FA2", ColorScheme.LIGHT);
 
     List<Map<String, Object>> entries = brandingAuditEntries();
     assertThat(entries).hasSize(1);
@@ -146,7 +270,7 @@ class BrandingSettingsServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 brandingSettingsService.updateBranding(
-                    organizationId, userId, "Landesamt-Assistent", null, "blau", null))
+                    organizationId, userId, "Landesamt-Assistent", null, null, "blau", null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Primärfarbe");
 
@@ -162,7 +286,7 @@ class BrandingSettingsServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 brandingSettingsService.updateBranding(
-                    organizationId, userId, tooLong, null, null, null))
+                    organizationId, userId, tooLong, null, null, null, null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Produktname");
   }
@@ -172,7 +296,7 @@ class BrandingSettingsServiceIntegrationTest {
     assertThatThrownBy(
             () ->
                 brandingSettingsService.updateBranding(
-                    organizationId, userId, "Zeile\nUmbruch", null, null, null))
+                    organizationId, userId, "Zeile\nUmbruch", null, null, null, null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Steuerzeichen");
   }
@@ -294,7 +418,7 @@ class BrandingSettingsServiceIntegrationTest {
 
   private void resetBrandingRow() {
     jdbcTemplate.update(
-        "UPDATE branding_settings SET product_name = NULL, claim = NULL, primary_color = NULL,"
+        "UPDATE branding_settings SET product_name = NULL, claim = NULL, ai_notice = NULL, primary_color = NULL,"
             + " default_color_scheme = NULL, logo_content = NULL, logo_content_type = NULL,"
             + " logo_version = NULL, logo_updated_at = NULL, login_logo_content = NULL,"
             + " login_logo_content_type = NULL, login_logo_version = NULL,"

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0005, ADR-0014, ADR-0021, ADR-0025, ADR-0033, ADR-0034, ADR-0042
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch ADR-0005, ADR-0014, ADR-0025, ADR-0033, ADR-0034, ADR-0042, ADR-0053
 
 ## Kontext
 
@@ -20,7 +20,7 @@ Spring AI 2.0 setzt Spring Boot 4 voraus, beide Versionen werden gemeinsam angeh
 Monolith unter `io.opaa`, aufgeteilt in logische Module mit geprüften Grenzen
 (`backend/AGENTS.md`, je Modul eine `AGENTS.md` im Hauptpaket). Versionen stehen in
 `backend/gradle/libs.versions.toml` und `backend/gradle/wrapper/gradle-wrapper.properties`. Das
-Backend läuft bis auf Weiteres als genau eine Instanz (ADR-0021).
+Backend läuft als eine oder mehrere gleichrangige Instanzen gegen eine Datenbank (ADR-0053).
 
 ### 2. Frontend: React 19, TypeScript 6, Material UI 9, Vite 8
 

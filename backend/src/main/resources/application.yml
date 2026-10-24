@@ -2,8 +2,9 @@ server:
   address: ${OPAA_SERVER_ADDRESS:localhost}
   # Honor X-Forwarded-* from the reverse proxy chain so that same-origin browser requests are
   # recognized as such behind a TLS-terminating proxy. The outer proxy MUST set X-Forwarded-Proto
-  # authoritatively (overwriting any client-supplied value) - see docs/handbuch/betrieb.md; a
-  # spoofed header would otherwise let a request bypass the CORS check.
+  # authoritatively (overwriting any client-supplied value) - see
+  # docs/handbuch/betrieb/netz-und-sicherheit.md; a spoofed header would otherwise let a request
+  # bypass the CORS check.
   forward-headers-strategy: framework
   # A stop lets requests already being handled finish instead of cutting them off; new connections
   # are refused from the first moment of the shutdown. The window below bounds the wait.
@@ -70,8 +71,9 @@ spring:
       # time, and SpaceService.ensureDefaultSpaceForNewUser skips a redundant existence check (see
       # its Javadoc and UserServiceConcurrentDistinctUserLoginIntegrationTest, which exercises
       # exactly this scenario at this pool size). Raising this number was considered and rejected as
-      # treating the symptom, not the cause.
-      maximum-pool-size: 10
+      # treating the symptom, not the cause. The pool belongs to one instance; several instances
+      # need max_connections for all their pools, see docs/handbuch/betrieb/datenbank.md.
+      maximum-pool-size: ${OPAA_DB_POOL_SIZE:10}
       # Every unqualified name - Liquibase DDL, JPA entities, native queries - resolves through this
       # search_path (ADR-0034). public stays behind the application schema only so an extension
       # installed there beforehand (vector) remains resolvable; nothing of OPAA's own lands in it.
@@ -81,6 +83,9 @@ spring:
     # Explicit so that a missing schema fails the migration instead of letting current_schema()
     # fall through to public.
     default-schema: ${opaa.database.schema}
+    # No analytics call to the library vendor, also where a context starts without
+    # OpaaApplication.main (tests).
+    analytics-enabled: false
   ai:
     # A single connection path for both functions - the OpenAI-compatible protocol. Ollama speaks it
     # too (under its own /v1 endpoint), which is why there is no separate "ollama" provider anymore
@@ -132,7 +137,9 @@ spring:
           completion: false
     vectorstore:
       pgvector:
-        initialize-schema: true
+        # vector_store and its indexes come from the Liquibase changelog
+        # (knowledge/2026-10-19-vector-store.yaml), so no instance runs DDL for it at start-up.
+        initialize-schema: false
         # Must equal opaa.database.schema (io.opaa.config.DatabaseSchemaGuard).
         schema-name: ${opaa.database.schema}
         index-type: hnsw
@@ -145,6 +152,12 @@ opaa:
     # Voreinstellung und erzwungene Untergrenze: GroupSizeProperties bricht den Start bei einem
     # kleineren Wert ab.
     minimum-group-size: ${OPAA_MINIMUM_GROUP_SIZE:5}
+  # The self-disclosure of a person (io.opaa.selfdisclosure): exports streaming at once on this
+  # instance (1 to 16; above it 503) and how long one export may stream (5m to 2h). Emergency
+  # switch and daily limit live in the database (self_disclosure_settings).
+  self-disclosure:
+    max-concurrent-exports: ${OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS:2}
+    max-duration: ${OPAA_SELF_DISCLOSURE_MAX_DURATION:30m}
   database:
     # PostgreSQL schema that holds every table of OPAA (ADR-0034). It must exist and belong to the
     # database account before the first start; validated by io.opaa.config.DatabaseSchemaGuard.
@@ -154,6 +167,10 @@ opaa:
     # sets it. Starting without one of those profiles fails fast, see
     # io.opaa.auth.AuthProfileGuard.
     initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
+    # How old the sign-in behind a token (its auth_time) may be for an operation marked
+    # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
+    recent-login:
+      max-age: ${OPAA_AUTH_RECENT_LOGIN_MAX_AGE:5m}
     # Local accounts (ADR-0033): the one secret every key of the local token issuer is derived from
     # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
     # action-token lookup) and the session limits of the local issuer. No default for the secret on
@@ -201,6 +218,11 @@ opaa:
     auto-cleanup:
       archive-after-days: ${OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS:90}
       delete-after-days: ${OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS:365}
+    # Deletion of the chats of local accounts locked by the administration (io.opaa.chat.
+    # LockedAccountChatCleanupProperties). Floor 90 days; a smaller value stops the start.
+    locked-account-cleanup:
+      enabled: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED:true}
+      delete-after-days: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS:365}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
@@ -391,7 +413,8 @@ opaa:
       incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
       # Requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
       # the budget. Default measured against a real Data Center (see
-      # ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN and docs/handbuch/konfiguration.md).
+      # ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN and
+      # docs/handbuch/betrieb/konfiguration.md).
       request-budget-per-run: ${OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN:50000}
     # ADR-0027: bounds of the S3 access layer (io.opaa.indexing.source.s3) - own property block
     # like confluence above, see S3Properties.
@@ -551,9 +574,6 @@ opaa:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY:20}
-    # Threshold, in minutes, after which a PENDING upload row is considered abandoned by a dead
-    # process and set to FAILED at the next application startup - see UploadPendingRecoveryRunner.
-    pending-recovery-threshold-minutes: ${OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES:30}
     # How old a stored original must be before the orphan cleanup may report or remove it - the
     # window between writing the bytes and inserting the row, and the whole asynchronous processing
     # of an upload, must lie inside it. A report may raise it per call, never lower it.
@@ -609,10 +629,19 @@ opaa:
     # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
     # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
     trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
+    # query to search: max-requests per client, global-max-requests across all clients; past
+    # either the answer is 429. Both count only requests the security chain authenticated (the push
+    # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
+    # max-requests-per-account (query, chat-search, search) counts per signed-in account, per access
+    # token and per person over all her access tokens, whatever address they use; checked behind the
+    # security chain, 0 switches it off, an empty value fails the start. An access token gives back
+    # its address token; any 429 of a later limit that refuses before the actual work (the token
+    # quota, the busy answer of the attachment extraction) gives back the global token.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS_PER_ACCOUNT:10}
     indexing:
       max-requests: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS:1}
       window-seconds: ${OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS:60}
@@ -635,9 +664,11 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
     # The push intake is reachable without a session; the limiter bounds the secret checks an
-    # unauthenticated caller can cause. Per library (capture group), generous enough for a busy
-    # source - an author saving every few seconds - and the intake debounces
-    # anyway, so a burst above this costs freshness, not correctness.
+    # unauthenticated caller can cause. Per library (capture group, a well-formed library id only),
+    # generous enough for a busy source - an author saving every few seconds - and the intake
+    # debounces anyway, so a burst above this costs freshness, not correctness. Pushes that do not
+    # authenticate, or are refused before the secret check, draw on one budget per address,
+    # whichever library they name.
     webhook:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
@@ -649,13 +680,24 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS:60}
       window-seconds: ${OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS:1200}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS_PER_ACCOUNT:60}
+    # POST /api/v1/search embeds every question with the configured model, GET
+    # /api/v1/search/hits/{hitId} reads stored chunks; one budget for both, so fetching other hits
+    # buys no fresh searches. Sized for a tool that runs one search and fetches a few of its hits;
+    # an access token is bounded by its own quota on top.
+    search:
+      max-requests: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS:30}
+      window-seconds: ${OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS:300}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT:30}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email are keyed by client address in
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password
     # additionally by the (hashed) e-mail address they name - both in
     # io.opaa.account.LocalAuthRateLimiter. The global ceilings of login, register and
-    # forgot-password are the operator's early warning against distributed credential stuffing:
-    # exceeding one is a WARN line and a metric.
+    # forgot-password count every attempt, failed ones included, and are the operator's early
+    # warning against distributed credential stuffing: past one the answer is 429 for every client,
+    # with a WARN line and a metric.
     local-auth:
       login:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS:10}
@@ -733,13 +775,19 @@ opaa:
       max-accounts: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS:50000}
       connect-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT:5s}
       request-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT:30s}
+  instance:
+    # The instance register (ADR-0053, Entscheidung 3): every instance writes its heartbeat at this
+    # interval by the database clock and counts as dead after dead-after without one. dead-after is
+    # at least four intervals (io.opaa.instance.InstanceProperties) and the same on every instance.
+    heartbeat-interval: ${OPAA_INSTANCE_HEARTBEAT_INTERVAL:15s}
+    dead-after: ${OPAA_INSTANCE_DEAD_AFTER:120s}
   security:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at
       # rest. No default here on purpose - a real deployment must set one before storing any
-      # library's credentials; see docs/handbuch/betrieb.md. The dev profile below (not local) sets
-      # an explicitly-marked non-production default so bootRun and tests work without operator
-      # setup.
+      # library's credentials; see docs/handbuch/betrieb/netz-und-sicherheit.md. The dev profile
+      # below (not local) sets an explicitly-marked non-production default so bootRun and tests work
+      # without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
     settings:
       # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
@@ -864,9 +912,9 @@ opaa:
       # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
       # operator setup. LocalAuthSecretGuard does not run in this profile; any deployment that does
       # not activate "dev" falls back to the (empty) base value above and must set
-      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/betrieb.md. The value carries
-      # io.opaa.security.SecretValidator.NON_PRODUCTION_MARKER, so the "oidc" profile refuses it
-      # even when copied over (SecretValidatorTest#rejectsTheShippedDevDefault).
+      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/betrieb/netz-und-sicherheit.md. The value
+      # carries io.opaa.security.SecretValidator.NON_PRODUCTION_MARKER, so the "oidc" profile
+      # refuses it even when copied over (SecretValidatorTest#rejectsTheShippedDevDefault).
       jwt-secret: ${OPAA_AUTH_JWT_SECRET:NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026}
     dev:
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
@@ -894,7 +942,7 @@ opaa:
       # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials without
       # operator setup. Any deployment that does not activate the "dev" profile falls back to the
       # (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY itself - see
-      # docs/handbuch/betrieb.md.
+      # docs/handbuch/betrieb/netz-und-sicherheit.md.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
     settings:
       # NICHT FUER DEN PRODUKTIVBETRIEB - the same reasoning as opaa.security.credentials above, a
@@ -902,5 +950,5 @@ opaa:
       # test-created model's API key without operator setup. Any deployment that does not activate
       # the "dev" profile falls back to the (empty) base value above and must set
       # OPAA_SETTINGS_ENCRYPTION_KEY itself before storing a model's API key - see
-      # docs/handbuch/modelle.md.
+      # docs/handbuch/betrieb/modelle.md.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=}

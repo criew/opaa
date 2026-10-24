@@ -49,7 +49,7 @@ cat <<EOF
 **Helm-Chart**
 - \`oci://ghcr.io/${owner}/charts/opaa\`, Version \`${version}\`
 
-Installation wie im Handbuch, Kapitel Kubernetes, [Installation](${handbook}/kubernetes.md#installation): zuerst den Namespace mit den Labels für Pod Security \`restricted\` anlegen, dann Datenbank, Geheimnisse und Werte-Datei vorbereiten, zuletzt installieren.
+Installation wie im Handbuch, Kapitel Kubernetes, [Installation](${handbook}/betrieb/kubernetes.md#installation): zuerst den Namespace mit den Labels für Pod Security \`restricted\` anlegen, dann Datenbank, Geheimnisse und Werte-Datei vorbereiten, zuletzt installieren.
 
 \`\`\`bash
 kubectl create namespace opaa
@@ -66,9 +66,13 @@ helm install opaa oci://ghcr.io/${owner}/charts/opaa --version ${version} \\
 EOF
 printf '%s\n\n' "$preparation"
 cat <<EOF
-Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
+Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/betrieb/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
 
 **Update-Paket für Behörden**
 
-Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht und die Vorlage für den Update-Vermerk. Die Herkunft prüft \`gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository}\`. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
+Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht, die Stücklisten (SBOM) und die Vorlage für den Update-Vermerk. Die Herkunft prüft \`gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository}\`. Die CycloneDX-Stücklisten der ausgelieferten Abhängigkeiten hängen zusätzlich einzeln am Release, \`opaa-backend-${version}.cdx.json\` und \`opaa-frontend-${version}.cdx.json\`, ebenso attestiert. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
+
+**Offline-Bündel**
+
+Für Netze ohne Internetzugang hängt \`opaa-offline-${version}.tar\` am Release: beide Images für \`linux/amd64\` und \`linux/arm64\` als OCI-Archive, der Chart, das Update-Paket, die Stücklisten und ihre Attestierungen, dazu \`SHA256SUMS\` mit eigener Attestierung. Prüfen und Einspielen ohne Netz: [Installation ohne Internetzugang](${handbook}/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang).
 EOF

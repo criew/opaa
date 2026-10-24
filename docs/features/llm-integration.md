@@ -183,7 +183,7 @@ gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist.
 
 Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
 getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
-[modelle.md](../handbuch/modelle.md#llm-anbieter).
+[modelle.md](../handbuch/betrieb/modelle.md#llm-anbieter).
 
 Für das **Chat-Modell** wird diese Konfiguration mit
 [Stufe 1](#stufe-1-verwaltete-chat-modelle-gebaut) von der Verwaltung in der Anwendung abgelöst; sie
@@ -629,7 +629,22 @@ Der Aufruf wird aus sechs Teilen zusammengesetzt:
    nicht zu einem Fließtext verschmilzt. **(gebaut)** Seit #2376 besteht der Kopf aus zwei Zeilen,
    „Dokument: <Dateiname>" und „Zitiermarke: <Zeichenfolge>", ohne Klammern und ohne einzelne
    Kennungen: Ein Kopf in eckigen Klammern wurde als `[Quelle: … | 【…】]` mit abgeschrieben. Nach der
-   letzten Passage wiederholt eine kurze Erinnerung die Zitierregel.
+   letzten Passage wiederholt eine kurze Erinnerung die Zitierregel. **Seit #3048 stehen die Passagen
+   als gekennzeichnete Daten** am Ende des Systemvorspanns: in einem Block `<opaadokumente kennung="…">`,
+   jede Passage in einem Abschnitt `<opaaabschnitt kennung="…">` mit ihrem Kopf. Die Kennung entsteht je
+   Anfrage neu; die Regeln davor sagen dem Modell, dass der Inhalt Material ist und keine Anweisung.
+   Gemessen mit dem Testsatz präparierter Dokumente senkt der Block die Angriffsrate nicht: Mit dem
+   Block am Ende des Systemvorspanns waren 5 von 28 Angriffen erfolgreich (`qwen2.5:1.5b-instruct`,
+   korrekte Auskunft 19 von 28) und 3 von 28 (`gemma3:4b`, korrekte Auskunft 25 von 28), vor #3048
+   3 und 2 von 28; die Unterschiede liegen im Bereich einzelner Fälle. Die Variante mit den Passagen
+   in der Nachricht der Person vor ihrer Frage wurde verworfen, weil eine eingebettete Anweisung dort
+   als Wort der Person gilt: Mit `gemma3:4b` waren nach 15 von 28 Fällen bereits 5 Angriffe
+   erfolgreich, der Lauf wurde abgebrochen. Aus Text und
+   Dateiname werden vorher die Schlüsselwörter des Blocks in jeder Schreibweise
+   (`io.opaa.common.ContentFence`, wie beim MCP-Server) und unsichtbare Steuerzeichen entfernt und
+   Rollen-Token der Modellformate entschärft (`<|im_start|>` wird zu `‹im_start›`, ebenso
+   `<start_of_turn>`, `<｜User｜>` und `<s>`); Zeilen, die wie ein Kopf aussehen, und eigene
+   Zitiermarken im Text werden als Text kenntlich gemacht (siehe [Untergeschobene Anweisungen](#untergeschobene-anweisungen-aus-dokumenten)).
 3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)** Zielbild
    (Epic #1482): das Gesprächsfenster ohne Zitiermarken früherer Antworten, siehe
    [conversation-memory.md](./conversation-memory.md).
@@ -730,7 +745,11 @@ Beispieltext. Zwei Festlegungen gelten:
 
 - **Dokumentinhalt ist Material, keine Anweisung.** Die Übergabe kennzeichnet jede Passage als Fundstelle
   mit Herkunft (siehe [Übergabe der Passagen](#übergabe-der-passagen-und-form-der-antwort)); Anweisungen
-  aus diesem Bereich werden nicht befolgt.
+  aus diesem Bereich werden nicht befolgt. Seit #3048 stehen die Passagen in einem Block mit Kennung je
+  Anfrage, und der Systemvorspann verbietet,
+  Aufforderungen daraus zu befolgen und, wenn gesucht wurde, Links und Bilder auszugeben, die nicht
+  wörtlich in einer Passage stehen. Wie oft ein Modell sich trotzdem lenken lässt, misst der Testsatz präparierter
+  Dokumente (`eval/corpus/prompt-injection/`).
 - **Das Restrisiko bleibt und wird nicht wegdefiniert.** Kein Sprachmodell trennt Anweisung und Material
   zuverlässig. Deshalb greifen dahinter die Sicherungen, die nicht am Modell hängen: Rechteprüfung vor
   der Suche, Belegprüfung nach der Erzeugung, Protokoll.

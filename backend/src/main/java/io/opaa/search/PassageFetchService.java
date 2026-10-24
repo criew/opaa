@@ -11,9 +11,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * The text behind one hit (docs/features/external-access.md, "Was ein Fremdzugang erreicht"): by
- * default the hit's passage with its adjoining passages and its heading path, and only on an
- * explicit request the whole extracted text of the document, capped at {@link
+ * The text behind one hit (docs/features/external-access.md, "Was ein externes KI-Werkzeug
+ * erreicht"): by default the hit's passage with its adjoining passages and its heading path, and
+ * only on an explicit request the whole extracted text of the document, capped at {@link
  * SearchProperties#fetchMaxCharacters()}.
  *
  * <p>Two rules point the same way and are the reason the default is not the document: an assistant

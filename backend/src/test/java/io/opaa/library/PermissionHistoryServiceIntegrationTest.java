@@ -63,7 +63,6 @@ import io.opaa.test.SourceTypes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
-import java.time.InstantSource;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,6 +84,8 @@ import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -140,6 +141,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private TokenGroupSynchronizer synchronizer;
   @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private ApplicationContext applicationContext;
 
   private static final String TOKEN_GROUP_NAME = "Fachbereich 3";
@@ -435,11 +437,10 @@ class PermissionHistoryServiceIntegrationTest {
 
   @Test
   void twoReleaseChangesWithinOneClockTickStayReconstructableAtAnInstantBetweenThem() {
-    // regression guard for #1497: the wall clock stands still for both changes - deterministically,
-    // without a wait or a retry loop - which is exactly what a coarse clock tick does to two
-    // changes that follow each other closely. Taking the boundaries straight from the wall clock
-    // gave the organization-wide state validFrom == validTo, an interval no asOf can satisfy, so
-    // the reconstruction reported "no access" for a period in which access existed.
+    // regression guard for #1497: two changes that follow each other closely - well within one
+    // coarse clock tick - must not give the organization-wide state validFrom == validTo, an
+    // interval no asOf can satisfy, so the reconstruction reported "no access" for a period in
+    // which access existed. The standing clock itself is PermissionHistoryBoundaryMigrationTest.
     // Recording through a locally built service replaces LibraryExternalAccessService ->
     // PermissionHistoryListener; it therefore says nothing about how many boundaries that
     // production path consumes per change - the tests above cover that.
@@ -447,26 +448,18 @@ class PermissionHistoryServiceIntegrationTest {
     UUID otherUser = createUser();
     UUID libraryId = createLibrary(owner);
 
-    Instant standstill =
-        visibilityHistoryRepository
-            .findByAssetTypeAndAssetIdAndValidToIsNull(KnowledgeLibrary.ASSET_TYPE, libraryId)
-            .orElseThrow()
-            .getValidFrom()
-            .plus(1, ChronoUnit.MICROS);
-    PermissionHistoryClock standingClock =
-        new PermissionHistoryClock(InstantSource.fixed(standstill));
-    AssetVisibilityHistoryService serviceOnAStandingClock =
-        new AssetVisibilityHistoryService(visibilityHistoryRepository, standingClock);
+    AssetVisibilityHistoryService recordingService =
+        new AssetVisibilityHistoryService(visibilityHistoryRepository, historyClock);
 
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
-    Instant expiresAt = standstill.plus(30, ChronoUnit.DAYS);
-    serviceOnAStandingClock.recordExternalAccessChanged(
+    Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
+    recordingService.recordExternalAccessChanged(
         library,
         ExternalAccessState.ACTIVE,
         expiresAt,
         AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
         owner);
-    serviceOnAStandingClock.recordExternalAccessChanged(
+    recordingService.recordExternalAccessChanged(
         library,
         ExternalAccessState.WITHDRAWN,
         expiresAt,
@@ -759,8 +752,15 @@ class PermissionHistoryServiceIntegrationTest {
    * split the Spring context (AGENTS.md, "Spring-Testkontexte").
    */
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
+    TransactionTemplate transactions = new TransactionTemplate(transactionManager);
+    // In a transaction like the bean's @Transactional: the run locks the rows it selects.
     return new LibraryExternalAccessExpiryService(
-        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now);
+        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now) {
+      @Override
+      public int runOnce() {
+        return transactions.execute(status -> super.runOnce());
+      }
+    };
   }
 
   /**

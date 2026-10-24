@@ -39,6 +39,7 @@ class MailTemplateKeyTest {
           "ADMIN_REVIEW_REMINDER",
           "EXTERNAL_ACCESS_RELEASE_EXPIRING",
           "EXTERNAL_ACCESS_TOKEN_EXPIRING",
+          "SELF_DISCLOSURE_STARTED",
           "TEST_MAIL");
 
   private final Mustache.Compiler plain = Mustache.compiler().escapeHTML(false);

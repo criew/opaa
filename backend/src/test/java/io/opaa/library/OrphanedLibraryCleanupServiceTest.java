@@ -70,7 +70,7 @@ class OrphanedLibraryCleanupServiceTest {
     when(libraryRepository.existsById(any()))
         .thenAnswer(invocation -> libraryRows.containsKey(invocation.getArgument(0)));
     UploadProperties uploadProperties =
-        new UploadProperties(storageDir.toString(), null, 1024L, null, 0, GRACE_MINUTES);
+        new UploadProperties(storageDir.toString(), null, 1024L, null, GRACE_MINUTES);
     store = new FilesystemUploadedOriginalStore(uploadProperties);
     service =
         new OrphanedOriginalCleanupService(

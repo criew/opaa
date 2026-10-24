@@ -2,7 +2,7 @@
 
 > **Status: umgesetzt (Epic #1762, Phasen 2–4, 09/2026); Phase 5 nur bei gemeldetem Bedarf.**
 > Die Maintainer-Entscheidungen stehen im Abschnitt [Entscheidungen](#entscheidungen); den gebauten
-> Stand der Chatsuche beschreibt das Handbuch ([Suche](../handbuch/suche.md)).
+> Stand der Chatsuche beschreibt das Handbuch ([Suche](../handbuch/spaces/suche.md)).
 
 ## Motivation
 
@@ -53,7 +53,7 @@ Zwei Vorgänge heißen ähnlich und sind strikt zu trennen, in der Oberfläche w
 | **Archivierter Space** ([spaces-and-assets.md](./spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen)) | den ganzen Space, für alle | Space-Eigentümer, System-Admin | Space nimmt keinen neuen Inhalt an, wird aus regulären Listen ausgeblendet |
 
 Ebenso getrennt: Die **Chatsuche** findet eigene Gespräche; die **Wissenssuche** (Retrieval und der
-Such-Endpunkt ohne Generierung, siehe [Handbuch Suche](../handbuch/suche.md)) findet Dokumente.
+Such-Endpunkt ohne Generierung, siehe [Handbuch Suche](../handbuch/spaces/suche.md)) findet Dokumente.
 Die Oberfläche benennt beides verschieden — ein Feld „Suchen" ohne Zusatz in der Chatliste wäre
 missverständlich, weil der ganze Assistent „sucht".
 
@@ -253,7 +253,7 @@ bewusste Weg, von Hand aufzuräumen.
   Merkmalen. Es gibt keine Protokollereignisart für das Löschen eines Chats, und es kommt keine dazu.
 - **Protokoll:** nur das Umlegen des Schalters (Ereignis `SPACE_CHANGED` mit `chatAutoCleanup` vor
   und nach der Änderung, handelnde Person, Zeitpunkt; beim Anlegen im Ereignis `SPACE_CREATED`). Der
-  tägliche Lauf (03:50 Uhr, Single-Instance nach ADR-0021) schreibt nur Gesamtzahlen ins
+  tägliche Lauf (03:50 Uhr, auf einer Instanz unter der Sperre nach ADR-0053) schreibt nur Gesamtzahlen ins
   Anwendungslog, keinen Chat, keinen Space, keine Person.
 
 **Verhältnis zur persönlichen Ablage.** Der Automatismus schreibt dieselbe persönliche
@@ -262,6 +262,140 @@ Archivmodell ändert sich dadurch nicht: Solange es nur private Chats gibt, ist 
 Person, die den Chat sieht. Kommt das Teilen von Chats, ist zu entscheiden, ob der Automatismus auch
 die Zeilen der Personen schreibt, mit denen ein Chat geteilt ist, und wessen Archivzeitpunkt die
 Löschfrist bestimmt.
+
+---
+
+## Löschung der Chats gesperrter Konten
+
+Entschieden vom Maintainer am 23.10.2026 (#2997), nach dem Stakeholder-Review mit Personalrat und
+Betrieb (Kommentare am Issue). Für das Ausscheiden einer Person ist die Sperre der Regelweg, nicht
+die Löschung; ein vorhandener Chat verhindert die Löschung des Kontos sogar. Ohne diese Regel blieben
+die Chats einer ausgeschiedenen Person unbegrenzt liegen, denn die Bereinigung je Space ist ab Werk
+aus und im persönlichen Standard-Space legt sie nur die Person selbst um. Chats sind der größte und
+aussagekräftigste Teil der Daten über eine Person.
+
+### Regel
+
+- **Auslöser ist allein die Sperre durch die Verwaltung** (`local_credentials.locked_reason =
+  ADMIN`). Die Sperre wegen Inaktivität ist eine Abwesenheit (Elternzeit, Krankheit, Abordnung), die
+  Fehlversuch-Sperre ein Angriff Dritter; Ablaufdatum, abgeschaltete lokale Konten, abgeschaltete
+  oder gelöschte Anbieter und der Verzeichnisabgleich sind Sammel- oder Betriebszustände. Keiner
+  davon startet die Frist. Die Positivliste ist abschließend, je ausgeschlossenem Anlass belegt ein
+  Test, dass die Chats bleiben.
+- **Umwidmen einer anderen Sperre:** Ein wegen Inaktivität oder Fehlversuchen gesperrtes Konto lässt
+  sich durch die Verwaltung sperren, ohne Entsperren dazwischen und ohne Freischaltungs-Mail. Das ist
+  der Regelfall für Ausgeschiedene, deren Konto schon die Inaktivitätssperre trifft. Protokolliert
+  wie jede Sperre (`LOCAL_USER_LOCKED`); die Frist beginnt mit der Umwidmung.
+- **Konten eines Identitätsanbieters** lassen sich in OPAA nicht sperren; die Frist greift für sie
+  nicht. Maßgeblich ist nur die Sperre in OPAA, eine Deaktivierung beim Anbieter zählt nicht
+  (Entscheidung 5). Eine Sperre von Anbieterkonten in OPAA ist ein eigenes Thema (#3025).
+- **Frist** `opaa.chat.locked-account-cleanup.delete-after-days`, ab Werk **365 Tage**, Untergrenze
+  **90 Tage**: Eine irrtümliche Sperre muss über Urlaub und Vertretung hinweg auffallen können. Ein
+  kleinerer Wert bricht den Start ab. Die wirksame Frist steht beim Start im Anwendungslog.
+- **Abschaltbar** mit `opaa.chat.locked-account-cleanup.enabled` (ab Werk an). Abgeschaltet löscht
+  nichts; schon der Start mit abgeschalteter Löschung vergisst den Zählbeginn, nach dem
+  Wiedereinschalten beginnt jede Frist neu.
+- **Fristbeginn** ist der Beginn der aktuellen, ununterbrochenen Sperre durch die Verwaltung
+  (`locked_at`), **frühestens die Einführung** bzw. das letzte Einschalten
+  (`chat_locked_account_cleanup_state.counting_since`, einmalig gesetzt mit der Datenbankuhr). Ein
+  Entsperren beendet die Frist, eine erneute Sperre beginnt von vorn. Keine Rückwirkung: Ein Konto,
+  das bei der Einführung seit 400 Tagen gesperrt ist, behält seine Chats bis 365 Tage nach der
+  Einführung.
+- **Gelöscht werden alle Chats, deren Autor das Konto ist**, in allen Spaces einschließlich des
+  persönlichen Standard-Space, angeheftete eingeschlossen (Entscheidung 3), auf demselben Weg wie
+  durch die Person: mit Verlauf, Gesprächsnotiz und persönlichen Merkmalen. Konto und Standard-Space
+  bleiben. Unabhängig vom Schalter der Bereinigung im Space.
+- **Geteilte Chats bleiben**, bis die Bereinigung ihres Space oder eine Löschung von Hand sie
+  erfasst. Der Lauf nimmt nur Chats mit Status `PRIVATE`; solange Chats nicht geteilt werden können,
+  ist das jeder Chat.
+- **Aussetzen bei anlassbezogener Klärung** (Entscheidung 4): Solange das Konto in einem offenen
+  Antrag oder einer noch nutzbaren Freigabe steht, gleich in welcher Rolle, löscht der Lauf nicht;
+  dieselbe Regel wie bei der Kontolöschung. Nach dem Ende holt der nächste Lauf nach, die Aussetzung
+  verlängert nichts.
+- **Anhalten je Konto** durch die Systemverwaltung, etwa für ein Disziplinarverfahren oder einen
+  Rechtsstreit außerhalb von OPAA: „Löschung anhalten“ und „Löschung fortsetzen“ in der
+  Einzelansicht des Kontos, ohne Begründung (sie wäre selbst ein sensibles Datum über die Person),
+  beide protokolliert. Ist die Frist beim Fortsetzen abgelaufen, löscht der nächste Lauf.
+
+### Lauf
+
+Täglich um **02:30 Uhr** Serverzeit, auf einer Instanz unter der ShedLock-Sperre (ADR-0053), nicht
+gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ ist die Datenbankuhr.
+
+- **Obergrenze je Lauf:** höchstens 5.000 Chats, in Stapeln zu je 200 in eigener Transaktion. Bei
+  der Einführung starten alle schon gesperrten Konten mit demselben Fristbeginn; die Welle verteilt
+  sich so auf mehrere Nächte, und der Lauf bleibt weit unter der Sperrdauer von zwei Stunden.
+- **Erneute Prüfung unter Sperre:** Jeder Stapel prüft das Konto unter einer Lesesperre auf seine
+  Zugangsdaten erneut; ein Entsperren oder Anhalten wartet auf den Stapel oder wird von ihm gesehen.
+  Der Lauf ist zustandsbasiert: Bricht er ab, setzt die nächste Nacht fort.
+- **Wiederherstellung aus einer Sicherung:** Tauchen gelöschte Chats wieder auf, löscht der nächste
+  Lauf sie erneut und schreibt ein neues Ereignis. Wer Chats einer zu Unrecht gesperrten Person
+  zurückholen will, spielt die Sicherung ein und entsperrt das Konto oder hält die Löschung an,
+  **bevor der nächste Lauf um 02:30 Uhr** beginnt: Eine vollständig eingespielte Datenbank bringt
+  auch Sperre, Anhalten und Fristbeginn auf den Stand der Sicherung zurück, ein vorher gesetzter
+  Halt ginge verloren. Alternativ startet die eingespielte Installation mit abgeschalteter
+  Löschung; dann beginnen alle Fristen neu.
+
+### Protokoll und Anwendungslog
+
+- Ein Ereignis `LOCKED_ACCOUNT_CHATS_DELETED` **je Konto und Lauf**, der für das Konto etwas
+  löscht, geschrieben in der Transaktion des ersten Stapels. Betroffene Person ist das Konto; es
+  trägt den **Fristbeginn** und den **Sperrgrund**, **keine Zahl**, keinen Titel, keinen Inhalt,
+  keinen Space. Die Zahl gelöschter Chats je Person wäre ein Nutzungsmaß, das nach der Löschung als
+  einzige Spur bliebe. Verteilt sich ein Konto auf mehrere Nächte, entsteht je Nacht ein Ereignis.
+- `LOCKED_ACCOUNT_CHAT_CLEANUP_HELD` und `…_RESUMED` für Anhalten und Fortsetzen, ohne Begründung;
+  ein wiederholtes Anhalten schreibt nichts.
+- Aufbewahrung: allgemeine Protokollfrist (Voreinstellung 36 Monate, wie die Rechtehistorie).
+  Wird das Konto später gelöscht, bleibt das Ereignis mit dem Pseudonym ohne Zuordnung stehen.
+- Im **Auszug für die Personalvertretung** mit Zweck, Zugriff und Frist
+  ([security-and-compliance.md](./security-and-compliance.md#der-auszug-für-die-personalvertretung)).
+- Anwendungslog: nur Gesamtzahlen (Chats, Konten); ein gescheitertes Konto oder ein Lauf, der die
+  fälligen Konten nicht lesen kann, als **ERROR**.
+
+### Sichtbarkeit des Löschdatums
+
+- „Frühestens am …“ steht **nur in der Einzelansicht** des Kontos in der Verwaltung (Dialog
+  „Bearbeiten“), für jedes durch die Verwaltung gesperrte Konto, **unabhängig davon, ob und wie
+  viele Chats es hat**. Eine laufende Klärung ändert die Anzeige nicht. Ein Anhalten zeigt die
+  Ansicht, weil es ein Akt der Verwaltung selbst ist.
+- **Keine Spalte, kein Filter, keine Sortierung, kein Export** in der Kontenliste: Eine Liste „wird
+  bald gelöscht“ wäre eine Liste der Ausgeschiedenen samt Zeitpunkt.
+- **Nachricht bei der Sperre:** Die Mail der Sperre durch die Verwaltung nennt das früheste
+  Löschdatum. Den Hinweis auf die Selbstauskunft trägt sie nicht: Nach der Sperre kann sich die
+  Person nicht mehr anmelden, die Selbstauskunft ist für sie nicht mehr erreichbar. Die Gelegenheit
+  zur Selbstauskunft vor einem planbaren Ausscheiden ist deshalb eine Aufgabe der Dienststelle
+  (Handbuch, Dienstvereinbarung #2566). Die Mail der Inaktivitätssperre nennt kein Datum.
+
+### Wirkung auf Behördenunterlagen
+
+- [x] Neue oder geänderte personenbezogene Daten oder Protokollereignisse — Datum
+  `chat-cleanup-holds` (angehaltene Löschung je Konto), Ereignisse `LOCKED_ACCOUNT_CHATS_DELETED`,
+  `LOCKED_ACCOUNT_CHAT_CLEANUP_HELD`, `LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED`
+- [x] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar — die
+  Systemverwaltung sieht in der Einzelansicht das Löschdatum und ob die Löschung angehalten ist
+- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten
+- [x] Geänderte Aufbewahrungs- oder Löschfrist — Chats: 365 Tage nach der Sperre durch die
+  Verwaltung statt unbegrenzt
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [x] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt — ab Werk an
+  mit Datenwirkung
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Voraussichtliche Stufe:** Zustimmung (Z1 neue Ereignisart, Z7 ab Werk an mit Datenwirkung); das
+Stakeholder-Review mit Personalrat und Betrieb ist erledigt (Kommentare an #2997 vom 23.10.2026),
+die Muss-Auflagen beider Reviews sind umgesetzt.
+
+**Betroffene Vorlagen in `docs/behoerden/`:** `04-datenschutz/` (Löschkonzept), die Faktenblätter
+Fristen, Voreinstellungen und Protokollereignisse aus dem Fakten-Manifest und die
+Muster-Dienstvereinbarung (#2566) mit den Bedingungen des Personalrats: Frist mit Untergrenze und
+Anknüpfung an die Sperre durch die Verwaltung, Verlängerung nur mit Zustimmung; Pflicht der
+Dienststelle, Konten Ausgeschiedener zu sperren; keine Sperre wegen bloßer Abwesenheit; Gelegenheit
+zur Selbstauskunft vor der Sperre; Verwertungsverbot für das Löschereignis.
+
+**Nicht umgesetzt (Soll-Auflagen):** eine Vorschau „in den nächsten 30 Tagen fällig“ für den
+Betrieb, ein Startlog-Hinweis auf eine verkürzte Frist und die Zahl ausgesetzter Löschungen im
+Jahresbericht an die Personalvertretung (#3026).
 
 ---
 
@@ -294,7 +428,7 @@ aus dem privaten Arbeitsbereich.
   Risiko, etwas nicht wiederzufinden, und unterbliebe.
 - **Kein Durchgriff.** Weder Space- noch System-Admins können fremde Chats durchsuchen; es gibt dafür
   keinen Parameter und keine Rolle. Die Suche ist nur in der angemeldeten Sitzung erreichbar, nicht über
-  persönliche Zugangstokens und nicht über den MCP-Server der [Fremdzugänge](./external-access.md).
+  persönliche Zugangstokens und nicht über den MCP-Server für [externe KI-Werkzeuge](./external-access.md).
 
 ### Bedienung
 
@@ -379,7 +513,7 @@ Entschieden vom Maintainer am 18.09.2026 (Epic #1762, Phase 1):
 Im Konzept festgelegt, ohne gesonderte Maintainer-Frage: Suche nur im aktiven Space; Suchbegriffe nicht
 protokolliert; Archiv in der Suche einbezogen; persönliche Merkmale als eigene Zeilen je Person und
 Chat; kein automatisches Archivieren (seit #1923 je Space einschaltbar, siehe oben); keine Obergrenze beim Anheften; Merkmale auch im archivierten Space
-setzbar; Chatsuche nicht über Fremdzugänge erreichbar; durchsucht werden Titel, Fragen und Antworten.
+setzbar; Chatsuche nicht für externe KI-Werkzeuge erreichbar; durchsucht werden Titel, Fragen und Antworten.
 
 ### Mustervergleich
 
@@ -419,7 +553,7 @@ Handbuch und E2E-Abdeckung gehören in jede Phase, nicht gesammelt ans Ende.
   derselben Art (je Person und Chat) und passt in das hier festgelegte Modell.
 - **[security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)** —
   Suchbegriffe sind Abfragen und werden nicht protokolliert.
-- **[external-access.md](./external-access.md)** — die Chatsuche ist kein Fremdzugangsweg.
+- **[external-access.md](./external-access.md)** — die Chatsuche ist kein Zugriffsweg für externe KI-Werkzeuge.
 - **[conversation-memory.md](./conversation-memory.md)** — die Gesprächsnotiz folgt dem Chat, wird aber
   nicht durchsucht.
 - **Benachrichtigungssystem (#1297)** — das Postfach verweist auf Chats; ein Verweis auf einen

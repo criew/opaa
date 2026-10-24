@@ -32,6 +32,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Creates the bootstrap system administrator and the LOCAL provider row on the first start in the
@@ -57,6 +59,11 @@ import org.springframework.transaction.annotation.Transactional;
  * the missing OIDC bootstrap in ADR-0025). Nothing happens in the {@code dev} mode, not even the
  * marker. Audit: {@code LOCAL_ADMIN_SEEDED} and {@code LOCAL_ADMIN_RESET} under the {@code
  * local-auth} system actor, never with the address or the password in the payload.
+ *
+ * <p>Instances that start together seed one after another under the start-up seed lock, so exactly
+ * one of them seeds or resets, and a password reaches the log only once its transaction committed.
+ * {@code OPAA_LOCAL_ADMIN_RESET=force} takes effect once per setting of the variable: the reset is
+ * recorded on the marker, and only a start without the variable clears that record.
  */
 @Component
 public class LocalAdminSeeder {
@@ -83,7 +90,12 @@ public class LocalAdminSeeder {
     /** Existing installation: {@code INVITED} account without a password. */
     SEEDED_INVITED,
     /** {@code OPAA_LOCAL_ADMIN_RESET=force}: the account was restored or recreated. */
-    RESET
+    RESET,
+    /**
+     * {@code OPAA_LOCAL_ADMIN_RESET=force}, but this or another instance already reset the account
+     * since the variable was set.
+     */
+    RESET_ALREADY_DONE
   }
 
   private final AuthProperties authProperties;
@@ -134,9 +146,11 @@ public class LocalAdminSeeder {
     if (!OIDC_MODE.equals(authProperties.mode())) {
       return Outcome.SKIPPED;
     }
+    marker.lockStartupSeeds();
     if (localAuthProperties.isAdminResetForced()) {
       return restoreBootstrapAdmin();
     }
+    clearForcedResetRecord();
     if (marker.seedAlreadyAttempted()) {
       return Outcome.SKIPPED;
     }
@@ -187,12 +201,12 @@ public class LocalAdminSeeder {
       log.info(
           "Notanker-Konto der Systemverwaltung als INVITED angelegt (Bestandsinstallation, kein"
               + " Passwort). Aktivierung bei Bedarf mit {}=force und Neustart, siehe"
-              + " docs/handbuch/authentifizierung.md.",
+              + " docs/handbuch/betrieb/authentifizierung.md.",
           LocalAuthProperties.ADMIN_RESET_VARIABLE);
       return Outcome.SEEDED_INVITED;
     }
     if (generated != null) {
-      printPasswordBlock(generated);
+      printPasswordBlockAfterCommit(generated);
     }
     log.info(
         "Notanker-Konto der Systemverwaltung angelegt (Konto {}); lokale Konten sind deaktiviert,"
@@ -205,10 +219,23 @@ public class LocalAdminSeeder {
    * {@code OPAA_LOCAL_ADMIN_RESET=force}: restores a login-capable bootstrap administrator once -
    * unlocked, expiry cleared, new password ({@code OPAA_INITIAL_ADMIN_PASSWORD} or a generated one
    * printed once), {@code SYSTEM_ADMIN} restored, every session of the account ended; a deleted
-   * account is recreated with the configured address. Audited as {@code LOCAL_ADMIN_RESET}.
+   * account is recreated with the configured address. Audited as {@code LOCAL_ADMIN_RESET}. Does
+   * nothing while the marker records a reset since the variable was set.
    */
   @Transactional
   public Outcome restoreBootstrapAdmin() {
+    marker.lockStartupSeeds();
+    if (marker
+        .findById(LocalAdminSeedMarker.SINGLETON_ID)
+        .filter(LocalAdminSeedMarker::forcedResetDone)
+        .isPresent()) {
+      log.info(
+          "{}=force: Das Notanker-Konto wurde seit dem Setzen der Variable bereits zurückgesetzt"
+              + " (von dieser oder einer anderen Instanz) - kein weiterer Reset. Die Variable jetzt"
+              + " entfernen; erst ein Start ohne sie gibt einen neuen Reset frei.",
+          LocalAuthProperties.ADMIN_RESET_VARIABLE);
+      return Outcome.RESET_ALREADY_DONE;
+    }
     Instant now = clock.instant();
     Optional<LocalCredentials> existing = credentials.findByBootstrapTrue();
     User admin;
@@ -258,25 +285,58 @@ public class LocalAdminSeeder {
     row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
     refreshTokens.revokeAllForUser(admin.getId(), RevocationReason.ADMIN_RESET, now);
-    if (!marker.seedAlreadyAttempted()) {
-      marker.save(new LocalAdminSeedMarker(now));
-    }
+    LocalAdminSeedMarker seedMarker =
+        marker
+            .findById(LocalAdminSeedMarker.SINGLETON_ID)
+            .orElseGet(() -> new LocalAdminSeedMarker(now));
+    seedMarker.markForcedReset(now);
+    marker.save(seedMarker);
     recordAudit(
         admin,
         AuditEventType.LOCAL_ADMIN_RESET,
         Map.of("recreated", recreated, "passwordSource", passwordSource(true, generated)));
     events.publishEvent(new OidcProvidersChangedEvent());
     if (generated != null) {
-      printPasswordBlock(generated);
+      printPasswordBlockAfterCommit(generated);
     }
     log.warn(
         "{}=force: Notanker-Konto der Systemverwaltung {} (Konto {}), alle seine Sitzungen beendet."
-            + " Die Variable jetzt wieder entfernen - jeder weitere Start würde das Konto erneut"
-            + " zurücksetzen.",
+            + " Die Variable jetzt wieder entfernen - weitere Starts mit ihr setzen nichts zurück,"
+            + " erst ein Start ohne sie gibt einen neuen Reset frei.",
         LocalAuthProperties.ADMIN_RESET_VARIABLE,
         recreated ? "neu angelegt" : "wiederhergestellt",
         admin.getId());
     return Outcome.RESET;
+  }
+
+  /** A start without the variable gives the next {@code OPAA_LOCAL_ADMIN_RESET=force} free. */
+  private void clearForcedResetRecord() {
+    marker
+        .findById(LocalAdminSeedMarker.SINGLETON_ID)
+        .filter(LocalAdminSeedMarker::forcedResetDone)
+        .ifPresent(
+            seen -> {
+              seen.clearForcedReset();
+              marker.save(seen);
+            });
+  }
+
+  /**
+   * A password reaches the log only with the transaction that stores it: an instance whose seed
+   * rolls back never prints one that does not work.
+   */
+  private static void printPasswordBlockAfterCommit(String password) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      printPasswordBlock(password);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            printPasswordBlock(password);
+          }
+        });
   }
 
   /** The address exactly as configured (trimmed), or {@code null} with the operator told why. */
@@ -301,7 +361,7 @@ public class LocalAdminSeeder {
         "Kein Notanker-Konto der Systemverwaltung angelegt ({}): Bis es existiert, ist keine"
             + " lokale Anmeldung als Systemverwalter möglich. {} auf ein zustellbares Postfach"
             + " setzen (am besten ein Funktionspostfach der IT) und neu starten - die Anlage wird"
-            + " dann nachgeholt. Siehe docs/handbuch/authentifizierung.md.",
+            + " dann nachgeholt. Siehe docs/handbuch/betrieb/authentifizierung.md.",
         problem,
         INITIAL_ADMIN_EMAIL_VARIABLE);
     return null;

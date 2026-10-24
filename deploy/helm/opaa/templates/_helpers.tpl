@@ -116,13 +116,34 @@ Aborts the rendering on combinations the schema cannot express. Included by both
 message names the rule no matter which object Helm renders first.
 */}}
 {{- define "opaa.validate" -}}
-{{- if gt (int .Values.backend.replicas) 1 }}
-{{- fail (printf "backend.replicas is %v, but OPAA runs exactly one backend instance (ADR-0021, docs/decisions/0021-single-instance-betrieb.md). 0 stops the backend, more than 1 is refused." .Values.backend.replicas) }}
+{{- $replicas := int .Values.backend.replicas }}
+{{- $rolling := include "opaa.backend.rolling" . }}
+{{- if or (gt $replicas 1) $rolling }}
+{{- $reason := ternary (printf "backend.replicas is %d" $replicas) "backend.updateStrategy is RollingUpdate" (gt $replicas 1) }}
+{{- if not .Values.backend.migration.enabled }}
+{{- fail (printf "%s, which runs two backend pods side by side, so the schema migration must run as a step of its own before them: set backend.migration.enabled (ADR-0053, Entscheidung 15)." $reason) }}
 {{- end }}
-{{- if le (int .Values.backend.terminationGracePeriodSeconds) (int .Values.backend.shutdownTimeoutSeconds) }}
-{{- fail (printf "backend.terminationGracePeriodSeconds (%v) must be greater than backend.shutdownTimeoutSeconds (%v), otherwise the kubelet kills the backend before its graceful shutdown ends." .Values.backend.terminationGracePeriodSeconds .Values.backend.shutdownTimeoutSeconds) }}
+{{- if not (include "opaa.uploads.shared" .) }}
+{{- fail (printf "%s, which runs two backend pods side by side, possibly on different nodes, so every pod must see the same originals: set uploads.store s3, or uploads.persistence.accessModes [ReadWriteMany] on a storage class that provides it (ADR-0053, Entscheidung 15)." $reason) }}
+{{- end }}
+{{- end }}
+{{- $shutdown := int (include "opaa.backend.shutdownTimeoutSeconds" .) }}
+{{- $preStop := int (include "opaa.backend.preStopSeconds" .) }}
+{{- $grace := int (include "opaa.backend.terminationGracePeriodSeconds" .) }}
+{{- if le $grace (add $shutdown $preStop) }}
+{{- fail (printf "backend.terminationGracePeriodSeconds (%d) must be greater than backend.shutdownTimeoutSeconds (%d) plus the preStop pause (%d), otherwise the kubelet kills the backend before its graceful shutdown ends." $grace $shutdown $preStop) }}
+{{- end }}
+{{- $readTimeout := int (include "opaa.frontend.readTimeoutSeconds" .) }}
+{{- if and $rolling (lt $shutdown $readTimeout) }}
+{{- fail (printf "backend.shutdownTimeoutSeconds (%d) is shorter than the frontend's read timeout (%ds, frontend.backendReadTimeout): a rolling update would cut off chat answers still in progress on the replaced pod. Raise it, or leave it empty to follow the read timeout." $shutdown $readTimeout) }}
+{{- end }}
+{{- if and .Values.transcription.maxConcurrent (hasKey .Values.backend.installationBudgets "OPAA_TRANSCRIPTION_MAX_CONCURRENT") }}
+{{- fail "transcription.maxConcurrent and backend.installationBudgets.OPAA_TRANSCRIPTION_MAX_CONCURRENT set the same variable; keep one: the budget of the installation, which the chart divides by the pods, or the value per pod." }}
 {{- end }}
 {{- range .Values.backend.extraEnv }}
+{{- if hasKey $.Values.backend.installationBudgets .name }}
+{{- fail (printf "backend.extraEnv sets %s, which backend.installationBudgets already derives per pod; keep one of the two." .name) }}
+{{- end }}
 {{- if has .name (list "SPRING_PROFILES_ACTIVE" "SPRING_PROFILES_INCLUDE" "SPRING_PROFILES_DEFAULT") }}
 {{- fail (printf "backend.extraEnv must not set %s: the chart runs the production profile oidc only, the dev profile authenticates every request without a credential (ADR-0005)." .name) }}
 {{- end }}
@@ -173,6 +194,56 @@ message names the rule no matter which object Helm renders first.
 {{- if and .Values.httpRoute.enabled (not .Values.httpRoute.parentRefs) }}
 {{- fail "httpRoute.enabled is true, but httpRoute.parentRefs names no Gateway." }}
 {{- end }}
+{{- end }}
+
+{{/* "true" when the backend is updated pod by pod; empty for Recreate. */}}
+{{- define "opaa.backend.rolling" -}}
+{{- $strategy := .Values.backend.updateStrategy }}
+{{- if or (eq $strategy "RollingUpdate") (and (not $strategy) (gt (int .Values.backend.replicas) 1)) }}true{{ end }}
+{{- end }}
+
+{{/* "true" when every backend pod sees the same originals: object store or a ReadWriteMany claim. */}}
+{{- define "opaa.uploads.shared" -}}
+{{- if or (eq .Values.uploads.store "s3") (has "ReadWriteMany" .Values.uploads.persistence.accessModes) }}true{{ end }}
+{{- end }}
+
+{{/* frontend.backendReadTimeout in seconds; the image default is 600s. */}}
+{{- define "opaa.frontend.readTimeoutSeconds" -}}
+{{- $value := default "600s" .Values.frontend.backendReadTimeout }}
+{{- $number := int (trimSuffix "s" (trimSuffix "m" (trimSuffix "h" $value))) }}
+{{- if hasSuffix "h" $value }}{{ mul $number 3600 }}{{ else if hasSuffix "m" $value }}{{ mul $number 60 }}{{ else }}{{ $number }}{{ end }}
+{{- end }}
+
+{{/* OPAA_SHUTDOWN_TIMEOUT in seconds: the value, or 60 with Recreate and the frontend's read timeout pod by pod. */}}
+{{- define "opaa.backend.shutdownTimeoutSeconds" -}}
+{{- if kindIs "invalid" .Values.backend.shutdownTimeoutSeconds }}
+{{- if include "opaa.backend.rolling" . }}{{ include "opaa.frontend.readTimeoutSeconds" . }}{{ else }}60{{ end }}
+{{- else }}
+{{- int .Values.backend.shutdownTimeoutSeconds }}
+{{- end }}
+{{- end }}
+
+{{/* Seconds of the preStop pause: only pod by pod, where the endpoints must drop the pod first. */}}
+{{- define "opaa.backend.preStopSeconds" -}}
+{{- if include "opaa.backend.rolling" . }}{{ int .Values.backend.preStopSleepSeconds }}{{ else }}0{{ end }}
+{{- end }}
+
+{{/* terminationGracePeriodSeconds: the value, or the shutdown window plus the preStop pause plus 15 s. */}}
+{{- define "opaa.backend.terminationGracePeriodSeconds" -}}
+{{- if kindIs "invalid" .Values.backend.terminationGracePeriodSeconds }}
+{{- add (include "opaa.backend.shutdownTimeoutSeconds" .) (include "opaa.backend.preStopSeconds" .) 15 }}
+{{- else }}
+{{- int .Values.backend.terminationGracePeriodSeconds }}
+{{- end }}
+{{- end }}
+
+{{/*
+Name of the migration job: changes with image and configuration, so an upgrade that brings either
+starts a new job, and stays the same otherwise. At most 63 characters, the limit of its pod labels.
+*/}}
+{{- define "opaa.migration.jobName" -}}
+{{- $inputs := list (include "opaa.image" (dict "root" . "image" .Values.backend.image)) (include (print .Template.BasePath "/backend-configmap.yaml") .) (toYaml .Values.backend.extraEnv) (toYaml .Values.backend.extraEnvFrom) .Chart.Version }}
+{{- printf "%s-migrate-%s" (include "opaa.fullname" . | trunc 43 | trimSuffix "-") (join "\n" $inputs | sha256sum | trunc 10) }}
 {{- end }}
 
 {{/* JAVA_TOOL_OPTIONS of the backend: the heap share plus the operator's own options. */}}

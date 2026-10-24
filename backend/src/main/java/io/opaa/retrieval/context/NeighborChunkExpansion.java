@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
 /**
  * Widens the selection the answer prompt is built from by the neighbours of every selected chunk -
  * {@code chunk_index ± radius} of the same document - so a passage cut at a chunk boundary reaches
- * the model whole (docs/handbuch/suche.md, Abschnitt 6). Runs after the pipeline and only for the
- * answer: the selection, its ranking and the search hits stay what the pipeline decided.
+ * the model whole (docs/handbuch/spaces/suche.md, Abschnitt 6). Runs after the pipeline and only
+ * for the answer: the selection, its ranking and the search hits stay what the pipeline decided.
  *
  * <p>{@link NeighborChunkProperties#maxAddedCharacters} is spent in two rounds. First every
  * selected chunk in rank order gets one direct neighbour - the following one, else the preceding

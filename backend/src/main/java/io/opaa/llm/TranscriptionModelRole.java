@@ -2,11 +2,15 @@ package io.opaa.llm;
 
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
+import io.opaa.instance.ScheduledRunLocks;
+import java.time.Clock;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +24,12 @@ import org.springframework.stereotype.Service;
  *
  * <p>Switched off - by {@code OPAA_TRANSCRIPTION_ENABLED} or the feature speech-input - the role
  * contacts nobody.
+ *
+ * <p>The last known state is the installation's ({@link ModelRoleObservations}, ADR-0053,
+ * Entscheidung 12): the instance holding the probe lock probes, every instance shows the microphone
+ * on that state. The slots are this process's (ADR-0053): with N instances the installation holds N
+ * times {@link TranscriptionProperties#maxConcurrent()}, so it is configured as the installation's
+ * budget divided by N.
  */
 @Service
 public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
@@ -32,12 +42,24 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
   private final TranscriptionClient client;
   private final boolean switchedOn;
   private final boolean baseUrlRejected;
-  private final AtomicReference<TranscriptionRoleStatus> lastKnown = new AtomicReference<>();
+  private final ModelRoleObservations observations;
   private final Semaphore slots;
 
+  /** A role whose state lives in this process only - for a context without a database. */
   public TranscriptionModelRole(
       TranscriptionProperties properties, TranscriptionClient client, FeatureFlags featureFlags) {
+    this(
+        properties, client, featureFlags, new ProcessLocalModelRoleObservations(Clock.systemUTC()));
+  }
+
+  @Autowired
+  public TranscriptionModelRole(
+      TranscriptionProperties properties,
+      TranscriptionClient client,
+      FeatureFlags featureFlags,
+      ModelRoleObservations observations) {
     this.properties = properties;
+    this.observations = observations;
     this.client = client;
     this.switchedOn = properties.enabled() && featureFlags.isEnabled(Feature.SPEECH_INPUT);
     this.baseUrlRejected = ModelEndpointUri.containsCredentials(properties.baseUrl());
@@ -58,7 +80,7 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
     }
   }
 
-  /** One of the installation-wide slots; closing it frees the slot. */
+  /** One of this instance's slots; closing it frees the slot. */
   public interface Slot extends AutoCloseable {
     @Override
     void close();
@@ -66,8 +88,7 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
 
   /**
    * Takes one of {@link TranscriptionProperties#maxConcurrent()} slots without waiting. The cap
-   * holds for the whole installation, never per person; hold the slot while the recording is in
-   * memory.
+   * holds for this instance, never per person; hold the slot while the recording is in memory.
    *
    * @throws TranscriptionRoleBusyException when every slot is taken.
    */
@@ -106,24 +127,34 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
           false,
           false);
     }
-    TranscriptionRoleStatus known = lastKnown.get();
-    return known != null
-        ? known
-        : status(TranscriptionRoleState.UNREACHABLE, "endpoint not probed yet", false);
+    return observations
+        .current(ModelRoleObservations.TRANSCRIPTION)
+        .filter(known -> known.isFor(properties.baseUrl(), properties.model()))
+        .map(
+            known ->
+                known.reachable()
+                    ? status(TranscriptionRoleState.READY, null, false)
+                    : status(
+                        TranscriptionRoleState.UNREACHABLE, known.diagnostic(), known.timedOut()))
+        .orElseGet(
+            () -> status(TranscriptionRoleState.UNREACHABLE, "endpoint not probed yet", false));
   }
 
   @Scheduled(
       fixedDelay = PROBE_INTERVAL_MILLIS,
       initialDelay = PROBE_INTERVAL_MILLIS,
       scheduler = "transcriptionProbeScheduler")
-  void probePeriodically() {
+  @SchedulerLock(
+      name = "transcription-role-probe",
+      lockAtLeastFor = "PT50S",
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
+  public void probePeriodically() {
     refresh();
   }
 
   /** Probes the endpoint and records the result. Blocking; never on a request path. */
   public TranscriptionRoleStatus refresh() {
     if (!switchedOn || baseUrlRejected || !properties.bound()) {
-      lastKnown.set(null);
       return currentStatus();
     }
     TranscriptionClient.ProbeFailure failure = client.probe(properties);
@@ -131,7 +162,7 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
         failure == null
             ? status(TranscriptionRoleState.READY, null, false)
             : status(TranscriptionRoleState.UNREACHABLE, failure.message(), failure.timedOut());
-    lastKnown.set(probed);
+    record(probed, true);
     return probed;
   }
 
@@ -162,11 +193,11 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
     }
     try {
       String text = client.transcribe(properties, audio, format);
-      lastKnown.set(status(TranscriptionRoleState.READY, null, false));
+      record(status(TranscriptionRoleState.READY, null, false), false);
       return text;
     } catch (TranscriptionClient.TranscriptionUnavailableException e) {
       if (!e.answered()) {
-        lastKnown.set(status(TranscriptionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()));
+        record(status(TranscriptionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()), false);
       }
       // Only the message: it is technical and content-free by contract, a stack trace adds nothing.
       log.warn(
@@ -174,6 +205,24 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
           properties.describeWithoutSecrets(),
           e.getMessage());
       throw e;
+    }
+  }
+
+  /** Records an outcome; a store that cannot take it costs the record, never the recording. */
+  private void record(TranscriptionRoleStatus status, boolean probe) {
+    try {
+      observations.record(
+          ModelRoleObservations.TRANSCRIPTION,
+          new ModelRoleObservations.ModelRoleObservation(
+              properties.baseUrl(),
+              properties.model(),
+              status.state() == TranscriptionRoleState.READY,
+              status.timedOut(),
+              status.diagnostic(),
+              null),
+          probe);
+    } catch (DataAccessException e) {
+      log.warn("Transcription role state could not be recorded: {}", e.getMessage());
     }
   }
 

@@ -101,6 +101,13 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
         .containsExactlyInAnyOrder(
             "asset_grants_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "assets_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "permission_history_next_boundary search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_issuer_key search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_reconcile search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_on_credentials_change search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_on_user_change search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_on_provider_change search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_record_reached_expiries search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "audit_incident_scope_grants_pseudonymize_person search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",
@@ -121,7 +128,9 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
             "opaa_diagnostic_context_delete_expired_partitions search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",
-            "organizations_seed_capability_grants search_path=pg_catalog, " + SCHEMA + ", pg_temp");
+            "organizations_seed_capability_grants search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "notify_cache_invalidation search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "local_credentials_session_generation search_path=pg_catalog, " + SCHEMA + ", pg_temp");
   }
 
   /** Reads the unqualified retention settings table through the pinned search_path. */
@@ -150,21 +159,17 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
   }
 
   @Test
-  void buildsTheVectorStoreIndexesInTheTargetSchemaOnceTheTableExists() throws Exception {
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata jsonb,"
-              + " embedding vector(3))");
-    }
-
-    applyMasterChangelog();
-
+  void createsTheVectorStoreWithItsIndexesInTheTargetSchema() throws Exception {
     assertThat(
             strings(
                 "SELECT indexname FROM pg_indexes WHERE schemaname = '"
                     + SCHEMA
-                    + "' AND tablename = 'vector_store' AND indexname LIKE 'idx_%'"))
-        .containsExactlyInAnyOrder("idx_vector_store_library_id", "idx_vector_store_document_id");
+                    + "' AND tablename = 'vector_store'"))
+        .containsExactlyInAnyOrder(
+            "vector_store_pkey",
+            "spring_ai_vector_index",
+            "idx_vector_store_library_id",
+            "idx_vector_store_document_id");
   }
 
   @Test

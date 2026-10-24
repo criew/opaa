@@ -496,14 +496,14 @@ Werkzeuge und Fremdsysteme werden über das **Model Context Protocol (MCP)** ang
 
 **Abgrenzung der Richtung.** Dieses Kapitel beschreibt OPAA als MCP-**Client**: Ein Agent von OPAA
 ruft ein fremdes Werkzeug auf. Das bleibt Phase 2. Die **Gegenrichtung** — OPAA als MCP-**Server**,
-den ein fremdes KI-Werkzeug als Wissensquelle anspricht — ist am 18.09.2026 entschieden und in
+den ein externes KI-Werkzeug als Wissensquelle anspricht — ist am 18.09.2026 entschieden und in
 [external-access.md](./external-access.md) beschrieben. Die beiden Richtungen teilen nur den
 Protokollnamen: Die Client-Richtung führt Daten aus OPAA heraus in ein Werkzeug, das handelt; die
 Server-Richtung liefert Fundstellen an ein Werkzeug, das fragt. Entscheidungen der einen Richtung
 gelten nicht automatisch für die andere. Die Server-Richtung ist inzwischen **gebaut** — Schalter,
 Bibliotheksfreigabe, persönliche Zugangstokens, Such- und Abrufweg und der MCP-Server unter `/mcp`;
 wer sie betreiben oder anschließen will, findet beides in
-[external-access.md](./external-access.md) und im Handbuchkapitel „Fremdzugänge".
+[external-access.md](./external-access.md) und im Handbuchkapitel „Externe KI-Werkzeuge".
 
 **Nur über gesicherte Netzverbindungen, und nur von einer Zulassungsliste.** Welche fremden Werkzeugserver überhaupt in Frage kommen, entscheidet die **Systemverwaltung** und hinterlegt es in einer Zulassungsliste; ein Agenten- oder Skill-Autor wählt aus dieser Liste aus, er erweitert sie nicht. Der Grund ist derselbe, aus dem die Zielprüfung der Konnektoren existiert: Ein Werkzeug, dessen Adresse jemand frei eintragen darf, ist ein Weg nach draußen, den niemand beschlossen hat. Zugangsdaten liegen verschlüsselt in der Anwendung, nie in einer Werkzeugbeschreibung. Anbindungen, die einen lokalen Prozess starten, sind ausgeschlossen — „der Nutzer darf das Kommando festlegen" ist keine Einstellmöglichkeit, sondern eine Ausführungslücke.
 
@@ -577,7 +577,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 |---|---|
 | [spaces-and-assets.md](./spaces-and-assets.md) | Rechte an Agenten, Freigabekette für das Wissen, Verteilungsstufen, Katalog, Versionierung, Freigabeweg, Export und Import — **das Leitdokument** |
 | [access-control.md](./access-control.md) | Identität, Gruppen, Systemverwaltung, Protokollierung |
-| [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für fremde KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
+| [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für externe KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
 | [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Belegvalidierung, auf denen Belegtreue und Prüfagenten aufsetzen |
 | [search-quality-evaluation.md](./search-quality-evaluation.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
 | [llm-integration.md](./llm-integration.md) | Modellwahl und zentrale Vorgaben als Obergrenze für die Modellwahl eines Agenten; die Fähigkeiten eines Modelleintrags, darunter „Werkzeugaufrufe"; und die harte Regel, dass der **Systemvorspann nicht über den Chat änderbar** ist — Skills und Agenten setzen ihre Blöcke daneben, sie ersetzen ihn nicht |

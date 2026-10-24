@@ -37,6 +37,35 @@ const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS
   ? Number(process.env.EMBEDDING_DIMENSIONS)
   : 1536
 
+// --- Holding embeddings (two-instance target, e2e/multi-instance/) -----------------------------
+//
+// POST /control/embedding-hold {"marker": "...", "hold": true} holds back every embedding request
+// whose input contains the marker until the same call with "hold": false, at most HOLD_LIMIT_MS.
+// A scenario uses it to keep an indexing run or an upload of one instance in flight while it
+// restarts the other one; requests without the marker (a start-up probe, other scenarios) pass.
+const HOLD_LIMIT_MS = 150_000
+let holdMarker = null
+let releaseHeld = []
+
+function holdsInput(inputs) {
+  return (
+    holdMarker !== null &&
+    inputs.some((input) => typeof input === 'string' && input.includes(holdMarker))
+  )
+}
+
+function waitForRelease() {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, HOLD_LIMIT_MS)
+    releaseHeld.push(() => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
+}
+
+let heldCount = 0
+
 const CITATION_PATTERN = /【source:\s*([a-zA-Z0-9-]+)#(\d+)\s*\|\s*(.+?)】/g
 
 // io.opaa.query.AnswerGenerationService's SYSTEM_PROMPT includes one fixed, hardcoded citation as
@@ -90,6 +119,51 @@ function condensedNote(combinedText) {
     return match === null ? [] : [rule.line(match)]
   })
   return lines.length > 0 ? lines.join('\n') : NOTE_NOTHING_SENTINEL
+}
+
+// --- Fixed answer parts for the link rule ------------------------------------------------------
+//
+// A trigger word in the person's question appends a fixed Markdown fragment to the answer, so the
+// frontend's link and image rule is tested against a known answer rather than a model's whim.
+// Only the answer prompt is affected, recognised by its citation rules; decomposition, title and
+// note prompts carry the question as well and keep their usual answers.
+//   E2E-ANTWORT-LINKS     a link to the allowed test target and one to a foreign target
+//   E2E-ANTWORT-BILD      a Markdown image with an external address
+//   E2E-BEFOLGE-DOKUMENT  every Markdown link found in the prompt's passages - the stub plays a
+//                         model that follows an instruction embedded in a prepared document
+const ANSWER_PROMPT_MARKER = 'ZITIERREGELN (verbindlich)'
+const MARKDOWN_LINK_PATTERN = /(?<!!)\[[^\]\n]{1,80}\]\(https?:\/\/[^)\s]{1,300}\)/g
+const ANSWER_TRIGGERS = [
+  {
+    word: 'E2E-ANTWORT-LINKS',
+    fragment: () =>
+      'Siehe [Intranet](https://intranet.e2e.example/seite) und ' +
+      '[Fremdseite](https://fremd.e2e.example/abruf).',
+  },
+  {
+    word: 'E2E-ANTWORT-BILD',
+    fragment: () => '![Diagramm](https://bild.e2e.example/diagramm.png)',
+  },
+  {
+    word: 'E2E-BEFOLGE-DOKUMENT',
+    fragment: (systemText) => [...new Set(systemText.match(MARKDOWN_LINK_PATTERN) ?? [])].join(' '),
+  },
+]
+
+function triggeredFragments(messages) {
+  const systemText = messages
+    .filter((message) => message.role === 'system' && typeof message.content === 'string')
+    .map((message) => message.content)
+    .join('\n')
+  if (!systemText.includes(ANSWER_PROMPT_MARKER)) {
+    return ''
+  }
+  const question = [...messages].reverse().find((message) => message.role === 'user')
+  const questionText = typeof question?.content === 'string' ? question.content : ''
+  const fragments = ANSWER_TRIGGERS.filter((trigger) => questionText.includes(trigger.word))
+    .map((trigger) => trigger.fragment(systemText))
+    .filter((fragment) => fragment !== '')
+  return fragments.length > 0 ? `\n\n${fragments.join('\n\n')}` : ''
 }
 
 // Every managed chat model in this suite points at this same
@@ -150,9 +224,33 @@ const server = createServer(async (req, res) => {
       return
     }
 
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/control/embedding-hold')) {
+      const body = JSON.parse(await readBody(req))
+      if (body.hold === true && typeof body.marker === 'string' && body.marker !== '') {
+        holdMarker = body.marker
+        heldCount = 0
+      } else {
+        holdMarker = null
+        const waiting = releaseHeld
+        releaseHeld = []
+        waiting.forEach((release) => release())
+      }
+      sendJson(res, 200, { marker: holdMarker, held: heldCount })
+      return
+    }
+
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/control/embedding-hold')) {
+      sendJson(res, 200, { marker: holdMarker, held: heldCount, waiting: releaseHeld.length })
+      return
+    }
+
     if (req.method === 'POST' && matchesEndpoint(req.url, '/embeddings')) {
       const body = JSON.parse(await readBody(req))
       const inputs = Array.isArray(body.input) ? body.input : [body.input]
+      if (holdsInput(inputs)) {
+        heldCount += 1
+        await waitForRelease()
+      }
       const data = inputs.map((_, index) => ({
         object: 'embedding',
         index,
@@ -179,9 +277,9 @@ const server = createServer(async (req, res) => {
         .map((match) => match[0])
       const uniqueCitations = [...new Set(citations)]
       const answer =
-        uniqueCitations.length > 0
+        (uniqueCitations.length > 0
           ? `Antwort auf Basis der bereitgestellten Dokumente. ${uniqueCitations.join(' ')}`
-          : NO_CONTEXT_ANSWER
+          : NO_CONTEXT_ANSWER) + triggeredFragments(messages)
       const content = combinedText.includes(NOTE_PROMPT_MARKER)
         ? condensedNote(combinedText)
         : answer

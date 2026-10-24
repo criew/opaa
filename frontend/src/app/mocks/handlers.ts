@@ -36,6 +36,8 @@ import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
 import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
+// link-targets
+import { linkTargetHandlers } from '@/features/link-targets/mocks/linkTargetHandlers'
 // connection
 import { connectionProfileHandlers } from '@/features/connection/mocks/connectionProfileHandlers'
 import { connectedAccountHandlers } from '@/features/connection/mocks/connectedAccountHandlers'
@@ -49,6 +51,8 @@ import { externalAccessLibraryHandlers } from '@/features/external-access/mocks/
 import { searchHandlers } from '@/features/chat/mocks/searchHandlers'
 import { searchAdminHandlers } from '@/features/search-admin/mocks/searchAdminHandlers'
 import { diagnosticAccessHandlers } from '@/features/library/mocks/diagnosticAccessHandlers'
+// compliance
+import { selfDisclosureHandlers } from '@/features/compliance/mocks/selfDisclosureHandlers'
 // auth
 import { authHandlers } from '@/shared/mocks/authHandlers'
 import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
@@ -101,6 +105,8 @@ export const handlers = [
   ...mailHandlers,
   // branding
   ...brandingHandlers,
+  // link-targets
+  ...linkTargetHandlers,
   // connection
   ...connectionProfileHandlers,
   ...connectedAccountHandlers,
@@ -114,6 +120,8 @@ export const handlers = [
   ...searchHandlers,
   ...searchAdminHandlers,
   ...diagnosticAccessHandlers,
+  // compliance
+  ...selfDisclosureHandlers,
   // auth
   ...authHandlers,
   ...localAuthHandlers,

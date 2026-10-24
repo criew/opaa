@@ -13,12 +13,9 @@ import org.springframework.web.servlet.function.ServerRequest;
  * chain authenticated, and the protocol version the client named per request.
  *
  * <p>The caller travels in the transport context, the mechanism the library provides for exactly
- * this. The <b>token id does not</b>: {@code ExternalAccessSearchScopeSource} reads it from {@code
- * RequestContextHolder}, and without it the effective view falls back to everything the person may
- * read. The tool call must therefore run on the request's own thread - which it does because the
- * stateless autoconfiguration switches on immediate execution in a servlet environment. Moving the
- * tools off that thread would widen the view silently; the scope tests of {@code
- * McpServerIntegrationTest} are what would go red.
+ * this, and carries its access token with it ({@link CurrentUser#accessTokenId()}). Nothing a tool
+ * needs is read from the request's thread, so the effective view and the quota hold on whichever
+ * thread the tool runs.
  */
 final class McpRequestContext {
 
@@ -42,15 +39,19 @@ final class McpRequestContext {
   }
 
   /**
-   * The caller of this request. Never {@code null} in production: the endpoint is only reachable
-   * through the channel's filter chain, which authenticates before any handler runs.
+   * The caller of this request, always one that arrived on an access token. Every MCP call is a
+   * token call, so a caller without a token - or none at all - is refused rather than served the
+   * person's view; in production the channel's filter chain rules both out before any handler runs.
    */
   static CurrentUser callerOf(McpTransportContext context) {
     Object caller = context == null ? null : context.get(CALLER);
-    if (caller instanceof CurrentUser currentUser) {
-      return currentUser;
+    if (!(caller instanceof CurrentUser currentUser)) {
+      throw new IllegalStateException(
+          "MCP request reached a handler without an authenticated caller");
     }
-    throw new IllegalStateException(
-        "MCP request reached a handler without an authenticated caller");
+    if (currentUser.accessTokenId() == null) {
+      throw new IllegalStateException("MCP request reached a handler without an access token");
+    }
+    return currentUser;
   }
 }

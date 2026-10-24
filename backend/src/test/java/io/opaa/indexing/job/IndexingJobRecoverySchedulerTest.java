@@ -1,5 +1,6 @@
 package io.opaa.indexing.job;
 
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,9 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s two recovery methods
- * to the right trigger (application startup vs. a periodic sweep) - the actual recovery logic
- * (which rows get failed, with what message) is {@link IndexingJobServiceTest}'s responsibility.
+ * {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s recovery methods to
+ * the right trigger (application startup vs. a periodic sweep) - the actual recovery logic (which
+ * rows get failed, with what message) is {@link IndexingJobServiceTest}'s responsibility.
  */
 @ExtendWith(MockitoExtension.class)
 class IndexingJobRecoverySchedulerTest {
@@ -30,12 +31,24 @@ class IndexingJobRecoverySchedulerTest {
   }
 
   @Test
-  void recoverOnStartupDelegatesToTheRestartRecovery() {
-    when(indexingJobService.recoverJobsOrphanedByRestart()).thenReturn(1);
+  void recoverOnStartupGivesUpTheRunsOfDeadInstancesAndThoseWithoutOwner() {
+    when(indexingJobService.recoverJobsWithoutOwner()).thenReturn(1);
+    when(indexingJobService.recoverJobsOfDeadInstances()).thenReturn(1);
 
     scheduler.recoverOnStartup();
 
-    verify(indexingJobService).recoverJobsOrphanedByRestart();
+    verify(indexingJobService).recoverJobsWithoutOwner();
+    verify(indexingJobService).recoverJobsOfDeadInstances();
+  }
+
+  @Test
+  void thePeriodicSweepGivesUpOnlyTheRunsOfDeadInstances() {
+    when(indexingJobService.recoverJobsOfDeadInstances()).thenReturn(1);
+
+    scheduler.recoverRunsOfDeadInstances();
+
+    verify(indexingJobService).recoverJobsOfDeadInstances();
+    verify(indexingJobService, never()).recoverJobsWithoutOwner();
   }
 
   @Test

@@ -17,6 +17,8 @@
 //   node scripts/run-e2e.mjs                       # default target "e2e" (pnpm test)
 //   node scripts/run-e2e.mjs --target demo         # demo-profile smoke test (pnpm run test:demo-smoke)
 //   node scripts/run-e2e.mjs --target local-auth   # local sign-in (pnpm run test:local-auth)
+//   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
+//   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -62,11 +64,26 @@ if (targetFlagIndex !== -1) {
     rawArgs.splice(targetFlagIndex, 2)
   }
 }
-if (target !== 'e2e' && target !== 'demo' && target !== 'local-auth') {
-  console.error(`Unbekanntes --target "${target}" (erwartet: "e2e", "demo" oder "local-auth")`)
+if (!['e2e', 'demo', 'local-auth', 'multi-instance', 'offline'].includes(target)) {
+  console.error(
+    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance" oder "offline")`,
+  )
   process.exit(1)
 }
 const extraTestArgs = rawArgs
+
+// The "multi-instance" target (ADR-0053) has a lifecycle of its own - two phases, two versions of
+// the images, the Compose variant with two backend instances - and lives in multi-instance.mjs.
+if (target === 'multi-instance') {
+  const { runMultiInstance } = await import('./multi-instance.mjs')
+  process.exit(await runMultiInstance({ repoRoot, e2eDir, extraTestArgs }))
+}
+// The "offline" target runs the stack on a network without a route out; see offline.mjs.
+if (target === 'offline') {
+  prepareBindMounts()
+  const { runOffline } = await import('./offline.mjs')
+  process.exit(await runOffline({ repoRoot, e2eDir, extraTestArgs }))
+}
 const isDemo = target === 'demo'
 const isLocalAuth = target === 'local-auth'
 
@@ -465,7 +482,7 @@ async function main() {
         ? {}
         : {
             E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}`,
-            // test(e2e) #1723: der MCP-Server des Fremdzugangs liegt unter /mcp am Backend, und die
+            // test(e2e) #1723: der MCP-Server für externe KI-Werkzeuge liegt unter /mcp am Backend, und die
             // nginx-Auslieferung des Frontends leitet ausschließlich /api/ weiter - die Szenarien
             // sprechen ihn deshalb unter dem Host-Port dieses Laufs an, wie den KI-Stub darüber.
             E2E_BACKEND_BASE_URL: `http://localhost:${backendPort}`,

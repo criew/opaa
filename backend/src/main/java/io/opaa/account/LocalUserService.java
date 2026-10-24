@@ -207,7 +207,7 @@ public class LocalUserService {
     if (creation.systemRole() != null && creation.systemRole() != SystemRole.USER) {
       user = userService.updateRole(user.getId(), creation.systemRole(), actor);
     }
-    // the personal space, on the same path every sign-in takes (after the commit)
+    // the personal space, written in this transaction (PersonalSpaceProvisioner)
     events.publishEvent(UserProvisionedEvent.withoutTokenGroups(user, true));
     return new CreatedAccount(user, row, invitation, initialPassword);
   }
@@ -311,7 +311,9 @@ public class LocalUserService {
           "Das Notanker-Konto der Systemverwaltung kann nicht gesperrt werden.",
           LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
-    if (row.getLockedAt() != null && row.getLockedReason() != LockReason.FAILED_LOGINS) {
+    // A lock for inactivity or failed sign-ins is turned into one by the administration, from now
+    // on: only that lock starts the deletion period of the account's chats.
+    if (row.getLockedAt() != null && row.getLockedReason() == LockReason.ADMIN) {
       throw new ConflictException("Das Konto ist bereits gesperrt.", ALREADY_LOCKED);
     }
     if (current.user().getSystemRole() == SystemRole.SYSTEM_ADMIN) {
@@ -324,17 +326,26 @@ public class LocalUserService {
   /**
    * The lock of the daily run (ADR-0033, Entscheidung 9), under the {@code local-auth} system
    * actor. A {@link ConflictException} means the account is the last login-capable system
-   * administrator and stays untouched.
+   * administrator and stays untouched. The state is read again under the row lock: an account a run
+   * of another instance locked a moment earlier is left alone.
+   *
+   * @return whether this call locked the account
    */
   @Transactional
-  public void lockForInactivity(UUID userId) {
+  public boolean lockForInactivity(UUID userId) {
     User user = users.findById(userId).orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
     LocalCredentials row =
-        credentials.findById(userId).orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+        credentials
+            .findForUpdate(userId)
+            .orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+    if (row.state(clock.instant()) != LocalAccountState.ACTIVE) {
+      return false;
+    }
     if (user.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
       adminGuard.requireAnotherLoginCapableAdmin(user.getOrganizationId(), userId);
     }
     applyLock(user, row, LockReason.INACTIVITY, null, LocalRefreshTokenService.SYSTEM_ACTOR);
+    return true;
   }
 
   private void applyLock(
@@ -479,10 +490,11 @@ public class LocalUserService {
    * (ADR-0033, Entscheidung 11) - in practice one that was never used; every other one is locked,
    * not deleted. What the account holds elsewhere - the diagnostic impersonation grants it issued,
    * its personal space - is ended by the listeners of {@link LocalAccountDeletionEvent} inside this
-   * transaction; credentials, tokens, memberships and the pseudonym mapping follow by the schema's
-   * cascades, and a grant of the anlassbezogene Klärung keeps the person as a pseudonym once it is
-   * no longer open or usable - before that it refuses the deletion. The refusal names the blocking
-   * tables in the log only - the response says "referenced", nothing more.
+   * transaction; credentials, tokens, memberships, the account's own state intervals and the
+   * pseudonym mapping follow by the schema's cascades, and a grant of the anlassbezogene Klärung
+   * keeps the person as a pseudonym once it is no longer open or usable - before that it refuses
+   * the deletion. The refusal names the blocking tables in the log only - the response says
+   * "referenced", nothing more.
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
@@ -558,9 +570,6 @@ public class LocalUserService {
     }
     if (counts.getAssetOwnershipHistory() > 0) {
       blockers.add("asset_ownership_history");
-    }
-    if (counts.getAccountStateHistory() > 0) {
-      blockers.add("account_state_history");
     }
     if (counts.getConnectedAccounts() > 0) {
       blockers.add("connected_accounts");

@@ -43,9 +43,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * Answers one question end to end (docs/handbuch/suche.md): resolves the search scope, runs the
- * {@link RetrievalPipeline} over it, has the answer generated, validates the citations and has the
- * source rows built.
+ * Answers one question end to end (docs/handbuch/spaces/suche.md): resolves the search scope, runs
+ * the {@link RetrievalPipeline} over it, has the answer generated, validates the citations and has
+ * the source rows built.
  *
  * <p>A query always reads with the calling user's own rights - no system-admin bypass, no second
  * rights context
@@ -125,10 +125,10 @@ public class QueryService {
    *
    * <p>A chat {@code chatId} names and {@code caller} authored governs the turn entirely: search
    * scope and filter come from the chat's own settings - {@code useKnowledge} and {@code
-   * requestedLibraryIds} are then ignored, not merely defaulted - the conversation memory is seeded
-   * from its persisted history, and question and answer are persisted. Otherwise the query runs
-   * ephemerally and, having no space, searches no knowledge at all: {@code useKnowledge} and {@code
-   * requestedLibraryIds} widen nothing, and the answer is marked {@code noSpaceContext}.
+   * requestedLibraryIds} are then ignored, not merely defaulted - the conversation window is read
+   * from its persisted history on every turn, and question and answer are persisted. Otherwise the
+   * query runs ephemerally and, having no space, searches no knowledge at all: {@code useKnowledge}
+   * and {@code requestedLibraryIds} widen nothing, and the answer is marked {@code noSpaceContext}.
    *
    * <p>Deliberately <em>not</em> {@code @Transactional}: an ambient transaction would hold one JDBC
    * connection for the whole call, LLM round trip included, while the write phase afterwards needs
@@ -425,25 +425,27 @@ public class QueryService {
   }
 
   /**
-   * Seeds the in-memory conversation cache from the persisted chat history on a cache miss - the
-   * mechanism that makes {@link SubQueryDecompositionStage} and {@link
-   * AnswerGenerationService#generateAnswer} see the persisted history without either reading the
-   * database directly. Only touches the cache when it is empty for this key: re-adding would
-   * duplicate every message, and a warm cache is already authoritative for this process.
+   * Replaces the conversation window of a persisted chat with its persisted history on every turn
+   * (ADR-0053, Entscheidung 10) - the mechanism that makes {@link SubQueryDecompositionStage} and
+   * {@link AnswerGenerationService#generateAnswer} see the history without either reading the
+   * database directly. {@code chat_messages} is the only source: a turn another backend instance
+   * answered is in the window even when this process still holds an older one. An ephemeral
+   * conversation has nothing persisted and keeps its process-local window (ADR-0053).
    *
    * <p>This is the <b>second entrance into the conversation window</b>; it normalizes through the
    * same {@link ConversationWindowMessages} the first one uses, which is what makes the same chat
-   * send the same prompt before and after a restart or a cache eviction.
+   * send the same prompt before and after a restart, a cache eviction or a change of instance.
    */
   private void seedConversationMemoryFromPersistedHistory(
       Optional<Chat> chat, String conversationKey) {
-    if (chat.isEmpty() || !chatMemory.get(conversationKey).isEmpty()) {
+    if (chat.isEmpty()) {
       return;
     }
     List<Message> persistedHistory =
         chatService.historyAsSpringAiMessages(
             chat.get().getId(),
             retrievalContextFactory.queryProperties().conversationWindowMessages());
+    chatMemory.clear(conversationKey);
     if (!persistedHistory.isEmpty()) {
       chatMemory.add(conversationKey, ConversationWindowMessages.reloaded(persistedHistory));
     }

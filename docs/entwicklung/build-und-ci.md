@@ -56,6 +56,7 @@ Der Chart liegt unter `deploy/helm/opaa/` ([ADR-0042](../decisions/0042-kubernet
 helm template opaa . -f ci/minimal-values.yaml   # bricht bei Abbruchregeln ab; helm lint meldet
                                                 # sie nur als INFO und endet mit Exit 0
 helm template opaa . -f ci/full-values.yaml
+helm template opaa . -f ci/multi-values.yaml    # zwei Backend-Pods mit Migrations-Job (ADR-0053)
 
 # Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
 deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
@@ -84,8 +85,8 @@ deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der 
                                         #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
                                         # In CI bei Änderungen am Chart und an den Image-Dateien,
                                         # nightly und per Label "helm-suite"
-deploy/helm/ci/restore-test.sh          # Wiederherstellungsprobe (docs/behoerden/09-betrieb-update/
-                                        # wiederherstellungsprobe.md): Quelle installieren und über
+deploy/helm/ci/restore-test.sh          # Wiederherstellungsprobe (docs/handbuch/betrieb/sicherung-und-wiederherstellung.md,
+                                        # Abschnitt „Wiederherstellungsprobe“): Quelle installieren und über
                                         # die API füllen, mit den Befehlen des Handbuchs sichern, in
                                         # einen zweiten Namespace zurückspielen, P1-P4, P6, P9-P12
                                         # prüfen; Ergebnis, Zeiten und Größen in der Job-
@@ -122,13 +123,117 @@ pnpm exec playwright install --with-deps chromium   # Browser installieren (einm
 pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
 ```
 
+## Zwei-Instanzen-Suite
+
+Die Szenarien unter `e2e/multi-instance/` belegen den Mehrinstanzbetrieb
+([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)) mit zwei Backend-Instanzen gegen eine
+Datenbank, unter Docker Compose und auf kind. Sie sprechen die API beider Instanzen direkt an und
+öffnen keinen Browser.
+
+| Szenario | Prüft |
+|---|---|
+| `01-kaltstart` | gleichzeitiger Kaltstart nach dem Migrationsschritt gegen eine leere Datenbank: beide Instanzen im Register, jede Startaktion einmal, eine dritte Instanz mit abweichender Konfiguration startet nicht |
+| `02-wirkung-ueber-instanzen` | Freigabe, Gruppenmitgliedschaft, Abmelden, Sperren, Abschalten der lokalen Anmeldung und ein neuer Anmeldeanbieter wirken sofort auf der anderen Instanz; Statusseite auf beiden gleich |
+| `03-genau-einmal` | jede Mail der Outbox geht genau einmal hinaus; ein geplanter Lauf startet je Fälligkeit einmal |
+| `04-neustart-der-anderen-instanz` | Indexierungslauf und Upload von A überstehen den Neustart von B (ai-stub hält die Einbettungen von A bis dahin zurück) |
+| `05-rolling-update` | Update von n−1 auf n in der Reihenfolge des Handbuchs unter Last: keine Fehlerantwort, jede Mail der Outbox genau einmal; auf kind danach `kubectl rollout restart` unter Last |
+| `06-pool-unter-last` | mehr gleichzeitige Anfragen als Pool-Verbindungen, darunter gezählte Anmeldungen und neue Konten: kein Fehler, keine Instanz über Pool + 1 Verbindungen |
+
+Zwei Phasen, je mit leerer Datenbank: `fresh` startet die aktuelle Version (01–04, 06), `rolling`
+startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisieren.
+
+**Vorgängerversion n−1** (`e2e/scripts/previous-version.mjs`):
+
+1. `E2E_MULTI_PREVIOUS_REF` bzw. die Eingabe `previous_ref` des Workflows, wenn gesetzt;
+2. sonst das Release `vX`, wenn `backend/src/main/resources/instance/rolling-update.properties` `X`
+   als älteste verträgliche Version nennt — die Version, von der das Release ein Rolling Update
+   zusagt;
+3. sonst `main` 24 Stunden vor der Basis (Merge-Base mit `origin/main`: für einen PR das `main`, von
+   dem er abzweigt, auf `main` der eigene Stand), frühestens der Merge von #2964, der erste Stand mit
+   Migrationsmodus und Compose-Variante.
+
+Solange kein Release ein Versionsfenster nennt, prüft die Suite also den Sprung über einen Tag
+Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten Sprung.
+
+```bash
+# Docker Compose (aus e2e/): baut die Images der aktuellen und der Vorgängerversion selbst, wenn
+# E2E_MULTI_BACKEND_IMAGE, E2E_MULTI_FRONTEND_IMAGE, E2E_MULTI_PREVIOUS_BACKEND_IMAGE und
+# E2E_MULTI_PREVIOUS_FRONTEND_IMAGE fehlen; E2E_MULTI_PHASES=fresh oder rolling wählt eine Phase.
+# Eigenes Compose-Projekt opaa-multi, Ports 13002 (Frontend), 18183/18184 (Instanzen), 18026
+# (mailpit), 18090 (ai-stub), Subnetz 172.26.0.0/16; nach dem Lauf wieder abgebaut
+pnpm install
+pnpm run test:multi-instance
+
+# kind (aus dem Wurzelverzeichnis): erwartet die vier Images im Cluster und e2e/node_modules
+#   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci \
+#     opaa-ci/backend:previous opaa-ci/frontend:previous
+# Namensräume opaa-multi und multi-test werden vor und nach dem Lauf gelöscht
+deploy/helm/ci/multi-instance-test.sh
+```
+
+In CI läuft `.github/workflows/multi-instance.yml` je Plattform als eigener Job: nächtlich, auf
+Zuruf und an einem PR über das Label `multi-instance-suite`; kein Required Check. Der Speicherbedarf
+liegt je Plattform bei etwa 4–5 GB.
+
+## Betrieb ohne Internet
+
+Das Ziel `offline` (`e2e/scripts/offline.mjs`, Szenario unter `e2e/offline/`) belegt, dass die
+Installation ohne Internetzugang arbeitet. Der Stack aus `docker-compose.yml` läuft mit
+`e2e/docker-compose.offline.yml` in einem Compose-Netz mit `internal: true`: ohne Gateway, jede
+Verbindung an eine Adresse außerhalb des Subnetzes scheitert sofort.
+
+- **Vorab bereitgestellt:** OPAA-Images werden gebaut (oder mit `E2E_SKIP_BUILD=true` übernommen),
+  Drittimages gezogen; danach startet der Stack mit `--pull never`. Das Modell ist `ai-stub` im
+  selben Netz.
+- **Ablauf:** Anmeldung des lokalen Notanker-Kontos, Bibliothek über den Assistenten, Upload,
+  Zuordnung der Bibliothek zum Standard-Space über die API, Frage ohne Referenz, Fundstelle im
+  Belegfenster.
+- **Erkennung:** Jeder Container der Installation löst Namen über `egress-dns` auf
+  (`e2e/offline/egress-dns.mjs`). Dockers eingebautes DNS beantwortet die Dienstnamen selbst und
+  reicht nur fremde Namen weiter; der Wächter zeichnet sie auf und antwortet mit NXDOMAIN. Der
+  Browser-Kontext bricht jeden Abruf einer fremden Origin ab und zeichnet ihn auf. Nach dem Lauf
+  durchsucht `offline.mjs` die Container-Logs nach Verbindungsversuchen ohne Route
+  (`Network is unreachable`, `No route to host`) — der Weg einer Verbindung an eine IP-Adresse ohne
+  Namensauflösung, den der Wächter nicht sieht. Ein solcher Versuch fällt nur auf, wenn sein Fehler
+  im Log steht; eine Positivprobe für diesen Weg gibt es nicht.
+- **Positivprobe:** Der Verbindungstest des Assistenten gegen `egress-probe.offline-check.example`
+  lässt das Backend einen fremden Namen auflösen; der Lauf scheitert, wenn der Wächter ihn nicht
+  aufzeichnet. Alle anderen Aufzeichnungen müssen leer bleiben.
+- **Zugang von außen:** nur über `relay` (`e2e/offline/relay.mjs`), das als Testgerüst in beiden
+  Netzen steht und Port 13003 an das Frontend und 18053 an das Protokoll des Wächters weiterreicht.
+- **Ergebnis:** `e2e/test-results/offline-result.json` mit Version, Datum, den Aufzeichnungen und
+  den Funden der Logsuche; die CI schreibt es in die Zusammenfassung des Laufs.
+
+```bash
+# aus e2e/: eigenes Compose-Projekt opaa-offline, Subnetz 172.24.0.0/16, nach dem Lauf abgebaut
+pnpm install
+pnpm exec playwright install chromium   # einmalig
+pnpm run test:offline
+```
+
+**Nicht abgedeckt:** ein echter Modellserver (ob er ohne Internet startet, ist dessen Sache),
+Konnektoren zu Quellen, Identitätsanbieter, Mailversand und Kubernetes.
+
+`.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label
+`offline-suite`; kein Required Check.
+
 ## Image-Rauchtest
 
 ```bash
 # Image-Rauchtest (aus dem Repo-Wurzelverzeichnis): beide Images für die Architektur des
-# Docker-Hosts bauen und gehärtet starten, Backend gegen pgvector bis Readiness UP, Frontend davor
-# bis /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate und
+# danach mit OPAA_MODE=await-migration (beide müssen mit Exit-Code 0 enden), dann das Backend ohne
+# Migration gegen pgvector bis Readiness UP samt Healthcheck des Images, Frontend davor bis
+# /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
+# Härtung des Frontend-nginx ohne Backend: ein Echo statt des Backends belegt, dass vom Client
+# gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy auf
+# jeder Antwort, die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER
+# die Auflösung zur Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
+# entfernter fällt ohne Neustart heraus. Stoppt einer unter parallelen Anfragen, beantwortet der
+# andere jede binnen weniger Sekunden, ohne 5xx; langsame und gestreamte Antworten sowie Uploads
+# bis zu den Grenzen kommen unverändert an. In CI im selben Job
+.github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
 ```

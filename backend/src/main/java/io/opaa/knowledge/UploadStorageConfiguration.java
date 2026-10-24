@@ -1,5 +1,7 @@
 package io.opaa.knowledge;
 
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.observability.SeparateHealthGroup;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -27,18 +29,22 @@ public class UploadStorageConfiguration {
 
   @Bean
   UploadedOriginalStore uploadedOriginalStore(
-      UploadProperties uploadProperties, UploadS3Properties s3Properties) {
+      UploadProperties uploadProperties,
+      UploadS3Properties s3Properties,
+      CurrentInstance currentInstance,
+      InstanceRegistry instanceRegistry) {
     String store = uploadProperties.store();
     if (FilesystemUploadedOriginalStore.STORE_NAME.equalsIgnoreCase(store)) {
       return new FilesystemUploadedOriginalStore(uploadProperties);
     }
     if (S3UploadedOriginalStore.STORE_NAME.equalsIgnoreCase(store)) {
       s3Properties.requireComplete();
-      return new S3UploadedOriginalStore(s3Properties);
+      return new S3UploadedOriginalStore(
+          s3Properties, new WorkingDirectoryOwner(currentInstance::id, instanceRegistry::isAlive));
     }
     throw new IllegalStateException(
         ("Unknown storage backend \"%s\" configured for opaa.upload.store. "
-                + "Available are \"%s\" and \"%s\". See docs/handbuch/originalablage.md.")
+                + "Available are \"%s\" and \"%s\". See docs/handbuch/betrieb/originalablage.md.")
             .formatted(
                 store,
                 FilesystemUploadedOriginalStore.STORE_NAME,

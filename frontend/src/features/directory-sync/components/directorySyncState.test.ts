@@ -146,6 +146,20 @@ describe('attentionOf', () => {
     })
   })
 
+  it('reports a run that broke off with an error, with the message of its status line', () => {
+    expect(
+      attentionOf(
+        provider(),
+        status({ lastOutcome: 'FAILED', lastMessage: 'Der Abgleich ist abgebrochen.' }),
+        NOW,
+      ),
+    ).toEqual({
+      tone: 'error',
+      label: 'Letzter Lauf gescheitert',
+      detail: 'Der Abgleich ist abgebrochen.',
+    })
+  })
+
   it('reports a switched-on sync without directory access', () => {
     expect(attentionOf(provider({ directoryConnector: null }), status(), NOW)).toMatchObject({
       tone: 'warning',

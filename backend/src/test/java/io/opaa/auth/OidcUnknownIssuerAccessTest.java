@@ -23,6 +23,7 @@ import io.opaa.account.LocalAccountSelfDisclosure;
 import io.opaa.account.OidcSecurityConfig;
 import io.opaa.auth.web.UserInfoController;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.test.TestInvalidationBus;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.time.Instant;
@@ -103,7 +104,8 @@ class OidcUnknownIssuerAccessTest {
               repository,
               decoderFactory,
               new OidcAddressPolicy(TargetAddressValidator.disabled()),
-              Clock.systemUTC());
+              Clock.systemUTC(),
+              TestInvalidationBus.listening());
       return new JwtIssuerAuthenticationManagerResolver(registry);
     }
   }

@@ -1,6 +1,8 @@
 package io.opaa.connection.log;
 
+import io.opaa.instance.ScheduledRunLocks;
 import java.util.List;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,6 +27,10 @@ public class ConnectionLogRetention {
 
   @Scheduled(cron = "0 45 3 * * *")
   @Transactional
+  @SchedulerLock(
+      name = "connection-log-retention",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void deleteExpiredPartitions() {
     List<String> dropped = repository.deleteExpiredPartitions();
     if (!dropped.isEmpty()) {

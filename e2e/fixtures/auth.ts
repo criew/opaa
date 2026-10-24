@@ -61,7 +61,7 @@ const DEV_USER_DISPLAY_NAMES: Record<string, string> = {
  * again with the query string already gone from the address bar) covers a one-off race; a second,
  * still-wrong identity throws instead of silently letting a scenario run under the wrong account.
  */
-async function openAs(page: Page, devUser: string, attempt = 1): Promise<void> {
+export async function openAs(page: Page, devUser: string, attempt = 1): Promise<void> {
   const expectedDisplayName = DEV_USER_DISPLAY_NAMES[devUser]
   const [meResponse] = await Promise.all([
     page.waitForResponse(

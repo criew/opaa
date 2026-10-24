@@ -8,14 +8,21 @@ import static org.mockito.Mockito.doThrow;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
+import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.api.types.SuccessionOwnerType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -33,6 +40,8 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.PermissionTransferOrder;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMemberView;
@@ -43,6 +52,7 @@ import io.opaa.test.OwnOrganizationFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -76,6 +86,8 @@ class SuccessionLifecycleIntegrationTest {
   @Autowired private UserRepository users;
   @Autowired private OrganizationRepository organizations;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
+  @Autowired private PermissionTransferService transferService;
+  @Autowired private OidcProviderRepository providers;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
@@ -89,6 +101,9 @@ class SuccessionLifecycleIntegrationTest {
 
   /** Every organization this class created, the second one only for the run over all of them. */
   private final List<UUID> ownOrganizationIds = new ArrayList<>();
+
+  /** The providers of this class's directory groups - they go after the groups (RESTRICT). */
+  private final List<UUID> ownProviderIds = new ArrayList<>();
 
   @BeforeEach
   void createOrganization() {
@@ -115,12 +130,16 @@ class SuccessionLifecycleIntegrationTest {
       ownOrganizationFixtures.removeOrganizations(ownOrganizationId);
     }
     ownOrganizationIds.clear();
+    ownProviderIds.forEach(providers::deleteById);
+    ownProviderIds.clear();
   }
 
   private void removeRowsOf(UUID scopedOrganizationId) {
     for (String table :
         List.of(
             "succession_cases",
+            "permission_transfer_objects",
+            "permission_transfers",
             "space_memberships",
             "space_membership_history",
             "asset_ownership_history",
@@ -679,9 +698,114 @@ class SuccessionLifecycleIntegrationTest {
         .isNull();
   }
 
+  /**
+   * Regression guard for #2340: an asset of a dissolved directory group names its kind of owner and
+   * the group, and a transfer naming that group as its source moves the asset out of the state -
+   * the person-to-person handover has no account that holds it.
+   */
+  @Test
+  void anAssetOfADissolvedDirectoryGroupIsMovedByATransferFromThatGroup() {
+    CurrentUser formerMember = user(SystemRole.USER);
+    UUID dissolvedGroup = directoryGroup("Referat 51", formerMember.id());
+    UUID library = libraryOwnedByGroup(dissolvedGroup);
+    Group toDissolve = groups.findById(dissolvedGroup).orElseThrow();
+    toDissolve.dissolve(Instant.now());
+    groups.save(toDissolve);
+    CurrentUser successor = user(SystemRole.USER);
+    UUID successorGroup = group("Referat 52", successor.id());
+
+    SuccessionEntry entry = openEntryFor(library);
+    assertThat(entry.finding().addressee()).isEqualTo(SuccessionAddressee.SYSTEM_ADMINISTRATION);
+    assertThat(entry.finding().ownerType()).isEqualTo(SuccessionOwnerType.GROUP);
+    assertThat(entry.finding().ownerGroupId()).isEqualTo(dissolvedGroup);
+
+    PermissionTransferOrder handover =
+        new PermissionTransferOrder(
+            PermissionSubjectType.USER,
+            formerMember.id(),
+            PermissionSubjectType.USER,
+            successor.id(),
+            EnumSet.of(PermissionTransferScope.OWNERSHIP, PermissionTransferScope.STEWARDSHIP));
+    assertThat(transferService.preview(handover, admin).counts().ownedAssets())
+        .as("no person holds the asset - a handover between two accounts cannot move it")
+        .isZero();
+
+    PermissionTransferOrder fromTheGroup =
+        new PermissionTransferOrder(
+            PermissionSubjectType.GROUP,
+            entry.finding().ownerGroupId(),
+            PermissionSubjectType.GROUP,
+            successorGroup,
+            EnumSet.of(
+                PermissionTransferScope.OWNERSHIP,
+                PermissionTransferScope.ASSET_GRANTS,
+                PermissionTransferScope.SPACE_MEMBERSHIPS,
+                PermissionTransferScope.CAPABILITIES));
+    String previewId = transferService.preview(fromTheGroup, admin).previewId();
+    transferService.transfer(fromTheGroup, true, previewId, admin);
+
+    assertThat(libraries.findById(library).orElseThrow().getOwnerGroupId())
+        .isEqualTo(successorGroup);
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isFalse();
+    assertThat(
+            successionService.list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50).entries())
+        .noneMatch(line -> line.finding().objectId().equals(library));
+  }
+
+  /** The person half: the kind is named, the account is not identified. */
+  @Test
+  void anAssetOfALockedAccountNamesAPersonAsItsKindOfOwnerAndNoGroup() {
+    CurrentUser owner = user(SystemRole.USER);
+    UUID library = libraryOwnedByUser(owner.id());
+    lock(owner.id());
+
+    SuccessionEntry entry = openEntryFor(library);
+    assertThat(entry.finding().ownerType()).isEqualTo(SuccessionOwnerType.USER);
+    assertThat(entry.finding().ownerGroupId()).isNull();
+  }
+
   // -------------------------------------------------------------------------------------------
   // Fixture
   // -------------------------------------------------------------------------------------------
+
+  private SuccessionEntry openEntryFor(UUID objectId) {
+    return successionService
+        .list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50)
+        .entries()
+        .stream()
+        .filter(line -> line.finding().objectId().equals(objectId))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  /** A group of a provider's directory - no stewards, maintained where it comes from. */
+  private UUID directoryGroup(String name, UUID... memberIds) {
+    OidcProvider provider =
+        providers.save(
+            new OidcProvider(
+                "Verzeichnis " + UUID.randomUUID(),
+                "https://idp.example/realms/" + UUID.randomUUID(),
+                "opaa-frontend",
+                null,
+                OidcClaimMapping.keycloakDefaults()));
+    ownProviderIds.add(provider.getId());
+    Group group =
+        new Group(
+            organizationId,
+            GroupKind.ORG_UNIT,
+            name,
+            null,
+            provider.getId(),
+            "dir-" + UUID.randomUUID(),
+            null,
+            null);
+    for (UUID memberId : memberIds) {
+      group.addMembership(new GroupMembership(memberId, organizationId));
+    }
+    UUID groupId = groups.save(group).getId();
+    membershipResolver.invalidateUsers(List.of(memberIds));
+    return groupId;
+  }
 
   private SuccessionEntry firstEntry() {
     return successionService

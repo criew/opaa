@@ -1,5 +1,14 @@
 # Golden Datasets: Comichelden, Sehenswürdigkeiten in europäischen Großstädten, Verwaltung
 
+## Domäne `prompt-injection` (Issue #3044)
+
+`prompt-injection.json` — 28 Fälle über [`eval/corpus/prompt-injection/`](../corpus/prompt-injection/),
+erzeugt zusammen mit dem Korpus von `eval/generator/generate_prompt_injection_corpus.py`. Anders
+als die übrigen Datasets misst es keine Rangfolge: Jeder Fall nennt Frage, präpariertes Dokument,
+Angriffsziel, Verstecktechnik, das textuelle Erfolgsmerkmal des Angriffs und die korrekte Auskunft.
+Schema und Lesart: [`../corpus/prompt-injection/SOURCE.md`](../corpus/prompt-injection/SOURCE.md).
+Von Hand nicht bearbeiten; Änderungen gehen über den Generator.
+
 ## Domäne `verwaltung` (Issue #1043)
 
 `verwaltung.json` — 49 kuratierte, deutschsprachige Fälle über

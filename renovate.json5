@@ -17,6 +17,13 @@
   ],
   timezone: 'Europe/Berlin',
 
+  // Basis-Branches: Der tägliche Lauf (renovate.yml) ersetzt diese Liste per globalem "force"
+  // durch main und die Wartungsbranches release/X.Y aller heute unterstützten Linien aus
+  // .github/support-lines.json; eine ausgelaufene Linie fällt dort von selbst heraus. Ohne den
+  // Workflow, etwa im lokalen Probelauf, bleibt es bei main. Mit mehr als einem Basis-Branch hängt
+  // Renovate den Branch an Branch-Namen (renovate/<branch>-…) und PR-Titel („… (release/0.2)“).
+  baseBranchPatterns: ['main'],
+
   // Commit-Autor der Update-Branches: Renovates Standard-Autor ist keinem
   // GitHub-Konto zugeordnet und fällt damit durch den CLA-Check (contributor-assistant
   // findet weder Unterschrift noch Allowlist-Treffer — "*[bot]" matcht nur echte
@@ -135,15 +142,6 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
-    // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
-    // github-actions-Manager unsichtbar.
-    {
-      customType: 'regex',
-      managerFilePatterns: ['.github/workflows/sbom.yml'],
-      matchStrings: [
-        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
-      ],
-    },
     // Die Werkzeuge der Chart-Prüfung und das Helm der Chart-Veröffentlichung stehen
     // als Umgebungsvariable, Action-Eingabe oder Matrix-Eintrag direkt unter ihrem Kommentar. Die
     // älteste unterstützte Helm-3-Version trägt bewusst keinen Kommentar: Sie ist eine Zusage aus
@@ -226,6 +224,18 @@
       rebaseWhen: 'behind-base-branch',
       platformAutomerge: false,
     },
+    // cdxgen (.github/tools/cdxgen) erzeugt die Frontend-SBOM von main und jedem Release. Kein
+    // Required Check übt den Aufruf des Release-Laufs aus, ein Update mergt deshalb nicht
+    // automatisch; eigene Gruppe, damit es den Sammel-PR der Frontend-Abhängigkeiten nicht aufhält.
+    // packageManager in derselben package.json bleibt in jenem Sammel-PR, gleich mit frontend/.
+    {
+      matchManagers: ['npm'],
+      matchDepNames: ['@cyclonedx/cdxgen'],
+      groupName: 'cdxgen',
+      automerge: false,
+      minimumReleaseAge: '1 day',
+      addLabels: ['ci'],
+    },
     // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa: Chart.yaml-Abhängigkeiten
     // (derzeit keine) und die Images in values.yaml mit festem Tag.
     {
@@ -241,7 +251,18 @@
     // Nebenfunde der Erkennung: die Seed-/Generator-Requirements der Demo und frontend/.nvmrc
     {
       matchManagers: ['pip_requirements'],
+      matchFileNames: ['demo/**'],
       addLabels: ['demo'],
+    },
+    // pytest der Skript- und Seed-Tests in der CI und die Pakete des Update-Pakets
+    // (requirements-release.txt, mit Hashes, die der Manager beim Bump mitzieht). report-script,
+    // seed-script und Datenwirkung sind keine Required Checks; ein Bump mergt deshalb nicht
+    // automatisch, sondern wartet auf ihr Ergebnis im PR.
+    {
+      matchManagers: ['pip_requirements'],
+      matchFileNames: ['.github/requirements-ci.txt', '.github/requirements-release.txt'],
+      addLabels: ['ci'],
+      automerge: false,
     },
     {
       matchManagers: ['nvm'],
@@ -301,7 +322,7 @@
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein
     // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch. Majors bleiben als PR
     // zur menschlichen Entscheidung offen; Ablehnung durch Schließen des PRs (Renovate merkt
-    // sich das). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
+    // sich das, solange Branch-Name und Titel gleich bleiben, docs/renovate.md). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
     // inkompatible Majors darüber hinaus ganz aus.
     {
       matchUpdateTypes: ['major'],
@@ -368,8 +389,8 @@
     },
     // Ein neuer SHA bei unveränderter Version heißt: Der Tag wurde umgehängt. Genau das ist der
     // Angriff, gegen den die Pins schützen. Renovate legt dafür erst nach Freigabe in der
-    // Abhängigkeits-Übersicht einen Branch an, denn cve-scan.yml und dependency-graph.yml laufen
-    // schon im PR mit Schreibrechten.
+    // Abhängigkeits-Übersicht einen Branch an, denn cve-scan.yml läuft schon im PR mit
+    // Schreibrecht (security-events: write).
     {
       matchManagers: ['github-actions'],
       matchUpdateTypes: ['digest'],
@@ -421,7 +442,7 @@
     // mcp-core mit, und mcp-core entscheidet, welche MCP-Protokollfassungen diese Installation
     // spricht. Ein Wechsel ist damit keine Abhängigkeitsaktualisierung, sondern eine
     // Protokolländerung — und weil es genau einen Server gibt, fallen bei einem Bruch alle
-    // Fremdzugänge des Hauses zugleich aus. Die angekündigte Fassungsliste
+    // externen KI-Werkzeuge des Hauses zugleich aus. Die angekündigte Fassungsliste
     // (opaa.mcp.protocol-versions) ist bei jedem Vorschlag gegen die Fassungen zu prüfen, die die
     // neue Bibliothek tatsächlich bedient. Der eigene groupName hebt ihn aus dem Sammel-PR der
     // Spring-Plattform heraus; mcp-core selbst steht in keinem Katalog und ist für Renovate
@@ -438,6 +459,23 @@
     {
       matchPackageNames: ['typescript'],
       matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    // Wartungsbranches release/X.Y (ADR-0054, Entscheidung 7), siehe baseBranchPatterns oben.
+    // Eine Linie bekommt nur patch, digest und pin, nie eine neue Minor- oder Major-Version.
+    // separateMinorPatch trennt Patch und Minor in eigene Vorschläge; ohne ihn schlägt Renovate nur
+    // die höchste Version beider zusammen vor, und gibt es eine neuere Minor-Version, verwürfe die
+    // Sperre darunter mit ihr auch den Patch. Nur hier, damit sich auf main nichts ändert.
+    {
+      matchBaseBranches: ['/^release\\/\\d+\\.\\d+$/'],
+      separateMinorPatch: true,
+    },
+    // Die Sperre steht zuletzt, damit keine spätere Regel sie aufhebt; danach folgen nur
+    // ausdrückliche Ausnahmen für Sicherheitsupdates ohne Bruch, je mit matchPackageNames und
+    // automerge: false (docs/renovate.md, test_support_lines.py).
+    {
+      matchBaseBranches: ['/^release\\/\\d+\\.\\d+$/'],
+      matchUpdateTypes: ['major', 'minor', 'replacement', 'rollback', 'bump', 'lockFileMaintenance'],
       enabled: false,
     },
   ],

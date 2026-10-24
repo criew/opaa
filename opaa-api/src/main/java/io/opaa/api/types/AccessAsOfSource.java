@@ -1,22 +1,19 @@
 package io.opaa.api.types;
 
 /**
- * A rights source of the Stichtagsauskunft that carries no history yet (ADR-0036, Entscheidung 8
- * lists eight sources; four of them are historised today). Named in every answer so an empty result
- * is read as "not on record" rather than as "nobody had access" - the same honesty {@code
- * beyondRetention} provides for the retention gap.
+ * A rights source of the Stichtagsauskunft without a history for the requested window (ADR-0036,
+ * Entscheidung 8). Named in the answer so an empty result is read as "not on record" rather than as
+ * "nobody had access" - the same honesty {@code beyondRetention} provides for the retention gap.
  */
 public enum AccessAsOfSource {
 
   /** A system administrator reaches every library of their organization, unrecorded. */
   SYSTEM_ROLE,
 
-  /** Ownership of an asset or a space. */
-  OWNERSHIP,
-
-  /** A capability - it opens no content, but it is a source the ADR lists. */
-  CAPABILITY,
-
-  /** Whether an account was active or blocked at the time. */
+  /**
+   * Named for a window that begins before the account-state history became complete: until then
+   * only the locks of the directory synchronisation were recorded, not a local account's lock or
+   * expiry or a switched-off sign-in provider.
+   */
   ACCOUNT_STATE
 }

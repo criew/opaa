@@ -3,12 +3,15 @@ prompts:
   - id: answer-generation
     purpose: >-
       Regeln für die Antwort auf eine Frage: Belegpflicht, Zitierformat, Antwortsprache, Anweisung
-      des Space und Gesprächsnotiz
+      des Space und Gesprächsnotiz; die Fundstellen stehen als gekennzeichnete Daten in einem
+      Block mit Kennung je Anfrage, mit dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.answer.AnswerGenerationService
+      - io.opaa.common.ContentFence
+      - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "7865e8d0e67c5cbc648aeeba6ceba4890346212412e02d67e332e51d78651e20"
+    sha256: "dceebf1aec4601689a4cade7bdb454828e8233695f74c876fbb94f6280ef0d97"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
@@ -35,15 +38,15 @@ prompts:
       - io.opaa.query.spike.SearchKnowledgeTool
     sha256: "f86c65c9c6773c6427efa3a8ad3b39f9c4a9c727b5380a23a197781a09ef9975"
   - id: mcp-tool-descriptions
-    purpose: Beschreibungen der Werkzeuge, nach denen ein fremdes Modell über Fremdzugänge entscheidet
+    purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
-    sha256: "23fb0175fe80bc2cb8803dd90e2b7f5b30de4c40aea9a4c7fce3a1adf81a3fff"
+    sha256: "fec039697767cfa1c9d308630815e3a5d6c76df463b0116d0c8bc9e984893801"
   - id: mcp-server-instructions
     purpose: >-
-      Voreingestellter Einleitungstext an fremde Werkzeuge der Fremdzugänge; die Systemverwaltung
+      Voreingestellter Einleitungstext an externe KI-Werkzeuge; die Systemverwaltung
       kann ihn ändern, die Änderung erzeugt keinen Protokolleintrag
     databaseDefault: external_access_settings.server_instructions
-    sha256: "03e9f6a06f99e00871a97cb9ad39a7907d712a64bb955d03f86814560b07e7da"
+    sha256: "4f1638b7db75eaf01192f176e393cdd0ce7be59ab68af69c142f8d5d2fe4b38d"
 aiFunctions:
   - id: chat-answer
     purpose: Beantwortet Fragen einer Person im Chat auf Grundlage der lesbaren Bibliotheken

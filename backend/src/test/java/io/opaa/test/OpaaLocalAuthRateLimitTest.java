@@ -39,6 +39,14 @@ import org.springframework.test.context.TestPropertySource;
       "opaa.rate-limit.local-auth.forgot-password.max-requests=3",
       "opaa.rate-limit.local-auth.forgot-password.window-seconds=900",
       "opaa.rate-limit.local-auth.register.max-requests=3",
-      "opaa.rate-limit.local-auth.register.window-seconds=900"
+      "opaa.rate-limit.local-auth.register.window-seconds=900",
+      // Small enough that RateLimitSecurityChainIntegrationTest can exhaust the global ceilings;
+      // no other class of this family calls these endpoints.
+      "opaa.rate-limit.query.global-max-requests=3",
+      "opaa.rate-limit.webhook.max-requests=3",
+      "opaa.rate-limit.webhook.global-max-requests=4",
+      "opaa.rate-limit.search.max-requests=3",
+      "opaa.rate-limit.search.max-requests-per-account=4",
+      "opaa.rate-limit.search.global-max-requests=5"
     })
 public @interface OpaaLocalAuthRateLimitTest {}

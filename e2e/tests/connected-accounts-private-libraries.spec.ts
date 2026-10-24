@@ -289,7 +289,7 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
     await expect(page.getByTestId('library-private-note')).toContainText(
       'Nur Sie sehen diese Bibliothek.',
     )
-    // Weder Berechtigungen noch Fremdzugang noch Herleitung: Die Besitzerin hat hier nichts zu
+    // Weder Berechtigungen noch externe KI-Werkzeuge noch Herleitung: Die Besitzerin hat hier nichts zu
     // vergeben. Die Diagnosesperre gibt es dagegen, sie belegt, dass der Reiter geladen ist.
     await expect(page.getByRole('region', { name: 'Diagnosesperre' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Berechtigungen' })).toHaveCount(0)

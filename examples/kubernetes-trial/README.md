@@ -3,7 +3,7 @@
 > **Nur zur Erprobung und Vorführung, nicht für den Betrieb.** Alle Dienste laufen mit einer
 > Instanz, ohne TLS, ohne Sicherung und mit Testkonten, deren Passwörter in diesem Verzeichnis
 > stehen. Eine echte Installation beschreibt das Handbuch-Kapitel
-> [Kubernetes](../../docs/handbuch/kubernetes.md).
+> [Kubernetes](../../docs/handbuch/betrieb/kubernetes.md).
 
 Ein Befehl bringt OPAA mit allem, was es zum Ausprobieren braucht, in einen leeren lokalen Cluster:
 

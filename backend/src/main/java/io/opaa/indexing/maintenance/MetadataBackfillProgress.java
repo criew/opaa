@@ -22,8 +22,8 @@ import java.util.UUID;
  * @param awaitingConnectorRunDocuments the subset of {@code pendingDocuments} whose bytes live on a
  *     remote and whose change markers are cleared: only the next connector run can advance them, no
  *     further backfill call will
- * @param lastSkippedDocuments what the most recent backfill call for this library could not advance
- *     - a process-lifetime figure (ADR-0021), 0 before the first call
+ * @param lastSkippedDocuments what the most recent backfill call for this library could not
+ *     advance, on whichever instance it ran; 0 before the first call
  * @param fillByField the fill of every core field over this library's indexed documents
  */
 public record MetadataBackfillProgress(

@@ -33,6 +33,7 @@ import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.rss.RssFeedState;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -58,6 +59,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.SourceTypes;
 import jakarta.persistence.EntityManagerFactory;
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -103,6 +105,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class KnowledgeLibraryServiceIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;
+  @Autowired private PostgresInvalidationBus invalidationBus;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private AssetGrantService grantService;
@@ -216,6 +219,12 @@ class KnowledgeLibraryServiceIntegrationTest {
   /**
    * {@link CurrentUser} snapshot for a user id this test already created, as a non-admin caller.
    */
+  /** Waits until the bus delivered every committed change, then fills the caches once. */
+  private void settleAndWarm(UUID user) {
+    assertThat(invalidationBus.awaitDelivery(Duration.ofSeconds(10))).isTrue();
+    libraryService.listLibraries(currentUserOf(user, false));
+  }
+
   private CurrentUser currentUserOf(UUID userId) {
     return currentUserOf(userId, false);
   }
@@ -639,7 +648,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt() {
     // A lost/rotated key (or a corrupted stored value) must not turn GET /api/v1/libraries into a
     // 503 for every library that shares this key - only the affected library's sourceCredentials
-    // reads as null. The documented repair path (docs/handbuch/betrieb.md,
+    // reads as null. The documented repair path (docs/handbuch/betrieb/netz-und-sicherheit.md,
     // "Zugangsdaten-Verschluesselung") - setting new credentials via the update API - depends on
     // that same load succeeding first.
     UUID owner = createUser(organizationA);
@@ -2485,6 +2494,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
     statistics.setStatisticsEnabled(true);
     try {
+      // Both counts on the same footing: the grants written above empty the rights caches through
+      // the invalidation bus a moment later, so each count waits for that and starts warm.
+      settleAndWarm(owner);
       statistics.clear();
       libraryService.listLibraries(currentUserOf(owner, false));
       long statementsWithTwoLibraries = statistics.getPrepareStatementCount();
@@ -2499,6 +2511,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       third.setOrganizationId(organizationA);
       documentRepository.save(third);
 
+      settleAndWarm(owner);
       statistics.clear();
       libraryService.listLibraries(currentUserOf(owner, false));
       long statementsWithThreeLibraries = statistics.getPrepareStatementCount();

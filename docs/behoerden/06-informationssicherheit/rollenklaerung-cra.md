@@ -1,0 +1,96 @@
+---
+stand: 2026-10-23
+gilt-fuer: main
+erzeugung: redaktionell
+rechtsstand: 2026-10-13
+pruefvermerk: nicht rechtlich geprüft
+naechste-durchsicht: 2027-04-23
+---
+
+# Cyber Resilience Act
+
+> Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
+
+**Gilt für:** alle Behörden, die OPAA selbst betreiben oder von einem Dienstleister beziehen. Wer
+OPAA an andere Stellen weitergibt, verändert oder unverändert, prüft seine Rolle gesondert.
+
+Der Cyber Resilience Act (CRA) ist eine EU-Verordnung über die Sicherheit von Software und Geräten.
+Er verpflichtet *Wirtschaftsakteure*, also vor allem Hersteller, die solche Produkte auf den Markt
+bringen; eine Behörde, die OPAA für sich betreibt, trifft er nach der Rechtsrecherche des Projekts
+nicht. Für sie zählt, welche Pflichten das Projekt und ein Dienstleister haben und was sie in der
+Vergabe fragt. Die Meldepflichten gelten seit dem 11.9.2026, der ganze CRA ab dem 11.12.2027.
+
+## Die Rollen im Überblick
+
+| Beteiligte | Rolle nach dem CRA | Pflichten im Kern |
+|---|---|---|
+| **Projekt OPAA** | Open-Source-Steward: eine Stelle, die quelloffene Software dauerhaft pflegt, ohne sie als Hersteller zu verkaufen | Cybersicherheitsstrategie, Zusammenarbeit mit den Marktüberwachungsbehörden, begrenzte Meldepflichten |
+| **Dienstleister**, der OPAA kommerziell als Produkt bereitstellt (gepackt, als Appliance, als bezahlte Distribution) | Hersteller | volle Herstellerpflichten, darunter Meldepflichten; ab 11.12.2027 auch Konformitätsbewertung und CE-Kennzeichnung |
+| **Dienstleister**, der OPAA nur als Dienst betreibt (reines SaaS) | grundsätzlich keine | — |
+| **Behörde**, die OPAA für sich betreibt | Betreiberin; der CRA kennt diese Rolle nicht | nach der Recherche keine Pflichten aus dem CRA; sie profitiert von den Pflichten der anderen |
+
+## Was OPAA liefert
+
+- **Cybersicherheitsstrategie:** [`SECURITY.md`](../../../SECURITY.md) mit Meldeweg, unterstützten
+  Versionen und Ablauf bis zum Security Advisory; dort ist auch die Zusammenarbeit mit den
+  Marktüberwachungsbehörden zugesagt.
+- **Nachweise des Verfahrens:** Software-Stückliste, Schwachstellenerkennung und Patch-Releases
+  ([Sicherheitsnachweise](sicherheitsnachweise.md)). Sie sind keine Konformitätserklärung und keine
+  CE-Kennzeichnung.
+
+<a id="meldepflichten-nach-art-14-für-das-projekt"></a>
+
+### Meldepflichten des Projekts
+
+- **Aktiv ausgenutzte Schwachstellen:** Das Projekt entwickelt OPAA selbst und meldet solche
+  Schwachstellen in OPAA deshalb.
+- **Schwerwiegende Sicherheitsvorfälle:** nur, soweit sie die Systeme betreffen, die das Projekt für
+  die Entwicklung bereitstellt, etwa Repository, CI und Image-Registry.
+
+Eine Meldung über den vertraulichen [Meldeweg](../../../SECURITY.md#meldeweg) löst die Prüfung aus,
+ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
+
+## Aufgaben der Behörde
+
+1. **Rolle des Dienstleisters klären** und die Anforderungen in der Vergabe festlegen
+   ([Anforderungskatalog](../03-vergabe/anforderungskatalog.md), Baustein L-08). Mögliche Fragen:
+   - Stellen Sie OPAA als Produkt im Sinne des CRA bereit, und in welcher Rolle?
+   - Wie erfüllen Sie die Meldepflichten (Frühwarnung binnen 24 Stunden, Meldung binnen 72
+     Stunden), und wie erfahren wir von einer Meldung?
+   - Welche OPAA-Version liefern Sie, wie lange pflegen Sie sie, und melden Sie gefundene
+     Schwachstellen an das Projekt?
+2. **Lücken vertraulich melden** über den [Meldeweg](../../../SECURITY.md#meldeweg), nicht in einem
+   öffentlichen Issue.
+3. **Updates einspielen und [Security Advisories](https://github.com/criew/opaa/security/advisories)
+   verfolgen:** Sicherheitskorrekturen erhalten `main` und jede unterstützte Linie bis zu ihrem
+   Supportende ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume),
+   [unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
+
+## Gut zu wissen
+
+- Das Projekt ordnet sich nach bestem Wissen als Open-Source-Steward ein, obwohl der CRA dafür eine
+  juristische Person voraussetzt und es eine solche hinter dem Projekt nicht gibt. Rechtlich geprüft
+  ist die Einordnung nicht; wer die Pflichten wahrnimmt, sollte die Behörde in der Vergabe erfragen.
+- Die Einordnung der Dienstleister leitet das Projekt aus den Begriffsbestimmungen des CRA ab;
+  rechtlich geprüft ist sie nicht.
+- Für ihre eigene Informationssicherheit bleibt die Behörde verantwortlich
+  ([IT-Grundschutz](grundschutz-modellierung.md)).
+
+## Zum Nachlesen
+
+**Arbeitshilfen:**
+
+- [EU-Kommission: CRA und Open Source](https://digital-strategy.ec.europa.eu/en/policies/cra-open-source):
+  kurze Übersicht zu Open-Source-Stewards und zur Geschäftstätigkeit (englisch).
+
+**Rechtsgrundlagen** ([VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu)):
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Meldepflichten ab 11.9.2026, vollständige Geltung ab 11.12.2027 | Art. 71 Abs. 2 [CRA](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu) |
+| Wirtschaftsakteur, Hersteller, Open-Source-Steward | Art. 3 Nr. 12, 13 und 14 CRA |
+| Pflichten des Open-Source-Stewards, Meldepflichten nur im begrenzten Umfang | Art. 24 Abs. 1 bis 3 CRA |
+| Meldepflichten des Herstellers: Fristen, Information der Nutzer | Art. 14 Abs. 1 bis 4 und 8 CRA |
+| Hersteller meldet Schwachstellen in Komponenten an deren Pfleger | Art. 13 Abs. 6 CRA |
+| Grundlegende Anforderungen an Produkte | Anhang I CRA |
+| Rolle von SaaS-Betreiber und kommerziellem Anbieter | Art. 3 Nr. 1, 2, 13 und 22 CRA; [EU-Kommission, Zusammenfassung des CRA](https://digital-strategy.ec.europa.eu/en/policies/cra-summary); reines SaaS: Erwägungsgrund 12 CRA, am Text zu prüfen |

@@ -11,6 +11,7 @@ import io.opaa.api.dto.DisclosureModelProvider;
 import io.opaa.api.dto.DisclosureProtocol;
 import io.opaa.api.dto.DisclosureProtocolField;
 import io.opaa.api.dto.DisclosureQueryPath;
+import io.opaa.api.dto.DisclosureRunningInstance;
 import io.opaa.api.dto.DisclosureSetting;
 import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.compliance.FactSheetRenderer;
@@ -51,7 +52,8 @@ final class DataCollectionDisclosureResponseMapper {
                             .deviates(value.deviates())
                             .changedAt(value.changedAt())
                             .range(value.range())
-                            .effect(value.effect()))
+                            .effect(value.effect())
+                            .sameOnAllInstances(value.sameOnAllInstances()))
                 .toList())
         .dataFlows(
             disclosure.dataFlows().stream()
@@ -82,6 +84,14 @@ final class DataCollectionDisclosureResponseMapper {
                             .baseUrl(provider.baseUrl())
                             .model(provider.model())
                             .active(provider.active()))
+                .toList())
+        .instances(
+            disclosure.instances().stream()
+                .map(
+                    instance ->
+                        new DisclosureRunningInstance()
+                            .version(instance.version())
+                            .startedAt(instance.startedAt()))
                 .toList());
   }
 

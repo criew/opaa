@@ -27,7 +27,7 @@ import {
 } from '../fixtures/externalAccess'
 
 /**
- * Fremdzugänge über den vollen Stack (test(e2e) #1723, Epic #1715,
+ * Externe KI-Werkzeuge über den vollen Stack (test(e2e) #1723, Epic #1715,
  * docs/features/external-access.md): der Weg von der Freigabe über das Token bis zum Treffer - und
  * die Gegenprobe, jeden der vier Faktoren einzeln entzogen.
  *
@@ -102,7 +102,7 @@ let expiryToken = ''
 let freshToken = ''
 let originalChannelSettings: ChannelSettings | null = null
 
-test.describe.serial('Fremdzugänge', () => {
+test.describe.serial('Externe KI-Werkzeuge', () => {
   test.afterAll(async () => {
     const personApi = await apiAs(PERSON)
     const adminApi = await apiAs('dev-admin')
@@ -159,7 +159,7 @@ test.describe.serial('Fremdzugänge', () => {
     await gotoOwnTokens(personPage)
     await expect(personPage.getByRole('button', { name: 'Token erzeugen' })).toBeDisabled()
     await expect(
-      personPage.getByText('Fremdzugänge sind für diese Installation abgeschaltet.', {
+      personPage.getByText('Externe KI-Werkzeuge sind für diese Installation ausgeschaltet.', {
         exact: false,
       }),
     ).toBeVisible()
@@ -222,7 +222,7 @@ test.describe.serial('Fremdzugänge', () => {
     await expect(
       outsiderPage
         .getByRole('dialog')
-        .getByText('Derzeit ist keine Bibliothek für Fremdzugänge wählbar', { exact: false }),
+        .getByText('Derzeit ist keine Bibliothek für externe KI-Werkzeuge wählbar', { exact: false }),
     ).toBeVisible()
     await expect(
       outsiderPage.getByRole('dialog').getByText('sprechen Sie diese Verwaltung an', {

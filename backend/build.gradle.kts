@@ -138,6 +138,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.tika.core)
     implementation(libs.pgvector)
+    implementation(libs.postgresql)
     implementation(libs.poi.ooxml)
     implementation(libs.poi.scratchpad)
     implementation(libs.mime4j.dom)
@@ -152,6 +153,7 @@ dependencies {
         exclude(group = "software.amazon.awssdk", module = "url-connection-client")
     }
     implementation(libs.smbj)
+    implementation(libs.bundles.shedlock)
     runtimeOnly(libs.bundles.runtime)
     "configurationProcessor"(libs.spring.boot.configuration.processor)
     "configMetadataImplementation"(libs.bundles.spring.boot)
@@ -390,6 +392,17 @@ registerEvalDomain(
     conversationBaselineTestClass = "io.opaa.eval.VerwaltungConversationBaselineRegressionTest",
 )
 
+// Prompt-injection test set (eval/corpus/prompt-injection): asks every prepared case through the
+// production answer path and reports the attack success rate. Measures only, no baseline and no
+// gate. Needs Docker, not part of build/check.
+registerEvalHarnessTask(
+    "evaluatePromptInjection",
+    "Runs the prompt-injection test set against the configured chat model and writes " +
+        "build/eval-reports/prompt-injection.{json,md}. Needs Docker. Not part of build/check.",
+    "io.opaa.eval.PromptInjectionEvaluationHarnessTest",
+    emptyMap(),
+)
+
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
 // `main`/`test`) so the classes under test never ship in the production jar, but still runs as part
@@ -411,6 +424,7 @@ tasks.register<Test>("evalUnitTest") {
     useJUnitPlatform()
     filter {
         excludeTestsMatching("*RetrievalEvaluationHarnessTest")
+        excludeTestsMatching("*PromptInjectionEvaluationHarnessTest")
         excludeTestsMatching("*BaselineRegressionTest")
     }
 }
@@ -466,8 +480,13 @@ tasks.named<Test>("test") {
     System.getProperty("opaa.retrievalNoteTemplates.regenerate")?.let {
         systemProperty("opaa.retrievalNoteTemplates.regenerate", it)
     }
-    // the long search of FileSyncRandomizedRoundTest, run by hand
-    listOf("opaa.filesync.randomSeeds", "opaa.filesync.randomRuns", "opaa.filesync.firstSeed")
+    // the long search of FileSyncRandomizedRoundTest and the audit scan measurement, run by hand
+    listOf(
+        "opaa.filesync.randomSeeds",
+        "opaa.filesync.randomRuns",
+        "opaa.filesync.firstSeed",
+        "opaa.selfdisclosure.measureAuditScan",
+    )
         .forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
 }
 
@@ -705,7 +724,7 @@ tasks.named("javadoc") {
     dependsOn("testJavadoc")
 }
 
-// Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md): six Markdown
+// Fact sheets for authorities from the compliance manifest (docs/behoerden/AGENTS.md): six Markdown
 // sheets and their JSON form under build/compliance/faktenblaetter/, headed with version, commit and
 // generation date. Not checked in; CI uploads them as an artifact. Never up to date, as the head
 // carries the date. -PgeneratedOn=YYYY-MM-DD fixes that date, so a release run is repeatable.

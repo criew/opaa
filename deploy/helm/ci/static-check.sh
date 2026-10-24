@@ -75,12 +75,94 @@ expect_refusal() {
 }
 
 echo "--- guards"
-expect_refusal "ADR-0021" --set backend.replicas=2
+# More than one backend pod, or a rolling update, needs the migration job and shared originals
+# (ADR-0053, Entscheidung 15); a rolling update keeps chat answers alive over the pod's stop.
+# --set with an index rather than --set-json, which Helm 3.8 does not know.
+shared=(--set backend.migration.enabled=true --set 'uploads.persistence.accessModes[0]=ReadWriteMany')
+expect_refusal "set backend.migration.enabled" --set backend.replicas=2
+expect_refusal "set backend.migration.enabled" --set backend.updateStrategy=RollingUpdate
+expect_refusal "ReadWriteMany" --set backend.replicas=2 --set backend.migration.enabled=true
+expect_refusal "ReadWriteMany" --set backend.updateStrategy=RollingUpdate --set backend.migration.enabled=true
+expect_refusal "shorter than the frontend's read timeout" --set backend.replicas=2 "${shared[@]}" \
+  --set backend.shutdownTimeoutSeconds=60
+expect_refusal "shorter than the frontend's read timeout" --set backend.replicas=2 "${shared[@]}" \
+  --set frontend.backendReadTimeout=15m --set backend.shutdownTimeoutSeconds=600
+expect_refusal "plus the preStop pause (10)" --set backend.replicas=2 "${shared[@]}" \
+  --set backend.terminationGracePeriodSeconds=610
+expect_refusal "must be greater than backend.shutdownTimeoutSeconds (60)" \
+  --set backend.terminationGracePeriodSeconds=60
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
-# CSP keywords such as 'self' are quoted; quotes would break the nginx configuration.
+# CSP keywords such as 'self' are quoted; quotes would break the nginx configuration. The schema
+# admits what frontend/docker-entrypoint.d/05-opaa-runtime.sh admits at start, nothing else.
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra='self' https://login.example.org"
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=https://login.example.org; script-src *"
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=data: blob:"
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ftp://files.example.org"
+expect_refusal "cspConnectSrcExtra" --set-string 'frontend.cspConnectSrcExtra=https://$host'
+
+# One backend pod renders as before, without migration job, budget or preStop pause; several pods
+# render pod by pod with all three (ADR-0053, Entscheidung 15).
+echo "--- one and several backend pods"
+expect_rendered() {
+  local file="$1" expected="$2"
+  if ! grep -qF -- "$expected" "$work_dir/$file.yaml"; then
+    echo "Value set $file does not render '$expected'." >&2
+    exit 1
+  fi
+}
+expect_not_rendered() {
+  local file="$1" unexpected="$2"
+  if grep -qF -- "$unexpected" "$work_dir/$file.yaml"; then
+    echo "Value set $file renders '$unexpected', which only several backend pods need." >&2
+    exit 1
+  fi
+}
+for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTDOWN_TIMEOUT: "60s"' \
+  "seconds: 5"; do
+  expect_rendered minimal "$expected"
+done
+for unexpected in "kind: Job" "kind: PodDisruptionBudget" "seconds: 10" "SPRING_LIQUIBASE_ENABLED" \
+  "await-migration" "type: RollingUpdate"; do
+  expect_not_rendered minimal "$unexpected"
+done
+for expected in "type: RollingUpdate" "maxUnavailable: 0" "maxSurge: 1" "kind: PodDisruptionBudget" \
+  "kind: Job" "- name: await-migration" 'value: "await-migration"' 'value: "migrate"' \
+  "name: SPRING_LIQUIBASE_ENABLED" "seconds: 10" "terminationGracePeriodSeconds: 625" \
+  'OPAA_SHUTDOWN_TIMEOUT: "600s"' 'OPAA_DB_POOL_SIZE: "8"' "name: opaa-migration-egress" \
+  "app.kubernetes.io/component: migration" "topologyKey: kubernetes.io/hostname" \
+  'OPAA_INDEXING_EMBEDDING_CONCURRENCY: "3"' 'OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "10"' \
+  'OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT: "1"'; do
+  expect_rendered multi "$expected"
+done
+# The budget of the installation divided by the pods (ADR-0053, Entscheidung 12): only once.
+expect_refusal "OPAA_UNKNOWN_LIMIT" --set backend.installationBudgets.OPAA_UNKNOWN_LIMIT=4
+expect_refusal "OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS" --set backend.installationBudgets.OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS=0
+expect_refusal "keep one" --set backend.installationBudgets.OPAA_TRANSCRIPTION_MAX_CONCURRENT=4 \
+  --set-string transcription.maxConcurrent=2
+expect_refusal "keep one of the two" --set backend.installationBudgets.OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS=4 \
+  --set 'backend.extraEnv[0].name=OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS' --set 'backend.extraEnv[0].value=9'
+echo "one pod renders Recreate alone, two pods render rolling update, budget, preStop and job"
+# The job's name follows image and configuration: unchanged values keep it, a new image renews it.
+job_name() {
+  helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/multi-values.yaml" "$@" \
+    --show-only templates/backend-migration-job.yaml | sed -n 's/^  name: //p'
+}
+first="$(job_name)"
+if [[ "$first" != "$(job_name)" || "$first" == "$(job_name --set backend.image.tag=1.2.3)" ||
+  ${#first} -gt 63 ]]; then
+  echo "The migration job must keep its name for the same values and change it with the image: $first" >&2
+  exit 1
+fi
+echo "migration job $first renewed with the image as expected"
+# A claim with ReadWriteMany serves several pods as well, and Recreate stays choosable for them.
+helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" --set backend.replicas=2 \
+  "${shared[@]}" --set backend.updateStrategy=Recreate >"$work_dir/recreate.yaml"
+expect_rendered recreate "type: Recreate"
+expect_rendered recreate "kind: PodDisruptionBudget"
+expect_not_rendered recreate "seconds: 10"
+echo "two pods with a ReadWriteMany claim and Recreate render as expected"
 
 # On the first start the image's entrypoint runs a temporary server for initdb that answers on the
 # socket only; a readiness probe over the socket reports ready while the service refuses TCP.
@@ -135,10 +217,10 @@ mkdir -p "$work_dir/upgrade-notes"
 release_notes="$(UPGRADE_NOTES_DIR="$work_dir/upgrade-notes" deploy/helm/ci/release-notes.sh criew/opaa v1.2.3-rc.1)"
 for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enforce=restricted" \
   "pod-security.kubernetes.io/warn=restricted" "--version 1.2.3-rc.1" \
-  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#installation" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#installation" \
   "**Vorbereitung für Bestandsinstallationen**" "Keine Vorbereitung nötig." \
-  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#aktualisierung-und-rückweg" \
-  "blob/v1.2.3-rc.1/docs/handbuch/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
   "\`opaa-update-paket-1.2.3-rc.1.tar.gz\`" \
   "gh attestation verify opaa-update-paket-1.2.3-rc.1.tar.gz --repo criew/opaa"; do
   if [[ "$release_notes" != *"$expected"* ]]; then
@@ -165,10 +247,10 @@ heading_anchors() {
   awk '/^[[:space:]]*```/ { block = !block; next } !block && /^#+ / { sub(/^#+ +/, ""); print }' "$1" |
     jq -Rr 'gsub("Ä";"ä") | gsub("Ö";"ö") | gsub("Ü";"ü") | ascii_downcase | gsub("[^\\p{L}\\p{N} _-]";"") | gsub(" ";"-")'
 }
-links="$(grep -o 'blob/v1\.2\.3-rc\.1/docs/handbuch/[a-z0-9-]*\.md#[^)]*' <<<"$release_notes")"
+links="$(grep -o 'blob/v1\.2\.3-rc\.1/docs/handbuch/[a-z0-9/-]*\.md#[^)]*' <<<"$release_notes")"
 while read -r link; do
   file="${link%%#*}"
-  file="docs/handbuch/${file##*/}"
+  file="docs/handbuch/${file#*/docs/handbuch/}"
   heading_anchors "$file" >"$work_dir/anchors"
   if ! grep -qxF -- "${link#*#}" "$work_dir/anchors"; then
     echo "The release notes link $link, but $file has no heading with this anchor." >&2
@@ -310,6 +392,11 @@ notes_case "an installation" "OPAA ist installiert" "OPAA ist aktualisiert"
 notes_case "an installation" "Der erste Start migriert" "Der Start migriert"
 notes_case "an upgrade" "OPAA ist aktualisiert" "OPAA ist installiert" --is-upgrade
 notes_case "an upgrade" "Der Start migriert" "Der erste Start migriert" --is-upgrade
+notes_case "one pod" "GENAU EINE BACKEND-INSTANZ" "POD FÜR POD"
+notes_case "two pods" "2 BACKEND-PODS, AKTUALISIERUNG POD FÜR POD" "GENAU EINE BACKEND-INSTANZ" \
+  --set backend.replicas=2 "${shared[@]}"
+notes_case "an upgrade of two pods" "werden danach ersetzt, die alten antworten bis dahin" \
+  "Der Start migriert" --set backend.replicas=2 "${shared[@]}" --is-upgrade
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.
@@ -393,7 +480,6 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
   csp_case warn "$issuer" "https://login.example.org:8443"
   csp_case warn "https://login.example.org:8443/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "https://login.example.org.evil.example"
-  csp_case warn "$issuer" "data: blob:"
   # Without a scheme, an https page admits https only; a bare word is a host name, not a keyword.
   csp_case warn "http://login.example.org/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "self"

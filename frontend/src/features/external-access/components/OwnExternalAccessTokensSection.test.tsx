@@ -67,7 +67,7 @@ describe('OwnExternalAccessTokensSection', () => {
     render()
 
     expect(
-      await screen.findByText(/Fremdzugänge sind für diese Installation abgeschaltet/),
+      await screen.findByText(/Externe KI-Werkzeuge sind für diese Installation ausgeschaltet/),
     ).toBeInTheDocument()
     expect(screen.getAllByText('wirkt derzeit nicht').length).toBeGreaterThan(0)
     // With a closed channel the issuance rejects every request - so the button
@@ -366,7 +366,7 @@ describe('OwnExternalAccessTokensSection', () => {
     const dialog = await openCreateDialog(user)
 
     expect(
-      await within(dialog).findByText(/nicht für Fremdzugänge freigegeben/),
+      await within(dialog).findByText(/nicht für externe KI-Werkzeuge freigegeben/),
     ).toBeInTheDocument()
     expect(within(dialog).getByText(/sprechen Sie diese Verwaltung an/)).toBeInTheDocument()
   })
@@ -394,7 +394,9 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(within(valueDialog).getByText(/\$\{input:opaa-token\}/)).toBeInTheDocument()
     expect(within(valueDialog).getByText(/\$\{env:OPAA_TOKEN\}/)).toBeInTheDocument()
     expect(
-      within(valueDialog).getByText(/Ausführliche Anleitung im Handbuch, Kapitel Fremdzugänge/),
+      within(valueDialog).getByText(
+        /Ausführliche Anleitung im Handbuch, Kapitel Externe KI-Werkzeuge/,
+      ),
     ).toBeInTheDocument()
 
     await user.click(within(valueDialog).getByRole('button', { name: 'Kopieren' }))

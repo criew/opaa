@@ -30,7 +30,9 @@ export const THEMES = [
   'search-admin',
   'audit',
   'notification',
+  'compliance',
   'auth',
+  'link-targets',
 ]
 
 /** Cross-cutting building blocks; may depend on nothing but itself. */
@@ -67,7 +69,9 @@ export const ALLOWED = {
   'search-admin': ['library'],
   audit: [],
   notification: [],
+  compliance: [],
   auth: ['user'],
+  'link-targets': [],
 }
 
 /** All files of a theme. */

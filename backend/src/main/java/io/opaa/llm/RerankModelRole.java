@@ -1,13 +1,19 @@
 package io.opaa.llm;
 
+import io.opaa.instance.ScheduledRunLocks;
+import io.opaa.llm.ModelRoleObservations.ModelRoleObservation;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +41,12 @@ import org.springframework.stereotype.Service;
  * The state is kept current by every real {@link #rerank} call, which records what actually
  * happened, and by {@link #refresh()} - once at startup, then whenever the last result is older
  * than {@link RerankProperties#probeInterval()} ({@link #probePeriodically()}).
+ *
+ * <p><b>The last known state is the installation's</b> ({@link ModelRoleObservations}, ADR-0053,
+ * Entscheidung 12): whichever instance probes or calls the endpoint records it, and every instance
+ * decides on it, so the same question is reranked or not whichever instance answers it. A real call
+ * that keeps the role ready renews the recorded time at most every {@link #renewEvery} and writes
+ * nothing otherwise.
  */
 @Service
 public class RerankModelRole implements RerankRoleStatusProvider {
@@ -61,28 +73,44 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    */
   private final boolean baseUrlRejected;
 
+  private final ModelRoleObservations observations;
+
   /**
-   * The last probe or call result for a switched-on, bound role and when it was recorded; the
-   * status is {@code null} until the first probe. The switched-off and unbound states are derived
-   * from configuration instead, so they can never go stale.
+   * How often a successful real call renews the recorded time, so that traffic replaces the
+   * scheduled probe without a write per query: half the probe interval, at most a minute.
    */
-  private final AtomicReference<Observation> lastKnown;
+  private final Duration renewEvery;
+
+  /** When this process last renewed the recorded time; read and written by this process only. */
+  private final AtomicReference<Instant> lastRenewal = new AtomicReference<>(Instant.MIN);
 
   /**
    * How many {@link #rerank} calls came back without a usable ranking since this process started -
    * a failed call as well as an endpoint that answered with an empty ranking. Exactly the calls for
    * which {@code RerankStage} reports {@code UNAVAILABLE} and falls back to the fused order. Never
-   * reset: a caller that wants "did anything degrade in between?" compares two readings.
+   * reset: a caller that wants "did anything degrade in between?" compares two readings. Counted
+   * per instance, like the measurement that reads it.
    */
   private final AtomicLong degradedCalls = new AtomicLong();
 
+  /** A role whose state lives in this process only - for a context without a database. */
   public RerankModelRole(RerankProperties properties, RerankClient client, Clock clock) {
+    this(properties, client, clock, new ProcessLocalModelRoleObservations(clock));
+  }
+
+  @Autowired
+  public RerankModelRole(
+      RerankProperties properties,
+      RerankClient client,
+      Clock clock,
+      ModelRoleObservations observations) {
     this.properties = properties;
     this.client = client;
     this.clock = clock;
+    this.observations = observations;
     this.baseUrlRejected = ModelEndpointUri.containsCredentials(properties.baseUrl());
-    // Counting from construction keeps the first scheduled probe one interval after startup.
-    this.lastKnown = new AtomicReference<>(new Observation(null, clock.instant()));
+    Duration half = properties.probeInterval().dividedBy(2);
+    this.renewEvery = half.compareTo(Duration.ofMinutes(1)) < 0 ? half : Duration.ofMinutes(1);
   }
 
   @Override
@@ -106,8 +134,11 @@ public class RerankModelRole implements RerankRoleStatusProvider {
           emptyToNull(properties.model()),
           "rerank role switched on, but opaa.rerank.base-url and/or opaa.rerank.model are unset");
     }
-    RerankRoleStatus known = lastKnown.get().status();
-    return known != null ? known : status(RerankRoleState.UNREACHABLE, "endpoint not probed yet");
+    return observations
+        .current(ModelRoleObservations.RERANK)
+        .filter(known -> known.isFor(properties.baseUrl(), properties.model()))
+        .map(this::statusOf)
+        .orElseGet(() -> status(RerankRoleState.UNREACHABLE, "endpoint not probed yet"));
   }
 
   /**
@@ -121,18 +152,32 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       fixedDelay = TICK_MILLIS,
       initialDelay = TICK_MILLIS,
       scheduler = "rerankProbeScheduler")
-  void probePeriodically() {
+  @SchedulerLock(
+      name = "rerank-role-probe",
+      lockAtLeastFor = "PT4S",
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
+  public void probePeriodically() {
     if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
       return;
     }
-    Observation last = lastKnown.get();
-    boolean ready = last.status() != null && last.status().state() == RerankRoleState.READY;
+    Optional<ModelRoleObservation> last =
+        observations
+            .latest(ModelRoleObservations.RERANK)
+            .filter(known -> known.isFor(properties.baseUrl(), properties.model()));
+    if (last.isEmpty()) {
+      refresh();
+      return;
+    }
     Duration interval = properties.probeInterval();
-    Duration due = ready || interval.compareTo(RETRY_INTERVAL) < 0 ? interval : RETRY_INTERVAL;
-    Instant now = clock.instant();
-    // A result stamped in the future means the wall clock stepped back; probing then keeps the
+    Duration due =
+        last.get().reachable() || interval.compareTo(RETRY_INTERVAL) < 0
+            ? interval
+            : RETRY_INTERVAL;
+    Instant now = observations.now();
+    Instant at = last.get().observedAt();
+    // A result stamped in the future means the clock stepped back; probing then keeps the
     // recovery promise instead of waiting out the size of the step.
-    if (now.isBefore(last.at()) || !now.isBefore(last.at().plus(due))) {
+    if (now.isBefore(at) || !now.isBefore(at.plus(due))) {
       refresh();
     }
   }
@@ -143,7 +188,6 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    */
   public RerankRoleStatus refresh() {
     if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
-      record(null);
       return currentStatus();
     }
     RerankClient.ProbeFailure failure = client.probe(properties);
@@ -151,7 +195,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
         failure == null
             ? status(RerankRoleState.READY, null)
             : status(RerankRoleState.UNREACHABLE, failure.message(), failure.timedOut());
-    record(probed);
+    record(probed, true);
     return probed;
   }
 
@@ -184,7 +228,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
     }
     try {
       List<RerankClient.ScoredCandidate> scored = client.rerank(properties, query, texts);
-      record(status(RerankRoleState.READY, null));
+      recordSuccessfulCall();
       if (scored.isEmpty() && !texts.isEmpty()) {
         // The endpoint answered, but with nothing the caller can order by - the caller falls back
         // to its incoming order just as it does after a failure, so it counts as one.
@@ -198,7 +242,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       // the endpoint answered the connection, it simply did not finish in time.
       degradedCalls.incrementAndGet();
       boolean timedOut = e instanceof RerankClient.RerankTimeoutException;
-      record(status(RerankRoleState.UNREACHABLE, e.getMessage(), timedOut));
+      record(status(RerankRoleState.UNREACHABLE, e.getMessage(), timedOut), false);
       // The exception object, not just its message: a programming error caught here (NPE from a
       // client bug, say) has a null message and would otherwise be indistinguishable from a dead
       // endpoint.
@@ -211,12 +255,43 @@ public class RerankModelRole implements RerankRoleStatusProvider {
     }
   }
 
-  private void record(RerankRoleStatus status) {
-    lastKnown.set(new Observation(status, clock.instant()));
+  /**
+   * A successful call: a change of state is written at once, an unchanged ready state renews the
+   * recorded time only every {@link #renewEvery}, by this process's clock.
+   */
+  private void recordSuccessfulCall() {
+    Instant now = clock.instant();
+    Instant renewed = lastRenewal.get();
+    boolean renew = now.isBefore(renewed) || !now.isBefore(renewed.plus(renewEvery));
+    if (renew) {
+      lastRenewal.set(now);
+    }
+    record(status(RerankRoleState.READY, null), renew);
   }
 
-  /** A recorded result and its time; {@code status} is {@code null} while nothing is known. */
-  private record Observation(RerankRoleStatus status, Instant at) {}
+  /** Records an outcome; a store that cannot take it costs the record, never the query. */
+  private void record(RerankRoleStatus status, boolean renew) {
+    try {
+      observations.record(
+          ModelRoleObservations.RERANK,
+          new ModelRoleObservation(
+              properties.baseUrl(),
+              properties.model(),
+              status.state() == RerankRoleState.READY,
+              status.timedOut(),
+              status.diagnostic(),
+              null),
+          renew);
+    } catch (DataAccessException e) {
+      log.warn("Rerank role state could not be recorded: {}", e.getMessage());
+    }
+  }
+
+  private RerankRoleStatus statusOf(ModelRoleObservation known) {
+    return known.reachable()
+        ? status(RerankRoleState.READY, null)
+        : status(RerankRoleState.UNREACHABLE, known.diagnostic(), known.timedOut());
+  }
 
   private RerankRoleStatus status(RerankRoleState state, String diagnostic) {
     return status(state, diagnostic, false);

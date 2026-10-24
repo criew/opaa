@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-23 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -129,6 +129,9 @@ HS256-JWT mit Schlüssel per HKDF-SHA256 aus `OPAA_AUTH_JWT_SECRET`, zweckgebund
 (`LocalAuthKeyService.Purpose`: Signatur, Refresh-Lookup, Aktionstoken-Lookup, seit ADR-0035
 Zugangstoken-Lookup). Claims `jti`, `iss = urn:opaa:local`, `sub = users.id`, `iat`, `exp`
 (`opaa.auth.local.access-token-ttl`, 15 Minuten), `email`, `name`, `pcr`; keine Rolle im Token.
+`auth_time` trägt nur ein Token, für das gerade das Passwort geprüft wurde (Anmeldung,
+Passwortwechsel, `POST …/reauthenticate`), nie eines aus einer Erneuerung; daran misst
+`RecentLoginPolicy` die frische Anmeldung, die Operationen mit `@RequiresRecentLogin` verlangen.
 `LocalAuthProperties` ist `@Validated`, `@ValidSecret` verlangt mindestens 32 Zeichen und lehnt
 eine Liste bekannter Platzhalter ab; fehlt das Secret, bricht der Start im `oidc`-Profil mit einer
 Meldung ab, die Variable und Erzeugungsbefehl (`openssl rand -base64 48`) nennt
@@ -181,9 +184,16 @@ Konten").
   Vergleich nur über `matches`, bei unbekannter Kennung gegen einen Dummy-Hash; `PasswordPolicy`:
   Mindestlänge `password_min_length`, höchstens 64 Zeichen und 72 Byte, nicht die E-Mail, nicht in
   der Sperrliste; keine Komplexitätsregeln, kein periodischer Wechsel (BSI ORP.4.A8).
-- **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel je Konto;
+- **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel und
+  Bestätigung einer erneuten Anmeldung (`reauthenticate`) je Konto aus einem gemeinsamen Budget
+  (`change-password`);
   Registrierung und „Passwort vergessen“ zusätzlich je E-Mail-Adresse; Login, Registrierung und
-  „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten.
+  „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten. Hinter der Anmeldung
+  zählen Abfrage, Chatsuche und Suche je Client-Adresse, je Konto (`max-requests-per-account`,
+  geprüft hinter der Sicherheitskette; ein Zugangstoken je Token und zugleich je Person über alle
+  ihre Tokens) und global; eine Abweisung je Konto gibt die übrigen Marken zurück, ein Zugangstoken
+  seine Adressmarke; jede `429` einer späteren Grenze, die vor der eigentlichen Arbeit abweist
+  (Token-Kontingent, Belegt-Meldung der Anhangsauswertung), gibt die globale zurück.
 - **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
   (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster
@@ -199,8 +209,8 @@ Konten").
   solange es keinen zweiten Faktor gibt; MFA ist nicht gebaut.
 - **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds (`LocalAuthLogPrivacyIntegrationTest`).
 
-Werte und Diagnose: [Konfiguration](../handbuch/konfiguration.md),
-[Vertraute Proxys](../handbuch/betrieb.md#vertraute-proxys-und-client-adresse).
+Werte und Diagnose: [Konfiguration](../handbuch/betrieb/konfiguration.md),
+[Vertraute Proxys](../handbuch/betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse).
 
 ### 10. Mail-Infrastruktur: SMTP in den Systemeinstellungen, Vorlagen mit Code-Standards, Ergebnis statt Exception, sichtbares Scheitern
 
@@ -246,7 +256,7 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   behält Hash und Namen gegen Pre-Hijacking; das Einschalten ist Dienstvereinbarungspunkt); „Passwort
   vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist. Ein abgeschalteter Fluss
   ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden (#1592). Passwort ändern
-  widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/benutzerverwaltung.md).
+  widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/konten-und-rechte/benutzerverwaltung.md).
 
 ### 12. Übergabe eines lokalen Kontos an eine Anbieteridentität — administrativ angestoßen, von der Person selbst eingelöst
 
@@ -299,7 +309,8 @@ läuft weiter auf `dev`, der lokale Anmeldeweg hat sein eigenes E2E-Ziel (`e2e/l
 Demo-Stack meldet sich im Seed als Notanker an und vergibt die Rolle über die reguläre Rollen-API;
 Profilname `oidc` bleibt; kein getrennter API-Origin; die Übersicht der eigenen Sitzungen ist nicht
 gebaut; Mails nur `de` (Spalte `locale` vorbereitet). Die prozesslokalen Fundstellen (lokaler Decoder,
-`jti`-Denylist, Rate-Limit-Buckets, `MailSenderProvider`-Cache, Scheduler) führt ADR-0021; der
+`jti`-Denylist, Rate-Limit-Buckets, `MailSenderProvider`-Cache, Scheduler) führt das Register nach
+ADR-0053 Entscheidung 16; der
 Mail-Sender ergänzt ADR-0019.
 
 ## Stakeholder-Zusagen

@@ -3,10 +3,16 @@ package io.opaa.ratelimit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.BindException;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
 /**
  * {@link RateLimitProperties}: the trusted-proxy list is trimmed, validated and refuses a wildcard
@@ -19,7 +25,7 @@ class RateLimitPropertiesTest {
       new RateLimitProperties.EndpointLimit(1, 1, 1);
 
   private static RateLimitProperties properties(List<String> cidrs, LocalAuthLimits localAuth) {
-    return new RateLimitProperties(true, cidrs, ANY, ANY, ANY, ANY, ANY, ANY, localAuth);
+    return new RateLimitProperties(true, cidrs, ANY, ANY, ANY, ANY, ANY, ANY, ANY, localAuth);
   }
 
   @Test
@@ -112,5 +118,28 @@ class RateLimitPropertiesTest {
     assertThatThrownBy(() -> new LocalAuthLimit(1, 60, null, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("maxRequestsPerAddress");
+  }
+
+  @Test
+  void anEmptyBudgetPerAccountRefusesTheStartInsteadOfSwitchingTheLimitOff() {
+    Binder binder = binderOf(Map.of("x.max-requests-per-account", ""));
+
+    assertThatThrownBy(() -> binder.bind("x", EndpointLimit.class))
+        .isInstanceOf(BindException.class);
+  }
+
+  @Test
+  void anAbsentBudgetPerAccountMeansNone() {
+    EndpointLimit limit = binderOf(Map.of()).bind("x", EndpointLimit.class).get();
+
+    assertThat(limit.hasAccountLimit()).isFalse();
+  }
+
+  private static Binder binderOf(Map<String, String> extra) {
+    Map<String, String> values = new HashMap<>(extra);
+    values.put("x.max-requests", "1");
+    values.put("x.window-seconds", "1");
+    values.put("x.global-max-requests", "1");
+    return new Binder(new MapConfigurationPropertySource(values));
   }
 }

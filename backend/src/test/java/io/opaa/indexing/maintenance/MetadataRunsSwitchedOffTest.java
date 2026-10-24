@@ -12,6 +12,7 @@ import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.registry.StoredDocumentSourceAccess;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryMaintenanceSkips;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.MetadataFillCounter;
@@ -49,7 +50,8 @@ class MetadataRunsSwitchedOffTest {
             mock(MetadataFillCounter.class),
             mock(ModelMetadataExtractor.class),
             vectorChunkStore,
-            TestFeatureFlags.without(Feature.METADATA));
+            TestFeatureFlags.without(Feature.METADATA),
+            mock(LibraryMaintenanceSkips.class));
 
     MetadataBackfillResult result = service.backfillBatch(UUID.randomUUID(), UUID.randomUUID(), 10);
 
@@ -72,7 +74,8 @@ class MetadataRunsSwitchedOffTest {
             TestFeatureFlags.without(Feature.METADATA),
             mock(PlatformTransactionManager.class),
             new io.opaa.observability.IndexingMetrics(
-                new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),
+            mock(LibraryMaintenanceSkips.class));
 
     ContextPrefixRerunResult result = service.rerunBatch(UUID.randomUUID(), UUID.randomUUID(), 10);
 

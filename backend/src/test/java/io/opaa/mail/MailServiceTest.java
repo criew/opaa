@@ -11,20 +11,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.common.DatabaseClock;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
-import java.time.Clock;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 
@@ -45,7 +47,9 @@ class MailServiceTest {
   @Mock private MailTemplateService templates;
   @Mock private MailSettingsService settingsService;
   @Mock private JavaMailSender sender;
-  @Spy private Clock clock = Clock.systemUTC();
+  @Mock private MailOutbox outbox;
+  @Mock private ApplicationEventPublisher events;
+  @Mock private DatabaseClock databaseClock;
 
   @InjectMocks private MailService mailService;
 
@@ -113,6 +117,21 @@ class MailServiceTest {
     assertThat(result).isInstanceOf(SendResult.Failed.class);
     assertThat(result.reasonOrNull()).contains("OPAA_SETTINGS_ENCRYPTION_KEY");
     verify(settingsService, never()).recordSendOutcome(any(), any());
+  }
+
+  /**
+   * The send status is compared across instances - whichever sent last wrote it - so its time comes
+   * from the database, not from the host of the sending instance (ADR-0053, Entscheidung 9).
+   */
+  @Test
+  void recordsTheSendOutcomeAtTheTimeOfTheDatabase() {
+    stubConfiguredSender();
+    Instant databaseTime = Instant.parse("2031-01-01T00:00:00Z");
+    when(databaseClock.now()).thenReturn(databaseTime);
+
+    send(MailTemplateKey.TEST_MAIL);
+
+    verify(settingsService).recordSendOutcome(eq(databaseTime), isNull());
   }
 
   /** A status write that fails must not turn a sent mail into a failed one. */
@@ -191,6 +210,85 @@ class MailServiceTest {
     verify(settingsService).recordSendOutcome(any(), isNull());
   }
 
+  /** ADR-0053, Entscheidung 11: queued means written to the outbox and announced, nothing sent. */
+  @Test
+  void queuesARenderedMailAndAnnouncesItWithoutSending() {
+    when(senderProvider.isEnabled()).thenReturn(true);
+    RenderedMail rendered = new RenderedMail("Betreff", "Textteil", null);
+    when(templates.render(eq(MailTemplateKey.PASSWORD_RESET), eq("de"), any()))
+        .thenReturn(rendered);
+    UUID rowId = UUID.randomUUID();
+    when(outbox.insert(MailTemplateKey.PASSWORD_RESET, RECIPIENT, rendered)).thenReturn(rowId);
+
+    boolean queued = enqueue(MailTemplateKey.PASSWORD_RESET);
+
+    assertThat(queued).isTrue();
+    verify(events).publishEvent(new MailQueuedEvent(rowId));
+    verify(sender, never()).send(any(MimeMessage.class));
+    verify(settingsService, never()).recordSendOutcome(any(), any());
+  }
+
+  @Test
+  void queuesNothingWhileMailIsOffOrWithoutARecipient() {
+    when(senderProvider.isEnabled()).thenReturn(false);
+
+    assertThat(enqueue(MailTemplateKey.PASSWORD_RESET)).isFalse();
+    assertThat(mailService.enqueue(MailTemplateKey.PASSWORD_RESET, Locale.GERMAN, " ", Map.of()))
+        .isFalse();
+
+    verify(outbox, never()).insert(any(), any(), any());
+    verify(events, never()).publishEvent(any());
+  }
+
+  /** Without the settings key nothing may reach the table in clear text: nothing is queued. */
+  @Test
+  void queuesNothingWhenTheContentCannotBeEncrypted() {
+    when(senderProvider.isEnabled()).thenReturn(true);
+    when(templates.render(any(), anyString(), any()))
+        .thenReturn(new RenderedMail("Betreff", "Textteil", null));
+    when(outbox.insert(any(), any(), any()))
+        .thenThrow(new IllegalStateException("OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt"));
+
+    assertThat(enqueue(MailTemplateKey.PASSWORD_RESET)).isFalse();
+
+    verify(events, never()).publishEvent(any());
+  }
+
+  @Test
+  void aTemplateThatCannotBeFilledQueuesNothing() {
+    when(senderProvider.isEnabled()).thenReturn(true);
+    when(templates.render(any(), anyString(), any()))
+        .thenThrow(new IllegalStateException("No method or field with name 'actionUrl'"));
+
+    assertThat(enqueue(MailTemplateKey.PASSWORD_RESET)).isFalse();
+
+    verify(outbox, never()).insert(any(), any(), any());
+  }
+
+  /** The row's id is the message's id, so a second delivery of one row is recognisable. */
+  @Test
+  void deliversAClaimedRowUnderItsStableMessageId() throws Exception {
+    when(senderProvider.current()).thenReturn(new MailSenderProvider.Transport(sender, CONFIGURED));
+    when(sender.createMimeMessage())
+        .thenReturn(new MimeMessage(Session.getInstance(new Properties())));
+    UUID rowId = UUID.randomUUID();
+    MailOutbox.Claimed claimed =
+        new MailOutbox.Claimed(
+            rowId,
+            MailTemplateKey.PASSWORD_RESET,
+            RECIPIENT,
+            new RenderedMail("Betreff", "Textteil", "<p>HTML</p>"),
+            1);
+
+    SendResult result = mailService.deliver(claimed);
+
+    assertThat(result).isEqualTo(new SendResult.Sent(RECIPIENT));
+    ArgumentCaptor<MimeMessage> message = ArgumentCaptor.forClass(MimeMessage.class);
+    verify(sender).send(message.capture());
+    assertThat(message.getValue().getHeader("Message-ID")).containsExactly("<" + rowId + "@opaa>");
+    verify(settingsService).recordSendOutcome(any(), isNull());
+  }
+
   @Test
   void shortensASingleRecipientForTheLogKeepingOnlyTheDomain() {
     assertThat(MailRecipients.shortened(RECIPIENT)).isEqualTo("e***@amt.example");
@@ -206,6 +304,10 @@ class MailServiceTest {
         .isEqualTo("550 <e***@amt.example>, <m***@amt.example>: Recipient address rejected");
     assertThat(MailRecipients.maskAddresses("Connection refused")).isEqualTo("Connection refused");
     assertThat(MailRecipients.maskAddresses(null)).isNull();
+  }
+
+  private boolean enqueue(MailTemplateKey key) {
+    return mailService.enqueue(key, Locale.GERMAN, RECIPIENT, Map.of());
   }
 
   private SendResult send(MailTemplateKey key) {

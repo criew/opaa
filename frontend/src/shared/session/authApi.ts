@@ -205,6 +205,36 @@ export async function changePassword(
 }
 
 /**
+ * Confirms the sign-in of the signed-in local account with its password and returns an access token
+ * that counts as a recent sign-in; the refresh cookie stays as it is. A wrong password arrives as a
+ * {@link FieldValidationError} and counts as a failed attempt towards the lockout.
+ */
+export async function reauthenticateLocal(
+  token: string | null,
+  password: string,
+): Promise<LocalTokenResponse> {
+  const headers: Record<string, string> = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  try {
+    const { data } = await authClient.post<LocalTokenResponse>(
+      `${LOCAL_AUTH_BASE}/reauthenticate`,
+      { password },
+      { headers },
+    )
+    return data
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 400) {
+      const body = err.response.data as { fieldErrors?: FieldError[]; error?: string } | undefined
+      throw new FieldValidationError(
+        body?.fieldErrors ?? [],
+        body?.error ?? 'Das Passwort ist nicht korrekt.',
+      )
+    }
+    throw err
+  }
+}
+
+/**
  * The non-secret note that this browser last held a local session (ADR-0033, Entscheidung 7). It
  * gates the one refresh attempt at start-up. The CSRF cookie cannot do that job: `CsrfCookieFilter`
  * sets it on *every* response, so it is already there after the first `GET /auth/config` of a

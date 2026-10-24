@@ -10,13 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * The one thread on which mail leaves <em>after</em> the request that caused it has answered
- * (ADR-0033, Entscheidungen 5 and 11): the emergency sign-in must not wait for a mail server, and
- * the self-service flows must not let their response time betray whether an account exists. A
- * bounded queue keeps a stalled SMTP server from piling up work without limit; a send that finds
- * the queue full is dropped with a WARN line (no address, no template) - {@link MailService} never
- * saw it, so the mail settings' failure record stays as it is. Shut down with the context; a send
- * in flight gets a few seconds to finish.
+ * The one thread on which the self-service's account work runs <em>after</em> the request that
+ * caused it has answered (ADR-0033, Entscheidung 11): the response time must not betray whether an
+ * account exists. The work is database-only - the link mail goes to the outbox in its transaction
+ * (ADR-0053, Entscheidung 11) - so the queue drains in milliseconds; a task that finds the queue
+ * full is dropped with a WARN line (no address, no template). Shut down with the context; queued
+ * tasks get a few seconds to finish (ADR-0053: the queue is this process's).
  */
 @Component
 public class MailDispatchExecutor implements Executor {
