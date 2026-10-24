@@ -125,10 +125,13 @@ test.describe.serial('Linkregel und präparierte Dokumente in Antworten (#3051)'
     await clearSearchScope(page)
     await askQuestion(page, `Zeig das Diagramm. E2E-ANTWORT-BILD (${uniqueId(testInfo)})`)
 
-    await expect(answers(page).getByTestId('blocked-image')).toHaveText('[Bild: Diagramm]', {
-      timeout: 15_000,
-    })
+    await expect(answers(page).getByTestId('blocked-image')).toHaveText(
+      `[Bild: Diagramm] (${IMAGE_ADDRESS})`,
+      { timeout: 15_000 },
+    )
     await expect(answers(page).locator(`img[src="${IMAGE_ADDRESS}"]`)).toHaveCount(0)
+    // Evaluated once the page has settled after the answer, not in the moment it appears.
+    await page.waitForLoadState('networkidle')
     expect(imageRequests).toEqual([])
   })
 
@@ -137,9 +140,24 @@ test.describe.serial('Linkregel und präparierte Dokumente in Antworten (#3051)'
   }) => {
     await page.goto('/admin/connections/settings')
 
+    // A positive signal first: absent sections alone would also pass on a page still loading.
+    await expect(
+      page.getByText('Für Ihr Konto ist diese Seite nicht freigegeben.', { exact: false }),
+    ).toBeVisible()
     await expect(page.getByLabel('Neues Linkziel')).toHaveCount(0)
     await expect(page.getByRole('list', { name: 'Erlaubte Linkziele' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /^Linkziel .* entfernen$/ })).toHaveCount(0)
+
+    // The interface hiding the section is no proof of the role check; the API refuses as well.
+    const api = await apiAs('dev-user')
+    try {
+      const response = await api.put('/api/v1/system/link-targets', {
+        data: { allowedOrigins: ['https://fremd.e2e.example'] },
+      })
+      expect(response.status(), await response.text()).toBe(403)
+    } finally {
+      await api.dispose()
+    }
   })
 
   test('4. Ein Link, den ein präpariertes Dokument verlangt, bleibt Text; der Beleg zeigt das Dokument', async (
