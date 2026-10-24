@@ -1,5 +1,6 @@
 import {
   MAX_SMB_FOLDERS,
+  sameSmbShare,
   smbCredentialsOf,
   smbFoldersOf,
   smbIssue,
@@ -38,7 +39,7 @@ export const smbSetup: SourceSetupSpec<SmbSourceValues> = {
         ['account', 'password'],
         values.account.trim(),
         values.password,
-        credentialsKept(context, values.sourceUrl),
+        credentialsKept(context, values.sourceUrl, sameSmbShare),
         'Benutzername',
       )
     }
