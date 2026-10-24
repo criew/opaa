@@ -99,7 +99,7 @@ async function tabExists(page, tab) {
 async function openRuns(page) {
   const heading = await firstVisible(page.getByRole('heading', { name: /^Läufe$/ }).or(page.getByText(/^Läufe$/)))
   if (!heading) return false
-  const first = await firstVisible(page.locator('#library-tabpanel-quelle .MuiAccordionSummary-root, #library-tabpanel-quelle [aria-expanded=false]'))
+  const first = await firstVisible(page.locator('#library-tabpanel-quelle .MuiAccordionSummary-root'))
   if (first) {
     await first.click().catch(() => {})
     await settle(page, 300)

@@ -10,6 +10,8 @@ import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockAuthConfig } from '@/shared/mocks/authFixtures'
 import { mockLibraries, mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
 import { applyLibraryScenario } from '@/features/library/mocks/libraryScenarioFixtures'
+import { scenarioSpaces } from '@/features/library/mocks/detailScenarioFixtures'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
 import {
   mockPromptLibraries,
   mockUnreadablePromptLibraryIds,
@@ -63,7 +65,7 @@ function readableEntries(): CatalogEntryResponse[] {
       sourceBlock: library.sourceBlock ?? null,
     },
     itemCount: library.documentCount,
-    spaceCount: 0,
+    spaceCount: scenarioSpaces(currentMockScenario())?.length ?? 0,
     favorite: mockFavoriteAssets.has(favoriteKey('KNOWLEDGE_LIBRARY', library.id)),
     succession: library.succession ?? null,
   }))

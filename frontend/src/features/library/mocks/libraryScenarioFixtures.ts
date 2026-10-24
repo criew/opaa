@@ -216,6 +216,8 @@ export function applyLibraryScenario(): void {
     const overlay = overlayFor(scenario, id)
     const next: LibraryResponse = overlay ? { ...original, ...overlay(original) } : original
     if (role && !next.privateLibrary) next.myRole = role
+    // the backend always names the owner; the fixtures leave it out
+    if (scenario !== 'default') next.ownerName ??= 'Erika Muster'
     const documents = scenarioDocuments(next, scenario)
     if (documents) {
       mockLibraryDocuments[id] = documents
@@ -230,6 +232,7 @@ export function applyLibraryScenario(): void {
     if (listed) {
       listed.name = next.name
       listed.myRole = next.myRole
+      listed.ownerName = next.ownerName
       listed.documentCount = next.documentCount ?? 0
       if (next.sourceType !== 'UPLOAD') {
         listed.lastIndexedAt = scenario === 'empty' ? undefined : SOURCE_LIBRARY_LAST_INDEXED
@@ -270,7 +273,7 @@ interface RunSpec {
   minutes?: number
 }
 
-function run(i: number, spec: RunSpec): Run {
+function runOf(i: number, spec: RunSpec, documents = 1340): Run {
   const started = new Date(Date.UTC(2026, 9, 24 - i, 4, 0))
   const minutes = spec.minutes ?? 7
   const completed = new Date(started.getTime() + minutes * 60_000)
@@ -278,7 +281,7 @@ function run(i: number, spec: RunSpec): Run {
   const shown = Math.min(events, EVENT_CAP)
   const failed = spec.failed ?? 0
   const ended = spec.status === 'FAILED'
-  const total = ended ? 0 : 1340
+  const total = ended ? 0 : documents + failed + 3
   return {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     status: spec.status,
@@ -329,6 +332,9 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
   ) {
     return { runs: [] }
   }
+  // the runs read as many documents as the library holds
+  const held = libraryId ? mockLibraryDocuments[libraryId]?.length : undefined
+  const run = (i: number, spec: RunSpec) => runOf(i, spec, held)
   switch (scenario) {
     case 'small':
       return { runs: [run(1, { status: 'COMPLETED' }), run(2, { status: 'COMPLETED', events: 1 })] }
