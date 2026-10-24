@@ -34,6 +34,15 @@ describe('answerAsHtml', () => {
     expect(html).toContain('mail (mailto:a@b.example)')
   })
 
+  test('puts the resolved address of an allowed link into the HTML, never a scheme-only target', () => {
+    const html = answerAsHtml('[a](https:evil.example/x) [b](/api/docs/1)', NOTE, [], PAGE)
+
+    expect(html).not.toContain('href="https:evil')
+    expect(html).not.toContain('href="/api')
+    expect(html).toContain('<a href="https://opaa.example/evil.example/x">a</a>')
+    expect(html).toContain('<a href="https://opaa.example/api/docs/1">b</a>')
+  })
+
   test('shows footnotes with a German visible heading and without jump links', () => {
     const html = answerAsHtml('Kostet 42 Euro[^1].\n\n[^1]: 001_personalausweis.md', NOTE, [], PAGE)
 
@@ -43,6 +52,7 @@ describe('answerAsHtml', () => {
     expect(html).not.toContain('sr-only')
     expect(html).not.toContain('Back to reference')
     expect(html).not.toContain('href=')
+    expect(html).not.toContain('↩')
   })
 
   test('escapes the note', () => {

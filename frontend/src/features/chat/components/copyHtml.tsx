@@ -27,7 +27,7 @@ export function answerAsHtml(
         remarkRehypeOptions={{
           footnoteLabel: 'Quellen',
           footnoteLabelProperties: {},
-          footnoteBackContent: '',
+          footnoteBackContent: () => [],
         }}
       >
         {markdown}
@@ -46,7 +46,11 @@ function componentsFor(allowedOrigins: readonly string[], pageHref: string): Com
       // Footnote marks and their back links point inside the chat page; pasted elsewhere they
       // would lead nowhere, so they stay plain text.
       if (href === undefined || href.startsWith('#')) return <>{children}</>
-      if (isAllowedLinkTarget(href, pageHref, allowedOrigins)) return <a href={href}>{children}</a>
+      // The resolved address goes into the HTML: the pasted document has no chat page to resolve
+      // a relative or scheme-only target (`https:host/x`) against, and would read it differently.
+      if (isAllowedLinkTarget(href, pageHref, allowedOrigins)) {
+        return <a href={new URL(href, pageHref).href}>{children}</a>
+      }
       return linkAsText(children, href)
     },
     img: ({ src, alt }) => (
