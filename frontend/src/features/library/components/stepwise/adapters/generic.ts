@@ -39,7 +39,12 @@ export const filesystemStepwise: StepwiseSource<FilesystemSourceValues> = {
   connectionRows: (values) => [
     { label: 'Verzeichnispfad', value: values.sourcePath, mono: true },
     linesOf(values.excludePatterns).length > 0
-      ? { label: 'Ausschlussmuster', value: `${linesOf(values.excludePatterns).length} Muster`, list: linesOf(values.excludePatterns), mono: true }
+      ? {
+          label: 'Ausschlussmuster',
+          value: `${linesOf(values.excludePatterns).length} Muster`,
+          list: linesOf(values.excludePatterns),
+          mono: true,
+        }
       : { label: 'Ausschlussmuster', value: 'Keine' },
   ],
 }
@@ -47,7 +52,13 @@ export const filesystemStepwise: StepwiseSource<FilesystemSourceValues> = {
 export const urlStepwise: StepwiseSource<GenericSourceValues> = {
   connectionHeading: 'Verbindung zur Webquelle',
   fields: () => [
-    { key: 'sourceUrl', label: 'Adresse', kind: 'text', mono: true, placeholder: 'https://example.de/dokumente/' },
+    {
+      key: 'sourceUrl',
+      label: 'Adresse',
+      kind: 'text',
+      mono: true,
+      placeholder: 'https://example.de/dokumente/',
+    },
     {
       key: 'sourceCredentials',
       label: 'Zugangsdaten',
@@ -66,6 +77,9 @@ export const urlStepwise: StepwiseSource<GenericSourceValues> = {
   signsIn: false,
   connectionRows: (values, { credentialsStored }) => [
     { label: 'Adresse', value: values.sourceUrl, mono: true },
-    { label: 'Zugangsdaten', value: values.sourceCredentials ? 'Eingegeben' : credentialsStored ? 'Gesetzt' : 'Keine' },
+    {
+      label: 'Zugangsdaten',
+      value: values.sourceCredentials ? 'Eingegeben' : credentialsStored ? 'Gesetzt' : 'Keine',
+    },
   ],
 }

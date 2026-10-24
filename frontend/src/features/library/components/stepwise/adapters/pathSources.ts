@@ -1,20 +1,11 @@
 import { DropboxTeamSwitch } from './ScopeExtras'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { browseSource } from '../../../api/libraryApi'
-import {
-  nextcloudCredentialsOf,
-  type NextcloudSourceValues,
-} from '../../../utils/nextcloudSource'
+import { nextcloudCredentialsOf, type NextcloudSourceValues } from '../../../utils/nextcloudSource'
 import { smbCredentialsOf, type SmbSourceValues } from '../../../utils/smbSource'
 import { DROPBOX_API, type DropboxSourceValues } from '../../../utils/dropboxSource'
 import type { FieldErrors, FieldSpec, StepContext, StepwiseScope, StepwiseSource } from '../types'
-import {
-  addressError,
-  asksCredentials,
-  credentialsRow,
-  linesOf,
-  pathNode,
-} from './common'
+import { addressError, asksCredentials, credentialsRow, linesOf, pathNode } from './common'
 
 type FolderValues = { folders: string }
 
@@ -56,7 +47,8 @@ function folderScope<V extends FolderValues>(
       linesOf(values.folders)
         .filter((folder) => folder !== '/')
         .map((folder) => pathNode(folder)),
-    withSelection: (_values, nodes) => ({ folders: nodes.map((node) => node.id).join('\n') }) as Partial<V>,
+    withSelection: (_values, nodes) =>
+      ({ folders: nodes.map((node) => node.id).join('\n') }) as Partial<V>,
     max: 50,
     errors: (values) => {
       const errors: FieldErrors = {}
@@ -72,7 +64,9 @@ function folderScope<V extends FolderValues>(
         message?: string | null
       }>
       return Object.fromEntries(
-        folders.filter((f) => !f.reachable).map((f) => [f.folder, f.message ?? 'Zugriff verweigert.']),
+        folders
+          .filter((f) => !f.reachable)
+          .map((f) => [f.folder, f.message ?? 'Zugriff verweigert.']),
       )
     },
   }
@@ -100,7 +94,13 @@ export const nextcloudStepwise: StepwiseSource<NextcloudSourceValues> = {
     ]
     if (ctx.fields.asksSecret) {
       specs.push(
-        { key: 'username', label: 'Benutzername', kind: 'text', credential: true, autoComplete: 'off' },
+        {
+          key: 'username',
+          label: 'Benutzername',
+          kind: 'text',
+          credential: true,
+          autoComplete: 'off',
+        },
         {
           key: 'appPassword',
           label: 'App-Passwort',
@@ -117,7 +117,8 @@ export const nextcloudStepwise: StepwiseSource<NextcloudSourceValues> = {
     addressError(values.sourceUrl, errors)
     if (asksCredentials(ctx)) {
       if (values.username.trim() === '') errors.username = 'Bitte den Benutzernamen eingeben.'
-      else if (values.username.includes(':')) errors.username = 'Der Benutzername enthält keinen Doppelpunkt.'
+      else if (values.username.includes(':'))
+        errors.username = 'Der Benutzername enthält keinen Doppelpunkt.'
       if (values.appPassword === '') errors.appPassword = 'Bitte das App-Passwort eingeben.'
     }
     return errors
@@ -150,7 +151,13 @@ export const smbStepwise: StepwiseSource<SmbSourceValues> = {
       mono: true,
       hint: 'Auch als \\\\server\\freigabe.',
     },
-    { key: 'account', label: 'Benutzername', kind: 'text', credential: true, hint: 'Mit Domäne, z. B. RATHAUS\\svc-opaa.' },
+    {
+      key: 'account',
+      label: 'Benutzername',
+      kind: 'text',
+      credential: true,
+      hint: 'Mit Domäne, z. B. RATHAUS\\svc-opaa.',
+    },
     { key: 'password', label: 'Passwort', kind: 'secret', credential: true },
   ],
   connectionErrors: (values, ctx) => {
@@ -178,7 +185,10 @@ export const smbStepwise: StepwiseSource<SmbSourceValues> = {
   ],
   scope: folderScope<SmbSourceValues>(
     'SMB',
-    (values) => ({ sourceUrl: values.sourceUrl.trim(), sourceCredentials: smbCredentialsOf(values) }),
+    (values) => ({
+      sourceUrl: values.sourceUrl.trim(),
+      sourceCredentials: smbCredentialsOf(values),
+    }),
     () => ({}),
     'Die ganze Freigabe',
   ),

@@ -7,7 +7,11 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { fontFamily } from '@/shared/theme/tokens'
-import { isValidS3BucketName, normalizeS3Prefix, type S3SourceValues } from '../../../utils/s3Source'
+import {
+  isValidS3BucketName,
+  normalizeS3Prefix,
+  type S3SourceValues,
+} from '../../../utils/s3Source'
 import type { DropboxSourceValues } from '../../../utils/dropboxSource'
 import type { GoogleDriveSourceValues } from '../../../utils/googleDriveSource'
 
@@ -37,7 +41,9 @@ export function S3ManualEntry({ values, onChange, idPrefix }: ExtraProps<S3Sourc
     setPrefix('')
   }
   return (
-    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start', maxWidth: 560 }}>
+    <Box
+      sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start', maxWidth: 560 }}
+    >
       <Box sx={{ flex: '1 1 180px' }}>
         <FieldLabel htmlFor={`${idPrefix}-manual-bucket`}>Bucket</FieldLabel>
         <TextField
@@ -72,13 +78,21 @@ export function S3ManualEntry({ values, onChange, idPrefix }: ExtraProps<S3Sourc
 }
 
 /** A Drive folder by its id, for folders the service account sees but the listing does not show. */
-export function DriveManualEntry({ values, onChange, idPrefix }: ExtraProps<GoogleDriveSourceValues>) {
+export function DriveManualEntry({
+  values,
+  onChange,
+  idPrefix,
+}: ExtraProps<GoogleDriveSourceValues>) {
   const [id, setId] = useState('')
   const [error, setError] = useState<string | null>(null)
   function add() {
     const folder = id.trim()
     if (!/^[A-Za-z0-9_-]{10,200}$/.test(folder)) {
-      setError(folder === '' ? 'Bitte die Ordner-ID eingeben.' : 'Die Ordner-ID steht in der Adresse des Ordners nach /folders/.')
+      setError(
+        folder === ''
+          ? 'Bitte die Ordner-ID eingeben.'
+          : 'Die Ordner-ID steht in der Adresse des Ordners nach /folders/.',
+      )
       return
     }
     setError(null)
@@ -86,7 +100,9 @@ export function DriveManualEntry({ values, onChange, idPrefix }: ExtraProps<Goog
     setId('')
   }
   return (
-    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start', maxWidth: 560 }}>
+    <Box
+      sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start', maxWidth: 560 }}
+    >
       <Box sx={{ flex: '1 1 240px' }}>
         <FieldLabel htmlFor={`${idPrefix}-manual-folder`}>Ordner-ID</FieldLabel>
         <TextField
@@ -115,7 +131,10 @@ export function DropboxTeamSwitch({ values, onChange }: ExtraProps<DropboxSource
     <Box sx={{ mb: 2 }}>
       <FormControlLabel
         control={
-          <Switch checked={values.teamSpace} onChange={(e) => onChange({ teamSpace: e.target.checked })} />
+          <Switch
+            checked={values.teamSpace}
+            onChange={(e) => onChange({ teamSpace: e.target.checked })}
+          />
         }
         label="Team-Bereich lesen"
       />

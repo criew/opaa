@@ -21,7 +21,14 @@ function selectionOf(values: SharePointSourceValues): ScopeNode[] {
     const libraryName = sharePointLibraryLabel(library)
     if (library.folders.length === 0) {
       return [
-        { id: libraryId, name: libraryName, ancestors: [], trail: [], expandable: true, selectable: true },
+        {
+          id: libraryId,
+          name: libraryName,
+          ancestors: [],
+          trail: [],
+          expandable: true,
+          selectable: true,
+        },
       ]
     }
     return library.folders.map((folder) => ({
@@ -76,7 +83,9 @@ export const sharePointStepwise: StepwiseSource<SharePointSourceValues> = {
           : kind?.kind === 'drive'
             ? { drive: kind.id }
             : {
-                drive: parent.ancestors.find((id) => id.startsWith('drive:'))?.slice('drive:'.length),
+                drive: parent.ancestors
+                  .find((id) => id.startsWith('drive:'))
+                  ?.slice('drive:'.length),
                 folder: kind?.id,
               }
       const result = await browse(query, ctx)
@@ -103,7 +112,9 @@ export const sharePointStepwise: StepwiseSource<SharePointSourceValues> = {
     withSelection: (_values, nodes) => ({ libraries: librariesOf(nodes) }),
     max: 50,
     errors: (values) =>
-      values.libraries.length === 0 ? { scope: 'Bitte mindestens eine Dokumentbibliothek wählen.' } : {},
+      values.libraries.length === 0
+        ? { scope: 'Bitte mindestens eine Dokumentbibliothek wählen.' }
+        : {},
     failedEntries: (response) => {
       const libraries = (response.details?.libraries ?? []) as Array<{
         driveId: string
@@ -111,7 +122,9 @@ export const sharePointStepwise: StepwiseSource<SharePointSourceValues> = {
         message?: string | null
       }>
       return Object.fromEntries(
-        libraries.filter((l) => !l.reachable).map((l) => [`drive:${l.driveId}`, l.message ?? 'nicht erreichbar']),
+        libraries
+          .filter((l) => !l.reachable)
+          .map((l) => [`drive:${l.driveId}`, l.message ?? 'nicht erreichbar']),
       )
     },
   },

@@ -72,7 +72,9 @@ export async function checkByListing(
     return {
       stages: stages('ok', 'ok', 'open'),
       message:
-        result.entries.length === 1 ? `1 Eintrag sichtbar.` : `${result.entries.length} Einträge sichtbar.`,
+        result.entries.length === 1
+          ? `1 Eintrag sichtbar.`
+          : `${result.entries.length} Einträge sichtbar.`,
       ok: true,
     }
   } catch (err) {
@@ -117,7 +119,10 @@ export async function checkRights<V>(
     const anyFailed = Object.keys(failedEntries).length > 0
     return {
       ...outcome,
-      stages: anyFailed && outcome.stages.rights === 'ok' ? stages('ok', outcome.stages.signIn, 'limited') : outcome.stages,
+      stages:
+        anyFailed && outcome.stages.rights === 'ok'
+          ? stages('ok', outcome.stages.signIn, 'limited')
+          : outcome.stages,
       ok: outcome.ok && !anyFailed,
       failedEntries,
     }

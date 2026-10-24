@@ -31,7 +31,8 @@ const ORDER: CheckStage[] = ['address', 'signIn', 'rights']
 
 function StageIcon({ state }: { state: StageState }) {
   const sx = { fontSize: 18, flex: 'none' }
-  if (state === 'ok') return <CheckCircleOutlined aria-hidden sx={{ ...sx, color: 'success.main' }} />
+  if (state === 'ok')
+    return <CheckCircleOutlined aria-hidden sx={{ ...sx, color: 'success.main' }} />
   if (state === 'failed') return <ErrorOutlined aria-hidden sx={{ ...sx, color: 'error.main' }} />
   if (state === 'limited')
     return <WarningAmberOutlined aria-hidden sx={{ ...sx, color: 'warning.main' }} />
@@ -52,13 +53,22 @@ export default function CheckResult({
 }) {
   return (
     <Box data-testid="check-result" sx={{ mt: 1.5, maxWidth: 560 }}>
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Box
+        component="ul"
+        sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+      >
         {ORDER.filter((stage) => outcome.stages[stage] !== 'none').map((stage) => {
           const state = outcome.stages[stage] as Exclude<StageState, 'none'>
           const word =
-            stage === 'rights' && state === 'open' && rightsOpenLabel ? rightsOpenLabel : WORDS[stage][state]
+            stage === 'rights' && state === 'open' && rightsOpenLabel
+              ? rightsOpenLabel
+              : WORDS[stage][state]
           return (
-            <Box component="li" key={stage} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14 }}>
+            <Box
+              component="li"
+              key={stage}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 14 }}
+            >
               <StageIcon state={state} />
               <span>{word}</span>
             </Box>

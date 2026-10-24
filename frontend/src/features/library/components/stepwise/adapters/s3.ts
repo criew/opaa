@@ -24,7 +24,14 @@ export function s3Node(bucket: string, prefix: string): ScopeNode {
     ...segments.slice(0, -1).map((_, i) => `p:${bucket}:${segments.slice(0, i + 1).join('/')}/`),
   ]
   if (segments.length === 0) {
-    return { id: `b:${bucket}`, name: bucket, ancestors: [], trail: [], expandable: true, selectable: true }
+    return {
+      id: `b:${bucket}`,
+      name: bucket,
+      ancestors: [],
+      trail: [],
+      expandable: true,
+      selectable: true,
+    }
   }
   return {
     id: `p:${bucket}:${segments.join('/')}/`,
@@ -71,7 +78,8 @@ export const s3Stepwise: StepwiseSource<S3SourceValues> = {
         label: values.provider === 'HETZNER' ? 'Standort' : 'Region',
         kind: 'text',
         mono: true,
-        optional: values.provider === 'MINIO' || values.provider === 'CEPH' || values.provider === 'OTHER',
+        optional:
+          values.provider === 'MINIO' || values.provider === 'CEPH' || values.provider === 'OTHER',
         placeholder: values.provider === 'HETZNER' ? 'fsn1' : 'eu-central-1',
       },
       {
@@ -112,8 +120,14 @@ export const s3Stepwise: StepwiseSource<S3SourceValues> = {
   connectionErrors: (values, ctx) => {
     const errors: FieldErrors = {}
     addressError(values.sourceUrl, errors)
-    if ((values.provider === 'AWS' || values.provider === 'HETZNER') && values.region.trim() === '') {
-      errors.region = values.provider === 'HETZNER' ? 'Bitte den Standort eingeben.' : 'Bitte die Region eingeben.'
+    if (
+      (values.provider === 'AWS' || values.provider === 'HETZNER') &&
+      values.region.trim() === ''
+    ) {
+      errors.region =
+        values.provider === 'HETZNER'
+          ? 'Bitte den Standort eingeben.'
+          : 'Bitte die Region eingeben.'
     }
     if (asksCredentials(ctx)) {
       if (values.accessKey.trim() === '') errors.accessKey = 'Bitte den Access Key eingeben.'
@@ -121,7 +135,10 @@ export const s3Stepwise: StepwiseSource<S3SourceValues> = {
     }
     return errors
   },
-  stageFields: { address: ['sourceUrl', 'region'], signIn: ['accessKey', 'secretKey', 'sessionToken'] },
+  stageFields: {
+    address: ['sourceUrl', 'region'],
+    signIn: ['accessKey', 'secretKey', 'sessionToken'],
+  },
   check: (values, ctx) =>
     checkByListing(() => browseSource('S3', listingRequest(values, ctx, {})), 'Buckets'),
   connectionRows: (values, { credentialsStored }) => [
@@ -149,7 +166,9 @@ export const s3Stepwise: StepwiseSource<S3SourceValues> = {
       }
     },
     selection: (values) =>
-      chosenScopes(values).map((scope) => s3Node(scope.bucket.trim(), normalizeS3Prefix(scope.prefix))),
+      chosenScopes(values).map((scope) =>
+        s3Node(scope.bucket.trim(), normalizeS3Prefix(scope.prefix)),
+      ),
     withSelection: (_values, nodes) => ({ scopes: nodes.map(s3ScopeOfNode) }),
     max: 50,
     Manual: S3ManualEntry,

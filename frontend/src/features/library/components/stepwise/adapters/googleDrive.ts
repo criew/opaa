@@ -55,7 +55,9 @@ export const googleDriveStepwise: StepwiseSource<GoogleDriveSourceValues> = {
         hint: 'JSON-Schlüssel des Dienstkontos aus der Google Cloud Console.',
         readFile: (text) => {
           const read = readGoogleDriveKey(text)
-          return 'error' in read ? { error: read.error } : { patch: { keyFile: text, keyAccount: read.account } }
+          return 'error' in read
+            ? { error: read.error }
+            : { patch: { keyFile: text, keyAccount: read.account } }
         },
         fileName: (values) => (values.keyAccount ? String(values.keyAccount) : null),
       })
@@ -77,7 +79,9 @@ export const googleDriveStepwise: StepwiseSource<GoogleDriveSourceValues> = {
     const keyServes =
       !ctx.fields.asksSecret ||
       values.keyFile !== '' ||
-      (ctx.mode === 'edit' && !ctx.replacingCredentials && storedKeyServes(values, ctx.credentialsStored))
+      (ctx.mode === 'edit' &&
+        !ctx.replacingCredentials &&
+        storedKeyServes(values, ctx.credentialsStored))
     if (!keyServes) {
       errors.keyFile =
         ctx.mode === 'edit'
@@ -116,7 +120,9 @@ export const googleDriveStepwise: StepwiseSource<GoogleDriveSourceValues> = {
     },
     selection: (values) => values.scopes.map(driveNode),
     withSelection: (_values, nodes) => ({
-      scopes: nodes.map(driveScopeOfNode).filter((scope): scope is GoogleDriveScope => scope !== null),
+      scopes: nodes
+        .map(driveScopeOfNode)
+        .filter((scope): scope is GoogleDriveScope => scope !== null),
     }),
     max: 50,
     Manual: DriveManualEntry,

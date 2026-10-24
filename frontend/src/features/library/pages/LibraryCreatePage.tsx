@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import { useNavigate } from 'react-router'
+import ChevronLeft from '@mui/icons-material/ChevronLeft'
+import { useNavigate, useSearchParams } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
 import type { SourceFormContext } from '../components/sources/types'
-import { reportSourceIssue } from '../components/sources/reportSourceIssue'
-import type { SourceIssue } from '../utils/sourceIssue'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -42,13 +44,11 @@ import {
   type ConfluenceFullSyncRhythm,
   type LibraryScheduleValues,
 } from '../utils/librarySchedule'
-import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
-import { AssetNameFields } from '@/features/asset'
 import { applyPendingGrantsAfterCreation, type PendingGrant } from '@/features/asset'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { documentSourceTypeDescription } from '../components/sources/sourceLabels'
@@ -63,43 +63,57 @@ import {
   CONSENT_REQUIRED,
   NOTHING_CREATABLE,
   PENDING_CONNECTION_UNUSABLE,
-  STEP_NAME,
-  STEP_SHARING,
-  STEP_SOURCE_SETUP,
-  STEP_SOURCE_TYPE,
   restoredDraft,
   restoredSourceValues,
-  stepHeadings,
-  stepsFor,
 } from '../components/libraryCreateWizard'
 import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
-import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
-import LibraryCreateFooter from '../components/LibraryCreateFooter'
+import ConnectionProfileSelect from '../components/ConnectionProfileSelect'
+import SourceConsentPanel from '../components/SourceConsentPanel'
+import LibraryScheduleForm from '../components/LibraryScheduleForm'
+import { scheduleFrequencyLabel } from '../components/scheduleLabels'
+import ConnectionPage from '../components/stepwise/ConnectionPage'
+import { checkSummary, fieldId, stageErrors } from '../components/stepwise/stepErrors'
+import ErrorSummary, { type SummaryError } from '../components/stepwise/ErrorSummary'
+import FieldList from '../components/stepwise/FieldList'
+import ScopePicker from '../components/stepwise/ScopePicker'
+import SummaryList, { type SummarySection } from '../components/stepwise/SummaryList'
+import CheckResult from '../components/stepwise/CheckResult'
+import { checkConnection, checkRights, useCheck } from '../components/stepwise/connectionCheck'
+import type { FieldErrors, StepContext } from '../components/stepwise/types'
+
+/** The steps of the wizard, one thing each; the key stands in the address (`?schritt=`). */
+type StepKey = 'quellart' | 'verbindung' | 'umfang' | 'zeitplan' | 'name' | 'freigaben' | 'pruefen'
+
+const STEP_LABELS: Record<StepKey, string> = {
+  quellart: 'Quellart',
+  verbindung: 'Verbindung',
+  umfang: 'Umfang',
+  zeitplan: 'Zeitplan',
+  name: 'Name',
+  freigaben: 'Freigaben',
+  pruefen: 'Prüfen',
+}
+
+const ID = 'library-create'
 
 /**
- * The creation wizard for knowledge libraries. Every step
- * corresponds to a tab of the detail page and uses its forms - source forms,
- * connection test, schedule and the release building blocks are shared components, not fields
- * of this page.
+ * The creation wizard for knowledge libraries in the stepwise variant: one thing per page
+ * (Quellart → Verbindung → Umfang → Zeitplan → Name → Freigaben → Prüfen). A step without
+ * content for the source type is left out; the page „Prüfen“ lists every answer with „Ändern“,
+ * which leads to the step and back. Each step is an entry in the browser history, so the
+ * browser's back button goes one step back without losing anything.
  */
 export default function LibraryCreatePage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
   const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
 
-  // A consent for the source leaves for the provider; the wizard comes back on „Quelle einrichten“.
   const [restored] = useState(restoredDraft)
   const draft = restored?.draft
-  const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
-  const [error, setError] = useState<string | null>(null)
-  // an issue of the source form that names a field; it is shown there instead of in `error`
-  const [sourceIssue, setSourceIssue] = useState<SourceIssue | null>(null)
-  const sourceFormRef = useRef<HTMLDivElement>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
-  // connector library reaches server paths and stored credentials. A missing right is explained
-  // rather than hidden; the backend refuses the same call regardless.
   const { isMissing } = useMyCapabilities()
 
   const [name, setName] = useState(draft?.name ?? '')
@@ -112,23 +126,17 @@ export default function LibraryCreatePage() {
   const myGroups = useMyGroups()
 
   const [chosenType, setSourceType] = useState<SourceTypeKey>(draft?.sourceType ?? 'UPLOAD')
-  // The entered values of every source form, by type key - a form keeps its values when another
-  // tile is chosen and chosen back.
   const [sourceValues, setSourceValues] = useState<Record<SourceTypeKey, unknown>>(() =>
     restoredSourceValues(restored),
   )
-  // The chosen profile (or OWN_ADDRESS) by type key; what stands in effect derives from it.
   const [chosenConnections, setChosenConnections] = useState<Record<SourceTypeKey, string>>(
     draft?.chosenConnections ?? {},
   )
   const [schedule, setSchedule] = useState<LibraryScheduleValues>(
     () => draft?.schedule ?? scheduleValuesFrom(null),
   )
-  // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
-  // right after creation unless switched off, for every connector type.
   const [startFirstRun, setStartFirstRun] = useState(draft?.startFirstRun ?? true)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>(draft?.pendingGrants ?? [])
-  // The consent given at the provider, by the profile it was given on; it waits for the creation.
   const [pending, setPending] = useState<{
     profileId: string
     connection: PendingSourceConnection
@@ -139,6 +147,14 @@ export default function LibraryCreatePage() {
   const [confirmationMissing, setConfirmationMissing] = useState(false)
   const [connectingSource, setConnectingSource] = useState(false)
   const [responsibleIsGroup, setResponsibleIsGroup] = useState(draft?.responsibleIsGroup ?? false)
+
+  // validation shows after „Weiter“ on a step, and for a field left with a value in it
+  const [attempted, setAttempted] = useState<Set<StepKey>>(new Set())
+  const [touched, setTouched] = useState<Set<string>>(new Set())
+  // „Ändern“ on the page „Prüfen“: the step leads back there
+  const [returnToReview, setReturnToReview] = useState(false)
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const [focusSummary, setFocusSummary] = useState(0)
 
   const {
     sourceTypes,
@@ -159,16 +175,14 @@ export default function LibraryCreatePage() {
   const configuration = uploadLibrary
     ? null
     : (sourceRegistration(sourceType)?.configuration ?? null)
+  const stepwise = configuration?.stepwise ?? null
+  const scope = stepwise?.scope ?? null
   const valuesKey = configuration?.valuesKey ?? sourceType
 
-  // The connection profile is a choice of the wizard, not of the source forms: it stands above the
-  // form and hands it address, authentication type and defaults.
   const descriptor = sourceTypes.find((d) => d.type === sourceType)
   const admitsProfiles =
     configuration !== null && descriptor !== undefined && descriptor.profileSupport !== 'FORBIDDEN'
   const profileOptions = useConnectionProfileOptions(admitsProfiles ? sourceType : null)
-  // Freiwilligkeit: the private way exists only on a profile the person already connected an
-  // account on (ConnectionProfileOption.ownAccount); without one nothing hints at it.
   const selectable =
     admitsProfiles && descriptor
       ? selectableConnections(descriptor, profileOptions.options, true)
@@ -188,8 +202,6 @@ export default function LibraryCreatePage() {
   const awaitsConsent = consentProfile !== undefined && pendingConnection === null
   const groupResponsible =
     consentProfile !== undefined && ownerType === 'GROUP' && selectedGroup !== null
-  const steps = stepsFor(uploadLibrary, privateLibrary)
-  const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const showConnectionSelect =
     admitsProfiles &&
     descriptor !== undefined &&
@@ -200,6 +212,43 @@ export default function LibraryCreatePage() {
       ownAddressAllowed(descriptor)
     )
 
+  const steps: StepKey[] = uploadLibrary
+    ? ['quellart', 'name', 'freigaben', 'pruefen']
+    : [
+        'quellart',
+        'verbindung',
+        ...(scope ? (['umfang'] as const) : []),
+        'zeitplan',
+        'name',
+        ...(privateLibrary ? [] : (['freigaben'] as const)),
+        'pruefen',
+      ]
+  const requested = searchParams.get('schritt') as StepKey | null
+  const current: StepKey = requested && steps.includes(requested) ? requested : steps[0]
+  const stepIndex = steps.indexOf(current)
+
+  // A reload loses the entries; the wizard then starts over instead of showing a half-empty step.
+  const initialized = useRef(false)
+  useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+    const start: StepKey = restored ? 'verbindung' : 'quellart'
+    if (searchParams.get('schritt') !== start) go(start, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function go(step: StepKey, replace = false) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('schritt', step)
+        return next
+      },
+      { replace },
+    )
+    setPageError(null)
+  }
+
   const values: unknown = withConnection(
     sourceValues[valuesKey] ?? configuration?.empty,
     connection,
@@ -207,19 +256,25 @@ export default function LibraryCreatePage() {
   const formContext: SourceFormContext = {
     mode: 'create',
     sourceType,
-    idPrefix: 'library-create',
+    idPrefix: ID,
     credentialsStored: false,
     connection,
     privateLibrary,
     pendingConnectionId: pendingConnection?.id,
   }
+  const stepCtx: StepContext = {
+    mode: 'create',
+    sourceType,
+    credentialsStored: false,
+    replacingCredentials: false,
+    fields: connectionFields(formContext),
+    formContext,
+  }
 
-  /** A new choice of way; address and fixed fields of the previous one do not carry over. */
   function chooseConnection(next: string) {
     if (next === connectionChoice) return
     setChosenConnections((prev) => ({ ...prev, [sourceType]: next }))
     const nextOption = profileOptions.options.find((option) => option.id === profileOfChoice(next))
-    // private and shared on the same profile share its address and fixed fields
     if (configuration && profileOfChoice(next) !== profileOfChoice(connectionChoice)) {
       setSourceValues((prev) => ({
         ...prev,
@@ -232,17 +287,22 @@ export default function LibraryCreatePage() {
         ),
       }))
     }
-    setError(null)
-    setSourceIssue(null)
+    setPageError(null)
   }
-  // a new library has no rhythm of its own yet; empty means the instance's, named by the type
+
+  function changeSource(patch: object) {
+    const adjusted = stepwise?.adjust ? stepwise.adjust(patch as never, values as never) : patch
+    setSourceValues((prev) => ({
+      ...prev,
+      [valuesKey]: { ...(values as object), ...withoutFixed(adjusted as object, connection) },
+    }))
+    setPageError(null)
+  }
+
   const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
     ? { intervalDays: null, defaultDays: descriptor?.fullSyncIntervalDefaultDays ?? null }
     : undefined
-  // Without the list of source types nothing may be chosen - not even the upload library a stale
-  // default would otherwise let through.
   const typesUnavailable = !sourceTypesLoaded || sourceTypesError != null
-
   const requiredCapability: Capability = capabilityFor(sourceType)
   const missingCapability = nothingUsable
     ? NOTHING_CREATABLE
@@ -250,8 +310,145 @@ export default function LibraryCreatePage() {
       ? capabilityMissingMessage(requiredCapability)
       : releaseMissingFor(sourceType)
 
-  // Focus follows the step (WCAG 2.4.3): after „Weiter" it is on the heading of the new
-  // step, not on the button that has just disappeared.
+  // ---- errors and checks ------------------------------------------------------------------------
+
+  const specs = stepwise ? stepwise.fields(values as never, stepCtx) : []
+  const connectionToken = JSON.stringify({
+    sourceType,
+    connectionChoice,
+    pending: pendingConnection?.id ?? null,
+    fields: specs.map((spec) => (values as Record<string, unknown>)?.[spec.key] ?? null),
+  })
+  const connectionCheck = useCheck(connectionToken)
+  const selectionToken = JSON.stringify({
+    connectionToken,
+    selection: scope ? scope.selection(values as never).map((node) => node.id) : [],
+    whole: scope?.whole?.isWhole(values as never) ?? false,
+  })
+  const rightsCheck = useCheck(selectionToken)
+
+  const filled = (key: string) =>
+    String((values as Record<string, unknown>)?.[key] ?? '').trim() !== ''
+  function visible(errors: FieldErrors, step: StepKey) {
+    if (attempted.has(step)) return errors
+    return Object.fromEntries(
+      Object.entries(errors).filter(([key]) => touched.has(key) && filled(key)),
+    ) as FieldErrors
+  }
+
+  const connectionProblems: FieldErrors = stepwise
+    ? stepwise.connectionErrors(values as never, stepCtx)
+    : {}
+  const scopeProblems: FieldErrors = scope ? scope.errors(values as never, stepCtx) : {}
+  const scheduleProblem = validateScheduleValues(schedule, confluenceRhythm)
+  const nameProblem = name.trim() === '' ? 'Bitte einen Namen eingeben.' : null
+  const groupProblem =
+    !privateLibrary && ownerType === 'GROUP' && !selectedGroup ? 'Bitte eine Gruppe wählen.' : null
+
+  const shownConnectionErrors: FieldErrors = {
+    ...stageErrors(
+      stepwise ?? ({ stageFields: { address: [], signIn: [] } } as never),
+      specs,
+      connectionCheck.outcome,
+    ),
+    ...visible(connectionProblems, 'verbindung'),
+  }
+
+  function connectionGate(): string | null {
+    if (!configuration) return null
+    if (connectionChoice === null) {
+      return !profileOptions.loaded
+        ? 'Die Zugänge werden noch geladen.'
+        : selectable.length > 0
+          ? 'Bitte wählen Sie einen Zugang.'
+          : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'
+    }
+    if (awaitsConsent) return CONSENT_REQUIRED
+    return null
+  }
+
+  function summaryFor(step: StepKey): SummaryError[] {
+    if (!attempted.has(step)) return []
+    const toField = (errors: FieldErrors) =>
+      Object.entries(errors).map(([key, message]) => ({
+        message: message as string,
+        targetId: key === 'scope' ? `${ID}-field-scope` : fieldId(ID, key),
+      }))
+    switch (step) {
+      case 'verbindung': {
+        const gate = connectionGate()
+        if (gate) return [{ message: gate }]
+        const list: SummaryError[] = toField(connectionProblems)
+        const outcome = connectionCheck.outcome
+        if (list.length === 0 && outcome && !outcome.ok) {
+          const failedKey = [
+            ...(outcome.stages.address === 'failed' ? stepwise!.stageFields.address : []),
+            ...(outcome.stages.signIn === 'failed' ? stepwise!.stageFields.signIn : []),
+          ].find((key) => specs.some((spec) => spec.key === key))
+          list.push({
+            message: checkSummary(outcome),
+            targetId: failedKey ? fieldId(ID, failedKey) : undefined,
+          })
+        }
+        return list
+      }
+      case 'umfang': {
+        const list: SummaryError[] = toField(scopeProblems)
+        const outcome = rightsCheck.outcome
+        if (list.length === 0 && outcome && !outcome.ok) {
+          const failed = Object.keys(outcome.failedEntries ?? {}).length
+          list.push({
+            message:
+              failed > 0
+                ? `${failed} ${failed === 1 ? 'ausgewählter Eintrag ist' : 'ausgewählte Einträge sind'} nicht lesbar.`
+                : checkSummary(outcome),
+            targetId: `${ID}-field-scope`,
+          })
+        }
+        return list
+      }
+      case 'zeitplan':
+        return scheduleProblem
+          ? [{ message: scheduleProblem, targetId: `${ID}-schedule-time` }]
+          : []
+      case 'name':
+        return nameProblem ? [{ message: nameProblem, targetId: fieldId(ID, 'name') }] : []
+      case 'freigaben':
+        return groupProblem ? [{ message: groupProblem }] : []
+      case 'pruefen':
+        return reviewProblems()
+      default:
+        return []
+    }
+  }
+
+  function reviewProblems(): SummaryError[] {
+    const list: SummaryError[] = []
+    const jump = (step: StepKey) => () => {
+      setReturnToReview(true)
+      setAttempted((prev) => new Set(prev).add(step))
+      go(step)
+    }
+    if (configuration && (connectionGate() || Object.keys(connectionProblems).length > 0)) {
+      list.push({ message: 'Die Verbindung ist unvollständig.', onSelect: jump('verbindung') })
+    }
+    if (scope && Object.keys(scopeProblems).length > 0) {
+      list.push({ message: Object.values(scopeProblems)[0] as string, onSelect: jump('umfang') })
+    }
+    if (configuration && scheduleProblem)
+      list.push({ message: scheduleProblem, onSelect: jump('zeitplan') })
+    if (nameProblem) list.push({ message: nameProblem, onSelect: jump('name') })
+    if (groupProblem) list.push({ message: groupProblem, onSelect: jump('freigaben') })
+    if (missingCapability) list.push({ message: missingCapability })
+    return list
+  }
+
+  const summary = summaryFor(current)
+  useEffect(() => {
+    if (focusSummary > 0) summaryRef.current?.focus()
+  }, [focusSummary])
+
+  // Focus follows the step (WCAG 2.4.3): after „Weiter“ it is on the heading of the new step.
   const stepHeadingRef = useRef<HTMLHeadingElement>(null)
   const firstRender = useRef(true)
   useEffect(() => {
@@ -260,16 +457,16 @@ export default function LibraryCreatePage() {
       return
     }
     stepHeadingRef.current?.focus()
-  }, [activeStep])
+  }, [current])
 
-  // Back from the provider: the draft is consumed, and the focus lands on the step it left.
   useEffect(() => {
     if (!restored) return
     forgetConsentIntent()
     stepHeadingRef.current?.focus()
   }, [restored])
 
-  /** The configuration whose form keeps its values under `key`. */
+  // ---- navigation ------------------------------------------------------------------------------
+
   const configurationForValues = (key: string) =>
     registeredSourceTypes
       .map((type) => ({ type, registered: sourceRegistration(type)?.configuration }))
@@ -298,7 +495,6 @@ export default function LibraryCreatePage() {
     navigate(CATALOG_ROUTE)
   }
 
-  /** Keeps the draft for the return and leaves for the provider's consent in this tab. */
   async function handleConnectSource() {
     if (!consentProfile || connectingSource) return
     if (!serviceAccountConfirmed) {
@@ -306,7 +502,7 @@ export default function LibraryCreatePage() {
       return
     }
     setConnectingSource(true)
-    setError(null)
+    setPageError(null)
     rememberConsentIntent({
       purpose: 'LIBRARY_NEW',
       profileId: consentProfile.id,
@@ -334,7 +530,7 @@ export default function LibraryCreatePage() {
       leaveFor(started.authorizationUrl)
     } catch (err) {
       forgetConsentIntent()
-      setError(
+      setPageError(
         err instanceof Error && err.message
           ? err.message
           : 'Die Anmeldung beim Anbieter ließ sich nicht starten.',
@@ -343,83 +539,113 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleNext = () => {
-    if (currentStep === STEP_SOURCE_TYPE && typesUnavailable) {
-      setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
+  function advance() {
+    setPageError(null)
+    if (returnToReview && current !== 'verbindung') {
+      setReturnToReview(false)
+      go('pruefen')
       return
     }
-    // the hint above the step bar already says why nothing can be created
-    if (currentStep === STEP_SOURCE_TYPE && nothingUsable) return
-    if (currentStep === STEP_SOURCE_SETUP && configuration) {
-      if (connectionChoice === null) {
-        setError(
-          !profileOptions.loaded
-            ? 'Die Zugänge werden noch geladen'
-            : selectable.length > 0
-              ? 'Bitte wählen Sie einen Zugang.'
-              : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
-        )
+    go(steps[stepIndex + 1])
+  }
+
+  function fail(step: StepKey) {
+    setAttempted((prev) => new Set(prev).add(step))
+    setFocusSummary((n) => n + 1)
+  }
+
+  async function runConnectionCheck() {
+    if (!configuration || !stepwise) return null
+    const outcome = await connectionCheck.run(() =>
+      checkConnection(configuration, stepwise, values, stepCtx),
+    )
+    if (outcome.patch) changeSource(outcome.patch)
+    return outcome
+  }
+
+  const handleNext = async () => {
+    if (current === 'quellart') {
+      if (typesUnavailable) {
+        setPageError(sourceTypesError ?? 'Die Quellarten werden noch geladen.')
         return
       }
-      if (awaitsConsent) {
-        setError(CONSENT_REQUIRED)
+      if (nothingUsable) return
+      advance()
+      return
+    }
+    if (current === 'verbindung') {
+      if (connectionGate() || Object.keys(connectionProblems).length > 0) {
+        fail('verbindung')
         return
       }
-      const validationIssue = configuration.validate(values, formContext)
-      if (validationIssue) {
-        // a field's issue takes the focus to the field; one without is announced in place
-        reportSourceIssue(
-          validationIssue,
-          (shown) => {
-            setSourceIssue(shown.field ? shown : null)
-            setError(shown.field ? null : shown.message)
-          },
-          sourceFormRef.current,
-          () => {},
-        )
+      const outcome = connectionCheck.outcome ?? (await runConnectionCheck())
+      if (!outcome || !outcome.ok) {
+        fail('verbindung')
         return
       }
-      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
-      if (scheduleError) {
-        setError(scheduleError)
+      if (returnToReview && !scope) {
+        setReturnToReview(false)
+        go('pruefen')
         return
       }
-      // Where the source provides it, the name comes from it - as long as nobody has typed one.
-      if (!nameTouched && name.trim() === '') {
+      advance()
+      return
+    }
+    if (current === 'umfang' && configuration && stepwise) {
+      if (Object.keys(scopeProblems).length > 0) {
+        fail('umfang')
+        return
+      }
+      const outcome =
+        rightsCheck.outcome ??
+        (await rightsCheck.run(() => checkRights(configuration, stepwise, values, stepCtx)))
+      if (!outcome.ok) {
+        fail('umfang')
+        return
+      }
+      advance()
+      return
+    }
+    if (current === 'zeitplan') {
+      if (scheduleProblem) {
+        fail('zeitplan')
+        return
+      }
+      if (!nameTouched && name.trim() === '' && configuration) {
         setName(configuration.nameFromSource(values))
       }
-    }
-    if (currentStep === STEP_NAME && name.trim() === '') {
-      setError('Bitte einen Namen angeben')
+      advance()
       return
     }
-    if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
+    if (current === 'name') {
+      if (nameProblem) {
+        fail('name')
+        return
+      }
+      advance()
       return
     }
-    setError(null)
-    setSourceIssue(null)
-    setActiveStep((s) => s + 1)
+    if (current === 'freigaben') {
+      if (groupProblem) {
+        fail('freigaben')
+        return
+      }
+      advance()
+    }
   }
 
   const handleCreate = async () => {
-    if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
-      return
-    }
-    const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
-    if (scheduleError) {
-      setError(scheduleError)
+    if (submitting) return
+    if (reviewProblems().length > 0) {
+      fail('pruefen')
       return
     }
     setSubmitting(true)
-    setError(null)
+    setPageError(null)
     try {
       const source = configuration
         ? payloadUnder(configuration.toPayload(values), connectionFields(formContext))
         : {}
-      // Creation and schedule are set atomically; an upload library gets none at all
-      // (the backend would reject anything but DISABLED with 400).
       const scheduled = !uploadLibrary
         ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
         : undefined
@@ -427,7 +653,6 @@ export default function LibraryCreatePage() {
         source.sourceSettings || scheduled?.sourceSettings
           ? { ...source.sourceSettings, ...scheduled?.sourceSettings }
           : undefined
-      // A private library belongs to the caller alone and carries no grant but hers.
       const owner = privateLibrary ? 'USER' : ownerType
       const libraryId = await createNewLibrary({
         name: name.trim(),
@@ -449,184 +674,368 @@ export default function LibraryCreatePage() {
         await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
       }
       if (!uploadLibrary && startFirstRun) {
-        // Awaited so the run is already in the indexing store when the detail page mounts and its
-        // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
-        // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
         await triggerIndexing(libraryId, sourceType)
       }
       forgetConsentIntent()
       navigate(`/libraries/${libraryId}`)
     } catch (err) {
       if (apiErrorCode(err) === 'PENDING_CONNECTION_UNUSABLE') {
-        // expired or used up: back to „Quelle einrichten“, where the source is connected again
         setPending(null)
         setServiceAccountConfirmed(false)
-        setActiveStep(steps.indexOf(STEP_SOURCE_SETUP))
-        setError(PENDING_CONNECTION_UNUSABLE)
+        go('verbindung')
+        setPageError(PENDING_CONNECTION_UNUSABLE)
       } else {
-        setError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
+        setPageError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
       }
       setSubmitting(false)
     }
   }
 
+  // ---- texts -----------------------------------------------------------------------------------
+
+  const typeName = displayNameOf(sourceType)
+  const headings: Record<StepKey, string> = {
+    quellart: 'Woher kommt das Wissen?',
+    verbindung: stepwise?.connectionHeading ?? `Verbindung zu ${typeName}`,
+    umfang: scope?.heading ?? 'Umfang',
+    zeitplan: 'Wann soll die Bibliothek aktualisiert werden?',
+    name: 'Wie soll die Bibliothek heißen?',
+    freigaben: 'Wem gehört die Bibliothek?',
+    pruefen: 'Prüfen und anlegen',
+  }
+  const stepCaption = `Schritt ${stepIndex + 1} von ${steps.length}`
+  const documentTitle = `${summary.length > 0 ? 'Fehler: ' : ''}${stepCaption}: ${STEP_LABELS[current]} – Neue Wissensbibliothek`
   const firstRunHint =
     configuration?.firstRunHint ??
     'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
-  const SourceForm = configuration?.Form
+  const ownerLabel = privateLibrary
+    ? 'Nur Sie (private Bibliothek)'
+    : ownerType === 'GROUP'
+      ? `Gruppe ${selectedGroup?.name ?? '–'}`
+      : 'Mein Konto'
+
+  function reviewSections(): SummarySection[] {
+    const change = (step: StepKey) => () => {
+      setReturnToReview(true)
+      go(step)
+    }
+    const sections: SummarySection[] = [
+      {
+        title: 'Quelle',
+        rows: [
+          { label: 'Quellart', value: typeName },
+          ...(configuration && showConnectionSelect
+            ? [
+                {
+                  label: 'Zugang',
+                  value: chosenProfile ? chosenProfile.name : 'Eigene Adresse',
+                },
+              ]
+            : []),
+        ],
+        onChange: () => {
+          setReturnToReview(false)
+          go('quellart')
+        },
+      },
+    ]
+    if (stepwise) {
+      const rows = stepwise.connectionRows(values as never, { credentialsStored: false })
+      if (pendingConnection) {
+        rows.push({ label: 'Verbunden als', value: pendingConnection.accountLabel ?? 'Verbunden' })
+      }
+      if (rows.length > 0)
+        sections.push({ title: 'Verbindung', rows, onChange: change('verbindung') })
+    }
+    if (scope && stepwise?.scopeRows) {
+      sections.push({
+        title: 'Umfang',
+        rows: stepwise.scopeRows(values as never),
+        onChange: change('umfang'),
+      })
+    }
+    if (configuration) {
+      sections.push({
+        title: 'Zeitplan',
+        rows: [
+          { label: 'Häufigkeit', value: scheduleFrequencyLabel(schedule.frequency) },
+          {
+            label: 'Erster Lauf',
+            value: startFirstRun ? 'Gleich nach dem Anlegen' : 'Nach Zeitplan oder von Hand',
+          },
+        ],
+        onChange: change('zeitplan'),
+      })
+    }
+    sections.push({
+      title: 'Name',
+      rows: [
+        { label: 'Name', value: name.trim() || '–' },
+        { label: 'Beschreibung', value: description.trim() || 'Keine' },
+      ],
+      onChange: change('name'),
+    })
+    if (!privateLibrary) {
+      sections.push({
+        title: 'Freigaben',
+        rows: [
+          { label: 'Eigentümer', value: ownerLabel },
+          {
+            label: 'Freigaben',
+            value:
+              pendingGrants.length === 0
+                ? 'Keine'
+                : pendingGrants.length === 1
+                  ? '1 vorgemerkt'
+                  : `${pendingGrants.length} vorgemerkt`,
+          },
+        ],
+        onChange: change('freigaben'),
+      })
+    }
+    return sections
+  }
+
+  // ---- render ----------------------------------------------------------------------------------
+
+  const isLast = current === 'pruefen'
+  const busy = connectionCheck.running || rightsCheck.running
 
   return (
-    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
+    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 5 } }}>
       <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
-          Neue Wissensbibliothek
+        <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
+        <Box sx={{ minHeight: 32, mb: 2 }}>
+          {stepIndex > 0 && (
+            <Button
+              variant="text"
+              startIcon={<ChevronLeft />}
+              onClick={() => go(steps[stepIndex - 1])}
+              disabled={submitting}
+              sx={{ ml: -1 }}
+            >
+              Zurück
+            </Button>
+          )}
+        </Box>
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 0.5 }}>
+          {`${stepCaption} · Neue Wissensbibliothek`}
         </Typography>
-        <PageHeading title="Neue Wissensbibliothek" visuallyHidden />
         <Typography
           ref={stepHeadingRef}
           component="h2"
           tabIndex={-1}
-          sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}
+          sx={{
+            fontSize: { xs: 22, sm: 26 },
+            fontWeight: 600,
+            mb: 3,
+            outline: 'none',
+            hyphens: 'auto',
+          }}
+          lang="de"
         >
-          {stepHeadings[currentStep] ?? currentStep}
+          {headings[current]}
         </Typography>
-        <WizardStepBar steps={steps} active={activeStep} />
 
-        {missingCapability && (
+        {missingCapability && (current === 'quellart' || isLast) && (
           <Alert severity="info" sx={{ mb: 2 }} id="library-create-capability-hint">
             {missingCapability}
           </Alert>
         )}
 
-        {/* A step's error is announced without moving the focus (WCAG 4.1.3). */}
+        <ErrorSummary ref={summaryRef} errors={summary} />
         <Box role="alert" aria-live="polite">
-          {error && (
+          {pageError && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+              {pageError}
             </Alert>
           )}
         </Box>
 
-        {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-            Quellarten werden geladen …
-          </Typography>
-        )}
-
-        {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2 }}
-            action={
-              <Button color="inherit" size="small" onClick={reloadSourceTypes}>
-                Erneut versuchen
-              </Button>
-            }
-          >
-            Die Quellarten konnten nicht geladen werden. Versuchen Sie es in einem Moment erneut.
-          </Alert>
-        )}
-
-        {currentStep === STEP_SOURCE_TYPE &&
-          sourceTypesLoaded &&
-          !sourceTypesError &&
-          shownTypes.length > 0 && (
-            <ChoiceTileGroup<SourceTypeKey>
-              aria-label="Quellart wählen"
-              value={sourceType}
-              onChange={(next) => {
-                setSourceType(next)
-                setError(null)
-              }}
-              tiles={shownTypes.map((type) => ({
-                value: type,
-                label: displayNameOf(type),
-                description: documentSourceTypeDescription(type),
-                icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
-                disabledReason: missingFor(type),
-              }))}
-            />
-          )}
-
-        {currentStep === STEP_SOURCE_SETUP && (
-          <CreateSourceSetupStep
-            showConnectionSelect={showConnectionSelect}
-            descriptor={descriptor}
-            profileOptions={profileOptions}
-            connectionChoice={connectionChoice}
-            onChooseConnection={chooseConnection}
-            consentProfile={consentProfile}
-            pendingConnection={pendingConnection}
-            serviceAccountConfirmed={serviceAccountConfirmed}
-            onServiceAccountConfirmedChange={(checked) => {
-              setServiceAccountConfirmed(checked)
-              if (checked) setConfirmationMissing(false)
-            }}
-            confirmationMissing={confirmationMissing}
-            connectingSource={connectingSource}
-            onConnectSource={() => void handleConnectSource()}
-            SourceForm={SourceForm}
-            awaitsConsent={awaitsConsent}
-            sourceFormRef={sourceFormRef}
-            sourceIssue={sourceIssue}
-            values={values}
-            formContext={formContext}
-            onSourceChange={(patch: object) => {
-              setSourceValues((prev) => ({
-                ...prev,
-                [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
-              }))
-              setError(null)
-              setSourceIssue(null)
-            }}
-            schedule={schedule}
-            onScheduleChange={(patch) => {
-              setSchedule((prev) => ({ ...prev, ...patch }))
-              setError(null)
-            }}
-            confluenceRhythm={confluenceRhythm}
-            startFirstRun={startFirstRun}
-            onStartFirstRunChange={setStartFirstRun}
-            firstRunHint={firstRunHint}
-          />
-        )}
-
-        {currentStep === STEP_NAME && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            {uploadLibrary && (
+        {current === 'quellart' && (
+          <>
+            {!sourceTypesLoaded && (
               <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-                Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
-                gebündelt.
+                Quellarten werden geladen …
+              </Typography>
+            )}
+            {sourceTypesError && (
+              <Box>
+                <Typography sx={{ fontSize: 14, mb: 1 }}>
+                  Die Quellarten konnten nicht geladen werden.
+                </Typography>
+                <Button variant="outlined" onClick={reloadSourceTypes}>
+                  Erneut versuchen
+                </Button>
+              </Box>
+            )}
+            {sourceTypesLoaded && !sourceTypesError && shownTypes.length > 0 && (
+              <ChoiceTileGroup<SourceTypeKey>
+                aria-label="Quellart wählen"
+                value={sourceType}
+                onChange={(next) => {
+                  setSourceType(next)
+                  setPageError(null)
+                }}
+                tiles={shownTypes.map((type) => ({
+                  value: type,
+                  label: displayNameOf(type),
+                  description: documentSourceTypeDescription(type),
+                  icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
+                  disabledReason: missingFor(type),
+                }))}
+              />
+            )}
+          </>
+        )}
+
+        {current === 'verbindung' && configuration && stepwise && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {showConnectionSelect && descriptor && (
+              <ConnectionProfileSelect
+                descriptor={descriptor}
+                state={profileOptions}
+                value={connectionChoice}
+                onChange={chooseConnection}
+                offerOwnAddress
+                offerPrivate
+                idPrefix={ID}
+              />
+            )}
+            {consentProfile && (
+              <SourceConsentPanel
+                profileName={consentProfile.name}
+                pending={pendingConnection}
+                confirmed={serviceAccountConfirmed}
+                onConfirmedChange={(checked) => {
+                  setServiceAccountConfirmed(checked)
+                  if (checked) setConfirmationMissing(false)
+                }}
+                confirmationMissing={confirmationMissing}
+                busy={connectingSource}
+                onConnect={() => void handleConnectSource()}
+              />
+            )}
+            {connectionChoice !== null && !awaitsConsent && (
+              <ConnectionPage
+                key={connectionChoice}
+                stepwise={stepwise}
+                specs={specs}
+                values={values}
+                onChange={changeSource}
+                ctx={stepCtx}
+                idPrefix={ID}
+                errors={shownConnectionErrors}
+                onLeave={(key) => setTouched((prev) => new Set(prev).add(key))}
+                outcome={connectionCheck.outcome}
+                checking={connectionCheck.running}
+                onCheck={() => void runConnectionCheck()}
+                onProceedAnyway={advance}
+                onReplacingChange={() => {}}
+              />
+            )}
+          </Box>
+        )}
+
+        {current === 'umfang' && scope && (
+          <Box>
+            <ScopePicker
+              key={connectionToken}
+              scope={scope}
+              values={values as never}
+              onChange={changeSource}
+              ctx={stepCtx}
+              idPrefix={ID}
+              error={visible(scopeProblems, 'umfang').scope}
+              failedEntries={rightsCheck.outcome?.failedEntries}
+            />
+            {rightsCheck.outcome && (
+              <Box role="status" aria-live="polite" sx={{ mt: 2 }}>
+                <CheckResult outcome={rightsCheck.outcome} />
+                {!rightsCheck.outcome.ok && (
+                  <Button variant="text" size="small" onClick={advance} sx={{ mt: 1, ml: -1 }}>
+                    Ohne erfolgreiche Prüfung weiter
+                  </Button>
+                )}
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {current === 'zeitplan' && configuration && (
+          <Box sx={{ maxWidth: 560 }}>
+            <LibraryScheduleForm
+              idPrefix={`${ID}-schedule`}
+              values={schedule}
+              onChange={(patch) => setSchedule((prev) => ({ ...prev, ...patch }))}
+              confluence={confluenceRhythm}
+            />
+            <FormControlLabel
+              sx={{ mt: 3 }}
+              control={
+                <Switch
+                  checked={startFirstRun}
+                  onChange={(e) => setStartFirstRun(e.target.checked)}
+                />
+              }
+              label="Erste Indizierung gleich nach dem Anlegen"
+            />
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+              {startFirstRun
+                ? firstRunHint
+                : 'Sonst beginnt die Indizierung erst über „Jetzt indizieren“ oder den Zeitplan.'}
+            </Typography>
+          </Box>
+        )}
+
+        {current === 'name' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {uploadLibrary && (
+              <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 560 }}>
+                Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch.
               </Typography>
             )}
             {privateLibrary && (
-              <Alert severity="info" data-testid="library-create-private-note">
+              <Typography
+                data-testid="library-create-private-note"
+                sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 560 }}
+              >
                 {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto auf dem Zugang „
-                {connection?.name}“ und lässt sich weder freigeben noch übertragen.
-              </Alert>
+                {connection?.name}“.
+              </Typography>
             )}
-            <AssetNameFields
-              idPrefix="library-create"
-              name={name}
-              onNameChange={(next) => {
-                setNameTouched(true)
-                setName(next)
-                setError(null)
+            <FieldList
+              specs={[
+                {
+                  key: 'name',
+                  label: 'Name',
+                  kind: 'text',
+                  placeholder: 'z. B. Rechtsquellen Soziales',
+                },
+                { key: 'description', label: 'Beschreibung', kind: 'multiline', optional: true },
+              ]}
+              values={{ name, description }}
+              onChange={(patch) => {
+                if ('name' in patch) {
+                  setNameTouched(true)
+                  setName(String(patch.name))
+                }
+                if ('description' in patch) setDescription(String(patch.description))
               }}
-              description={description}
-              onDescriptionChange={setDescription}
-              namePlaceholder="z. B. Rechtsquellen Soziales"
+              errors={attempted.has('name') && nameProblem ? { name: nameProblem } : {}}
+              idPrefix={ID}
+              mode="create"
+              credentialsStored={false}
+              replacing={false}
+              onReplacingChange={() => {}}
             />
           </Box>
         )}
 
-        {currentStep === STEP_SHARING && (
+        {current === 'freigaben' && (
           <CreateSharingStep
             ownerType={ownerType}
-            onOwnerTypeChange={(next) => {
-              setOwnerType(next)
-              setError(null)
-            }}
+            onOwnerTypeChange={(next) => setOwnerType(next)}
             myGroups={myGroups}
             selectedGroup={selectedGroup}
             onSelectedGroupChange={setSelectedGroup}
@@ -639,23 +1048,32 @@ export default function LibraryCreatePage() {
           />
         )}
 
-        <LibraryCreateFooter
-          activeStep={activeStep}
-          stepCount={steps.length}
-          submitting={submitting}
-          pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
-          nextDisabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
-          missingCapability={missingCapability}
-          hasName={name.trim() !== ''}
-          onCancel={() => void handleCancel()}
-          onBack={() => {
-            setError(null)
-            setSourceIssue(null)
-            setActiveStep((s) => s - 1)
-          }}
-          onNext={handleNext}
-          onCreate={() => void handleCreate()}
-        />
+        {current === 'pruefen' && <SummaryList sections={reviewSections()} />}
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 5, flexWrap: 'wrap' }}>
+          {isLast ? (
+            <BusyButton
+              variant="contained"
+              busy={submitting}
+              busyAnnouncement="Bibliothek wird angelegt"
+              onClick={() => void handleCreate()}
+            >
+              {submitting ? 'Wird angelegt …' : 'Bibliothek anlegen'}
+            </BusyButton>
+          ) : (
+            <BusyButton
+              variant="contained"
+              busy={busy}
+              busyAnnouncement="Wird geprüft"
+              onClick={() => void handleNext()}
+            >
+              {busy ? 'Wird geprüft …' : 'Weiter'}
+            </BusyButton>
+          )}
+          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
+            Abbrechen
+          </Button>
+        </Box>
       </Box>
     </Box>
   )

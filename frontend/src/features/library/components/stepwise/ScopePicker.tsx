@@ -169,7 +169,9 @@ export default function ScopePicker<V>({
   const allLoaded = useMemo(() => Object.values(levels).flatMap((level) => level.nodes), [levels])
   const root = levels[ROOT]
   const trimmed = query.trim().toLowerCase()
-  const hits = trimmed ? allLoaded.filter((node) => node.name.toLowerCase().includes(trimmed)) : null
+  const hits = trimmed
+    ? allLoaded.filter((node) => node.name.toLowerCase().includes(trimmed))
+    : null
   const showSearch = (root?.nodes.length ?? 0) >= SEARCH_FROM || trimmed !== ''
 
   const listLabelId = `${idPrefix}-scope-list-label`
@@ -305,7 +307,12 @@ export default function ScopePicker<V>({
           </Box>
           {slow &&
             [0, 1, 2].map((i) => (
-              <Skeleton key={i} variant="rounded" height={28} sx={{ my: 0.75, maxWidth: 360 - i * 60 }} />
+              <Skeleton
+                key={i}
+                variant="rounded"
+                height={28}
+                sx={{ my: 0.75, maxWidth: 360 - i * 60 }}
+              />
             ))}
         </Box>
       )
@@ -353,7 +360,12 @@ export default function ScopePicker<V>({
       <>
         {!level.complete && level.message && (
           <Typography
-            sx={{ fontSize: 12.5, color: 'text.secondary', py: 0.75, pl: { xs: `${depth * 12}px`, sm: `${depth * 24 + 32}px` } }}
+            sx={{
+              fontSize: 12.5,
+              color: 'text.secondary',
+              py: 0.75,
+              pl: { xs: `${depth * 12}px`, sm: `${depth * 24 + 32}px` },
+            }}
           >
             Unvollständig: {level.message}
           </Typography>
@@ -396,15 +408,30 @@ export default function ScopePicker<V>({
           onChange={(event) => onChange(scope.whole!.set(values, event.target.value === 'whole'))}
           sx={{ mb: 2 }}
         >
-          <FormControlLabel value="whole" control={<Radio size="small" />} label={scope.whole.label} />
-          <FormControlLabel value="part" control={<Radio size="small" />} label={scope.whole.partLabel} />
+          <FormControlLabel
+            value="whole"
+            control={<Radio size="small" />}
+            label={scope.whole.label}
+          />
+          <FormControlLabel
+            value="part"
+            control={<Radio size="small" />}
+            label={scope.whole.partLabel}
+          />
         </RadioGroup>
       )}
 
       {!whole && (
         <>
           <Box
-            sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minHeight: 36, mb: 1 }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              minHeight: 36,
+              mb: 1,
+            }}
             aria-live="polite"
           >
             <Typography id={listLabelId} sx={{ fontSize: 14, fontWeight: 600 }}>
@@ -416,7 +443,12 @@ export default function ScopePicker<V>({
               {`höchstens ${scope.max}`}
             </Typography>
             {selected.length > 0 && (
-              <Button variant="text" size="small" onClick={() => setSelection([])} sx={{ ml: 'auto' }}>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setSelection([])}
+                sx={{ ml: 'auto' }}
+              >
                 Auswahl aufheben
               </Button>
             )}
@@ -470,8 +502,15 @@ export default function ScopePicker<V>({
                   },
                 }}
               />
-              {hits && <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{`${hits.length} Treffer`}</Typography>}
-              {!hits && !scope.hierarchical && root?.status === 'done' && chooseAllButton(root.nodes, false)}
+              {hits && (
+                <Typography
+                  sx={{ fontSize: 12.5, color: 'text.secondary' }}
+                >{`${hits.length} Treffer`}</Typography>
+              )}
+              {!hits &&
+                !scope.hierarchical &&
+                root?.status === 'done' &&
+                chooseAllButton(root.nodes, false)}
               {hits && chooseAllButton(hits, true)}
             </Box>
           )}
@@ -490,7 +529,9 @@ export default function ScopePicker<V>({
             {hits ? (
               hits.length === 0 ? (
                 <Box sx={{ py: 1.5 }}>
-                  <Typography sx={{ fontSize: 13.5 }}>{`Keine Treffer für „${query.trim()}“.`}</Typography>
+                  <Typography
+                    sx={{ fontSize: 13.5 }}
+                  >{`Keine Treffer für „${query.trim()}“.`}</Typography>
                   <Button variant="text" size="small" onClick={() => setQuery('')}>
                     Suche zurücksetzen
                   </Button>
@@ -506,7 +547,9 @@ export default function ScopePicker<V>({
                     <Button
                       variant="text"
                       size="small"
-                      onClick={() => setPages((prev) => ({ ...prev, __hits: (prev.__hits ?? PAGE) + PAGE }))}
+                      onClick={() =>
+                        setPages((prev) => ({ ...prev, __hits: (prev.__hits ?? PAGE) + PAGE }))
+                      }
                     >
                       {`Weitere Treffer anzeigen`}
                     </Button>
@@ -547,7 +590,12 @@ function ManualEntry({
   return (
     <Box sx={{ mt: 2 }}>
       {!open && (
-        <Button variant="text" size="small" aria-expanded={visible} onClick={() => setShown((s) => !s)}>
+        <Button
+          variant="text"
+          size="small"
+          aria-expanded={visible}
+          onClick={() => setShown((s) => !s)}
+        >
           {`${singular} von Hand angeben`}
         </Button>
       )}

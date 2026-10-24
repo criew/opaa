@@ -14,6 +14,7 @@ import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { fontFamily } from '@/shared/theme/tokens'
 import type { FieldErrors, FieldSpec } from './types'
+import { fieldId } from './stepErrors'
 
 interface FieldListProps {
   specs: FieldSpec[]
@@ -27,11 +28,6 @@ interface FieldListProps {
   onReplacingChange: (replacing: boolean) => void
   /** Called when a field is left; the page validates there, never while typing a first time. */
   onLeave?: (key: string) => void
-}
-
-/** The id of a field's input, also the target of the error summary's links. */
-export function fieldId(idPrefix: string, key: string) {
-  return `${idPrefix}-field-${key}`
 }
 
 const hintSx = { fontSize: 12.5, color: 'text.secondary', mb: 1, mt: -0.5 }
@@ -183,16 +179,22 @@ function Field({ spec, value, values, error, idPrefix, onChange, onLeave }: Fiel
             id={id}
             variant="outlined"
             onClick={() => fileRef.current?.click()}
-            aria-describedby={[describedBy, shownError ? `${id}-error` : undefined]
-              .filter(Boolean)
-              .join(' ') || undefined}
+            aria-describedby={
+              [describedBy, shownError ? `${id}-error` : undefined].filter(Boolean).join(' ') ||
+              undefined
+            }
             aria-invalid={shownError ? true : undefined}
             sx={shownError ? { borderColor: 'error.main' } : undefined}
           >
             {chosen ? 'Andere Datei wählen' : 'Datei wählen'}
           </Button>
           <Typography
-            sx={{ fontSize: 13.5, color: chosen ? 'text.primary' : 'text.secondary', minWidth: 0, overflowWrap: 'anywhere' }}
+            sx={{
+              fontSize: 13.5,
+              color: chosen ? 'text.primary' : 'text.secondary',
+              minWidth: 0,
+              overflowWrap: 'anywhere',
+            }}
           >
             {chosen ?? 'Keine Datei gewählt'}
           </Typography>

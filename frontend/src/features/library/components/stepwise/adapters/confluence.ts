@@ -106,7 +106,9 @@ export const confluenceStepwise: StepwiseSource<ConfluenceSourceValues> = {
       const outcome = outcomeOfTest(signed, { signsIn: true, rightsLater: true })
       const verified = signed.credentialsVerified === true
       return {
-        ...(verified ? outcome : { ...outcome, ok: false, stages: { address: 'ok', signIn: 'failed', rights: 'open' } }),
+        ...(verified
+          ? outcome
+          : { ...outcome, ok: false, stages: { address: 'ok', signIn: 'failed', rights: 'open' } }),
         patch: { edition, credentialsVerified: verified },
       }
     } catch (err) {
@@ -115,7 +117,10 @@ export const confluenceStepwise: StepwiseSource<ConfluenceSourceValues> = {
   },
   connectionRows: (values, { credentialsStored }) => [
     { label: 'Adresse', value: values.sourceUrl, mono: true },
-    { label: 'Edition', value: values.edition ? confluenceEditionLabel(values.edition) : 'Noch nicht erkannt' },
+    {
+      label: 'Edition',
+      value: values.edition ? confluenceEditionLabel(values.edition) : 'Noch nicht erkannt',
+    },
     credentialsRow(credentialsStored, values.token !== ''),
   ],
   scope: {
@@ -146,7 +151,9 @@ export const confluenceStepwise: StepwiseSource<ConfluenceSourceValues> = {
       values.spaces.length === 0 ? { scope: 'Bitte mindestens einen Space wählen.' } : {},
     failedEntries: (response) => {
       const unreadable = (response.details?.unreadableSpaces ?? []) as string[]
-      return Object.fromEntries(unreadable.map((key) => [key, 'kein Leserecht für das Dienstkonto']))
+      return Object.fromEntries(
+        unreadable.map((key) => [key, 'kein Leserecht für das Dienstkonto']),
+      )
     },
   },
   scopeRows: (values) => [

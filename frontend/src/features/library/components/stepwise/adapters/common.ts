@@ -39,7 +39,14 @@ export function pathNode(path: string, name?: string | null): ScopeNode {
 
 /** The lines of a multi-line field, trimmed, without blanks and duplicates. */
 export function linesOf(text: string): string[] {
-  return [...new Set(text.split('\n').map((line) => line.trim()).filter(Boolean))]
+  return [
+    ...new Set(
+      text
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean),
+    ),
+  ]
 }
 
 export function credentialsRow(stored: boolean, entered: boolean): SummaryRow {
