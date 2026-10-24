@@ -38,7 +38,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The storage quota across all private libraries of a person against the Liquibase schema: a second
+ * The storage quota across all private libraries of a person against the Flyway schema: a second
  * private library does not open more room, concurrent intake into several of them never stores past
  * the limit, the person reads her own use, and the administration sets the house-wide value and
  * sees no person's use.

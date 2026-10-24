@@ -40,11 +40,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * event produces BOTH the {@link PermissionHistoryService} interval and the audit entry - the
  * double bookkeeping the two hand-paired calls these events replace used to require callers to
  * remember - and a rollback of the publishing transaction removes both together, exactly like a
- * single write would. Runs against a real Postgres database with the real, versioned Liquibase
- * schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) and the real Spring
- * {@link ApplicationEventPublisher}/{@code @EventListener} wiring - {@code AssetAuditListener} and
- * {@code AssetHistoryListener} (both package-private in {@code io.opaa.asset}) are real beans here,
- * not mocked away, since the whole point is to exercise both listeners actually running.
+ * single write would. Runs against a real Postgres database with the real, versioned Flyway schema
+ * applied ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}) and the real Spring {@link
+ * ApplicationEventPublisher}/{@code @EventListener} wiring - {@code AssetAuditListener} and {@code
+ * AssetHistoryListener} (both package-private in {@code io.opaa.asset}) are real beans here, not
+ * mocked away, since the whole point is to exercise both listeners actually running.
  *
  * <p>Publishes the events directly rather than through {@link AssetGrantService}/{@link
  * KnowledgeLibraryService} - those services' own field-identical behaviour is already pinned by

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-23 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-10-24 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
@@ -169,7 +169,7 @@ Drift; ein Zähler kennt keine Uhr.
 ### 7. Geplante Läufe: ShedLock und Merker mit Datenbankzusage
 
 - **Sperre je Lauf:** Jede `@Scheduled`-Methode trägt eine ShedLock-Sperre (`@SchedulerLock`,
-  `JdbcTemplateLockProvider` mit `usingDbTime()`); die Sperrtabelle legt ein Changeset nach ADR-0034
+  `JdbcTemplateLockProvider` mit `usingDbTime()`); die Sperrtabelle legt eine Migration nach ADR-0034
   an, die Version steht in `backend/gradle/libs.versions.toml`. `lockAtLeastFor` liegt über der
   größten erwarteten Uhrabweichung und unter dem Abstand des Laufs, damit eine Fälligkeit genau
   einmal läuft, auch wenn eine zweite Instanz Sekunden später tickt. `lockAtMostFor` ist nur das Netz
@@ -341,35 +341,33 @@ statt eines Zeitstempels je Anfrage halten die Zeile klein und die Prüfung in e
 Jede Schemaänderung, die die Vorgängerversion bräche, verteilt sich auf zwei Releases. Release n
 erweitert nur: neue Tabellen, Spalten nullable oder mit bleibendem Default, zusätzliche erlaubte
 Werte. Release n+1 zieht frühestens zusammen (`DROP`, `RENAME`, `SET NOT NULL`, `DROP DEFAULT`,
-verengte `CHECK`s), in ausdrücklich gekennzeichneten Contract-Changesets. Ein neuer Wert eines
-persistierten Enums ist eine Erweiterung, auch ohne Changeset (`opaa-api`): Er wird erst
+verengte `CHECK`s), in ausdrücklich gekennzeichneten Contract-Migrationen. Ein neuer Wert eines
+persistierten Enums ist eine Erweiterung, auch ohne Migration (`opaa-api`): Er wird erst
 geschrieben, wenn die Vorgängerversion ihn lesen kann. Ein sicherheitsrelevanter neuer Zustand wird
 in der Datenbank durchgesetzt (Trigger oder Constraint, Vorbild `assets.owner_only`), damit die alte
 Version ihn nicht umgeht. Eine Baseline-Zusammenfassung oder ein unvermeidbarer Bruch ist eine
 ausgewiesene „Versionsgrenze ohne Rolling Update“ (Entscheidung 4). Ein Wächter vergleicht den
-Katalog vor und nach jedem Changeset; ein Verzeichnis der persistierten Enums verlangt für einen
-neuen Wert den Erweiterungsschritt. Regel, Wächter, `lock_timeout` je Changeset und die Bewertung
-der Altlasten: [backend/docs/liquibase.md](../../backend/docs/liquibase.md) (#2944).
+Katalog vor und nach jeder Migration; ein Verzeichnis der persistierten Enums verlangt für einen
+neuen Wert den Erweiterungsschritt. Regel, Wächter, `lock_timeout` je Migration und die Versionsgrenze: [backend/docs/migrationen.md](../../backend/docs/migrationen.md) (#2944).
 
-Die Regel gilt sofort für jedes neue Changeset, unabhängig vom Rest des Umbaus. Ein Rolling Update
+Die Regel gilt sofort für jede neue Migration, unabhängig vom Rest des Umbaus. Ein Rolling Update
 wird erst freigegeben, wenn sie mindestens ein Release gegolten hat.
 
 ### 14. Migration als eigener Schritt
 
-Das Backend-Image hat einen Startmodus, der nur Liquibase ausführt und endet. Bei mehr als einer
-Instanz migriert nur dieser Schritt, die Anwendungsinstanzen laufen mit
-`SPRING_LIQUIBASE_ENABLED=false`. `vector_store` legt Liquibase an, `initialize-schema` von pgvector
+Das Backend-Image hat einen Startmodus, der nur Flyway ausführt und endet (ADR-0056). Bei mehr als
+einer Instanz migriert nur dieser Schritt, die Anwendungsinstanzen laufen mit
+`SPRING_FLYWAY_ENABLED=false`. `vector_store` legt die Migration an, `initialize-schema` von pgvector
 ist aus. Eine einzelne Instanz darf weiter beim Start migrieren (ADR-0042 Entscheidung 2). Einmalige
 Startaktionen (Seeds, `OPAA_LOCAL_ADMIN_RESET`) laufen unter einem Advisory-Lock genau einmal je
 Anforderung, ein Passwort erscheint erst nach dem Commit im Log. Ein zweiter Startmodus
-`await-migration` wartet nur lesend, bis die Datenbank jedes Changeset seiner Version verzeichnet
-(ausgenommen solche, die eine Vorbedingung mit `onFail: CONTINUE` auf einen späteren Lauf schiebt),
+`await-migration` wartet nur lesend, bis die Datenbank jede Migration seiner Version verzeichnet,
 und endet dann. Helm startet die Migration als Job ohne Hook, die Pods warten in einem Init-Container
 mit diesem Modus; unter Compose hängen die Instanzen per `service_completed_successfully` am
 Migrationsdienst. Umsetzung: #2944, #2951.
 
-Ein abgeschossener Pod hinterlässt sonst einen hängenden `DATABASECHANGELOGLOCK`, die Startup-Probe
-müsste die Migrationsdauer abdecken, und zwei gleichzeitige Kaltstarts liefern sich DDL-Rennen. Ein
+Ohne den Schritt müsste die Startup-Probe jedes Pods die Migrationsdauer abdecken, ein
+abgeschossener Pod bräche eine Migration mittendrin ab, und zwei gleichzeitige Kaltstarts liefern sich DDL-Rennen. Ein
 Helm-Hook vor dem Upgrade fände bei der Installation weder das Secret noch die Erprobungsdatenbank des
 Releases vor und bände GitOps-Werkzeuge an Hooks; der Wartemodus ordnet Job und Pods ohne Zugriff auf
 die Kubernetes-API.

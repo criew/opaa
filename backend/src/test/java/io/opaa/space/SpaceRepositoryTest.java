@@ -22,10 +22,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Runs against the real, versioned Liquibase schema ({@code spring.liquibase.enabled=true}, {@code
+ * Runs against the real, versioned Flyway schema ({@code spring.flyway.enabled=true}, {@code
  * ddl-auto=none}), not Hibernate-generated DDL - see #288. {@code Space.ownerId} and {@code
  * SpaceMembership.userId} are plain {@code UUID} columns without {@code @ManyToOne}; Hibernate does
- * not create a foreign key for those (Liquibase's {@code fk_spaces_owner} / {@code
+ * not create a foreign key for those (the migrations' {@code fk_spaces_owner} / {@code
  * fk_space_memberships_user} do), so every owner/member id used here must be a real, persisted
  * {@link User}.
  *
@@ -35,8 +35,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * by {@link SpaceService} today, and by anything that saves a {@link Space} in the future). Before
  * #288, saving a {@code Space} with a dangling {@code ownerId}/{@code organizationId} succeeded
  * silently under Hibernate's {@code ddl-auto=create-drop} schema - there was no foreign key to
- * violate. Against the real Liquibase schema it now fails loudly with {@code fk_spaces_owner} /
- * {@code fk_spaces_organization}, exactly like the #280 regression this pattern was built to catch.
+ * violate. Against the real Flyway schema it now fails loudly with {@code fk_spaces_owner} / {@code
+ * fk_spaces_organization}, exactly like the #280 regression this pattern was built to catch.
  */
 @OpaaIntegrationTest
 class SpaceRepositoryTest {
@@ -54,7 +54,7 @@ class SpaceRepositoryTest {
   /** Everything that is none of this test method's business - see {@link OwnUserFixtures}. */
   private Set<UUID> foreignUserIds;
 
-  // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Liquibase
+  // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Flyway
   // and every other class of this context depends on that row (fk_users_organization). This class
   // creates its own throwaway organization per test and removes it again by id.
   @BeforeEach

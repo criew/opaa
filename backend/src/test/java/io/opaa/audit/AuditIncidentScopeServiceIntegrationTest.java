@@ -41,7 +41,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The one personenbezogene exception - anlassbezogene Klärung, Vier-Augen-Prinzip - against a real
- * Postgres database with the real, versioned Liquibase schema applied, mirroring {@code
+ * Postgres database with the real, versioned Flyway schema applied, mirroring {@code
  * AuditLogServiceIntegrationTest}.
  */
 @OpaaIntegrationTest

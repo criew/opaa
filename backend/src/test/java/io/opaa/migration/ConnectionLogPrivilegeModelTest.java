@@ -17,16 +17,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The connection log applied to an existing installation (delta test) and its privilege model
- * (ADR-0015, ADR-0041 Entscheidung 7): an account with exactly the application's grants appends and
- * reads but can neither update, delete nor truncate, and the SECURITY DEFINER function drops only
- * expired monthly partitions. The restricted role is provisioned per test method, as in {@link
- * DiagnosticContextPrivilegeModelTest}; {@code opaa_audit_owner} comes from the fixture and stays.
+ * The connection log and its privilege model (ADR-0015, ADR-0041 Entscheidung 7): an account with
+ * exactly the application's grants appends and reads but can neither update, delete nor truncate,
+ * and the SECURITY DEFINER function drops only expired monthly partitions. The restricted role is
+ * provisioned per test method; {@code opaa_audit_owner} comes from the template and stays.
  */
 class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
-  private static final String FILE = "db/changelog/connections/2026-10-04-connection-log.yaml";
-  private static final String OWNER_FILE = "db/changelog/connections/2026-10-04-log-owner.yaml";
   private static final String OWNER_ROLE = "opaa_audit_owner";
   private static final String APP_ROLE = "connection_log_test_role";
   private static final String APP_ROLE_PASSWORD = "connection_log_test_password";
@@ -34,16 +31,8 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
   private Connection appConnection;
 
-  @Override
-  protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE, OWNER_FILE);
-  }
-
   @BeforeEach
-  void applyTheChangelogAndProvisionTheApplicationRole() throws Exception {
-    applyChangelog(connection, FILE);
-    applyChangelog(connection, OWNER_FILE);
-    connection.setAutoCommit(true);
+  void provisionTheApplicationRole() throws Exception {
     dropRolesIfExist(connection, APP_ROLE);
     execute("CREATE ROLE " + APP_ROLE + " LOGIN PASSWORD '" + APP_ROLE_PASSWORD + "'");
     execute("GRANT INSERT, SELECT ON connection_log TO " + APP_ROLE);
@@ -68,7 +57,7 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
 
   /**
    * Who, whose connection, which profile, which event, when and why - no token; a library and an
-   * account only for a library's connection ({@code ConnectionLogOwnerMigrationTest}).
+   * account only for a library's connection ({@link ConnectionLogOwnerTest}).
    */
   @Test
   void theLogCarriesExactlyItsSpecifiedColumnsAndIsPartitionedAhead() throws SQLException {
@@ -148,8 +137,8 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
   }
 
   /**
-   * The changelog takes the owner role with SET only for its own statements and gives it back; the
-   * ADMIN OPTION residual of ADR-0015 is not a SET membership and stays out of this check.
+   * The migration account keeps no SET membership of the owner role; the ADMIN OPTION residual of
+   * ADR-0015 is not a SET membership and stays out of this check.
    */
   @Test
   void theMigrationAccountGivesTheSetMembershipBack() throws SQLException {
@@ -173,7 +162,7 @@ class ConnectionLogPrivilegeModelTest extends AbstractBaselineTest {
         .isTrue();
   }
 
-  /** The grants the role above copies must be the grants the changelog hands out. */
+  /** The grants the role above copies must be the grants the migration hands out. */
   @Test
   void grantsTheApplicationAccountExactlyInsertAndSelect() throws SQLException {
     String migrationAccount = stringOf("SELECT current_user");

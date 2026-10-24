@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  * lock serialises the runs themselves, but the recorder is called outside it and has to stand on
  * its own.
  *
- * <p>Runs against a real Postgres instance with the real, versioned Liquibase schema ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}) and real threads, following {@code
+ * <p>Runs against a real Postgres instance with the real, versioned Flyway schema ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}) and real threads, following {@code
  * UserServiceCreationRaceIntegrationTest}'s pattern - a mocked transaction manager would only
  * exercise the catch block and not the propagation and visibility semantics the fix depends on,
  * which is precisely where the two previous attempts at this class of fix went wrong.

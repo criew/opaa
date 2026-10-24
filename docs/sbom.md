@@ -170,18 +170,3 @@ python3 .github/scripts/check_licenses.py --allowed .github/licenses/allowed.txt
   --exceptions .github/licenses/exceptions.txt --pnpm /tmp/pnpm-licenses.json \
   --title Frontend --report /tmp/licenses-frontend.md
 ```
-
-### Ausnahmen mit Folgeentscheidung
-
-Eine Ausnahme kann auch eine offene Lizenzfrage überbrücken, bis eine Entscheidung umgesetzt ist.
-Dann nennt ihre Begründung den ADR, der den Ausweg festlegt.
-
-| Paket | Lizenz | Stand |
-|---|---|---|
-| `org.liquibase:liquibase-core` | FSL-1.1-ALv2 ab 5.0 | Ausnahme bis zur Umstellung auf Flyway, [ADR-0056](decisions/0056-lizenz-der-migrationsbibliothek.md). Ein Pin auf 4.33.0, die letzte Version unter Apache-2.0, ist geprüft und verworfen. |
-
-Wechselt eine Abhängigkeit mit einer neuen Major-Version zu einer nicht freigegebenen Lizenz, ist
-ein Pin auf die letzte freie Version nur ein Ausweg, wenn die alte Linie noch Korrekturen bekommt
-und mit der Plattform (Spring Boot) läuft. Ein Pin steht dann im Versionskatalog, bei einer
-transitiven Abhängigkeit zusätzlich im `dependencyManagement`-Block von `backend/build.gradle.kts`,
-und eine Renovate-Regel mit `allowedVersions` hält die neue Linie fern.

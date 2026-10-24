@@ -30,11 +30,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Exercises {@link DirectorySyncService} against a real Postgres database with the real, versioned
- * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - not
+ * Flyway schema applied ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}) - not
  * Hibernate-generated DDL, the same pattern {@code GroupServiceIntegrationTest} and {@code
  * UserServicePersonalSpaceIntegrationTest} also follow: this class's dissolution/reactivation
  * scenarios and the {@code fk_group_memberships_group_organization} composite foreign key both
- * depend on real constraints that only the versioned changelog creates.
+ * depend on real constraints that only the versioned migrations create.
  *
  * <p>{@link FakeDirectoryClient} replaces the production {@code ProviderDirectoryClient} as the
  * {@link DirectoryClient} bean (marked {@code @Primary}, so it wins regardless of bean registration
@@ -59,9 +59,9 @@ class DirectorySyncServiceIntegrationTest {
   @Autowired private DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private FakeDirectoryClient directoryClient;
 
-  // Real Liquibase FKs are in force in this test (fk_users_organization,
+  // Real Flyway FKs are in force in this test (fk_users_organization,
   // fk_directory_sync_status_organization) - a random UUID would violate them. Organization.
-  // DEFAULT_ID is the row the 008 changelog seeds, the same one production uses until
+  // DEFAULT_ID is the row the foundation migration seeds, the same one production uses until
   // multi-organization management exists.
   private UUID organizationId;
 

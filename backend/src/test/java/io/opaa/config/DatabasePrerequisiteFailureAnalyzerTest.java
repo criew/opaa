@@ -21,7 +21,7 @@ class DatabasePrerequisiteFailureAnalyzerTest {
 
     FailureAnalysis analysis =
         new DatabasePrerequisiteFailureAnalyzer()
-            .analyze(new BeanCreationException("liquibase", "init failed", missing));
+            .analyze(new BeanCreationException("flyway", "init failed", missing));
 
     assertThat(analysis.getDescription()).isEqualTo("vector is missing");
     assertThat(analysis.getAction()).isEqualTo("install pgvector");

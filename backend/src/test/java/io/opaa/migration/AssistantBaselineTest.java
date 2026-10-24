@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's assistant changeSet: chats with their messages and full-text index,
+ * Invariants of the baseline's assistant migration: chats with their messages and full-text index,
  * the note items of a conversation, the personal marks of the chat list, and the prompt libraries
  * as the second asset type.
  */

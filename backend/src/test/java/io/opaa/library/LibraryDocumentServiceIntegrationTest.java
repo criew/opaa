@@ -79,16 +79,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Runs {@link LibraryDocumentService} against a real Postgres database with the real, versioned
- * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - the
- * pattern {@code KnowledgeLibraryServiceIntegrationTest} and {@code
- * DocumentIndexingIntegrationTest} already establish, needed here because {@code
- * fk_documents_uploaded_by_user} and {@code chk_documents_source_type}'s widened check are real,
- * enforced constraints, not something {@code ddl-auto=create-drop} would generate from the entity
- * mapping alone (AGENTS.md, "Reproduktionsnachweis"). Exercises the acceptance criteria end to end:
- * upload, then find the content through the vector store the query endpoint reads from; a VIEWER is
- * refused; an unsupported format and an over-limit file are refused without a stored file; a
- * duplicate checksum in the same library is refused, the same content in a different library is
- * not; deleting removes the row, the chunks and the file.
+ * Flyway schema applied ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}) - the pattern
+ * {@code KnowledgeLibraryServiceIntegrationTest} and {@code DocumentIndexingIntegrationTest}
+ * already establish, needed here because {@code fk_documents_uploaded_by_user} and {@code
+ * chk_documents_source_type}'s widened check are real, enforced constraints, not something {@code
+ * ddl-auto=create-drop} would generate from the entity mapping alone (AGENTS.md,
+ * "Reproduktionsnachweis"). Exercises the acceptance criteria end to end: upload, then find the
+ * content through the vector store the query endpoint reads from; a VIEWER is refused; an
+ * unsupported format and an over-limit file are refused without a stored file; a duplicate checksum
+ * in the same library is refused, the same content in a different library is not; deleting removes
+ * the row, the chunks and the file.
  *
  * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now - parsing and embedding
  * run asynchronously on {@code uploadTaskExecutor}, the real thread pool this test's Spring context

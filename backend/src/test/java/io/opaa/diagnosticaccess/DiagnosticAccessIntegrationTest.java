@@ -43,7 +43,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The leitplanken against the real, Liquibase-built schema rather than a mock: the database itself
+ * The leitplanken against the real, Flyway-built schema rather than a mock: the database itself
  * refuses an unbefristetes, bereichsloses Dauerrecht, a freshly created library really is locked,
  * and the seeded retention really is twelve months.
  */

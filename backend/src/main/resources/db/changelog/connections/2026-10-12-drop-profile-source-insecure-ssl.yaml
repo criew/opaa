@@ -1,9 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: connections-2026-10-12-drop-profile-source-insecure-ssl
-      author: opaa
-      comment: "The certificate of a source is always checked: a connection profile carries no switch to skip it."
-      changes:
-        - sql:
-            sql: |
-              ALTER TABLE connection_profiles DROP COLUMN source_insecure_ssl;

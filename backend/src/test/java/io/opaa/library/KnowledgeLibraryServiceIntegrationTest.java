@@ -83,12 +83,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288
- * and {@code SpaceServiceIntegrationTest}, whose pattern this class follows. Every owner id used
- * here is a real, persisted {@link User} or {@link Group}, because {@code
+ * Runs against a real Postgres database with the real, versioned Flyway schema applied ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288 and
+ * {@code SpaceServiceIntegrationTest}, whose pattern this class follows. Every owner id used here
+ * is a real, persisted {@link User} or {@link Group}, because {@code
  * fk_knowledge_libraries_owner_user} and {@code fk_knowledge_libraries_owner_group_organization}
- * are real foreign keys enforced by Liquibase, not by Hibernate's entity mapping.
+ * are real foreign keys enforced by Flyway, not by Hibernate's entity mapping.
  *
  * <p>{@link
  * #aGroupGrantOnAPersonallyOwnedLibraryReachesItsMembersAndRevocationTakesEffectImmediately()} and

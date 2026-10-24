@@ -133,7 +133,7 @@ Der Chart setzt dann:
 
 - **Migrations-Job** `<Release>-migrate-<Prüfsumme>` mit `OPAA_MODE=migrate`, neu bei jedem Upgrade
   mit neuem Image oder neuer Konfiguration. Die Backend-Pods laufen mit
-  `SPRING_LIQUIBASE_ENABLED=false` und warten in einem Init-Container (`OPAA_MODE=await-migration`),
+  `SPRING_FLYWAY_ENABLED=false` und warten in einem Init-Container (`OPAA_MODE=await-migration`),
   bis das Schema ihrer Version vollständig ist. Mit `networkPolicy.egress.enabled` bekommt der Job
   eine eigene Ausgangs-Policy, die Erprobungsdatenbank lässt ihn ein.
 - **Strategie `RollingUpdate`** mit `maxUnavailable: 0` und `maxSurge: 1`; `backend.updateStrategy:

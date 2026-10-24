@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  * same {@code subject}/{@code issuer} pair, racing each other inside {@link
  * UserService#findOrCreateUser} itself - not the personal-space race that {@link
  * UserServicePersonalSpaceIntegrationTest} already covers for already-distinct users. Runs against
- * a real Postgres instance with the real, versioned Liquibase schema ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}) and real threads, following the pattern
+ * a real Postgres instance with the real, versioned Flyway schema ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}) and real threads, following the pattern
  * established by {@link UserServicePersonalSpaceIntegrationTest} - a mocked {@link
  * org.springframework.transaction.PlatformTransactionManager} would only exercise the catch block
  * and not the actual propagation/visibility semantics the fix depends on.

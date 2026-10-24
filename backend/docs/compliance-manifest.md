@@ -220,16 +220,16 @@ zusammen. Die Fälle sichert `ManifestDeltaTest` auf der Vorlage `src/test/resou
 
 - Der Wächter prüft, **dass** ein Eintrag existiert, nicht, ob er stimmt. Ob Personenbezug, Zweck und Sichtbarkeit
   zutreffen, sichern Review und die wöchentliche Drift-Routine.
-- Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs, ohne Datenbank. Es scheitert statt
-  zu überspringen: bei nativen Liquibase-Changes, bei jeder `CREATE TABLE`-, `ALTER TABLE`- oder `DROP TABLE`-Anweisung,
+- Das Schema liest `MigrationSchema` aus den SQL-Skripten unter `db/migration/`, in Versionsreihenfolge und ohne
+  Datenbank. Es scheitert statt zu überspringen: bei jeder `CREATE TABLE`-, `ALTER TABLE`- oder `DROP TABLE`-Anweisung,
   die es nicht vollständig liest, bei einem anderen Schema als `public`, bei `CREATE SCHEMA`,
   `CREATE MATERIALIZED VIEW` und `SELECT … INTO` sowie bei jeder Tabellen-DDL in `DO`-Blöcken und Funktionen außer
   der Partitionspflege der Protokolltabellen. Aus Bruchstücken zusammengesetztes dynamisches SQL sieht es nicht.
-  `ChangelogSchemaParityTest` (`io.opaa.migration`, braucht Docker, läuft in der CI) vergleicht das Ergebnis mit dem
+  `MigrationSchemaParityTest` (`io.opaa.migration`, braucht Docker, läuft in der CI) vergleicht das Ergebnis mit dem
   Katalog einer migrierten Datenbank.
-- `vector_store` legt Spring AI an, nicht Liquibase; seine Spalten stehen fest in
-  `ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG`. `ChangelogSchemaParityTest` lässt Spring AI die Tabelle anlegen und
-  vergleicht die Spalten; ändert ein Spring-AI-Update sie, scheitert er dort.
+- `vector_store` legt die knowledge-Migration so an, wie Spring AI die Tabelle anlegen würde.
+  `MigrationSchemaParityTest` lässt Spring AI die Tabelle anlegen und vergleicht die Spalten; ändert ein
+  Spring-AI-Update sie, scheitert er dort.
 - Ob ein Schlüssel richtig eingeordnet ist, prüft der Wächter nicht. Ein Schlüssel, den nur eine Bedingung wie
   `@ConditionalOnProperty` liest und der in `application.yml` fehlt, erscheint nicht in den Metadaten. Die Belegung
   aus `.env.docker.example` (Compose) prüft er nicht; sie fällt unter die Kennzeichnung am PR.

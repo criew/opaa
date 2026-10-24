@@ -1,0 +1,1 @@
+ALTER TABLE guard_fixture ALTER COLUMN required DROP NOT NULL;

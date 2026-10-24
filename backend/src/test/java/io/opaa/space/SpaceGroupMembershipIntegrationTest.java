@@ -34,10 +34,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * A group as a space member (ADR-0036 Entscheidungen 6, 8 und 9) against the real, versioned
- * Liquibase schema: the subject columns of {@code space_memberships}, the effective role, the
- * protection of the last capable ADMIN, the growth signal and the rights history all carry real
- * foreign keys that only the changelog creates.
+ * A group as a space member (ADR-0036 Entscheidungen 6, 8 und 9) against the real, versioned Flyway
+ * schema: the subject columns of {@code space_memberships}, the effective role, the protection of
+ * the last capable ADMIN, the growth signal and the rights history all carry real foreign keys that
+ * only the migrations create.
  */
 @OpaaIntegrationTest
 class SpaceGroupMembershipIntegrationTest {

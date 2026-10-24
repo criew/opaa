@@ -7,7 +7,7 @@
 # are checked by test_check_data_impact.py, which names the file to add.
 
 # Database schema: new or changed stored data
-backend/src/main/resources/db/changelog/**
+backend/src/main/resources/db/migration/**
 
 # Compliance fact manifest: every described datum, event, default, prompt and AI function
 backend/src/main/resources/compliance/manifest/**

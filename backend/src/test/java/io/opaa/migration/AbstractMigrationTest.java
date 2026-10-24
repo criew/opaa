@@ -8,13 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.DatabaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,7 +19,7 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * Base class for the {@code io.opaa.migration} test family: every subclass applies one or more
- * real, versioned Liquibase changelogs in isolation, against a freshly built schema - never against
+ * real, versioned Flyway migrations in isolation, against a freshly built schema - never against
  * Hibernate-generated DDL, never against an empty-but-shared context.
  *
  * <p><b>What this base class provides (measures 1+2):</b>
@@ -36,17 +29,17 @@ import org.testcontainers.utility.DockerImageName;
  *       JVM/Gradle test worker (Testcontainers' documented manual singleton pattern - not
  *       {@code @Container}, which would start one container per class). This alone replaces up to
  *       19 individual container starts with one.
- *   <li>A per-class <b>template database</b>: {@link #baseFixtureChangelogs()} names the fixture
- *       changelogs (e.g. {@code db/changelog/test-master-through-baseline.yaml}, or for a delta
- *       test {@link MasterChangelog#filesExcept(String...)}) that must be applied once, in full,
- *       before the changeSet under test runs. This base class applies them exactly once per class,
- *       in a database named {@code template_<simpleclassname>}, and then every {@code @Test} method
- *       gets its own fresh, fully-isolated database cloned from that template via {@code CREATE
- *       DATABASE ... TEMPLATE ...} (~0.1-0.2s) instead of re-running the whole fixture changelog
- *       again (~1-2s, growing with every migration added to the chain). The changeSet(s) actually
- *       under test are deliberately <b>not</b> part of the template - each {@code @Test} still
- *       applies them itself, exactly as before, so every test still exercises a schema built from
- *       scratch by Liquibase for the one changeSet it is proving something about.
+ *   <li>A per-class <b>template database</b>: {@link #baseFixtureMigrations()} names the fixture
+ *       migrations (e.g. {@link Migrations#all()}, or for a delta test {@link
+ *       Migrations#except(String...)}) that must be applied once, in full, before the migration
+ *       under test runs. This base class applies them exactly once per class, in a database named
+ *       {@code template_<simpleclassname>}, and then every {@code @Test} method gets its own fresh,
+ *       fully-isolated database cloned from that template via {@code CREATE DATABASE ... TEMPLATE
+ *       ...} (~0.1-0.2s) instead of re-running the whole fixture chain again (~1-2s, growing with
+ *       every migration added to the chain). The migration(s) actually under test are deliberately
+ *       <b>not</b> part of the template - each {@code @Test} still applies them itself, so every
+ *       test still exercises a schema built from scratch by Flyway for the one migration it is
+ *       proving something about.
  * </ul>
  *
  * <p><b>Why the per-test database is dropped and recreated rather than the old {@code DROP SCHEMA
@@ -58,23 +51,22 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p><b>Cluster-wide roles are not part of this optimization and remain each subclass's own
  * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (e.g. for {@code opaa_audit_owner},
- * created by the baseline's audit-log privilege restriction, see {@code
- * db/changelog/identity/2026-09-27-baseline.yaml}) act on the whole Postgres cluster, not on one
- * database - they survive a {@code DROP DATABASE} exactly as they survived the old {@code DROP
- * SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping them per test
- * method, and must never bake them into the template database: a role dropped by one test would
- * otherwise be missing for the next test cloned from the same template.
+ * created by the identity migration's audit-log privilege restriction) act on the whole Postgres
+ * cluster, not on one database - they survive a {@code DROP DATABASE} exactly as they survived the
+ * old {@code DROP SCHEMA CASCADE}. Subclasses that create such roles must keep creating and
+ * dropping them per test method, and must never bake them into the template database: a role
+ * dropped by one test would otherwise be missing for the next test cloned from the same template.
  *
  * <p><b>Important asymmetry a subclass must get right:</b> a role can only be dropped per test
  * method if the class's own fixture chain does not itself create that role at template-build time.
- * A class whose {@link #baseFixtureChangelogs()} stop before the changeSet that creates a given
+ * A class whose {@link #baseFixtureMigrations()} stop before the migration that creates a given
  * role gets that role created fresh, per test method, after cloning - so per-test {@code DROP ROLE}
- * is safe there. A class whose fixture chain runs *past* that changeSet instead gets the role
+ * is safe there. A class whose fixture chain runs *past* that migration instead gets the role
  * created once, at template-build time - and every per-test clone then owns objects under that role
  * that live in the template database itself (which outlives every per-test clone). Such a class
  * must <b>not</b> attempt to {@code DROP ROLE} that role per test method: the role still owns
  * objects in the template database, so the drop fails. Only a class whose own fixture chain never
- * applies the changelog that creates a given role may drop that role per test method.
+ * applies the migration that creates a given role may drop that role per test method.
  *
  * <p><b>Why cloning needs an admin connection to a third, untouched database:</b> {@code CREATE
  * DATABASE ... TEMPLATE ...} fails if any connection is still open against the template database
@@ -112,12 +104,12 @@ abstract class AbstractMigrationTest {
   private final List<String> siblingDatabaseNames = new ArrayList<>();
 
   /**
-   * The classpath paths of the fixture changelogs that build the schema exactly as it exists
-   * immediately before the changeSet(s) under test, applied in this order - for a delta test {@link
-   * MasterChangelog#filesExcept(String...)} of its changelog file. Applied once per class, into the
-   * template database; never re-applied per test method.
+   * The classpath paths of the fixture migrations that build the schema exactly as it exists
+   * immediately before the migration(s) under test - for a delta test {@link
+   * Migrations#except(String...)} of its script. Applied once per class, into the template
+   * database; never re-applied per test method.
    */
-  protected abstract List<String> baseFixtureChangelogs();
+  protected abstract List<String> baseFixtureMigrations();
 
   @BeforeAll
   void buildTemplateDatabaseOnce() throws Exception {
@@ -127,16 +119,14 @@ abstract class AbstractMigrationTest {
         Statement statement = admin.createStatement()) {
       statement.execute("CREATE DATABASE " + templateDatabaseName);
     }
-    // Not folded into the try-with-resources above on purpose: the connection used to build the
-    // template must be fully closed before this method returns, since CREATE DATABASE ... TEMPLATE
-    // ... refuses to clone a database with any open connection against it.
-    try (Connection templateConnection =
-        DriverManager.getConnection(
-            jdbcUrlFor(templateDatabaseName), POSTGRES.getUsername(), POSTGRES.getPassword())) {
-      for (String changelog : baseFixtureChangelogs()) {
-        applyChangelog(templateConnection, changelog);
-      }
-    }
+    // Flyway closes its connections when it is done: CREATE DATABASE ... TEMPLATE ... refuses to
+    // clone a database with any open connection against it.
+    Migrations.apply(
+        jdbcUrlFor(templateDatabaseName),
+        POSTGRES.getUsername(),
+        POSTGRES.getPassword(),
+        "public",
+        baseFixtureMigrations());
   }
 
   @AfterAll
@@ -211,33 +201,23 @@ abstract class AbstractMigrationTest {
     return DriverManager.getConnection(jdbcUrlFor(currentDatabaseName), user, password);
   }
 
-  protected Database liquibaseDatabase(Connection connection) throws DatabaseException {
-    return DatabaseFactory.getInstance()
-        .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-  }
-
   /**
-   * Applies one changelog file, in full, over the given connection, and unconditionally restores
-   * auto-commit afterwards (mandatory teardown pattern, see this package's {@code
-   * package-info.java} - {@code Liquibase.update(...)} leaves auto-commit disabled).
+   * Applies {@code scripts} to the database, user and current schema of {@code connection} through
+   * Flyway's own connections (see {@link Migrations#apply}); {@code connection} itself only names
+   * the target and must hold no open transaction on what the scripts change.
    */
-  protected void applyChangelog(Connection connection, String changelogClasspath) throws Exception {
-    applyChangelog(connection, changelogClasspath, new Contexts());
+  protected void applyMigrations(Connection connection, String... scripts) throws SQLException {
+    applyMigrations(connection, List.of(scripts));
   }
 
-  /** Same as {@link #applyChangelog(Connection, String)}, but restricted to the given contexts. */
-  protected void applyChangelog(
-      Connection connection, String changelogClasspath, String... contexts) throws Exception {
-    applyChangelog(connection, changelogClasspath, new Contexts(contexts));
-  }
-
-  private void applyChangelog(Connection connection, String changelogClasspath, Contexts contexts)
-      throws Exception {
-    Liquibase liquibase =
-        new Liquibase(
-            changelogClasspath, new ClassLoaderResourceAccessor(), liquibaseDatabase(connection));
-    liquibase.update(contexts);
-    connection.setAutoCommit(true);
+  /** Same as {@link #applyMigrations(Connection, String...)} for a list of scripts. */
+  protected void applyMigrations(Connection connection, List<String> scripts) throws SQLException {
+    Migrations.apply(
+        connection.getMetaData().getURL(),
+        connection.getMetaData().getUserName(),
+        POSTGRES.getPassword(),
+        connection.getSchema(),
+        scripts);
   }
 
   /**
@@ -246,7 +226,7 @@ abstract class AbstractMigrationTest {
    * not scoped to one per-test database - so a role name reused by more than one migration test
    * class (e.g. {@code opaa_audit_owner}) must never be assumed absent just because this test's own
    * previous {@code @AfterEach} dropped it - only a role that role itself created gets the
-   * automatic {@code ADMIN OPTION} a later {@code CREATE ROLE ... IF NOT EXISTS}-style changeSet
+   * automatic {@code ADMIN OPTION} a later {@code CREATE ROLE ... IF NOT EXISTS}-style migration
    * step relies on, so even a role that still exists but was created by a different session breaks
    * that step with "permission denied to grant role".
    *
@@ -271,7 +251,7 @@ abstract class AbstractMigrationTest {
                     + "': it still owns objects, most likely in this class's own template database"
                     + " (template_"
                     + getClass().getSimpleName().toLowerCase(Locale.ROOT)
-                    + "). This means the class's fixture chain (see baseFixtureChangelogs())"
+                    + "). This means the class's fixture chain (see baseFixtureMigrations())"
                     + " itself creates this role at template-build time - such a class must not"
                     + " drop this role per test method (see AbstractMigrationTest's Javadoc,"
                     + " \"Important asymmetry a subclass must get right\").",

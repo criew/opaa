@@ -15,7 +15,6 @@ pkg:maven/org.antlr/antlr-runtime | BSD licence | Name aus dem POM; ANTLR 3 steh
 pkg:maven/org.antlr/ST4 | BSD-4-Clause | Das POM nennt „The BSD License“ (antlr.org/license.html), das SBOM-Plugin ordnet BSD-4-Clause zu; StringTemplate 4 steht nach Angabe des Projekts unter BSD-3-Clause. Über spring-ai-template-st.
 
 # Backend: Lizenzen außerhalb von FSF/OSI-Freigaben, transitiv und unverändert ausgeliefert
-pkg:maven/org.liquibase/liquibase-core | FSL-1.1-ALv2 | Functional Source License, nicht OSI-/FSF-frei: untersagt nur konkurrierende Nutzung, jede Version wird zwei Jahre nach Erscheinen Apache-2.0. OPAA nutzt Liquibase ausschließlich für die eigenen Datenbankmigrationen.
 pkg:maven/org.aspectj/aspectjweaver | EPL-2.0 | EPL-2.0 ist nach FSF nicht GPL-verträglich; unveränderte, separat ausgelieferte Laufzeitbibliothek von Spring Data JPA (spring-aspects).
 
 # Frontend

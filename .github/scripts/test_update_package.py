@@ -1072,7 +1072,7 @@ def test_publication_waits_for_the_package_and_the_release_carries_it() -> None:
 # Operational consequences and answer quality (betrieb/), read from Git at both ends of the interval.
 
 NOTES = "docs/upgrade-notes/"
-CHANGELOG = "backend/src/main/resources/db/changelog/"
+MIGRATIONS = "backend/src/main/resources/db/migration/"
 VALUES = "deploy/helm/opaa/values.yaml"
 DEPLOYMENT = "deploy/helm/opaa/templates/backend-deployment.yaml"
 BASELINE = "eval/baseline/"
@@ -1089,10 +1089,7 @@ def snapshot(repo: Path, message: str) -> str:
     return commit(repo, message)
 
 
-def changeset_file(*ids: str) -> str:
-    return "databaseChangeLog:\n" + "".join(
-        f"  - changeSet:\n      id: {i}\n      author: opaa\n      changes:\n"
-        f"        - sql:\n            sql: SELECT 1;\n" for i in ids)
+MIGRATION = "SET LOCAL lock_timeout = '5s';\nSELECT 1;\n"
 
 
 def baseline(measured: str, ndcg: float, fingerprint: str = "markdown:3,pdf:5") -> str:
@@ -1123,12 +1120,11 @@ DELTA_JSON = {
 
 @pytest.fixture
 def interval(tmp_path: Path) -> dict:
-    """v1.2.2 holds one changeset, a raw-vector baseline and the chart; the commit after it adds
-    upgrade notes, three changesets, a chart port, a container port and a pipeline baseline."""
+    """v1.2.2 holds one migration, a raw-vector baseline and the chart; the commit after it adds
+    upgrade notes, three migrations, a chart port, a container port and a pipeline baseline."""
     work = tmp_path / "repo"
     git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
-    put(work, CHANGELOG + "db.changelog-master.yaml", "databaseChangeLog: []\n")
-    put(work, CHANGELOG + "foundation/2026-01-01-start.yaml", changeset_file("foundation-2026-01-01-start"))
+    put(work, MIGRATIONS + "foundation/V1.1__foundation_baseline.sql", MIGRATION)
     put(work, VALUES, "backend:\n  # Port of the actuator\n  managementPort: 8081\n"
                       "  service:\n    port: 8080\n")
     put(work, DEPLOYMENT, "        ports:\n          - name: http\n            containerPort: 8080\n")
@@ -1143,9 +1139,9 @@ def interval(tmp_path: Path) -> dict:
         "2. **Ports freigeben.** Der neue Metrik-Port muss erreichbar sein.\n\n"
         "Neuindizierung: ja, rund eine Stunde je 10.000 Dokumente bei GPU-Einbettung\n")
     put(work, NOTES + "1.3.0.md", "- Vorbereitung einer späteren Version.\n")
-    put(work, CHANGELOG + "identity/2026-02-01-sessions.yaml",
-        changeset_file("identity-2026-02-01-sessions", "identity-2026-02-01-sessions--index"))
-    put(work, CHANGELOG + "workspace/2026-02-02-spaces.yaml", changeset_file("workspace-2026-02-02-spaces"))
+    put(work, MIGRATIONS + "identity/V2026.02.01.1__sessions.sql", MIGRATION)
+    put(work, MIGRATIONS + "identity/V2026.02.01.2__sessions_index.sql", MIGRATION)
+    put(work, MIGRATIONS + "workspace/V2026.02.02.1__spaces.sql", MIGRATION)
     put(work, VALUES, "backend:\n  # Port of the actuator\n  managementPort: 8081\n"
                       "  service:\n    port: 8080\nmetrics:\n  exporterPort: 9464\n")
     put(work, DEPLOYMENT, "        ports:\n          - name: http\n            containerPort: 8080\n"
@@ -1191,7 +1187,7 @@ def section(text: str, heading: str) -> str:
     return text[start:] if end < 0 else text[start:end]
 
 
-def test_note_changeset_and_new_data_flow_of_an_interval_appear_in_the_package(
+def test_note_migration_and_new_data_flow_of_an_interval_appear_in_the_package(
         tmp_path: Path, inputs: dict, interval: dict) -> None:
     operations = tmp_path / "betrieb"
     operations.mkdir()
@@ -1204,7 +1200,7 @@ def test_note_changeset_and_new_data_flow_of_an_interval_appear_in_the_package(
     assert "**Ja.**" in section(text, "Bruch und Vorbereitung")
     assert "Dieser Stand entfernt eine Tabelle." in text
     migration = section(text, "Schemamigration")
-    assert "3 neue Changesets" in migration
+    assert "3 neue Migrationen" in migration
     assert "| identity | 2 |" in migration and "| workspace | 1 |" in migration
     assert "nur vorwärts" in migration and "Datenbank sichern" in migration
     egress = section(text, "Neue Ports und Egress-Ziele")
@@ -1298,6 +1294,23 @@ def test_without_the_manifest_delta_the_data_flows_are_reported_as_not_determine
     assert "nicht ermittelt" in egress
 
 
+def test_an_update_from_a_liquibase_release_is_a_new_setup(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, "backend/src/main/resources/db/changelog/foundation/2026-01-01-start.yaml",
+        "databaseChangeLog: []\n")
+    old = snapshot(work, "liquibase")
+    git(work, "rm", "-q", "-r", "backend/src/main/resources/db/changelog")
+    put(work, MIGRATIONS + "foundation/V1.1__foundation_baseline.sql", MIGRATION)
+    new = snapshot(work, "flyway")
+
+    migration = "\n".join(update_package.migration_section(
+        work, update_package.Side("v1.0.0", old, "1.0.0"), update_package.Side("v1.1.0", new, "1.1.0")))
+
+    assert "noch mit Liquibase" in migration and "Neuaufsetzen" in migration
+    assert "1 neue Migrationen" in migration and "| foundation | 1 | `1.1` |" in migration
+
+
 def test_every_section_names_its_source(interval: dict) -> None:
     files = report(interval)
     text = files["betriebsfolgen.md"]
@@ -1306,7 +1319,7 @@ def test_every_section_names_its_source(interval: dict) -> None:
         ("Bruch und Vorbereitung", "`docs/upgrade-notes/"),
         ("Neuindizierung", "`docs/upgrade-notes/"),
         ("Neuindizierung", "`eval/baseline/"),
-        ("Schemamigration", "`backend/src/main/resources/db/changelog/`"),
+        ("Schemamigration", "`backend/src/main/resources/db/migration/`"),
         ("Neue Ports und Egress-Ziele", "`deploy/helm/opaa/"),
         ("Neue Ports und Egress-Ziele", "delta/manifest-delta.json"),
     ]:
@@ -1376,7 +1389,7 @@ def test_the_operations_command_reads_from_the_repository_root_when_started_in_a
     assert code == 0
     text = (out / "betriebsfolgen.md").read_text(encoding="utf-8")
     assert "**Ja.**" in section(text, "Bruch und Vorbereitung")
-    assert "3 neue Changesets" in section(text, "Schemamigration")
+    assert "3 neue Migrationen" in section(text, "Schemamigration")
     assert "`metrics.exporterPort`: 9464" in text
 
 
@@ -1436,24 +1449,24 @@ def lts_repo(tmp_path: Path) -> dict:
     v0.3.1 and v0.3.2, which main never contains. Each commit holds the list of lines of its day."""
     work = tmp_path / "repo"
     git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
-    put(work, CHANGELOG + "foundation/2026-06-01-start.yaml", changeset_file("foundation-start"))
+    put(work, MIGRATIONS + "foundation/V2026.06.01.1__start.sql", MIGRATION)
     put(work, LINES, lines_json(("0.3", "lts", "2028-06-30")))
     a = snapshot(work, "a")
     git(work, "tag", "v0.3.0", a)
     git(work, "checkout", "-q", "-b", "release/0.3")
-    put(work, CHANGELOG + "foundation/2026-07-01-fix.yaml", changeset_file("foundation-fix"))
+    put(work, MIGRATIONS + "foundation/V2026.07.01.1__fix.sql", MIGRATION)
     git(work, "tag", "v0.3.1", snapshot(work, "p1"))
     p2 = commit(work, "p2")
     git(work, "tag", "v0.3.2", p2)
     git(work, "tag", "v0.3.3-rc.1", commit(work, "p3"))
     git(work, "checkout", "-q", "main")
-    put(work, CHANGELOG + "foundation/2026-07-01-fix.yaml", changeset_file("foundation-fix"))
-    put(work, CHANGELOG + "workspace/2026-11-01-spaces.yaml", changeset_file("workspace-spaces"))
+    put(work, MIGRATIONS + "foundation/V2026.07.01.1__fix.sql", MIGRATION)
+    put(work, MIGRATIONS + "workspace/V2026.11.01.1__spaces.sql", MIGRATION)
     put(work, NOTES + "0.4.0.md", "- Vorbereitung des Dezember-Release.\n")
     put(work, LINES, lines_json(("0.3", "lts", "2028-06-30"), ("0.4", "normal", None)))
     b = snapshot(work, "b")
     git(work, "tag", "v0.4.0", b)
-    put(work, CHANGELOG + "workspace/2027-05-01-more.yaml", changeset_file("workspace-more"))
+    put(work, MIGRATIONS + "workspace/V2027.05.01.1__more.sql", MIGRATION)
     put(work, NOTES + "0.5.0-rc.1.md", "- Vorbereitung des LTS-Kandidaten.\n")
     put(work, LINES, lines_json(("0.3", "lts", "2028-06-30"), ("0.4", "normal", "2027-07-31"),
                                 ("0.5", "lts", "2029-06-30")))
@@ -1528,7 +1541,7 @@ def test_the_command_prints_the_lts_comparison_or_nothing(lts_repo: dict) -> Non
 
 
 def test_operations_compare_with_a_release_outside_the_history(lts_repo: dict) -> None:
-    # The backport foundation-fix is in both; the notes count by version, the changesets by id.
+    # The backport foundation fix is in both; the notes and the migrations count by version.
     files = update_package.operations(
         lts_repo["repo"],
         update_package.Side("v0.3.2", lts_repo["p2"], "0.3.2"),
@@ -1540,7 +1553,7 @@ def test_operations_compare_with_a_release_outside_the_history(lts_repo: dict) -
     assert "Vorbereitung des Dezember-Release." in text
     assert "Vorbereitung des LTS-Kandidaten." in text
     migration = section(text, "Schemamigration")
-    assert "2 neue Changesets" in migration
+    assert "2 neue Migrationen" in migration
     assert "| workspace | 2 |" in migration and "foundation" not in migration.split("|", 1)[1]
 
 

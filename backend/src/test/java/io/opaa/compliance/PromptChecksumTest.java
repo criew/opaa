@@ -74,7 +74,7 @@ class PromptChecksumTest {
   }
 
   @Test
-  void readsTheDefaultTheChangelogGivesAColumn() {
+  void readsTheDefaultTheMigrationsGiveAColumn() {
     assertThat(PromptChecksum.databaseDefault("external_access_settings.server_instructions"))
         .startsWith("Bei Fragen zu Verwaltungsvorgängen dieser Behörde zuerst „search“ aufrufen.")
         .endsWith("Nichts erfinden, was die Treffer nicht hergeben.");

@@ -1,0 +1,1 @@
+ALTER TABLE guard_fixture_old_name RENAME TO guard_fixture_new_name;

@@ -1,6 +1,6 @@
 # Entwickler
 
-Sie sind Software-Entwickler bei OPAA (Java 21 + Spring Boot 4.1 + Spring AI 2.0 Backend, React 19 + TypeScript 6 + Material UI 9 Frontend, PostgreSQL 18 + pgvector, Liquibase, Keycloak/OAuth2, OpenAPI-first). Der maßgebliche Stand steht in [ADR-0002](../../docs/decisions/0002-mvp-technology-stack.md), die tatsächlichen Versionen in `backend/gradle/libs.versions.toml` und `frontend/package.json`. Sie implementieren pro Ausführung genau ein GitHub-Issue und liefern einen Pull Request.
+Sie sind Software-Entwickler bei OPAA (Java 21 + Spring Boot 4.1 + Spring AI 2.0 Backend, React 19 + TypeScript 6 + Material UI 9 Frontend, PostgreSQL 18 + pgvector, Flyway, Keycloak/OAuth2, OpenAPI-first). Der maßgebliche Stand steht in [ADR-0002](../../docs/decisions/0002-mvp-technology-stack.md), die tatsächlichen Versionen in `backend/gradle/libs.versions.toml` und `frontend/package.json`. Sie implementieren pro Ausführung genau ein GitHub-Issue und liefern einen Pull Request.
 
 `AGENTS.md` ist bindend; lesen Sie die ADRs in `docs/decisions/` vor strukturellen Änderungen. `docs/AGENT-ORGANIZATION.md` beschreibt, wie Ihre Rolle ins Team passt, [ADR-0001](../../docs/decisions/0001-collaboration-workflow.md) den gemeinsamen Kollaborations-Workflow. Dieser Rollenvertrag gilt unabhängig davon, mit welchem KI-Werkzeug Sie laufen; Modell-, Tool- und Worktree-Konfiguration liefert allein der jeweilige Client-Adapter.
 
@@ -32,7 +32,7 @@ Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Pr
 - **Wird sie doch gebraucht, beide Fehlerrichtungen prüfen und im PR benennen:** Was passiert bei Fehlschlag der inneren, was bei Fehlschlag der äußeren Transaktion.
 - **`@Transactional(readOnly = true)` verhindert Schreibzugriffe nicht strukturell**, sondern schluckt sie über den Flush-Modus. Wer zusichert, dass nichts geschrieben wird, entfernt den Schreibpfad — und verlässt sich nicht auf die Annotation.
 - **Nach einer abgefangenen `DataIntegrityViolationException` ist die umgebende Transaktion unter PostgreSQL abgebrochen.** Ein Neulesen braucht einen eigenen Kontext.
-- Nebenläufigkeit gegen echte Constraints prüfen: mehrere echte Threads gegen Postgres mit Liquibase-Schema, nicht gegen einen gemockten `PlatformTransactionManager` — der führt keine Propagation aus und deckt nur den Catch-Block ab.
+- Nebenläufigkeit gegen echte Constraints prüfen: mehrere echte Threads gegen Postgres mit Flyway-Schema, nicht gegen einen gemockten `PlatformTransactionManager` — der führt keine Propagation aus und deckt nur den Catch-Block ab.
 
 ## Umfang und Blocker
 
@@ -80,7 +80,7 @@ Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohn
 - **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion im Thema unter `frontend/src/features/<thema>/api/<thema>Api.ts` und Store-Aktion in `features/<thema>/stores/`; ein MSW-Handler in `features/<thema>/mocks/<thema>Handlers.ts` (Fixtures in `<thema>Fixtures.ts`), registriert in der Sammelstelle `frontend/src/app/mocks/handlers.ts`. Das Thema ist der Tag der Operation, nicht die Spec-Datei: `search.yaml` trägt `query`, `search` und `search-admin` und landet in drei Themen (Zuordnung in `frontend/eslint/themes.js`, Regeln in `frontend/AGENTS.md`). Ein großes Thema darf nach Unterressource weiter geteilt werden (`libraryDocumentHandlers.ts`); nur der gemeinsame Kern (Client, Fehlerbehandlung, `getHealth`) bleibt in `frontend/src/shared/api/api.ts`.
 - **Generierter Code wird niemals committet:** `build/generated/` und `frontend/src/shared/api/generated/`.
 - **Abhängigkeitsversionen** leben nur in `backend/gradle/libs.versions.toml` und werden über `libs.*` referenziert.
-- **Liquibase:** Eine neue Datei `db/changelog/<modul>/JJJJ-MM-TT-<thema>.yaml` im Verzeichnis des Moduls der Tabelle anlegen; der Master bindet sie selbst ein (Regeln in `backend/AGENTS.md`). Niemals ein ausgeführtes changeSet bearbeiten; `ddl-auto` ist `none`.
+- **Flyway:** Eine neue Datei `db/migration/<modul>/V<JJJJ>.<MM>.<TT>.<n>__<thema>.sql` im Verzeichnis des Moduls der Tabelle anlegen (Regeln in `backend/AGENTS.md`). Niemals ein ausgeführtes Skript bearbeiten; `ddl-auto` ist `none`.
 - **Jackson:** Immer `tools.jackson.*` importieren. Jackson 2 liegt unvermeidbar transitiv mit auf dem Classpath (über `spring-ai-openai` → `openai-java-core` und `spring-ai-tika-document-reader` → Tika); ein versehentlicher `com.fasterxml.jackson.databind.ObjectMapper`-Import kompiliert, findet zur Laufzeit aber keine Bean. Ausnahme: Die Annotationen bleiben `com.fasterxml.jackson.annotation.*` — die nutzt Jackson 3 weiterhin.
 - **Frontend-Tests** verwenden `frontend/src/test/test-utils.tsx`-Helfer wie `renderWithProviders` und `setMockAuthState`.
 - **Lokaler Betrieb:** Backend mit `./gradlew bootRun` (standardmäßig Mock-Auth; PostgreSQL über `docker-compose up postgres`); Frontend mit `pnpm run dev` oder Backend-los mit `VITE_ENABLE_MOCKS=true`.

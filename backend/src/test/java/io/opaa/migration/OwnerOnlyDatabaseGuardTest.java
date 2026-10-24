@@ -1,10 +1,7 @@
 package io.opaa.migration;
 
-import static io.opaa.migration.AssetOwnerOnlyMigrationTest.grant;
-import static io.opaa.migration.AssetOwnerOnlyMigrationTest.release;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,16 +17,8 @@ class OwnerOnlyDatabaseGuardTest extends AbstractBaselineTest {
   private UUID owner;
   private UUID asset;
 
-  @Override
-  protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(
-        AssetOwnerOnlyMigrationTest.FILE, AssetOwnerOnlyMigrationTest.RELEASE_FILE);
-  }
-
   @BeforeEach
   void anOwnerOnlyAssetWithItsCreationRows() throws Exception {
-    applyChangelog(connection, AssetOwnerOnlyMigrationTest.FILE);
-    applyChangelog(connection, AssetOwnerOnlyMigrationTest.RELEASE_FILE);
     owner = insertUser();
     asset = UUID.randomUUID();
     execute(
@@ -176,5 +165,32 @@ class OwnerOnlyDatabaseGuardTest extends AbstractBaselineTest {
     UUID shared = insertAsset("KNOWLEDGE_LIBRARY", owner);
     assertRejected(
         "UPDATE assets SET owner_only = true WHERE id = '" + shared + "'", "is fixed at creation");
+  }
+
+  /** Releases a library for Fremdzugänge for thirty days. */
+  private static String release(UUID library) {
+    return "UPDATE knowledge_libraries SET external_access_state = 'ACTIVE',"
+        + " external_access_expires_at = now() + interval '30 days',"
+        + " external_access_set_at = now() WHERE id = '"
+        + library
+        + "'";
+  }
+
+  private static String grant(UUID asset, String subjectType, UUID user, UUID group, String role) {
+    return "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+        + " subject_user_id, subject_group_id, role) VALUES (gen_random_uuid(),"
+        + " 'KNOWLEDGE_LIBRARY', '"
+        + asset
+        + "', '"
+        + SEEDED_ORGANIZATION_ID
+        + "', '"
+        + subjectType
+        + "', "
+        + quoted(user)
+        + ", "
+        + quoted(group)
+        + ", '"
+        + role
+        + "')";
   }
 }

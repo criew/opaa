@@ -29,10 +29,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * its reason in the log.
  *
  * <p>Both sides are read, never spelled out: the schema's side from {@code pg_catalog} of the live
- * Liquibase schema, the query's side from the {@link Query} annotation Spring Data actually
- * executes. The two comparisons are mutually load-bearing - a schema read that lost a reference
- * would surface in {@link #noSubQueryCountsBeyondTheRestrictingReferences()} as an unexpected
- * sub-query rather than pass unnoticed.
+ * Flyway schema, the query's side from the {@link Query} annotation Spring Data actually executes.
+ * The two comparisons are mutually load-bearing - a schema read that lost a reference would surface
+ * in {@link #noSubQueryCountsBeyondTheRestrictingReferences()} as an unexpected sub-query rather
+ * than pass unnoticed.
  *
  * <p>All three links of the chain sub-query - accessor - {@code LocalUserService#blockers} are
  * checked, each by its own test: a link that is missing anywhere leaves the count silently short of
@@ -232,16 +232,16 @@ class UserDeletionBlockerCoverageIntegrationTest {
   }
 
   /**
-   * The comparisons above are only worth anything against the schema Liquibase builds: Hibernate's
+   * The comparisons above are only worth anything against the schema Flyway builds: Hibernate's
    * {@code ddl-auto} creates no foreign key at all for a plain {@code UUID} column without an
    * association mapping, which would leave them vacuously green.
    */
   @Test
-  void theComparedSchemaIsTheOneLiquibaseApplied() {
-    Integer appliedChangeSets =
-        jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class);
+  void theComparedSchemaIsTheOneFlywayApplied() {
+    Integer appliedMigrations =
+        jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history", Integer.class);
 
-    assertThat(appliedChangeSets).as("no Liquibase change set applied").isNotNull().isPositive();
+    assertThat(appliedMigrations).as("no migration applied").isNotNull().isPositive();
     assertThat(restrictingReferences())
         .as("no restricting foreign key to users found - the schema read is broken, not the schema")
         .isNotEmpty();

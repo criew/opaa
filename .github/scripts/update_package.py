@@ -99,7 +99,8 @@ DEFAULT_REPOSITORY = "criew/opaa"
 PREFIX = "opaa-update-paket-"
 NOTICE = "> Fakten aus dem Code; rechtliche Bewertung bleibt bei der Behörde."
 UPGRADE_NOTES = "docs/upgrade-notes/"
-CHANGELOG = "backend/src/main/resources/db/changelog/"
+MIGRATIONS = "backend/src/main/resources/db/migration/"
+LIQUIBASE_CHANGELOG = "backend/src/main/resources/db/changelog/"
 CHART_VALUES = "deploy/helm/opaa/values.yaml"
 CHART_TEMPLATES = "deploy/helm/opaa/templates/"
 BASELINES = "eval/baseline/"
@@ -512,52 +513,57 @@ def reindexing_section(notes: list[Note], baselines: tuple[dict, dict], changes:
     return lines
 
 
-# --- Schema migration (Liquibase) -----------------------------------------------------------------
+# --- Schema migration (Flyway) -------------------------------------------------------------------
 
-CHANGESET_START = re.compile(r"^\s*-\s*changeSet:\s*$", re.MULTILINE)
-CHANGESET_ID = re.compile(r"^\s*id:\s*[\"']?([^\"'\s#]+)", re.MULTILINE)
+MIGRATION_NAME = re.compile(r"V([0-9][0-9._]*)__[^/]*\.sql")
 
 
-def changesets(repo: Path, commit: str) -> dict[str, str]:
-    """Every changeSet id of the changelogs with its area, the directory below db/changelog/."""
+def migrations(repo: Path, commit: str) -> dict[str, str]:
+    """Every Flyway migration by its version, with its area, the directory below db/migration/."""
     found: dict[str, str] = {}
-    for path in files_at(repo, commit, CHANGELOG):
-        if not path.endswith((".yaml", ".yml")):
+    for path in files_at(repo, commit, MIGRATIONS):
+        name = path.rsplit("/", 1)[-1]
+        match = MIGRATION_NAME.fullmatch(name)
+        if match is None:
             continue
-        relative = path[len(CHANGELOG):]
+        relative = path[len(MIGRATIONS):]
         area = relative.split("/", 1)[0] if "/" in relative else relative
-        for block in CHANGESET_START.split(read_at(repo, commit, path))[1:]:
-            match = CHANGESET_ID.search(block)
-            if match is None:
-                raise PackageError(f"changeSet without id in {path} at {commit}")
-            found[match.group(1)] = area
+        found[match.group(1).replace("_", ".")] = area
     return found
 
 
 def migration_section(repo: Path, previous: Side, current: Side) -> list[str]:
-    before = changesets(repo, previous.commit)
-    after = changesets(repo, current.commit)
-    added = sorted(i for i in after if i not in before)
-    removed = sorted(i for i in before if i not in after)
+    before = migrations(repo, previous.commit)
+    after = migrations(repo, current.commit)
+    added = sorted((v for v in after if v not in before), key=migration_order)
+    removed = sorted((v for v in before if v not in after), key=migration_order)
     lines = ["## Schemamigration", ""]
+    if files_at(repo, previous.commit, LIQUIBASE_CHANGELOG):
+        lines += [f"{where(previous)} verwaltet das Datenbankschema noch mit Liquibase, der neue Stand mit"
+                  " Flyway, beginnend mit einer Baseline je Modul. Das Update ist ein Neuaufsetzen der"
+                  " Datenbank; der Upgrade-Hinweis sagt das.", ""]
     if added:
-        lines += [f"{len(added)} neue Changesets; Liquibase führt sie beim ersten Start der neuen Version"
+        lines += [f"{len(added)} neue Migrationen; Flyway führt sie beim ersten Start der neuen Version"
                   " aus. Bereich ist das Modul, dem die Tabellen gehören.", "",
-                  "| Bereich | Changesets | Kennungen |", "|---|---|---|"]
-        for area in sorted({after[i] for i in added}):
-            ids = [i for i in added if after[i] == area]
-            lines.append(f"| {area} | {len(ids)} | {', '.join(f'`{i}`' for i in ids)} |")
+                  "| Bereich | Migrationen | Versionen |", "|---|---|---|"]
+        for area in sorted({after[v] for v in added}):
+            versions = [v for v in added if after[v] == area]
+            lines.append(f"| {area} | {len(versions)} | {', '.join(f'`{v}`' for v in versions)} |")
         lines += ["", f"Schemaänderungen laufen nur vorwärts. **Vor dem Update die Datenbank sichern:**"
                   f" Zurück auf {previous.name} geht es nur über diese Sicherung."]
     else:
-        lines.append("Keine neuen Changesets: Das Update ändert das Datenbankschema nicht.")
+        lines.append("Keine neuen Migrationen: Das Update ändert das Datenbankschema nicht.")
     if removed:
-        lines += ["", f"{len(removed)} Changesets des Vergleichsstands fehlen im neuen Stand, etwa weil"
+        lines += ["", f"{len(removed)} Migrationen des Vergleichsstands fehlen im neuen Stand, etwa weil"
                   " die Historie zu einer neuen Baseline zusammengefasst ist. Dann ist das Update ein"
                   " Neuaufsetzen; der Upgrade-Hinweis sagt das."]
-    lines += ["", f"Quelle: Kennungen der `changeSet`-Einträge unter `{CHANGELOG}` in {where(previous)}"
-              f" und {where(current)}; neu ist jede Kennung, die nur der neue Stand hat.", ""]
+    lines += ["", f"Quelle: Versionen der Skripte unter `{MIGRATIONS}` in {where(previous)}"
+              f" und {where(current)}; neu ist jede Version, die nur der neue Stand hat.", ""]
     return lines
+
+
+def migration_order(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in version.split("."))
 
 
 # --- Ports (chart) and egress targets (manifest) --------------------------------------------------

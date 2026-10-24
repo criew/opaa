@@ -22,11 +22,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link LowChunkDocumentAuditService} against a real Liquibase schema: proves the organization
- * scope, the {@code status = INDEXED} filter and the {@code chunkCount} threshold are genuinely
- * enforced by the query, not merely assumed from {@link DocumentRepository}'s derived method name -
- * and that {@code idx_documents_indexed_chunk_count} is actually usable by it (same
- * columns/predicate the query filters on).
+ * {@link LowChunkDocumentAuditService} against a real Flyway schema: proves the organization scope,
+ * the {@code status = INDEXED} filter and the {@code chunkCount} threshold are genuinely enforced
+ * by the query, not merely assumed from {@link DocumentRepository}'s derived method name - and that
+ * {@code idx_documents_indexed_chunk_count} is actually usable by it (same columns/predicate the
+ * query filters on).
  */
 @OpaaIntegrationTest
 class LowChunkDocumentAuditServiceIntegrationTest {

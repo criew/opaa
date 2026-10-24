@@ -1,4 +1,4 @@
-# ADR-0056: Lizenz der Migrationsbibliothek (Liquibase 5, FSL-1.1-ALv2)
+# ADR-0056: Flyway statt Liquibase für die Schemamigration
 
 ## Status
 
@@ -6,80 +6,89 @@ Akzeptiert · zuletzt geändert 2026-10-24
 
 ## Kontext
 
-OPAA steht unter der AGPL-3.0 und migriert sein Datenbankschema mit Liquibase (`liquibase-core`, über
-`spring-boot-starter-liquibase`; Spring Boot 4.1.1 bringt 5.0.3 mit). Ab Version 5.0 steht `liquibase-core` unter
-der [Functional Source License 1.1 mit Apache-2.0 als künftiger Lizenz](https://github.com/liquibase/liquibase/blob/master/LICENSE.txt)
-(FSL-1.1-ALv2). Nach dem Lizenztext ist jede Nutzung erlaubt außer einer „Competing Use“: die Software anderen in
-einem kommerziellen Produkt oder Dienst bereitzustellen, das sie ersetzt oder im Wesentlichen dieselbe Funktion
-bietet. Am zweiten Jahrestag ihrer Veröffentlichung wird jede Version zusätzlich unter Apache-2.0 lizenziert.
-Die FSL steht weder auf der [Liste der OSI](https://opensource.org/licenses) noch unter den freien Lizenzen der
-[FSF](https://www.gnu.org/licenses/license-list.html). Die AGPL-3.0 verbietet in § 10, Empfängern weitere
-Beschränkungen aufzuerlegen. Ob die Nutzungsbeschränkung der FSL in einer gemeinsam weitergegebenen
-Installation eine solche Beschränkung ist, beantwortet dieser ADR nicht; er ist keine Rechtsberatung.
+OPAA steht unter der AGPL-3.0 und migrierte sein Datenbankschema mit Liquibase (`liquibase-core`,
+über `spring-boot-starter-liquibase`; Spring Boot 4.1.1 bringt 5.0.3 mit). Ab Version 5.0 steht
+`liquibase-core` unter der
+[Functional Source License 1.1 mit Apache-2.0 als künftiger Lizenz](https://github.com/liquibase/liquibase/blob/master/LICENSE.txt)
+(FSL-1.1-ALv2). Nach dem Lizenztext ist jede Nutzung erlaubt außer einer „Competing Use“: die
+Software anderen in einem kommerziellen Produkt oder Dienst bereitzustellen, das sie ersetzt oder
+im Wesentlichen dieselbe Funktion bietet. Am zweiten Jahrestag ihrer Veröffentlichung wird jede
+Version zusätzlich unter Apache-2.0 lizenziert. Die FSL steht weder auf der
+[Liste der OSI](https://opensource.org/licenses) noch unter den freien Lizenzen der
+[FSF](https://www.gnu.org/licenses/license-list.html). Die AGPL-3.0 verbietet in § 10, Empfängern
+weitere Beschränkungen aufzuerlegen; ob die Nutzungsbeschränkung der FSL bei der Weitergabe einer
+Installation eine solche ist, beantwortet dieser ADR nicht, er ist keine Rechtsberatung. Die
+Lizenzprüfung (`docs/sbom.md`, Abschnitt „Lizenzprüfung“) gab FSL-1.1-ALv2 nicht frei; Liquibase
+stand bis zu dieser Entscheidung als Ausnahme in `.github/licenses/exceptions.txt`. Betroffen sind
+vor allem Behörden, die OPAA weitergeben.
 
-Die Lizenzprüfung (`docs/sbom.md`, Abschnitt „Lizenzprüfung“) gibt FSL-1.1-ALv2 nicht frei. Liquibase steht bis zu
-dieser Entscheidung als Ausnahme in `.github/licenses/exceptions.txt`. Betroffen sind vor allem Behörden, die OPAA
-weitergeben.
+Geprüft wurde der Rückgriff auf Liquibase 4.33.0 (09.07.2025), die letzte Version unter
+Apache-2.0. Build und Spring-Boot-Autokonfiguration liefen, aber `VectorStoreColdStartTest` (zwei
+Migrationen gleichzeitig in einer JVM) blieb in 2 bis 4 von 5 Wiederholungen an einer gesetzten
+Changelog-Sperre hängen, unter 5.0.3 nie. Seit 4.33.0 erschien keine 4.x-Version mehr; die
+Sicherheitskorrekturen von 5.0.3 und 5.0.4 gibt es für 4.x nicht.
 
-Geprüft wurde der Rückgriff auf Liquibase 4.33.0 (09.07.2025), die letzte Version unter Apache-2.0:
-
-- Build und Kompilieren mit Spring Boot 4.1.1 gelingen. Jede Liquibase-Methode, die `spring-boot-liquibase` 4.1.1
-  aufruft, gibt es in 4.33.0, auch `setAnalyticsEnabled` für `spring.liquibase.analytics-enabled`.
-- Von 716 Tests der Pakete `io.opaa.migration`, `io.opaa.compliance` und `io.opaa.config` (dazu Changelog-, Sperr-
-  und Enum-Wächter) bestehen 712. `VectorStoreColdStartTest` scheitert in 2 bis 4 von 5 Wiederholungen: Zwei
-  Liquibase-Läufe in derselben JVM gegen eine leere Datenbank hinterlassen die Changelog-Sperre gesetzt, der zweite
-  wartet bis zum Timeout. Unter 5.0.3 besteht derselbe Test 5 von 5. Die Ursache ist nicht geklärt. Der Kaltstart
-  zweier echter Prozesse (`InstanceStartTest`) bestand unter 4.33.0 in fünf von fünf Läufen.
-- Seit 4.33.0 gibt es keine 4.x-Version mehr. Für 4.33.0 ist kein CVE bekannt (GitHub Advisory Database: nur
-  CVE-2022-0839, behoben in 4.8.0). 5.0.3 und 5.0.4 enthalten Sicherheitskorrekturen, die es für 4.x nicht gibt:
-  Eingabeprüfung in `generate-changelog`, Schwärzen von Zugangsdaten in Fehlermeldungen und Logs, Abweisen von
-  `DOCTYPE` in XML-Changelogs, XSS im Status-Servlet. OPAA nutzt davon nur den Log-Pfad.
+Flyway Community (`flyway-core`, `flyway-database-postgresql`) steht unter Apache-2.0, wird
+gepflegt und von Spring Boot autokonfiguriert (`spring-boot-starter-flyway`, Version aus der BOM).
+Die Community-Ausgabe enthält nur einen leeren Telemetrie-Dienst. Die Changesets von OPAA bestanden
+fast nur aus PostgreSQL-SQL in `sql:`-Blöcken (ADR-0034). Produktiv lief OPAA noch nicht; die einzige
+Installation ist eine Demo, die neu aufgesetzt werden kann.
 
 ## Entscheidung
 
-### 1. Flyway als Ziel der Schemamigration
+### 1. Flyway migriert das Schema
 
-OPAA stellt die Schemamigration auf Flyway (Community-Ausgabe, Apache-2.0) um, das Spring Boot ebenso
-autokonfiguriert. Die Umstellung ist ein eigenes Vorhaben mit Issue; Umfang siehe Konsequenzen. Danach entfällt
-Liquibase aus dem Laufzeit-Klassenpfad und aus `exceptions.txt`.
+Die Schemamigration läuft mit Flyway Community aus SQL-Skripten unter
+`backend/src/main/resources/db/migration/<modul>/`. Liquibase entfällt aus Abhängigkeiten,
+Laufzeit-Klassenpfad und Lizenz-Ausnahmeliste. Die Startmodi `migrate` und `await-migration`
+(ADR-0053) bleiben, `SPRING_FLYWAY_ENABLED=false` ersetzt `SPRING_LIQUIBASE_ENABLED=false`.
 
-Begründung: Flyway Community ist frei, OSI-anerkannt und wird gepflegt. Die Changesets bestehen fast nur aus
-PostgreSQL-SQL in `sql:`-Blöcken und lassen sich deshalb weitgehend mechanisch übertragen.
+Begründung: Flyway ist frei, OSI-anerkannt und gepflegt, und es deckt alles ab, was OPAA nutzt:
+versionierte SQL-Skripte, Platzhalter, Ausführung außerhalb der Reihenfolge und eine Sperre gegen
+gleichzeitige Migrationen. Undo-Migrationen und Dry-Run der kostenpflichtigen Ausgaben braucht OPAA
+nicht.
 
-### 2. Bis zur Umstellung bleibt Liquibase 5 als Ausnahme
+### 2. Eine Baseline je Modul, keine Übernahme der Liquibase-Historie
 
-Bis Flyway ausgeliefert ist, folgt Liquibase der Version aus der Spring-Boot-BOM und bleibt mit Begründung in
-`.github/licenses/exceptions.txt`. Es gibt keinen Pin auf 4.33.0.
+Die gesamte Liquibase-Historie ist zu einer Baseline je Modul zusammengefasst:
+`V1.<n>__<modul>_baseline.sql`, `<n>` die Stelle des Moduls in der Modulreihenfolge. Eine frische
+Datenbank hat danach dasselbe Schema, dieselben Eigentümer und Rechte, dieselben Partitionen und
+dieselben gelieferten Zeilen wie zuvor. Eine Installation mit Liquibase-Historie wird nicht
+übernommen, sondern neu aufgesetzt. Die Baselines liegen vor der Versionsgrenze `v0.1.0` ohne
+Rolling Update.
 
-Begründung: 4.33.0 bekommt keine Korrekturen mehr, ein Regressionswächter scheitert mit dem Pin, und jedes
-Spring-Boot-Update kann Liquibase-5-APIs voraussetzen. Die Ausnahme hält die Lizenzfrage sichtbar, ohne den
-Betrieb an eine eingefrorene Bibliothek zu binden.
+Begründung: Eine Übernahme bräuchte eine Brücke von `databasechangelog` zu `flyway_schema_history`
+für eine einzige Demo-Installation; Neuaufsetzen ist dort billiger und sicherer. Die Gleichheit des
+Endstands ist mit Schema- und Datenabzug gegen eine frisch mit Liquibase migrierte Datenbank
+belegt.
+
+### 3. Spätere Migrationen nach Datum versioniert, Contract im Namen
+
+Jede spätere Migration heißt `V<JJJJ>.<MM>.<TT>.<n>__<thema>.sql`. Flyway ordnet nach Version über
+alle Modulverzeichnisse; `out-of-order` ist an, damit ein später gemergtes Skript mit älterem Datum
+auf einer bestehenden Installation noch läuft. Die Beschreibung eines Contract-Schritts beginnt mit
+`contract_`, weil Flyway keine Labels kennt.
+
+Begründung: Das Datum hält die bisherige Reihenfolge je Modul, eine eindeutige Version verlangt
+Flyway ohnehin. Die Kennzeichnung im Namen steht in `flyway_schema_history` und wirkt nicht auf die
+Ausführung.
 
 ## Konsequenzen
 
-- **Aufwand der Umstellung (Schätzung, L):** 96 Changelog-Dateien mit 103 Changesets in V-Skripte übertragen; dazu
-  23 Verweise auf `${database.defaultSchemaName}` (Flyway-Platzhalter), zwei Preconditions mit `onFail: CONTINUE` in
-  `knowledge/2026-09-27-baseline.yaml` (als `DO`-Block in SQL), 29 Dateien mit `splitStatements` und je eine mit
-  `runOnChange`, `runInTransaction` und `validCheckSum`. Im Code: `DatabaseMigrationMode`,
-  `DatabasePrerequisiteCheck`, `VectorStoreChangelogParameters` und rund 30 Testklassen mit Liquibase-Bezug,
-  darunter die Wächter `ChangelogModuleBoundaryTest`, `RollingUpdateGuardTest` (`labels: contract` braucht eine
-  Namensregel), `ChangesetLockTimeoutTest` und `ComplianceManifestTest`. Dazu kommen `backend/docs/liquibase.md`,
-  die Liquibase-Regeln in `backend/AGENTS.md`, Handbuch (`betrieb/datenbank.md`, `konfiguration.md`) und Helm-Chart
-  (`SPRING_LIQUIBASE_ENABLED`).
-- **Bestehende Installationen:** Ihre Historie steht in `databasechangelog`. Die Umstellung braucht eine
-  Versionsgrenze, an der Flyway den erreichten Stand als Baseline übernimmt; nach `backend/AGENTS.md` liegen
-  Baselines nur an ausgewiesenen Versionsgrenzen ohne Rolling Update.
-- **Restrisiko bis zur Umstellung:** Die Lizenzfrage bei der Weitergabe durch Behörden bleibt offen. Die
-  Lizenzprüfung bleibt grün, weil die Ausnahme genau FSL-1.1-ALv2 nennt; wechselt die Lizenz erneut, schlägt sie an.
+- **Einfacher:** Keine Lizenzausnahme und keine offene Lizenzfrage bei der Weitergabe. Ein
+  abgebrochener Start hinterlässt keine Sperre in der Datenbank: Flyway sperrt über eine
+  Advisory-Sperre der Sitzung, die mit der Verbindung endet.
+- **Schwieriger:** Die Kommentare der einzelnen Changesets sind mit dem Zusammenfassen entfallen;
+  der Endstand steht im Format von `pg_dump`. Delta-Tests, die nur das Verhalten einzelner
+  Changesets auf vorhandenen Zeilen prüften, sind entfallen; Tests auf Constraints, Trigger, Wächter
+  und Rechte laufen auf dem Endstand weiter.
+- **Restrisiko:** Flyway Community beschränkt ältere Datenbankversionen auf die kostenpflichtigen
+  Ausgaben. OPAA verlangt PostgreSQL 18, das Flyway 12 unterstützt; ein künftiger Wechsel des
+  Herstellers am Zuschnitt der Community-Ausgabe ist zu beobachten.
 
 ## Verworfene Alternativen
 
+- Liquibase 5 als Ausnahme behalten — lässt die Frage der Weitergabe unter AGPL-3.0 offen.
 - Pin auf Liquibase 4.33.0 — keine Korrekturen mehr, `VectorStoreColdStartTest` scheitert, Bruch bei künftigen Spring-Boot-Updates.
-- Ausnahme dauerhaft beibehalten — löst die Frage der Weitergabe nicht, nur ihre Sichtbarkeit.
 - FSL-Umwandlung abwarten — 5.0.0 wird erst am 30.09.2027 Apache-2.0, danach liefe OPAA stets zwei Jahre hinter den Korrekturen.
-
-## Offen
-
-- Ob die Beschränkung der FSL bei der Weitergabe von OPAA durch Behörden zur AGPL-3.0 passt, klärt bei Bedarf eine
-  rechtliche Prüfung, nicht dieses Projekt.
-- Ursache des Sperrverhaltens von 4.33.0 in `VectorStoreColdStartTest`, falls ein Pin erneut erwogen wird.
+- Liquibase-Historie in Flyway übernehmen (Baseline-on-migrate) — Brückenlogik für eine einzige Demo-Installation.

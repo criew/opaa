@@ -26,7 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The automatic chat cleanup against the real Liquibase schema, with the default periods of 90 days
+ * The automatic chat cleanup against the real Flyway schema, with the default periods of 90 days
  * without activity and 365 days in the archive. A run is driven with an explicit instant, so the
  * periods pass without waiting; instants in the past are set on the rows directly.
  */

@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * Every Postgres advisory lock in the main code and the changesets takes a namespace of the
+ * Every Postgres advisory lock in the main code and the migrations takes a namespace of the
  * directory {@code db/advisory-lock-namespaces.yaml}, and no namespace is taken by a file the
  * directory does not name for it: two unrelated locks in one namespace would serialise against each
  * other, or worse, one would release the other's lock.

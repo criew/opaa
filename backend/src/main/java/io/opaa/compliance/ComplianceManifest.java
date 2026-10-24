@@ -285,7 +285,7 @@ public record ComplianceManifest(
    * retention period is one, referenced from {@link Retention#settings()}. A standard model is one
    * too, with the model and the address of its role as keys.
    *
-   * @param defaultValue the delivered value, as written in the code or changeset; for a {@code
+   * @param defaultValue the delivered value, as written in the code or migration; for a {@code
    *     PROPERTY} the base document of {@code application.yml} resolved without any environment,
    *     {@code ""} when it is empty
    * @param range the admissible values, where the code bounds them
@@ -316,7 +316,7 @@ public record ComplianceManifest(
    * change of its wording changes the checksum.
    *
    * @param classes the binary names of the classes holding the prompt text
-   * @param databaseDefault {@code table.column} whose changelog default is the prompt text
+   * @param databaseDefault {@code table.column} whose migration default is the prompt text
    */
   public record PromptEntry(
       @NotBlank String area,

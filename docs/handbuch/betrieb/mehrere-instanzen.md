@@ -519,7 +519,7 @@ Die Werte und Vorgaben stehen in der [Konfiguration](konfiguration.md).
 | `OPAA_INSTANCE_HEARTBEAT_INTERVAL` | Abstand des Herzschlags; darf je Instanz verschieden sein |
 | `OPAA_INSTANCE_DEAD_AFTER` | Frist, nach der eine Instanz ohne Herzschlag als beendet gilt; Teil des Konfigurationsabdrucks |
 | `OPAA_MODE` | `migrate` für den eigenen Migrationsschritt ([Migration als eigener Schritt](datenbank.md#migration-als-eigener-schritt)) |
-| `SPRING_LIQUIBASE_ENABLED` | `false` lässt eine Instanz ohne Migration starten |
+| `SPRING_FLYWAY_ENABLED` | `false` lässt eine Instanz ohne Migration starten |
 | `OPAA_DB_POOL_SIZE` | Verbindungen im Pool einer Instanz |
 | `OPAA_SHUTDOWN_TIMEOUT` | Zeitfenster für laufende Anfragen beim Stopp |
 | `TZ` | Zeitzone; Teil des Konfigurationsabdrucks |

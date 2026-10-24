@@ -91,13 +91,13 @@ import org.springframework.util.ClassUtils;
 /**
  * Exercises #238's Stichtag reconstruction ({@link
  * AssetVisibilityHistoryService#readableLibraryIdsAsOf}) against a real Postgres database with the
- * real, versioned Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code
- * ddl-auto=none}) - not Hibernate-generated DDL, mirroring {@code
- * KnowledgeLibraryServiceIntegrationTest}'s pattern. Every scenario grants access, captures an
- * instant while it is active, revokes it (manually, via a directory sync run, or by narrowing
- * library visibility) and captures a second instant afterwards - proving both the positive question
- * ("could this person read library X on day A") and the acceptance criteria's harder negative one
- * ("prove they could not on day B") from the same reconstruction.
+ * real, versioned Flyway schema applied ({@code spring.flyway.enabled=true}, {@code ddl-auto=none})
+ * - not Hibernate-generated DDL, mirroring {@code KnowledgeLibraryServiceIntegrationTest}'s
+ * pattern. Every scenario grants access, captures an instant while it is active, revokes it
+ * (manually, via a directory sync run, or by narrowing library visibility) and captures a second
+ * instant afterwards - proving both the positive question ("could this person read library X on day
+ * A") and the acceptance criteria's harder negative one ("prove they could not on day B") from the
+ * same reconstruction.
  *
  * <p>{@link #everyWritePathChangingReadabilityKeepsLiveAndHistoryInAgreement} additionally holds
  * every operation that changes the readable set against both formulas at once. It is what keeps the
@@ -440,7 +440,7 @@ class PermissionHistoryServiceIntegrationTest {
     // regression guard for #1497: two changes that follow each other closely - well within one
     // coarse clock tick - must not give the organization-wide state validFrom == validTo, an
     // interval no asOf can satisfy, so the reconstruction reported "no access" for a period in
-    // which access existed. The standing clock itself is PermissionHistoryBoundaryMigrationTest.
+    // which access existed. The standing clock itself is PermissionHistoryBoundaryTest.
     // Recording through a locally built service replaces LibraryExternalAccessService ->
     // PermissionHistoryListener; it therefore says nothing about how many boundaries that
     // production path consumes per change - the tests above cover that.

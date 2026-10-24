@@ -39,7 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied - same
+ * Runs against a real Postgres database with the real, versioned Flyway schema applied - same
  * pattern as {@link SpaceServiceIntegrationTest}.
  */
 @OpaaIntegrationTest

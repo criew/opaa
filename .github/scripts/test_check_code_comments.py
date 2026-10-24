@@ -101,15 +101,15 @@ TREES = {
     "evalTest": "backend/src/evalTest/java/io/opaa/eval/ProbeTest.java",
 }
 WORKFLOW = ".github/workflows/probe.yml"
-CHANGELOG = "backend/src/main/resources/db/changelog/probe/2026-10-14-probe.yaml"
+MIGRATION = "backend/src/main/resources/db/migration/probe/V2026.10.14.1__probe.sql"
 
 
 def workflow(comment: str) -> str:
     return f"on: push\n# {comment}\njobs: {{}}\n"
 
 
-def changelog(comment: str) -> str:
-    return f'databaseChangeLog:\n  - changeSet:\n      id: probe\n      comment: "{comment}"\n'
+def migration(comment: str) -> str:
+    return f"-- {comment}\nSELECT 1;\n"
 
 
 @pytest.mark.parametrize("tree", TREES)
@@ -132,7 +132,7 @@ def test_regression_guard_counts_only_in_a_test(repo: Path) -> None:
         *[(p, java("#393 code review, finding 1: with three roles a check is needed.")) for p in TREES.values()],
         (WORKFLOW, workflow("PR #301 review, Befund 2: the group key names the label.")),
         (WORKFLOW, "on: push\njobs:\n  a:\n    steps:\n      - run: |\n          // Provenance check (PR #301 review): only our marker\n"),
-        (CHANGELOG, "databaseChangeLog:\n  # #1820 review: the count goes\n"),
+        (MIGRATION, "SELECT 1;\n  -- #1820 review: the count goes\n"),
     ],
 )
 def test_review_protocol_fails_in_every_tree(repo: Path, path: str, text: str) -> None:
@@ -155,9 +155,9 @@ def test_german_history_fails_in_a_workflow(repo: Path) -> None:
     [
         *[(p, java("Every library has an owner (#1073).")) for p in TREES.values()],
         (WORKFLOW, workflow("A corpus-only PR triggers no API calls (#1123).")),
-        (CHANGELOG, changelog("The connection log (#2163, ADR-0041): append-only.")),
-        (CHANGELOG, changelog("#2163: append-only.")),
-        (CHANGELOG, 'databaseChangeLog:\n  - changeSet:\n      comment: >-\n        Expression index\n        (#1073) on library_id.\n      runInTransaction: false\n'),
+        (MIGRATION, migration("The connection log (#2163, ADR-0041): append-only.")),
+        (MIGRATION, migration("#2163: append-only.")),
+        (MIGRATION, "CREATE INDEX i ON t (c);\n  -- Expression index\n  -- (#1073) on library_id.\n"),
     ],
 )
 def test_origin_marker_fails_in_every_tree(repo: Path, path: str, text: str) -> None:
@@ -172,11 +172,11 @@ def test_origin_marker_fails_in_every_tree(repo: Path, path: str, text: str) -> 
     "path, text",
     [
         (WORKFLOW, workflow("Workaround until #2042 is fixed upstream.")),
-        (CHANGELOG, changelog("The connection log (ADR-0041, Entscheidung 7): append-only.")),
-        (CHANGELOG, 'databaseChangeLog:\n  - changeSet:\n      comment: >-\n        Expression index.\n      sql: SELECT 1 -- (#1073)\n'),
+        (MIGRATION, migration("The connection log (ADR-0041, Entscheidung 7): append-only.")),
+        (MIGRATION, "-- Expression index.\nSELECT 1; -- (#1073)\n"),
     ],
 )
-def test_allowed_workflow_and_changelog_comment_passes(repo: Path, path: str, text: str) -> None:
+def test_allowed_workflow_and_migration_comment_passes(repo: Path, path: str, text: str) -> None:
     write(repo, path, text)
     result = run(repo)
     assert result.returncode == 0, result.stdout

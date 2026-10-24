@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
  * is {@code insertable = false, updatable = false}, and there is no setter") is a static fact about
  * the class, independent of any database state - the actual privilege boundary against a real,
  * restricted role is enforced by the baseline's {@code GRANT UPDATE (retention_months, updated_at)}
- * (baseline, identity changeSet); this test is the cheap, always-run companion that catches the
+ * (baseline, identity migration); this test is the cheap, always-run companion that catches the
  * moment someone reintroduces a setter or drops an {@code insertable}/{@code updatable} flag, well
  * before that change ever reaches a database.
  */

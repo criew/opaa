@@ -47,9 +47,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * schema: who may maintain an internal group, who may see it as a grant subject, and what a change
  * of membership leaves behind.
  *
- * <p>Runs against a real Postgres with Liquibase applied rather than Hibernate DDL, for the same
+ * <p>Runs against a real Postgres with Flyway applied rather than Hibernate DDL, for the same
  * reason {@code GroupServiceIntegrationTest} does: the composite foreign keys of {@code
- * group_stewards} and the {@code released_for_use} default only exist in the versioned changelog.
+ * group_stewards} and the {@code released_for_use} default only exist in the versioned migrations.
  */
 @OpaaIntegrationTest
 class GroupStewardshipIntegrationTest {

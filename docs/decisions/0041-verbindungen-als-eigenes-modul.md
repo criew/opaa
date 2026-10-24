@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0038](0038-steckbare-konnektoren.md) · ergänzt durch
 [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md) (OAuth-Kern und Geheimnisse des Zugangs),
@@ -205,8 +205,8 @@ Paketreihenfolge (Regeln: `backend/AGENTS.md`). Modulkanten erst, wenn der Code 
 `account`, `oauth`; das Wurzelpaket verdrahtet die Ports, `web` liegt darüber, nach oben nur über
 Ports (`LibrariesOnProfile`, `PersonAccounts`, `SecretIssuer`, `SourceConsentRejections`,
 `PersonConnections`, `SourceConsentEnds`). Die Regeln je Paket stehen in
-`backend/src/main/java/io/opaa/connection/AGENTS.md` (`ModuleAgentsFileTest`). Liquibase:
-`db/changelog/connections/`, Tabellen in `ChangelogModuleBoundaryTest`. **Freigabe nur in
+`backend/src/main/java/io/opaa/connection/AGENTS.md` (`ModuleAgentsFileTest`). Migrationen:
+`db/migration/connections/`, Tabellen in `MigrationModuleBoundaryTest`. **Freigabe nur in
 connections:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues Konto)
 entscheiden aus `CREATE_CONNECTOR_LIBRARY` mit Geltungsbereich und den Sperren; jedes andere Modul
 fragt sie (ArchUnit `theConnectorReleaseIsDecidedInConnections`). Spezifikation zuerst (ADR-0006):
@@ -289,7 +289,7 @@ gelöschte Zugänge erreichen die Bibliothek ohne Ereignis: Der Port meldet beim
 Beschreibung und braucht keinen Code außerhalb seines Pakets; Token und Client-Secret erreichen
 keinen Konnektor. Eine Regel „Konto nutzbar“ statt drei.
 
-**Schwieriger:** Ein Modul und ein Changelog-Verzeichnis mehr; der Kern hängt bei jedem Lauf an
+**Schwieriger:** Ein Modul und ein Migrationsverzeichnis mehr; der Kern hängt bei jedem Lauf an
 einem Port, dessen Antwort Netzzugriffe enthalten kann (Erneuerung).
 
 **Restrisiken:** die Restlücke aus Entscheidung 4 und die akzeptierten Risiken der Personenzahlen

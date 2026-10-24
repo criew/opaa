@@ -36,9 +36,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Runs {@link UploadPendingRecoveryRunner} against a real Postgres database with the real,
- * versioned Liquibase schema applied - the same {@code spring.liquibase.enabled=true}, {@code
+ * versioned Flyway schema applied - the same {@code spring.flyway.enabled=true}, {@code
  * ddl-auto=none} pattern {@code LibraryDocumentServiceIntegrationTest} uses, needed here because
- * {@code documents.created_at} only exists once Liquibase has actually run (AGENTS.md,
+ * {@code documents.created_at} only exists once Flyway has actually run (AGENTS.md,
  * "Reproduktionsnachweis").
  *
  * <p>Calls {@link UploadPendingRecoveryRunner#run} directly rather than relying on it having

@@ -45,7 +45,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Runs {@link LibraryFolderService} against a real Postgres database with the real, versioned
- * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - mirrors
+ * Flyway schema applied ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}) - mirrors
  * {@code LibraryDocumentServiceIntegrationTest}, needed here because {@code
  * fk_library_folders_parent}/{@code fk_documents_folder} and the two partial unique indexes {@code
  * uk_library_folders_root_name}/{@code uk_library_folders_child_name} are real, enforced

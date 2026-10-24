@@ -23,16 +23,16 @@ Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schic
 - **Statuscodes:** Eine Operation deklariert nur, was sie selbst entscheidet;
   `TransportStatusCodeSpecificationTest` hält das maschinell fest (Regel in `backend/AGENTS.md`).
 - **Startwächter in `config`:** `DatabaseSchemaGuard` verlangt für `opaa.database.schema` einen
-  schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Liquibase.
+  schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Flyway.
   `PgVectorVersionGuard` verweigert den Start bei pgvector älter als 0.8.0. Ein Wechsel des
   Embedding-Modells verhindert den Start nicht; das erkennt `indexing.chunk.EmbeddingIndexReconciler`.
   `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit Zugangsdaten.
-  `DatabasePrerequisiteCheck` läuft vor jeder `SpringLiquibase`-Bean und bricht ab, wenn pgvector auf
+  `DatabasePrerequisiteCheck` läuft vor jeder `Flyway`-Bean und bricht ab, wenn pgvector auf
   dem Server nicht installiert ist; den Bericht schreibt `DatabasePrerequisiteFailureAnalyzer`
   (registriert in `META-INF/spring.factories`). Eine Fehlerkette auszuwerten genügt dafür nicht:
-  SQLState 0A000 lässt den Pool die Verbindung schließen, und Liquibase meldet danach nur „Connection
-  is closed". Fehlende Rechte (42501) kommen dagegen lesbar an und bleiben der Migration überlassen,
-  sonst würden verwaltete Dienste mit eigener Verwaltungsrolle abgewiesen.
+  SQLState 0A000 lässt den Pool die Verbindung schließen, und die Migration meldet danach nur die
+  geschlossene Verbindung. Fehlende Rechte (42501) kommen dagegen lesbar an und bleiben der
+  Migration überlassen, sonst würden verwaltete Dienste mit eigener Verwaltungsrolle abgewiesen.
 - **`TrustStoreBuilder`** ist ein Hauptprogramm ohne Spring, das der Init-Container des Helm-Charts
   über `PropertiesLauncher` startet (`extraCACertificates`): Laufzeit-CAs plus alle PEM-Zertifikate
   in einen frischen Truststore.

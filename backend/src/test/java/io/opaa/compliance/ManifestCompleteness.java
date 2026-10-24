@@ -1,11 +1,11 @@
 package io.opaa.compliance;
 
-import io.opaa.compliance.ChangelogSchema.Table;
 import io.opaa.compliance.ComplianceManifest.DataEntry;
 import io.opaa.compliance.ComplianceManifest.NonPersonalTable;
 import io.opaa.compliance.ComplianceManifest.PersonPath;
 import io.opaa.compliance.ComplianceManifest.PromptEntry;
 import io.opaa.compliance.ComplianceManifest.TableRef;
+import io.opaa.compliance.MigrationSchema.Table;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,9 +32,9 @@ final class ManifestCompleteness {
 
   private ManifestCompleteness() {}
 
-  /** The tables of the delivered schema, all of them created by the changelog. */
+  /** The tables of the delivered schema, all of them created by the migrations. */
   static Map<String, Table> deliveredSchema() {
-    return new LinkedHashMap<>(ChangelogSchema.read());
+    return new LinkedHashMap<>(MigrationSchema.read());
   }
 
   /** The gaps as one failure message, closed by the pointer to the convention. */
@@ -421,7 +421,7 @@ final class ManifestCompleteness {
         + table.file()
         + ") has no manifest entry. Add it in "
         + file(area)
-        + (area.equals("<area>") ? "" : " (holds most tables of the same changelog directory)")
+        + (area.equals("<area>") ? "" : " (holds most tables of the same migration directory)")
         + ".\n  If no column points at a person:\n"
         + "    nonPersonalTables:\n"
         + "      "

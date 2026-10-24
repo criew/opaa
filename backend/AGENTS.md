@@ -80,7 +80,7 @@ Jedes Modul hat im Hauptpaket unter `backend/src/main/java/io/opaa/` eine `AGENT
 Zeichen, Link- und Tabellenzeilen ausgenommen): Zweck und Grenze, Invarianten, Stolpersteine, ADRs (je Zeile Link und
 wenige Wörter), Verweise, zu laufende Tests. Daneben liegt `CLAUDE.md` mit `@AGENTS.md`, jedes weitere Top-Level-Paket
 des Moduls importiert sie (`@../common/AGENTS.md`); andere Werkzeuge lesen die Datei vor der Arbeit im Modul selbst.
-Modulübergreifendes (Modulgrenzen, Liquibase) steht hier, nicht in der Datei des Moduls.
+Modulübergreifendes (Modulgrenzen, Migrationen) steht hier, nicht in der Datei des Moduls.
 
 | Modul | Datei | Modul | Datei |
 |---|---|---|---|
@@ -104,7 +104,7 @@ und nennt „(ADR-0053)“ in der Javadoc (Entscheidung 16). Den Betrieb mit zwe
 **Ein ereignisgesteuerter Cache ohne TTL hängt am Invalidierungsbus**, ebenso einer, dessen TTL eine Rechte- oder
 Sicherheitslücke offen ließe (ADR-0053, Entscheidung 5): Er implementiert `io.opaa.instance.InvalidationSubscriber`,
 ein Caffeine-Cache geht über `BusBoundCache`. Liegt die Quelle in einer Tabelle, meldet ein Trigger
-`notify_cache_invalidation('<topic>')` im Changeset ihres Moduls jede Änderung; ein Ereignis ohne eigene Tabelle
+`notify_cache_invalidation('<topic>')` in der Migration ihres Moduls jede Änderung; ein Ereignis ohne eigene Tabelle
 meldet `InvalidationBus#publish` in der Transaktion (`BEFORE_COMMIT`), nie mit Personenbezug in der Nutzlast.
 `InvalidationBusBindingTest` erzwingt die Anbindung; eine Ausnahme steht dort mit Grund.
 
@@ -131,7 +131,7 @@ Jeder Namensraum (erster Schlüssel von `pg_advisory_xact_lock(int, int)` und Ve
 `src/test/resources/db/advisory-lock-namespaces.yaml`, mit den Dateien, die ihn nehmen. Ein neuer Lock nimmt die
 nächste freie Nummer und trägt sie dort ein, ein offener Branch reserviert sie unter `reserved`; eine Nummer wird nie
 wieder vergeben. Der Namensraum steht als Literal oder als `int …LOCK_NAMESPACE`-Konstante in der Datei des Locks;
-`AdvisoryLockNamespaceTest` prüft Code und Changesets.
+`AdvisoryLockNamespaceTest` prüft Code und Migrationen.
 
 ## Spring-Testkontexte
 
@@ -151,35 +151,37 @@ und wird in `SpringContextSignatureTest` eingetragen. Klassenlokale Konfiguratio
 richtig, nur dort nicht), fasst nur Zeilen ihrer eigenen IDs an und prüft nie gegen eine ungefilterte Tabelle;
 kein pauschales `deleteAll()`. Signaturen, Begründungen und Wächter: [docs/testkontexte.md](docs/testkontexte.md).
 
-## Liquibase
+## Datenbankmigrationen
 
-Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
+Flyway ([ADR-0056](../docs/decisions/0056-lizenz-der-migrationsbibliothek.md)); Herleitung und Prüfungen:
+[docs/migrationen.md](docs/migrationen.md).
 
-- Ein Changeset je Datenbankänderung, als neue Datei `db/changelog/<modul>/JJJJ-MM-TT-<thema>.yaml` im Verzeichnis
-  des Moduls, dem die Tabelle gehört; ID `<modul>-<dateistamm>` (weitere der Datei mit `--<suffix>`), Autor `opaa`,
-  der Master bleibt unverändert. Eine neue Tabelle kommt in `ChangelogModuleBoundaryTest.TABLE_MODULES`.
-- Reines PostgreSQL-SQL in `sql:`-Blöcken, eigene Objekte nie schemaqualifiziert (kein `public.`), ein nötiger
-  Schemaname über `current_schema()` oder `${database.defaultSchemaName}` (ADR-0034).
+- Eine Migration je Datenbankänderung, als neue Datei `db/migration/<modul>/V<JJJJ>.<MM>.<TT>.<n>__<thema>.sql` im
+  Verzeichnis des Moduls, dem die Tabelle gehört (`<n>` laufende Nummer des Tags, jede Version nur einmal); ein
+  ausgeführtes Skript wird nie geändert. Eine neue Tabelle kommt in `MigrationModuleBoundaryTest.TABLE_MODULES`.
+- Reines PostgreSQL-SQL, eigene Objekte nie schemaqualifiziert (kein `public.`), ein nötiger Schemaname über
+  `current_schema()` oder `${flyway:defaultSchema}` (ADR-0034).
 - Nur Tabellen des eigenen Moduls; Fremdschlüssel, Trigger und Funktionen reichen nur in Module, von denen es nach
   `ALLOWED_MODULE_EDGES` abhängen darf.
-- Korrekt in beiden Reihenfolgen: bei einer Neuinstallation und angehängt an eine bestehende Installation.
+- Korrekt in beiden Reihenfolgen: bei einer Neuinstallation und angehängt an eine bestehende Installation
+  (`out-of-order`).
 - Rein additive DDL (neue Tabelle, nullable Spalte ohne Default und `GENERATED`, nicht eindeutiger Index, Constraint
   auf neuer Tabelle) kommt ohne eigenen Test aus; alles andere braucht einen Delta-Test unter `io.opaa.migration`
-  (`AbstractMigrationTest`). Im Zweifel ist es nicht additiv.
+  (`AbstractMigrationTest`, Fixture `Migrations.except(...)`). Im Zweifel ist es nicht additiv.
 - Jede neue Tabelle und Spalte braucht einen Eintrag im Fakten-Manifest, siehe nächster Abschnitt.
-- **Rolling Update, Expand/Contract über zwei Releases:** Kein Changeset bricht die Vorgängerversion,
+- **Rolling Update, Expand/Contract über zwei Releases:** Keine Migration bricht die Vorgängerversion,
   die beim Update weiterläuft. Entfernen, Umbenennen, `NOT NULL` ohne bleibenden Default,
   `DROP NOT NULL`, `DROP DEFAULT`, ein engerer Typ oder `CHECK` kommen erst im Folgerelease, wenn die
-  Vorgängerversion den Teil nicht mehr nutzt, als Changeset mit `labels: contract`
+  Vorgängerversion den Teil nicht mehr nutzt, als Migration mit `contract_` am Anfang der Beschreibung
   (`RollingUpdateGuardTest`). Baselines nur an ausgewiesenen Versionsgrenzen ohne Rolling Update.
-- Jedes Changeset beginnt mit `SET LOCAL lock_timeout = '5s';` (`ChangesetLockTimeoutTest`).
+- Jede Migration beginnt mit `SET LOCAL lock_timeout = '5s';` (`MigrationLockTimeoutTest`).
 - Ein neuer Wert eines persistierten Enums steht zuerst unter `pending` in
   `src/test/resources/db/persisted-enums.yaml` und wird erst ab dem Release nach dem geschrieben, das
   ihn ausliefert (`PersistedEnumRegistryTest`).
 
 ## Fakten-Manifest
 
-`ComplianceManifestTest` hält das Manifest unter `src/main/resources/compliance/manifest/` gegen Liquibase-Tabellen
+`ComplianceManifestTest` hält das Manifest unter `src/main/resources/compliance/manifest/` gegen Migrations-Tabellen
 und -Spalten, `AuditEventType`, `SystemRole`, `Capability`, die Prüfsummen der System-Prompts und die Kennungen
 von `@DataFlow` ([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und
 einzufügendes YAML; Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).

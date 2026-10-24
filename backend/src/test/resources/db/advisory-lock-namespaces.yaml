@@ -41,7 +41,7 @@ namespaces:
     owners: [java/io/opaa/indexing/chunk/VectorIndexSchema.java]
   - number: 230
     purpose: the boundaries of the permission history, installation-wide monotonic
-    owners: [resources/db/changelog/rights/2026-10-19-permission-history-boundary.yaml]
+    owners: [resources/db/migration/rights/V1.3__rights_baseline.sql]
   - number: 231
     purpose: registration in the instance register
     owners: [java/io/opaa/instance/InstanceRegistry.java]

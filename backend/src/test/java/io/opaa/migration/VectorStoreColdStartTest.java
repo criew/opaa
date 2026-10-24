@@ -26,18 +26,18 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 /**
  * What two instances starting together against an empty database do to its schema before they
- * serve: Liquibase at the same moment, then - at the same moment again - Spring AI's vector store
- * with {@code initialize-schema} as the delivered application.yml sets it. Both must get through,
- * and {@code vector_store} must exist afterwards. Repeated, because a race of two DDL statements
- * does not lose every time.
+ * serve: Flyway at the same moment, then - at the same moment again - Spring AI's vector store with
+ * {@code initialize-schema} as the delivered application.yml sets it. Both must get through, and
+ * {@code vector_store} must exist afterwards. Repeated, because a race of two DDL statements does
+ * not lose every time.
  */
 class VectorStoreColdStartTest extends AbstractMigrationTest {
 
   private static final boolean DELIVERED_INITIALIZE_SCHEMA = deliveredInitializeSchema();
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-empty.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return List.of();
   }
 
   // regression guard for #2944: initialize-schema=true raced in CREATE EXTENSION/CREATE TABLE
@@ -68,7 +68,7 @@ class VectorStoreColdStartTest extends AbstractMigrationTest {
   private Void prepare(CyclicBarrier together) throws Exception {
     try (Connection connection = connect()) {
       together.await();
-      applyChangelog(connection, MasterChangelog.PATH);
+      applyMigrations(connection, Migrations.all());
       together.await();
       PgVectorStore.builder(
               new JdbcTemplate(new SingleConnectionDataSource(connection, true)),

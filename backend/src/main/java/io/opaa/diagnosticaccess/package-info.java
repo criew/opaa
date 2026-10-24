@@ -24,6 +24,6 @@
  * the application account holds {@code INSERT} and {@code SELECT} and nothing else, and the only
  * deletion is a monthly partition drop by a {@code SECURITY DEFINER} function. It is a table of its
  * own rather than a further {@code audit_log} event type because its retention is 12 months while
- * {@code audit_log}'s is 12-120 - see the baseline's workspace changeSet.
+ * {@code audit_log}'s is 12-120 - see the workspace migration.
  */
 package io.opaa.diagnosticaccess;

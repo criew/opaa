@@ -212,10 +212,10 @@ count_rows() {
     sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -F";" -f -' <"$work_dir/zaehlung.sql" >"$2"
 }
 
-# The ids of databasechangelog, sorted for comm.
-changesets() {
+# The versions flyway_schema_history records as applied, sorted for comm.
+migrations() {
   kubectl -n "$1" exec opaa-postgresql-0 -- \
-    sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT id FROM databasechangelog"' |
+    sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT version FROM flyway_schema_history WHERE success"' |
     LC_ALL=C sort
 }
 
@@ -322,7 +322,7 @@ stop_forwards
 stop_backend "$QUELLE"
 note_time tS
 count_rows "$QUELLE" "$work_dir/zaehlung-quelle.txt"
-changesets "$QUELLE" >"$work_dir/changesets-quelle.txt"
+migrations "$QUELLE" >"$work_dir/migrationen-quelle.txt"
 kubectl -n "$QUELLE" exec opaa-postgresql-0 -- \
   sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' >"$work_dir/opaa-db.dump"
 start_copy_pod "$QUELLE"
@@ -386,7 +386,7 @@ pass P1 "\`pg_restore --exit-on-error\` endete mit 0"
 note_time t2
 
 count_rows "$ZIEL" "$work_dir/zaehlung-ziel.txt"
-changesets "$ZIEL" >"$work_dir/changesets-vor-dem-start.txt"
+migrations "$ZIEL" >"$work_dir/migrationen-vor-dem-start.txt"
 helm upgrade opaa "$CHART_DIR" -n "$ZIEL" "${VALUES[@]}" --set-string secrets.jwtSecret="$new_jwt"
 kubectl -n "$ZIEL" rollout status deploy/opaa-backend --timeout="$ROLLOUT_TIMEOUT"
 note_time t3
@@ -410,21 +410,16 @@ for info in "$info_source" "$info_target"; do
   jq -e '.build.version' <<<"$info" >/dev/null || fail P4 "/actuator/info nennt keine Version: $(jq -c . <<<"$info")"
 done
 [[ "$info_target" == "$info_source" ]] || fail P4 "Version im Ziel weicht ab: $(jq -c . <<<"$info_target")"
-changesets "$ZIEL" >"$work_dir/changesets-nach-dem-start.txt"
-if ! diff "$work_dir/changesets-quelle.txt" "$work_dir/changesets-vor-dem-start.txt" >/dev/null; then
-  fail P4 "\`databasechangelog\` im Ziel vor dem Start weicht von der Quelle ab"
+migrations "$ZIEL" >"$work_dir/migrationen-nach-dem-start.txt"
+if ! diff "$work_dir/migrationen-quelle.txt" "$work_dir/migrationen-vor-dem-start.txt" >/dev/null; then
+  fail P4 "\`flyway_schema_history\` im Ziel vor dem Start weicht von der Quelle ab"
 fi
-# The only changesets a start may add: the two indexes on the vector index, which wait for the table
-# Spring AI creates during the first start and therefore run on the second (kubernetes.md, "Rückweg").
-added="$(LC_ALL=C comm -13 "$work_dir/changesets-vor-dem-start.txt" "$work_dir/changesets-nach-dem-start.txt")"
-removed="$(LC_ALL=C comm -23 "$work_dir/changesets-vor-dem-start.txt" "$work_dir/changesets-nach-dem-start.txt")"
-if [[ -n "$removed" ]] || grep -vxF -e knowledge-2026-09-27-baseline--vector-store-library-id \
-  -e knowledge-2026-09-27-baseline--vector-store-document-id <<<"$added" | grep -q .; then
-  fail P4 "Der Start änderte \`databasechangelog\`: hinzu $(paste -sd ' ' <<<"$added"), weg $(paste -sd ' ' <<<"$removed")"
+# A start of the same version on its own restored database applies no migration.
+if ! diff "$work_dir/migrationen-vor-dem-start.txt" "$work_dir/migrationen-nach-dem-start.txt" >/dev/null; then
+  fail P4 "Der Start änderte \`flyway_schema_history\`: $(diff "$work_dir/migrationen-vor-dem-start.txt" "$work_dir/migrationen-nach-dem-start.txt" | paste -sd ' ')"
 fi
-before="$(wc -l <"$work_dir/changesets-vor-dem-start.txt")"
-after="$(wc -l <"$work_dir/changesets-nach-dem-start.txt")"
-pass P4 "Version \`$backend_version\` wie in der Quelle; \`databasechangelog\` $before Zeilen vor, $after nach dem Start$([[ -z "$added" ]] || echo ", nachgeholt: $(paste -sd ' ' <<<"$added")")"
+count="$(wc -l <"$work_dir/migrationen-nach-dem-start.txt")"
+pass P4 "Version \`$backend_version\` wie in der Quelle; \`flyway_schema_history\` mit $count Migrationen vor und nach dem Start unverändert"
 
 token_target="$(login)"
 token="$token_target"

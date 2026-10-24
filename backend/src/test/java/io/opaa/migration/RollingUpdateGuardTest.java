@@ -8,37 +8,29 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import liquibase.changelog.ChangeLogParameters;
-import liquibase.changelog.ChangeSet;
-import liquibase.changelog.DatabaseChangeLog;
-import liquibase.database.Database;
-import liquibase.parser.ChangeLogParserFactory;
-import liquibase.resource.ClassLoaderResourceAccessor;
-import liquibase.resource.ResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The expand/contract rule (backend/docs/liquibase.md, "Rolling Update"): no changeSet breaks the
- * release that still runs while it is applied - unless it is labelled {@value #CONTRACT_LABEL}, or
- * it lies before the version boundary {@link RollingUpdateBoundary} and is listed there with its
- * assessment. Every changeSet of the master runs on its own, in master order, between two reads of
- * the catalog ({@link RollingUpdateCatalog}); the fixtures under {@code db/rolling-update/} show
- * what the guard catches and what it lets pass.
+ * The expand/contract rule (backend/docs/migrationen.md, "Rolling Update"): no migration after the
+ * version boundary {@link RollingUpdateBoundary} breaks the release that still runs while it is
+ * applied - unless its description starts with {@value #CONTRACT_PREFIX}. Every such migration runs
+ * on its own, in version order, between two reads of the catalog ({@link RollingUpdateCatalog});
+ * the fixtures under {@code db/rolling-update/} show what the guard catches and what it lets pass.
  */
 class RollingUpdateGuardTest extends AbstractMigrationTest {
 
-  /** The Liquibase label that marks a contract changeSet, the second step of expand/contract. */
-  static final String CONTRACT_LABEL = "contract";
+  /** The description prefix that marks a contract migration, the second step of expand/contract. */
+  static final String CONTRACT_PREFIX = "contract_";
 
   private static final String FIXTURES = "db/rolling-update/";
 
   private Connection connection;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-empty.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return List.of();
   }
 
   @BeforeEach
@@ -53,112 +45,96 @@ class RollingUpdateGuardTest extends AbstractMigrationTest {
   }
 
   @Test
-  void noChangeSetOfTheMasterBreaksTheRunningReleaseUnlessItIsAContractOrBeforeTheBoundary()
-      throws Exception {
-    Map<String, List<String>> breaking = unmarkedBreakingChanges(MasterChangelog.PATH);
+  void noMigrationAfterTheBoundaryBreaksTheRunningReleaseUnlessItIsAContract() throws Exception {
+    List<String> all = Migrations.all();
+    applyMigrations(connection, all.stream().filter(RollingUpdateBoundary::before).toList());
 
-    Map<String, List<String>> unmarked = new LinkedHashMap<>(breaking);
-    unmarked.keySet().removeAll(RollingUpdateBoundary.BREAKING_BEFORE.keySet());
-    assertThat(unmarked)
+    assertThat(
+            unmarkedBreakingChanges(
+                all.stream().filter(script -> !RollingUpdateBoundary.before(script)).toList()))
         .as(
-            "these changeSets break the release still running during a rolling update. Split them"
-                + " into expand (now) and contract (the release after), and label only the contract"
-                + " changeSet '%s' - see backend/docs/liquibase.md, \"Rolling Update\"",
-            CONTRACT_LABEL)
+            "these migrations break the release still running during a rolling update. Split them"
+                + " into expand (now) and contract (the release after), and start only the"
+                + " description of the contract with '%s' - see backend/docs/migrationen.md,"
+                + " \"Rolling Update\"",
+            CONTRACT_PREFIX)
         .isEmpty();
-
-    assertThat(RollingUpdateBoundary.BREAKING_BEFORE.keySet())
-        .as(
-            "every assessed breaking changeSet still breaks and lies before the boundary - a"
-                + " stale entry is removed, the list never grows")
-        .allMatch(breaking::containsKey)
-        .allMatch(RollingUpdateBoundary.CHANGESETS_BEFORE::contains);
   }
 
   @Test
   void theFixturesThatBreakTheRunningReleaseAreCaught() throws Exception {
-    Map<String, List<String>> breaking = unmarkedBreakingChanges(FIXTURES + "breaking.yaml");
+    Map<String, List<String>> breaking =
+        unmarkedBreakingChanges(Migrations.in(FIXTURES + "breaking/"));
 
     assertThat(breaking)
         .containsOnlyKeys(
-            "drop-column",
-            "drop-table",
-            "rename-column",
-            "rename-table",
-            "drop-column-in-do-block",
-            "set-not-null",
-            "add-not-null-column",
-            "drop-not-null",
-            "drop-default",
-            "narrow-type",
-            "restrict-check",
-            "check-on-existing-column");
-    assertThat(breaking.get("drop-column")).containsExactly("drops column guard_fixture.legacy");
-    assertThat(breaking.get("drop-column-in-do-block"))
+            "drop_column",
+            "drop_table",
+            "rename_column",
+            "rename_table",
+            "drop_column_in_do_block",
+            "set_not_null",
+            "add_not_null_column",
+            "drop_not_null",
+            "drop_default",
+            "narrow_type",
+            "restrict_check",
+            "check_on_existing_column");
+    assertThat(breaking.get("drop_column")).containsExactly("drops column guard_fixture.legacy");
+    assertThat(breaking.get("drop_column_in_do_block"))
         .containsExactly("drops column guard_fixture.dynamic");
-    assertThat(breaking.get("set-not-null"))
+    assertThat(breaking.get("set_not_null"))
         .containsExactly("sets guard_fixture.optional NOT NULL without a lasting default");
-    assertThat(breaking.get("add-not-null-column"))
+    assertThat(breaking.get("add_not_null_column"))
         .containsExactly("adds guard_fixture.owner NOT NULL without a default");
-    assertThat(breaking.get("restrict-check"))
+    assertThat(breaking.get("restrict_check"))
         .containsExactly(
             "changes CHECK chk_guard_fixture_state on existing columns of guard_fixture");
   }
 
   @Test
   void theFixturesThatTheRunningReleaseSurvivesPass() throws Exception {
-    assertThat(unmarkedBreakingChanges(FIXTURES + "compatible.yaml")).isEmpty();
+    assertThat(unmarkedBreakingChanges(Migrations.in(FIXTURES + "compatible/"))).isEmpty();
   }
 
   @Test
-  void aBreakingFixtureLabelledContractIsAccepted() throws Exception {
-    Map<ChangeSet, List<String>> breaking = breakingChanges(FIXTURES + "contract.yaml");
+  void aBreakingFixtureMarkedAsContractIsAccepted() throws Exception {
+    List<String> fixture = Migrations.in(FIXTURES + "contract/");
 
-    assertThat(breaking.keySet())
-        .extracting(ChangeSet::getId)
-        .containsExactly("drop-column-as-contract");
-    assertThat(breaking.keySet()).allMatch(RollingUpdateGuardTest::isContract);
+    assertThat(breakingChanges(fixture)).containsOnlyKeys("contract_drop_column");
+    assertThat(fixture.getLast()).matches(RollingUpdateGuardTest::isContract);
   }
 
-  /** Whether {@code changeSet} carries the {@value #CONTRACT_LABEL} label. */
-  static boolean isContract(ChangeSet changeSet) {
-    return changeSet.getLabels() != null
-        && changeSet.getLabels().getLabels().contains(CONTRACT_LABEL);
+  /** Whether {@code script} is marked as the contract step by its description. */
+  static boolean isContract(String script) {
+    return Migrations.description(script).startsWith(CONTRACT_PREFIX);
   }
 
-  /** {@link #breakingChanges} without the contract changeSets, by id. */
-  private Map<String, List<String>> unmarkedBreakingChanges(String changelog) throws Exception {
+  /** {@link #breakingChanges} without the contract migrations, by description. */
+  private Map<String, List<String>> unmarkedBreakingChanges(List<String> scripts) throws Exception {
     Map<String, List<String>> unmarked = new LinkedHashMap<>();
-    breakingChanges(changelog)
+    breakingChanges(scripts)
         .forEach(
-            (changeSet, changes) -> {
-              if (!isContract(changeSet)) {
-                unmarked.put(changeSet.getId(), changes);
+            (description, changes) -> {
+              if (!description.startsWith(CONTRACT_PREFIX)) {
+                unmarked.put(description, changes);
               }
             });
     return unmarked;
   }
 
   /**
-   * Runs every changeSet of {@code changelog} on its own, in order, on this test's fresh database
-   * and returns those that break the running release, with what they break.
+   * Runs every one of {@code scripts} on its own, in order, on this test's database and returns
+   * those that break the running release, by description, with what they break.
    */
-  private Map<ChangeSet, List<String>> breakingChanges(String changelog) throws Exception {
-    Database database = liquibaseDatabase(connection);
-    ResourceAccessor accessor = new ClassLoaderResourceAccessor();
-    DatabaseChangeLog changeLog =
-        ChangeLogParserFactory.getInstance()
-            .getParser(changelog, accessor)
-            .parse(changelog, new ChangeLogParameters(database), accessor);
-    Map<ChangeSet, List<String>> breaking = new LinkedHashMap<>();
-    for (ChangeSet changeSet : changeLog.getChangeSets()) {
+  private Map<String, List<String>> breakingChanges(List<String> scripts) throws Exception {
+    Map<String, List<String>> breaking = new LinkedHashMap<>();
+    for (String script : scripts) {
       RollingUpdateCatalog before = RollingUpdateCatalog.read(connection);
-      changeSet.execute(changeLog, null, database);
-      database.commit();
-      connection.setAutoCommit(true);
+      applyMigrations(connection, script);
       List<String> changes = before.breakingChangesTo(RollingUpdateCatalog.read(connection));
       if (!changes.isEmpty()) {
-        breaking.put(changeSet, new ArrayList<>(changes));
+        breaking.put(Migrations.description(script), new ArrayList<>(changes));
       }
     }
     return breaking;

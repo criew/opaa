@@ -14,31 +14,27 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import liquibase.Contexts;
-import liquibase.LabelExpression;
-import liquibase.Liquibase;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * What {@code SET LOCAL lock_timeout} at the start of a changeSet buys during a rolling update: an
+ * What {@code SET LOCAL lock_timeout} at the start of a migration buys during a rolling update: an
  * {@code ALTER TABLE} that waits behind a running read holds its pending exclusive lock request in
  * the queue, and every later query on the table - from every instance - waits behind it. With the
- * timeout the changeSet gives up after it, the queue behind it moves on, and the migration can be
+ * timeout the migration gives up after it, the queue behind it moves on, and the migration can be
  * repeated; without it the queue stands until the read ends.
  */
 class LockTimeoutMigrationTest extends AbstractMigrationTest {
 
-  private static final String FIXTURE = "db/rolling-update/lock-timeout.yaml";
+  private static final String FIXTURES = "db/rolling-update/";
 
   private ExecutorService executor;
   private Connection reader;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-empty.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return List.of();
   }
 
   @BeforeEach
@@ -64,7 +60,7 @@ class LockTimeoutMigrationTest extends AbstractMigrationTest {
   }
 
   @Test
-  void theChangeSetGivesUpAndTheQueriesQueuedBehindItGoOn() throws Exception {
+  void theMigrationGivesUpAndTheQueriesQueuedBehindItGoOn() throws Exception {
     Future<?> migration = executor.submit(() -> migrate("with-lock-timeout"));
     awaitLockWait();
     Future<Long> queued = executor.submit(this::countRows);
@@ -76,7 +72,7 @@ class LockTimeoutMigrationTest extends AbstractMigrationTest {
   }
 
   @Test
-  void withoutTheTimeoutTheQueriesQueueBehindTheChangeSetUntilTheReadEnds() throws Exception {
+  void withoutTheTimeoutTheQueriesQueueBehindTheMigrationUntilTheReadEnds() throws Exception {
     Future<?> migration = executor.submit(() -> migrate("without-lock-timeout"));
     awaitLockWait();
     Future<Long> queued = executor.submit(this::countRows);
@@ -88,11 +84,9 @@ class LockTimeoutMigrationTest extends AbstractMigrationTest {
     assertThat(hasColumn("added")).isTrue();
   }
 
-  private Void migrate(String label) throws Exception {
+  private Void migrate(String fixture) throws Exception {
     try (Connection connection = connect()) {
-      new Liquibase(FIXTURE, new ClassLoaderResourceAccessor(), liquibaseDatabase(connection))
-          .update(new Contexts(), new LabelExpression(label));
-      connection.setAutoCommit(true);
+      applyMigrations(connection, Migrations.in(FIXTURES + fixture + "/"));
     }
     return null;
   }
@@ -115,7 +109,7 @@ class LockTimeoutMigrationTest extends AbstractMigrationTest {
         try (ResultSet rows =
             statement.executeQuery(
                 "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
-                    + " AND wait_event_type = 'Lock' AND query ILIKE 'ALTER TABLE lock_fixture%'")) {
+                    + " AND wait_event_type = 'Lock' AND query ILIKE '%ALTER TABLE lock_fixture%'")) {
           rows.next();
           if (rows.getLong(1) > 0) {
             return;

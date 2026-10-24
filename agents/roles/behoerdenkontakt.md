@@ -23,7 +23,7 @@ Die wöchentliche Drift-Routine ([Schicht 3](../../docs/features/behoerdenunterl
    - die PRs mit Label `data-impact` als Datei ablegen: `gh pr list --state merged --label data-impact --limit 1000 --json number,title,url > /tmp/data-impact-prs.json`; hat die Liste 1000 Einträge, kann sie abgeschnitten sein, dann abbrechen und melden. Ohne GraphQL die REST-Abfrage aus dem Release-Ablauf
    - aus `backend/` Faktenblätter und Delta erzeugen: `./gradlew complianceDocs complianceDelta -PopaaVersion=<X.Y.Z> -PfromRef=<vergleichsstand> -PtoRef=HEAD -PlabelledPrs=/tmp/data-impact-prs.json`, Ausgabe unter den Pfaden aus Punkt 1
 3. **Die Vorlagen** unter `docs/behoerden/` mit ihrem Kopfvermerk ([Regeln](../../docs/behoerden/AGENTS.md#kopfvermerk)); `.github/scripts/check_behoerden_headers.sh` prüft die Form, nicht den Inhalt.
-4. **Den Code**, gegen den Sie einen Manifest-Eintrag halten: Liquibase-Changelogs (Fremdschlüssel, `ON DELETE`), Dienste, Konstanten, `application.yml`, `deploy/helm/opaa/values.yaml`.
+4. **Den Code**, gegen den Sie einen Manifest-Eintrag halten: Flyway-Migrationen (Fremdschlüssel, `ON DELETE`), Dienste, Konstanten, `application.yml`, `deploy/helm/opaa/values.yaml`.
 
 ## Ihre Aufgaben
 

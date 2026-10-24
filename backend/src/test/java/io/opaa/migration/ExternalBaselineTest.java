@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's external changeSet (ADR-0035): the channel settings of external
+ * Invariants of the baseline's external migration (ADR-0035): the channel settings of external
  * access and the personal access tokens with their library selection.
  */
 class ExternalBaselineTest extends AbstractBaselineTest {

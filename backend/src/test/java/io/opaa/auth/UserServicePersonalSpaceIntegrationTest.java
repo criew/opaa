@@ -27,7 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Exercises {@link UserService#findOrCreateUser} against a real Postgres with the real, versioned
- * Liquibase schema ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - not against
+ * Flyway schema ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}) - not against
  * Hibernate-generated DDL, and not with a mocked transaction manager: the guarded regression only
  * manifests with real foreign keys and real, separately committed transactions, which neither
  * {@code SpaceServiceIntegrationTest} nor {@code SpaceServiceTest} provides.

@@ -30,8 +30,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * #1536, ADR-0033 Entscheidung 10: {@link MailSettingsService} against a real Postgres with the
- * versioned Liquibase schema. Covers what a mocked repository could not - that the password really
- * is only ever in the database as ciphertext, that the three-way {@code ***} rule behaves, that the
+ * versioned Flyway schema. Covers what a mocked repository could not - that the password really is
+ * only ever in the database as ciphertext, that the three-way {@code ***} rule behaves, that the
  * audit entry carries no password value, and that the snapshot every send reads follows a committed
  * change without a restart.
  *

@@ -30,7 +30,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * A namespace for {@link #lockAssetGrantsForMutation}'s Postgres advisory locks. Every namespace
    * in use - this one and those of the other locks - stands in the directory {@code
    * src/test/resources/db/advisory-lock-namespaces.yaml}, which {@code AdvisoryLockNamespaceTest}
-   * holds against every lock call of the main code and the changesets.
+   * holds against every lock call of the main code and the migrations.
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 

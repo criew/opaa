@@ -67,7 +67,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The re-embedding after a change of the embedding model, end to end against pgvector with the
- * Liquibase schema: documents indexed as usual, then their vectors replaced by vectors of an "old
+ * Flyway schema: documents indexed as usual, then their vectors replaced by vectors of an "old
  * model" - another size, or the same size under another name. Runs in the property-variant
  * signature because it builds, alters and drops {@code vector_store} itself; after the migration at
  * the context's start nothing else touches that table there.

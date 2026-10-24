@@ -39,9 +39,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The four revision access paths against a real Postgres database with the real, versioned
- * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}),
- * mirroring {@code AuditLogServiceIntegrationTest}.
+ * The four revision access paths against a real Postgres database with the real, versioned Flyway
+ * schema applied ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}), mirroring {@code
+ * AuditLogServiceIntegrationTest}.
  *
  * <p>{@link #noAccessPathAcceptsOrSortsByActor()} is the acceptance criterion's dedicated,
  * cross-cutting test: it exercises every public method {@link AuditQueryService} declares (not a

@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's workspace changeSet: space memberships of persons and groups
+ * Invariants of the baseline's workspace migration: space memberships of persons and groups
  * (ADR-0036, Entscheidung 6), their history, the association of assets with spaces, and the grants
  * of the diagnosis "Sicht als" (ADR-0016). The protocol of those diagnoses has its own class,
  * {@link DiagnosticContextPrivilegeModelTest}.

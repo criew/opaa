@@ -24,7 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The feed server's {@code ETag} and {@code Last-Modified} are stored as sent, whatever their
- * length, against the Liquibase schema: the server alone decides their form.
+ * length, against the Flyway schema: the server alone decides their form.
  */
 @OpaaIntegrationTest
 class RssFeedStatePersistenceIntegrationTest {

@@ -72,7 +72,7 @@ und alle Zeichenkettenwerte von Annotationen an Klasse, Feldern, Methoden und Pa
 (`PromptChecksum`). Sie erfasst Textblöcke, zusammengesetzte Konstanten und Vorlagen der
 Laufzeitverkettung, auch wenn ein Prompt im Code verteilt aufgebaut wird; eine geänderte Log- oder
 Fehlermeldung derselben Klasse ändert sie ebenfalls. In der Datenbank ist sie SHA-256 über den letzten
-`DEFAULT`, den das Changelog der Spalte gibt. Maßgeblich ist die mit javac übersetzte Klassendatei der
+`DEFAULT`, den die Migrationen der Spalte geben. Maßgeblich ist die mit javac übersetzte Klassendatei der
 Gradle-Toolchain; ein anderer Compiler (ECJ in Eclipse oder VS Code) kann einen abweichenden
 Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 
@@ -83,11 +83,11 @@ Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 sowie jede Tabelle und jede Spalte des Schemas. Jede
 Spalte steht genau einmal, als `personalColumns` oder `nonPersonalColumns` ihrer Tabelle oder in der
 Spaltenliste unter `nonPersonalTables`; so fällt auch eine neue Spalte einer Tabelle ohne
-Personenbezug auf. Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs
-(ADR-0034); jede Tabellen-DDL, die es nicht vollständig liest, auch in Prozedurrümpfen außer der
+Personenbezug auf. Das Schema liest `MigrationSchema` aus den SQL-Skripten der Migrationen
+(ADR-0034, ADR-0056); jede Tabellen-DDL, die es nicht vollständig liest, auch in Prozedurrümpfen außer der
 Partitionspflege, lässt es scheitern. Ein Test gegen eine Testcontainers-Datenbank würde ohne
 Docker still übersprungen; der Abgleich des Lesers und der festen Spalten von `vector_store` mit dem
-Katalog einer migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
+Katalog einer migrierten Datenbank (`MigrationSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
 Meldung nennt Datei und einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
 ### 8. Datenflüsse: Anker im Code

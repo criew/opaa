@@ -74,18 +74,22 @@ spring:
       # treating the symptom, not the cause. The pool belongs to one instance; several instances
       # need max_connections for all their pools, see docs/handbuch/betrieb/datenbank.md.
       maximum-pool-size: ${OPAA_DB_POOL_SIZE:10}
-      # Every unqualified name - Liquibase DDL, JPA entities, native queries - resolves through this
+      # Every unqualified name - migration DDL, JPA entities, native queries - resolves through this
       # search_path (ADR-0034). public stays behind the application schema only so an extension
       # installed there beforehand (vector) remains resolvable; nothing of OPAA's own lands in it.
       data-source-properties:
         currentSchema: ${opaa.database.schema},public
-  liquibase:
-    # Explicit so that a missing schema fails the migration instead of letting current_schema()
-    # fall through to public.
+  flyway:
+    # One directory per logical module under db/migration; Flyway orders every script by its version
+    # across the directories (backend/docs/migrationen.md).
+    locations: classpath:db/migration
+    # Explicit so that the schema history and ${flyway:defaultSchema} name the application schema;
+    # a missing schema fails the migration instead of being created or falling through to public.
     default-schema: ${opaa.database.schema}
-    # No analytics call to the library vendor, also where a context starts without
-    # OpaaApplication.main (tests).
-    analytics-enabled: false
+    create-schemas: false
+    # A migration merged after a later-versioned one still runs on an installation that already has
+    # the later one; every script is written to be correct in both orders.
+    out-of-order: true
   ai:
     # A single connection path for both functions - the OpenAI-compatible protocol. Ollama speaks it
     # too (under its own /v1 endpoint), which is why there is no separate "ollama" provider anymore
@@ -137,8 +141,8 @@ spring:
           completion: false
     vectorstore:
       pgvector:
-        # vector_store and its indexes come from the Liquibase changelog
-        # (knowledge/2026-10-19-vector-store.yaml), so no instance runs DDL for it at start-up.
+        # vector_store and its indexes come from the knowledge migration, so no instance runs DDL for
+        # it at start-up.
         initialize-schema: false
         # Must equal opaa.database.schema (io.opaa.config.DatabaseSchemaGuard).
         schema-name: ${opaa.database.schema}

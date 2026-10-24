@@ -27,10 +27,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * (not the same-subject race {@link UserServiceCreationRaceIntegrationTest} already covers, and not
  * the two-user case {@link
  * UserServicePersonalSpaceIntegrationTest#concurrentFirstLoginsOfDifferentUsersEachGetExactlyOnePersonalSpace()}
- * already covers) against a real Postgres instance with the real, versioned Liquibase schema
- * ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}), the real, unmodified Hikari
- * {@code maximum-pool-size} of 10 (no test override - see {@code application.yml}), and real
- * threads.
+ * already covers) against a real Postgres instance with the real, versioned Flyway schema ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}), the real, unmodified Hikari {@code
+ * maximum-pool-size} of 10 (no test override - see {@code application.yml}), and real threads.
  *
  * <p>{@link #CONCURRENT_LOGINS} is 12, deliberately above the pool size, matching the reproduction
  * in #307: an organization onboarding its whole staff fires far more than ten first logins within

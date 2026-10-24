@@ -32,8 +32,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The house-wide outbound proxy through the API against the Liquibase schema: read and replace it
- * as system administration only, a German field error per invalid field, the governance event with
+ * The house-wide outbound proxy through the API against the Flyway schema: read and replace it as
+ * system administration only, a German field error per invalid field, the governance event with
  * both states, and the route of the JVM changing only once the change committed.
  */
 @OpaaIntegrationTest

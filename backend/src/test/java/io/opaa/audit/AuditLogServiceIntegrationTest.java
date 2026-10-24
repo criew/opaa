@@ -22,8 +22,8 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}) - see #288 - and a real {@link
+ * Runs against a real Postgres database with the real, versioned Flyway schema applied ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}) - see #288 - and a real {@link
  * PlatformTransactionManager}, not a mocked one: the whole point of {@link
  * #anEntryWrittenInARolledBackTransactionIsNotPersisted()} is to exercise real commit/rollback
  * visibility, which a mocked transaction manager does not provide (see the developer role
@@ -61,8 +61,7 @@ class AuditLogServiceIntegrationTest {
     // property that keeps this repository "insert-only" at the Java layer, not only at the
     // database layer, would otherwise defeat this cleanup. This test's own Spring-managed
     // connection (Testcontainers' bootstrap account, a Postgres superuser - see
-    // TestcontainersConfiguration) is not subject to the DML restriction the baseline's identity
-    // changeSet
+    // TestcontainersConfiguration) is not subject to the DML restriction the identity migration
     // applies to the real application account, so this cleanup call succeeds here even though it
     // would not in production; the restriction itself against a real, non-superuser role is
     // covered by io.opaa.migration.AuditPrivilegeModelTest.

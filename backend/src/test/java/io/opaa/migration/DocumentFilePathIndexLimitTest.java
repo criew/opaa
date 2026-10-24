@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
 class DocumentFilePathIndexLimitTest extends AbstractBaselineTest {
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.files();
+  protected List<String> baseFixtureMigrations() {
+    return Migrations.all();
   }
 
   @Test

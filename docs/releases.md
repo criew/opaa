@@ -101,7 +101,7 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
 - **In der CI:** Der Workflow `.github/workflows/data-impact.yml` läuft bei jedem PR und erneut,
   wenn sich Labels oder Beschreibung ändern. Er schlägt fehl, wenn die Beschreibung eine Wirkung
   ankreuzt, das Label aber fehlt, oder wenn der PR eine Datei aus
-  `.github/data-impact-paths.txt` ändert (Liquibase-Changelogs, Protokollereignisse und Rollen,
+  `.github/data-impact-paths.txt` ändert (Datenbankmigrationen, Protokollereignisse und Rollen,
   OpenAPI-Spezifikation, Konfigurationsklassen und Vorgabewerte, Konnektoren und Modellanbieter,
   Prompts, Fristen) und weder das Label trägt noch „Keine Wirkung“ ankreuzt. Bei angekreuztem
   „Keine Wirkung“ listet er die Dateien als Warnung; **das Review sieht sich diese Warnung an** und
@@ -726,7 +726,7 @@ Abschnitt nennt seine Quelle mit Pfad und Commit.
 | Neuindizierung | die Zeile `Neuindizierung:` der Hinweise ([Vorbereitung](#vorbereitung-für-bestandsinstallationen)) | „nötig“ mit der Dauerschätzung des Hinweises; „nicht gekennzeichnet“, wenn ein Hinweis mit Vorbereitung die Zeile nicht trägt; „nicht nötig“, wenn kein Hinweis Vorbereitung verlangt oder jeder Hinweis mit Vorbereitung `Neuindizierung: nein` sagt. Die Zeile allein ist keine Vorbereitung: „Keine Vorbereitung nötig.“ mit `Neuindizierung: nein` ist kein Bruch |
 | Nachzug | `ingestionPipelineFingerprint` der Baselines unter `eval/baseline/` beider Stände | jedes Format mit neuer Pipeline-Version; `PipelinePathIsolationTest` hält den Abdruck gleich dem Code |
 | Neueinbettung | Eintrag `spring.ai.openai.embedding.model` im Manifest-Delta | geänderte Vorgabe des Embedding-Modells |
-| Schemamigration | Kennungen der `changeSet`-Einträge unter `backend/src/main/resources/db/changelog/` beider Stände | neu ist jede Kennung, die nur der neue Stand hat; Anzahl je Modulverzeichnis, Hinweis „nur vorwärts, vorher sichern“ |
+| Schemamigration | Versionen der Flyway-Skripte unter `backend/src/main/resources/db/migration/` beider Stände | neu ist jede Version, die nur der neue Stand hat; Anzahl je Modulverzeichnis, Hinweis „nur vorwärts, vorher sichern“; ein Vergleichsstand mit Liquibase-Changelog gilt als Neuaufsetzen |
 | Ports | Schlüssel auf `port` mit Zahlenwert in `deploy/helm/opaa/values.yaml` und `containerPort` in den Templates | neu, geändert, entfallen; nur Blockschreibweise |
 | Egress-Ziele | Abschnitt `dataFlows` im Manifest-Delta (`delta/manifest-delta.json`) | neue und entfallene Datenflüsse, geändertes Ziel, geänderter Weg über den Ausgangsproxy |
 | Antwortqualität | `eval/baseline/*.json` beider Stände, Gruppe `overall` | Kennzahlen, Messdatum, Messlauf und Messvertrag je Messpfad und Domäne; fehlt eine Baseline oder Kennzahl, steht „nicht gemessen“; abweichende Festpunkte heißen „Messgrundlage geändert“ |
@@ -750,8 +750,8 @@ Annahmen und Grenzen:
 - **Das Manifest-Delta muss zum Intervall passen.** Nennt `manifest-delta.json` andere Commits als
   das Intervall, oder fehlt eine ausdrücklich angegebene Datei, bricht der Lauf ab, statt fremde
   Datenflüsse zu zeigen.
-- **Neue Changesets sind eine Obergrenze**, wenn die Historie zu einer neuen Baseline zusammengefasst
-  wurde; dann fehlen Kennungen des Vergleichsstands, und die Datei sagt das.
+- **Neue Migrationen sind eine Obergrenze**, wenn die Historie zu einer neuen Baseline zusammengefasst
+  wurde; dann fehlen Versionen des Vergleichsstands, und die Datei sagt das.
 
 Für ein anderes Versionspaar erzeugt `operations` die Dateien in einem Checkout mit Tags, nach
 `./gradlew complianceDelta` mit denselben Ständen. Es liest immer ab der Wurzel des Repositorys,

@@ -123,13 +123,13 @@ for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTD
   "seconds: 5"; do
   expect_rendered minimal "$expected"
 done
-for unexpected in "kind: Job" "kind: PodDisruptionBudget" "seconds: 10" "SPRING_LIQUIBASE_ENABLED" \
+for unexpected in "kind: Job" "kind: PodDisruptionBudget" "seconds: 10" "SPRING_FLYWAY_ENABLED" \
   "await-migration" "type: RollingUpdate"; do
   expect_not_rendered minimal "$unexpected"
 done
 for expected in "type: RollingUpdate" "maxUnavailable: 0" "maxSurge: 1" "kind: PodDisruptionBudget" \
   "kind: Job" "- name: await-migration" 'value: "await-migration"' 'value: "migrate"' \
-  "name: SPRING_LIQUIBASE_ENABLED" "seconds: 10" "terminationGracePeriodSeconds: 625" \
+  "name: SPRING_FLYWAY_ENABLED" "seconds: 10" "terminationGracePeriodSeconds: 625" \
   'OPAA_SHUTDOWN_TIMEOUT: "600s"' 'OPAA_DB_POOL_SIZE: "8"' "name: opaa-migration-egress" \
   "app.kubernetes.io/component: migration" "topologyKey: kubernetes.io/hostname" \
   'OPAA_INDEXING_EMBEDDING_CONCURRENCY: "3"' 'OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "10"' \

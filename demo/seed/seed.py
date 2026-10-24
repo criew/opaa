@@ -41,7 +41,7 @@ from profiles import PromptDef, PromptLibraryDef, PromptVariableDef
 INDEXING_POLL_INTERVAL_SECONDS = 3
 # Transient errors expected right after `docker compose ... up`: the backend/Keycloak container
 # exists but is not yet accepting connections, answers slowly enough to run into the request
-# timeout, or (dev-auth) is still applying Liquibase.
+# timeout, or (dev-auth) is still applying the Flyway migrations.
 TRANSIENT_STARTUP_ERRORS = (
     ApiError,
     AuthError,
