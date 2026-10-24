@@ -8,6 +8,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import type { ChatMessage } from '../types/chat'
 import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
+import { AiNotice } from './AiNotice'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
 import { useCopyAnnouncement } from './copyAnnouncer'
@@ -111,6 +112,7 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
           Womit kann ich Ihnen heute helfen?
         </Typography>
         <Typography variant="body2">Stellen Sie eine Frage zu Ihren Projektdokumenten.</Typography>
+        <AiNotice variant="prominent" />
         {liveRegion}
       </Box>
     )

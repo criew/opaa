@@ -148,7 +148,7 @@ describe('BrandingSettingsPage', () => {
     expect(screen.getByLabelText('Hinweis zur KI-Nutzung')).toHaveValue(OPAA_BRANDING.aiNotice)
   })
 
-  it('turns a line break in the AI notice into a blank instead of a rejected request', async () => {
+  it('keeps a line break out of the AI notice, typed or pasted', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
 
@@ -156,8 +156,12 @@ describe('BrandingSettingsPage', () => {
 
     const field = screen.getByLabelText('Hinweis zur KI-Nutzung')
     await user.clear(field)
-    await user.type(field, 'Erste Zeile{Enter}Zweite Zeile')
+    await user.type(field, 'Erste{Enter}Zeile')
+    expect(field).toHaveValue('ErsteZeile')
 
+    await user.clear(field)
+    await user.click(field)
+    await user.paste('Erste Zeile\nZweite Zeile')
     expect(field).toHaveValue('Erste Zeile Zweite Zeile')
   })
 

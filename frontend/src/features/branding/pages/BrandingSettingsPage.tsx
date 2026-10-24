@@ -267,10 +267,15 @@ export default function BrandingSettingsPage() {
               value={aiNotice}
               onChange={(e) => setAiNotice(e.target.value.replace(/[\r\n\u2028\u2029]+/g, ' '))}
               inputRef={aiNoticeRef}
+              onKeyDown={(e) => {
+                // Enter would insert a break the server rejects; swallowing it here keeps the
+                // cursor where it is, the replace in onChange only has to deal with pasted text.
+                if (e.key === 'Enter') e.preventDefault()
+              }}
               slotProps={{ htmlInput: { maxLength: MAX_AI_NOTICE_LENGTH } }}
               helperText={
-                'Vorgesehen für den Chat vor der ersten Frage und als Vermerk beim Kopieren ' +
-                'einer Antwort; die Anzeige folgt mit den nächsten Änderungen. Der Hinweis ' +
+                'Erscheint im Chat vor der ersten Frage und unter dem Eingabefeld sowie als Vermerk ' +
+                'beim Kopieren einer Antwort. Der Hinweis ' +
                 'lässt sich ändern, aber nicht abschalten: Ein leeres Feld stellt den ' +
                 'Standardtext wieder her. Zeilenumbrüche werden durch Leerzeichen ersetzt.'
               }

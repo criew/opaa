@@ -111,7 +111,20 @@ class BrandingSettingsServiceIntegrationTest {
   @Test
   void aNoticeWithoutAVisibleCharacterCannotSwitchTheNoticeOff() {
     for (String invisible :
-        new String[] {"\u00A0", "\u3000", "\u200B", " \u200B\u00A0 ", "\u2028"}) {
+        new String[] {
+          "\u00A0",
+          "\u3000",
+          "\u200B",
+          " \u200B\u00A0 ",
+          "\u2028",
+          "\u3164",
+          "\u2800",
+          "\u034F",
+          "\uFE0F",
+          "\uDB40\uDD00",
+          "\u180B",
+          "\u17B4"
+        }) {
       brandingSettingsService.updateBranding(
           organizationId, userId, null, null, "Eigener Hinweis", null, null);
 
@@ -121,6 +134,49 @@ class BrandingSettingsServiceIntegrationTest {
       assertThat(brandingSettingsService.currentBranding().aiNotice())
           .as("value %s", invisible.codePoints().boxed().toList())
           .isEqualTo(BrandingDefaults.AI_NOTICE);
+    }
+  }
+
+  @Test
+  void invisibleCharactersAtTheEdgesOfANoticeAreNotStored() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "\u200B\u00A0Hinweis\u3164 ", null, null);
+
+    assertThat(brandingSettingsService.currentBranding().aiNotice()).isEqualTo("Hinweis");
+  }
+
+  @Test
+  void aVariationSelectorOrTagSequenceAtTheEndBelongsToTheCharacterBeforeIt() {
+    String warning = "Hinweis \u26A0\uFE0F";
+    String flag =
+        "Hinweis \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F";
+
+    for (String text : new String[] {warning, flag}) {
+      brandingSettingsService.updateBranding(organizationId, userId, null, null, text, null, null);
+
+      assertThat(brandingSettingsService.currentBranding().aiNotice()).isEqualTo(text);
+    }
+  }
+
+  @Test
+  void aNoticeEqualToTheStandardIsStoredAsNotSetEvenWithInvisibleEdges() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "\u200B" + BrandingDefaults.AI_NOTICE, null, null);
+
+    assertThat(jdbcTemplate.queryForObject(storedColumn("ai_notice"), String.class)).isNull();
+    assertThat(brandingSettingsService.currentBranding().aiNotice())
+        .isEqualTo(BrandingDefaults.AI_NOTICE);
+  }
+
+  @Test
+  void aNoticeWithABidiOverrideIsRejected() {
+    for (String text : new String[] {"Text \u202Eumgedreht", "Text \u2067x"}) {
+      assertThatThrownBy(
+              () ->
+                  brandingSettingsService.updateBranding(
+                      organizationId, userId, null, null, text, null, null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("Steuerzeichen");
     }
   }
 

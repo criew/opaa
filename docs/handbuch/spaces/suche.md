@@ -801,13 +801,19 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 (Abschnitt 2). Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
 (Abschnitt 10.2).
 
+**Hinweis und Kennzeichen im Chat.** Dass Antworten von einer KI stammen, sagt der Chat an drei
+Stellen: im leeren Chat deutlich vor der ersten Frage, als dauerhafte Zeile unter dem Eingabefeld und
+als Kennzeichen „KI-erzeugt" im Fuß jeder Antwort, auch bei Antworten in älteren Chats. Der Text der
+ersten beiden Stellen ist der Hinweis zur KI-Nutzung aus dem [Branding](../betrieb/branding.md); er lässt
+sich ändern, aber nicht abschalten. Screenreader lesen Hinweis und Kennzeichen vor.
+
 **Kennzeichnung als KI-erzeugt.** Jede erzeugte Antwort trägt in der Schnittstelle das Feld
 `generatedByAi` mit dem Wert `true`, im Chatverlauf ebenso jede Assistenten-Nachricht (Nutzernachrichten
 tragen `false`). Das Feld erlaubt es Programmen, die Antworten über `POST /api/v1/query` oder den
 Chatverlauf weiterverarbeiten, die Herkunft eindeutig zu erkennen (Art. 50 KI-Verordnung). Es ist
 **keine Markierung im Antworttext**: Wird der Text kopiert oder weitergegeben, bleibt das Feld
 zurück. Ein Text-Wasserzeichen kann nur der Anbieter des Modells setzen; OPAA fügt keines hinzu. Der
-Modellname steht weiterhin nur in den Angaben zur Antwort. Suche ohne Antwort
+Modellname steht nur in den Angaben zur Antwort. Suche ohne Antwort
 (`POST /api/v1/search`) und der MCP-Server liefern nur Fundstellen und tragen das Feld nicht.
 
 ## 7. Belege prüfen und Fundstellen bilden
@@ -885,6 +891,16 @@ neuen Chat abgewandelt zu stellen; es erscheint beim Überfahren oder bei Tastat
 Touch-Geräten immer. Ein erfolgreiches Kopieren bestätigt der Knopf selbst („Kopiert"), ein
 Screenreader sagt es an; verweigert der Browser die Zwischenablage, meldet ein Hinweis, dass von Hand
 markiert werden muss.
+
+**Vermerk beim Kopieren.** Jede über „Kopieren" kopierte Antwort endet in allen drei Varianten mit
+einem abgesetzten Vermerk: dem Hinweis zur KI-Nutzung aus dem Branding, dem Produktnamen aus dem
+Branding und dem Datum der Antwort (TT.MM.JJJJ), etwa „Antworten werden von einer KI erzeugt … – OPAA,
+05.03.2026". Einen Modellnamen enthält der Vermerk nie. Wo der Browser es erlaubt, legen die beiden
+Markdown-Varianten die Antwort zusätzlich als formatierten Text (HTML) mit sichtbarem Fuß ab, sodass
+sie sich mit Formatierung in Textverarbeitungen einfügen lässt; dabei gelten dieselben Regeln wie im
+Chat: Bilder werden nicht übernommen (nur ihre Beschreibung und Adresse als Text), und nur erlaubte
+Linkziele bleiben anklickbar. Sonst bleibt es beim Text mit Vermerk. Der Vermerk steht nur beim Kopierknopf: Text, den jemand von Hand markiert und kopiert,
+bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennzeichnung.
 
 **Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
 „Private Quelle“, auch wenn die Antwort ihn nicht zitiert; stand eine solche Quelle im Kontext, steht

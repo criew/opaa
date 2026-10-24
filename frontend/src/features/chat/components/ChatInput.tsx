@@ -19,6 +19,7 @@ import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { useAuthStore } from '@/shared/session/authStore'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
+import { AiNotice } from './AiNotice'
 import ChatActionMenu from './ChatActionMenu'
 import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
@@ -562,6 +563,7 @@ export default function ChatInput({
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? inputHint(answerPending, actions.enabled)}
         </Typography>
+        <AiNotice variant="line" />
         {dictationError && (
           <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
             {dictationError}
