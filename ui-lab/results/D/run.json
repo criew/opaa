@@ -1,0 +1,42 @@
+{
+  "args": {
+    "base": "http://localhost:5173",
+    "out": "/tmp/claude-0/final",
+    "types": [
+      "filesystem",
+      "confluence",
+      "sharepoint",
+      "nextcloud",
+      "smb",
+      "s3",
+      "gdrive",
+      "dropbox"
+    ],
+    "scenarios": [
+      "small",
+      "scale",
+      "empty",
+      "slow",
+      "failed",
+      "partial"
+    ],
+    "schemes": [
+      "light",
+      "dark"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "areas": [
+      "wizard",
+      "review",
+      "detail",
+      "edit"
+    ],
+    "concurrency": 2
+  },
+  "shots": 604,
+  "seconds": 896,
+  "finishedAt": "2026-10-24T11:34:56.803Z"
+}

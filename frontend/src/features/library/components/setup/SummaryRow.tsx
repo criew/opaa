@@ -61,7 +61,7 @@ export default function SummaryRow({
         <Typography
           component={headingLevel}
           id={`${id}-title`}
-          sx={{ fontSize: 15, fontWeight: 600, gridColumn: '1' }}
+          sx={{ fontSize: 15, fontWeight: 600, gridColumn: '1', color: 'text.primary' }}
         >
           {title}
         </Typography>
