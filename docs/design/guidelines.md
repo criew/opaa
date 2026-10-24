@@ -549,8 +549,8 @@ richtig, wo die Menge lang und homogen ist und kein Icon unterscheidet (Rolle, S
 **Geschlossene Artenmengen** haben keine feste Obergrenze an Kacheln. Ab etwa zwölf Arten werden
 sie gruppiert (je Gruppe ein sichtbarer Titel), damit die Wahl überschaubar bleibt.
 
-**Gleichartige Wahl ohne unterscheidendes Icon** — etwa der Zugang zu einer Quelle, bei dem sich
-die Optionen nur im Wort unterscheiden — erscheint als **Radioliste**, nicht als Kacheln: Ein Icon,
+**Gleichartige Wahl ohne unterscheidendes Icon** — etwa zwischen mehreren Zugängen derselben
+Quellart, die sich nur im Namen unterscheiden — erscheint als **Radioliste**, nicht als Kacheln: Ein Icon,
 das bei allen Optionen gleich wäre, unterscheidet nichts. Gibt es nur **eine** Option, gibt es keine
 Wahl: Sie steht als einfache Zeile da, ohne Radioknopf.
 
@@ -621,7 +621,7 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch.
 **Eigener Begriff oder Herstellerbegriff.** Für die Wahl eines Begriffs gilt:
 
 - **Eigene Konzepte tragen überall denselben eigenen Begriff** — bei jeder Quellart, in jedem
-  Assistenten und jeder Einstellung: Verbindung, Umfang, Zeitplan, Zugang, „gesetzt · Ersetzen".
+  Assistenten und jeder Einstellung: Verbindung, Umfang, Zeitplan, Zugang, „Gesetzt · Ersetzen".
 - **Werte, die man aus einem Herstellerportal abschreibt oder dort wiederfinden muss, tragen den
   Begriff des Herstellers** in dessen offiziellem Deutsch: API-Token, App-Passwort, Access Key,
   Secret Key, Endpoint, Space, Dokumentbibliothek, Geteilte Ablage. Wer den Wert sucht, findet ihn
@@ -643,11 +643,11 @@ Verbindliche Begriffe:
 | **@Space-Wissen**         | der vorbelegte Chip am Eingabefeld: das dem Space zugeordnete, für die Person lesbare Wissen |
 | **Sichtbarkeit**          | öffentlich (an alle Konten freigegeben) · geschlossen; Beschriftung in der Oberfläche siehe 5.5 |
 | **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher) |
-| **Verbindung**            | wie OPAA eine Quelle erreicht: Adresse und Zugang; bei jeder Quellart derselbe Begriff       |
-| **Zugang**                | die Art, sich bei einer Quelle anzumelden, samt den Zugangsdaten; die einzelnen Werte tragen den Herstellerbegriff |
+| **Verbindung**            | die Anbindung einer Bibliothek an ihre Quelle: Adresse und Anmeldung, selbst eingetragen oder über einen Zugang; bei jeder Quellart derselbe Begriff |
+| **Zugang**                | eine von der Systemverwaltung angelegte und freigegebene, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt"), die man beim Anlegen einer Bibliothek nur noch auswählt ([Glossar](../handbuch/glossar.md)) |
 | **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11) |
 | **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                |
-| **gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |
+| **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |
 | **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
 | **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
