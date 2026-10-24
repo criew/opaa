@@ -70,7 +70,10 @@ class SiemExportService {
   private final Counter failed;
   private final Counter gaps;
 
-  /** Seconds between the database clock and the last sent entry, as this instance last saw it. */
+  /**
+   * Age in seconds of the oldest entry not yet sent, {@code 0} with nothing due, as this instance
+   * last saw it: it does not grow in a quiet phase, only while entries wait.
+   */
   private final AtomicLong lagSeconds = new AtomicLong();
 
   /** Process-local backoff and warning throttle of the instance holding the lock (ADR-0053). */
@@ -96,7 +99,7 @@ class SiemExportService {
     this.gaps = counter(meterRegistry, "gap", "Gaps reported to the SIEM");
     Gauge.builder("opaa.siem.export.lag", lagSeconds, AtomicLong::get)
         .baseUnit("seconds")
-        .description("Age of the last audit log entry delivered to the SIEM")
+        .description("Age of the oldest audit log entry not yet delivered to the SIEM")
         .register(meterRegistry);
   }
 
@@ -120,7 +123,7 @@ class SiemExportService {
   Cursor deliverNext(Cursor cursor) {
     Limit limit = limit();
     Instant cutoffBefore = lastCutoff();
-    lagSeconds.set(Math.max(0, Duration.between(cursor.recordedAt(), limit.now()).toSeconds()));
+    lagSeconds.set(oldestPendingAge(cursor, limit.now()));
     warnIfStuck(limit);
     List<String> messages = new ArrayList<>();
     Cursor position = cursor;
@@ -163,7 +166,7 @@ class SiemExportService {
       return null;
     }
     sent.increment(entries.size());
-    lagSeconds.set(Math.max(0, Duration.between(next.recordedAt(), limit.now()).toSeconds()));
+    lagSeconds.set(oldestPendingAge(next, limit.now()));
     if (gapReason != null) {
       gaps.increment();
       log.warn("SIEM export reported a gap ({}) from {}", gapReason, cursor.recordedAt());
@@ -303,6 +306,20 @@ class SiemExportService {
               : entry);
     }
     return masked;
+  }
+
+  /** Seconds since the oldest entry after {@code position} was recorded, {@code 0} for none. */
+  private long oldestPendingAge(Cursor position, Instant now) {
+    Timestamp from = Timestamp.from(position.recordedAt());
+    Timestamp oldest =
+        jdbc.queryForObject(
+            "SELECT min(recorded_at) FROM audit_log WHERE recorded_at >= ?"
+                + " AND (recorded_at, event_id) > (?, ?)",
+            Timestamp.class,
+            from,
+            from,
+            position.eventId() == null ? new UUID(0, 0) : position.eventId());
+    return oldest == null ? 0 : Math.max(0, Duration.between(oldest.toInstant(), now).toSeconds());
   }
 
   /** A limit far behind now means an open transaction holds the export back. */

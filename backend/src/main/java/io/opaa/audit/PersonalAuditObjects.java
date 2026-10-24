@@ -11,7 +11,9 @@ import java.util.UUID;
  * Port to the modules that own audited objects: which of them belong to exactly one person (a
  * private library, a private prompt, the personal space). {@link AuditLogService} writes such an
  * object under its neutral label whatever the caller passed, and the SIEM export leaves out its id
- * and name (ADR-0055, Entscheidung 2) - one rule for every writer, present and future.
+ * and name (ADR-0055, Entscheidung 2). It knows only what is persisted when it is asked: an object
+ * created in the same transaction and not yet flushed, or one already deleted, is recognised only
+ * by the neutral label its writer passed.
  */
 public interface PersonalAuditObjects {
 
