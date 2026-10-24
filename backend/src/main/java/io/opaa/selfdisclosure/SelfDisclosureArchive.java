@@ -89,7 +89,7 @@ final class SelfDisclosureArchive {
 
   /** Whether writing into the response itself failed, the only sign of a client that went away. */
   boolean responseFailed() {
-    return false;
+    return delivered.failed();
   }
 
   String sha256() {

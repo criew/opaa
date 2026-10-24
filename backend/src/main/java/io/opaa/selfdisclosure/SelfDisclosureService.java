@@ -27,7 +27,6 @@ import io.opaa.observability.SelfDisclosureMetrics.Refusal;
 import io.opaa.selfdisclosure.SelfDisclosureAbort.AbortCause;
 import io.opaa.selfdisclosure.SelfDisclosureStatus.Blocked;
 import io.opaa.selfdisclosure.SelfDisclosureUsageRepository.Usage;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -381,18 +380,17 @@ public class SelfDisclosureService {
     return json.writerWithDefaultPrettyPrinter().writeValueAsBytes(manifest);
   }
 
+  /**
+   * Only a refused write into the response means the client went away; an I/O failure elsewhere,
+   * such as a broken database connection, is an {@code ERROR} of the server.
+   */
   static AbortCause causeOf(Throwable failure, boolean responseFailed) {
     for (Throwable t = failure; t != null; t = t.getCause()) {
       if (t instanceof SelfDisclosureAbort abort) {
         return abort.abortCause();
       }
     }
-    for (Throwable t = failure; t != null; t = t.getCause()) {
-      if (t instanceof IOException) {
-        return AbortCause.CLIENT_DISCONNECTED;
-      }
-    }
-    return AbortCause.ERROR;
+    return responseFailed ? AbortCause.CLIENT_DISCONNECTED : AbortCause.ERROR;
   }
 
   private Blocked blocked(
