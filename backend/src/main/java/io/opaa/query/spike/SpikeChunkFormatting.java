@@ -6,9 +6,9 @@ import org.springframework.ai.document.Document;
 
 /**
  * The passage format the {@code search_knowledge} tool (#1789) returns to the model - deliberately
- * the same header and citation-marker shape {@code
- * io.opaa.query.answer.AnswerGenerationService#formatChunks} builds for the ordinary answer path,
- * so the model driving the tool loop learns to cite exactly as the ordinary path does.
+ * the same head lines and citation-marker shape {@code io.opaa.query.answer.DocumentBlock} builds
+ * for the ordinary answer path, so the model driving the tool loop learns to cite exactly as the
+ * ordinary path does.
  */
 final class SpikeChunkFormatting {
 

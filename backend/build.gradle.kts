@@ -402,6 +402,13 @@ registerEvalHarnessTask(
     "io.opaa.eval.PromptInjectionEvaluationHarnessTest",
     emptyMap(),
 )
+// A report left from an earlier run must not pass for the result of a failed one.
+tasks.named<Test>("evaluatePromptInjection") {
+    val staleReports =
+        listOf("prompt-injection.json", "prompt-injection.md")
+            .map { layout.buildDirectory.file("eval-reports/$it") }
+    doFirst { staleReports.forEach { it.get().asFile.delete() } }
+}
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not

@@ -114,4 +114,8 @@ Ohne unterzeichnete [Contributor License Agreement](CLA.md) kann kein Pull Reque
 
 ## Lizenz
 
-[GNU Affero General Public License v3.0](LICENSE). Der Funktionsumfang ist vollständig quelloffen.
+[GNU Affero General Public License v3.0](LICENSE), `AGPL-3.0-only`: ohne „or any later version“. Der Funktionsumfang ist vollständig quelloffen.
+
+Eine Ablage auf [openCode](https://opencode.de/de), der Plattform der öffentlichen Verwaltung für
+quelloffene Software, ist als Spiegel dieses Repositorys vorbereitet, aber noch nicht eingerichtet
+([docs/opencode.md](docs/opencode.md)).

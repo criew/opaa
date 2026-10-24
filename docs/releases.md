@@ -391,8 +391,15 @@ Ablauf:
 
    Verglichen wird nach der Regel unter [Update-Paket](#update-paket) mit dem vorigen finalen
    Release, das der Commit enthält; bei einem Patch-Release ist das das vorige Release seiner
-   [Linie](#supportlinien). Das zusätzliche Delta eines LTS-Release zur vorigen LTS-Linie erzeugt
-   das Paket erst mit [#3020](https://github.com/criew/opaa/issues/3020).
+   [Linie](#supportlinien). Ein LTS-Release und seine Kandidaten bekommen zusätzlich das Delta zum
+   jüngsten Release der vorigen LTS-Linie; dessen Tag nennt
+   `python3 .github/scripts/update_package.py lts-previous --tag v0.5.0 --commit "$commit"`, und
+   Delta und Betriebsfolgen dafür entstehen mit demselben Block, `prev` durch dieses Tag ersetzt.
+   Damit ein Kandidat als LTS erkannt wird, steht seine Linie vor dem Tag in der
+   [Liste der Linien](#liste-der-linien). **Prüfpunkt:** Bei einem Juni-Release und seinen
+   Kandidaten muss `lts-previous` ein Tag ausgeben (ab dem zweiten LTS); gibt es nichts aus, fehlt
+   der Eintrag in der Liste, und es wird nicht getaggt. Der Lauf nennt seine Entscheidung zusätzlich
+   als Hinweis im Job `update-package`.
 5. Den in Schritt 4 begutachteten Commit taggen und das Tag pushen:
 
    ```bash
@@ -410,7 +417,16 @@ Ablauf:
    ([Backport](#backport), Schritt 1; beim ersten Mal vorher die beiden Rulesets oben anlegen) und
    per PR auf `main` die [Liste der Linien](#liste-der-linien)
    nachziehen: die neue Linie eintragen und beim Vorgänger, einer normalen Linie, das Supportende
-   setzen; dazu die Zeile in der Roadmap.
+   setzen; dazu die Zeile in der Roadmap. Eine LTS-Linie steht schon seit ihrem ersten
+   Release-Kandidaten in der Liste (unten). Die Roadmap um eine Zeile für das nächste geplante
+   Funktionsrelease verlängern. Den
+   [Meilenstein](#roadmap) des erschienenen Release schließen, offene Issues darin in den nächsten
+   verschieben und für die neue Zeile der Roadmap einen Meilenstein anlegen:
+
+   ```bash
+   gh api repos/criew/opaa/milestones -f title='Juni-Release 2029' -f due_on=2029-06-30T12:00:00Z \
+     -f description='LTS-Funktionsrelease. Plan und Supportende: https://github.com/criew/opaa/blob/main/docs/releases.md#roadmap'
+   ```
 
 Von Hand nachbearbeiten muss man die Notizen nur für bekannte Befunde aus Schritt 4: Was ein
 Release von Bestandsinstallationen verlangt, kommt über Schritt 3 aus dem Repository,
@@ -555,10 +571,11 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 
 | Datei | Inhalt |
 |---|---|
-| `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle, was noch fehlt |
+| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, was noch fehlt |
 | `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
+| `delta-lts/manifest-delta.md`, `delta-lts/manifest-delta.json`, `betrieb-lts/` | nur bei einem LTS-Release und seinen Kandidaten: Delta, Betriebsfolgen und Antwortqualität gegenüber dem jüngsten Release der vorigen LTS-Linie ([zweiter Vergleich](#update-paket)) |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
 | `sbom/opaa-backend-X.Y.Z.cdx.json`, `sbom/opaa-frontend-X.Y.Z.cdx.json` | die [CycloneDX-SBOMs](sbom.md#ebene-2--ökosystem-sboms-cyclonedx) der ausgelieferten Abhängigkeiten, dieselben Dateien wie am GitHub-Release |
 | `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |
@@ -583,10 +600,28 @@ leer. Gibt es kein finales Tag davor (das erste finale Release), vergleicht das 
 Fakten-Manifest (Commit `abc1234`)“, nicht mit der rohen Commit-ID; das gilt für jeden Commit ohne
 Manifest, der als Vergleich angegeben ist. Die Regel trägt auch mehrere
 [Supportlinien](#supportlinien): Ein Patch-Release auf `release/X.Y` enthält die Tags seiner Linie,
-nicht die neuerer Linien, und vergleicht so mit dem vorigen Release seiner Linie. Ein LTS-Release
-bekommt zusätzlich das Delta zum jüngsten Patch-Release der vorigen LTS-Linie
-([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5); das baut
-[#3020](https://github.com/criew/opaa/issues/3020).
+nicht die neuerer Linien, und vergleicht so mit dem vorigen Release seiner Linie.
+
+**Zweiter Vergleich eines LTS-Release.** Ein LTS-Release `vX.Y.0` und seine Kandidaten
+`vX.Y.0-rc.N` vergleichen zusätzlich mit dem jüngsten finalen Release der vorigen LTS-Linie
+([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5): Wer nur LTS-Linien
+betreibt, springt von dort direkt auf das neue LTS. Ob ein Tag ein LTS ist, sagt die
+[Liste der Linien](#liste-der-linien) im getaggten Commit (`kind: "lts"` für `X.Y`); die vorige
+LTS-Linie ist die höchste LTS-Linie darunter, ihr jüngstes finales Tag wird unter allen Tags
+gesucht, denn ihre Patch-Releases liegen auf `release/A.B` und nicht im Verlauf von `main`. Das Paket
+legt diesen Vergleich getrennt ab, in `delta-lts/` und `betrieb-lts/`, und `LIESMICH.md` sagt im
+Abschnitt „Welcher Vergleich für wen“, welcher für wen gilt. Der zweite Lauf von `complianceDelta`
+vergleicht die Manifeste beider Stände unabhängig von ihrer Ahnenreihe; die Liste der als
+datenrelevant gekennzeichneten PRs dazwischen nimmt die Commits, die das neue Release enthält und die
+vorige LTS-Linie nicht, ohne die, deren Patch dort schon unverändert als Backport steckt
+(`git log --cherry-pick --right-only`). Ein Backport mit aufgelöstem Konflikt hat einen anderen
+Patch und erscheint deshalb ein zweites Mal. Ohne vorige LTS-Linie mit finalem Release, bei einem
+normalen Release und bei einem Patch-Release entfällt der zweite Vergleich, ebenso wenn er auf
+dasselbe Tag fiele wie der erste; hat die höchste vorige LTS-Linie kein finales Release, eine ältere
+aber schon, warnt der Lauf, statt auf die ältere auszuweichen. Das Vergleichs-Tag wird bei jedem
+Lauf neu bestimmt: Ist zwischen erstem Lauf und „Re-run failed jobs“ ein Patch der vorigen LTS-Linie
+erschienen, vergleicht `delta-lts/` mit diesem.
+`update_package.py lts-previous --tag <tag> --commit <commit>` nennt das Tag.
 
 **Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
 jeder Vorlage unter `vorlagen/`, in `update-vermerk.md` und in jedem Kapitel unter `handbuch/` wird
@@ -855,17 +890,14 @@ Meist laufen zwei Linien nebeneinander, im Monat nach einem Juni-Release drei. E
 einer Linie ist damit immer ein Update ohne neue Funktion, das eine Behörde sofort einspielen kann.
 Wer neue Funktionen vor dem nächsten Funktionsrelease braucht, folgt `main`.
 
-**Was heute schon gilt und was noch gebaut wird.** Takt und Supportzeiträume gelten ab dem ersten
+**Was heute gilt.** Takt und Supportzeiträume gelten ab dem ersten
 finalen Release. Jede unterstützte Linie bekommt Patch-Releases: ein Sicherheitsupdate des
 Basis-Images als neues Tag auf dem Commit ihres letzten Release, eine Korrektur im Code per
 [Backport](#backport) auf ihren Wartungsbranch. Ein Patch-Release einer älteren Linie wird nicht
 „Latest“, die jüngste Linie behält die Markierung. Der nächtliche CVE-Scan prüft jede
-unterstützte Linie ([Sicherheitsupdates für Releases](#sicherheitsupdates-für-releases)). Noch nicht
-gebaut ist:
-
-| Baustein | Bis dahin | Issue |
-|---|---|---|
-| Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
+unterstützte Linie ([Sicherheitsupdates für Releases](#sicherheitsupdates-für-releases)), und das
+Update-Paket eines LTS-Release vergleicht zusätzlich mit der vorigen LTS-Linie
+([Update-Paket](#update-paket)).
 
 ### Kritische Fehler
 
@@ -883,8 +915,16 @@ Linie, die der Fehler betrifft. Alles andere erscheint mit dem nächsten Funktio
 ### Roadmap
 
 Geplant ist nach dem Takt von Spring Boot, nicht nach Funktionen; Versionsnummern vergibt erst das
-Release. Ob GitHub-Meilensteine die Tabelle ergänzen, klärt
-[#3021](https://github.com/criew/opaa/issues/3021).
+Release.
+
+Jede Zeile, deren Release noch nicht erschienen ist, hat einen
+[GitHub-Meilenstein](https://github.com/criew/opaa/milestones) mit dem Namen der Zeile
+([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 6). Fällig ist er am
+letzten Tag des geplanten Monats; das erste finale Release liegt außerhalb des Takts und hat kein
+Fälligkeitsdatum. Die Beschreibung nennt nur die Art (LTS oder normal) und verweist auf diese
+Tabelle. Supportenden und Funktionen stehen nicht im Meilenstein; ein Issue in einem Meilenstein ist
+für dieses Release geplant, nicht zugesagt. Gepflegt werden die Meilensteine im
+[Release-Ablauf](#wer-ein-release-anlegt), Schritt 7.
 
 | Linie | Erscheint | Spring Boot | Art | Patch-Releases bis |
 |---|---|---|---|---|
@@ -904,7 +944,8 @@ eine ausgelaufene Linie bleibt mit ihrem Ende stehen.
 
 ### Liste der Linien
 
-Maschinenlesbar stehen die veröffentlichten Linien in `.github/support-lines.json`; Renovate und
+Maschinenlesbar stehen die Linien in `.github/support-lines.json`, veröffentlichte und eine
+LTS-Linie schon vor ihrem ersten Kandidaten; Renovate und
 der nächtliche CVE-Scan lesen sie. Darin stehen je Linie `line`
 (`X.Y`), `kind` (`lts` oder `normal`) und `supportEnd`, der letzte Tag mit Patch-Releases als
 `JJJJ-MM-TT`. Bei einer normalen Linie bleibt `supportEnd` `null`, bis ihr Nachfolger erscheint;
@@ -922,6 +963,13 @@ unterstützt; danach pflegt Renovate ihren Branch nicht mehr, ohne dass jemand `
   ]
 }
 ```
+
+**Eine LTS-Linie kommt früher in die Liste:** per PR auf `main` vor dem Tag ihres ersten
+Release-Kandidaten, mit `kind: "lts"` und dem Supportende, das mit der Spring-Boot-Version schon
+feststeht, dazu ihre Zeile in der Roadmap. Nur so erkennt das Update-Paket den Kandidaten als LTS
+und legt den [zweiten Vergleich](#update-paket) mit der vorigen LTS-Linie bei, auf dem die Behörde die
+Beteiligung beginnt. Bis zum finalen Release hat die Linie noch keinen Wartungsbranch, den Renovate
+überspringt, und kein finales Release, das der Scan prüfen könnte.
 
 ## Sicherheitsupdates für Releases
 

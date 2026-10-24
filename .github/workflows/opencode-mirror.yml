@@ -1,0 +1,72 @@
+name: openCode-Spiegel
+
+# Mirrors main, the maintenance branches release/* and the release tags v* to the OPAA project on
+# openCode (docs/opencode.md). Inactive until a maintainer sets the variable OPENCODE_MIRROR_URL and
+# the secret OPENCODE_MIRROR_TOKEN in the environment opencode; until then every run ends with a
+# notice. Pushes never force: a commit on the mirror that GitHub lacks fails the run instead of
+# being overwritten, and a release tag stays immutable there as well.
+# The environment admits only main, so every run starts from main and pushes all three kinds of
+# references from its full checkout; a tag or a maintenance branch follows with the next push to
+# main or the daily run at the latest.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# One mirror run at a time, in order; a later run pushes everything the earlier one did as well.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The token lives in this environment only, bound to main by its deployment branch rule.
+    environment: opencode
+    permissions:
+      contents: read
+    steps:
+      - name: Einrichtung prüfen
+        id: setup
+        env:
+          MIRROR_URL: ${{ vars.OPENCODE_MIRROR_URL }}
+          MIRROR_TOKEN: ${{ secrets.OPENCODE_MIRROR_TOKEN }}
+        run: |
+          if [[ -z "$MIRROR_URL" || -z "$MIRROR_TOKEN" ]]; then
+            echo "::notice::openCode-Spiegel nicht eingerichtet (Environment opencode mit Variable OPENCODE_MIRROR_URL und Secret OPENCODE_MIRROR_TOKEN; docs/opencode.md)"
+            echo "configured=false" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "$MIRROR_URL" =~ ^https://gitlab\.opencode\.de/[A-Za-z0-9._/-]+\.git$ ]]; then
+            echo "::error::OPENCODE_MIRROR_URL muss https://gitlab.opencode.de/<gruppe>/<projekt>.git sein, ohne Zugangsdaten"
+            exit 1
+          fi
+          echo "configured=true" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.setup.outputs.configured == 'true'
+        with:
+          # Every branch and tag that is mirrored, with their full history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The token travels only in a header of this one git call and is masked in its base64 form,
+      # which the runner does not know as a secret by itself.
+      - name: Nach openCode übertragen
+        if: steps.setup.outputs.configured == 'true'
+        env:
+          MIRROR_URL: ${{ vars.OPENCODE_MIRROR_URL }}
+          MIRROR_TOKEN: ${{ secrets.OPENCODE_MIRROR_TOKEN }}
+        run: |
+          auth=$(printf 'oauth2:%s' "$MIRROR_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.extraHeader=Authorization: Basic $auth" push "$MIRROR_URL" \
+            'refs/remotes/origin/main:refs/heads/main' \
+            'refs/remotes/origin/release/*:refs/heads/release/*' \
+            'refs/tags/v*:refs/tags/v*'

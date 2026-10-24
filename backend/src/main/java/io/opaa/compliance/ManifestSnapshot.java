@@ -331,9 +331,20 @@ public record ManifestSnapshot(
       }
     }
 
-    /** The subjects of the commits reachable from {@code to} but not from {@code from}. */
+    /**
+     * The subjects of the commits reachable from {@code to} but not from {@code from}, without
+     * those whose patch is already on the side of {@code from} (a backport taken over unchanged); a
+     * backport whose conflicts were resolved has another patch and stays in the list.
+     */
     static List<String> subjects(Path repository, String from, String to) {
-      return run(repository, "log", "--format=%s", "--end-of-options", from + ".." + to)
+      return run(
+              repository,
+              "log",
+              "--cherry-pick",
+              "--right-only",
+              "--format=%s",
+              "--end-of-options",
+              from + "..." + to)
           .lines()
           .toList();
     }

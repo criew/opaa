@@ -581,6 +581,7 @@ public final class ModularArchitecture {
   /** The classes {@link #API} holds: what every module shares. */
   static final Set<String> SHARED_API_CLASSES =
       Set.of(
+          "CloseNowCustomizer",
           "ErrorBodyNegotiator",
           "ErrorSanitizer",
           "GlobalExceptionHandler",
