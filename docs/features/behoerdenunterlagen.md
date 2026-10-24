@@ -39,9 +39,7 @@
 > **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
 > Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
-> (#2562, #2563, #2566) und die
-> Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -475,9 +473,11 @@ Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas
 Vorab-Releases ebenso: zum höchsten finalen Tag unter der eigenen Version, das der getaggte Commit
 enthält. Vor dem ersten finalen Release vergleicht es mit einem Stand ohne Manifest, jeder Eintrag
 erscheint als neu. Die Regel trägt auch mehrere [Supportlinien](../releases.md#supportlinien): Ein
-Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(Zielbild, #3020)** Ein
-LTS-Release bekommt zusätzlich das Delta zur vorigen LTS-Linie
-([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5).
+Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(gebaut, #3020)** Ein
+LTS-Release und seine Kandidaten bekommen zusätzlich Delta, Betriebsfolgen und Antwortqualität
+gegenüber dem jüngsten Release der vorigen LTS-Linie, getrennt in `delta-lts/` und `betrieb-lts/`
+([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5;
+[Update-Paket](../releases.md#update-paket)).
 
 **(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
 ([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):
@@ -623,7 +623,8 @@ abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update
 Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
 eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
 (bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
-erneut gestuft. Alle Deltas erzeugt der Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
+erneut gestuft. Das Delta von der vorigen LTS-Linie zum Kandidaten liegt dem Paket bei; ein Delta
+von einer anderen Version erzeugt der Betrieb. Steht eine
 Sicherheitskorrektur nur in einem Funktionsupdate bereit (etwa weil die eingesetzte Linie ausgelaufen
 ist oder sich die Korrektur nicht zurückportieren lässt), darf die Dienststellenleitung es als
 vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine

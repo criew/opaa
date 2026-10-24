@@ -233,7 +233,11 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               actions={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {message.generatedByAi !== false && <AiAnswerMark />}
-                  <CopyAnswerButton content={message.content} citations={citations} />
+                  <CopyAnswerButton
+                    content={message.content}
+                    citations={citations}
+                    answeredAt={message.timestamp}
+                  />
                 </Box>
               }
             />

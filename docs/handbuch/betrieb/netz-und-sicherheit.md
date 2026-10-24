@@ -41,7 +41,10 @@ Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Cont
 Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
 zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
 Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
-(`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Ein
+(`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Das
+Backend sendet dieselbe Regel selbst: `SAMEORIGIN` und `frame-ancestors 'self'` für den Download,
+`X-Frame-Options: DENY` für alles andere. Der Container ersetzt die Frame-Header des Backends durch
+seine eigenen, damit jeder Header genau einmal ankommt. Ein
 Identitätsanbieter auf fremdem Origin kommt über
 `OPAA_CSP_CONNECT_SRC_EXTRA` dazu
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).

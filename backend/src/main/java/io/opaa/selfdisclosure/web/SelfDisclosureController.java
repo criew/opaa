@@ -6,9 +6,11 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.selfdisclosure.SelfDisclosureService;
+import io.opaa.selfdisclosure.SelfDisclosureService.Outcome;
 import io.opaa.selfdisclosure.SelfDisclosureService.Run;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.apache.coyote.CloseNowException;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -65,14 +67,22 @@ public class SelfDisclosureController {
             .toString());
     response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     response.setHeader("X-Accel-Buffering", "no");
-    if (!service.stream(run, response.getOutputStream())) {
-      // Once the ZIP has begun, GlobalExceptionHandler cannot answer any more and lets the
-      // failure reach the container, which breaks the connection instead of ending it cleanly.
-      if (!response.isCommitted()) {
-        response.reset();
-      }
+    Outcome outcome = service.stream(run, response.getOutputStream());
+    // A client that went away hears nothing more; failing would only log an expected abort.
+    if (outcome == Outcome.DELIVERED || outcome == Outcome.CLIENT_DISCONNECTED) {
+      return;
+    }
+    if (!response.isCommitted()) {
+      response.reset();
       throw new ServiceUnavailableException(ABORTED, ABORTED_RETRY_AFTER_SECONDS);
     }
+    // Once the ZIP has begun, only a broken connection keeps the browser from taking the truncated
+    // file for a complete one. The service has logged the abort; an expected end closes the
+    // connection on the container's own signal, logged at DEBUG, a failure stays an ERROR there.
+    if (outcome == Outcome.ENDED_BY_SERVER) {
+      throw new CloseNowException("The self-disclosure export was ended by the server");
+    }
+    throw new ServiceUnavailableException(ABORTED, ABORTED_RETRY_AFTER_SECONDS);
   }
 
   static final String ABORTED =

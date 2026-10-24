@@ -39,17 +39,6 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // The settings page frames this download itself, as the container allows (frontend/nginx.conf);
-      // the backend's own X-Frame-Options: DENY would make browsers cancel it.
-      '/api/v1/me/self-disclosure/download': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        configure: (proxy) => {
-          proxy.on('proxyRes', (response) => {
-            delete response.headers['x-frame-options']
-          })
-        },
-      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,

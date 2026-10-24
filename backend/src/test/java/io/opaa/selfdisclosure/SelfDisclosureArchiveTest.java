@@ -221,12 +221,52 @@ class SelfDisclosureArchiveTest {
         .isInstanceOf(SelfDisclosureAbort.class);
     assertThat(
             SelfDisclosureService.causeOf(
-                new SelfDisclosureAbort(SelfDisclosureAbort.AbortCause.TIMEOUT, "late")))
+                new SelfDisclosureAbort(SelfDisclosureAbort.AbortCause.TIMEOUT, "late"), false))
         .isEqualTo(SelfDisclosureAbort.AbortCause.TIMEOUT);
-    assertThat(SelfDisclosureService.causeOf(new RuntimeException(new IOException("pipe"))))
+    assertThat(SelfDisclosureService.causeOf(new RuntimeException(new IOException("pipe")), true))
         .isEqualTo(SelfDisclosureAbort.AbortCause.CLIENT_DISCONNECTED);
-    assertThat(SelfDisclosureService.causeOf(new IllegalStateException("bug")))
+    assertThat(SelfDisclosureService.causeOf(new IllegalStateException("bug"), false))
         .isEqualTo(SelfDisclosureAbort.AbortCause.ERROR);
+  }
+
+  /**
+   * Only a failing write into the response means the client went away. An I/O failure elsewhere -
+   * the database connection breaking under a running export - is the server's failure.
+   */
+  @Test
+  void onlyAFailingResponseCountsAsAClientThatWentAway() {
+    SelfDisclosureArchive intact =
+        new SelfDisclosureArchive(OutputStream.nullOutputStream(), ZONE, () -> {});
+    IOException database = new IOException("An I/O error occurred while sending to the backend.");
+
+    assertThatThrownBy(
+            () ->
+                intact.category(
+                    CHATS,
+                    sink -> {
+                      throw new RuntimeException(database);
+                    }))
+        .hasRootCause(database);
+    assertThat(intact.responseFailed()).isFalse();
+    assertThat(SelfDisclosureService.causeOf(new RuntimeException(database), false))
+        .isEqualTo(SelfDisclosureAbort.AbortCause.ERROR);
+
+    SelfDisclosureArchive broken =
+        new SelfDisclosureArchive(
+            new OutputStream() {
+              @Override
+              public void write(int b) throws IOException {
+                throw new IOException("Broken pipe");
+              }
+            },
+            ZONE,
+            () -> {});
+    assertThatThrownBy(
+            () ->
+                broken.category(
+                    CHATS, sink -> sink.section("chats").write(Map.of("title", "a".repeat(9000)))))
+        .isInstanceOf(Exception.class);
+    assertThat(broken.responseFailed()).isTrue();
   }
 
   private static Map<String, String> entries(byte[] zip) throws IOException {
