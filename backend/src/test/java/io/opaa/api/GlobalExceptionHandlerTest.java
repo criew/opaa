@@ -19,10 +19,12 @@ import com.openai.errors.UnauthorizedException;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
+import java.io.EOFException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.util.List;
+import org.apache.catalina.connector.ClientAbortException;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
@@ -44,6 +46,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.util.DisconnectedClientHelper;
 
 class GlobalExceptionHandlerTest {
 
@@ -53,7 +56,8 @@ class GlobalExceptionHandlerTest {
 
   /**
    * A committed response takes no envelope: the original failure goes back unchanged, so Spring
-   * logs no failure of the handler and the container recognises a client that went away.
+   * logs no failure of the handler, and a write the response refused is recognised as a client that
+   * went away.
    */
   @Test
   void aCommittedResponseHandsTheOriginalFailureBack() {
@@ -68,10 +72,35 @@ class GlobalExceptionHandlerTest {
           assertThrows(
               io.opaa.common.ServiceUnavailableException.class,
               () -> handler.handleServiceUnavailableException(aborted)));
-      var brokenPipe = new IOException("Broken pipe");
+      var clientGone = new ClientAbortException(new IOException("Broken pipe"));
       assertSame(
-          brokenPipe,
-          assertThrows(IOException.class, () -> handler.handleGenericException(brokenPipe)));
+          clientGone,
+          assertThrows(IOException.class, () -> handler.handleGenericException(clientGone)));
+    } finally {
+      RequestContextHolder.resetRequestAttributes();
+    }
+  }
+
+  /**
+   * A read failure behind a committed download - the storage connection reset mid-document - must
+   * break the connection: Spring would take its original form for a client that went away and end
+   * the truncated body cleanly.
+   */
+  @Test
+  void aCommittedResponseKeepsAReadFailureFromLookingLikeAClientThatWentAway() {
+    MockHttpServletResponse committed = new MockHttpServletResponse();
+    committed.setCommitted(true);
+    RequestContextHolder.setRequestAttributes(
+        new ServletRequestAttributes(new MockHttpServletRequest(), committed));
+    try {
+      for (Exception readFailure :
+          List.of(
+              new EOFException("storage ended early"),
+              new java.net.SocketException("Connection reset by peer"))) {
+        Throwable thrown =
+            assertThrows(Throwable.class, () -> handler.handleGenericException(readFailure));
+        assertFalse(DisconnectedClientHelper.isClientDisconnectedException(thrown));
+      }
     } finally {
       RequestContextHolder.resetRequestAttributes();
     }
