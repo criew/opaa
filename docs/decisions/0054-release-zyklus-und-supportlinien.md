@@ -85,6 +85,14 @@ normalen Linie mit Erscheinen ihres Nachfolgers, also mindestens einen Monat vor
 angekündigtes Supportende wird nie vorgezogen. Die Roadmap nennt die geplanten Linien relativ zum
 Takt von Spring Boot, ohne Funktionsversprechen.
 
+Je geplantem Funktionsrelease der Roadmap gibt es einen GitHub-Meilenstein mit dem letzten Tag des
+geplanten Monats als Fälligkeitsdatum (ein Release außerhalb des Takts hat keines) und einer kurzen
+Beschreibung: Art (LTS oder normal) und Verweis auf die Roadmap. Der Meilenstein nennt kein
+Supportende und verspricht keine Funktion; Supportenden stehen nur in der Roadmap, damit es keine
+zweite Stelle gibt, die auseinanderläuft.
+So lassen sich Issues einem geplanten Release zuordnen, und Außenstehende sehen den Plan ohne
+Repository-Lektüre.
+
 ### 7. Wartungsbranches `release/X.Y`
 
 Eine Linie wird auf dem Branch `release/X.Y` gepflegt, abgezweigt vom Commit des Tags `vX.Y.0`.
@@ -131,4 +139,4 @@ kaum Überlappung.
 
 ## Offen
 
-- Ob GitHub-Meilensteine die Roadmap in `docs/releases.md` ergänzen (#3021).
+Nichts.

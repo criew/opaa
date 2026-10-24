@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * a run's protocol is capped at {@link IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} entries -
@@ -74,6 +75,35 @@ class IndexingRunEventRecorderTest {
                     + IndexingRunEventRecorder.MAX_RUN_NOTES_PER_RUN))
         .save(any(IndexingRunEvent.class));
     assertThat(recorder.overflowCount()).isEqualTo(7 + 4);
+  }
+
+  @Test
+  void hintsAboutSuspiciousPatternsHaveACapOfTheirOwnAndNeverCrowdOutErrors() {
+    IndexingRunEventRepository repository = mock(IndexingRunEventRepository.class);
+    IndexingJobService indexingJobService = mock(IndexingJobService.class);
+    UUID jobId = UUID.randomUUID();
+    var recorder = new IndexingRunEventRecorder(repository, indexingJobService, jobId);
+    int cap = IndexingRunEventRecorder.MAX_SUSPICIOUS_PATTERN_EVENTS_PER_RUN;
+
+    for (int i = 0; i < cap + 12; i++) {
+      recorder.record(IndexingEventCategory.SUSPICIOUS_PATTERNS, "Auffällige Muster", "doc-" + i);
+    }
+    for (int i = 0; i < IndexingRunEventRecorder.MAX_EVENTS_PER_RUN; i++) {
+      recorder.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", "file-" + i);
+    }
+    recorder.finalizeRun();
+
+    ArgumentCaptor<IndexingRunEvent> saved = ArgumentCaptor.forClass(IndexingRunEvent.class);
+    verify(repository, times(cap + IndexingRunEventRecorder.MAX_EVENTS_PER_RUN + 1))
+        .save(saved.capture());
+    assertThat(saved.getAllValues())
+        .filteredOn(event -> event.getCategory() == IndexingEventCategory.ERROR)
+        .hasSize(IndexingRunEventRecorder.MAX_EVENTS_PER_RUN);
+    assertThat(saved.getAllValues().getLast().getMessage())
+        .isEqualTo("Weitere 12 Dokumente mit auffälligen Mustern sind nicht einzeln aufgeführt.");
+    assertThat(recorder.overflowCount()).isZero();
+    verify(indexingJobService, never())
+        .recordEventsTruncated(any(), org.mockito.ArgumentMatchers.anyInt());
   }
 
   @Test
