@@ -56,6 +56,8 @@ e2e/
   offline.env                    Environment des Ziels "offline"
   docker-compose.offline.yml     Compose-Overlay: Netz ohne Weg nach außen, Wächter, Relay
   scripts/offline.mjs            Lebenszyklus des Ziels "offline"
+  ui-lab/                        Werkzeuge für UI-Varianten gegen das Frontend mit Mocks (Screenshots,
+                                 Kennzahlen, Videos, Vergleich), kein Teil der Suite, siehe ui-lab/README.md
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare

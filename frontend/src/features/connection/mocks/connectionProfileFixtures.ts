@@ -21,6 +21,9 @@ function initialProfiles(): ConnectionProfileResponse[] {
       createdAt: '2026-10-01T09:00:00Z',
       updatedAt: '2026-10-01T09:00:00Z',
     },
+    // the browser's mock mode also offers the profiles SharePoint and Dropbox libraries need;
+    // the tests keep the single profile their admin overview counts on
+    ...(import.meta.env.MODE === 'test' ? [] : libraryOnlyProfiles()),
   ]
 }
 
@@ -40,4 +43,48 @@ export function mockProfileRef(profile: ConnectionProfileResponse): ConnectionPr
     authMethod: profile.authMethod,
     connectorDefaults: profile.connectorSettings ?? null,
   }
+}
+
+/** Profiles for the types whose libraries cannot be created without one. */
+function libraryOnlyProfiles(): ConnectionProfileResponse[] {
+  return [
+    {
+      id: 'connection-profile-sharepoint',
+      name: 'Microsoft 365 Rheinfurt',
+      sourceType: 'SHAREPOINT',
+      serverUrl: 'https://graph.microsoft.com',
+      authMethod: 'CLIENT_CREDENTIALS',
+      ownership: 'LIBRARY',
+      clientSecretSet: true,
+      clientSecretExpiresSoon: false,
+      signInRejected: false,
+      connectorSettings: null,
+      connectionCount: 1,
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
+      expiredConnectionWarning: false,
+      locked: false,
+      createdAt: '2026-10-01T09:00:00Z',
+      updatedAt: '2026-10-01T09:00:00Z',
+    },
+    {
+      id: 'connection-profile-dropbox-library',
+      name: 'Dropbox Rheinfurt',
+      sourceType: 'DROPBOX',
+      serverUrl: 'https://api.dropboxapi.com',
+      authMethod: 'OAUTH',
+      ownership: 'LIBRARY',
+      clientSecretSet: true,
+      clientSecretExpiresSoon: false,
+      signInRejected: false,
+      connectorSettings: null,
+      connectionCount: 1,
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
+      expiredConnectionWarning: false,
+      locked: false,
+      createdAt: '2026-10-01T09:00:00Z',
+      updatedAt: '2026-10-01T09:00:00Z',
+    },
+  ]
 }

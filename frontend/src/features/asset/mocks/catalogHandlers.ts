@@ -9,6 +9,7 @@ import type {
 import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockAuthConfig } from '@/shared/mocks/authFixtures'
 import { mockLibraries, mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
+import { applyLibraryScenario } from '@/features/library/mocks/libraryScenarioFixtures'
 import {
   mockPromptLibraries,
   mockUnreadablePromptLibraryIds,
@@ -39,6 +40,7 @@ function visibilityOf(allAccounts: boolean): CatalogVisibility {
 }
 
 function readableEntries(): CatalogEntryResponse[] {
+  applyLibraryScenario()
   const knowledge: CatalogEntryResponse[] = mockLibraries.map((library) => ({
     assetType: 'KNOWLEDGE_LIBRARY',
     assetId: library.id,
