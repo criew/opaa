@@ -392,7 +392,8 @@ jobs:
           path: ${{ runner.temp }}/update-package/*
           if-no-files-found: error
           retention-days: 7
-          # "Re-run failed jobs" builds the same files again under the same name.
+          # "Re-run failed jobs" builds the same files again under the same name, except delta-lts/
+          # when a patch of the previous LTS line was tagged in between: its base is chosen per run.
           overwrite: true
 
   # Signed SLSA provenance for the archive and the SBOMs beside it, stored with GitHub, so

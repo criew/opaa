@@ -1,5 +1,6 @@
 package io.opaa.account;
 
+import io.opaa.auth.SelfDisclosureDownloadFraming;
 import io.opaa.auth.UserProvisioningFilter;
 import io.opaa.auth.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -106,6 +107,7 @@ public class OidcSecurityConfig {
         .exceptionHandling(
             handling -> handling.accessDeniedHandler(new LocalAuthAccessDeniedHandler(jsonMapper)))
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
+        .headers(SelfDisclosureDownloadFraming.frameHeaders())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->

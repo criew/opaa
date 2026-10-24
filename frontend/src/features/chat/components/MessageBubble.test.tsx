@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi, describe, expect, it } from 'vitest'
+import { afterEach, vi, describe, expect, it } from 'vitest'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../types/chat'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
@@ -440,7 +441,29 @@ describe('MessageBubble copy', () => {
     role: 'assistant',
     content: 'Er kostet **42,60 Euro** 【source: doc-a#0 | 001_personalausweis.md】.',
     sources: [{ ...citedSource, fileName: '001_personalausweis.md', documentId: 'doc-a' }],
-    timestamp: new Date(),
+    timestamp: new Date('2026-10-24T10:00:00'),
+  }
+  const note = `${OPAA_BRANDING.aiNotice} – OPAA, 24.10.2026`
+
+  afterEach(() => {
+    useBrandingStore.setState({ branding: OPAA_BRANDING })
+    vi.unstubAllGlobals()
+  })
+
+  // Shaped like the browser's ClipboardItem, so the clipboard double of user-event can also read
+  // what this class holds back out.
+  class FakeClipboardItem {
+    data: Record<string, Blob | string | Promise<Blob | string>>
+    constructor(data: Record<string, Blob | string | Promise<Blob | string>>) {
+      this.data = data
+    }
+    get types() {
+      return Object.keys(this.data)
+    }
+    async getType(type: string) {
+      const value = await this.data[type]
+      return value instanceof Blob ? value : new Blob([value], { type })
+    }
   }
 
   it('copies the answer as Markdown without footnote marks and confirms it at the button', async () => {
@@ -449,7 +472,7 @@ describe('MessageBubble copy', () => {
 
     await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
 
-    expect(await navigator.clipboard.readText()).toBe('Er kostet **42,60 Euro**.')
+    expect(await navigator.clipboard.readText()).toBe(`Er kostet **42,60 Euro**.\n\n---\n\n${note}`)
     expect(screen.getByRole('button', { name: 'Antwort kopiert' })).toHaveTextContent('Kopiert')
     expect(useCopyAnnouncement.getState().text).toBe('Die Antwort wurde kopiert.')
   })
@@ -462,7 +485,7 @@ describe('MessageBubble copy', () => {
     await user.click(screen.getByRole('menuitem', { name: /Mit Quellenangaben/ }))
 
     expect(await navigator.clipboard.readText()).toBe(
-      'Er kostet **42,60 Euro**[^1].\n\n[^1]: 001_personalausweis.md',
+      `Er kostet **42,60 Euro**[^1].\n\n[^1]: 001_personalausweis.md\n\n---\n\n${note}`,
     )
   })
 
@@ -473,7 +496,7 @@ describe('MessageBubble copy', () => {
     await user.click(screen.getByRole('button', { name: 'Weitere Kopieroptionen' }))
     await user.click(screen.getByRole('menuitem', { name: /Nur Text/ }))
 
-    expect(await navigator.clipboard.readText()).toBe('Er kostet 42,60 Euro.')
+    expect(await navigator.clipboard.readText()).toBe(`Er kostet 42,60 Euro.\n\n${note}`)
   })
 
   it('copies by keyboard alone', async () => {
@@ -483,7 +506,104 @@ describe('MessageBubble copy', () => {
     screen.getByRole('button', { name: 'Antwort kopieren' }).focus()
     await user.keyboard('{Enter}')
 
-    expect(await navigator.clipboard.readText()).toBe('Er kostet **42,60 Euro**.')
+    expect(await navigator.clipboard.readText()).toBe(`Er kostet **42,60 Euro**.\n\n---\n\n${note}`)
+  })
+
+  it('names the branding notice and product name in the note, never a model', async () => {
+    const user = userEvent.setup()
+    useBrandingStore.setState({
+      branding: {
+        ...OPAA_BRANDING,
+        productName: 'Landesamt-Assistent',
+        aiNotice: 'Diese Antwort stammt von einer KI.',
+      },
+    })
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    const copied = await navigator.clipboard.readText()
+    expect(
+      copied.endsWith('Diese Antwort stammt von einer KI. – Landesamt-Assistent, 24.10.2026'),
+    ).toBe(true)
+    expect(copied).not.toMatch(/gpt|llama|mistral|claude|modell/i)
+  })
+
+  it('adds an HTML flavour with a visible footer where the browser can write one', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    vi.spyOn(navigator.clipboard, 'write').mockImplementation(write)
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    const item = write.mock.calls[0][0][0] as FakeClipboardItem
+    expect(item.types.slice().sort()).toEqual(['text/html', 'text/plain'])
+    const html = await (await item.getType('text/html')).text()
+    expect(html).toContain('<strong>42,60 Euro</strong>')
+    expect(html).toContain(`<em>${note}</em>`)
+    expect(await (await item.getType('text/plain')).text()).toBe(
+      `Er kostet **42,60 Euro**.\n\n---\n\n${note}`,
+    )
+  })
+
+  it('adds the HTML flavour to the variant with sources, with a visible German footnote list', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    vi.spyOn(navigator.clipboard, 'write').mockImplementation(write)
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Kopieroptionen' }))
+    await user.click(screen.getByRole('menuitem', { name: /Mit Quellenangaben/ }))
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    const item = write.mock.calls[0][0][0] as FakeClipboardItem
+    const html = await (await item.getType('text/html')).text()
+    expect(html).toContain('Quellen')
+    expect(html).toContain('001_personalausweis.md')
+    expect(html).not.toContain('Footnotes')
+    expect(html).toContain(`<em>${note}</em>`)
+  })
+
+  it('leaves direction controls of the branding out of the copied note', async () => {
+    const user = userEvent.setup()
+    useBrandingStore.setState({
+      branding: { ...OPAA_BRANDING, aiNotice: 'KI-Hinweis\u202E.', productName: 'OP\u202EAA' },
+    })
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    const copied = await navigator.clipboard.readText()
+    expect(copied).not.toMatch(/\u202E/)
+    expect(copied.endsWith('KI-Hinweis. – OPAA, 24.10.2026')).toBe(true)
+  })
+
+  it('falls back to plain text with the note when writing the HTML flavour is refused', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    vi.spyOn(navigator.clipboard, 'write').mockRejectedValueOnce(new Error('denied'))
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    expect(await navigator.clipboard.readText()).toBe(`Er kostet **42,60 Euro**.\n\n---\n\n${note}`)
+  })
+
+  it('copies plain text without an HTML flavour', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    const write = vi.spyOn(navigator.clipboard, 'write')
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Kopieroptionen' }))
+    await user.click(screen.getByRole('menuitem', { name: /Nur Text/ }))
+
+    expect(write).not.toHaveBeenCalled()
+    expect(await navigator.clipboard.readText()).toBe(`Er kostet 42,60 Euro.\n\n${note}`)
   })
 
   it('offers copying for an answer without any Belege too', () => {

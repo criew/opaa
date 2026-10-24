@@ -162,10 +162,7 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Im Update-Paket eines LTS das Delta zur vorigen LTS-Linie; heute enthält es das Delta zum vorigen
-  finalen Release ([#3020](https://github.com/criew/opaa/issues/3020)).
-- Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
-  ([#2557](https://github.com/criew/opaa/issues/2557)).
+Alles, was dieses Kapitel beschreibt, ist gebaut.
 
 ## Weiterführende Kapitel
 
