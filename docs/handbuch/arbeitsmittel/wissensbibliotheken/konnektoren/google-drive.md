@@ -68,18 +68,18 @@ geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.
 
 ## 3. Quellkonfiguration
 
-| Angabe im Formular | Bedeutung |
+| Angabe | Bedeutung |
 |---|---|
-| „Dienstkonto-Schlüssel (JSON)" | nur ohne Zugang; beim Bearbeiten bleibt der gespeicherte, solange das imitierte Konto gleich bleibt |
-| „Imitiertes Konto (optional)" | nur ohne Zugang und nur mit Delegation; eine Änderung verlangt den Schlüssel neu |
-| Bereiche | aus der Auflistung gewählt — geteilte Ablagen und freigegebene Ordner, mit imitiertem Konto auch „Meine Ablage" — oder per „Ordner-ID" eingetragen |
+| „Schlüsseldatei" | der Dienstkonto-Schlüssel als JSON-Datei, über „Datei wählen"; nur ohne Zugang; beim Bearbeiten bleibt der gespeicherte, solange das imitierte Konto gleich bleibt |
+| „Imitiertes Konto" | optional, nur ohne Zugang und nur mit Delegation; eine Änderung verlangt den Schlüssel neu |
+| „Geteilte Ablagen und Ordner" | in der Zeile „Umfang" aus der Auflistung gewählt — Geteilte Ablagen und freigegebene Ordner, mit imitiertem Konto auch „Meine Ablage" — oder über „Von Hand eintragen …" per „Ordner-ID"; „alle Ablagen" gibt es nicht |
 
-Bei sehr vielen geteilten Ablagen oder freigegebenen Ordnern zeigt die Auflistung nur die ersten und
-sagt das; weitere Ordner lassen sich per „Ordner-ID" eintragen.
+Bei sehr vielen Geteilten Ablagen oder freigegebenen Ordnern zeigt die Auflistung nur die ersten und
+nennt sie „Liste unvollständig."; weitere Ordner lassen sich per „Ordner-ID" eintragen.
 
 Überlappende Bereiche sind erlaubt; eine Datei bleibt ein Dokument, ihr Ordner kommt aus dem ersten
 Bereich, der sie listet. Den eigenen
-Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". **„Verbindung testen"** meldet sich an und
+Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". Der Verbindungstest meldet sich an und
 prüft jeden Bereich (Befunde in Abschnitt 9). Eine geänderte Bereichsliste oder ein anderes
 imitiertes Konto lassen den nächsten Lauf vollständig abgleichen.
 
