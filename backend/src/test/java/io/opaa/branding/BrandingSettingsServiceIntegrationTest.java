@@ -111,7 +111,17 @@ class BrandingSettingsServiceIntegrationTest {
   @Test
   void aNoticeWithoutAVisibleCharacterCannotSwitchTheNoticeOff() {
     for (String invisible :
-        new String[] {"\u00A0", "\u3000", "\u200B", " \u200B\u00A0 ", "\u2028"}) {
+        new String[] {
+          "\u00A0",
+          "\u3000",
+          "\u200B",
+          " \u200B\u00A0 ",
+          "\u2028",
+          "\u3164",
+          "\u2800",
+          "\u034F",
+          "\uFE0F"
+        }) {
       brandingSettingsService.updateBranding(
           organizationId, userId, null, null, "Eigener Hinweis", null, null);
 
@@ -122,6 +132,24 @@ class BrandingSettingsServiceIntegrationTest {
           .as("value %s", invisible.codePoints().boxed().toList())
           .isEqualTo(BrandingDefaults.AI_NOTICE);
     }
+  }
+
+  @Test
+  void invisibleCharactersAtTheEdgesOfANoticeAreNotStored() {
+    brandingSettingsService.updateBranding(
+        organizationId, userId, null, null, "\u200B\u00A0Hinweis\u3164 ", null, null);
+
+    assertThat(brandingSettingsService.currentBranding().aiNotice()).isEqualTo("Hinweis");
+  }
+
+  @Test
+  void aNoticeWithABidiOverrideIsRejected() {
+    assertThatThrownBy(
+            () ->
+                brandingSettingsService.updateBranding(
+                    organizationId, userId, null, null, "Text \u202Eumgedreht", null, null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Steuerzeichen");
   }
 
   @Test

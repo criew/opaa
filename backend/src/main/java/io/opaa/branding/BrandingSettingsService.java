@@ -267,7 +267,7 @@ public class BrandingSettingsService {
     if (value == null || value.codePoints().noneMatch(BrandingSettingsService::isVisible)) {
       return null;
     }
-    String trimmed = value.strip();
+    String trimmed = withoutInvisibleEdges(value);
     if (trimmed.length() > maxLength) {
       throw new ValidationException(
           fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein");
@@ -283,14 +283,48 @@ public class BrandingSettingsService {
     return !Character.isWhitespace(codePoint)
         && !Character.isSpaceChar(codePoint)
         && !Character.isISOControl(codePoint)
-        && Character.getType(codePoint) != Character.FORMAT;
+        && Character.getType(codePoint) != Character.FORMAT
+        && !isBlankGlyph(codePoint);
+  }
+
+  /** Characters that render empty although they are neither space nor format characters. */
+  private static boolean isBlankGlyph(int codePoint) {
+    return codePoint == 0x115F
+        || codePoint == 0x1160
+        || codePoint == 0x3164
+        || codePoint == 0xFFA0
+        || codePoint == 0x2800
+        || codePoint == 0x034F
+        || (codePoint >= 0xFE00 && codePoint <= 0xFE0F);
+  }
+
+  /**
+   * Bidirectional embeddings, overrides and isolates would reorder text appended after the notice.
+   */
+  private static boolean isBidiControl(int codePoint) {
+    return (codePoint >= 0x202A && codePoint <= 0x202E)
+        || (codePoint >= 0x2066 && codePoint <= 0x2069);
   }
 
   private static boolean isControlOrLineBreak(int codePoint) {
     int type = Character.getType(codePoint);
     return Character.isISOControl(codePoint)
+        || isBidiControl(codePoint)
         || type == Character.LINE_SEPARATOR
         || type == Character.PARAGRAPH_SEPARATOR;
+  }
+
+  private static String withoutInvisibleEdges(String value) {
+    int[] points = value.codePoints().toArray();
+    int from = 0;
+    int to = points.length;
+    while (from < to && !isVisible(points[from])) {
+      from++;
+    }
+    while (to > from && !isVisible(points[to - 1])) {
+      to--;
+    }
+    return new String(points, from, to - from);
   }
 
   private String validatedColor(String value) {
