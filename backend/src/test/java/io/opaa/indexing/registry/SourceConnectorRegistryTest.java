@@ -17,6 +17,7 @@ import io.opaa.indexing.spi.OriginalAccess;
 import io.opaa.indexing.spi.ProfileDeclaration;
 import io.opaa.indexing.spi.PushIntake;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.Revocation;
 import io.opaa.indexing.spi.ServiceAccountKeyAuth;
 import io.opaa.indexing.spi.SignIn;
@@ -467,11 +468,13 @@ class SourceConnectorRegistryTest {
     }
 
     @Override
-    public void acceptNotification(
+    public PushNotification acceptNotification(
         KnowledgeLibrary library,
         ConnectorData settings,
         byte[] body,
-        UnaryOperator<String> header) {}
+        UnaryOperator<String> header) {
+      return PushNotification.none();
+    }
 
     @Override
     public void rejectForeign(byte[] body, UnaryOperator<String> header) {}
