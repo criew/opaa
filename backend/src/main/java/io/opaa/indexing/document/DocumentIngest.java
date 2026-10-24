@@ -44,6 +44,9 @@ import java.util.UUID;
  * @param reindex a re-run over content that has not changed: on every outcome but {@code CHUNKED},
  *     and on a failure before the previous chunks were removed, the row and its chunks stay
  *     untouched. Implies {@code existingRow}.
+ * @param malwareScanned the file already passed the malware scan on its way here (an upload is
+ *     scanned before its original is stored), so {@link DocumentIngestService#ingest} does not send
+ *     it again
  */
 public record DocumentIngest(
     KnowledgeLibrary library,
@@ -62,7 +65,8 @@ public record DocumentIngest(
     LocalDate modifiedAt,
     String pipelineId,
     boolean existingRow,
-    boolean reindex) {
+    boolean reindex,
+    boolean malwareScanned) {
 
   public DocumentIngest {
     Objects.requireNonNull(library, "library");
@@ -171,6 +175,7 @@ public record DocumentIngest(
     private String pipelineId;
     private boolean existingRow;
     private boolean reindex;
+    private boolean malwareScanned;
 
     private Builder(KnowledgeLibrary library) {
       this.library = Objects.requireNonNull(library, "library");
@@ -269,6 +274,11 @@ public record DocumentIngest(
       return this;
     }
 
+    public Builder malwareScanned() {
+      this.malwareScanned = true;
+      return this;
+    }
+
     public DocumentIngest build() {
       String name = fileName;
       if (name == null && syntheticName) {
@@ -291,7 +301,8 @@ public record DocumentIngest(
           modifiedAt,
           pipelineId,
           existingRow,
-          reindex);
+          reindex,
+          malwareScanned);
     }
   }
 }

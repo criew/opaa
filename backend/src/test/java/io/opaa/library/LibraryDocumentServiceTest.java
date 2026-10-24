@@ -57,6 +57,7 @@ import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
@@ -156,6 +157,7 @@ class LibraryDocumentServiceTest {
   // io.opaa.indexing.source.s3.S3OriginalAccessIntegrationTest.
   private S3OriginalAccess s3OriginalAccess;
   private LibraryDocumentService service;
+  private MalwareScanService malwareScanService = MalwareScanService.disabled();
 
   /**
    * A transaction manager that starts and commits nothing but still runs the callback - what {@link
@@ -302,7 +304,71 @@ class LibraryDocumentServiceTest {
         new LibrarySourceConnectionResolver(),
         mock(SourceSyncStateRepository.class),
         mock(io.opaa.instance.CurrentInstance.class),
+        malwareScanService,
         Clock.systemUTC());
+  }
+
+  @Test
+  void anInfectedUploadIsRejectedAndLeavesNeitherRowNorOriginal() throws IOException {
+    grantEditor();
+    malwareScanService = mock(MalwareScanService.class);
+    when(malwareScanService.check(any(), any(), eq("report.pdf")))
+        .thenReturn(new MalwareScanService.Verdict.Infected("Eicar-Test-Signature"));
+    service = serviceWith(new AttachmentExtractionProperties(0, null));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining(MalwareScanService.INFECTED_MESSAGE)
+        .hasMessageContaining("Eicar-Test-Signature");
+    verify(documentRepository, never()).save(any(Document.class));
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
+    assertThat(storedFilesUnder(storageDir)).isEmpty();
+  }
+
+  @Test
+  void anUploadTheScannerCouldNotJudgeIsRefusedAsUnavailable() throws IOException {
+    grantEditor();
+    malwareScanService = mock(MalwareScanService.class);
+    when(malwareScanService.check(any(), any(), any()))
+        .thenReturn(MalwareScanService.Verdict.UNSCANNED);
+    service = serviceWith(new AttachmentExtractionProperties(0, null));
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessage(MalwareScanService.UNSCANNED_MESSAGE);
+    verify(documentRepository, never()).save(any(Document.class));
+    assertThat(storedFilesUnder(storageDir)).isEmpty();
+  }
+
+  @Test
+  void aCleanUploadIsHandedOnAsAlreadyScanned() throws IOException {
+    grantEditor();
+    malwareScanService = mock(MalwareScanService.class);
+    when(malwareScanService.check(any(), any(), any()))
+        .thenReturn(MalwareScanService.Verdict.CLEAN);
+    service = serviceWith(new AttachmentExtractionProperties(0, null));
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-clean");
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-clean"))
+        .thenReturn(Optional.empty());
+
+    service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
+
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(documentIngestService).processUploadedFileAsync(ingest.capture(), any(), any());
+    assertThat(ingest.getValue().malwareScanned()).isTrue();
+  }
+
+  private static List<Path> storedFilesUnder(Path root) throws IOException {
+    try (java.util.stream.Stream<Path> files = Files.walk(root)) {
+      return files.filter(Files::isRegularFile).toList();
+    }
   }
 
   @Test
@@ -1738,6 +1804,7 @@ class LibraryDocumentServiceTest {
             new LibrarySourceConnectionResolver(),
             mock(SourceSyncStateRepository.class),
             mock(io.opaa.instance.CurrentInstance.class),
+            MalwareScanService.disabled(),
             Clock.systemUTC());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

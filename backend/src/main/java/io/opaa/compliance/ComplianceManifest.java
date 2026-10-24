@@ -96,7 +96,9 @@ public record ComplianceManifest(
     /** An identity provider or the directory behind it. */
     IDENTITY,
     /** A store holding data of the installation itself. */
-    STORAGE
+    STORAGE,
+    /** A security service of the operator, such as a malware scanner. */
+    SECURITY
   }
 
   /** Where the value of a setting is held. */

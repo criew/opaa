@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -43,7 +43,7 @@ Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums (E
 |  | CON.9 Informationsaustausch (je nach Einsatz) | externe KI-Werkzeuge: [Freigabe je Bibliothek](../../handbuch/spaces/fremdzugaenge.md#4-die-freigabe-einer-wissensbibliothek), [Kontingent und Abflussalarm](../../handbuch/spaces/fremdzugaenge.md#10-kontingent-und-abflussalarm) |
 | OPS – Betrieb | OPS.1.1.2 Ordnungsgemäße IT-Administration | [Systemverwalter-Konto beim Erststart](../../handbuch/betrieb/authentifizierung.md#erststart-und-systemverwalter-konto), [Rollen](../../handbuch/konten-und-rechte/benutzerverwaltung.md#7-rollen), [Notfallzugang](../../handbuch/betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen) |
 |  | OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
-|  | OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate)); keine eigene Virenprüfung |
+|  | OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate)); zuschaltbare Virenprüfung jeder aufgenommenen Datei über einen clamd-Dienst der Behörde, vor dem Lesen und vor der Ablage des Originals, Befund im Revisionsprotokoll, Verhalten bei Ausfall des Scanners einstellbar; ab Werk aus, Seiteninhalte einer Quelle ohne Datei werden nicht geprüft ([Virenprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien), {{faktenblatt:datenfluesse}}) |
 |  | OPS.1.1.5 Protokollierung | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}} |
 |  | OPS.1.1.6 Software-Tests und -Freigaben | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Aktualisierung und Rückweg](../../handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg), [Wiederherstellungsprobe](../../handbuch/betrieb/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) |
 |  | OPS.2.2 Cloud-Nutzung, OPS.2.3 Nutzung von Outsourcing | bei externem Modellanbieter oder Betrieb durch einen Dienstleister; Ziele in {{faktenblatt:datenfluesse}} |

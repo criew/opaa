@@ -75,6 +75,20 @@ settings:
     helm:
       values: rerank.model
       defaultValue: ""
+  - key: opaa.malware-scan.enabled
+    defaultValue: "false"
+    effect: Ob jede Datei vor der Aufnahme in eine Bibliothek an den Virenscanner geht
+    bearings: [DATA_FLOW]
+    helm:
+      values: malwareScan.enabled
+      defaultValue: "false"
+  - key: opaa.malware-scan.host
+    defaultValue: ""
+    effect: Adresse des Virenscanners (clamd); Pflicht bei eingeschalteter Virenprüfung
+    bearings: [DATA_FLOW]
+    helm:
+      values: malwareScan.host
+      defaultValue: ""
   - key: opaa.transcription.enabled
     defaultValue: "false"
     effect: Ob die Spracheingabe Aufnahmen an ein Transkriptionsmodell sendet

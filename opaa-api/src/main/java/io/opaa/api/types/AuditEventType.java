@@ -289,6 +289,12 @@ public enum AuditEventType {
    */
   UPLOAD_ORPHAN_ORIGINALS_DELETED,
   /**
+   * The malware scanner reported a finding in a file on its way into a library, so the file was not
+   * taken in. Written by the scanning system process with the library as object and the signature
+   * name in the payload; the file name and the person who uploaded the file are not recorded.
+   */
+  MALWARE_DETECTED,
+  /**
    * A person set, changed or removed a core metadata value of a document by hand
    * (docs/features/metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig"). One entry per
    * document and field, carrying the old and the new value - also for every document of a

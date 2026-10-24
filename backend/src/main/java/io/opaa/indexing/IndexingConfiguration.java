@@ -42,6 +42,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.knowledge.VectorTable;
@@ -201,6 +202,7 @@ public class IndexingConfiguration {
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor,
       FeatureFlags featureFlags,
+      MalwareScanService malwareScanService,
       Clock clock) {
     return new DocumentIngestService(
         documentPipelineRegistry,
@@ -216,6 +218,7 @@ public class IndexingConfiguration {
         documentMetadataService,
         modelMetadataExtractor,
         featureFlags,
+        malwareScanService,
         clock);
   }
 

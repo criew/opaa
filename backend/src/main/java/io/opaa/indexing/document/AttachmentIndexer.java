@@ -507,7 +507,7 @@ public class AttachmentIndexer {
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
           return Optional.empty();
         }
-        case NO_EXTRACTABLE_TEXT -> {
+        case NO_EXTRACTABLE_TEXT, MALWARE_FOUND -> {
           // Rejected and marked FAILED for good - a scan PDF will not gain a text layer on retry.
           access.recordIndexedAttachment(filePathIdentity, false);
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);

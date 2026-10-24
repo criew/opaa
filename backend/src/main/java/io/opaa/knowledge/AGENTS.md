@@ -17,7 +17,8 @@ Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokum
   Korrektur, Filter, Kontextpräfix) und kennt keine Pipeline-Klasse; Chunk-Store und Nachlauf erreicht es über
   `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und Nachlauf liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest`
-  (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
+  (Virenprüfung, parsen, schneiden, speichern, markieren); ein Upload ist vorher geprüft (`MalwareScanService`,
+  `malwareScanned`). Die `Document`-Zeile gehört `knowledge`.
 - **Modellwechsel:** Passt der Vektorindex nicht zum Embedding-Modell (`EmbeddingIndexState`), schreibt
   `VectorStoreWriter` in `embedding_next`; `EmbeddingReindexService` bettet neu ein und schaltet um.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf, Protokoll),

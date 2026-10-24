@@ -6,6 +6,7 @@ import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.knowledge.FilePathLimit;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import java.util.function.Supplier;
 
 /**
@@ -42,9 +43,9 @@ public final class DocumentIngestOutcomes {
 
   /**
    * Records the entry {@code result} calls for: {@code QUOTA_EXCEEDED}, {@code
-   * PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT} and {@code FILE_PATH_TOO_LONG} are
-   * rejections, {@code FAILED} an error carrying {@code failedMessage}; {@code PROCESSED} and
-   * {@code SKIPPED} record nothing.
+   * PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}, {@code FILE_PATH_TOO_LONG} and {@code
+   * MALWARE_FOUND} are rejections, {@code FAILED} an error carrying {@code failedMessage}; {@code
+   * PROCESSED} and {@code SKIPPED} record nothing.
    */
   public static void record(
       IndexingEventSink events,
@@ -67,6 +68,9 @@ public final class DocumentIngestOutcomes {
               IndexingEventCategory.REJECTED,
               FILE_PATH_TOO_LONG_MESSAGE,
               FilePathLimit.cut(reference));
+      case MALWARE_FOUND ->
+          events.record(
+              IndexingEventCategory.REJECTED, MalwareScanService.INFECTED_MESSAGE, reference);
       case FAILED -> events.record(IndexingEventCategory.ERROR, failedMessage, reference);
       case PROCESSED, SKIPPED -> {}
     }

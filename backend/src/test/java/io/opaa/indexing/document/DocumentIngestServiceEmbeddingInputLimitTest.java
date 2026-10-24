@@ -308,6 +308,7 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
         TestDocumentMetadataServices.returningEmpty(),
         TestDocumentMetadataServices.notExtracting(),
         io.opaa.common.TestFeatureFlags.allOn(),
+        io.opaa.knowledge.MalwareScanService.disabled(),
         Clock.systemUTC());
   }
 

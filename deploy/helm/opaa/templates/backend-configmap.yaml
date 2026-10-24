@@ -61,6 +61,19 @@ data:
   {{- with .Values.rerank.probeInterval }}
   OPAA_RERANK_PROBE_INTERVAL: {{ . | quote }}
   {{- end }}
+  OPAA_MALWARE_SCAN_ENABLED: {{ .Values.malwareScan.enabled | quote }}
+  {{- with .Values.malwareScan.host }}
+  OPAA_MALWARE_SCAN_HOST: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.malwareScan.port }}
+  OPAA_MALWARE_SCAN_PORT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.malwareScan.timeout }}
+  OPAA_MALWARE_SCAN_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.malwareScan.onUnavailable }}
+  OPAA_MALWARE_SCAN_ON_UNAVAILABLE: {{ . | quote }}
+  {{- end }}
   OPAA_TRANSCRIPTION_ENABLED: {{ .Values.transcription.enabled | quote }}
   {{- with .Values.transcription.baseUrl }}
   OPAA_TRANSCRIPTION_BASE_URL: {{ . | quote }}

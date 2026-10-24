@@ -419,6 +419,13 @@ auditEvents:
   - id: UPLOAD_ORPHAN_ORIGINALS_DELETED
     trigger: Verwaiste Originale werden aus der Originalablage entfernt
     details: Die entfernten Ablageorte
+  - id: MALWARE_DETECTED
+    trigger: >-
+      Die Virenprüfung meldet in einer Datei, die in eine Bibliothek aufgenommen werden soll, ein
+      Schadprogramm; die Datei wird nicht aufgenommen (Systemvorgang)
+    details: >-
+      Bibliothek als Objekt, Name der Signatur (nicht bei einer privaten Bibliothek) und Art der
+      Quelle; weder Dateiname noch die Person, die die Datei hochgeladen hat
   - id: DOCUMENT_METADATA_CHANGED
     trigger: Eine Person setzt, ändert oder entfernt einen Kernmetadatenwert von Hand
     details: Dokument, Feld, alter und neuer Wert; Sammelzuweisungen über correlation_ref

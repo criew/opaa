@@ -215,3 +215,13 @@ dataFlows:
       Nur bei Ablage in S3; Voreinstellung der Anwendung ist das Dateisystem, das Helm-Chart setzt
       S3 voreingestellt
     settings: [opaa.upload.store, opaa.upload.s3.endpoint]
+  - id: malware-scanner
+    group: SECURITY
+    viaOutboundProxy: false
+    target: Der Virenscanner (clamd), den der Betrieb konfiguriert, meist im eigenen Netz
+    data: >-
+      Der vollständige Inhalt jeder Datei, die eine Bibliothek aufnehmen soll (Upload, Datei einer
+      Quelle, Anhang), ohne Dateiname, Bibliothek oder Person
+    trigger: Jede Aufnahme einer Datei bei eingeschalteter Virenprüfung
+    switchOff: Abschaltbar, Voreinstellung aus
+    settings: [opaa.malware-scan.enabled, opaa.malware-scan.host]
