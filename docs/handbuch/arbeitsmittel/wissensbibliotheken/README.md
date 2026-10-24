@@ -316,6 +316,17 @@ Seiten, Folien oder Zeilengruppen. Nur wer das Format kennt, weiß, wo diese Gre
   (beschädigte Datei; der alte Stand bleibt), **leer** (der alte Stand wird entfernt) oder **kein
   extrahierbarer Text**, typisch für eingescannte PDFs (abgewiesen, der alte Stand wird entfernt).
 
+**Bereinigung.** Direkt nach dem Format, für jedes Format und jeden Konnektor, entfernt OPAA aus
+dem Text der Chunks und aus Titel und erster Überschrift Zeichen, die in einem Verwaltungsdokument
+nichts bedeuten, aber Text vor dem Auge verbergen können: unsichtbare Zeichen des Unicode-Tag-Blocks,
+Steuerzeichen der Schreibrichtung, Zeichen ohne Breite (außer dem Verbinder innerhalb eines Emoji),
+Variantenwähler außerhalb eines Emoji und weiche Trennstriche. Besondere Leerzeichen werden zu
+normalen, und Rollen-Markierungen der Modellformate wie `<|im_start|>` werden entschärft. Umlaute,
+Schrift von rechts nach links und Emoji bleiben unverändert; ähnlich aussehende Buchstaben anderer
+Schriften werden nicht ersetzt. Index, Antwort-Prompt und Belegprüfung sehen denselben bereinigten
+Text. Typische Wendungen wie „ignoriere alle vorherigen Anweisungen“ bleiben im Text; das Log nennt
+je Dokument nur, wie oft welche Art gefunden wurde, nie den Inhalt.
+
 Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 
 ### 5.5 Metadaten anreichern

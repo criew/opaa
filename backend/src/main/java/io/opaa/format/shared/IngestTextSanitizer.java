@@ -31,7 +31,9 @@ public final class IngestTextSanitizer {
   /** The cleaned text and the findings per class; a class without a hit is absent. */
   public record Result(String text, Map<Finding, Integer> findings) {
     public Result {
-      findings = Collections.unmodifiableMap(new EnumMap<>(findings));
+      Map<Finding, Integer> copy = new EnumMap<>(Finding.class);
+      copy.putAll(findings);
+      findings = Collections.unmodifiableMap(copy);
     }
 
     public boolean hasFindings() {
