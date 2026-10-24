@@ -220,7 +220,7 @@ async function toScope(a) {
   return row
 }
 
-async function finishToReview(a, name) {
+async function finishToReview(a, name, linger = 2000) {
   await a.click(a.btn('Weiter'), 'Weiter')
   await a.wait(800)
   await a.type(a.field(/^Name/), name, 'Name')
@@ -229,7 +229,7 @@ async function finishToReview(a, name) {
     await a.click(a.btn('Weiter'), 'Weiter')
     await a.wait(600)
   }
-  await a.wait(2000)
+  await a.wait(linger)
 }
 
 async function openRows(a) {
@@ -357,7 +357,7 @@ async function flowViele(a, type) {
     path: '/srv/opaa/grundstuecksverkehrsgenehmigungsakte/fachbereich-soziales-jugend-und-familie/eingliederungshilfe',
   })
   await scopeScale(a, type)
-  await finishToReview(a, `${FILE_NAMES[type]} Gesamtbestand`)
+  await finishToReview(a, `${FILE_NAMES[type]} Gesamt`, 1200)
   // editing the stored library of the type: its selection is preselected
   await a.page.goto(`${BASE}/libraries/${LIBRARIES[type]}?mockScenario=scale`)
   await a.page.waitForSelector('main')
@@ -367,12 +367,10 @@ async function flowViele(a, type) {
   await a.wait(1200)
   const row = scopeRow(a.page)
   if (type !== 'filesystem' && (await a.click(a.btn('Ändern', row), 'Ändern Auswahl', 2500))) {
-    await a.wait(2000)
-    await a.click(a.btn('Auswahl ansehen', dialogOf(a.page)), 'Auswahl ansehen')
-    await a.wait(1500)
+    await a.wait(2500)
     await a.click(a.btn('Abbrechen', dialogOf(a.page)), 'Abbrechen')
   }
-  await a.wait(1500)
+  await a.wait(1000)
 }
 
 // ---- fehler: failed ----------------------------------------------------------------------------
@@ -390,6 +388,9 @@ async function flowFehler(a, type) {
     await a.wait(1500)
     await a.click(page.getByRole('alert').getByRole('button').first(), 'erster Eintrag der Fehlerzusammenfassung')
     await fillConnection(a, type)
+  }
+  if (!(await a.visible(a.btn('Verbindung testen'), 800))) {
+    await a.click(a.btn('Ändern Verbindung'), 'Ändern Verbindung')
   }
   await a.click(a.btn('Verbindung testen'), 'Verbindung testen')
   await a.wait(2500)
