@@ -172,3 +172,13 @@ def test_repeated_ids_names_each_id_that_occurs_twice_on_a_page() -> None:
              "b.html": b'<h1 id="e"></h1><a name="e"></a>', "c.md": b'id="x" id="x"'}
 
     assert package_html.repeated_ids(pages) == ["a.html: e"]
+
+
+def test_a_diagram_with_its_own_description_keeps_it_beside_the_source_text() -> None:
+    source = "flowchart LR\n  accDescr: Beschreibung\n  A --> B\n"
+    page = site({"a.md": f"# Titel\n\n```mermaid\n{source}```\n"},
+                diagrams={source: '<svg id="d" aria-describedby="chart-desc-d"><desc id="chart-desc-d"/></svg>'})["a.html"]
+
+    text = package_html.diagram_id(source) + "-source-text"
+    assert f'<svg id="d" aria-describedby="{text} chart-desc-d">' in page
+    assert page.count("aria-describedby") == 1

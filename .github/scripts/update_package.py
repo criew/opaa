@@ -38,7 +38,8 @@ results of the release run (--accessibility, one directory per run, accessibilit
 barrierefreiheit/; without them the report says the version was not checked. Dates and file
 metadata come from the commit, so the same commit yields the same files, except the date and
 results of the accessibility run and the diagram SVGs, whose measured sizes follow the Chrome
-version of the run.
+version and fonts of the run (render.mjs fixes the font to the metric-compatible Arial or Liberation
+Sans).
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every

@@ -658,7 +658,7 @@ zeichnet der Lauf vorab in einem Headless-Chromium zu SVG (`.github/tools/mermai
 Mermaid und playwright-core aus der Lockfile daneben, ohne Netz im Browser) und bettet sie in die
 Seite ein, den Diagrammtext aufklappbar darunter; ein Diagramm, das nicht rendert, bricht den Lauf
 ab. Gezeichnet werden die Diagramme von Vorlagen, Update-Vermerk und Handbuch, in anderen Teilen wie
-den Upgrade-Hinweisen bleibt ein Diagramm Code. Jede `id` steht auf einer Seite nur einmal, sonst
+den Upgrade-Hinweisen bleibt ein Diagramm Code, außer es gleicht wörtlich einem gezeichneten. Jede `id` steht auf einer Seite nur einmal, sonst
 bricht der Lauf ab. Gezeichnet wird mit Google Chrome des Runners, lokal mit dem Browser aus `CHROMIUM`. Ein
 relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
 Attestierung decken die HTML-Dateien wie alle anderen ab. Jeder PR prüft

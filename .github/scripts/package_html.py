@@ -93,7 +93,12 @@ def diagram(source: str, svg: str) -> str:
     """A rendered diagram, followed by its source text for copying and for readers without
     graphics; the SVG names that text as its description."""
     text = diagram_id(source) + "-source-text"
-    svg = re.sub(r"^\s*<svg\b", f'<svg aria-describedby="{text}"', svg, count=1)
+    opening = re.match(r"\s*<svg\b[^>]*>", svg)
+    if opening:
+        tag = opening.group(0)
+        tag = (tag.replace('aria-describedby="', f'aria-describedby="{text} ', 1) if 'aria-describedby="' in tag
+               else tag.replace("<svg", f'<svg aria-describedby="{text}"', 1))
+        svg = tag + svg[opening.end():]
     return (f'<figure class="diagram">{svg}</figure>\n'
             '<details class="diagram-source"><summary>Diagramm als Text</summary>'
             f'<pre id="{text}"><code class="language-mermaid">{html.escape(source, quote=False)}</code></pre>'
