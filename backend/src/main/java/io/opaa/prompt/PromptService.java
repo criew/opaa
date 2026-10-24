@@ -280,7 +280,12 @@ public class PromptService {
       CurrentUser caller) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("promptLibraryId", library.getId().toString());
+    // a private prompt's name is its owner's: the entry names it by id alone (ADR-0041,
+    // Entscheidung 6)
     payload.putAll(details);
+    if (library.isOwnerOnly()) {
+      payload.remove("name");
+    }
     AuditEvent.Builder event =
         AuditEvent.builder()
             .organizationId(library.getOrganizationId())

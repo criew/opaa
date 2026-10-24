@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: identity-2026-10-24-siem-export-cursor
       author: opaa
-      comment: "The position of the SIEM export in the audit log (ADR-0055): one row, created when the export runs for the first time, moved only after a delivery succeeded; disabled_at marks a start with the export switched off, heartbeat_at the last run. Additive: a new table."
+      comment: "The position of the SIEM export in the audit log (ADR-0055): one row, created when the export runs for the first time, moved only after a delivery succeeded; disabled_at marks a start with the export switched off. Additive: a new table."
       changes:
         - sql:
             sql: |
@@ -13,7 +13,6 @@ databaseChangeLog:
                 last_recorded_at timestamptz NOT NULL,
                 last_event_id uuid,
                 disabled_at timestamptz,
-                heartbeat_at timestamptz,
                 updated_at timestamptz NOT NULL,
                 CONSTRAINT chk_siem_export_cursor_singleton CHECK (id = 1)
               );

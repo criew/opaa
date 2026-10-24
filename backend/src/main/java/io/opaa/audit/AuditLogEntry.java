@@ -204,6 +204,13 @@ public class AuditLogEntry implements Persistable<UUID> {
         correlationRef);
   }
 
+  /**
+   * Replaces the label of an object that belongs to one person by its neutral one, before writing.
+   */
+  void neutralizeObjectLabel(String neutralLabel) {
+    this.objectLabel = neutralLabel;
+  }
+
   /** Sets the moment of recording, once; an entry is never re-stamped. */
   void stampRecordedAt(Instant recordedAt) {
     if (this.recordedAt != null) {

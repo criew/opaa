@@ -31,9 +31,10 @@ betroffenen Objekts hinaus, nie das Pseudonym der handelnden oder betroffenen Pe
 Begründung, Nutzlast oder Vorgangskennung. Den Namen des Objekts sendet OPAA nur mit
 `opaa.siem-export.include-labels` (datenwirksam, aus), weil Namen von Spaces und Gruppen oft Personen
 nennen. Gehört das Objekt genau einer Person, fehlen Kennung und Name immer: Konto und Zugangstoken
-an ihrer Art, persönlicher Bereich, private Bibliothek und privater Prompt an der neutralen
-Bezeichnung, die schon beim Schreiben im Protokoll steht (`AuditNeutralLabels`). Die Maskierung
-geschieht im SQL. Fragen zu einer Person klärt die Behörde über die anlassbezogene Klärung in OPAA.
+an ihrer Art; persönlicher Bereich, private Bibliothek und privater Prompt am Eigentum, das die
+Module über den Port `PersonalAuditObjects` melden. Dieser Port setzt schon beim Schreiben
+(`AuditLogService#record`) die neutrale Bezeichnung (`AuditNeutralLabels`), gleich was der Schreiber
+übergibt; die Ausleitung maskiert danach im SQL und fragt den Port für jeden Stapel noch einmal. Fragen zu einer Person klärt die Behörde über die anlassbezogene Klärung in OPAA.
 
 Einen Weg zur Person gibt es dennoch: Manche Zeilen des Anwendungslogs nennen die Kennung eines
 Kontos, etwa bei einer Kontosperre; liegen Log und Ausleitung im selben SIEM, lassen sie sich über
@@ -56,8 +57,9 @@ Dienstvereinbarung.
 Je Eintrag eine Nachricht nach RFC 5424 mit einem CEF-Körper, über TCP mit Längenpräfix (RFC 6587),
 als Vorgabe mit TLS (RFC 5425), Vertrauensspeicher der JVM und Prüfung des Hostnamens
 (`CefSyslogFormatter`, `SyslogSender`). Die Kennung des Eintrags steht in `externalId`. Nach der letzten
-Meldung schließt OPAA die Sendeseite und wartet kurz auf das Verbindungsende des Empfängers; ein
-Empfänger, der die Verbindung schon verloren hat, lässt die Zustellung dort scheitern. Eine
+Meldung schließt OPAA die Sendeseite und wartet kurz auf das Verbindungsende des Empfängers. Ein
+Empfänger, der die Verbindung schon verloren hat, lässt die Zustellung dort meist scheitern; hat er
+sie gleich nach dem Annehmen geschlossen, kann sie dennoch als gelungen gelten. Eine
 Bestätigung je Meldung gibt es nicht, die Zustellung ist mindestens einmal; RELP wäre der Weg zu
 einer Bestätigung. CEF über Syslog nehmen die verbreiteten SIEM-Systeme ohne eigenen Parser an.
 
@@ -68,8 +70,10 @@ Die Position steht in `siem_export_cursor`; sie entsteht beim ersten Lauf auf de
 bedingtem `UPDATE`; ein ausgefallener Empfänger bekommt dieselben Einträge später, nach Fehlschlägen
 mit wachsendem Abstand bis zehn Minuten. Ein Lauf alle 30 Sekunden unter der Sperre `siem-export` auf
 einem eigenen Scheduler (ADR-0053, Entscheidung 7). Gesendet wird nur, was vor dem Beginn der ältesten
-noch offenen Transaktion der Datenbank liegt (`pg_stat_activity.xact_start`): `recorded_at` entsteht
-in der Transaktion des Eintrags, ein noch nicht sichtbarer Eintrag liegt also nie davor.
+noch offenen Transaktion einer Client-Sitzung der Datenbank liegt (`pg_stat_activity.xact_start`,
+`backend_type = 'client backend'`), gelesen in einer eigenen Anweisung vor den Einträgen:
+`recorded_at` entsteht in der Transaktion des Eintrags, ein noch nicht sichtbarer Eintrag liegt also
+nie davor. Die Datenquelle muss der Primär sein, kein Replikat.
 `opaa.siem-export.settle-delay` ist nur ein kleiner Puffer gegen Sprünge der Uhr. Startet eine Instanz
 mit abgeschalteter Ausleitung, merkt sie das an der Position an (`disabled_at`); wieder eingeschaltet
 beginnt die Ausleitung neu.
@@ -91,7 +95,8 @@ Lücke.
 - Restrisiken: Die Zustellung ist mindestens einmal: Bricht ein Lauf zwischen Zustellung und
   Vorrücken ab, kommt derselbe Stapel noch einmal, erkennbar an `externalId`. Ein Empfänger, der die
   Daten annimmt und danach verwirft, fällt ohne Bestätigung je Meldung nicht auf. Eine lang offene
-  Transaktion hält die Ausleitung an, bis sie endet. Die Sicht auf `pg_stat_activity` umfasst nur
+  Transaktion hält die Ausleitung an, bis sie endet; die Metrik `opaa.siem.export.lag` zeigt den
+  Rückstand, und das Log warnt mit der Sitzung, die ihn verursacht. Die Sicht auf `pg_stat_activity` umfasst nur
   Sitzungen derselben Datenbankrolle; schreibt eine andere Rolle ins Protokoll, braucht das
   Anwendungskonto `pg_read_all_stats`. Ohne TLS gehen die Einträge unverschlüsselt durchs Netz.
 

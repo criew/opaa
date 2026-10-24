@@ -2,6 +2,8 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.common.DatabaseClock;
+import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -32,18 +34,33 @@ public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
   private final DatabaseClock databaseClock;
+  private final ObjectProvider<PersonalAuditObjects> personalObjects;
 
-  public AuditLogService(AuditLogRepository auditLogRepository, DatabaseClock databaseClock) {
+  public AuditLogService(
+      AuditLogRepository auditLogRepository,
+      DatabaseClock databaseClock,
+      ObjectProvider<PersonalAuditObjects> personalObjects) {
     this.auditLogRepository = auditLogRepository;
     this.databaseClock = databaseClock;
+    this.personalObjects = personalObjects;
   }
 
   /**
    * Persists {@code entry}. Participates in the caller's ambient transaction if one is open (see
    * class Javadoc); if none is open, the write commits immediately on its own, like any other plain
-   * repository call in this codebase.
+   * repository call in this codebase. An object that belongs to one person is written under its
+   * neutral label, whatever label the caller passed ({@link PersonalAuditObjects}).
    */
   public AuditLogEntry record(AuditLogEntry entry) {
+    for (PersonalAuditObjects port : personalObjects.orderedStream().toList()) {
+      String neutral =
+          port.personal(entry.getObjectType(), List.of(entry.getObjectId()))
+              .get(entry.getObjectId());
+      if (neutral != null) {
+        entry.neutralizeObjectLabel(neutral);
+        break;
+      }
+    }
     entry.stampRecordedAt(databaseClock.now());
     return auditLogRepository.save(entry);
   }

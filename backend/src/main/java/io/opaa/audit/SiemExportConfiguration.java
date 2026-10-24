@@ -31,7 +31,8 @@ public class SiemExportConfiguration {
       JdbcTemplate jdbc,
       SiemExportProperties properties,
       MeterRegistry meterRegistry,
-      ObjectProvider<BuildProperties> buildProperties) {
+      ObjectProvider<BuildProperties> buildProperties,
+      ObjectProvider<PersonalAuditObjects> personalObjects) {
     log.info(
         "SIEM export on: syslog/CEF to {}:{} {}, object names {}",
         properties.host(),
@@ -49,6 +50,7 @@ public class SiemExportConfiguration {
         new SyslogSender(
             properties.host(), properties.port(), properties.tls(), properties.timeout()),
         new CefSyslogFormatter(hostname(), version),
+        personalObjects.orderedStream().toList(),
         meterRegistry);
   }
 

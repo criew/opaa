@@ -42,6 +42,15 @@ class SiemExportServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private List<PersonalAuditObjects> personalObjects;
+  @Autowired private AuditEventRecorder auditEventRecorder;
+  @Autowired private io.opaa.audit.web.AuditedAdminCall auditedAdminCall;
+  @Autowired private io.opaa.knowledge.KnowledgeLibraryRepository libraryRepository;
+  @Autowired private io.opaa.space.SpaceRepository spaceRepository;
+
+  private final List<UUID> createdLibraries = new ArrayList<>();
+  private final List<UUID> createdSpaces = new ArrayList<>();
+  private final List<UUID> writtenEvents = new ArrayList<>();
 
   private UUID organizationId;
   private RecordingSender sender;
@@ -60,6 +69,11 @@ class SiemExportServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    for (UUID eventId : writtenEvents) {
+      jdbcTemplate.update("DELETE FROM audit_log WHERE event_id = ?", eventId);
+    }
+    createdLibraries.forEach(libraryRepository::deleteById);
+    createdSpaces.forEach(spaceRepository::deleteById);
     jdbcTemplate.update("DELETE FROM siem_export_cursor");
     jdbcTemplate.update("UPDATE audit_retention_settings SET last_cutoff = ?", originalCutoff);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
@@ -73,6 +87,7 @@ class SiemExportServiceIntegrationTest {
             true, "siem.example", null, false, includeLabels, null, Duration.ZERO, 1000),
         sender,
         new CefSyslogFormatter("test-host", "0.0.0-dev"),
+        personalObjects,
         new SimpleMeterRegistry());
   }
 
@@ -153,6 +168,113 @@ class SiemExportServiceIntegrationTest {
         .doesNotContain("prompt-private")
         .doesNotContain("cs3=")
         .doesNotContain("cs4=");
+  }
+
+  /** The person of the dev profile, who owns the personal objects of the next test. */
+  private UUID person() {
+    return jdbcTemplate.queryForObject(
+        "SELECT id FROM users WHERE email = ?", UUID.class, "dev-user@opaa.local");
+  }
+
+  private UUID personalSpaceOf(UUID person) {
+    List<UUID> existing =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM spaces WHERE owner_id = ? AND is_default", UUID.class, person);
+    if (!existing.isEmpty()) {
+      return existing.getFirst();
+    }
+    UUID id =
+        spaceRepository
+            .save(
+                new io.opaa.space.Space(
+                    "Privater Bereich", null, true, person, Organization.DEFAULT_ID))
+            .getId();
+    createdSpaces.add(id);
+    return id;
+  }
+
+  private UUID privateLibraryOf(UUID person) {
+    UUID id =
+        libraryRepository
+            .save(
+                io.opaa.knowledge.KnowledgeLibrary.ownerOnly(
+                    Organization.DEFAULT_ID,
+                    "Meine Ablage " + UUID.randomUUID(),
+                    null,
+                    person,
+                    io.opaa.knowledge.SourceType.UPLOAD,
+                    null,
+                    null,
+                    null))
+            .getId();
+    createdLibraries.add(id);
+    return id;
+  }
+
+  private List<UUID> eventsOn(String objectId) {
+    List<UUID> ids =
+        jdbcTemplate.queryForList(
+            "SELECT event_id FROM audit_log WHERE object_id = ?", UUID.class, objectId);
+    writtenEvents.addAll(ids);
+    return ids;
+  }
+
+  @Test
+  void theRealWritersPutNoNameOfAPersonalObjectIntoTheLogAndTheExportSendsNoId() {
+    // regression guard for ADR-0055, Entscheidung 2: the writers of the review - admin calls with
+    // "Bibliothek <id>", the point-in-time access without label, a space context with its own
+    // name - are neutralised in the one write path, whatever label they pass
+    UUID person = person();
+    UUID space = personalSpaceOf(person);
+    UUID library = privateLibraryOf(person);
+    io.opaa.auth.CurrentUser admin =
+        io.opaa.auth.CurrentUser.of(
+            person, Organization.DEFAULT_ID, io.opaa.api.types.SystemRole.SYSTEM_ADMIN, "Admin");
+    SiemExportService service = service(true);
+    service.cursor();
+
+    auditedAdminCall.run(
+        admin,
+        AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        library,
+        "Bibliothek " + library,
+        java.util.Map.of(),
+        () -> "done",
+        result -> java.util.Map.of());
+    auditEventRecorder.recordPermissionHistoryAccess(
+        Organization.DEFAULT_ID,
+        person,
+        AuditObjectType.SPACE,
+        space,
+        java.util.Map.of(),
+        AuditOutcome.SUCCESS,
+        "Prüfung");
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(Organization.DEFAULT_ID)
+            .actor(person)
+            .type(AuditEventType.SEARCH_DIAGNOSIS_PROFILE_RUN)
+            .object(AuditObjectType.SPACE, space, "Mein frei gewählter Name")
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT object_label FROM audit_log WHERE object_id IN (?, ?)",
+                String.class,
+                library.toString(),
+                space.toString()))
+        .containsOnly(AuditNeutralLabels.PRIVATE_ASSET, AuditNeutralLabels.PERSONAL_SPACE);
+    assertThat(eventsOn(library.toString())).hasSize(1);
+    assertThat(eventsOn(space.toString())).hasSize(2);
+
+    service.run();
+
+    assertThat(String.join("\n", sender.delivered))
+        .doesNotContain(library.toString())
+        .doesNotContain(space.toString())
+        .doesNotContain("Mein frei gewählter Name");
   }
 
   @Test

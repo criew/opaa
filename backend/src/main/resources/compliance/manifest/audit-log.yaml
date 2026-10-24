@@ -50,6 +50,11 @@ defaults:
         Das Protokoll enthält Handlungen von Beschäftigten (Pseudonym); Hinweis: Mitbestimmung bei
         technischen Einrichtungen zur Verhaltens- und Leistungskontrolle prüfen (§ 80 Abs. 1
         Nr. 21 BPersVG bzw. Landesrecht)
+      - >-
+        Objekte, die genau einer Person gehören, stehen nur mit Kennung und neutraler Bezeichnung
+        im Protokoll, nie mit ihrem Namen, auch nicht in den Angaben des Eintrags: private
+        Bibliothek („Private Bibliothek“), Prompt einer privaten Prompt-Bibliothek („Privater
+        Prompt“) und persönlicher Bereich („Persönlicher Bereich“)
 data:
   - id: audit-log
     title: Revisionssicheres Protokoll
@@ -195,7 +200,7 @@ data:
 nonPersonalTables:
   audit_incident_scope_case_counts: [organization_id, case_year, purpose, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
-  siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, disabled_at, heartbeat_at, updated_at]
+  siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, disabled_at, updated_at]
 settings:
   - key: opaa.siem-export.enabled
     source: PROPERTY

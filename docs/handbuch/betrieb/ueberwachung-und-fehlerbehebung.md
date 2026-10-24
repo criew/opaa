@@ -28,6 +28,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modelle.md)) |
 | `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)) |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
+| `opaa_siem_export_lag_seconds` | Alter des zuletzt ausgeleiteten Eintrags; wächst er stetig, hält eine offene Transaktion oder der Empfänger die Ausleitung an |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |
@@ -68,12 +69,16 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   meldet sie als Lücke.
 - **Kein stiller Verlust:** Ein Eintrag geht erst hinaus, wenn jeder Vorgang abgeschlossen ist, der
   vor ihm begann; so überholt die Ausleitung keinen langen Vorgang wie einen Verzeichnisabgleich.
+  Dafür muss die Datenbankverbindung zum Primär gehen, nicht zu einem Replikat. Eine Sitzung, die
+  eine Transaktion offen liegen lässt, hält die Ausleitung an: Die Metrik
+  `opaa_siem_export_lag_seconds` wächst, und das Log warnt nach zehn Minuten mit der Sitzung.
+  `idle_in_transaction_session_timeout` in PostgreSQL beendet solche Sitzungen.
   Ist der Empfänger nicht erreichbar, bleiben die Einträge fällig und gehen beim nächsten
   erfolgreichen Lauf hinaus. Ein Lauf findet alle 30 Sekunden auf einer Instanz statt; nach
   Fehlschlägen wartet sie immer länger, höchstens zehn Minuten, und das Log meldet den ersten
   Fehlschlag und danach den längsten Abstand.
 - **Zustellung mindestens einmal:** Eine Zustellung gilt als gelungen, wenn der Empfänger die Daten
-  angenommen und die Verbindung nicht abgewiesen hat; eine Bestätigung je Meldung gibt es nicht. Bricht
+  angenommen und die Verbindung nicht erkennbar abgewiesen hat; eine Bestätigung je Meldung gibt es nicht. Bricht
   ein Lauf danach ab, kommt derselbe Stapel noch einmal; das SIEM erkennt die Wiederholung an
   `externalId`.
 - **Lücken:** Hat die Aufbewahrungsfrist Einträge gelöscht, bevor sie gesendet waren, oder war die

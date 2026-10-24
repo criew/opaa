@@ -50,7 +50,6 @@ class PersonalSpaceDeletionListener {
   /** The same payload {@code SpaceService} writes for a space deletion. */
   private static Map<String, Object> spaceAuditPayload(Space space) {
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", space.getName());
     payload.put("ownerId", space.getOwnerId().toString());
     return payload;
   }

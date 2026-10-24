@@ -200,7 +200,10 @@ public class SpaceService {
 
   private Map<String, Object> spaceAuditPayload(Space space) {
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", space.getName());
+    if (!space.isDefault()) {
+      // the personal space's name is its owner's: the entry names it by id alone
+      payload.put("name", space.getName());
+    }
     payload.put("ownerId", space.getOwnerId().toString());
     payload.put("chatAutoCleanup", space.isChatAutoCleanupEnabled());
     return payload;

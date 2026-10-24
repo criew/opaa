@@ -84,10 +84,8 @@ class AuditLogReaderStructureTest {
   private static final Pattern FORBIDDEN_COLUMN =
       Pattern.compile("\\b(actor_ref|subject_ref|reason|before|after|correlation_ref)\\b");
 
-  /** A Java string literal that holds SQL, recognised by an upper-case keyword. */
-  private static final Pattern SQL_LITERAL =
-      Pattern.compile(
-          "\"([^\"\\\\]*\\b(?:SELECT|FROM|WHERE|CASE|AND|UPDATE|INSERT)\\b[^\"\\\\]*)\"");
+  /** Every Java string literal, also a fragment of SQL without a keyword of its own. */
+  private static final Pattern STRING_LITERAL = Pattern.compile("\"((?:[^\"\\\\]|\\\\.)*)\"");
 
   @Test
   void theSiemExportNeverNamesAPseudonymReasonOrPayloadInItsSql() throws IOException {
@@ -95,15 +93,15 @@ class AuditLogReaderStructureTest {
         Files.readString(
             JavaSources.MAIN_SOURCES.resolve("io/opaa/audit/SiemExportService.java"),
             StandardCharsets.UTF_8);
-    Matcher literals = SQL_LITERAL.matcher(source);
-    int sql = 0;
+    Matcher literals = STRING_LITERAL.matcher(source);
+    int seen = 0;
     while (literals.find()) {
-      sql++;
+      seen++;
       assertThat(FORBIDDEN_COLUMN.matcher(literals.group(1)).find())
-          .as("SQL literal of SiemExportService: %s", literals.group(1))
+          .as("string literal of SiemExportService: %s", literals.group(1))
           .isFalse();
     }
-    assertThat(sql).as("the test must see the SQL of SiemExportService").isGreaterThan(3);
+    assertThat(seen).as("the test must see the literals of SiemExportService").isGreaterThan(10);
   }
 
   @Test
@@ -121,6 +119,7 @@ class AuditLogReaderStructureTest {
             org.springframework.jdbc.core.JdbcTemplate.class,
             SiemExportProperties.class,
             io.micrometer.core.instrument.MeterRegistry.class,
+            org.springframework.beans.factory.ObjectProvider.class,
             org.springframework.beans.factory.ObjectProvider.class);
     var condition =
         factory.getAnnotation(
