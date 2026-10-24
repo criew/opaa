@@ -12,7 +12,6 @@ import io.opaa.indexing.spi.PushIntakeHandler;
 import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import java.util.Optional;
 import java.util.Set;
@@ -40,15 +39,10 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
 
   static final String UNAUTHORIZED_MESSAGE = PushIntakeHandler.UNAUTHORIZED_MESSAGE;
 
-  private final KnowledgeLibraryRepository libraryRepository;
   private final JsonMapper jsonMapper;
 
   public ConfluenceWebhookService(
-      KnowledgeLibraryRepository libraryRepository,
-      ConfluenceIndexingExecutor executor,
-      SourceEventIntake intake,
-      JsonMapper jsonMapper) {
-    this.libraryRepository = libraryRepository;
+      ConfluenceIndexingExecutor executor, SourceEventIntake intake, JsonMapper jsonMapper) {
     this.jsonMapper = jsonMapper;
     SourceEventTarget target =
         new SourceEventTarget() {
@@ -76,23 +70,10 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
   }
 
   /**
-   * Authenticates and parses one notification. Throws {@link UnauthorizedException} (401) when the
-   * request does not prove knowledge of the library's secret; returns the named pages - none for a
-   * body that names no page - once it does.
-   */
-  public PushNotification accept(
-      UUID libraryId, byte[] body, String hubSignature, String sharedSecret) {
-    return accept(
-        libraryId,
-        libraryRepository.findById(libraryId).orElse(null),
-        body,
-        hubSignature,
-        sharedSecret);
-  }
-
-  /**
-   * The same for a library the caller has already loaded, {@code null} for none - the shared push
-   * intake loads it once for every request, so no path costs an extra query.
+   * Authenticates and parses one notification for a library the caller has already loaded, {@code
+   * null} for none. Throws {@link UnauthorizedException} (401) when the request does not prove
+   * knowledge of the library's secret; returns the named pages - none for a body that names no page
+   * - once it does.
    */
   @Override
   public PushNotification accept(

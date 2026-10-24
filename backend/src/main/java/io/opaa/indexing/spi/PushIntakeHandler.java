@@ -15,8 +15,8 @@ public interface PushIntakeHandler {
 
   /**
    * Authenticates and parses one notification; returns what it asks to be looked at - {@link
-   * PushNotification#none()} for a body that names nothing - once the request proves knowledge of
-   * the library's secret. Queueing is the core's, for {@code library}.
+   * PushNotification#none()} for a body that names nothing, never {@code null} - once the request
+   * proves knowledge of the library's secret. Queueing is the core's, for {@code library}.
    *
    * @param library the addressed library, already loaded and of this handler's source type
    * @param settings the connector settings stored on {@code library}, {@code null} for none

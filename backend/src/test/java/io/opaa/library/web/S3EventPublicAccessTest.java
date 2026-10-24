@@ -23,6 +23,7 @@ import io.opaa.indexing.source.s3.S3ConnectionService;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
 import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.events.S3EventService;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -89,6 +90,8 @@ class S3EventPublicAccessTest {
   /** The real connector in front of the mocked service, so its header mapping is covered. */
   @BeforeEach
   void wireTheConnector() {
+    when(eventService.accept(any(), any(), any(), any(), any(), any()))
+        .thenReturn(PushNotification.none());
     when(libraryRepository.findById(any()))
         .thenReturn(
             Optional.of(

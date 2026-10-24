@@ -69,14 +69,18 @@ class ConfluenceWebhookServiceTest {
     library.setWebhookSecret(SECRET);
     libraryId = UUID.randomUUID();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    service =
-        new ConfluenceWebhookService(
-            libraryRepository, executor, intake, JsonMapper.builder().build());
+    service = new ConfluenceWebhookService(executor, intake, JsonMapper.builder().build());
     // the target is registered once, at creation, so any instance drains this connector's batches
     ArgumentCaptor<SourceEventTarget> registered = ArgumentCaptor.forClass(SourceEventTarget.class);
     verify(intake).register(registered.capture());
     target = registered.getValue();
     org.mockito.Mockito.clearInvocations(intake);
+  }
+
+  /** The way the shared push intake calls in: the library loaded once, before the adapter. */
+  private PushNotification accept(UUID id, byte[] body, String hubSignature, String sharedSecret) {
+    return service.accept(
+        id, libraryRepository.findById(id).orElse(null), body, hubSignature, sharedSecret);
   }
 
   private static byte[] body(String... pageIds) {
@@ -94,17 +98,17 @@ class ConfluenceWebhookServiceTest {
     UUID unknown = UUID.randomUUID();
     when(libraryRepository.findById(unknown)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.accept(libraryId, body, null, null))
+    assertThatThrownBy(() -> accept(libraryId, body, null, null))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(ConfluenceWebhookService.UNAUTHORIZED_MESSAGE);
-    assertThatThrownBy(() -> service.accept(libraryId, body, "sha256=00", "falsch"))
+    assertThatThrownBy(() -> accept(libraryId, body, "sha256=00", "falsch"))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(ConfluenceWebhookService.UNAUTHORIZED_MESSAGE);
-    assertThatThrownBy(() -> service.accept(unknown, body, good, null))
+    assertThatThrownBy(() -> accept(unknown, body, good, null))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(ConfluenceWebhookService.UNAUTHORIZED_MESSAGE);
     library.setWebhookSecret(null);
-    assertThatThrownBy(() -> service.accept(libraryId, body, good, SECRET))
+    assertThatThrownBy(() -> accept(libraryId, body, good, SECRET))
         .as("no secret stored: nothing authenticates, not even the former secret")
         .isInstanceOf(UnauthorizedException.class);
 
@@ -129,7 +133,7 @@ class ConfluenceWebhookServiceTest {
     byte[] body = body("102");
 
     assertThatThrownBy(
-            () -> service.accept(s3Id, body, ConfluenceWebhookSignature.sign(body, SECRET), null))
+            () -> accept(s3Id, body, ConfluenceWebhookSignature.sign(body, SECRET), null))
         .isInstanceOf(UnauthorizedException.class);
     verifyNoInteractions(intake);
   }
@@ -137,11 +141,9 @@ class ConfluenceWebhookServiceTest {
   @Test
   void returnsTheNamedPagesWhetherSignedOrSentWithTheSharedSecret() {
     byte[] signed = body("102", "103");
-    assertThat(
-            service.accept(
-                libraryId, signed, ConfluenceWebhookSignature.sign(signed, SECRET), null))
+    assertThat(accept(libraryId, signed, ConfluenceWebhookSignature.sign(signed, SECRET), null))
         .isEqualTo(new PushNotification(Set.of("102", "103"), 0));
-    assertThat(service.accept(libraryId, body("104"), null, SECRET))
+    assertThat(accept(libraryId, body("104"), null, SECRET))
         .isEqualTo(new PushNotification(Set.of("104"), 0));
 
     verifyNoInteractions(intake);
@@ -153,7 +155,7 @@ class ConfluenceWebhookServiceTest {
   @Test
   void aBodyNamingNoPageIsAcceptedButQueuesNothing() {
     byte[] body = "{\"event\":\"space_created\"}".getBytes(StandardCharsets.UTF_8);
-    assertThat(service.accept(libraryId, body, ConfluenceWebhookSignature.sign(body, SECRET), null))
+    assertThat(accept(libraryId, body, ConfluenceWebhookSignature.sign(body, SECRET), null))
         .isEqualTo(PushNotification.none());
     verifyNoInteractions(intake, executor);
   }

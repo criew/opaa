@@ -85,20 +85,39 @@ class PushIntakeServiceTest {
     verify(confluence).rejectForeign(BODY, HEADER);
     verify(s3).rejectForeign(BODY, HEADER);
     verify(confluence, never()).acceptNotification(any(), any(), any(), any());
+    verifyNoInteractions(intake);
+  }
+
+  @Test
+  void aNotificationItsOwnIntakeRefusesQueuesNothing() {
+    KnowledgeLibrary wiki = wiki();
+    when(libraries.findById(wiki.getId())).thenReturn(Optional.of(wiki));
+    when(confluence.acceptNotification(wiki, null, BODY, HEADER))
+        .thenThrow(new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE));
+
+    assertThatThrownBy(() -> service.accept(wiki.getId(), BODY, HEADER))
+        .isInstanceOf(UnauthorizedException.class)
+        .hasMessage(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
+
+    verify(s3).rejectForeign(BODY, HEADER);
+    verifyNoInteractions(intake);
+  }
+
+  @Test
+  void anIntakeAnsweringNullIsAContractBreachAndQueuesNothing() {
+    KnowledgeLibrary wiki = wiki();
+    when(libraries.findById(wiki.getId())).thenReturn(Optional.of(wiki));
+
+    assertThatThrownBy(() -> service.accept(wiki.getId(), BODY, HEADER))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageEndingWith("returned null");
+
+    verifyNoInteractions(intake);
   }
 
   @Test
   void aLibrarysOwnIntakeChecksForRealAfterEveryOtherIntakesStandIn() {
-    KnowledgeLibrary wiki =
-        KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Wiki",
-            null,
-            UUID.randomUUID(),
-            SourceTypes.CONFLUENCE,
-            null,
-            "https://wiki.example.org",
-            "pat");
+    KnowledgeLibrary wiki = wiki();
     when(libraries.findById(wiki.getId())).thenReturn(Optional.of(wiki));
 
     PushNotification named = new PushNotification(Set.of("102"), 0);
@@ -112,5 +131,17 @@ class PushIntakeServiceTest {
     order.verify(intake).enqueue(wiki, named);
     verify(libraries, times(1)).findById(wiki.getId());
     verify(confluence, never()).rejectForeign(any(), any());
+  }
+
+  private static KnowledgeLibrary wiki() {
+    return KnowledgeLibrary.ownedByUser(
+        UUID.randomUUID(),
+        "Wiki",
+        null,
+        UUID.randomUUID(),
+        SourceTypes.CONFLUENCE,
+        null,
+        "https://wiki.example.org",
+        "pat");
   }
 }

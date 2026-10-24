@@ -97,10 +97,17 @@ public class SourceEventIntake {
 
   /**
    * Makes this instance drain the batches of {@code target}'s source type, also those another
-   * instance collected. A connector registers its target when it is created.
+   * instance collected. A connector registers its target when it is created; registering the same
+   * target again changes nothing.
+   *
+   * @throws IllegalStateException if another target is already registered for that source type
    */
   public void register(SourceEventTarget target) {
-    targets.put(target.sourceType(), target);
+    SourceEventTarget present = targets.putIfAbsent(target.sourceType(), target);
+    if (present != null && present != target) {
+      throw new IllegalStateException(
+          "A source event target for " + target.sourceType() + " is already registered");
+    }
   }
 
   /**

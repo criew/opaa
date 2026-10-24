@@ -5,8 +5,10 @@ import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.run.SourceEventIntake;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.springframework.stereotype.Service;
@@ -56,9 +58,11 @@ public class PushIntakeService {
     if (own == null) {
       throw new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
     }
-    intake.enqueue(
-        library,
-        own.acceptNotification(
-            library, connectionResolver.effectiveSettings(library), body, header));
+    PushNotification notification =
+        Objects.requireNonNull(
+            own.acceptNotification(
+                library, connectionResolver.effectiveSettings(library), body, header),
+            () -> own.getClass().getName() + " returned null");
+    intake.enqueue(library, notification);
   }
 }

@@ -1,6 +1,7 @@
 package io.opaa.indexing.run;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -149,6 +150,23 @@ class SourceEventIntakeTest {
             Integer.class,
             libraryId);
     return count == null ? 0 : count;
+  }
+
+  @Test
+  void aSecondTargetForTheSameSourceTypeIsRefusedAndTheFirstStays() {
+    SourceEventTarget second = mock(SourceEventTarget.class);
+    when(second.sourceType()).thenReturn(PUSHED);
+
+    intake.register(target);
+    assertThatThrownBy(() -> intake.register(second))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(PUSHED.toString());
+
+    enqueue("102");
+    elapse();
+    intake.drainDue();
+    verify(target).refresh(any(), eq(library), eq(Set.of("102")), eq(0));
+    verify(second, never()).refresh(any(), any(), any(), anyInt());
   }
 
   @Test
