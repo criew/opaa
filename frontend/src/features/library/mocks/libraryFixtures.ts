@@ -7,6 +7,7 @@ import type {
   SourceTypeSignIn,
 } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
+import { SOURCE_LIBRARY_LAST_INDEXED, sourceLibraryDetails } from './sourceLibraryFixtures'
 
 // A plain mock shape rather than LibraryFolderResponse itself - documentCount there is
 // derived (recursive, computed on read), not a stored field, so keeping it out of the stored
@@ -246,6 +247,25 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     createdAt: '2026-09-06T10:00:00Z',
     updatedAt: '2026-09-06T10:00:00Z',
   },
+}
+
+// the browser's mock mode shows one fixture library per source type; the tests keep the libraries
+// their assertions count on, as they do not see the profiles SharePoint and Dropbox libraries need
+for (const detail of import.meta.env.MODE === 'test' ? [] : sourceLibraryDetails()) {
+  mockLibraryDetails[detail.id] = detail
+  mockLibraries.push({
+    id: detail.id,
+    name: detail.name,
+    description: detail.description,
+    ownerType: detail.ownerType,
+    reach: detail.reach,
+    myRole: detail.myRole,
+    sourceType: detail.sourceType,
+    lastIndexedAt: SOURCE_LIBRARY_LAST_INDEXED,
+    documentCount: detail.documentCount ?? 0,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+  })
 }
 
 const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
