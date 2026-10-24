@@ -344,6 +344,13 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
                 checked={selectableChosen === selectable.length}
                 indeterminate={selectableChosen > 0 && selectableChosen < selectable.length}
                 onChange={switchAll}
+                slotProps={{
+                  input: {
+                    ...(selectableChosen > 0 && selectableChosen < selectable.length
+                      ? { 'aria-checked': 'mixed' as const }
+                      : {}),
+                  },
+                }}
               />
               <Typography sx={{ fontSize: 13.5, fontWeight: 500, color: 'text.primary' }}>
                 {allLabel}
@@ -376,7 +383,14 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
                       setDraft((prev) => toggle(prev, entry, level))
                       setApplyError(null)
                     }}
-                    slotProps={{ input: { 'aria-label': entry.name } }}
+                    slotProps={{
+                      input: {
+                        'aria-label': entry.name,
+                        ...(!checked && !covered && mixed
+                          ? { 'aria-checked': 'mixed' as const }
+                          : {}),
+                      },
+                    }}
                   />
                 ) : (
                   <Box sx={{ width: 38, flexShrink: 0 }} />
