@@ -1308,7 +1308,8 @@ def test_an_update_from_a_liquibase_release_is_a_new_setup(tmp_path: Path) -> No
         work, update_package.Side("v1.0.0", old, "1.0.0"), update_package.Side("v1.1.0", new, "1.1.0")))
 
     assert "noch mit Liquibase" in migration and "Neuaufsetzen" in migration
-    assert "1 neue Migrationen" in migration and "| foundation | 1 | `1.1` |" in migration
+    assert "(1 Migrationen)" in migration
+    assert "neue Migrationen" not in migration and "Datenbank sichern" not in migration
 
 
 def test_every_section_names_its_source(interval: dict) -> None:

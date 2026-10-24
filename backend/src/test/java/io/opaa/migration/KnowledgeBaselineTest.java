@@ -12,8 +12,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Invariants of the baseline's knowledge migration: knowledge libraries on the asset shell, their
  * source configuration (ADR-0038), documents, indexing runs, the full-text index, the metadata
- * schema (ADR-0024) and the model catalogue. The two {@code vector_store} indexes have their own
- * class, {@link VectorStoreExpressionIndexTest}.
+ * schema (ADR-0024) and the model catalogue.
  */
 class KnowledgeBaselineTest extends AbstractBaselineTest {
 

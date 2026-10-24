@@ -225,7 +225,7 @@ Kopfvermerk hält das Datum dieser Prüfung als `rechtsstand` fest.
 | Konfiguration und Voreinstellungen | rund 50 Konfigurationsklassen, vom Build erzeugte Konfigurationsmetadaten, Voreinstellungen des Helm-Charts | maschinenlesbar (#2548): jeder `opaa.*`-Schlüssel ist im Code als datenwirksam oder ohne Datenwirkung eingeordnet; die datenwirksamen stehen mit Standardwert und Helm-Voreinstellung im Manifest (`configuration.yaml` und Datei ihres Bereichs) |
 | System-Prompts, Standardmodelle | Quellcode der Antwort- und Suchstrecke, Anwendungskonfiguration | im Manifest: Prompts mit Prüfsumme und KI-Funktionen in `prompts.yaml` (#2547), Modell und Adresse jeder Modellrolle in `configuration.yaml` (#2548) |
 | Ausgehende Datenflüsse | `@DataFlow` an den sendenden Klassen, Fachtext im Manifest (`outbound.yaml`, ADR-0052, Entscheidung 8) | maschinenlesbar (#2549); per Strukturtest vollständig für die Typen in `OUTBOUND_CLIENTS`/`OUTBOUND_BEANS` |
-| Lizenzen | CycloneDX-SBOM des Backends, Produktionsabhängigkeiten des Frontends, Freigabe- und Ausnahmeliste unter `.github/licenses/` | in der CI geprüft, Lizenzübersicht als Artefakt (#2551, [sbom.md](../sbom.md#lizenzprüfung)); offen ist die Lizenz von Liquibase 5, bis zur Klärung als begründete Ausnahme geführt (#2825) |
+| Lizenzen | CycloneDX-SBOM des Backends, Produktionsabhängigkeiten des Frontends, Freigabe- und Ausnahmeliste unter `.github/licenses/` | in der CI geprüft, Lizenzübersicht als Artefakt (#2551, [sbom.md](../sbom.md#lizenzprüfung)); Liquibase 5 (FSL-1.1-ALv2) ist durch Flyway (Apache-2.0) ersetzt, [ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md) |
 
 ### Das Manifest
 

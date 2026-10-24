@@ -31,7 +31,7 @@ public class DatabaseSchemaGuard implements BeanFactoryPostProcessor, Environmen
 
   /**
    * PostgreSQL keywords that cannot stand unquoted as a schema name: categories {@code R} and
-   * {@code T} of {@code pg_get_keywords()}, which SchemaPortabilityMigrationTest compares against.
+   * {@code T} of {@code pg_get_keywords()}, which SchemaPortabilityTest compares against.
    */
   public static final Set<String> NON_SCHEMA_KEYWORDS =
       Set.of(

@@ -396,10 +396,10 @@ als keiner: Er liefert Treffer, und die fehlenden fallen niemandem auf. Der Back
 eigenes, benanntes Arbeitspaket und Voraussetzung dafür, dass der Volltextpfad überhaupt in die
 Fusion aufgenommen wurde.
 
-**Die Schemaänderung legt nur Spalte und Index an.** Das Liquibase-Changeset erzeugt die
+**Die Schemaänderung legt nur Spalte und Index an.** Die Migration erzeugt die
 `tsvector`-Spalte und den GIN-Index — Letzteren mit `CREATE INDEX CONCURRENTLY` und damit außerhalb
 einer Transaktion, weil ein Indexaufbau über die gesamte Chunk-Tabelle sonst den Schreibbetrieb für die
-Dauer der Migration sperrt. Das Changeset befüllt **nichts**; ein `UPDATE` über den ganzen Bestand
+Dauer der Migration sperrt. Die Migration befüllt **nichts**; ein `UPDATE` über den ganzen Bestand
 innerhalb der Migration würde den Anwendungsstart um die Dauer des Backfills verzögern und bei Abbruch
 in einem halb migrierten Zustand enden.
 

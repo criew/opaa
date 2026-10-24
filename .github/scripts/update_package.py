@@ -540,9 +540,9 @@ def migration_section(repo: Path, previous: Side, current: Side) -> list[str]:
     lines = ["## Schemamigration", ""]
     if files_at(repo, previous.commit, LIQUIBASE_CHANGELOG):
         lines += [f"{where(previous)} verwaltet das Datenbankschema noch mit Liquibase, der neue Stand mit"
-                  " Flyway, beginnend mit einer Baseline je Modul. Das Update ist ein Neuaufsetzen der"
-                  " Datenbank; der Upgrade-Hinweis sagt das.", ""]
-    if added:
+                  f" Flyway, beginnend mit einer Baseline je Modul ({len(after)} Migrationen). Das Update"
+                  " ist ein Neuaufsetzen der Datenbank; der Upgrade-Hinweis sagt das."]
+    elif added:
         lines += [f"{len(added)} neue Migrationen; Flyway führt sie beim ersten Start der neuen Version"
                   " aus. Bereich ist das Modul, dem die Tabellen gehören.", "",
                   "| Bereich | Migrationen | Versionen |", "|---|---|---|"]
