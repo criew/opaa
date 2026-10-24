@@ -53,7 +53,7 @@ export default function ErrorSummary({
               component="button"
               type="button"
               onClick={entry.onJump}
-              sx={{ fontSize: 13.5, textAlign: 'left' }}
+              sx={{ fontSize: 13.5, textAlign: 'left', minHeight: 24, py: 0.25 }}
             >
               {entry.text}
             </Link>

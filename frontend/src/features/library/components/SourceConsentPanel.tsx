@@ -37,7 +37,7 @@ export default function SourceConsentPanel({
 }: SourceConsentPanelProps) {
   return (
     <Box data-testid="source-consent">
-      <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      <Typography component="h4" sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}>
         Quelle verbinden
       </Typography>
       {pending ? (

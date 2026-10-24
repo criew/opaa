@@ -257,7 +257,7 @@ export default function PickCombo({
           '__all',
           target.term
             ? `Alle ${selectable.length} Treffer auswählen`
-            : `Alle ${selectable.length} ${noun[1]} dieser Ebene auswählen`,
+            : `Alle ${selectable.length} ${noun[1]}${hierarchical ? ' dieser Ebene' : ''} auswählen`,
         ),
       )
     }
@@ -382,15 +382,31 @@ export default function PickCombo({
     }
   }
 
+  // the state of the top listing stays visible under the field once the list is closed
+  const root = entries[entryKey(null, '')]
+  const notice: { text: string; tone: 'error' | 'quiet'; retry?: boolean } | null =
+    !root || root.status === 'loading'
+      ? null
+      : root.status === 'error'
+        ? { text: root.error ?? 'Die Liste ließ sich nicht laden.', tone: 'error', retry: true }
+        : !root.listing?.complete && root.listing?.message
+          ? { text: root.listing.message, tone: 'quiet' }
+          : root.listing?.nodes.length === 0
+            ? { text: `Keine ${noun[1]} vorhanden.`, tone: 'quiet' }
+            : null
+
   const visibleChips = chipsExpanded ? selected : selected.slice(0, CHIPS_COLLAPSED)
   const hidden = selected.length - visibleChips.length
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 1 }}>
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
         {!single && selected.length > 0 && (
-          <Typography sx={{ fontSize: 12, color: 'text.secondary' }} aria-live="polite">
+          <Typography
+            sx={{ fontSize: 12, color: 'text.secondary', whiteSpace: 'nowrap' }}
+            aria-live="polite"
+          >
             · {selected.length} ausgewählt
           </Typography>
         )}
@@ -532,6 +548,23 @@ export default function PickCombo({
           />
         )}
       />
+      {notice && !open && (
+        <Box
+          role="status"
+          sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}
+        >
+          <Typography
+            sx={{ fontSize: 13, color: notice.tone === 'error' ? 'error.main' : 'text.secondary' }}
+          >
+            {notice.text}
+          </Typography>
+          {notice.retry && (
+            <Button size="small" variant="text" onClick={() => startLoad(null, '')}>
+              Erneut laden
+            </Button>
+          )}
+        </Box>
+      )}
       {!single && selected.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, alignItems: 'center' }}>
           {visibleChips.map((node) => (
