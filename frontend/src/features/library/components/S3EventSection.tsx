@@ -12,6 +12,7 @@ import type { S3ScopeRef } from '../utils/s3Source'
 import { generatePushSecret, removePushSecret } from '../api/indexingApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface S3EventSectionProps {
   libraryId: string
@@ -110,13 +111,13 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           ? 'Token hinterlegt — gemeldete Änderungen werden wenige Sekunden später geprüft'
           : 'nicht eingerichtet'}
       </Typography>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.25 }}>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
         Der Objektspeicher kann OPAA über erzeugte und gelöschte Objekte benachrichtigen; die
         gemeldeten Schlüssel werden dann wenige Sekunden später einzeln geprüft. Ein Löschereignis
         entfernt das Dokument erst, wenn der Speicher das Fehlen des Objekts bestätigt. Der Zeitplan
         bleibt als Sicherheitsnetz für verlorene Ereignisse. Das Token wird nur einmal angezeigt.
       </Typography>
-      <Stack direction="row" spacing={1} sx={{ mt: 0.75, flexWrap: 'wrap' }} useFlexGap>
+      <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} useFlexGap>
         <Button
           size="small"
           variant="outlined"
@@ -162,7 +163,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           <Typography
             component="code"
             data-testid="s3-event-token"
-            sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
+            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
           >
             {revealed?.token}
           </Typography>
@@ -172,7 +173,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           <Typography
             component="code"
             data-testid="s3-event-endpoint"
-            sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
+            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
           >
             {revealed?.url}
           </Typography>
@@ -182,7 +183,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           </Typography>
           <Typography
             component="pre"
-            sx={{ fontFamily: 'monospace', fontSize: 12.5, whiteSpace: 'pre-wrap', mb: 2 }}
+            sx={{ fontFamily: fontFamily.mono, fontSize: 12.5, whiteSpace: 'pre-wrap', mb: 2 }}
           >
             {[
               `mc admin config set ALIAS notify_webhook:opaa endpoint="${revealed?.url ?? ''}" auth_token="${revealed?.token ?? ''}"`,
@@ -197,7 +198,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           </Typography>
           <Typography
             component="pre"
-            sx={{ fontFamily: 'monospace', fontSize: 12.5, whiteSpace: 'pre-wrap', mb: 2 }}
+            sx={{ fontFamily: fontFamily.mono, fontSize: 12.5, whiteSpace: 'pre-wrap', mb: 2 }}
           >
             {`push-endpoint=${(revealed?.url ?? '').replace('://', `://opaa:${revealed?.token ?? ''}@`)}`}
           </Typography>

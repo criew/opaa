@@ -3,10 +3,12 @@ import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface DocumentTextPreviewDialogProps {
   /** `null` keeps the dialog closed (mirrors MUI's own `open` pattern used elsewhere in this app -
@@ -60,14 +62,16 @@ export default function DocumentTextPreviewDialog({
         <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
           {previewDocument?.fileName}
         </Typography>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          aria-label="Vorschau schließen"
-          sx={{ flex: 'none' }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        <Tooltip title="Schließen">
+          <IconButton
+            size="small"
+            onClick={onClose}
+            aria-label="Vorschau schließen"
+            sx={{ flex: 'none' }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </DialogTitle>
       <DialogContent dividers>
         {previewDocument?.contentType === 'text/markdown' ? (
@@ -77,7 +81,7 @@ export default function DocumentTextPreviewDialog({
             component="pre"
             sx={{
               m: 0,
-              fontFamily: 'monospace',
+              fontFamily: fontFamily.mono,
               fontSize: '0.875rem',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',

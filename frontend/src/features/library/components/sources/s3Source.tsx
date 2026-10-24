@@ -9,7 +9,7 @@ import {
   type S3SourceValues,
 } from '../../utils/s3Source'
 import S3SourceForm from '../S3SourceForm'
-import { S3Scope, S3StoredView } from './S3SourceViews'
+import { S3Push, S3Scope, S3StoredView } from './S3SourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
@@ -70,6 +70,8 @@ export const s3Source: SourceRegistration = {
     ),
     StoredView: S3StoredView,
     Scope: S3Scope,
+    scopeNoteId: 's3-sharing-consequence',
+    Push: S3Push,
     scopeHero: {
       summary: (library) => {
         const count = s3SettingsFromLibrary(library)?.scopes?.length ?? 0

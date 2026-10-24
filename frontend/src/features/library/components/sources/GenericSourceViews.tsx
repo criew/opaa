@@ -105,7 +105,7 @@ export function RemoteConnectionLines() {
   return (
     <>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht zeigt
+        Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort – diese Ansicht zeigt
         sie deshalb weder ein noch aus.
       </Typography>
     </>

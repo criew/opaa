@@ -24,6 +24,8 @@ export interface SharePointLibraryChoice {
   driveId: string
   name: string | null
   folders: SharePointFolder[]
+  /** The site the library was chosen in; kept so editing never asks for the site again. */
+  site?: { id: string; name: string | null } | null
 }
 
 /**

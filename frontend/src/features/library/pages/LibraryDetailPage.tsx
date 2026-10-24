@@ -115,8 +115,10 @@ export default function LibraryDetailPage() {
   const connectorConfiguration = sourceRegistration(connectorSourceType)?.configuration ?? null
 
   // Every role sees every area; a reader simply finds less inside it. Only an UPLOAD
-  // library genuinely has no source area.
-  const showSourceTab = connectorSourceType != null
+  // library genuinely has no source area. The list entry decides it while the details are
+  // missing, so a failed details load keeps the area and explains itself there.
+  const knownSourceType = details?.sourceType ?? listEntry?.sourceType
+  const showSourceTab = knownSourceType != null && knownSourceType !== 'UPLOAD'
   const showMetadataTab = useFeatureEnabled('metadata')
   const externalAccessEnabled = useFeatureEnabled('externalAccess')
 
@@ -290,7 +292,7 @@ export default function LibraryDetailPage() {
             {privateLibrary && <PrivateMark />}
             {erasing && <ErasingMark />}
             {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
-            <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
+            <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
         }
         administrative={isAdministrativeOverride}
@@ -364,12 +366,25 @@ export default function LibraryDetailPage() {
         }
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
+        // ADR-0023, Entscheidung 4: the full reconciliation can be forced, from the „…“ menu
+        menuItems={
+          connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
+            ? [
+                {
+                  label: 'Vollabgleich starten',
+                  disabled: isRunning,
+                  onClick: () => void triggerIndexing(libraryId, connectorSourceType, 'FULL'),
+                },
+              ]
+            : undefined
+        }
         actions={
           connectorSourceType &&
           mayManageDocuments && (
             <>
               <Button
-                variant="contained"
+                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
+                variant="outlined"
                 size="small"
                 startIcon={<PlayArrowIcon />}
                 onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
@@ -377,18 +392,6 @@ export default function LibraryDetailPage() {
               >
                 {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
               </Button>
-              {/* ADR-0023, Entscheidung 4: "Jetzt indizieren" follows the library's state
-                  (incremental between two full runs); the full reconciliation can be forced. */}
-              {connectorConfiguration?.fullSyncRhythm && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
-                  disabled={isRunning}
-                >
-                  Vollabgleich starten
-                </Button>
-              )}
             </>
           )
         }
@@ -492,13 +495,20 @@ export default function LibraryDetailPage() {
           {localError}
         </Alert>
       )}
-      {/* Without this, a failed GET /libraries/{id} while the list entry
-          is already cached silently drops the typed areas below with no explanation - details
-          stays undefined, so neither the UPLOAD nor the connector area's sourceType check
-          matches. */}
+      {/* A failed GET /libraries/{id} while the list entry is cached leaves the typed areas
+          below empty; this notice explains it and offers the reload. */}
       {!details && storeError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {storeError}
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void loadLibraryDetails(libraryId)}>
+              Erneut versuchen
+            </Button>
+          }
+        >
+          Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden. Versuchen Sie
+          es in einem Moment erneut.
         </Alert>
       )}
       <LibraryRoleNotices
@@ -539,7 +549,7 @@ export default function LibraryDetailPage() {
         )}
       </Box>
 
-      {showSourceTab && details && (
+      {showSourceTab && (
         <Box
           role="tabpanel"
           id="library-tabpanel-quelle"
@@ -548,12 +558,20 @@ export default function LibraryDetailPage() {
         >
           {/* Source paths and the run protocol stay behind the MANAGER
               bar (canEditSource); the Umfang above them is visible to every reader. */}
-          <LibrarySourceSection
-            libraryId={libraryId}
-            library={details}
-            canEditSource={canEdit}
-            erasing={erasing}
-          />
+          {details ? (
+            <LibrarySourceSection
+              libraryId={libraryId}
+              library={details}
+              canEditSource={canEdit}
+              erasing={erasing}
+            />
+          ) : (
+            <Typography sx={{ color: 'text.secondary' }}>
+              {storeError
+                ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
+                : 'Quelle wird geladen …'}
+            </Typography>
+          )}
         </Box>
       )}
 

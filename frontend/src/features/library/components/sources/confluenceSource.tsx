@@ -8,7 +8,7 @@ import {
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
 import ConfluenceSourceForm from '../ConfluenceSourceForm'
-import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
+import { ConfluencePush, ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
@@ -59,6 +59,8 @@ export const confluenceSource: SourceRegistration = {
     ),
     StoredView: ConfluenceStoredView,
     Scope: ConfluenceScope,
+    scopeNoteId: 'confluence-sharing-consequence',
+    Push: ConfluencePush,
     scopeHero: {
       summary: (library) => {
         const settings = confluenceSettingsOf(library)
@@ -81,7 +83,6 @@ export const confluenceSource: SourceRegistration = {
     fullSyncRhythm: true,
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.',
-    runsHint:
-      '„Jetzt indizieren“ nimmt in der Regel nur Änderungen seit dem letzten Lauf auf. Nach einer Änderung der Space-Auswahl und im vom Betrieb eingestellten Abstand läuft es automatisch als Vollabgleich — dieser prüft alle ausgewählten Spaces vollständig und entfernt, was in Confluence nicht mehr vorhanden ist. „Vollabgleich starten“ erzwingt ihn sofort.',
+    runsHint: '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Spaces neu.',
   },
 }

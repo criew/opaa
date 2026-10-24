@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { FilesystemSourceValues } from '../utils/filesystemSource'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface PathSourceFormProps {
   /** `create` adds the step's own heading; `edit` sits inside a dialog that already has one. */
@@ -26,7 +27,7 @@ export default function PathSourceForm({ mode, idPrefix, values, onChange }: Pat
   return (
     <Box>
       {mode === 'create' && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zum Dateisystem
         </Typography>
       )}
@@ -43,7 +44,7 @@ export default function PathSourceForm({ mode, idPrefix, values, onChange }: Pat
           pathIssue,
           'Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest.',
         )}
-        slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+        slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
       />
       <Box sx={{ mt: 2 }}>
         <FieldLabel htmlFor={`${idPrefix}-exclude`}>Ausschlussmuster (optional)</FieldLabel>
@@ -61,7 +62,7 @@ export default function PathSourceForm({ mode, idPrefix, values, onChange }: Pat
             excludeIssue,
             'Ein Muster pro Zeile, relativ zum Verzeichnispfad: * steht für beliebige Zeichen innerhalb eines Ordners, ** für beliebig viele Ordnerebenen. Versteckte Einträge (Name beginnt mit einem Punkt) und Systemordner wie $RECYCLE.BIN werden immer übersprungen. Bereits aufgenommene Dokumente, die ein Muster ausschließt, entfernt der nächste Lauf.',
           )}
-          slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+          slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
         />
       </Box>
     </Box>

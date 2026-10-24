@@ -132,6 +132,35 @@ async function nameItAndContinue(user: User, name: string) {
   await next(user)
 }
 
+/** A summary row of „Quelle einrichten“ or „Prüfen“ by its title. */
+function rowOf(title: string) {
+  return screen.getByRole('region', { name: title })
+}
+
+/** „Ändern“ at a summary row; its accessible name carries the row's title. */
+function changeRow(user: User, title: string) {
+  return user.click(screen.getByRole('button', { name: new RegExp(`^Ändern\\s*${title}$`) }))
+}
+
+/** Opens the selection dialog by its link and enters `texts` by hand, then „Übernehmen“. */
+async function chooseByHand(user: User, link: string, label: string, texts: string[]) {
+  await user.click(await screen.findByRole('button', { name: link }))
+  const dialog = await screen.findByRole('dialog')
+  await user.click(within(dialog).getByRole('button', { name: 'Von Hand eintragen …' }))
+  for (const text of texts) {
+    await user.type(within(dialog).getByLabelText(label), text)
+    await user.click(within(dialog).getByRole('button', { name: 'Hinzufügen' }))
+  }
+  await user.click(within(dialog).getByRole('button', { name: 'Übernehmen' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+}
+
+/** From the last step before „Prüfen“ (or from „Prüfen“ itself): create the library there. */
+async function create(user: User) {
+  if (!screen.queryByRole('button', { name: 'Bibliothek anlegen' })) await next(user)
+  await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+}
+
 describe('LibraryCreatePage (#596, #1942)', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
@@ -148,6 +177,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     mockListConnectionProfileOptions.mockReset()
     mockListConnectionProfileOptions.mockResolvedValue([])
     mockUpsertAssetGrant.mockClear()
+    // „Weiter“ out of „Quelle einrichten“ tests the connection unless it already passed
+    mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Quelle erreichbar.' })
     // the per-connector listings of the forms, answered in the shape of the one browse endpoint
     mockBrowseSource.mockImplementation(async (sourceType: string, request: unknown) => {
       if (sourceType === 'CONFLUENCE') {
@@ -192,13 +223,37 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
   })
 
-  it('names a failed source-type list and does not go on with the upload library', async () => {
-    mockListSourceTypes.mockRejectedValue(new Error('Quellarten konnten nicht geladen werden'))
+  it('names a failed source-type list in German and does not go on with the upload library', async () => {
+    mockListSourceTypes.mockRejectedValue(
+      new Error('HTTP 502: Request failed with status code 502'),
+    )
     renderWithProviders(<LibraryCreatePage />, { withRouter: true })
 
-    expect(await screen.findByText('Quellarten konnten nicht geladen werden')).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Die Quellarten konnten nicht geladen werden/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+    // „Weiter“ stays enabled and says why it cannot go on, at the step it stays on
+    await next(userEvent.setup())
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Woher kommt das Wissen?' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
+  })
+
+  it('loads the source types again on „Erneut versuchen"', async () => {
+    const user = userEvent.setup()
+    mockListSourceTypes.mockRejectedValueOnce(new Error('HTTP 502'))
+    renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Erneut versuchen' }))
+
+    expect(await screen.findByRole('radiogroup')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Die Quellarten konnten nicht geladen werden/),
+    ).not.toBeInTheDocument()
   })
 
   // The steps are named after what one does in them; an upload library has no source and so no
@@ -208,14 +263,16 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await renderPage()
 
     expect(screen.getByText('1 · Quellart')).toBeInTheDocument()
-    expect(screen.getByText('2 · Name & Beschreibung')).toBeInTheDocument()
+    expect(screen.getByText('2 · Name')).toBeInTheDocument()
     expect(screen.getByText('3 · Freigaben')).toBeInTheDocument()
-    expect(screen.queryByText(/· Quelle einrichten/)).not.toBeInTheDocument()
+    expect(screen.getByText('4 · Prüfen')).toBeInTheDocument()
+    expect(screen.queryByText(/· Quelle$/)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: /Confluence/ }))
-    expect(screen.getByText('2 · Quelle einrichten')).toBeInTheDocument()
-    expect(screen.getByText('3 · Name & Beschreibung')).toBeInTheDocument()
+    expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+    expect(screen.getByText('3 · Name')).toBeInTheDocument()
     expect(screen.getByText('4 · Freigaben')).toBeInTheDocument()
+    expect(screen.getByText('5 · Prüfen')).toBeInTheDocument()
   })
 
   it('blocks Weiter without a name and says so', async () => {
@@ -224,7 +281,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     await next(user)
     await next(user)
-    expect(await screen.findByText('Bitte einen Namen angeben')).toBeInTheDocument()
+    expect(await screen.findByText('Name fehlt')).toBeInTheDocument()
     expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
   })
 
@@ -259,7 +316,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'Wenden Sie sich an die Systemverwaltung',
       )
       expect(screen.queryByRole('radio')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+      // „Weiter“ is never disabled; with nothing creatable it does not leave the first step
+      await next(userEvent.setup())
+      expect(screen.getByText('1 · Quellart').closest('li')).toHaveAttribute('aria-current', 'step')
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
     })
 
     // The connector release applies per type: a type without a usable way - not released, locked
@@ -310,7 +370,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         ),
       )
       expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument()
-      expect(screen.getByText('2 · Quelle einrichten')).toBeInTheDocument()
+      expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
       // no hint above the wizard: it would concern the chosen type, and that one is allowed now
       expect(document.getElementById('library-create-capability-hint')).toBeNull()
     })
@@ -363,7 +423,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.type(screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await create(user)
 
     await waitFor(() =>
       expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', 'lib-neu', {
@@ -389,7 +449,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.type(screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await create(user)
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
     expect(mockCreateNewLibrary).toHaveBeenCalledTimes(1)
@@ -436,7 +496,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     )
     await answerConfirm(user, question, 'Abbrechen')
 
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await create(user)
     await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   }, 20000)
@@ -447,18 +507,21 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await renderPage()
 
       await chooseType(user, /Dateisystem/)
-      await user.type(screen.getByLabelText(/Verzeichnispfad/), '/data/dokumente')
-      await user.click(screen.getByRole('combobox', { name: 'Zeitplan' }))
-      await user.click(await screen.findByRole('option', { name: 'Täglich' }))
+      await user.type(screen.getByLabelText(/^Verzeichnis/), '/data/dokumente')
+      // nightly is preset; the row „Zeitplan“ opens on „Ändern“
+      expect(within(rowOf('Zeitplan')).getByText(/täglich 02:00/)).toBeInTheDocument()
+      await changeRow(user, 'Zeitplan')
+      await user.click(screen.getByRole('combobox', { name: 'Häufigkeit' }))
+      await user.click(await screen.findByRole('option', { name: 'Wöchentlich' }))
       await next(user)
       await nameItAndContinue(user, 'Dienstanweisungen')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() =>
         expect(mockCreateNewLibrary).toHaveBeenCalledWith(
           expect.objectContaining({
             sourceType: 'FILESYSTEM',
-            schedule: { frequency: 'DAILY', hour: 3, minute: 0, weekday: undefined },
+            schedule: { frequency: 'WEEKLY', hour: 2, minute: 0, weekday: 'MONDAY' },
           }),
         ),
       )
@@ -472,7 +535,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       await next(user)
       await nameItAndContinue(user, 'Handakte')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('schedule')
@@ -493,40 +556,54 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       return user
     }
 
-    it('offers the S3 tile, states the sharing consequence before the scopes, and blocks Weiter until the stages are complete', async () => {
+    it('offers the S3 tile and names every missing field at once on Weiter', async () => {
       const user = await openS3Step()
 
-      const consequence = screen.getByTestId('library-create-s3-sharing-consequence')
-      const scopes = screen.getByRole('list', { name: 'Geltungsbereiche' })
-      expect(consequence).toHaveTextContent(
-        'Wer diese Bibliothek lesen darf, sieht alles aus allen Geltungsbereichen.',
-      )
+      await next(user)
+      const summary = screen.getByRole('alert', { name: 'Fehler: 4 Angaben prüfen' })
       expect(
-        consequence.compareDocumentPosition(scopes) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-
-      await next(user)
-      expect(screen.getByText('Endpoint des Objektspeichers ist erforderlich')).toBeInTheDocument()
+        within(summary)
+          .getAllByRole('button')
+          .map((entry) => entry.textContent),
+      ).toEqual([
+        'Verbindung: Endpoint',
+        'Verbindung: Access Key',
+        'Verbindung: Secret Key',
+        'Umfang: Buckets und Präfixe',
+      ])
+      expect(within(rowOf('Umfang')).getByText('Buckets und Präfixe fehlen')).toBeInTheDocument()
+      expect(screen.getByText('Endpoint fehlt')).toBeInTheDocument()
+      expect(screen.getByText('Access Key fehlt')).toBeInTheDocument()
+      expect(screen.getByText('Secret Key fehlt')).toBeInTheDocument()
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+      // an issue disappears as soon as its field is valid
+      expect(screen.queryByText('Endpoint fehlt')).not.toBeInTheDocument()
       await next(user)
-      expect(screen.getByText('Access Key ist erforderlich')).toBeInTheDocument()
+      expect(screen.getByText('Access Key fehlt')).toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
+      expect(mockTestLibrarySource).not.toHaveBeenCalled()
     }, 15000)
 
     it('creates a MinIO library with the template values and sends its settings', async () => {
-      // the bucket suggestion itself is covered in S3SourceForm.test.tsx; this flow types by hand
+      mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
+      mockListS3Buckets.mockResolvedValue({
+        listingPermitted: true,
+        buckets: ['protokolle', 'satzungen'],
+      })
       const user = await openS3Step()
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
-      await user.type(screen.getByLabelText('Bucket 1'), 'protokolle')
-      await user.type(screen.getByLabelText(/^Präfix 1/), '2025/protokolle')
-      await user.click(screen.getByRole('button', { name: 'Bereich' }))
-      await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
+      await changeRow(user, 'Umfang')
+      await chooseByHand(user, 'Buckets und Präfixe auswählen …', 'Bucket/Präfix', [
+        'protokolle/2025/protokolle',
+        'satzungen',
+      ])
       await next(user)
       // The name is prefilled from the source - here the first bucket.
       expect(screen.getByLabelText(/^Name/)).toHaveValue('protokolle')
       await nameItAndContinue(user, 'Protokolle')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() =>
         expect(mockCreateNewLibrary).toHaveBeenCalledWith(
@@ -556,18 +633,27 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 30000)
 
     it('creates an AWS library from the template with a derived virtual-host endpoint', async () => {
+      mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
+      mockListS3Buckets.mockResolvedValue({
+        listingPermitted: true,
+        buckets: ['verwaltung-dokumente', 'archiv'],
+      })
       const user = await openS3Step()
-      await user.click(screen.getByRole('radio', { name: 'AWS S3' }))
+      await user.click(screen.getByRole('combobox', { name: 'Anbieter' }))
+      await user.click(await screen.findByRole('option', { name: 'AWS S3' }))
       expect(screen.getByLabelText('Endpoint')).toHaveValue('https://s3.eu-central-1.amazonaws.com')
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
-      await user.type(screen.getByLabelText('Bucket 1'), 'verwaltung-dokumente')
+      await changeRow(user, 'Umfang')
+      // up to seven buckets stand as checkboxes in the row
+      await user.click(await screen.findByRole('checkbox', { name: 'verwaltung-dokumente' }))
+      await changeRow(user, 'Zeitplan')
       await user.click(
-        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' }),
+        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
       )
       await next(user)
       await nameItAndContinue(user, 'Verwaltungsdokumente')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() =>
         expect(mockCreateNewLibrary).toHaveBeenCalledWith(
@@ -588,22 +674,25 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 25000)
 
     it('refuses overlapping scopes before anything is sent', async () => {
+      mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
+      mockListS3Buckets.mockResolvedValue({ listingPermitted: true, buckets: ['dokumente'] })
       const user = await openS3Step()
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
-      await user.type(screen.getByLabelText('Bucket 1'), 'dokumente')
-      await user.type(screen.getByLabelText(/^Präfix 1/), '2025')
-      await user.click(screen.getByRole('button', { name: 'Bereich' }))
-      await user.type(screen.getByLabelText('Bucket 2'), 'dokumente')
-      await user.type(screen.getByLabelText(/^Präfix 2/), '2025/q1')
+      await changeRow(user, 'Umfang')
+      await chooseByHand(user, 'Buckets und Präfixe auswählen …', 'Bucket/Präfix', [
+        'dokumente/2025',
+        'dokumente/2025/q1',
+      ])
       await next(user)
 
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
       expect(
-        screen.getByText(
-          /Die Geltungsbereiche „dokumente\/2025\/“ und „dokumente\/2025\/q1\/“ überschneiden sich/,
-        ),
-      ).toBeInTheDocument()
+        screen.getAllByText(/„dokumente\/2025\/“ und „dokumente\/2025\/q1\/“ überschneiden sich/)
+          .length,
+      ).toBeGreaterThan(0)
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
       expect(mockCreateNewLibrary).not.toHaveBeenCalled()
     }, 25000)
   })
@@ -614,6 +703,18 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       { key: 'HR', name: 'Personal' },
       { key: 'IT', name: 'IT-Betrieb' },
     ]
+    const DC_DETECTED = {
+      reachable: true,
+      details: { edition: 'DATA_CENTER' },
+      credentialsVerified: false,
+      message: 'Confluence Data Center erkannt.',
+    }
+    const DC_VERIFIED = {
+      reachable: true,
+      details: { edition: 'DATA_CENTER' },
+      credentialsVerified: true,
+      message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
+    }
 
     beforeEach(() => {
       mockTestLibrarySource.mockReset()
@@ -628,7 +729,20 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       return user
     }
 
-    it('detects the edition before asking for credentials and shows Cloud fields for Cloud', async () => {
+    /** Types the address; the edition is detected from it after a short pause in typing. */
+    async function enterAddress(user: User, url: string, edition: 'Cloud' | 'Data Center') {
+      await user.type(screen.getByLabelText(/^Adresse/), url)
+      expect(await screen.findByText(`Edition: ${edition}`)).toBeInTheDocument()
+    }
+
+    /** A Data Center instance with its token; „Umfang“ is opened, which tests the connection. */
+    async function connectDataCenter(user: User) {
+      await enterAddress(user, 'https://wiki.behoerde.example/confluence', 'Data Center')
+      await user.type(screen.getByLabelText(/^Persönliches Zugriffstoken$/), 'pat-geheim')
+      await changeRow(user, 'Umfang')
+    }
+
+    it('detects the edition from the address and shows Cloud fields for Cloud', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
         reachable: true,
         details: { edition: 'CLOUD' },
@@ -638,81 +752,53 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       })
       const user = await openConfluenceStep()
 
-      // no credentials fields before the edition is known - the wizard cannot know which shape
-      expect(screen.queryByLabelText(/API-Token/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/Personal Access Token/)).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeDisabled()
-
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://site.atlassian.net/wiki',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      expect(screen.queryByText(/^Edition:/)).not.toBeInTheDocument()
+      await enterAddress(user, 'https://site.atlassian.net/wiki', 'Cloud')
 
       expect(mockTestLibrarySource).toHaveBeenCalledWith({
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://site.atlassian.net/wiki',
       })
-      expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
-        'Confluence Cloud',
-      )
-      expect(screen.getByLabelText(/E-Mail-Adresse/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/^API-Token/)).toBeInTheDocument()
-      expect(screen.queryByLabelText(/Personal Access Token/)).not.toBeInTheDocument()
-      // the consequence stands before the selection, which is not yet offered
-      expect(screen.getByTestId('library-create-confluence-sharing-consequence')).toHaveTextContent(
-        /sieht alles aus allen ausgewählten Spaces/,
-      )
-      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
+      expect(screen.getByLabelText(/^E-Mail-Adresse/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/^API-Token$/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Persönliches Zugriffstoken/)).not.toBeInTheDocument()
+      // the selection waits in its own row, still empty
+      expect(within(rowOf('Umfang')).getByText('keine')).toBeInTheDocument()
     }, 15000)
 
-    it('shows the PAT field for Data Center and refuses to continue without a tested selection', async () => {
-      mockTestLibrarySource.mockResolvedValueOnce({
-        reachable: true,
+    it('shows the token field for Data Center and refuses to continue while the test fails', async () => {
+      mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValue({
+        reachable: false,
         details: { edition: 'DATA_CENTER' },
         credentialsVerified: false,
-        message: 'Confluence Data Center erkannt.',
+        message: 'Anmeldung abgelehnt.',
       })
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await enterAddress(user, 'https://wiki.behoerde.example/confluence', 'Data Center')
 
-      expect(await screen.findByLabelText(/^Personal Access Token/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/^Persönliches Zugriffstoken$/)).toBeInTheDocument()
       expect(screen.queryByLabelText(/E-Mail-Adresse/)).not.toBeInTheDocument()
 
       await next(user)
-      expect(
-        screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Persönliches Zugriffstoken fehlt')).toBeInTheDocument()
+      expect(screen.getByText('Spaces fehlen')).toBeInTheDocument()
+
+      await user.type(screen.getByLabelText(/^Persönliches Zugriffstoken$/), 'pat-falsch')
+      await changeRow(user, 'Umfang')
+      await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
+      await next(user)
+
+      const summary = await screen.findByRole('alert', { name: 'Fehler: 1 Angabe prüfen' })
+      expect(within(summary).getByRole('button')).toHaveTextContent('Verbindung: Test (Anmeldung)')
       // the step stays, the source fields are still there
-      expect(screen.getByLabelText(/Adresse der Confluence-Instanz/)).toBeInTheDocument()
-    }, 15000)
+      expect(screen.getByLabelText(/^Adresse/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
+    }, 20000)
 
     it('verifies credentials, loads the spaces, and sends edition, credentials and selection', async () => {
-      mockTestLibrarySource
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: false,
-          message: 'Confluence Data Center erkannt.',
-        })
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: true,
-          message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
-        })
+      mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValueOnce(DC_VERIFIED)
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
-      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      await connectDataCenter(user)
 
       expect(mockTestLibrarySource).toHaveBeenLastCalledWith({
         sourceType: 'CONFLUENCE',
@@ -721,16 +807,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         sourceCredentials: 'pat-geheim',
         libraryId: undefined,
       })
-      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
-      await waitFor(() => expect(mockListConfluenceSpaces).toHaveBeenCalled())
-      await user.click(picker)
-      await user.type(picker, 'Bau')
-      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
+      expect(within(rowOf('Verbindung')).getByText('verbunden')).toBeInTheDocument()
       await next(user)
       // A single space prefills the name.
       expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
       await nameItAndContinue(user, 'Wiki Bauamt')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       // The whole request, not just an excerpt: a field the creation endpoint does not
       // accept at all is only noticed if the comparison also sees the surplus. Without its own
@@ -747,8 +830,11 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         sourceUrl: 'https://wiki.behoerde.example/confluence',
         sourceCredentials: 'pat-geheim',
         sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
-        schedule: { frequency: 'DISABLED', hour: null, minute: null, weekday: undefined },
+        // nightly is preset
+        schedule: { frequency: 'DAILY', hour: 2, minute: 0, weekday: undefined },
       })
+      // the passed test is not repeated on „Weiter“
+      expect(mockTestLibrarySource).toHaveBeenCalledTimes(2)
       // The "Erste Indizierung sofort ..." switch defaults to on - the first run starts right
       // after creation, before the navigation to the detail page.
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'CONFLUENCE')
@@ -758,34 +844,15 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     // An entered rhythm is sent along; only the empty field means „kein eigener Rhythmus"
     // on creation and must not send the field as 0.
     it('sends an entered full-sync rhythm as the number, not as the update path’s zero', async () => {
-      mockTestLibrarySource
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: false,
-          message: 'Confluence Data Center erkannt.',
-        })
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: true,
-          message: 'Zugangsdaten gültig.',
-        })
+      mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValueOnce(DC_VERIFIED)
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
-      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
-      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
-      await user.click(picker)
-      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await connectDataCenter(user)
+      await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
+      await changeRow(user, 'Zeitplan')
       await user.type(screen.getByLabelText(/Vollabgleich alle/), '14')
       await next(user)
       await nameItAndContinue(user, 'Wiki Bauamt')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       expect(mockCreateNewLibrary.mock.calls[0][0]).toMatchObject({
@@ -794,79 +861,60 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 25000)
 
     it('skips the first run when the immediate-indexing switch is turned off', async () => {
-      mockTestLibrarySource
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: false,
-          message: 'Confluence Data Center erkannt.',
-        })
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: true,
-          message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
-        })
+      mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValueOnce(DC_VERIFIED)
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
-      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
-      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
-      await user.click(picker)
-      await user.type(picker, 'Bau')
-      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await connectDataCenter(user)
+      await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
 
+      await changeRow(user, 'Zeitplan')
       await user.click(
-        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' }),
+        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }),
       )
       await next(user)
       await nameItAndContinue(user, 'Wiki Bauamt')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 25000)
 
     it('joins e-mail and token for Cloud and drops verification when the address changes', async () => {
+      const cloud = (credentialsVerified: boolean) => ({
+        reachable: true,
+        details: { edition: 'CLOUD' },
+        credentialsVerified,
+        message: credentialsVerified ? 'Zugangsdaten gültig.' : 'Confluence Cloud erkannt.',
+      })
       mockTestLibrarySource
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'CLOUD' },
-          credentialsVerified: false,
-          message: 'Confluence Cloud erkannt.',
-        })
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'CLOUD' },
-          credentialsVerified: true,
-          message: 'Zugangsdaten gültig.',
-        })
+        .mockResolvedValueOnce(cloud(false))
+        .mockResolvedValueOnce(cloud(true))
+        .mockResolvedValueOnce(cloud(false))
+        .mockResolvedValueOnce(cloud(true))
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://site.atlassian.net',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/E-Mail-Adresse/), 'dienst@behoerde.example')
-      await user.type(screen.getByLabelText(/^API-Token/), 'tok-123')
-      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      await enterAddress(user, 'https://site.atlassian.net', 'Cloud')
+      await user.type(screen.getByLabelText(/^E-Mail-Adresse/), 'dienst@behoerde.example')
+      await user.type(screen.getByLabelText(/^API-Token$/), 'tok-123')
+      await changeRow(user, 'Umfang')
 
       expect(mockTestLibrarySource).toHaveBeenLastCalledWith(
         expect.objectContaining({ sourceCredentials: 'dienst@behoerde.example:tok-123' }),
       )
-      await screen.findByLabelText(/Spaces suchen und auswählen/)
+      expect(await within(rowOf('Verbindung')).findByText('verbunden')).toBeInTheDocument()
 
-      // a changed address invalidates edition, credentials and selection alike
-      await user.type(screen.getByLabelText(/Adresse der Confluence-Instanz/), '/wiki')
-      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
+      // a changed address invalidates edition and test result alike
+      await changeRow(user, 'Verbindung')
+      await user.type(screen.getByLabelText(/^Adresse/), '/wiki')
+      expect(screen.queryByText('Edition: Cloud')).not.toBeInTheDocument()
+      // detected again for the new address, then tested again on leaving the row
+      expect(await screen.findByText('Edition: Cloud')).toBeInTheDocument()
+      await changeRow(user, 'Umfang')
+      await waitFor(() => expect(mockTestLibrarySource).toHaveBeenCalledTimes(4))
+      expect(mockTestLibrarySource).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sourceUrl: 'https://site.atlassian.net/wiki' }),
+      )
     }, 25000)
 
-    it('shows a blocked or unreachable address as an error with the backend wording, and never a credentials field', async () => {
+    it('shows a blocked or unreachable address with the backend wording and does not go on without an edition', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
         reachable: false,
         details: { edition: null },
@@ -875,117 +923,77 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           'Die Adresse zeigt auf ein internes Ziel. Interne Ziele müssen in OPAA_INDEXING_TARGET_ALLOWLIST freigegeben sein.',
       })
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://10.0.0.5/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(screen.getByLabelText(/^Adresse/), 'https://10.0.0.5/confluence')
 
-      const alert = await screen.findByText(/OPAA_INDEXING_TARGET_ALLOWLIST freigegeben/)
-      expect(alert.closest('.MuiAlert-root')?.className).toMatch(/Error/)
-      expect(screen.queryByLabelText(/Token/)).not.toBeInTheDocument()
-      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
+      expect(
+        await screen.findByText(/OPAA_INDEXING_TARGET_ALLOWLIST freigegeben/),
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/^Edition:/)).not.toBeInTheDocument()
+      await next(user)
+      expect(screen.getByText('Edition nicht erkannt, Adresse prüfen')).toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
     }, 15000)
 
-    it('keeps the space picker usable after "Zurück" re-enters the source step', async () => {
-      mockTestLibrarySource.mockResolvedValue({
-        reachable: true,
-        details: { edition: 'DATA_CENTER' },
-        credentialsVerified: true,
-        message: 'ok',
-      })
+    it('keeps the space selection usable after "Zurück" re-enters the source step', async () => {
+      mockTestLibrarySource.mockResolvedValue(DC_VERIFIED)
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
-      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
-      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
-      await user.click(picker)
-      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await connectDataCenter(user)
+      await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
       await next(user)
       await user.click(screen.getByRole('button', { name: 'Zurück' }))
 
-      // the remounted step reloads the listing for the still-verified credentials
+      expect(within(rowOf('Umfang')).getByText('Bauamt')).toBeInTheDocument()
+      await changeRow(user, 'Umfang')
+      // the reopened row reloads the listing for the still-verified credentials
       await waitFor(() => expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(2))
-      const summary = await screen.findByText(/lesbaren Spaces ausgewählt/)
-      expect(summary).toHaveAttribute('role', 'status')
-      expect(summary).toHaveTextContent('1 von 3 lesbaren Spaces ausgewählt.')
-      await user.click(screen.getByLabelText(/Spaces suchen und auswählen/))
-      expect(await screen.findByRole('option', { name: /Personal \(HR\)/ })).toBeInTheDocument()
+      expect(await screen.findByRole('checkbox', { name: 'Bauamt' })).toBeChecked()
+      await user.click(screen.getByRole('checkbox', { name: 'Personal' }))
+      expect(screen.getByRole('checkbox', { name: 'Personal' })).toBeChecked()
     }, 25000)
 
     it('drops a late test answer once the address changed in the meantime', async () => {
       let answer: (value: unknown) => void = () => {}
       mockTestLibrarySource
-        .mockResolvedValueOnce({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: false,
-          message: 'erkannt',
-        })
+        .mockResolvedValueOnce(DC_DETECTED)
         .mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)))
+        .mockImplementation(() => new Promise(() => {}))
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await enterAddress(user, 'https://wiki.behoerde.example/confluence', 'Data Center')
+      await user.type(screen.getByLabelText(/^Persönliches Zugriffstoken$/), 'pat-geheim')
       await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
-      expect(screen.getByRole('button', { name: 'Verbindung wird getestet …' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Wird geprüft …' })).toHaveAttribute(
         'aria-disabled',
         'true',
       )
 
       // the address changes while the answer for the old one is still pending
-      await user.type(screen.getByLabelText(/Adresse der Confluence-Instanz/), '/alt')
+      await user.type(screen.getByLabelText(/^Adresse/), '/alt')
       await act(async () => {
-        answer({
-          reachable: true,
-          details: { edition: 'DATA_CENTER' },
-          credentialsVerified: true,
-          message: 'Zugangsdaten gültig.',
-        })
+        answer(DC_VERIFIED)
       })
 
-      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
-      expect(screen.queryByText('Zugangsdaten gültig.')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Confluence Data Center erreichbar, Zugangsdaten gültig.'),
+      ).not.toBeInTheDocument()
       expect(mockListConfluenceSpaces).not.toHaveBeenCalled()
       await next(user)
-      expect(
-        screen.getByText('Bitte zuerst die Edition erkennen lassen („Edition erkennen“)'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Edition nicht erkannt, Adresse prüfen')).toBeInTheDocument()
     }, 25000)
 
-    it('offers a retry when the space listing fails, keeping the selection visible', async () => {
-      mockTestLibrarySource.mockResolvedValue({
-        reachable: true,
-        details: { edition: 'DATA_CENTER' },
-        credentialsVerified: true,
-        message: 'ok',
-      })
+    it('offers a retry when the space listing fails', async () => {
+      mockTestLibrarySource.mockResolvedValue(DC_VERIFIED)
       mockListConfluenceSpaces
         .mockRejectedValueOnce(new Error('Confluence antwortete mit HTTP 502'))
         .mockResolvedValueOnce({ spaces })
       const user = await openConfluenceStep()
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://wiki.behoerde.example/confluence',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
-      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      await connectDataCenter(user)
 
-      expect(await screen.findByText('Confluence antwortete mit HTTP 502')).toBeInTheDocument()
-      expect(screen.getByLabelText(/Spaces suchen und auswählen/)).toBeInTheDocument()
+      expect(await screen.findByText('Spaces ließen sich nicht laden.')).toBeInTheDocument()
+      // the protocol code stays out of the sentence
+      expect(screen.getByText('Confluence antwortete mit')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
-      const summary = await screen.findByText(/lesbaren Spaces ausgewählt/)
-      expect(summary).toHaveAttribute('role', 'status')
-      expect(summary).toHaveTextContent('0 von 3 lesbaren Spaces ausgewählt.')
-      expect(screen.queryByText('Confluence antwortete mit HTTP 502')).not.toBeInTheDocument()
+      expect(await screen.findByRole('checkbox', { name: 'IT-Betrieb' })).toBeInTheDocument()
+      expect(screen.queryByText('Spaces ließen sich nicht laden.')).not.toBeInTheDocument()
     }, 20000)
   })
 
@@ -998,17 +1006,17 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'true')
 
     await chooseType(user, /Webverzeichnis/)
-    expect(screen.getByText('Verbindung zum Webverzeichnis')).toBeInTheDocument()
+    expect(within(rowOf('Verbindung')).getByLabelText(/^Adresse/)).toBeInTheDocument()
     await next(user)
-    expect(screen.getByText('Adresse (URL) ist erforderlich')).toBeInTheDocument()
+    expect(screen.getByText('Adresse fehlt')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     await chooseType(user, /Dateisystem/)
-    expect(screen.getByLabelText(/Verzeichnispfad/)).toBeInTheDocument()
-    await user.type(screen.getByLabelText(/Verzeichnispfad/), 'relativ/pfad')
+    expect(screen.queryByLabelText(/^Adresse/)).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText(/^Verzeichnis/), 'relativ/pfad')
     await next(user)
     expect(
-      screen.getByText('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente'),
+      screen.getByText('Verzeichnis muss ein absoluter Pfad sein, z. B. /data/dokumente'),
     ).toBeInTheDocument()
   }, 20000)
 
@@ -1018,15 +1026,21 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Dateisystem/)
-      const path = screen.getByLabelText(/Verzeichnispfad/)
+      const path = screen.getByLabelText(/^Verzeichnis/)
       await user.type(path, 'relativ/pfad')
 
       await next(user)
 
       expect(path).toHaveAttribute('aria-invalid', 'true')
       expect(path).toHaveAccessibleDescription(/muss ein absoluter Pfad sein/)
-      expect(path).toHaveFocus()
-      expect(screen.getByText('Verbindung zum Dateisystem')).toBeInTheDocument()
+      // the gathered summary takes the focus; its entry leads to the field
+      const summary = screen.getByRole('alert', { name: 'Fehler: 1 Angabe prüfen' })
+      await waitFor(() => expect(summary).toHaveFocus())
+      await user.click(within(summary).getByRole('button', { name: 'Verbindung: Verzeichnis' }))
+      await waitFor(() => expect(path).toHaveFocus())
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
+      ).toBeInTheDocument()
     }, 15000)
 
     it('ties a missing address to the URL field', async () => {
@@ -1036,9 +1050,11 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       await next(user)
 
-      const url = screen.getByLabelText('Adresse (URL)')
-      expect(url).toHaveAccessibleDescription(/Adresse \(URL\) ist erforderlich/)
-      expect(url).toHaveFocus()
+      const url = screen.getByLabelText(/^Adresse/)
+      expect(url).toHaveAccessibleDescription(/Adresse fehlt/)
+      const summary = screen.getByRole('alert', { name: 'Fehler: 1 Angabe prüfen' })
+      await user.click(within(summary).getByRole('button', { name: 'Verbindung: Adresse' }))
+      await waitFor(() => expect(url).toHaveFocus())
     }, 15000)
 
     it('ties a missing S3 access key to its field', async () => {
@@ -1050,12 +1066,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await next(user)
 
       const accessKey = screen.getByLabelText('Access Key')
-      expect(accessKey).toHaveAccessibleDescription(/Access Key ist erforderlich/)
-      expect(accessKey).toHaveFocus()
+      expect(accessKey).toHaveAccessibleDescription(/Access Key fehlt/)
+      const summary = screen.getByRole('alert', { name: /^Fehler: \d Angaben? prüfen$/ })
+      await user.click(within(summary).getByRole('button', { name: 'Verbindung: Access Key' }))
+      await waitFor(() => expect(accessKey).toHaveFocus())
     }, 15000)
 
-    it('announces an issue of a field the form does not show in the step’s live region', async () => {
-      // under a profile without an imitated account the form shows no field for it
+    it('names an issue a choice under „Umfang“ causes under „Verbindung“ and leads to its field', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([
         {
           id: 'profile-drive',
@@ -1073,16 +1090,18 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Google Drive/)
-      await user.click(await screen.findByRole('radio', { name: /Zugang Drive/ }))
-      expect(screen.queryByLabelText(/Imitiertes Konto/)).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Bereiche laden' }))
+      await changeRow(user, 'Umfang')
       await user.click(await screen.findByRole('checkbox', { name: /Meine Ablage/ }))
 
       await next(user)
 
-      const message = screen.getByText(/„Meine Ablage“ setzt ein imitiertes Konto voraus/)
-      expect(message.closest('[role="alert"]')).not.toBeNull()
-      expect(screen.getByRole('button', { name: 'Bereiche laden' })).toBeInTheDocument()
+      const summary = screen.getByRole('alert', { name: 'Fehler: 1 Angabe prüfen' })
+      await user.click(
+        within(summary).getByRole('button', { name: 'Verbindung: Imitiertes Konto' }),
+      )
+      const subject = screen.getByLabelText(/^Imitiertes Konto/)
+      await waitFor(() => expect(subject).toHaveFocus())
+      expect(subject).toHaveAccessibleDescription(/„Meine Ablage“ braucht ein imitiertes Konto/)
     }, 20000)
   })
 
@@ -1114,13 +1133,15 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     await chooseType(user, /Webverzeichnis/)
     await user.type(
-      screen.getByLabelText(/Adresse/),
+      screen.getByLabelText(/^Adresse/),
       'https://intranet.behoerde.example/merkblaetter/',
     )
     await next(user)
     await user.type(screen.getByLabelText(/^Name/), ' Merkblätter')
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
-    expect(screen.getByLabelText(/Adresse/)).toHaveValue(
+    expect(within(rowOf('Verbindung')).getByText('intranet.behoerde.example')).toBeInTheDocument()
+    await changeRow(user, 'Verbindung')
+    expect(screen.getByLabelText(/^Adresse/)).toHaveValue(
       'https://intranet.behoerde.example/merkblaetter/',
     )
     await next(user)
@@ -1138,7 +1159,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     expect(screen.queryByRole('combobox', { name: /Verteilungsstufe/ })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await create(user)
 
     await waitFor(() => {
       expect(mockCreateNewLibrary).toHaveBeenCalledWith(
@@ -1170,7 +1191,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
     await user.click(await screen.findByRole('combobox', { name: 'Gruppe' }))
     await user.click(await screen.findByRole('option', { name: 'Referat 50' }))
-    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await create(user)
 
     await waitFor(() => {
       expect(mockCreateNewLibrary).toHaveBeenCalledWith(
@@ -1217,23 +1238,26 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
 
       expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('NEXTCLOUD')
-      const connection = await screen.findByTestId('library-create-connection')
-      // the choice stands above the source form
+      const choice = await screen.findByRole('radiogroup', { name: 'Zugang' })
+      // the choice stands above the source fields, the own address as its last line
       expect(
-        connection.compareDocumentPosition(screen.getByLabelText(/Adresse der Nextcloud/)) &
+        choice.compareDocumentPosition(screen.getByLabelText(/^Adresse/)) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
-      expect(screen.getByRole('radio', { name: /Eigene Adresse/ })).toBeChecked()
+      const radios = within(choice).getAllByRole('radio')
+      expect(radios[radios.length - 1]).toHaveAccessibleName('Eigene Adresse')
+      // the profile names its server next to its name
+      expect(within(choice).getByRole('radio', { name: /Nextcloud intern/ })).toHaveAccessibleName(
+        /cloud\.intern\.example/,
+      )
 
       await user.click(screen.getByRole('radio', { name: /Nextcloud intern/ }))
-      expect(screen.getByLabelText(/Adresse der Nextcloud/)).toHaveValue(
-        'https://cloud.intern.example',
-      )
-      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
-      await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
+      expect(screen.getByLabelText(/^Adresse/)).toHaveValue('https://cloud.intern.example')
+      await user.type(screen.getByLabelText(/^Benutzername/), 'svc-opaa')
+      await user.type(screen.getByLabelText(/^App-Passwort$/), 'geheim')
       await next(user)
       await nameItAndContinue(user, 'Projektablage')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() =>
         expect(mockCreateNewLibrary).toHaveBeenCalledWith(
@@ -1258,9 +1282,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
-      const address = () => screen.getByLabelText(/Adresse der Nextcloud/)
+      const address = () => screen.getByLabelText(/^Adresse/)
 
       // an own address outside the profile chosen next does not stay
+      await user.click(await screen.findByRole('radio', { name: /Eigene Adresse/ }))
       await user.type(address(), 'https://nc.extern.example')
       await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
       expect(address()).toHaveValue('https://cloud.intern.example')
@@ -1303,21 +1328,19 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Confluence/)
       await screen.findByRole('radio', { name: /Wiki intern/ })
 
-      await user.type(
-        screen.getByLabelText(/Adresse der Confluence-Instanz/),
-        'https://site.atlassian.net/wiki',
-      )
-      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
-      expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
-        'Confluence Cloud',
-      )
+      await user.click(screen.getByRole('radio', { name: /Eigene Adresse/ }))
+      await user.type(screen.getByLabelText(/^Adresse/), 'https://site.atlassian.net/wiki')
+      expect(await screen.findByText('Edition: Cloud')).toBeInTheDocument()
 
       await user.click(screen.getByRole('radio', { name: /Wiki intern/ }))
-      expect(screen.getByLabelText(/Adresse der Confluence-Instanz/)).toHaveValue(
-        'https://wiki.intern.example',
+      expect(screen.getByLabelText(/^Adresse/)).toHaveValue('https://wiki.intern.example')
+      expect(screen.queryByText('Edition: Cloud')).not.toBeInTheDocument()
+      // the profile's address is detected afresh
+      await waitFor(() =>
+        expect(mockTestLibrarySource).toHaveBeenLastCalledWith(
+          expect.objectContaining({ sourceUrl: 'https://wiki.intern.example' }),
+        ),
       )
-      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeEnabled()
     }, 25000)
 
     it('offers no certificate switch under the chosen profile and sends none', async () => {
@@ -1332,11 +1355,11 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
 
       expect(screen.queryByRole('switch', { name: /Zertifikatsprüfung/ })).not.toBeInTheDocument()
-      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
-      await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
+      await user.type(screen.getByLabelText(/^Benutzername/), 'svc-opaa')
+      await user.type(screen.getByLabelText(/^App-Passwort$/), 'geheim')
       await next(user)
       await nameItAndContinue(user, 'Projektablage')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       const request = mockCreateNewLibrary.mock.calls[0][0]
@@ -1349,14 +1372,14 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
-      await screen.findByRole('radio', { name: /Nextcloud intern/ })
+      await user.click(await screen.findByRole('radio', { name: /Eigene Adresse/ }))
 
-      await user.type(screen.getByLabelText(/Adresse der Nextcloud/), 'https://cloud.example')
-      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc')
-      await user.type(screen.getByLabelText(/App-Passwort/), 'pw')
+      await user.type(screen.getByLabelText(/^Adresse/), 'https://cloud.example')
+      await user.type(screen.getByLabelText(/^Benutzername/), 'svc')
+      await user.type(screen.getByLabelText(/^App-Passwort$/), 'pw')
       await next(user)
       await nameItAndContinue(user, 'Eigene Cloud')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('connectionProfileId')
@@ -1375,7 +1398,12 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(tile).not.toHaveTextContent(/bietet dieser Assistent noch nicht/)
       await chooseType(user, /Nextcloud/)
 
-      expect(await screen.findByRole('radio', { name: /Nextcloud intern/ })).toBeChecked()
+      // the one way needs no choice: it is taken, its address prefilled
+      expect(await screen.findByLabelText(/^Adresse/)).toHaveValue('https://cloud.intern.example')
+      expect(screen.getByLabelText(/^Adresse/)).toHaveAccessibleDescription(
+        /Zugangs „Nextcloud intern“/,
+      )
+      expect(screen.queryByRole('radiogroup', { name: 'Zugang' })).not.toBeInTheDocument()
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     }, 15000)
 
@@ -1389,9 +1417,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
 
       expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
-        /bitte wenden Sie sich an sie/,
+        /die Systemverwaltung richtet Zugänge ein/,
       )
-      expect(screen.queryByLabelText(/Adresse der Nextcloud/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Adresse/)).not.toBeInTheDocument()
       await next(user)
       expect(
         screen.getByText('Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'),
@@ -1420,8 +1448,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await renderPage()
       await chooseType(user, /Nextcloud/)
 
-      await screen.findByLabelText(/Adresse der Nextcloud/)
-      expect(screen.queryByTestId('library-create-connection')).not.toBeInTheDocument()
+      await screen.findByLabelText(/^Adresse/)
+      expect(screen.queryByRole('radiogroup', { name: 'Zugang' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     }, 15000)
 
     it('asks for no profile for a type that admits none', async () => {
@@ -1450,41 +1479,50 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         async (_type: string, request: { query?: Record<string, unknown> }) =>
           request.query?.siteUrl
             ? { complete: true, entries: [{ key: 'site:host,a,b', name: 'Bauamt' }] }
-            : { complete: true, entries: [{ key: 'drive:b!bauamt', name: 'Dokumente' }] },
+            : request.query?.site
+              ? { complete: true, entries: [{ key: 'drive:b!bauamt', name: 'Dokumente' }] }
+              : { complete: true, entries: [] },
       )
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /SharePoint/)
 
       expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('SHAREPOINT')
-      expect(await screen.findByRole('radio', { name: /SharePoint Rheinfurt/ })).toBeChecked()
+      // nothing to fill in under „Verbindung“: it names the Zugang, and the selection opens at once
+      const dialog = await screen.findByRole('dialog', {
+        name: 'Dokumentbibliotheken und Ordner auswählen',
+      })
+
+      // nothing chosen yet: the step does not go on
+      await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(within(rowOf('Verbindung')).getByText('Zugang „SharePoint Rheinfurt“')).toBeVisible()
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
-      expect(
-        screen.getByText(
-          'Die Quellart „SharePoint“ ist nur über einen Zugang nutzbar; eine eigene Adresse ist nicht möglich.',
-        ),
-      ).toBeInTheDocument()
+      await next(user)
+      expect(screen.getByText('Dokumentbibliotheken fehlen')).toBeInTheDocument()
+      // the row with the issue opens, and with it the selection
+      const reopened = await screen.findByRole('dialog')
+      await user.click(within(reopened).getByRole('button', { name: 'Von Hand eintragen …' }))
+      await user.type(
+        within(reopened).getByLabelText('Adresse der Site'),
+        'https://rheinfurt.sharepoint.com/sites/bauamt',
+      )
+      await user.click(within(reopened).getByRole('button', { name: 'Öffnen' }))
+      await user.click(await within(reopened).findByRole('checkbox', { name: 'Dokumente' }))
+      await user.click(within(reopened).getByRole('button', { name: 'Übernehmen' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
       // the rhythm names the type's own default (one day for SharePoint), in no other source's terms
+      await changeRow(user, 'Zeitplan')
       const rhythm = screen.getByLabelText(/Vollabgleich alle/)
       expect(rhythm).toHaveAttribute('placeholder', '1')
       expect(rhythm).toHaveAccessibleDescription(/^Leer = Vorgabe der Instanz \(täglich\)\./)
       expect(rhythm).not.toHaveAccessibleDescription(/Confluence/)
 
-      // nothing chosen yet: the step does not go on
-      await next(user)
-      expect(screen.getByText('Bitte mindestens eine Dokumentbibliothek wählen.')).toBeVisible()
-
-      await user.type(
-        screen.getByLabelText('Adresse der Site'),
-        'https://rheinfurt.sharepoint.com/sites/bauamt',
-      )
-      await user.click(screen.getByRole('button', { name: 'Site öffnen' }))
-      await user.click(await screen.findByRole('checkbox', { name: 'Dokumente' }))
       await next(user)
       expect(screen.getByLabelText(/^Name/)).toHaveValue('Dokumente (Bauamt)')
       await nameItAndContinue(user, 'Bauamt Dokumente')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       const request = mockCreateNewLibrary.mock.calls[0][0]
@@ -1510,9 +1548,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /SharePoint/)
 
       expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
-        'Für die Quellart „SharePoint“ steht Ihnen kein Zugang zur Verfügung.',
+        'Für die Quellart „SharePoint“ steht Ihnen kein Zugang zur Verfügung; die Systemverwaltung richtet Zugänge ein.',
       )
-      expect(screen.queryByLabelText('Adresse der Site')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await next(user)
+      expect(
+        screen.getByText('Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'),
+      ).toBeInTheDocument()
     }, 20000)
   })
 
@@ -1537,10 +1579,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await renderPage()
       await chooseType(user, /Nextcloud/)
 
-      const group = await screen.findByRole('radiogroup', { name: 'Über mein verbundenes Konto' })
+      const group = await screen.findByRole('radiogroup', { name: 'Zugang' })
       expect(
         within(group).getByRole('radio', { name: /Nextcloud Personen · privat/ }),
-      ).toBeVisible()
+      ).toHaveAccessibleName(/nur für Sie, später nicht änderbar/)
       expect(
         screen.queryByRole('radio', { name: /^Nextcloud Personen(?! · privat)/ }),
       ).not.toBeInTheDocument()
@@ -1576,7 +1618,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
       await screen.findByRole('radio', { name: /Nextcloud intern/ })
 
-      expect(screen.queryByText('Über mein verbundenes Konto')).not.toBeInTheDocument()
+      expect(screen.queryByText(/nur für Sie/)).not.toBeInTheDocument()
       expect(screen.queryByText(/verbundene/i)).not.toBeInTheDocument()
       expect(screen.queryByRole('radio', { name: /privat/ })).not.toBeInTheDocument()
     }, 20000)
@@ -1587,13 +1629,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await renderPage()
       await chooseType(user, /Nextcloud/)
 
-      const group = await screen.findByRole('radiogroup', { name: 'Über mein verbundenes Konto' })
-      expect(screen.getByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
+      const group = await screen.findByRole('radiogroup', { name: 'Zugang' })
       await user.click(within(group).getByRole('radio', { name: /Nextcloud intern · privat/ }))
 
-      expect(screen.queryByLabelText(/Technischer Nutzer/)).not.toBeInTheDocument()
-      expect(screen.queryByLabelText(/App-Passwort/)).not.toBeInTheDocument()
-      expect(screen.getByText('3 · Name & Beschreibung')).toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Benutzername/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/^App-Passwort/)).not.toBeInTheDocument()
+      expect(screen.getByText('3 · Name')).toBeInTheDocument()
+      expect(screen.getByText('4 · Prüfen')).toBeInTheDocument()
       expect(screen.queryByText(/· Freigaben/)).not.toBeInTheDocument()
 
       await next(user)
@@ -1601,7 +1643,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.clear(field)
       await user.type(field, 'Meine Ablage')
       expect(screen.getByText(/Nur Sie sehen diese Bibliothek/)).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       const request = mockCreateNewLibrary.mock.calls[0][0]
@@ -1644,17 +1686,20 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
       await screen.findByRole('radio', { name: /Nextcloud intern · privat/ })
 
-      expect(screen.getByText(/lässt sich nach dem Anlegen nicht mehr ändern/)).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: /Nextcloud intern · privat/ })).toHaveAccessibleName(
+        /später nicht änderbar/,
+      )
       const shared = screen.getByRole('radio', { name: /^Nextcloud intern(?! · privat)/ })
-      // a tile's description is part of its name (ChoiceTileGroup)
-      expect(shared).toHaveAccessibleName(/Teilbar/)
+      // the shareable way names its server, not the private one's note
+      expect(shared).toHaveAccessibleName(/cloud\.intern\.example/)
+      expect(shared).not.toHaveAccessibleName(/nur für Sie/)
       await user.click(shared)
-      await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
-      await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
+      await user.type(screen.getByLabelText(/^Benutzername/), 'svc-opaa')
+      await user.type(screen.getByLabelText(/^App-Passwort$/), 'geheim')
       expect(screen.getByText('4 · Freigaben')).toBeInTheDocument()
       await next(user)
       await nameItAndContinue(user, 'Projektablage')
-      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+      await create(user)
 
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       const request = mockCreateNewLibrary.mock.calls[0][0]

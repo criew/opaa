@@ -10,6 +10,7 @@ import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
@@ -349,19 +350,21 @@ export default function GoogleDriveSourceForm({
             ))}
           </List>
         )}
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'flex-start' }}>
-          <TextField
-            id={`${idPrefix}-folder`}
-            size="small"
-            label="Ordner-ID"
-            value={folderId}
-            onChange={(e) => setFolderId(e.target.value)}
-            sx={{ flex: 1 }}
-          />
-          <Button variant="text" onClick={addFolder} disabled={folderId.trim() === ''}>
-            Ordner hinzufügen
-          </Button>
-        </Stack>
+        <Box sx={{ mt: 1.5 }}>
+          <FieldLabel htmlFor={`${idPrefix}-folder`}>Ordner-ID</FieldLabel>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+            <TextField
+              id={`${idPrefix}-folder`}
+              size="small"
+              value={folderId}
+              onChange={(e) => setFolderId(e.target.value)}
+              sx={{ flex: 1 }}
+            />
+            <Button variant="text" onClick={addFolder} disabled={folderId.trim() === ''}>
+              Ordner hinzufügen
+            </Button>
+          </Stack>
+        </Box>
         {values.scopes.length > 0 && (
           <List dense aria-label="Gewählte Bereiche">
             {values.scopes.map((scope) => {
@@ -372,13 +375,15 @@ export default function GoogleDriveSourceForm({
                   key={key}
                   disableGutters
                   secondaryAction={
-                    <IconButton
-                      edge="end"
-                      aria-label={`Bereich ${googleDriveScopeLabel(scope)} entfernen`}
-                      onClick={() => toggle(scope)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Tooltip title="Bereich entfernen">
+                      <IconButton
+                        edge="end"
+                        aria-label={`Bereich ${googleDriveScopeLabel(scope)} entfernen`}
+                        onClick={() => toggle(scope)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
                   }
                 >
                   <Typography variant="body2">
@@ -397,7 +402,7 @@ export default function GoogleDriveSourceForm({
 
       <Box>
         <BusyButton
-          variant="contained"
+          variant="outlined"
           onClick={() => void runTest()}
           disabled={!keyServes || values.scopes.length === 0}
           busy={testing}

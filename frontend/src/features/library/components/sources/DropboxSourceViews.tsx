@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 import { dropboxSettingsOf } from '../../utils/dropboxSource'
 import ScopeConsequence from './ScopeConsequence'
 import type { StoredLibrarySource } from './types'
+import { fontFamily } from '@/shared/theme/tokens'
 
 // The folders of a Dropbox library, one chip each, for every reader.
 export function DropboxScope({ library }: { library: StoredLibrarySource }) {
@@ -15,14 +16,14 @@ export function DropboxScope({ library }: { library: StoredLibrarySource }) {
         <strong>{settings.teamSpace ? 'Ordner im Team-Bereich:' : 'Ordner:'}</strong>{' '}
         <Stack direction="row" spacing={0.5} useFlexGap component="span" sx={{ flexWrap: 'wrap' }}>
           {folders.map((folder) => (
-            <Chip key={folder} size="small" label={folder} sx={{ fontFamily: 'monospace' }} />
+            <Chip key={folder} size="small" label={folder} sx={{ fontFamily: fontFamily.mono }} />
           ))}
         </Stack>
       </Typography>
       <ScopeConsequence testId="dropbox-sharing-consequence">
         Gelesen wird, was das verbundene Dropbox-Konto in diesen Ordnern sieht, auch geteilte
         Ordner. Alles, was daraus indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek
-        sichtbar - unabhängig davon, wer es in Dropbox lesen dürfte.
+        sichtbar – unabhängig davon, wer es in Dropbox lesen dürfte.
       </ScopeConsequence>
     </>
   )

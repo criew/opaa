@@ -9,6 +9,7 @@ import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
@@ -536,14 +537,16 @@ export default function SharePointSourceForm({
                     >
                       Ordner wählen
                     </Button>
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      aria-label={`Dokumentbibliothek „${label}“ entfernen`}
-                      onClick={() => removeLibrary(library.driveId)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Dokumentbibliothek entfernen">
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        aria-label={`Dokumentbibliothek „${label}“ entfernen`}
+                        onClick={() => removeLibrary(library.driveId)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Stack>
                   {folders && folderLibrary && folders.driveId === library.driveId && (
                     <FolderPicker
@@ -571,7 +574,7 @@ export default function SharePointSourceForm({
 
       <Box>
         <BusyButton
-          variant="contained"
+          variant="outlined"
           onClick={() => void runTest()}
           disabled={!usable || values.libraries.length === 0}
           busy={testing}
@@ -670,14 +673,16 @@ function FolderPicker({
               key={folder.id}
               disableGutters
               secondaryAction={
-                <IconButton
-                  edge="end"
-                  size="small"
-                  aria-label={`Ordner „${sharePointFolderLabel(folder)}“ abwählen`}
-                  onClick={() => onRemove(folder.id)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                <Tooltip title="Ordner abwählen">
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    aria-label={`Ordner „${sharePointFolderLabel(folder)}“ abwählen`}
+                    onClick={() => onRemove(folder.id)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               }
             >
               <Typography variant="body2">{sharePointFolderLabel(folder)}</Typography>
