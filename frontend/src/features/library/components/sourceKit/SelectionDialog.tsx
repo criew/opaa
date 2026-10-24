@@ -52,6 +52,8 @@ interface SelectionDialogProps {
   onClose: () => void
   /** The level the dialog opens at, e.g. the SharePoint site of the stored selection. */
   initialLevel?: Crumb[]
+  /** Opens with the field for typing an object by hand, e.g. after a refused listing. */
+  startManual?: boolean
 }
 
 const ellipsis = {
@@ -80,6 +82,7 @@ function SelectionDialogBody({
   onApply,
   onClose,
   initialLevel = [],
+  startManual = false,
 }: SelectionDialogProps) {
   const theme = useTheme()
   const narrow = useMediaQuery(theme.breakpoints.down('sm'))
@@ -91,7 +94,7 @@ function SelectionDialogBody({
   const [showLoading, setShowLoading] = useState(false)
   const [shown, setShown] = useState(PAGE)
   const [reviewing, setReviewing] = useState(false)
-  const [manualOpen, setManualOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(startManual)
   const [manualText, setManualText] = useState('')
   const [manualError, setManualError] = useState<string | null>(null)
   const [applyError, setApplyError] = useState<string | null>(null)
@@ -256,7 +259,7 @@ function SelectionDialogBody({
                 borderColor: 'divider',
               }}
             >
-              <Tooltip title={pathLabel(item)} placement="bottom-start">
+              <Tooltip disableInteractive title={pathLabel(item)} placement="bottom-start">
                 <Typography sx={{ ...ellipsis, flex: 1, fontSize: 14, color: 'text.primary' }}>
                   {item.name}
                   {item.trail.length > 0 && (
@@ -267,7 +270,7 @@ function SelectionDialogBody({
                   )}
                 </Typography>
               </Tooltip>
-              <Tooltip title="Entfernen">
+              <Tooltip disableInteractive title="Entfernen">
                 <IconButton
                   size="small"
                   aria-label={`„${item.name}“ entfernen`}
@@ -406,7 +409,12 @@ function SelectionDialogBody({
                   <Box sx={{ width: 38, flexShrink: 0 }} />
                 )}
                 <Box sx={{ flex: 1, minWidth: 0, py: entry.blocked ? 0.5 : 0 }}>
-                  <Tooltip title={entry.name} placement="bottom-start" enterDelay={600}>
+                  <Tooltip
+                    disableInteractive
+                    title={entry.name}
+                    placement="bottom-start"
+                    enterDelay={600}
+                  >
                     <Typography
                       component={entry.openable && !entry.selectable ? 'button' : 'span'}
                       onClick={
@@ -443,7 +451,7 @@ function SelectionDialogBody({
                   </Typography>
                 )}
                 {entry.openable && (
-                  <Tooltip title="Öffnen">
+                  <Tooltip disableInteractive title="Öffnen">
                     <IconButton
                       aria-label={`„${entry.name}“ öffnen`}
                       onClick={() => openLevel([...level, { key: entry.key, name: entry.name }])}
@@ -467,7 +475,7 @@ function SelectionDialogBody({
           )}
         </Box>
       )}
-      {source.manual && (
+      {source.manual && (source.manual.kind === 'add' || level.length === 0) && (
         <Box sx={{ mt: 2 }}>
           {!manualOpen ? (
             <Button size="small" onClick={() => setManualOpen(true)}>
@@ -547,7 +555,7 @@ function SelectionDialogBody({
                       /
                     </Typography>
                   )}
-                  <Tooltip title={crumb.name} enterDelay={600}>
+                  <Tooltip disableInteractive title={crumb.name} enterDelay={600}>
                     {last ? (
                       <Typography
                         aria-current="location"

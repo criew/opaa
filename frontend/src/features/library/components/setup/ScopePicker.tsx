@@ -162,7 +162,20 @@ export default function ScopePicker({
     return null
   })()
 
-  const picker = all?.active ? null : inlineFits ? (
+  // nothing to choose from: the state line says why; only typing a name by hand is left
+  const nothingListed =
+    value.length === 0 &&
+    current !== null &&
+    (current.error !== undefined || (entries.length === 0 && current.result?.complete === true))
+  const picker = all?.active ? null : nothingListed ? (
+    source.manual ? (
+      <Box>
+        <Button size="small" variant="outlined" onClick={() => setDialogOpen(true)}>
+          Von Hand eintragen …
+        </Button>
+      </Box>
+    ) : null
+  ) : inlineFits ? (
     <Box>
       <Box
         role="group"
@@ -287,6 +300,7 @@ export default function ScopePicker({
         onApply={onChange}
         onClose={() => setDialogOpen(false)}
         initialLevel={initialLevel}
+        startManual={nothingListed}
       />
     </Box>
   )
