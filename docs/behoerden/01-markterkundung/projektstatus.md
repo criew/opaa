@@ -49,9 +49,12 @@ und wie es mit Sicherheitslücken umgeht. Die Bewertung des Risikos liegt bei de
 
 - Vorab-Releases dienen dem Erproben und bekommen keine Sicherheitsupdates. Ob eine Linie schon
   final erschienen ist, zeigt die [Release-Seite](https://github.com/criew/opaa/releases).
-- Das Projekt liegt auf GitHub; eine Ablage des Projekts auf openCode, der Plattform der
-  öffentlichen Verwaltung für quelloffenen Code, ist geplant. Bis dahin kann die Behörde den Code
-  unter der AGPL-3.0 selbst dort spiegeln.
+- Das Projekt liegt auf GitHub; eine Ablage auf openCode, der Plattform der öffentlichen
+  Verwaltung für quelloffenen Code, ist als Spiegel vorbereitet, aber nicht eingerichtet. openCode
+  ordnet jedes Projekt einem Träger der öffentlichen Verwaltung oder einem beauftragten
+  Unternehmen zu; für OPAA steht diese Zuordnung aus. Bis dahin kann die Behörde den Code unter der
+  AGPL-3.0 selbst dort spiegeln; Spiegel und Metadaten beschreibt
+  [Ablage auf openCode](../../opencode.md).
 
 ## Zum Nachlesen
 

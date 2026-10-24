@@ -481,7 +481,9 @@ settings:
     effect: >-
       Erlaubte Linkziele: Links in Antworten sind nur zur eigenen Adresse der Anwendung und zu
       diesen Zielen klickbar, alle anderen erscheinen als Text. Begrenzt, wohin ein Klick Inhalte
-      aus einer Antwort tragen kann; wirkt ohne Neustart auf allen Instanzen
+      aus einer Antwort tragen kann; wirkt ohne Neustart auf allen Instanzen, in bereits
+      geöffneten Fenstern erst nach dem Neuladen der Seite. Ist die Liste nicht ladbar, ist nur
+      die eigene Adresse klickbar
     bearings: [DATA_FLOW]
 roles:
   - id: USER

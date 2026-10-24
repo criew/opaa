@@ -90,7 +90,7 @@ Für KI-Risiken gibt es keinen Baustein; sie gehören in die Risikoanalyse.
 | Risiko | Was OPAA mitbringt | Was die Behörde festlegt |
 |---|---|---|
 | Falsche oder erfundene Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden)) | Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
-| Prompt-Injection: in Dokumenten versteckte Anweisungen an das Modell | keine eigene Erkennung | nur geprüfte Quellen anbinden, Schreibrechte an Quellen begrenzen |
+| Prompt-Injection: in Dokumenten versteckte Anweisungen an das Modell | Unabhängig vom Modell wirksam: Links in Antworten nur zu erlaubten Zielen, keine Bilder, Suche nur in lesbaren Dokumenten, Belege zeigen auf das präparierte Dokument. Als Hilfe für das Modell, ohne gemessene Senkung der Angriffsrate: Fundstellen im Prompt als Daten gekennzeichnet, unsichtbare Steuerzeichen beim Aufnehmen entfernt und auffällige Muster gemeldet, Treffer für externe KI-Werkzeuge als Fremdinhalt gekennzeichnet. Dazu ein Testsatz zum Messen des eigenen Modells ([Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection)). Grenzen: keine vollständige Erkennung, versteckter Text wie weiße Schrift oder verborgener Text wird nicht erkannt, eine falsche Angabe im sichtbaren Text hält keine Kennzeichnung auf | nur geprüfte Quellen anbinden, Schreibrechte an Quellen begrenzen, [erlaubte Linkziele](../../handbuch/betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) pflegen, Modell anhand der [Messung](../../handbuch/betrieb/modelle.md#modell-gegen-prompt-injection-messen) wählen, Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
 | Abfluss von Inhalten an einen Modellanbieter | Modelle im Haus betreibbar, Ziele in {{faktenblatt:datenfluesse}} | Wahl des Anbieters, Vertrag, Netzregeln |
 | Antworten aus Dokumenten ohne Leserecht | Suche nur in Dokumenten, die die Person lesen darf ([Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md)) | Rechtevergabe je Bibliothek |
 
@@ -134,6 +134,11 @@ Nächste Fortschreibung: mit dem nächsten Update, spätestens [Datum]
 - [AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html):
   Prüfkatalog des BSI für KI-Cloud-Dienste, als Ideengeber für die KI-Risikoanalyse; OPAA ist danach
   nicht geprüft, ebenso wenig nach dem neueren Prüfkatalog A5.
+- [Basisschutz gegen Indirect Prompt Injections in dokumentbasierten LLM-Chats](https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/KI/Basisschutz_Indirect-Prompt-Injections_LLM.pdf?__blob=publicationFile&v=6):
+  die fünf Basismaßnahmen des BSI, als Gliederung für die Zeile „Prompt-Injection“ der
+  Risikoanalyse. OPAA setzt um: Eingabe-Bereinigung (2.1) ohne Erkennung versteckten Texts,
+  Kennzeichnung der Dokumentinhalte im Prompt und gehärteter System-Prompt (2.2, 2.3), ein Testsatz für die
+  Modellauswahl (2.4) und den Egress-Filter für Links und Bilder (2.5, Schritt 4).
 - [Releases und Nachweise](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert): wie Release-Notizen
   datenrelevante Änderungen kennzeichnen.
 

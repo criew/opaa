@@ -107,6 +107,7 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Faktenblätter der Version
 - die Änderungen seit dem vorigen Release mit Stufenvorschlag
 - die Folgen für den Betrieb
+- den Prüfbericht der automatisierten Barrierefreiheitsprüfung der Version
 - die Lizenzübersicht und die SBOMs je Ökosystem
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
@@ -161,7 +162,11 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-Alles, was dieses Kapitel beschreibt, ist gebaut.
+- Eine Ablage auf openCode, der Plattform der öffentlichen Verwaltung für quelloffene Software. Das
+  Repository bringt Spiegel und Metadaten für das Softwareverzeichnis mit; eingerichtet ist die
+  Ablage nicht, weil openCode Projekte einem Träger der öffentlichen Verwaltung zuordnet
+  ([#3041](https://github.com/criew/opaa/issues/3041)). Bezugsquelle für Code, Images und
+  Update-Paket bleibt GitHub.
 
 ## Weiterführende Kapitel
 

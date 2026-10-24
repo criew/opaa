@@ -1,5 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 /**
  * axe-core check shared by the accessibility scenarios.
@@ -10,6 +12,11 @@ import { expect, test, type Page } from '@playwright/test'
  *
  * Exceptions are never global: a scenario that has to skip a rule or a component passes it via
  * `disableRules`/`exclude` and documents the reason and the tracking issue right at the call site.
+ *
+ * Report mode for the release (docs/releases.md, "Prüfbericht Barrierefreiheit"): with
+ * E2E_A11Y_RESULTS_DIR set, every analysis is written there as one JSON record; with
+ * E2E_A11Y_REPORT_ONLY=true a serious/critical violation is recorded instead of failing the test,
+ * so the scenario goes on to measure its remaining pages.
  */
 
 /** WCAG 2.1 AA is the target level (BITV 2.0); best-practice rules are deliberately left out. */
@@ -28,6 +35,73 @@ interface A11yCheckOptions {
 
 type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>
 type Violation = AxeResults['violations'][number]
+
+const RESULTS_DIR = process.env.E2E_A11Y_RESULTS_DIR
+const REPORT_ONLY = process.env.E2E_A11Y_REPORT_ONLY === 'true'
+/**
+ * Order of the analyses in this worker process; a new worker after a failed test starts it anew,
+ * so the report orders by measuredAt first.
+ */
+let sequence = 0
+
+/**
+ * The colour scheme the page actually shows, read from the background of the body the theme sets
+ * (CssBaseline); an own choice in the settings or a branding default wins over the media query, so
+ * the media query alone could name the wrong one. Falls back to the media query when the body has
+ * no opaque background. A string expression: the suite compiles without DOM typings.
+ */
+const APPLIED_SCHEME = `
+  (() => {
+    const parts = (getComputedStyle(document.body).backgroundColor.match(/[0-9.]+/g) || []).map(Number);
+    if (parts.length >= 3 && (parts.length < 4 || parts[3] > 0)) {
+      const luminance = (0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]) / 255;
+      return luminance < 0.5 ? 'dark' : 'light';
+    }
+    return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  })()
+`
+
+/** One analysis as the report of the update package reads it (update_package.py). */
+async function writeRecord(
+  page: Page,
+  context: string,
+  options: A11yCheckOptions,
+  results: AxeResults,
+  unsettled: number,
+): Promise<void> {
+  if (!RESULTS_DIR) return
+  const info = test.info()
+  const colorScheme = (await page.evaluate(APPLIED_SCHEME)) as 'dark' | 'light'
+  sequence += 1
+  const record = {
+    sequence,
+    context,
+    test: info.titlePath.slice(1).join(' › '),
+    file: info.titlePath[0],
+    retry: info.retry,
+    path: new URL(page.url()).pathname,
+    colorScheme,
+    measuredAt: results.timestamp,
+    axeVersion: results.testEngine.version,
+    tags: WCAG_TAGS,
+    disabledRules: options.disableRules ?? [],
+    excluded: options.exclude ?? [],
+    unsettledAnimations: unsettled,
+    violations: results.violations.map((violation) => ({
+      id: violation.id,
+      impact: violation.impact ?? null,
+      help: violation.help,
+      helpUrl: violation.helpUrl,
+      nodes: violation.nodes.length,
+      targets: violation.nodes.slice(0, 5).map((node) => node.target.join(' ')),
+    })),
+    passes: results.passes.map((rule) => rule.id),
+    incomplete: results.incomplete.map((rule) => ({ id: rule.id, nodes: rule.nodes.length })),
+  }
+  mkdirSync(RESULTS_DIR, { recursive: true })
+  const name = `${String(sequence).padStart(4, '0')}-${info.testId}-${info.retry}.json`
+  writeFileSync(join(RESULTS_DIR, name), JSON.stringify(record, null, 2) + '\n', 'utf8')
+}
 
 function describeViolation(violation: Violation): string {
   const targets = violation.nodes
@@ -108,6 +182,7 @@ export async function expectNoSeriousA11yViolations(
     builder = builder.exclude(selector)
   }
   const results = await builder.analyze()
+  await writeRecord(page, context, options, results, unsettled)
 
   const failing = results.violations.filter((v) => FAILING_IMPACTS.has(v.impact ?? ''))
   const advisory = results.violations.filter((v) => !FAILING_IMPACTS.has(v.impact ?? ''))
@@ -117,6 +192,16 @@ export async function expectNoSeriousA11yViolations(
       type: 'a11y-advisory',
       description: `${context}: [${violation.impact}] ${violation.id} (${violation.nodes.length}×) ${violation.helpUrl}`,
     })
+  }
+
+  if (REPORT_ONLY) {
+    for (const violation of failing) {
+      test.info().annotations.push({
+        type: 'a11y-finding',
+        description: `${context}: [${violation.impact}] ${violation.id} (${violation.nodes.length}×) ${violation.helpUrl}`,
+      })
+    }
+    return
   }
 
   expect(
