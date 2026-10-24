@@ -4,6 +4,8 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -74,7 +76,8 @@ final class EvalChatModel {
   /**
    * The API key of that endpoint, <b>from the environment only</b>: a {@code -D} value is visible
    * in the process list, which is why {@code backend/build.gradle.kts} deliberately omits {@code
-   * opaa.rerank.api-key} from its passthrough list as well.
+   * opaa.rerank.api-key} from its passthrough list as well. Optional: an endpoint without
+   * authentication, such as an Ollama in the own network, runs without it.
    */
   private static final String API_KEY_ENVIRONMENT_VARIABLE = "OPAA_EVAL_CHAT_API_KEY";
 
@@ -96,15 +99,32 @@ final class EvalChatModel {
               + "model while reporting nothing about it.");
     }
     String apiKey = System.getenv(API_KEY_ENVIRONMENT_VARIABLE);
-    if (apiKey == null || apiKey.isBlank()) {
-      throw new IllegalArgumentException(
-          "An external chat model needs its API key in the environment variable "
-              + API_KEY_ENVIRONMENT_VARIABLE
-              + ". It is deliberately not a -D property: that would put the key in the process "
-              + "list.");
-    }
     return Optional.of(
-        new External(baseUrl.strip(), model.strip(), apiKey.strip(), requestedTemperature()));
+        new External(
+            baseUrl.strip(),
+            model.strip(),
+            apiKey == null || apiKey.isBlank() ? null : apiKey.strip(),
+            requestedTemperature()));
+  }
+
+  /**
+   * {@code endpoint} as a report may name it: scheme, host, port and path only, so neither user
+   * information nor a query parameter - where some providers accept a key - reaches the report.
+   */
+  static String endpointWithoutSecrets(String endpoint) {
+    if (endpoint == null) {
+      return null;
+    }
+    try {
+      URI uri = new URI(endpoint.strip());
+      if (uri.getHost() == null) {
+        return "(Adresse nicht lesbar)";
+      }
+      return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null)
+          .toString();
+    } catch (URISyntaxException e) {
+      return "(Adresse nicht lesbar)";
+    }
   }
 
   /** {@value #TEMPERATURE_PROPERTY}, or {@link #TEMPERATURE} when unset. */
@@ -155,7 +175,8 @@ final class EvalChatModel {
 
   /**
    * An external chat model of a Befundlauf. {@code apiKey} is never logged and never reaches a
-   * report; only {@code model} does, as the run's fixed point.
+   * report; only {@code model} does, as the run's fixed point. {@code apiKey} is {@code null} for
+   * an endpoint without authentication.
    */
   record External(String baseUrl, String model, String apiKey, BigDecimal temperature) {}
 
@@ -238,7 +259,7 @@ final class EvalChatModel {
         jdbcTemplate,
         chatModel.baseUrl(),
         chatModel.model(),
-        settingsEncryptor.encrypt(chatModel.apiKey()),
+        chatModel.apiKey() == null ? null : settingsEncryptor.encrypt(chatModel.apiKey()),
         chatModel.temperature());
   }
 

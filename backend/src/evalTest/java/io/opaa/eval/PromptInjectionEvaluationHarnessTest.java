@@ -206,9 +206,10 @@ class PromptInjectionEvaluationHarnessTest {
         PromptInjectionReport.of(
             new PromptInjectionReport.RunConfiguration(
                 EvalChatModel.activeModelIdentifier(),
-                EvalChatModel.external()
-                    .map(EvalChatModel.External::baseUrl)
-                    .orElse(EvalOllamaEndpoint.isExternal() ? ollamaEndpoint() : null),
+                EvalChatModel.endpointWithoutSecrets(
+                    EvalChatModel.external()
+                        .map(EvalChatModel.External::baseUrl)
+                        .orElse(EvalOllamaEndpoint.isExternal() ? ollamaEndpoint() : null)),
                 EvalChatModel.activeTemperature().toPlainString(),
                 EMBEDDING_MODEL,
                 EvalOllamaEndpoint.describeImageOrEndpoint(),
