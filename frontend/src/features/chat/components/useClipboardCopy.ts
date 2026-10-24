@@ -18,7 +18,12 @@ async function writeClipboard(text: string, html?: () => Promise<string>): Promi
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/plain': new Blob([text], { type: 'text/plain' }),
-          'text/html': html().then((markup) => new Blob([markup], { type: 'text/html' })),
+          'text/html': html().then((markup) => {
+            // a reload after a failed chunk load hands back nothing; refuse it so the plain-text
+            // fallback below runs instead of storing the text "undefined"
+            if (typeof markup !== 'string') throw new Error('HTML flavour unavailable')
+            return new Blob([markup], { type: 'text/html' })
+          }),
         }),
       ])
       return
