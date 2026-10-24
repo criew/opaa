@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -30,6 +30,8 @@ import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
+import LibrarySourceRows from './LibrarySourceRows'
+import type { SourceSetupHandle } from './setup/SourceSetupRows'
 import LibrarySourceConsent from './LibrarySourceConsent'
 import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
@@ -106,8 +108,15 @@ export default function LibrarySourceSection({
     </Button>
   ) : undefined
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
+  const rowsRef = useRef<SourceSetupHandle>(null)
   const editAction = (
-    <Button color="inherit" size="small" onClick={() => setEditSourceOpen(true)}>
+    <Button
+      color="inherit"
+      size="small"
+      onClick={() =>
+        configuration?.setup ? rowsRef.current?.openRow('connection') : setEditSourceOpen(true)
+      }
+    >
       Quelle bearbeiten
     </Button>
   )
@@ -180,6 +189,70 @@ export default function LibrarySourceSection({
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
         </Alert>
       )}
+      {configuration?.setup ? (
+        <Box sx={{ mb: 4 }}>
+          <LibrarySourceRows
+            // a fresh instance whenever the stored source changes, so the rows start from it
+            key={JSON.stringify([
+              library.sourceUrl,
+              library.sourcePath,
+              library.sourceSettings,
+              library.schedule,
+              library.sourceCredentialsSet,
+              library.connectionProfile?.id,
+            ])}
+            ref={rowsRef}
+            libraryId={libraryId}
+            library={library}
+            canEdit={canEditSource && !erasing}
+            connectionPrelude={
+              canEditSource && !erasing ? (
+                <Stack spacing={1.5}>
+                  <LibraryConnectionPanel
+                    libraryId={libraryId}
+                    sourceType={library.sourceType}
+                    library={library}
+                    connectionProfile={library.connectionProfile}
+                    connectionProfileRemoved={library.connectionProfileRemoved}
+                    privateLibrary={Boolean(library.privateLibrary)}
+                    onEditSource={() => rowsRef.current?.openRow('connection')}
+                    dialogOpen={connectOpen}
+                    onDialogOpenChange={setConnectOpen}
+                  />
+                  {consent && (
+                    <LibrarySourceConsent
+                      libraryId={libraryId}
+                      consent={consent}
+                      onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
+                    />
+                  )}
+                </Stack>
+              ) : undefined
+            }
+          />
+          {canEditSource && library.schedule?.nextRunAt && (
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+              Nächster geplanter Lauf:{' '}
+              {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+            </Typography>
+          )}
+          {canEditSource && library.lastScheduledRunsFailed && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Die letzten geplanten Läufe sind fehlgeschlagen. Der Zeitplan versucht es beim
+              nächsten Termin erneut.
+            </Alert>
+          )}
+          {!canEditSource && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
+              Verbindung, Zeitplan und Läufe sehen nur Verwaltende.
+            </Typography>
+          )}
+        </Box>
+      ) : (
+        <>
       {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
          with read access - they are here instead of in the header, with an explanation. */}
       {Scope && (
@@ -326,6 +399,9 @@ export default function LibrarySourceSection({
               library={library}
             />
           </PageSection>
+        </>
+      )}
+
         </>
       )}
 

@@ -127,8 +127,9 @@ export default function LibraryCreatePage() {
   const [chosenConnections, setChosenConnections] = useState<Record<SourceTypeKey, string>>(
     draft?.chosenConnections ?? {},
   )
+  // a sensible default: nightly, so the small case needs no input here
   const [schedule, setSchedule] = useState<LibraryScheduleValues>(
-    () => draft?.schedule ?? scheduleValuesFrom(null),
+    () => draft?.schedule ?? { ...scheduleValuesFrom(null), frequency: 'DAILY', time: '02:00' },
   )
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
   // right after creation unless switched off, for every connector type.
@@ -639,9 +640,13 @@ export default function LibraryCreatePage() {
             values={values}
             formContext={formContext}
             onSourceChange={(patch: object) => {
+              // from the latest values: a listing or detection may answer after further typing
               setSourceValues((prev) => ({
                 ...prev,
-                [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
+                [valuesKey]: {
+                  ...(withConnection(prev[valuesKey] ?? configuration?.empty, connection) as object),
+                  ...withoutFixed(patch, connection),
+                },
               }))
               setError(null)
             }}

@@ -107,7 +107,7 @@ export default function SummaryRow({
         )}
       </Box>
       {open && (
-        <Box id={bodyId} sx={{ pb: 3 }}>
+        <Box id={bodyId} sx={{ pb: 3, maxWidth: 640 }}>
           {children}
         </Box>
       )}
