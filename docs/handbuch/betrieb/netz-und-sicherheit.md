@@ -81,6 +81,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 - Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher.
 
+Wie leicht sich das eingesetzte Chat-Modell von präparierten Dokumenten lenken lässt, misst ein
+Testsatz ([Modell gegen Prompt-Injection messen](modelle.md#modell-gegen-prompt-injection-messen)).
+
 ## Härtung für erreichbare Deployments
 
 Ist die Installation aus einem größeren Netz oder dem Internet erreichbar, gilt:

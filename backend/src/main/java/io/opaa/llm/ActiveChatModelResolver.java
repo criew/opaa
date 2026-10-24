@@ -155,7 +155,7 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
       log.info(
           "Built chat client for active model '{}' at {}",
           model.getModelIdentifier(),
-          model.getBaseUrl());
+          ModelEndpointUri.withoutSecrets(model.getBaseUrl()));
     } else {
       log.info(
           "Discarding a chat client built for model '{}' - the active model changed while it was"
@@ -182,7 +182,7 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
           "Built chat client with a {} request timeout for active model '{}' at {}",
           requestTimeout,
           model.getModelIdentifier(),
-          model.getBaseUrl());
+          ModelEndpointUri.withoutSecrets(model.getBaseUrl()));
     }
     return resolved;
   }
