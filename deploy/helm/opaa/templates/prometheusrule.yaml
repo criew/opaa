@@ -82,6 +82,21 @@ spec:
               Ein Indexierungslauf im Pod {{ "{{" }} $labels.pod {{ "}}" }} von {{ $deployment }} ist aktiv, hat aber seit
               {{ $rule.indexingStallMinutes }} Minuten kein Dokument verarbeitet. Laufstatus der
               Bibliothek und Erreichbarkeit von Quelle und Embedding-Modell prüfen.
+        - alert: OpaaAuditRetentionOverdue
+          # The run on the 1st of every month brings the value back to a few hours; above 35 days a
+          # run was missed. Every pod reports the same database value, so the maximum is enough.
+          expr: >-
+            max(opaa_audit_retention_last_run_age_seconds{ {{- $scrape }}}) > 35 * 86400
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Löschlauf des Revisionsprotokolls ausgeblieben
+            description: >-
+              Die automatische Löschung des Revisionsprotokolls von {{ $deployment }} ist seit mehr
+              als 35 Tagen nicht gelaufen. Abgelaufene Monate bleiben stehen und das Protokoll
+              wächst über die Aufbewahrungsfrist hinaus. Log des Pods am 1. des Monats um 03:00
+              und die Sperre audit-retention in der Tabelle shedlock prüfen.
         - alert: OpaaHeapUsageHigh
           # Per pod: the heap of one pod fills up regardless of the others.
           expr: >-
