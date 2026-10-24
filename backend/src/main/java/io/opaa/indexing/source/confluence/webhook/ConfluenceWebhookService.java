@@ -9,6 +9,7 @@ import io.opaa.indexing.source.confluence.ConfluencePushReceiver;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.ConfluenceWebhookSignature;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -26,10 +27,11 @@ import tools.jackson.databind.json.JsonMapper;
  * unknown library, a missing secret, a wrong source type and a bad signature all answer 401, since
  * the endpoint is reachable without a session and must not say which it hit.
  *
- * <p>The page ids the body names go to the shared {@link SourceEventIntake}; its targeted run
- * fetches exactly those pages under {@link IndexingRunMode#INCREMENTAL}, an overflowed batch runs
- * an ordinary run in the mode the library's state calls for (ADR-0023, Entscheidung 4). The
- * incremental anchor never moves for a webhook.
+ * <p>The page ids the body names go back to the core, which queues them in the shared {@link
+ * SourceEventIntake} for the library it loaded; its targeted run fetches exactly those pages under
+ * {@link IndexingRunMode#INCREMENTAL}, an overflowed batch runs an ordinary run in the mode the
+ * library's state calls for (ADR-0023, Entscheidung 4). The incremental anchor never moves for a
+ * webhook.
  */
 @Service
 public class ConfluenceWebhookService implements ConfluencePushReceiver {
@@ -39,9 +41,7 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
   static final String UNAUTHORIZED_MESSAGE = PushIntakeHandler.UNAUTHORIZED_MESSAGE;
 
   private final KnowledgeLibraryRepository libraryRepository;
-  private final SourceEventIntake intake;
   private final JsonMapper jsonMapper;
-  private final SourceEventTarget target;
 
   public ConfluenceWebhookService(
       KnowledgeLibraryRepository libraryRepository,
@@ -49,9 +49,8 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
       SourceEventIntake intake,
       JsonMapper jsonMapper) {
     this.libraryRepository = libraryRepository;
-    this.intake = intake;
     this.jsonMapper = jsonMapper;
-    this.target =
+    SourceEventTarget target =
         new SourceEventTarget() {
           @Override
           public SourceType sourceType() {
@@ -77,12 +76,13 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
   }
 
   /**
-   * Authenticates and queues one notification. Throws {@link UnauthorizedException} (401) when the
-   * request does not prove knowledge of the library's secret; returns normally - also for a body
-   * that names no page - once it does.
+   * Authenticates and parses one notification. Throws {@link UnauthorizedException} (401) when the
+   * request does not prove knowledge of the library's secret; returns the named pages - none for a
+   * body that names no page - once it does.
    */
-  public void accept(UUID libraryId, byte[] body, String hubSignature, String sharedSecret) {
-    accept(
+  public PushNotification accept(
+      UUID libraryId, byte[] body, String hubSignature, String sharedSecret) {
+    return accept(
         libraryId,
         libraryRepository.findById(libraryId).orElse(null),
         body,
@@ -95,7 +95,7 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
    * intake loads it once for every request, so no path costs an extra query.
    */
   @Override
-  public void accept(
+  public PushNotification accept(
       UUID libraryId,
       KnowledgeLibrary loaded,
       byte[] body,
@@ -113,8 +113,8 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
     Set<String> pageIds = ConfluenceWebhookPayload.pageIds(rawBody, jsonMapper);
     if (pageIds.isEmpty()) {
       log.debug("Confluence webhook for library {} named no page - nothing queued", libraryId);
-      return;
+      return PushNotification.none();
     }
-    intake.enqueue(target, libraryId, pageIds, 0);
+    return new PushNotification(pageIds, 0);
   }
 }

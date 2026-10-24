@@ -17,6 +17,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.indexing.run.SourceEventIntake;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3ConnectionService;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
@@ -82,6 +83,7 @@ class S3EventPublicAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private S3EventService eventService;
   @MockitoBean private SourceConnectorRegistry connectors;
+  @MockitoBean private SourceEventIntake intake;
   @MockitoBean private KnowledgeLibraryRepository libraryRepository;
 
   /** The real connector in front of the mocked service, so its header mapping is covered. */

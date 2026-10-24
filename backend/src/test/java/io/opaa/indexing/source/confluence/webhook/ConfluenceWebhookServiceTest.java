@@ -3,8 +3,6 @@ package io.opaa.indexing.source.confluence.webhook;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +18,7 @@ import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.indexing.source.confluence.ConfluenceWebhookSignature;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;
@@ -35,8 +34,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The adapter's contract: one 401 for every way a request fails to authenticate, the page ids the
- * body names handed to the shared intake, and the targeted run delegated to the executor's page
- * refresh. Collecting, overflow and deferral are the intake's own contract.
+ * body names returned to the core for the shared intake, and the targeted run delegated to the
+ * executor's page refresh. Collecting, overflow and deferral are the intake's own contract.
  */
 class ConfluenceWebhookServiceTest {
 
@@ -46,6 +45,7 @@ class ConfluenceWebhookServiceTest {
   private ConfluenceIndexingExecutor executor;
   private SourceEventIntake intake;
   private ConfluenceWebhookService service;
+  private SourceEventTarget target;
   private KnowledgeLibrary library;
   private UUID libraryId;
 
@@ -73,7 +73,9 @@ class ConfluenceWebhookServiceTest {
         new ConfluenceWebhookService(
             libraryRepository, executor, intake, JsonMapper.builder().build());
     // the target is registered once, at creation, so any instance drains this connector's batches
-    org.mockito.Mockito.verify(intake).register(org.mockito.ArgumentMatchers.any());
+    ArgumentCaptor<SourceEventTarget> registered = ArgumentCaptor.forClass(SourceEventTarget.class);
+    verify(intake).register(registered.capture());
+    target = registered.getValue();
     org.mockito.Mockito.clearInvocations(intake);
   }
 
@@ -133,35 +135,34 @@ class ConfluenceWebhookServiceTest {
   }
 
   @Test
-  void handsTheNamedPagesToTheIntakeWhetherSignedOrSentWithTheSharedSecret() {
+  void returnsTheNamedPagesWhetherSignedOrSentWithTheSharedSecret() {
     byte[] signed = body("102", "103");
-    service.accept(libraryId, signed, ConfluenceWebhookSignature.sign(signed, SECRET), null);
-    service.accept(libraryId, body("104"), null, SECRET);
+    assertThat(
+            service.accept(
+                libraryId, signed, ConfluenceWebhookSignature.sign(signed, SECRET), null))
+        .isEqualTo(new PushNotification(Set.of("102", "103"), 0));
+    assertThat(service.accept(libraryId, body("104"), null, SECRET))
+        .isEqualTo(new PushNotification(Set.of("104"), 0));
 
-    ArgumentCaptor<SourceEventTarget> target = ArgumentCaptor.forClass(SourceEventTarget.class);
-    verify(intake).enqueue(target.capture(), eq(libraryId), eq(Set.of("102", "103")), eq(0));
-    verify(intake).enqueue(any(), eq(libraryId), eq(Set.of("104")), eq(0));
-    assertThat(target.getValue().sourceType()).isEqualTo(SourceTypes.CONFLUENCE);
-    assertThat(target.getValue().targetedRunMode()).isEqualTo(IndexingRunMode.INCREMENTAL);
-    assertThat(target.getValue().executor()).isSameAs(executor);
+    verifyNoInteractions(intake);
+    assertThat(target.sourceType()).isEqualTo(SourceTypes.CONFLUENCE);
+    assertThat(target.targetedRunMode()).isEqualTo(IndexingRunMode.INCREMENTAL);
+    assertThat(target.executor()).isSameAs(executor);
   }
 
   @Test
   void aBodyNamingNoPageIsAcceptedButQueuesNothing() {
     byte[] body = "{\"event\":\"space_created\"}".getBytes(StandardCharsets.UTF_8);
-    service.accept(libraryId, body, ConfluenceWebhookSignature.sign(body, SECRET), null);
+    assertThat(service.accept(libraryId, body, ConfluenceWebhookSignature.sign(body, SECRET), null))
+        .isEqualTo(PushNotification.none());
     verifyNoInteractions(intake, executor);
   }
 
   @Test
   void theTargetedRunFetchesExactlyTheCollectedPages() {
-    byte[] body = body("102");
-    service.accept(libraryId, body, ConfluenceWebhookSignature.sign(body, SECRET), null);
-    ArgumentCaptor<SourceEventTarget> target = ArgumentCaptor.forClass(SourceEventTarget.class);
-    verify(intake).enqueue(target.capture(), any(), any(), anyInt());
     UUID jobId = UUID.randomUUID();
 
-    target.getValue().refresh(jobId, library, Set.of("102", "103"), 0);
+    target.refresh(jobId, library, Set.of("102", "103"), 0);
 
     verify(executor).refreshPages(jobId, library, Set.of("102", "103"));
     verify(executor, never()).execute(any(), any(), any());

@@ -14,6 +14,7 @@ import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
@@ -32,11 +33,11 @@ import tools.jackson.databind.json.JsonMapper;
  * token all answer 401, since the endpoint is reachable without a session and must not say which it
  * hit.
  *
- * <p>Reported objects inside the library's scopes and patterns go to the shared {@link
- * SourceEventIntake} as {@code bucket/key}; its targeted run checks exactly those objects under
- * {@link IndexingRunMode#EVENT}, an overflowed batch runs the ordinary full sync. An event for a
- * bucket or key outside the scopes or patterns is dropped and counted; the resumption state is
- * never touched by an event.
+ * <p>Reported objects inside the library's scopes and patterns go back to the core as {@code
+ * bucket/key}, which queues them in the shared {@link SourceEventIntake}; its targeted run checks
+ * exactly those objects under {@link IndexingRunMode#EVENT}, an overflowed batch runs the ordinary
+ * full sync. An event for a bucket or key outside the scopes or patterns is dropped and counted;
+ * the resumption state is never touched by an event.
  */
 @Service
 public class S3EventService implements S3PushReceiver {
@@ -45,15 +46,12 @@ public class S3EventService implements S3PushReceiver {
 
   static final String UNAUTHORIZED_MESSAGE = PushIntakeHandler.UNAUTHORIZED_MESSAGE;
 
-  private final SourceEventIntake intake;
   private final JsonMapper jsonMapper;
-  private final SourceEventTarget target;
 
   public S3EventService(
       S3IndexingExecutor executor, SourceEventIntake intake, JsonMapper jsonMapper) {
-    this.intake = intake;
     this.jsonMapper = jsonMapper;
-    this.target =
+    SourceEventTarget target =
         new SourceEventTarget() {
           @Override
           public SourceType sourceType() {
@@ -79,13 +77,13 @@ public class S3EventService implements S3PushReceiver {
   }
 
   /**
-   * Authenticates and queues one notification for a library the caller has already loaded, {@code
+   * Authenticates and parses one notification for a library the caller has already loaded, {@code
    * null} for none, with its stored {@code settings}. Throws {@link UnauthorizedException} (401)
-   * when the request does not prove knowledge of the library's token; returns normally - also for
-   * the set-up test message and for a body that names no object - once it does.
+   * when the request does not prove knowledge of the library's token; returns the admitted objects
+   * - none for the set-up test message and for a body that names no object - once it does.
    */
   @Override
-  public void accept(
+  public PushNotification accept(
       UUID libraryId,
       KnowledgeLibrary loaded,
       ConnectorData settings,
@@ -103,7 +101,7 @@ public class S3EventService implements S3PushReceiver {
     S3EventPayload.Parsed parsed = S3EventPayload.parse(rawBody, jsonMapper);
     if (parsed.testEvent()) {
       log.info("S3 set-up test event for library {} accepted", libraryId);
-      return;
+      return PushNotification.none();
     }
     S3SourceSettings scopes = S3SourceSettingsJson.of(settings);
     Set<String> admitted = new LinkedHashSet<>();
@@ -127,9 +125,9 @@ public class S3EventService implements S3PushReceiver {
     if (admitted.isEmpty()) {
       // nothing inside the scopes: no timer, no run - a dropped count was logged above
       log.debug("S3 event notification for library {} named no object to check", libraryId);
-      return;
+      return PushNotification.none();
     }
-    intake.enqueue(target, libraryId, admitted, dropped);
+    return new PushNotification(admitted, dropped);
   }
 
   private static boolean inScope(S3SourceSettings settings, S3ObjectEvent event) {
