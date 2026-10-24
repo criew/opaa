@@ -178,7 +178,8 @@ public record InstanceDisclosure(
 
   /**
    * How often the anlassbezogene Klärung was requested, approved and ended in a reporting period,
-   * by purpose. It holds no person, no reason, no grant and no date finer than a month.
+   * by purpose. It holds no person, no reason, no grant and no date finer than a month, and only
+   * completed months, so repeated disclosures cannot show a case while its month runs.
    *
    * @param purposes every purpose of the closed list, zero counts included
    * @param notes what the counts mean and where they end
@@ -200,7 +201,7 @@ public record InstanceDisclosure(
    * @param label the purpose in words
    * @param requested requests made in the period
    * @param approved approvals given in the period
-   * @param expired approvals whose usability ended in the period, up to the time of the disclosure
+   * @param expired approvals whose usability ended in the period
    */
   public record PurposeCases(
       String purpose, String label, CaseCount requested, CaseCount approved, CaseCount expired) {}

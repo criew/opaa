@@ -9,25 +9,61 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 /**
- * The reporting period of the disclosure is made of whole calendar months and defaults to the
- * current and the previous calendar year; any other period is refused in words.
+ * The reporting period of the disclosure is made of whole calendar months, defaults to the current
+ * and the previous calendar year and ends with the last completed month; any other period is
+ * refused in words.
  */
 class IncidentScopeReportingPeriodsTest {
 
   private static final LocalDate TODAY = LocalDate.parse("2026-10-17");
 
   @Test
-  void withoutAPeriodTheCurrentAndThePreviousCalendarYearAreReported() {
+  void withoutAPeriodThePreviousCalendarYearAndTheCompletedMonthsOfThisOneAreReported() {
     ReportingPeriod period = IncidentScopeReportingPeriods.of(null, null, TODAY);
 
     assertThat(period.from()).isEqualTo(LocalDate.parse("2025-01-01"));
-    assertThat(period.to()).isEqualTo(LocalDate.parse("2026-12-31"));
+    assertThat(period.to()).isEqualTo(LocalDate.parse("2026-09-30"));
+  }
+
+  @Test
+  void anEndInTheRunningMonthOrLaterIsCappedToTheLastCompletedMonth() {
+    assertThat(
+            IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("2026-09-01"), LocalDate.parse("2026-10-31"), TODAY)
+                .to())
+        .isEqualTo(LocalDate.parse("2026-09-30"));
+    assertThat(
+            IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("2026-01-01"), LocalDate.parse("2027-03-31"), TODAY)
+                .to())
+        .isEqualTo(LocalDate.parse("2026-09-30"));
+    assertThat(
+            IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("2026-09-01"),
+                    LocalDate.parse("2026-09-30"),
+                    LocalDate.parse("2026-10-01"))
+                .to())
+        .isEqualTo(LocalDate.parse("2026-09-30"));
+  }
+
+  @Test
+  void aPeriodWithoutACompletedMonthIsRefused() {
+    assertThatThrownBy(
+            () ->
+                IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("2026-10-01"), LocalDate.parse("2026-10-31"), TODAY))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("keinen abgeschlossenen Monat");
+    assertThatThrownBy(
+            () -> IncidentScopeReportingPeriods.of(LocalDate.parse("2026-11-01"), null, TODAY))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("keinen abgeschlossenen Monat");
   }
 
   @Test
   void aMissingBoundIsTheDefaultOfThatBoundAlone() {
     assertThat(IncidentScopeReportingPeriods.of(LocalDate.parse("2026-03-01"), null, TODAY).to())
-        .isEqualTo(LocalDate.parse("2026-12-31"));
+        .isEqualTo(LocalDate.parse("2026-09-30"));
     assertThat(IncidentScopeReportingPeriods.of(null, LocalDate.parse("2025-06-30"), TODAY).from())
         .isEqualTo(LocalDate.parse("2025-01-01"));
   }
@@ -59,7 +95,7 @@ class IncidentScopeReportingPeriodsTest {
   }
 
   @Test
-  void aPeriodBeyondTheYearsTheDatabaseCanCompareIsRefused() {
+  void aPeriodBeyondThePlausibleYearsIsRefused() {
     assertThatThrownBy(
             () ->
                 IncidentScopeReportingPeriods.of(
@@ -74,8 +110,8 @@ class IncidentScopeReportingPeriodsTest {
     assertThat(
             IncidentScopeReportingPeriods.of(
                     LocalDate.parse("1970-01-01"), LocalDate.parse("9999-12-31"), TODAY)
-                .to())
-        .isEqualTo(LocalDate.parse("9999-12-31"));
+                .from())
+        .isEqualTo(LocalDate.parse("1970-01-01"));
   }
 
   @Test

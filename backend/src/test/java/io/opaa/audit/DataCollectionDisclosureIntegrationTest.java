@@ -345,11 +345,11 @@ class DataCollectionDisclosureIntegrationTest {
             after ->
                 assertThat(after)
                     .contains(LocalDate.of(today.getYear() - 1, 1, 1).toString())
-                    .contains(LocalDate.of(today.getYear(), 12, 31).toString()));
+                    .contains(today.withDayOfMonth(1).minusDays(1).toString()));
   }
 
   @Test
-  void withoutAPeriodTheCurrentAndThePreviousCalendarYearAreReported() throws Exception {
+  void withoutAPeriodThePreviousYearAndTheCompletedMonthsOfThisOneAreReported() throws Exception {
     LocalDate today = LocalDate.now(clock);
 
     JsonNode cases = exportAsAdmin().path("protocol").path("incidentScopeCases");
@@ -357,7 +357,29 @@ class DataCollectionDisclosureIntegrationTest {
     assertThat(cases.path("from").asString())
         .isEqualTo(LocalDate.of(today.getYear() - 1, 1, 1).toString());
     assertThat(cases.path("to").asString())
-        .isEqualTo(LocalDate.of(today.getYear(), 12, 31).toString());
+        .isEqualTo(today.withDayOfMonth(1).minusDays(1).toString());
+  }
+
+  @Test
+  void aPeriodIntoTheRunningMonthEndsWithTheLastCompletedOne() throws Exception {
+    LocalDate runningMonth = LocalDate.now(clock).withDayOfMonth(1);
+    String period =
+        "?from=" + runningMonth.minusMonths(1) + "&to=" + runningMonth.plusMonths(1).minusDays(1);
+
+    JsonNode cases =
+        JSON.readTree(body(JSON_PATH + period, "dev-admin"))
+            .path("protocol")
+            .path("incidentScopeCases");
+
+    assertThat(cases.path("from").asString()).isEqualTo(runningMonth.minusMonths(1).toString());
+    assertThat(cases.path("to").asString()).isEqualTo(runningMonth.minusDays(1).toString());
+    mockMvc
+        .perform(
+            get(JSON_PATH)
+                .param("from", runningMonth.toString())
+                .param("to", runningMonth.plusMonths(1).minusDays(1).toString())
+                .with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -370,9 +392,9 @@ class DataCollectionDisclosureIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
-  /** A year the database cannot compare as a date is refused, never an internal error. */
+  /** A year outside the plausibility bounds is refused, never an internal error. */
   @Test
-  void aPeriodBeyondTheYearsOfTheDatabaseIsRefused() throws Exception {
+  void aPeriodBeyondThePlausibleYearsIsRefused() throws Exception {
     mockMvc
         .perform(
             get(JSON_PATH)

@@ -70,44 +70,21 @@ public interface AuditIncidentScopeGrantRepository
       @Param("purpose") String purpose,
       @Param("transition") String transition);
 
-  /**
-   * The counted transitions of the months {@code fromMonth} to {@code toMonth} by purpose; ends of
-   * usability only of months before {@code runningMonth}, since those of the running month and
-   * later are counted ahead at approval and may not have happened yet.
-   */
+  /** The counted transitions of the months {@code fromMonth} to {@code toMonth} by purpose. */
   @Query(
       value =
           "SELECT purpose AS purpose, transition AS transition, sum(case_count) AS total"
               + " FROM audit_incident_scope_monthly_counts"
               + " WHERE organization_id = :organizationId"
               + " AND case_month BETWEEN :fromMonth AND :toMonth"
-              + " AND (transition <> 'EXPIRED' OR case_month < :runningMonth)"
               + " GROUP BY purpose, transition",
       nativeQuery = true)
   List<TransitionCount> sumTransitions(
       @Param("organizationId") UUID organizationId,
       @Param("fromMonth") LocalDate fromMonth,
-      @Param("toMonth") LocalDate toMonth,
-      @Param("runningMonth") LocalDate runningMonth);
+      @Param("toMonth") LocalDate toMonth);
 
-  /**
-   * The approved grants by purpose whose usability ended from {@code from} up to {@code to}; the
-   * grants of the running month are never deleted yet, so this is exact for it.
-   */
-  @Query(
-      value =
-          "SELECT purpose AS purpose, 'EXPIRED' AS transition, count(*) AS total"
-              + " FROM audit_incident_scope_grants"
-              + " WHERE organization_id = :organizationId"
-              + " AND usable_until >= :from AND usable_until <= :to"
-              + " GROUP BY purpose",
-      nativeQuery = true)
-  List<TransitionCount> countEndedBetween(
-      @Param("organizationId") UUID organizationId,
-      @Param("from") Instant from,
-      @Param("to") Instant to);
-
-  /** One row of {@link #sumTransitions} and {@link #countEndedBetween}. */
+  /** One row of {@link #sumTransitions}. */
   interface TransitionCount {
     String getPurpose();
 

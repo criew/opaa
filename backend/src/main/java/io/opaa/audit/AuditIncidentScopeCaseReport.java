@@ -7,7 +7,6 @@ import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,10 +16,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * Requests, approvals and ends of usability of the anlassbezogene Klärung per purpose in a period,
- * from the monthly counts that outlive the grants: no person, no grant, nothing finer than a month,
- * a count below {@link CaseCount#THRESHOLD} only as such. Ends are counted ahead at approval, so
- * the running month reads them up to now from the grants, still undeleted; later months show none.
+ * Requests, approvals and ends of usability of the anlassbezogene Klärung per purpose in a period
+ * of completed months, from the monthly counts that outlive the grants: no person, no grant,
+ * nothing finer than a month, a count below {@link CaseCount#THRESHOLD} only as such. Ends are
+ * counted ahead at approval; in a completed month they have all happened.
  */
 @Service
 public class AuditIncidentScopeCaseReport {
@@ -41,7 +40,11 @@ public class AuditIncidentScopeCaseReport {
           "Beantragt: im Zeitraum gestellte Anträge. Freigegeben: im Zeitraum im Vier-Augen-Prinzip"
               + " erteilte Freigaben. Abgelaufen: Freigaben, deren Nutzbarkeit von "
               + AuditIncidentScopeGrant.USABLE_WINDOW.toDays()
-              + " Tagen im Zeitraum endete, bis zum Zeitpunkt der Auskunft.",
+              + " Tagen im Zeitraum endete.",
+          "Ausgewiesen werden nur abgeschlossene Kalendermonate: Ein Berichtszeitraum, der in den"
+              + " laufenden Monat oder später reicht, endet mit dem letzten abgeschlossenen Monat;"
+              + " das ausgewiesene Ende steht unter „to“. So lässt auch ein wiederholter Abruf"
+              + " keinen Antrag erkennen, solange sein Monat läuft.",
           "Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, bleibt"
               + " unbeantwortet und wird mit Ablauf seiner Frist gelöscht. Die Differenz zwischen"
               + " beantragt und freigegeben ist keine Zahl abgelehnter Anträge, weil Antrag und"
@@ -62,19 +65,19 @@ public class AuditIncidentScopeCaseReport {
     this.clock = clock;
   }
 
-  /** The counts of {@code organizationId} in {@code period}, every purpose of the closed list. */
+  /**
+   * The counts of {@code organizationId} in {@code period}, every purpose of the closed list.
+   *
+   * @throws IllegalArgumentException when {@code period} reaches into the running month
+   */
   public IncidentScopeCases report(UUID organizationId, ReportingPeriod period) {
-    Instant now = clock.instant();
-    LocalDate runningMonth = LocalDate.ofInstant(now, clock.getZone()).withDayOfMonth(1);
-    LocalDate toMonth = period.to().withDayOfMonth(1);
-    List<TransitionCount> rows =
-        new ArrayList<>(
-            repository.sumTransitions(organizationId, period.from(), toMonth, runningMonth));
-    if (!runningMonth.isBefore(period.from()) && !runningMonth.isAfter(toMonth)) {
-      rows.addAll(
-          repository.countEndedBetween(
-              organizationId, runningMonth.atStartOfDay(clock.getZone()).toInstant(), now));
+    LocalDate runningMonth = LocalDate.now(clock).withDayOfMonth(1);
+    if (!period.to().isBefore(runningMonth)) {
+      throw new IllegalArgumentException(
+          "a reporting period ends before the running month, got " + period.to());
     }
+    List<TransitionCount> rows =
+        repository.sumTransitions(organizationId, period.from(), period.to().withDayOfMonth(1));
     Map<String, Long> totals = new HashMap<>();
     for (TransitionCount row : rows) {
       totals.merge(row.getPurpose() + "/" + row.getTransition(), row.getTotal(), Long::sum);

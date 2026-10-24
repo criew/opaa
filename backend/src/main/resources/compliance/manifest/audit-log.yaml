@@ -183,9 +183,10 @@ data:
       Einzelne Klärungen mit Person, Zeitraum, Zweck und Begründung; nach Löschung eines Kontos
       lässt sich über das Pseudonym erkennen, welche Protokolleinträge dieselbe Person betreffen.
       Zahl der beantragten, freigegebenen und abgelaufenen Klärungen je Kalendermonat und Zweck,
-      in der Auskunft über die Datenerhebung für einen wählbaren Berichtszeitraum aus ganzen
-      Monaten an die Personalvertretung; aus überlappenden Zeiträumen lässt sich die Zahl eines
-      einzelnen Monats erschließen
+      in der Auskunft über die Datenerhebung für einen wählbaren Berichtszeitraum aus ganzen,
+      abgeschlossenen Monaten an die Personalvertretung; der laufende Monat wird nicht
+      ausgewiesen. Aus überlappenden Zeiträumen lässt sich die Zahl eines einzelnen
+      abgeschlossenen Monats erschließen
     notes:
       - >-
         Nach Löschung eines Kontos führt die Klärung keinen Personenfilter mehr aus; das Pseudonym

@@ -106,7 +106,7 @@ class DataCollectionDisclosureServiceTest {
     AuditEvent event = recordedEvent();
     assertThat(event.outcome()).isEqualTo(AuditOutcome.DENIED);
     assertThat(event.after())
-        .isEqualTo(Map.of("format", "JSON", "periodFrom", "2025-01-01", "periodTo", "2026-12-31"));
+        .isEqualTo(Map.of("format", "JSON", "periodFrom", "2025-01-01", "periodTo", "2026-09-30"));
     verifyNoInteractions(caseReport, assembler);
   }
 

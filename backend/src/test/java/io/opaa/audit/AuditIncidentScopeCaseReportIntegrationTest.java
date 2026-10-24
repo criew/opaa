@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.auth.User;
@@ -136,7 +137,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
   }
 
   @Test
-  void anApprovalCountsAsEndedOnlyOnceItsUsabilityHasEnded() {
+  void endsOfUsabilityCountInTheCompletedMonthTheyFellIn() {
     // usable until 19 April and 1 May
     approveAt(
         "2001-03-20T10:00:00Z",
@@ -144,16 +145,39 @@ class AuditIncidentScopeCaseReportIntegrationTest {
     approveAt(
         "2001-04-01T10:00:00Z",
         requestAt("2001-04-01T09:00:00Z", AuditIncidentScopePurpose.DATA_BREACH_INVESTIGATION, 3));
-    ReportingPeriod year = period("2001-01-01", "2001-12-31");
 
-    assertThat(counts(reportAt("2001-04-10T00:00:00Z", year), "DATA_BREACH_INVESTIGATION"))
-        .containsExactly(6L, 6L, 0L);
-    assertThat(counts(reportAt("2001-04-25T00:00:00Z", year), "DATA_BREACH_INVESTIGATION"))
+    assertThat(
+            counts(
+                reportAt("2001-04-25T00:00:00Z", period("2001-01-01", "2001-03-31")),
+                "DATA_BREACH_INVESTIGATION"))
+        .containsExactly(3L, 3L, 0L);
+    assertThat(
+            counts(
+                reportAt("2001-05-02T00:00:00Z", period("2001-01-01", "2001-04-30")),
+                "DATA_BREACH_INVESTIGATION"))
         .containsExactly(6L, 6L, 3L);
-    assertThat(counts(reportAt("2001-05-02T00:00:00Z", year), "DATA_BREACH_INVESTIGATION"))
+    assertThat(
+            counts(
+                reportAt("2001-07-01T00:00:00Z", period("2001-01-01", "2001-06-30")),
+                "DATA_BREACH_INVESTIGATION"))
         .containsExactly(6L, 6L, 6L);
-    assertThat(counts(reportAt("2001-07-01T00:00:00Z", year), "DATA_BREACH_INVESTIGATION"))
-        .containsExactly(6L, 6L, 6L);
+  }
+
+  /**
+   * Regression guard: a period reaching into the running month would show a request within minutes,
+   * so the report refuses it instead of reading the running month.
+   */
+  @Test
+  void theRunningMonthIsNeverReported() {
+    requestAt("2001-04-05T10:00:00Z", AuditIncidentScopePurpose.UNAUTHORIZED_ACCESS_SUSPICION, 1);
+
+    assertThatThrownBy(() -> reportAt("2001-04-10T00:00:00Z", period("2001-04-01", "2001-04-30")))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(
+            counts(
+                reportAt("2001-04-10T00:00:00Z", period("2001-01-01", "2001-03-31")),
+                "UNAUTHORIZED_ACCESS_SUSPICION"))
+        .containsExactly(0L, 0L, 0L);
   }
 
   @Test
@@ -165,7 +189,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
 
     PurposeCases cases =
         purpose(
-            reportAt("2001-12-01T00:00:00Z", period("2001-01-01", "2001-12-31")),
+            reportAt("2002-01-02T00:00:00Z", period("2001-01-01", "2001-12-31")),
             "EXTERNAL_AUDIT_OR_INSPECTION");
 
     assertThat(cases.requested()).isEqualTo(CaseCount.of(4));
@@ -180,7 +204,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
         "2001-03-10T10:00:00Z",
         requestAt("2001-03-05T10:00:00Z", AuditIncidentScopePurpose.SECURITY_INCIDENT, 3));
 
-    IncidentScopeCases cases = reportAt("2001-12-01T00:00:00Z", period("2001-01-01", "2001-12-31"));
+    IncidentScopeCases cases = reportAt("2002-01-02T00:00:00Z", period("2001-01-01", "2001-12-31"));
     JsonNode json = JsonMapper.builder().build().valueToTree(cases);
     String text = json.toString();
 

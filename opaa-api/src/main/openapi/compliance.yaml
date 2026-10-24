@@ -231,8 +231,9 @@ components:
       required: false
       description: >-
         First day of the reporting period, always the first day of a month: the cases are counted
-        per calendar month. Without it, 1 January of the previous calendar year. A day that is not
-        the first of a month, or a period whose start lies after its end, is answered with 400.
+        per calendar month. Without it, 1 January of the previous calendar year. Answered with 400:
+        a day that is not the first of a month, a year before 1970, a period whose start lies after
+        its end, and a period that holds no completed month.
       schema:
         type: string
         format: date
@@ -242,7 +243,10 @@ components:
       required: false
       description: >-
         Last day of the reporting period, always the last day of a month. Without it, 31 December
-        of the current calendar year.
+        of the current calendar year. Only completed months are reported: an end in the running
+        month or later is moved to the last day of the previous month, and the response names the
+        end it used. Answered with 400: a day that is not the last of a month, and a year after
+        9999.
       schema:
         type: string
         format: date
@@ -433,6 +437,7 @@ components:
       description: >-
         How often the anlassbezogene Klärung was requested, approved and ended in the reporting
         period, by purpose: no person, no reason, no grant id and no date finer than the month.
+        Only completed months count, so repeated calls cannot show a case while its month runs.
       required: [from, to, smallCountThreshold, purposes, notes]
       properties:
         from:
@@ -442,7 +447,9 @@ components:
         to:
           type: string
           format: date
-          description: Last day of the reporting period.
+          description: >-
+            Last day of the reporting period as reported: the requested end, or the last day of the
+            last completed month if the request reached further.
         smallCountThreshold:
           type: integer
           description: >-
