@@ -40,6 +40,8 @@ import {
   QUOTA_EXHAUSTED_LABEL,
   QUOTA_EXHAUSTED_REMEDY,
 } from './privateLibrary'
+import StateDot from '@/shared/ui/StateDot'
+import type { StatusTone } from '@/shared/ui/StatusLine'
 
 export interface LibrarySourceSectionProps {
   libraryId: string
@@ -353,13 +355,11 @@ function formatRunTimestamp(value: string | null | undefined): string {
   return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function runStatusChipColor(
-  status: IndexingRunResponse['status'],
-): 'success' | 'warning' | 'error' | 'default' {
+// A run's state is a dot before its word (guidelines 5.5); a running run is no warning.
+function runStatusTone(status: IndexingRunResponse['status']): StatusTone {
   if (status === 'COMPLETED') return 'success'
   if (status === 'FAILED') return 'error'
-  if (status === 'RUNNING') return 'warning'
-  return 'default'
+  return 'neutral'
 }
 
 // ADR-0023: a run that could not read a space or a page must not look like any other
@@ -481,12 +481,7 @@ function LibraryIndexingHistorySection({
                   spacing={1.5}
                   sx={{ alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
                 >
-                  <Chip
-                    label={runStatusLabel(run.status)}
-                    size="small"
-                    color={runStatusChipColor(run.status)}
-                    variant="outlined"
-                  />
+                  <StateDot tone={runStatusTone(run.status)} label={runStatusLabel(run.status)} />
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {formatRunTimestamp(run.startedAt)}
                   </Typography>
