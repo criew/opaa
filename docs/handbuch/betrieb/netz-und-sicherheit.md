@@ -82,11 +82,7 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher. Die Oberfläche
   lädt die Liste einmal je Fenster: In anderen bereits geöffneten Fenstern gilt eine Änderung erst
   nach dem Neuladen der Seite, auch das Entfernen eines Ziels; nur das Fenster mit der Verwaltung
-  übernimmt sie sofort. Lässt sich die Liste
-  nicht laden, ist nur die eigene Adresse klickbar.
-
-Wie leicht sich das eingesetzte Chat-Modell von präparierten Dokumenten lenken lässt, misst ein
-Testsatz ([Modell gegen Prompt-Injection messen](modelle.md#modell-gegen-prompt-injection-messen)).
+  übernimmt sie sofort. Lässt sich die Liste nicht laden, ist nur die eigene Adresse klickbar.
 
 ## Härtung für erreichbare Deployments
 
@@ -264,7 +260,7 @@ steht, erreicht über die Suche das Modell.
 - **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../spaces/fremdzugaenge.md#der-mcp-server)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
-  lenken lässt ([Modelle](modelle.md), Abschnitt „Modell gegen Prompt-Injection messen“).
+  lenken lässt ([Modell gegen Prompt-Injection messen](modelle.md#modell-gegen-prompt-injection-messen)).
 
 **Was nicht gebaut ist:** Eine vollständige Erkennung gibt es nicht, und kein Sprachmodell trennt
 Anweisung und Inhalt zuverlässig. Gemessen mit dem Testsatz hat die Kennzeichnung als Daten die
