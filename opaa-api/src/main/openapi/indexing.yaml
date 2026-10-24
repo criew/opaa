@@ -715,7 +715,7 @@ components:
       type: string
       description: >
         Why a single item was skipped/rejected or failed during a run, or - for FORMAT_MISMATCH,
-        SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all. Deliberately coarse (eight buckets, not one per exception type)
+        UNSCANNED, SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all. Deliberately coarse (eight buckets, not one per exception type)
         so the category stays a stable, translatable label rather than growing a new value with
         every executor change:
           * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
@@ -731,6 +731,9 @@ components:
           * FORMAT_MISMATCH - the item's file extension did not match its detected content, but it
             was indexed anyway - a note about an accepted item, not a reason it was not
             counted among documentsSkipped/documentsFailed.
+          * UNSCANNED - the item was indexed without a malware scan, because the scanner could not
+            judge it and opaa.malware-scan.on-unavailable is ACCEPT - a note about an accepted
+            item, like FORMAT_MISMATCH.
           * SCHEDULE_SKIPPED - a scheduled run found the library still indexing from a
             previous run and did not start a second one; recorded against the still-running job's
             own protocol, not a new run of its own.
@@ -756,6 +759,7 @@ components:
           ALLOWLIST,
           ERROR,
           FORMAT_MISMATCH,
+          UNSCANNED,
           SCHEDULE_SKIPPED,
           REMOVED,
           RATE_LIMITED,

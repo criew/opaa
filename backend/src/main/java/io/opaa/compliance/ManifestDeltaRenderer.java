@@ -523,6 +523,7 @@ public final class ManifestDeltaRenderer {
                 case "MAIL" -> "Mail";
                 case "IDENTITY" -> "Identität";
                 case "STORAGE" -> "Speicher";
+                case "SECURITY" -> "Sicherheit";
                 default -> null;
               };
           default -> null;

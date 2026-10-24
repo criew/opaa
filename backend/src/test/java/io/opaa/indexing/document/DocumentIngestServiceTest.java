@@ -50,6 +50,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.PersonalStorageQuota;
 import io.opaa.knowledge.QuotaVerdict;
 import io.opaa.knowledge.SourceDocumentContext;
@@ -123,6 +124,7 @@ class DocumentIngestServiceTest {
 
   private DocumentIngestService service;
   private SimpleMeterRegistry meterRegistry;
+  private MalwareScanService malwareScanService = MalwareScanService.disabled();
 
   // an indexing run always targets a caller-chosen library, never the fixed system library
   // - lets tests assert the metadata carries the chosen library.
@@ -184,6 +186,7 @@ class DocumentIngestServiceTest {
         TestDocumentMetadataServices.returningEmpty(),
         TestDocumentMetadataServices.notExtracting(),
         io.opaa.common.TestFeatureFlags.allOn(),
+        malwareScanService,
         Clock.systemUTC());
   }
 
@@ -314,6 +317,179 @@ class DocumentIngestServiceTest {
 
   private double counter(String result) {
     return meterRegistry.get("opaa.indexing.documents").tag("result", result).counter().count();
+  }
+
+  @Nested
+  class MalwareScan {
+
+    private Path file;
+
+    @BeforeEach
+    void scanner() throws IOException {
+      malwareScanService = Mockito.mock(MalwareScanService.class);
+      service = serviceWith(TestPipelineRegistries.fallbackOnly(documentService, chunkingService));
+      file = fileNamed("bescheid.txt", "content of the file");
+      lenient().when(documentRepository.markMalwareFound(any(), any(), any(), any())).thenReturn(1);
+    }
+
+    @Test
+    void anInfectedFileIsNeitherParsedNorIndexedAndCarriesTheReason() throws IOException {
+      stubNewRow(file, "sha256-infected");
+      when(malwareScanService.check(eq(file), eq(targetLibrary), eq("bescheid.txt")))
+          .thenReturn(new MalwareScanService.Verdict.Infected("Eicar-Test-Signature"));
+
+      DocumentIngestResult result = service.ingest(localFile(file), null);
+      UUID documentId = savedDocument().getId();
+
+      assertThat(result).isEqualTo(DocumentIngestResult.MALWARE_FOUND);
+      verify(documentService, never()).parseDocument(any(Path.class));
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(documentRepository)
+          .markMalwareFound(
+              documentId,
+              MalwareScanService.INFECTED_MESSAGE,
+              "Eicar-Test-Signature",
+              "sha256-infected");
+      verify(documentRepository, never())
+          .markIndexedFromSource(any(), anyInt(), any(), any(), any());
+      assertThat(counter("skipped")).isEqualTo(1.0);
+    }
+
+    @Test
+    void theSameInfectedFileIsSkippedWithoutAnotherScan() throws IOException {
+      // regression guard: an unchanged infected file must not be scanned and audited every run
+      Document infected = existingIndexed(file, "sha256-infected", 19);
+      infected.setStatus(DocumentStatus.FAILED);
+      infected.setMalwareSignature("Eicar-Test-Signature");
+      when(checksumService.computeSha256(file)).thenReturn("sha256-infected");
+
+      DocumentIngestResult result = service.ingest(localFile(file), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
+      verify(malwareScanService, never()).check(any(), any(), any());
+      verify(documentRepository, never()).markMalwareFound(any(), any(), any(), any());
+    }
+
+    @Test
+    void aChangedInfectedFileIsScannedAgain() throws IOException {
+      Document infected = existingIndexed(file, "sha256-old", 19);
+      infected.setStatus(DocumentStatus.FAILED);
+      infected.setMalwareSignature("Eicar-Test-Signature");
+      when(checksumService.computeSha256(file)).thenReturn("sha256-new");
+      stubParsedInto(file, chunks("chunk1"));
+      when(malwareScanService.check(eq(file), eq(targetLibrary), any()))
+          .thenReturn(MalwareScanService.Verdict.CLEAN);
+
+      assertThat(service.ingest(localFile(file), null)).isEqualTo(DocumentIngestResult.PROCESSED);
+    }
+
+    @Test
+    void aFindingOnReindexRemovesTheChunksAndMarksTheRow() throws IOException {
+      Document indexed = existingIndexed(file, "sha256-indexed", 19);
+      when(checksumService.computeSha256(file)).thenReturn("sha256-indexed");
+      when(malwareScanService.check(eq(file), eq(targetLibrary), any()))
+          .thenReturn(new MalwareScanService.Verdict.Infected("Eicar-Test-Signature"));
+
+      DocumentIngestResult result =
+          service.ingest(DocumentIngest.localFile(targetLibrary, file).reindex().build(), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.MALWARE_FOUND);
+      verify(documentRepository)
+          .markMalwareFound(
+              indexed.getId(),
+              MalwareScanService.INFECTED_MESSAGE,
+              "Eicar-Test-Signature",
+              "sha256-indexed");
+      verify(documentService, never()).parseDocument(any(Path.class));
+    }
+
+    @Test
+    void aReindexTheScannerCouldNotJudgeLeavesTheRowAsItIs() throws IOException {
+      existingIndexed(file, "sha256-indexed", 19);
+      when(checksumService.computeSha256(file)).thenReturn("sha256-indexed");
+      when(malwareScanService.check(eq(file), eq(targetLibrary), any()))
+          .thenReturn(MalwareScanService.Verdict.UNSCANNED);
+
+      DocumentIngestResult result =
+          service.ingest(DocumentIngest.localFile(targetLibrary, file).reindex().build(), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
+      verify(documentRepository, never()).markFailed(any(), any());
+      verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
+      verify(documentRepository, never()).markMalwareFound(any(), any(), any(), any());
+    }
+
+    @Test
+    void aFileTakenInUnscannedIsNotedInTheRunProtocol() throws IOException {
+      stubNewRow(file, "sha256-accepted");
+      stubParsedInto(file, chunks("chunk1"));
+      when(malwareScanService.check(eq(file), eq(targetLibrary), any()))
+          .thenReturn(MalwareScanService.Verdict.ACCEPTED_UNSCANNED);
+      AttachmentAccess access = Mockito.mock(AttachmentAccess.class, Mockito.RETURNS_DEEP_STUBS);
+
+      DocumentIngestResult result = service.ingest(localFile(file), access);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
+      verify(access.events())
+          .record(
+              io.opaa.indexing.job.IndexingEventCategory.UNSCANNED,
+              MalwareScanService.ACCEPTED_UNSCANNED_MESSAGE,
+              file.toAbsolutePath().toString());
+    }
+
+    @Test
+    void aFileTheScannerCouldNotJudgeIsMarkedFailedForTheNextRun() throws IOException {
+      stubNewRow(file, "sha256-unscanned");
+      when(malwareScanService.check(eq(file), eq(targetLibrary), any()))
+          .thenReturn(MalwareScanService.Verdict.UNSCANNED);
+
+      DocumentIngestResult result = service.ingest(localFile(file), null);
+      UUID documentId = savedDocument().getId();
+
+      assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
+      verify(documentService, never()).parseDocument(any(Path.class));
+      verify(documentRepository).markFailed(documentId, MalwareScanService.UNSCANNED_MESSAGE);
+      assertThat(counter("failed")).isEqualTo(1.0);
+    }
+
+    @Test
+    void aCleanFileIsIndexed() throws IOException {
+      stubNewRow(file, "sha256-clean");
+      stubParsedInto(file, chunks("chunk1"));
+      when(malwareScanService.check(eq(file), eq(targetLibrary), any()))
+          .thenReturn(MalwareScanService.Verdict.CLEAN);
+
+      assertThat(service.ingest(localFile(file), null)).isEqualTo(DocumentIngestResult.PROCESSED);
+    }
+
+    @Test
+    void aFileScannedOnItsWayHereIsNotSentAgain() throws IOException {
+      stubNewRow(file, "sha256-upload");
+      stubParsedInto(file, chunks("chunk1"));
+
+      DocumentIngestResult result =
+          service.ingest(
+              DocumentIngest.localFile(targetLibrary, file).malwareScanned().build(), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
+      verify(malwareScanService, never()).check(any(), any(), any());
+    }
+
+    @Test
+    void textThatNeverWasAFileIsNotScanned() throws IOException {
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-text");
+      when(documentRepository.findByLibraryIdAndFilePath(any(), any()))
+          .thenReturn(Optional.empty());
+      when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      service.ingest(
+          DocumentIngest.text(targetLibrary, PAGE_URL, "<p>Seite</p>")
+              .sourceType(SourceTypes.FILESYSTEM)
+              .build(),
+          null);
+
+      verify(malwareScanService, never()).check(any(), any(), any());
+    }
   }
 
   @Nested
@@ -1621,6 +1797,7 @@ class DocumentIngestServiceTest {
               metadataService,
               io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting(),
               io.opaa.common.TestFeatureFlags.allOn(),
+              io.opaa.knowledge.MalwareScanService.disabled(),
               Clock.systemUTC());
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))

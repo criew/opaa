@@ -356,6 +356,16 @@ opaa:
     timeout: ${OPAA_TRANSCRIPTION_TIMEOUT:120s}
     # Recordings passed on at the same time, installation-wide; each is held in memory meanwhile.
     max-concurrent: ${OPAA_TRANSCRIPTION_MAX_CONCURRENT:4}
+  # Malware scan of every file before a library takes it in: a clamd daemon over TCP (INSTREAM).
+  # Off by default; enabled without a host refuses the start. on-unavailable: REJECT keeps a file
+  # the scanner could not judge out, ACCEPT takes it in unscanned. clamd's StreamMaxLength must
+  # cover the largest file, or such a file counts as not judged. timeout bounds one whole scan.
+  malware-scan:
+    enabled: ${OPAA_MALWARE_SCAN_ENABLED:false}
+    host: ${OPAA_MALWARE_SCAN_HOST:}
+    port: ${OPAA_MALWARE_SCAN_PORT:3310}
+    timeout: ${OPAA_MALWARE_SCAN_TIMEOUT:30s}
+    on-unavailable: ${OPAA_MALWARE_SCAN_ON_UNAVAILABLE:REJECT}
   indexing:
     # Tokens; only the Tika fallback and plain texts. Structured formats cut by characters below.
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}

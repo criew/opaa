@@ -27,6 +27,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modelle.md)) |
 | `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)) |
+| `opaa_malware_scans_total` | Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)) |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |

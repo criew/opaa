@@ -94,6 +94,22 @@ describe('libraryApi', () => {
       )
     })
 
+    it('says that an original with a malware finding is locked', async () => {
+      const err = axiosErrorWithResponse(
+        404,
+        new Blob([
+          JSON.stringify({
+            error: 'Die Datei ist gesperrt, weil die Virenprüfung ein Schadprogramm gefunden hat',
+            code: 'MALWARE_FOUND',
+          }),
+        ]),
+      )
+
+      await expect(mapDocumentContentError(err)).rejects.toThrow(
+        'Die Datei ist gesperrt, weil die Virenprüfung einen Befund hatte.',
+      )
+    })
+
     it('goes by the code, not by the wording of the message', async () => {
       const err = axiosErrorWithResponse(
         404,

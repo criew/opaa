@@ -84,6 +84,7 @@ data:
           - model_extraction_version
           - keyword_extraction_version
           - processing_instance_id
+          - malware_signature
         person:
           columns: [uploaded_by_user_id]
           via: assets

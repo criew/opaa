@@ -204,6 +204,7 @@ class MetadataSwitchedOffIndexingIntegrationTest {
         metadataService(flags),
         modelMetadataExtractor,
         flags,
+        io.opaa.knowledge.MalwareScanService.disabled(),
         Clock.systemUTC());
   }
 

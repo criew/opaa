@@ -189,6 +189,7 @@ class DocumentIngestServiceMetadataFeatureTest {
         metadataService,
         modelExtractor,
         flags,
+        io.opaa.knowledge.MalwareScanService.disabled(),
         Clock.systemUTC());
   }
 

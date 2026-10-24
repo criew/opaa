@@ -47,6 +47,9 @@ import java.util.UUID;
  * @param reindex a re-run over content that has not changed: on every outcome but {@code CHUNKED},
  *     and on a failure before the previous chunks were removed, the row and its chunks stay
  *     untouched. Implies {@code existingRow}.
+ * @param malwareScanned the file already passed the malware scan on its way here (an upload is
+ *     scanned before its original is stored), so {@link DocumentIngestService#ingest} does not send
+ *     it again
  * @param events the run protocol for a source without {@code AttachmentAccess} (a Confluence page,
  *     a feed entry); {@code null} uses that of the access, if any
  */
@@ -68,6 +71,7 @@ public record DocumentIngest(
     String pipelineId,
     boolean existingRow,
     boolean reindex,
+    boolean malwareScanned,
     IndexingEventSink events) {
 
   public DocumentIngest {
@@ -110,6 +114,7 @@ public record DocumentIngest(
         pipelineId,
         existingRow,
         reindex,
+        malwareScanned,
         events);
   }
 
@@ -215,6 +220,7 @@ public record DocumentIngest(
     private String pipelineId;
     private boolean existingRow;
     private boolean reindex;
+    private boolean malwareScanned;
     private IndexingEventSink events;
 
     private Builder(KnowledgeLibrary library) {
@@ -314,6 +320,11 @@ public record DocumentIngest(
       return this;
     }
 
+    public Builder malwareScanned() {
+      this.malwareScanned = true;
+      return this;
+    }
+
     public Builder events(IndexingEventSink events) {
       this.events = events;
       return this;
@@ -342,6 +353,7 @@ public record DocumentIngest(
           pipelineId,
           existingRow,
           reindex,
+          malwareScanned,
           events);
     }
   }
