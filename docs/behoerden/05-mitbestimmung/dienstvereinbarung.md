@@ -12,7 +12,8 @@ naechste-durchsicht: 2027-04-23
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
 **Gilt für:** Behörden mit Personalrat. Bundesbehörden folgen dem Bundespersonalvertretungsgesetz,
-Landes- und Kommunalbehörden dem Personalvertretungsgesetz ihres Landes. Betriebe mit Betriebsrat
+Landes- und Kommunalbehörden dem Personalvertretungsgesetz ihres Landes
+([Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md)). Betriebe mit Betriebsrat
 sind nicht erfasst.
 
 Eine Dienstvereinbarung ist ein Vertrag zwischen Dienststelle und Personalrat, der eine
@@ -458,8 +459,8 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 | Vorläufige Maßnahmen, etwa ein dringendes Sicherheitsupdate | § 76 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__76.html) |
 | Einigungsstelle | §§ 72 bis 75 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__72.html) |
 | Kosten der Personalratstätigkeit | § 46 Abs. 1 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__46.html) |
-| Hinzuziehung Sachverständiger | zu prüfen; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
-| Kündigung und Nachwirkung von Dienstvereinbarungen | zu prüfen; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
+| Hinzuziehung Sachverständiger | im BPersVG nicht ausdrücklich geregelt; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
+| Kündigung und Nachwirkung von Dienstvereinbarungen | im BPersVG nicht ausdrücklich geregelt; § 63 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__63.html) regelt Zulässigkeit und Form ohne Kündigung oder Nachwirkung; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
 | Personalvertretungsgesetz des Landes, mit eigenen Tatbeständen und Fristen | [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
 | Vereinbarungen nach Hamburger Personalvertretungsrecht | zu prüfen |
 | Daten über Beschäftigte | § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht |
