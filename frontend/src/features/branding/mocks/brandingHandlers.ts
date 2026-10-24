@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { mockBranding, setMockBranding } from './brandingFixtures'
+import { OPAA_BRANDING } from '@/shared/branding/brandingStore'
 import type { BrandingUpdateRequest } from '@/shared/api/types'
 
 export const brandingHandlers = [
@@ -29,6 +30,7 @@ export const brandingHandlers = [
       ...mockBranding,
       productName: body.productName?.trim() || 'OPAA',
       claim: body.claim?.trim() || 'Fragen. Belegen. Entscheiden.',
+      aiNotice: body.aiNotice?.trim() || OPAA_BRANDING.aiNotice,
       primaryColor: primaryColor || '#1292EE',
       defaultColorScheme: body.defaultColorScheme ?? 'SYSTEM',
     })

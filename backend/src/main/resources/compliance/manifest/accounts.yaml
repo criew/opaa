@@ -385,6 +385,7 @@ nonPersonalTables:
     - id
     - product_name
     - claim
+    - ai_notice
     - primary_color
     - default_color_scheme
     - logo_content

@@ -19,9 +19,20 @@ public final class BrandingDefaults {
   /** Maximum accepted length of {@link EffectiveBranding#claim()}, in characters. */
   public static final int MAX_CLAIM_LENGTH = 120;
 
+  /** Maximum accepted length of {@link EffectiveBranding#aiNotice()}, in characters. */
+  public static final int MAX_AI_NOTICE_LENGTH = 500;
+
   public static final String PRODUCT_NAME = "OPAA";
 
   public static final String CLAIM = "Fragen. Belegen. Entscheiden.";
+
+  /**
+   * The notice that tells users the answers come from an AI (Art. 50 KI-VO). It can be replaced but
+   * never switched off: a blank value falls back to this text.
+   */
+  public static final String AI_NOTICE =
+      "Antworten werden von einer KI erzeugt und können Fehler enthalten. "
+          + "Prüfen Sie wichtige Angaben anhand der Belege.";
 
   public static final String PRIMARY_COLOR = "#1292EE";
 

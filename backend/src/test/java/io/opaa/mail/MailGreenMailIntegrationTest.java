@@ -88,7 +88,7 @@ class MailGreenMailIntegrationTest {
     // The process-local caches survive every write to the row and are shared with every other
     // class in this context - without this a provoked failure leaks into the next test.
     mailSettingsService.resetCaches();
-    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null);
+    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null, null);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
@@ -118,7 +118,7 @@ class MailGreenMailIntegrationTest {
   @Test
   void sendsBothPartsAndCarriesTheOperatorsBrandingInTheHtmlOne() throws Exception {
     brandingSettingsService.updateBranding(
-        organizationId, userId, "Landesamt-Assistent", null, "#7A1FA2", null);
+        organizationId, userId, "Landesamt-Assistent", null, null, "#7A1FA2", null);
     configureSmtp();
 
     SendResult result =
