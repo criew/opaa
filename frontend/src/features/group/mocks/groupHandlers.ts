@@ -4,8 +4,8 @@ import {
   mockDeactivationPreview,
   mockGroups,
   mockGroupDetails,
-  mockMyGroups,
-  mockSelectableGroups,
+  myGroupsForScenario,
+  selectableGroupsForScenario,
 } from './groupFixtures'
 
 export const groupHandlers = [
@@ -64,7 +64,7 @@ export const groupHandlers = [
     if (query.length < 2) {
       return HttpResponse.json([])
     }
-    const matches = mockSelectableGroups.filter((group) =>
+    const matches = selectableGroupsForScenario().filter((group) =>
       group.protectedGroup
         ? (group.name ?? '').toLowerCase() === query
         : (group.name ?? '').toLowerCase().includes(query) ||
@@ -76,7 +76,9 @@ export const groupHandlers = [
   // The identifier path resolves the group under the same visibility rule; a
   // protected group comes back without its name.
   http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
-    const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))
+    const group = selectableGroupsForScenario().find(
+      (candidate) => candidate.id === String(params.groupId),
+    )
     if (!group) {
       return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
     }
@@ -297,6 +299,6 @@ export const groupHandlers = [
   }),
 
   http.get('/api/v1/me/groups', () => {
-    return HttpResponse.json(mockMyGroups)
+    return HttpResponse.json(myGroupsForScenario())
   }),
 ]

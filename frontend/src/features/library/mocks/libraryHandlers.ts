@@ -5,13 +5,16 @@ import {
   mockConfluenceSpaces,
   mockSourceTypes,
 } from './libraryFixtures'
-import { mockMyGroups } from '../../group/mocks/groupFixtures'
 import { isMockIndexingActive } from './indexingHandlers'
 import {
   mockConnectionProfiles,
   mockProfileRef,
 } from '../../connection/mocks/connectionProfileFixtures'
-import { browseSharePoint, testSharePoint } from './sharePointSourceMock'
+import { browseSharePoint, SHAREPOINT_MESSAGES, testSharePoint } from './sharePointSourceMock'
+import { scenarioBrowse, scenarioCounts, scenarioTest } from './sourceScenarioMock'
+import { applyLibraryScenario } from './libraryScenarioFixtures'
+import { myGroupsForScenario } from '../../group/mocks/groupFixtures'
+import { scenarioLatency } from '@/shared/mocks/mockScenario'
 import type {
   SourceTypeKey,
   AssetOwnerType,
@@ -36,6 +39,7 @@ export const libraryHandlers = [
   http.get('/api/v1/source-types', () => HttpResponse.json(mockSourceTypes)),
 
   http.get('/api/v1/libraries', () => {
+    applyLibraryScenario()
     return HttpResponse.json(mockLibraries)
   }),
 
@@ -53,6 +57,7 @@ export const libraryHandlers = [
       connectionProfileId?: string | null
       privateLibrary?: boolean | null
       pendingConnectionId?: string | null
+      schedule?: LibraryScheduleRequest | null
     }
     const profile = body.connectionProfileId
       ? mockConnectionProfiles.find((p) => p.id === body.connectionProfileId)
@@ -83,7 +88,10 @@ export const libraryHandlers = [
     }
     // Mirrors KnowledgeLibraryService#createLibrary: only members of a group can own a library
     // in its name.
-    if (body.ownerType === 'GROUP' && !mockMyGroups.some((group) => group.id === body.ownerId)) {
+    if (
+      body.ownerType === 'GROUP' &&
+      !myGroupsForScenario().some((group) => group.id === body.ownerId)
+    ) {
       return HttpResponse.json(
         { error: 'Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen' },
         { status: 403 },
@@ -222,35 +230,28 @@ export const libraryHandlers = [
       sourceType: body.sourceType,
       sourcePath: body.sourceType === 'FILESYSTEM' ? (body.sourcePath ?? null) : null,
       sourceUrl:
-        body.sourceType === 'HTTP_DIRECTORY' ||
-        body.sourceType === 'RSS_FEED' ||
-        body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3' ||
-        body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'SHAREPOINT' ||
-        body.sourceType === 'NEXTCLOUD' ||
-        body.sourceType === 'SMB'
-          ? (body.sourceUrl ?? profile?.serverUrl ?? null)
-          : null,
+        body.sourceType === 'UPLOAD' || body.sourceType === 'FILESYSTEM'
+          ? null
+          : (body.sourceUrl ?? profile?.serverUrl ?? fixedAddress(body.sourceType)),
       connectionProfile: profile ? mockProfileRef(profile) : null,
-      sourceSettings:
-        body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3' ||
-        body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'SHAREPOINT' ||
-        body.sourceType === 'NEXTCLOUD' ||
-        body.sourceType === 'SMB'
-          ? (body.sourceSettings ?? null)
-          : null,
+      // every connected type keeps its typed settings, as KnowledgeLibraryService stores them
+      sourceSettings: body.sourceType === 'UPLOAD' ? null : (body.sourceSettings ?? null),
       sourceCredentialsSet:
-        body.sourceType === 'S3' ||
-        body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'SHAREPOINT' ||
-        body.sourceType === 'NEXTCLOUD' ||
-        body.sourceType === 'SMB'
-          ? Boolean(body.sourceCredentials)
-          : undefined,
+        body.sourceType === 'UPLOAD' || body.sourceType === 'FILESYSTEM'
+          ? undefined
+          : Boolean(body.sourceCredentials),
+      schedule: body.schedule
+        ? {
+            frequency: body.schedule.frequency,
+            hour: body.schedule.hour ?? null,
+            minute: body.schedule.minute ?? null,
+            weekday: body.schedule.weekday ?? undefined,
+            nextRunAt:
+              body.schedule.frequency === 'DISABLED'
+                ? null
+                : new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          }
+        : undefined,
       // sourceCredentials is write-only (ADR-0018) - deliberately not in the detail response.
       // the pending consent becomes the library's own, its creator answering for it
       sourceConnection: body.pendingConnectionId
@@ -279,6 +280,12 @@ export const libraryHandlers = [
       connectionProfileId?: string | null
       query?: Record<string, unknown> | null
     }
+    await scenarioLatency()
+    if (sourceType === 'SHAREPOINT' && !body.connectionProfileId && !body.libraryId) {
+      return HttpResponse.json({ error: SHAREPOINT_MESSAGES.noProfile }, { status: 400 })
+    }
+    const fromScenario = scenarioBrowse(sourceType as SourceTypeKey, body.query)
+    if (fromScenario) return fromScenario
     if (sourceType === 'SHAREPOINT') return browseSharePoint(body)
     if (sourceType === 'CONFLUENCE') {
       if (!body.sourceUrl || !body.query?.edition) {
@@ -329,7 +336,10 @@ export const libraryHandlers = [
       }
       return HttpResponse.json({
         complete: true,
-        entries: ['protokolle', 'satzungen', 'archiv'].map((key) => ({ key, name: null })),
+        entries:
+          typeof body.query?.bucket === 'string'
+            ? defaultPrefixes(String(body.query.prefix ?? ''))
+            : ['protokolle', 'satzungen', 'archiv'].map((key) => ({ key, name: null })),
         message: null,
       } satisfies SourceBrowseResponse)
     }
@@ -342,11 +352,11 @@ export const libraryHandlers = [
       }
       return HttpResponse.json({
         complete: true,
-        entries: [
+        entries: defaultFolders(body.query, [
           { key: '/Projekte', name: 'Projekte' },
           { key: '/Bauamt', name: 'Bauamt (Gruppenordner)' },
           { key: '/Satzungen', name: 'Satzungen (Freigabe)' },
-        ],
+        ]),
         message: null,
       } satisfies SourceBrowseResponse)
     }
@@ -360,11 +370,29 @@ export const libraryHandlers = [
       }
       return HttpResponse.json({
         complete: true,
-        entries: [
+        entries: defaultFolders(body.query, [
           { key: '/Bauamt', name: 'Bauamt' },
           { key: '/Hauptamt', name: 'Hauptamt' },
           { key: '/Vorlagen', name: 'Vorlagen' },
-        ],
+        ]),
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'DROPBOX') {
+      // the folders the consented mock service account sees, one level below `path`
+      if (!body.connectionProfileId && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'Für die Auflistung ist ein Zugang erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: defaultFolders(body.query, [
+          { key: '/Projekte', name: 'Projekte' },
+          { key: '/Satzungen', name: 'Satzungen' },
+          { key: '/Team-Ordner', name: 'Team-Ordner' },
+        ]),
         message: null,
       } satisfies SourceBrowseResponse)
     }
@@ -387,7 +415,20 @@ export const libraryHandlers = [
       libraryId?: string | null
       connectionProfileId?: string | null
     }
+    await scenarioLatency()
+    const fromScenario = scenarioTest(body)
+    if (fromScenario) return fromScenario
     if (body.sourceType === 'SHAREPOINT') return testSharePoint(body)
+    if (body.sourceType === 'DROPBOX') {
+      const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
+        ?.folders ?? ['/']
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 9 * folders.length,
+        message: `Verbindung hergestellt; ${folders.length} Ordner lesbar.`,
+      })
+    }
     if (body.sourceType === 'GOOGLE_DRIVE') {
       // every requested area is reachable for the mock service account (ADR-0040)
       const settings = body.sourceSettings as { scopes?: Record<string, unknown>[] } | null
@@ -531,12 +572,13 @@ export const libraryHandlers = [
             'Confluence Cloud erwartet E-Mail-Adresse und API-Token, getrennt durch einen Doppelpunkt (E-Mail:Token).',
         })
       }
+      const readable = scenarioCounts()?.spaces ?? mockConfluenceSpaces.length
       return HttpResponse.json({
         reachable: true,
         details: { edition: detected },
         credentialsVerified: true,
-        documentCount: mockConfluenceSpaces.length,
-        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${mockConfluenceSpaces.length} lesbare Spaces.`,
+        documentCount: readable,
+        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${readable} lesbare Spaces.`,
       })
     }
     if (body.sourceType === 'UPLOAD') {
@@ -573,6 +615,7 @@ export const libraryHandlers = [
   }),
 
   http.get('/api/v1/libraries/:libraryId', ({ params }) => {
+    applyLibraryScenario()
     const libraryId = String(params.libraryId)
     const library = mockLibraryDetails[libraryId]
     if (!library) {
@@ -592,14 +635,23 @@ export const libraryHandlers = [
       name: string
       description?: string
       schedule?: LibraryScheduleRequest
+      sourcePath?: string | null
       sourceUrl?: string | null
+      sourceCredentials?: string | null
       sourceSettings?: Record<string, unknown> | null
     }
     library.name = body.name
-    if (library.sourceType === 'S3') {
-      // the S3 edit dialog resends the typed configuration as a whole (ADR-0027)
-      if (body.sourceUrl !== undefined) library.sourceUrl = body.sourceUrl
+    // the edit dialogs resend the typed configuration as a whole (ADR-0027); a secret is replaced
+    // only when one is sent
+    if (library.sourceType !== 'UPLOAD') {
+      if (body.sourcePath !== undefined && library.sourceType === 'FILESYSTEM') {
+        library.sourcePath = body.sourcePath
+      }
+      if (body.sourceUrl !== undefined && library.sourceType !== 'FILESYSTEM') {
+        library.sourceUrl = body.sourceUrl
+      }
       if (body.sourceSettings) library.sourceSettings = body.sourceSettings
+      if (body.sourceCredentials) library.sourceCredentialsSet = true
     }
     library.description = body.description ?? null
     if (body.schedule) {
@@ -720,3 +772,30 @@ export const libraryHandlers = [
     return HttpResponse.json(released)
   }),
 ]
+
+/** The fixed address of a type that has one, as the backend fills it in. */
+function fixedAddress(type: SourceTypeKey): string | null {
+  return mockSourceTypes.find((descriptor) => descriptor.type === type)?.serverAddress.fixed ?? null
+}
+
+/**
+ * The folders of the regular Nextcloud, SMB and Dropbox fixtures: `root` at the top, two
+ * subfolders below every folder down to the third level (`query.path`, also `query.folder`).
+ */
+function defaultFolders(
+  query: Record<string, unknown> | null | undefined,
+  root: SourceBrowseResponse['entries'],
+): SourceBrowseResponse['entries'] {
+  const path = String(query?.path ?? query?.folder ?? '/').replace(/\/+$/, '')
+  if (path === '') return root
+  if (path.split('/').length > 3) return []
+  return ['Allgemein', 'Archiv'].map((name) => ({ key: `${path}/${name}`, name }))
+}
+
+/** The common prefixes below `prefix` of a regular S3 bucket, two levels deep. */
+function defaultPrefixes(prefix: string): SourceBrowseResponse['entries'] {
+  const depth = prefix.split('/').filter((segment) => segment !== '').length
+  if (depth >= 2) return []
+  const names = depth === 0 ? ['2024', '2025', '2026'] : ['januar', 'februar']
+  return names.map((name) => ({ key: `${prefix}${name}/`, name }))
+}

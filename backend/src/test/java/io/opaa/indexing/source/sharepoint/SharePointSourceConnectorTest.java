@@ -237,6 +237,50 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void theConnectionTestNamesTheMissingAdministratorConsent() {
+    String graphSays = "Either scp or roles claim need to be present in the token.";
+    server.failNextSaying("drives/" + DRIVE_0, 403, "AccessDenied", graphSays, 1);
+
+    SourceConnectionTestResult refused =
+        connector.testConnection(withToken(libraries(DRIVE_0, DRIVE_1)), null);
+    server.failNextSaying("drives/" + DRIVE_0, 401, "InvalidAuthenticationToken", graphSays, 2);
+    SourceConnectionTestResult rejected =
+        connector.testConnection(withToken(libraries(DRIVE_0)), null);
+
+    assertThat(refused.reachable()).isFalse();
+    assertThat(refused.details().toJson())
+        .contains("Administratorzustimmung erteilen")
+        .doesNotContain(SharePointFileStore.LIBRARY_NOT_VISIBLE)
+        .doesNotContain("scp or roles");
+    assertThat(rejected.reachable()).isFalse();
+    assertThat(rejected.message())
+        .contains("Administratorzustimmung erteilen")
+        .doesNotContain("scp or roles");
+  }
+
+  @Test
+  void theListingNamesTheMissingAdministratorConsentInsteadOfSitesSelected() {
+    server.failNextSaying(
+        "sites",
+        403,
+        "AccessDenied",
+        "Either scp or roles claim need to be present in the token.",
+        2);
+
+    SourceListing search = browse(Map.of("search", "tea"));
+    SourceListing byAddress =
+        browse(Map.of("siteUrl", "https://contoso.sharepoint.com/sites/team"));
+
+    for (SourceListing listing : List.of(search, byAddress)) {
+      assertThat(listing.complete()).isFalse();
+      assertThat(listing.message())
+          .contains("Administratorzustimmung")
+          .doesNotContain("Sites.Selected")
+          .doesNotContain("Sites.Read.All");
+    }
+  }
+
+  @Test
   void theConnectionTestSpeaksOfASingleLibraryInTheSingular() {
     assertThat(connector.testConnection(withToken(libraries(DRIVE_0)), null).message())
         .isEqualTo("Anmeldung erfolgreich; die Dokumentbibliothek ist erreichbar.");

@@ -452,7 +452,8 @@ Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
 Rückmeldungen auf einmalige Aktionen — ein fehlgeschlagener oder gestarteter Download, ein
 abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** unten mittig
 (Ebene 2: Rahmen plus Schatten auf `bg-1`), nach sechs Sekunden automatisch ausgeblendet und
-jederzeit per Schließen-Knopf verwerfbar. Sie laufen über den globalen Mechanismus
+jederzeit per Schließen-Knopf verwerfbar. **Der Timer steht still, solange der Mauszeiger oder der
+Tastaturfokus auf der Meldung liegt**, und läuft erst nach dem Verlassen weiter (WCAG 2.2.1). Sie laufen über den globalen Mechanismus
 (`frontend/src/shared/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
 einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
 **nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
@@ -462,6 +463,14 @@ Eine Benachrichtigung darf **eine** Aktion tragen, etwa „Rückgängig" nach ei
 Änderung (`notify(message, severity, { label, onClick })`). Die Aktion ist nie der einzige Weg: Was
 sie rückgängig macht, lässt sich auch am Ort der Änderung zurücknehmen, weil die Meldung nach
 sechs Sekunden verschwindet.
+
+**Was ein Popup sagen darf.** Es quittiert, es trägt keine Information, die man noch braucht:
+
+- **Fehler, die eine Handlung verlangen, stehen nie nur im Popup.** Muss die Person etwas
+  korrigieren, erneut versuchen oder nachtragen, steht der Fehler auch am Ort — am Feld, an der
+  Zeile, im Bereich — und bleibt dort, bis er behoben ist. Das Popup darf ihn zusätzlich melden.
+- **Ein Popup wiederholt keine Aussage, die schon auf der Seite steht.** Zeigt die Seite das
+  Ergebnis selbst (neuer Zustand, neue Zeile, Inline-Hinweis), entfällt das Popup.
 
 Inline-`Alert`s bleiben Zuständen vorbehalten, die an ihren Ort gebunden sind und dort bestehen
 bleiben: der Validierungsfehler am Formular, der Ladefehler des Bereichs, ein dauerhafter
@@ -512,25 +521,50 @@ Die Signalfarbe steht in Kante und Symbol, nie im Fließtext (2.3).
 oder fremde Arbeit trifft. Eine Bestätigung, die reflexhaft weggeklickt wird, schützt nichts und
 kostet jeden Vorgang einen Klick.
 
-### 5.11 Kachelauswahl mit Icon
+### 5.11 Auswahl aus einer Menge
 
-**Das durchgängige Muster für jede Wahl aus einer überschaubaren Menge gleichartiger Dinge**
+**Wie eine Wahl aussieht, entscheidet die Art der Menge**
 ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 1).
-Wo eine Person zwischen Arten, Quellen oder Objekten wählt, sieht sie Kacheln mit Icon — keine
-Auswahlliste, kein Dropdown, keine Checkbox-Liste. Es gilt für:
+Es gibt drei Mengenarten:
 
-| Wahl | Auswahl | Wo |
+| Mengenart | Darstellung | Beispiele |
 | --- | --- | --- |
-| **Asset-Art** beim Anlegen | einfach | erster Schritt von „Neu" im Katalog; nur Arten mit Anlegerecht |
-| **Quellart** einer Wissensbibliothek | einfach | Assistent „Neue Wissensbibliothek" |
-| **Zuordnung** von Assets zu einem Space | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
-| **Bibliotheken eines Zugangstokens** | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge |
+| **Geschlossene Artenmenge** — Arten mit eigenem Icon | Kacheln mit Icon | Asset-Art, Quellart |
+| **Assets** — eigene Objekte aus dem Katalog | Asset-Kacheln (5.4) mit Filterzeile | Zuordnung zu einem Space, Bibliotheken eines Zugangstokens |
+| **Fremde Objekte aus einer Quelle** — was ein angebundenes System liefert | Liste oder Baum mit Suche, **nie Kacheln** | Sites, Spaces, Buckets, Ordner |
+
+Die Wahlen im Einzelnen:
+
+| Wahl | Mengenart | Auswahl | Wo |
+| --- | --- | --- | --- |
+| **Asset-Art** beim Anlegen | Arten | einfach | erster Schritt von „Neu" im Katalog; nur Arten mit Anlegerecht |
+| **Quellart** einer Wissensbibliothek | Arten | einfach | Assistent „Neue Wissensbibliothek" |
+| **Zuordnung** von Assets zu einem Space | Assets | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
+| **Bibliotheken eines Zugangstokens** | Assets | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge |
+| **Umfang** einer Bibliothek (Sites, Spaces, Buckets, Ordner) | fremde Objekte | mehrfach | Quellteil des Assistenten „Neue Wissensbibliothek" und der Bibliothekseinstellungen |
 
 Weitere Wahlen dieser Art folgen dem Muster ohne eigene Entscheidung. Ein **Dropdown** bleibt
 richtig, wo die Menge lang und homogen ist und kein Icon unterscheidet (Rolle, Sprache, Zeitraum).
 
-**Aufbau.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen und einen
-kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).
+**Geschlossene Artenmengen** haben keine feste Obergrenze an Kacheln. Ab etwa zwölf Arten werden
+sie gruppiert (je Gruppe ein sichtbarer Titel), damit die Wahl überschaubar bleibt.
+
+**Gleichartige Wahl ohne unterscheidendes Icon** — etwa zwischen mehreren Zugängen derselben
+Quellart, die sich nur im Namen unterscheiden — erscheint als **Radioliste**, nicht als Kacheln: Ein Icon,
+das bei allen Optionen gleich wäre, unterscheidet nichts. Gibt es nur **eine** Option, gibt es keine
+Wahl: Sie steht als einfache Zeile da, ohne Radioknopf.
+
+**Fremde Objekte aus einer Quelle** erscheinen als Liste oder Baum, nie als Kacheln — ihre Zahl und
+Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:
+
+- **Bis sieben flache Einträge** stehen als Checkboxen direkt in der Zeile, ohne Suche.
+- **Ab acht Einträgen oder bei jeder Hierarchie** öffnet die Zeile einen **gemeinsamen
+  Auswahldialog**, derselbe für jede Quellart: Breadcrumb für die Ebene, Suche und Teilauswahl
+  (ein Knoten, dessen Kinder nur zum Teil gewählt sind, zeigt das als gemischten Zustand,
+  `aria-checked="mixed"`). Die Zeile fasst danach die Wahl zusammen („3 von 42 Spaces").
+
+**Aufbau der Kacheln.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen
+und einen kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).
 Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich an Rahmen in `accent` **und** einem
 Häkchen-Symbol — nie allein über Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
 verfügbare Quellart) bleibt sichtbar, ausgegraut, mit dem Grund im Satz darunter, wenn ihr Fehlen
@@ -541,11 +575,12 @@ Beschreibung (`aria-describedby`) trägt — so gilt für ihn die Textschwelle a
 **Bedienung und Ansage.** Einfachauswahl ist eine `radiogroup`: eine Tab-Position für die Gruppe,
 Pfeiltasten wechseln (gesperrte Kacheln werden übersprungen), Leertaste und Enter wählen.
 Mehrfachauswahl ist eine beschriftete Gruppe von Umschaltern (`role="checkbox"` je Kachel), jede
-Kachel eine eigene Tab-Position, Leertaste schaltet. Die Gruppe trägt einen sichtbaren Titel, der
-zugleich ihr zugänglicher Name ist. Die ganze Kachel ist Klickfläche; Fokus nach 4.4
+Kachel eine eigene Tab-Position, Leertaste schaltet. Radioliste und Checkboxen fremder Objekte
+folgen denselben Regeln mit nativen Elementen. Die Gruppe trägt einen sichtbaren Titel, der
+zugleich ihr zugänglicher Name ist. Die ganze Kachel bzw. Zeile ist Klickfläche; Fokus nach 4.4
 ([Barrierefreiheits-Richtlinie](./accessibility.md)).
 
-**Große Mengen: eine Filterzeile.** Katalog, Zuordnung und Token-Auswahl haben dieselbe Zeile
+**Große Mengen von Assets: eine Filterzeile.** Katalog, Zuordnung und Token-Auswahl haben dieselbe Zeile
 (`AssetFilterBar`), in dieser Reihenfolge: **Suche → Asset-Art → Favoriten**. Die Asset-Art ist eine
 Umschaltgruppe ohne sichtbaren Titel; ihr zugänglicher Name ist „Typ" (`aria-label`), und sie
 erscheint nur, wo mehr als eine Art angeboten wird.
@@ -565,6 +600,7 @@ wird nur, was die Person lesen darf. Über „Weitere laden" steht „n von m an
 **Ein Baustein je Art von Kachel.** Die Wahl von Arten und Quellen ist im Frontend eine Komponente
 (`ChoiceTileGroup`, #2094). Assets – im Katalog, in der Zuordnung zu einem Space und in der
 Token-Auswahl – zeigt immer die Asset-Kachel aus 5.4 (`AssetTile`, #2131), nie ein Nachbau je Stelle.
+Fremde Objekte wählt jede Quellart über denselben Auswahldialog, nie über einen eigenen.
 
 ### 5.12 Reiter und Überschriften
 
@@ -580,7 +616,20 @@ es nichts weiter zu gliedern gibt.
 
 ## 6 · Sprache und Begriffe
 
-UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begriffe:
+UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch.
+
+**Eigener Begriff oder Herstellerbegriff.** Für die Wahl eines Begriffs gilt:
+
+- **Eigene Konzepte tragen überall denselben eigenen Begriff** — bei jeder Quellart, in jedem
+  Assistenten und jeder Einstellung: Verbindung, Umfang, Zeitplan, Zugang, „Gesetzt · Ersetzen".
+- **Werte, die man aus einem Herstellerportal abschreibt oder dort wiederfinden muss, tragen den
+  Begriff des Herstellers** in dessen offiziellem Deutsch: API-Token, App-Passwort, Access Key,
+  Secret Key, Endpoint, Space, Dokumentbibliothek, Geteilte Ablage. Wer den Wert sucht, findet ihn
+  unter genau diesem Wort.
+- **Keine Doppel-Labels** in Klammern („Token (Kennwort)") und kein künstlich allgemeines
+  „Kennwort" für ein Token.
+
+Verbindliche Begriffe:
 
 | Begriff                   | Bedeutung / Regel                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------- |
@@ -594,8 +643,13 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **@Space-Wissen**         | der vorbelegte Chip am Eingabefeld: das dem Space zugeordnete, für die Person lesbare Wissen |
 | **Sichtbarkeit**          | öffentlich (an alle Konten freigegeben) · geschlossen; Beschriftung in der Oberfläche siehe 5.5 |
 | **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher) |
-| **Geltungsbereich**       | ein Bucket mit optionalem Präfix, aus dem eine S3-Bibliothek liest; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
-| **Endpoint**              | die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
+| **Verbindung**            | die Anbindung einer Bibliothek an ihre Quelle: Adresse und Anmeldung, selbst eingetragen oder über einen Zugang; bei jeder Quellart derselbe Begriff |
+| **Zugang**                | eine von der Systemverwaltung angelegte und freigegebene, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt"), die man beim Anlegen einer Bibliothek nur noch auswählt ([Glossar](../handbuch/glossar.md)) |
+| **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11) |
+| **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                |
+| **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |
+| **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
+| **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
 | **Fundstellen**           | die Stellen in Dokumenten, auf die sich eine Antwort stützt                                  |
 | **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |

@@ -22,9 +22,15 @@ public final class GlobalCeilingWindow {
    */
   public static void startWithRoomIn(
       JdbcTemplate jdbcTemplate, Environment environment, String rule) throws InterruptedException {
-    int windowSeconds =
+    startWithRoomIn(
+        jdbcTemplate,
         environment.getRequiredProperty(
-            "opaa.rate-limit." + rule + ".window-seconds", Integer.class);
+            "opaa.rate-limit." + rule + ".window-seconds", Integer.class));
+  }
+
+  /** As {@link #startWithRoomIn(JdbcTemplate, Environment, String)}, for a window of its own. */
+  public static void startWithRoomIn(JdbcTemplate jdbcTemplate, int windowSeconds)
+      throws InterruptedException {
     Double secondsLeft =
         jdbcTemplate.queryForObject(
             "SELECT ? - mod(extract(epoch FROM clock_timestamp()), ?)",
