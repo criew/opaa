@@ -41,7 +41,16 @@ public final class IngestTextSanitizer {
     }
   }
 
-  private static final Pattern ROLE_TOKEN = Pattern.compile("<\\|([^|<>\\s]{1,40})\\|>");
+  private static final int SOFT_HYPHEN = 0x00AD;
+
+  /** Role tokens between bars, ASCII or full-width: {@code <|im_start|>}, {@code <｜User｜>}. */
+  private static final Pattern ROLE_TOKEN =
+      Pattern.compile("<[|\\uFF5C]([^|\\uFF5C<>\\s]{1,40})[|\\uFF5C]>");
+
+  /** Turn and sequence tokens without bars: {@code <start_of_turn>}, {@code <s>}, {@code </s>}. */
+  private static final Pattern TURN_TOKEN =
+      Pattern.compile(
+          "<\\s*(start_of_turn|end_of_turn|bos|eos|/?s)\\s*>", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern INSTRUCTION_MARKER =
       Pattern.compile("\\[\\s*/?\\s*INST\\s*]|<<\\s*/?\\s*SYS\\s*>>", Pattern.CASE_INSENSITIVE);
@@ -83,6 +92,8 @@ public final class IngestTextSanitizer {
         cleaned.appendCodePoint(cp);
       } else if (isVariationSelector(cp) && isEmoji(previous)) {
         cleaned.appendCodePoint(cp);
+      } else if (cp == SOFT_HYPHEN) {
+        // removed, but ordinary typography in word-processor exports, so not a finding
       } else if (isHidden(cp)) {
         removed++;
       } else {
@@ -99,7 +110,14 @@ public final class IngestTextSanitizer {
       role.appendReplacement(defused, Matcher.quoteReplacement("‹" + role.group(1) + "›"));
     }
     role.appendTail(defused);
-    Matcher marker = INSTRUCTION_MARKER.matcher(defused);
+    Matcher turn = TURN_TOKEN.matcher(defused);
+    StringBuilder turnsDefused = new StringBuilder();
+    while (turn.find()) {
+      roleTokens++;
+      turn.appendReplacement(turnsDefused, Matcher.quoteReplacement("‹" + turn.group(1) + "›"));
+    }
+    turn.appendTail(turnsDefused);
+    Matcher marker = INSTRUCTION_MARKER.matcher(turnsDefused);
     StringBuilder markersDefused = new StringBuilder();
     while (marker.find()) {
       roleTokens++;
@@ -123,7 +141,6 @@ public final class IngestTextSanitizer {
         || (cp >= 0x200B && cp <= 0x200D)
         || cp == 0x2060
         || cp == 0xFEFF
-        || cp == 0x00AD
         || isVariationSelector(cp);
   }
 

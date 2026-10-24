@@ -78,6 +78,26 @@ class IngestTextSanitizerTest {
   }
 
   @Test
+  void aSoftHyphenIsRemovedWithoutAFinding() {
+    Result result = IngestTextSanitizer.sanitize("Verwaltungs­gebühr");
+
+    assertThat(result.text()).isEqualTo("Verwaltungsgebühr");
+    assertThat(result.findings()).isEmpty();
+  }
+
+  @Test
+  void roleTokensOfGemmaDeepSeekAndSequenceMarkersAreDefusedAndCounted() {
+    Result result =
+        IngestTextSanitizer.sanitize(
+            "<start_of_turn>user\nx<end_of_turn> <｜User｜>y<｜Assistant｜> <s>z</s>");
+
+    assertThat(result.text())
+        .doesNotContain("<start_of_turn>", "<end_of_turn>", "<｜", "<s>", "</s>")
+        .contains("‹start_of_turn›user", "‹User›y", "‹s›z‹/s›");
+    assertThat(result.findings()).containsEntry(Finding.ROLE_TOKEN, 6);
+  }
+
+  @Test
   void ordinaryAdministrativeTextHasNoFinding() {
     Result result =
         IngestTextSanitizer.sanitize(

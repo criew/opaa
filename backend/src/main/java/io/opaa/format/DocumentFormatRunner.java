@@ -90,8 +90,9 @@ public final class DocumentFormatRunner {
   /**
    * Chunk texts and the format's title properties cleaned by {@link IngestTextSanitizer} - the one
    * place every format and every connector passes, so index, context prefix, prompt and citation
-   * check see the same text. Id and metadata of a chunk stay as they are. What the cleanup found is
-   * logged as counts per class, never with content.
+   * check see the same text. Id and metadata of a chunk stay as they are. What the cleanup found
+   * travels in {@link DocumentFormatResult#sanitizerFindings()} and is logged as counts per class,
+   * never with content.
    */
   private static DocumentFormatResult sanitized(
       DocumentFormatResult result, DocumentFormatSource source) {
@@ -124,7 +125,8 @@ public final class DocumentFormatRunner {
         chunks,
         result.discoveredAttachments(),
         result.contentByteSizeOverride(),
-        properties);
+        properties,
+        findings);
   }
 
   private static DocumentFormatResult withFormatExtension(

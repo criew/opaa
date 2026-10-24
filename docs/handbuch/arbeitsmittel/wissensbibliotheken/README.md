@@ -321,11 +321,12 @@ dem Text der Chunks und aus Titel und erster Überschrift Zeichen, die in einem 
 nichts bedeuten, aber Text vor dem Auge verbergen können: unsichtbare Zeichen des Unicode-Tag-Blocks,
 Steuerzeichen der Schreibrichtung, Zeichen ohne Breite (außer dem Verbinder innerhalb eines Emoji),
 Variantenwähler außerhalb eines Emoji und weiche Trennstriche. Besondere Leerzeichen werden zu
-normalen, und Rollen-Markierungen der Modellformate wie `<|im_start|>` werden entschärft. Umlaute,
+normalen, und Rollen-Markierungen der Modellformate wie `<|im_start|>` oder `<start_of_turn>`
+werden entschärft. Umlaute,
 Schrift von rechts nach links und Emoji bleiben unverändert; ähnlich aussehende Buchstaben anderer
 Schriften werden nicht ersetzt. Index, Antwort-Prompt und Belegprüfung sehen denselben bereinigten
-Text. Typische Wendungen wie „ignoriere alle vorherigen Anweisungen“ bleiben im Text; das Log nennt
-je Dokument nur, wie oft welche Art gefunden wurde, nie den Inhalt.
+Text. Typische Wendungen wie „ignoriere alle vorherigen Anweisungen“ und Adressen mit einem
+Platzhalter für Daten bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1).
 
 Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 
@@ -388,6 +389,18 @@ Jedes Dokument eines Laufs endet in genau einem von fünf Ergebnissen: **verarbe
 **übersprungen**, **Kontingent überschritten**, **kein extrahierbarer Text** oder
 **fehlgeschlagen**. Daraus ergeben sich die Zähler des Laufs; Anhänge zählen mit.
 
+**Auffällige Muster.** Findet die Bereinigung (Abschnitt 5.4) in einem verarbeiteten Dokument Muster,
+die typisch für untergeschobene Anweisungen an das Modell sind, bekommt das Dokument zusätzlich einen
+Eintrag „Auffällige Muster“ im Laufprotokoll. Gezählt werden vier Arten: entfernte unsichtbare
+Zeichen, entschärfte Rollen-Markierungen, Wendungen wie „ignoriere alle vorherigen Anweisungen“ oder
+„you are now“ und Adressen mit einem Platzhalter für Daten. Weiche Trennstriche werden entfernt, aber
+nicht gezählt, weil Textverarbeitungen sie üblicherweise setzen. Der Eintrag nennt nur die Anzahl je
+Art, nie den Inhalt; das Dokument ist trotzdem aufgenommen und zählt als verarbeitet. Ein Treffer
+ist ein Hinweis zum Nachsehen, kein Beleg für einen Angriff: Eine Schulungsunterlage über
+Prompt-Injection enthält solche Wendungen ganz legitim. Ein Upload hat kein Laufprotokoll; dort
+erscheint der Befund nur in Log und Metrik. Die Metrik zählt je Bibliothek und Art die Dokumente mit
+Treffer ([Überwachung](../../betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+
 ### 6.2 Laufprotokoll
 
 Jeder Lauf führt ein Protokoll mit einer lesbaren Begründung je Eintrag.
@@ -404,6 +417,7 @@ Jeder Lauf führt ein Protokoll mit einer lesbaren Begründung je Eintrag.
 | Ratenbegrenzung | die Quelle hat den Lauf gebremst; eine Zeile je Lauf mit Anzahl und Wartezeit |
 | Anfragebudget erschöpft | der Lauf endete geordnet unvollständig; die Zeile nennt, wo der nächste fortsetzt |
 | Kennzahlen | Anfragen, geladene Bytes, gelistete und verarbeitete Objekte, Dauer; bei Konnektoren, die sie zählen |
+| Auffällige Muster | verarbeitet, aber mit Mustern untergeschobener Anweisungen; nur Anzahl je Art (Abschnitt 6.1) |
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |
 
 - Je Lauf werden höchstens 500 Einträge gespeichert, darüber hinaus nur gezählt („… und N

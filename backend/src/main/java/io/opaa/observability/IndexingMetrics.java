@@ -2,10 +2,12 @@ package io.opaa.observability;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.UUID;
 
 /** Encapsulates all Micrometer metrics related to the document indexing pipeline. */
 public class IndexingMetrics {
 
+  private final MeterRegistry meterRegistry;
   private final Counter processedCounter;
   private final Counter skippedCounter;
   private final Counter failedCounter;
@@ -14,6 +16,7 @@ public class IndexingMetrics {
   private final Counter embeddingInputCutCounter;
 
   public IndexingMetrics(MeterRegistry meterRegistry) {
+    this.meterRegistry = meterRegistry;
     this.processedCounter =
         Counter.builder("opaa.indexing.documents")
             .tag("result", "processed")
@@ -70,5 +73,18 @@ public class IndexingMetrics {
 
   public void recordEmbeddingInputsCut(int count) {
     embeddingInputCutCounter.increment(count);
+  }
+
+  /**
+   * One indexed document of {@code libraryId} whose text showed {@code patternClass}, a pattern
+   * typical of prompt injection; tagged with the library's id only, never its name or content.
+   */
+  public void recordSuspiciousPattern(UUID libraryId, String patternClass) {
+    Counter.builder("opaa.indexing.suspicious.patterns")
+        .tag("library", String.valueOf(libraryId))
+        .tag("class", patternClass)
+        .description("Indexed documents with a pattern typical of prompt injection")
+        .register(meterRegistry)
+        .increment();
   }
 }
