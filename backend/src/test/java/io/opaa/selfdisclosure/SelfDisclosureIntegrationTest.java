@@ -267,17 +267,24 @@ class SelfDisclosureIntegrationTest {
     manyNotifications();
     String ticket = ticketOf("dev-user");
 
-    HttpResponse<InputStream> response = openDownload(ticket);
-    assertThat(response.statusCode()).isEqualTo(200);
-    try (InputStream body = response.body()) {
-      body.readNBytes(4096);
-      registry.stop();
-      assertThatThrownBy(() -> readSlowly(body)).isInstanceOf(IOException.class);
-    } finally {
-      registry.start();
-    }
+    RequestThreadWarnings warnings = RequestThreadWarnings.attach();
+    try {
+      HttpResponse<InputStream> response = openDownload(ticket);
+      assertThat(response.statusCode()).isEqualTo(200);
+      try (InputStream body = response.body()) {
+        body.readNBytes(4096);
+        registry.stop();
+        assertThatThrownBy(() -> readSlowly(body)).isInstanceOf(IOException.class);
+      } finally {
+        registry.start();
+      }
 
-    assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("SHUTDOWN");
+      assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("SHUTDOWN");
+      // regression guard for #3024: a shutdown is expected, it breaks the connection quietly
+      assertThat(warnings.awaitAny(Duration.ofSeconds(3))).isEmpty();
+    } finally {
+      warnings.detach();
+    }
     mockMvc
         .perform(get(STATUS).with(dev("dev-user")))
         .andExpect(jsonPath("$.completedToday").value(0))

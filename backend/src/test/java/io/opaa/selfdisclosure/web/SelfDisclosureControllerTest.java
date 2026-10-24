@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import org.apache.coyote.CloseNowException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -50,9 +51,22 @@ class SelfDisclosureControllerTest {
     assertThat(response.getStatus()).isEqualTo(200);
   }
 
+  /**
+   * Deadline and shutdown are expected: the container closes the connection on its own signal and
+   * logs it at DEBUG only, the service has already logged the abort in one line.
+   */
   @Test
-  void anExportEndedByTheServerAfterTheStartFailsSoTheConnectionBreaks() {
-    when(service.stream(any(), any())).thenReturn(Outcome.ABORTED_BY_SERVER);
+  void anExpectedEndByTheServerAfterTheStartClosesTheConnectionQuietly() {
+    when(service.stream(any(), any())).thenReturn(Outcome.ENDED_BY_SERVER);
+    response.setCommitted(true);
+
+    assertThatThrownBy(() -> controller.downloadSelfDisclosure("ticket", response))
+        .isInstanceOf(CloseNowException.class);
+  }
+
+  @Test
+  void aFailureAfterTheStartBreaksTheConnectionVisibly() {
+    when(service.stream(any(), any())).thenReturn(Outcome.FAILED);
     response.setCommitted(true);
 
     assertThatThrownBy(() -> controller.downloadSelfDisclosure("ticket", response))
@@ -60,11 +74,14 @@ class SelfDisclosureControllerTest {
   }
 
   @Test
-  void anExportEndedByTheServerBeforeTheStartAnswers503() {
-    when(service.stream(any(), any())).thenReturn(Outcome.ABORTED_BY_SERVER);
+  void anExportEndedBeforeTheStartAnswers503() {
+    for (Outcome outcome : new Outcome[] {Outcome.ENDED_BY_SERVER, Outcome.FAILED}) {
+      MockHttpServletResponse uncommitted = new MockHttpServletResponse();
+      when(service.stream(any(), any())).thenReturn(outcome);
 
-    assertThatThrownBy(() -> controller.downloadSelfDisclosure("ticket", response))
-        .isInstanceOf(ServiceUnavailableException.class);
-    assertThat(response.getHeader("Content-Disposition")).isNull();
+      assertThatThrownBy(() -> controller.downloadSelfDisclosure("ticket", uncommitted))
+          .isInstanceOf(ServiceUnavailableException.class);
+      assertThat(uncommitted.getHeader("Content-Disposition")).isNull();
+    }
   }
 }

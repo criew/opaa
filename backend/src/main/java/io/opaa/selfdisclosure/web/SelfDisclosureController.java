@@ -68,7 +68,7 @@ public class SelfDisclosureController {
     response.setHeader("X-Accel-Buffering", "no");
     Outcome outcome = service.stream(run, response.getOutputStream());
     // A client that went away hears nothing more; failing would only log an expected abort.
-    if (outcome == Outcome.ABORTED_BY_SERVER) {
+    if (outcome != Outcome.DELIVERED && outcome != Outcome.CLIENT_DISCONNECTED) {
       // Once the ZIP has begun, GlobalExceptionHandler cannot answer any more and lets the
       // failure reach the container, which breaks the connection instead of ending it cleanly.
       if (!response.isCommitted()) {

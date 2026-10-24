@@ -315,7 +315,7 @@ public class SelfDisclosureService {
       metrics.completed(elapsed(run), archive.bytes());
       return Outcome.DELIVERED;
     } catch (Exception | Error failure) {
-      AbortCause cause = causeOf(failure);
+      AbortCause cause = causeOf(failure, archive.responseFailed());
       if (cause == AbortCause.ERROR) {
         log.error("Self-disclosure export {} failed", run.runId(), failure);
       } else {
@@ -331,7 +331,7 @@ public class SelfDisclosureService {
       metrics.aborted(cause.name(), elapsed(run), archive.bytes());
       return cause == AbortCause.CLIENT_DISCONNECTED
           ? Outcome.CLIENT_DISCONNECTED
-          : Outcome.ABORTED_BY_SERVER;
+          : cause == AbortCause.ERROR ? Outcome.FAILED : Outcome.ENDED_BY_SERVER;
     } finally {
       registry.unwatch(control);
       registry.release();
@@ -381,7 +381,7 @@ public class SelfDisclosureService {
     return json.writerWithDefaultPrettyPrinter().writeValueAsBytes(manifest);
   }
 
-  static AbortCause causeOf(Throwable failure) {
+  static AbortCause causeOf(Throwable failure, boolean responseFailed) {
     for (Throwable t = failure; t != null; t = t.getCause()) {
       if (t instanceof SelfDisclosureAbort abort) {
         return abort.abortCause();
@@ -501,10 +501,12 @@ public class SelfDisclosureService {
   public enum Outcome {
     /** Completed and counted. */
     DELIVERED,
-    /** The client went away; nobody listens any more. */
+    /** Writing into the response failed: the client went away, nobody listens any more. */
     CLIENT_DISCONNECTED,
-    /** Ended by the server (deadline, shutdown, lost reservation, failure). */
-    ABORTED_BY_SERVER
+    /** Ended as expected by the server: the deadline passed or the instance shuts down. */
+    ENDED_BY_SERVER,
+    /** Ended by an unexpected failure, a lost reservation included. */
+    FAILED
   }
 
   /**
