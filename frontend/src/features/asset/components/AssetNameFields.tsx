@@ -10,6 +10,8 @@ interface AssetNameFieldsProps {
   description: string
   onDescriptionChange: (description: string) => void
   namePlaceholder: string
+  /** The issue of the name, shown at the field. */
+  nameError?: string | null
 }
 
 /** Name and description of a new asset - the first step of every creation wizard. */
@@ -20,6 +22,7 @@ export default function AssetNameFields({
   description,
   onDescriptionChange,
   namePlaceholder,
+  nameError = null,
 }: AssetNameFieldsProps) {
   return (
     <>
@@ -32,6 +35,8 @@ export default function AssetNameFields({
           onChange={(e) => onNameChange(e.target.value)}
           placeholder={namePlaceholder}
           fullWidth
+          error={nameError !== null}
+          helperText={nameError}
           slotProps={{ htmlInput: { maxLength: 255 } }}
         />
       </Box>

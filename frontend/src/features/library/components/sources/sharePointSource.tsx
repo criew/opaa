@@ -1,18 +1,21 @@
 import {
   EMPTY_SHAREPOINT_VALUES,
   sharePointLibrariesOf,
+  sharePointCoverageLabel,
   sharePointLibraryLabel,
   sharePointPayloadOf,
   sharePointSettingsFromLibrary,
   validateSharePointValues,
   type SharePointSourceValues,
 } from '../../utils/sharePointSource'
-import SharePointSourceForm from '../SharePointSourceForm'
+import SharePointForm from '../sourceForms/SharePointForm'
+import { listSummary } from '../sourceKit/summaries'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
-import { formIssue, formIssueOf } from '../../utils/sourceIssue'
-import { connectionFields } from './sourceConnection'
+import { formIssue, issueAt } from '../../utils/sourceIssue'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
+
+const selectionIssue = (message: string | null) => (message ? issueAt('selection', message) : null)
 
 /** The name a run's container key (`drive:<id>`) has in the stored settings, the key otherwise. */
 function containerName(key: string, library: StoredLibrarySource) {
@@ -41,22 +44,27 @@ export const sharePointSource: SourceRegistration = {
     validate: (values: SharePointSourceValues, context) =>
       context.mode === 'create' && !context.connection
         ? formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')
-        : formIssueOf(validateSharePointValues(values)),
+        : selectionIssue(validateSharePointValues(values)),
+    issues: (values: SharePointSourceValues, context) => {
+      const issue =
+        context.mode === 'create' && !context.connection
+          ? formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')
+          : selectionIssue(validateSharePointValues(values))
+      return issue ? [issue] : []
+    },
+    summary: (values: SharePointSourceValues) => [
+      listSummary(
+        'Dokumentbibliotheken',
+        values.libraries.map(
+          (library) => `${sharePointLibraryLabel(library)} (${sharePointCoverageLabel(library)})`,
+        ),
+        'Keine',
+      ),
+    ],
     toPayload: sharePointPayloadOf,
     nameFromSource: (values: SharePointSourceValues) =>
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
-    Form: ({ values, onChange, context }) => (
-      <SharePointSourceForm
-        // listings belong to the profile they were made through; another one starts them afresh
-        key={context.connection?.profileId ?? 'no-profile'}
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-sharepoint`}
-        libraryId={context.libraryId}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    Form: SharePointForm,
     StoredView: SharePointStoredView,
     Scope: SharePointScopeView,
     scopeHero: {

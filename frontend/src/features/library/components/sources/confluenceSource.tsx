@@ -3,15 +3,55 @@ import {
   confluenceSettingsOf,
   confluenceSpaceLabel,
   EMPTY_CONFLUENCE_VALUES,
-  confluenceIssue,
   type ConfluenceSourceValues,
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
-import ConfluenceSourceForm from '../ConfluenceSourceForm'
+import ConfluenceForm from '../sourceForms/ConfluenceForm'
+import { listSummary } from '../sourceKit/summaries'
+import { detectedConfluenceEdition, MAX_CONFLUENCE_SPACES } from '../../utils/confluenceSource'
+import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
+import type { SourceIssue } from '../../utils/sourceIssue'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceFormContext, SourceRegistration } from './types'
+
+/**
+ * Every issue at once. Edition and verified credentials are no issues of their own here: the
+ * connection test before „Weiter“ detects the one and checks the other (Variante E).
+ */
+function confluenceIssues(
+  values: ConfluenceSourceValues,
+  context: SourceFormContext,
+): SourceIssue[] {
+  const issues: SourceIssue[] = []
+  const url = values.sourceUrl.trim()
+  if (url === '') issues.push({ field: 'sourceUrl', message: 'Bitte die Adresse eingeben.' })
+  else if (!/^https?:\/\//i.test(url)) {
+    issues.push({ field: 'sourceUrl', message: 'Die Adresse beginnt mit https:// oder http://.' })
+  }
+  const stored =
+    context.mode === 'edit' &&
+    context.credentialsStored &&
+    sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)
+  if (connectionFields(context).asksSecret && !stored) {
+    if (values.edition !== 'DATA_CENTER' && values.email.trim() === '') {
+      issues.push({ field: 'email', message: 'Bitte die Kennung eingeben.' })
+    }
+    if (values.token.trim() === '') {
+      issues.push({ field: 'token', message: 'Bitte das Kennwort eingeben.' })
+    }
+  }
+  if (values.spaces.length === 0) {
+    issues.push({ field: 'selection', message: 'Bitte mindestens einen Space auswählen.' })
+  } else if (values.spaces.length > MAX_CONFLUENCE_SPACES) {
+    issues.push({
+      field: 'selection',
+      message: `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces je Bibliothek.`,
+    })
+  }
+  return issues
+}
 
 export const confluenceSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.CONFLUENCE,
@@ -31,7 +71,24 @@ export const confluenceSource: SourceRegistration = {
       spaces: confluenceSettingsOf(library).spaces ?? [],
     }),
     isDirty: (values: ConfluenceSourceValues) => values.sourceUrl !== '',
-    validate: (values: ConfluenceSourceValues) => confluenceIssue(values),
+    issues: confluenceIssues,
+    validate: (values: ConfluenceSourceValues, context) =>
+      confluenceIssues(values, context)[0] ?? null,
+    onTested: (details, values: ConfluenceSourceValues) => {
+      const edition = detectedConfluenceEdition(details) ?? values.edition
+      return edition ? { edition, credentialsVerified: true } : null
+    },
+    summary: (values: ConfluenceSourceValues) => [
+      { label: 'Adresse', value: values.sourceUrl.trim() },
+      ...(values.edition
+        ? [{ label: 'Edition', value: confluenceEditionLabel(values.edition) }]
+        : []),
+      listSummary(
+        'Spaces',
+        values.spaces.map((space) => space.name ?? space.key),
+        'Keine',
+      ),
+    ],
     toPayload: (values: ConfluenceSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: confluenceCredentialsOf(values),
@@ -45,18 +102,7 @@ export const confluenceSource: SourceRegistration = {
       if (!first) return ''
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
-    Form: ({ values, onChange, context }) => (
-      <ConfluenceSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-confluence`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    Form: ConfluenceForm,
     StoredView: ConfluenceStoredView,
     Scope: ConfluenceScope,
     scopeHero: {

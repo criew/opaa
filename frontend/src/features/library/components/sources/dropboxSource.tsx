@@ -6,9 +6,9 @@ import {
   dropboxIssue,
   type DropboxSourceValues,
 } from '../../utils/dropboxSource'
-import DropboxSourceForm from '../DropboxSourceForm'
+import DropboxForm from '../sourceForms/DropboxForm'
+import { folderSummary } from '../sourceKit/summaries'
 import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
-import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -27,7 +27,18 @@ export const dropboxSource: SourceRegistration = {
       }
     },
     isDirty: (values: DropboxSourceValues) => values.folders.trim() !== '/' || values.teamSpace,
-    validate: (values: DropboxSourceValues) => dropboxIssue(values),
+    issues: (values: DropboxSourceValues) => {
+      const issue = dropboxIssue(values)
+      return issue ? [{ message: issue.message, field: 'selection' }] : []
+    },
+    validate: (values: DropboxSourceValues) => {
+      const issue = dropboxIssue(values)
+      return issue && { message: issue.message, field: 'selection' }
+    },
+    summary: (values: DropboxSourceValues) => [
+      folderSummary(values.folders),
+      { label: 'Team-Bereich', value: values.teamSpace ? 'Ja' : 'Nein' },
+    ],
     toPayload: (values: DropboxSourceValues) => ({
       sourceSettings: dropboxSettingsFrom(values),
     }),
@@ -37,15 +48,7 @@ export const dropboxSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    Form: ({ values, onChange, context }) => (
-      <DropboxSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-dropbox`}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    Form: DropboxForm,
     StoredView: DropboxStoredView,
     Scope: DropboxScope,
     scopeHero: {

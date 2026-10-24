@@ -12,7 +12,10 @@ import {
   filesystemIssue,
   type FilesystemSourceValues,
 } from '../../utils/filesystemSource'
-import { PathForm, StoredConnection, UrlForm } from './GenericSourceViews'
+import { StoredConnection, UrlForm } from './GenericSourceViews'
+import FilesystemForm from '../sourceForms/FilesystemForm'
+import { collectIssues, unifyMissing } from '../sourceKit/collectIssues'
+import { filesystemPatternsOf } from '../../utils/filesystemSource'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceConfiguration, SourceRegistration } from './types'
 
@@ -50,13 +53,24 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
     draftFields: ['sourcePath', 'sourceUrl', 'excludePatterns'],
     fromLibrary: storedFilesystemValues,
     isDirty: (values) => values.sourcePath !== '' || values.excludePatterns.trim() !== '',
+    issues: (values) =>
+      unifyMissing(collectIssues(values, filesystemIssue, { sourcePath: '/stand-in' }), values, {
+        sourcePath: 'das Verzeichnis',
+      }),
     validate: (values) => filesystemIssue(values),
+    summary: (values) => [
+      { label: 'Verzeichnis', value: values.sourcePath.trim() },
+      {
+        label: 'Ausschlussmuster',
+        value: filesystemPatternsOf(values.excludePatterns).join(', ') || 'Keine',
+      },
+    ],
     toPayload: filesystemPayload,
     nameFromSource: (values) => {
       const segments = values.sourcePath.split(/[\\/]+/).filter(Boolean)
       return segments.length > 0 ? segments[segments.length - 1] : ''
     },
-    Form: PathForm,
+    Form: FilesystemForm,
     StoredView: ({ library, libraryId }) => (
       <StoredConnection library={library} libraryId={libraryId} kind="path" />
     ),

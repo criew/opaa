@@ -16,6 +16,10 @@ import LibraryScheduleForm from './LibraryScheduleForm'
 import SourceConsentPanel from './SourceConsentPanel'
 import { SourceIssueContext } from './sources/sourceIssueContext'
 import type { SourceFormContext, SourceRegistration } from './sources/types'
+import ConnectionCheck from './sourceKit/ConnectionCheck'
+import type { ConnectionCheckState } from './sourceKit/useConnectionCheck'
+import { FieldGroup } from './sourceKit/fields'
+import type { SourceConnectionTestResponse } from '@/shared/api/types'
 
 interface CreateSourceSetupStepProps {
   showConnectionSelect: boolean
@@ -34,7 +38,10 @@ interface CreateSourceSetupStepProps {
   SourceForm: NonNullable<SourceRegistration['configuration']>['Form'] | undefined
   awaitsConsent: boolean
   sourceFormRef: Ref<HTMLDivElement>
-  sourceIssue: SourceIssue | null
+  sourceIssues: SourceIssue[]
+  check: ConnectionCheckState
+  checkId: string
+  onTested: (result: SourceConnectionTestResponse | undefined) => void
   values: unknown
   formContext: SourceFormContext
   onSourceChange: (patch: object) => void
@@ -63,7 +70,10 @@ export default function CreateSourceSetupStep({
   SourceForm,
   awaitsConsent,
   sourceFormRef,
-  sourceIssue,
+  sourceIssues,
+  check,
+  checkId,
+  onTested,
   values,
   formContext,
   onSourceChange,
@@ -75,7 +85,7 @@ export default function CreateSourceSetupStep({
   firstRunHint,
 }: CreateSourceSetupStepProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 640 }}>
       {showConnectionSelect && descriptor && (
         <ConnectionProfileSelect
           descriptor={descriptor}
@@ -100,7 +110,7 @@ export default function CreateSourceSetupStep({
       )}
       {SourceForm && connectionChoice !== null && !awaitsConsent && (
         <Box ref={sourceFormRef}>
-          <SourceIssueContext value={sourceIssue}>
+          <SourceIssueContext value={sourceIssues}>
             <SourceForm
               // a new profile starts the form afresh, so no probe result outlives its profile
               key={connectionChoice}
@@ -111,34 +121,35 @@ export default function CreateSourceSetupStep({
           </SourceIssueContext>
         </Box>
       )}
+      {SourceForm && connectionChoice !== null && !awaitsConsent && check.available && (
+        <ConnectionCheck check={check} id={checkId} onTested={onTested} />
+      )}
 
       {/* Schedule and immediate start apply to every connector type. */}
-      <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
-          Zeitplan
-        </Typography>
+      <FieldGroup title="Zeitplan">
         <LibraryScheduleForm
           idPrefix="library-create-schedule"
           values={schedule}
           onChange={onScheduleChange}
           confluence={confluenceRhythm}
         />
-        <FormControlLabel
-          sx={{ mt: 2 }}
-          control={
-            <Switch
-              checked={startFirstRun}
-              onChange={(e) => onStartFirstRunChange(e.target.checked)}
-            />
-          }
-          label="Erste Indizierung sofort nach dem Anlegen starten"
-        />
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-          {startFirstRun
-            ? firstRunHint
-            : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
-        </Typography>
-      </Box>
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={startFirstRun}
+                onChange={(e) => onStartFirstRunChange(e.target.checked)}
+              />
+            }
+            label="Nach dem Anlegen sofort indizieren"
+          />
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            {startFirstRun
+              ? firstRunHint
+              : 'Sonst erst nach Zeitplan oder über „Jetzt indizieren“.'}
+          </Typography>
+        </Box>
+      </FieldGroup>
     </Box>
   )
 }

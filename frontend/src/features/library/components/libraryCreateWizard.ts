@@ -3,28 +3,29 @@ import { readConsentIntent, type SourceConsentIntent } from './sourceConsent'
 import { sourceRegistration } from './sources/registry'
 
 /**
- * The wizard's steps: the first two are named after what one does in them, „Name & Beschreibung“
- * and „Freigaben“ after the head and tab of the detail view. An upload library has no source and
- * therefore three steps.
+ * The wizard's steps, one word each in the step bar (Prüfliste #9). An upload library has no
+ * source; every wizard ends with „Prüfen“ before anything is created (Prüfliste #32).
  */
 export const STEP_SOURCE_TYPE = 'Quellart'
-export const STEP_SOURCE_SETUP = 'Quelle einrichten'
-export const STEP_NAME = 'Name & Beschreibung'
+export const STEP_SOURCE_SETUP = 'Quelle'
+export const STEP_NAME = 'Name'
 export const STEP_SHARING = 'Freigaben'
+export const STEP_REVIEW = 'Prüfen'
 
 /** A private library has no sharing step: only its owner ever reads it. */
 export function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
-  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING]
+  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING, STEP_REVIEW]
   return privateLibrary
-    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME]
-    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING]
+    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_REVIEW]
+    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING, STEP_REVIEW]
 }
 
 export const stepHeadings: Record<string, string> = {
   [STEP_SOURCE_TYPE]: 'Woher kommt das Wissen?',
   [STEP_SOURCE_SETUP]: 'Quelle einrichten',
-  [STEP_NAME]: 'Name & Beschreibung',
+  [STEP_NAME]: 'Name und Beschreibung',
   [STEP_SHARING]: 'Freigaben',
+  [STEP_REVIEW]: 'Prüfen',
 }
 
 export const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'

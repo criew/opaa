@@ -7,11 +7,43 @@ import {
   smbIssue,
   type SmbSourceValues,
 } from '../../utils/smbSource'
-import SmbSourceForm from '../SmbSourceForm'
+import FolderShareForm, { type FolderShareShape } from '../sourceForms/FolderShareForm'
+import { collectIssues, unifyMissing } from '../sourceKit/collectIssues'
+import { folderSummary } from '../sourceKit/summaries'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceFormContext, SourceRegistration } from './types'
+
+const smbShape: FolderShareShape<SmbSourceValues> = {
+  type: 'SMB',
+  rootLabel: 'Freigabe',
+  userKey: 'account',
+  secretKey: 'password',
+  addressPlaceholder: 'smb://dateiserver/Freigabe',
+  addressHint: 'Server und Freigabe, auch als \\\\server\\freigabe.',
+  userPlaceholder: 'DOMÄNE\\dienstkonto',
+  secretHint: 'Kennwort des Dienstkontos',
+  credentialsOf: smbCredentialsOf,
+  keepsCredentials: (original, url) => sameSmbShare(original, url),
+}
+
+const smbIssues = (values: SmbSourceValues, context: SourceFormContext) =>
+  unifyMissing(
+    collectIssues(
+      values,
+      (v) =>
+        smbIssue(
+          v,
+          !connectionFields(context).asksSecret ||
+            (context.credentialsStored && sameSmbShare(context.originalSourceUrl, v.sourceUrl)),
+        ),
+      { sourceUrl: 'smb://stand.in/freigabe', account: 'stand-in', password: 'stand-in' },
+      (field) => (field === 'folders' ? 'selection' : field),
+    ),
+    values,
+    { sourceUrl: 'die Adresse', account: 'die Kennung', password: 'das Kennwort' },
+  )
 
 export const smbSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.SMB,
@@ -30,12 +62,12 @@ export const smbSource: SourceRegistration = {
       values.account !== '' ||
       values.password !== '' ||
       values.folders.trim() !== '/',
-    validate: (values: SmbSourceValues, context) =>
-      smbIssue(
-        values,
-        !connectionFields(context).asksSecret ||
-          (context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl)),
-      ),
+    issues: smbIssues,
+    validate: (values: SmbSourceValues, context) => smbIssues(values, context)[0] ?? null,
+    summary: (values: SmbSourceValues) => [
+      { label: 'Adresse', value: values.sourceUrl.trim() },
+      folderSummary(values.folders),
+    ],
     toPayload: (values: SmbSourceValues) => {
       const folders = smbFoldersOf(values)
       return {
@@ -58,18 +90,7 @@ export const smbSource: SourceRegistration = {
         return share
       }
     },
-    Form: ({ values, onChange, context }) => (
-      <SmbSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-smb`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    Form: (props) => <FolderShareForm {...props} shape={smbShape} />,
     StoredView: SmbStoredView,
     Scope: SmbScope,
     scopeHero: {

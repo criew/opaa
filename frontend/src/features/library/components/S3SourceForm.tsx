@@ -120,7 +120,8 @@ export default function S3SourceForm({
   )
   // every report of a pattern issue opens the section, even with the message of the previous one:
   // a report is a new issue object. The section stays open after the issue is cleared.
-  const reportedIssue = useContext(SourceIssueContext)
+  const reported = useContext(SourceIssueContext)
+  const reportedIssue = Array.isArray(reported) ? (reported[0] ?? null) : reported
   const patternIssue = includeIssue !== null || excludeIssue !== null ? reportedIssue : null
   const [shownPatternIssue, setShownPatternIssue] = useState<SourceIssue | null>(null)
   if (patternIssue !== shownPatternIssue) {

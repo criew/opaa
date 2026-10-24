@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 
 interface LibraryCreateFooterProps {
   activeStep: number
@@ -8,25 +9,30 @@ interface LibraryCreateFooterProps {
   submitting: boolean
   /** Grants noted in the sharing step, counted while that step is shown; 0 hides the count. */
   pendingGrantCount: number
-  nextDisabled: boolean
+  /** „Weiter“, or „Zur Prüfung“ after „Ändern“ on the review. */
+  nextLabel: string
+  /** The automatic connection test before „Weiter“ is running. */
+  nextBusy: boolean
   /** Why nothing can be created; it also describes the create button. */
   missingCapability: string | null
-  hasName: boolean
   onCancel: () => void
   onBack: () => void
   onNext: () => void
   onCreate: () => void
 }
 
-/** The wizard's button row: cancel, back, next or create. */
+/**
+ * The wizard's button row: cancel, back, next or create. The primary button is never disabled
+ * (Prüfliste #28); while a request runs it shows its progress and swallows further clicks.
+ */
 export default function LibraryCreateFooter({
   activeStep,
   stepCount,
   submitting,
   pendingGrantCount,
-  nextDisabled,
+  nextLabel,
+  nextBusy,
   missingCapability,
-  hasName,
   onCancel,
   onBack,
   onNext,
@@ -61,20 +67,26 @@ export default function LibraryCreateFooter({
         </Button>
       )}
       {activeStep < stepCount - 1 ? (
-        <Button variant="contained" onClick={onNext} disabled={nextDisabled}>
-          Weiter
-        </Button>
+        <BusyButton
+          variant="contained"
+          onClick={onNext}
+          busy={nextBusy}
+          busyAnnouncement="Verbindung wird getestet"
+        >
+          {nextBusy ? 'Verbindung wird getestet …' : nextLabel}
+        </BusyButton>
       ) : (
-        <Button
+        <BusyButton
           variant="contained"
           onClick={onCreate}
-          disabled={submitting || missingCapability !== null || !hasName}
+          busy={submitting}
+          busyAnnouncement="Bibliothek wird angelegt"
           aria-describedby={
             missingCapability !== null ? 'library-create-capability-hint' : undefined
           }
         >
           {submitting ? 'Wird angelegt …' : 'Bibliothek anlegen'}
-        </Button>
+        </BusyButton>
       )}
     </Box>
   )

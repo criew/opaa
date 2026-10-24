@@ -5,13 +5,19 @@ import type { SourceIssue } from '../../utils/sourceIssue'
 /** Marks the message of an issue in a helper text, so the field it describes can be found. */
 export const ISSUE_MARKER = 'data-source-issue'
 
-/** Hands the issue of a failed save to the source form, which shows it at its field. */
-export const SourceIssueContext = createContext<SourceIssue | null>(null)
+/** Hands the issues of a failed save to the source form, which shows each at its field. */
+export const SourceIssueContext = createContext<SourceIssue[] | SourceIssue | null>(null)
 
-/** Looks up the message of the current issue for one form value, null for any other value. */
+/** Looks up the message of the current issues for one form value, null for any other value. */
 export function useSourceIssue(): (field: string) => string | null {
-  const issue = useContext(SourceIssueContext)
-  return (field) => (issue?.field === field ? issue.message : null)
+  const value = useContext(SourceIssueContext)
+  const issues = value === null ? [] : Array.isArray(value) ? value : [value]
+  return (field) => issues.find((issue) => issue.field === field)?.message ?? null
+}
+
+/** The DOM id of the control a form value is entered in, so an error summary can jump there. */
+export function fieldDomId(idPrefix: string, field: string): string {
+  return `${idPrefix}-f-${field.replace(/[^A-Za-z0-9_-]/g, '-')}`
 }
 
 /**

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,7 +11,13 @@ import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
 import type { SourceFormContext } from '../components/sources/types'
-import { reportSourceIssue } from '../components/sources/reportSourceIssue'
+import { allSourceIssues, sourceTestRequest } from '../components/sources/sourceFrame'
+import { fieldDomId } from '../components/sources/sourceIssueContext'
+import { useConnectionCheck } from '../components/sourceKit/useConnectionCheck'
+import ErrorSummary, { type SummaryIssue } from '../components/sourceKit/ErrorSummary'
+import CreateReviewStep, { type ReviewSection } from '../components/CreateReviewStep'
+import { scheduleFrequencyLabel, scheduleWeekdayLabel } from '../components/scheduleLabels'
+import { notify } from '@/shared/stores/notificationStore'
 import type { SourceIssue } from '../utils/sourceIssue'
 import {
   OWN_ADDRESS,
@@ -64,6 +71,7 @@ import {
   NOTHING_CREATABLE,
   PENDING_CONNECTION_UNUSABLE,
   STEP_NAME,
+  STEP_REVIEW,
   STEP_SHARING,
   STEP_SOURCE_SETUP,
   STEP_SOURCE_TYPE,
@@ -93,8 +101,14 @@ export default function LibraryCreatePage() {
   const draft = restored?.draft
   const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
   const [error, setError] = useState<string | null>(null)
-  // an issue of the source form that names a field; it is shown there instead of in `error`
-  const [sourceIssue, setSourceIssue] = useState<SourceIssue | null>(null)
+  // the issues of the source form, each shown at its field and gathered in the error summary
+  const [sourceIssues, setSourceIssues] = useState<SourceIssue[]>([])
+  // issues of the step that belong to no source field (name, group, connection test)
+  const [otherIssues, setOtherIssues] = useState<SummaryIssue[]>([])
+  const [nameError, setNameError] = useState<string | null>(null)
+  // after „Ändern“ on the review, the step's primary button leads straight back to it
+  const [returnToReview, setReturnToReview] = useState(false)
+  const summaryRef = useRef<HTMLDivElement>(null)
   const sourceFormRef = useRef<HTMLDivElement>(null)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
@@ -233,7 +247,7 @@ export default function LibraryCreatePage() {
       }))
     }
     setError(null)
-    setSourceIssue(null)
+    setSourceIssues([])
   }
   // a new library has no rhythm of its own yet; empty means the instance's, named by the type
   const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
@@ -343,7 +357,67 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleNext = () => {
+  const formReady = configuration !== null && connectionChoice !== null && !awaitsConsent
+  const check = useConnectionCheck(
+    formReady && configuration ? sourceTestRequest(configuration, values, formContext) : null,
+  )
+  const CHECK_ID = 'library-create-check'
+
+  /** Shows the issues at their fields and in the summary, which takes the focus (Prüfliste #29). */
+  function showIssues(source: SourceIssue[], other: SummaryIssue[]) {
+    flushSync(() => {
+      setSourceIssues(source)
+      setOtherIssues(other)
+    })
+    summaryRef.current?.focus()
+  }
+
+  function clearIssues() {
+    setError(null)
+    setSourceIssues([])
+    setOtherIssues([])
+    setNameError(null)
+  }
+
+  /** Applies what a passed connection test taught the source (the Confluence edition). */
+  function applyTested(details: Record<string, unknown> | null | undefined) {
+    const patch = configuration?.onTested?.(details, values)
+    if (patch) changeSource(patch)
+  }
+
+  function changeSource(patch: object) {
+    setSourceValues((prev) => ({
+      ...prev,
+      [valuesKey]: {
+        ...(withConnection(prev[valuesKey] ?? configuration?.empty, connection) as object),
+        ...withoutFixed(patch, connection),
+      },
+    }))
+    setError(null)
+  }
+
+  // An issue at a field goes as soon as the field is valid; none appears before the next submit
+  // (Prüfliste #29: validate on submit, re-check while an error shows).
+  const currentIssues =
+    configuration && sourceIssues.length > 0
+      ? allSourceIssues(configuration, values, formContext)
+      : []
+  const shownSourceIssues = sourceIssues
+    .map((shown) => currentIssues.find((issue) => issue.field === shown.field && shown.field))
+    .filter((issue): issue is SourceIssue => issue !== undefined)
+
+  const goForward = () => {
+    clearIssues()
+    if (returnToReview) {
+      setActiveStep(steps.indexOf(STEP_REVIEW))
+      setReturnToReview(false)
+    } else {
+      setActiveStep((s) => s + 1)
+    }
+  }
+
+  const handleNext = async () => {
+    if (check.running) return
     if (currentStep === STEP_SOURCE_TYPE && typesUnavailable) {
       setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
       return
@@ -352,37 +426,47 @@ export default function LibraryCreatePage() {
     if (currentStep === STEP_SOURCE_TYPE && nothingUsable) return
     if (currentStep === STEP_SOURCE_SETUP && configuration) {
       if (connectionChoice === null) {
-        setError(
-          !profileOptions.loaded
-            ? 'Die Zugänge werden noch geladen'
-            : selectable.length > 0
-              ? 'Bitte wählen Sie einen Zugang.'
-              : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
+        showIssues(
+          [],
+          [
+            {
+              message: !profileOptions.loaded
+                ? 'Die Zugänge werden noch geladen.'
+                : selectable.length > 0
+                  ? 'Bitte einen Zugang wählen.'
+                  : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
+            },
+          ],
         )
         return
       }
       if (awaitsConsent) {
-        setError(CONSENT_REQUIRED)
+        showIssues([], [{ message: CONSENT_REQUIRED }])
         return
       }
-      const validationIssue = configuration.validate(values, formContext)
-      if (validationIssue) {
-        // a field's issue takes the focus to the field; one without is announced in place
-        reportSourceIssue(
-          validationIssue,
-          (shown) => {
-            setSourceIssue(shown.field ? shown : null)
-            setError(shown.field ? null : shown.message)
-          },
-          sourceFormRef.current,
-          () => {},
-        )
-        return
-      }
+      const found = allSourceIssues(configuration, values, formContext)
       const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
-      if (scheduleError) {
-        setError(scheduleError)
+      if (found.length > 0 || scheduleError) {
+        showIssues(found, scheduleError ? [{ message: scheduleError }] : [])
         return
+      }
+      // the connection is tested before „Weiter“ unless it passed or the person chose to go on
+      if (check.available && !check.passed && !check.waived) {
+        const outcome = await check.run()
+        if (!outcome.ok) {
+          showIssues(
+            [],
+            [
+              {
+                message:
+                  'Der Verbindungstest ist fehlgeschlagen. Angaben prüfen oder „Trotzdem fortfahren“ wählen.',
+                targetId: CHECK_ID,
+              },
+            ],
+          )
+          return
+        }
+        applyTested(outcome.result?.details)
       }
       // Where the source provides it, the name comes from it - as long as nobody has typed one.
       if (!nameTouched && name.trim() === '') {
@@ -390,21 +474,36 @@ export default function LibraryCreatePage() {
       }
     }
     if (currentStep === STEP_NAME && name.trim() === '') {
-      setError('Bitte einen Namen angeben')
+      setNameError('Bitte einen Namen eingeben.')
+      showIssues([], [{ message: 'Bitte einen Namen eingeben.', targetId: 'library-create-name' }])
       return
     }
     if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
+      showIssues([], [{ message: 'Bitte eine Gruppe auswählen.' }])
       return
     }
-    setError(null)
-    setSourceIssue(null)
-    setActiveStep((s) => s + 1)
+    goForward()
+  }
+
+  /** „Ändern“ on the review: opens the step and comes back after it. */
+  const changeStep = (step: string) => {
+    clearIssues()
+    setReturnToReview(true)
+    setActiveStep(steps.indexOf(step))
   }
 
   const handleCreate = async () => {
+    if (submitting) return
+    if (missingCapability) {
+      showIssues([], [{ message: missingCapability }])
+      return
+    }
+    if (name.trim() === '') {
+      showIssues([], [{ message: 'Bitte einen Namen eingeben.' }])
+      return
+    }
     if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
+      showIssues([], [{ message: 'Bitte eine Gruppe auswählen.' }])
       return
     }
     const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
@@ -455,6 +554,7 @@ export default function LibraryCreatePage() {
         await triggerIndexing(libraryId, sourceType)
       }
       forgetConsentIntent()
+      notify(`Bibliothek „${name.trim()}“ angelegt.`, 'success')
       navigate(`/libraries/${libraryId}`)
     } catch (err) {
       if (apiErrorCode(err) === 'PENDING_CONNECTION_UNUSABLE') {
@@ -470,6 +570,90 @@ export default function LibraryCreatePage() {
     }
   }
 
+  const summaryIssues: SummaryIssue[] = [
+    ...shownSourceIssues.map((issue) => ({
+      message: issue.message,
+      targetId: issue.field ? fieldDomId(formContext.idPrefix, issue.field) : undefined,
+    })),
+    ...otherIssues,
+  ]
+
+  const scheduleText = !uploadLibrary
+    ? [
+        scheduleFrequencyLabel(schedule.frequency),
+        schedule.frequency === 'WEEKLY' ? scheduleWeekdayLabel(schedule.weekday) : null,
+        schedule.frequency === 'DAILY' || schedule.frequency === 'WEEKLY'
+          ? `${schedule.time} Uhr`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
+  const reviewSections: ReviewSection[] = [
+    {
+      title: 'Quelle',
+      onChange: () => changeStep(configuration ? STEP_SOURCE_SETUP : STEP_SOURCE_TYPE),
+      rows: [
+        { label: 'Quellart', value: displayNameOf(sourceType) },
+        ...(configuration && admitsProfiles
+          ? [
+              {
+                label: 'Zugang',
+                value: connection
+                  ? `${connection.name}${privateLibrary ? ' (eigenes Konto)' : ''}`
+                  : 'Eigene Adresse',
+              },
+            ]
+          : []),
+        ...(configuration?.summary?.(values, formContext) ?? []),
+      ],
+    },
+    ...(!uploadLibrary
+      ? [
+          {
+            title: 'Zeitplan',
+            onChange: () => changeStep(STEP_SOURCE_SETUP),
+            rows: [
+              { label: 'Indizierung', value: scheduleText },
+              { label: 'Sofort indizieren', value: startFirstRun ? 'Ja' : 'Nein' },
+            ],
+          },
+        ]
+      : []),
+    {
+      title: 'Name',
+      onChange: () => changeStep(STEP_NAME),
+      rows: [
+        { label: 'Name', value: name.trim() },
+        { label: 'Beschreibung', value: description.trim() || 'Keine' },
+      ],
+    },
+    ...(steps.includes(STEP_SHARING)
+      ? [
+          {
+            title: 'Freigaben',
+            onChange: () => changeStep(STEP_SHARING),
+            rows: [
+              {
+                label: 'Eigentümer',
+                value:
+                  ownerType === 'GROUP' ? `Gruppe „${selectedGroup?.name ?? '—'}“` : 'Mein Konto',
+              },
+              {
+                label: 'Vorgemerkt',
+                value:
+                  pendingGrants.length === 0
+                    ? 'Keine Freigaben'
+                    : pendingGrants.length === 1
+                      ? '1 Freigabe'
+                      : `${pendingGrants.length} Freigaben`,
+              },
+            ],
+          },
+        ]
+      : []),
+  ]
+
   const firstRunHint =
     configuration?.firstRunHint ??
     'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
@@ -481,7 +665,11 @@ export default function LibraryCreatePage() {
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
           Neue Wissensbibliothek
         </Typography>
-        <PageHeading title="Neue Wissensbibliothek" visuallyHidden />
+        <PageHeading
+          title="Neue Wissensbibliothek"
+          documentTitle={`${summaryIssues.length > 0 ? 'Fehler: ' : ''}Schritt ${activeStep + 1} von ${steps.length}: ${stepHeadings[currentStep] ?? currentStep} – Neue Wissensbibliothek`}
+          visuallyHidden
+        />
         <Typography
           ref={stepHeadingRef}
           component="h2"
@@ -497,6 +685,8 @@ export default function LibraryCreatePage() {
             {missingCapability}
           </Alert>
         )}
+
+        <ErrorSummary ref={summaryRef} issues={summaryIssues} />
 
         {/* A step's error is announced without moving the focus (WCAG 4.1.3). */}
         <Box role="alert" aria-live="polite">
@@ -568,17 +758,15 @@ export default function LibraryCreatePage() {
             SourceForm={SourceForm}
             awaitsConsent={awaitsConsent}
             sourceFormRef={sourceFormRef}
-            sourceIssue={sourceIssue}
+            sourceIssues={shownSourceIssues}
+            check={check}
+            checkId={CHECK_ID}
+            onTested={(result) => {
+              if (result) applyTested(result.details)
+            }}
             values={values}
             formContext={formContext}
-            onSourceChange={(patch: object) => {
-              setSourceValues((prev) => ({
-                ...prev,
-                [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
-              }))
-              setError(null)
-              setSourceIssue(null)
-            }}
+            onSourceChange={changeSource}
             schedule={schedule}
             onScheduleChange={(patch) => {
               setSchedule((prev) => ({ ...prev, ...patch }))
@@ -612,7 +800,9 @@ export default function LibraryCreatePage() {
                 setNameTouched(true)
                 setName(next)
                 setError(null)
+                if (next.trim() !== '') setNameError(null)
               }}
+              nameError={nameError}
               description={description}
               onDescriptionChange={setDescription}
               namePlaceholder="z. B. Rechtsquellen Soziales"
@@ -639,21 +829,23 @@ export default function LibraryCreatePage() {
           />
         )}
 
+        {currentStep === STEP_REVIEW && <CreateReviewStep sections={reviewSections} />}
+
         <LibraryCreateFooter
           activeStep={activeStep}
           stepCount={steps.length}
           submitting={submitting}
           pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
-          nextDisabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
+          nextLabel={returnToReview ? 'Zur Prüfung' : 'Weiter'}
+          nextBusy={check.running}
           missingCapability={missingCapability}
-          hasName={name.trim() !== ''}
           onCancel={() => void handleCancel()}
           onBack={() => {
-            setError(null)
-            setSourceIssue(null)
+            clearIssues()
+            setReturnToReview(false)
             setActiveStep((s) => s - 1)
           }}
-          onNext={handleNext}
+          onNext={() => void handleNext()}
           onCreate={() => void handleCreate()}
         />
       </Box>

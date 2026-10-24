@@ -7,11 +7,35 @@ import {
   googleDriveIssue,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import GoogleDriveSourceForm from '../GoogleDriveSourceForm'
+import DriveForm from '../sourceForms/DriveForm'
+import { listSummary } from '../sourceKit/summaries'
+import type { SourceIssue } from '../../utils/sourceIssue'
 import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceFormContext, SourceRegistration } from './types'
+
+/** Every issue at once: key, areas and imitated account are independent of one another. */
+function driveIssues(values: GoogleDriveSourceValues, context: SourceFormContext): SourceIssue[] {
+  const asks = connectionFields(context).asksSecret
+  const check = (v: GoogleDriveSourceValues) =>
+    asks
+      ? googleDriveIssue(v, context.credentialsStored)
+      : googleDriveIssue({ ...v, storedSubject: v.subject }, true)
+  const issues: SourceIssue[] = []
+  const key = check({
+    ...values,
+    scopes: [{ kind: 'drive', id: 'x', name: null }],
+    subject: values.subject,
+  })
+  if (key && !key.field) issues.push({ message: key.message, field: 'keyFile' })
+  const withKey = { ...values, keyFile: values.keyFile || 'stand-in' }
+  const scope = check({ ...withKey, subject: '' })
+  if (scope && !scope.field) issues.push({ message: scope.message, field: 'selection' })
+  const subject = check(withKey)
+  if (subject?.field === 'subject') issues.push(subject)
+  return issues
+}
 
 export const googleDriveSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.GOOGLE_DRIVE,
@@ -32,25 +56,18 @@ export const googleDriveSource: SourceRegistration = {
     },
     isDirty: (values: GoogleDriveSourceValues) =>
       values.keyFile !== '' || values.subject !== '' || values.scopes.length > 0,
-    validate: (values: GoogleDriveSourceValues, context) =>
-      connectionFields(context).asksSecret
-        ? googleDriveIssue(values, context.credentialsStored)
-        : // without a key of the library's own, no key has to serve the imitated account
-          googleDriveIssue({ ...values, storedSubject: values.subject }, true),
+    issues: driveIssues,
+    validate: (values: GoogleDriveSourceValues, context) => driveIssues(values, context)[0] ?? null,
+    summary: (values: GoogleDriveSourceValues) => [
+      ...(values.subject.trim()
+        ? [{ label: 'Imitiertes Konto', value: values.subject.trim() }]
+        : []),
+      listSummary('Ablagen und Ordner', values.scopes.map(googleDriveScopeLabel), 'Keine'),
+    ],
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
-    Form: ({ values, onChange, context }) => (
-      <GoogleDriveSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-google-drive`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    Form: DriveForm,
     StoredView: GoogleDriveStoredView,
     Scope: GoogleDriveScopeView,
     scopeHero: {

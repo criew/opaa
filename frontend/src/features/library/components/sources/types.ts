@@ -82,6 +82,15 @@ export interface SourceConfiguration<V> {
   isDirty: (values: V) => boolean
   /** The German rejection of the values, naming the field it concerns, or null when they may be sent. */
   validate: (values: V, context: SourceFormContext) => SourceIssue | null
+  /**
+   * Every issue of the values at once, each naming its field (Prüfliste #29); absent falls back
+   * to {@link validate}.
+   */
+  issues?: (values: V, context: SourceFormContext) => SourceIssue[]
+  /** Values a successful connection test teaches the form (the Confluence edition), else null. */
+  onTested?: (details: Record<string, unknown> | null | undefined, values: V) => Partial<V> | null
+  /** The rows of the step „Prüfen“: what the source reads, in words. */
+  summary?: (values: V, context: SourceFormContext) => Array<{ label: string; value: string }>
   /** The source fields of a LibraryRequest/LibraryUpdateRequest; call {@link validate} first. */
   toPayload: (values: V) => LibrarySourceConfigPayload
   /** The name the source already suggests for a new library, '' for none. */

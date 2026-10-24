@@ -7,11 +7,43 @@ import {
   nextcloudIssue,
   type NextcloudSourceValues,
 } from '../../utils/nextcloudSource'
-import NextcloudSourceForm from '../NextcloudSourceForm'
+import FolderShareForm, { type FolderShareShape } from '../sourceForms/FolderShareForm'
+import { collectIssues, unifyMissing } from '../sourceKit/collectIssues'
+import { folderSummary } from '../sourceKit/summaries'
 import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
-import type { SourceRegistration } from './types'
+import type { SourceFormContext, SourceRegistration } from './types'
+
+const nextcloudShape: FolderShareShape<NextcloudSourceValues> = {
+  type: 'NEXTCLOUD',
+  rootLabel: 'Nextcloud',
+  userKey: 'username',
+  secretKey: 'appPassword',
+  addressPlaceholder: 'https://cloud.example.org',
+  addressHint: 'Auch die WebDAV-Adresse wird angenommen.',
+  userPlaceholder: 'svc-opaa',
+  secretHint: 'App-Passwort aus Einstellungen › Sicherheit',
+  credentialsOf: nextcloudCredentialsOf,
+  keepsCredentials: sameLibrarySourceOrigin,
+}
+
+const credentialsKept = (values: NextcloudSourceValues, context: SourceFormContext) =>
+  !connectionFields(context).asksSecret ||
+  (context.credentialsStored &&
+    sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl))
+
+const nextcloudIssues = (values: NextcloudSourceValues, context: SourceFormContext) =>
+  unifyMissing(
+    collectIssues(
+      values,
+      (v) => nextcloudIssue(v, credentialsKept(v, context)),
+      { sourceUrl: 'https://stand.in', username: 'stand-in', appPassword: 'stand-in' },
+      (field) => (field === 'folders' ? 'selection' : field),
+    ),
+    values,
+    { sourceUrl: 'die Adresse', username: 'die Kennung', appPassword: 'das Kennwort' },
+  )
 
 export const nextcloudSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.NEXTCLOUD,
@@ -30,13 +62,13 @@ export const nextcloudSource: SourceRegistration = {
       values.username !== '' ||
       values.appPassword !== '' ||
       values.folders.trim() !== '/',
+    issues: nextcloudIssues,
     validate: (values: NextcloudSourceValues, context) =>
-      nextcloudIssue(
-        values,
-        !connectionFields(context).asksSecret ||
-          (context.credentialsStored &&
-            sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)),
-      ),
+      nextcloudIssues(values, context)[0] ?? null,
+    summary: (values: NextcloudSourceValues) => [
+      { label: 'Adresse', value: values.sourceUrl.trim() },
+      folderSummary(values.folders),
+    ],
     toPayload: (values: NextcloudSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: nextcloudCredentialsOf(values),
@@ -48,18 +80,7 @@ export const nextcloudSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    Form: ({ values, onChange, context }) => (
-      <NextcloudSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-nextcloud`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    Form: (props) => <FolderShareForm {...props} shape={nextcloudShape} />,
     StoredView: NextcloudStoredView,
     Scope: NextcloudScope,
     scopeHero: {
