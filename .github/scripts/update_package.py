@@ -865,11 +865,12 @@ def readme(release: Release) -> str:
         *([
             "## Welcher Vergleich für wen",
             "",
-            f"Dieses Release eröffnet eine LTS-Linie. Das Paket vergleicht deshalb zweimal:",
+            ("Dieser Release-Kandidat" if "-" in release.version else "Dieses Release")
+            + " eröffnet eine LTS-Linie. Das Paket vergleicht deshalb zweimal:",
             "",
             f"- `delta/` und `betrieb/` gegenüber {release.previous or 'dem Vergleichsstand oben'}:"
-            " für eine Installation, die dieses Release oder ein späteres Patch-Release seiner Linie"
-            " betreibt, also jedem Funktionsrelease folgt.",
+            f" für eine Installation auf {release.previous or 'diesem Stand'}, die jedem"
+            " Funktionsrelease folgt.",
             f"- `{LTS_DELTA_DIR}` und `{LTS_OPERATIONS_DIR}` gegenüber {release.lts_previous}, dem"
             " jüngsten Release der vorigen LTS-Linie: für eine Installation, die nur LTS-Linien"
             " betreibt und von dort direkt auf dieses Release wechselt. Dieses Delta umfasst alle"
@@ -1276,6 +1277,13 @@ def build(args: argparse.Namespace) -> list[Path]:
     lts_previous = lts_previous_tag(ROOT, args.tag, head)
     if lts_previous == previous:
         lts_previous = None
+    # The decision shows in the run: a June release whose line the list does not mark as LTS would
+    # otherwise look like a normal one (docs/releases.md, step 4 of the release).
+    if lts_previous:
+        print(f"::notice::Zweiter Vergleich mit {lts_previous}, dem jüngsten Release der vorigen LTS-Linie")
+    else:
+        print(f"::notice::Kein LTS-Vergleich für {args.tag}: Linie nicht als lts in {SUPPORT_LINES} geführt,"
+              " keine vorige LTS-Linie mit finalem Release oder derselbe Vergleichsstand wie das Delta")
     release = Release(
         version=version,
         tag=args.tag,
@@ -1290,7 +1298,7 @@ def build(args: argparse.Namespace) -> list[Path]:
         lts_previous=lts_previous,
         lts_previous_commit=resolve(ROOT, lts_previous) if lts_previous else None,
     )
-    day =datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
+    day = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
     gradle = gradle_command(version, day, previous or from_commit, args.tag if tag_commit else head,
                             args.repository, args.labelled_prs)
     if not (ROOT / CDXGEN).exists():

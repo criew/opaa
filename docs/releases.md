@@ -396,7 +396,10 @@ Ablauf:
    `python3 .github/scripts/update_package.py lts-previous --tag v0.5.0 --commit "$commit"`, und
    Delta und Betriebsfolgen dafür entstehen mit demselben Block, `prev` durch dieses Tag ersetzt.
    Damit ein Kandidat als LTS erkannt wird, steht seine Linie vor dem Tag in der
-   [Liste der Linien](#liste-der-linien).
+   [Liste der Linien](#liste-der-linien). **Prüfpunkt:** Bei einem Juni-Release und seinen
+   Kandidaten muss `lts-previous` ein Tag ausgeben (ab dem zweiten LTS); gibt es nichts aus, fehlt
+   der Eintrag in der Liste, und es wird nicht getaggt. Der Lauf nennt seine Entscheidung zusätzlich
+   als Hinweis im Job `update-package`.
 5. Den in Schritt 4 begutachteten Commit taggen und das Tag pushen:
 
    ```bash
@@ -560,10 +563,11 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 
 | Datei | Inhalt |
 |---|---|
-| `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle, was noch fehlt |
+| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, was noch fehlt |
 | `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
+| `delta-lts/manifest-delta.md`, `delta-lts/manifest-delta.json`, `betrieb-lts/` | nur bei einem LTS-Release und seinen Kandidaten: Delta, Betriebsfolgen und Antwortqualität gegenüber dem jüngsten Release der vorigen LTS-Linie ([zweiter Vergleich](#update-paket)) |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
 | `sbom/opaa-backend-X.Y.Z.cdx.json`, `sbom/opaa-frontend-X.Y.Z.cdx.json` | die [CycloneDX-SBOMs](sbom.md#ebene-2--ökosystem-sboms-cyclonedx) der ausgelieferten Abhängigkeiten, dieselben Dateien wie am GitHub-Release |
 | `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |

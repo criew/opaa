@@ -117,7 +117,7 @@ ein Update verantworten, ohne den Code zu lesen:
 | Teil | Inhalt |
 |---|---|
 | `index.html` | Startseite der HTML-Fassung: Neben jeder Markdown-Datei liegt dieselbe Seite als HTML, untereinander verlinkt und ohne Internetzugang lesbar |
-| `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle |
+| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle |
 | `delta/` | Was sich an den Fakten seit dem vorigen finalen Release geändert hat, je Änderung vorher und nachher, mit Stufenvorschlag (Bagatelle, Anzeige, Zustimmung) und dem Hinweis, ob Verzeichnis der Verarbeitungstätigkeiten, Datenschutz-Folgenabschätzung oder Sicherheitskonzept betroffen sind; dazu die als datenrelevant gekennzeichneten Änderungen, deren Wirkung nicht im Manifest steht |
 | `delta-lts/`, `betrieb-lts/` | nur bei einem LTS-Release und seinen Kandidaten: dasselbe wie `delta/` und `betrieb/`, aber gegenüber dem jüngsten Release der vorigen LTS-Linie, für Installationen, die nur LTS-Linien betreiben; `LIESMICH.md` sagt, welcher Vergleich für wen gilt |
 | `betrieb/` | Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da |
