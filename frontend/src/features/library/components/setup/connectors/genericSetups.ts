@@ -31,7 +31,14 @@ export const filesystemSetup: SourceSetupSpec<FilesystemSourceValues> = {
   issues: (values) => {
     const { at, list } = issueList()
     const path = genericSourceIssue('path', values)
-    if (path?.field) at(path.field, path.message)
+    if (path?.field) {
+      at(
+        path.field,
+        values.sourcePath.trim() === ''
+          ? 'Verzeichnis fehlt'
+          : path.message.replace('Verzeichnispfad', 'Verzeichnis'),
+      )
+    }
     // the pattern rules alone: the path filled with a valid stand-in
     const patterns = filesystemIssue({ ...values, sourcePath: '/x' })
     if (patterns?.field) at(patterns.field, patterns.message)

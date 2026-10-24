@@ -46,7 +46,16 @@ export default function LibraryScopeHero({
         gap: 1,
       }}
     >
-      <Typography variant="body2" data-testid="library-scope-summary">
+      <Typography
+        variant="body2"
+        data-testid="library-scope-summary"
+        sx={{
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
         {scopeNames(details) ?? scopeHero.summary(details)}
         {' · '}
         <Link component={RouterLink} to={{ search: sourceSearch }} replace underline="hover">
