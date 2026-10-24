@@ -293,6 +293,27 @@ export async function tabTrace(page) {
 }
 
 /**
+ * MUI slides the tab indicator for ~300 ms after a tab change or resize; a shot taken earlier shows
+ * it under the previous tab. Resolves once the indicator sits under the selected tab (or after 3 s).
+ */
+async function tabIndicatorSettled(page) {
+  await page
+    .waitForFunction(
+      () => {
+        const selected = document.querySelector('[role="tab"][aria-selected="true"]')
+        const indicator = selected?.closest('.MuiTabs-root')?.querySelector('.MuiTabs-indicator')
+        if (!indicator) return true
+        const a = selected.getBoundingClientRect()
+        const b = indicator.getBoundingClientRect()
+        return Math.abs(a.left - b.left) < 1 && Math.abs(a.width - b.width) < 1
+      },
+      null,
+      { timeout: 3000 },
+    )
+    .catch(() => {})
+}
+
+/**
  * Screenshots and metrics into one output directory; metrics.jsonl starts empty on every run, so a
  * repeated run into the same directory never mixes old and new lines. `shoot` takes the current state in every
  * width of the run, in the scheme of the page's context; one metrics.jsonl line per screenshot.
@@ -311,6 +332,7 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
     for (const width of widths) {
       await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
       await sleep(250)
+      await tabIndicatorSettled(page)
       const name = `${area}__${type}__${scenario}__${scheme}__${width}`
       await page.screenshot({ path: path.join(out, `${name}.png`) }).catch((e) => log('  screenshot failed', e.message))
       const metrics = await pageMetrics(page)
