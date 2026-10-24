@@ -26,7 +26,8 @@ Prüfmaßstab die [UI-Prüfliste](../design/ui-pruefliste.md).
 
 ## Integrationstest-Suiten
 
-Nicht Teil von `./gradlew build` und `./gradlew test`.
+Nicht Teil von `./gradlew build` und `./gradlew test`. Welche Teststufe ein Konnektor bekommt und
+wann er eine eigene Suite braucht, regelt [ADR-0057](../decisions/0057-teststufen-fuer-konnektoren.md).
 
 ```bash
 # aus backend/

@@ -557,11 +557,16 @@ Wahl: Sie steht als einfache Zeile da, ohne Radioknopf.
 **Fremde Objekte aus einer Quelle** erscheinen als Liste oder Baum, nie als Kacheln — ihre Zahl und
 Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:
 
-- **Bis sieben flache Einträge** stehen als Checkboxen direkt in der Zeile, ohne Suche.
-- **Ab acht Einträgen oder bei jeder Hierarchie** öffnet die Zeile einen **gemeinsamen
+- **Bis sieben Einträge der obersten Ebene** stehen als Checkboxen direkt in der Zeile, ohne
+  Suche — auch bei hierarchischen Quellen wie Nextcloud, SMB, Dropbox oder S3.
+  So bleibt der häufige kleine Fall mit zwei, drei Ordnern ohne Dialog.
+- **Tiefere Ebenen und Mengen ab acht Einträgen** laufen immer über den **gemeinsamen
   Auswahldialog**, derselbe für jede Quellart: Breadcrumb für die Ebene, Suche und Teilauswahl
   (ein Knoten, dessen Kinder nur zum Teil gewählt sind, zeigt das als gemischten Zustand,
   `aria-checked="mixed"`). Die Zeile fasst danach die Wahl zusammen („3 von 42 Spaces").
+- **Bei hierarchischen Quellen** steht unter den Checkboxen der obersten Ebene ein Textlink
+  „<Objekte> auswählen …" (etwa „Ordner auswählen …"); er öffnet den Dialog für die tieferen
+  Ebenen. Ab acht Einträgen ersetzt die Liste mit demselben Link die Checkboxen.
 
 **Aufbau der Kacheln.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen
 und einen kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).

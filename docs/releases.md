@@ -653,12 +653,17 @@ allen Abhängigkeiten per Hash gepinnt in `.github/requirements-release.txt`, nu
 `index.html` mit allen Teilen und `style.css` (helles und dunkles Farbschema). Überschriften tragen
 Anker in der Schreibweise von GitHub, `<a id>` bleiben erhalten, ein Front-Matter-Kopf erscheint als
 kleiner Kasten. Links auf Markdown-Dateien führen auf deren HTML-Seite, Links auf einen Ordner auf
-seine `README`. Die Seiten laden nichts aus dem Internet; Mermaid-Diagramme stehen als Code da. Ein
+seine `README`. Die Seiten laden nichts aus dem Internet und enthalten kein Skript. Mermaid-Diagramme
+zeichnet der Lauf vorab in einem Headless-Chromium zu SVG (`.github/tools/mermaid/render.mjs`,
+Mermaid und playwright-core aus der Lockfile daneben, ohne Netz im Browser) und bettet sie in die
+Seite ein, den Diagrammtext aufklappbar darunter; ein Diagramm, das nicht rendert, bricht den Lauf
+ab. Gezeichnet wird mit Google Chrome des Runners, lokal mit dem Browser aus `CHROMIUM`. Ein
 relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
 Attestierung decken die HTML-Dateien wie alle anderen ab. Jeder PR prüft
 dieselben Verweise vorab: Der Job `changes` der CI ruft `update_package.py links` auf, ohne
 Faktenblätter und ohne Pfadfilter, sodass ein umbenannter Anker im Handbuch nicht erst das Release
-anhält.
+anhält. Ebenso rendert derselbe Job mit `update_package.py diagrams` jedes Diagramm aus
+`docs/behoerden/` und `docs/handbuch/`, sobald ein PR diese oder das Werkzeug berührt.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
 im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
@@ -686,14 +691,16 @@ gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
 Cache: kein `setup-gradle`, kein Cache von pnpm, `setup-node` oder `setup-python`. Gradle, pnpm
 und pip laden ihre Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
 kommt samt aller transitiven Abhängigkeiten aus der Lockfile unter `.github/tools/cdxgen/`, ohne
-Installationsskripte ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)). Rechte: nur Lesen des Repositorys und
+Installationsskripte ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)), ebenso Mermaid aus
+`.github/tools/mermaid/`. Rechte: nur Lesen des Repositorys und
 der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
 läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 
 **Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
 Gebraucht werden Java, `pnpm install` in `frontend/`,
-`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/`,
+`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/` und
+`.github/tools/mermaid/`, Google Chrome oder ein Chromium in `CHROMIUM`,
 `pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt`
 und die Historie mit Tags:
 
