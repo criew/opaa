@@ -711,6 +711,11 @@ nicht an der Festlegung vorbei, dass es keinen personenbezogenen Auswertungspfad
 nach Person gruppiert, liefert es auch nicht so aus. Welche Ereignisklassen ausgeleitet werden, ist Teil
 der dokumentierten Zweckbindung und damit Gegenstand der Dienstvereinbarung.
 
+Gebaut ist die Ausleitung des Revisionsprotokolls als Syslog mit CEF, ohne Pseudonyme, ab dem
+Einschalten und ohne stillen Verlust ([ADR-0055](../decisions/0055-ausleitung-an-ein-sicherheitsmonitoring.md)).
+Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche bleiben im Anwendungslog und
+erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde.
+
 ---
 
 ## Nachweisbarkeit: Historisierung von Rechten

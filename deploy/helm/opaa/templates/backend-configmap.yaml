@@ -61,6 +61,19 @@ data:
   {{- with .Values.rerank.probeInterval }}
   OPAA_RERANK_PROBE_INTERVAL: {{ . | quote }}
   {{- end }}
+  OPAA_SIEM_EXPORT_ENABLED: {{ .Values.siemExport.enabled | quote }}
+  {{- with .Values.siemExport.host }}
+  OPAA_SIEM_EXPORT_HOST: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.siemExport.port }}
+  OPAA_SIEM_EXPORT_PORT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.siemExport.tls }}
+  OPAA_SIEM_EXPORT_TLS: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.siemExport.timeout }}
+  OPAA_SIEM_EXPORT_TIMEOUT: {{ . | quote }}
+  {{- end }}
   OPAA_TRANSCRIPTION_ENABLED: {{ .Values.transcription.enabled | quote }}
   {{- with .Values.transcription.baseUrl }}
   OPAA_TRANSCRIPTION_BASE_URL: {{ . | quote }}

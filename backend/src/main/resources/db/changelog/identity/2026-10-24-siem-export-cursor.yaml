@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-24-siem-export-cursor
+      author: opaa
+      comment: "The position of the SIEM export in the audit log (ADR-0055): one row, created when the export runs for the first time, moved only after a delivery succeeded. Additive: a new table."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE siem_export_cursor (
+                id smallint PRIMARY KEY,
+                started_at timestamptz NOT NULL,
+                last_recorded_at timestamptz NOT NULL,
+                last_event_id uuid,
+                updated_at timestamptz NOT NULL,
+                CONSTRAINT chk_siem_export_cursor_singleton CHECK (id = 1)
+              );

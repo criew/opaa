@@ -195,7 +195,26 @@ data:
 nonPersonalTables:
   audit_incident_scope_case_counts: [organization_id, case_year, purpose, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
+  siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, updated_at]
 settings:
+  - key: opaa.siem-export.enabled
+    source: PROPERTY
+    defaultValue: "false"
+    effect: >-
+      Ob das Revisionsprotokoll vollständig der Reihe nach gelesen und ohne Pseudonyme an das
+      zentrale Sicherheitsmonitoring gesendet wird
+    bearings: [DATA_FLOW]
+    helm:
+      values: siemExport.enabled
+      defaultValue: "false"
+  - key: opaa.siem-export.host
+    source: PROPERTY
+    defaultValue: ""
+    effect: Adresse des Syslog-Empfängers; Pflicht bei eingeschalteter Ausleitung
+    bearings: [DATA_FLOW]
+    helm:
+      values: siemExport.host
+      defaultValue: ""
   - key: audit_retention_settings.retention_months
     source: DATABASE
     defaultValue: "36"

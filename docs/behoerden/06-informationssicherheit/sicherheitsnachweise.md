@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -49,7 +49,9 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
   `main` und das jüngste Patch-Release jeder unterstützten Linie.
 - Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
-- Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist nicht gebaut.
+- Das Nachweisprotokoll lässt sich an ein zentrales Sicherheitsmonitoring ausleiten, als Syslog mit
+  CEF und ohne Pseudonyme; fehlgeschlagene Anmeldungen und ähnliche Ereignisse stehen nur im Log
+  ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
 
 ## Zum Nachlesen
 

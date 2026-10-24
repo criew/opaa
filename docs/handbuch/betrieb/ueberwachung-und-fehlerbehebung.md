@@ -26,6 +26,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_query_tokens_total` | Token der Antwortaufrufe |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modelle.md)) |
+| `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |
@@ -36,6 +37,56 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 
 Weitere Metriken: [Suche](../spaces/suche.md#102-metriken-und-log); Einsammeln und Alarme unter Kubernetes:
 [Betriebsüberwachung](kubernetes.md#betriebsüberwachung).
+
+## Ausleitung an ein Sicherheitsmonitoring
+
+OPAA kann sein Revisionsprotokoll laufend an das zentrale Sicherheitsmonitoring (SIEM) der Behörde
+geben, damit Verwaltungshandeln wie Rechteänderungen, Kontosperren oder Zugriffe auf das Protokoll
+dort neben den Ereignissen anderer Fachverfahren erscheint.
+
+> **Beispiel.** Das Rechenzentrum eines Landes betreibt ein SIEM mit einem Syslog-Empfänger. Der
+> Betrieb trägt dessen Adresse ein und schaltet die Ausleitung ein. Ab diesem Moment erscheint jede
+> neue Freigabe einer Bibliothek als eigene Meldung im SIEM, mit Zeitpunkt, Bibliothek und Ergebnis,
+> aber ohne die Person, die sie erteilt hat.
+
+- **Was hinausgeht:** je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis,
+  Organisation und betroffenes Objekt. Nie gehen Pseudonyme handelnder oder betroffener Personen,
+  Begründungen oder Inhalte hinaus; bei einem Konto, einem Zugangstoken und einer privaten
+  Bibliothek fehlen auch Kennung und Bezeichnung des Objekts. Wer gehandelt hat, klärt nur die
+  anlassbezogene Klärung in OPAA
+  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
+- **Lesezugriff:** Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
+  nach, sonst nicht. Das ist neben der Revision und der Selbstauskunft der einzige Leser.
+- **Format:** Syslog (RFC 5424) mit CEF-Inhalt über TCP, voreingestellt mit TLS und dem
+  Vertrauensspeicher der Java-Laufzeit samt Prüfung des Hostnamens. Die Kennung jedes Eintrags steht
+  in `externalId`; daran erkennt das SIEM eine Meldung, die nach einem Abbruch doppelt kommt. Die
+  Verbindung geht direkt, nie über den Ausgangsproxy.
+- **Ab dem Einschalten:** Gesendet wird, was nach dem ersten Lauf ins Protokoll kommt; der ältere
+  Bestand nicht. Abschalten hält die Ausleitung an, wieder eingeschaltet geht es an derselben Stelle
+  weiter.
+- **Kein stiller Verlust:** Ist der Empfänger nicht erreichbar, bleiben die Einträge fällig und
+  gehen beim nächsten erfolgreichen Lauf hinaus; das Log meldet jeden gescheiterten Lauf. Ein Lauf
+  findet alle 30 Sekunden auf einer Instanz statt. Ein Eintrag wartet vor dem Senden die Zeit
+  `OPAA_SIEM_EXPORT_SETTLE_DELAY`, damit ein später abgeschlossener Vorgang nicht übersprungen wird.
+- **Lücken:** Hat die Aufbewahrungsfrist Einträge gelöscht, bevor sie gesendet waren, kommt im SIEM
+  eine Meldung `AUDIT_EXPORT_GAP` mit dem Zeitraum an.
+- **Sicherheitsereignisse des Logs:** Fehlgeschlagene Anmeldungen, abgewiesene Netzbereiche und der
+  Abflussalarm externer KI-Werkzeuge stehen nur im Log auf der Standardausgabe. Die Behörde holt sie
+  mit ihrer Log-Sammlung ab, als JSON mit `LOGGING_STRUCTURED_FORMAT_CONSOLE`.
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `OPAA_SIEM_EXPORT_ENABLED` | `false` | Ausleitung ein |
+| `OPAA_SIEM_EXPORT_HOST` | — | Host des Syslog-Empfängers |
+| `OPAA_SIEM_EXPORT_PORT` | `6514` | Port des Syslog-Empfängers |
+| `OPAA_SIEM_EXPORT_TLS` | `true` | `false` sendet ohne TLS |
+| `OPAA_SIEM_EXPORT_TIMEOUT` | `30s` | Frist einer Zustellung insgesamt |
+| `OPAA_SIEM_EXPORT_SETTLE_DELAY` | `2m` | Wartezeit eines Eintrags vor dem Senden |
+| `OPAA_SIEM_EXPORT_BATCH_SIZE` | `500` | Einträge je Zustellung höchstens |
+
+Unter Kubernetes stehen Schalter, Host, Port, TLS und Frist unter `siemExport` im Helm-Chart; eine
+NetworkPolicy muss dem Backend den Weg zum Empfänger öffnen. Nicht gebaut sind ein
+Client-Zertifikat für TLS und ein eigener Vertrauensspeicher neben dem der Java-Laufzeit.
 
 ## Diagnose ohne Shell
 
@@ -65,6 +116,7 @@ diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fe
 | Niemand kommt herein, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |
 | Originale lassen sich nicht abrufen oder hochladen | [Originalablage](originalablage.md#wenn-etwas-nicht-stimmt) |
 | Mails kommen nicht an | [E-Mail-Versand](e-mail.md#fehlerbilder) |
+| Im SIEM kommt nichts an, Log meldet `SIEM export … failed` | Adresse, Port, TLS-Vertrauen des Empfängers ([Ausleitung an ein Sicherheitsmonitoring](#ausleitung-an-ein-sicherheitsmonitoring)) |
 | Lange Antworten enden mit `504` | Timeouts von Frontend und Proxy ([Netzwerkzugang](netz-und-sicherheit.md#netzwerkzugang)) |
 | Verbindungen nach außen scheitern mit Proxy-Status | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) |
 | Container- oder Pod-Fehlerbilder | [Docker Compose](docker-compose.md#fehlerbehebung), [Kubernetes](kubernetes.md#fehlersuche) |

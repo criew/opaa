@@ -118,6 +118,19 @@ rerank:
   # endpoint choose a large value such as 24h.
   probeInterval: ""
 
+# Export of the audit log to the SIEM of the house (ADR-0055): syslog with CEF over TCP, TLS by
+# default with the JVM trust store, without pseudonyms, from the moment it is switched on.
+siemExport:
+  enabled: false
+  # Host name of the syslog receiver; required when enabled.
+  host: ""
+  # Empty keeps the application default (6514).
+  port: ""
+  # "false" sends without TLS; empty keeps TLS on.
+  tls: ""
+  # Budget of one delivery; empty keeps the default (30s).
+  timeout: ""
+
 # Transcription endpoint for dictation in the chat (OpenAI-compatible: POST
 # {baseUrl}/audio/transcriptions, GET {baseUrl}/models), read on every start. The key, if needed,
 # comes from the secret (key OPAA_TRANSCRIPTION_API_KEY). Recordings are passed through, never

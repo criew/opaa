@@ -71,9 +71,12 @@ class AuditLogReaderStructureTest {
           "private static final String AUDIT_LOG_SELF_OBJECT_ID = \"audit_log\";");
 
   @Test
-  void onlyTheSelfDisclosureExporterQueriesTheAuditLogInSql() {
+  void onlyTheSelfDisclosureAndTheSiemExportQueryTheAuditLogInSql() {
+    // the SIEM export reads in order only while switched on and never a pseudonym (ADR-0055)
     assertThat(sqlReaders(mainSources()))
-        .containsExactly("io/opaa/audit/AuditLogSelfDisclosureExporter.java");
+        .containsExactlyInAnyOrder(
+            "io/opaa/audit/AuditLogSelfDisclosureExporter.java",
+            "io/opaa/audit/SiemExportService.java");
   }
 
   @Test

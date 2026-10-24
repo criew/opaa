@@ -45,6 +45,12 @@ transcription:
   maxAudioBytes: "10485760"
   timeout: 120s
   maxConcurrent: "4"
+siemExport:
+  enabled: true
+  host: siem.security.svc
+  port: "6514"
+  tls: "true"
+  timeout: 30s
 mail:
   connectTimeout: 5s
 targetValidation:
