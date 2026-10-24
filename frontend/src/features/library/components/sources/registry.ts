@@ -9,6 +9,22 @@ import { s3Source } from './s3Source'
 import { sharePointSource } from './sharePointSource'
 import { smbSource } from './smbSource'
 import type { SourceRegistration } from './types'
+import type { SourceSetupSpec } from '../setup/setupTypes'
+import { confluenceSetup } from '../setup/connectors/confluenceSetup'
+import { dropboxSetup } from '../setup/connectors/dropboxSetup'
+import { filesystemSetup, urlSetup } from '../setup/connectors/genericSetups'
+import { googleDriveSetup } from '../setup/connectors/googleDriveSetup'
+import { nextcloudSetup } from '../setup/connectors/nextcloudSetup'
+import { s3Setup } from '../setup/connectors/s3Setup'
+import { sharePointSetup } from '../setup/connectors/sharePointSetup'
+import { smbSetup } from '../setup/connectors/smbSetup'
+
+/** The registration with the rows of the summary-row setup attached to its configuration. */
+function withSetup<V>(registration: SourceRegistration, setup: SourceSetupSpec<V>): SourceRegistration {
+  return registration.configuration
+    ? { ...registration, configuration: { ...registration.configuration, setup } }
+    : registration
+}
 
 const uploadSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.UPLOAD,
@@ -24,16 +40,16 @@ const uploadSource: SourceRegistration = {
  */
 const registrations: Record<SourceTypeKey, SourceRegistration> = {
   UPLOAD: uploadSource,
-  FILESYSTEM: filesystemSource,
-  HTTP_DIRECTORY: httpDirectorySource,
-  RSS_FEED: rssFeedSource,
-  CONFLUENCE: confluenceSource,
-  S3: s3Source,
-  GOOGLE_DRIVE: googleDriveSource,
-  SHAREPOINT: sharePointSource,
-  NEXTCLOUD: nextcloudSource,
-  DROPBOX: dropboxSource,
-  SMB: smbSource,
+  FILESYSTEM: withSetup(filesystemSource, filesystemSetup),
+  HTTP_DIRECTORY: withSetup(httpDirectorySource, urlSetup),
+  RSS_FEED: withSetup(rssFeedSource, urlSetup),
+  CONFLUENCE: withSetup(confluenceSource, confluenceSetup),
+  S3: withSetup(s3Source, s3Setup),
+  GOOGLE_DRIVE: withSetup(googleDriveSource, googleDriveSetup),
+  SHAREPOINT: withSetup(sharePointSource, sharePointSetup),
+  NEXTCLOUD: withSetup(nextcloudSource, nextcloudSetup),
+  DROPBOX: withSetup(dropboxSource, dropboxSetup),
+  SMB: withSetup(smbSource, smbSetup),
 }
 
 /** The registration of {@code sourceType}, undefined for a type this client has none for. */

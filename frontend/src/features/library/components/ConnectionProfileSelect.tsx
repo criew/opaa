@@ -148,7 +148,7 @@ export default function ConnectionProfileSelect({
 
   return (
     <Box data-testid={`${idPrefix}-connection`}>
-      <Typography id={headingId} component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      <Typography id={headingId} component="h4" sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}>
         Zugang
       </Typography>
       {offerOwnAddress && !ownOffered && (

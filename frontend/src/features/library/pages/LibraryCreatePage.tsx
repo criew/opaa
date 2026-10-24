@@ -10,8 +10,10 @@ import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
 import type { SourceFormContext } from '../components/sources/types'
-import { reportSourceIssue } from '../components/sources/reportSourceIssue'
-import type { SourceIssue } from '../utils/sourceIssue'
+import type { SourceSetupHandle } from '../components/setup/SourceSetupRows'
+import type { SetupRowId } from '../components/setup/setupTypes'
+import { scheduleSummary } from '../components/setup/scheduleSummary'
+import LibraryReviewStep, { type ReviewEntry } from '../components/LibraryReviewStep'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -64,6 +66,7 @@ import {
   NOTHING_CREATABLE,
   PENDING_CONNECTION_UNUSABLE,
   STEP_NAME,
+  STEP_REVIEW,
   STEP_SHARING,
   STEP_SOURCE_SETUP,
   STEP_SOURCE_TYPE,
@@ -93,9 +96,12 @@ export default function LibraryCreatePage() {
   const draft = restored?.draft
   const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
   const [error, setError] = useState<string | null>(null)
-  // an issue of the source form that names a field; it is shown there instead of in `error`
-  const [sourceIssue, setSourceIssue] = useState<SourceIssue | null>(null)
-  const sourceFormRef = useRef<HTMLDivElement>(null)
+  const setupRef = useRef<SourceSetupHandle>(null)
+  // the row of „Quelle einrichten“ open on arrival: the first one, or the one „Ändern“ asked for
+  const [initialRow, setInitialRow] = useState<SetupRowId | null>('connection')
+  // set by „Ändern“ on the review step: „Weiter“ then leads straight back to it
+  const [returnToReview, setReturnToReview] = useState(false)
+  const [stepFailed, setStepFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
   // connector library reaches server paths and stored credentials. A missing right is explained
@@ -233,7 +239,6 @@ export default function LibraryCreatePage() {
       }))
     }
     setError(null)
-    setSourceIssue(null)
   }
   // a new library has no rhythm of its own yet; empty means the instance's, named by the type
   const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
@@ -343,7 +348,7 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === STEP_SOURCE_TYPE && typesUnavailable) {
       setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
       return
@@ -359,29 +364,17 @@ export default function LibraryCreatePage() {
               ? 'Bitte wählen Sie einen Zugang.'
               : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
         )
+        setStepFailed(true)
         return
       }
       if (awaitsConsent) {
         setError(CONSENT_REQUIRED)
+        setStepFailed(true)
         return
       }
-      const validationIssue = configuration.validate(values, formContext)
-      if (validationIssue) {
-        // a field's issue takes the focus to the field; one without is announced in place
-        reportSourceIssue(
-          validationIssue,
-          (shown) => {
-            setSourceIssue(shown.field ? shown : null)
-            setError(shown.field ? null : shown.message)
-          },
-          sourceFormRef.current,
-          () => {},
-        )
-        return
-      }
-      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
-      if (scheduleError) {
-        setError(scheduleError)
+      // every row at once, then the connection test unless it already passed
+      if (!(await setupRef.current?.submit())) {
+        setStepFailed(true)
         return
       }
       // Where the source provides it, the name comes from it - as long as nobody has typed one.
@@ -390,19 +383,40 @@ export default function LibraryCreatePage() {
       }
     }
     if (currentStep === STEP_NAME && name.trim() === '') {
-      setError('Bitte einen Namen angeben')
+      setError('Name fehlt')
+      setStepFailed(true)
       return
     }
     if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
       setError('Bitte eine Gruppe auswählen')
+      setStepFailed(true)
       return
     }
     setError(null)
-    setSourceIssue(null)
-    setActiveStep((s) => s + 1)
+    setStepFailed(false)
+    if (currentStep === STEP_SOURCE_TYPE && !returnToReview) setInitialRow('connection')
+    setActiveStep((s) => (returnToReview ? steps.indexOf(STEP_REVIEW) : s + 1))
+    setReturnToReview(false)
+  }
+
+  /** „Ändern“ on the review step: to the step (and row) of the answer, and back after „Weiter“. */
+  const changeAt = (step: string, row: SetupRowId | null = null) => {
+    setInitialRow(row)
+    setReturnToReview(true)
+    setError(null)
+    setActiveStep(steps.indexOf(step))
   }
 
   const handleCreate = async () => {
+    if (submitting) return
+    if (missingCapability) {
+      setError(missingCapability)
+      return
+    }
+    if (name.trim() === '') {
+      setError('Name fehlt')
+      return
+    }
     if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
       setError('Bitte eine Gruppe auswählen')
       return
@@ -473,7 +487,59 @@ export default function LibraryCreatePage() {
   const firstRunHint =
     configuration?.firstRunHint ??
     'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
-  const SourceForm = configuration?.Form
+  const setup = configuration?.setup
+  const connectionLead = chosenProfile
+    ? `Zugang „${chosenProfile.name}“${privateLibrary ? ', eigenes Konto' : ''}`
+    : null
+  const reviewEntries: ReviewEntry[] = [
+    {
+      label: 'Quellart',
+      value: displayNameOf(sourceType),
+      onChange: () => changeAt(STEP_SOURCE_TYPE),
+    },
+    ...(configuration && setup
+      ? setup.sections.map((section) => ({
+          label: section.id === 'connection' ? 'Verbindung' : 'Umfang',
+          value:
+            [section.id === 'connection' ? connectionLead : null, section.summary(values, formContext, 'unchecked')]
+              .filter(Boolean)
+              .join(' · '),
+          onChange: () => changeAt(STEP_SOURCE_SETUP, section.id),
+        }))
+      : []),
+    ...(configuration
+      ? [
+          {
+            label: 'Zeitplan',
+            value: `${scheduleSummary(schedule, confluenceRhythm)}${startFirstRun ? ' · erste Indizierung sofort' : ''}`,
+            onChange: () => changeAt(STEP_SOURCE_SETUP, 'schedule' as const),
+          },
+        ]
+      : []),
+    { label: 'Name', value: name.trim(), onChange: () => changeAt(STEP_NAME) },
+    { label: 'Beschreibung', value: description.trim(), onChange: () => changeAt(STEP_NAME) },
+    ...(steps.includes(STEP_SHARING)
+      ? [
+          {
+            label: 'Eigentum',
+            value: ownerType === 'GROUP' ? `Gruppe ${selectedGroup?.name ?? ''}` : 'Mein Konto',
+            onChange: () => changeAt(STEP_SHARING),
+          },
+          {
+            label: 'Freigaben',
+            value:
+              pendingGrants.length === 0
+                ? 'keine'
+                : pendingGrants.length === 1
+                  ? '1 vorgemerkt'
+                  : `${pendingGrants.length} vorgemerkt`,
+            onChange: () => changeAt(STEP_SHARING),
+          },
+        ]
+      : []),
+  ]
+  const stepHeading = stepHeadings[currentStep] ?? currentStep
+  const documentTitle = `${stepFailed || error ? 'Fehler: ' : ''}${stepHeading} – Schritt ${activeStep + 1} von ${steps.length} – Neue Wissensbibliothek`
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
@@ -481,14 +547,14 @@ export default function LibraryCreatePage() {
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
           Neue Wissensbibliothek
         </Typography>
-        <PageHeading title="Neue Wissensbibliothek" visuallyHidden />
+        <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
         <Typography
           ref={stepHeadingRef}
           component="h2"
           tabIndex={-1}
           sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}
         >
-          {stepHeadings[currentStep] ?? currentStep}
+          {stepHeading}
         </Typography>
         <WizardStepBar steps={steps} active={activeStep} />
 
@@ -548,13 +614,14 @@ export default function LibraryCreatePage() {
             />
           )}
 
-        {currentStep === STEP_SOURCE_SETUP && (
+        {currentStep === STEP_SOURCE_SETUP && setup && (
           <CreateSourceSetupStep
             showConnectionSelect={showConnectionSelect}
             descriptor={descriptor}
             profileOptions={profileOptions}
             connectionChoice={connectionChoice}
             onChooseConnection={chooseConnection}
+            connectionLead={connectionLead}
             consentProfile={consentProfile}
             pendingConnection={pendingConnection}
             serviceAccountConfirmed={serviceAccountConfirmed}
@@ -565,10 +632,10 @@ export default function LibraryCreatePage() {
             confirmationMissing={confirmationMissing}
             connectingSource={connectingSource}
             onConnectSource={() => void handleConnectSource()}
-            SourceForm={SourceForm}
+            setup={setup}
             awaitsConsent={awaitsConsent}
-            sourceFormRef={sourceFormRef}
-            sourceIssue={sourceIssue}
+            setupRef={setupRef}
+            initialRow={initialRow}
             values={values}
             formContext={formContext}
             onSourceChange={(patch: object) => {
@@ -577,7 +644,6 @@ export default function LibraryCreatePage() {
                 [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
               }))
               setError(null)
-              setSourceIssue(null)
             }}
             schedule={schedule}
             onScheduleChange={(patch) => {
@@ -639,21 +705,23 @@ export default function LibraryCreatePage() {
           />
         )}
 
+        {currentStep === STEP_REVIEW && <LibraryReviewStep entries={reviewEntries} />}
+
         <LibraryCreateFooter
           activeStep={activeStep}
           stepCount={steps.length}
           submitting={submitting}
           pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
-          nextDisabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
           missingCapability={missingCapability}
-          hasName={name.trim() !== ''}
+          returnToReview={returnToReview}
           onCancel={() => void handleCancel()}
           onBack={() => {
             setError(null)
-            setSourceIssue(null)
+            setStepFailed(false)
+            setInitialRow(null)
             setActiveStep((s) => s - 1)
           }}
-          onNext={handleNext}
+          onNext={() => void handleNext()}
           onCreate={() => void handleCreate()}
         />
       </Box>

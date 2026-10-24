@@ -298,6 +298,59 @@ async function triggerListings(page, { slow }) {
   return clicked
 }
 
+/** Ticks up to `n` unchecked object options of the open listbox (variant D combo boxes). */
+async function pickComboOptions(page, n) {
+  const options = page.locator('[role=listbox] li[role=option]:has(input[type=checkbox])')
+  const count = Math.min(await options.count().catch(() => 0), 200)
+  let picked = 0
+  for (let i = 0; i < count && picked < n; i++) {
+    const o = options.nth(i)
+    if (!(await o.isVisible().catch(() => false))) continue
+    if (await o.locator('input[type=checkbox]').isChecked().catch(() => true)) continue
+    await o.click({ timeout: 1000 }).catch(() => {})
+    picked++
+  }
+  return picked
+}
+
+/** Variant D: summary rows. Opens „Umfang“ and fills its combo boxes; false when the page has no rows. */
+async function fillScopeRows(page, type, scenario, many, slow) {
+  if (!(await page.locator('[data-row]').count().catch(() => 0))) return false
+  await clickButton(page, /^Fertig$/, { wait: slow ? 600 : 900 })
+  await clickButton(page, /^Ändern Umfang$/, { wait: 400 })
+  const row = page.locator('[data-row$="-row-scope"]')
+  const combos = row.getByRole('combobox')
+  const n = await combos.count().catch(() => 0)
+  for (let i = 0; i < n; i++) {
+    const combo = combos.nth(i)
+    if (!(await combo.isVisible().catch(() => false))) continue
+    await combo.click().catch(() => {})
+    if (type === 'sharepoint' && i === 0) {
+      const term = scenario === 'small' || scenario === 'default' || scenario === 'failed' || scenario === 'slow' ? 'https://rheinfurt.sharepoint.com/sites/rathaus' : 't'
+      await combo.fill(term).catch(() => {})
+      await sleep(slow ? 900 : 1300)
+      const first = page.locator('[role=listbox] li[role=option]:not([aria-disabled=true])').first()
+      if (await first.isVisible().catch(() => false)) await first.click().catch(() => {})
+      await sleep(300)
+      continue
+    }
+    await sleep(slow ? 900 : 1000)
+    if (slow) return true
+    if (scenario === 'scale' && type !== 'confluence' && type !== 'gdrive') {
+      // one level down, to show the path in the options
+      const drill = page.getByRole('button', { name: /^Unterordner von/ }).first()
+      if (await drill.isVisible().catch(() => false)) {
+        await drill.click().catch(() => {})
+        await sleep(1000)
+      }
+    }
+    await pickComboOptions(page, many)
+    await page.keyboard.press('Escape').catch(() => {})
+    await sleep(200)
+  }
+  return true
+}
+
 async function fillSource(page, type, scenario) {
   const slow = scenario === 'slow'
   const many = scenario === 'scale' ? 12 : 2
@@ -338,17 +391,18 @@ async function fillSource(page, type, scenario) {
       break
     case 'nextcloud':
       await fillByLabel(page, [/Adresse der Nextcloud/, /Adresse/], 'https://cloud.rheinfurt.example')
-      await fillByLabel(page, [/Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
+      await fillByLabel(page, [/Technischer Nutzer/, /Kennung/, /Benutzer/, /Nutzer/], 'svc-opaa')
       await fillByLabel(page, [/App-Passwort/, /Passwort/], 'app-passwort')
       break
     case 'smb':
       await fillByLabel(page, [/Adresse der Freigabe/, /Adresse/], 'smb://dateiserver.rheinfurt.example/Ablage')
-      await fillByLabel(page, [/Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
+      await fillByLabel(page, [/Dienstkonto/, /Kennung/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
       await fillByLabel(page, [/^Passwort/, /Passwort/], 'geheim')
       break
     case 'dropbox':
       break
   }
+  if (await fillScopeRows(page, type, scenario, many, slow)) return
   // listings, then a selection, then the explicit test
   if (type === 'confluence') {
     await clickButton(page, TEST_BUTTON, { wait: slow ? 900 : 1000 })
@@ -752,11 +806,17 @@ async function detailFlow(page, type, scenario, states) {
   }
   if (!states.includes('edit') || !wantArea('edit')) return
   if (!opened) return notFound('edit', type, scenario, 'tab Quelle')
-  const edit = await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 })
+  const edit = (await clickButton(page, /^Ändern Umfang$/, { wait: 900 })) || await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 })
   if (!edit) return notFound('edit', type, scenario, 'edit button')
   await settle(page, 300)
   // load the listing in the edit flow too, so the selection UI shows its real size
   await triggerListings(page, { slow: scenario === 'slow' })
+  // variant D: open the combo box of the open row, so the listing shows its real size
+  const combo = await firstVisible(page.locator('[data-row$="-row-scope"]').getByRole('combobox'))
+  if (combo && type !== 'sharepoint') {
+    await combo.click().catch(() => {})
+    await sleep(1200)
+  }
   await shoot(page, 'edit', type, scenario)
 }
 

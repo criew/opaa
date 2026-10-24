@@ -277,7 +277,7 @@ export default function SourceSetupRows<V>({
     if (mode === 'create') {
       return (
         <Box sx={{ mt: 3 }}>
-          <Button variant="outlined" size="small" onClick={() => void finishRow(row)}>
+          <Button variant="text" size="small" onClick={() => void finishRow(row)} sx={{ ml: -1 }}>
             Fertig
           </Button>
         </Box>

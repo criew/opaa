@@ -4,6 +4,7 @@ import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
+import type { SourceSetupSpec } from '../setup/setupTypes'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -88,6 +89,8 @@ export interface SourceConfiguration<V> {
   nameFromSource: (values: V) => string
   /** The form, including its own connection test. */
   Form: ComponentType<SourceFormProps<V>>
+  /** The rows „Verbindung“ and „Umfang“ of the summary-row setup, with every issue at once. */
+  setup?: SourceSetupSpec<V>
   /** The stored connection as the Bereich „Anbindung" shows it to a manager. */
   StoredView: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
   /** The scope every reader sees in the Bereich „Umfang"; absent for a source without one. */
