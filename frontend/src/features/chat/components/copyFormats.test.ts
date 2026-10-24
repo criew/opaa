@@ -160,6 +160,15 @@ describe('copy note', () => {
     )
   })
 
+  test('drops direction controls and breaks from notice and product name', () => {
+    expect(copyNote('Hinweis\u202E.', 'OP\u2067AA\nX', answeredAt)).toBe(
+      'Hinweis. – OPAA X, 05.03.2026',
+    )
+    expect(copyNote('\u200Fa\u061Cb\u2066c\u2069', '\u202Dp', answeredAt)).toBe(
+      'abc – p, 05.03.2026',
+    )
+  })
+
   test('ends the Markdown after a rule and the plain text after a blank line', () => {
     const note = copyNote('Hinweis.', 'OPAA', answeredAt)
 

@@ -13,6 +13,7 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { useLinkTargetsStore } from '@/shared/linkTargets/linkTargetsStore'
 import {
   answerAsMarkdown,
   answerAsPlainText,
@@ -59,6 +60,7 @@ export default function CopyAnswerButton({
 }: CopyAnswerButtonProps) {
   const { copied, copy } = useClipboardCopy('Die Antwort')
   const branding = useBrandingStore((s) => s.branding)
+  const allowedOrigins = useLinkTargetsStore((s) => s.allowedOrigins)
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const menuId = useId()
 
@@ -66,7 +68,7 @@ export default function CopyAnswerButton({
   // person marks by hand and copies themselves is not touched - there is no copy handler.
   function copyMarkdown(markdown: string) {
     const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
-    void copy(markdownWithNote(markdown, note), answerAsHtml(markdown, note))
+    void copy(markdownWithNote(markdown, note), answerAsHtml(markdown, note, allowedOrigins))
   }
 
   function copyPlainText() {

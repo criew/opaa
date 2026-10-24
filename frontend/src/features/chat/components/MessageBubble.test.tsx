@@ -549,6 +549,39 @@ describe('MessageBubble copy', () => {
     )
   })
 
+  it('adds the HTML flavour to the variant with sources, with a visible German footnote list', async () => {
+    const user = userEvent.setup()
+    const write = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem)
+    vi.spyOn(navigator.clipboard, 'write').mockImplementation(write)
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Weitere Kopieroptionen' }))
+    await user.click(screen.getByRole('menuitem', { name: /Mit Quellenangaben/ }))
+
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    const item = write.mock.calls[0][0][0] as FakeClipboardItem
+    const html = await (await item.getType('text/html')).text()
+    expect(html).toContain('Quellen')
+    expect(html).toContain('001_personalausweis.md')
+    expect(html).not.toContain('Footnotes')
+    expect(html).toContain(`<em>${note}</em>`)
+  })
+
+  it('leaves direction controls of the branding out of the copied note', async () => {
+    const user = userEvent.setup()
+    useBrandingStore.setState({
+      branding: { ...OPAA_BRANDING, aiNotice: 'KI-Hinweis\u202E.', productName: 'OP\u202EAA' },
+    })
+    render(<MessageBubble message={answer} />)
+
+    await user.click(screen.getByRole('button', { name: 'Antwort kopieren' }))
+
+    const copied = await navigator.clipboard.readText()
+    expect(copied).not.toMatch(/\u202E/)
+    expect(copied.endsWith('KI-Hinweis. – OPAA, 24.10.2026')).toBe(true)
+  })
+
   it('falls back to plain text with the note when writing the HTML flavour is refused', async () => {
     const user = userEvent.setup()
     vi.stubGlobal('ClipboardItem', FakeClipboardItem)

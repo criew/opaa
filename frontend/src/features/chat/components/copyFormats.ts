@@ -125,7 +125,31 @@ export function copyNote(notice: string, productName: string, answeredAt: Date):
     month: '2-digit',
     year: 'numeric',
   })
-  return `${notice.trim()} – ${productName.trim()}, ${date}`
+  return `${plainNoteText(notice)} – ${plainNoteText(productName)}, ${date}`
+}
+
+/**
+ * Notice and product name come from the branding. Direction controls (U+202A–202E, U+2066–2069,
+ * U+200E/F, U+061C) would reorder the rest of the line when the note is pasted, and breaks or
+ * control characters would split it, so they are dropped or turned into blanks.
+ */
+function plainNoteText(text: string): string {
+  return Array.from(text.replace(/[\r\n\u2028\u2029]+/g, ' '))
+    .filter((char) => !isDroppedFromNote(char.codePointAt(0) ?? 0))
+    .join('')
+    .trim()
+}
+
+function isDroppedFromNote(code: number): boolean {
+  return (
+    code <= 0x1f ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0x61c ||
+    code === 0x200e ||
+    code === 0x200f ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069)
+  )
 }
 
 /** Markdown followed by a rule and the note as its own paragraph. */

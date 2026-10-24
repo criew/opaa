@@ -891,8 +891,9 @@ einem abgesetzten Vermerk: dem Hinweis zur KI-Nutzung aus dem Branding, dem Prod
 Branding und dem Datum der Antwort (TT.MM.JJJJ), etwa „Antworten werden von einer KI erzeugt … – OPAA,
 05.03.2026". Einen Modellnamen enthält der Vermerk nie. Wo der Browser es erlaubt, legen die beiden
 Markdown-Varianten die Antwort zusätzlich als formatierten Text (HTML) mit sichtbarem Fuß ab, sodass
-sie sich mit Formatierung in Textverarbeitungen einfügen lässt; sonst bleibt es beim Text mit
-Vermerk. Der Vermerk steht nur beim Kopierknopf: Text, den jemand von Hand markiert und kopiert,
+sie sich mit Formatierung in Textverarbeitungen einfügen lässt; dabei gelten dieselben Regeln wie im
+Chat: Bilder werden nicht übernommen (nur ihre Beschreibung und Adresse als Text), und nur erlaubte
+Linkziele bleiben anklickbar. Sonst bleibt es beim Text mit Vermerk. Der Vermerk steht nur beim Kopierknopf: Text, den jemand von Hand markiert und kopiert,
 bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennzeichnung.
 
 **Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
