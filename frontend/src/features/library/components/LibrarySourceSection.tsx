@@ -26,7 +26,11 @@ import {
   indexingTriggerSourceLabel,
 } from './indexingLabels'
 import { scheduleFrequencyLabel } from './scheduleLabels'
-import EditLibrarySourceDialog from './EditLibrarySourceDialog'
+import EditSectionDialog from './stepwise/EditSectionDialog'
+import SummaryList from './stepwise/SummaryList'
+import ConfluenceWebhookSection from './ConfluenceWebhookSection'
+import S3EventSection from './S3EventSection'
+import type { S3Settings } from '../utils/s3Source'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
@@ -35,6 +39,7 @@ import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import { sourceRegistration } from './sources/registry'
+import { connectionFields, sourceConnectionOfRef } from './sources/sourceConnection'
 import {
   LIBRARY_QUOTA_EXHAUSTED_REMEDY,
   QUOTA_EXHAUSTED_LABEL,
@@ -81,7 +86,8 @@ export default function LibrarySourceSection({
   canEditSource,
   erasing = false,
 }: LibrarySourceSectionProps) {
-  const [editSourceOpen, setEditSourceOpen] = useState(false)
+  const [editSection, setEditSection] = useState<'connection' | 'scope' | null>(null)
+  const setEditSourceOpen = (open: boolean) => setEditSection(open ? 'connection' : null)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [reconnectOpen, setReconnectOpen] = useState(false)
@@ -132,6 +138,35 @@ export default function LibrarySourceSection({
   })()
   const Scope = configuration?.Scope
   const StoredView = configuration?.StoredView
+  const stepwise = configuration?.stepwise
+  const storedValues: unknown = configuration?.fromLibrary(library)
+  const connectionEditable =
+    canEditSource &&
+    !erasing &&
+    stepwise !== undefined &&
+    stepwise.fields(storedValues as never, {
+      mode: 'edit',
+      sourceType: library.sourceType,
+      credentialsStored: Boolean(library.sourceCredentialsSet),
+      replacingCredentials: false,
+      fields: connectionFields({
+        mode: 'edit',
+        sourceType: library.sourceType,
+        idPrefix: 'edit-source',
+        libraryId,
+        credentialsStored: Boolean(library.sourceCredentialsSet),
+        connection: library.connectionProfile
+          ? (sourceConnectionOfRef(library.connectionProfile) ?? undefined)
+          : undefined,
+        privateLibrary: library.privateLibrary,
+      }),
+      formContext: {
+        mode: 'edit',
+        sourceType: library.sourceType,
+        idPrefix: 'edit-source',
+        credentialsStored: false,
+      },
+    }).length > 0
   const fullSyncIntervalDays = configuration?.fullSyncRhythm
     ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
     : null
@@ -182,15 +217,31 @@ export default function LibrarySourceSection({
       )}
       {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
          with read access - they are here instead of in the header, with an explanation. */}
-      {Scope && (
-        <PageSection
-          title="Umfang"
-          description="Was diese Bibliothek aus ihrer Quelle aufnimmt — ihr Geltungsbereich. Er gilt für alle Leseberechtigten der Bibliothek."
-        >
-          <Stack spacing={1}>
-            <Scope library={library} />
-          </Stack>
-        </PageSection>
+      {stepwise?.scopeRows && storedValues !== undefined ? (
+        <Box sx={{ mb: 4 }}>
+          <SummaryList
+            headingLevel="h2"
+            sections={[
+              {
+                title: 'Umfang',
+                rows: stepwise.scopeRows(storedValues as never),
+                onChange: canEditSource && !erasing ? () => setEditSection('scope') : undefined,
+                note: 'Gilt für alle, die die Bibliothek lesen dürfen.',
+              },
+            ]}
+          />
+        </Box>
+      ) : (
+        Scope && (
+          <PageSection
+            title="Umfang"
+            description="Was diese Bibliothek aus ihrer Quelle aufnimmt. Gilt für alle Leseberechtigten."
+          >
+            <Stack spacing={1}>
+              <Scope library={library} />
+            </Stack>
+          </PageSection>
+        )
       )}
 
       {!canEditSource && (
@@ -201,27 +252,29 @@ export default function LibrarySourceSection({
 
       {canEditSource && !erasing && (
         <>
-          <PageSection
-            title="Anbindung"
-            description="Woher diese Bibliothek ihre Dokumente bezieht und wie die Quelle erreicht wird. Nur für Verwaltende sichtbar."
-            action={
-              configuration ? (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setEditSourceOpen(true)}
-                  aria-label="Quellkonfiguration bearbeiten"
-                  sx={{ flexShrink: 0 }}
-                >
-                  Bearbeiten
-                </Button>
-              ) : undefined
-            }
-          >
-            {/* sourcePath/sourceUrl expose internal server paths and source URLs - the backend only
-              * serves them to a caller with at least MANAGER, and
-                this whole area only renders behind the same bar. */}
-            <Stack spacing={1}>
+          <Box sx={{ mb: 4 }}>
+            {stepwise && storedValues !== undefined ? (
+              <SummaryList
+                headingLevel="h2"
+                sections={[
+                  {
+                    title: 'Verbindung',
+                    rows: stepwise.connectionRows(storedValues as never, {
+                      credentialsStored: Boolean(library.sourceCredentialsSet),
+                    }),
+                    onChange: connectionEditable ? () => setEditSection('connection') : undefined,
+                  },
+                ]}
+              />
+            ) : StoredView ? (
+              <StoredView library={library} libraryId={libraryId} />
+            ) : (
+              <Typography variant="body2" data-testid="source-not-configurable">
+                Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.
+              </Typography>
+            )}
+            {/* sourcePath/sourceUrl reach only MANAGER callers, and this area renders behind the same bar. */}
+            <Stack spacing={1} sx={{ mt: 2 }}>
               <LibraryConnectionPanel
                 libraryId={libraryId}
                 sourceType={library.sourceType}
@@ -229,7 +282,7 @@ export default function LibrarySourceSection({
                 connectionProfile={library.connectionProfile}
                 connectionProfileRemoved={library.connectionProfileRemoved}
                 privateLibrary={Boolean(library.privateLibrary)}
-                onEditSource={() => setEditSourceOpen(true)}
+                onEditSource={() => setEditSection('connection')}
                 dialogOpen={connectOpen}
                 onDialogOpenChange={setConnectOpen}
               />
@@ -240,67 +293,72 @@ export default function LibrarySourceSection({
                   onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
                 />
               )}
-              {StoredView ? (
-                <StoredView library={library} libraryId={libraryId} />
-              ) : (
-                <Typography variant="body2" data-testid="source-not-configurable">
-                  Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske; ihre Anbindung
-                  ist hier nicht konfigurierbar.
-                </Typography>
+              {library.sourceType === 'CONFLUENCE' && (
+                <ConfluenceWebhookSection libraryId={libraryId} secretSet={library.pushSecretSet} />
+              )}
+              {library.sourceType === 'S3' && (
+                <S3EventSection
+                  libraryId={libraryId}
+                  tokenSet={library.pushSecretSet}
+                  scopes={(library.sourceSettings as S3Settings | null)?.scopes ?? []}
+                />
               )}
             </Stack>
-            {configuration && (
-              <EditLibrarySourceDialog
-                // Forces a remount every time the dialog opens, so its internal field state always
-                // starts fresh from the current library configuration without an effect calling
-                // setState on open (react-hooks/set-state-in-effect).
-                key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
-                open={editSourceOpen}
-                onClose={() => setEditSourceOpen(false)}
+            {configuration && editSection && (
+              <EditSectionDialog
+                key={editSection}
+                open
+                section={editSection}
+                onClose={() => setEditSection(null)}
                 libraryId={libraryId}
                 library={library}
               />
             )}
-          </PageSection>
+          </Box>
 
           {/* Schedule - the same threshold as the source connection (canEditSource). */}
-          <PageSection
-            title="Zeitplan"
-            description="Wann diese Bibliothek automatisch indiziert wird."
-            action={
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => setEditScheduleOpen(true)}
-                aria-label="Zeitplan bearbeiten"
-                sx={{ flexShrink: 0 }}
-              >
-                Bearbeiten
-              </Button>
-            }
-          >
-            <Typography variant="body2">
-              {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
-            </Typography>
-            {configuration?.fullSyncRhythm && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {(() => {
-                  const days = fullSyncIntervalDays ?? library.fullSyncIntervalDefaultDays ?? 7
-                  const rhythm =
-                    days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
-                  return fullSyncIntervalDays == null ? `${rhythm} (Vorgabe der Instanz)` : rhythm
-                })()}
-              </Typography>
-            )}
-            {library.schedule?.nextRunAt && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Nächster geplanter Lauf:{' '}
-                {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </Typography>
-            )}
+          <Box sx={{ mb: 4 }}>
+            <SummaryList
+              headingLevel="h2"
+              sections={[
+                {
+                  title: 'Zeitplan',
+                  rows: [
+                    {
+                      label: 'Häufigkeit',
+                      value: scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED'),
+                    },
+                    ...(configuration?.fullSyncRhythm
+                      ? [
+                          {
+                            label: 'Vollabgleich',
+                            value: (() => {
+                              const days =
+                                fullSyncIntervalDays ?? library.fullSyncIntervalDefaultDays ?? 7
+                              const rhythm = days === 1 ? 'Täglich' : `Alle ${days} Tage`
+                              return fullSyncIntervalDays == null
+                                ? `${rhythm} (Vorgabe der Instanz)`
+                                : rhythm
+                            })(),
+                          },
+                        ]
+                      : []),
+                    ...(library.schedule?.nextRunAt
+                      ? [
+                          {
+                            label: 'Nächster Lauf',
+                            value: new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            }),
+                          },
+                        ]
+                      : []),
+                  ],
+                  onChange: () => setEditScheduleOpen(true),
+                },
+              ]}
+            />
             {library.lastScheduledRunsFailed && (
               <Alert severity="warning" sx={{ mt: 1 }}>
                 Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan
@@ -325,7 +383,7 @@ export default function LibrarySourceSection({
               settingsBase={configuration?.rhythmSettingsBase?.(library) ?? undefined}
               library={library}
             />
-          </PageSection>
+          </Box>
         </>
       )}
 

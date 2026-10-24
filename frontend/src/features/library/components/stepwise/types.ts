@@ -96,6 +96,8 @@ export interface StepwiseScope<V> {
   selection: (values: V) => ScopeNode[]
   withSelection: (values: V, nodes: ScopeNode[]) => Partial<V>
   max: number
+  /** What `max` counts, where not every node does (SharePoint: libraries, not their folders). */
+  countForMax?: (nodes: ScopeNode[]) => number
   errors: (values: V, ctx: StepContext) => FieldErrors
   /** The selected entries the connection test could not read, by scope id. */
   failedEntries?: (response: SourceConnectionTestResponse, values: V) => Record<string, string>

@@ -115,10 +115,10 @@ const TYPES = {
 
 /** States shot per scenario; the non-structural scenarios only need the loaded source step + detail. */
 function statesFor(scenario) {
-  if (scenario === 'small') return ['wizard-empty', 'wizard-validation', 'wizard-filled', 'review', 'detail', 'edit']
+  if (scenario === 'small') return ['wizard-empty', 'wizard-validation', 'wizard-check', 'wizard-filled', 'review', 'detail', 'edit', 'edit-connection']
   if (scenario === 'default') return ['wizard-empty', 'wizard-filled', 'review', 'detail', 'edit']
   if (scenario === 'scale') return ['wizard-filled', 'review', 'detail', 'edit']
-  if (scenario === 'failed') return ['wizard-filled', 'detail', 'edit']
+  if (scenario === 'failed') return ['wizard-check', 'wizard-filled', 'detail', 'edit', 'edit-connection']
   return ['wizard-filled', 'detail']
 }
 
@@ -298,7 +298,7 @@ async function triggerListings(page, { slow }) {
   return clicked
 }
 
-async function fillSource(page, type, scenario) {
+async function fillSource(page, type, scenario, shootCheck = null) {
   const slow = scenario === 'slow'
   const many = scenario === 'scale' ? 12 : 2
   switch (type) {
@@ -348,6 +348,22 @@ async function fillSource(page, type, scenario) {
       break
     case 'dropbox':
       break
+  }
+  // variant B: the connection is its own page; „Verbindung prüfen“ there, then „Weiter“ to „Umfang“
+  if (/Verbindung/.test(await headingText(page))) {
+    if (shootCheck) {
+      await clickButton(page, TEST_BUTTON, { wait: slow ? 900 : 1200 })
+      await settle(page, 200)
+      await shootCheck()
+    }
+    await next(page)
+    if (slow) return
+    await settle(page, 300)
+    await clickByName(page, ['radio'], /^Nur ausgewählte/, { wait: 900 })
+    if (type === 'sharepoint' || (type === 's3' && scenario !== 'small')) {
+      await clickButton(page, /aufklappen$/, { wait: 900 })
+      await settle(page, 200)
+    }
   }
   // listings, then a selection, then the explicit test
   if (type === 'confluence') {
@@ -717,7 +733,7 @@ async function wizardFlow(page, type, scenario, states) {
       await clickButton(page, /^Zurück$/, { wait: 600 })
     }
   }
-  await fillSource(page, type, scenario)
+  await fillSource(page, type, scenario, states.includes('wizard-check') ? () => shoot(page, 'wizard-check', type, scenario) : null)
   if (states.includes('wizard-filled')) await shoot(page, 'wizard-filled', type, scenario)
   if (states.includes('review') && wantArea('review')) {
     if (scenario === 'slow') await settle(page, 3500)
@@ -752,12 +768,24 @@ async function detailFlow(page, type, scenario, states) {
   }
   if (!states.includes('edit') || !wantArea('edit')) return
   if (!opened) return notFound('edit', type, scenario, 'tab Quelle')
-  const edit = await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 })
+  const edit = await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)( (Umfang|Verbindung))?$/, { wait: 900 })
   if (!edit) return notFound('edit', type, scenario, 'edit button')
   await settle(page, 300)
   // load the listing in the edit flow too, so the selection UI shows its real size
   await triggerListings(page, { slow: scenario === 'slow' })
+  await settle(page, 300)
   await shoot(page, 'edit', type, scenario)
+  if (states.includes('edit-connection')) {
+    // variant B edits one section at a time: the connection with its stored credentials
+    const dialog = page.getByRole('dialog').first()
+    await dialog.getByRole('button', { name: /^Abbrechen$/ }).click({ timeout: 2000 }).catch(() => page.keyboard.press('Escape'))
+    await sleep(500)
+    await clickButton(page, /^Verwerfen$/, { wait: 400 })
+    if (await clickButton(page, /^Ändern Verbindung$/, { wait: 900 })) {
+      await settle(page, 300)
+      await shoot(page, 'edit-connection', type, scenario)
+    } else notFound('edit-connection', type, scenario, 'no connection edit')
+  }
 }
 
 ;(async () => {

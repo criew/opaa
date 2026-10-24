@@ -151,7 +151,7 @@ export default function ScopePicker<V>({
     }
     // a chosen parent covers its children; they leave the selection
     const kept = selected.filter((s) => !s.ancestors.includes(node.id))
-    if (kept.length + 1 > scope.max) {
+    if (counted([...kept, node]) > scope.max) {
       setLimitHit(true)
       return
     }
@@ -164,6 +164,7 @@ export default function ScopePicker<V>({
     setSelection([...selected, ...fresh])
   }
 
+  const counted = (nodes: ScopeNode[]) => scope.countForMax?.(nodes) ?? nodes.length
   const covered = (node: ScopeNode) => node.ancestors.some((id) => selectedIds.has(id))
 
   const allLoaded = useMemo(() => Object.values(levels).flatMap((level) => level.nodes), [levels])
@@ -179,7 +180,7 @@ export default function ScopePicker<V>({
   function chooseAllButton(nodes: ScopeNode[], filtered: boolean) {
     const candidates = nodes.filter((n) => n.selectable && !selectedIds.has(n.id) && !covered(n))
     if (candidates.length < 2) return null
-    if (selected.length + candidates.length > scope.max) return null
+    if (counted([...selected, ...candidates]) > scope.max) return null
     const label = filtered
       ? `Alle ${candidates.length} Treffer auswählen`
       : `Alle ${candidates.length} auswählen`
@@ -393,6 +394,8 @@ export default function ScopePicker<V>({
     )
   }
 
+  // a short flat list shows its selection itself; chips help where it may scroll or hide
+  const showChips = scope.hierarchical || (root?.nodes.length ?? 0) >= SEARCH_FROM || trimmed !== ''
   const chosenShown = showAllChosen ? selected : selected.slice(0, 6)
   const Manual = scope.Manual
   const Extra = scope.Extra
@@ -439,9 +442,11 @@ export default function ScopePicker<V>({
                 ? `Keine ${plural} ausgewählt`
                 : `${selected.length} ausgewählt`}
             </Typography>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-              {`höchstens ${scope.max}`}
-            </Typography>
+            {counted(selected) >= scope.max - 10 && (
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                {`höchstens ${scope.max} ${plural}`}
+              </Typography>
+            )}
             {selected.length > 0 && (
               <Button
                 variant="text"
@@ -453,14 +458,18 @@ export default function ScopePicker<V>({
               </Button>
             )}
           </Box>
-          {selected.length > 0 && (
+          {selected.length > 0 && showChips && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
               {chosenShown.map((node) => (
                 <Tooltip key={node.id} title={[...node.trail, node.name].join(' › ')}>
                   <Chip
                     size="small"
                     variant="outlined"
-                    label={node.name}
+                    label={
+                      node.trail.length > 0
+                        ? `${node.trail[node.trail.length - 1]} › ${node.name}`
+                        : node.name
+                    }
                     onDelete={() => toggle(node)}
                     deleteIcon={<CloseIcon aria-label={`${node.name} entfernen`} />}
                     sx={{ maxWidth: { xs: 260, sm: 320 } }}

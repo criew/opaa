@@ -66,6 +66,23 @@ export const s3Stepwise: StepwiseSource<S3SourceValues> = {
   connectionHeading: 'Verbindung zum Objektspeicher',
   fields: (values, ctx) => {
     const derived = derivedS3Endpoint(values.provider, values.region) !== null
+    const REGION: FieldSpec = {
+      key: 'region',
+      label: values.provider === 'HETZNER' ? 'Standort' : 'Region',
+      kind: 'text',
+      mono: true,
+      optional:
+        values.provider === 'MINIO' || values.provider === 'CEPH' || values.provider === 'OTHER',
+      placeholder: values.provider === 'HETZNER' ? 'fsn1' : 'eu-central-1',
+    }
+    const URL: FieldSpec = {
+      key: 'sourceUrl',
+      label: 'Adresse',
+      kind: 'text',
+      mono: true,
+      placeholder: 'https://s3.example.de:9000',
+      hint: derived ? 'Aus der Region abgeleitet.' : 'Endpoint des Objektspeichers, ohne Bucket.',
+    }
     const specs: FieldSpec[] = [
       {
         key: 'provider',
@@ -73,23 +90,7 @@ export const s3Stepwise: StepwiseSource<S3SourceValues> = {
         kind: 'choice',
         options: S3_PROVIDERS.map((p) => ({ value: p, label: S3_PROVIDER_LABELS[p] })),
       },
-      {
-        key: 'region',
-        label: values.provider === 'HETZNER' ? 'Standort' : 'Region',
-        kind: 'text',
-        mono: true,
-        optional:
-          values.provider === 'MINIO' || values.provider === 'CEPH' || values.provider === 'OTHER',
-        placeholder: values.provider === 'HETZNER' ? 'fsn1' : 'eu-central-1',
-      },
-      {
-        key: 'sourceUrl',
-        label: 'Adresse',
-        kind: 'text',
-        mono: true,
-        placeholder: 'https://s3.example.de:9000',
-        hint: derived ? 'Aus der Region abgeleitet.' : 'Endpoint des Objektspeichers, ohne Bucket.',
-      },
+      ...(derived ? [REGION, URL] : [URL, REGION]),
     ]
     if (ctx.fields.asksSecret) {
       specs.push(

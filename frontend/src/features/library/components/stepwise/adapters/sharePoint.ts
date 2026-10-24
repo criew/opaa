@@ -111,6 +111,7 @@ export const sharePointStepwise: StepwiseSource<SharePointSourceValues> = {
     selection: selectionOf,
     withSelection: (_values, nodes) => ({ libraries: librariesOf(nodes) }),
     max: 50,
+    countForMax: (nodes) => librariesOf(nodes).length,
     errors: (values) =>
       values.libraries.length === 0
         ? { scope: 'Bitte mindestens eine Dokumentbibliothek wählen.' }
