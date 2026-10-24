@@ -187,7 +187,10 @@ Verbindung an eine Adresse außerhalb des Subnetzes scheitert sofort.
   selben Netz.
 - **Ablauf:** Anmeldung des lokalen Notanker-Kontos, Bibliothek über den Assistenten, Upload,
   Zuordnung der Bibliothek zum Standard-Space über die API, Frage ohne Referenz, Fundstelle im
-  Belegfenster.
+  Belegfenster; danach eine zweite Bibliothek ohne Space mit `formatdokument.xlsx`, `.html` und
+  `.eml`, damit die Parser dieser Formate im abgeschotteten Netz laufen. Der Lauf ist der einzige
+  Nachweis für Abrufe eingebundener Bibliotheken; der Strukturtest des Backends sieht nur die
+  Clients im Code von OPAA (ADR-0052, Entscheidung 8).
 - **Erkennung:** Jeder Container der Installation löst Namen über `egress-dns` auf
   (`e2e/offline/egress-dns.mjs`). Dockers eingebautes DNS beantwortet die Dienstnamen selbst und
   reicht nur fremde Namen weiter; der Wächter zeichnet sie auf und antwortet mit NXDOMAIN. Der
@@ -212,6 +215,7 @@ pnpm run test:offline
 ```
 
 **Nicht abgedeckt:** ein echter Modellserver (ob er ohne Internet startet, ist dessen Sache),
+weitere Formate (PDF, Word- und Präsentationsdateien, Bilder), Reranking, Transkription, zeitgesteuerte Aufgaben,
 Konnektoren zu Quellen, Identitätsanbieter, Mailversand und Kubernetes.
 
 `.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label

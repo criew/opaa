@@ -5,6 +5,7 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import {
   askQuestion,
   createLibraryWithDocument,
+  createLibraryWithDocuments,
   expectCitedSource,
   openNewLibraryWizard,
   startFreshChat,
@@ -14,15 +15,19 @@ import { callOk, eventually, loginOk } from "../../fixtures/multiInstance";
 
 /**
  * The journey of an installation without internet access (scripts/offline.mjs): sign-in, a
- * library with an uploaded document, a question answered with the document as its source. The
+ * library with an uploaded document, a question answered with the document as its source, and the
+ * pipelines of further formats, whose parsing libraries are invisible to the build guard. The
  * stack has no route out, and two recorders watch for attempts to leave it - egress-dns for every
  * name outside the stack, the browser context for every request to another origin. A deliberate
  * lookup by the backend proves the first recorder works; apart from it both stay empty.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
-const DOCUMENT_PATH = join(here, "..", "..", "..", "demo", "seed", "e2e-data", "test-documents", "wissensdokument.txt");
+const FIXTURE_DIR = join(here, "..", "..", "..", "demo", "seed", "e2e-data", "test-documents");
+const DOCUMENT_PATH = join(FIXTURE_DIR, "wissensdokument.txt");
 const DOCUMENT_NAME = "wissensdokument.txt";
+/** Formats with their own parsing library; the mail recurses into the pipeline of its attachment. */
+const FORMAT_DOCUMENTS = ["formatdokument.xlsx", "formatdokument.html", "formatdokument.eml"];
 /** A name outside the stack the backend is made to look up; reserved, never resolvable. */
 const PROBE_HOST = "egress-probe.offline-check.example";
 /** The probe name, also with a search domain the host's resolver configuration appends. */
@@ -53,6 +58,7 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
   let page: Page;
   const foreignRequests: string[] = [];
   const libraryName = `Ohne-Internet-${Date.now().toString(36)}`;
+  const formatLibraryName = `${libraryName}-Formate`;
 
   test.beforeAll(async ({ browser }) => {
     context = await browser.newContext();
@@ -99,6 +105,16 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
     await startFreshChat(page);
     await askQuestion(page, "Was steht im Wissensdokument?");
     await expectCitedSource(page, DOCUMENT_NAME);
+  });
+
+  test("weitere Formate aufnehmen", async () => {
+    // A library of its own, assigned to no space: the question above stays answered from one
+    // document, while these uploads still run every format pipeline inside the closed network.
+    await createLibraryWithDocuments(
+      page,
+      formatLibraryName,
+      FORMAT_DOCUMENTS.map((name) => ({ path: join(FIXTURE_DIR, name), name })),
+    );
   });
 
   test("ein Verbindungsversuch nach außen wird erkannt", async () => {
