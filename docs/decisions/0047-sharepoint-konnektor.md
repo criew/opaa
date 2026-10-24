@@ -2,8 +2,9 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
 [ADR-0038](0038-steckbare-konnektoren.md) und [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md)
+· ergänzt durch [ADR-0058](0058-onedrive-konnektor.md)
 
 ## Kontext
 
@@ -28,8 +29,10 @@ Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; am Zugang b
 „Scopes“ leer, ein anderer Wert als `.default` scheitert bei Entra. Keine Anforderungslücke am Typ,
 weil die Registry sie nur für umschaltbare Profilpflicht zulässt. Empfohlen ist `Sites.Selected`
 (Anwendung, Rolle `read` je Site), Alternative `Sites.Read.All`; `Files.Read.All` nennt das Handbuch
-nicht, weil es OneDrives einschließt. OneDrive wird abgewiesen: Die Erreichbarkeitsprüfung liest
-`driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
+nicht, weil es OneDrives einschließt. Der Typ `SHAREPOINT` liest kein OneDrive: Die
+Erreichbarkeitsprüfung liest `driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
+Das OneDrive einer Person ist der eigene Typ `ONEDRIVE` im selben Paket, mit delegierter Anmeldung
+und demselben Store ([ADR-0058](0058-onedrive-konnektor.md)).
 
 ### 2. Quelle, Einstellungen, Auflistung
 
@@ -114,4 +117,4 @@ Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Date
 
 - Lauf gegen einen echten Tenant für die unsicheren Annahmen.
 - Nationale Clouds (feste Adresse), Freigabe je Bibliothek über `Lists.SelectedOperations.Selected`,
-  delegierter Zugang für OneDrive, Rechte der Quelle.
+  Rechte der Quelle.
