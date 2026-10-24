@@ -336,6 +336,12 @@ lassen.
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
   seit #805 in `tests/admin-area-navigation.spec.ts` (mit 320-px-Geometrie-Zusicherung), weil
   er keine axe-Analyse ausführt.
+  **Berichtsmodus für den Release-Lauf:** Mit `E2E_A11Y_RESULTS_DIR` legt die Fixture jede Analyse
+  als JSON-Datensatz in diesem Verzeichnis ab, mit `E2E_A11Y_REPORT_ONLY=true` hält sie Verstöße fest,
+  statt den Test scheitern zu lassen. Daraus entsteht der Prüfbericht Barrierefreiheit im
+  Update-Paket (`docs/releases.md`, „Prüfbericht Barrierefreiheit“). Der Lauf dort findet jede Spec mit
+  axe-Prüfung selbst und scheitert, wenn eine davon keinen Datensatz liefert; `E2E_SEED_HASHED=true`
+  installiert den Seed nur aus den per Hash gepinnten Wheels in `.github/requirements-seed.txt`.
 - `tests/csp.spec.ts` (#707) — lädt die App durch die echte nginx-Auslieferung des Stacks und
   sammelt Content-Security-Policy-Verstöße aus der Browser-Konsole ein; die Konsole muss leer
   bleiben. Reproduziert den Fall, in dem Vite kleine Font-Subsets als `data:`-URIs bündelt, die
@@ -822,6 +828,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
+| `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
 
 `/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das

@@ -385,9 +385,11 @@ Verwaltung (Schalter = `enabled` der `LOCAL`-Anbieterzeile) nur ein lokaler `SYS
 Höchstdauer 30 Tage, für lokale Systemverwalter 4 h / 12 h; keine Rotation verlängert das
 Familienende); die erneute Vorlage eines bereits rotierten Tokens widerruft **alle** Familien und
 alle Access-Tokens des Kontos (`REUSE_DETECTED`), wird als `LOCAL_SESSION_REVOKED` protokolliert und
-als Warnung ins Anwendungslog geschrieben (Konto-ID, nie die Adresse). Zwei gleichzeitige Vorlagen
-desselben Tokens gelten als Wiederverwendung — die Oberfläche serialisiert `refresh` (ein Aufruf zur
-Zeit). Ein `refresh` für ein nicht mehr anmeldefähiges Konto oder ein reguläres Konto bei
+als Warnung ins Anwendungslog geschrieben (Konto-ID, nie die Adresse). Ausgenommen ist die
+Gnadenfrist `OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD` (20 s) nach der Rotation, solange der Nachfolger
+nie benutzt wurde: Dann wird der Nachfolger ersetzt — das Neuladen, das die Antwort von `refresh`
+verworfen hat (ADR-0033, Entscheidung 7). Von zwei gleichzeitigen Erneuerungen desselben Tokens
+gewinnt nur eine — die Oberfläche serialisiert `refresh` (ein Aufruf zur Zeit). Ein `refresh` für ein nicht mehr anmeldefähiges Konto oder ein reguläres Konto bei
 abgeschalteter Verwaltung wird wie ein unbekanntes Token behandelt (`401`, Cookie gelöscht). `POST …/logout` widerruft Familie und das
 vorgelegte Access-Token sofort (`jti`-Sperrliste), ohne Protokolleintrag. `refresh` und `logout`
 verlangen das CSRF-Double-Submit-Token (Cookie `XSRF-TOKEN`, Header `X-XSRF-TOKEN`; fehlt es:

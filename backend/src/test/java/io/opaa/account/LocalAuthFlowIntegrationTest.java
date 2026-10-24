@@ -166,6 +166,13 @@ class LocalAuthFlowIntegrationTest {
         .andExpect(status().isOk());
 
     MvcResult otherSession = login(user.email(), LocalAccountFixtures.PASSWORD).andReturn();
+    // the successor is used, so the grace period of the first cookie no longer applies
+    MvcResult used =
+        mockMvc
+            .perform(withCsrf(post(REFRESH), login).cookie(second))
+            .andExpect(status().isOk())
+            .andReturn();
+    Cookie third = refreshCookie(used);
 
     // the replay: the already rotated cookie is presented again
     mockMvc
@@ -173,14 +180,14 @@ class LocalAuthFlowIntegrationTest {
         .andExpect(status().isUnauthorized())
         .andExpect(cookie().maxAge(LocalRefreshCookies.COOKIE_NAME, 0))
         .andExpect(jsonPath("$.status").value(401));
-    // the successor is dead with its family ...
+    // the newest successor is dead with its family ...
     mockMvc
-        .perform(withCsrf(post(REFRESH), login).cookie(second))
+        .perform(withCsrf(post(REFRESH), login).cookie(third))
         .andExpect(status().isUnauthorized())
         .andExpect(cookie().maxAge(LocalRefreshCookies.COOKIE_NAME, 0));
     // ... and so is the access token minted with it, naming the reason
     mockMvc
-        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(refreshed)))
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(used)))
         .andExpect(status().isUnauthorized())
         .andExpect(
             header()

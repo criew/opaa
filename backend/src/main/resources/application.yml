@@ -190,6 +190,10 @@ opaa:
       admin-refresh-token-ttl: ${OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL:4h}
       admin-session-max-lifetime: ${OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME:12h}
       cookie-secure: ${OPAA_AUTH_LOCAL_COOKIE_SECURE:true}
+      # A rotated refresh token whose successor was never used is renewed once more instead of
+      # counting as a replay for this long after its rotation (at most 60s, 0 switches it off):
+      # the reload that discarded the rotation's answer (ADR-0033, Entscheidung 7).
+      refresh-grace-period: ${OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD:20s}
       # Bootstrap administrator (ADR-0033, Entscheidungen 5 and 9; LocalAdminSeeder): address from
       # opaa.auth.initial-admin-email above (the "oidc" seed refuses the dev default). A set
       # password is used as is without a forced change, empty means "generate and print once";

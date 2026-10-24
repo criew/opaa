@@ -48,6 +48,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -765,6 +766,49 @@ class PermissionTransferIntegrationTest {
             AuditEventType.PERMISSION_TRANSFER_EXECUTED.name(),
             organizationA);
     assertThat(withSubject).isEqualTo(1);
+  }
+
+  /**
+   * Regression guard for #3040: a succession entry names source and target only by pseudonym - the
+   * object of a USER_ACCOUNT entry is the same pseudonym as its subject, and no column carries
+   * either account id, so a reader cannot link the pseudonym back to the account.
+   */
+  @Test
+  void namesPersonsInTheEntriesOnlyByTheirPseudonym() {
+    CurrentUser leaving = user(organizationA, SystemRole.USER);
+    CurrentUser successor = user(organizationA, SystemRole.USER);
+    libraryOwnedBy(organizationA, leaving.id());
+
+    execute(
+        new PermissionTransferOrder(
+            PermissionSubjectType.USER,
+            leaving.id(),
+            PermissionSubjectType.USER,
+            successor.id(),
+            EnumSet.of(PermissionTransferScope.OWNERSHIP)),
+        admin);
+
+    List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            "SELECT object_type, object_id, subject_ref, after::text AS after, row_to_json(a)::text"
+                + " AS whole FROM audit_log a WHERE organization_id = ? AND event_type IN (?, ?)",
+            organizationA,
+            AuditEventType.PERMISSION_TRANSFER_PREVIEWED.name(),
+            AuditEventType.PERMISSION_TRANSFER_EXECUTED.name());
+    String sourcePseudonym =
+        auditEventRecorder.pseudonymFor(leaving.id(), organizationA).toString();
+    String targetPseudonym =
+        auditEventRecorder.pseudonymFor(successor.id(), organizationA).toString();
+    assertThat(rows).hasSize(2);
+    for (Map<String, Object> row : rows) {
+      assertThat(row.get("object_type")).isEqualTo("USER_ACCOUNT");
+      assertThat(row.get("object_id")).isEqualTo(sourcePseudonym);
+      assertThat(row.get("subject_ref")).isEqualTo(sourcePseudonym);
+      assertThat((String) row.get("after")).contains(targetPseudonym);
+      assertThat((String) row.get("whole"))
+          .doesNotContain(leaving.id().toString())
+          .doesNotContain(successor.id().toString());
+    }
   }
 
   // -------------------------------------------------------------------------------------------

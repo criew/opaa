@@ -43,6 +43,7 @@ class LocalAccessTokenServiceTest {
           null,
           null,
           null,
+          null,
           null);
   private final LocalAccessTokenService service =
       new LocalAccessTokenService(keys, properties, Clock.fixed(NOW, ZoneOffset.UTC));

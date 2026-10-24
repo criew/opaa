@@ -299,14 +299,24 @@ function runSeed() {
       return createStatus
     }
   }
-  const installStatus = run(venvPython, [
-    '-m',
-    'pip',
-    'install',
-    '-q',
-    '-r',
-    'demo/seed/requirements.txt',
-  ])
+  // E2E_SEED_HASHED=true (the accessibility run of a release) installs only the hash-pinned wheels
+  // of .github/requirements-seed.txt, nothing resolved at install time.
+  const installStatus = run(
+    venvPython,
+    process.env.E2E_SEED_HASHED === 'true'
+      ? [
+          '-m',
+          'pip',
+          'install',
+          '-q',
+          '--require-hashes',
+          '--only-binary=:all:',
+          '--no-deps',
+          '-r',
+          '.github/requirements-seed.txt',
+        ]
+      : ['-m', 'pip', 'install', '-q', '-r', 'demo/seed/requirements.txt'],
+  )
   if (installStatus !== 0) {
     console.error('pip install for demo/seed failed')
     return installStatus

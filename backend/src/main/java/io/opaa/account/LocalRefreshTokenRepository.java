@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Persistence for {@link LocalRefreshToken}. Rotation and revocation are single atomic {@code
  * UPDATE}s decided by the database and return the number of rows they changed: two concurrent
  * refreshes with the same cookie race on {@link #rotateIfActive}, exactly one wins, and the loser
- * (0 rows) is a reuse the caller answers with {@link #revokeFamily}. The bulk updates clear and
+ * (0 rows) is judged like any presentation of an already rotated token. The bulk updates clear and
  * flush the persistence context so a service holding entities of the same rows never reads stale
  * state afterwards.
  */
@@ -62,6 +62,21 @@ public interface LocalRefreshTokenRepository extends JpaRepository<LocalRefreshT
       @Param("successorId") UUID successorId,
       @Param("reason") RevocationReason reason,
       @Param("now") Instant now);
+
+  /**
+   * Points a rotated token at a new successor, but only while it still points at {@code
+   * expectedSuccessorId} - the renewal within the grace period after the unused successor itself
+   * was rotated away by {@link #rotateIfActive} in the same transaction (ADR-0033, Entscheidung 7).
+   */
+  @Transactional
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE LocalRefreshToken t SET t.rotatedToId = :successorId WHERE t.id = :id"
+          + " AND t.rotatedToId = :expectedSuccessorId")
+  int redirectRotation(
+      @Param("id") UUID id,
+      @Param("expectedSuccessorId") UUID expectedSuccessorId,
+      @Param("successorId") UUID successorId);
 
   /** Revokes every still active token of the family; 0 when none was active. */
   @Transactional

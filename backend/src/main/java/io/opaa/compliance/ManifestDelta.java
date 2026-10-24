@@ -105,7 +105,7 @@ public record ManifestDelta(Origin from, Origin to, List<Change> changes) {
 
   /** The delta from {@code from} to {@code to}. */
   public static ManifestDelta between(ManifestSnapshot from, ManifestSnapshot to) {
-    Context context = new Context(union(retentionSettings(from), retentionSettings(to)));
+    Context context = context(from, to);
     SortedMap<String, SortedMap<String, SortedMap<String, Object>>> before = withAreas(from);
     SortedMap<String, SortedMap<String, SortedMap<String, Object>>> after = withAreas(to);
     List<Change> changes = new ArrayList<>();
@@ -171,6 +171,11 @@ public record ManifestDelta(Origin from, Origin to, List<Change> changes) {
             .thenComparing(Change::id)
             .thenComparing(change -> Objects.toString(change.field(), "")));
     return new ManifestDelta(from.origin(), to.origin(), changes);
+  }
+
+  /** The context of the stage rules for changes between {@code from} and {@code to}. */
+  static Context context(ManifestSnapshot from, ManifestSnapshot to) {
+    return new Context(union(retentionSettings(from), retentionSettings(to)));
   }
 
   /** The group a change of {@code id} in {@code section} belongs to. */
