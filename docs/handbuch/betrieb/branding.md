@@ -19,8 +19,8 @@ wird der Text gepflegt und über die Schnittstelle bereitgestellt, aber nicht an
 
 Ohne eigenen Text gilt der Standard: „Antworten werden von einer KI erzeugt und können Fehler
 enthalten. Prüfen Sie wichtige Angaben anhand der Belege." Das Haus kann ihn in eigenen Worten
-ersetzen, bis zu 500 Zeichen, ohne Zeilenumbruch (die Oberfläche macht aus einem Umbruch ein
-Leerzeichen).
+ersetzen, bis zu 500 Zeichen, ohne Zeilenumbruch und ohne Steuerzeichen zur Schreibrichtung (die
+Oberfläche macht aus einem Umbruch ein Leerzeichen).
 
 Der Hinweis lässt sich **ändern, aber nicht abschalten**. Ein leeres Feld oder eines ohne sichtbares
 Zeichen (nur Leerzeichen, geschützte oder unsichtbare Zeichen) wird nicht als „kein Hinweis"
