@@ -1,12 +1,13 @@
 # Branding
 
-Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe und drei Bilder
-gehören der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration →
-Branding**, von einem Systemverwalter; gespeichert wird in der Datenbank, nicht im Dateisystem.
-Jede Änderung ist sofort für alle wirksam — ohne Neustart, ohne neues Image — und steht im
-Nachweisprotokoll. Ein leer gelassenes Feld bedeutet nicht „leer", sondern „der OPAA-Standard gilt
-wieder", und zwar je Feld: Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Welche Anmeldewege die Anmeldeseite zeigt und in welcher
-Reihenfolge, steht unter [Authentifizierung](authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
+Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe und drei Bilder gehören
+der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration → Branding**, von
+einem Systemverwalter; gespeichert wird in der Datenbank, nicht im Dateisystem. Jede Änderung ist
+sofort für alle wirksam — ohne Neustart, ohne neues Image — und steht im Nachweisprotokoll. Ein leer
+gelassenes Feld bedeutet nicht „leer", sondern „der OPAA-Standard gilt wieder", und zwar je Feld:
+Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Welche Anmeldewege die Anmeldeseite
+zeigt und in welcher Reihenfolge, steht unter
+[Authentifizierung](authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
 
 ## Hinweis zur KI-Nutzung
 
@@ -23,11 +24,11 @@ ersetzen, bis zu 500 Zeichen, ohne Zeilenumbruch (die Oberfläche macht aus eine
 Leerzeichen).
 
 Der Hinweis lässt sich **ändern, aber nicht abschalten**. Ein leeres Feld oder eines ohne sichtbares
-Zeichen (nur Leerzeichen, geschützte oder unsichtbare Zeichen) wird nicht als „kein Hinweis" gespeichert, sondern stellt den Standardtext wieder
-her; ebenso die Schaltfläche **Hinweis auf Standard zurücksetzen**. Wird der Standardtext
-unverändert gespeichert, bleibt der Hinweis „Standard" und folgt einer späteren Änderung des
-Standards. Der Text ist wie die anderen Felder ohne Anmeldung lesbar und steht im
-Nachweisprotokoll, wenn er sich ändert.
+Zeichen (nur Leerzeichen, geschützte oder unsichtbare Zeichen) wird nicht als „kein Hinweis"
+gespeichert, sondern stellt den Standardtext wieder her; ebenso die Schaltfläche **Hinweis auf
+Standard zurücksetzen**. Wird der Standardtext unverändert gespeichert, bleibt der Hinweis
+„Standard" und folgt einer späteren Änderung des Standards. Der Text ist wie die anderen Felder ohne
+Anmeldung lesbar und steht im Nachweisprotokoll, wenn er sich ändert.
 
 ## Die drei Bilder
 

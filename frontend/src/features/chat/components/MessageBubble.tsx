@@ -232,7 +232,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               onOpen={openAllEvidence}
               actions={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AiAnswerMark />
+                  {message.generatedByAi !== false && <AiAnswerMark />}
                   <CopyAnswerButton content={message.content} citations={citations} />
                 </Box>
               }

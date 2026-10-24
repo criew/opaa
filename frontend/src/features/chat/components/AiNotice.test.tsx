@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
 import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
+import type { ChatMessageResponse } from '@/shared/api/types'
+import { toChatMessage } from '../stores/chatDetail'
 import ChatInput from './ChatInput'
 import MessageBubble from './MessageBubble'
 import MessageList from './MessageList'
@@ -41,7 +43,7 @@ describe('AI notice and answer mark', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByTestId('ai-notice-line')).toHaveTextContent(
+    expect(screen.getByRole('note', { name: 'Hinweis zur KI-Nutzung' })).toHaveTextContent(
       'Dieser Assistent nutzt KI; bitte prüfen Sie jede Antwort.',
     )
   })
@@ -63,22 +65,37 @@ describe('AI notice and answer mark', () => {
     expect(screen.queryByTestId('ai-answer-mark')).not.toBeInTheDocument()
   })
 
-  it('marks older answers loaded from a stored chat just the same', () => {
-    render(
-      <MessageList
-        messages={[
-          { id: '1', role: 'user', content: 'Frage', timestamp: new Date('2026-03-05T09:00:00Z') },
-          {
-            id: '2',
-            role: 'assistant',
-            content: 'Alte Antwort',
-            timestamp: new Date('2026-03-05T09:00:05Z'),
-          },
-        ]}
-        isLoading={false}
-      />,
-    )
+  it('marks older answers loaded from a stored chat, read from the API label', () => {
+    const stored: ChatMessageResponse[] = [
+      {
+        id: '1',
+        chatId: 'c',
+        role: 'USER',
+        content: 'Frage',
+        generatedByAi: false,
+        createdAt: '2026-03-05T09:00:00Z',
+      },
+      {
+        id: '2',
+        chatId: 'c',
+        role: 'ASSISTANT',
+        content: 'Alte Antwort',
+        generatedByAi: true,
+        createdAt: '2026-03-05T09:00:05Z',
+      },
+    ]
+
+    render(<MessageList messages={stored.map(toChatMessage)} isLoading={false} />)
 
     expect(screen.getAllByTestId('ai-answer-mark')).toHaveLength(1)
+  })
+
+  it('keeps the mark when the label is missing and drops it when the API says false', () => {
+    const base = { id: '1', role: 'assistant' as const, content: 'Antwort', timestamp: new Date() }
+    const { rerender } = render(<MessageBubble message={base} />)
+    expect(screen.getByTestId('ai-answer-mark')).toBeInTheDocument()
+
+    rerender(<MessageBubble message={{ ...base, generatedByAi: false }} />)
+    expect(screen.queryByTestId('ai-answer-mark')).not.toBeInTheDocument()
   })
 })

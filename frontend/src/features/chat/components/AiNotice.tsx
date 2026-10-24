@@ -23,7 +23,16 @@ export function AiNotice({ variant }: { variant: 'prominent' | 'line' }) {
         role="note"
         aria-label={NOTICE_NAME}
         data-testid="ai-notice-line"
-        sx={{ fontSize: 12, color: 'text.secondary' }}
+        // the full text stays in the DOM (screen readers, title); the line itself shows two rows
+        title={notice}
+        sx={{
+          fontSize: 12,
+          color: 'text.secondary',
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: 2,
+          overflow: 'hidden',
+        }}
       >
         {notice}
       </Typography>

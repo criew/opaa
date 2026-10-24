@@ -804,7 +804,7 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 **Hinweis und Kennzeichen im Chat.** Dass Antworten von einer KI stammen, sagt der Chat an drei
 Stellen: im leeren Chat deutlich vor der ersten Frage, als dauerhafte Zeile unter dem Eingabefeld und
 als Kennzeichen „KI-erzeugt" im Fuß jeder Antwort, auch bei Antworten in älteren Chats. Der Text der
-ersten beiden Stellen ist der Hinweis zur KI-Nutzung aus dem Branding (Kapitel Branding); er lässt
+ersten beiden Stellen ist der Hinweis zur KI-Nutzung aus dem [Branding](../betrieb/branding.md); er lässt
 sich ändern, aber nicht abschalten. Screenreader lesen Hinweis und Kennzeichen vor.
 
 **Kennzeichnung als KI-erzeugt.** Jede erzeugte Antwort trägt in der Schnittstelle das Feld
@@ -813,7 +813,7 @@ tragen `false`). Das Feld erlaubt es Programmen, die Antworten über `POST /api/
 Chatverlauf weiterverarbeiten, die Herkunft eindeutig zu erkennen (Art. 50 KI-Verordnung). Es ist
 **keine Markierung im Antworttext**: Wird der Text kopiert oder weitergegeben, bleibt das Feld
 zurück. Ein Text-Wasserzeichen kann nur der Anbieter des Modells setzen; OPAA fügt keines hinzu. Der
-Modellname steht weiterhin nur in den Angaben zur Antwort. Suche ohne Antwort
+Modellname steht nur in den Angaben zur Antwort. Suche ohne Antwort
 (`POST /api/v1/search`) und der MCP-Server liefern nur Fundstellen und tragen das Feld nicht.
 
 ## 7. Belege prüfen und Fundstellen bilden
