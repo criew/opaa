@@ -25,9 +25,12 @@ export default function ConnectionCheckView({
   check,
   id,
   allowAccept,
+  onRun,
 }: {
   check: ConnectionCheck
   id: string
+  /** Starts the test; the setup first makes sure the connection fields are complete. */
+  onRun: () => void
   /** Offer to go on despite a failed test (wizard and save). */
   allowAccept: boolean
 }) {
@@ -42,7 +45,7 @@ export default function ConnectionCheckView({
         size="small"
         busy={state === 'checking'}
         busyAnnouncement="Verbindung wird geprüft"
-        onClick={() => void check.run()}
+        onClick={onRun}
       >
         {state === 'checking' ? 'Wird geprüft …' : 'Verbindung testen'}
       </BusyButton>
