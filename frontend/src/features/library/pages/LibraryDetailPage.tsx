@@ -194,9 +194,8 @@ export default function LibraryDetailPage() {
       description: fields.description?.trim() || undefined,
       // Deliberately no source configuration field set: the backend leaves the stored
       // configuration unchanged as long as none of the sourcePath/sourceUrl/
-      // sourceCredentials fields is present in the request (ADR-0018). Editing
-      // the source configuration itself goes through EditLibrarySourceDialog further
-      // down in this file - this master data form does not touch it.
+      // sourceCredentials fields is present in the request (ADR-0018). The source
+      // configuration itself is edited in the rows of the Reiter „Quelle“.
     })
   }
 

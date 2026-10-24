@@ -99,7 +99,7 @@ class SharePointLogLeakTest {
     }
   }
 
-  private SharePointFileStore store() {
+  private DriveFileStore store() {
     return SharePointTestStores.store(
         server,
         SharePointTestStores.settings(

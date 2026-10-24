@@ -15,6 +15,7 @@ import io.opaa.indexing.spi.OriginalUnavailableException;
 import io.opaa.indexing.spi.ProfileDeclaration;
 import io.opaa.indexing.spi.PushIntake;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.ServedOriginals;
 import io.opaa.indexing.spi.SignIn;
 import io.opaa.indexing.spi.SourceBrowser;
@@ -158,9 +159,9 @@ public class S3SourceConnector
   }
 
   @Override
-  public void acceptNotification(
+  public PushNotification acceptNotification(
       KnowledgeLibrary library, ConnectorData settings, byte[] body, UnaryOperator<String> header) {
-    eventService.accept(
+    return eventService.accept(
         library.getId(),
         library,
         settings,

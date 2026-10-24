@@ -2,6 +2,7 @@ package io.opaa.group;
 
 import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SuccessionAddressee;
+import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
@@ -12,6 +13,7 @@ import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.GroupSpaceMembershipRef;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.permission.SuccessionFindingReading;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,7 +30,7 @@ import org.springframework.stereotype.Component;
  * queries.
  */
 @Component
-class GroupEffectReader {
+class GroupEffectReader implements SuccessionFindingReading {
 
   private final GroupRepository groups;
   private final AssetGrantRepository grants;
@@ -63,7 +65,22 @@ class GroupEffectReader {
    * releases reach nobody. Carries how many objects hang on the group, the figure the tab names.
    */
   List<SuccessionFinding> grantsWithoutRecipient(UUID organizationId) {
+    return grantsWithoutRecipient(effectsOf(organizationId));
+  }
+
+  /**
+   * Both group tabs from one reading of the organization - what counting every tab asks for, so the
+   * effects are read once rather than once per tab.
+   */
+  @Override
+  public Map<SuccessionKind, List<SuccessionFinding>> findingsByKindOf(UUID organizationId) {
     Effects effects = effectsOf(organizationId);
+    return Map.of(
+        SuccessionKind.GRANTS_WITHOUT_RECIPIENT, grantsWithoutRecipient(effects),
+        SuccessionKind.GROUP_WITHOUT_EFFECT, groupsWithoutEffect(effects));
+  }
+
+  private List<SuccessionFinding> grantsWithoutRecipient(Effects effects) {
     List<SuccessionFinding> findings = new ArrayList<>();
     for (Group group : effects.groups()) {
       Set<UUID> objects = effects.objectsByGroup().getOrDefault(group.getId(), Set.of());
@@ -83,7 +100,10 @@ class GroupEffectReader {
    * action.
    */
   List<SuccessionFinding> groupsWithoutEffect(UUID organizationId) {
-    Effects effects = effectsOf(organizationId);
+    return groupsWithoutEffect(effectsOf(organizationId));
+  }
+
+  private List<SuccessionFinding> groupsWithoutEffect(Effects effects) {
     List<SuccessionFinding> findings = new ArrayList<>();
     for (Group group : effects.groups()) {
       if (!group.isInternal()) {

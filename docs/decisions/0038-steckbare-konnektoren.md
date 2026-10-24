@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
 durch [ADR-0040](0040-google-drive-konnektor.md), [ADR-0041](0041-verbindungen-als-eigenes-modul.md) und [ADR-0045](0045-gemeinsamer-datei-abgleich.md) bis [ADR-0047](0047-sharepoint-konnektor.md)
 · ersetzt Entscheidung 1 von [ADR-0017](0017-quellentypmodell-indizierung.md), den Nachtrag #1131 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md), die Entscheidungen 1, 2 und 4 von
@@ -115,6 +115,11 @@ Abgeschlossen: zuerst die interne Umstellung bei unveränderter API (#1986), dan
 - **Gleiche Antwortzeit am Push-Eingang:** Jede Anfrage läuft durch die Prüfung jedes registrierten
   Push-Eingangs, alle fremden gegen einen Platzhalter (`PushIntakeHandler#rejectForeign`); unbekannte
   Bibliothek, Bibliothek ohne Push-Eingang und falsches Geheimnis sind nicht unterscheidbar.
+- **Der Kern reiht Push-Nachrichten ein, nicht der Konnektor:** Der Push-Eingang des Konnektors prüft
+  und liest die Nachricht und gibt zurück, was nachzusehen ist (`PushNotification`); der Kern reiht es
+  für die Bibliothek ein, die er selbst geladen und gegen deren Geheimnis er geprüft hat. Ein Konnektor
+  kann so keinen Lauf für eine andere Bibliothek seines Typs anstoßen; `SourceEventIntake#enqueue`
+  steht in `ModularArchitecture.CORE_ONLY_MEMBERS`.
 - Die Grenze „Kern kennt keinen Konnektor beim Namen" sichert `ModularArchitectureTest`; zwei
   Test-Konnektoren im Testcode weisen nach, dass ein Konnektor ohne Spec-Änderung über die API anlegbar,
   änderbar, testbar, auflistbar, planbar und indizierbar ist.

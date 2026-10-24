@@ -15,10 +15,12 @@ import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.indexing.run.SourceEventIntake;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -78,11 +80,14 @@ class ConfluenceWebhookPublicAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private ConfluenceWebhookService webhookService;
   @MockitoBean private SourceConnectorRegistry connectors;
+  @MockitoBean private SourceEventIntake intake;
   @MockitoBean private KnowledgeLibraryRepository libraryRepository;
 
   /** The real connector in front of the mocked service, so its header mapping is covered. */
   @BeforeEach
   void wireTheConnector() {
+    when(webhookService.accept(any(), any(), any(), any(), any()))
+        .thenReturn(PushNotification.none());
     when(libraryRepository.findById(any()))
         .thenReturn(
             Optional.of(

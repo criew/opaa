@@ -267,12 +267,55 @@ describe('SuccessionPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('reads the figures of all tabs with one request and never as a list', async () => {
+    const counts: string[] = []
+    const listSizes: string[] = []
+    server.use(
+      http.get('/api/v1/admin/succession/counts', ({ request }) => {
+        counts.push(request.url)
+        return HttpResponse.json({
+          openSuccession: 4,
+          grantsWithoutRecipient: 1,
+          groupWithoutEffect: 0,
+        })
+      }),
+      http.get('/api/v1/admin/succession', ({ request }) => {
+        listSizes.push(new URL(request.url).searchParams.get('size') ?? '')
+        return HttpResponse.json({
+          entries: [],
+          page: 0,
+          size: 50,
+          totalElements: 0,
+          totalPages: 0,
+        })
+      }),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByRole('tab', { name: /Inhalte ohne Verantwortliche.*4/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: /Gruppen ohne aktive Mitglieder.*1/ }),
+    ).toBeInTheDocument()
+    expect(counts).toHaveLength(1)
+    expect(listSizes).not.toContain('1')
+  })
+
   it('explains the page to an account without the system role and asks the server nothing', async () => {
     const requests: string[] = []
     server.use(
       http.get('/api/v1/admin/succession', ({ request }) => {
         requests.push(request.url)
         return HttpResponse.json({ entries: [], page: 0, size: 1, totalElements: 0, totalPages: 0 })
+      }),
+      http.get('/api/v1/admin/succession/counts', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json({
+          openSuccession: 0,
+          grantsWithoutRecipient: 0,
+          groupWithoutEffect: 0,
+        })
       }),
     )
     signInAs('USER')

@@ -11,8 +11,8 @@ export type NextcloudSettings = {
 
 /**
  * Everything the Nextcloud source configuration consists of: the instance address, the technical
- * user with its app password and the folders - one per line in the form.
- * Owned by the wizard or the edit dialog; the form only proposes changes through onChange.
+ * user with its app password and the folders - one per line.
+ * Owned by the wizard or the rows of the Reiter „Quelle“, which change it through onChange.
  */
 export interface NextcloudSourceValues {
   sourceUrl: string

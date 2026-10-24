@@ -6,6 +6,7 @@ import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -13,7 +14,6 @@ import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
@@ -25,14 +25,15 @@ import org.springframework.stereotype.Service;
 
 /**
  * The one intake behind every push path (Confluence webhooks, S3 event notifications). A connector
- * authenticates and parses, then hands over the keys it wants looked at; from there on the intake
- * is the same for all of them: keys are collected per library in {@link SourceEventBatches} and,
- * {@code debounce} after the first, one {@link JobTriggerSource#WEBHOOK} run checks exactly those
- * keys through {@link SourceEventTarget#refresh}. A batch past {@code maxPendingKeys} runs the
- * executor's ordinary run in its default mode instead. A notification never deletes and never moves
- * any resumption state - it is a hint to look, the source's answer is the finding. While another
- * run is in progress the batch waits up to {@code maxDeferrals} times, then is dropped: the next
- * run covers the same keys, so a drop costs freshness, never correctness.
+ * authenticates and parses, the core queues the keys for the library it loaded itself - a connector
+ * registers its target, but never names a library; from there on the intake is the same for all of
+ * them: keys are collected per library in {@link SourceEventBatches} and, {@code debounce} after
+ * the first, one {@link JobTriggerSource#WEBHOOK} run checks exactly those keys through {@link
+ * SourceEventTarget#refresh}. A batch past {@code maxPendingKeys} runs the executor's ordinary run
+ * in its default mode instead. A notification never deletes and never moves any resumption state -
+ * it is a hint to look, the source's answer is the finding. While another run is in progress the
+ * batch waits up to {@code maxDeferrals} times, then is dropped: the next run covers the same keys,
+ * so a drop costs freshness, never correctness.
  *
  * <p>The batches live in the database (ADR-0053, Entscheidung 10): every instance drains due
  * batches of the source types whose connectors registered here, every {@link #POLL_MILLIS} ms on
@@ -96,25 +97,33 @@ public class SourceEventIntake {
 
   /**
    * Makes this instance drain the batches of {@code target}'s source type, also those another
-   * instance collected. A connector registers its target when it is created.
+   * instance collected. A connector registers its target when it is created; registering the same
+   * target again changes nothing.
+   *
+   * @throws IllegalStateException if another target is already registered for that source type
    */
   public void register(SourceEventTarget target) {
-    targets.put(target.sourceType(), target);
+    SourceEventTarget present = targets.putIfAbsent(target.sourceType(), target);
+    if (present != null && present != target) {
+      throw new IllegalStateException(
+          "A source event target for " + target.sourceType() + " is already registered");
+    }
   }
 
   /**
-   * Adds {@code keys} for {@code libraryId} to its open batch, opening one - due after the debounce
-   * - if there is none. {@code dropped} is carried along to the targeted run. A library has one
-   * source type, so every batch of one library comes from the same {@code target} (the adapters
-   * filter by source type before enqueueing).
+   * Adds the keys of {@code notification} to the open batch of {@code library}, opening one - due
+   * after the debounce - if there is none; its dropped count is carried along to the targeted run.
+   * Only the core calls this, for the library it loaded and authenticated the request against.
    */
-  public void enqueue(SourceEventTarget target, UUID libraryId, Set<String> keys, int dropped) {
-    register(target);
+  public void enqueue(KnowledgeLibrary library, PushNotification notification) {
+    if (notification.isEmpty()) {
+      return;
+    }
     batches.add(
-        libraryId,
-        target.sourceType(),
-        keys,
-        dropped,
+        library.getId(),
+        library.getSourceType(),
+        notification.keys(),
+        notification.dropped(),
         properties.maxPendingKeys(),
         properties.debounce());
   }

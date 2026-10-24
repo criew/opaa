@@ -19,32 +19,12 @@ export type S3Settings = {
   excludePatterns?: string[] | null
 }
 
-/** The outcome of the connection test for one scope, one entry of `details.scopes`. */
-export interface S3ScopeCheck {
-  bucket: string
-  prefix: string
-  bucketReachable: boolean
-  listAllowed: boolean
-  readAllowed?: boolean | null
-  objectCount: number
-  objectCountIsLowerBound: boolean
-  message?: string | null
-}
-
 /** The S3 settings a library response carries, null for any other library. */
 export function s3SettingsFromLibrary(
   library: Pick<LibraryResponse, 'sourceType' | 'sourceSettings'> | null | undefined,
 ): S3Settings | null {
   if (library?.sourceType !== 'S3' || !library.sourceSettings) return null
   return library.sourceSettings as unknown as S3Settings
-}
-
-/** The per-scope findings of a connection test, from its `details`. */
-export function s3ScopeChecksOf(
-  details: Record<string, unknown> | null | undefined,
-): S3ScopeCheck[] | null {
-  const scopes = details?.scopes
-  return Array.isArray(scopes) ? (scopes as S3ScopeCheck[]) : null
 }
 
 /**
@@ -61,7 +41,7 @@ export interface S3ScopeInput {
 /**
  * Everything the S3 source configuration consists of (ADR-0027): the endpoint, region and
  * addressing style, the static key, the verification state, one to fifty scopes and the key
- * patterns. Owned by the wizard or the edit dialog; the form only proposes changes through
+ * patterns. Owned by the wizard or the rows of the Reiter „Quelle“, which change it through
  * onChange. Patterns are kept as one text with one pattern per line.
  */
 export interface S3SourceValues {
@@ -85,15 +65,8 @@ const MAX_S3_PATTERN_LENGTH = 255
 const MAX_S3_REGION_LENGTH = 64
 /** Mirrors S3ScopeRef.prefix maxLength - on the normalised form, so the trailing slash counts. */
 const MAX_S3_PREFIX_LENGTH = 1023
-/**
- * The form's own bound on the joined key: 128 + 128 + 242 plus two separators. The API admits up to
- * 4096 characters for every connector.
- */
+/** The own bound on the joined key; the API admits up to 4096 characters for every connector. */
 export const MAX_S3_CREDENTIALS_LENGTH = 500
-/** Field bounds whose sum (plus two separators) stays within MAX_S3_CREDENTIALS_LENGTH. */
-export const MAX_S3_ACCESS_KEY_LENGTH = 128
-export const MAX_S3_SECRET_KEY_LENGTH = 128
-export const MAX_S3_SESSION_TOKEN_LENGTH = 242
 
 export const S3_PROVIDER_LABELS: Record<S3Provider, string> = {
   AWS: 'AWS S3',
@@ -104,25 +77,6 @@ export const S3_PROVIDER_LABELS: Record<S3Provider, string> = {
 }
 
 export const S3_PROVIDERS: S3Provider[] = ['AWS', 'MINIO', 'CEPH', 'HETZNER', 'OTHER']
-
-/** The AWS regions the region field suggests; any other region can still be typed. */
-export const AWS_REGIONS = [
-  'eu-central-1',
-  'eu-central-2',
-  'eu-west-1',
-  'eu-west-2',
-  'eu-west-3',
-  'eu-north-1',
-  'eu-south-1',
-  'eu-south-2',
-  'us-east-1',
-  'us-east-2',
-  'us-west-1',
-  'us-west-2',
-]
-
-/** Hetzner's locations double as the signing region. */
-export const HETZNER_LOCATIONS = ['fsn1', 'nbg1', 'hel1']
 
 export const EMPTY_S3_VALUES: S3SourceValues = {
   provider: 'MINIO',

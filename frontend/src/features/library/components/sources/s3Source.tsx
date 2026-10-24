@@ -1,16 +1,13 @@
-import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import {
   EMPTY_S3_VALUES,
   s3CredentialsOf,
   s3SettingsFromLibrary,
   s3SettingsOf,
   s3ValuesFromSettings,
-  s3ValuesIssue,
   type S3SourceValues,
 } from '../../utils/s3Source'
-import S3SourceForm from '../S3SourceForm'
-import { S3Push, S3Scope, S3StoredView } from './S3SourceViews'
-import { connectionFields } from './sourceConnection'
+import { s3Setup } from '../setup/connectors/s3Setup'
+import { S3Push } from './S3SourceViews'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -40,13 +37,6 @@ export const s3Source: SourceRegistration = {
       values.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== ''),
     // the stored key survives only on the same origin; a sign-in without a key of
     // the library's own needs none
-    validate: (values: S3SourceValues, context) =>
-      s3ValuesIssue(
-        values,
-        !connectionFields(context).asksSecret ||
-          (context.credentialsStored &&
-            sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)),
-      ),
     toPayload: (values: S3SourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: s3CredentialsOf(values),
@@ -56,20 +46,6 @@ export const s3Source: SourceRegistration = {
       const first = values.scopes.find((scope) => scope.bucket.trim() !== '')
       return first ? first.bucket.trim() : ''
     },
-    Form: ({ values, onChange, context }) => (
-      <S3SourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-s3`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: S3StoredView,
-    Scope: S3Scope,
     scopeNoteId: 's3-sharing-consequence',
     Push: S3Push,
     scopeHero: {
@@ -86,5 +62,6 @@ export const s3Source: SourceRegistration = {
     },
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.',
+    setup: s3Setup,
   },
 }

@@ -1,5 +1,6 @@
 package io.opaa.succession.web;
 
+import io.opaa.api.dto.SuccessionCountsResponse;
 import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.auth.Caller;
@@ -38,5 +39,11 @@ public class SuccessionController {
       @Caller CurrentUser caller) {
     return SuccessionResponseMapper.toResponse(
         successionService.list(caller.organizationId(), kind, page, size));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/counts")
+  public SuccessionCountsResponse countSuccessionEntries(@Caller CurrentUser caller) {
+    return SuccessionResponseMapper.toResponse(successionService.counts(caller.organizationId()));
   }
 }
