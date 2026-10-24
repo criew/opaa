@@ -14,7 +14,12 @@ export function useSourceTypeChoice(
 ) {
   // The tiles are the source types the backend has a connector for (ADR-0038), in the
   // order of the input forms; a type without a form is at the end and cannot be selected.
-  const { sourceTypes, error: sourceTypesError, loaded: sourceTypesLoaded } = useSourceTypes()
+  const {
+    sourceTypes,
+    error: sourceTypesError,
+    loaded: sourceTypesLoaded,
+    reload: reloadSourceTypes,
+  } = useSourceTypes()
   const offeredTypes: SourceTypeKey[] = [
     ...registeredSourceTypes.filter((type) => sourceTypes.some((d) => d.type === type)),
     ...sourceTypes.map((d) => d.type).filter((type) => sourceRegistration(type) === undefined),
@@ -89,6 +94,7 @@ export function useSourceTypeChoice(
     sourceTypes,
     sourceTypesError,
     sourceTypesLoaded,
+    reloadSourceTypes,
     displayNameOf,
     acceptsUploads,
     capabilityFor,

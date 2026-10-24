@@ -192,13 +192,31 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
   })
 
-  it('names a failed source-type list and does not go on with the upload library', async () => {
-    mockListSourceTypes.mockRejectedValue(new Error('Quellarten konnten nicht geladen werden'))
+  it('names a failed source-type list in German and does not go on with the upload library', async () => {
+    mockListSourceTypes.mockRejectedValue(
+      new Error('HTTP 502: Request failed with status code 502'),
+    )
     renderWithProviders(<LibraryCreatePage />, { withRouter: true })
 
-    expect(await screen.findByText('Quellarten konnten nicht geladen werden')).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Die Quellarten konnten nicht geladen werden/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+  })
+
+  it('loads the source types again on „Erneut versuchen"', async () => {
+    const user = userEvent.setup()
+    mockListSourceTypes.mockRejectedValueOnce(new Error('HTTP 502'))
+    renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Erneut versuchen' }))
+
+    expect(await screen.findByRole('radiogroup')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Die Quellarten konnten nicht geladen werden/),
+    ).not.toBeInTheDocument()
   })
 
   // The steps are named after what one does in them; an upload library has no source and so no

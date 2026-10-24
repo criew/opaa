@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
@@ -143,6 +144,7 @@ export default function LibraryCreatePage() {
     sourceTypes,
     sourceTypesError,
     sourceTypesLoaded,
+    reloadSourceTypes,
     displayNameOf,
     acceptsUploads,
     capabilityFor,
@@ -512,8 +514,16 @@ export default function LibraryCreatePage() {
         )}
 
         {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {sourceTypesError}
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={reloadSourceTypes}>
+                Erneut versuchen
+              </Button>
+            }
+          >
+            Die Quellarten konnten nicht geladen werden. Versuchen Sie es in einem Moment erneut.
           </Alert>
         )}
 
