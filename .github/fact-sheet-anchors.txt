@@ -298,6 +298,8 @@ voreinstellungen#opaa-rerank-enabled
 voreinstellungen#opaa-rerank-model
 voreinstellungen#opaa-siem-export-enabled
 voreinstellungen#opaa-siem-export-host
+voreinstellungen#opaa-siem-export-include-labels
+voreinstellungen#opaa-siem-export-tls
 voreinstellungen#opaa-succession-aging-threshold-months
 voreinstellungen#opaa-transcription-base-url
 voreinstellungen#opaa-transcription-enabled
