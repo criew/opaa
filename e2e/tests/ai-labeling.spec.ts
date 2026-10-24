@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import { askQuestion, clearSearchScope, startFreshChat } from '../fixtures/chat'
 import { DEV_USER_HEADER } from '../fixtures/libraries'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 /**
  * Kennzeichnung KI-erzeugter Antworten (Art. 50 KI-VO, Epic #3010): Hinweis im Chat, Kennzeichen an
@@ -29,6 +29,21 @@ async function resetNotice(page: Page): Promise<void> {
 
 async function readClipboard(page: Page): Promise<string> {
   return (await page.evaluate('navigator.clipboard.readText()')) as string
+}
+
+/** Today's and yesterday's date as the note formats it - the second covers a run over midnight. */
+async function acceptableNoteDates(page: Page): Promise<string[]> {
+  return (await page.evaluate(`(() => {
+    const format = (date) =>
+      date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const now = new Date()
+    return [format(now), format(new Date(now.getTime() - 24 * 60 * 60 * 1000))]
+  })()`)) as string[]
+}
+
+/** The success message of the branding form; the page shows further alerts (contrast hints). */
+function savedAlert(page: Page): Locator {
+  return page.getByRole('alert').filter({ hasText: /gespeichert und ist sofort wirksam/i })
 }
 
 async function allowClipboard(page: Page): Promise<void> {
@@ -65,14 +80,26 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
   test('Antwort trägt das Kennzeichen „KI-erzeugt“ mit zugänglichem Namen', async ({
     authenticatedPage: page,
   }, testInfo) => {
-    await askOneQuestion(page, `Was ist eine Kennzeichnung? ${Date.now()}-${testInfo.retry}`)
+    const suffix = `${Date.now()}-${testInfo.retry}`
+    await askOneQuestion(page, `Was ist eine Kennzeichnung? ${suffix}`)
 
     const list = page.getByTestId('message-list')
-    const mark = list.getByRole('note', { name: ANSWER_MARK_NAME })
-    await expect(mark).toBeVisible()
-    await expect(mark).toHaveText('KI-erzeugt')
+    const marks = list.getByRole('note', { name: ANSWER_MARK_NAME })
+    await expect(marks).toHaveCount(1)
+    await expect(marks.first()).toHaveText('KI-erzeugt')
     // the notice line under the input is still there with a conversation going
     await expect(page.getByRole('note', { name: NOTICE_NAME })).toHaveCount(1)
+
+    // every answer carries the mark, the second one too ...
+    await askQuestion(page, `Und noch eine Frage? ${suffix}`)
+    await expect(marks).toHaveCount(2)
+
+    // ... and so do both answers of the chat when it is loaded again from the server
+    await page.reload()
+    await expect(list.getByText(`Und noch eine Frage? ${suffix}`)).toBeVisible()
+    await expect(marks).toHaveCount(2)
+    await expect(marks.first()).toHaveText('KI-erzeugt')
+    await expect(marks.last()).toHaveText('KI-erzeugt')
   })
 
   test('Kopierknopf: Zwischenablage endet mit Hinweistext, Produktname und Datum, ohne Modellname', async ({
@@ -89,13 +116,16 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
 
     const copied = await readClipboard(page)
     const lines = copied.trim().split('\n')
-    expect(lines.at(-1)).toMatch(
-      new RegExp(`^${escapeRegExp(STANDARD_NOTICE)} – OPAA, \\d{2}\\.\\d{2}\\.\\d{4}$`),
+    // the date is the answer's own: today's, or yesterday's for a run over midnight
+    const acceptable = (await acceptableNoteDates(page)).map(
+      (date) => `${STANDARD_NOTICE} – OPAA, ${date}`,
     )
+    expect(acceptable).toContain(lines.at(-1))
     // the note stands in a paragraph of its own, under the answer
     expect(lines.at(-2)).toBe('')
-    // no model name: the note names product and date only
-    expect(lines.at(-1)).not.toMatch(/stub|gpt|llama|mistral|claude/i)
+    // no model name anywhere in the copied text: the stack's chat model is phi3:mini, shown as
+    // "Übernommen aus der Umgebungskonfiguration"
+    expect(copied).not.toMatch(/phi3|Umgebungskonfiguration|gpt|llama|mistral|claude/i)
   })
 
   test('Branding: geänderter Hinweistext wirkt im Chat und im Vermerk, Zurücksetzen stellt den Standard her', async ({
@@ -108,7 +138,7 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
       await expect(field).toHaveValue(STANDARD_NOTICE)
       await field.fill(customNotice)
       await page.getByRole('button', { name: 'Speichern' }).click()
-      await expect(page.getByText(/gespeichert und ist sofort wirksam/i)).toBeVisible()
+      await expect(savedAlert(page)).toBeVisible()
 
       await askOneQuestion(page, `Wirkt der Text? ${Date.now()}-${testInfo.retry}`)
       await expect(
@@ -129,7 +159,7 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
       await page.getByRole('button', { name: 'Hinweis auf Standard zurücksetzen' }).click()
       await expect(page.getByLabel(NOTICE_NAME)).toHaveValue(STANDARD_NOTICE)
       await page.getByRole('button', { name: 'Speichern' }).click()
-      await expect(page.getByText(/gespeichert und ist sofort wirksam/i)).toBeVisible()
+      await expect(savedAlert(page)).toBeVisible()
 
       await startFreshChat(page)
       await expect(page.getByRole('note', { name: NOTICE_NAME }).first()).toContainText(
@@ -140,7 +170,3 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
     }
   })
 })
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
