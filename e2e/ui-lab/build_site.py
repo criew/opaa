@@ -40,7 +40,8 @@ def parse_args():
 
 
 def screens(directory, scheme):
-    """(type, scenario, width) -> {area: file}; a __full shot wins over the viewport shot."""
+    """(type, scenario, width) -> {area: file}; a __full shot wins over the viewport shot, except in
+    dialog areas (`*-select`)."""
     found = {}
     for name in sorted(os.listdir(directory)):
         stem, ext = os.path.splitext(name)
@@ -52,7 +53,9 @@ def screens(directory, scheme):
             continue
         area, typ, scenario, _, width = parts
         slot = found.setdefault((typ, scenario, width), {})
-        if full or area not in slot:
+        # a dialog area keeps its viewport shot: older captures took __full of the dimmed page only
+        prefer_full = full and not area.endswith('-select')
+        if prefer_full or area not in slot:
             slot[area] = os.path.join(directory, name)
     return found
 

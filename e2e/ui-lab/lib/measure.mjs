@@ -19,16 +19,16 @@ const WORD_BUDGET_SCENARIOS = ['small', 'default']
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 
 /*
- * Page functions below decide with the same `isOpen` whether a [role=dialog] element is open: a
- * closed MUI drawer keeps its paper mounted with role=dialog and visibility hidden, and must neither
- * count as open dialog nor replace <main>. It is repeated inline because page functions are
- * serialised without their module scope.
+ * Page functions below share `isOpen` and take the last open [role=dialog], the topmost when
+ * dialogs stack. A closed MUI drawer keeps its paper mounted with role=dialog and visibility
+ * hidden; it must neither count as open nor replace <main>. `isOpen` is repeated inline because
+ * page functions are serialised without their module scope.
  */
 
 /** Runs in the page: layout, text and control metrics of the main area (or the open dialog). */
 const PAGE_METRICS = () => {
   const isOpen = (d) => { const cs = getComputedStyle(d); const r = d.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 0 && r.height > 0 && !d.closest('[aria-hidden=true]') }
-  const main = [...document.querySelectorAll('[role=dialog]')].find(isOpen) ?? document.querySelector('main') ?? document.body
+  const main = [...document.querySelectorAll('[role=dialog]')].filter(isOpen).at(-1) ?? document.querySelector('main') ?? document.body
   const visible = (el) => {
     const r = el.getBoundingClientRect()
     const cs = getComputedStyle(el)
@@ -48,7 +48,7 @@ const PAGE_METRICS = () => {
     }
   }
   // content height: the viewport plus the largest hidden overflow of a scroll container (dialog first)
-  const dialogEl = [...document.querySelectorAll('[role=dialog]')].find(isOpen)
+  const dialogEl = [...document.querySelectorAll('[role=dialog]')].filter(isOpen).at(-1)
   let hiddenOverflow = document.documentElement.scrollHeight - window.innerHeight
   for (const el of dialogEl ? [dialogEl, ...dialogEl.querySelectorAll('*')] : document.querySelectorAll('*')) {
     if (!/(auto|scroll)/.test(getComputedStyle(el).overflowY)) continue
@@ -179,7 +179,7 @@ async function growForFull(page, width) {
     const extra = await page.evaluate(() => {
       // with an open dialog only its own scroll area counts; the page behind stays as it is
       const isOpen = (d) => { const cs = getComputedStyle(d); const r = d.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 0 && r.height > 0 && !d.closest('[aria-hidden=true]') }
-      const dialog = [...document.querySelectorAll('[role=dialog]')].find(isOpen)
+      const dialog = [...document.querySelectorAll('[role=dialog]')].filter(isOpen).at(-1)
       let max = 0
       for (const el of dialog ? [dialog, ...dialog.querySelectorAll('*')] : document.querySelectorAll('*')) {
         if (!/(auto|scroll)/.test(getComputedStyle(el).overflowY)) continue

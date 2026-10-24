@@ -13,7 +13,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | --- | --- |
 | `capture.mjs` | Screenshots und Kennzahlen je Ablauf, Szenario, Schema und Breite |
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
-| `record-flows.mjs` | Klickpfade als MP4 mit sichtbarem Mauszeiger |
+| `record-flows.mjs` | Videomatrix je Art (ok, viele, fehler) als MP4 mit sichtbarem Mauszeiger |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
 | `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
 | `build_site.py` | statische Vergleichsseite: Ist-Stand und Entwürfe mit Bewertung, Bildschirmen und Videos |
@@ -27,7 +27,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 ```bash
 cd e2e && pnpm install                     # Playwright und axe aus der E2E-Suite
 pnpm exec playwright install chromium      # einmalig, falls kein Chromium vorhanden ist
-python3 -m venv .venv && .venv/bin/pip install pillow   # für compare.py und build_site.py
+python3 -m venv .venv && .venv/bin/pip install -r ui-lab/requirements.txt   # Pillow, gepinnt; für die Python-Werkzeuge
 ```
 
 Für Videos zusätzlich `ffmpeg` auf dem `PATH`. `compare.py` und `build_site.py` brauchen Pillow.
@@ -150,17 +150,24 @@ Nach einer Änderung an `lib/measure.mjs` oder `lib/browser.mjs` die Kalibrierun
 ```bash
 cd e2e
 node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
-     [--flows ui-lab/flows/library-videos.mjs] [--only name,name] [--scheme light|dark]
-     [--width 1280] [--height 800] [--pause 700] [--keep-webm]
+     [--flows ui-lab/flows/library-videos.mjs] [--types nextcloud,s3] [--kinds ok,viele,fehler]
+     [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
 ```
 
-Nimmt jeden Klickpfad des Moduls als `<name>__<schema>.mp4` (H.264) auf: sichtbarer Mauszeiger,
-Klickring, optionale Bildunterschrift, Pause nach jedem Schritt. Ein Modul exportiert
-`videos: [{ name, type, scenario, run(h) }]`; `type` ordnet das Video auf der Vergleichsseite
-einem Bereich zu, `h` bietet `goto`, `click`, `type`, `pause` und `caption`. `manifest.json` im
-Ausgabeordner listet alle Videos mit Name, Bereich, Szenario und Schema. Ein fehlendes Element wird geloggt und übersprungen, der Pfad läuft weiter.
-`flows/library-videos.mjs` enthält drei typische Fälle: SharePoint einrichten (`small`),
-Nextcloud mit vielen Ordnern (`scale`), S3 mit abgelehnter Anmeldung (`failed`).
+Nimmt die **Videomatrix** auf: je Art drei Videos, **ok** (`small`), **viele** (`scale`) und
+**fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
+Klickring, optionaler Bildunterschrift und Pause nach jedem Schritt. Ein Ablaufmodul exportiert
+`TYPES` (die Arten), optional `KINDS` (Fall → Szenario, Vorgabe wie oben) und **eine**
+Ablaufdefinition `run(h, { type, kind, scenario })`, die den Weg einer Art in jedem Fall spielt;
+`h` bietet `goto`, `click`, `type`, `visible`, `pause` und `caption`. Ein fehlendes Element wird
+geloggt und übersprungen, der Ablauf läuft weiter. `manifest.json` im Ausgabeordner listet alle
+Videos mit Art, Fall, Szenario und Schema; `build_site.py` ordnet sie darüber zu.
+
+`flows/library-videos.mjs` spielt die Quellen auf `main`: ok richtet die Quelle ein, listet, wählt,
+testet und geht weiter bis „Freigaben“; viele dasselbe mit großer Liste, mehr Auswahl und
+Scrollen; fehler zuerst „Weiter“ auf leerem Formular, dann die abgelehnte Auflistung bzw. den
+abgelehnten Test. Eine Variante mit anderer Struktur bringt ihr eigenes Modul derselben Form mit
+(`--flows`).
 
 ## compare.py
 

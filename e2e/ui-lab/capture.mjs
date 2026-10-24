@@ -10,8 +10,8 @@
  *
  * Each scheme gets its own browser context that loads every page in that scheme from the start;
  * in the "slow" scenario listings and connection tests never answer, so its shots show one state.
- * Per job (type or page × scenario) the flow runs in a fresh page load, so mock state and scenario
- * start anew; a state that cannot be reached is recorded as {"status":"not-found"} instead of
+ * Per job (type or page × scenario) the flow runs in a new tab, so in-memory mock state and the
+ * tab's sessionStorage (scenario, pending consents) start anew; a state that cannot be reached is recorded as {"status":"not-found"} instead of
  * failing the run. Output: <name>.png, <name>__full.png, metrics.jsonl and run.json in --out.
  */
 import fs from 'node:fs'
@@ -95,9 +95,10 @@ for (const scheme of ARGS.schemes) {
   })
   const queue = flow.jobs(ARGS)
   const worker = async () => {
-    const page = await context.newPage()
-    page.on('pageerror', (e) => log('  PAGEERROR', e.message.slice(0, 160)))
     for (let job = queue.shift(); job; job = queue.shift()) {
+      // a new tab per job: its sessionStorage (scenario, pending consents) starts empty
+      const page = await context.newPage()
+      page.on('pageerror', (e) => log('  PAGEERROR', e.message.slice(0, 160)))
       const key = { type: job.type, scenario: job.scenario, scheme }
       log(`== ${job.type} / ${job.scenario} / ${scheme}`)
       const ctx = {
@@ -117,8 +118,8 @@ for (const scheme of ARGS.schemes) {
       } catch (e) {
         ctx.error('flow', e)
       }
+      await page.close()
     }
-    await page.close()
   }
   await Promise.all(Array.from({ length: Math.max(1, ARGS.concurrency) }, worker))
   await context.close()
