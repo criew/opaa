@@ -63,6 +63,8 @@ function profileDescription(option: ConnectionProfileOption, descriptor: SourceT
 }
 
 interface ConnectionProfileSelectProps {
+  /** `h4` where the choice sits inside the section „Verbindung“ of the setup frame. */
+  headingLevel?: 'h3' | 'h4'
   descriptor: SourceTypeDescriptor
   state: ConnectionProfileOptionsState
   /** The choice in effect ({@link effectiveConnection}). */
@@ -99,6 +101,7 @@ export default function ConnectionProfileSelect({
   onlyOwnAccounts = false,
   offerPrivate = false,
   idPrefix,
+  headingLevel = 'h3',
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
   const ownOffered = offerOwnAddress && ownAddressAllowed(descriptor)
@@ -148,7 +151,15 @@ export default function ConnectionProfileSelect({
 
   return (
     <Box data-testid={`${idPrefix}-connection`}>
-      <Typography id={headingId} component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      <Typography
+        id={headingId}
+        component={headingLevel}
+        sx={
+          headingLevel === 'h3'
+            ? { fontSize: 16, fontWeight: 600, mb: 1 }
+            : { fontSize: 13.5, fontWeight: 600, mb: 1 }
+        }
+      >
         Zugang
       </Typography>
       {offerOwnAddress && !ownOffered && (

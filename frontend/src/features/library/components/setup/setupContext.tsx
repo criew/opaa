@@ -24,6 +24,8 @@ export interface SetupContextValue {
   idPrefix: string
   /** All issues of the last submit, shown at their fields and in the summary. */
   issues: SourceIssue[]
+  /** Zugang and consent, rendered first in the section „Verbindung“. */
+  connectionLead?: ReactNode
   /** The schedule section, rendered by the step or dialog as the fourth section. */
   schedule?: ReactNode
   /** Called by the connection check so the surrounding flow can run it before moving on. */

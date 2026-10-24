@@ -89,8 +89,10 @@ export default function CreateSourceSetupStep({
     />
   )
   const showForm = SourceForm && connectionChoice !== null && !awaitsConsent
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 640 }}>
+  const hasLead = (showConnectionSelect && descriptor !== undefined) || consentProfile !== undefined
+  // Zugang and consent are part of „Verbindung“: inside the frame's section once the form shows
+  const lead = hasLead ? (
+    <>
       {showConnectionSelect && descriptor && (
         <ConnectionProfileSelect
           descriptor={descriptor}
@@ -100,6 +102,7 @@ export default function CreateSourceSetupStep({
           offerOwnAddress
           offerPrivate
           idPrefix="library-create"
+          headingLevel="h4"
         />
       )}
       {consentProfile && (
@@ -113,14 +116,24 @@ export default function CreateSourceSetupStep({
           onConnect={onConnectSource}
         />
       )}
+    </>
+  ) : null
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 640 }}>
       <SetupContext
         value={{
           idPrefix: 'library-create',
           issues,
           schedule: framed ? scheduleSection : undefined,
+          connectionLead: showForm && framed ? lead : undefined,
           registerCheck,
         }}
       >
+        {lead && !(showForm && framed) && (
+          <SetupSection id="library-create-section-connection" title="Verbindung">
+            {lead}
+          </SetupSection>
+        )}
         {showForm && (
           <Box ref={sourceFormRef}>
             <SourceIssueContext value={issues[0] ?? null}>

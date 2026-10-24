@@ -29,14 +29,22 @@ export default function SourceSetupLayout({
   check,
   intro,
 }: SourceSetupLayoutProps) {
-  const { schedule, idPrefix } = useSetup()
+  const { schedule, idPrefix, connectionLead } = useSetup()
   const checkAfter: SetupSectionKey | null = credentials
     ? 'credentials'
-    : connection
+    : connection || connectionLead
       ? 'connection'
       : null
   const sections: [SetupSectionKey, ReactNode][] = [
-    ['connection', connection],
+    [
+      'connection',
+      connectionLead || connection ? (
+        <>
+          {connectionLead}
+          {connection}
+        </>
+      ) : null,
+    ],
     ['credentials', credentials],
     ['scope', scope],
     ['schedule', schedule],

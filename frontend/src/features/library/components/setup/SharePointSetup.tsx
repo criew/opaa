@@ -18,6 +18,7 @@ import ConnectionCheck from './ConnectionCheck'
 import SelectionTree, { type TreeListing, type TreeNode, type TreeSelection } from './SelectionTree'
 import { ScopeField } from './SetupField'
 import SourceSetupLayout from './SourceSetupLayout'
+import { useSetup } from './setupContext'
 import { browseWith, listingNote, testRequestOf, tokenOf } from './probe'
 
 /** The stored libraries as tree selections; a library with folders contributes its folders. */
@@ -82,6 +83,7 @@ export default function SharePointSetup({
   context,
 }: SourceFormProps<SharePointSourceValues>) {
   const fields = connectionFields(context)
+  const { connectionLead } = useSetup()
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState<{ text: string; generation: number } | null>(null)
 
@@ -138,11 +140,13 @@ export default function SharePointSetup({
   return (
     <SourceSetupLayout
       connection={
-        <Typography sx={{ fontSize: 13.5 }}>
-          {fields.connection
-            ? `Angemeldet über den Zugang „${fields.connection.name}“.`
-            : 'SharePoint ist nur über einen Zugang nutzbar. Bitte oben einen Zugang wählen.'}
-        </Typography>
+        connectionLead ? undefined : (
+          <Typography sx={{ fontSize: 13.5 }}>
+            {fields.connection
+              ? `Angemeldet über den Zugang „${fields.connection.name}“.`
+              : 'SharePoint ist nur über einen Zugang nutzbar. Bitte oben einen Zugang wählen.'}
+          </Typography>
+        )
       }
       check={
         <ConnectionCheck

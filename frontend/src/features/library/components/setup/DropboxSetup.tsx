@@ -13,6 +13,7 @@ import type { SourceFormProps } from '../sources/types'
 import ConnectionCheck from './ConnectionCheck'
 import FolderTreeScope from './FolderTreeScope'
 import SourceSetupLayout from './SourceSetupLayout'
+import { useSetup } from './setupContext'
 import { browseWith, testRequestOf, tokenOf } from './probe'
 
 /**
@@ -25,6 +26,7 @@ export default function DropboxSetup({
   context,
 }: SourceFormProps<DropboxSourceValues>) {
   const fields = connectionFields(context)
+  const { connectionLead } = useSetup()
   const serverUrl = fields.connection?.serverUrl ?? DROPBOX_API
   const listingToken = tokenOf(fields.probe, values.teamSpace)
   const browse = useCallback(
@@ -37,11 +39,13 @@ export default function DropboxSetup({
   return (
     <SourceSetupLayout
       connection={
-        <Typography sx={{ fontSize: 13.5 }}>
-          {fields.connection
-            ? `Angemeldet über den Zugang „${fields.connection.name}“ mit dem Konto, dem Sie zugestimmt haben.`
-            : 'Angemeldet mit dem Konto, dem Sie zugestimmt haben.'}
-        </Typography>
+        connectionLead ? undefined : (
+          <Typography sx={{ fontSize: 13.5 }}>
+            {fields.connection
+              ? `Angemeldet über den Zugang „${fields.connection.name}“ mit dem Konto, dem Sie zugestimmt haben.`
+              : 'Angemeldet mit dem Konto, dem Sie zugestimmt haben.'}
+          </Typography>
+        )
       }
       check={
         <ConnectionCheck

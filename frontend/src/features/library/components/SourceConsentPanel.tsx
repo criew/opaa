@@ -1,4 +1,4 @@
-import Alert from '@mui/material/Alert'
+import CheckIcon from '@mui/icons-material/Check'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { PendingSourceConnection } from '@/shared/api/types'
@@ -37,18 +37,19 @@ export default function SourceConsentPanel({
 }: SourceConsentPanelProps) {
   return (
     <Box data-testid="source-consent">
-      <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
-        Quelle verbinden
+      <Typography component="h4" sx={{ fontSize: 13.5, fontWeight: 600, mb: 1 }}>
+        Zustimmung
       </Typography>
       {pending ? (
-        <Alert severity="success">
-          {pending.accountLabel
-            ? `Verbunden als „${pending.accountLabel}“.`
-            : 'Die Quelle ist verbunden.'}{' '}
-          Die Zustimmung gilt 60 Minuten für diese neue Bibliothek, bis{' '}
-          {clockTime(pending.expiresAt)} Uhr. Legen Sie die Bibliothek bis dahin an; sonst verbinden
-          Sie die Quelle erneut.
-        </Alert>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+          <CheckIcon aria-hidden sx={{ fontSize: 18, color: 'success.main', mt: '2px' }} />
+          <Typography sx={{ fontSize: 13.5 }}>
+            {pending.accountLabel
+              ? `Verbunden als „${pending.accountLabel}“.`
+              : 'Die Quelle ist verbunden.'}{' '}
+            Gültig bis {clockTime(pending.expiresAt)} Uhr; legen Sie die Bibliothek bis dahin an.
+          </Typography>
+        </Box>
       ) : (
         <>
           <Typography variant="body2" sx={{ mb: 1 }}>
