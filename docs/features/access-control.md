@@ -1622,7 +1622,8 @@ Systemverwaltung. Ohne die vollständige Liste erreichte ein Fall der zweiten St
 
 **Objektbezogen in beide Richtungen.** Einstieg über das Objekt; der Eigentümer wird je Zeile
 genannt, aber es gibt **keine** Abfrage, keine Sortierung und keinen Parameter nach ihm — und ebenso
-wenig nach der handelnden Person. Wer einen Vorgang beendet hat, steht am Vorgang und ist dort
+wenig nach der handelnden Person. Die Zahl je Reiter (`GET /api/v1/admin/succession/counts`) nimmt
+keinen Parameter und zählt nur nach Art; ein Spezifikationstest hält das fest. Wer einen Vorgang beendet hat, steht am Vorgang und ist dort
 lesbar, ist aber keine Auswertungsachse. Ein
 Spezifikationstest hält das fest: Die Liste nimmt genau `kind`, `page` und `size` entgegen und keinen
 Sortierparameter.

@@ -134,7 +134,8 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   /**
    * How many entries each tab holds - per kind of entry only, never per person (ADR-0036,
    * Entscheidung 6). Drawn from the same findings as {@link #list}, so each figure equals that
-   * tab's {@code totalElements}; a reading several tabs share runs once.
+   * tab's {@code totalElements} while the list stays within its limit, and still names the full
+   * extent beyond it; a reading several tabs share runs once.
    */
   @Transactional(readOnly = true)
   public Map<SuccessionKind, Integer> counts(UUID organizationId) {

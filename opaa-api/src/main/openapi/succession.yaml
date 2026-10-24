@@ -201,7 +201,8 @@ paths:
       description: >
         One figure per tab, per kind of entry only - never per previous owner or acting person
         (Personalrat E1). Drawn from the same derivation as the list, so each figure equals the
-        totalElements of that tab; the reading the two group tabs share runs once for both.
+        totalElements of that tab while the list stays within its limit; beyond it the figure
+        still names the full extent the list refuses to page through. The reading the two group tabs share runs once for both.
       responses:
         "200":
           description: The figure of every tab

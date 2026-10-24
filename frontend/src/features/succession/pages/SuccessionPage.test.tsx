@@ -309,6 +309,14 @@ describe('SuccessionPage', () => {
         requests.push(request.url)
         return HttpResponse.json({ entries: [], page: 0, size: 1, totalElements: 0, totalPages: 0 })
       }),
+      http.get('/api/v1/admin/succession/counts', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json({
+          openSuccession: 0,
+          grantsWithoutRecipient: 0,
+          groupWithoutEffect: 0,
+        })
+      }),
     )
     signInAs('USER')
     renderPage()
