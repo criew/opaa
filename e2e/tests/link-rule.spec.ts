@@ -13,7 +13,7 @@ import { apiAs } from '../fixtures/externalAccess'
 import { cleanupLibraries, libraryIdFromCurrentUrl } from '../fixtures/libraries'
 import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 
-// A document with a visible instruction to append a link carrying content (Epic #3008); the
+// A document with a visible instruction to append a link carrying content; the
 // ai-stub follows it on the trigger word E2E-BEFOLGE-DOKUMENT, as a model without defence would.
 const PREPARED_DOCUMENT_NAME = 'praepariertes-merkblatt.txt'
 const PREPARED_DOCUMENT_PATH = join(
@@ -70,7 +70,7 @@ function answers(page: Page) {
 }
 
 /**
- * Covers test(e2e) #3051 (Epic #3008): links in an answer are clickable only to the own origin and
+ * Links in an answer are clickable only to the own origin and
  * to the allowed link targets, images are never loaded, the administration of the targets is the
  * system administration's, and a link a prepared document asks for stays text. The ai-stub's
  * trigger words fix every answer, so each scenario is deterministic.

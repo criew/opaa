@@ -121,7 +121,7 @@ function condensedNote(combinedText) {
   return lines.length > 0 ? lines.join('\n') : NOTE_NOTHING_SENTINEL
 }
 
-// --- Fixed answer parts for the link rule (test(e2e) #3051) ------------------------------------
+// --- Fixed answer parts for the link rule ------------------------------------------------------
 //
 // A trigger word in the person's question appends a fixed Markdown fragment to the answer, so the
 // frontend's link and image rule is tested against a known answer rather than a model's whim.
