@@ -134,6 +134,27 @@ final class Migrations {
    * leaves the database untouched.
    */
   static void apply(String url, String user, String password, String schema, List<String> scripts) {
+    apply(url, user, password, schema, scripts, true);
+  }
+
+  /**
+   * Like {@link #apply(String, String, String, String, List)}, but configured exactly as the
+   * application's Flyway: without baselining a schema that already holds tables. A test that runs
+   * two instances at once needs this - with the baseline, the second one finds the history table
+   * the first just created still empty and tries to baseline it, which no installation ever does.
+   */
+  static void applyAsTheApplication(
+      String url, String user, String password, String schema, List<String> scripts) {
+    apply(url, user, password, schema, scripts, false);
+  }
+
+  private static void apply(
+      String url,
+      String user,
+      String password,
+      String schema,
+      List<String> scripts,
+      boolean baselineOnMigrate) {
     if (scripts.isEmpty()) {
       return;
     }
@@ -147,7 +168,7 @@ final class Migrations {
           .outOfOrder(true)
           .ignoreMigrationPatterns("*:missing")
           // a test may create its own tables before the first script; the application never does
-          .baselineOnMigrate(true)
+          .baselineOnMigrate(baselineOnMigrate)
           .baselineVersion("0")
           .placeholders(PLACEHOLDERS)
           .load()
