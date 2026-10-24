@@ -169,7 +169,7 @@ public class SpaceService {
             .organizationId(saved.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_CREATED)
-            .object(AuditObjectType.SPACE, saved.getId(), saved.getName())
+            .object(AuditObjectType.SPACE, saved.getId(), saved.auditName())
             .after(spaceAuditPayload(saved))
             .outcome(AuditOutcome.SUCCESS)
             .build());
@@ -184,7 +184,7 @@ public class SpaceService {
               .organizationId(saved.getOrganizationId())
               .actor(caller.id())
               .type(AuditEventType.SPACE_MEMBER_ADDED)
-              .object(AuditObjectType.SPACE, saved.getId(), saved.getName())
+              .object(AuditObjectType.SPACE, saved.getId(), saved.auditName())
               .subject(auditSubjectKind(membership), membership.subjectId())
               .after(Map.of("role", membership.getRole().name()))
               .outcome(AuditOutcome.SUCCESS)
@@ -200,7 +200,10 @@ public class SpaceService {
 
   private Map<String, Object> spaceAuditPayload(Space space) {
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", space.getName());
+    if (!space.isDefault()) {
+      // the personal space's name is its owner's: the entry names it by id alone
+      payload.put("name", space.getName());
+    }
     payload.put("ownerId", space.getOwnerId().toString());
     payload.put("chatAutoCleanup", space.isChatAutoCleanupEnabled());
     return payload;
@@ -502,7 +505,7 @@ public class SpaceService {
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_MEMBER_ADDED)
-            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .object(AuditObjectType.SPACE, space.getId(), space.auditName())
             .subject(auditSubjectKind(membership), membership.subjectId())
             .after(Map.of("role", roleToAssign.name()))
             .outcome(AuditOutcome.SUCCESS)
@@ -600,7 +603,7 @@ public class SpaceService {
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_MEMBER_ROLE_CHANGED)
-            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .object(AuditObjectType.SPACE, space.getId(), space.auditName())
             .subject(auditSubjectKind(target), target.subjectId())
             .before(Map.of("role", previousRole.name()))
             .after(Map.of("role", newRole.name()))
@@ -629,7 +632,7 @@ public class SpaceService {
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_MEMBER_REMOVED)
-            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .object(AuditObjectType.SPACE, space.getId(), space.auditName())
             .subject(auditSubjectKind(target), target.subjectId())
             .before(Map.of("role", target.getRole().name()))
             .outcome(AuditOutcome.SUCCESS)
@@ -704,7 +707,7 @@ public class SpaceService {
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.ASSET_OWNER_CHANGED)
-            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .object(AuditObjectType.SPACE, space.getId(), space.auditName())
             .before(Map.of("ownerId", previousOwnerId.toString()))
             .after(Map.of("ownerId", newOwnerUserId.toString()))
             .outcome(AuditOutcome.SUCCESS)
@@ -776,7 +779,7 @@ public class SpaceService {
               .organizationId(updated.getOrganizationId())
               .actor(caller.id())
               .type(AuditEventType.SPACE_CHANGED)
-              .object(AuditObjectType.SPACE, updated.getId(), updated.getName())
+              .object(AuditObjectType.SPACE, updated.getId(), updated.auditName())
               .before(before)
               .after(after)
               .outcome(AuditOutcome.SUCCESS)
@@ -827,7 +830,7 @@ public class SpaceService {
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_DELETED)
-            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .object(AuditObjectType.SPACE, space.getId(), space.auditName())
             .before(spaceAuditPayload(space))
             .outcome(AuditOutcome.SUCCESS)
             .build());
@@ -877,7 +880,7 @@ public class SpaceService {
             .organizationId(archived.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_ARCHIVED)
-            .object(AuditObjectType.SPACE, archived.getId(), archived.getName())
+            .object(AuditObjectType.SPACE, archived.getId(), archived.auditName())
             .before(spaceAuditPayload(archived))
             .outcome(AuditOutcome.SUCCESS)
             .build());

@@ -721,9 +721,17 @@ lesen?" Fünf Schutzregeln gehören dazu:
 - **Es gibt keinen Personen-Einstieg.** „Worauf hatte Person X am 3. März Zugriff" ist nicht
   gebaut und bleibt es, bis die Pseudonymisierung der Historie vorliegt (#391/#395).
 
-Eine [private Bibliothek](../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md) nennen Stichtagsauskunft und
-Nachweisprotokoll nie mit ihrem Namen, sondern „Private Bibliothek“ mit ihrer Kennung — auch in den
-Einträgen, die beim Anlegen, Ändern und Löschen entstehen.
+Objekte, die genau einer Person gehören, nennen Stichtagsauskunft und Nachweisprotokoll nie mit
+ihrem Namen, sondern mit einer neutralen Bezeichnung und ihrer Kennung, auch in den Einträgen beim
+Anlegen, Ändern und Löschen und auch in den Angaben des Eintrags:
+
+| Objekt | Bezeichnung im Protokoll |
+|---|---|
+| [private Bibliothek](../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md) | „Private Bibliothek“ |
+| Prompt in einer privaten Prompt-Bibliothek | „Privater Prompt“ |
+| persönlicher Bereich eines Kontos | „Persönlicher Bereich“ |
+
+Das gilt für jeden Eintrag, gleich welcher Teil von OPAA ihn schreibt.
 
 Wie lange Zeiträume liegen bleiben, wie eine Verkürzung wirkt und was das für die Löschbarkeit
 eines Kontos bedeutet, steht im Kapitel [Suche](../spaces/suche.md), Abschnitt 8.4.

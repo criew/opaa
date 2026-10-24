@@ -76,6 +76,8 @@ gilt:
 - **Keine Suche nach Personen:** Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
   Vorgang ab, jeweils für einen begrenzten Zeitraum
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
+  Die Ausleitung an ein Sicherheitsmonitoring trägt keine Pseudonyme
+  ([Überwachung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
 - **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Pseudonym nur über eine
   anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).

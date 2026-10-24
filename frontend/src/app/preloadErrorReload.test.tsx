@@ -5,6 +5,7 @@ import ErrorBoundary from './ErrorBoundary'
 import PageLoading from './shell/PageLoading'
 import { loadOrWait } from './lazyPages'
 import { installPreloadErrorReload } from './preloadErrorReload'
+import { loadOptionalChunk } from '@/shared/utils/optionalChunk'
 
 const BUILD = 'https://opaa.example/assets/index-AAAA.js'
 
@@ -143,5 +144,20 @@ describe('installPreloadErrorReload', () => {
     expect(await screen.findByText('Etwas ist schiefgelaufen')).toBeInTheDocument()
     expect(second.reload).not.toHaveBeenCalled()
     vi.restoreAllMocks()
+  })
+
+  it('leaves an optional chunk to its fallback: the import is rejected and the page stays', async () => {
+    const { win, reload } = fakeWindow()
+    installPreloadErrorReload(win, BUILD)
+
+    await expect(loadOptionalChunk(vitePreload(win, missingChunk))).rejects.toThrow(
+      'Failed to fetch dynamically imported module',
+    )
+
+    expect(reload).not.toHaveBeenCalled()
+    // the guard ends with the load: a page chunk that fails afterwards still reloads the page
+    const event = preloadError(win)
+    expect(event.defaultPrevented).toBe(true)
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 })

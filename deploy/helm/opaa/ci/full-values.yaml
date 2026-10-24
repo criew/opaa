@@ -51,6 +51,13 @@ malwareScan:
   port: "3310"
   timeout: 30s
   onUnavailable: REJECT
+siemExport:
+  enabled: true
+  host: siem.security.svc
+  port: "6514"
+  tls: "true"
+  includeLabels: false
+  timeout: 30s
 mail:
   connectTimeout: 5s
 targetValidation:

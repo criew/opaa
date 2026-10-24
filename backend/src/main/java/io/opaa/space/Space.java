@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.audit.AuditNeutralLabels;
 import io.opaa.permission.AssetType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -167,6 +168,14 @@ public class Space {
 
   public UUID getId() {
     return id;
+  }
+
+  /**
+   * The name a protocol entry carries: for the personal space the neutral {@link
+   * AuditNeutralLabels#PERSONAL_SPACE}, identified by its id alone - its own name is its owner's.
+   */
+  public String auditName() {
+    return isDefault ? AuditNeutralLabels.PERSONAL_SPACE : name;
   }
 
   public String getName() {

@@ -506,6 +506,34 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 - Für Entwicklung und Tests (nur Profil `dev`) ist ein fester, **nicht für den Betrieb gedachter**
   Schlüssel voreingestellt.
 
+## Kennzeichnung erzeugter Texte
+
+Der Anbieter eines KI-Systems, das Text erzeugt, muss die Ausgaben maschinenlesbar als KI-erzeugt
+markieren und erkennbar machen, soweit das technisch möglich ist (Art. 50 Abs. 2 KI-Verordnung); eine
+Behörde, die OPAA unter eigenem Namen in Betrieb nimmt, kann selbst Anbieterin werden. Eine solche Markierung im Text setzt das Modell, nicht OPAA: OPAA schickt die
+Anfrage an einen Endpunkt und hat auf die Erzeugung keinen Zugriff.
+
+Was OPAA selbst dazu beiträgt, steht in den Kapiteln [Suche](../spaces/suche.md) und
+[Branding](branding.md): der Hinweis im Chat, das Kennzeichen an jeder Antwort, der Vermerk beim
+Kopierknopf und das Kennzeichnungsfeld in der Schnittstelle. Das ersetzt keine Markierung im Text.
+OPAA fügt keinem Text ein eigenes Wasserzeichen und kein signiertes Manifest hinzu.
+
+Welche Anbieter Text nach eigener Angabe markieren, hängt vom Anbieter und vom Modell ab. Die Tabelle
+gibt Herstellerangaben mit Stand 23.10.2026 wieder; sie sind keine Rechtsquelle, und das Haus prüft
+sie vor dem Einsatz beim Anbieter nach:
+
+| Anbieter | Angabe des Herstellers |
+|---|---|
+| Anthropic | Text-Wasserzeichen für neue Modelle seit August 2026, auch über die Schnittstelle und Cloud-Partner; die Erkennung steht nur in einer geschlossenen Vorschau bereit |
+| Google | Text-Wasserzeichen „SynthID Text“ angekündigt |
+| OpenAI, Mistral | haben den Verhaltenskodex zur Kennzeichnung unterzeichnet; Einzelheiten zu einem Text-Wasserzeichen sind nicht dokumentiert (unsicher) |
+
+**Lokale Modelle** (offene Gewichte im eigenen Haus) markieren Text in der Regel nicht. Hier bleibt
+nur das Argument, eine Markierung sei technisch nicht machbar, gestützt auf eine dokumentierte
+Lückenanalyse; ob die Aufsicht das ausreichen lässt, ist offen. Die Einstufungshilfe zur
+KI-Verordnung in den Unterlagen für Behörden beschreibt, was das Haus festhält. Ein Wechsel des
+Chat-Modells ändert, ob und wie Text markiert wird, und gehört deshalb in diese Prüfung.
+
 ## Modell gegen Prompt-Injection messen
 
 Ein Dokument kann Sätze enthalten, die das Chat-Modell als Anweisung oder als Tatsache übernimmt,

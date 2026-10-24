@@ -1,3 +1,4 @@
+import { isOptionalChunkLoading } from '@/shared/utils/optionalChunk'
 import { readStorage, writeStorage } from '@/shared/utils/storage'
 
 const RELOADED_BUILD_KEY = 'opaa.preloadErrorReloadedBuild'
@@ -18,6 +19,10 @@ export function installPreloadErrorReload(
   const onPreloadError = (event: Event) => {
     if (reloading) {
       event.preventDefault()
+      return
+    }
+    // an optional chunk has a fallback of its own; the page stays where it is
+    if (isOptionalChunkLoading()) {
       return
     }
     if (readStorage(target.sessionStorage, RELOADED_BUILD_KEY) === buildId) {

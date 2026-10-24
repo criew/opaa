@@ -28,10 +28,12 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The readers of {@code audit_log} beside the funnel of {@link AuditFunnelStructureTest}, which
- * cannot see raw SQL: only {@link AuditLogSelfDisclosureExporter} names the table in a query, no
- * production class refers to that exporter, and only {@link SelfDisclosureService} - which passes
- * the signed-in person, never a parameter - calls an exporter. A second reader or caller would be
- * the person filter the specification rules out for third parties.
+ * cannot see raw SQL: {@link AuditLogSelfDisclosureExporter} and {@link SiemExportService} name the
+ * table in a query, nothing else. No production class refers to the self-disclosure exporter, and
+ * only {@link SelfDisclosureService} - which passes the signed-in person, never a parameter - calls
+ * an exporter. The SIEM export exists only while switched on, is driven only by its schedule and
+ * never names a pseudonym, reason or payload column (ADR-0055, Entscheidung 3). Any other reader or
+ * caller would be the person filter the specification rules out for third parties.
  */
 class AuditLogReaderStructureTest {
 
@@ -71,9 +73,67 @@ class AuditLogReaderStructureTest {
           "private static final String AUDIT_LOG_SELF_OBJECT_ID = \"audit_log\";");
 
   @Test
-  void onlyTheSelfDisclosureExporterQueriesTheAuditLogInSql() {
+  void onlyTheSelfDisclosureAndTheSiemExportQueryTheAuditLogInSql() {
     assertThat(sqlReaders(mainSources()))
-        .containsExactly("io/opaa/audit/AuditLogSelfDisclosureExporter.java");
+        .containsExactlyInAnyOrder(
+            "io/opaa/audit/AuditLogSelfDisclosureExporter.java",
+            "io/opaa/audit/SiemExportService.java");
+  }
+
+  /** The columns the SIEM export must never read: persons, reasons and payloads. */
+  private static final Pattern FORBIDDEN_COLUMN =
+      Pattern.compile("\\b(actor_ref|subject_ref|reason|before|after|correlation_ref)\\b");
+
+  /** Every Java string literal, also a fragment of SQL without a keyword of its own. */
+  private static final Pattern STRING_LITERAL = Pattern.compile("\"((?:[^\"\\\\]|\\\\.)*)\"");
+
+  @Test
+  void theSiemExportNeverNamesAPseudonymReasonOrPayloadInItsSql() throws IOException {
+    String source =
+        Files.readString(
+            JavaSources.MAIN_SOURCES.resolve("io/opaa/audit/SiemExportService.java"),
+            StandardCharsets.UTF_8);
+    Matcher literals = STRING_LITERAL.matcher(source);
+    int seen = 0;
+    while (literals.find()) {
+      seen++;
+      assertThat(FORBIDDEN_COLUMN.matcher(literals.group(1)).find())
+          .as("string literal of SiemExportService: %s", literals.group(1))
+          .isFalse();
+    }
+    assertThat(seen).as("the test must see the literals of SiemExportService").isGreaterThan(10);
+  }
+
+  @Test
+  void theSiemExportExistsOnlyWhileSwitchedOnAndRunsOnlyOnItsSchedule()
+      throws NoSuchMethodException {
+    JavaClass service = MAIN.get(SiemExportService.class);
+    assertThat(
+            service.getConstructorCallsToSelf().stream()
+                .map(call -> call.getOriginOwner().getName() + "#" + call.getOrigin().getName())
+                .collect(Collectors.toSet()))
+        .containsExactly(SiemExportConfiguration.class.getName() + "#siemExportService");
+    var factory =
+        SiemExportConfiguration.class.getDeclaredMethod(
+            "siemExportService",
+            org.springframework.jdbc.core.JdbcTemplate.class,
+            SiemExportProperties.class,
+            io.micrometer.core.instrument.MeterRegistry.class,
+            org.springframework.beans.factory.ObjectProvider.class,
+            org.springframework.beans.factory.ObjectProvider.class);
+    var condition =
+        factory.getAnnotation(
+            org.springframework.boot.autoconfigure.condition.ConditionalOnProperty.class);
+    assertThat(condition.prefix()).isEqualTo("opaa.siem-export");
+    assertThat(condition.name()).containsExactly("enabled");
+    assertThat(condition.havingValue()).isEqualTo("true");
+    assertThat(
+            service.getMethodCallsToSelf().stream()
+                .filter(call -> Set.of("run", "deliverNext", "cursor").contains(call.getName()))
+                .map(call -> call.getOriginOwner().getName())
+                .filter(origin -> !origin.equals(service.getName()))
+                .collect(Collectors.toSet()))
+        .containsExactly(SiemExportSchedule.class.getName());
   }
 
   @Test

@@ -152,6 +152,13 @@ dokumentiert und dem Personalrat [binnen … Arbeitstagen] mitgeteilt.
 
 (4) Echte Daten werden in Test- und Entwicklungssysteme [nicht / nur anonymisiert] übernommen.
 
+(5) Wird das Nachweisprotokoll an ein zentrales Sicherheitsmonitoring ausgeleitet, liest die
+Anwendung es dafür vollständig der Reihe nach und sendet es ohne Pseudonyme von Personen
+[und ohne Namen von Objekten]. Das Sicherheitsmonitoring ist ein Zugriffsweg nach Absatz 1;
+[benannte Stelle] betreibt es und bewahrt die Meldungen [Frist] auf. Ausgeleitetes Protokoll und
+Anwendungslog werden nicht miteinander verknüpft, um eine Person zu bestimmen, außer in einer
+Klärung nach Nummer 8.
+
 #### 8. Anlassbezogene Klärung
 
 (1) Das Protokoll wird nach einer Person nur als anlassbezogene Klärung abgefragt, und nur zu diesen

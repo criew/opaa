@@ -218,6 +218,7 @@ datenfluesse#oidc-provider
 datenfluesse#original-store
 datenfluesse#rerank-model
 datenfluesse#service-account-token
+datenfluesse#siem-export
 datenfluesse#source-attachment
 datenfluesse#source-confluence
 datenfluesse#source-dropbox
@@ -299,6 +300,10 @@ voreinstellungen#opaa-permission-minimum-group-size
 voreinstellungen#opaa-rerank-base-url
 voreinstellungen#opaa-rerank-enabled
 voreinstellungen#opaa-rerank-model
+voreinstellungen#opaa-siem-export-enabled
+voreinstellungen#opaa-siem-export-host
+voreinstellungen#opaa-siem-export-include-labels
+voreinstellungen#opaa-siem-export-tls
 voreinstellungen#opaa-succession-aging-threshold-months
 voreinstellungen#opaa-transcription-base-url
 voreinstellungen#opaa-transcription-enabled

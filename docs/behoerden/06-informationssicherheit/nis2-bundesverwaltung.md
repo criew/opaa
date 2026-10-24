@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -26,7 +26,7 @@ erfasst ist, stellt jede Einrichtung selbst fest.
 | Vorgabe | Beitrag von OPAA |
 |---|---|
 | IT-Grundschutz | Bausteinzuordnung: [IT-Grundschutz](grundschutz-modellierung.md) |
-| Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); eine Ausleitung an ein Sicherheitsmonitoring ist nicht gebaut |
+| Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); zuschaltbare Ausleitung des Nachweisprotokolls an das zentrale Sicherheitsmonitoring als Syslog mit CEF über TLS, ohne Pseudonyme, ohne stillen Verlust (auch nicht bei lang offenen Vorgängen), mindestens einmal zugestellt und mit gekennzeichneten Lücken ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring), {{faktenblatt:datenfluesse#siem-export}}); Sicherheitsereignisse des Anwendungslogs holt die Log-Sammlung der Behörde ab |
 | Mindeststandard externe Cloud-Dienste | ausgehende Ziele je Version ({{faktenblatt:datenfluesse}}); Modelle auch im Haus betreibbar; bei Cloud-Betrieb [C5](c5-cloud-betrieb.md) |
 | Mindeststandard TLS | TLS am vorgelagerten Proxy, Zertifikatsprüfung bei Quellen ([Netzwerkzugang](../../handbuch/betrieb/netz-und-sicherheit.md#netzwerkzugang), [Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
 

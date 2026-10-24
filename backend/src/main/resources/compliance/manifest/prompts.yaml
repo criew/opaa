@@ -54,8 +54,9 @@ aiFunctions:
     interactsWithPersons: true
     assessesPersons: false
     labelling: >-
-      Keine ausdrückliche Kennzeichnung als KI-erzeugt; die Antwort erscheint im Chat als Antwort
-      des Assistenten mit Fundstellen
+      Hinweis zur KI-Nutzung im Chat vor der ersten Frage und unter dem Eingabefeld, Kennzeichen
+      „KI-erzeugt“ an jeder Antwort, Feld generatedByAi in der API und in der Selbstauskunft, Vermerk
+      beim Kopierknopf; keine Markierung im Antworttext
     prompts: [answer-generation, query-decomposition]
   - id: chat-title
     purpose: Schlägt den Titel eines Chats vor

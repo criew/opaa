@@ -22,6 +22,7 @@ import {
   markdownWithNote,
   plainTextWithNote,
 } from './copyFormats'
+import { loadOptionalChunk } from '@/shared/utils/optionalChunk'
 import { useClipboardCopy } from './useClipboardCopy'
 import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
 
@@ -30,6 +31,21 @@ interface CopyAnswerButtonProps {
   citations: CitationIndex
   /** The date the note names - when the answer was given. */
   answeredAt: Date
+}
+
+/**
+ * The HTML flavour, loaded on demand. A missing chunk must not reload the page in the middle of
+ * the copy, so the load is optional: it fails here and the copy falls back to plain text. A load
+ * that answers without a module (a reload already running) fails the same way.
+ */
+async function htmlFor(
+  markdown: string,
+  note: string,
+  allowedOrigins: readonly string[],
+): Promise<string> {
+  const module = await loadOptionalChunk(() => import('./copyHtml'))
+  if (!module) throw new Error('HTML flavour unavailable')
+  return module.answerAsHtml(markdown, note, allowedOrigins)
 }
 
 function segmentSx(theme: Theme) {
@@ -67,9 +83,7 @@ export default function CopyAnswerButton({
   // person marks by hand and copies themselves is not touched - there is no copy handler.
   function copyMarkdown(markdown: string) {
     const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
-    void copy(markdownWithNote(markdown, note), () =>
-      import('./copyHtml').then((module) => module.answerAsHtml(markdown, note, allowedOrigins)),
-    )
+    void copy(markdownWithNote(markdown, note), () => htmlFor(markdown, note, allowedOrigins))
   }
 
   function copyPlainText() {
