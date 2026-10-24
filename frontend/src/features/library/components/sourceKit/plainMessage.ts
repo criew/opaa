@@ -10,11 +10,15 @@ export function plainMessage(message: string): string {
   if (/Request failed with status code|Network Error|timeout of \d+ms/i.test(message)) {
     return 'Die Quelle hat nicht geantwortet.'
   }
-  return message
-    .replace(CODE, (_match, explanation?: string) => (explanation ? `: ${explanation}` : ''))
-    .replace(/\s*\bHTTP \d{3}\b/g, '')
-    .replace(/\s+([.,:;])/g, '$1')
-    .replace(/:\s*:/g, ':')
-    .replace(/^[\s:;,.]+/, '')
-    .trim()
+  return (
+    message
+      .replace(CODE, (_match, explanation?: string) => (explanation ? `: ${explanation}` : ''))
+      .replace(/\s*\bHTTP \d{3}\b/g, '')
+      .replace(/\s+([.,:;])/g, '$1')
+      .replace(/:\s*:/g, ':')
+      // a sentence that only repeats a link next to the message („Erneut laden“, „Von Hand eintragen“)
+      .replace(/\s*(Bitte (später )?erneut (versuchen|laden)|Geben Sie [^.]* von Hand an)\.?/g, '')
+      .replace(/^[\s:;,.]+/, '')
+      .trim()
+  )
 }

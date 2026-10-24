@@ -117,6 +117,11 @@ export function GoogleDriveScopeFields({
       id={fieldId('scopes')}
       source={driveSelectionSource(fields, () => ({ ...request, query: { subject } }))}
       value={values.scopes.map(driveItem)}
+      all={{
+        active: values.everything,
+        onChange: (everything) => onChange({ everything }),
+        label: 'Alle Geteilten Ablagen und Ordner',
+      }}
       onChange={(items) =>
         onChange({
           scopes: items.map(driveScopeOfItem).filter((scope) => scope !== null),

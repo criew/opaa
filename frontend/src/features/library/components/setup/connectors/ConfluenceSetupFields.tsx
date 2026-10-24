@@ -137,6 +137,7 @@ export function ConfluenceScopeFields({
       id={fieldId('spaces')}
       source={source}
       value={values.spaces.map(spaceItem)}
+      all={{ active: values.everything, onChange: (everything) => onChange({ everything }) }}
       onChange={(items) => onChange({ spaces: items.map(spaceOfItem) })}
       error={issueAt('spaces')}
       loadKey={JSON.stringify({

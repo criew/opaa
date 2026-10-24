@@ -43,6 +43,8 @@ interface CreateSourceSetupStepProps {
   startFirstRun: boolean
   onStartFirstRunChange: (checked: boolean) => void
   firstRunHint: string
+  /** How many ways of connection there are to choose from. */
+  connectionChoices: number
 }
 
 /**
@@ -76,6 +78,7 @@ export default function CreateSourceSetupStep({
   startFirstRun,
   onStartFirstRunChange,
   firstRunHint,
+  connectionChoices,
 }: CreateSourceSetupStepProps) {
   const prelude =
     (showConnectionSelect && descriptor) || consentProfile ? (
@@ -110,7 +113,7 @@ export default function CreateSourceSetupStep({
     ? setup
     : { ...setup, sections: setup.sections.filter((s) => s.id !== 'connection'), probe: undefined }
   return (
-    <Box sx={{ maxWidth: 640 }}>
+    <Box>
       <SourceSetupRows
         // a new way of connection starts the rows afresh, so no test result outlives it
         key={connectionChoice ?? 'none'}
@@ -126,7 +129,15 @@ export default function CreateSourceSetupStep({
         firstRun={{ value: startFirstRun, onChange: onStartFirstRunChange, hint: firstRunHint }}
         connectionPrelude={prelude}
         connectionLead={connectionLead}
-        initialRow={initialRow}
+        // nothing to fill in under „Verbindung“: the first open row is „Umfang“
+        initialRow={
+          initialRow === 'connection' &&
+          setup.quietConnection &&
+          connectionChoices <= 1 &&
+          !awaitsConsent
+            ? 'scope'
+            : initialRow
+        }
       />
     </Box>
   )

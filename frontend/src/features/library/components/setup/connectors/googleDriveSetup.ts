@@ -9,28 +9,30 @@ import {
 } from '../../../utils/googleDriveSource'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
-import { checkWord, issueList, joinSummary, namesSummary } from './common'
+import { issueList, joinSummary, listSummary } from './common'
 import { GoogleDriveConnectionFields, GoogleDriveScopeFields } from './GoogleDriveSetupFields'
 
 export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, context, check) => {
+      summary: (values, context) => {
         const account =
           values.keyAccount ||
-          (storedKeyServes(values, context.credentialsStored) ? 'Schlüssel gesetzt' : '')
-        return joinSummary(
-          account,
-          values.subject.trim() && `als ${values.subject.trim()}`,
-          account && checkWord(check),
-        )
+          (storedKeyServes(values, context.credentialsStored) ? 'Schlüsseldatei gesetzt' : '')
+        return joinSummary(account, values.subject.trim() && `als ${values.subject.trim()}`)
       },
       Fields: GoogleDriveConnectionFields,
     },
     {
       id: 'scope',
-      summary: (values) => namesSummary(values.scopes.map(googleDriveScopeLabel)),
+      summary: (values) =>
+        listSummary(
+          values.everything,
+          ['Geteilte Ablage oder Ordner', 'Geteilte Ablagen und Ordner'],
+          values.scopes.map(googleDriveScopeLabel),
+          'Alle Geteilten Ablagen und Ordner',
+        ),
       Fields: GoogleDriveScopeFields,
     },
   ],
@@ -61,8 +63,8 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
     )
     at(
       'scopes',
-      'Mindestens eine Geteilte Ablage oder einen Ordner wählen',
-      values.scopes.length === 0,
+      'Geteilte Ablagen und Ordner fehlen',
+      !values.everything && values.scopes.length === 0,
     )
     at(
       'scopes',
@@ -70,6 +72,11 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
       values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES,
     )
     return list
+  },
+  labels: {
+    keyFile: 'Schlüsseldatei',
+    subject: 'Imitiertes Konto',
+    scopes: 'Geteilte Ablagen und Ordner',
   },
   rowOf: (field) => (field === 'scopes' ? 'scope' : 'connection'),
   probe: (values, fields) =>

@@ -9,12 +9,11 @@ import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
 import {
   addressIssue,
-  checkWord,
   credentialsKept,
   hostOf,
   issueList,
   joinSummary,
-  namesSummary,
+  listSummary,
 } from './common'
 import { ConfluenceConnectionFields, ConfluenceScopeFields } from './ConfluenceSetupFields'
 
@@ -22,22 +21,32 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
+      summary: (values) =>
         values.sourceUrl.trim()
           ? joinSummary(
               hostOf(values.sourceUrl),
               values.edition && confluenceEditionLabel(values.edition),
-              checkWord(check),
             )
           : null,
       Fields: ConfluenceConnectionFields,
     },
     {
       id: 'scope',
-      summary: (values) => namesSummary(values.spaces.map((space) => space.name || space.key)),
+      summary: (values) =>
+        listSummary(
+          values.everything,
+          ['Space', 'Spaces'],
+          values.spaces.map((space) => space.name || space.key),
+        ),
       Fields: ConfluenceScopeFields,
     },
   ],
+  labels: {
+    sourceUrl: 'Adresse',
+    email: 'E-Mail-Adresse',
+    token: 'API-Token',
+    spaces: 'Spaces',
+  },
   issues: (values, context) => {
     const { at, list } = issueList()
     const address = addressIssue(values.sourceUrl)
@@ -56,12 +65,14 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
         values.token.trim() === '',
       )
     }
-    at('spaces', 'Mindestens einen Space wählen', values.spaces.length === 0)
-    at(
-      'spaces',
-      `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces`,
-      values.spaces.length > MAX_CONFLUENCE_SPACES,
-    )
+    if (!values.everything) {
+      at('spaces', 'Spaces fehlen', values.spaces.length === 0)
+      at(
+        'spaces',
+        `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces`,
+        values.spaces.length > MAX_CONFLUENCE_SPACES,
+      )
+    }
     return list
   },
   rowOf: (field) => (field === 'spaces' ? 'scope' : 'connection'),

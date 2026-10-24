@@ -117,6 +117,11 @@ export default function LibrarySourceRows({
 
   return (
     <SourceSetupRows
+      scheduleNote={
+        library.schedule?.nextRunAt
+          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`
+          : null
+      }
       ref={ref}
       mode="edit"
       spec={setup}

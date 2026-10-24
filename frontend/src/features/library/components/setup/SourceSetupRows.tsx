@@ -1,7 +1,6 @@
-import { useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react'
-import Alert from '@mui/material/Alert'
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -22,8 +21,9 @@ import { useConnectionCheck } from './connectionCheck'
 import { plainMessage } from '../sourceKit/plainMessage'
 import ErrorSummary, { type SummaryEntry } from './ErrorSummary'
 import { scheduleSummary } from './scheduleSummary'
-import type { SetupRowId, SourceSetupSpec } from './setupTypes'
+import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from './setupTypes'
 import SummaryRow from './SummaryRow'
+import { TEXT_LINK } from './rowStyles'
 
 const ROW_TITLES: Record<SetupRowId, string> = {
   connection: 'Verbindung',
@@ -50,6 +50,8 @@ interface SourceSetupRowsProps<V> {
   rhythm?: ConfluenceFullSyncRhythm
   /** Create mode: the immediate first run under the schedule. */
   firstRun?: { value: boolean; onChange: (next: boolean) => void; hint: string }
+  /** After the schedule's summary, e.g. the next planned run. */
+  scheduleNote?: string | null
   /** Above the connection fields: the choice of Zugang, the consent at the provider. */
   connectionPrelude?: ReactNode
   /** Leads the summary of „Verbindung“, e.g. the Zugang. */
@@ -88,6 +90,7 @@ export default function SourceSetupRows<V>({
   firstRun,
   connectionPrelude,
   connectionLead,
+  scheduleNote,
   rows = ['connection', 'scope', 'schedule'],
   canEdit = true,
   headingLevel = 'h3',
@@ -125,6 +128,12 @@ export default function SourceSetupRows<V>({
   const issueAt = (field: string) => shown.find((issue) => issue.field === field)?.message ?? null
   const issuesOfRow = (row: SetupRowId) => shown.filter((issue) => rowOf(issue.field) === row)
   const checkFailed = check.state === 'failed' && !check.accepted
+  const failedStage = check.outcome?.stages.find((s) => s.state === 'failed')?.label ?? null
+  const labelOf = (field: string) =>
+    field === SCHEDULE_FIELD ? 'Vollabgleich' : (spec.labels[field] ?? null)
+  // a selection applied in the dialog is saved once it is rendered, so the save sends it
+  const [saveTick, setSaveTick] = useState(0)
+  const saveRowRef = useRef<(row: SetupRowId) => Promise<void>>(async () => {})
 
   function jumpTo(row: SetupRowId, targetId: string) {
     setOpenRow(row)
@@ -142,13 +151,13 @@ export default function SourceSetupRows<V>({
         ...[...shown]
           .sort((a, b) => rows.indexOf(rowOf(a.field)) - rows.indexOf(rowOf(b.field)))
           .map((issue) => ({
-            text: `${ROW_TITLES[rowOf(issue.field)]}: ${issue.message}`,
+            text: `${ROW_TITLES[rowOf(issue.field)]}: ${labelOf(issue.field ?? '') ?? issue.message}`,
             onJump: () => jumpTo(rowOf(issue.field), fieldId(issue.field ?? '')),
           })),
         ...(checkBlocks && checkFailed && check.outcome
           ? [
               {
-                text: `Verbindung: Test fehlgeschlagen (${check.outcome.stages.find((s) => s.state === 'failed')?.label ?? 'Adresse'})`,
+                text: `Verbindung: Test (${failedStage ?? 'Adresse'})`,
                 onJump: () => jumpTo('connection', `${context.idPrefix}-check`),
               },
             ]
@@ -189,21 +198,24 @@ export default function SourceSetupRows<V>({
 
   async function open(row: SetupRowId) {
     if (!(await confirmLeave(openRow))) return
+    // leaving a complete „Verbindung“ in the wizard tests it; a row closes as another opens
+    if (
+      mode === 'create' &&
+      openRow === 'connection' &&
+      request &&
+      check.state === 'unchecked' &&
+      !liveIssues.some((issue) => rowOf(issue.field) === 'connection')
+    ) {
+      void check.run()
+    }
     setSaveError(null)
     setOpenRow(row)
   }
 
-  /** Wizard: closes the row if its fields are fine and opens the next one that still needs input. */
-  async function finishRow(row: SetupRowId) {
-    if (reveal(row).length > 0) {
-      setShowSummary(true)
-      return
-    }
-    if (row === 'connection' && request && check.state === 'unchecked') void check.run()
-    const next = rows
-      .slice(rows.indexOf(row) + 1)
-      .find((r) => r !== 'schedule' && summaryOf(r) === null)
-    setOpenRow(next ?? null)
+  /** The selection dialog of „Umfang“ closed: the wizard keeps the draft, the tab saves it. */
+  function scopeDone(applied: boolean) {
+    if (mode === 'edit' && applied) setSaveTick((n) => n + 1)
+    else setOpenRow(null)
   }
 
   async function saveRow(row: SetupRowId) {
@@ -237,6 +249,13 @@ export default function SourceSetupRows<V>({
     }
   }
 
+  useEffect(() => {
+    saveRowRef.current = saveRow
+  })
+  useEffect(() => {
+    if (saveTick > 0) void saveRowRef.current('scope')
+  }, [saveTick])
+
   async function cancelRow(row: SetupRowId) {
     if (!(await confirmLeave(row))) return
     setOpenRow(null)
@@ -266,60 +285,74 @@ export default function SourceSetupRows<V>({
     openRow: (row) => setOpenRow(row),
   }))
 
-  function summaryOf(row: SetupRowId): string | null {
+  function summaryOf(row: SetupRowId): RowSummary {
     if (row === 'schedule') {
       const base = scheduleSummary(schedule, rhythm)
-      return firstRun?.value ? `${base} · erste Indizierung sofort` : base
+      if (firstRun?.value) return `${base} · erste Indizierung sofort`
+      return scheduleNote ? `${base} · ${scheduleNote}` : base
     }
     const section = spec.sections.find((s) => s.id === row)
-    const text = section?.summary(values, context, check.state) ?? null
+    const summary = section?.summary(values, context) ?? null
     if (row === 'connection') {
-      const parts = [connectionLead, text].filter(Boolean)
+      const parts = [connectionLead, typeof summary === 'string' ? summary : null].filter(Boolean)
       return parts.length ? parts.join(' · ') : null
     }
-    return text
+    return summary
   }
 
-  function rowFooter(row: SetupRowId) {
-    if (mode === 'create') {
-      return (
-        <Box sx={{ mt: 3 }}>
-          <Button variant="text" size="small" onClick={() => void finishRow(row)} sx={{ ml: -1 }}>
-            Übernehmen
-          </Button>
-        </Box>
-      )
+  function statusOf(row: SetupRowId): RowStatus | null {
+    if (row !== 'connection' || !request) return null
+    switch (check.state) {
+      case 'passed':
+        return { tone: 'success', label: 'verbunden' }
+      case 'partial':
+        return { tone: 'warning', label: 'teilweise lesbar' }
+      case 'failed':
+        return { tone: 'error', label: `Test fehlgeschlagen (${failedStage ?? 'Adresse'})` }
+      case 'checking':
+        return { tone: 'neutral', label: 'wird geprüft' }
+      default:
+        return { tone: 'neutral', label: 'nicht geprüft' }
     }
+  }
+
+  /** The Reiter „Quelle“: „Abbrechen“ and „Speichern“ at the right edge, as in the wizard's footer. */
+  function rowFooter(row: SetupRowId) {
+    if (mode === 'create') return null
     return (
       <Box sx={{ mt: 3 }}>
         {saveError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {saveError}
-          </Alert>
+          <Typography sx={{ fontSize: 13, color: 'error.main', mb: 1.5 }}>{saveError}</Typography>
         )}
-        <Stack direction="row" spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ justifyContent: 'flex-end', alignItems: 'center' }}
+        >
+          <Link
+            component="button"
+            type="button"
+            underline="hover"
+            onClick={() => void cancelRow(row)}
+            disabled={saving}
+            sx={TEXT_LINK}
+          >
+            Abbrechen
+          </Link>
           <BusyButton
             variant="contained"
-            size="small"
             busy={saving}
             busyAnnouncement="Wird gespeichert"
             onClick={() => void saveRow(row)}
           >
-            {saving
-              ? 'Wird gespeichert …'
-              : row === 'connection' && request
-                ? 'Testen und speichern'
-                : 'Speichern'}
+            {saving ? 'Wird gespeichert …' : 'Speichern'}
           </BusyButton>
-          <Button variant="text" size="small" onClick={() => void cancelRow(row)} disabled={saving}>
-            Abbrechen
-          </Button>
         </Stack>
       </Box>
     )
   }
 
-  const props = { values, onChange, context, fields, issueAt, fieldId }
+  const props = { values, onChange, context, fields, issueAt, fieldId, editing: mode === 'edit' }
 
   return (
     <Box>
@@ -335,6 +368,7 @@ export default function SourceSetupRows<V>({
             id={`${context.idPrefix}-row-${row}`}
             title={ROW_TITLES[row]}
             summary={summaryOf(row)}
+            status={statusOf(row)}
             issues={[
               ...issuesOfRow(row).map((issue) => issue.message),
               ...(row === 'connection' && checkBlocks && checkFailed && check.outcome
@@ -347,7 +381,7 @@ export default function SourceSetupRows<V>({
           >
             <Stack spacing={2.5}>
               {row === 'connection' && connectionPrelude}
-              {Fields && <Fields {...props} />}
+              {Fields && <Fields {...props} onDone={row === 'scope' ? scopeDone : undefined} />}
               {row === 'connection' && request && (
                 <ConnectionCheckView
                   check={check}

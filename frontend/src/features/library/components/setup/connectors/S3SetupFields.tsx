@@ -19,6 +19,7 @@ import {
 } from '../../../utils/s3Source'
 import CredentialFields from '../CredentialFields'
 import ScopePicker from '../ScopePicker'
+import { displayPath } from '../paths'
 import SecretField from '../SecretField'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
@@ -103,7 +104,7 @@ export function S3ConnectionFields({
           onClick={() => setAdvanced((a) => !a)}
           sx={{ ml: -1 }}
         >
-          {advanced ? 'Erweiterte Einstellungen ausblenden' : 'Erweiterte Einstellungen'}
+          Erweiterte Einstellungen
         </Button>
       </Box>
       {advanced && (
@@ -161,10 +162,10 @@ export function S3ScopeFields({
         id={fieldId('scopes')}
         source={s3SelectionSource(fields, () => ({ ...connection, query }))}
         value={values.scopes.filter((scope) => scope.bucket.trim() !== '').map(s3Item)}
+        all={{ active: values.everything, onChange: (everything) => onChange({ everything }) }}
         onChange={(items) => onChange({ scopes: items.map(s3ScopeOfItem) })}
         error={issueAt('scopes')}
-        deeperLabel="Präfixe auswählen …"
-        labelOf={(item) => item.key}
+        labelOf={(item) => displayPath(item.key)}
         loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
       />
       <Box>
@@ -175,7 +176,7 @@ export function S3ScopeFields({
           onClick={() => setAdvanced((a) => !a)}
           sx={{ ml: -1 }}
         >
-          {advanced ? 'Muster ausblenden' : 'Ein- und Ausschlussmuster'}
+          Ein- und Ausschlussmuster
         </Button>
       </Box>
       {advanced && (

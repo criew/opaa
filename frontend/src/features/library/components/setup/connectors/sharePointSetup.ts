@@ -7,7 +7,8 @@ import {
   type SharePointSourceValues,
 } from '../../../utils/sharePointSource'
 import type { SourceSetupSpec } from '../setupTypes'
-import { checkWord, issueList, namesSummary } from './common'
+import { counted, issueList } from './common'
+import { displayPath } from '../paths'
 import { SharePointConnectionFields, SharePointScopeFields } from './SharePointSetupFields'
 
 const MAX_LIBRARIES = 50
@@ -17,28 +18,39 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (_values, _context, check) => checkWord(check),
+      summary: () => null,
       Fields: SharePointConnectionFields,
     },
     {
       id: 'scope',
-      summary: (values) =>
-        namesSummary(
-          values.libraries.flatMap((library) =>
+      summary: (values) => {
+        if (values.libraries.length === 0) return null
+        const folders = values.libraries.reduce((sum, library) => sum + library.folders.length, 0)
+        const lead = [
+          counted(values.libraries.length, ['Dokumentbibliothek', 'Dokumentbibliotheken']),
+          folders > 0 && `davon ${counted(folders, ['Ordner', 'Ordner'])}`,
+        ]
+          .filter(Boolean)
+          .join(', ')
+        return {
+          lead,
+          items: values.libraries.flatMap((library) =>
             library.folders.length === 0
               ? [sharePointLibraryLabel(library)]
-              : library.folders.map(
-                  (folder) =>
-                    `${sharePointLibraryLabel(library)} › ${sharePointFolderLabel(folder)}`,
+              : library.folders.map((folder) =>
+                  displayPath(
+                    `${sharePointLibraryLabel(library)}/${sharePointFolderLabel(folder)}`,
+                  ),
                 ),
           ),
-        ),
+        }
+      },
       Fields: SharePointScopeFields,
     },
   ],
   issues: (values) => {
     const { at, list } = issueList()
-    at('libraries', 'Mindestens eine Dokumentbibliothek wählen', values.libraries.length === 0)
+    at('libraries', 'Dokumentbibliotheken fehlen', values.libraries.length === 0)
     at(
       'libraries',
       `Höchstens ${MAX_LIBRARIES} Dokumentbibliotheken`,
@@ -51,6 +63,8 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
     )
     return list
   },
+  labels: { libraries: 'Dokumentbibliotheken und Ordner' },
+  quietConnection: true,
   rowOf: (field) => (field === 'libraries' || field === 'site' ? 'scope' : 'connection'),
   probe: (values, fields) =>
     fields.probeRequest<SourceConnectionTestRequest>({

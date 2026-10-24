@@ -1,5 +1,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
+import { TEXT_LINK } from './setup/rowStyles'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import Typography from '@mui/material/Typography'
 
@@ -17,6 +19,8 @@ interface LibraryCreateFooterProps {
   onBack: () => void
   onNext: () => void
   onCreate: () => void
+  /** A line above the buttons; off where the content ends in a line of its own. */
+  separated?: boolean
 }
 
 /**
@@ -34,6 +38,7 @@ export default function LibraryCreateFooter({
   onBack,
   onNext,
   onCreate,
+  separated = true,
 }: LibraryCreateFooterProps) {
   return (
     <Box
@@ -41,15 +46,22 @@ export default function LibraryCreateFooter({
         display: 'flex',
         alignItems: 'center',
         gap: 1.5,
-        mt: 4,
-        pt: 2,
-        borderTop: 1,
+        mt: separated ? 4 : 2,
+        pt: separated ? 2 : 0,
+        borderTop: separated ? 1 : 0,
         borderColor: 'divider',
       }}
     >
-      <Button variant="text" onClick={onCancel} disabled={submitting}>
+      <Link
+        component="button"
+        type="button"
+        underline="hover"
+        onClick={onCancel}
+        disabled={submitting}
+        sx={TEXT_LINK}
+      >
         Abbrechen
-      </Button>
+      </Link>
       <Box sx={{ flex: 1 }} />
       {pendingGrantCount > 0 && (
         <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>

@@ -90,9 +90,7 @@ export function folderSelectionSource(
         selectable: true,
         openable: true,
         // the stored settings separate folders by comma
-        ...(key.includes(',')
-          ? { blocked: `Nicht wählbar: Komma im ${name.includes(',') ? 'Namen' : 'Pfad'}` }
-          : {}),
+        ...(key.includes(',') ? { blocked: 'Ordner mit Komma im Pfad sind nicht wählbar.' } : {}),
       }))
     },
     manual: {
@@ -140,6 +138,7 @@ export function s3SelectionSource(
 ): SelectionSource {
   return {
     rootLabel: 'Buckets',
+    levelNoun: (level) => (level.length === 0 ? 'Buckets' : 'Präfixe'),
     noun: ['Bucket oder Präfix', 'Buckets und Präfixe'],
     nested: true,
     max: 50,
@@ -303,6 +302,8 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
     browseSource('SHAREPOINT', probe.probeRequest({ sourceUrl: SHAREPOINT_API, query }))
   return {
     rootLabel: 'Sites',
+    levelNoun: (level) =>
+      level.length === 0 ? 'Sites' : level.length === 1 ? 'Dokumentbibliotheken' : 'Ordner',
     noun: ['Dokumentbibliothek oder Ordner', 'Dokumentbibliotheken und Ordner'],
     nested: true,
     max: 50,

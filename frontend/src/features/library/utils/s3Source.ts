@@ -15,6 +15,8 @@ export type S3Settings = {
   region?: string | null
   pathStyle?: boolean
   scopes: S3ScopeRef[]
+  /** Every bucket the key may list, also later ones. */
+  allBuckets?: boolean
   includePatterns?: string[] | null
   excludePatterns?: string[] | null
 }
@@ -73,6 +75,8 @@ export interface S3SourceValues {
   secretKey: string
   sessionToken: string
   scopes: S3ScopeInput[]
+  /** „Alle Buckets und Präfixe“; `scopes` is then not sent. */
+  everything: boolean
   includePatterns: string
   excludePatterns: string
 }
@@ -132,7 +136,8 @@ export const EMPTY_S3_VALUES: S3SourceValues = {
   accessKey: '',
   secretKey: '',
   sessionToken: '',
-  scopes: [{ bucket: '', prefix: '' }],
+  scopes: [],
+  everything: true,
   includePatterns: '',
   excludePatterns: '',
 }
@@ -238,7 +243,7 @@ export function s3SettingsOf(values: S3SourceValues): S3Settings {
   return {
     region: region || null,
     pathStyle: values.pathStyle,
-    scopes,
+    ...(values.everything ? { allBuckets: true, scopes: [] } : { scopes }),
     includePatterns: s3PatternsOf(values.includePatterns),
     excludePatterns: s3PatternsOf(values.excludePatterns),
   }
@@ -275,7 +280,8 @@ export function s3ValuesFromSettings(
     scopes:
       settings?.scopes && settings.scopes.length > 0
         ? settings.scopes.map((scope) => ({ bucket: scope.bucket, prefix: scope.prefix ?? '' }))
-        : [{ bucket: '', prefix: '' }],
+        : [],
+    everything: settings?.allBuckets === true,
     includePatterns: (settings?.includePatterns ?? []).join('\n'),
     excludePatterns: (settings?.excludePatterns ?? []).join('\n'),
   }

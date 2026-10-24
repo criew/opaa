@@ -6,24 +6,27 @@ import {
 } from '../../../utils/filesystemSource'
 import { genericSourceIssue, type GenericSourceValues } from '../../../utils/librarySourceConfig'
 import type { SourceSetupSpec } from '../setupTypes'
-import { addressIssue, checkWord, counted, hostOf, issueList, joinSummary } from './common'
+import { addressIssue, counted, hostOf, issueList, joinSummary } from './common'
 import { PathConnectionFields, PathScopeFields, UrlConnectionFields } from './GenericSetupFields'
 
 export const filesystemSetup: SourceSetupSpec<FilesystemSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
-        values.sourcePath.trim() ? joinSummary(values.sourcePath.trim(), checkWord(check)) : null,
+      summary: (values) =>
+        values.sourcePath.trim() ? joinSummary(values.sourcePath.trim()) : null,
       Fields: PathConnectionFields,
     },
     {
       id: 'scope',
       summary: (values) => {
-        const patterns = filesystemPatternsOf(values.excludePatterns).length
-        return patterns === 0
+        const patterns = filesystemPatternsOf(values.excludePatterns)
+        return patterns.length === 0
           ? 'Alle Dateien'
-          : `Alle Dateien außer ${counted(patterns, ['Muster', 'Mustern'])}`
+          : {
+              lead: `Alle Dateien außer ${counted(patterns.length, ['Muster', 'Mustern'])}`,
+              items: patterns,
+            }
       },
       Fields: PathScopeFields,
     },
@@ -44,6 +47,7 @@ export const filesystemSetup: SourceSetupSpec<FilesystemSourceValues> = {
     if (patterns?.field) at(patterns.field, patterns.message)
     return list
   },
+  labels: { sourcePath: 'Verzeichnis', excludePatterns: 'Ausschlussmuster' },
   rowOf: (field) => (field === 'excludePatterns' ? 'scope' : 'connection'),
   probe: (values, fields) =>
     fields.probeRequest<SourceConnectionTestRequest>({
@@ -57,8 +61,7 @@ export const urlSetup: SourceSetupSpec<GenericSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
-        values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl), checkWord(check)) : null,
+      summary: (values) => (values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl)) : null),
       Fields: UrlConnectionFields,
     },
   ],
@@ -68,6 +71,7 @@ export const urlSetup: SourceSetupSpec<GenericSourceValues> = {
     if (address) at('sourceUrl', address)
     return list
   },
+  labels: { sourceUrl: 'Adresse', sourceCredentials: 'Zugangsdaten' },
   rowOf: () => 'connection',
   probe: (values, fields, context) =>
     fields.probeRequest({

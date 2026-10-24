@@ -6,6 +6,7 @@ import {
   sharePointSelectionSource,
 } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
+import { displayPath } from '../paths'
 import type { SetupFieldsProps } from '../setupTypes'
 
 /** The Zugang signs in; the row „Verbindung“ has nothing to enter. */
@@ -23,6 +24,7 @@ export function SharePointScopeFields({
   fields,
   issueAt,
   fieldId,
+  onDone,
 }: SetupFieldsProps<SharePointSourceValues>) {
   const items = sharePointItemsOf(values.libraries)
   return (
@@ -33,9 +35,11 @@ export function SharePointScopeFields({
       onChange={(next) => onChange({ libraries: sharePointLibrariesOfItems(next) })}
       error={issueAt('libraries')}
       inline={false}
+      autoOpen
+      onDone={onDone}
       labelOf={(item) => {
         const drive = item.trail.find((crumb) => crumb.key.startsWith('drive:'))
-        return drive ? `${drive.name} › ${item.name}` : item.name
+        return drive ? displayPath(`${drive.name}/${item.name}`) : item.name
       }}
       initialLevel={sharePointCommonSite(items)}
       loadKey={JSON.stringify(fields.probe)}

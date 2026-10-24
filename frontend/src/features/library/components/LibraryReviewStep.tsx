@@ -1,11 +1,14 @@
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import { SummaryValue } from './setup/SummaryRow'
+import { ROW_GRID, TEXT_LINK } from './setup/rowStyles'
+import type { RowSummary } from './setup/setupTypes'
 
 export interface ReviewEntry {
   label: string
-  value: string
+  value: RowSummary
   /** Absent for what cannot be changed from here. */
   onChange?: () => void
 }
@@ -16,50 +19,37 @@ export interface ReviewEntry {
  */
 export default function LibraryReviewStep({ entries }: { entries: ReviewEntry[] }) {
   return (
-    <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', maxWidth: 640 }}>
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
       {entries.map((entry) => (
         <Box
           component="li"
           key={entry.label}
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr auto', sm: '128px 1fr auto' },
-            columnGap: 2,
-            rowGap: 0.5,
-            alignItems: 'baseline',
-            py: 2,
-            borderTop: 1,
-            borderColor: 'divider',
-            '&:last-of-type': { borderBottom: 1, borderColor: 'divider' },
-          }}
+          sx={{ ...ROW_GRID, py: 2, borderBottom: 1, borderColor: 'divider' }}
         >
           <Typography component="span" sx={{ fontSize: 15, fontWeight: 600 }}>
             {entry.label}
           </Typography>
-          <Typography
-            component="span"
-            sx={{
-              fontSize: 13.5,
-              gridColumn: { xs: '1 / -1', sm: '2' },
-              gridRow: { xs: '2', sm: '1' },
-              overflowWrap: 'anywhere',
-              color: entry.value ? 'text.primary' : 'text.secondary',
-            }}
-          >
-            {entry.value || 'keine Angabe'}
-          </Typography>
+          <Box sx={{ gridColumn: { xs: '1 / -1', sm: '2' }, gridRow: { xs: '2', sm: '1' } }}>
+            <SummaryValue summary={entry.value || null} />
+          </Box>
           {entry.onChange && (
-            <Button
-              variant="text"
-              size="small"
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
               onClick={entry.onChange}
-              sx={{ gridColumn: { xs: '2', sm: '3' }, gridRow: '1', minWidth: 0 }}
+              sx={{
+                ...TEXT_LINK,
+                gridColumn: { xs: '2', sm: '3' },
+                gridRow: '1',
+                justifySelf: 'end',
+              }}
             >
               Ändern
               <Box component="span" sx={visuallyHidden}>
                 {` ${entry.label}`}
               </Box>
-            </Button>
+            </Link>
           )}
         </Box>
       ))}

@@ -6,7 +6,7 @@ import {
   type DropboxSourceValues,
 } from '../../../utils/dropboxSource'
 import type { SourceSetupSpec } from '../setupTypes'
-import { checkWord, folderIssues, issueList, joinSummary } from './common'
+import { folderIssues, issueList, joinSummary } from './common'
 import { DropboxConnectionFields, DropboxScopeFields } from './DropboxSetupFields'
 import { folderSummary } from './folderNodes'
 
@@ -14,8 +14,7 @@ export const dropboxSetup: SourceSetupSpec<DropboxSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
-        joinSummary(values.teamSpace ? 'Teambereich' : 'eigene Ablage', checkWord(check)),
+      summary: (values) => joinSummary(values.teamSpace ? 'Teambereich' : 'eigene Ablage'),
       Fields: DropboxConnectionFields,
     },
     { id: 'scope', summary: (values) => folderSummary(values.folders), Fields: DropboxScopeFields },
@@ -25,6 +24,8 @@ export const dropboxSetup: SourceSetupSpec<DropboxSourceValues> = {
     folderIssues(at, dropboxFoldersOf(values), MAX_DROPBOX_FOLDERS)
     return list
   },
+  labels: { folders: 'Ordner' },
+  quietConnection: true,
   rowOf: (field) => (field === 'folders' ? 'scope' : 'connection'),
   probe: (values, fields) =>
     fields.probeRequest({

@@ -7,7 +7,6 @@ import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
@@ -54,6 +53,8 @@ export interface AssetDetailHeaderProps {
   deleteDisabled?: boolean
   /** Further controls left of the star, e.g. starting an indexing run. */
   actions?: ReactNode
+  /** Further actions of the „…“ menu, above „In Space verwenden“. */
+  menuItems?: Array<{ label: string; onClick: () => void; disabled?: boolean }>
   /** Right under name and description, e.g. the succession state. */
   note?: ReactNode
   /** Under the figures, e.g. the scope of a source or a running indexing. */
@@ -79,11 +80,7 @@ export function HeaderFigure({ icon, children }: { icon?: ReactNode; children: R
         display: 'flex',
         alignItems: 'center',
         gap: 1,
-        pr: 2.25,
-        // The line stands on the right: a wrapping band starts every row flush with the page edge.
-        borderRight: 1,
-        borderColor: 'divider',
-        '&:last-of-type': { borderRight: 0, pr: 0 },
+        // spacing only: a separator line would hang at the end of a wrapped row
       }}
     >
       {icon && (
@@ -108,8 +105,10 @@ function MoreActions({
   onDelete,
   deleteLabel = 'Löschen',
   deleteDisabled = false,
+  menuItems,
 }: Pick<
   AssetDetailHeaderProps,
+  | 'menuItems'
   | 'assetType'
   | 'assetId'
   | 'name'
@@ -121,7 +120,7 @@ function MoreActions({
 >) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [useInSpace, setUseInSpace] = useState(false)
-  if (!mayUseInSpace && !onDelete) return null
+  if (!mayUseInSpace && !onDelete && !menuItems?.length) return null
   const buttonId = `asset-detail-actions-${assetId}`
   const menuId = `${buttonId}-menu`
   return (
@@ -147,6 +146,19 @@ function MoreActions({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{ list: { 'aria-labelledby': buttonId } }}
       >
+        {menuItems?.map((item) => (
+          <MenuItem
+            key={item.label}
+            disabled={item.disabled}
+            onClick={() => {
+              setAnchor(null)
+              item.onClick()
+            }}
+          >
+            {item.label}
+          </MenuItem>
+        ))}
+        {(menuItems?.length ?? 0) > 0 && (mayUseInSpace || onDelete) && <Divider />}
         {mayUseInSpace && (
           <MenuItem
             onClick={() => {
@@ -215,6 +227,7 @@ export default function AssetDetailHeader({
   deleteLabel,
   deleteDisabled,
   actions,
+  menuItems,
   note,
   children,
 }: AssetDetailHeaderProps) {
@@ -223,30 +236,18 @@ export default function AssetDetailHeader({
   return (
     <Box
       component="header"
-      sx={(theme) => ({
+      sx={{
         position: 'relative',
-        borderBottom: 1,
-        borderColor: 'divider',
+        // no line of its own: the tab bar below draws the one separator
         pb: { xs: 2.5, md: 3 },
         mb: 3,
-        // A restrained accent glow as the page's atmosphere, running out into the page ground.
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: -24,
-          left: { xs: -20, md: -56 },
-          right: 0,
-          bottom: 0,
-          pointerEvents: 'none',
-          background: `radial-gradient(560px 240px at 0% 0%, ${alpha(theme.palette.primary.main, 0.1)}, transparent 72%)`,
-        },
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'none' },
         },
         animation: 'opaaHeroIn 200ms cubic-bezier(0.22, 1, 0.36, 1) both',
         '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-      })}
+      }}
     >
       <Stack
         direction="row"
@@ -289,6 +290,7 @@ export default function AssetDetailHeader({
             onDelete={onDelete}
             deleteLabel={deleteLabel}
             deleteDisabled={deleteDisabled}
+            menuItems={menuItems}
           />
         </Stack>
       </Stack>

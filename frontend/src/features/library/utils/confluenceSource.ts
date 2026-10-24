@@ -17,6 +17,8 @@ export type ConfluenceSpaceRef = {
 export type ConfluenceSettings = {
   edition?: ConfluenceEdition | null
   spaces?: ConfluenceSpaceRef[] | null
+  /** Every Space the account may read, also later ones; the list then stays empty. */
+  allSpaces?: boolean
   fullSyncIntervalDays?: number | null
 }
 
@@ -50,6 +52,8 @@ export interface ConfluenceSourceValues {
   /** True once the instance accepted the credentials (or, in edit mode, while the stored ones stand). */
   credentialsVerified: boolean
   spaces: ConfluenceSpaceRef[]
+  /** Every Space the account may read („Alle Spaces“); `spaces` is then not sent. */
+  everything: boolean
 }
 
 /** Mirrors KnowledgeLibraryService.MAX_CONFLUENCE_SPACES - the backend rejects a larger selection with 400. */
@@ -62,6 +66,7 @@ export const EMPTY_CONFLUENCE_VALUES: ConfluenceSourceValues = {
   token: '',
   credentialsVerified: false,
   spaces: [],
+  everything: true,
 }
 
 /** Joins the entered credentials into the stored form (ADR-0023, Entscheidung 3); undefined when none entered. */

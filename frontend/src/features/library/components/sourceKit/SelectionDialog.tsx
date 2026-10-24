@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Dialog from '@mui/material/Dialog'
+import Link from '@mui/material/Link'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -18,6 +19,8 @@ import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { fontFamily } from '@/shared/theme/tokens'
 import { plainMessage } from './plainMessage'
+import PathLabel from '../setup/PathLabel'
+import { TEXT_LINK } from '../setup/rowStyles'
 import {
   isBelow,
   noun,
@@ -151,7 +154,7 @@ function SelectionDialogBody({
   }, [current, search, serverSearch])
   const levelSize = current?.result?.entries.length ?? 0
   const filtered = search.trim() !== ''
-  const showSearch = filtered || serverSearch || levelSize >= SEARCH_FROM
+  const showSearch = filtered || (levelSize > 0 && (serverSearch || levelSize >= SEARCH_FROM))
 
   const chosenKeys = useMemo(() => new Set(draft.map((item) => item.key)), [draft])
   const coveringParent = level.find((crumb) => chosenKeys.has(crumb.key))
@@ -229,9 +232,29 @@ function SelectionDialogBody({
   }
 
   const levelName = level.length ? level[level.length - 1].name : source.rootLabel
-  const allLabel = filtered
-    ? `Alle ${selectable.length} Treffer auswählen`
-    : `Alle ${selectable.length} auswählen`
+  const someBlocked = entries.some((entry) => entry.blocked)
+  const allLabel =
+    current?.result && !current.result.complete
+      ? 'Alle geladenen auswählen'
+      : filtered
+        ? `Alle ${selectable.length} Treffer auswählen`
+        : someBlocked
+          ? `Alle ${selectable.length} wählbaren auswählen`
+          : `Alle ${selectable.length} auswählen`
+  const levelNoun = source.levelNoun?.(level) ?? source.noun[1]
+  // the stored selection that lies outside the opened level stays visible, ticked, above the list
+  const pinned =
+    !filtered && current?.result
+      ? draft.filter(
+          (item) =>
+            value.some((stored) => stored.key === item.key) &&
+            !entries.some((entry) => entry.key === item.key) &&
+            !level.some(
+              (crumb) => crumb.key === item.key || isBelow({ ...item, trail: level }, crumb.key),
+            ) &&
+            level.every((crumb, i) => item.trail[i]?.key === crumb.key),
+        )
+      : []
 
   function rowState(key: string): { checked: boolean; mixed: boolean } {
     if (chosenKeys.has(key)) return { checked: true, mixed: false }
@@ -286,9 +309,9 @@ function SelectionDialogBody({
     </Box>
   ) : (
     <Box>
-      {current?.result && !current.result.complete && current.result.message && (
+      {current?.result && !current.result.complete && (
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
-          {plainMessage(current.result.message)}
+          Liste unvollständig.
         </Typography>
       )}
       {loading && showLoading && (
@@ -308,15 +331,21 @@ function SelectionDialogBody({
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5 }}>
             {plainMessage(current.error)}
           </Typography>
-          <Button size="small" sx={{ mt: 1 }} onClick={() => setAttempt((n) => n + 1)}>
-            Erneut versuchen
-          </Button>
+          <Link
+            component="button"
+            type="button"
+            underline="hover"
+            sx={{ ...TEXT_LINK, mt: 0.5 }}
+            onClick={() => setAttempt((n) => n + 1)}
+          >
+            Erneut laden
+          </Link>
         </Box>
       )}
       {current?.result && levelSize === 0 && !filtered && (
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
           {current.result.complete
-            ? `In „${levelName}“ liegen keine ${source.noun[1]}.`
+            ? `In „${levelName}“ liegen keine ${levelNoun}.`
             : current.result.message
               ? null
               : 'Die Quelle hat für diese Ebene nichts geliefert.'}
@@ -327,9 +356,47 @@ function SelectionDialogBody({
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
             Keine Treffer für „{search.trim()}“.
           </Typography>
-          <Button size="small" sx={{ mt: 0.5 }} onClick={() => setSearch('')}>
+          <Link
+            component="button"
+            type="button"
+            underline="hover"
+            sx={{ ...TEXT_LINK, mt: 0.5 }}
+            onClick={() => setSearch('')}
+          >
             Suche zurücksetzen
-          </Button>
+          </Link>
+        </Box>
+      )}
+      {someBlocked && !coveringParent && (
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+          {entries.find((entry) => entry.blocked)?.blocked}
+        </Typography>
+      )}
+      {pinned.length > 0 && (
+        <Box role="group" aria-label="Bereits ausgewählt">
+          {pinned.map((item) => (
+            <Box
+              key={item.key}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                minHeight: 40,
+                borderBottom: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <Checkbox
+                size="small"
+                checked
+                onChange={() => setDraft((prev) => prev.filter((other) => other.key !== item.key))}
+                slotProps={{ input: { 'aria-label': pathLabel(item) } }}
+              />
+              <Box sx={{ flex: 1, minWidth: 0, fontSize: 14 }}>
+                <PathLabel path={pathLabel(item)} />
+              </Box>
+            </Box>
+          ))}
         </Box>
       )}
       {coveringParent && entries.length > 0 && (
@@ -392,6 +459,7 @@ function SelectionDialogBody({
                     checked={checked || covered}
                     indeterminate={!checked && !covered && mixed}
                     disabled={covered || (Boolean(entry.blocked) && !checked)}
+                    title={entry.blocked}
                     onChange={() => {
                       setDraft((prev) => toggle(prev, entry, level))
                       setApplyError(null)
@@ -409,47 +477,30 @@ function SelectionDialogBody({
                   <Box sx={{ width: 38, flexShrink: 0 }} />
                 )}
                 <Box sx={{ flex: 1, minWidth: 0, py: entry.blocked ? 0.5 : 0 }}>
-                  <Tooltip
-                    disableInteractive
-                    title={entry.name}
-                    placement="bottom-start"
-                    enterDelay={600}
+                  <Typography
+                    component={entry.openable && !entry.selectable ? 'button' : 'span'}
+                    onClick={
+                      entry.openable && !entry.selectable
+                        ? () => openLevel([...level, { key: entry.key, name: entry.name }])
+                        : undefined
+                    }
+                    sx={{
+                      ...ellipsis,
+                      display: 'block',
+                      width: '100%',
+                      fontSize: 14,
+                      textAlign: 'left',
+                      border: 0,
+                      bgcolor: 'transparent',
+                      color: 'text.primary',
+                      p: 0,
+                      font: 'inherit',
+                      cursor: entry.openable && !entry.selectable ? 'pointer' : 'default',
+                    }}
                   >
-                    <Typography
-                      component={entry.openable && !entry.selectable ? 'button' : 'span'}
-                      onClick={
-                        entry.openable && !entry.selectable
-                          ? () => openLevel([...level, { key: entry.key, name: entry.name }])
-                          : undefined
-                      }
-                      sx={{
-                        ...ellipsis,
-                        display: 'block',
-                        width: '100%',
-                        fontSize: 14,
-                        textAlign: 'left',
-                        border: 0,
-                        bgcolor: 'transparent',
-                        color: 'text.primary',
-                        p: 0,
-                        font: 'inherit',
-                        cursor: entry.openable && !entry.selectable ? 'pointer' : 'default',
-                      }}
-                    >
-                      {entry.name}
-                    </Typography>
-                  </Tooltip>
-                  {entry.blocked && (
-                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                      {entry.blocked}
-                    </Typography>
-                  )}
-                </Box>
-                {mixed && !checked && (
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary', flexShrink: 0 }}>
-                    teilweise
+                    <PathLabel path={entry.name} />
                   </Typography>
-                )}
+                </Box>
                 {entry.openable && (
                   <Tooltip disableInteractive title="Öffnen">
                     <IconButton
@@ -468,9 +519,15 @@ function SelectionDialogBody({
               <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
                 {shown} von {entries.length} angezeigt
               </Typography>
-              <Button size="small" onClick={() => setShown((n) => n + PAGE)}>
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                sx={TEXT_LINK}
+                onClick={() => setShown((n) => n + PAGE)}
+              >
                 Weitere anzeigen
-              </Button>
+              </Link>
             </Box>
           )}
         </Box>
@@ -478,9 +535,15 @@ function SelectionDialogBody({
       {source.manual && (source.manual.kind === 'add' || level.length === 0) && (
         <Box sx={{ mt: 2 }}>
           {!manualOpen ? (
-            <Button size="small" onClick={() => setManualOpen(true)}>
-              {source.manual.label} von Hand eintragen
-            </Button>
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              sx={TEXT_LINK}
+              onClick={() => setManualOpen(true)}
+            >
+              Von Hand eintragen …
+            </Link>
           ) : (
             <Box>
               <Typography
@@ -527,7 +590,7 @@ function SelectionDialogBody({
       maxWidth="md"
       fullWidth
       aria-labelledby="selection-dialog-title"
-      slotProps={{ paper: { sx: { height: narrow ? '100%' : 'min(760px, 88vh)' } } }}
+      slotProps={{ paper: { sx: { maxHeight: narrow ? '100%' : 'min(760px, 88vh)' } } }}
     >
       <DialogTitle id="selection-dialog-title" sx={{ pb: 1 }}>
         {title}
@@ -624,9 +687,17 @@ function SelectionDialogBody({
               ? source.emptyMeans
               : `${draft.length} ausgewählt`}
           </Typography>
-          <Button size="small" onClick={() => setReviewing((r) => !r)}>
-            {reviewing ? 'Zur Liste' : 'Auswahl ansehen'}
-          </Button>
+          {(draft.length > 0 || reviewing) && (
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              sx={TEXT_LINK}
+              onClick={() => setReviewing((r) => !r)}
+            >
+              {reviewing ? 'Zur Liste' : 'Auswahl ansehen'}
+            </Link>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
           <Button onClick={() => void requestClose()}>Abbrechen</Button>

@@ -28,6 +28,7 @@ import { scheduleFrequencyLabel } from './scheduleLabels'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
+import { CONTENT_WIDTH } from './setup/rowStyles'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
 import LibrarySourceRows from './LibrarySourceRows'
 import type { SourceSetupHandle } from './setup/SourceSetupRows'
@@ -146,7 +147,7 @@ export default function LibrarySourceSection({
     : null
 
   return (
-    <Stack>
+    <Stack sx={{ maxWidth: CONTENT_WIDTH }}>
       {library.sourceBlock?.notice && (
         <Alert
           severity="warning"
@@ -230,21 +231,6 @@ export default function LibrarySourceSection({
               ) : undefined
             }
           />
-          {canEditSource && library.schedule?.nextRunAt && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-              Nächster geplanter Lauf:{' '}
-              {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
-            </Typography>
-          )}
-          {canEditSource && library.lastScheduledRunsFailed && (
-            <Alert severity="warning" sx={{ mt: 2 }}>
-              Die letzten geplanten Läufe sind fehlgeschlagen. Der Zeitplan versucht es beim
-              nächsten Termin erneut.
-            </Alert>
-          )}
           {!canEditSource && (
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
               Verbindung, Zeitplan und Läufe sehen nur Verwaltende.
@@ -402,18 +388,21 @@ export default function LibrarySourceSection({
       )}
 
       {canEditSource && (
-        <PageSection title="Läufe">
-          {configuration?.runsHint && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-              {configuration.runsHint}
-            </Typography>
-          )}
+        <Box component="section" aria-labelledby="library-runs-title">
+          {/* the same heading as the rows above, no overline */}
+          <Typography
+            id="library-runs-title"
+            component="h3"
+            sx={{ fontSize: 15, fontWeight: 600, mb: 1.5, color: 'text.primary' }}
+          >
+            Läufe
+          </Typography>
           <LibraryIndexingHistorySection
             libraryId={libraryId}
             sourceType={library.sourceType}
             privateLibrary={Boolean(library.privateLibrary)}
           />
-        </PageSection>
+        </Box>
       )}
     </Stack>
   )
@@ -425,6 +414,11 @@ function formatRunTimestamp(value: string | null | undefined): string {
 }
 
 // A run's state is a dot before its word (guidelines 5.5); a running run is no warning.
+/** A completed run that still failed on documents or content: not shown as plain success. */
+function partlyFailed(run: IndexingRunResponse): boolean {
+  return run.status === 'COMPLETED' && (run.documentsFailed > 0 || countUnreadable(run.events) > 0)
+}
+
 function runStatusTone(status: IndexingRunResponse['status']): StatusTone {
   if (status === 'COMPLETED') return 'success'
   if (status === 'FAILED') return 'error'
@@ -435,12 +429,6 @@ function runStatusTone(status: IndexingRunResponse['status']): StatusTone {
 // completed run - the header names how many of its events are about unreadable content.
 function countUnreadable(events: IndexingRunResponse['events']): number {
   return events.filter((e) => e.category === 'REJECTED' || e.category === 'UNREACHABLE').length
-}
-
-function runEventsLabel(events: IndexingRunResponse['events']): string {
-  const base = `${events.length} Ereignis${events.length === 1 ? '' : 'se'}`
-  const unreadable = countUnreadable(events)
-  return unreadable > 0 ? `${base}, davon ${unreadable} nicht lesbar` : base
 }
 
 // The operator's line on what a run cost. Every connector records the attachment share and the
@@ -549,7 +537,12 @@ function LibraryIndexingHistorySection({
                   spacing={1.5}
                   sx={{ alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
                 >
-                  <StateDot tone={runStatusTone(run.status)} label={runStatusLabel(run.status)} />
+                  <StateDot
+                    tone={partlyFailed(run) ? 'warning' : runStatusTone(run.status)}
+                    label={
+                      partlyFailed(run) ? 'Teilweise fehlgeschlagen' : runStatusLabel(run.status)
+                    }
+                  />
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {formatRunTimestamp(run.startedAt)}
                   </Typography>
@@ -588,11 +581,6 @@ function LibraryIndexingHistorySection({
                       data-testid={`run-unreadable-${run.id}`}
                     >
                       {`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
-                    </Typography>
-                  )}
-                  {run.events.length > 0 && (
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      {runEventsLabel(run.events)}
                     </Typography>
                   )}
                 </Stack>

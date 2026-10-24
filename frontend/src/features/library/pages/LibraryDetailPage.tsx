@@ -366,12 +366,25 @@ export default function LibraryDetailPage() {
         }
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
+        // ADR-0023, Entscheidung 4: the full reconciliation can be forced, from the „…“ menu
+        menuItems={
+          connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
+            ? [
+                {
+                  label: 'Vollabgleich starten',
+                  disabled: isRunning,
+                  onClick: () => void triggerIndexing(libraryId, connectorSourceType, 'FULL'),
+                },
+              ]
+            : undefined
+        }
         actions={
           connectorSourceType &&
           mayManageDocuments && (
             <>
               <Button
-                variant="contained"
+                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
+                variant="outlined"
                 size="small"
                 startIcon={<PlayArrowIcon />}
                 onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
@@ -379,18 +392,6 @@ export default function LibraryDetailPage() {
               >
                 {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
               </Button>
-              {/* ADR-0023, Entscheidung 4: "Jetzt indizieren" follows the library's state
-                  (incremental between two full runs); the full reconciliation can be forced. */}
-              {connectorConfiguration?.fullSyncRhythm && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
-                  disabled={isRunning}
-                >
-                  Vollabgleich starten
-                </Button>
-              )}
             </>
           )
         }

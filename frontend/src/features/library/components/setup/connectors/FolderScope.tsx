@@ -1,6 +1,7 @@
 import type { ConnectionFields } from '../../sources/sourceConnection'
 import { folderItemsOf, folderSelectionSource } from '../../sourceKit/selectionSources'
 import ScopePicker from '../ScopePicker'
+import { displayPath } from '../paths'
 
 const ROOT_LABELS: Record<'NEXTCLOUD' | 'SMB' | 'DROPBOX', string> = {
   NEXTCLOUD: 'Nextcloud',
@@ -45,8 +46,7 @@ export default function FolderScope({
       onChange={(items) => onChange(items.map((item) => item.key).join('\n'))}
       all={{ active: whole, onChange: (all) => onChange(all ? '/' : '') }}
       error={error}
-      deeperLabel="Unterordner auswählen …"
-      labelOf={(item) => item.key}
+      labelOf={(item) => displayPath(item.key)}
       loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
     />
   )

@@ -27,6 +27,7 @@ export const googleDriveSource: SourceRegistration = {
         subject: settings?.subject ?? '',
         storedSubject: settings?.subject ?? '',
         scopes: googleDriveScopesOf(settings),
+        everything: settings?.allScopes === true,
         fullSyncIntervalDays: settings?.fullSyncIntervalDays ?? null,
       }
     },

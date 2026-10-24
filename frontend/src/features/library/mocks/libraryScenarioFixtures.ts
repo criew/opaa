@@ -7,7 +7,7 @@ import {
   type MockScenario,
 } from '@/shared/mocks/mockScenario'
 import { mockIndexingRuns } from './indexingFixtures'
-import { siteName } from './sourceScenarioMock'
+import { scenarioSpaces, siteName } from './sourceScenarioMock'
 import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
 import { SOURCE_LIBRARY_IDS, SOURCE_LIBRARY_LAST_INDEXED } from './sourceLibraryFixtures'
 
@@ -42,7 +42,7 @@ const SCALE: Record<string, Overlay> = {
   [SOURCE_LIBRARY_IDS.CONFLUENCE]: () => ({
     sourceSettings: {
       edition: 'CLOUD',
-      spaces: generate(120, (i) => ({ key: `SP${i}`, name: scenarioName('Space', i) })),
+      spaces: scenarioSpaces(120).map((space) => ({ key: space.key, name: space.name ?? null })),
       fullSyncIntervalDays: 7,
     },
   }),
@@ -115,7 +115,10 @@ const SMALL: Record<string, Overlay> = {
     },
   }),
   [SOURCE_LIBRARY_IDS.CONFLUENCE]: (library) => ({
-    sourceSettings: { ...library.sourceSettings, spaces: [{ key: 'BAU', name: 'Bauamt' }] },
+    sourceSettings: {
+      ...library.sourceSettings,
+      spaces: scenarioSpaces(1).map((space) => ({ key: space.key, name: space.name ?? null })),
+    },
   }),
   [SOURCE_LIBRARY_IDS.NEXTCLOUD]: () => ({ sourceSettings: { folders: ['/'] } }),
   [SOURCE_LIBRARY_IDS.SMB]: () => ({ sourceSettings: { folders: ['/'] } }),

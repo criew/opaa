@@ -248,7 +248,8 @@ function browseSharePoint(query: Record<string, unknown>, counts: ScenarioCounts
 
 const SPACE_BASES = ['Bauamt', 'Personal und Organisation', 'IT-Betrieb', 'Kämmerei', 'Rechtsamt']
 
-function spaces(count: number): Entry[] {
+/** The Spaces of the generated scenarios; the library fixtures name the same ones. */
+export function scenarioSpaces(count: number): Entry[] {
   return generate(count, (i) =>
     i % 10 === 0
       ? {
@@ -295,7 +296,7 @@ export function scenarioBrowse(
     case 'SHAREPOINT':
       return browseSharePoint(q, counts)
     case 'CONFLUENCE':
-      return listing(spaces(counts.spaces), type, counts)
+      return listing(scenarioSpaces(counts.spaces), type, counts)
     case 'GOOGLE_DRIVE':
       return listing(driveAreas(counts.areas), type, counts)
     case 'S3':
@@ -491,6 +492,20 @@ function failedTest(body: TestBody): Response | null {
  */
 export function scenarioTest(body: TestBody): Response | null {
   const scenario = currentMockScenario()
+  if (body.sourceType === 'FILESYSTEM' && scenario === 'empty') {
+    return HttpResponse.json({
+      reachable: true,
+      documentCount: 0,
+      message: 'Das Verzeichnis ist leer.',
+    })
+  }
+  if (body.sourceType === 'FILESYSTEM' && scenario === 'scale') {
+    return HttpResponse.json({
+      reachable: true,
+      documentCount: 18342,
+      message: 'Verzeichnis erreichbar, 18.342 Dateien.',
+    })
+  }
   if (scenario === 'failed') return failedTest(body)
   if (scenario === 'partial') return partialTest(body)
   return null

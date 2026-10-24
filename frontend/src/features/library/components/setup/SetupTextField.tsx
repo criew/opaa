@@ -51,10 +51,23 @@ export default function SetupTextField({
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         error={Boolean(error)}
-        helperText={error ?? hint}
+        helperText={
+          // a hint naming where the value is found stays below the error
+          error && hint ? (
+            <>
+              {error}
+              <Box component="span" sx={{ display: 'block', color: 'text.secondary' }}>
+                {hint}
+              </Box>
+            </>
+          ) : (
+            (error ?? hint)
+          )
+        }
         placeholder={placeholder}
         multiline={multiline}
         minRows={multiline ? 2 : undefined}
+        maxRows={multiline ? 6 : undefined}
         slotProps={{
           input: { readOnly },
           htmlInput: {

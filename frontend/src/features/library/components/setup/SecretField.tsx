@@ -85,7 +85,19 @@ export default function SecretField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         error={Boolean(error)}
-        helperText={error ?? hint}
+        helperText={
+          // a hint naming where the value is found stays below the error
+          error && hint ? (
+            <>
+              {error}
+              <Box component="span" sx={{ display: 'block', color: 'text.secondary' }}>
+                {hint}
+              </Box>
+            </>
+          ) : (
+            (error ?? hint)
+          )
+        }
         slotProps={{
           formHelperText: { id: helperId },
           input: {

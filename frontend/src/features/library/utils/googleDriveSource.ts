@@ -20,6 +20,8 @@ export interface GoogleDriveScope {
 export type GoogleDriveSettings = {
   scopes?: Array<{ drive?: string; folder?: string; myDrive?: boolean; name?: string | null }>
   subject?: string | null
+  /** Every shared drive and folder the account may read, also later ones. */
+  allScopes?: boolean
   fullSyncIntervalDays?: number | null
 }
 
@@ -34,6 +36,8 @@ export interface GoogleDriveSourceValues {
   subject: string
   storedSubject: string
   scopes: GoogleDriveScope[]
+  /** „Alle Geteilten Ablagen und Ordner“; `scopes` is then not sent. */
+  everything: boolean
   /** The library's own full-sync rhythm, resent as it is: the connector replaces its settings whole. */
   fullSyncIntervalDays: number | null
 }
@@ -45,6 +49,7 @@ export const EMPTY_GOOGLE_DRIVE_VALUES: GoogleDriveSourceValues = {
   storedSubject: '',
   scopes: [],
   fullSyncIntervalDays: null,
+  everything: true,
 }
 
 /** The Google Drive settings a library response carries, null for any other library. */
@@ -134,6 +139,16 @@ export function googleDriveIssue(
 
 /** The settings part of a request. */
 export function googleDriveSettingsOf(values: GoogleDriveSourceValues): Record<string, unknown> {
+  if (values.everything) {
+    return {
+      allScopes: true,
+      scopes: [],
+      subject: values.subject.trim() || null,
+      ...(values.fullSyncIntervalDays != null
+        ? { fullSyncIntervalDays: values.fullSyncIntervalDays }
+        : {}),
+    }
+  }
   return {
     scopes: values.scopes.map((scope) =>
       scope.kind === 'myDrive'

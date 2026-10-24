@@ -1,7 +1,9 @@
-import { namesSummary } from './common'
+import { displayPath } from '../paths'
+import { listSummary } from './common'
+import type { RowSummary } from '../setupTypes'
 
-/** „Alle Ordner“ or the chosen paths, at most five named. */
-export function folderSummary(text: string): string | null {
+/** „Alle Ordner“ or the chosen paths. */
+export function folderSummary(text: string): RowSummary {
   const paths = [
     ...new Set(
       text
@@ -10,6 +12,5 @@ export function folderSummary(text: string): string | null {
         .filter(Boolean),
     ),
   ]
-  if (paths.includes('/')) return 'Alle Ordner'
-  return namesSummary(paths)
+  return listSummary(paths.includes('/'), ['Ordner', 'Ordner'], paths.map(displayPath))
 }

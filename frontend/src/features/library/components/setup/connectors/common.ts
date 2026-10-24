@@ -1,23 +1,7 @@
 import { sameLibrarySourceOrigin } from '../../../utils/librarySourceConfig'
 import type { SourceFormContext } from '../../sources/types'
 import type { SourceIssue } from '../../../utils/sourceIssue'
-import type { CheckState } from '../setupTypes'
-
-/** The state of the connection check in one word, for the summary of „Verbindung“. */
-export function checkWord(state: CheckState): string | null {
-  switch (state) {
-    case 'passed':
-      return 'verbunden'
-    case 'partial':
-      return 'teilweise lesbar'
-    case 'failed':
-      return 'Test fehlgeschlagen'
-    case 'checking':
-      return 'wird geprüft'
-    default:
-      return null
-  }
-}
+import type { RowSummary } from '../setupTypes'
 
 /** Host (and port) of an address, the address itself when it is none. */
 export function hostOf(address: string): string {
@@ -85,7 +69,7 @@ export function folderIssues(
   folders: string[],
   max: number,
 ) {
-  add('folders', 'Mindestens einen Ordner wählen', folders.length === 0)
+  add('folders', 'Ordner fehlen', folders.length === 0)
   add('folders', `Höchstens ${max} Ordner`, folders.length > max)
   add(
     'folders',
@@ -99,4 +83,16 @@ export function namesSummary(names: string[], max = 5): string | null {
   if (names.length === 0) return null
   if (names.length <= max) return names.join(', ')
   return `${names.slice(0, max).join(', ')} und ${names.length - max} weitere`
+}
+
+/** The summary of „Umfang“: „Alle Ordner“, or „3 Ordner“ with the chosen names below it. */
+export function listSummary(
+  all: boolean,
+  [one, many]: [string, string],
+  names: string[],
+  allLabel = `Alle ${many}`,
+): RowSummary {
+  if (all) return allLabel
+  if (names.length === 0) return null
+  return { lead: counted(names.length, [one, many]), items: names }
 }

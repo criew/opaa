@@ -8,15 +8,16 @@ import {
   type S3SourceValues,
 } from '../../../utils/s3Source'
 import { connectionFields } from '../../sources/sourceConnection'
+import { displayPath } from '../paths'
 import type { SourceSetupSpec } from '../setupTypes'
 import {
   addressIssue,
-  checkWord,
   credentialsKept,
   hostOf,
   issueList,
   joinSummary,
-  namesSummary,
+  listSummary,
+  counted,
   pairIssues,
 } from './common'
 import { S3ConnectionFields, S3ScopeFields } from './S3SetupFields'
@@ -27,18 +28,28 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
-        values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl), checkWord(check)) : null,
+      summary: (values) => (values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl)) : null),
       Fields: S3ConnectionFields,
     },
     {
       id: 'scope',
-      summary: (values) =>
-        namesSummary(
+      summary: (values) => {
+        const list = listSummary(
+          values.everything,
+          ['Bucket oder Präfix', 'Buckets und Präfixe'],
           values.scopes
             .filter((scope) => scope.bucket.trim() !== '')
-            .map((scope) => (scope.prefix ? `${scope.bucket}/${scope.prefix}` : scope.bucket)),
-        ),
+            .map((scope) => displayPath(`${scope.bucket}/${scope.prefix}`)),
+        )
+        const patterns =
+          values.includePatterns.split('\n').filter((l) => l.trim()).length +
+          values.excludePatterns.split('\n').filter((l) => l.trim()).length
+        if (!list || patterns === 0) return list
+        const muster = counted(patterns, ['Muster', 'Muster'])
+        return typeof list === 'string'
+          ? `${list} · ${muster}`
+          : { ...list, lead: `${list.lead} · ${muster}` }
+      },
       Fields: S3ScopeFields,
     },
   ],
@@ -68,8 +79,10 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
       )
     }
     const scopes = values.scopes.filter((scope) => scope.bucket.trim() !== '')
-    at('scopes', 'Mindestens einen Bucket wählen', scopes.length === 0)
-    at('scopes', `Höchstens ${MAX_S3_SCOPES} Buckets und Präfixe`, scopes.length > MAX_S3_SCOPES)
+    if (!values.everything) {
+      at('scopes', 'Buckets und Präfixe fehlen', scopes.length === 0)
+      at('scopes', `Höchstens ${MAX_S3_SCOPES} Buckets und Präfixe`, scopes.length > MAX_S3_SCOPES)
+    }
     const invalid = scopes.map(validateS3Scope).find(Boolean)
     if (invalid) at('scopes', invalid)
     // the pattern rules alone: everything else filled with valid stand-ins
@@ -84,6 +97,16 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
     })
     if (patterns?.field) at(patterns.field, patterns.message)
     return list
+  },
+  labels: {
+    sourceUrl: 'Endpoint',
+    region: 'Region',
+    accessKey: 'Access Key',
+    secretKey: 'Secret Key',
+    sessionToken: 'Session-Token',
+    scopes: 'Buckets und Präfixe',
+    includePatterns: 'Einschlussmuster',
+    excludePatterns: 'Ausschlussmuster',
   },
   rowOf: (field) => (SCOPE_FIELDS.includes(field) ? 'scope' : 'connection'),
   probe: (values, fields) =>

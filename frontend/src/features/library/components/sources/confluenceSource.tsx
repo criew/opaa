@@ -29,6 +29,7 @@ export const confluenceSource: SourceRegistration = {
       edition: confluenceSettingsOf(library).edition ?? null,
       credentialsVerified: Boolean(library.sourceCredentialsSet),
       spaces: confluenceSettingsOf(library).spaces ?? [],
+      everything: confluenceSettingsOf(library).allSpaces === true,
     }),
     isDirty: (values: ConfluenceSourceValues) => values.sourceUrl !== '',
     validate: (values: ConfluenceSourceValues) => confluenceIssue(values),
@@ -37,7 +38,11 @@ export const confluenceSource: SourceRegistration = {
       sourceCredentials: confluenceCredentialsOf(values),
       sourceSettings: {
         edition: values.edition ?? undefined,
-        spaces: values.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
+        ...(values.everything
+          ? { allSpaces: true, spaces: [] }
+          : {
+              spaces: values.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
+            }),
       },
     }),
     nameFromSource: (values: ConfluenceSourceValues) => {

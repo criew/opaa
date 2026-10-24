@@ -8,7 +8,6 @@ import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
 import {
   addressIssue,
-  checkWord,
   credentialsKept,
   folderIssues,
   hostOf,
@@ -23,8 +22,7 @@ export const nextcloudSetup: SourceSetupSpec<NextcloudSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
-        values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl), checkWord(check)) : null,
+      summary: (values) => (values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl)) : null),
       Fields: NextcloudConnectionFields,
     },
     {
@@ -50,6 +48,12 @@ export const nextcloudSetup: SourceSetupSpec<NextcloudSourceValues> = {
     }
     folderIssues(at, nextcloudFoldersOf(values), MAX_NEXTCLOUD_FOLDERS)
     return list
+  },
+  labels: {
+    sourceUrl: 'Adresse',
+    username: 'Benutzername',
+    appPassword: 'App-Passwort',
+    folders: 'Ordner',
   },
   rowOf: (field) => (field === 'folders' ? 'scope' : 'connection'),
   probe: (values, fields) =>

@@ -9,14 +9,7 @@ import {
 } from '../../../utils/smbSource'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
-import {
-  checkWord,
-  credentialsKept,
-  folderIssues,
-  issueList,
-  joinSummary,
-  pairIssues,
-} from './common'
+import { credentialsKept, folderIssues, issueList, pairIssues } from './common'
 import { folderSummary } from './folderNodes'
 import { SmbConnectionFields, SmbScopeFields } from './SmbSetupFields'
 
@@ -24,12 +17,9 @@ export const smbSetup: SourceSetupSpec<SmbSourceValues> = {
   sections: [
     {
       id: 'connection',
-      summary: (values, _context, check) =>
+      summary: (values) =>
         values.sourceUrl.trim()
-          ? joinSummary(
-              `${smbServerOf(values.sourceUrl) ?? values.sourceUrl}/${smbShareOf(values.sourceUrl) ?? ''}`,
-              checkWord(check),
-            )
+          ? `${smbServerOf(values.sourceUrl) ?? values.sourceUrl}/${smbShareOf(values.sourceUrl) ?? ''}`
           : null,
       Fields: SmbConnectionFields,
     },
@@ -39,7 +29,9 @@ export const smbSetup: SourceSetupSpec<SmbSourceValues> = {
     const { at, list } = issueList()
     // the address rules of the connector alone: the other fields filled with valid stand-ins
     const address = smbIssue({ ...values, account: 'a', password: 'p', folders: '/' }, true)
-    if (address?.field === 'sourceUrl') at('sourceUrl', address.message)
+    if (address?.field === 'sourceUrl') {
+      at('sourceUrl', values.sourceUrl.trim() === '' ? 'Adresse fehlt' : address.message)
+    }
     if (connectionFields(context).asksSecret) {
       pairIssues(
         at,
@@ -52,6 +44,12 @@ export const smbSetup: SourceSetupSpec<SmbSourceValues> = {
     }
     folderIssues(at, smbFoldersOf(values), MAX_SMB_FOLDERS)
     return list
+  },
+  labels: {
+    sourceUrl: 'Adresse',
+    account: 'Benutzername',
+    password: 'Passwort',
+    folders: 'Ordner',
   },
   rowOf: (field) => (field === 'folders' ? 'scope' : 'connection'),
   probe: (values, fields) =>

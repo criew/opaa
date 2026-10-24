@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import visuallyHiddenSx from '@mui/utils/visuallyHidden'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
@@ -79,6 +80,7 @@ import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
 import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
 import CreateSharingStep from '../components/CreateSharingStep'
 import LibraryCreateFooter from '../components/LibraryCreateFooter'
+import { CONTENT_WIDTH } from '../components/setup/rowStyles'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -501,12 +503,12 @@ export default function LibraryCreatePage() {
     ...(configuration && setup
       ? setup.sections.map((section) => ({
           label: section.id === 'connection' ? 'Verbindung' : 'Umfang',
-          value: [
-            section.id === 'connection' ? connectionLead : null,
-            section.summary(values, formContext, 'unchecked'),
-          ]
-            .filter(Boolean)
-            .join(' · '),
+          value:
+            section.id === 'connection'
+              ? [connectionLead, section.summary(values, formContext)]
+                  .filter((part) => typeof part === 'string' && part !== '')
+                  .join(' · ') || null
+              : section.summary(values, formContext),
           onChange: () => changeAt(STEP_SOURCE_SETUP, section.id),
         }))
       : []),
@@ -546,17 +548,13 @@ export default function LibraryCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+      <Box sx={{ maxWidth: CONTENT_WIDTH }}>
+        <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
+        <Typography aria-hidden sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}>
           Neue Wissensbibliothek
         </Typography>
-        <PageHeading title="Neue Wissensbibliothek" documentTitle={documentTitle} visuallyHidden />
-        <Typography
-          ref={stepHeadingRef}
-          component="h2"
-          tabIndex={-1}
-          sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}
-        >
+        {/* one page title for the whole wizard; the step heading takes the focus after „Weiter“ */}
+        <Typography ref={stepHeadingRef} component="h2" tabIndex={-1} sx={visuallyHiddenSx}>
           {stepHeading}
         </Typography>
         <WizardStepBar steps={steps} active={activeStep} />
@@ -664,6 +662,7 @@ export default function LibraryCreatePage() {
             startFirstRun={startFirstRun}
             onStartFirstRunChange={setStartFirstRun}
             firstRunHint={firstRunHint}
+            connectionChoices={selectable.length}
           />
         )}
 
@@ -720,6 +719,8 @@ export default function LibraryCreatePage() {
         <LibraryCreateFooter
           activeStep={activeStep}
           stepCount={steps.length}
+          // rows end in their own line; a second one above the buttons would double it
+          separated={currentStep !== STEP_SOURCE_SETUP && currentStep !== STEP_REVIEW}
           submitting={submitting}
           pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
           missingCapability={missingCapability}

@@ -53,6 +53,8 @@ export interface SelectionSource {
   rootLabel: string
   /** Singular and plural of the chosen objects, e.g. ['Ordner', 'Ordner']. */
   noun: [string, string]
+  /** What one level holds, plural, e.g. „Sites“ at the top of SharePoint; `noun` by default. */
+  levelNoun?: (level: Crumb[]) => string
   list: (level: Crumb[], search: string) => Promise<BrowseResult>
   /** Whether `list` filters by the search on the server at this level; else the dialog filters. */
   serverSearch: (level: Crumb[]) => boolean
