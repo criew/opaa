@@ -4,7 +4,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined'
 import { useAuthStore } from '@/shared/session/authStore'
-import { getSuccessionEntries } from '../api/successionApi'
+import { getSuccessionCounts } from '../api/successionApi'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
@@ -20,8 +20,8 @@ function isSuccessionTab(value: string | undefined): value is SuccessionTab {
 
 /**
  * How many entries each tab holds - per kind of entry only, never per person (ADR-0036,
- * Entscheidung 6). Undefined while loading or when a count could not be read. Reloaded on every
- * tab change; an answer that arrives after a newer request is dropped.
+ * Entscheidung 6). Undefined while loading or when the counts could not be read. One request for
+ * all tabs, reloaded on every tab change; an answer that arrives after a newer request is dropped.
  */
 function useTabCounts(
   activeTab: SuccessionTab,
@@ -30,15 +30,16 @@ function useTabCounts(
   const latest = useRef(0)
   const load = useCallback(() => {
     const request = ++latest.current
-    void Promise.all(
-      TAB_ORDER.map((tab) =>
-        getSuccessionEntries(SUCCESSION_TABS[tab].kind, 0, 1)
-          .then((listing) => [tab, listing.totalElements] as const)
-          .catch(() => [tab, undefined] as const),
-      ),
-    ).then((entries) => {
-      if (request === latest.current) setCounts(Object.fromEntries(entries))
-    })
+    void getSuccessionCounts()
+      .then((figures): Partial<Record<SuccessionTab, number>> => ({
+        open: figures.openSuccession,
+        grants: figures.grantsWithoutRecipient,
+        groups: figures.groupWithoutEffect,
+      }))
+      .catch(() => ({}))
+      .then((next) => {
+        if (request === latest.current) setCounts(next)
+      })
   }, [])
   useEffect(() => {
     load()

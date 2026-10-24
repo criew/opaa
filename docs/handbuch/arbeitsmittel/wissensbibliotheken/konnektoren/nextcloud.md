@@ -47,14 +47,14 @@ flowchart LR
 
 ## 3. Quellkonfiguration
 
-| Angabe im Formular | Bedeutung |
+| Angabe | Bedeutung |
 |---|---|
-| „Adresse der Nextcloud" | `http(s)://host[:port][/pfad]`; eine eingefügte WebDAV-Adresse wird auf die Instanzadresse gekürzt |
-| „Technischer Nutzer", „App-Passwort" | Benutzername ohne Doppelpunkt und App-Passwort; gehen nur an diese Adresse, eine geänderte Adresse verlangt sie neu |
-| „Ordner" | ein bis fünfzig Pfade, wie der Nutzer sie sieht, etwa `/Projekte`; `/` liest alles. Ordner dürfen sich nicht überschneiden; kein Komma, kein `.` oder `..` |
+| „Adresse" | `http(s)://host[:port][/pfad]`; eine eingefügte WebDAV-Adresse wird auf die Instanzadresse gekürzt |
+| „Benutzername", „App-Passwort" | Benutzername des technischen Nutzers ohne Doppelpunkt und App-Passwort; gehen nur an diese Adresse, eine geänderte Adresse verlangt sie neu |
+| „Ordner" | in der Zeile „Umfang": „Alle Ordner" liest alles, „Nur ausgewählte Ordner" ein bis fünfzig Pfade, wie der Nutzer sie sieht, etwa `/Projekte`. Ordner dürfen sich nicht überschneiden; kein Komma, kein `.` oder `..` |
 
-**„Ordner laden"** zeigt die Ordner im Stamm des Nutzers mit dem Zusatz „Freigabe" oder
-„Gruppenordner". **„Verbindung testen"** meldet sich an und prüft jeden Ordner. Die Ordner stehen
+Die Auswahl zeigt die Ordner des Nutzers Ebene für Ebene; Pfade lassen sich auch über „Von Hand
+eintragen …" angeben. Der Verbindungstest meldet sich an und prüft jeden Ordner. Die Ordner stehen
 unter „Umfang" für alle Leseberechtigten. Eine geänderte Ordnerliste lässt den nächsten Lauf alles
 listen.
 
@@ -73,8 +73,8 @@ technischen Nutzer, und speist daraus eine [private Bibliothek](../private-bibli
 2. In OPAA unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden" wählen und Benutzername
    und App-Passwort eintragen. OPAA speichert sie nur, wenn die Anmeldung gelingt
    ([Benutzerverwaltung](../../../konten-und-rechte/benutzerverwaltung.md), „Verbundene Konten").
-3. Im Assistenten im Schritt „Quelle einrichten" unter **„Über mein verbundenes Konto"** den
-   Zugang und die Ordner wählen.
+3. Im Assistenten im Schritt „Quelle einrichten" in der Zeile „Verbindung" den Zugang mit dem Zusatz
+   **„privat"** wählen, dann die Ordner.
 
 Lehnt die Nextcloud das App-Passwort ab, gilt die Verbindung als **abgelaufen**; die Person wird
 benachrichtigt, die Bibliothek zeigt „Abgelaufen" mit „Konto neu verbinden", und ihr Bestand bleibt

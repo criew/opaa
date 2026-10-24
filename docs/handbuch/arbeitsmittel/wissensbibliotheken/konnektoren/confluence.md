@@ -46,25 +46,27 @@ flowchart LR
 
 ## 3. Quellkonfiguration
 
-Das Formular „Verbindung zu Confluence" führt in dieser Reihenfolge:
+Die Zeile **„Verbindung"** fragt:
 
-1. **„Adresse der Confluence-Instanz"** — Cloud mit oder ohne `/wiki`, Data Center mit Kontextpfad,
-   etwa `https://wiki.behoerde.example/confluence`.
-2. **„Edition erkennen"** — OPAA erkennt Cloud oder Data Center ohne Zugangsdaten am
-   Antwortverhalten der Instanz, auch hinter eigener Domain. Die Edition ist danach unveränderlich;
-   eine migrierte Instanz bekommt eine neue Bibliothek.
-3. **Zugangsdaten** im Format der Edition: „E-Mail-Adresse" und „API-Token" bzw. „Personal Access
-   Token". Beim Bearbeiten bleibt ein leeres Feld beim hinterlegten Token; eine Adresse auf einem
-   anderen Server verlangt ein neues.
-4. **„Verbindung testen"**, dann **„Spaces suchen und auswählen"**: Die Auswahl zeigt nur, was das
-   Token lesen darf. Darüber steht: „Wer diese Bibliothek lesen darf, sieht alles aus allen
-   ausgewählten Spaces."
+1. **„Adresse"** — Cloud mit oder ohne `/wiki`, Data Center mit Kontextpfad, etwa
+   `https://wiki.behoerde.example/confluence`. Kurz nach der Eingabe erkennt OPAA ohne
+   Zugangsdaten am Antwortverhalten der Instanz, ob es Cloud oder Data Center ist, auch hinter
+   eigener Domain, und nennt es unter dem Feld („Edition: …"). Die Edition ist danach
+   unveränderlich; eine migrierte Instanz bekommt eine neue Bibliothek.
+2. **Zugangsdaten** im Format der Edition: „E-Mail-Adresse" und „API-Token" bzw. „Persönliches
+   Zugriffstoken", je mit dem Hinweis, wo man es beim Anbieter findet. Beim Bearbeiten bleibt ein
+   leeres Feld beim hinterlegten Token; eine Adresse auf einem anderen Server verlangt ein neues.
+
+Beim Wechsel in die Zeile **„Umfang"** testet OPAA die Verbindung. Dort wählt man die Spaces: bis
+zu sieben direkt als Kästchen, sonst über „Spaces auswählen …" im Auswahldialog. Die Auswahl zeigt
+nur, was das Token lesen darf. „Alle Spaces" gibt es nicht, die Spaces werden immer einzeln
+gewählt.
 
 Den Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer die Vorgabe der Installation). Edition und
 Spaces sieht jede Leseberechtigung; Adresse, Webhook-Zustand und Laufprotokoll nur Verwaltende.
 
 **Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Gibt der Zugang die
-Edition vor, steht sie nur lesbar da, und „Edition erkennen" entfällt. Solange Bibliotheken auf
+Edition vor, steht sie nur lesbar da, und OPAA erkennt sie nicht neu. Solange Bibliotheken auf
 einem Zugang liegen, lässt
 sich seine Edition nicht ändern und keine Bibliothek der anderen Edition zuordnen. Wer eine
 Bibliothek vom Zugang löst, behält dessen Edition.
@@ -116,7 +118,7 @@ weil nur er Löschungen nachvollzieht. Sein Rhythmus ist verlängerbar, nicht ab
 Ein Webhook verkürzt die Zeit bis zur Aufnahme einer Änderung auf Sekunden. Ohne ihn ist nichts
 falsch, nur später.
 
-**Einrichten.** Unter Quelle → Anbindung, Zeile „Webhook", **„Webhook einrichten"**. OPAA zeigt das
+**Einrichten.** Im Reiter „Quelle" unter den Zeilen, Abschnitt „Webhook", **„Webhook einrichten"**. OPAA zeigt das
 Geheimnis **einmal**, zusammen mit der Adresse des Eingangs
 `https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`. „Geheimnis neu erzeugen" rotiert: Das
 alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetragen werden — sonst
@@ -169,7 +171,7 @@ Ein Dokument wird nur entfernt, wenn die Instanz selbst den Befund liefert:
 - Inkrementeller Lauf und Webhook entfernen nie wegen Abwesenheit.
 
 Wer den Bestand eines Spaces aus OPAA entfernen will, nimmt ihn aus der Auswahl, startet
-„Vollabgleich starten" und prüft, dass dieser Lauf vollständig aufgelistet hat. Sofort wirkt nur das
+„Vollabgleich starten" (Menü „Weitere Aktionen") und prüft, dass dieser Lauf vollständig aufgelistet hat. Sofort wirkt nur das
 Löschen der Dokumente oder der Bibliothek.
 
 ## 7. Ordner
@@ -216,7 +218,7 @@ fest 30 s Verbindungsaufbau und 120 s bis zur Antwort eines Anhangs. Makros, der
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
 | Verbindungstest: Ziel abgewiesen | Zieladressprüfung blockt die private Adresse | Hostnamen freigeben |
-| „Edition erkennen" findet kein Confluence | Kontextpfad fehlt, oder die Instanz liegt hinter einer Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
+| „Edition nicht erkannt, Adresse prüfen" | Kontextpfad fehlt, oder die Instanz liegt hinter einer Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
 | Data Center: Token „nicht angenommen", obwohl es im Browser geht | Token ungültig oder abgelaufen, oder das Konto darf REST nicht nutzen | neues Token, Rechte prüfen |
 | Verbindungstest gut, Space-Auswahl leer | Konto hat auf keinen Space „Ansehen" | Space-Rechte setzen |
 | „Seite „…" (Space …) ist für das hinterlegte Dienstkonto nicht lesbar oder nicht mehr vorhanden …" | 404 oder 403 beim Einzelabruf; der Stand bleibt | Rechte prüfen |

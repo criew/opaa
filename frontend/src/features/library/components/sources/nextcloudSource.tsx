@@ -1,15 +1,11 @@
-import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import {
   EMPTY_NEXTCLOUD_VALUES,
   nextcloudCredentialsOf,
   nextcloudFoldersOf,
   nextcloudSettingsOf,
-  nextcloudIssue,
   type NextcloudSourceValues,
 } from '../../utils/nextcloudSource'
-import NextcloudSourceForm from '../NextcloudSourceForm'
-import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
-import { connectionFields } from './sourceConnection'
+import { nextcloudSetup } from '../setup/connectors/nextcloudSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -30,13 +26,6 @@ export const nextcloudSource: SourceRegistration = {
       values.username !== '' ||
       values.appPassword !== '' ||
       values.folders.trim() !== '/',
-    validate: (values: NextcloudSourceValues, context) =>
-      nextcloudIssue(
-        values,
-        !connectionFields(context).asksSecret ||
-          (context.credentialsStored &&
-            sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)),
-      ),
     toPayload: (values: NextcloudSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: nextcloudCredentialsOf(values),
@@ -48,20 +37,7 @@ export const nextcloudSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    Form: ({ values, onChange, context }) => (
-      <NextcloudSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-nextcloud`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: NextcloudStoredView,
-    Scope: NextcloudScope,
+    scopeNoteId: 'nextcloud-sharing-consequence',
     scopeHero: {
       summary: (library) => {
         const count = nextcloudSettingsOf(library).folders?.length ?? 0
@@ -76,5 +52,6 @@ export const nextcloudSource: SourceRegistration = {
     },
     firstRunHint:
       'Der erste Lauf liest alle Ordner vollständig ein; danach fragt jeder Lauf nur geänderte Ordner ab.',
+    setup: nextcloudSetup,
   },
 }

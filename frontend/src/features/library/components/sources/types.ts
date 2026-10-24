@@ -2,8 +2,8 @@ import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
 import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
-import type { SourceIssue } from '../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
+import type { SourceSetupSpec } from '../setup/setupTypes'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -40,12 +40,6 @@ export interface SourceFormContext {
   pendingConnectionId?: string
 }
 
-export interface SourceFormProps<V> {
-  values: V
-  onChange: (patch: Partial<V>) => void
-  context: SourceFormContext
-}
-
 /** The one-line Umfang in the page head and the warning about a scope the last run could not read. */
 export interface SourceScopeHero {
   summary: (library: StoredLibrarySource) => string
@@ -55,8 +49,8 @@ export interface SourceScopeHero {
 
 /**
  * Everything the frontend knows about one connector's configuration, registered once under its
- * type key (ADR-0038): the form with its starting values, validation and request fields, and the
- * read views of the Reiter „Quelle".
+ * type key (ADR-0038): the setup rows with their starting values and request fields, and what the
+ * Reiter „Quelle" shows below them.
  */
 export interface SourceConfiguration<V> {
   /** The values of a new library. */
@@ -80,18 +74,19 @@ export interface SourceConfiguration<V> {
   fromLibrary: (library: StoredLibrarySource) => V
   /** Whether a wizard holding these values has something to lose. */
   isDirty: (values: V) => boolean
-  /** The German rejection of the values, naming the field it concerns, or null when they may be sent. */
-  validate: (values: V, context: SourceFormContext) => SourceIssue | null
-  /** The source fields of a LibraryRequest/LibraryUpdateRequest; call {@link validate} first. */
+  /** The source fields of a LibraryRequest/LibraryUpdateRequest; call only on values without issues. */
   toPayload: (values: V) => LibrarySourceConfigPayload
   /** The name the source already suggests for a new library, '' for none. */
   nameFromSource: (values: V) => string
-  /** The form, including its own connection test. */
-  Form: ComponentType<SourceFormProps<V>>
-  /** The stored connection as the Bereich „Anbindung" shows it to a manager. */
-  StoredView: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
-  /** The scope every reader sees in the Bereich „Umfang"; absent for a source without one. */
-  Scope?: ComponentType<{ library: StoredLibrarySource }>
+  /** The rows „Verbindung“ and „Umfang“ of the summary-row setup, with every issue at once. */
+  setup: SourceSetupSpec<V>
+  /**
+   * Test id of the summary-row note that everything indexed is visible to every reader (ADR-0023,
+   * ADR-0027); absent for a source without a scope.
+   */
+  scopeNoteId?: string
+  /** What a manager sets up below the rows for pushed changes (webhook, event notifications). */
+  Push?: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
   scopeHero?: SourceScopeHero
   /**
    * Whether runs come in two modes - incremental and a forcible full reconciliation with its own
@@ -105,7 +100,7 @@ export interface SourceConfiguration<V> {
   rhythmSettingsBase?: (library: StoredLibrarySource) => Record<string, unknown> | null
   /** The sentence under the wizard's immediate-first-run switch. */
   firstRunHint?: string
-  /** The explanation above the run history. */
+  /** The tooltip of „Jetzt indizieren“: what a run reads, where a source has two kinds of run. */
   runsHint?: string
 }
 

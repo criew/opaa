@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { alpha, type SxProps, type Theme } from '@mui/material/styles'
+import { type SxProps, type Theme } from '@mui/material/styles'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
@@ -120,9 +120,9 @@ export function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
         gap: 0.5,
         alignSelf: 'flex-start',
         fontSize: 10.5,
-        color: 'primary.main',
+        color: 'text.secondary',
         border: 1,
-        borderColor: (t) => alpha(t.palette.primary.main, 0.4),
+        borderColor: 'divider',
         borderRadius: '4px',
         px: 0.75,
         py: 0.25,

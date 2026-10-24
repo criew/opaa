@@ -193,3 +193,32 @@ tests:
             exp_annotations:
               summary: Heap des OPAA-Backends fast voll
               description: "Der Pod r-opaa-backend-a von r-opaa-backend nutzt seit 15 Minuten mehr als 90 % seines Heaps. Speichergrenze (backend.resources.limits.memory) oder backend.maxRamPercentage anheben."
+  # Two pods report the same overdue retention run: one alert without a pod label, after the hour of
+  # "for".
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '3024001x90'
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: '3024001x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts: []
+      - eval_time: 61m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Löschlauf des Revisionsprotokolls ausgeblieben
+              description: "Die automatische Löschung des Revisionsprotokolls von r-opaa-backend ist seit mehr als 35 Tagen nicht gelaufen. Abgelaufene Monate bleiben stehen und das Protokoll wächst über die Aufbewahrungsfrist hinaus. Log des Pods am 1. des Monats um 03:00 und die Sperre audit-retention in der Tabelle shedlock prüfen."
+  # A run in the current month: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '864000x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts: []

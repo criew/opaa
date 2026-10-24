@@ -9,6 +9,11 @@ import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import type { ConnectionProfileOption, SourceConnectionTestRequest } from '@/shared/api/types'
 import LibrarySourceSection from './LibrarySourceSection'
 
+/** The Zugang and its actions live in the row „Verbindung“, behind its „Ändern“. */
+async function openConnection(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
+}
+
 const library = {
   name: 'Wiki',
   sourceType: 'CONFLUENCE',
@@ -16,7 +21,8 @@ const library = {
 }
 
 describe('LibrarySourceSection - Zugang (#2160)', () => {
-  it('names the connection profile of the library', () => {
+  it('names the connection profile of the library', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
@@ -25,6 +31,9 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
       />,
     )
 
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    expect(row).toHaveTextContent('Zugang „Zugang Wiki intern“')
+    await openConnection(user)
     expect(screen.getByTestId('connection-profile')).toHaveTextContent('Zugang: Zugang Wiki intern')
     expect(screen.queryByTestId('connection-profile-removed')).not.toBeInTheDocument()
   })
@@ -222,6 +231,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeChecked()
@@ -265,6 +275,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
@@ -307,6 +318,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
@@ -341,6 +353,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     expect(
@@ -370,8 +383,9 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
-    expect(screen.getByTestId('connection-profile')).toHaveTextContent('Nextcloud intern')
     expect(screen.getByTestId('source-lock-notice')).toHaveTextContent(notice)
+    await openConnection(user)
+    expect(screen.getByTestId('connection-profile')).toHaveTextContent('Nextcloud intern')
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeChecked()
@@ -387,6 +401,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang lösen' }))
     await answerConfirm(user, /vom Zugang „Nextcloud intern“ lösen\?/, 'Abbrechen')
     expect(release).not.toHaveBeenCalled()
@@ -397,6 +412,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
   })
 
   it('offers no release while the type is usable only through profiles', async () => {
+    const user = userEvent.setup()
     server.use(
       http.get('/api/v1/source-types', () =>
         HttpResponse.json(
@@ -416,15 +432,18 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     expect(await screen.findByRole('button', { name: 'Zugang wechseln' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Zugang lösen' })).not.toBeInTheDocument()
   })
 
   it('offers „Zugang zuordnen“ for a library with its own address of a type with profiles', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection libraryId="library-1" library={nextcloud} canEditSource />,
     )
 
+    await openConnection(user)
     expect(await screen.findByRole('button', { name: 'Zugang zuordnen' })).toBeVisible()
     expect(screen.getByTestId('connection-profile')).toHaveTextContent(
       'Zugang: keiner, eigene Adresse',
@@ -432,6 +451,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
   })
 
   it('names a deleted profile as removed, not as an own address', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
@@ -440,6 +460,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     expect(await screen.findByTestId('connection-profile')).toHaveTextContent('Zugang: entfernt')
   })
 
@@ -469,6 +490,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     })
 
     it('offers no release from the profile', async () => {
+      const user = userEvent.setup()
       renderWithProviders(
         <LibrarySourceSection
           libraryId="library-1"
@@ -477,6 +499,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         />,
       )
 
+      await openConnection(user)
       expect(await screen.findByRole('button', { name: 'Zugang wechseln' })).toBeVisible()
       expect(screen.queryByRole('button', { name: 'Zugang lösen' })).not.toBeInTheDocument()
     })
@@ -491,10 +514,13 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         />,
       )
 
+      await openConnection(user)
       await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
       const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
-      expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeVisible()
-      expect(within(dialog).getByRole('radio', { name: /Nextcloud Personen/ })).toBeVisible()
+      expect(
+        await within(dialog).findByRole('radio', { name: /Nextcloud neu/ }),
+      ).toBeInTheDocument()
+      expect(within(dialog).getByRole('radio', { name: /Nextcloud Personen/ })).toBeInTheDocument()
       expect(within(dialog).queryByRole('radio', { name: /Nextcloud dritt/ })).toBeNull()
       expect(dialog).not.toHaveTextContent(/Zugangsdaten verworfen/)
     })
@@ -509,9 +535,12 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         />,
       )
 
+      await openConnection(user)
       await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
       const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
-      expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeVisible()
+      expect(
+        await within(dialog).findByRole('radio', { name: /Nextcloud neu/ }),
+      ).toBeInTheDocument()
       expect(within(dialog).queryByRole('radio', { name: /Nextcloud Personen/ })).toBeNull()
       expect(within(dialog).queryByText(/privat/)).toBeNull()
     })
@@ -530,6 +559,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         { withRouter: true },
       )
 
+      await openConnection(user)
       await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
       const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
       const none = await within(dialog).findByTestId('library-connection-connection-none')
@@ -556,6 +586,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       />,
     )
 
+    await openConnection(user)
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
     await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })
@@ -563,9 +594,9 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     expect(await screen.findByText(/hinterlegten Zugangsdaten verworfen/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Quelle bearbeiten' }))
-    expect(
-      await screen.findByRole('dialog', { name: 'Quellkonfiguration bearbeiten' }),
-    ).toBeVisible()
+    // the fields of „Verbindung“ take the secret anew
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    expect(within(row).getByRole('button', { name: 'Zugangsdaten ersetzen' })).toBeVisible()
   })
 })
 
@@ -680,9 +711,9 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
     const notice = screen.getByTestId('source-lock-notice')
     expect(within(notice).queryByRole('link')).not.toBeInTheDocument()
     await user.click(within(notice).getByRole('button', { name: 'Quelle bearbeiten' }))
-    expect(
-      await screen.findByRole('dialog', { name: 'Quellkonfiguration bearbeiten' }),
-    ).toBeVisible()
+    // „Quelle bearbeiten“ opens the row „Verbindung“ with its fields in place
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    expect(await within(row).findByLabelText('App-Passwort', { selector: 'input' })).toBeVisible()
   })
 
   it('offers a reader no action, whatever the block names', () => {
@@ -883,5 +914,209 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
     const notice = screen.getByTestId('source-lock-notice')
     expect(within(notice).queryByRole('link')).not.toBeInTheDocument()
     expect(screen.queryByText(/sehen nur Verwaltende/)).not.toBeInTheDocument()
+  })
+})
+
+describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
+  const update = vi.fn()
+  const sharePointProfile = {
+    id: 'profile-sp',
+    name: 'Microsoft 365',
+    serverUrl: 'https://graph.microsoft.com',
+    authMethod: 'CLIENT_CREDENTIALS' as const,
+  }
+  const sharePoint = {
+    name: 'Rathaus',
+    sourceType: 'SHAREPOINT',
+    sourceUrl: 'https://graph.microsoft.com',
+    connectionProfile: sharePointProfile,
+    sourceSettings: { libraries: [{ driveId: 'd-1', name: 'Dokumente', folders: [] }] },
+  }
+
+  beforeEach(() => {
+    update.mockReset().mockResolvedValue(undefined)
+    useLibraryStore.setState({ updateExistingLibrary: update })
+    server.use(
+      http.post('/api/v1/source-types/SHAREPOINT/browse', async ({ request }) => {
+        const body = (await request.json()) as { query?: Record<string, unknown> }
+        const entries =
+          typeof body.query?.site === 'string'
+            ? [
+                { key: 'drive:d-1', name: 'Dokumente' },
+                { key: 'drive:d-2', name: 'Protokolle' },
+              ]
+            : [{ key: 'site:s-1', name: 'Rathaus' }]
+        return HttpResponse.json({ entries, complete: true, message: null })
+      }),
+    )
+  })
+
+  it('opens the selection dialog of a dialog source at once and saves on „Übernehmen“', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    const dialog = await screen.findByRole('dialog', { name: /auswählen/ })
+    await user.click(await within(dialog).findByRole('button', { name: '„Rathaus“ öffnen' }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Protokolle' }))
+    expect(update).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'Übernehmen' }))
+
+    // no „Speichern“ in between: „Übernehmen“ is the save of the row
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        'library-sp',
+        expect.objectContaining({
+          name: 'Rathaus',
+          sourceSettings: expect.objectContaining({
+            libraries: expect.arrayContaining([
+              expect.objectContaining({ driveId: 'd-1' }),
+              expect.objectContaining({ driveId: 'd-2' }),
+            ]),
+          }),
+        }),
+      ),
+    )
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/^Umfang gespeichert/)).toBeVisible()
+  })
+
+  it('saves nothing when the dialog of a dialog source is cancelled, and closes the row', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    const dialog = await screen.findByRole('dialog', { name: /auswählen/ })
+    await user.click(await within(dialog).findByRole('button', { name: '„Rathaus“ öffnen' }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Protokolle' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
+    await answerConfirm(user, 'Geänderte Auswahl verwerfen?', 'Verwerfen')
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(update).not.toHaveBeenCalled()
+    const row = screen.getByRole('region', { name: 'Umfang' })
+    expect(within(row).getByRole('button', { name: /^Ändern\s*Umfang$/ })).toBeVisible()
+    expect(row).toHaveTextContent('Dokumente')
+    expect(row).not.toHaveTextContent('Protokolle')
+  })
+
+  it('opens an inline row in place: „Abbrechen“ discards it, „Speichern“ saves it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-fs"
+        library={{
+          name: 'Satzungen',
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/satzungen',
+          schedule: { frequency: 'DISABLED' },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const row = () => screen.getByRole('region', { name: 'Zeitplan' })
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Zeitplan$/ }))
+    await user.click(within(row()).getByRole('combobox', { name: /^häufigkeit$/i }))
+    await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
+    await user.click(within(row()).getByRole('button', { name: 'Abbrechen' }))
+    await answerConfirm(user, 'Änderungen an „Zeitplan“ verwerfen?', 'Verwerfen')
+
+    expect(update).not.toHaveBeenCalled()
+    expect(row()).toHaveTextContent('aus, nur „Jetzt indizieren“')
+    expect(within(row()).queryByRole('combobox')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Zeitplan$/ }))
+    // the row starts again from what is stored
+    expect(within(row()).getByRole('combobox', { name: /^häufigkeit$/i })).toHaveTextContent('Aus')
+    await user.click(within(row()).getByRole('combobox', { name: /^häufigkeit$/i }))
+    await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
+    await user.click(within(row()).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith('library-fs', {
+        name: 'Satzungen',
+        description: undefined,
+        schedule: { frequency: 'HOURLY', hour: null, minute: null, weekday: undefined },
+      }),
+    )
+    expect(await screen.findByText('Zeitplan gespeichert.')).toBeVisible()
+  })
+
+  it('names a failed save without HTTP codes and keeps the row open', async () => {
+    update
+      .mockRejectedValueOnce(new Error('HTTP 502: Request failed with status code 502'))
+      .mockRejectedValueOnce(new Error('Der Zeitplan ist ungültig (HTTP 400).'))
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-fs"
+        library={{
+          name: 'Satzungen',
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/satzungen',
+          schedule: { frequency: 'DISABLED' },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const row = () => screen.getByRole('region', { name: 'Zeitplan' })
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Zeitplan$/ }))
+    await user.click(within(row()).getByRole('combobox', { name: /^häufigkeit$/i }))
+    await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
+    await user.click(within(row()).getByRole('button', { name: 'Speichern' }))
+    expect(await within(row()).findByText('Die Änderung ließ sich nicht speichern.')).toBeVisible()
+    await user.click(within(row()).getByRole('button', { name: 'Speichern' }))
+    expect(await within(row()).findByText('Der Zeitplan ist ungültig.')).toBeVisible()
+    expect(row()).not.toHaveTextContent(/HTTP|502|400/)
+    expect(within(row()).getByRole('combobox', { name: /^häufigkeit$/i })).toBeVisible()
+  })
+
+  it('keeps a choice of an inline scope as a draft until „Speichern“', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-wiki"
+        library={{
+          name: 'Wiki',
+          sourceType: 'CONFLUENCE',
+          sourceUrl: 'https://wiki.rheinfurt.example',
+          sourceCredentialsSet: true,
+          sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    const row = screen.getByRole('region', { name: 'Umfang' })
+    const spaces = await within(row).findAllByRole('checkbox')
+    const other = spaces.find((box) => !(box as HTMLInputElement).checked)!
+    await user.click(other)
+    expect(update).not.toHaveBeenCalled()
+
+    await user.click(within(row).getByRole('button', { name: 'Speichern' }))
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        'library-wiki',
+        expect.objectContaining({
+          sourceSettings: expect.objectContaining({
+            spaces: expect.arrayContaining([expect.objectContaining({ key: 'BAU' })]),
+          }),
+        }),
+      ),
+    )
+    const sent = update.mock.calls[0][1] as { sourceSettings: { spaces: unknown[] } }
+    expect(sent.sourceSettings.spaces).toHaveLength(2)
   })
 })

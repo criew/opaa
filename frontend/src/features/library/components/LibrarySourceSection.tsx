@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -6,7 +6,6 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -26,10 +25,12 @@ import {
   indexingTriggerSourceLabel,
 } from './indexingLabels'
 import { scheduleFrequencyLabel } from './scheduleLabels'
-import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
+import { CONTENT_WIDTH } from './setup/rowStyles'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
+import LibrarySourceRows from './LibrarySourceRows'
+import type { SourceSetupHandle } from './setup/SourceSetupRows'
 import LibrarySourceConsent from './LibrarySourceConsent'
 import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
@@ -40,6 +41,10 @@ import {
   QUOTA_EXHAUSTED_LABEL,
   QUOTA_EXHAUSTED_REMEDY,
 } from './privateLibrary'
+import StateDot from '@/shared/ui/StateDot'
+import { plainMessage } from './sourceKit/plainMessage'
+import type { StatusTone } from '@/shared/ui/StatusLine'
+import ScopeConsequence from './sources/ScopeConsequence'
 
 export interface LibrarySourceSectionProps {
   libraryId: string
@@ -68,10 +73,10 @@ export interface LibrarySourceSectionProps {
 }
 
 /**
- * The Reiter „Quelle" of a connector library, in four sections: **Umfang** for every
- * reader, then - behind the MANAGER bar - **Anbindung** (source configuration,
- * connection test, webhook or events), **Zeitplan** and **Läufe**. Triggering and the live progress
- * live in the page head, visible from every area.
+ * The Reiter „Quelle" of a connector library: the rows Verbindung, Umfang and Zeitplan of its
+ * setup, then - behind the MANAGER bar - webhook or events and the **Läufe**. A type this client
+ * has no registration for shows **Anbindung** without a configuration and its **Zeitplan**.
+ * Triggering and the live progress live in the page head, visible from every area.
  */
 export default function LibrarySourceSection({
   libraryId,
@@ -79,12 +84,20 @@ export default function LibrarySourceSection({
   canEditSource,
   erasing = false,
 }: LibrarySourceSectionProps) {
-  const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [reconnectOpen, setReconnectOpen] = useState(false)
+  const rowsRef = useRef<SourceSetupHandle>(null)
   const connectAction = (
-    <Button color="inherit" size="small" onClick={() => setConnectOpen(true)}>
+    <Button
+      color="inherit"
+      size="small"
+      onClick={() => {
+        // the dialog belongs to the row „Verbindung“, which opens with it
+        rowsRef.current?.openRow('connection')
+        setConnectOpen(true)
+      }}
+    >
       Zugang zuordnen
     </Button>
   )
@@ -105,7 +118,7 @@ export default function LibrarySourceSection({
   ) : undefined
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const editAction = (
-    <Button color="inherit" size="small" onClick={() => setEditSourceOpen(true)}>
+    <Button color="inherit" size="small" onClick={() => rowsRef.current?.openRow('connection')}>
       Quelle bearbeiten
     </Button>
   )
@@ -128,14 +141,10 @@ export default function LibrarySourceSection({
       }
     }
   })()
-  const Scope = configuration?.Scope
-  const StoredView = configuration?.StoredView
-  const fullSyncIntervalDays = configuration?.fullSyncRhythm
-    ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
-    : null
+  const Push = configuration?.Push
 
   return (
-    <Stack>
+    <Stack sx={{ maxWidth: CONTENT_WIDTH }}>
       {library.sourceBlock?.notice && (
         <Alert
           severity="warning"
@@ -178,171 +187,165 @@ export default function LibrarySourceSection({
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
         </Alert>
       )}
-      {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
-         with read access - they are here instead of in the header, with an explanation. */}
-      {Scope && (
-        <PageSection
-          title="Umfang"
-          description="Was diese Bibliothek aus ihrer Quelle aufnimmt — ihr Geltungsbereich. Er gilt für alle Leseberechtigten der Bibliothek."
-        >
-          <Stack spacing={1}>
-            <Scope library={library} />
-          </Stack>
-        </PageSection>
-      )}
-
-      {!canEditSource && (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Anbindung, Zeitplan und Läufe dieser Bibliothek sehen nur Verwaltende.
-        </Typography>
-      )}
-
-      {canEditSource && !erasing && (
-        <>
-          <PageSection
-            title="Anbindung"
-            description="Woher diese Bibliothek ihre Dokumente bezieht und wie die Quelle erreicht wird. Nur für Verwaltende sichtbar."
-            action={
-              configuration ? (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setEditSourceOpen(true)}
-                  aria-label="Quellkonfiguration bearbeiten"
-                  sx={{ flexShrink: 0 }}
-                >
-                  Bearbeiten
-                </Button>
+      {configuration ? (
+        <Box sx={{ mb: 4 }}>
+          <LibrarySourceRows
+            // a fresh instance whenever the stored source changes, so the rows start from it; the
+            // next run time moves after every run and must not discard a row being edited
+            key={JSON.stringify([
+              library.sourceUrl,
+              library.sourcePath,
+              library.sourceSettings,
+              library.schedule && { ...library.schedule, nextRunAt: undefined },
+              library.sourceCredentialsSet,
+              library.connectionProfile?.id,
+            ])}
+            ref={rowsRef}
+            libraryId={libraryId}
+            library={library}
+            canEdit={canEditSource && !erasing}
+            connectionPrelude={
+              canEditSource && !erasing ? (
+                <Stack spacing={1.5}>
+                  <LibraryConnectionPanel
+                    libraryId={libraryId}
+                    sourceType={library.sourceType}
+                    library={library}
+                    connectionProfile={library.connectionProfile}
+                    connectionProfileRemoved={library.connectionProfileRemoved}
+                    privateLibrary={Boolean(library.privateLibrary)}
+                    onEditSource={() => rowsRef.current?.openRow('connection')}
+                    dialogOpen={connectOpen}
+                    onDialogOpenChange={setConnectOpen}
+                  />
+                  {consent && (
+                    <LibrarySourceConsent
+                      libraryId={libraryId}
+                      consent={consent}
+                      onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
+                    />
+                  )}
+                </Stack>
               ) : undefined
             }
-          >
-            {/* sourcePath/sourceUrl expose internal server paths and source URLs - the backend only
-              * serves them to a caller with at least MANAGER, and
-                this whole area only renders behind the same bar. */}
-            <Stack spacing={0.75}>
-              <LibraryConnectionPanel
-                libraryId={libraryId}
-                sourceType={library.sourceType}
-                library={library}
-                connectionProfile={library.connectionProfile}
-                connectionProfileRemoved={library.connectionProfileRemoved}
-                privateLibrary={Boolean(library.privateLibrary)}
-                onEditSource={() => setEditSourceOpen(true)}
-                dialogOpen={connectOpen}
-                onDialogOpenChange={setConnectOpen}
-              />
-              {consent && (
-                <LibrarySourceConsent
-                  libraryId={libraryId}
-                  consent={consent}
-                  onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
-                />
-              )}
-              {StoredView ? (
-                <StoredView library={library} libraryId={libraryId} />
-              ) : (
-                <Typography variant="body2" data-testid="source-not-configurable">
-                  Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske; ihre Anbindung
-                  ist hier nicht konfigurierbar.
-                </Typography>
-              )}
-            </Stack>
-            {configuration && (
-              <EditLibrarySourceDialog
-                // Forces a remount every time the dialog opens, so its internal field state always
-                // starts fresh from the current library configuration without an effect calling
-                // setState on open (react-hooks/set-state-in-effect).
-                key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
-                open={editSourceOpen}
-                onClose={() => setEditSourceOpen(false)}
-                libraryId={libraryId}
-                library={library}
-              />
-            )}
-          </PageSection>
-
-          {/* Schedule - the same threshold as the source connection (canEditSource). */}
-          <PageSection
-            title="Zeitplan"
-            description="Wann diese Bibliothek automatisch indiziert wird."
-            action={
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => setEditScheduleOpen(true)}
-                aria-label="Zeitplan bearbeiten"
-                sx={{ flexShrink: 0 }}
-              >
-                Bearbeiten
-              </Button>
-            }
-          >
-            <Typography variant="body2">
-              {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
+          />
+          {/* ADR-0023 / ADR-0027: the release sequence of the scope applies to every reader */}
+          {configuration.scopeNoteId && (
+            <ScopeConsequence testId={configuration.scopeNoteId}>
+              Alles, was daraus indiziert wird, ist für alle Leseberechtigten dieser Bibliothek
+              sichtbar – unabhängig von den Rechten in der Quelle.
+            </ScopeConsequence>
+          )}
+          {Push && canEditSource && !erasing && (
+            <Box sx={{ mt: 3 }}>
+              <Push library={library} libraryId={libraryId} />
+            </Box>
+          )}
+          {!canEditSource && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
+              Verbindung, Zeitplan und Läufe sehen nur Verwaltende.
             </Typography>
-            {configuration?.fullSyncRhythm && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {(() => {
-                  const days = fullSyncIntervalDays ?? library.fullSyncIntervalDefaultDays ?? 7
-                  const rhythm =
-                    days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
-                  return fullSyncIntervalDays == null ? `${rhythm} (Vorgabe der Instanz)` : rhythm
-                })()}
-              </Typography>
-            )}
-            {library.schedule?.nextRunAt && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Nächster geplanter Lauf:{' '}
-                {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </Typography>
-            )}
-            {library.lastScheduledRunsFailed && (
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan
-                bleibt aktiv und versucht es beim nächsten Termin erneut.
-              </Alert>
-            )}
-            <EditLibraryScheduleDialog
-              // Mirrors EditLibrarySourceDialog's own remount-on-open pattern above.
-              key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
-              open={editScheduleOpen}
-              onClose={() => setEditScheduleOpen(false)}
-              libraryId={libraryId}
-              schedule={library.schedule}
-              confluence={
-                configuration?.fullSyncRhythm
-                  ? {
-                      intervalDays: fullSyncIntervalDays,
-                      defaultDays: library.fullSyncIntervalDefaultDays ?? null,
-                    }
-                  : undefined
-              }
-              settingsBase={configuration?.rhythmSettingsBase?.(library) ?? undefined}
-              library={library}
-            />
-          </PageSection>
+          )}
+        </Box>
+      ) : (
+        <>
+          {!canEditSource && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Anbindung, Zeitplan und Läufe dieser Bibliothek sehen nur Verwaltende.
+            </Typography>
+          )}
+
+          {canEditSource && !erasing && (
+            <>
+              <PageSection title="Anbindung">
+                <Stack spacing={1}>
+                  <LibraryConnectionPanel
+                    libraryId={libraryId}
+                    sourceType={library.sourceType}
+                    library={library}
+                    connectionProfile={library.connectionProfile}
+                    connectionProfileRemoved={library.connectionProfileRemoved}
+                    privateLibrary={Boolean(library.privateLibrary)}
+                    dialogOpen={connectOpen}
+                    onDialogOpenChange={setConnectOpen}
+                  />
+                  {consent && (
+                    <LibrarySourceConsent
+                      libraryId={libraryId}
+                      consent={consent}
+                      onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
+                    />
+                  )}
+                  <Typography variant="body2" data-testid="source-not-configurable">
+                    Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske; ihre
+                    Anbindung ist hier nicht konfigurierbar.
+                  </Typography>
+                </Stack>
+              </PageSection>
+
+              <PageSection
+                title="Zeitplan"
+                action={
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setEditScheduleOpen(true)}
+                    aria-label="Zeitplan bearbeiten"
+                    sx={{ flexShrink: 0 }}
+                  >
+                    Bearbeiten
+                  </Button>
+                }
+              >
+                <Typography variant="body2">
+                  {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
+                </Typography>
+                {library.schedule?.nextRunAt && (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Nächster geplanter Lauf:{' '}
+                    {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </Typography>
+                )}
+                {library.lastScheduledRunsFailed && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan
+                    bleibt aktiv und versucht es beim nächsten Termin erneut.
+                  </Alert>
+                )}
+                <EditLibraryScheduleDialog
+                  // a fresh instance on every opening starts from the stored schedule
+                  key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
+                  open={editScheduleOpen}
+                  onClose={() => setEditScheduleOpen(false)}
+                  libraryId={libraryId}
+                  schedule={library.schedule}
+                  library={library}
+                />
+              </PageSection>
+            </>
+          )}
         </>
       )}
 
       {canEditSource && (
-        <PageSection
-          title="Läufe"
-          description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
-        >
-          {configuration?.runsHint && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-              {configuration.runsHint}
-            </Typography>
-          )}
+        <Box component="section" aria-labelledby="library-runs-title">
+          {/* the same heading as the rows above, no overline */}
+          <Typography
+            id="library-runs-title"
+            component="h3"
+            sx={{ fontSize: 15, fontWeight: 600, mb: 1.5, color: 'text.primary' }}
+          >
+            Läufe
+          </Typography>
           <LibraryIndexingHistorySection
             libraryId={libraryId}
             sourceType={library.sourceType}
             privateLibrary={Boolean(library.privateLibrary)}
           />
-        </PageSection>
+        </Box>
       )}
     </Stack>
   )
@@ -353,25 +356,22 @@ function formatRunTimestamp(value: string | null | undefined): string {
   return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function runStatusChipColor(
-  status: IndexingRunResponse['status'],
-): 'success' | 'warning' | 'error' | 'default' {
+// A run's state is a dot before its word (guidelines 5.5); a running run is no warning.
+/** A completed run that still failed on documents or content: not shown as plain success. */
+function partlyFailed(run: IndexingRunResponse): boolean {
+  return run.status === 'COMPLETED' && (run.documentsFailed > 0 || countUnreadable(run.events) > 0)
+}
+
+function runStatusTone(status: IndexingRunResponse['status']): StatusTone {
   if (status === 'COMPLETED') return 'success'
   if (status === 'FAILED') return 'error'
-  if (status === 'RUNNING') return 'warning'
-  return 'default'
+  return 'neutral'
 }
 
 // ADR-0023: a run that could not read a space or a page must not look like any other
 // completed run - the header names how many of its events are about unreadable content.
 function countUnreadable(events: IndexingRunResponse['events']): number {
   return events.filter((e) => e.category === 'REJECTED' || e.category === 'UNREACHABLE').length
-}
-
-function runEventsLabel(events: IndexingRunResponse['events']): string {
-  const base = `${events.length} Ereignis${events.length === 1 ? '' : 'se'}`
-  const unreadable = countUnreadable(events)
-  return unreadable > 0 ? `${base}, davon ${unreadable} nicht lesbar` : base
 }
 
 // The operator's line on what a run cost. Every connector records the attachment share and the
@@ -468,8 +468,7 @@ function LibraryIndexingHistorySection({
     <Box>
       {runs.length === 0 ? (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Es liegen noch keine Läufe vor. Der erste Lauf startet über „Jetzt indizieren“ oben auf
-          der Seite oder über den Zeitplan.
+          Noch keine Läufe.
         </Typography>
       ) : (
         <Stack spacing={1}>
@@ -481,11 +480,11 @@ function LibraryIndexingHistorySection({
                   spacing={1.5}
                   sx={{ alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
                 >
-                  <Chip
-                    label={runStatusLabel(run.status)}
-                    size="small"
-                    color={runStatusChipColor(run.status)}
-                    variant="outlined"
+                  <StateDot
+                    tone={partlyFailed(run) ? 'warning' : runStatusTone(run.status)}
+                    label={
+                      partlyFailed(run) ? 'Teilweise fehlgeschlagen' : runStatusLabel(run.status)
+                    }
                   />
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {formatRunTimestamp(run.startedAt)}
@@ -499,39 +498,33 @@ function LibraryIndexingHistorySection({
                     {run.documentsFailed > 0 ? `, ${run.documentsFailed} fehlgeschlagen` : ''}
                   </Typography>
                   {showRunMode && (
-                    <Chip
-                      label={indexingRunModeLabel(run.runMode)}
-                      size="small"
-                      variant="outlined"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-mode-${run.id}`}
-                    />
+                    >
+                      {indexingRunModeLabel(run.runMode)}
+                    </Typography>
                   )}
                   {run.incomplete && (
-                    <Chip
-                      label={
-                        quotaExhausted(run)
-                          ? QUOTA_EXHAUSTED_LABEL
-                          : 'unvollständig, wird fortgesetzt'
-                      }
-                      size="small"
-                      color="warning"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-incomplete-${run.id}`}
-                    />
+                    >
+                      {quotaExhausted(run)
+                        ? QUOTA_EXHAUSTED_LABEL
+                        : 'unvollständig, wird fortgesetzt'}
+                    </Typography>
                   )}
                   {run.unreadableScopeCount != null && run.unreadableScopeCount > 0 && (
-                    <Chip
-                      label={`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
-                      size="small"
-                      color="warning"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-unreadable-${run.id}`}
-                    />
-                  )}
-                  {run.events.length > 0 && (
-                    <Chip
-                      label={runEventsLabel(run.events)}
-                      size="small"
-                      color={countUnreadable(run.events) > 0 ? 'warning' : 'default'}
-                    />
+                    >
+                      {`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
+                    </Typography>
                   )}
                 </Stack>
               </AccordionSummary>
@@ -547,14 +540,13 @@ function LibraryIndexingHistorySection({
                 )}
                 {run.message && (
                   <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                    {run.message}
+                    {plainMessage(run.message)}
                   </Typography>
                 )}
                 <RunMetricsLine run={run} />
                 {run.events.length === 0 ? (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Dieser Lauf hat keine übersprungenen, fehlgeschlagenen oder abweichend erkannten
-                    Elemente protokolliert.
+                    Nichts übersprungen oder fehlgeschlagen.
                   </Typography>
                 ) : (
                   <Stack spacing={1}>
@@ -564,12 +556,10 @@ function LibraryIndexingHistorySection({
                       // so the key combines the run and the position within its event list.
                       <Box key={`${run.id}-${index}`}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-                          <Chip
-                            label={indexingRunEventCategoryLabel(event.category)}
-                            size="small"
-                            variant="outlined"
-                          />
-                          <Typography variant="body2">{event.message}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
+                            {indexingRunEventCategoryLabel(event.category)}
+                          </Typography>
+                          <Typography variant="body2">{plainMessage(event.message)}</Typography>
                         </Stack>
                         {event.reference && (
                           <Typography

@@ -78,11 +78,6 @@ export function googleDriveScopeFromKey(key: string, name: string | null): Googl
   return { kind: match[1] as GoogleDriveScopeKind, id: match[2], name }
 }
 
-/** German label of a scope kind. */
-export function googleDriveScopeKindLabel(kind: GoogleDriveScopeKind): string {
-  return kind === 'drive' ? 'Geteilte Ablage' : kind === 'folder' ? 'Ordner' : 'Meine Ablage'
-}
-
 /** The name a scope is shown under; its id when Drive gave none. */
 export function googleDriveScopeLabel(scope: GoogleDriveScope): string {
   return scope.name?.trim() || (scope.kind === 'myDrive' ? 'Meine Ablage' : scope.id)
@@ -154,18 +149,4 @@ export function googleDrivePayloadOf(values: GoogleDriveSourceValues): LibrarySo
     sourceCredentials: values.keyFile || undefined,
     sourceSettings: googleDriveSettingsOf(values),
   }
-}
-
-/** One finding of the connection test per scope, from its `details.scopes`. */
-export interface GoogleDriveScopeCheck {
-  scope: string
-  reachable: boolean
-  message?: string | null
-}
-
-export function googleDriveScopeChecksOf(
-  details: Record<string, unknown> | null | undefined,
-): GoogleDriveScopeCheck[] | null {
-  const scopes = details?.scopes
-  return Array.isArray(scopes) ? (scopes as GoogleDriveScopeCheck[]) : null
 }

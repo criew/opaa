@@ -41,17 +41,17 @@ flowchart LR
 
 ## 3. Quellkonfiguration
 
-| Angabe im Formular | Bedeutung |
+| Angabe | Bedeutung |
 |---|---|
-| „Verzeichnispfad" | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host, und unter einem freigegebenen Basisverzeichnis |
-| „Ausschlussmuster (optional)" | eines je Zeile, höchstens 50, je bis 255 Zeichen; Regeln unten |
+| „Verzeichnis" | Pflicht. Absoluter Pfad aus Sicht des Backend-Prozesses, also im Container, nicht auf dem Host, und unter einem freigegebenen Basisverzeichnis |
+| „Ausschlussmuster" | optional, eines je Zeile, höchstens 50, je bis 255 Zeichen; Regeln unten |
 
 Beim Speichern weist OPAA einen Pfad außerhalb der Freigabeliste ab („… liegt außerhalb der vom
 Betrieb freigegebenen Verzeichnisse"), ebenso jeden Pfad, solange der Betrieb kein Verzeichnis
 freigegeben hat („… ist deaktiviert"). Pfad und Muster lassen sich später ändern; die Änderung wirkt
 mit dem nächsten Lauf. Pfad und Laufprotokoll sehen nur Verwaltende der Bibliothek.
 
-**„Verbindung testen"** prüft nur, ob sich das Verzeichnis öffnen und auflisten lässt, und antwortet
+**„Verbindung testen"** in der Zeile „Verbindung" prüft nur, ob sich das Verzeichnis öffnen und auflisten lässt, und antwortet
 „Verzeichnis erreichbar." oder nennt den Grund. Unterverzeichnisse, Dateien und Ausschlüsse spielen
 für den Test keine Rolle; die Zahl der Dokumente liefert erst der Lauf.
 

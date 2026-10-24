@@ -220,10 +220,12 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
         "subject", USER.equals(subjectKind) ? person.label(rs.getString("subject_ref")) : null);
     record.put(
         "before",
-        AuditSelfDisclosurePayload.disclose(type, rs.getString("before"), person.accountId()));
+        AuditSelfDisclosurePayload.disclose(
+            type, rs.getString("before"), person.pseudonym(), person.accountId()));
     record.put(
         "after",
-        AuditSelfDisclosurePayload.disclose(type, rs.getString("after"), person.accountId()));
+        AuditSelfDisclosurePayload.disclose(
+            type, rs.getString("after"), person.pseudonym(), person.accountId()));
     record.put("outcome", rs.getString("outcome"));
     record.put("correlationRef", rs.getString("correlation_ref"));
     record.put("reasonGiven", rs.getBoolean("reason_given"));

@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.UUID;
 
@@ -11,10 +12,10 @@ import java.util.UUID;
 public interface ConfluencePushReceiver {
 
   /**
-   * Authenticates and queues the notification for {@code libraryId}; {@code loaded} is the library
+   * Authenticates and parses the notification for {@code libraryId}; {@code loaded} is the library
    * the caller already loaded, {@code null} for none.
    */
-  void accept(
+  PushNotification accept(
       UUID libraryId,
       KnowledgeLibrary loaded,
       byte[] body,

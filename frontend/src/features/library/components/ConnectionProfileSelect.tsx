@@ -4,20 +4,16 @@ import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import EditLocationAltOutlinedIcon from '@mui/icons-material/EditLocationAltOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
-import type {
-  ConnectionProfileOption,
-  ProfileDefaultKey,
-  SourceTypeDescriptor,
-} from '@/shared/api/types'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import { hostOf } from './setup/connectors/common'
+import type { SourceTypeDescriptor } from '@/shared/api/types'
 import {
   PROFILES_FORBIDDEN_NOTICE,
   type ConnectionProfileOptionsState,
 } from '@/features/connection'
-import ChoiceTileGroup, { type ChoiceTile } from '@/shared/ui/choice/ChoiceTileGroup'
-import { AUTH_METHOD_LABELS } from '@/features/connection'
 import {
   OWN_ADDRESS,
   admitsLibraries,
@@ -25,42 +21,7 @@ import {
   privateConnection,
   profileChoices,
 } from './connectionChoice'
-import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 import { ownAddressAllowed } from './sources/sourceConnection'
-
-function defaultValueLabel(key: ProfileDefaultKey | undefined, value: unknown): string {
-  if (key === undefined) return String(value)
-  const kind = key.kind
-  switch (kind) {
-    case 'BOOLEAN':
-      return value === true ? 'Ja' : 'Nein'
-    case 'TEXT':
-    case 'CHOICE':
-      return String(value)
-    default: {
-      const unknown: never = kind
-      throw new Error(`Unknown profile default kind ${String(unknown)}`)
-    }
-  }
-}
-
-function profileDescription(option: ConnectionProfileOption, descriptor: SourceTypeDescriptor) {
-  const defaults = Object.entries(option.connectorDefaults ?? {}).map(([key, value]) => {
-    const declared = descriptor.profileDefaults.find((d) => d.key === key)
-    return `${declared?.label ?? key}: ${defaultValueLabel(declared, value)}`
-  })
-  return (
-    <>
-      <Box component="span" sx={{ display: 'block', wordBreak: 'break-all' }}>
-        {option.serverUrl}
-      </Box>
-      <Box component="span" sx={{ display: 'block' }}>
-        Anmeldung: {AUTH_METHOD_LABELS[option.authMethod]}
-        {defaults.length > 0 && ` · Vorgaben: ${defaults.join(', ')}`}
-      </Box>
-    </>
-  )
-}
 
 interface ConnectionProfileSelectProps {
   descriptor: SourceTypeDescriptor
@@ -81,6 +42,8 @@ interface ConnectionProfileSelectProps {
   onlyOwnAccounts?: boolean
   /** Whether the private library is a choice here at all - in the creation wizard. */
   offerPrivate?: boolean
+  /** Lists a single way as well, where nothing else names it (the dialog „Zugang wechseln“). */
+  showSingle?: boolean
   idPrefix: string
 }
 
@@ -98,12 +61,12 @@ export default function ConnectionProfileSelect({
   excludeProfileId,
   onlyOwnAccounts = false,
   offerPrivate = false,
+  showSingle = false,
   idPrefix,
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
   const ownOffered = offerOwnAddress && ownAddressAllowed(descriptor)
   const headingId = `${idPrefix}-connection-heading`
-  const privateHeadingId = `${idPrefix}-private-heading`
   const sharedOptions = onlyOwnAccounts ? options : options.filter(admitsLibraries)
   const privateOptions = offerPrivate && !onlyOwnAccounts ? options.filter(onOwnAccount) : []
   const selectable = [
@@ -112,95 +75,67 @@ export default function ConnectionProfileSelect({
     ...profileChoices(privateOptions).map(privateConnection),
   ]
 
-  const tiles: ChoiceTile<string>[] = [
-    ...(ownOffered
-      ? [
-          {
-            value: OWN_ADDRESS,
-            label: 'Eigene Adresse',
-            description: 'Adresse und Zugangsdaten tragen Sie selbst ein.',
-            icon: <EditLocationAltOutlinedIcon sx={{ fontSize: 22 }} />,
-          },
-        ]
-      : []),
+  const rows: { value: string; label: string; detail: string }[] = [
     ...sharedOptions.map((option) => ({
       value: option.id,
       label: option.name,
-      description: (
-        <>
-          {profileDescription(option, descriptor)}
-          {privateOptions.includes(option) && (
-            <Box component="span" sx={{ display: 'block' }}>
-              Teilbar – meldet sich nicht über Ihr verbundenes Konto an.
-            </Box>
-          )}
-        </>
-      ),
-      icon: <VpnKeyOutlinedIcon sx={{ fontSize: 22 }} />,
+      detail: hostOf(option.serverUrl),
     })),
+    ...privateOptions.map((option) => ({
+      value: privateConnection(option.id),
+      label: `${option.name} · privat`,
+      detail: 'nur für Sie, später nicht änderbar',
+    })),
+    ...(ownOffered ? [{ value: OWN_ADDRESS, label: 'Eigene Adresse', detail: '' }] : []),
   ]
-  const privateTiles: ChoiceTile<string>[] = privateOptions.map((option) => ({
-    value: privateConnection(option.id),
-    label: `${option.name} · privat`,
-    description: profileDescription(option, descriptor),
-    icon: <LockOutlinedIcon sx={{ fontSize: 22 }} />,
-  }))
+
+  // one way needs no choice where the row „Verbindung“ names it; the private way is never chosen
+  // by itself, so it is always listed
+  const showList = rows.length > 1 || privateOptions.length > 0 || (showSingle && rows.length === 1)
 
   return (
     <Box data-testid={`${idPrefix}-connection`}>
-      <Typography id={headingId} component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
-        Zugang
-      </Typography>
-      {offerOwnAddress && !ownOffered && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
-          {descriptor.profileRequired
-            ? `Die Quellart „${descriptor.displayName}“ ist nur über einen Zugang nutzbar; eine eigene Adresse ist nicht möglich.`
-            : `Mit eigener Adresse dürfen Sie die Quellart „${descriptor.displayName}“ nicht anlegen, nur über einen für Sie freigegebenen Zugang.`}
-        </Typography>
-      )}
+      {state.loaded && !state.error && showList && <FieldLabel id={headingId}>Zugang</FieldLabel>}
       {!state.loaded && (
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
           Zugänge werden geladen …
         </Typography>
       )}
       {state.error && (
-        <Alert
-          severity={state.forbidden ? 'info' : 'error'}
-          sx={{ mb: 1.5 }}
+        <Typography
+          sx={{ fontSize: 13.5, color: state.forbidden ? 'text.secondary' : 'error.main' }}
           data-testid={`${idPrefix}-connection-error`}
         >
           {state.forbidden ? PROFILES_FORBIDDEN_NOTICE : state.error}
-        </Alert>
+        </Typography>
       )}
-      {tiles.length > 0 && (
-        <ChoiceTileGroup<string>
+      {showList && (
+        <RadioGroup
           aria-labelledby={headingId}
-          value={value}
-          onChange={onChange}
-          tiles={tiles}
-        />
-      )}
-      {privateTiles.length > 0 && (
-        <Box sx={{ mt: 2.5 }} data-testid={`${idPrefix}-private`}>
-          <Typography
-            id={privateHeadingId}
-            component="h4"
-            sx={{ fontSize: 14.5, fontWeight: 600, mb: 0.5 }}
-          >
-            Über mein verbundenes Konto
-          </Typography>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
-            {PRIVATE_LIBRARY_NOTE} Sie meldet sich mit Ihrem verbundenen Konto an; Zugangsdaten
-            tragen Sie hier nicht ein. Ob eine Bibliothek privat ist, lässt sich nach dem Anlegen
-            nicht mehr ändern.
-          </Typography>
-          <ChoiceTileGroup<string>
-            aria-labelledby={privateHeadingId}
-            value={value}
-            onChange={onChange}
-            tiles={privateTiles}
-          />
-        </Box>
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {rows.map((row) => (
+            <FormControlLabel
+              key={row.value}
+              value={row.value}
+              control={<Radio size="small" />}
+              sx={{ mr: 0, alignItems: 'center' }}
+              label={
+                <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
+                  <Box component="span" sx={{ fontSize: 14 }}>
+                    {row.label}
+                  </Box>
+                  {row.detail && (
+                    <Box component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+                      {row.detail}
+                    </Box>
+                  )}
+                </Box>
+              }
+            />
+          ))}
+        </RadioGroup>
       )}
       {state.error ? null : onlyOwnAccounts ? (
         state.loaded &&
@@ -217,14 +152,10 @@ export default function ConnectionProfileSelect({
       ) : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
           Für die Quellart „{descriptor.displayName}“ steht Ihnen{' '}
-          {excludeProfileId ? 'kein weiterer Zugang' : 'kein Zugang'} zur Verfügung. Zugänge legt
-          die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.
+          {excludeProfileId ? 'kein weiterer Zugang' : 'kein Zugang'} zur Verfügung; die
+          Systemverwaltung richtet Zugänge ein.
         </Alert>
-      ) : (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-          Zugänge legt die Systemverwaltung an und gibt sie frei.
-        </Typography>
-      )}
+      ) : null}
     </Box>
   )
 }

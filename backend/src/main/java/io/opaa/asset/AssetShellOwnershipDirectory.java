@@ -182,7 +182,6 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
       Asset asset, PermissionSubject newOwner, UUID actorUserId, UUID transferId, Instant at) {
     AssetTypeDefinition definition = assetTypes.require(asset.getAssetType());
     PermissionSubject previousOwner = asset.ownerSubject();
-    UUID previousOwnerId = asset.getOwnerId();
     asset.applyOwner(
         newOwner.type() == PermissionSubjectType.GROUP ? AssetOwnerType.GROUP : AssetOwnerType.USER,
         newOwner.id());
@@ -195,11 +194,11 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(definition.auditObjectType(), asset.getId(), asset.auditName())
-            .before(asset.auditPayload(Map.of("ownerId", previousOwnerId.toString())))
+            .before(asset.auditPayload(Map.of("ownerId", auditRef(previousOwner, asset))))
             .after(
                 asset.auditPayload(
                     Map.of(
-                        "ownerId", newOwner.id().toString(), "transferId", transferId.toString())))
+                        "ownerId", auditRef(newOwner, asset), "transferId", transferId.toString())))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
@@ -218,7 +217,6 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
       return false;
     }
     AssetTypeDefinition definition = assetTypes.require(asset.getAssetType());
-    UUID previousOwnerId = asset.getOwnerId();
     asset.applyOwner(
         newOwner.type() == PermissionSubjectType.GROUP ? AssetOwnerType.GROUP : AssetOwnerType.USER,
         newOwner.id());
@@ -235,12 +233,22 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(definition.auditObjectType(), asset.getId(), asset.auditName())
-            .before(asset.auditPayload(Map.of("ownerId", previousOwnerId.toString())))
-            .after(asset.auditPayload(Map.of("ownerId", newOwner.id().toString())))
+            .before(asset.auditPayload(Map.of("ownerId", auditRef(previousOwner, asset))))
+            .after(asset.auditPayload(Map.of("ownerId", auditRef(newOwner, asset))))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     assetRepository.save(asset);
     return true;
+  }
+
+  /**
+   * An owner as the audit log names it: a group by its id, a person by their audit pseudonym
+   * ({@link AuditEventRecorder#pseudonymFor}), never by the account id.
+   */
+  private String auditRef(PermissionSubject owner, Asset asset) {
+    return owner.type() == PermissionSubjectType.GROUP
+        ? owner.id().toString()
+        : auditEventRecorder.pseudonymFor(owner.id(), asset.getOrganizationId()).toString();
   }
 
   /**

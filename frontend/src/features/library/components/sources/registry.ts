@@ -17,10 +17,9 @@ const uploadSource: SourceRegistration = {
 
 /**
  * The one place a source type's frontend is registered (ADR-0038): its names and symbol from the
- * connection directory and - for a type with a source - its form with starting values, validation
- * and request fields plus the read views of the Reiter „Quelle". The order is the wizard's. A type
- * the backend lists (GET /source-types) without an entry here is shown under its own display name
- * and cannot be configured in this client.
+ * connection directory and - for a type with a source - its setup rows with starting values and
+ * request fields. The order is the wizard's. A type the backend lists (GET /source-types) without
+ * an entry here is shown under its own display name and cannot be configured in this client.
  */
 const registrations: Record<SourceTypeKey, SourceRegistration> = {
   UPLOAD: uploadSource,

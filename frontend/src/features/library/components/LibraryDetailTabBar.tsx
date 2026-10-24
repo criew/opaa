@@ -23,7 +23,13 @@ export default function LibraryDetailTabBar({
       <Tabs
         value={activeTab}
         aria-label="Bereiche dieser Bibliothek"
+        variant="scrollable"
+        scrollButtons={false}
         sx={{
+          // at the right edge a fade shows that further tabs lie beyond
+          '& .MuiTabs-scroller': {
+            maskImage: { xs: 'linear-gradient(to right, #000 85%, transparent)', sm: 'none' },
+          },
           borderBottom: 1,
           borderColor: 'divider',
           mb: 4,

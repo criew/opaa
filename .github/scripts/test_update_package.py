@@ -749,7 +749,7 @@ def test_mermaid_diagrams_of_the_handbook_show_as_the_svg_they_render_to(
 
     assert asked == [[source]]
     page = package_files(archive)["handbuch/betrieb/kapitel.html"]
-    assert '<figure class="diagram"><svg id="gezeichnet"></svg></figure>' in page
+    assert '<svg aria-describedby="' in page and ' id="gezeichnet"></svg></figure>' in page
 
 
 def test_a_diagram_that_does_not_render_fails_the_package(tmp_path: Path, monkeypatch) -> None:
@@ -1023,6 +1023,56 @@ def test_cdxgen_and_everything_it_loads_are_fixed_by_a_lockfile() -> None:
     assert f"'@cyclonedx/cdxgen@{version}':" in lockfile
     assert "--frozen-lockfile" in update_package.CDXGEN_INSTALL
     assert "--ignore-scripts" in update_package.CDXGEN_INSTALL
+
+
+def test_mermaid_and_the_browser_driver_are_fixed_by_a_lockfile_and_installed_like_cdxgen() -> None:
+    tool = update_package.ROOT / update_package.MERMAID_TOOL
+    manifest = json.loads((tool / "package.json").read_text(encoding="utf-8"))
+    lockfile = (tool / "pnpm-lock.yaml").read_text(encoding="utf-8")
+
+    for name in ("mermaid", "playwright-core"):
+        version = manifest["dependencies"][name]
+        assert re.fullmatch(r"\d+\.\d+\.\d+", version), name
+        assert f"{name}@{version}:" in lockfile, name
+    assert manifest["packageManager"] == json.loads(
+        (update_package.ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))["packageManager"]
+    install = f"working-directory: {update_package.MERMAID_TOOL.as_posix()}\n        run: {update_package.CDXGEN_INSTALL}\n"
+    body = job("update-package")
+    assert install in body
+    assert body.index(install) < body.index("update_package.py build")
+    assert install in ci_job("changes")
+
+
+def test_every_pull_request_on_templates_or_handbook_renders_their_diagrams() -> None:
+    body = ci_job("changes")
+    text = (HERE.parent / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    paths = re.search(r"^ {12}diagrams:\n((?: {14}- .*\n)+)", text, re.M).group(1)
+
+    for path in ("docs/behoerden/**", "docs/handbuch/**", ".github/tools/mermaid/**"):
+        assert f"'{path}'" in paths, path
+    assert RELEASE_INSTALL in body
+    assert body.index(RELEASE_INSTALL) < body.index("update_package.py diagrams")
+    assert "steps.filter.outputs.diagrams" in body
+
+
+def test_only_templates_update_note_and_handbook_get_drawn_diagrams() -> None:
+    block = b"# T\n\n```mermaid\nflowchart LR\n  A --> B\n```\n"
+    other = b"# T\n\n```mermaid\nflowchart LR\n  X --> Y\n```\n"
+
+    assert update_package.drawn({"vorlagen/a.md": block, "handbuch/b.md": block, "update-vermerk.md": block,
+                                 "betrieb/betriebsfolgen.md": other, "delta/manifest-delta.md": other}) == [
+        "flowchart LR\n  A --> B\n"]
+
+
+def test_an_id_twice_on_one_page_fails_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_handbook(inputs, "betrieb/kapitel.md", "# Kapitel\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n"
+                                                "```mermaid\nflowchart LR\n  A --> B\n  B --> C\n```\n")
+
+    def diagrams(sources: list[str]) -> dict[str, str]:
+        return {s: f'<svg id="{i}"><path id="L_A_B_0"/></svg>' for i, s in enumerate(sources)}
+
+    with pytest.raises(update_package.PackageError, match="handbuch/betrieb/kapitel.html: L_A_B_0"):
+        update_package.assemble(release(), out=tmp_path / "out", diagrams=diagrams, **inputs)
 
 
 def test_the_frontend_sbom_describes_the_release_version(tmp_path: Path, inputs: dict) -> None:

@@ -524,13 +524,14 @@ public final class ModularArchitecture {
    * reads of a library's source configuration - it takes target, secret and settings as {@code
    * SourceSettings} or {@code ConnectorData} (ADR-0041, Entscheidung 3a); {@code getSourcePath} and
    * {@code getWebhookSecret} stay readable - and every way to create a job, which binds a run to
-   * its library.
+   * its library, queueing pushed keys included: the core queues them for the library it loaded.
    */
   static final Set<String> CORE_ONLY_MEMBERS =
       Set.of(
           "indexing.job.IndexingJobService#startJob",
           "indexing.job.IndexingJobRepository",
           "indexing.job.IndexingJob",
+          "indexing.run.SourceEventIntake#enqueue",
           "knowledge.KnowledgeLibrary#getSourceCredentials",
           "knowledge.KnowledgeLibrary#getSourceUrl",
           "knowledge.KnowledgeLibrary#getSourceSettings",
@@ -539,9 +540,10 @@ public final class ModularArchitecture {
   /**
    * The packages of indexing a connector and the file sync may use, relative to the root: neither
    * sees the resolvers, the service account key, the registry or the triggers (ADR-0040,
-   * Entscheidung 2). Not checked here but at run time: the frame in {@code indexing.run} resolves a
+   * Entscheidung 2). Checked at run time as well: the frame in {@code indexing.run} resolves a
    * library's source only for a body defined by the executor class registered for its source type
-   * and only for a running job the core started for that library.
+   * and only for a running job the core started for that library - and the core starts every job,
+   * pushed ones included, for a library it chose itself.
    */
   static final Set<String> CONNECTOR_IMPORTS =
       Set.of(

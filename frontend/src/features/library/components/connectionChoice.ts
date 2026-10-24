@@ -41,8 +41,8 @@ export function profileChoices(options: ConnectionProfileOption[]): string[] {
 }
 
 /**
- * The keys that may be chosen: the own address where offered and admitted, every usable profile
- * admitting libraries, and - last, so never the default - a private library on every usable
+ * The keys that may be chosen: every usable profile admitting libraries, then the own address
+ * where offered and admitted, and - last, so never the default - a private library on every usable
  * profile the caller has a connected account of her own on, a profile only for persons included.
  */
 export function selectableConnections(
@@ -51,8 +51,8 @@ export function selectableConnections(
   offerOwnAddress: boolean,
 ): string[] {
   return [
-    ...(offerOwnAddress && ownAddressAllowed(descriptor) ? [OWN_ADDRESS] : []),
     ...profileChoices(options.filter(admitsLibraries)),
+    ...(offerOwnAddress && ownAddressAllowed(descriptor) ? [OWN_ADDRESS] : []),
     ...profileChoices(options.filter(onOwnAccount)).map(privateConnection),
   ]
 }

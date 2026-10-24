@@ -31,6 +31,7 @@ import {
   framedBy,
   sourceConnectionOf,
 } from './sources/sourceConnection'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /** What the dialog reads of the stored library. */
 export interface ConnectableLibrary {
@@ -48,8 +49,8 @@ interface LibraryConnectionDialogProps {
   descriptor: SourceTypeDescriptor
   /** The profile the library is connected through now; `null` for its own address. */
   current: ConnectionProfileRef | null
-  /** Opens „Quelle bearbeiten“, where a discarded secret is entered anew. */
-  onEditSource: () => void
+  /** Opens „Quelle bearbeiten“, where a discarded secret is entered anew; absent where it has none. */
+  onEditSource?: () => void
   /** The library is private: only profiles with a connected account of its owner are offered. */
   privateLibrary?: boolean
 }
@@ -158,7 +159,7 @@ export default function LibraryConnectionDialog({
         notify(
           `Die Bibliothek ist jetzt über den Zugang „${name}“ verbunden. Weil sich dabei der Server geändert hat, wurden die hinterlegten Zugangsdaten verworfen; bis sie neu eingetragen sind, läuft die Bibliothek nicht.`,
           'warning',
-          { label: 'Quelle bearbeiten', onClick: onEditSource },
+          onEditSource && { label: 'Quelle bearbeiten', onClick: onEditSource },
         )
       } else {
         notify(`Die Bibliothek ist jetzt über den Zugang „${name}“ verbunden.${tested}`, 'success')
@@ -203,6 +204,7 @@ export default function LibraryConnectionDialog({
             offerOwnAddress={false}
             excludeProfileId={current?.id}
             onlyOwnAccounts={privateLibrary}
+            showSingle
             idPrefix="library-connection"
           />
           {next && !repair && (
@@ -237,7 +239,7 @@ export default function LibraryConnectionDialog({
                     ? `Liegt unter der Server-Adresse des Zugangs: ${next.serverUrl}`
                     : `Muss unter der Server-Adresse des Zugangs liegen: ${next.serverUrl}`
                 }
-                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
               />
             </>
           )}
@@ -281,7 +283,6 @@ export default function LibraryConnectionDialog({
         {failed ? (
           <BusyButton
             variant="contained"
-            color="warning"
             onClick={() => void connect(visible)}
             busy={submitting}
             busyAnnouncement="Zugang wird zugeordnet"

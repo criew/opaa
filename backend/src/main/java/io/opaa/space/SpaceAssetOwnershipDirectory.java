@@ -138,9 +138,16 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-            .before(Map.of("ownerId", previousOwnerId.toString()))
-            .after(Map.of("ownerId", newOwner.id().toString(), "transferId", transferId.toString()))
+            .before(Map.of("ownerId", ownerRef(previousOwnerId, space)))
+            .after(
+                Map.of(
+                    "ownerId", ownerRef(newOwner.id(), space), "transferId", transferId.toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
+  }
+
+  /** A space owner is always a person: the audit log names them by pseudonym only. */
+  private String ownerRef(UUID ownerId, Space space) {
+    return auditEventRecorder.pseudonymFor(ownerId, space.getOrganizationId()).toString();
   }
 }

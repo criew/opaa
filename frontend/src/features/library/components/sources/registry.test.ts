@@ -4,7 +4,7 @@ import { EMPTY_CONFLUENCE_VALUES } from '../../utils/confluenceSource'
 import { EMPTY_S3_VALUES } from '../../utils/s3Source'
 import { SOURCE_TYPE_DIRECTORY, sourceTypeEntry } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from './registry'
-import type { SourceConfiguration, SourceFormContext } from './types'
+import type { SourceConfiguration } from './types'
 
 const generic = {
   sourcePath: ' /data/dokumente ',
@@ -16,10 +16,6 @@ function configurationOf(type: string): SourceConfiguration<unknown> {
   const configuration = sourceRegistration(type)?.configuration
   if (!configuration) throw new Error(`no configuration for ${type}`)
   return configuration
-}
-
-function context(type: string, patch: Partial<SourceFormContext> = {}): SourceFormContext {
-  return { mode: 'create', sourceType: type, idPrefix: 'test', credentialsStored: false, ...patch }
 }
 
 describe('the source registry (ADR-0038)', () => {
@@ -96,30 +92,13 @@ describe('the source registry (ADR-0038)', () => {
       },
     }
 
-    it('reads a stored library back unchanged and refuses a new one without a profile', () => {
+    it('reads a stored library back unchanged', () => {
       const sharePoint = configurationOf('SHAREPOINT')
       const values = sharePoint.fromLibrary(library)
       expect(sharePoint.toPayload(values)).toEqual({
         sourceUrl: 'https://graph.microsoft.com',
         sourceSettings: library.sourceSettings,
       })
-      expect(sharePoint.validate(values, context('SHAREPOINT'))).toEqual({
-        message: 'SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.',
-      })
-      expect(
-        sharePoint.validate(
-          values,
-          context('SHAREPOINT', {
-            connection: {
-              profileId: 'p',
-              name: 'SharePoint',
-              serverUrl: 'https://graph.microsoft.com',
-              authMethod: 'CLIENT_CREDENTIALS',
-              defaults: {},
-            },
-          }),
-        ),
-      ).toBeNull()
       expect(sharePoint.nameFromSource(values)).toBe('')
     })
 
@@ -145,36 +124,6 @@ describe('the source registry (ADR-0038)', () => {
     expect(configurationOf('HTTP_DIRECTORY').toPayload(generic)).toEqual({
       sourceUrl: 'https://docs.example/',
       sourceCredentials: 'user:pw',
-    })
-  })
-
-  it('keeps the generic checks for path and URL sources', () => {
-    expect(
-      configurationOf('FILESYSTEM').validate(
-        { ...generic, sourcePath: 'relativ', excludePatterns: '' },
-        context('FILESYSTEM'),
-      ),
-    ).toEqual({
-      field: 'sourcePath',
-      message: 'Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente',
-    })
-    expect(
-      configurationOf('FILESYSTEM').validate(
-        { ...generic, excludePatterns: '/data/Archiv/**' },
-        context('FILESYSTEM'),
-      ),
-    ).toEqual({
-      field: 'excludePatterns',
-      message: expect.stringMatching(/relativ zum Verzeichnispfad/),
-    })
-    expect(
-      configurationOf('HTTP_DIRECTORY').validate(
-        { ...generic, sourceUrl: 'docs.example' },
-        context('HTTP_DIRECTORY'),
-      ),
-    ).toEqual({
-      field: 'sourceUrl',
-      message: 'Adresse (URL) muss mit http:// oder https:// beginnen',
     })
   })
 
@@ -217,20 +166,6 @@ describe('the source registry (ADR-0038)', () => {
     expect(payload.sourceSettings?.edition).toBe('DATA_CENTER')
   })
 
-  it('delegates Confluence to the staged validation', () => {
-    const confluence = configurationOf('CONFLUENCE')
-    expect(
-      confluence.validate(
-        { ...EMPTY_CONFLUENCE_VALUES, sourceUrl: 'https://wiki.example' },
-        context('CONFLUENCE'),
-      ),
-    ).toEqual({ message: 'Bitte zuerst die Edition erkennen lassen („Edition erkennen“)' })
-    expect(confluence.validate(EMPTY_CONFLUENCE_VALUES, context('CONFLUENCE'))).toEqual({
-      field: 'sourceUrl',
-      message: 'Adresse der Confluence-Instanz ist erforderlich',
-    })
-  })
-
   describe('S3 (#1377, ADR-0027)', () => {
     const s3 = {
       ...EMPTY_S3_VALUES,
@@ -252,30 +187,6 @@ describe('the source registry (ADR-0038)', () => {
           includePatterns: [],
           excludePatterns: ['**/~*'],
         },
-      })
-    })
-
-    it('validates through the S3 stages and lets a stored key stand on the same endpoint', () => {
-      const s3Config = configurationOf('S3')
-      const keyless = { ...s3, accessKey: '', secretKey: '' }
-      expect(s3Config.validate(s3, context('S3'))).toBeNull()
-      expect(s3Config.validate(keyless, context('S3'))).toEqual({
-        field: 'accessKey',
-        message: 'Access Key ist erforderlich',
-      })
-      expect(
-        s3Config.validate(
-          keyless,
-          context('S3', {
-            mode: 'edit',
-            credentialsStored: true,
-            originalSourceUrl: 'https://minio.intern.example:9000',
-          }),
-        ),
-      ).toBeNull()
-      expect(s3Config.validate(EMPTY_S3_VALUES, context('S3'))).toEqual({
-        field: 'sourceUrl',
-        message: expect.stringMatching(/Endpoint/),
       })
     })
   })
