@@ -11,8 +11,7 @@ import type { TextPreviewResult } from '../utils/documentContent'
 import { fontFamily } from '@/shared/theme/tokens'
 
 interface DocumentTextPreviewDialogProps {
-  /** `null` keeps the dialog closed (mirrors MUI's own `open` pattern used elsewhere in this app -
-   *  see EditLibrarySourceDialog) - the last previewed document's content stays out of the DOM once
+  /** `null` keeps the dialog closed - the last previewed document's content stays out of the DOM once
    *  closed rather than lingering hidden. Named `previewDocument`, not `document` - the latter
    *  would shadow the global `document` inside this component's scope. */
   previewDocument: TextPreviewResult | null

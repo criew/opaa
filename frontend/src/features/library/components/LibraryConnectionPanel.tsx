@@ -19,8 +19,8 @@ interface LibraryConnectionPanelProps {
   connectionProfileRemoved?: boolean
   /** A private library is never released from its profile, only moved to one with its owner's account. */
   privateLibrary?: boolean
-  /** Opens „Quelle bearbeiten“ - after a switch that discarded the secret. */
-  onEditSource: () => void
+  /** Opens „Quelle bearbeiten“ - after a switch that discarded the secret; absent where it has none. */
+  onEditSource?: () => void
   /** Whether the dialog to connect or switch is open - also opened from the notices above. */
   dialogOpen: boolean
   onDialogOpenChange: (open: boolean) => void

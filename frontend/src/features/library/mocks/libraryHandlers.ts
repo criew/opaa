@@ -643,7 +643,7 @@ export const libraryHandlers = [
       sourceSettings?: Record<string, unknown> | null
     }
     library.name = body.name
-    // the edit dialogs resend the typed configuration as a whole (ADR-0027); a secret is replaced
+    // an edit resends the typed configuration as a whole (ADR-0027); a secret is replaced
     // only when one is sent
     if (library.sourceType !== 'UPLOAD') {
       if (body.sourcePath !== undefined && library.sourceType === 'FILESYSTEM') {

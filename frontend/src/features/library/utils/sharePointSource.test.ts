@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   EMPTY_SHAREPOINT_VALUES,
-  sharePointCoverageLabel,
   sharePointFolderPath,
-  sharePointKeyOf,
   sharePointLibrariesOf,
   sharePointLibraryName,
   sharePointPayloadOf,
@@ -103,19 +101,10 @@ describe('sharePointSource (ADR-0047)', () => {
     ).toBeNull()
   })
 
-  it('words names, paths, coverage and listing keys', () => {
+  it('words names and paths', () => {
     expect(sharePointLibraryName('Dokumente', 'Bauamt')).toBe('Dokumente (Bauamt)')
     expect(sharePointLibraryName(null, 'Bauamt')).toBe('Bauamt')
     expect(sharePointLibraryName('x'.repeat(300), null)).toHaveLength(200)
     expect(sharePointFolderPath(['Akten'], '2026')).toBe('Akten / 2026')
-    expect(
-      sharePointCoverageLabel({ driveId: 'b!a', name: null, folders: [{ id: '01X', name: null }] }),
-    ).toBe('Ordner: Ordner 01X')
-    expect(sharePointCoverageLabel({ driveId: 'b!a', name: null, folders: [] })).toBe(
-      'ganze Dokumentbibliothek',
-    )
-    expect(sharePointKeyOf('site:host,a,b')).toEqual({ kind: 'site', id: 'host,a,b' })
-    expect(sharePointKeyOf('drive:b!a')).toEqual({ kind: 'drive', id: 'b!a' })
-    expect(sharePointKeyOf('myDrive')).toBeNull()
   })
 })

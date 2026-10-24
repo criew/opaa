@@ -13,7 +13,6 @@ import {
   scheduleUpdateFrom,
   scheduleValuesFrom,
   validateScheduleValues,
-  type ConfluenceFullSyncRhythm,
 } from '../utils/librarySchedule'
 
 interface EditLibraryScheduleDialogProps {
@@ -21,27 +20,13 @@ interface EditLibraryScheduleDialogProps {
   onClose: () => void
   libraryId: string
   schedule: LibrarySchedule | null | undefined
-  /** Present only for a CONFLUENCE library - the dialog then offers the full-sync rhythm. */
-  confluence?: ConfluenceFullSyncRhythm
-  /** The stored settings a rhythm change resends whole, for a connector without partial updates. */
-  settingsBase?: Record<string, unknown>
   // KnowledgeLibraryService#updateLibrary overwrites name/description unconditionally when
-  // present in the request (see EditLibrarySourceDialog's identical reasoning) - this dialog only
-  // touches the schedule, so the current values must be resent unchanged rather than omitted.
+  // present in the request - this dialog only touches the schedule, so the current values must
+  // be resent unchanged rather than omitted.
   library: {
     name: string
     description?: string | null
   }
-}
-
-/** The schedule update with its settings part laid over {@code base}, when there is one. */
-function withSettingsBase<T extends { sourceSettings?: Record<string, unknown> }>(
-  update: T,
-  base: Record<string, unknown> | undefined,
-): T {
-  return base && update.sourceSettings
-    ? { ...update, sourceSettings: { ...base, ...update.sourceSettings } }
-    : update
 }
 
 /**
@@ -54,13 +39,11 @@ export default function EditLibraryScheduleDialog({
   onClose,
   libraryId,
   schedule,
-  confluence,
-  settingsBase,
   library,
 }: EditLibraryScheduleDialogProps) {
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
 
-  const [values, setValues] = useState(() => scheduleValuesFrom(schedule, confluence))
+  const [values, setValues] = useState(() => scheduleValuesFrom(schedule))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -70,7 +53,7 @@ export default function EditLibraryScheduleDialog({
   }
 
   async function handleSave() {
-    const validationError = validateScheduleValues(values, confluence)
+    const validationError = validateScheduleValues(values)
     if (validationError) {
       setError(validationError)
       return
@@ -84,7 +67,7 @@ export default function EditLibraryScheduleDialog({
         // Deliberately no source configuration field set - mirrors LibraryDetailPage's own
         // master data form: the backend leaves the stored source configuration unchanged
         // as long as none of its fields is present in the request.
-        ...withSettingsBase(scheduleUpdateFrom(values, confluence), settingsBase),
+        ...scheduleUpdateFrom(values),
       })
       onClose()
     } catch (err) {
@@ -104,7 +87,6 @@ export default function EditLibraryScheduleDialog({
             idPrefix="library-schedule"
             values={values}
             onChange={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
-            confluence={confluence}
           />
         </Stack>
       </DialogContent>

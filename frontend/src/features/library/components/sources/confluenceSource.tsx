@@ -3,13 +3,11 @@ import {
   confluenceSettingsOf,
   confluenceSpaceLabel,
   EMPTY_CONFLUENCE_VALUES,
-  confluenceIssue,
   type ConfluenceSourceValues,
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
-import ConfluenceSourceForm from '../ConfluenceSourceForm'
-import { ConfluencePush, ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
-import { connectionFields } from './sourceConnection'
+import { confluenceSetup } from '../setup/connectors/confluenceSetup'
+import { ConfluencePush } from './ConfluenceSourceViews'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -31,7 +29,6 @@ export const confluenceSource: SourceRegistration = {
       spaces: confluenceSettingsOf(library).spaces ?? [],
     }),
     isDirty: (values: ConfluenceSourceValues) => values.sourceUrl !== '',
-    validate: (values: ConfluenceSourceValues) => confluenceIssue(values),
     toPayload: (values: ConfluenceSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: confluenceCredentialsOf(values),
@@ -45,20 +42,6 @@ export const confluenceSource: SourceRegistration = {
       if (!first) return ''
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
-    Form: ({ values, onChange, context }) => (
-      <ConfluenceSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-confluence`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: ConfluenceStoredView,
-    Scope: ConfluenceScope,
     scopeNoteId: 'confluence-sharing-consequence',
     Push: ConfluencePush,
     scopeHero: {
@@ -84,5 +67,6 @@ export const confluenceSource: SourceRegistration = {
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.',
     runsHint: '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Spaces neu.',
+    setup: confluenceSetup,
   },
 }

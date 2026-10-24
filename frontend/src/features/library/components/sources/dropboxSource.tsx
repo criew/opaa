@@ -3,12 +3,9 @@ import {
   dropboxFoldersOf,
   dropboxSettingsFrom,
   dropboxSettingsOf,
-  dropboxIssue,
   type DropboxSourceValues,
 } from '../../utils/dropboxSource'
-import DropboxSourceForm from '../DropboxSourceForm'
-import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
-import { connectionFields } from './sourceConnection'
+import { dropboxSetup } from '../setup/connectors/dropboxSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -27,7 +24,6 @@ export const dropboxSource: SourceRegistration = {
       }
     },
     isDirty: (values: DropboxSourceValues) => values.folders.trim() !== '/' || values.teamSpace,
-    validate: (values: DropboxSourceValues) => dropboxIssue(values),
     toPayload: (values: DropboxSourceValues) => ({
       sourceSettings: dropboxSettingsFrom(values),
     }),
@@ -37,17 +33,6 @@ export const dropboxSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    Form: ({ values, onChange, context }) => (
-      <DropboxSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-dropbox`}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: DropboxStoredView,
-    Scope: DropboxScope,
     scopeNoteId: 'dropbox-sharing-consequence',
     scopeHero: {
       summary: (library) => {
@@ -66,5 +51,6 @@ export const dropboxSource: SourceRegistration = {
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Ordner; danach liest jeder Lauf nur das Änderungsprotokoll von Dropbox.',
     runsHint: '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Ordner neu.',
+    setup: dropboxSetup,
   },
 }

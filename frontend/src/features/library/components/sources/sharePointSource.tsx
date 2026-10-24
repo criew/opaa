@@ -4,13 +4,9 @@ import {
   sharePointLibraryLabel,
   sharePointPayloadOf,
   sharePointSettingsFromLibrary,
-  validateSharePointValues,
   type SharePointSourceValues,
 } from '../../utils/sharePointSource'
-import SharePointSourceForm from '../SharePointSourceForm'
-import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
-import { formIssue, formIssueOf } from '../../utils/sourceIssue'
-import { connectionFields } from './sourceConnection'
+import { sharePointSetup } from '../setup/connectors/sharePointSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
@@ -38,27 +34,9 @@ export const sharePointSource: SourceRegistration = {
     },
     isDirty: (values: SharePointSourceValues) => values.libraries.length > 0,
     // ADR-0047: only a profile signs in; the library holds no secret
-    validate: (values: SharePointSourceValues, context) =>
-      context.mode === 'create' && !context.connection
-        ? formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')
-        : formIssueOf(validateSharePointValues(values)),
     toPayload: sharePointPayloadOf,
     nameFromSource: (values: SharePointSourceValues) =>
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
-    Form: ({ values, onChange, context }) => (
-      <SharePointSourceForm
-        // listings belong to the profile they were made through; another one starts them afresh
-        key={context.connection?.profileId ?? 'no-profile'}
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-sharepoint`}
-        libraryId={context.libraryId}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: SharePointStoredView,
-    Scope: SharePointScopeView,
     scopeNoteId: 'sharepoint-sharing-consequence',
     scopeHero: {
       summary: (library) => {
@@ -82,5 +60,6 @@ export const sharePointSource: SourceRegistration = {
       'Der erste Lauf ist ein Vollabgleich über alle Dokumentbibliotheken; danach liest jeder Lauf nur das Änderungsprotokoll von Microsoft Graph.',
     runsHint:
       '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Dokumentbibliotheken neu.',
+    setup: sharePointSetup,
   },
 }
