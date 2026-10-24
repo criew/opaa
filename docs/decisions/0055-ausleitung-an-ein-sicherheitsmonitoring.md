@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -27,7 +27,8 @@ Schnitt des Protokolls („Zugriff verändert oder Verwaltungshandeln“) auch f
 ### 2. Ohne Pseudonyme, als Vorgabe ohne Namen
 
 Je Eintrag gehen Ereignisart, Zeitpunkt, Ergebnis, Organisation sowie Art und Kennung des
-betroffenen Objekts hinaus, nie das Pseudonym der handelnden oder betroffenen Person, nie
+betroffenen Objekts hinaus, dazu die Version des Ereigniskatalogs (`schema_version`), unter der er
+geschrieben ist, nie das Pseudonym der handelnden oder betroffenen Person, nie
 Begründung, Nutzlast oder Vorgangskennung. Den Namen des Objekts sendet OPAA nur mit
 `opaa.siem-export.include-labels` (datenwirksam, aus), weil Namen von Spaces und Gruppen oft Personen
 nennen. Gehört das Objekt genau einer Person, fehlen Kennung und Name immer: Konto und Zugangstoken
@@ -56,7 +57,10 @@ Dienstvereinbarung.
 
 Je Eintrag eine Nachricht nach RFC 5424 mit einem CEF-Körper, über TCP mit Längenpräfix (RFC 6587),
 als Vorgabe mit TLS (RFC 5425), Vertrauensspeicher der JVM und Prüfung des Hostnamens
-(`CefSyslogFormatter`, `SyslogSender`). Die Kennung des Eintrags steht in `externalId`. Nach der letzten
+(`CefSyslogFormatter`, `SyslogSender`). Die Kennung des Eintrags steht in `externalId`, die Version
+des Ereigniskatalogs als Zahlenfeld `cn1` mit `cn1Label=schemaVersion`; ein Eintrag von vor dem
+Katalog trägt keine, das Feld fehlt dann. So liest ein Empfänger Ereignisart und Version als
+Vertrag, auch wenn er keine Nutzlast erhält. Nach der letzten
 Meldung schließt OPAA die Sendeseite und wartet kurz auf das Verbindungsende des Empfängers. Ein
 Empfänger, der die Verbindung schon verloren hat, lässt die Zustellung dort meist scheitern; hat er
 sie gleich nach dem Annehmen geschlossen, kann sie dennoch als gelungen gelten. Eine

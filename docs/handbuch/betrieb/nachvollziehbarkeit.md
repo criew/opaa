@@ -73,6 +73,11 @@ gilt:
 
 - **Pseudonym ab dem Schreiben:** Im Protokoll steht statt eines Namens eine Kennung. Welche Person
   dazu gehört, liegt getrennt in einer eigenen Tabelle (`datenkatalog`, Eintrag `audit-pseudonyms`).
+- **Feste Angaben je Ereignisart:** Was ein Eintrag über den Stand vorher und nachher festhält,
+  legt ein Ereigniskatalog je Ereignisart fest, etwa bei einer geänderten Rolle in einem Space nur
+  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt OPAA nicht ins Protokoll und meldet
+  sie im Log als Fehler. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist;
+  Einträge von vor dem Katalog tragen keine.
 - **Keine Suche nach Personen:** Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
   Vorgang ab, jeweils für einen begrenzten Zeitraum
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).

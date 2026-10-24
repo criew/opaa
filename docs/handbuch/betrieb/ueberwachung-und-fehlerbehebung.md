@@ -57,7 +57,7 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
 > aber ohne die Person, die sie erteilt hat.
 
 - **Was hinausgeht:** je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis,
-  Organisation sowie Art und Kennung des betroffenen Objekts. Nie gehen Pseudonyme handelnder oder
+  Organisation sowie Art und Kennung des betroffenen Objekts und die Version des Ereigniskatalogs. Nie gehen Pseudonyme handelnder oder
   betroffener Personen, Begründungen oder Inhalte hinaus. Den Namen des Objekts (etwa eines Space
   oder einer Gruppe) sendet OPAA nur mit `OPAA_SIEM_EXPORT_INCLUDE_LABELS`, weil Namen oft Personen
   nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
@@ -68,7 +68,9 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   nach, sonst nicht. Das ist neben der Revision und der Selbstauskunft der einzige Leser.
 - **Format:** Syslog (RFC 5424) mit CEF-Inhalt über TCP, voreingestellt mit TLS und dem
   Vertrauensspeicher der Java-Laufzeit samt Prüfung des Hostnamens. Die Kennung jedes Eintrags steht
-  in `externalId`. Die Verbindung geht direkt, nie über den Ausgangsproxy.
+  in `externalId`, die Version des Ereigniskatalogs, unter der er geschrieben ist, in `cn1`
+  (`cn1Label=schemaVersion`); Einträge von vor dem Katalog tragen keine. Die Verbindung geht direkt,
+  nie über den Ausgangsproxy.
 - **Ab dem Einschalten:** Gesendet wird, was nach dem ersten Lauf ins Protokoll kommt; der ältere
   Bestand nicht. Nach dem Abschalten beginnt die Ausleitung beim Wiedereinschalten neu; die Pause
   meldet sie als Lücke.
