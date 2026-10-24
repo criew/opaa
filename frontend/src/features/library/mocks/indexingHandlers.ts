@@ -3,8 +3,8 @@ import {
   mockEmbeddingIndexCurrent,
   mockIndexingIdle,
   mockIndexingCompleted,
-  mockIndexingRuns,
 } from './indexingFixtures'
+import { scenarioIndexingRuns } from './libraryScenarioFixtures'
 import { mockSearchStatus } from '../../search-admin/mocks/searchAdminFixtures'
 import { mockLibraryDetails, mockSourceTypes } from './libraryFixtures'
 import type { IndexingStatusResponse, PushSecretResponse } from '@/shared/api/types'
@@ -172,7 +172,7 @@ export const indexingHandlers = [
   }),
 
   http.get('/api/v1/libraries/:libraryId/indexing/runs', () => {
-    return HttpResponse.json(mockIndexingRuns)
+    return HttpResponse.json(scenarioIndexingRuns())
   }),
 
   // The fixture is static, so the remaining work is counted down here: every call processes one
