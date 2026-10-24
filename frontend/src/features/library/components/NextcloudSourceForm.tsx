@@ -17,6 +17,7 @@ import {
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface NextcloudSourceFormProps {
   mode: 'create' | 'edit'
@@ -92,7 +93,7 @@ export default function NextcloudSourceForm({
       ? 'Für diese Bibliothek sind keine Zugangsdaten gespeichert.'
       : credentialsKept || !addressEntered
         ? 'Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'
-        : 'Die Adresse zeigt auf einen anderen Server - bitte die Zugangsdaten neu eingeben.'
+        : 'Die Adresse zeigt auf einen anderen Server – bitte die Zugangsdaten neu eingeben.'
 
   function connectionPayload() {
     return {
@@ -166,7 +167,7 @@ export default function NextcloudSourceForm({
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zur Nextcloud
         </Typography>
       )}
@@ -174,7 +175,7 @@ export default function NextcloudSourceForm({
         sx={{
           display: 'grid',
           gridTemplateColumns: isCreate ? { xs: '1fr', sm: '1fr 1fr' } : '1fr',
-          gap: '14px',
+          gap: 2,
         }}
       >
         <Box sx={{ gridColumn: '1 / -1' }}>
@@ -192,7 +193,7 @@ export default function NextcloudSourceForm({
               connection.addressHint ??
                 'Auch die WebDAV-Adresse aus der Nextcloud wird angenommen.',
             )}
-            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         {connection.asksSecret && (
@@ -243,7 +244,7 @@ export default function NextcloudSourceForm({
               issueFor('folders'),
               'Ein Ordner je Zeile, wie der technische Nutzer ihn sieht, etwa /Projekte. / liest alles, auch Freigaben und Gruppenordner.',
             )}
-            slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
             <Stack

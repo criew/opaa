@@ -8,6 +8,7 @@ import { sameLibrarySourceOrigin, type GenericSourceValues } from '../utils/libr
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface UrlSourceFormProps {
   /** `create` adds the step's own heading and the two-column layout of the wizard. */
@@ -55,18 +56,18 @@ export default function UrlSourceForm({
     : !credentialsStored
       ? 'Für diese Quelle sind aktuell keine Zugangsdaten hinterlegt. Nur ausfüllen, wenn die Quelle eine Anmeldung verlangt.'
       : originChanged
-        ? 'Die Adresse zeigt auf einen anderen Server - die bestehenden Zugangsdaten werden dabei verworfen. Bitte bei Bedarf neu eingeben.'
+        ? 'Die Adresse zeigt auf einen anderen Server – die bestehenden Zugangsdaten werden dabei verworfen. Bitte bei Bedarf neu eingeben.'
         : 'Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben.'
 
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zum {documentSourceTypeLabel(sourceType)}
         </Typography>
       )}
       {sourceType === 'RSS_FEED' && (
-        <Alert severity="info" sx={{ mb: 1.75 }}>
+        <Alert severity="info" sx={{ mb: 1.5 }}>
           OPAA ruft neben dem Feed auch die von ihm verlinkten Detailseiten ab. Welche Adressen das
           sind, bestimmt der Betreiber des Feeds, nicht Sie selbst.
         </Alert>
@@ -75,7 +76,7 @@ export default function UrlSourceForm({
         sx={{
           display: 'grid',
           gridTemplateColumns: isCreate ? { xs: '1fr', sm: '1fr 1fr' } : '1fr',
-          gap: '14px',
+          gap: 2,
         }}
       >
         <Box sx={{ gridColumn: '1 / -1' }}>
@@ -89,7 +90,7 @@ export default function UrlSourceForm({
             placeholder="https://files.example.com/dokumente/"
             error={urlIssue !== null}
             helperText={withIssue(urlIssue, connection.addressHint ?? 'http oder https.')}
-            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         {connection.asksSecret && (

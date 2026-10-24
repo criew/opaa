@@ -94,6 +94,7 @@ async function chooseProfile(user: User, name: RegExp) {
 describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
   let started: ConnectionAuthorizationStartRequest[] = []
   let browsed: SourceBrowseRequest[] = []
+  let tested: Record<string, unknown>[] = []
   let created: LibraryRequest[] = []
   let createAnswer: () => Response
 
@@ -107,6 +108,7 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     vi.mocked(leaveFor).mockReset()
     started = []
     browsed = []
+    tested = []
     created = []
     createAnswer = () =>
       HttpResponse.json(
@@ -131,6 +133,11 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
           authorizationUrl: 'https://provider.example/authorize?state=s',
           expiresAt: '2026-10-05T09:10:00Z',
         })
+      }),
+      // the pending connection signs in for the test, no secret of the form
+      http.post('/api/v1/libraries/source-test', async ({ request }) => {
+        tested.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json({ reachable: true, message: 'Verbunden.' })
       }),
       http.post('/api/v1/source-types/:sourceType/browse', async ({ request }) => {
         browsed.push((await request.json()) as SourceBrowseRequest)
@@ -195,7 +202,9 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
   it('keeps the draft for the return and leaves for the provider', async () => {
     const user = userEvent.setup()
     renderWizard()
-    await chooseProfile(user, /Dropbox Bauamt/)
+    await chooseProfile(user, /Eigene Adresse/)
+    // the profile chosen explicitly: the draft keeps the choice for the return
+    await user.click(screen.getByRole('radio', { name: /Dropbox Bauamt/ }))
 
     await user.click(await screen.findByRole('checkbox', { name: SERVICE_ACCOUNT_CONFIRMATION }))
     await user.click(screen.getByRole('button', { name: 'Quelle verbinden' }))
@@ -229,11 +238,14 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     })
     await waitFor(() => expect(heading).toHaveFocus())
     expect(await screen.findByText(/Verbunden als „svc@bauamt\.example“/)).toBeVisible()
-    expect(screen.getByText(/60 Minuten/)).toBeVisible()
+    // the line names until when the library has to be created
+    expect(screen.getByText(/Verbunden als „svc@bauamt\.example“/)).toHaveTextContent(
+      /bis \d{2}:\d{2} Uhr anlegen/,
+    )
     // the draft is consumed: a later wizard starts afresh
     expect(readConsentIntent()).toBeNull()
 
-    await user.click(await screen.findByRole('button', { name: 'Ordner laden' }))
+    await user.click(await screen.findByRole('button', { name: /^Ändern\s*Umfang$/ }))
     await waitFor(() => expect(browsed).toHaveLength(1))
     expect(browsed[0]).toMatchObject({
       connectionProfileId: DROPBOX.id,
@@ -253,9 +265,16 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     await screen.findByText(/Verbunden als/)
 
     await next(user)
-    expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
+    expect(await screen.findByLabelText(/^Name/)).toHaveValue('Bauamt')
+    expect(tested).toHaveLength(1)
+    expect(tested[0]).toMatchObject({
+      connectionProfileId: DROPBOX.id,
+      pendingConnectionId: PENDING.id,
+    })
+    expect(tested[0].sourceCredentials).toBeUndefined()
     await next(user)
     expect(screen.getByText(/Für die Verbindung der Quelle sind Sie verantwortlich/)).toBeVisible()
+    await next(user)
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() =>
@@ -282,12 +301,14 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     renderWizard()
     await screen.findByText(/Verbunden als/)
     await next(user)
+    await screen.findByLabelText(/^Name/)
     await next(user)
 
     const choice = screen.getByRole('radiogroup', {
       name: 'Verantwortlich für die Verbindung der Quelle',
     })
     await user.click(within(choice).getByRole('radio', { name: `Gruppe „${group.name}“` }))
+    await next(user)
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() => expect(created).toHaveLength(1))
@@ -319,6 +340,8 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     const user = userEvent.setup()
     renderWizard()
     await screen.findByText(/Verbunden als/)
+    await next(user)
+    await screen.findByLabelText(/^Name/)
     await next(user)
     await next(user)
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))

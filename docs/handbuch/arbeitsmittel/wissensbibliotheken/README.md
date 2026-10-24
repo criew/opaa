@@ -99,7 +99,7 @@ Die Detailansicht einer Wissensbibliothek ist aufgebaut wie die jeder Art im Kat
 | Reiter | Inhalt |
 |---|---|
 | Dokumente | die Dokumente der Bibliothek, nach Ordnern gegliedert und durchsuchbar |
-| Quelle | woher die Dokumente kommen: der Umfang der Quelle, ihre Anbindung, der Zeitplan und die Läufe; fehlt beim Upload |
+| Quelle | woher die Dokumente kommen: die Zeilen „Verbindung", „Umfang" und „Zeitplan" wie beim Anlegen, darunter die Läufe; fehlt beim Upload |
 | Metadaten | die Felder, mit denen die Bibliothek ihre Dokumente beschreibt ([Metadaten](metadaten.md)) |
 | Freigaben | wer die Bibliothek sehen und pflegen darf ([Berechtigungen](../../konten-und-rechte/berechtigungen.md)) |
 | Zuordnungen | in welchen Spaces sie verwendet wird |
@@ -107,28 +107,54 @@ Die Detailansicht einer Wissensbibliothek ist aufgebaut wie die jeder Art im Kat
 Was man dort tun kann, hängt von der eigenen Rolle ab. **Wer liest**, sieht die Dokumente, den
 Umfang der Quelle, die Metadaten und die Freigaben. **Wer pflegt**, stößt außerdem einen Lauf an
 („Jetzt indizieren"), setzt Metadatenfelder und lädt bei einer Upload-Bibliothek Dokumente hoch oder
-löscht sie. **Wer verwaltet**, ändert darüber hinaus Anbindung und Zeitplan, sieht das Laufprotokoll
+löscht sie. **Wer verwaltet**, ändert darüber hinaus Verbindung, Umfang und Zeitplan, sieht das Laufprotokoll
 und vergibt Rechte. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht löschen;
 der nächste Lauf brächte sie zurück.
 
+Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ändern" klappt sie auf,
+„Speichern" übernimmt die Änderung, „Abbrechen" verwirft sie. Wo der Umfang nur im Auswahldialog
+gewählt wird, wie bei SharePoint, öffnet „Ändern" gleich den Dialog, und „Übernehmen" speichert
+sofort. Bei Quellen wie Confluence, S3 oder Nextcloud steht unter den Zeilen, auch für Lesende,
+dass alles daraus Indizierte für alle Leseberechtigten der Bibliothek sichtbar ist.
+
 ### 3.3 Eine Wissensbibliothek anlegen
 
-Angelegt wird über **„Neu"** im Katalog mit der Art „Wissen". Ein Assistent führt durch vier
+Angelegt wird über **„Neu"** im Katalog mit der Art „Wissen". Ein Assistent führt durch fünf
 Schritte:
 
 | Schritt | Inhalt |
 |---|---|
 | 1. Quellart | die Quellart wählen, etwa Confluence oder Upload; angeboten wird nur, was die Person anlegen darf |
-| 2. Quelle einrichten | gegebenenfalls den Zugang wählen, Adresse und Umfang eintragen, die Verbindung testen, dazu Zeitplan und ob die erste Indizierung sofort startet; entfällt beim Upload |
-| 3. Name & Beschreibung | vorbelegt, wo die Quelle einen Namen hergibt |
-| 4. Freigaben | Eigentümer und erste Freigaben an Personen und Gruppen |
+| 2. Quelle | die Zeilen „Verbindung", „Umfang" und „Zeitplan"; entfällt beim Upload |
+| 3. Name | Name und Beschreibung, vorbelegt, wo die Quelle einen Namen hergibt |
+| 4. Freigaben | Eigentümer und erste Freigaben an Personen und Gruppen; entfällt bei einer privaten Bibliothek |
+| 5. Prüfen | alle Angaben auf einen Blick, je Angabe mit „Ändern", dann „Bibliothek anlegen" |
 
-Die ersten beiden Schritte heißen nach dem, was man in ihnen tut; was man in „Quelle einrichten"
-einträgt, steht danach im Reiter „Quelle" der fertigen Bibliothek. Die letzten beiden heißen wie
-Kopf und Reiter der fertigen Bibliothek.
+**Die drei Zeilen der Quelle.** Jede Quellart zeigt dieselben Zeilen, je mit Titel, einer kurzen
+Zusammenfassung und dem Link „Ändern", der die Zeile aufklappt:
+
+- **Verbindung** — Zugang oder eigene Adresse und die Zugangsdaten, benannt wie beim Anbieter
+  (etwa „API-Token", „App-Passwort", „Access Key"). Beim Wechsel in die nächste Zeile testet OPAA
+  die Verbindung; die Zusammenfassung nennt Ziel und Ergebnis, etwa „verbunden" oder „Test
+  fehlgeschlagen" mit der Stufe, an der er scheiterte. Nach einem gescheiterten Test geht es mit
+  „Trotzdem fortfahren" weiter.
+- **Umfang** — was die Bibliothek aus der Quelle liest. Bis zu sieben Einträge einer Ebene stehen
+  als Kästchen direkt in der Zeile; bei mehr oder bei Unterebenen öffnet der Link
+  „`<Objekte>` auswählen …" einen Auswahldialog mit Pfadleiste, Suche ab sieben Einträgen und
+  „Übernehmen". Was sich nicht auflisten lässt, trägt man über „Von Hand eintragen …" ein. Bei
+  Ordnerquellen wie Nextcloud oder einem Dateiserver steht davor die Wahl „Alle Ordner" oder „Nur
+  ausgewählte Ordner"; bei den übrigen Quellen wählt man die Einträge immer ausdrücklich.
+- **Zeitplan** — Häufigkeit und Uhrzeit, vorbelegt mit täglich um 02:00, und ob die erste
+  Indizierung sofort nach dem Anlegen startet.
+
+Fehlt etwas, nennt „Weiter" alle offenen Angaben auf einmal unter „Fehler: n Angaben prüfen", je
+mit einem Link zum Feld. Was man hier einträgt, steht danach in denselben Zeilen im Reiter „Quelle"
+der fertigen Bibliothek.
 
 **Über einen Zugang.** Hat die Systemverwaltung für die Quelle einen [Zugang](../zugaenge.md)
-eingerichtet, wählt man ihn im Schritt „Quelle einrichten"; Adresse und technische Einstellungen
+eingerichtet, wählt man ihn in der Zeile „Verbindung": Stehen mehrere Wege offen, zeigt sie eine
+Liste der Zugänge mit ihrer Adresse und „Eigene Adresse" als letzte Wahl; gibt es nur einen, ist er
+gesetzt. Adresse und technische Einstellungen
 kommen dann vom Zugang, und je nach Quelle trägt man nur noch die eigenen Zugangsdaten ein.
 Später lässt sich der Zugang im Reiter „Quelle" wechseln, eine Bibliothek mit eigener Adresse einem
 Zugang zuordnen oder vom Zugang lösen.
@@ -145,7 +171,7 @@ Anbieter die Erlaubnis beendet, und kann neu verbinden.
 
 | Auslöser | Beschreibung |
 |---|---|
-| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" |
+| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" im Menü „Weitere Aktionen" |
 | Zeitplan | je Bibliothek einstellbar (Abschnitt 4.2) |
 | Ereignis der Quelle | manche Quellen melden Änderungen selbst, etwa Confluence per Webhook oder ein Objektspeicher per Benachrichtigung; OPAA holt kurz darauf genau die gemeldeten Dokumente. Ersetzt weder Zeitplan noch Vollabgleich |
 | Nachzug | kein regulärer Lauf: Die Systemverwaltung lässt Dokumente neu verarbeiten, die mit einem älteren Verfahren entstanden sind (Abschnitt 7.2) |

@@ -58,20 +58,25 @@ OPAA folgt nur über `https`, prüft das Ziel und sendet dorthin kein Token.
 
 ## 3. Quellkonfiguration
 
-Das Formular fragt weder Adresse noch Zugangsdaten ab; beides kommt vom Zugang. Steht kein Zugang zur
-Verfügung, verweist der Assistent an die Systemverwaltung.
+Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab; beides kommt vom Zugang. Steht kein
+Zugang zur Verfügung, verweist der Assistent an die Systemverwaltung. Gibt es nur einen, öffnet der
+Assistent gleich den Auswahldialog der Zeile „Umfang":
 
-1. **„Adresse der Site"** aus dem Browser eintragen, etwa `https://contoso.sharepoint.com/sites/team`,
-   und „Site öffnen". „Oder nach Sites suchen" geht nur mit `Sites.Read.All`.
-2. **Dokumentbibliotheken ankreuzen.** Sie erscheinen unter „Gewählte Dokumentbibliotheken" mit dem
-   Namen der Site; weitere Sites lassen sich nacheinander öffnen.
-3. **„Ordner wählen"** (optional) zeigt die Ordner Ebene für Ebene; ein angekreuzter Ordner gilt samt
-   Unterordnern. Ohne Ordner liest OPAA die ganze Dokumentbibliothek.
-4. **„Verbindung testen"** prüft jede gewählte Dokumentbibliothek samt Ordnern.
+1. **Site wählen.** Der Dialog listet die Sites („Sites suchen" geht nur mit `Sites.Read.All`); über
+   „Von Hand eintragen …" öffnet man eine Site über ihre „Adresse der Site" aus dem Browser, etwa
+   `https://contoso.sharepoint.com/sites/team`.
+2. **Dokumentbibliotheken ankreuzen.** Eine angekreuzte Dokumentbibliothek gilt ganz; über die
+   Pfadleiste lassen sich weitere Sites nacheinander öffnen.
+3. **Ordner** (optional): Eine Dokumentbibliothek öffnen zeigt ihre Ordner Ebene für Ebene; ein
+   angekreuzter Ordner gilt samt Unterordnern.
+4. **„Übernehmen"**; die Zeile nennt danach die gewählten Dokumentbibliotheken mit dem Namen der
+   Site. Der Verbindungstest prüft jede gewählte Dokumentbibliothek samt Ordnern.
 
-Sites, Dokumentbibliotheken und Ordner einer Ebene listet der Assistent nur bis zu einer festen Grenze;
-ist die Liste länger, steht darüber „Es werden die ersten … gezeigt". Eine fehlende Site lässt sich über
-einen engeren Suchbegriff oder ihre Adresse öffnen.
+Eine ganze Site oder „alle Sites" lässt sich nicht wählen. Sites, Dokumentbibliotheken und Ordner
+einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste
+unvollständig.". Eine fehlende Site lässt sich über einen engeren Suchbegriff oder ihre Adresse
+öffnen. Im Reiter „Quelle" öffnet „Ändern" am Umfang denselben Dialog, und „Übernehmen" speichert
+sofort.
 
 Unter „Umfang" stehen die Dokumentbibliotheken für alle Leseberechtigten, jeweils mit „ganze
 Dokumentbibliothek" oder den Ordnern. Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle …

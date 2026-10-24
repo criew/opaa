@@ -56,18 +56,18 @@ Konto, die Notabschaltung und das Löschen des Zugangs widerrufen das Token bei 
 
 ## 3. Quellkonfiguration
 
-Das Formular fragt weder Adresse noch Zugangsdaten ab. „Eigene Adresse" gibt es nicht.
+Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab. „Eigene Adresse" gibt es nicht.
 
-1. **Zugang** wählen.
+1. **Zugang** wählen, wenn mehrere zur Wahl stehen.
 2. **„Quelle verbinden"** und bei Dropbox mit dem Funktionskonto zustimmen
    ([Wissensbibliotheken](../README.md), Abschnitt 3.3). OPAA nennt danach das Konto
    („Verbunden als …"). Erst dann laden Ordnerauswahl und Test etwas.
-3. **„Team-Bereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
-4. **„Ordner"**: ein Pfad je Zeile, wie `/Projekte`; kein Ordner darf in einem anderen liegen.
-   „Ordner anzeigen unter" nennt den Pfad, dessen Unterordner „Ordner laden" vorschlägt. Bei sehr
-   vielen Unterordnern zeigt der Vorschlag nur die ersten und sagt das; die übrigen lassen sich über
-   ihren Pfad eintragen.
-5. **„Verbindung testen"** prüft jeden Ordner.
+3. **„Teambereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
+4. **Umfang**: „Alle Ordner" oder „Nur ausgewählte Ordner", Pfade wie `/Projekte`; kein Ordner
+   darf in einem anderen liegen. Die Auswahl zeigt die Ordner Ebene für Ebene; ist eine Ebene sehr
+   groß, steht „Liste unvollständig.", und die übrigen Ordner lassen sich über „Von Hand
+   eintragen …" angeben.
+5. Der Verbindungstest prüft jeden Ordner.
 
 Unter „Umfang" stehen die Ordner für alle Leseberechtigten, beim Team-Bereich mit „im Team-Bereich".
 Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". Eine geänderte Ordnerliste oder

@@ -247,9 +247,8 @@ describe('ConnectionCallbackPage', () => {
 
       expect(await screen.findByText('Assistent', { selector: 'div' })).toBeInTheDocument()
       expect(screen.getByTestId('address')).toHaveTextContent(/^\/libraries\/new$/)
-      expect(
-        await screen.findByText('Die Quelle ist verbunden als „svc@bauamt.example“.'),
-      ).toBeVisible()
+      // the wizard names the account in its row „Verbindung“; no popup lies on top of it
+      expect(screen.queryByText(/Die Quelle ist verbunden/)).not.toBeInTheDocument()
       expect(readConsentIntent()).toEqual({
         purpose: 'LIBRARY_NEW',
         profileId: 'profile-dropbox',

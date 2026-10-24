@@ -109,6 +109,7 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private UserService userService;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private AuditLogRepository auditLogRepository;
+  @Autowired private AuditEventRecorder auditEventRecorder;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -606,7 +607,9 @@ class AuditEventRecordingIntegrationTest {
             .filter(e -> e.getEventType() == AuditEventType.ASSET_OWNER_CHANGED)
             .toList();
     assertThat(ownerChanged).hasSize(2);
-    assertThat(ownerChanged.get(0).getAfter()).contains(member.toString());
+    assertThat(ownerChanged.get(0).getAfter())
+        .contains(auditEventRecorder.pseudonymFor(member, organizationId).toString())
+        .doesNotContain(member.toString());
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_CHANGED)

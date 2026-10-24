@@ -59,6 +59,7 @@ export const sharePointSource: SourceRegistration = {
     ),
     StoredView: SharePointStoredView,
     Scope: SharePointScopeView,
+    scopeNoteId: 'sharepoint-sharing-consequence',
     scopeHero: {
       summary: (library) => {
         const count = sharePointLibrariesOf(sharePointSettingsFromLibrary(library)).length
@@ -80,6 +81,6 @@ export const sharePointSource: SourceRegistration = {
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Dokumentbibliotheken; danach liest jeder Lauf nur das Änderungsprotokoll von Microsoft Graph.',
     runsHint:
-      '„Jetzt indizieren“ liest in der Regel nur das Änderungsprotokoll seit dem letzten Lauf. Nach einer Änderung der Auswahl und im eingestellten Abstand läuft es automatisch als Vollabgleich, der alle Dokumentbibliotheken vollständig listet, umbenannte oder verschobene Ordner nachführt und entfernt, was in SharePoint nicht mehr vorhanden ist. „Vollabgleich starten“ erzwingt ihn sofort.',
+      '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Dokumentbibliotheken neu.',
   },
 }

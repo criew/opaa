@@ -43,6 +43,19 @@ class AuditSelfDisclosurePayloadTest {
   }
 
   @Test
+  void anOwnerIdHoldingThePersonsPseudonymGoesOutAsYou() {
+    String pseudonym = "33333333-3333-3333-3333-333333333333";
+
+    assertThat(
+            AuditSelfDisclosurePayload.disclose(
+                AuditEventType.ASSET_OWNER_CHANGED,
+                "{\"ownerId\":\"" + pseudonym + "\"}",
+                pseudonym,
+                SELF))
+        .isEqualTo("{\"ownerId\":\"Sie\"}");
+  }
+
+  @Test
   void nothingGoesOutWhereTheListIsEmptyOrThePayloadIsUnreadable() {
     assertThat(
             AuditSelfDisclosurePayload.disclose(

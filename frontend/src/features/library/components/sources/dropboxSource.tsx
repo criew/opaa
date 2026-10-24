@@ -48,6 +48,7 @@ export const dropboxSource: SourceRegistration = {
     ),
     StoredView: DropboxStoredView,
     Scope: DropboxScope,
+    scopeNoteId: 'dropbox-sharing-consequence',
     scopeHero: {
       summary: (library) => {
         const count = dropboxSettingsOf(library).folders?.length ?? 0
@@ -64,7 +65,6 @@ export const dropboxSource: SourceRegistration = {
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Ordner; danach liest jeder Lauf nur das Änderungsprotokoll von Dropbox.',
-    runsHint:
-      '„Jetzt indizieren“ liest in der Regel nur das Änderungsprotokoll seit dem letzten Lauf. Nach einer Änderung der Ordner, nach einem in Dropbox gelöschten, umbenannten oder verschobenen Ordner und im eingestellten Abstand läuft es automatisch als Vollabgleich, der alle Ordner vollständig listet und entfernt, was in Dropbox nicht mehr vorhanden ist. „Vollabgleich starten“ erzwingt ihn sofort.',
+    runsHint: '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Ordner neu.',
   },
 }

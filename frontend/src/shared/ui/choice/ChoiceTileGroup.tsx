@@ -1,9 +1,7 @@
 import { useId, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import { blue } from '../../theme/tokens'
 
 export interface ChoiceTile<K extends string> {
   value: K
@@ -157,12 +155,8 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
               color: 'text.primary',
               // A locked tile's card is the wrapper below, which also holds the reason.
               ...(locked ? { p: 0, border: 0, width: '100%' } : card),
-              bgcolor: selected
-                ? (theme) =>
-                    theme.palette.mode === 'dark'
-                      ? alpha(theme.palette.primary.main, 0.16)
-                      : blue[50]
-                : 'transparent',
+              // selected: accent frame and check mark only, no tint (guidelines 5.11)
+              bgcolor: 'transparent',
               '&:hover': readOnly
                 ? {}
                 : { borderColor: selected ? 'primary.main' : 'text.disabled' },

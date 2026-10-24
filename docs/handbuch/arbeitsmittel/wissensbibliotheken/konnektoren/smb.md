@@ -46,15 +46,14 @@ flowchart LR
 
 ## 3. Quellkonfiguration
 
-| Angabe im Formular | Bedeutung |
+| Angabe | Bedeutung |
 |---|---|
-| „Adresse der Freigabe" | `smb://server[:port]/freigabe`; ein UNC-Pfad `\\server\freigabe` wird angenommen. Nur Server und Freigabe. Versteckte Freigaben (Name endet auf `$`, also auch `C$` und `ADMIN$`) werden nie angebunden |
-| „Dienstkonto", „Passwort" | `DOMÄNE\Benutzer`, `Benutzer@domäne` oder ein lokales Konto des Servers, ohne Doppelpunkt. Ein anderer Server **oder eine andere Freigabe** verlangt das Passwort neu, weil eine Freigabe eine eigene Rechtegrenze ist |
-| „Ordner" | ein bis fünfzig Pfade ab der Freigabe, etwa `/Projekte`; `/` oder leer liest die ganze Freigabe. Ordner dürfen sich nicht überschneiden, auch nicht bei anderer Schreibweise; kein Komma, `.`, `..` oder eines der Zeichen `\ : * ? " < > |` |
+| „Adresse" | `smb://server[:port]/freigabe`; ein UNC-Pfad `\\server\freigabe` wird angenommen. Nur Server und Freigabe. Versteckte Freigaben (Name endet auf `$`, also auch `C$` und `ADMIN$`) werden nie angebunden |
+| „Benutzername", „Passwort" | das Dienstkonto als `DOMÄNE\Benutzer`, `Benutzer@domäne` oder ein lokales Konto des Servers, ohne Doppelpunkt. Ein anderer Server **oder eine andere Freigabe** verlangt das Passwort neu, weil eine Freigabe eine eigene Rechtegrenze ist |
+| „Ordner" | in der Zeile „Umfang": „Alle Ordner" liest die ganze Freigabe, „Nur ausgewählte Ordner" ein bis fünfzig Pfade ab der Freigabe, etwa `/Projekte`. Ordner dürfen sich nicht überschneiden, auch nicht bei anderer Schreibweise; kein Komma, `.`, `..` oder eines der Zeichen `\ : * ? " < > |` |
 
-**„Ordner laden"** zeigt die Ordner im Stamm
-der Freigabe; darf das Konto den Stamm nicht auflisten, lassen sich die Pfade von Hand eintragen.
-**„Verbindung testen"** meldet sich an, öffnet die Freigabe und prüft jeden Ordner; jeder Befund hat
+Die Auswahl zeigt die Ordner der Freigabe Ebene für Ebene; darf das Konto den Stamm nicht auflisten,
+lassen sich die Pfade über „Von Hand eintragen …" angeben. Der Verbindungstest meldet sich an, öffnet die Freigabe und prüft jeden Ordner; jeder Befund hat
 einen eigenen Satz (Abschnitt 9). Eine geänderte Ordnerliste verwirft den Abgleichstand.
 
 **Über einen Zugang:** Seine Server-Adresse ist `smb://server[:port]`; jede Bibliothek nennt ihre

@@ -16,6 +16,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -50,6 +51,7 @@ import {
   type S3ScopeInput,
   type S3SourceValues,
 } from '../utils/s3Source'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface Message {
   severity: 'success' | 'warning' | 'error' | 'info'
@@ -240,7 +242,7 @@ export default function S3SourceForm({
           severity: 'success',
           text:
             buckets.length === 0
-              ? 'Der Schlüssel sieht keine Buckets - der Bucket-Name kann von Hand eingetragen werden.'
+              ? 'Der Schlüssel sieht keine Buckets – der Bucket-Name kann von Hand eingetragen werden.'
               : `${buckets.length} Bucket${buckets.length === 1 ? '' : 's'} geladen; sie stehen in den Bucket-Feldern zur Auswahl.`,
         })
       } else {
@@ -249,7 +251,7 @@ export default function S3SourceForm({
           severity: 'info',
           text:
             result.message ??
-            'Die Bucket-Liste ist mit diesen Zugangsdaten nicht lesbar - der Bucket-Name kann von Hand eingetragen werden.',
+            'Die Bucket-Liste ist mit diesen Zugangsdaten nicht lesbar – der Bucket-Name kann von Hand eingetragen werden.',
         })
       }
     } catch (err) {
@@ -304,7 +306,7 @@ export default function S3SourceForm({
     <Stack spacing={2.5}>
       {/* Stage 1: provider template and connection */}
       <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zum Objektspeicher
         </Typography>
         {/* Under a profile the endpoint comes from the profile, so no template applies. */}
@@ -339,9 +341,7 @@ export default function S3SourceForm({
             Push ist dort nicht möglich) und Verschlüsselung nur als SSE-C.
           </Alert>
         )}
-        <Box
-          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
-        >
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
           <Box>
             <FieldLabel htmlFor={`${idPrefix}-region`}>
               {values.provider === 'HETZNER' ? 'Standort (Region)' : 'Region'}
@@ -385,10 +385,10 @@ export default function S3SourceForm({
               helperText={withIssue(
                 issueFor('sourceUrl'),
                 connection.addressHint ??
-                  'http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche.',
+                  'http(s)://host[:port], ohne Pfad – Bucket und Präfix gehören in die Geltungsbereiche.',
               )}
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
             />
           </Box>
           <Box sx={{ gridColumn: '1 / -1' }}>
@@ -400,7 +400,7 @@ export default function S3SourceForm({
                   onChange={(e) => changeConnection({ pathStyle: e.target.checked })}
                 />
               }
-              label="Path-Style-Adressierung (endpoint/bucket/key - MinIO, Ceph)"
+              label="Path-Style-Adressierung (endpoint/bucket/key – MinIO, Ceph)"
             />
             {connection.isFixed('pathStyle') && (
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
@@ -414,12 +414,10 @@ export default function S3SourceForm({
       {/* Stage 2: the static key */}
       {connection.asksSecret && (
         <Box>
-          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
             Zugangsdaten
           </Typography>
-          <Box
-            sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
-          >
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <Box>
               <FieldLabel htmlFor={`${idPrefix}-access-key`}>
                 {mode === 'edit' && credentialsStored ? 'Neuer Access Key' : 'Access Key'}
@@ -440,7 +438,7 @@ export default function S3SourceForm({
                 slotProps={{
                   htmlInput: {
                     maxLength: MAX_S3_ACCESS_KEY_LENGTH,
-                    sx: { fontFamily: 'monospace' },
+                    sx: { fontFamily: fontFamily.mono },
                   },
                 }}
               />
@@ -522,7 +520,7 @@ export default function S3SourceForm({
               <ListItem
                 key={index}
                 disableGutters
-                sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 1.5, py: 0.75 }}
+                sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 1.5, py: 1 }}
               >
                 <Box>
                   <FieldLabel htmlFor={`${idPrefix}-scope-${index}-bucket`}>
@@ -561,21 +559,33 @@ export default function S3SourceForm({
                     error={prefixError !== null}
                     helperText={prefixIssue ? withIssue(prefixIssue) : (prefixError ?? undefined)}
                     fullWidth
-                    slotProps={{ htmlInput: { maxLength: 1023, sx: { fontFamily: 'monospace' } } }}
+                    slotProps={{
+                      htmlInput: { maxLength: 1023, sx: { fontFamily: fontFamily.mono } },
+                    }}
                   />
                 </Box>
-                <IconButton
-                  ref={(node) => {
-                    removeButtons.current[index] = node
-                  }}
-                  size="small"
-                  aria-label={`Bereich ${index + 1} entfernen`}
-                  disabled={values.scopes.length === 1}
-                  onClick={() => removeScope(index)}
-                  sx={{ alignSelf: 'end', mb: bucketError || prefixError ? 3 : 0.5 }}
-                >
-                  <DeleteIcon sx={{ fontSize: 18 }} />
-                </IconButton>
+                <Tooltip title="Bereich entfernen">
+                  <Box
+                    component="span"
+                    sx={{
+                      display: 'flex',
+                      alignSelf: 'end',
+                      mb: bucketError || prefixError ? 3 : 0.5,
+                    }}
+                  >
+                    <IconButton
+                      ref={(node) => {
+                        removeButtons.current[index] = node
+                      }}
+                      size="small"
+                      aria-label={`Bereich ${index + 1} entfernen`}
+                      disabled={values.scopes.length === 1}
+                      onClick={() => removeScope(index)}
+                    >
+                      <DeleteIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
+                </Tooltip>
               </ListItem>
             )
           })}
@@ -602,7 +612,7 @@ export default function S3SourceForm({
             {loadingBuckets ? 'Buckets werden geladen …' : 'Buckets laden'}
           </BusyButton>
         </Stack>
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
+        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
           {`${values.scopes.length} von höchstens ${MAX_S3_SCOPES} Bereichen.`}
           {mode === 'edit' &&
             ' Ein entfernter Bereich verschwindet mit dem nächsten Lauf aus dem Index; jede Änderung der Bereiche verwirft den Wiederaufnahmestand.'}
@@ -626,7 +636,7 @@ export default function S3SourceForm({
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: '14px',
+              gap: 2,
             }}
           >
             <Box>
@@ -645,7 +655,7 @@ export default function S3SourceForm({
                   'Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ als ganzes Segment steht für beliebig viele Segmente: „**/*.pdf“ trifft PDFs auf jeder Ebene, „*.pdf“ nur auf der obersten.',
                 )}
                 fullWidth
-                slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
               />
             </Box>
             <Box>
@@ -661,10 +671,10 @@ export default function S3SourceForm({
                 error={excludeIssue !== null}
                 helperText={withIssue(
                   excludeIssue,
-                  'Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt.',
+                  'Ein passender Schlüssel wird übersprungen – nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt.',
                 )}
                 fullWidth
-                slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
               />
             </Box>
           </Box>
@@ -702,7 +712,7 @@ export default function S3SourceForm({
                 <Typography
                   sx={{
                     fontSize: 13,
-                    fontFamily: 'monospace',
+                    fontFamily: fontFamily.mono,
                     color: check.message ? 'warning.main' : 'text.primary',
                   }}
                 >

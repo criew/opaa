@@ -80,7 +80,7 @@ export const mockLibraries: LibraryListResponse[] = [
   },
   {
     id: 'library-s3-protokolle',
-    name: 'Protokolle (S3)',
+    name: 'Sitzungsprotokolle',
     description: 'Sitzungsprotokolle aus dem Objektspeicher',
     ownerType: 'USER',
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
@@ -222,7 +222,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
   },
   'library-s3-protokolle': {
     id: 'library-s3-protokolle',
-    name: 'Protokolle (S3)',
+    name: 'Sitzungsprotokolle',
     description: 'Sitzungsprotokolle aus dem Objektspeicher',
     ownerType: 'USER',
     ownerId: 'mock-user-id',

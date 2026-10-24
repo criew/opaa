@@ -204,9 +204,14 @@ public class SpaceService {
       // the personal space's name is its owner's: the entry names it by id alone
       payload.put("name", space.getName());
     }
-    payload.put("ownerId", space.getOwnerId().toString());
+    payload.put("ownerId", auditOwnerRef(space.getOwnerId(), space));
     payload.put("chatAutoCleanup", space.isChatAutoCleanupEnabled());
     return payload;
+  }
+
+  /** A space owner is always a person: the audit log names them by pseudonym only. */
+  private String auditOwnerRef(UUID ownerId, Space space) {
+    return auditEventRecorder.pseudonymFor(ownerId, space.getOrganizationId()).toString();
   }
 
   public List<SpaceOverview> listSpaces(CurrentUser caller) {
@@ -708,8 +713,8 @@ public class SpaceService {
             .actor(caller.id())
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-            .before(Map.of("ownerId", previousOwnerId.toString()))
-            .after(Map.of("ownerId", newOwnerUserId.toString()))
+            .before(Map.of("ownerId", auditOwnerRef(previousOwnerId, space)))
+            .after(Map.of("ownerId", auditOwnerRef(newOwnerUserId, space)))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

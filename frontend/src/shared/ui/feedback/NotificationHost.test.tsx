@@ -1,6 +1,6 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import NotificationHost from './NotificationHost'
 import { notify, useNotificationStore } from '../../stores/notificationStore'
 
@@ -46,5 +46,64 @@ describe('NotificationHost', () => {
 
     expect(undo).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  describe('auto-dismiss (WCAG 2.2.1)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    function show() {
+      render(<NotificationHost />)
+      act(() => {
+        notify('Gespeichert.')
+      })
+      return screen.getByRole('alert')
+    }
+
+    const advance = (ms: number) =>
+      act(() => {
+        vi.advanceTimersByTime(ms)
+      })
+
+    it('dismisses a popup after six seconds', () => {
+      show()
+      advance(5900)
+      expect(screen.getByText('Gespeichert.')).toBeInTheDocument()
+      advance(200)
+      expect(screen.queryByText('Gespeichert.')).not.toBeInTheDocument()
+    })
+
+    it('stands still while the pointer is on the popup and runs again once it left', () => {
+      const alert = show()
+      fireEvent.mouseEnter(alert)
+      advance(20000)
+      expect(screen.getByText('Gespeichert.')).toBeInTheDocument()
+
+      fireEvent.mouseLeave(alert)
+      // the six seconds start afresh rather than resuming a shortened rest
+      advance(5500)
+      expect(screen.getByText('Gespeichert.')).toBeInTheDocument()
+      advance(600)
+      expect(screen.queryByText('Gespeichert.')).not.toBeInTheDocument()
+    })
+
+    it('stands still while the focus is in the popup and runs again once it left', () => {
+      const alert = show()
+      const close = within(alert).getByRole('button', { name: /schließen|close/i })
+      act(() => close.focus())
+      advance(20000)
+      expect(screen.getByText('Gespeichert.')).toBeInTheDocument()
+
+      act(() => close.blur())
+      // the six seconds start afresh rather than resuming a shortened rest
+      advance(5500)
+      expect(screen.getByText('Gespeichert.')).toBeInTheDocument()
+      advance(600)
+      expect(screen.queryByText('Gespeichert.')).not.toBeInTheDocument()
+    })
   })
 })

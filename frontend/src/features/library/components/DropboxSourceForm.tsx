@@ -14,6 +14,7 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface DropboxSourceFormProps {
   mode: 'create' | 'edit'
@@ -147,30 +148,31 @@ export default function DropboxSourceForm({
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Ordner in Dropbox
         </Typography>
       )}
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-        <FormControlLabel
-          control={
-            <Switch
-              id={`${idPrefix}-team-space`}
-              checked={values.teamSpace}
-              onChange={(e) => onChange({ teamSpace: e.target.checked })}
-              slotProps={{ input: { 'aria-describedby': `${idPrefix}-team-space-help` } }}
-            />
-          }
-          label="Team-Bereich lesen"
-        />
-        <Typography
-          id={`${idPrefix}-team-space-help`}
-          variant="body2"
-          sx={{ mt: -1, color: 'text.secondary' }}
-        >
-          Aus: die Ordner des verbundenen Kontos. An: die Ordner des Team-Bereichs, wenn das Konto
-          zu einem Dropbox-Team gehört.
-        </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                id={`${idPrefix}-team-space`}
+                checked={values.teamSpace}
+                onChange={(e) => onChange({ teamSpace: e.target.checked })}
+                slotProps={{ input: { 'aria-describedby': `${idPrefix}-team-space-help` } }}
+              />
+            }
+            label="Team-Bereich lesen"
+          />
+          <Typography
+            id={`${idPrefix}-team-space-help`}
+            sx={{ fontSize: 12, color: 'text.secondary' }}
+          >
+            Aus: die Ordner des verbundenen Kontos. An: die Ordner des Team-Bereichs, wenn das Konto
+            zu einem Dropbox-Team gehört.
+          </Typography>
+        </Box>
         <Box>
           <FieldLabel htmlFor={`${idPrefix}-folders`}>Ordner</FieldLabel>
           <TextField
@@ -186,7 +188,7 @@ export default function DropboxSourceForm({
               foldersIssue,
               'Ein Ordner je Zeile, wie das verbundene Konto ihn sieht, etwa /Projekte. / liest alles.',
             )}
-            slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         <Box>
@@ -198,7 +200,7 @@ export default function DropboxSourceForm({
             value={browsePath}
             onChange={(e) => setBrowsePath(e.target.value)}
             helperText="„Ordner laden“ zeigt die Ordner direkt unter diesem Pfad."
-            slotProps={{ htmlInput: { maxLength: 1000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 1000, sx: { fontFamily: fontFamily.mono } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
             <Stack

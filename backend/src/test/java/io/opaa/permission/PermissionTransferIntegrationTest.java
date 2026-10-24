@@ -811,6 +811,48 @@ class PermissionTransferIntegrationTest {
     }
   }
 
+  /**
+   * The owner entries name previous and new owner by pseudonym only - the transfer's own owner
+   * change of a library and a space, and the creation of a space for someone else. Regression guard
+   * for #3096: no row carries the account id of either person.
+   */
+  @Test
+  void namesOwnersInTheOwnerEntriesOnlyByTheirPseudonym() {
+    CurrentUser leaving = user(organizationA, SystemRole.USER);
+    CurrentUser successor = user(organizationA, SystemRole.USER);
+    libraryOwnedBy(organizationA, leaving.id());
+    spaceService.createSpace(new SpaceCreation("Team", null, leaving.id(), List.of(), null), admin);
+
+    execute(
+        new PermissionTransferOrder(
+            PermissionSubjectType.USER,
+            leaving.id(),
+            PermissionSubjectType.USER,
+            successor.id(),
+            EnumSet.of(PermissionTransferScope.OWNERSHIP)),
+        admin);
+
+    List<String> rows =
+        jdbcTemplate.queryForList(
+            "SELECT row_to_json(a)::text FROM audit_log a"
+                + " WHERE organization_id = ? AND event_type IN (?, ?)",
+            String.class,
+            organizationA,
+            AuditEventType.ASSET_OWNER_CHANGED.name(),
+            AuditEventType.SPACE_CREATED.name());
+    assertThat(rows).hasSize(3);
+    assertThat(rows)
+        .allSatisfy(
+            row ->
+                assertThat(row)
+                    .doesNotContain(leaving.id().toString())
+                    .doesNotContain(successor.id().toString()));
+    assertThat(String.join("\n", rows))
+        .contains(
+            auditEventRecorder.pseudonymFor(leaving.id(), organizationA).toString(),
+            auditEventRecorder.pseudonymFor(successor.id(), organizationA).toString());
+  }
+
   // -------------------------------------------------------------------------------------------
   // Who may, and which targets are accepted
   // -------------------------------------------------------------------------------------------
