@@ -51,6 +51,8 @@ import { externalAccessLibraryHandlers } from '@/features/external-access/mocks/
 import { searchHandlers } from '@/features/chat/mocks/searchHandlers'
 import { searchAdminHandlers } from '@/features/search-admin/mocks/searchAdminHandlers'
 import { diagnosticAccessHandlers } from '@/features/library/mocks/diagnosticAccessHandlers'
+// notification
+import { notificationHandlers } from '@/features/notification/mocks/notificationHandlers'
 // compliance
 import { selfDisclosureHandlers } from '@/features/compliance/mocks/selfDisclosureHandlers'
 // auth
@@ -120,6 +122,8 @@ export const handlers = [
   ...searchHandlers,
   ...searchAdminHandlers,
   ...diagnosticAccessHandlers,
+  // notification
+  ...notificationHandlers,
   // compliance
   ...selfDisclosureHandlers,
   // auth

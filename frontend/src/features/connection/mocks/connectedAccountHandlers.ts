@@ -74,8 +74,30 @@ function initialOverview(): ConnectedAccountsOverview {
 }
 
 let overview: ConnectedAccountsOverview = initialOverview()
-/** The states the mock provider handed out and not yet redeemed, with what they were for. */
-let pendingStates = new Map<string, ConnectionAuthorizationStartRequest>()
+/**
+ * The states the mock provider handed out and not yet redeemed, with what they were for. Kept in
+ * this tab's sessionStorage as well: the consent leaves the app (a full page load), which would
+ * otherwise drop them together with the rest of the in-memory mock state.
+ */
+const PENDING_STORAGE_KEY = 'opaa.mock.pendingAuthorizations'
+let pendingStates = loadPendingStates()
+
+function loadPendingStates(): Map<string, ConnectionAuthorizationStartRequest> {
+  try {
+    const stored = globalThis.sessionStorage?.getItem(PENDING_STORAGE_KEY)
+    return new Map(stored ? JSON.parse(stored) : [])
+  } catch {
+    return new Map()
+  }
+}
+
+function savePendingStates() {
+  try {
+    globalThis.sessionStorage?.setItem(PENDING_STORAGE_KEY, JSON.stringify([...pendingStates]))
+  } catch {
+    // without storage the round trip works only within one page load
+  }
+}
 
 /** The profiles the mock caller holds an account on, whatever its state. */
 export function mockOwnAccountProfileIds(): string[] {
@@ -85,6 +107,7 @@ export function mockOwnAccountProfileIds(): string[] {
 export function resetConnectedAccountMockState() {
   overview = initialOverview()
   pendingStates = new Map()
+  savePendingStates()
 }
 
 /** Stores the account as connected now, as the backend does after a sign-in or a consent. */
@@ -173,6 +196,7 @@ export const connectedAccountHandlers = [
     }
     const state = crypto.randomUUID()
     pendingStates.set(state, body)
+    savePendingStates()
     return HttpResponse.json({
       authorizationUrl: `/connections/callback?code=mock-code&state=${state}`,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
@@ -183,6 +207,7 @@ export const connectedAccountHandlers = [
     const body = (await request.json()) as ConnectionAuthorizationCompleteRequest
     const started = pendingStates.get(body.state)
     pendingStates.delete(body.state)
+    savePendingStates()
     if (!started) {
       return error(
         404,

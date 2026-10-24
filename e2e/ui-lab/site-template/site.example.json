@@ -1,0 +1,31 @@
+{
+  "title": "UI-Lab: Quellen-Einrichtung",
+  "intro": "Ist-Stand und Entwürfe für das Einrichten der Quelle einer Wissensbibliothek. Oben, was jede Variante ausmacht und was in die Mischung eingeflossen ist; unten alle Bildschirme und Videos je Variante, Konnektor, Fall und Breite.",
+  "dimension": "Konnektor",
+  "variants": [
+    { "id": "ist", "name": "Ist", "title": "Ist-Stand", "dir": "runs/ist", "idea": "Heutiger Stand von main, nur mit Mock-Szenarien", "strengths": "", "weaknesses": "Auswahllisten ohne Suche; Rückmeldungen mal Popup, mal eingeschoben", "score": 28 },
+    { "id": "A", "name": "A", "title": "A · Einheitlicher Rahmen", "dir": "runs/A", "idea": "Feste Abschnittsfolge Verbindung · Zugangsdaten · Umfang · Zeitplan", "strengths": "Ehrliche Teststufen je Konnektor", "weaknesses": "Listen ohne Höhengrenze", "score": 63 },
+    { "id": "M", "name": "M", "title": "M · Mischung", "dir": "runs/M", "idea": "Gerüst aus A, Auswahldialog aus B", "strengths": "", "weaknesses": "", "score": null, "pick": true }
+  ],
+  "scoreNote": "Bewertung: Mittel aus drei unabhängigen Juroren (Regeln · Skalierung · Ruhe und Konsistenz), je 0–100, gegen Prüfliste und Gestaltungsleitlinien.",
+  "learned": [
+    { "title": "In die Mischung übernommen", "items": [{ "text": "Bis 7 Einträge in der Zeile, ab 8 der Auswahldialog mit Suche", "src": "B" }] },
+    { "title": "Entschieden für die Leitlinien", "items": ["Sites, Spaces, Ordner als Liste oder Baum mit Suche, nie als Kacheln"] },
+    { "title": "Am Vorgehen verbessert", "items": ["Videos ab dem ersten Messlauf"] }
+  ],
+  "types": { "filesystem": "Dateisystem", "confluence": "Confluence", "sharepoint": "SharePoint", "nextcloud": "Nextcloud", "smb": "SMB", "s3": "S3", "gdrive": "Google Drive", "dropbox": "Dropbox" },
+  "scenarios": {
+    "small": { "label": "wenig", "text": "1–3 Einträge je Liste." },
+    "scale": { "label": "viel", "text": "17 Sites × 25 Bibliotheken, 450 Spaces, 600 Buckets, 200 Ordner je Ebene über 8 Ebenen, Namen bis 120 Zeichen." },
+    "failed": { "label": "Fehler", "text": "Auflisten oder Verbindungstest schlägt fehl (403/502 mit Backend-Meldung)." }
+  },
+  "areas": {
+    "wizard-empty": "Assistent, leer",
+    "wizard-filled": "Assistent, ausgefüllt",
+    "wizard-validation": "Absenden mit Fehlern",
+    "review": "Prüfen",
+    "edit": "Bearbeiten",
+    "detail": "Detail, Reiter „Quelle“"
+  },
+  "footer": "Ist-Stand: main mit Mock-Szenarien. Screenshots im hellen Schema; lange Seiten sind nach 2.400 px abgeschnitten."
+}
