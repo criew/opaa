@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -27,15 +27,23 @@ geprüft ist, womit, auf welchem Stand und mit welchen Lücken.
   automatischer Test mit dem Werkzeug axe-core nach jeder Übernahme in den Hauptstand und nächtlich;
   Tastatur-Durchgang von Hand bei jeder Änderung der Oberfläche; Screenreader-Stichproben bei neuen
   Bedienmustern.
+- **Prüfbericht je Version:** Der Release-Lauf prüft jede Version mit axe-core und legt den Bericht
+  ins Update-Paket (`barrierefreiheit/pruefbericht.md`): geprüfte Seiten in beiden Farbschemata,
+  angewandte Regeln, jeder Befund mit Stufe und die Regeln, die das Werkzeug nicht entscheiden konnte.
+  Ein Befund hält das Release nicht auf, er steht im Bericht.
 
 ### Prüfstand
 
-Der letzte vollständige Prüfdurchgang ist das Audit vom 28.08.2026, eine interne, werkzeuggestützte
-Prüfung des Projekts, kein BITV-Test einer unabhängigen Prüfstelle. Es fand vier Befunde, keinen
-kritischen; alle sind behoben. Das Audit prüfte einen Entwicklungsstand vor dem ersten Release und
-trägt deshalb **nicht als Prüfstand einer Version**. Seither geänderte Bereiche, etwa Katalog,
-Benutzerverwaltung und Chat-Archiv, sind nur automatisch geprüft. Ein Audit einer veröffentlichten
-Version steht aus.
+**Automatisierter Teil:** Prüfstand der eingesetzten Version ist ihr Prüfbericht im Update-Paket
+(`barrierefreiheit/pruefbericht.md`), mit Prüfdatum, Version und Commit. Er belegt nur, was ein
+Werkzeug erkennen kann.
+
+**Prüfung von Hand:** Der letzte vollständige Prüfdurchgang ist das Audit vom 28.08.2026, eine
+interne, werkzeuggestützte Prüfung des Projekts, kein BITV-Test einer unabhängigen Prüfstelle. Es
+fand vier Befunde, keinen kritischen; alle sind behoben. Das Audit prüfte einen Entwicklungsstand vor
+dem ersten Release und trägt deshalb **nicht als Prüfstand einer Version**. Seither geänderte
+Bereiche, etwa Katalog, Benutzerverwaltung und Chat-Archiv, sind nur automatisch geprüft. Ein Audit
+einer veröffentlichten Version steht aus.
 
 ### Bekannte Einschränkungen
 
@@ -48,7 +56,8 @@ Version steht aus.
 
 1. **Amtliches Muster holen:** für den Bund von der Überwachungsstelle BFIT-Bund, für Landesbehörden
    von der Überwachungsstelle des Landes.
-2. **Prüfstand und Einschränkungen übernehmen**, mit dem Textbaustein unten.
+2. **Prüfstand und Einschränkungen übernehmen**, mit dem Textbaustein unten; Datum und Befunde des
+   automatisierten Teils stehen im Prüfbericht der eingesetzten Version.
 3. **Offene Befunde prüfen:** die Liste offener Befunde zur Barrierefreiheit im Repository gegen die
    eingesetzte Version halten.
 4. **Stand der Vereinbarkeit bewerten:** „vollständig vereinbar“ lässt sich ohne Prüfstand für die
@@ -67,7 +76,8 @@ Für den Abschnitt zur Prüfmethode im Muster, sinngemäß:
 ```text
 Grundlage ist eine Prüfung des Herstellers bzw. Projekts nach BITV 2.0 / WCAG 2.1 AA vom
 [Datum des Audits] an [Version oder Commit], ergänzt um automatisierte Prüfungen an jeder Änderung
-und am Hauptstand.
+und am Hauptstand. Die automatisierte Prüfung der eingesetzten Version [Version] mit axe-core vom
+[Prüfdatum des Prüfberichts] ergab [Zahl] Befunde, davon [Zahl] schwerwiegend oder kritisch.
 Nicht barrierefrei bzw. nicht geprüft: [bekannte Einschränkungen, eigene Inhalte, Branding].
 Eigene Prüfung der Behörde für ihre Installation: [ja, Datum / nein]
 ```

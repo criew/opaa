@@ -4,6 +4,7 @@
     update_package.py previous --tag <vX.Y.Z[-pre]> [--commit <ref>]
     update_package.py build --tag <vX.Y.Z[-pre]> --out <dir> [--previous <ref>]
                             [--labelled-prs <file>] [--repository <owner/name>]
+                            [--accessibility <dir>]
     update_package.py operations --from <ref> [--to <ref>] --out <dir> [--delta-json <file>]
     update_package.py links
 
@@ -24,8 +25,10 @@ in templates and handbook, links into the package stay relative and links out of
 tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
 nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
 (package_html.py); a link of the HTML version to a missing file or anchor fails the run. Links of
-the delta point into --repository. Dates and file metadata come from the commit, so the same commit
-yields the same files.
+the delta point into --repository. The axe results of the release run (--accessibility, one
+directory per run, accessibility_report.py) become barrierefreiheit/; without them the report says
+the version was not checked. Dates and file metadata come from the commit, so the same commit yields
+the same files, except the date and results of the accessibility run.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
@@ -778,6 +781,8 @@ def readme(release: Release) -> str:
         "| `betrieb/antwortqualitaet.md` | Kennzahlen der Retrieval-Regression beider Versionen mit"
         " Messdatum; fehlende Werte stehen als „nicht gemessen“ da |",
         "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
+        "| `barrierefreiheit/pruefbericht.md` | Prüfbericht der automatisierten Barrierefreiheitsprüfung"
+        " mit axe-core an dieser Version: geprüfte Seiten in beiden Farbschemata, Regeln und Befunde |",
         "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
         f"| `{SBOM_DIR}` | Stücklisten (SBOM, CycloneDX) der ausgelieferten Abhängigkeiten,"
         f" `{sbom_name('backend', release)}` und `{sbom_name('frontend', release)}`;"
@@ -1054,12 +1059,15 @@ def assemble(
     templates: Path,
     handbook: Path,
     out: Path,
+    accessibility: Path | None = None,
 ) -> Path:
     """Writes <name>.tar.gz, <name>.tar.gz.sha256 and the SBOMs, by part such as "backend", into
     `out`; returns the archive. `templates` and `handbook` are docs/behoerden/ and docs/handbuch/ of
     the checkout the release is built from. Placeholders are resolved in template text only, links
     in template and handbook text only, never in text from elsewhere such as pull request titles or
-    upgrade notes."""
+    upgrade notes. `accessibility` holds the axe results of the release run; without it the report
+    says the version was not checked."""
+    import accessibility_report
     from package_html import broken_links, render
 
     name = PREFIX + release.version
@@ -1085,6 +1093,13 @@ def assemble(
              for part, source in sorted(sboms.items())}
     for file, content in loose.items():
         files[SBOM_DIR + file] = content
+    try:
+        files.update(accessibility_report.render(accessibility_report.load(accessibility), release.version,
+                                                 release.commit)
+                     if accessibility is not None
+                     else accessibility_report.not_measured(release.version, release.commit))
+    except accessibility_report.ReportError as error:
+        raise PackageError(str(error)) from error
     sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
               if path.startswith("faktenblaetter/") and path.endswith(".md")}
     files.update(documents(templates, handbook, release.repository,
@@ -1226,7 +1241,8 @@ def build(args: argparse.Namespace) -> list[Path]:
         sboms = {"backend": ROOT / CYCLONEDX, "frontend": frontend_sbom}
         archive = assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
                            operations=operations_dir, licenses=[backend, frontend], sboms=sboms,
-                           templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out))
+                           templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out),
+                           accessibility=Path(args.accessibility) if args.accessibility else None)
         return [archive, archive.with_name(archive.name + ".sha256"),
                 *(archive.with_name(sbom_name(part, release)) for part in sorted(sboms))]
 
@@ -1242,6 +1258,7 @@ def main(argv: list[str]) -> int:
     package.add_argument("--out", required=True)
     package.add_argument("--previous")
     package.add_argument("--labelled-prs")
+    package.add_argument("--accessibility")
     package.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", DEFAULT_REPOSITORY))
     consequences = commands.add_parser("operations")
     consequences.add_argument("--from", dest="from_ref", required=True)

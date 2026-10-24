@@ -107,6 +107,7 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Faktenblätter der Version
 - die Änderungen seit dem vorigen Release mit Stufenvorschlag
 - die Folgen für den Betrieb
+- den Prüfbericht der automatisierten Barrierefreiheitsprüfung der Version
 - die Lizenzübersicht und die SBOMs je Ökosystem
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern

@@ -151,7 +151,8 @@ jobs:
             # the packages of update_package.py, which this job tests. support-lines.json belongs
             # here because test_support_lines.py validates it, docs/releases.md because it checks
             # the roadmap there against the list, cve-scan.yml because it checks its scan targets
-            # and alarm.
+            # and alarm. accessibility-report.yml and e2e/fixtures/a11y.ts belong here because
+            # test_accessibility_report.py checks the release wiring and the record they write.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -162,6 +163,8 @@ jobs:
               - 'docs/releases.md'
               - '.github/workflows/ci.yml'
               - '.github/workflows/cve-scan.yml'
+              - '.github/workflows/accessibility-report.yml'
+              - 'e2e/fixtures/a11y.ts'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'
