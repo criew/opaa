@@ -256,14 +256,16 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     if (GoogleDriveSettings.subjectOf(asked) != null) {
       entries.add(new SourceListing.Entry(GoogleDriveScope.MY_DRIVE_KEY, "Meine Ablage"));
     }
+    boolean complete;
     try {
-      collect(
-          api,
-          "drives",
-          Map.of("pageSize", "100", "fields", "nextPageToken,drives(id,name)"),
-          "drives",
-          "drive:",
-          entries);
+      complete =
+          collect(
+              api,
+              "drives",
+              Map.of("pageSize", "100", "fields", "nextPageToken,drives(id,name)"),
+              "drives",
+              "drive:",
+              entries);
       Map<String, String> folders = new LinkedHashMap<>();
       folders.put(
           "q",
@@ -272,17 +274,24 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       folders.put("includeItemsFromAllDrives", "true");
       folders.put("supportsAllDrives", "true");
       folders.put("fields", "nextPageToken,files(id,name)");
-      collect(api, "files", folders, "files", "folder:", entries);
+      complete &= collect(api, "files", folders, "files", "folder:", entries);
     } catch (DriveApiException e) {
       return new SourceListing(false, List.of(), e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Auflistung wurde unterbrochen.");
     }
-    return new SourceListing(true, entries, null);
+    return complete
+        ? new SourceListing(true, entries, null)
+        : SourceListing.cutAt(
+            entries, "Bereiche", "Weitere Ordner lassen sich unten über ihre ID eintragen.");
   }
 
-  private static void collect(
+  /**
+   * Adds the entries of up to {@link #MAX_BROWSE_PAGES} pages of {@code path} to {@code entries};
+   * {@code false} when a further page is left unread.
+   */
+  private static boolean collect(
       DriveApi api,
       String path,
       Map<String, String> query,
@@ -308,10 +317,11 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       }
       JsonNode next = answer.get("nextPageToken");
       if (next == null || next.isNull()) {
-        return;
+        return true;
       }
       token = next.asString();
     }
+    return false;
   }
 
   // --- original --------------------------------------------------------------------------------

@@ -204,6 +204,39 @@ class GoogleDriveSourceConnectorTest {
   }
 
   @Test
+  void sharedDrivesCutAtTheLimitOfPagesMakeTheListingIncomplete() {
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 9; i++) {
+      server.addDrive("drive" + i, "Ablage " + i);
+    }
+    SourceListing ten = browse();
+    server.addDrive("drive10", "Ablage 10");
+
+    SourceListing eleven = browse();
+
+    assertThat(ten.complete()).isTrue();
+    assertThat(ten.entries()).hasSize(11);
+    assertThat(eleven.complete()).isFalse();
+    assertThat(eleven.entries()).hasSize(11);
+    assertThat(eleven.message()).contains("ersten 11 Bereiche");
+  }
+
+  @Test
+  void sharedFoldersCutAtTheLimitOfPagesMakeTheListingIncomplete() {
+    server.pageSizeAtMost(1);
+    for (int i = 2; i <= 11; i++) {
+      server.folder("folder" + i, "Freigabe " + i, FakeDriveServer.ROOT_ID, null).sharedWithMe =
+          true;
+    }
+
+    SourceListing eleven = browse();
+
+    assertThat(eleven.complete()).isFalse();
+    assertThat(eleven.entries()).hasSize(11);
+    assertThat(eleven.message()).contains("ersten 11 Bereiche");
+  }
+
+  @Test
   void anOriginalIsExportedOrDownloadedAndAMissingOneIsNone() throws Exception {
     server.file("doc", "Protokoll", "application/vnd.google-apps.document", "folder1", null, "D");
     server.file("bin", "Plan.txt", "text/plain", "folder1", null, "Ein Plan.");
@@ -263,5 +296,11 @@ class GoogleDriveSourceConnectorTest {
 
   private static KnowledgeLibrary library() {
     return mock(KnowledgeLibrary.class);
+  }
+
+  private SourceListing browse() {
+    return connector.browse(
+        new SourceBrowser.Query(
+            new SourceSettings(null, server.base().toString(), FakeDriveServer.TOKEN, null), null));
   }
 }

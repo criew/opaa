@@ -329,6 +329,44 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void foldersCutAtTheLimitOfPagesSaySoAndTenPagesAreComplete() {
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 9; i++) {
+      server.folder(DRIVE_0, "ordner" + i, "Ordner " + i, FakeGraphServer.rootId(DRIVE_0));
+    }
+    SourceListing ten = browse(Map.of("drive", DRIVE_0));
+    server.folder(DRIVE_0, "ordner10", "Ordner 10", FakeGraphServer.rootId(DRIVE_0));
+
+    SourceListing eleven = browse(Map.of("drive", DRIVE_0));
+
+    assertThat(ten.complete()).isTrue();
+    assertThat(ten.entries()).hasSize(10);
+    assertThat(eleven.complete()).isFalse();
+    assertThat(eleven.entries()).hasSize(10);
+    assertThat(eleven.message()).contains("ersten 10 Ordner");
+  }
+
+  @Test
+  void theSiteSearchFollowsFurtherPagesUpToTheLimitAndThenSaysSo() {
+    server.pageSizeAtMost(1);
+    server.site(siteId(1), "contoso.sharepoint.com", "/sites/team1", "Team 1");
+    SourceListing two = browse(Map.of("search", "tea"));
+    for (int i = 2; i <= 10; i++) {
+      server.site(siteId(i), "contoso.sharepoint.com", "/sites/team" + i, "Team " + i);
+    }
+
+    SourceListing eleven = browse(Map.of("search", "tea"));
+
+    assertThat(two.complete()).isTrue();
+    assertThat(two.entries())
+        .extracting(SourceListing.Entry::key)
+        .containsExactlyInAnyOrder("site:" + SITE, "site:" + siteId(1));
+    assertThat(eleven.complete()).isFalse();
+    assertThat(eleven.entries()).hasSize(10);
+    assertThat(eleven.message()).contains("ersten 10 Sites").contains("Adresse der Site");
+  }
+
+  @Test
   void aSiteAddressIsOnlyANameForGraphNeverATarget() {
     assertThat(SharePointSourceConnector.sitePath("https://Contoso.sharepoint.com/sites/team/"))
         .isEqualTo("sites/contoso.sharepoint.com:/sites/team");
@@ -385,6 +423,11 @@ class SharePointSourceConnectorTest {
     assertThat(otherLibrary).isEmpty();
     assertThat(gone).isEmpty();
     assertThat(server.downloadAuthorizations()).containsOnly("(none)");
+  }
+
+  private static String siteId(int n) {
+    return "contoso.sharepoint.com,%08d-0000-0000-0000-000000000000,%08d-0000-0000-0000-000000000000"
+        .formatted(n, n);
   }
 
   private SourceListing browse(Map<String, Object> query) {

@@ -290,7 +290,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
       args.put("recursive", false);
       args.put("limit", 2000);
       JsonNode answer = api.rpc("files/list_folder", args);
-      for (int page = 0; ; page++) {
+      for (int page = 1; ; page++) {
         JsonNode items = answer.get("entries");
         if (items != null && items.isArray()) {
           for (JsonNode item : items) {
@@ -304,8 +304,12 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
           }
         }
         JsonNode more = answer.get("has_more");
-        if (more == null || !more.asBoolean() || page + 1 >= MAX_BROWSE_PAGES) {
+        if (more == null || !more.asBoolean()) {
           break;
+        }
+        if (page >= MAX_BROWSE_PAGES) {
+          return SourceListing.cutAt(
+              entries, "Ordner", "Weitere Ordner lassen sich über ihren Pfad angeben.");
         }
         answer =
             api.rpc(
