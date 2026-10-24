@@ -127,7 +127,9 @@ zwei Einträgen.
     - *offene Menge eigener Objekte* (Katalog, Zuordnung, Token): Asset-Kacheln mit Filterzeile
       nach 5.11; Stresstest mit 300 Assets;
     - *fremde Objekte aus einer Quelle* (Sites, Spaces, Buckets, Ordner): Liste oder Baum, Suche
-      ab 7 Einträgen, keine Kacheln.
+      ab 7 Einträgen, keine Kacheln. Dieser Fall steht so noch nicht in 5.11; die Ergänzung der
+      Guideline läuft als eigenes Issue. Bis dahin gilt dieser Teil als Vorschlag, und ein Entwurf,
+      der ihm folgt, begründet die Abweichung von 5.11 im PR.
 
     – Sicht im Szenario `scale`
 36. **Tri-State im Baum** (`aria-checked="mixed"`). – Tastatur oder Screenreader

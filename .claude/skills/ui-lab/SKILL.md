@@ -12,7 +12,8 @@ freigegebene Richtung; die Umsetzung läuft danach als eigenes Issue.
 Werkzeuge und Maßstab:
 
 - **Messskript, Videos, Vergleich:** [`e2e/ui-lab/`](../../../e2e/ui-lab/README.md) – `capture.mjs`,
-  `record-flows.mjs`, `compare.py`, `calibrate.mjs`
+  `record-flows.mjs`, `calibrate.mjs`, `compare.py` und der Generator der Vergleichsseite
+  `build_site.py`; alle Befehle aus `e2e/`
 - **Mock-Szenarien:** `?mockScenario=default|small|scale|empty|slow|failed|partial`
   (`frontend/src/shared/mocks/mockScenario.ts`, Tabelle im README der Werkzeuge)
 - **Prüfliste:** [`docs/design/ui-pruefliste.md`](../../../docs/design/ui-pruefliste.md) mit den
@@ -51,15 +52,19 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
    ```
 
 7. **Messung vor Meinung.** Ein Urteil nennt Prüflistennummer und Beleg (Screenshot-Datei, Zeile
-   aus `metrics.jsonl`, Videozeitpunkt). Vor dem ersten Lauf `node ui-lab/calibrate.mjs`
+   aus `metrics.jsonl`, Videozeitpunkt). Vor dem ersten Lauf `cd e2e && node ui-lab/calibrate.mjs`
    ausführen; schlägt sie fehl, wird nichts verglichen.
+8. **Der Ist-Stand ist immer eine Variante.** „Ist“ ist `main` nur mit Mock-Szenarien, ohne
+   Korrekturen, aufgenommen mit derselben Matrix und denselben Videos wie die Entwürfe. Jeder
+   Entwurf wird neben dem Ist-Stand gezeigt, nicht nur neben den anderen Entwürfen.
 
 ## Branches und Ablage
 
 - Basis: `feature/<issue>_ui-lab-base` von `main`, mit den Mock-Lücken und Szenarien des Bereichs.
 - Varianten: `feature/<issue>_ui-lab-var-<x>` von der Basis, je Session eine.
 - Ergebnisse je Variante auf ihrem Branch unter `ui-lab/results/<X>/`: `REPORT.md`, verkleinerte
-  Screenshots (JPEG), `metrics.jsonl`, Videos. Lab-Branches werden nie gemerged.
+  Screenshots (JPEG), `metrics.jsonl`, Videos mit `manifest.json` unter `videos/`. Der Ist-Stand
+  liegt auf dem Basis-Branch unter `ui-lab/results/ist/`. Lab-Branches werden nie gemerged.
 - Nach `main` gehören nur Werkzeuge, Szenarien und Mock-Lücken (eigenes Issue) sowie später die
   umgesetzte Richtung (eigenes Issue).
 
@@ -75,7 +80,10 @@ Ist-Stand des Bereichs auf `main` erfassen, in `ui-lab/inputs/inventory.md` auf 
 2. Messen: `node ui-lab/capture.mjs --flow pages --pages <pfade> --out <dir>` über alle
    Szenarien; für Assistenten und Dialoge einen eigenen Ablauf unter `e2e/ui-lab/flows/`
    anlegen (Vorlage `flows/libraries.mjs`) und die Videos mit `record-flows.mjs`.
-3. Inventar gliedern: Aufbau des Bereichs · je Unterart (Komponente, Felder, Zustände) ·
+3. Ist-Stand als Variante „Ist“ aufnehmen: von einem Arbeitsverzeichnis auf `main` (nur die
+   Szenarien aus Punkt 1, keine Korrekturen) die Matrix aus Abschnitt 4 mit `capture.mjs` und die
+   Klickpfade mit `record-flows.mjs` nach `ui-lab/results/ist/`.
+4. Inventar gliedern: Aufbau des Bereichs · je Unterart (Komponente, Felder, Zustände) ·
    Vergleichsmatrix konsistent/inkonsistent · Verstöße mit Prüflistennummer und Beleg · zehn
    größte Probleme nach Wirkung · Lücken der Mocks · Verhalten bei großen Mengen.
 
@@ -139,8 +147,14 @@ Zählbudgets einhalten und axe- und kontrastfrei sein; was offen bleibt, steht i
 
 ### 7 · Vergleichsseite
 
-Eine Seite für den Maintainer, veröffentlicht als Artifact: je Bereich und Szenario die Bögen
-von A, B, C und M nebeneinander, die Videos, die Kennzahlentabelle aus `metrics-summary.md`, die
-Juror-Urteile und die Empfehlung mit offenen Fragen (Grundregel 6). **Halt: Der Maintainer
+Eine Seite für den Maintainer, gebaut mit `build_site.py` und veröffentlicht als Artifact
+(README der Werkzeuge, „build_site.py“). `site.json` nennt Ist, A, B, C und M mit ihren
+Ergebnisordnern und füllt die Texte: je Entwurf Idee, Stärken, Schwächen und Bewertung der
+Juroren; „Gelernt und umgesetzt“ mit dem, was in M eingeflossen ist, was für die Guidelines
+entschieden wurde und was am Vorgehen besser wurde. Darunter wählt der Maintainer Variante →
+Bereich → Fall → Breite und sieht Videos und alle Bildschirme, auf Wunsch mit dem Ist-Stand
+daneben. Videos gehen als Assets ins Artifact, die Bildschirme als ein Sprite je Auswahl.
+Kennzahlen aus `metrics-summary.md` und die offenen Fragen (Grundregel 6) gehören in den Bericht
+neben der Seite. **Halt: Der Maintainer
 entscheidet.** Danach: Umsetzungs-Issue mit der gewählten Variante als Spezifikation, eigenes
 Issue für Guideline-Änderungen, Lab-Sessions archivieren.
