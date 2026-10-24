@@ -121,6 +121,51 @@ function condensedNote(combinedText) {
   return lines.length > 0 ? lines.join('\n') : NOTE_NOTHING_SENTINEL
 }
 
+// --- Fixed answer parts for the link rule (test(e2e) #3051) ------------------------------------
+//
+// A trigger word in the person's question appends a fixed Markdown fragment to the answer, so the
+// frontend's link and image rule is tested against a known answer rather than a model's whim.
+// Only the answer prompt is affected, recognised by its citation rules; decomposition, title and
+// note prompts carry the question as well and keep their usual answers.
+//   E2E-ANTWORT-LINKS     a link to the allowed test target and one to a foreign target
+//   E2E-ANTWORT-BILD      a Markdown image with an external address
+//   E2E-BEFOLGE-DOKUMENT  every Markdown link found in the prompt's passages - the stub plays a
+//                         model that follows an instruction embedded in a prepared document
+const ANSWER_PROMPT_MARKER = 'ZITIERREGELN (verbindlich)'
+const MARKDOWN_LINK_PATTERN = /(?<!!)\[[^\]\n]{1,80}\]\(https?:\/\/[^)\s]{1,300}\)/g
+const ANSWER_TRIGGERS = [
+  {
+    word: 'E2E-ANTWORT-LINKS',
+    fragment: () =>
+      'Siehe [Intranet](https://intranet.e2e.example/seite) und ' +
+      '[Fremdseite](https://fremd.e2e.example/abruf).',
+  },
+  {
+    word: 'E2E-ANTWORT-BILD',
+    fragment: () => '![Diagramm](https://bild.e2e.example/diagramm.png)',
+  },
+  {
+    word: 'E2E-BEFOLGE-DOKUMENT',
+    fragment: (systemText) => [...new Set(systemText.match(MARKDOWN_LINK_PATTERN) ?? [])].join(' '),
+  },
+]
+
+function triggeredFragments(messages) {
+  const systemText = messages
+    .filter((message) => message.role === 'system' && typeof message.content === 'string')
+    .map((message) => message.content)
+    .join('\n')
+  if (!systemText.includes(ANSWER_PROMPT_MARKER)) {
+    return ''
+  }
+  const question = [...messages].reverse().find((message) => message.role === 'user')
+  const questionText = typeof question?.content === 'string' ? question.content : ''
+  const fragments = ANSWER_TRIGGERS.filter((trigger) => questionText.includes(trigger.word))
+    .map((trigger) => trigger.fragment(systemText))
+    .filter((fragment) => fragment !== '')
+  return fragments.length > 0 ? `\n\n${fragments.join('\n\n')}` : ''
+}
+
 // Every managed chat model in this suite points at this same
 // stub, so a scenario that activates a *different* model and then asks a chat question cannot
 // otherwise tell whether the answer actually came from the newly activated model or from a stale,
@@ -232,9 +277,9 @@ const server = createServer(async (req, res) => {
         .map((match) => match[0])
       const uniqueCitations = [...new Set(citations)]
       const answer =
-        uniqueCitations.length > 0
+        (uniqueCitations.length > 0
           ? `Antwort auf Basis der bereitgestellten Dokumente. ${uniqueCitations.join(' ')}`
-          : NO_CONTEXT_ANSWER
+          : NO_CONTEXT_ANSWER) + triggeredFragments(messages)
       const content = combinedText.includes(NOTE_PROMPT_MARKER)
         ? condensedNote(combinedText)
         : answer
