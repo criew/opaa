@@ -16,10 +16,13 @@ export function SummaryValue({
   summary,
   status,
   emptyText = 'keine',
+  marked = [],
 }: {
   summary: RowSummary
   status?: RowStatus | null
   emptyText?: string
+  /** Entries to mark as not readable, right at the entry. */
+  marked?: string[]
 }) {
   const text = typeof summary === 'string' ? summary : (summary?.lead ?? null)
   const items = summary && typeof summary !== 'string' ? summary.items : []
@@ -59,6 +62,11 @@ export function SummaryValue({
           {items.slice(0, SHOWN).map((item) => (
             <Box component="li" key={item} sx={{ fontSize: 13.5, lineHeight: '22px' }}>
               <PathLabel path={item} />
+              {marked.includes(item) && (
+                <Box component="span" sx={{ color: 'warning.main' }}>
+                  {' · nicht lesbar'}
+                </Box>
+              )}
             </Box>
           ))}
           {items.length > SHOWN && (
@@ -82,6 +90,10 @@ interface SummaryRowProps {
   status?: RowStatus | null
   /** Issues of the row, shown under the summary while it is closed. */
   issues?: string[]
+  /** A line of state under the summary while closed, e.g. entries the last run could not read. */
+  note?: ReactNode
+  /** List entries marked as not readable at the entry itself. */
+  marked?: string[]
   open: boolean
   /** Absent for a reader: the row then only shows what is set. */
   onOpen?: () => void
@@ -100,6 +112,8 @@ export default function SummaryRow({
   summary,
   status,
   issues = [],
+  note,
+  marked,
   open,
   onOpen,
   headingLevel = 'h3',
@@ -124,7 +138,8 @@ export default function SummaryRow({
         </Typography>
         {!open && (
           <Box sx={{ gridColumn: { xs: '1 / -1', sm: '2' }, gridRow: { xs: '2', sm: '1' } }}>
-            <SummaryValue summary={summary} status={status} />
+            <SummaryValue summary={summary} status={status} marked={marked} />
+            {note && <Box sx={{ mt: 0.5 }}>{note}</Box>}
             {issues.length > 0 && (
               <Box id={issuesId} sx={{ mt: 0.5 }}>
                 {issues.map((issue) => (

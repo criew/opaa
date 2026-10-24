@@ -69,6 +69,14 @@ interface SourceSetupRowsProps<V> {
   onDiscard?: (row: SetupRowId) => void
   /** Edit mode: whether the row differs from what is stored. */
   isDirty?: (row: SetupRowId) => boolean
+  /** Edit mode: the connection's last known state, shown while no check has run here. */
+  knownConnectionStatus?: RowStatus | null
+  /** A line under a closed row's summary, e.g. the scope entries the last run could not read. */
+  rowNotes?: Partial<Record<SetupRowId, ReactNode>>
+  /** The Umfang of a source without a selection („Ganzes Verzeichnis“), shown without „Ändern“. */
+  fixedScope?: string | null
+  /** Umfang entries the last run could not read: marked at the entry, the rest in a line below. */
+  unreadable?: string[]
   ref?: Ref<SourceSetupHandle>
 }
 
@@ -78,6 +86,17 @@ interface SourceSetupRowsProps<V> {
  * the Reiter „Quelle“ (with „Speichern“ per row). Validation shows every issue at once: at its
  * field in the open row, as a line under a closed row's summary, and gathered above the rows.
  */
+/** The scope entries the last run could not read and the row does not list itself, by name. */
+function UnreadableLine({ names, total = names.length }: { names: string[]; total?: number }) {
+  return (
+    <Typography sx={{ fontSize: 13.5, color: 'warning.main' }}>
+      {total} nicht lesbar
+      {names.length > 0 ? `: ${names.slice(0, 5).join(', ')}` : ''}
+      {names.length > 5 ? ` und ${names.length - 5} weitere` : ''}
+    </Typography>
+  )
+}
+
 export default function SourceSetupRows<V>({
   mode,
   spec,
@@ -98,6 +117,10 @@ export default function SourceSetupRows<V>({
   onSave,
   onDiscard,
   isDirty,
+  knownConnectionStatus = null,
+  rowNotes,
+  fixedScope = null,
+  unreadable = [],
   ref,
 }: SourceSetupRowsProps<V>) {
   const [openRow, setOpenRow] = useState<SetupRowId | null>(initialRow)
@@ -300,6 +323,13 @@ export default function SourceSetupRows<V>({
     return summary
   }
 
+  /** The unreadable entries the closed Umfang does not show as an entry of its own. */
+  function unmarked(): string[] {
+    const summary = summaryOf('scope')
+    const items = summary && typeof summary !== 'string' ? summary.items.slice(0, 5) : []
+    return unreadable.filter((name) => !items.includes(name))
+  }
+
   function statusOf(row: SetupRowId): RowStatus | null {
     if (row !== 'connection' || !request) return null
     switch (check.state) {
@@ -312,7 +342,7 @@ export default function SourceSetupRows<V>({
       case 'checking':
         return { tone: 'neutral', label: 'wird geprüft' }
       default:
-        return { tone: 'neutral', label: 'nicht geprüft' }
+        return knownConnectionStatus ?? { tone: 'neutral', label: 'nicht geprüft' }
     }
   }
 
@@ -359,6 +389,19 @@ export default function SourceSetupRows<V>({
       <ErrorSummary entries={entries} ref={summaryRef} />
       {rows.map((row) => {
         const section = row === 'schedule' ? null : spec.sections.find((s) => s.id === row)
+        if (row === 'scope' && !section && fixedScope) {
+          return (
+            <SummaryRow
+              key={row}
+              id={`${context.idPrefix}-row-${row}`}
+              title={ROW_TITLES[row]}
+              summary={fixedScope}
+              note={unreadable.length > 0 ? <UnreadableLine names={unreadable} /> : rowNotes?.scope}
+              open={false}
+              headingLevel={headingLevel}
+            />
+          )
+        }
         if (row !== 'schedule' && !section && !(row === 'connection' && connectionPrelude))
           return null
         const Fields = section?.Fields
@@ -375,6 +418,14 @@ export default function SourceSetupRows<V>({
                 ? [`Test fehlgeschlagen: ${plainMessage(check.outcome.message)}`]
                 : []),
             ]}
+            note={
+              row === 'scope' && unmarked().length > 0 ? (
+                <UnreadableLine names={unmarked()} total={unreadable.length} />
+              ) : (
+                rowNotes?.[row]
+              )
+            }
+            marked={row === 'scope' ? unreadable : undefined}
             open={openRow === row}
             onOpen={canEdit ? () => void open(row) : undefined}
             headingLevel={headingLevel}

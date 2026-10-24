@@ -16,8 +16,9 @@ import {
   withoutFixed,
 } from './sources/sourceConnection'
 import type { SourceFormContext } from './sources/types'
+import { formatDateTime } from './libraryState'
 import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
-import type { SetupRowId } from './setup/setupTypes'
+import type { RowStatus, SetupRowId } from './setup/setupTypes'
 
 export interface SourceRowsLibrary {
   name: string
@@ -59,6 +60,9 @@ export default function LibrarySourceRows({
   library,
   canEdit,
   connectionPrelude,
+  connectionStatus = null,
+  fixedScope = null,
+  unreadable = [],
   ref,
 }: {
   libraryId: string
@@ -66,6 +70,12 @@ export default function LibrarySourceRows({
   canEdit: boolean
   /** Inside „Verbindung“: the Zugang and the source connection with their own actions. */
   connectionPrelude?: ReactNode
+  /** The connection's last known state (from the newest run). */
+  connectionStatus?: RowStatus | null
+  /** The Umfang of a source without a selection. */
+  fixedScope?: string | null
+  /** Names of the Umfang entries the last run could not read. */
+  unreadable?: string[]
   ref?: Ref<SourceSetupHandle>
 }) {
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
@@ -119,7 +129,7 @@ export default function LibrarySourceRows({
     <SourceSetupRows
       scheduleNote={
         library.schedule?.nextRunAt
-          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`
+          ? `nächster Lauf ${formatDateTime(library.schedule.nextRunAt)}`
           : null
       }
       ref={ref}
@@ -141,6 +151,9 @@ export default function LibrarySourceRows({
       rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope']}
       canEdit={canEdit}
       headingLevel="h2"
+      knownConnectionStatus={connectionStatus}
+      fixedScope={fixedScope}
+      unreadable={unreadable}
       onSave={save}
       onDiscard={(row) => (row === 'schedule' ? setSchedule(storedSchedule) : setValues(stored))}
       isDirty={(row) =>
