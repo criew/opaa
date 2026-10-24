@@ -16,10 +16,12 @@ sys.modules["package_html"] = package_html
 spec.loader.exec_module(package_html)
 
 
-def site(files: dict[str, str], notice: str | None = None) -> dict[str, str]:
+def site(files: dict[str, str], notice: str | None = None,
+         diagrams: dict[str, str] | None = None) -> dict[str, str]:
     raw = {path: text.encode("utf-8") for path, text in files.items()}
     return {path: content.decode("utf-8")
-            for path, content in package_html.render(raw, "Update-Paket OPAA 1.2.3", notice).items()}
+            for path, content in package_html.render(raw, "Update-Paket OPAA 1.2.3", notice,
+                                                     diagrams=diagrams).items()}
 
 
 def test_every_markdown_file_gets_a_page_beside_it_and_the_package_a_start_page() -> None:
@@ -92,13 +94,48 @@ def test_the_front_matter_becomes_a_small_box_not_text() -> None:
 
 
 def test_nothing_is_loaded_from_outside_the_package() -> None:
-    pages = site({"a.md": "# Titel\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n[Extern](https://example.org)\n"})
+    source = "flowchart LR\n  A --> B\n"
+    svg = '<svg id="d"><defs><marker id="d_end"/></defs><path marker-end="url(#d_end)"/></svg>'
+    pages = site({"a.md": f"# Titel\n\n```mermaid\n{source}```\n\n[Extern](https://example.org)\n"},
+                 diagrams={source: svg})
 
     for path, text in pages.items():
         assert "<script" not in text, path
         assert not re.search(r'<link[^>]+href="(https?:)?//', text), path
-        assert "@import" not in text and "url(" not in text, path
-    assert '<code class="language-mermaid">flowchart LR\n  A --&gt; B\n</code>' in pages["a.html"]
+        assert "@import" not in text and not re.search(r"url\((?!#)", text), path
+
+
+def test_a_rendered_mermaid_diagram_shows_as_svg_with_its_source_beside_it() -> None:
+    source = "flowchart LR\n  A --> B\n"
+    page = site({"a.md": f"# Titel\n\n```mermaid\n{source}```\n"},
+                diagrams={source: '<svg id="d"></svg>'})["a.html"]
+
+    assert '<figure class="diagram"><svg id="d"></svg></figure>' in page
+    assert ('<details class="diagram-source"><summary>Diagramm als Text</summary>'
+            '<pre><code class="language-mermaid">flowchart LR\n  A --&gt; B\n</code></pre></details>') in page
+
+
+def test_a_mermaid_diagram_without_rendering_stays_code() -> None:
+    page = site({"a.md": "# Titel\n\n```mermaid\nflowchart LR\n  A --> B\n```\n"})["a.html"]
+
+    assert '<pre><code class="language-mermaid">flowchart LR\n  A --&gt; B\n</code></pre>' in page
+    assert "<figure" not in page
+
+
+def test_mermaid_sources_lists_each_diagram_of_the_markdown_files_once() -> None:
+    files = {"a.md": b"---\nstand: x\n---\n# A\n\n```mermaid\nflowchart LR\n  A --> B\n```\n",
+             "b.md": b"# B\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n```text\nnein\n```\n",
+             "c.txt": b"```mermaid\nflowchart LR\n  X --> Y\n```\n"}
+
+    assert package_html.mermaid_sources(files) == ["flowchart LR\n  A --> B\n"]
+
+
+def test_the_svg_id_of_a_diagram_depends_on_its_source_only() -> None:
+    first = package_html.diagram_id("flowchart LR\n  A --> B\n")
+
+    assert first == package_html.diagram_id("flowchart LR\n  A --> B\n")
+    assert first != package_html.diagram_id("flowchart LR\n  A --> C\n")
+    assert re.fullmatch(r"diagram-[0-9a-f]{12}", first)
 
 
 def test_every_page_links_back_to_the_start_page_from_its_depth() -> None:

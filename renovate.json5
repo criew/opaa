@@ -236,6 +236,16 @@
       minimumReleaseAge: '1 day',
       addLabels: ['ci'],
     },
+    // Mermaid und playwright-core (.github/tools/mermaid) zeichnen die Diagramme der HTML-Fassung des
+    // Update-Pakets. Der Schritt "Mermaid-Diagramme ... rendern" im Job changes übt sie bei jedem
+    // Update aus; eigene Gruppe, damit beide gemeinsam und getrennt vom Frontend wandern.
+    {
+      matchManagers: ['npm'],
+      matchFileNames: ['.github/tools/mermaid/**'],
+      groupName: 'mermaid',
+      minimumReleaseAge: '1 day',
+      addLabels: ['ci'],
+    },
     // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa: Chart.yaml-Abhängigkeiten
     // (derzeit keine) und die Images in values.yaml mit festem Tag.
     {

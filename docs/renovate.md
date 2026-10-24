@@ -19,6 +19,7 @@ jederzeit auch lokal ausführen (unten).
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
 | cdxgen für die Frontend-SBOM (`.github/tools/cdxgen/package.json` + `pnpm-lock.yaml`); eigene Gruppe ohne Auto-Merge, weil kein Required Check den Aufruf des Release-Laufs ausübt | `npm` | `frontend`, `ci` |
+| Mermaid und playwright-core für die Diagramme der HTML-Fassung des Update-Pakets (`.github/tools/mermaid/package.json` + `pnpm-lock.yaml`); eigene Gruppe, die CI rendert jedes Diagramm damit | `npm` | `frontend`, `ci` |
 | GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
