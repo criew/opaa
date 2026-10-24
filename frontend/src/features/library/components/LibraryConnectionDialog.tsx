@@ -31,6 +31,7 @@ import {
   framedBy,
   sourceConnectionOf,
 } from './sources/sourceConnection'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /** What the dialog reads of the stored library. */
 export interface ConnectableLibrary {
@@ -237,7 +238,7 @@ export default function LibraryConnectionDialog({
                     ? `Liegt unter der Server-Adresse des Zugangs: ${next.serverUrl}`
                     : `Muss unter der Server-Adresse des Zugangs liegen: ${next.serverUrl}`
                 }
-                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
               />
             </>
           )}

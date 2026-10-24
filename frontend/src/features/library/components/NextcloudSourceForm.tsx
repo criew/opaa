@@ -17,6 +17,7 @@ import {
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface NextcloudSourceFormProps {
   mode: 'create' | 'edit'
@@ -192,7 +193,7 @@ export default function NextcloudSourceForm({
               connection.addressHint ??
                 'Auch die WebDAV-Adresse aus der Nextcloud wird angenommen.',
             )}
-            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         {connection.asksSecret && (
@@ -243,7 +244,7 @@ export default function NextcloudSourceForm({
               issueFor('folders'),
               'Ein Ordner je Zeile, wie der technische Nutzer ihn sieht, etwa /Projekte. / liest alles, auch Freigaben und Gruppenordner.',
             )}
-            slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
             <Stack

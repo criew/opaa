@@ -14,6 +14,7 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface DropboxSourceFormProps {
   mode: 'create' | 'edit'
@@ -186,7 +187,7 @@ export default function DropboxSourceForm({
               foldersIssue,
               'Ein Ordner je Zeile, wie das verbundene Konto ihn sieht, etwa /Projekte. / liest alles.',
             )}
-            slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         <Box>
@@ -198,7 +199,7 @@ export default function DropboxSourceForm({
             value={browsePath}
             onChange={(e) => setBrowsePath(e.target.value)}
             helperText="„Ordner laden“ zeigt die Ordner direkt unter diesem Pfad."
-            slotProps={{ htmlInput: { maxLength: 1000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 1000, sx: { fontFamily: fontFamily.mono } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
             <Stack

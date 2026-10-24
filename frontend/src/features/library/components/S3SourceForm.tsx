@@ -50,6 +50,7 @@ import {
   type S3ScopeInput,
   type S3SourceValues,
 } from '../utils/s3Source'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface Message {
   severity: 'success' | 'warning' | 'error' | 'info'
@@ -388,7 +389,7 @@ export default function S3SourceForm({
                   'http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche.',
               )}
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
             />
           </Box>
           <Box sx={{ gridColumn: '1 / -1' }}>
@@ -440,7 +441,7 @@ export default function S3SourceForm({
                 slotProps={{
                   htmlInput: {
                     maxLength: MAX_S3_ACCESS_KEY_LENGTH,
-                    sx: { fontFamily: 'monospace' },
+                    sx: { fontFamily: fontFamily.mono },
                   },
                 }}
               />
@@ -561,7 +562,9 @@ export default function S3SourceForm({
                     error={prefixError !== null}
                     helperText={prefixIssue ? withIssue(prefixIssue) : (prefixError ?? undefined)}
                     fullWidth
-                    slotProps={{ htmlInput: { maxLength: 1023, sx: { fontFamily: 'monospace' } } }}
+                    slotProps={{
+                      htmlInput: { maxLength: 1023, sx: { fontFamily: fontFamily.mono } },
+                    }}
                   />
                 </Box>
                 <IconButton
@@ -645,7 +648,7 @@ export default function S3SourceForm({
                   'Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ als ganzes Segment steht für beliebig viele Segmente: „**/*.pdf“ trifft PDFs auf jeder Ebene, „*.pdf“ nur auf der obersten.',
                 )}
                 fullWidth
-                slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
               />
             </Box>
             <Box>
@@ -664,7 +667,7 @@ export default function S3SourceForm({
                   'Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt.',
                 )}
                 fullWidth
-                slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
               />
             </Box>
           </Box>
@@ -702,7 +705,7 @@ export default function S3SourceForm({
                 <Typography
                   sx={{
                     fontSize: 13,
-                    fontFamily: 'monospace',
+                    fontFamily: fontFamily.mono,
                     color: check.message ? 'warning.main' : 'text.primary',
                   }}
                 >

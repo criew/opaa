@@ -8,6 +8,7 @@ import { sameLibrarySourceOrigin, type GenericSourceValues } from '../utils/libr
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface UrlSourceFormProps {
   /** `create` adds the step's own heading and the two-column layout of the wizard. */
@@ -89,7 +90,7 @@ export default function UrlSourceForm({
             placeholder="https://files.example.com/dokumente/"
             error={urlIssue !== null}
             helperText={withIssue(urlIssue, connection.addressHint ?? 'http oder https.')}
-            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         {connection.asksSecret && (

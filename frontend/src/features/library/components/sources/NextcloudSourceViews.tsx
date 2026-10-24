@@ -5,6 +5,7 @@ import { nextcloudSettingsOf } from '../../utils/nextcloudSource'
 import { RemoteConnectionLines } from './GenericSourceViews'
 import ScopeConsequence from './ScopeConsequence'
 import type { StoredLibrarySource } from './types'
+import { fontFamily } from '@/shared/theme/tokens'
 
 // The folders of a Nextcloud library, one chip each, for every reader.
 export function NextcloudScope({ library }: { library: StoredLibrarySource }) {
@@ -15,7 +16,7 @@ export function NextcloudScope({ library }: { library: StoredLibrarySource }) {
         <strong>Ordner:</strong>{' '}
         <Stack direction="row" spacing={0.5} useFlexGap component="span" sx={{ flexWrap: 'wrap' }}>
           {folders.map((folder) => (
-            <Chip key={folder} size="small" label={folder} sx={{ fontFamily: 'monospace' }} />
+            <Chip key={folder} size="small" label={folder} sx={{ fontFamily: fontFamily.mono }} />
           ))}
         </Stack>
       </Typography>

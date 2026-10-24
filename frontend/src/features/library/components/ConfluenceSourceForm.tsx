@@ -23,6 +23,7 @@ import {
   type ConfluenceSourceValues,
   type ConfluenceSpaceRef,
 } from '../utils/confluenceSource'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /** From this many selected spaces on, the limit is announced before the backend enforces it. */
 const SPACE_LIMIT_HINT_FROM = 450
@@ -300,7 +301,7 @@ export default function ConfluenceSourceForm({
                   'Cloud: die Adresse Ihrer Site, mit oder ohne /wiki. Data Center: die Adresse samt Kontextpfad.',
               )}
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
             />
           </Box>
         </Box>

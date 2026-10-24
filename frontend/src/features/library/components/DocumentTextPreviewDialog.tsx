@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface DocumentTextPreviewDialogProps {
   /** `null` keeps the dialog closed (mirrors MUI's own `open` pattern used elsewhere in this app -
@@ -77,7 +78,7 @@ export default function DocumentTextPreviewDialog({
             component="pre"
             sx={{
               m: 0,
-              fontFamily: 'monospace',
+              fontFamily: fontFamily.mono,
               fontSize: '0.875rem',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',

@@ -6,6 +6,7 @@ import S3EventSection from '../S3EventSection'
 import { RemoteConnectionLines } from './GenericSourceViews'
 import ScopeConsequence from './ScopeConsequence'
 import type { StoredLibrarySource } from './types'
+import { fontFamily } from '@/shared/theme/tokens'
 
 // ADR-0027: the scopes of an S3 library, one chip per bucket/prefix, for every reader.
 export function S3Scope({ library }: { library: StoredLibrarySource }) {
@@ -20,7 +21,7 @@ export function S3Scope({ library }: { library: StoredLibrarySource }) {
               key={`${scope.bucket}/${scope.prefix ?? ''}`}
               size="small"
               label={scope.prefix ? `${scope.bucket}/${scope.prefix}` : scope.bucket}
-              sx={{ fontFamily: 'monospace' }}
+              sx={{ fontFamily: fontFamily.mono }}
             />
           ))}
         </Stack>

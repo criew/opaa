@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography'
 import { generatePushSecret, removePushSecret } from '../api/indexingApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface ConfluenceWebhookSectionProps {
   libraryId: string
@@ -140,7 +141,7 @@ export default function ConfluenceWebhookSection({
           <Typography
             component="code"
             data-testid="confluence-webhook-secret"
-            sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
+            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
           >
             {revealed?.secret}
           </Typography>
@@ -149,7 +150,7 @@ export default function ConfluenceWebhookSection({
           </Typography>
           <Typography
             component="code"
-            sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
+            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
           >
             {revealed?.url}
           </Typography>

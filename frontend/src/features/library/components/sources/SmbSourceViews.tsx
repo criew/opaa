@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 import { smbSettingsOf } from '../../utils/smbSource'
 import ScopeConsequence from './ScopeConsequence'
 import type { StoredLibrarySource } from './types'
+import { fontFamily } from '@/shared/theme/tokens'
 
 // The folders of an SMB library, one chip each, for every reader.
 export function SmbScope({ library }: { library: StoredLibrarySource }) {
@@ -14,7 +15,7 @@ export function SmbScope({ library }: { library: StoredLibrarySource }) {
         <strong>Ordner:</strong>{' '}
         <Stack direction="row" spacing={0.5} useFlexGap component="span" sx={{ flexWrap: 'wrap' }}>
           {folders.map((folder) => (
-            <Chip key={folder} size="small" label={folder} sx={{ fontFamily: 'monospace' }} />
+            <Chip key={folder} size="small" label={folder} sx={{ fontFamily: fontFamily.mono }} />
           ))}
         </Stack>
       </Typography>

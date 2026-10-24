@@ -17,6 +17,7 @@ import {
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface SmbSourceFormProps {
   mode: 'create' | 'edit'
@@ -191,7 +192,7 @@ export default function SmbSourceForm({
               connection.addressHint ??
                 'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.',
             )}
-            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         {connection.asksSecret && (
@@ -246,7 +247,7 @@ export default function SmbSourceForm({
               issueFor('folders'),
               'Ein Ordner je Zeile, ausgehend von der Freigabe, etwa /Projekte. / liest die ganze Freigabe.',
             )}
-            slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
             <Stack
