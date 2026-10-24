@@ -93,7 +93,7 @@ export default function NextcloudSourceForm({
       ? 'Für diese Bibliothek sind keine Zugangsdaten gespeichert.'
       : credentialsKept || !addressEntered
         ? 'Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'
-        : 'Die Adresse zeigt auf einen anderen Server - bitte die Zugangsdaten neu eingeben.'
+        : 'Die Adresse zeigt auf einen anderen Server – bitte die Zugangsdaten neu eingeben.'
 
   function connectionPayload() {
     return {

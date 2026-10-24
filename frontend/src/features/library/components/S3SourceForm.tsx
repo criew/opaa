@@ -242,7 +242,7 @@ export default function S3SourceForm({
           severity: 'success',
           text:
             buckets.length === 0
-              ? 'Der Schlüssel sieht keine Buckets - der Bucket-Name kann von Hand eingetragen werden.'
+              ? 'Der Schlüssel sieht keine Buckets – der Bucket-Name kann von Hand eingetragen werden.'
               : `${buckets.length} Bucket${buckets.length === 1 ? '' : 's'} geladen; sie stehen in den Bucket-Feldern zur Auswahl.`,
         })
       } else {
@@ -251,7 +251,7 @@ export default function S3SourceForm({
           severity: 'info',
           text:
             result.message ??
-            'Die Bucket-Liste ist mit diesen Zugangsdaten nicht lesbar - der Bucket-Name kann von Hand eingetragen werden.',
+            'Die Bucket-Liste ist mit diesen Zugangsdaten nicht lesbar – der Bucket-Name kann von Hand eingetragen werden.',
         })
       }
     } catch (err) {
@@ -385,7 +385,7 @@ export default function S3SourceForm({
               helperText={withIssue(
                 issueFor('sourceUrl'),
                 connection.addressHint ??
-                  'http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche.',
+                  'http(s)://host[:port], ohne Pfad – Bucket und Präfix gehören in die Geltungsbereiche.',
               )}
               fullWidth
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
@@ -400,7 +400,7 @@ export default function S3SourceForm({
                   onChange={(e) => changeConnection({ pathStyle: e.target.checked })}
                 />
               }
-              label="Path-Style-Adressierung (endpoint/bucket/key - MinIO, Ceph)"
+              label="Path-Style-Adressierung (endpoint/bucket/key – MinIO, Ceph)"
             />
             {connection.isFixed('pathStyle') && (
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
@@ -671,7 +671,7 @@ export default function S3SourceForm({
                 error={excludeIssue !== null}
                 helperText={withIssue(
                   excludeIssue,
-                  'Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt.',
+                  'Ein passender Schlüssel wird übersprungen – nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt.',
                 )}
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}

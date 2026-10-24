@@ -23,7 +23,7 @@ export function NextcloudScope({ library }: { library: StoredLibrarySource }) {
       <ScopeConsequence testId="nextcloud-sharing-consequence">
         Gelesen wird, was der technische Nutzer in diesen Ordnern sieht, auch Freigaben an ihn und
         Gruppenordner. Alles, was daraus indiziert wurde, ist für alle Leseberechtigten dieser
-        Bibliothek sichtbar - unabhängig davon, wer es in der Nextcloud lesen dürfte.
+        Bibliothek sichtbar – unabhängig davon, wer es in der Nextcloud lesen dürfte.
       </ScopeConsequence>
     </>
   )

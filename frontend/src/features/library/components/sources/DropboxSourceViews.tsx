@@ -23,7 +23,7 @@ export function DropboxScope({ library }: { library: StoredLibrarySource }) {
       <ScopeConsequence testId="dropbox-sharing-consequence">
         Gelesen wird, was das verbundene Dropbox-Konto in diesen Ordnern sieht, auch geteilte
         Ordner. Alles, was daraus indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek
-        sichtbar - unabhängig davon, wer es in Dropbox lesen dürfte.
+        sichtbar – unabhängig davon, wer es in Dropbox lesen dürfte.
       </ScopeConsequence>
     </>
   )

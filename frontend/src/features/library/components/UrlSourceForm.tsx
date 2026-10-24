@@ -56,7 +56,7 @@ export default function UrlSourceForm({
     : !credentialsStored
       ? 'Für diese Quelle sind aktuell keine Zugangsdaten hinterlegt. Nur ausfüllen, wenn die Quelle eine Anmeldung verlangt.'
       : originChanged
-        ? 'Die Adresse zeigt auf einen anderen Server - die bestehenden Zugangsdaten werden dabei verworfen. Bitte bei Bedarf neu eingeben.'
+        ? 'Die Adresse zeigt auf einen anderen Server – die bestehenden Zugangsdaten werden dabei verworfen. Bitte bei Bedarf neu eingeben.'
         : 'Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben.'
 
   return (

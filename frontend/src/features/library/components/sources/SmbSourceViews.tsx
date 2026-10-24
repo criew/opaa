@@ -21,7 +21,7 @@ export function SmbScope({ library }: { library: StoredLibrarySource }) {
       </Typography>
       <ScopeConsequence testId="smb-sharing-consequence">
         Gelesen wird, was das Dienstkonto in diesen Ordnern lesen darf. Alles, was daraus indiziert
-        wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar - unabhängig von den
+        wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar – unabhängig von den
         Dateirechten auf der Freigabe.
       </ScopeConsequence>
     </>
@@ -35,7 +35,7 @@ export function SmbStoredView({ library }: { library: StoredLibrarySource; libra
         <strong>Freigabe:</strong> {library.sourceUrl ?? '—'}
       </Typography>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht zeigt
+        Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort – diese Ansicht zeigt
         sie deshalb weder ein noch aus.
       </Typography>
     </>
