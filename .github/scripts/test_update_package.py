@@ -1556,3 +1556,65 @@ def test_an_lts_comparison_needs_both_parts(tmp_path: Path, inputs: dict) -> Non
     with pytest.raises(update_package.PackageError, match="LTS"):
         update_package.assemble(release(lts_previous="v1.2.7", lts_previous_commit="c" * 40),
                                 out=tmp_path / "out", **parts)
+
+
+def test_a_second_comparison_with_the_base_of_the_first_is_dropped(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
+    monkeypatch.setattr(update_package, "lts_previous_tag", lambda repo, tag, head: "v0.3.2")
+
+    assert update_package.lts_comparison(Path("."), "v0.5.0", "c" * 40, "v0.3.2") is None
+    assert "Kein LTS-Vergleich für v0.5.0" in capsys.readouterr().out
+    assert update_package.lts_comparison(Path("."), "v0.5.0", "c" * 40, "v0.4.0") == "v0.3.2"
+    assert "Zweiter Vergleich mit v0.3.2" in capsys.readouterr().out
+
+
+def test_the_first_delta_is_kept_before_the_second_overwrites_its_directory(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # complianceDelta writes both deltas to the same directory.
+    root = tmp_path / "root"
+    built = root / update_package.DELTA
+    built.mkdir(parents=True)
+    for name in update_package.DELTA_FILES:
+        (built / name).write_text("first\n")
+
+    def gradle(args: list[str], cwd: Path, stdout=None) -> str:
+        assert "-PfromRef=v0.3.2" in args
+        for name in update_package.DELTA_FILES:
+            (built / name).write_text("lts\n")
+        return ""
+
+    def operations(repo: Path, previous, current, delta_json: Path) -> dict[str, str]:
+        return {name: f"{previous.label} {delta_json.read_text()}" for name in update_package.OPERATIONS_FILES}
+
+    monkeypatch.setattr(update_package, "ROOT", root)
+    monkeypatch.setattr(update_package, "run", gradle)
+    monkeypatch.setattr(update_package, "operations", operations)
+    reports = tmp_path / "reports"
+    reports.mkdir()
+
+    delta, betrieb, lts_delta, lts_betrieb = update_package.comparisons(
+        release(version="0.5.0", tag="v0.5.0", previous="v0.4.0", lts_previous="v0.3.2",
+                lts_previous_commit="c" * 40),
+        update_package.Side("v0.4.0", "b" * 40, "0.4.0"),
+        update_package.Side("v0.5.0", "a" * 40, "0.5.0"),
+        reports, "criew/opaa", None)
+
+    assert (delta / "manifest-delta.md").read_text() == "first\n"
+    assert (lts_delta / "manifest-delta.md").read_text() == "lts\n"
+    assert (betrieb / "betriebsfolgen.md").read_text() == "v0.4.0 first\n"
+    assert (lts_betrieb / "betriebsfolgen.md").read_text() == "v0.3.2 lts\n"
+
+
+def test_a_previous_lts_line_without_final_release_above_one_with_releases_warns(
+        tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, lines_json(("0.2", "lts", "2027-06-30"), ("0.3", "lts", "2028-06-30"),
+                                ("0.5", "lts", "2029-06-30")))
+    x = snapshot(work, "x")
+    git(work, "tag", "v0.2.0", x)
+    git(work, "tag", "v0.3.0-rc.1", x)
+    git(work, "tag", "v0.5.0", x)
+
+    assert update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0") is None
+    assert "::warning::Kein LTS-Vergleich für v0.5.0: die vorige LTS-Linie 0.3" in capsys.readouterr().err

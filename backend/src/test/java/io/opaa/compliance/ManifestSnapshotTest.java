@@ -128,6 +128,24 @@ class ManifestSnapshotTest {
     }
   }
 
+  /** A change backported unchanged to the older line is already installed there. */
+  @Test
+  void aCommitBackportedUnchangedToTheOlderSideIsNotListedAgain() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    GitFixture.git(repository, "checkout", "-q", "-b", "release", "v2");
+    GitFixture.git(repository, "cherry-pick", "-x", "v3");
+    GitFixture.git(repository, "tag", "lts");
+    GitFixture.git(repository, "checkout", "-q", "--detach", "v3");
+    Files.writeString(repository.resolve("README.md"), "test\nmore\n");
+    GitFixture.git(repository, "commit", "-q", "-a", "-m", "feat: Weiteres (#14)");
+    GitFixture.git(repository, "tag", "v4");
+
+    assertThat(ManifestSnapshot.Git.subjects(repository, "lts", "v4"))
+        .containsExactly("feat: Weiteres (#14)");
+    assertThat(ManifestSnapshot.Git.subjects(repository, "v1", "v3"))
+        .containsExactly("feat(audit): Längere Frist (#13)", "feat(compliance): Manifest (#12)");
+  }
+
   @Test
   void anUnknownReferenceFails() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));
@@ -167,7 +185,7 @@ class ManifestSnapshotTest {
       return root;
     }
 
-    private static void git(Path root, String... args) throws IOException {
+    static void git(Path root, String... args) throws IOException {
       List<String> command =
           new ArrayList<>(
               List.of(

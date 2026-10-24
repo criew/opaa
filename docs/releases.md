@@ -605,9 +605,14 @@ legt diesen Vergleich getrennt ab, in `delta-lts/` und `betrieb-lts/`, und `LIES
 Abschnitt „Welcher Vergleich für wen“, welcher für wen gilt. Der zweite Lauf von `complianceDelta`
 vergleicht die Manifeste beider Stände unabhängig von ihrer Ahnenreihe; die Liste der als
 datenrelevant gekennzeichneten PRs dazwischen nimmt die Commits, die das neue Release enthält und die
-vorige LTS-Linie nicht, und kann deshalb auch PRs nennen, die als Backport schon in der LTS-Linie
-stecken. Ohne vorige LTS-Linie mit finalem Release, bei einem normalen Release und bei einem
-Patch-Release entfällt der zweite Vergleich, ebenso wenn er auf dasselbe Tag fiele wie der erste.
+vorige LTS-Linie nicht, ohne die, deren Patch dort schon unverändert als Backport steckt
+(`git log --cherry-pick --right-only`). Ein Backport mit aufgelöstem Konflikt hat einen anderen
+Patch und erscheint deshalb ein zweites Mal. Ohne vorige LTS-Linie mit finalem Release, bei einem
+normalen Release und bei einem Patch-Release entfällt der zweite Vergleich, ebenso wenn er auf
+dasselbe Tag fiele wie der erste; hat die höchste vorige LTS-Linie kein finales Release, eine ältere
+aber schon, warnt der Lauf, statt auf die ältere auszuweichen. Das Vergleichs-Tag wird bei jedem
+Lauf neu bestimmt: Ist zwischen erstem Lauf und „Re-run failed jobs“ ein Patch der vorigen LTS-Linie
+erschienen, vergleicht `delta-lts/` mit diesem.
 `update_package.py lts-previous --tag <tag> --commit <commit>` nennt das Tag.
 
 **Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
@@ -923,7 +928,8 @@ eine ausgelaufene Linie bleibt mit ihrem Ende stehen.
 
 ### Liste der Linien
 
-Maschinenlesbar stehen die veröffentlichten Linien in `.github/support-lines.json`; Renovate und
+Maschinenlesbar stehen die Linien in `.github/support-lines.json`, veröffentlichte und eine
+LTS-Linie schon vor ihrem ersten Kandidaten; Renovate und
 der nächtliche CVE-Scan lesen sie. Darin stehen je Linie `line`
 (`X.Y`), `kind` (`lts` oder `normal`) und `supportEnd`, der letzte Tag mit Patch-Releases als
 `JJJJ-MM-TT`. Bei einer normalen Linie bleibt `supportEnd` `null`, bis ihr Nachfolger erscheint;

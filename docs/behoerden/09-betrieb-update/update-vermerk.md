@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -35,7 +35,9 @@ Das Update-Paket enthält:
   denselben Angaben gegenüber dem jüngsten Release der vorigen LTS-Linie. Sie gelten für eine
   Installation, die nur LTS-Linien betreibt und von dort direkt wechselt; `delta/` und `betrieb/`
   gelten für eine Installation, die jedem Funktionsrelease folgt. `LIESMICH.md` nennt beide
-  Vergleichsstände.
+  Vergleichsstände. Eine Änderung, die schon unverändert als Backport in der vorigen LTS-Linie
+  steckt, führt `delta-lts/` nicht noch einmal auf; musste der Backport angepasst werden, steht sie
+  dort ein zweites Mal, obwohl die Installation sie schon hat.
 
 ## Aufgaben der Behörde
 
