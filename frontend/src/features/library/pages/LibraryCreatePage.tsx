@@ -153,6 +153,8 @@ export default function LibraryCreatePage() {
   const [touched, setTouched] = useState<Set<string>>(new Set())
   // „Ändern“ on the page „Prüfen“: the step leads back there
   const [returnToReview, setReturnToReview] = useState(false)
+  // which button started a running check shows it; the other stays as it is
+  const [advancing, setAdvancing] = useState(false)
   const summaryRef = useRef<HTMLDivElement>(null)
   const [focusSummary, setFocusSummary] = useState(0)
 
@@ -564,6 +566,15 @@ export default function LibraryCreatePage() {
   }
 
   const handleNext = async () => {
+    setAdvancing(true)
+    try {
+      await advanceStep()
+    } finally {
+      setAdvancing(false)
+    }
+  }
+
+  const advanceStep = async () => {
     if (current === 'quellart') {
       if (typesUnavailable) {
         setPageError(sourceTypesError ?? 'Die Quellarten werden noch geladen.')
@@ -799,7 +810,7 @@ export default function LibraryCreatePage() {
   // ---- render ----------------------------------------------------------------------------------
 
   const isLast = current === 'pruefen'
-  const busy = connectionCheck.running || rightsCheck.running
+  const busy = advancing
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 5 } }}>
@@ -928,7 +939,7 @@ export default function LibraryCreatePage() {
                 errors={shownConnectionErrors}
                 onLeave={(key) => setTouched((prev) => new Set(prev).add(key))}
                 outcome={connectionCheck.outcome}
-                checking={connectionCheck.running}
+                checking={connectionCheck.running && !advancing}
                 onCheck={() => void runConnectionCheck()}
                 onProceedAnyway={advance}
                 onReplacingChange={() => {}}
