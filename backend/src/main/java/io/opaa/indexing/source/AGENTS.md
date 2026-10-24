@@ -39,8 +39,12 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - **Dateiablagen** implementieren `FileStore`/`ChangeFeed`; Abgleich über Läufe besitzt `FileSync` (ADR-0045).
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über
-  `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`,
-  `FakeGraphServer`, `SambaFixture`, `FakeDropboxServer`.
+  `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`.
+- **Teststufen nach ADR-0057:** Pflicht ist ein Testdoppel mit den gemeinsamen Verträgen (`RunSecretContract`,
+  bei Dateiablagen `FileStoreContract` und Ableitungen, `<Typ>LogLeakTest`); dazu ein Container in `test` (leicht)
+  oder eine nächtliche Suite `io.opaa.integration.<system>` (schwer), wenn ein Image existiert. Das Epic eines neuen
+  Konnektors nennt die gewählten Stufen. Testdoppel: `FakeConfluenceServer`, `FakeDropboxServer`, `FakeDriveServer`,
+  `FakeNextcloudServer`, `FakeGraphServer`, `FakeS3ObjectStore`; Container: `S3TestFixture`, `SambaFixture`.
 
 ## Maßgebliche ADRs
 
@@ -49,6 +53,7 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - [ADR-0038](../../../../../../../../docs/decisions/0038-steckbare-konnektoren.md): steckbare Konnektoren, Einstellungen, Geheimnisse
 - [ADR-0041](../../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 3a): Lauf-SPI ohne eigene Zugangsdaten
 - [ADR-0045](../../../../../../../../docs/decisions/0045-gemeinsamer-datei-abgleich.md): Datei-Abgleich, Laufrahmen, Nextcloud-Store
+- [ADR-0057](../../../../../../../../docs/decisions/0057-teststufen-fuer-konnektoren.md): Teststufen und Testmuster je Konnektor
 - [ADR-0023](../../../../../../../../docs/decisions/0023-confluence-konnektor.md), [ADR-0027](../../../../../../../../docs/decisions/0027-s3-konnektor.md), [ADR-0040](../../../../../../../../docs/decisions/0040-google-drive-konnektor.md), [ADR-0046](../../../../../../../../docs/decisions/0046-smb-konnektor.md), [ADR-0047](../../../../../../../../docs/decisions/0047-sharepoint-konnektor.md): je ein Konnektor (Confluence, S3, Google Drive, SMB, SharePoint)
 
 ## Tests bei Änderungen
