@@ -56,6 +56,16 @@ interface SourceSetupRowsProps<V> {
   connectionPrelude?: ReactNode
   /** Leads the summary of „Verbindung“, e.g. the Zugang. */
   connectionLead?: string | null
+  /** The connection's last known state from the runs, while the row's own test has not run. */
+  connectionStatus?: RowStatus | null
+  /** Under the closed „Umfang“: entries the last run could not read. */
+  scopeNote?: ReactNode
+  /** „Umfang“ of a source without a choice („Ganzes Verzeichnis“): a row without „Ändern“. */
+  fixedScope?: string | null
+  /** The schedule's state, e.g. the last planned runs failed. */
+  scheduleStatus?: RowStatus | null
+  /** Rows after „Zeitplan“ in the same grid, e.g. „Live-Aktualisierung“. */
+  extraRows?: ReactNode
   /** The rows shown; a reader sees only what every reader may. */
   rows?: SetupRowId[]
   /** Absent for a reader. */
@@ -90,6 +100,11 @@ export default function SourceSetupRows<V>({
   firstRun,
   connectionPrelude,
   connectionLead,
+  connectionStatus = null,
+  scopeNote,
+  fixedScope = null,
+  scheduleStatus = null,
+  extraRows,
   scheduleNote,
   rows = ['connection', 'scope', 'schedule'],
   canEdit = true,
@@ -301,7 +316,10 @@ export default function SourceSetupRows<V>({
   }
 
   function statusOf(row: SetupRowId): RowStatus | null {
-    if (row !== 'connection' || !request) return null
+    if (row === 'schedule') return scheduleStatus
+    if (row !== 'connection') return null
+    if (check.state === 'unchecked' && connectionStatus) return connectionStatus
+    if (!request) return null
     switch (check.state) {
       case 'passed':
         return { tone: 'success', label: 'verbunden' }
@@ -359,6 +377,18 @@ export default function SourceSetupRows<V>({
       <ErrorSummary entries={entries} ref={summaryRef} />
       {rows.map((row) => {
         const section = row === 'schedule' ? null : spec.sections.find((s) => s.id === row)
+        if (row === 'scope' && !section && fixedScope) {
+          return (
+            <SummaryRow
+              key={row}
+              id={`${context.idPrefix}-row-${row}`}
+              title={ROW_TITLES[row]}
+              summary={fixedScope}
+              open={false}
+              headingLevel={headingLevel}
+            />
+          )
+        }
         if (row !== 'schedule' && !section && !(row === 'connection' && connectionPrelude))
           return null
         const Fields = section?.Fields
@@ -375,6 +405,7 @@ export default function SourceSetupRows<V>({
                 ? [`Test fehlgeschlagen: ${plainMessage(check.outcome.message)}`]
                 : []),
             ]}
+            note={row === 'scope' ? scopeNote : undefined}
             open={openRow === row}
             onOpen={canEdit ? () => void open(row) : undefined}
             headingLevel={headingLevel}
@@ -427,6 +458,7 @@ export default function SourceSetupRows<V>({
           </SummaryRow>
         )
       })}
+      {extraRows}
     </Box>
   )
 }

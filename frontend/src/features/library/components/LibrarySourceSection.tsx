@@ -1,14 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import Accordion from '@mui/material/Accordion'
-import AccordionDetails from '@mui/material/AccordionDetails'
-import AccordionSummary from '@mui/material/AccordionSummary'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type {
   ConnectionProfileRef,
   SourceTypeKey,
@@ -18,17 +14,11 @@ import type {
   SourceBlock,
 } from '@/shared/api/types'
 import { useIndexingStore } from '../stores/indexingStore'
-import { formatCalendarDay, formatFileSize } from '@/shared/utils/labels'
-import {
-  indexingRunEventCategoryLabel,
-  indexingRunModeLabel,
-  indexingTriggerSourceLabel,
-} from './indexingLabels'
+import { formatCalendarDay } from '@/shared/utils/labels'
 import { scheduleFrequencyLabel } from './scheduleLabels'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
-import { CONTENT_WIDTH } from './setup/rowStyles'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
 import LibrarySourceRows from './LibrarySourceRows'
 import type { SourceSetupHandle } from './setup/SourceSetupRows'
@@ -37,14 +27,18 @@ import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import { sourceRegistration } from './sources/registry'
-import {
-  LIBRARY_QUOTA_EXHAUSTED_REMEDY,
-  QUOTA_EXHAUSTED_LABEL,
-  QUOTA_EXHAUSTED_REMEDY,
-} from './privateLibrary'
 import StateDot from '@/shared/ui/StateDot'
-import { plainMessage } from './sourceKit/plainMessage'
-import type { StatusTone } from '@/shared/ui/StatusLine'
+import Link from '@mui/material/Link'
+import ConfluenceWebhookSection from './ConfluenceWebhookSection'
+import S3EventSection from './S3EventSection'
+import SummaryRow from './setup/SummaryRow'
+import { TEXT_LINK } from './setup/rowStyles'
+import type { RowStatus } from './setup/setupTypes'
+import LibraryRunList from './LibraryRunList'
+import { formatDay } from './steckbrief/libraryState'
+import { fixedScopeOf, unreadableScopeNames } from './steckbrief/sourceSummary'
+import { s3SettingsFromLibrary } from '../utils/s3Source'
+import type { LibraryResponse } from '@/shared/api/types'
 
 export interface LibrarySourceSectionProps {
   libraryId: string
@@ -70,7 +64,13 @@ export interface LibrarySourceSectionProps {
   canEditSource: boolean
   /** A private library marked for erasure: no source, profile or schedule change any more. */
   erasing?: boolean
+  /** May start runs (EDITOR and above): „Vollabgleich starten“ at the runs. */
+  mayStartRuns?: boolean
 }
+
+const REJECTED_SIGN_IN = new Set(['AUTH', 'CREDENTIALS_REJECTED'])
+const NO_RUNS: IndexingRunResponse[] = []
+const NO_KEYS: string[] = []
 
 /**
  * The Reiter „Quelle" of a connector library, in four sections: **Umfang** for every
@@ -83,7 +83,15 @@ export default function LibrarySourceSection({
   library,
   canEditSource,
   erasing = false,
+  mayStartRuns = false,
 }: LibrarySourceSectionProps) {
+  const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? NO_RUNS)
+  const unlistedKeys = useIndexingStore(
+    (s) => s.runsByLibrary[libraryId]?.unlistedScopeKeys ?? NO_KEYS,
+  )
+  const isRunning = useIndexingStore((s) => s.runsByLibrary[libraryId]?.status === 'RUNNING')
+  const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
+  const [liveOpen, setLiveOpen] = useState(false)
   const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
@@ -146,8 +154,71 @@ export default function LibrarySourceSection({
     ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
     : null
 
+  // D10: the connection carries what the last finished run knows of the sign-in
+  const finished = runs.find((run) => run.status !== 'RUNNING') ?? null
+  const connectionStatus: RowStatus | null = !finished
+    ? null
+    : finished.status === 'FAILED' &&
+        finished.failureCategory != null &&
+        REJECTED_SIGN_IN.has(finished.failureCategory)
+      ? { tone: 'error', label: 'Anmeldung abgelehnt' }
+      : { tone: 'success', label: `Anmeldung ok · zuletzt ${formatDay(finished.startedAt)}` }
+  const unreadable = unreadableScopeNames(unlistedKeys, library as LibraryResponse)
+  const scopeNote =
+    unreadable.length > 0 ? (
+      <Box sx={{ mt: 0.5 }} data-testid="scope-unreadable">
+        <StateDot tone="warning" label={`nicht lesbar: ${unreadable.join(', ')}`} />
+      </Box>
+    ) : undefined
+  const scheduleStatus: RowStatus | null = library.lastScheduledRunsFailed
+    ? { tone: 'error', label: 'letzte geplante Läufe fehlgeschlagen' }
+    : null
+  const liveKind =
+    library.sourceType === 'CONFLUENCE' ? 'webhook' : library.sourceType === 'S3' ? 'events' : null
+  const liveRow =
+    liveKind && canEditSource && !erasing ? (
+      <SummaryRow
+        id="edit-source-row-live"
+        title="Live-Aktualisierung"
+        summary={
+          library.pushSecretSet
+            ? liveKind === 'webhook'
+              ? 'Webhook eingerichtet'
+              : 'Ereignisse eingerichtet'
+            : 'aus'
+        }
+        actionLabel={library.pushSecretSet ? 'Ändern' : 'Einrichten'}
+        open={liveOpen}
+        onOpen={() => setLiveOpen(true)}
+        headingLevel="h2"
+      >
+        <Stack spacing={2}>
+          {liveKind === 'webhook' ? (
+            <ConfluenceWebhookSection libraryId={libraryId} secretSet={library.pushSecretSet} />
+          ) : (
+            <S3EventSection
+              libraryId={libraryId}
+              tokenSet={library.pushSecretSet}
+              scopes={s3SettingsFromLibrary(library)?.scopes ?? []}
+            />
+          )}
+          <Box sx={{ textAlign: 'right' }}>
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              onClick={() => setLiveOpen(false)}
+              sx={TEXT_LINK}
+            >
+              Schließen
+            </Link>
+          </Box>
+        </Stack>
+      </SummaryRow>
+    ) : undefined
+
   return (
-    <Stack sx={{ maxWidth: CONTENT_WIDTH }}>
+    <Stack>
       {library.sourceBlock?.notice && (
         <Alert
           severity="warning"
@@ -206,6 +277,11 @@ export default function LibrarySourceSection({
             libraryId={libraryId}
             library={library}
             canEdit={canEditSource && !erasing}
+            connectionStatus={connectionStatus}
+            scopeNote={scopeNote}
+            fixedScope={fixedScopeOf(library.sourceType)}
+            scheduleStatus={scheduleStatus}
+            extraRows={liveRow}
             connectionPrelude={
               canEditSource && !erasing ? (
                 <Stack spacing={1.5}>
@@ -231,11 +307,6 @@ export default function LibrarySourceSection({
               ) : undefined
             }
           />
-          {!canEditSource && (
-            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
-              Verbindung, Zeitplan und Läufe sehen nur Verwaltende.
-            </Typography>
-          )}
         </Box>
       ) : (
         <>
@@ -388,262 +459,39 @@ export default function LibrarySourceSection({
       )}
 
       {canEditSource && (
-        <Box component="section" aria-labelledby="library-runs-title">
-          {/* the same heading as the rows above, no overline */}
-          <Typography
-            id="library-runs-title"
-            component="h3"
-            sx={{ fontSize: 15, fontWeight: 600, mb: 1.5, color: 'text.primary' }}
-          >
-            Läufe
-          </Typography>
-          <LibraryIndexingHistorySection
-            libraryId={libraryId}
-            sourceType={library.sourceType}
-            privateLibrary={Boolean(library.privateLibrary)}
-          />
-        </Box>
+        <LibraryRunList
+          libraryId={libraryId}
+          sourceType={library.sourceType}
+          privateLibrary={Boolean(library.privateLibrary)}
+          connectionAction={
+            configuration?.setup && !erasing ? (
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={() => rowsRef.current?.openRow('connection')}
+                sx={TEXT_LINK}
+              >
+                Verbindung ändern
+              </Link>
+            ) : undefined
+          }
+          actions={
+            mayStartRuns && configuration?.fullSyncRhythm && !erasing ? (
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                disabled={isRunning}
+                onClick={() => void triggerIndexing(libraryId, library.sourceType, 'FULL')}
+                sx={TEXT_LINK}
+              >
+                Vollabgleich starten
+              </Link>
+            ) : undefined
+          }
+        />
       )}
     </Stack>
-  )
-}
-
-function formatRunTimestamp(value: string | null | undefined): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-// A run's state is a dot before its word (guidelines 5.5); a running run is no warning.
-/** A completed run that still failed on documents or content: not shown as plain success. */
-function partlyFailed(run: IndexingRunResponse): boolean {
-  return run.status === 'COMPLETED' && (run.documentsFailed > 0 || countUnreadable(run.events) > 0)
-}
-
-function runStatusTone(status: IndexingRunResponse['status']): StatusTone {
-  if (status === 'COMPLETED') return 'success'
-  if (status === 'FAILED') return 'error'
-  return 'neutral'
-}
-
-// ADR-0023: a run that could not read a space or a page must not look like any other
-// completed run - the header names how many of its events are about unreadable content.
-function countUnreadable(events: IndexingRunResponse['events']): number {
-  return events.filter((e) => e.category === 'REJECTED' || e.category === 'UNREACHABLE').length
-}
-
-// The operator's line on what a run cost. Every connector records the attachment share and the
-// duration; requests and throttles only appear when a source actually counted them (Confluence).
-function runMetricsLabel(run: IndexingRunResponse): string | null {
-  const metrics = run.metrics
-  if (!metrics) return null
-  const parts: string[] = []
-  if (metrics.requestsSent > 0 || metrics.throttleCount > 0) {
-    parts.push(`${metrics.requestsSent} Anfragen an die Quelle`)
-  }
-  if (metrics.throttleCount > 0) {
-    parts.push(
-      `${metrics.throttleCount}-mal gedrosselt (${metrics.throttleWaitSeconds} s gewartet)`,
-    )
-  }
-  if (metrics.bytesDownloaded) {
-    parts.push(`${formatFileSize(metrics.bytesDownloaded)} geladen`)
-  }
-  parts.push(
-    `Anhänge: ${metrics.attachmentsProcessed} indiziert, ${metrics.attachmentsSkipped} übersprungen, ${metrics.attachmentsFailed} fehlgeschlagen`,
-  )
-  if (run.completedAt) {
-    const seconds = Math.max(
-      0,
-      Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000),
-    )
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    parts.push(
-      hours > 0 ? `Dauer ${hours} h ${minutes} min` : `Dauer ${minutes} min ${seconds % 60} s`,
-    )
-  }
-  return parts.join(' · ')
-}
-
-function RunMetricsLine({ run }: { run: IndexingRunResponse }) {
-  const label = runMetricsLabel(run)
-  if (!label) return null
-  return (
-    <Typography
-      variant="body2"
-      sx={{ color: 'text.secondary', mb: 1.5 }}
-      data-testid={`run-metrics-${run.id}`}
-    >
-      {label}
-    </Typography>
-  )
-}
-
-/** The run ended at a storage quota: the library's own or, for a private one, its owner's. */
-function quotaExhausted(run: IndexingRunResponse): boolean {
-  return run.failureCategory === 'QUOTA_EXHAUSTED'
-}
-
-function runStatusLabel(status: IndexingRunResponse['status']): string {
-  if (status === 'COMPLETED') return 'Abgeschlossen'
-  if (status === 'FAILED') return 'Fehlgeschlagen'
-  if (status === 'RUNNING') return 'Läuft'
-  return 'Nie ausgeführt'
-}
-
-// A stable module-level reference (not a fresh `[]` literal per render) - a Zustand selector must
-// never return a new array identity for an unchanged state slice, or useSyncExternalStore treats
-// every render as a change and re-renders in an infinite loop.
-const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
-
-// Collapsible log of a library's recent runs - header data always visible, the
-// event list only after expanding. Separate from the progress display in the page header, whose
-// runsByLibrary carries only the current/last run.
-function LibraryIndexingHistorySection({
-  libraryId,
-  sourceType,
-  privateLibrary,
-}: {
-  libraryId: string
-  sourceType: SourceTypeKey
-  privateLibrary: boolean
-}) {
-  // both quotas share the run category: a private library may have hit either, a shared one only
-  // its own
-  const quotaRemedy = privateLibrary ? QUOTA_EXHAUSTED_REMEDY : LIBRARY_QUOTA_EXHAUSTED_REMEDY
-  const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
-  // ADR-0023, Entscheidung 4: only a source with two Betriebsarten shows the mode - for every other
-  // type it is implied by the source type and a chip would only repeat it.
-  const showRunMode = Boolean(sourceRegistration(sourceType)?.configuration?.fullSyncRhythm)
-  const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
-
-  useEffect(() => {
-    void loadRunHistory(libraryId)
-  }, [libraryId, loadRunHistory])
-
-  return (
-    <Box>
-      {runs.length === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Noch keine Läufe.
-        </Typography>
-      ) : (
-        <Stack spacing={1}>
-          {runs.map((run) => (
-            <Accordion key={run.id}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
-                >
-                  <StateDot
-                    tone={partlyFailed(run) ? 'warning' : runStatusTone(run.status)}
-                    label={
-                      partlyFailed(run) ? 'Teilweise fehlgeschlagen' : runStatusLabel(run.status)
-                    }
-                  />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {formatRunTimestamp(run.startedAt)}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {indexingTriggerSourceLabel(run.triggeredBy)}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {run.documentCount} verarbeitet
-                    {run.documentsSkipped > 0 ? `, ${run.documentsSkipped} übersprungen` : ''}
-                    {run.documentsFailed > 0 ? `, ${run.documentsFailed} fehlgeschlagen` : ''}
-                  </Typography>
-                  {showRunMode && (
-                    <Typography
-                      variant="body2"
-                      sx={{ color: 'text.secondary' }}
-                      data-testid={`run-mode-${run.id}`}
-                    >
-                      {indexingRunModeLabel(run.runMode)}
-                    </Typography>
-                  )}
-                  {run.incomplete && (
-                    <Typography
-                      variant="body2"
-                      sx={{ color: 'text.secondary' }}
-                      data-testid={`run-incomplete-${run.id}`}
-                    >
-                      {quotaExhausted(run)
-                        ? QUOTA_EXHAUSTED_LABEL
-                        : 'unvollständig, wird fortgesetzt'}
-                    </Typography>
-                  )}
-                  {run.unreadableScopeCount != null && run.unreadableScopeCount > 0 && (
-                    <Typography
-                      variant="body2"
-                      sx={{ color: 'text.secondary' }}
-                      data-testid={`run-unreadable-${run.id}`}
-                    >
-                      {`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
-                    </Typography>
-                  )}
-                </Stack>
-              </AccordionSummary>
-              <AccordionDetails>
-                {quotaExhausted(run) && (
-                  <Alert
-                    severity="warning"
-                    sx={{ mb: 1.5 }}
-                    data-testid={`run-quota-remedy-${run.id}`}
-                  >
-                    {quotaRemedy}
-                  </Alert>
-                )}
-                {run.message && (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                    {plainMessage(run.message)}
-                  </Typography>
-                )}
-                <RunMetricsLine run={run} />
-                {run.events.length === 0 ? (
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Nichts übersprungen oder fehlgeschlagen.
-                  </Typography>
-                ) : (
-                  <Stack spacing={1}>
-                    {run.events.map((event, index) => (
-                      // message/reference are already German and scrubbed of raw
-                      // challenge-/redirect-URLs by the backend. Events carry no id of their own,
-                      // so the key combines the run and the position within its event list.
-                      <Box key={`${run.id}-${index}`}>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
-                            {indexingRunEventCategoryLabel(event.category)}
-                          </Typography>
-                          <Typography variant="body2">{plainMessage(event.message)}</Typography>
-                        </Stack>
-                        {event.reference && (
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: 'text.secondary',
-                              display: 'block',
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            {event.reference}
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
-                    {run.eventsTruncatedCount > 0 && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        … und {run.eventsTruncatedCount} weitere
-                      </Typography>
-                    )}
-                  </Stack>
-                )}
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Stack>
-      )}
-    </Box>
   )
 }

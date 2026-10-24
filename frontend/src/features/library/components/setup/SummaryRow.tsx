@@ -82,6 +82,10 @@ interface SummaryRowProps {
   status?: RowStatus | null
   /** Issues of the row, shown under the summary while it is closed. */
   issues?: string[]
+  /** A finding about the row's value while it is closed, e.g. scope entries a run could not read. */
+  note?: ReactNode
+  /** The action's word; „Ändern“ unless the row is still empty („Einrichten“). */
+  actionLabel?: string
   open: boolean
   /** Absent for a reader: the row then only shows what is set. */
   onOpen?: () => void
@@ -100,6 +104,8 @@ export default function SummaryRow({
   summary,
   status,
   issues = [],
+  note,
+  actionLabel = 'Ändern',
   open,
   onOpen,
   headingLevel = 'h3',
@@ -125,6 +131,7 @@ export default function SummaryRow({
         {!open && (
           <Box sx={{ gridColumn: { xs: '1 / -1', sm: '2' }, gridRow: { xs: '2', sm: '1' } }}>
             <SummaryValue summary={summary} status={status} />
+            {note}
             {issues.length > 0 && (
               <Box id={issuesId} sx={{ mt: 0.5 }}>
                 {issues.map((issue) => (
@@ -152,7 +159,7 @@ export default function SummaryRow({
               justifySelf: 'end',
             }}
           >
-            Ändern
+            {actionLabel}
             <Box component="span" sx={visuallyHidden}>
               {` ${title}`}
             </Box>

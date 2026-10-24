@@ -16,8 +16,9 @@ import {
   withoutFixed,
 } from './sources/sourceConnection'
 import type { SourceFormContext } from './sources/types'
+import { nextRunLabel } from './steckbrief/sourceSummary'
 import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
-import type { SetupRowId } from './setup/setupTypes'
+import type { RowStatus, SetupRowId } from './setup/setupTypes'
 
 export interface SourceRowsLibrary {
   name: string
@@ -59,6 +60,11 @@ export default function LibrarySourceRows({
   library,
   canEdit,
   connectionPrelude,
+  connectionStatus,
+  scopeNote,
+  fixedScope,
+  scheduleStatus,
+  extraRows,
   ref,
 }: {
   libraryId: string
@@ -66,6 +72,15 @@ export default function LibrarySourceRows({
   canEdit: boolean
   /** Inside „Verbindung“: the Zugang and the source connection with their own actions. */
   connectionPrelude?: ReactNode
+  /** The connection's last known state from the runs (D10). */
+  connectionStatus?: RowStatus | null
+  /** Scope entries the last run could not read, at the row „Umfang“ (D8). */
+  scopeNote?: ReactNode
+  /** „Umfang“ of a source without a choice (D9). */
+  fixedScope?: string | null
+  scheduleStatus?: RowStatus | null
+  /** Rows after „Zeitplan“, e.g. „Live-Aktualisierung“ (D9). */
+  extraRows?: ReactNode
   ref?: Ref<SourceSetupHandle>
 }) {
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
@@ -117,11 +132,7 @@ export default function LibrarySourceRows({
 
   return (
     <SourceSetupRows
-      scheduleNote={
-        library.schedule?.nextRunAt
-          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`
-          : null
-      }
+      scheduleNote={library.schedule?.nextRunAt ? nextRunLabel(library.schedule.nextRunAt) : null}
       ref={ref}
       mode="edit"
       spec={setup}
@@ -138,6 +149,11 @@ export default function LibrarySourceRows({
       rhythm={rhythm}
       connectionPrelude={connectionPrelude}
       connectionLead={profile ? `Zugang „${profile.name}“` : null}
+      connectionStatus={connectionStatus}
+      scopeNote={scopeNote}
+      fixedScope={fixedScope}
+      scheduleStatus={scheduleStatus}
+      extraRows={extraRows}
       rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope']}
       canEdit={canEdit}
       headingLevel="h2"
