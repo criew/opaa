@@ -5,17 +5,15 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { readGoogleDriveKey } from '@/features/connection'
-import { browseSource } from '../../../api/libraryApi'
 import {
   GOOGLE_DRIVE_API,
-  googleDriveScopeFromKey,
   storedKeyServes,
   type GoogleDriveSourceValues,
 } from '../../../utils/googleDriveSource'
-import PickCombo from '../PickCombo'
+import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
-import { driveNode, driveScopeOf } from './driveNodes'
+import { driveItem, driveScopeOfItem, driveSelectionSource } from '../../sourceKit/selectionSources'
 
 export function GoogleDriveConnectionFields({
   values,
@@ -87,7 +85,7 @@ export function GoogleDriveConnectionFields({
             id={`${fieldId('keyFile')}-error`}
             sx={{ fontSize: 12, mt: 0.5, color: error ? 'error.main' : 'text.secondary' }}
           >
-            {error ?? 'Die JSON-Datei des Dienstkontos aus der Google Cloud Console.'}
+            {error ?? 'In der Google Cloud Console unter IAM › Dienstkonten › Schlüssel.'}
           </Typography>
         </Box>
       )}
@@ -115,36 +113,17 @@ export function GoogleDriveScopeFields({
   const request = { sourceUrl: GOOGLE_DRIVE_API, sourceCredentials: values.keyFile || undefined }
   const subject = values.subject.trim() || undefined
   return (
-    <PickCombo
+    <ScopePicker
       id={fieldId('scopes')}
-      label="Bereiche"
-      hint="Geteilte Ablagen und für das Dienstkonto freigegebene Ordner. Einen anderen Ordner nehmen Sie über seine ID auf."
+      source={driveSelectionSource(fields, () => ({ ...request, query: { subject } }))}
+      value={values.scopes.map(driveItem)}
+      onChange={(items) =>
+        onChange({
+          scopes: items.map(driveScopeOfItem).filter((scope) => scope !== null),
+        })
+      }
       error={issueAt('scopes')}
-      noun={['Bereich', 'Bereiche']}
-      selected={values.scopes.map(driveNode)}
-      onChange={(nodes) => onChange({ scopes: nodes.map(driveScopeOf) })}
-      load={async () => {
-        const result = await browseSource(
-          'GOOGLE_DRIVE',
-          fields.probeRequest({ ...request, query: { subject } }),
-        )
-        return {
-          complete: result.complete,
-          message: result.message,
-          nodes: result.entries
-            .map((entry) => googleDriveScopeFromKey(entry.key, entry.name ?? null))
-            .filter((scope) => scope !== null)
-            .map(driveNode),
-        }
-      }}
-      max={50}
-      manual={(text) => {
-        const scope = googleDriveScopeFromKey(`folder:${text.trim()}`, null)
-        return scope && text.trim().length >= 10 ? driveNode(scope) : null
-      }}
-      manualLabel={(text) => `Ordner-ID „${text.trim()}“ übernehmen`}
       loadKey={JSON.stringify({ request, subject, probe: fields.probe })}
-      placeholder="Bereich suchen oder Ordner-ID einfügen"
     />
   )
 }

@@ -12,11 +12,11 @@ import type { SourceSetupSpec } from '../setupTypes'
 import {
   addressIssue,
   checkWord,
-  counted,
   credentialsKept,
   hostOf,
   issueList,
   joinSummary,
+  namesSummary,
   pairIssues,
 } from './common'
 import { S3ConnectionFields, S3ScopeFields } from './S3SetupFields'
@@ -33,15 +33,12 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
     },
     {
       id: 'scope',
-      summary: (values) => {
-        const scopes = values.scopes.filter((scope) => scope.bucket.trim() !== '')
-        if (scopes.length === 0) return null
-        if (scopes.length === 1) {
-          const [only] = scopes
-          return only.prefix ? `${only.bucket}/${only.prefix}` : `Bucket ${only.bucket}`
-        }
-        return counted(scopes.length, ['Geltungsbereich', 'Geltungsbereiche'])
-      },
+      summary: (values) =>
+        namesSummary(
+          values.scopes
+            .filter((scope) => scope.bucket.trim() !== '')
+            .map((scope) => (scope.prefix ? `${scope.bucket}/${scope.prefix}` : scope.bucket)),
+        ),
       Fields: S3ScopeFields,
     },
   ],
@@ -72,7 +69,7 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
     }
     const scopes = values.scopes.filter((scope) => scope.bucket.trim() !== '')
     at('scopes', 'Mindestens einen Bucket wählen', scopes.length === 0)
-    at('scopes', `Höchstens ${MAX_S3_SCOPES} Geltungsbereiche`, scopes.length > MAX_S3_SCOPES)
+    at('scopes', `Höchstens ${MAX_S3_SCOPES} Buckets und Präfixe`, scopes.length > MAX_S3_SCOPES)
     const invalid = scopes.map(validateS3Scope).find(Boolean)
     if (invalid) at('scopes', invalid)
     // the pattern rules alone: everything else filled with valid stand-ins

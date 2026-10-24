@@ -6,6 +6,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 import RemoveIcon from '@mui/icons-material/Remove'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import { plainMessage } from '../sourceKit/plainMessage'
 import type { ConnectionCheck, StageState } from './connectionCheck'
 
 const STAGE_ICON: Record<StageState, { Icon: typeof CheckIcon; color: string }> = {
@@ -81,7 +82,7 @@ export default function ConnectionCheckView({
               })}
             </Box>
             <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
-              {outcome.message}
+              {plainMessage(outcome.message)}
             </Typography>
             {unreadable.length > 0 && (
               <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, fontSize: 13 }}>
@@ -105,11 +106,6 @@ export default function ConnectionCheckView({
               <Button size="small" variant="text" sx={{ mt: 0.5 }} onClick={check.accept}>
                 Trotzdem fortfahren
               </Button>
-            )}
-            {check.accepted && outcome.state === 'failed' && (
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                Sie fahren ohne erfolgreichen Test fort. Der erste Lauf meldet, was fehlt.
-              </Typography>
             )}
           </>
         )}

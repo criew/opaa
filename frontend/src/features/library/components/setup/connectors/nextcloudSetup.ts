@@ -44,6 +44,8 @@ export const nextcloudSetup: SourceSetupSpec<NextcloudSourceValues> = {
         values.username.trim(),
         values.appPassword,
         credentialsKept(context, values.sourceUrl),
+        'Benutzername',
+        'App-Passwort',
       )
     }
     folderIssues(at, nextcloudFoldersOf(values), MAX_NEXTCLOUD_FOLDERS)

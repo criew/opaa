@@ -18,11 +18,11 @@ export function SmbConnectionFields({
     <Stack spacing={2}>
       <SetupTextField
         id={fieldId('sourceUrl')}
-        label="Adresse der Freigabe"
+        label="Adresse"
         value={values.sourceUrl}
         onChange={(sourceUrl) => onChange({ sourceUrl })}
         error={issueAt('sourceUrl')}
-        hint={fields.addressHint ?? 'Server und Freigabe, Ordner wählen Sie im Umfang.'}
+        hint={fields.addressHint ?? undefined}
         placeholder="smb://dateiserver/Ablage"
         mono
       />
@@ -31,7 +31,7 @@ export function SmbConnectionFields({
           stored={credentialsKept(context, values.sourceUrl)}
           account={{
             id: fieldId('account'),
-            label: 'Kennung',
+            label: 'Benutzername',
             value: values.account,
             onChange: (account) => onChange({ account }),
             error: issueAt('account'),

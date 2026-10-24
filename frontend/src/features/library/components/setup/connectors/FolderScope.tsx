@@ -1,12 +1,17 @@
-import type { SourceTypeKey } from '@/shared/api/types'
-import { browseSource } from '../../../api/libraryApi'
 import type { ConnectionFields } from '../../sources/sourceConnection'
-import PickCombo, { type PickListing, type PickNode } from '../PickCombo'
-import { ALL_FOLDERS, folderNodes, folderText } from './folderNodes'
+import { folderItemsOf, folderSelectionSource } from '../../sourceKit/selectionSources'
+import ScopePicker from '../ScopePicker'
+
+const ROOT_LABELS: Record<'NEXTCLOUD' | 'SMB' | 'DROPBOX', string> = {
+  NEXTCLOUD: 'Nextcloud',
+  SMB: 'Freigabe',
+  DROPBOX: 'Dropbox',
+}
 
 interface FolderScopeProps {
   id: string
-  sourceType: SourceTypeKey
+  sourceType: 'NEXTCLOUD' | 'SMB' | 'DROPBOX'
+  /** One path per line; „/“ reads the whole source. */
   folders: string
   onChange: (folders: string) => void
   fields: ConnectionFields
@@ -16,10 +21,7 @@ interface FolderScopeProps {
   error?: string | null
 }
 
-/**
- * The folders of a path source (Nextcloud, Windows-Dateifreigabe, Dropbox): „/ (alles)“ is the
- * default, any folder below can be picked level by level or by typing its path.
- */
+/** The folders of a path source (Nextcloud, Windows-Dateifreigabe, Dropbox): all of it by default. */
 export default function FolderScope({
   id,
   sourceType,
@@ -30,50 +32,21 @@ export default function FolderScope({
   query = {},
   error,
 }: FolderScopeProps) {
-  const load = async (parent: PickNode | null): Promise<PickListing> => {
-    const path = parent?.key ?? '/'
-    const result = await browseSource(
-      sourceType,
-      fields.probeRequest({ ...connection, query: { ...query, path } }),
-    )
-    const trail = parent ? [...parent.trail, parent.label] : []
-    return {
-      complete: result.complete,
-      message: result.message,
-      nodes: result.entries.map((entry) => {
-        const segments = entry.key.split('/').filter(Boolean)
-        return {
-          key: entry.key.startsWith('/') ? entry.key : `/${entry.key}`,
-          label: entry.name ?? segments[segments.length - 1] ?? entry.key,
-          trail,
-          branch: true,
-          // the connector separates folders with commas; such a folder cannot be stored
-          disabledReason: entry.key.includes(',') ? 'Pfad mit Komma, nicht wählbar' : undefined,
-        }
-      }),
-    }
-  }
+  const whole = folders.split('\n').some((line) => line.trim() === '/')
+  const source = folderSelectionSource(sourceType, ROOT_LABELS[sourceType], fields, () => ({
+    ...connection,
+    query,
+  }))
   return (
-    <PickCombo
+    <ScopePicker
       id={id}
-      label="Ordner"
-      hint="„/ (alles)“ liest die ganze Ablage. Unterordner: Pfeil am Eintrag, Pfeiltaste rechts oder Pfad tippen, z. B. Projekte/2024."
+      source={source}
+      value={whole ? [] : folderItemsOf(folders)}
+      onChange={(items) => onChange(items.map((item) => item.key).join('\n'))}
+      all={{ active: whole, onChange: (all) => onChange(all ? '/' : '') }}
       error={error}
-      noun={['Ordner', 'Ordner']}
-      selected={folderNodes(folders)}
-      onChange={(nodes) => onChange(folderText(nodes))}
-      load={load}
-      hierarchical
-      allNode={ALL_FOLDERS}
-      max={50}
-      manual={(text) => {
-        const path = text.replace(/\/+$/, '')
-        if (!path.startsWith('/') || path.length < 2) return null
-        return folderNodes(path)[0] ?? null
-      }}
-      manualLabel={(text) => `Pfad „${text.replace(/\/+$/, '')}“ übernehmen`}
+      deeperLabel="Unterordner auswählen …"
       loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
-      placeholder="Ordner suchen oder Pfad tippen"
     />
   )
 }

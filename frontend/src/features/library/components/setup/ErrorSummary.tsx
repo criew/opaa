@@ -43,8 +43,8 @@ export default function ErrorSummary({
         sx={{ fontSize: 14, fontWeight: 600 }}
       >
         {entries.length === 1
-          ? '1 Angabe fehlt oder ist ungültig'
-          : `${entries.length} Angaben fehlen oder sind ungültig`}
+          ? 'Fehler: 1 Angabe prüfen'
+          : `Fehler: ${entries.length} Angaben prüfen`}
       </Typography>
       <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
         {entries.map((entry) => (

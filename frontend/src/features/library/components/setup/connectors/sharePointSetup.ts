@@ -1,11 +1,13 @@
 import type { SourceConnectionTestRequest } from '@/shared/api/types'
 import {
   SHAREPOINT_API,
+  sharePointFolderLabel,
+  sharePointLibraryLabel,
   sharePointSettingsOf,
   type SharePointSourceValues,
 } from '../../../utils/sharePointSource'
 import type { SourceSetupSpec } from '../setupTypes'
-import { checkWord, counted, issueList } from './common'
+import { checkWord, issueList, namesSummary } from './common'
 import { SharePointConnectionFields, SharePointScopeFields } from './SharePointSetupFields'
 
 const MAX_LIBRARIES = 50
@@ -20,17 +22,17 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
     },
     {
       id: 'scope',
-      summary: (values) => {
-        if (values.libraries.length === 0) return null
-        const folders = values.libraries.reduce((sum, library) => sum + library.folders.length, 0)
-        const libraries = counted(values.libraries.length, [
-          'Dokumentbibliothek',
-          'Dokumentbibliotheken',
-        ])
-        return folders > 0
-          ? `${libraries}, davon ${counted(folders, ['Ordner', 'Ordner'])}`
-          : libraries
-      },
+      summary: (values) =>
+        namesSummary(
+          values.libraries.flatMap((library) =>
+            library.folders.length === 0
+              ? [sharePointLibraryLabel(library)]
+              : library.folders.map(
+                  (folder) =>
+                    `${sharePointLibraryLabel(library)} › ${sharePointFolderLabel(folder)}`,
+                ),
+          ),
+        ),
       Fields: SharePointScopeFields,
     },
   ],

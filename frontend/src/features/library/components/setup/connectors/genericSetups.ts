@@ -22,8 +22,8 @@ export const filesystemSetup: SourceSetupSpec<FilesystemSourceValues> = {
       summary: (values) => {
         const patterns = filesystemPatternsOf(values.excludePatterns).length
         return patterns === 0
-          ? 'alles unter dem Pfad'
-          : `alles außer ${counted(patterns, ['Muster', 'Mustern'])}`
+          ? 'Alle Dateien'
+          : `Alle Dateien außer ${counted(patterns, ['Muster', 'Mustern'])}`
       },
       Fields: PathScopeFields,
     },

@@ -10,11 +10,11 @@ import type { SourceSetupSpec } from '../setupTypes'
 import {
   addressIssue,
   checkWord,
-  counted,
   credentialsKept,
   hostOf,
   issueList,
   joinSummary,
+  namesSummary,
 } from './common'
 import { ConfluenceConnectionFields, ConfluenceScopeFields } from './ConfluenceSetupFields'
 
@@ -34,8 +34,7 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
     },
     {
       id: 'scope',
-      summary: (values) =>
-        values.spaces.length > 0 ? counted(values.spaces.length, ['Space', 'Spaces']) : null,
+      summary: (values) => namesSummary(values.spaces.map((space) => space.name || space.key)),
       Fields: ConfluenceScopeFields,
     },
   ],
@@ -51,7 +50,11 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
     ) {
       const cloud = values.edition !== 'DATA_CENTER'
       at('email', 'E-Mail-Adresse fehlt', cloud && values.email.trim() === '')
-      at('token', 'Token fehlt', values.token.trim() === '')
+      at(
+        'token',
+        cloud ? 'API-Token fehlt' : 'Persönliches Zugriffstoken fehlt',
+        values.token.trim() === '',
+      )
     }
     at('spaces', 'Mindestens einen Space wählen', values.spaces.length === 0)
     at(

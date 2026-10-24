@@ -31,7 +31,7 @@ export function NextcloudConnectionFields({
           stored={credentialsKept(context, values.sourceUrl)}
           account={{
             id: fieldId('username'),
-            label: 'Kennung',
+            label: 'Benutzername',
             value: values.username,
             onChange: (username) => onChange({ username }),
             error: issueAt('username'),
@@ -39,11 +39,11 @@ export function NextcloudConnectionFields({
           }}
           secret={{
             id: fieldId('appPassword'),
-            label: 'Passwort',
+            label: 'App-Passwort',
             value: values.appPassword,
             onChange: (appPassword) => onChange({ appPassword }),
             error: issueAt('appPassword'),
-            hint: 'Ein App-Passwort des technischen Nutzers (Einstellungen › Sicherheit).',
+            hint: 'In Nextcloud unter Einstellungen › Sicherheit › App-Passwörter.',
           }}
         />
       )}

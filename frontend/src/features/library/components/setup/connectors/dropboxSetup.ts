@@ -15,7 +15,7 @@ export const dropboxSetup: SourceSetupSpec<DropboxSourceValues> = {
     {
       id: 'connection',
       summary: (values, _context, check) =>
-        joinSummary(values.teamSpace ? 'Team-Bereich' : 'eigene Ablage', checkWord(check)),
+        joinSummary(values.teamSpace ? 'Teambereich' : 'eigene Ablage', checkWord(check)),
       Fields: DropboxConnectionFields,
     },
     { id: 'scope', summary: (values) => folderSummary(values.folders), Fields: DropboxScopeFields },

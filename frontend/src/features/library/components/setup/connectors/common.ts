@@ -70,7 +70,7 @@ export function pairIssues(
   account: string,
   secret: string,
   kept: boolean,
-  accountName = 'Kennung',
+  accountName = 'Benutzername',
   secretName = 'Passwort',
 ) {
   add(accountField, `${accountName} ohne Doppelpunkt angeben`, account.includes(':'))
@@ -85,11 +85,18 @@ export function folderIssues(
   folders: string[],
   max: number,
 ) {
-  add('folders', 'Mindestens einen Ordner wählen, / für alles', folders.length === 0)
+  add('folders', 'Mindestens einen Ordner wählen', folders.length === 0)
   add('folders', `Höchstens ${max} Ordner`, folders.length > max)
   add(
     'folders',
     'Ein Ordnerpfad enthält kein Komma',
     folders.some((f) => f.includes(',')),
   )
+}
+
+/** „A, B, C“ - at most five names, then „und n weitere“. */
+export function namesSummary(names: string[], max = 5): string | null {
+  if (names.length === 0) return null
+  if (names.length <= max) return names.join(', ')
+  return `${names.slice(0, max).join(', ')} und ${names.length - max} weitere`
 }

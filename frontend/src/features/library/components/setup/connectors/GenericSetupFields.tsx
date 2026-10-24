@@ -15,11 +15,11 @@ export function PathConnectionFields({
   return (
     <SetupTextField
       id={fieldId('sourcePath')}
-      label="Verzeichnispfad"
+      label="Verzeichnis"
       value={values.sourcePath}
       onChange={(sourcePath) => onChange({ sourcePath })}
       error={issueAt('sourcePath')}
-      hint="Ein absoluter Pfad auf dem Server, den die Systemverwaltung freigegeben hat."
+      hint="Absoluter Pfad, von der Systemverwaltung freigegeben."
       placeholder="/data/dokumente"
       mono
     />
@@ -41,7 +41,7 @@ export function PathScopeFields({
       value={values.excludePatterns}
       onChange={(excludePatterns) => onChange({ excludePatterns })}
       error={issueAt('excludePatterns')}
-      hint="Ein Muster je Zeile, relativ zum Verzeichnispfad. Ohne Muster wird alles gelesen."
+      hint="Ein Muster je Zeile, relativ zum Verzeichnis."
       placeholder={'Archiv/**\n**/*.tmp'}
       mono
     />
@@ -74,7 +74,7 @@ export function UrlConnectionFields({
         onChange={(sourceCredentials) => onChange({ sourceCredentials })}
         stored={credentialsKept(context, values.sourceUrl)}
         error={issueAt('sourceCredentials')}
-        hint="Kennung und Passwort als kennung:passwort, nur wenn die Adresse eine Anmeldung verlangt."
+        hint="Als benutzername:passwort."
       />
     </Stack>
   )

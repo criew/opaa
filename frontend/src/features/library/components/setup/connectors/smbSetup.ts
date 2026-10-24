@@ -47,6 +47,7 @@ export const smbSetup: SourceSetupSpec<SmbSourceValues> = {
         values.account.trim(),
         values.password,
         credentialsKept(context, values.sourceUrl),
+        'Benutzername',
       )
     }
     folderIssues(at, smbFoldersOf(values), MAX_SMB_FOLDERS)

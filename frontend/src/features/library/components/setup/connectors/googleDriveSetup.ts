@@ -2,13 +2,14 @@ import type { SourceConnectionTestRequest } from '@/shared/api/types'
 import {
   GOOGLE_DRIVE_API,
   MAX_GOOGLE_DRIVE_SCOPES,
+  googleDriveScopeLabel,
   googleDriveSettingsOf,
   storedKeyServes,
   type GoogleDriveSourceValues,
 } from '../../../utils/googleDriveSource'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
-import { checkWord, counted, issueList, joinSummary } from './common'
+import { checkWord, issueList, joinSummary, namesSummary } from './common'
 import { GoogleDriveConnectionFields, GoogleDriveScopeFields } from './GoogleDriveSetupFields'
 
 export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
@@ -29,8 +30,7 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
     },
     {
       id: 'scope',
-      summary: (values) =>
-        values.scopes.length > 0 ? counted(values.scopes.length, ['Bereich', 'Bereiche']) : null,
+      summary: (values) => namesSummary(values.scopes.map(googleDriveScopeLabel)),
       Fields: GoogleDriveScopeFields,
     },
   ],
@@ -59,10 +59,14 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
       'Imitiertes Konto ist eine E-Mail-Adresse',
       subject !== '' && !/^[^@\s]+@[^@\s]+$/.test(subject),
     )
-    at('scopes', 'Mindestens einen Bereich wählen', values.scopes.length === 0)
     at(
       'scopes',
-      `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche`,
+      'Mindestens eine Geteilte Ablage oder einen Ordner wählen',
+      values.scopes.length === 0,
+    )
+    at(
+      'scopes',
+      `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Geteilte Ablagen und Ordner`,
       values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES,
     )
     return list

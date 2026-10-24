@@ -103,7 +103,7 @@ export default function LibraryScheduleForm({
               confluence.defaultDays != null
                 ? `Leer = Vorgabe der Instanz (${confluence.defaultDays === 1 ? 'täglich' : `alle ${confluence.defaultDays} Tage`}).`
                 : 'Leer = Vorgabe der Instanz.'
-            } Der Vollabgleich ist verlängerbar, aber nicht abschaltbar — nur er gleicht den ganzen Bestand mit der Quelle ab.`}
+            }`}
             slotProps={{ htmlInput: { min: 1, max: 365 } }}
             size="small"
           />

@@ -70,6 +70,6 @@ export const googleDriveSource: SourceRegistration = {
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Bereiche; danach liest jeder Lauf nur das Änderungsprotokoll von Google Drive.',
     runsHint:
-      '„Jetzt indizieren“ liest in der Regel nur das Änderungsprotokoll seit dem letzten Lauf. Nach einer Änderung der Bereiche, einer Ordneränderung in Drive und im eingestellten Abstand läuft es automatisch als Vollabgleich, der alle Bereiche vollständig listet und entfernt, was in Drive nicht mehr vorhanden ist. „Vollabgleich starten“ erzwingt ihn sofort.',
+      '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Ablagen und Ordner neu.',
   },
 }

@@ -8,7 +8,9 @@ import {
   type ConfluenceSourceValues,
 } from '../../../utils/confluenceSource'
 import CredentialFields from '../CredentialFields'
-import PickCombo, { type PickNode } from '../PickCombo'
+import { plainMessage } from '../../sourceKit/plainMessage'
+import { spaceItem, spaceOfItem, spaceSelectionSource } from '../../sourceKit/selectionSources'
+import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
 import { addressIssue, credentialsKept } from './common'
@@ -58,8 +60,8 @@ export function ConfluenceConnectionFields({
     values.edition !== null
       ? `Edition: ${confluenceEditionLabel(values.edition)}`
       : detection?.url === url
-        ? detection.text
-        : 'Die Edition wird aus der Adresse erkannt.'
+        ? plainMessage(detection.text)
+        : undefined
   const cloud = values.edition !== 'DATA_CENTER'
 
   return (
@@ -87,7 +89,7 @@ export function ConfluenceConnectionFields({
             cloud
               ? {
                   id: fieldId('email'),
-                  label: 'Kennung (E-Mail-Adresse)',
+                  label: 'E-Mail-Adresse',
                   value: values.email,
                   onChange: (email) => onChange({ email }),
                   error: issueAt('email'),
@@ -97,26 +99,19 @@ export function ConfluenceConnectionFields({
           }
           secret={{
             id: fieldId('token'),
-            label: 'Token',
+            label: cloud ? 'API-Token' : 'Persönliches Zugriffstoken',
             value: values.token,
             onChange: (token) => onChange({ token }),
             error: issueAt('token'),
             hint: cloud
-              ? 'API-Token des Dienstkontos (id.atlassian.com › Sicherheit).'
-              : 'Persönliches Zugriffstoken des Dienstkontos.',
+              ? 'In Atlassian unter Konto › Sicherheit › API-Token.'
+              : 'In Confluence unter Profil › Persönliche Zugriffstoken.',
           }}
         />
       )}
     </Stack>
   )
 }
-
-const spaceNode = (space: { key: string; name?: string | null }): PickNode => ({
-  key: space.key,
-  label: space.name || space.key,
-  trail: [],
-  secondary: space.key.startsWith('~') ? `Persönlicher Space · ${space.key}` : space.key,
-})
 
 export function ConfluenceScopeFields({
   values,
@@ -126,40 +121,30 @@ export function ConfluenceScopeFields({
   fieldId,
 }: SetupFieldsProps<ConfluenceSourceValues>) {
   const credentials = confluenceCredentialsOf(values)
+  const source = spaceSelectionSource(async () => {
+    if (!values.edition) throw new Error('Zuerst unter „Verbindung“ eine gültige Adresse angeben.')
+    return browseSource(
+      'CONFLUENCE',
+      fields.probeRequest({
+        sourceUrl: values.sourceUrl.trim(),
+        sourceCredentials: credentials,
+        query: { edition: values.edition },
+      }),
+    )
+  })
   return (
-    <PickCombo
+    <ScopePicker
       id={fieldId('spaces')}
-      label="Spaces"
-      hint="Nur Spaces, die das Dienstkonto lesen darf. Wer die Bibliothek liest, sieht alles aus diesen Spaces."
+      source={source}
+      value={values.spaces.map(spaceItem)}
+      onChange={(items) => onChange({ spaces: items.map(spaceOfItem) })}
       error={issueAt('spaces')}
-      noun={['Space', 'Spaces']}
-      selected={values.spaces.map(spaceNode)}
-      onChange={(nodes) => onChange({ spaces: nodes.map((n) => ({ key: n.key, name: n.label })) })}
-      load={async () => {
-        if (!values.edition)
-          throw new Error('Zuerst unter „Verbindung“ eine gültige Adresse angeben.')
-        const result = await browseSource(
-          'CONFLUENCE',
-          fields.probeRequest({
-            sourceUrl: values.sourceUrl.trim(),
-            sourceCredentials: credentials,
-            query: { edition: values.edition },
-          }),
-        )
-        return {
-          complete: result.complete,
-          message: result.message,
-          nodes: result.entries.map(spaceNode),
-        }
-      }}
-      max={500}
       loadKey={JSON.stringify({
         url: values.sourceUrl,
         credentials,
         edition: values.edition,
         probe: fields.probe,
       })}
-      placeholder="Space suchen"
     />
   )
 }

@@ -6,7 +6,6 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -256,10 +255,7 @@ export default function LibrarySourceSection({
           {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
          with read access - they are here instead of in the header, with an explanation. */}
           {Scope && (
-            <PageSection
-              title="Umfang"
-              description="Was diese Bibliothek aus ihrer Quelle aufnimmt — ihr Geltungsbereich. Er gilt für alle Leseberechtigten der Bibliothek."
-            >
+            <PageSection title="Umfang">
               <Stack spacing={1}>
                 <Scope library={library} />
               </Stack>
@@ -276,7 +272,6 @@ export default function LibrarySourceSection({
             <>
               <PageSection
                 title="Anbindung"
-                description="Woher diese Bibliothek ihre Dokumente bezieht und wie die Quelle erreicht wird. Nur für Verwaltende sichtbar."
                 action={
                   configuration ? (
                     <Button
@@ -339,7 +334,6 @@ export default function LibrarySourceSection({
               {/* Schedule - the same threshold as the source connection (canEditSource). */}
               <PageSection
                 title="Zeitplan"
-                description="Wann diese Bibliothek automatisch indiziert wird."
                 action={
                   <Button
                     size="small"
@@ -407,10 +401,7 @@ export default function LibrarySourceSection({
       )}
 
       {canEditSource && (
-        <PageSection
-          title="Läufe"
-          description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
-        >
+        <PageSection title="Läufe">
           {configuration?.runsHint && (
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
               {configuration.runsHint}
@@ -545,8 +536,7 @@ function LibraryIndexingHistorySection({
     <Box>
       {runs.length === 0 ? (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Es liegen noch keine Läufe vor. Der erste Lauf startet über „Jetzt indizieren“ oben auf
-          der Seite oder über den Zeitplan.
+          Noch keine Läufe.
         </Typography>
       ) : (
         <Stack spacing={1}>
@@ -571,39 +561,38 @@ function LibraryIndexingHistorySection({
                     {run.documentsFailed > 0 ? `, ${run.documentsFailed} fehlgeschlagen` : ''}
                   </Typography>
                   {showRunMode && (
-                    <Chip
-                      label={indexingRunModeLabel(run.runMode)}
-                      size="small"
-                      variant="outlined"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-mode-${run.id}`}
-                    />
+                    >
+                      {indexingRunModeLabel(run.runMode)}
+                    </Typography>
                   )}
                   {run.incomplete && (
-                    <Chip
-                      label={
-                        quotaExhausted(run)
-                          ? QUOTA_EXHAUSTED_LABEL
-                          : 'unvollständig, wird fortgesetzt'
-                      }
-                      size="small"
-                      color="warning"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-incomplete-${run.id}`}
-                    />
+                    >
+                      {quotaExhausted(run)
+                        ? QUOTA_EXHAUSTED_LABEL
+                        : 'unvollständig, wird fortgesetzt'}
+                    </Typography>
                   )}
                   {run.unreadableScopeCount != null && run.unreadableScopeCount > 0 && (
-                    <Chip
-                      label={`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
-                      size="small"
-                      color="warning"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-unreadable-${run.id}`}
-                    />
+                    >
+                      {`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
+                    </Typography>
                   )}
                   {run.events.length > 0 && (
-                    <Chip
-                      label={runEventsLabel(run.events)}
-                      size="small"
-                      color={countUnreadable(run.events) > 0 ? 'warning' : 'default'}
-                    />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {runEventsLabel(run.events)}
+                    </Typography>
                   )}
                 </Stack>
               </AccordionSummary>
@@ -625,8 +614,7 @@ function LibraryIndexingHistorySection({
                 <RunMetricsLine run={run} />
                 {run.events.length === 0 ? (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Dieser Lauf hat keine übersprungenen, fehlgeschlagenen oder abweichend erkannten
-                    Elemente protokolliert.
+                    Nichts übersprungen oder fehlgeschlagen.
                   </Typography>
                 ) : (
                   <Stack spacing={1}>
@@ -636,11 +624,9 @@ function LibraryIndexingHistorySection({
                       // so the key combines the run and the position within its event list.
                       <Box key={`${run.id}-${index}`}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-                          <Chip
-                            label={indexingRunEventCategoryLabel(event.category)}
-                            size="small"
-                            variant="outlined"
-                          />
+                          <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
+                            {indexingRunEventCategoryLabel(event.category)}
+                          </Typography>
                           <Typography variant="body2">{event.message}</Typography>
                         </Stack>
                         {event.reference && (

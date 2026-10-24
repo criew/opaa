@@ -24,6 +24,8 @@ export interface SharePointLibraryChoice {
   driveId: string
   name: string | null
   folders: SharePointFolder[]
+  /** The site the library was chosen in; kept so editing never asks for the site again. */
+  site?: { id: string; name: string | null } | null
 }
 
 /**
@@ -46,6 +48,8 @@ export type SharePointSettings = {
   libraries?: Array<{
     driveId?: string
     name?: string | null
+    siteId?: string | null
+    siteName?: string | null
     folders?: Array<string | { id?: string; name?: string | null }>
   }>
   fullSyncIntervalDays?: number | null
@@ -69,7 +73,8 @@ export function sharePointLibrariesOf(
       if (typeof folder === 'string') return [{ id: folder, name: null }]
       return folder.id ? [{ id: folder.id, name: folder.name ?? null }] : []
     })
-    return [{ driveId: library.driveId, name: library.name ?? null, folders }]
+    const site = library.siteId ? { id: library.siteId, name: library.siteName ?? null } : null
+    return [{ driveId: library.driveId, name: library.name ?? null, folders, site }]
   })
 }
 
@@ -139,6 +144,9 @@ export function sharePointSettingsOf(values: SharePointSourceValues): Record<str
     libraries: values.libraries.map((library) => ({
       driveId: library.driveId,
       ...(library.name ? { name: library.name } : {}),
+      ...(library.site
+        ? { siteId: library.site.id, ...(library.site.name ? { siteName: library.site.name } : {}) }
+        : {}),
       ...(library.folders.length > 0
         ? {
             folders: library.folders.map((folder) =>

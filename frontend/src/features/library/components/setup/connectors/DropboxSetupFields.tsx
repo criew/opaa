@@ -1,7 +1,6 @@
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Switch from '@mui/material/Switch'
-import Typography from '@mui/material/Typography'
 import { DROPBOX_API, type DropboxSourceValues } from '../../../utils/dropboxSource'
 import type { SetupFieldsProps } from '../setupTypes'
 import FolderScope from './FolderScope'
@@ -21,11 +20,8 @@ export function DropboxConnectionFields({
             onChange={(e) => onChange({ teamSpace: e.target.checked })}
           />
         }
-        label="Team-Bereich lesen"
+        label="Teambereich lesen"
       />
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-        Aus: die Ablage des verbundenen Kontos. An: die Team-Ordner von Dropbox Business.
-      </Typography>
     </Box>
   )
 }

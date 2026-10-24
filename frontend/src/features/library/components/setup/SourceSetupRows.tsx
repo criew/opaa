@@ -19,6 +19,7 @@ import { connectionFields } from '../sources/sourceConnection'
 import type { SourceFormContext } from '../sources/types'
 import ConnectionCheckView from './ConnectionCheckView'
 import { useConnectionCheck } from './connectionCheck'
+import { plainMessage } from '../sourceKit/plainMessage'
 import ErrorSummary, { type SummaryEntry } from './ErrorSummary'
 import { scheduleSummary } from './scheduleSummary'
 import type { SetupRowId, SourceSetupSpec } from './setupTypes'
@@ -284,7 +285,7 @@ export default function SourceSetupRows<V>({
       return (
         <Box sx={{ mt: 3 }}>
           <Button variant="text" size="small" onClick={() => void finishRow(row)} sx={{ ml: -1 }}>
-            Fertig
+            Übernehmen
           </Button>
         </Box>
       )
@@ -337,7 +338,7 @@ export default function SourceSetupRows<V>({
             issues={[
               ...issuesOfRow(row).map((issue) => issue.message),
               ...(row === 'connection' && checkBlocks && checkFailed && check.outcome
-                ? [`Test fehlgeschlagen: ${check.outcome.message}`]
+                ? [`Test fehlgeschlagen: ${plainMessage(check.outcome.message)}`]
                 : []),
             ]}
             open={openRow === row}
@@ -383,11 +384,6 @@ export default function SourceSetupRows<V>({
                         }
                         label="Erste Indizierung sofort nach dem Anlegen"
                       />
-                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                        {firstRun.value
-                          ? firstRun.hint
-                          : 'Sonst beginnt sie über „Jetzt indizieren“ oder den Zeitplan.'}
-                      </Typography>
                     </Box>
                   )}
                 </>

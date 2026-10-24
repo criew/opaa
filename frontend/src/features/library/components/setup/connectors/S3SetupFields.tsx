@@ -8,7 +8,6 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { browseSource } from '../../../api/libraryApi'
 import {
   S3_PROVIDERS,
   S3_PROVIDER_LABELS,
@@ -19,12 +18,12 @@ import {
   type S3SourceValues,
 } from '../../../utils/s3Source'
 import CredentialFields from '../CredentialFields'
-import PickCombo from '../PickCombo'
+import ScopePicker from '../ScopePicker'
 import SecretField from '../SecretField'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
 import { credentialsKept } from './common'
-import { s3Nodes, s3PrefixNode, s3ScopeFromNode } from './s3Nodes'
+import { s3Item, s3ScopeOfItem, s3SelectionSource } from '../../sourceKit/selectionSources'
 
 export function S3ConnectionFields({
   values,
@@ -60,7 +59,7 @@ export function S3ConnectionFields({
         value={values.sourceUrl}
         onChange={(sourceUrl) => onChange({ sourceUrl })}
         error={issueAt('sourceUrl')}
-        hint={fields.addressHint ?? 'Die Adresse des Objektspeichers, ohne Pfad.'}
+        hint={fields.addressHint ?? 'Ohne Bucket und Pfad.'}
         placeholder="https://minio.intern.example:9000"
         mono
       />
@@ -82,14 +81,14 @@ export function S3ConnectionFields({
           stored={credentialsKept(context, values.sourceUrl)}
           account={{
             id: fieldId('accessKey'),
-            label: 'Kennung (Access Key)',
+            label: 'Access Key',
             value: values.accessKey,
             onChange: (accessKey) => onChange({ accessKey }),
             error: issueAt('accessKey'),
           }}
           secret={{
             id: fieldId('secretKey'),
-            label: 'Geheimer Schlüssel (Secret Key)',
+            label: 'Secret Key',
             value: values.secretKey,
             onChange: (secretKey) => onChange({ secretKey }),
             error: issueAt('secretKey'),
@@ -158,52 +157,14 @@ export function S3ScopeFields({
   const query = { region: values.region.trim() || undefined, pathStyle: values.pathStyle }
   return (
     <Stack spacing={2}>
-      <PickCombo
+      <ScopePicker
         id={fieldId('scopes')}
-        label="Buckets und Präfixe"
-        hint="Ein ganzer Bucket oder ein Präfix darin. Präfixe: Pfeil am Eintrag, Pfeiltaste rechts oder bucket/präfix tippen."
+        source={s3SelectionSource(fields, () => ({ ...connection, query }))}
+        value={values.scopes.filter((scope) => scope.bucket.trim() !== '').map(s3Item)}
+        onChange={(items) => onChange({ scopes: items.map(s3ScopeOfItem) })}
         error={issueAt('scopes')}
-        noun={['Geltungsbereich', 'Geltungsbereiche']}
-        selected={s3Nodes(values.scopes)}
-        onChange={(nodes) => onChange({ scopes: nodes.map(s3ScopeFromNode) })}
-        hierarchical
-        max={50}
-        load={async (parent) => {
-          if (!parent) {
-            const result = await browseSource('S3', fields.probeRequest({ ...connection, query }))
-            return {
-              complete: result.complete,
-              message: result.message,
-              nodes: result.entries.map((entry) => ({
-                key: entry.key,
-                label: entry.key,
-                trail: [],
-                branch: true,
-              })),
-            }
-          }
-          const [bucket, ...rest] = [...parent.trail, parent.label]
-          const prefix = rest.length ? `${rest.join('/')}/` : ''
-          const result = await browseSource(
-            'S3',
-            fields.probeRequest({ ...connection, query: { ...query, bucket, prefix } }),
-          )
-          return {
-            complete: result.complete,
-            message: result.message,
-            nodes: result.entries.map((entry) => s3PrefixNode(bucket, entry.key)),
-          }
-        }}
-        manual={(text) => {
-          const [bucket, ...rest] = text.split('/').filter(Boolean)
-          if (!bucket) return null
-          return rest.length
-            ? s3PrefixNode(bucket, `${rest.join('/')}/`)
-            : { key: bucket, label: bucket, trail: [], branch: true }
-        }}
-        manualLabel={(text) => `„${text}“ übernehmen`}
+        deeperLabel="Präfixe auswählen …"
         loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
-        placeholder="Bucket suchen oder bucket/präfix tippen"
       />
       <Box>
         <Button
@@ -226,7 +187,6 @@ export function S3ScopeFields({
             value={values.includePatterns}
             onChange={(includePatterns) => onChange({ includePatterns })}
             error={issueAt('includePatterns')}
-            hint="Ein Muster je Zeile; ohne Muster zählt jedes Objekt."
             placeholder="**/*.pdf"
             mono
           />
