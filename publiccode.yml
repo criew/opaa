@@ -32,7 +32,6 @@ localisation:
 
 description:
   de:
-    genericName: "KI-Assistent für Wissen"
     shortDescription: >-
       Quelloffene KI-Plattform für die öffentliche Verwaltung: das Wissen des Hauses belegbar
       befragen, im eigenen Rechenzentrum.
@@ -69,7 +68,6 @@ description:
       - Update-Paket mit Faktenblättern, Delta und Vorlagen für Behördenunterlagen
       - Betrieb mit Docker Compose oder Helm-Chart, auch ohne Internetzugang
   en:
-    genericName: "AI knowledge assistant"
     shortDescription: >-
       Open source AI platform for public administration: ask the knowledge of your organisation
       with sources, in your own data centre.

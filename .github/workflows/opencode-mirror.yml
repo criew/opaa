@@ -1,14 +1,18 @@
 name: openCode-Spiegel
 
 # Mirrors main, the maintenance branches release/* and the release tags v* to the OPAA project on
-# openCode (docs/opencode.md). Inactive until a maintainer sets the repository variable
-# OPENCODE_MIRROR_URL and the secret OPENCODE_MIRROR_TOKEN; until then every run ends with a
+# openCode (docs/opencode.md). Inactive until a maintainer sets the variable OPENCODE_MIRROR_URL and
+# the secret OPENCODE_MIRROR_TOKEN in the environment opencode; until then every run ends with a
 # notice. Pushes never force: a commit on the mirror that GitHub lacks fails the run instead of
 # being overwritten, and a release tag stays immutable there as well.
+# The environment admits only main, so every run starts from main and pushes all three kinds of
+# references from its full checkout; a tag or a maintenance branch follows with the next push to
+# main or the daily run at the latest.
 on:
   push:
-    branches: [main, 'release/**']
-    tags: ['v*']
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * *'
   workflow_dispatch: {}
 
 permissions:
@@ -23,6 +27,8 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The token lives in this environment only, bound to main by its deployment branch rule.
+    environment: opencode
     permissions:
       contents: read
     steps:
@@ -33,7 +39,7 @@ jobs:
           MIRROR_TOKEN: ${{ secrets.OPENCODE_MIRROR_TOKEN }}
         run: |
           if [[ -z "$MIRROR_URL" || -z "$MIRROR_TOKEN" ]]; then
-            echo "::notice::openCode-Spiegel nicht eingerichtet (Variable OPENCODE_MIRROR_URL, Secret OPENCODE_MIRROR_TOKEN; docs/opencode.md)"
+            echo "::notice::openCode-Spiegel nicht eingerichtet (Environment opencode mit Variable OPENCODE_MIRROR_URL und Secret OPENCODE_MIRROR_TOKEN; docs/opencode.md)"
             echo "configured=false" >>"$GITHUB_OUTPUT"
             exit 0
           fi

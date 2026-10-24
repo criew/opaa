@@ -19,6 +19,9 @@ def test_the_mirror_stays_inactive_until_configured_and_never_forces() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert re.search(r"^permissions:\n  contents: read\n", text, re.M)
+    assert "    environment: opencode\n" in text
+    trigger = text[text.index("\non:"):text.index("\npermissions:")]
+    assert "tags:" not in trigger and "release/" not in trigger
     assert 'if [[ -z "$MIRROR_URL" || -z "$MIRROR_TOKEN" ]]; then' in text
     assert text.count("if: steps.setup.outputs.configured == 'true'") == 2
     assert "--force" not in text and "--mirror" not in text and "'+refs" not in text
@@ -53,7 +56,7 @@ def test_publiccode_holds_the_fields_and_limits_of_the_standard() -> None:
         assert re.fullmatch(r"[a-z]+(-[a-z]+)*", category), category
     for language in ("de", "en"):
         description = data["description"][language]
-        assert len(description["genericName"]) <= 35
+        assert "genericName" not in description  # deprecated in publiccode.yml 0.4
         assert len(description["shortDescription"]) <= 150
         assert 500 <= len(description["longDescription"]) <= 10000
         assert description["features"]
