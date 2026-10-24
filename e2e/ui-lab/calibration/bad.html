@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalibrierung: schlechte Seite</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1f1f1f; --faint: #b3b3b3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1e1e1e; --fg: #e8e8e8; --faint: #4a4a4a; }
+  }
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+  label { display: block; margin-top: 16px; }
+  input { display: block; width: 100%; box-sizing: border-box; padding: 8px; font: inherit; background: var(--bg); color: var(--fg); }
+  .MuiFormHelperText-root { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--faint); }
+  .icon { width: 16px; height: 16px; padding: 0; border: 1px solid var(--fg); background: var(--bg); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bitte richten Sie hier jetzt die Verbindung zu Ihrer Quelle ein</h1>
+  <p>In diesem Schritt geben Sie bitte alle erforderlichen Angaben ein, damit die Verbindung zu Ihrer Quelle hergestellt
+     werden kann. Achten Sie dabei darauf, dass die Angaben vollständig und korrekt sind, denn nur dann kann die
+     Verbindung erfolgreich geprüft werden. Wenn Sie unsicher sind, wenden Sie sich bitte an die zuständige Stelle in
+     Ihrer Verwaltung, die Ihnen die Zugangsdaten und die Adresse der Quelle nennen kann. Die Angaben werden sicher
+     gespeichert und nur für die Indizierung verwendet. Sie können die Angaben später jederzeit ändern. Bei Fragen zur Einrichtung hilft Ihnen auch das Handbuch weiter, in dem alle
+     Quellarten mit ihren Voraussetzungen, Rechten und typischen Fehlern ausführlich und mit vielen Beispielen beschrieben sind.</p>
+  <form>
+    <label for="address">Bitte geben Sie hier die vollständige Adresse der Freigabe ein</label>
+    <input id="address" name="address">
+    <p class="MuiFormHelperText-root">Geben Sie hier die Adresse ein.</p>
+    <input name="user">
+    <p class="MuiFormHelperText-root">Das ist das Benutzerkonto, mit dem OPAA sich an der Freigabe anmeldet, um die Dokumente zu lesen; es braucht nur Leserechte auf alle Ordner, die Sie später auswählen möchten, und sonst keine weiteren Rechte.</p>
+    <label for="password">Passwort</label>
+    <input id="password" name="password" type="password">
+    <p class="MuiFormHelperText-root">Das Passwort des Kontos.</p>
+    <p class="MuiFormHelperText-root">Das Passwort wird verschlüsselt gespeichert.</p>
+    <span><button type="button" class="icon"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5"/></svg></button><button type="button" class="icon" aria-label="Hilfe">?</button></span>
+    <button type="submit" disabled>Weiter</button>
+  </form>
+</main>
+</body>
+</html>
