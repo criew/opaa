@@ -16,11 +16,11 @@ import {
   type SelectionItem,
   type SelectionSource,
 } from '../sourceKit/selection'
-import { namesSummary } from './connectors/common'
 
 /** Up to this many flat entries stand as checkboxes in the row; more go through the dialog. */
 const INLINE_MAX = 7
 const LOADING_DELAY = 300
+const SHOWN_NAMES = 5
 
 interface ScopePickerProps {
   /** Id of the group; the error summary jumps to its first control. */
@@ -38,6 +38,8 @@ interface ScopePickerProps {
   /** Opens the dialog below the first level, e.g. „Unterordner auswählen …“. */
   deeperLabel?: string
   initialLevel?: Crumb[]
+  /** How a chosen entry is named in the row; its own name by default. */
+  labelOf?: (item: SelectionItem) => string
 }
 
 type Listing = { key: string; result?: BrowseResult; error?: string }
@@ -58,6 +60,7 @@ export default function ScopePicker({
   inline = true,
   deeperLabel,
   initialLevel,
+  labelOf = (item) => item.name,
 }: ScopePickerProps) {
   const plural = source.noun[1]
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -202,21 +205,49 @@ export default function ScopePicker({
       )}
     </Box>
   ) : (
-    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, flexWrap: 'wrap' }}>
-      <Typography
-        sx={{
-          fontSize: 13.5,
-          color: value.length ? 'text.primary' : 'text.secondary',
-          overflowWrap: 'anywhere',
-          flex: '1 1 240px',
-          minWidth: 0,
-        }}
-      >
-        {value.length ? namesSummary(value.map((item) => item.name)) : `Keine ${plural} ausgewählt`}
-      </Typography>
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {value.length === 0 ? (
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', pt: 0.5 }}>
+            Keine {plural} ausgewählt
+          </Typography>
+        ) : (
+          <Box
+            component="ul"
+            aria-label={`Ausgewählte ${plural}`}
+            sx={{ m: 0, p: 0, listStyle: 'none' }}
+          >
+            {value.slice(0, SHOWN_NAMES).map((item) => (
+              <Typography
+                component="li"
+                key={item.key}
+                title={labelOf(item)}
+                sx={{
+                  fontSize: 13.5,
+                  lineHeight: '24px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {labelOf(item)}
+              </Typography>
+            ))}
+            {value.length > SHOWN_NAMES && (
+              <Typography
+                component="li"
+                sx={{ fontSize: 13.5, lineHeight: '24px', color: 'text.secondary' }}
+              >
+                und {value.length - SHOWN_NAMES} weitere
+              </Typography>
+            )}
+          </Box>
+        )}
+      </Box>
       <Button
         variant="outlined"
         size="small"
+        sx={{ flexShrink: 0 }}
         onClick={() => setDialogOpen(true)}
         aria-describedby={error ? errorId : undefined}
       >
@@ -230,7 +261,15 @@ export default function ScopePicker({
       {!all && <FieldLabel id={`${id}-label`}>{plural}</FieldLabel>}
       {radios}
       {!all?.active && (
-        <Box sx={{ mt: all ? 1 : 0, pl: all ? 3.5 : 0, display: 'grid', gap: 1 }}>
+        <Box
+          sx={{
+            mt: all ? 1 : 0,
+            pl: all ? 3.5 : 0,
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+            gap: 1,
+          }}
+        >
           {stateLine}
           {picker}
         </Box>

@@ -46,6 +46,7 @@ export default function FolderScope({
       all={{ active: whole, onChange: (all) => onChange(all ? '/' : '') }}
       error={error}
       deeperLabel="Unterordner auswählen …"
+      labelOf={(item) => item.key}
       loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
     />
   )

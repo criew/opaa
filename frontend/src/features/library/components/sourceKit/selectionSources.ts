@@ -218,18 +218,11 @@ export function driveSelectionSource(
 // ---- Confluence spaces --------------------------------------------------------------------------
 
 export function spaceItem(space: ConfluenceSpaceRef): SelectionItem {
-  return {
-    key: space.key,
-    name: space.name ? `${space.name} (${space.key})` : space.key,
-    trail: [],
-  }
+  return { key: space.key, name: space.name || space.key, trail: [] }
 }
 
 export function spaceOfItem(item: SelectionItem): ConfluenceSpaceRef {
-  const name = item.name.endsWith(` (${item.key})`)
-    ? item.name.slice(0, -item.key.length - 3)
-    : null
-  return { key: item.key, name }
+  return { key: item.key, name: item.name === item.key ? null : item.name }
 }
 
 export function spaceSelectionSource(list: () => Promise<SourceBrowseResponse>): SelectionSource {
@@ -243,7 +236,7 @@ export function spaceSelectionSource(list: () => Promise<SourceBrowseResponse>):
     list: async () =>
       resultOf(await list(), (key, name) => ({
         key,
-        name: name === key ? key : `${name} (${key})`,
+        name,
         selectable: true,
         openable: false,
       })),

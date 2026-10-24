@@ -7,6 +7,7 @@ import {
   type MockScenario,
 } from '@/shared/mocks/mockScenario'
 import { mockIndexingRuns } from './indexingFixtures'
+import { siteName } from './sourceScenarioMock'
 import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
 import { SOURCE_LIBRARY_IDS, SOURCE_LIBRARY_LAST_INDEXED } from './sourceLibraryFixtures'
 
@@ -20,8 +21,12 @@ type Overlay = (library: LibraryResponse) => Partial<LibraryResponse>
 
 const LONG_LIBRARY_SUFFIX = `– ${LONG_COMPOUND}n, Bauleitplanung und Übergabeordner der Ämter (2009–2026)`
 
+const LEVELS = ['Ordner', 'Vorgang', 'Akte', 'Jahrgang', 'Teil', 'Band', 'Abschnitt', 'Anlage']
+
+/** A path of the generated folder tree, `depth` levels deep; skips the names with a comma. */
 function deepPath(i: number, depth: number) {
-  return `/${generate(depth, (level) => scenarioName(['Ordner', 'Vorgang', 'Akte', 'Jahrgang'][level % 4], i + level)).join('/')}`
+  const n = i + Math.floor((i - 1) / 2)
+  return `/${generate(depth, (level) => scenarioName(LEVELS[level - 1], n)).join('/')}`
 }
 
 const SCALE: Record<string, Overlay> = {
@@ -43,14 +48,21 @@ const SCALE: Record<string, Overlay> = {
   }),
   [SOURCE_LIBRARY_IDS.SHAREPOINT]: () => ({
     sourceSettings: {
-      libraries: generate(25, (i) => ({
-        driveId: `gen-drive-${((i - 1) % 17) + 1}-${i}`,
-        name: `${scenarioName('Site', ((i - 1) % 17) + 1)} · ${scenarioName('Dokumentbibliothek', i)}`,
-        folders: generate(i % 5 === 0 ? 12 : 2, (f) => ({
-          id: `gen-drive-${((i - 1) % 17) + 1}-${i}_F${f}-${f}-${f}`,
-          name: scenarioName('Ordner', f),
-        })),
-      })),
+      libraries: generate(25, (i) => {
+        const site = ((i - 1) % 17) + 1
+        const drive = `gen-drive-${site}-${i}`
+        const library = i === 1 ? 'Dokumente' : scenarioName('Dokumentbibliothek', i)
+        return {
+          driveId: drive,
+          name: `${library} (${siteName(site)})`,
+          siteId: `gen-site-${site}`,
+          siteName: siteName(site),
+          folders: generate(i % 5 === 0 ? 12 : 2, (f) => ({
+            id: `${drive}_F${f}-${f}-${f}`,
+            name: ['Ordner', 'Vorgang', 'Akte'].map((base) => scenarioName(base, f)).join(' / '),
+          })),
+        }
+      }),
       fullSyncIntervalDays: 1,
     },
   }),
@@ -89,6 +101,19 @@ const SCALE: Record<string, Overlay> = {
 }
 
 const SMALL: Record<string, Overlay> = {
+  [SOURCE_LIBRARY_IDS.SHAREPOINT]: (library) => ({
+    sourceSettings: {
+      ...library.sourceSettings,
+      libraries: [
+        {
+          driveId: 'gen-drive-1-1',
+          name: 'Dokumente (Rathaus)',
+          siteId: 'gen-site-1',
+          siteName: 'Rathaus',
+        },
+      ],
+    },
+  }),
   [SOURCE_LIBRARY_IDS.CONFLUENCE]: (library) => ({
     sourceSettings: { ...library.sourceSettings, spaces: [{ key: 'BAU', name: 'Bauamt' }] },
   }),

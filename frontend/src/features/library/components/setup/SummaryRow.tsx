@@ -74,10 +74,15 @@ export default function SummaryRow({
         >
           {!open && (
             <Typography
+              title={summary ?? undefined}
               sx={{
                 fontSize: 13.5,
                 color: summary ? 'text.primary' : 'text.secondary',
                 overflowWrap: 'anywhere',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
               }}
             >
               {summary ?? emptyText}

@@ -164,6 +164,7 @@ export function S3ScopeFields({
         onChange={(items) => onChange({ scopes: items.map(s3ScopeOfItem) })}
         error={issueAt('scopes')}
         deeperLabel="Präfixe auswählen …"
+        labelOf={(item) => item.key}
         loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
       />
       <Box>

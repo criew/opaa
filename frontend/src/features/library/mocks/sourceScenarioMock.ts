@@ -174,7 +174,7 @@ function prefixChildren(prefix: string, counts: ScenarioCounts): Entry[] {
 
 const SITE_BASES = ['Team-Site', 'Projekt', 'Amt', 'Fachbereich']
 
-function siteName(i: number) {
+export function siteName(i: number) {
   return i === 1 ? 'Rathaus' : scenarioName(SITE_BASES[i % SITE_BASES.length], i)
 }
 

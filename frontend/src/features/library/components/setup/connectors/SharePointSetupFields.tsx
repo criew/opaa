@@ -33,6 +33,10 @@ export function SharePointScopeFields({
       onChange={(next) => onChange({ libraries: sharePointLibrariesOfItems(next) })}
       error={issueAt('libraries')}
       inline={false}
+      labelOf={(item) => {
+        const drive = item.trail.find((crumb) => crumb.key.startsWith('drive:'))
+        return drive ? `${drive.name} › ${item.name}` : item.name
+      }}
       initialLevel={sharePointCommonSite(items)}
       loadKey={JSON.stringify(fields.probe)}
     />

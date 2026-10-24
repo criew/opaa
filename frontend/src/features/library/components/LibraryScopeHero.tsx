@@ -3,10 +3,19 @@ import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import WarningAmberIcon from '@mui/icons-material/WarningAmber'
-import { alpha } from '@mui/material/styles'
 import type { LibraryResponse } from '@/shared/api/types'
-import type { SourceScopeHero } from './sources/types'
+import { sourceRegistration } from './sources/registry'
+import type { SourceFormContext, SourceScopeHero } from './sources/types'
+
+/** The chosen names of the library's scope, as the row „Umfang“ names them; null without a setup. */
+function scopeNames(details: LibraryResponse): string | null {
+  const configuration = sourceRegistration(details.sourceType)?.configuration
+  const scope = configuration?.setup?.sections.find((section) => section.id === 'scope')
+  if (!configuration || !scope) return null
+  // the scope summaries read the values only
+  const context = { mode: 'edit', sourceType: details.sourceType } as SourceFormContext
+  return scope.summary(configuration.fromLibrary(details), context, 'unchecked')
+}
 
 interface LibraryScopeHeroProps {
   details: LibraryResponse
@@ -38,7 +47,7 @@ export default function LibraryScopeHero({
       }}
     >
       <Typography variant="body2" data-testid="library-scope-summary">
-        {scopeHero.summary(details)}
+        {scopeNames(details) ?? scopeHero.summary(details)}
         {' · '}
         <Link component={RouterLink} to={{ search: sourceSearch }} replace underline="hover">
           Details
@@ -56,19 +65,11 @@ export default function LibraryScopeHero({
             pl: 1.5,
             pr: 1.25,
             py: 1,
-            // Highlighting as a signal edge on the left instead of a frame all around
-            // (rule 4): the same means as in the confirmation overlay, so that a hint
-            // looks the same everywhere. The signal colour stays in edge and icon — never
-            // in running text.
+            // one signal: the edge on the left, no tint, no icon (rule 4)
             borderLeft: 3,
             borderColor: 'warning.main',
-            bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
           }}
         >
-          <WarningAmberIcon
-            aria-hidden
-            sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
-          />
           <Typography sx={{ fontSize: 12.5 }}>
             {scopeHero.unlistedWarning(unlistedScopeKeys, details)}
           </Typography>
