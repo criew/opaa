@@ -3,12 +3,14 @@ prompts:
   - id: answer-generation
     purpose: >-
       Regeln für die Antwort auf eine Frage: Belegpflicht, Zitierformat, Antwortsprache, Anweisung
-      des Space und Gesprächsnotiz
+      des Space und Gesprächsnotiz; die Fundstellen stehen als gekennzeichnete Daten in einem
+      Block mit Kennung je Anfrage, mit dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.answer.AnswerGenerationService
+      - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "7865e8d0e67c5cbc648aeeba6ceba4890346212412e02d67e332e51d78651e20"
+    sha256: "9d5014a2a555326d8aab4260367e2f97a8d808489f35252e72ed443463392d63"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:

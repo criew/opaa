@@ -138,7 +138,11 @@ class ConversationWindowRestartInvarianceTest {
     return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
   }
 
+  /** The texts of a prompt; the id of the passage block is fresh per call and compared as one. */
   private static List<String> texts(Prompt prompt) {
-    return prompt.getInstructions().stream().map(Message::getText).toList();
+    return prompt.getInstructions().stream()
+        .map(Message::getText)
+        .map(text -> text.replaceAll("kennung=\"[0-9a-f]{16}\"", "kennung=\"ID\""))
+        .toList();
   }
 }
