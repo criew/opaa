@@ -352,6 +352,15 @@ export async function openSourceTab(page, base, type, scenario) {
   if (tab) {
     await tab.click().catch(() => {})
     await settle(page, 600)
+    // the tab indicator slides for ~300 ms after the panel has rendered: wait until it sits under „Quelle“
+    await page
+      .waitForFunction(() => {
+        const selected = document.querySelector('[role="tab"][aria-selected="true"]')
+        const indicator = document.querySelector('.MuiTabs-indicator')
+        if (!selected || !indicator) return true
+        return Math.abs(selected.getBoundingClientRect().left - indicator.getBoundingClientRect().left) < 1
+      }, null, { timeout: 3000 })
+      .catch(() => {})
     return true
   }
   return !!(await firstVisible(page.getByRole('heading', { name: /Quelle|Anbindung|Verbindung/ })))
