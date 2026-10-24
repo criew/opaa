@@ -60,7 +60,10 @@ export default function TabSection({
               {title}
             </Typography>
           )}
-          {action && <Box sx={{ flex: 'none' }}>{action}</Box>}
+          {/* text actions end exactly at the content edge, like „Ändern“ in the source rows */}
+          {action && (
+            <Box sx={{ flex: 'none', '& .MuiButton-text': { px: 0, minWidth: 0 } }}>{action}</Box>
+          )}
         </Box>
       )}
       {tools && <Box sx={{ maxWidth: TAB_CONTENT_WIDTH, mb: 1.5 }}>{tools}</Box>}

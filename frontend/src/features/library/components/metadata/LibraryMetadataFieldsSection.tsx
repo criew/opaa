@@ -240,9 +240,6 @@ export default function LibraryMetadataFieldsSection({
         ) : undefined
       }
     >
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-        Bis zu fünf eigene Felder; jedes wirkt im Filter oder im Kontextpräfix.
-      </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}

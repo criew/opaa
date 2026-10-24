@@ -127,7 +127,7 @@ export default function MetadataExtractionSettingsSection({
               {settings.chatModel
                 ? local
                   ? `Lokales Modell ${settings.chatModel.modelIdentifier}: Es verlassen keine Dokumentinhalte das Haus.`
-                  : `Mit eingeschalteter Extraktion verlässt der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus – an ${settings.chatModel.baseUrl} (${settings.chatModel.modelIdentifier}).`
+                  : `Eingeschaltet gehen alle Inhalte an ${settings.chatModel.baseUrl} (${settings.chatModel.modelIdentifier}).`
                 : 'Kein Chat-Modell aktiv: Die Extraktion bleibt wirkungslos.'}
             </Typography>
           </Box>

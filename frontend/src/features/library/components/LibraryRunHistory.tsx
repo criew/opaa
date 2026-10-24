@@ -447,12 +447,23 @@ export default function LibraryRunHistory({
   const [onlyProblems, setOnlyProblems] = useState(false)
   const shown = onlyProblems ? runs.filter(hasProblem) : runs
   const problemCount = runs.filter(hasProblem).length
+  // the table's own tool row at the table's width: filter left, start buttons right
   return (
-    <TabSection
-      wide
-      action={actions}
-      tools={
-        runs.length > 0 && problemCount > 0 ? (
+    <TabSection wide>
+      <Box
+        sx={{
+          maxWidth: TABLE_WIDTH,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1.5,
+          mb: 1.5,
+          minHeight: 32,
+          '& .MuiButton-text': { px: 0, minWidth: 0 },
+        }}
+      >
+        {runs.length > 0 && problemCount > 0 ? (
           <Button
             size="small"
             variant={onlyProblems ? 'contained' : 'outlined'}
@@ -462,9 +473,11 @@ export default function LibraryRunHistory({
           >
             Nur mit Fehlern ({problemCount})
           </Button>
-        ) : undefined
-      }
-    >
+        ) : (
+          <span />
+        )}
+        {actions}
+      </Box>
       {runs.length === 0 ? (
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>Noch keine Läufe.</Typography>
       ) : (
