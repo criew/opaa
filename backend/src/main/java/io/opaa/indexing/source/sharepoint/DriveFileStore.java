@@ -47,7 +47,7 @@ import tools.jackson.databind.JsonNode;
  * once per run. A folder filter keeps only files below one of its folders. The identity is {@link
  * DriveRule#filePath}.
  */
-@DataFlow("source-sharepoint")
+@DataFlow({"source-sharepoint", "source-onedrive"})
 final class DriveFileStore implements FileStore, ChangeFeed {
 
   private static final Logger log = LoggerFactory.getLogger(DriveFileStore.class);
