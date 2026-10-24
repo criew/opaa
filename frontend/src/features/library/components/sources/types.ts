@@ -4,6 +4,7 @@ import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
+import type { StepwiseSource } from '../stepwise/types'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -107,6 +108,8 @@ export interface SourceConfiguration<V> {
   firstRunHint?: string
   /** The explanation above the run history. */
   runsHint?: string
+  /** The pages „Verbindung“ and „Umfang“ of the stepwise wizard and the Reiter „Quelle“. */
+  stepwise?: StepwiseSource<V>
 }
 
 /** One source type as the frontend presents it. */

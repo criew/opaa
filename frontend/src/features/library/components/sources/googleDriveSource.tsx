@@ -1,3 +1,4 @@
+import { googleDriveStepwise } from '../stepwise/adapters'
 import {
   EMPTY_GOOGLE_DRIVE_VALUES,
   googleDrivePayloadOf,
@@ -40,6 +41,7 @@ export const googleDriveSource: SourceRegistration = {
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
+    stepwise: googleDriveStepwise,
     Form: ({ values, onChange, context }) => (
       <GoogleDriveSourceForm
         mode={context.mode}

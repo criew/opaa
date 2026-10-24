@@ -1,3 +1,4 @@
+import { confluenceStepwise } from '../stepwise/adapters'
 import {
   confluenceCredentialsOf,
   confluenceSettingsOf,
@@ -45,6 +46,7 @@ export const confluenceSource: SourceRegistration = {
       if (!first) return ''
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
+    stepwise: confluenceStepwise,
     Form: ({ values, onChange, context }) => (
       <ConfluenceSourceForm
         mode={context.mode}

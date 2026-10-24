@@ -1,3 +1,4 @@
+import { sharePointStepwise } from '../stepwise/adapters'
 import {
   EMPTY_SHAREPOINT_VALUES,
   sharePointLibrariesOf,
@@ -45,6 +46,7 @@ export const sharePointSource: SourceRegistration = {
     toPayload: sharePointPayloadOf,
     nameFromSource: (values: SharePointSourceValues) =>
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
+    stepwise: sharePointStepwise,
     Form: ({ values, onChange, context }) => (
       <SharePointSourceForm
         // listings belong to the profile they were made through; another one starts them afresh

@@ -1,3 +1,4 @@
+import { s3Stepwise } from '../stepwise/adapters'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import {
   EMPTY_S3_VALUES,
@@ -56,6 +57,7 @@ export const s3Source: SourceRegistration = {
       const first = values.scopes.find((scope) => scope.bucket.trim() !== '')
       return first ? first.bucket.trim() : ''
     },
+    stepwise: s3Stepwise,
     Form: ({ values, onChange, context }) => (
       <S3SourceForm
         mode={context.mode}

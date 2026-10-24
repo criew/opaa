@@ -1,3 +1,4 @@
+import { dropboxStepwise } from '../stepwise/adapters'
 import {
   EMPTY_DROPBOX_VALUES,
   dropboxFoldersOf,
@@ -37,6 +38,7 @@ export const dropboxSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
+    stepwise: dropboxStepwise,
     Form: ({ values, onChange, context }) => (
       <DropboxSourceForm
         mode={context.mode}

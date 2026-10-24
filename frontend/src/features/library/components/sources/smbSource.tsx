@@ -1,3 +1,4 @@
+import { smbStepwise } from '../stepwise/adapters'
 import {
   EMPTY_SMB_VALUES,
   sameSmbShare,
@@ -58,6 +59,7 @@ export const smbSource: SourceRegistration = {
         return share
       }
     },
+    stepwise: smbStepwise,
     Form: ({ values, onChange, context }) => (
       <SmbSourceForm
         mode={context.mode}

@@ -1,3 +1,4 @@
+import { nextcloudStepwise } from '../stepwise/adapters'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import {
   EMPTY_NEXTCLOUD_VALUES,
@@ -48,6 +49,7 @@ export const nextcloudSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
+    stepwise: nextcloudStepwise,
     Form: ({ values, onChange, context }) => (
       <NextcloudSourceForm
         mode={context.mode}

@@ -1,3 +1,4 @@
+import { filesystemStepwise, urlStepwise } from '../stepwise/adapters'
 import {
   EMPTY_GENERIC_SOURCE_VALUES,
   genericSourcePayload,
@@ -35,6 +36,7 @@ function urlConfiguration(): SourceConfiguration<GenericSourceValues> {
         return ''
       }
     },
+    stepwise: urlStepwise,
     Form: UrlForm,
     StoredView: ({ library, libraryId }) => (
       <StoredConnection library={library} libraryId={libraryId} kind="url" />
@@ -56,6 +58,7 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
       const segments = values.sourcePath.split(/[\\/]+/).filter(Boolean)
       return segments.length > 0 ? segments[segments.length - 1] : ''
     },
+    stepwise: filesystemStepwise,
     Form: PathForm,
     StoredView: ({ library, libraryId }) => (
       <StoredConnection library={library} libraryId={libraryId} kind="path" />
