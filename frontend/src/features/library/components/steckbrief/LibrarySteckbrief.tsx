@@ -388,6 +388,12 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
   const openSteps = props.steps.filter((step) => !step.done).length
+  // right after creating the library the folded Steckbrief opens once on its next steps
+  const [unfoldedForSteps, setUnfoldedForSteps] = useState(false)
+  if (openSteps > 0 && !unfoldedForSteps) {
+    setUnfoldedForSteps(true)
+    setOpen(true)
+  }
   return (
     <>
       <Box

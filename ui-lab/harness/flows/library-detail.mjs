@@ -8,7 +8,8 @@ import { firstVisible, settle } from '../lib/ui.mjs'
  * fixture library of the type is loaded once per tab with `?tab=`; areas are the tabs, `laeufe`
  * (tab „Quelle“ scrolled to the runs, newest run expanded) and `upload` (upload library: three
  * files dropped on the upload field). A type ending in `-leser` loads the same library with
- * `?mockRole=viewer`; `privat` is the private Nextcloud fixture.
+ * `?mockRole=viewer`; `privat` is the private Nextcloud fixture. `abschluss` opens the documents
+ * with `?justCreated=1`, the state right after the wizard.
  */
 
 export const description = 'Wissensbibliothek-Detail: Kopf, alle Reiter und Läufe je Quellart'
@@ -28,7 +29,7 @@ export const ALL_TYPES = [
 export const EXTRA_TYPES = ['privat', 'upload-leser', 'confluence-leser', 'nextcloud-leser']
 export const DEFAULT_SCENARIOS = ['small', 'scale', 'failed', 'empty', 'partial', 'slow']
 export const QUICK_SCENARIOS = ['small', 'scale']
-export const AREAS = ['dokumente', 'quelle', 'laeufe', 'metadaten', 'freigaben', 'zuordnungen', 'upload']
+export const AREAS = ['dokumente', 'quelle', 'laeufe', 'metadaten', 'freigaben', 'zuordnungen', 'upload', 'abschluss']
 
 const LIBRARIES = {
   upload: 'library-upload-rundschreiben',
@@ -77,9 +78,9 @@ export function setup({ out }) {
 
 const TABS = { dokumente: null, quelle: 'quelle', laeufe: 'quelle', metadaten: 'metadaten', freigaben: 'freigaben', zuordnungen: 'zuordnungen' }
 
-async function open(page, ctx, job, tab) {
+async function open(page, ctx, job, tab, extra = {}) {
   const { id, role } = resolve(job.type)
-  const query = new URLSearchParams({ mockScenario: job.scenario, mockRole: role })
+  const query = new URLSearchParams({ mockScenario: job.scenario, mockRole: role, ...extra })
   if (tab) query.set('tab', tab)
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.goto(`${ctx.base}/libraries/${id}?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
@@ -139,6 +140,19 @@ export async function run(page, job, ctx) {
         }
         await input.setInputFiles(uploadFiles).catch((e) => ctx.log('  upload', String(e).split('\n')[0]))
         await settle(page, 1200)
+        await rest(page)
+        await ctx.shoot(area)
+        continue
+      }
+      if (area === 'abschluss') {
+        // the state right after the wizard: the Steckbrief shows the next steps (variant C)
+        await open(page, ctx, job, null, { justCreated: '1' })
+        // below 1100 px the Steckbrief is one line; unfold it to show the steps
+        const fold = page.getByRole('button', { name: /^Steckbrief/ })
+        if (await fold.isVisible().catch(() => false)) {
+          await fold.click()
+          await sleep(300)
+        }
         await rest(page)
         await ctx.shoot(area)
         continue

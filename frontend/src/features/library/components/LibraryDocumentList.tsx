@@ -241,8 +241,8 @@ export default function LibraryDocumentList({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 2,
-            p: 1.5,
+            gap: { xs: 1, sm: 2 },
+            p: { xs: 1, sm: 1.5 },
             ...(isAttachment && { py: 1.25 }),
           }}
         >
@@ -275,6 +275,10 @@ export default function LibraryDocumentList({
               {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
+              {/* below sm the state joins the second line instead of a column of its own */}
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                {` · ${documentStatusLabel(document.status)}`}
+              </Box>
             </Typography>
             {options.viaFileName && (
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -316,7 +320,10 @@ export default function LibraryDocumentList({
               title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
               disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
             >
-              <Box component="span" sx={{ display: 'inline-flex', minWidth: 112 }}>
+              <Box
+                component="span"
+                sx={{ display: { xs: 'none', sm: 'inline-flex' }, minWidth: 112 }}
+              >
                 <StateDot
                   tone={statusTone(document.status)}
                   label={documentStatusLabel(document.status)}

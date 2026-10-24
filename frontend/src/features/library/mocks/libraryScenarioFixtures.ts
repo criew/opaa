@@ -160,7 +160,11 @@ function overlayFor(scenario: MockScenario, id: string): Overlay | null {
     case 'empty':
       return () => ({ documentCount: 0 })
     case 'failed':
-      return () => ({ lastScheduledRunsFailed: true })
+      // an upload library fails at its full storage quota, a connector at its scheduled runs
+      return (library) =>
+        library.sourceType === 'UPLOAD' && library.storageQuotaBytes
+          ? { storageUsedBytes: library.storageQuotaBytes }
+          : { lastScheduledRunsFailed: true }
     default:
       return null
   }
