@@ -39,7 +39,8 @@ trifft die Behörde selbst und wiederholt sie, wenn sich der Zweck ändert.
    der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md).
 2. **Rolle klären:** Betreiber ist, wer ein KI-System in eigener Verantwortung verwendet; Anbieter, wer
    es unter eigenem Namen in Betrieb nimmt. Wer OPAA unter eigenem Namen betreibt, kann selbst
-   Anbieter werden; die Ausnahme für quelloffene Software hilft nicht.
+   Anbieter werden; ob schon der unveränderte Name „OPAA“ genügt, ist offen. Die Ausnahme für
+   quelloffene Software hilft nicht.
 3. **Hochrisiko prüfen:** etwa Personal, Leistungsansprüche, Strafverfolgung, Migration, Rechtspflege.
    Ein Wissensassistent mit Belegen ist in der Regel nicht hochriskant; trifft ein Bereich zu, reicht
    diese Hilfe nicht.
