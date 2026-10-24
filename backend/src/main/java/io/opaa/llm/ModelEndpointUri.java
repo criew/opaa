@@ -40,6 +40,32 @@ public final class ModelEndpointUri {
   }
 
   /**
+   * {@code baseUrl} as a log line may name it: scheme, host, port and path, without userinfo, query
+   * or fragment, where a key could stand. Works on the text, so an address {@link URI} refuses
+   * (such as a host with an underscore) is shortened as well.
+   */
+  public static String withoutSecrets(String baseUrl) {
+    if (baseUrl == null) {
+      return null;
+    }
+    String text = baseUrl.strip();
+    int query = text.indexOf('?');
+    int fragment = text.indexOf('#');
+    int cut = query < 0 ? fragment : fragment < 0 ? query : Math.min(query, fragment);
+    if (cut >= 0) {
+      text = text.substring(0, cut);
+    }
+    int schemeEnd = text.indexOf("://");
+    int authorityStart = schemeEnd >= 0 ? schemeEnd + 3 : 0;
+    int authorityEnd = text.indexOf('/', authorityStart);
+    if (authorityEnd < 0) {
+      authorityEnd = text.length();
+    }
+    int at = text.lastIndexOf('@', authorityEnd - 1);
+    return at >= authorityStart ? text.substring(0, authorityStart) + text.substring(at + 1) : text;
+  }
+
+  /**
    * @param path the path to append, starting with a slash.
    * @throws IllegalArgumentException when the base URL carries credentials.
    * @throws URISyntaxException when the result is not a valid URI.

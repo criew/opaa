@@ -255,6 +255,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                   .title(entry.title())
                   .changeMarker(publishedAt.map(Instant::toString).orElse(null))
                   .documentDate(DocumentProperties.instantToLocalDate(publishedAt.orElse(null)))
+                  .events(events)
                   .build(),
               null);
       // A rejected or failed entry's attachments are deliberately not indexed.

@@ -42,8 +42,9 @@ beim Identitätsanbieter.
 | Monitoring | Prometheus liest Metriken, ein Log-Sammler die Standardausgabe | nein | [Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken) |
 
 Gesichert wird nur, was Zustand hält: Datenbank, Originalablage und Geheimnisse
-([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)). Jede Verbindung nach außen
-mit ihren Daten listet das Faktenblatt `datenfluesse` ([Nachvollziehbarkeit](nachvollziehbarkeit.md)).
+([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)). Jede Verbindung, die OPAA
+selbst aufbaut, listet mit ihren Daten das Faktenblatt `datenfluesse`; was davon geprüft wird, steht
+unter [Was bei jeder Änderung geprüft wird](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird).
 
 ## Eine oder mehrere Backend-Instanzen
 

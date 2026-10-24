@@ -1,6 +1,8 @@
 package io.opaa.indexing.document;
 
 import io.opaa.format.DocumentProperties;
+import io.opaa.format.shared.IngestTextSanitizer;
+import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
@@ -9,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -47,6 +50,8 @@ import java.util.UUID;
  * @param malwareScanned the file already passed the malware scan on its way here (an upload is
  *     scanned before its original is stored), so {@link DocumentIngestService#ingest} does not send
  *     it again
+ * @param events the run protocol for a source without {@code AttachmentAccess} (a Confluence page,
+ *     a feed entry); {@code null} uses that of the access, if any
  */
 public record DocumentIngest(
     KnowledgeLibrary library,
@@ -66,7 +71,8 @@ public record DocumentIngest(
     String pipelineId,
     boolean existingRow,
     boolean reindex,
-    boolean malwareScanned) {
+    boolean malwareScanned,
+    IndexingEventSink events) {
 
   public DocumentIngest {
     Objects.requireNonNull(library, "library");
@@ -77,6 +83,45 @@ public record DocumentIngest(
     if (reindex && !existingRow) {
       throw new IllegalArgumentException("A re-index runs over an existing row: " + filePath);
     }
+  }
+
+  /**
+   * This ingest with file name, declared title and hierarchy path cleaned like the extracted text,
+   * since all three reach index and prompt; what the cleanup found is added to {@code findings}.
+   * The identity {@code filePath} stays as the source names it.
+   */
+  public DocumentIngest withCleanNames(Map<IngestTextSanitizer.Finding, Integer> findings) {
+    SourceDocumentContext cleanContext =
+        context == null
+            ? null
+            : new SourceDocumentContext(
+                context.containerKey(), cleaned(context.hierarchyPath(), findings));
+    return new DocumentIngest(
+        library,
+        filePath,
+        cleaned(fileName, findings),
+        content,
+        sourceType,
+        parentDocumentId,
+        sourceEntryUrl,
+        cleanContext,
+        changeMarker,
+        folder,
+        cleaned(title, findings),
+        syntheticName,
+        documentDate,
+        modifiedAt,
+        pipelineId,
+        existingRow,
+        reindex,
+        malwareScanned,
+        events);
+  }
+
+  private static String cleaned(String text, Map<IngestTextSanitizer.Finding, Integer> findings) {
+    IngestTextSanitizer.Result result = IngestTextSanitizer.sanitize(text);
+    result.findings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
+    return result.text();
   }
 
   /** What this ingest declares about the document (ADR-0024), laid over what the format found. */
@@ -176,6 +221,7 @@ public record DocumentIngest(
     private boolean existingRow;
     private boolean reindex;
     private boolean malwareScanned;
+    private IndexingEventSink events;
 
     private Builder(KnowledgeLibrary library) {
       this.library = Objects.requireNonNull(library, "library");
@@ -279,6 +325,11 @@ public record DocumentIngest(
       return this;
     }
 
+    public Builder events(IndexingEventSink events) {
+      this.events = events;
+      return this;
+    }
+
     public DocumentIngest build() {
       String name = fileName;
       if (name == null && syntheticName) {
@@ -302,7 +353,8 @@ public record DocumentIngest(
           pipelineId,
           existingRow,
           reindex,
-          malwareScanned);
+          malwareScanned,
+          events);
     }
   }
 }

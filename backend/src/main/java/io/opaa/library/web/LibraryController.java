@@ -471,6 +471,7 @@ public class LibraryController {
       case RATE_LIMITED -> IndexingRunEventCategory.RATE_LIMITED;
       case BUDGET_EXHAUSTED -> IndexingRunEventCategory.BUDGET_EXHAUSTED;
       case SUMMARY -> IndexingRunEventCategory.SUMMARY;
+      case SUSPICIOUS_PATTERNS -> IndexingRunEventCategory.SUSPICIOUS_PATTERNS;
     };
   }
 

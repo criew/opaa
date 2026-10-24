@@ -78,6 +78,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
+   * Sets the stored name of an existing row - the cleaned name of an upload or a re-index - as a
+   * conditional update, so a row deleted meanwhile is never re-inserted.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.fileName = :fileName where d.id = :id")
+  int updateFileName(@Param("id") UUID id, @Param("fileName") String fileName);
+
+  /**
    * Moves a connector document's title and source context without touching its chunks - a
    * Confluence page renamed or moved without a body change (ADR-0023).
    */

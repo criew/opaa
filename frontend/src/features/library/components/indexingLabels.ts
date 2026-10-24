@@ -38,6 +38,8 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   BUDGET_EXHAUSTED: 'Anfragebudget erschöpft',
   // The run's own figures, one note per run for a source that counts them.
   SUMMARY: 'Kennzahlen',
+  // Counts per class of what the cleanup after extraction found; the document was indexed.
+  SUSPICIOUS_PATTERNS: 'Auffällige Muster',
 }
 
 // ADR-0023, Entscheidung 4: the Betriebsart of a run - whether its listing was complete

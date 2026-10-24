@@ -45,5 +45,12 @@ public enum IndexingEventCategory {
    * The run's own figures at its end - requests, bytes, listed/skipped/processed objects, the time
    * each container took - one note per run for a source that counts them, never an item outcome.
    */
-  SUMMARY
+  SUMMARY,
+  /**
+   * The cleanup after extraction found patterns typical of prompt injection in an indexed document
+   * - removed invisible characters, defused role tokens, instruction phrases, URLs with a data
+   * placeholder. One note per document with counts per class, never with content; the document was
+   * indexed.
+   */
+  SUSPICIOUS_PATTERNS
 }

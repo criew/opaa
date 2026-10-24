@@ -281,6 +281,21 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
   }
 
+  /** An entry ingests without AttachmentAccess; its findings reach the protocol over the ingest. */
+  @Test
+  void anEntryCarriesTheRunProtocolIntoTheIngest() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", "<html><body><main>Artikeltext.</main></body></html>");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    ArgumentCaptor<DocumentIngest> entries = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(documentIngestService, timeout(2000)).ingest(entries.capture(), any());
+    assertThat(entries.getValue().events()).isNotNull();
+  }
+
   @Test
   void aDetailPageIsHandedOverAsHtmlThatTheHtmlPipelineCutsIntoSections() throws Exception {
     // The entry names the HTML pipeline and hands it the main content as HTML, so a press release

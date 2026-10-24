@@ -418,7 +418,15 @@ Ablauf:
    per PR auf `main` die [Liste der Linien](#liste-der-linien)
    nachziehen: die neue Linie eintragen und beim Vorgänger, einer normalen Linie, das Supportende
    setzen; dazu die Zeile in der Roadmap. Eine LTS-Linie steht schon seit ihrem ersten
-   Release-Kandidaten in der Liste (unten).
+   Release-Kandidaten in der Liste (unten). Die Roadmap um eine Zeile für das nächste geplante
+   Funktionsrelease verlängern. Den
+   [Meilenstein](#roadmap) des erschienenen Release schließen, offene Issues darin in den nächsten
+   verschieben und für die neue Zeile der Roadmap einen Meilenstein anlegen:
+
+   ```bash
+   gh api repos/criew/opaa/milestones -f title='Juni-Release 2029' -f due_on=2029-06-30T12:00:00Z \
+     -f description='LTS-Funktionsrelease. Plan und Supportende: https://github.com/criew/opaa/blob/main/docs/releases.md#roadmap'
+   ```
 
 Von Hand nachbearbeiten muss man die Notizen nur für bekannte Befunde aus Schritt 4: Was ein
 Release von Bestandsinstallationen verlangt, kommt über Schritt 3 aus dem Repository,
@@ -907,8 +915,16 @@ Linie, die der Fehler betrifft. Alles andere erscheint mit dem nächsten Funktio
 ### Roadmap
 
 Geplant ist nach dem Takt von Spring Boot, nicht nach Funktionen; Versionsnummern vergibt erst das
-Release. Ob GitHub-Meilensteine die Tabelle ergänzen, klärt
-[#3021](https://github.com/criew/opaa/issues/3021).
+Release.
+
+Jede Zeile, deren Release noch nicht erschienen ist, hat einen
+[GitHub-Meilenstein](https://github.com/criew/opaa/milestones) mit dem Namen der Zeile
+([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 6). Fällig ist er am
+letzten Tag des geplanten Monats; das erste finale Release liegt außerhalb des Takts und hat kein
+Fälligkeitsdatum. Die Beschreibung nennt nur die Art (LTS oder normal) und verweist auf diese
+Tabelle. Supportenden und Funktionen stehen nicht im Meilenstein; ein Issue in einem Meilenstein ist
+für dieses Release geplant, nicht zugesagt. Gepflegt werden die Meilensteine im
+[Release-Ablauf](#wer-ein-release-anlegt), Schritt 7.
 
 | Linie | Erscheint | Spring Boot | Art | Patch-Releases bis |
 |---|---|---|---|---|
