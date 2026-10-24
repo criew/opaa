@@ -303,11 +303,14 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
+      - name: Mermaid installieren
+        if: github.event_name != 'pull_request' || steps.filter.outputs.diagrams == 'true'
+        working-directory: .github/tools/mermaid
+        run: pnpm install --frozen-lockfile --ignore-scripts --no-optional
+
       - name: Mermaid-Diagramme von Vorlagen und Handbuch rendern
         if: github.event_name != 'pull_request' || steps.filter.outputs.diagrams == 'true'
-        run: |
-          pnpm --dir .github/tools/mermaid install --frozen-lockfile --ignore-scripts --no-optional
-          python .github/scripts/update_package.py diagrams
+        run: python .github/scripts/update_package.py diagrams
 
       # Comments in every tree listed in the script header carry no review protocol, no history
       # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
