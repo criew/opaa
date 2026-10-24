@@ -685,6 +685,16 @@ class LocalUserAdminIntegrationTest {
                 Long.class,
                 Organization.DEFAULT_ID))
         .isEqualTo(1L);
+    // ... naming its owner by pseudonym only, never by the account id
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT row_to_json(a)::text FROM audit_log a WHERE event_type = 'SPACE_DELETED'"
+                    + " AND object_type = 'SPACE' AND organization_id = ? AND "
+                    + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
+                String.class,
+                Organization.DEFAULT_ID))
+        .contains(pseudonym.toString())
+        .doesNotContain(user.id().toString());
     // the pseudonymised trail stays, the mapping is gone
     assertThat(
             jdbc.queryForObject(

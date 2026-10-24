@@ -208,6 +208,65 @@ class AuditIncidentScopeServiceIntegrationTest {
     assertThat(result.getContent().get(0).getEventId()).isEqualTo(subjectEntry.getEventId());
   }
 
+  /**
+   * An owner change by someone else names the person only under {@code ownerId}; the approved grant
+   * finds it there, but only for the event types that carry an owner.
+   */
+  @Test
+  void approvedGrantAlsoReturnsOwnerEntriesNamingThePersonAsOwner() {
+    String subjectRef = pseudonymService.pseudonymFor(subject, organizationId).toString();
+    String otherRef = pseudonymService.pseudonymFor(approver, organizationId).toString();
+    Instant at = scopeStart.plus(1, ChronoUnit.DAYS);
+    AuditLogEntry handedOn =
+        writeAuditEntry(
+            requester,
+            AuditEventType.ASSET_OWNER_CHANGED,
+            "{\"ownerId\":\"" + subjectRef + "\"}",
+            "{\"ownerId\":\"" + otherRef + "\"}",
+            at);
+    AuditLogEntry received =
+        writeAuditEntry(
+            requester,
+            AuditEventType.SPACE_CREATED,
+            null,
+            "{\"name\":\"Team\",\"ownerId\":\"" + subjectRef + "\"}",
+            at);
+    // an event type without an owner never matches on its payload
+    writeAuditEntry(
+        requester,
+        AuditEventType.LIBRARY_CHANGED,
+        null,
+        "{\"ownerId\":\"" + subjectRef + "\"}",
+        at);
+    // another person's owner change
+    writeAuditEntry(
+        requester,
+        AuditEventType.ASSET_OWNER_CHANGED,
+        "{\"ownerId\":\"" + otherRef + "\"}",
+        "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
+        at);
+
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            "Verdacht auf unbefugten Zugriff auf Personalvorgaenge");
+    incidentScopeService.approve(organizationId, grant.getId(), approver);
+
+    Page<AuditLogEntry> result =
+        queryService.byIncidentScope(
+            organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50);
+
+    assertThat(result.getContent())
+        .extracting(AuditLogEntry::getEventId)
+        .containsExactlyInAnyOrder(handedOn.getEventId(), received.getEventId());
+    assertThat(result.getTotalElements()).isEqualTo(2);
+  }
+
   @Test
   void aCallReachingBeyondTheApprovedScopeIsRejectedNotClamped() {
     AuditIncidentScopeGrant grant =
@@ -549,6 +608,30 @@ class AuditIncidentScopeServiceIntegrationTest {
 
   private LocalDate month(Instant instant) {
     return LocalDate.ofInstant(instant, clock.getZone()).withDayOfMonth(1);
+  }
+
+  private AuditLogEntry writeAuditEntry(
+      UUID actorUserId, AuditEventType type, String before, String after, Instant recordedAt) {
+    AuditLogEntry saved =
+        auditLogService.record(
+            AuditLogEntry.withoutSubject(
+                organizationId,
+                ActorKind.USER,
+                pseudonymService.pseudonymFor(actorUserId, organizationId).toString(),
+                type,
+                AuditObjectType.SPACE,
+                UUID.randomUUID().toString(),
+                "Space",
+                before,
+                after,
+                AuditOutcome.SUCCESS,
+                null,
+                null));
+    jdbcTemplate.update(
+        "UPDATE audit_log SET recorded_at = ? WHERE event_id = ?",
+        Timestamp.from(recordedAt),
+        saved.getEventId());
+    return saved;
   }
 
   private AuditLogEntry writeAuditEntryForActor(UUID actorUserId, Instant recordedAt) {

@@ -238,6 +238,82 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
     assertThat(records.toString()).doesNotContain("Raum Fremd", "Klärung über Selma");
   }
 
+  /**
+   * An owner entry by someone else names the person only under {@code ownerId}: by pseudonym, in
+   * entries before the pseudonymisation of owners by account id. Only event types with an owner are
+   * searched there.
+   */
+  @Test
+  void ownerEntriesFindThePersonUnderOwnerIdOnlyForEventTypesWithAnOwner() throws Exception {
+    Instant now = Instant.now();
+    entry(
+        now,
+        "USER",
+        otherPseudonym,
+        "ASSET_OWNER_CHANGED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Gamma",
+        null,
+        null,
+        "{\"ownerId\":\"" + selfPseudonym + "\"}",
+        "{\"ownerId\":\"" + otherPseudonym + "\"}",
+        null);
+    entry(
+        now.plusMillis(1),
+        "USER",
+        otherPseudonym,
+        "SPACE_DELETED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Delta",
+        null,
+        null,
+        "{\"name\":\"Raum Delta\",\"ownerId\":\"" + self + "\"}",
+        null,
+        null);
+    entry(
+        now.plusMillis(2),
+        "USER",
+        otherPseudonym,
+        "LIBRARY_CHANGED",
+        "KNOWLEDGE_LIBRARY",
+        UUID.randomUUID().toString(),
+        "Bibliothek Fremd",
+        null,
+        null,
+        null,
+        "{\"changedFields\":[\"name\"],\"ownerId\":\"" + selfPseudonym + "\"}",
+        null);
+    entry(
+        now.plusMillis(3),
+        "USER",
+        otherPseudonym,
+        "SPACE_CREATED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Fremd",
+        null,
+        null,
+        null,
+        "{\"name\":\"Raum Fremd\",\"ownerId\":\"" + otherPseudonym + "\"}",
+        null);
+
+    List<Map<String, Object>> records = export(self);
+
+    assertThat(records)
+        .extracting(r -> r.get("eventType"))
+        .containsExactly("ASSET_OWNER_CHANGED", "SPACE_DELETED");
+    assertThat(records.get(0))
+        .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
+        .containsEntry("before", "{\"ownerId\":\"Sie\"}")
+        .containsEntry("after", "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_OWNER + "\"}");
+    assertThat(records.get(1))
+        .containsEntry("before", "{\"name\":\"Raum Delta\",\"ownerId\":\"Sie\"}");
+    assertThat(records.toString())
+        .doesNotContain("Bibliothek Fremd", "Raum Fremd", self.toString(), selfPseudonym);
+  }
+
   @Test
   void readsEveryMonthAndBeyondOnePage() throws Exception {
     Instant now = Instant.now();

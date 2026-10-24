@@ -4,6 +4,7 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.ActorKind;
 import io.opaa.api.types.AssetGrantSubjectType;
@@ -47,6 +48,7 @@ import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
+import io.opaa.space.SpaceMemberSeed;
 import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
@@ -629,6 +631,81 @@ class AuditEventRecordingIntegrationTest {
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_DELETED)
                 .toList())
         .hasSize(1);
+  }
+
+  /**
+   * Every entry of {@link SpaceService} that carries an owner - creation, both sides of both owner
+   * changes, archiving and deletion - names the owner by pseudonym, and no row holds the account id
+   * of either person.
+   */
+  @Test
+  void spaceOwnerEntriesNameTheOwnerOnlyByPseudonym() {
+    UUID owner = createUser();
+    UUID member = createUser();
+    String ownerRef = auditEventRecorder.pseudonymFor(owner, organizationId).toString();
+    String memberRef = auditEventRecorder.pseudonymFor(member, organizationId).toString();
+    UUID archivedId =
+        spaceService
+            .createSpace(
+                new SpaceCreation(
+                    "Team Archiv",
+                    null,
+                    null,
+                    List.of(SpaceMemberSeed.user(member, SpaceRole.MEMBER)),
+                    null),
+                currentUserOf(owner, false))
+            .getId();
+    spaceService.transferOwnership(archivedId, member, currentUserOf(owner, false));
+    spaceService.transferOwnership(archivedId, owner, currentUserOf(member, false));
+    spaceService.archiveSpace(archivedId, currentUserOf(owner));
+    UUID deletedId =
+        spaceService
+            .createSpace(
+                new SpaceCreation("Team Weg", null, null, null, null), currentUserOf(owner, false))
+            .getId();
+    spaceService.deleteSpace(deletedId, currentUserOf(owner));
+
+    List<AuditLogEntry> ownerChanged =
+        entriesFor(AuditObjectType.SPACE, archivedId).stream()
+            .filter(e -> e.getEventType() == AuditEventType.ASSET_OWNER_CHANGED)
+            .toList();
+    assertThat(ownerChanged)
+        .extracting(AuditLogEntry::getBefore, AuditLogEntry::getAfter)
+        .containsExactlyInAnyOrder(
+            tuple("{" + ownerIs(ownerRef) + "}", "{" + ownerIs(memberRef) + "}"),
+            tuple("{" + ownerIs(memberRef) + "}", "{" + ownerIs(ownerRef) + "}"));
+    assertThat(only(archivedId, AuditEventType.SPACE_ARCHIVED).getBefore())
+        .contains(ownerIs(ownerRef));
+    assertThat(only(deletedId, AuditEventType.SPACE_DELETED).getBefore())
+        .contains(ownerIs(ownerRef));
+    assertThat(only(deletedId, AuditEventType.SPACE_CREATED).getAfter())
+        .contains(ownerIs(ownerRef));
+    List<String> rows =
+        jdbcTemplate.queryForList(
+            "SELECT row_to_json(a)::text FROM audit_log a WHERE organization_id = ?"
+                + " AND object_id IN (?, ?)",
+            String.class,
+            organizationId,
+            archivedId.toString(),
+            deletedId.toString());
+    assertThat(rows).hasSizeGreaterThanOrEqualTo(7);
+    assertThat(rows)
+        .allSatisfy(
+            row ->
+                assertThat(row).doesNotContain(owner.toString()).doesNotContain(member.toString()));
+  }
+
+  private AuditLogEntry only(UUID spaceId, AuditEventType type) {
+    List<AuditLogEntry> entries =
+        entriesFor(AuditObjectType.SPACE, spaceId).stream()
+            .filter(e -> e.getEventType() == type)
+            .toList();
+    assertThat(entries).hasSize(1);
+    return entries.getFirst();
+  }
+
+  private static String ownerIs(String ref) {
+    return "\"ownerId\":\"" + ref + "\"";
   }
 
   // ---------------------------------------------------------------------------------------

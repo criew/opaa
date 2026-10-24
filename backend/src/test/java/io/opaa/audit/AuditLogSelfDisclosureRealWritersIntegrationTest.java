@@ -2,6 +2,7 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.CurrentUser;
@@ -16,7 +17,14 @@ import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.space.Space;
+import io.opaa.space.SpaceCreation;
+import io.opaa.space.SpaceMemberSeed;
+import io.opaa.space.SpaceMembershipHistoryRepository;
+import io.opaa.space.SpaceRepository;
+import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -47,6 +55,10 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groups;
   @Autowired private GroupMembershipHistoryRepository membershipHistory;
+  @Autowired private SpaceService spaceService;
+  @Autowired private SpaceRepository spaces;
+  @Autowired private SpaceMembershipHistoryRepository spaceMembershipHistory;
+  @Autowired private AssetOwnershipHistoryRepository ownershipHistory;
   @Autowired private OrganizationRepository organizations;
   @Autowired private AuditActorPseudonymService pseudonyms;
   @Autowired private AuthProperties authProperties;
@@ -65,6 +77,12 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
   @AfterEach
   void tearDown() {
     membershipHistory.deleteByUserIdIn(userIds);
+    spaces.deleteAll(
+        spaces.findAll().stream()
+            .filter(s -> s.getOrganizationId().equals(organizationId))
+            .toList());
+    spaceMembershipHistory.deleteBySubjectUserIdIn(userIds);
+    ownershipHistory.deleteByOwnerUserIdIn(userIds);
     groups.deleteAll(
         groups.findAll().stream()
             .filter(g -> g.getOrganizationId().equals(organizationId))
@@ -118,6 +136,84 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
         .doesNotContain(ADMIN_NAME, ADMIN_EMAIL)
         .doesNotContain(pseudonyms.findExistingPseudonym(admin.getId()).orElseThrow().toString())
         .doesNotContain(pseudonyms.findExistingPseudonym(person.getId()).orElseThrow().toString());
+  }
+
+  /**
+   * An owner change by an administrator names neither owner as actor or subject: previous and new
+   * owner find it through their pseudonym under {@code ownerId}, one entry for both, and so does
+   * the owner a space was created for.
+   */
+  @Test
+  void anOwnerChangeByAnAdminShowsInTheSelfDisclosureOfBothOwners() throws Exception {
+    User admin = user(ADMIN_NAME, ADMIN_EMAIL);
+    User previous = user("Berta Bisher", "berta.bisher@sd2990.example");
+    User next = user("Carla Neu", "carla.neu@sd2990.example");
+    CurrentUser byAdmin =
+        CurrentUser.of(
+            admin.getId(), organizationId, SystemRole.SYSTEM_ADMIN, ADMIN_NAME, ADMIN_EMAIL);
+    Space space =
+        spaceService.createSpace(
+            new SpaceCreation(
+                "Referat 3135",
+                null,
+                previous.getId(),
+                List.of(SpaceMemberSeed.user(next.getId(), SpaceRole.MEMBER)),
+                null),
+            byAdmin);
+
+    spaceService.transferOwnership(space.getId(), next.getId(), byAdmin);
+
+    List<Map<String, Object>> ofPrevious = export(previous.getId());
+    assertThat(ofPrevious)
+        .filteredOn(r -> "SPACE_CREATED".equals(r.get("eventType")))
+        .singleElement()
+        .satisfies(
+            r ->
+                assertThat(r)
+                    .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
+                    .containsEntry("subject", null)
+                    .containsEntry(
+                        "after",
+                        "{\"name\":\"Referat 3135\",\"ownerId\":\"Sie\",\"chatAutoCleanup\":false}"));
+    assertThat(ofPrevious)
+        .filteredOn(r -> "ASSET_OWNER_CHANGED".equals(r.get("eventType")))
+        .singleElement()
+        .satisfies(
+            r ->
+                assertThat(r)
+                    .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
+                    .containsEntry("before", "{\"ownerId\":\"Sie\"}")
+                    .containsEntry(
+                        "after",
+                        "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_OWNER + "\"}"));
+    List<Map<String, Object>> ofNext = export(next.getId());
+    assertThat(ofNext)
+        .extracting(r -> r.get("eventType"))
+        .contains("SPACE_MEMBER_ADDED", "ASSET_OWNER_CHANGED")
+        .doesNotContain("SPACE_CREATED");
+    assertThat(ofNext)
+        .filteredOn(r -> "ASSET_OWNER_CHANGED".equals(r.get("eventType")))
+        .singleElement()
+        .satisfies(
+            r ->
+                assertThat(r)
+                    .containsEntry(
+                        "before",
+                        "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_OWNER + "\"}")
+                    .containsEntry("after", "{\"ownerId\":\"Sie\"}"));
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ? AND event_type ="
+                    + " 'ASSET_OWNER_CHANGED'",
+                Integer.class,
+                organizationId))
+        .isEqualTo(1);
+    String all = ofPrevious + "\n" + ofNext;
+    for (User user : List.of(admin, previous, next)) {
+      assertThat(all)
+          .doesNotContain(user.getId().toString())
+          .doesNotContain(pseudonyms.findExistingPseudonym(user.getId()).orElseThrow().toString());
+    }
   }
 
   private User user(String name, String email) {
