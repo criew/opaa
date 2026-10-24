@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,8 +10,11 @@ import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
 import type { SourceFormContext } from '../components/sources/types'
-import { reportSourceIssue } from '../components/sources/reportSourceIssue'
-import type { SourceIssue } from '../utils/sourceIssue'
+import { formIssue, issueAt, type SourceIssue } from '../utils/sourceIssue'
+import ErrorSummary from '../components/setup/ErrorSummary'
+import CreateReviewStep from '../components/CreateReviewStep'
+import { scheduleSummary } from '../components/setup/scheduleSummary'
+import type { RegisteredCheck } from '../components/setup/setupContext'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -64,6 +67,7 @@ import {
   NOTHING_CREATABLE,
   PENDING_CONNECTION_UNUSABLE,
   STEP_NAME,
+  STEP_REVIEW,
   STEP_SHARING,
   STEP_SOURCE_SETUP,
   STEP_SOURCE_TYPE,
@@ -93,9 +97,18 @@ export default function LibraryCreatePage() {
   const draft = restored?.draft
   const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
   const [error, setError] = useState<string | null>(null)
-  // an issue of the source form that names a field; it is shown there instead of in `error`
-  const [sourceIssue, setSourceIssue] = useState<SourceIssue | null>(null)
+  // every issue of the last „Weiter“, at its field and in the summary above the step
+  const [issues, setIssues] = useState<SourceIssue[]>([])
+  const summaryRef = useRef<HTMLDivElement>(null)
   const sourceFormRef = useRef<HTMLDivElement>(null)
+  // the connection check of the source form, run once more by „Weiter“
+  const checkRef = useRef<RegisteredCheck | null>(null)
+  const registerCheck = useCallback((check: RegisteredCheck | null) => {
+    checkRef.current = check
+  }, [])
+  const [checking, setChecking] = useState(false)
+  // „Ändern“ on the review step: „Weiter“ goes straight back there
+  const [returnToReview, setReturnToReview] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
   // connector library reaches server paths and stored credentials. A missing right is explained
@@ -233,7 +246,7 @@ export default function LibraryCreatePage() {
       }))
     }
     setError(null)
-    setSourceIssue(null)
+    setIssues([])
   }
   // a new library has no rhythm of its own yet; empty means the instance's, named by the type
   const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
@@ -343,66 +356,92 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleNext = () => {
+  /** Every issue of the current step at once; empty when it may be left. */
+  function stepIssues(step: string): SourceIssue[] {
+    if (step === STEP_SOURCE_SETUP && configuration) {
+      if (connectionChoice === null) {
+        return [
+          formIssue(
+            !profileOptions.loaded
+              ? 'Die Zugänge werden noch geladen.'
+              : selectable.length > 0
+                ? 'Bitte wählen Sie einen Zugang.'
+                : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
+          ),
+        ]
+      }
+      if (awaitsConsent) return [formIssue(CONSENT_REQUIRED)]
+      const found = configuration.validateAll
+        ? configuration.validateAll(values, formContext)
+        : [configuration.validate(values, formContext)].filter((issue): issue is SourceIssue => issue !== null)
+      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
+      return scheduleError ? [...found, issueAt('schedule', scheduleError)] : found
+    }
+    if (step === STEP_NAME && name.trim() === '') return [issueAt('name', 'Bitte einen Namen eingeben.')]
+    if (step === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
+      return [formIssue('Bitte eine Gruppe auswählen.')]
+    }
+    return []
+  }
+
+  function showIssues(found: SourceIssue[]) {
+    setIssues(found)
+    // the summary takes the focus, so all issues are read out at once
+    setTimeout(() => summaryRef.current?.focus(), 0)
+  }
+
+  // Once shown, issues follow the input: a fixed field loses its message at once.
+  const liveIssues = issues.length > 0 ? stepIssues(currentStep) : issues
+  const shownIssues = issues.length > 0 && liveIssues.length === 0 ? [] : issues.length > 0 ? mergeIssues(issues, liveIssues) : issues
+
+  const handleNext = async () => {
+    if (checking) return
     if (currentStep === STEP_SOURCE_TYPE && typesUnavailable) {
       setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
       return
     }
     // the hint above the step bar already says why nothing can be created
     if (currentStep === STEP_SOURCE_TYPE && nothingUsable) return
+    const found = stepIssues(currentStep)
+    if (found.length > 0) {
+      showIssues(found)
+      return
+    }
+    if (currentStep === STEP_SOURCE_SETUP && configuration && checkRef.current) {
+      setChecking(true)
+      const outcome = await checkRef.current.ensure()
+      setChecking(false)
+      if (outcome === 'failed') {
+        showIssues([
+          formIssue(
+            'Der Verbindungstest ist fehlgeschlagen. Prüfen Sie die Angaben oder wählen Sie „Trotzdem fortfahren“.',
+          ),
+        ])
+        return
+      }
+    }
     if (currentStep === STEP_SOURCE_SETUP && configuration) {
-      if (connectionChoice === null) {
-        setError(
-          !profileOptions.loaded
-            ? 'Die Zugänge werden noch geladen'
-            : selectable.length > 0
-              ? 'Bitte wählen Sie einen Zugang.'
-              : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
-        )
-        return
-      }
-      if (awaitsConsent) {
-        setError(CONSENT_REQUIRED)
-        return
-      }
-      const validationIssue = configuration.validate(values, formContext)
-      if (validationIssue) {
-        // a field's issue takes the focus to the field; one without is announced in place
-        reportSourceIssue(
-          validationIssue,
-          (shown) => {
-            setSourceIssue(shown.field ? shown : null)
-            setError(shown.field ? null : shown.message)
-          },
-          sourceFormRef.current,
-          () => {},
-        )
-        return
-      }
-      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
-      if (scheduleError) {
-        setError(scheduleError)
-        return
-      }
       // Where the source provides it, the name comes from it - as long as nobody has typed one.
       if (!nameTouched && name.trim() === '') {
         setName(configuration.nameFromSource(values))
       }
     }
-    if (currentStep === STEP_NAME && name.trim() === '') {
-      setError('Bitte einen Namen angeben')
-      return
-    }
-    if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
-      return
-    }
     setError(null)
-    setSourceIssue(null)
+    setIssues([])
+    if (returnToReview) {
+      setReturnToReview(false)
+      setActiveStep(steps.indexOf(STEP_REVIEW))
+      return
+    }
     setActiveStep((s) => s + 1)
   }
 
   const handleCreate = async () => {
+    if (submitting) return
+    if (missingCapability) {
+      setError(missingCapability)
+      return
+    }
     if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
       setError('Bitte eine Gruppe auswählen')
       return
@@ -481,7 +520,11 @@ export default function LibraryCreatePage() {
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
           Neue Wissensbibliothek
         </Typography>
-        <PageHeading title="Neue Wissensbibliothek" visuallyHidden />
+        <PageHeading
+          title="Neue Wissensbibliothek"
+          documentTitle={`${shownIssues.length > 0 ? 'Fehler: ' : ''}Schritt ${Math.min(activeStep, steps.length - 1) + 1} von ${steps.length}: ${stepHeadings[currentStep] ?? currentStep} – Neue Wissensbibliothek`}
+          visuallyHidden
+        />
         <Typography
           ref={stepHeadingRef}
           component="h2"
@@ -497,6 +540,8 @@ export default function LibraryCreatePage() {
             {missingCapability}
           </Alert>
         )}
+
+        <ErrorSummary ref={summaryRef} issues={shownIssues} idPrefix="library-create" />
 
         {/* A step's error is announced without moving the focus (WCAG 4.1.3). */}
         <Box role="alert" aria-live="polite">
@@ -568,7 +613,9 @@ export default function LibraryCreatePage() {
             SourceForm={SourceForm}
             awaitsConsent={awaitsConsent}
             sourceFormRef={sourceFormRef}
-            sourceIssue={sourceIssue}
+            issues={shownIssues}
+            framed={Boolean(configuration?.checkStages)}
+            registerCheck={registerCheck}
             values={values}
             formContext={formContext}
             onSourceChange={(patch: object) => {
@@ -577,7 +624,6 @@ export default function LibraryCreatePage() {
                 [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
               }))
               setError(null)
-              setSourceIssue(null)
             }}
             schedule={schedule}
             onScheduleChange={(patch) => {
@@ -616,8 +662,57 @@ export default function LibraryCreatePage() {
               description={description}
               onDescriptionChange={setDescription}
               namePlaceholder="z. B. Rechtsquellen Soziales"
+              nameError={shownIssues.find((issue) => issue.field === 'name')?.message ?? null}
             />
           </Box>
+        )}
+
+        {currentStep === STEP_REVIEW && (
+          <CreateReviewStep
+            sourceRows={[
+              { label: 'Quellart', value: displayNameOf(sourceType) },
+              ...(connection
+                ? [{ label: 'Zugang', value: privateLibrary ? `${connection.name} (eigenes Konto)` : connection.name }]
+                : []),
+            ]}
+            summary={configuration?.summary ? configuration.summary(values, formContext) : null}
+            scheduleRows={
+              uploadLibrary
+                ? null
+                : [
+                    ...scheduleSummary(schedule, confluenceRhythm),
+                    { label: 'Erste Indizierung', value: startFirstRun ? 'sofort nach dem Anlegen' : 'mit dem Zeitplan' },
+                  ]
+            }
+            nameRows={[
+              { label: 'Name', value: name.trim() },
+              { label: 'Beschreibung', value: description.trim() || 'keine' },
+            ]}
+            sharingRows={
+              steps.includes(STEP_SHARING)
+                ? [
+                    { label: 'Eigentümer', value: ownerType === 'GROUP' ? (selectedGroup?.name ?? 'Gruppe') : 'Mein Konto' },
+                    {
+                      label: 'Vorgemerkte Freigaben',
+                      value: pendingGrants.length === 0 ? 'keine' : String(pendingGrants.length),
+                    },
+                  ]
+                : null
+            }
+            onChange={(section) => {
+              const target =
+                section === 'type'
+                  ? STEP_SOURCE_TYPE
+                  : section === 'source'
+                    ? STEP_SOURCE_SETUP
+                    : section === 'name'
+                      ? STEP_NAME
+                      : STEP_SHARING
+              setReturnToReview(section !== 'type')
+              setError(null)
+              setActiveStep(steps.indexOf(target))
+            }}
+          />
         )}
 
         {currentStep === STEP_SHARING && (
@@ -644,19 +739,23 @@ export default function LibraryCreatePage() {
           stepCount={steps.length}
           submitting={submitting}
           pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
-          nextDisabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
           missingCapability={missingCapability}
-          hasName={name.trim() !== ''}
           onCancel={() => void handleCancel()}
           onBack={() => {
             setError(null)
-            setSourceIssue(null)
+            setIssues([])
             setActiveStep((s) => s - 1)
           }}
-          onNext={handleNext}
+          onNext={() => void handleNext()}
+          checking={checking}
           onCreate={() => void handleCreate()}
         />
       </Box>
     </Box>
   )
+}
+
+/** The issues still standing: those of the live check whose field was reported before. */
+function mergeIssues(reported: SourceIssue[], live: SourceIssue[]): SourceIssue[] {
+  return live.filter((issue) => reported.some((before) => before.field === issue.field))
 }

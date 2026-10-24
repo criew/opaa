@@ -7,11 +7,38 @@ import {
   smbIssue,
   type SmbSourceValues,
 } from '../../utils/smbSource'
-import SmbSourceForm from '../SmbSourceForm'
+import ServerFolderSetup from '../setup/ServerFolderSetup'
+import { accountIssues, folderListIssue } from '../setup/validation'
+import { collectIssues } from '../setup/setupContext'
+import { folderSummary } from '../setup/summaries'
+import { MAX_SMB_FOLDERS } from '../../utils/smbSource'
+import type { SourceFormContext } from './types'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
+
+function credentialsKept(values: SmbSourceValues, context: SourceFormContext) {
+  return (
+    !connectionFields(context).asksSecret ||
+    (context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl))
+  )
+}
+
+/** The address issue alone: smbIssue reports the address first, the rest masked as valid. */
+function smbAddressIssue(values: SmbSourceValues) {
+  const issue = smbIssue({ ...values, account: 'a', password: 'b', folders: '/' }, true)
+  return issue?.field === 'sourceUrl' ? issue : null
+}
+
+function smbPayload(values: SmbSourceValues) {
+  const folders = smbFoldersOf(values)
+  return {
+    sourceUrl: values.sourceUrl.trim(),
+    sourceCredentials: smbCredentialsOf(values),
+    sourceSettings: { folders: folders.length === 0 ? ['/'] : folders },
+  }
+}
 
 export const smbSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.SMB,
@@ -58,16 +85,38 @@ export const smbSource: SourceRegistration = {
         return share
       }
     },
+    validateAll: (values: SmbSourceValues, context) => [
+      ...collectIssues(smbAddressIssue(values)),
+      ...(connectionFields(context).asksSecret
+        ? accountIssues(
+            { field: 'account', value: values.account },
+            { field: 'password', value: values.password },
+            credentialsKept(values, context),
+          )
+        : []),
+      ...collectIssues(folderListIssue(values.folders, MAX_SMB_FOLDERS)),
+    ],
+    checkStages: ['address', 'signIn', 'access'],
+    summary: (values: SmbSourceValues, context) => ({
+      connection: [{ label: 'Adresse der Freigabe', value: values.sourceUrl.trim(), mono: true }],
+      credentials: connectionFields(context).asksSecret
+        ? [{ label: 'Kennung und Kennwort', value: values.account ? `${values.account} · Kennwort gesetzt` : 'gesetzt' }]
+        : undefined,
+      scope: folderSummary(values.folders),
+    }),
     Form: ({ values, onChange, context }) => (
-      <SmbSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-smb`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
+      <ServerFolderSetup<SmbSourceValues>
         values={values}
         onChange={onChange}
+        context={context}
+        addressLabel="Adresse der Freigabe"
+        addressPlaceholder="smb://dateiserver/Ablage"
+        addressHint={'Server und Freigabe, auch als \\\\server\\freigabe.'}
+        userField="account"
+        secretField="password"
+        credentialsOf={smbCredentialsOf}
+        credentialsKept={credentialsKept(values, context)}
+        payloadOf={smbPayload}
       />
     ),
     StoredView: SmbStoredView,

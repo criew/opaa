@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 
 interface LibraryCreateFooterProps {
   activeStep: number
@@ -8,25 +9,24 @@ interface LibraryCreateFooterProps {
   submitting: boolean
   /** Grants noted in the sharing step, counted while that step is shown; 0 hides the count. */
   pendingGrantCount: number
-  nextDisabled: boolean
   /** Why nothing can be created; it also describes the create button. */
   missingCapability: string | null
-  hasName: boolean
+  /** The connection check „Weiter“ runs is in flight. */
+  checking: boolean
   onCancel: () => void
   onBack: () => void
   onNext: () => void
   onCreate: () => void
 }
 
-/** The wizard's button row: cancel, back, next or create. */
+/** The wizard's button row: cancel, back, next or create - never disabled for missing input. */
 export default function LibraryCreateFooter({
   activeStep,
   stepCount,
   submitting,
   pendingGrantCount,
-  nextDisabled,
   missingCapability,
-  hasName,
+  checking,
   onCancel,
   onBack,
   onNext,
@@ -61,20 +61,26 @@ export default function LibraryCreateFooter({
         </Button>
       )}
       {activeStep < stepCount - 1 ? (
-        <Button variant="contained" onClick={onNext} disabled={nextDisabled}>
-          Weiter
-        </Button>
+        <BusyButton
+          variant="contained"
+          onClick={onNext}
+          busy={checking}
+          busyAnnouncement="Verbindung wird getestet"
+        >
+          {checking ? 'Wird getestet …' : 'Weiter'}
+        </BusyButton>
       ) : (
-        <Button
+        <BusyButton
           variant="contained"
           onClick={onCreate}
-          disabled={submitting || missingCapability !== null || !hasName}
+          busy={submitting}
+          busyAnnouncement="Bibliothek wird angelegt"
           aria-describedby={
             missingCapability !== null ? 'library-create-capability-hint' : undefined
           }
         >
           {submitting ? 'Wird angelegt …' : 'Bibliothek anlegen'}
-        </Button>
+        </BusyButton>
       )}
     </Box>
   )

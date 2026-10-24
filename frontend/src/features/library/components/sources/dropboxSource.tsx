@@ -6,9 +6,12 @@ import {
   dropboxIssue,
   type DropboxSourceValues,
 } from '../../utils/dropboxSource'
-import DropboxSourceForm from '../DropboxSourceForm'
+import DropboxSetup from '../setup/DropboxSetup'
+import { folderListIssue } from '../setup/validation'
+import { collectIssues } from '../setup/setupContext'
+import { folderSummary } from '../setup/summaries'
+import { MAX_DROPBOX_FOLDERS } from '../../utils/dropboxSource'
 import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
-import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -37,15 +40,17 @@ export const dropboxSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    Form: ({ values, onChange, context }) => (
-      <DropboxSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-dropbox`}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: DropboxSourceValues) =>
+      collectIssues(folderListIssue(values.folders, MAX_DROPBOX_FOLDERS)),
+    checkStages: ['signIn', 'access'],
+    summary: (values: DropboxSourceValues, context) => ({
+      connection: [{ label: 'Zugang', value: context.connection?.name ?? 'Dropbox' }],
+      scope: [
+        { label: 'Bereich', value: values.teamSpace ? 'Team-Bereich' : 'Persönliche Ordner' },
+        ...folderSummary(values.folders),
+      ],
+    }),
+    Form: DropboxSetup,
     StoredView: DropboxStoredView,
     Scope: DropboxScope,
     scopeHero: {

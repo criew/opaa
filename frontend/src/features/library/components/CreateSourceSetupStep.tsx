@@ -1,8 +1,5 @@
 import type { Ref } from 'react'
 import Box from '@mui/material/Box'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Switch from '@mui/material/Switch'
-import Typography from '@mui/material/Typography'
 import type { ConnectionProfileOptionsState } from '@/features/connection'
 import type {
   ConnectionProfileOption,
@@ -12,7 +9,9 @@ import type {
 import type { SourceIssue } from '../utils/sourceIssue'
 import type { ConfluenceFullSyncRhythm, LibraryScheduleValues } from '../utils/librarySchedule'
 import ConnectionProfileSelect from './ConnectionProfileSelect'
-import LibraryScheduleForm from './LibraryScheduleForm'
+import ScheduleSetup from './setup/ScheduleSetup'
+import { SetupContext, type RegisteredCheck } from './setup/setupContext'
+import { SetupSection } from './setup/SourceSetupLayout'
 import SourceConsentPanel from './SourceConsentPanel'
 import { SourceIssueContext } from './sources/sourceIssueContext'
 import type { SourceFormContext, SourceRegistration } from './sources/types'
@@ -34,7 +33,11 @@ interface CreateSourceSetupStepProps {
   SourceForm: NonNullable<SourceRegistration['configuration']>['Form'] | undefined
   awaitsConsent: boolean
   sourceFormRef: Ref<HTMLDivElement>
-  sourceIssue: SourceIssue | null
+  /** All issues of the last „Weiter“, shown at their fields. */
+  issues: SourceIssue[]
+  /** Whether the form sits on the shared frame and renders the schedule itself. */
+  framed: boolean
+  registerCheck: (check: RegisteredCheck | null) => void
   values: unknown
   formContext: SourceFormContext
   onSourceChange: (patch: object) => void
@@ -63,7 +66,9 @@ export default function CreateSourceSetupStep({
   SourceForm,
   awaitsConsent,
   sourceFormRef,
-  sourceIssue,
+  issues,
+  framed,
+  registerCheck,
   values,
   formContext,
   onSourceChange,
@@ -74,8 +79,18 @@ export default function CreateSourceSetupStep({
   onStartFirstRunChange,
   firstRunHint,
 }: CreateSourceSetupStepProps) {
+  const scheduleSection = (
+    <ScheduleSetup
+      idPrefix="library-create-schedule"
+      values={schedule}
+      onChange={onScheduleChange}
+      rhythm={confluenceRhythm}
+      firstRun={{ checked: startFirstRun, onChange: onStartFirstRunChange, hint: firstRunHint }}
+    />
+  )
+  const showForm = SourceForm && connectionChoice !== null && !awaitsConsent
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 640 }}>
       {showConnectionSelect && descriptor && (
         <ConnectionProfileSelect
           descriptor={descriptor}
@@ -98,47 +113,33 @@ export default function CreateSourceSetupStep({
           onConnect={onConnectSource}
         />
       )}
-      {SourceForm && connectionChoice !== null && !awaitsConsent && (
-        <Box ref={sourceFormRef}>
-          <SourceIssueContext value={sourceIssue}>
-            <SourceForm
-              // a new profile starts the form afresh, so no probe result outlives its profile
-              key={connectionChoice}
-              values={values}
-              context={formContext}
-              onChange={onSourceChange}
-            />
-          </SourceIssueContext>
-        </Box>
-      )}
-
-      {/* Schedule and immediate start apply to every connector type. */}
-      <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
-          Zeitplan
-        </Typography>
-        <LibraryScheduleForm
-          idPrefix="library-create-schedule"
-          values={schedule}
-          onChange={onScheduleChange}
-          confluence={confluenceRhythm}
-        />
-        <FormControlLabel
-          sx={{ mt: 2 }}
-          control={
-            <Switch
-              checked={startFirstRun}
-              onChange={(e) => onStartFirstRunChange(e.target.checked)}
-            />
-          }
-          label="Erste Indizierung sofort nach dem Anlegen starten"
-        />
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-          {startFirstRun
-            ? firstRunHint
-            : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
-        </Typography>
-      </Box>
+      <SetupContext
+        value={{
+          idPrefix: 'library-create',
+          issues,
+          schedule: framed ? scheduleSection : undefined,
+          registerCheck,
+        }}
+      >
+        {showForm && (
+          <Box ref={sourceFormRef}>
+            <SourceIssueContext value={issues[0] ?? null}>
+              <SourceForm
+                // a new profile starts the form afresh, so no probe result outlives its profile
+                key={connectionChoice}
+                values={values}
+                context={formContext}
+                onChange={onSourceChange}
+              />
+            </SourceIssueContext>
+          </Box>
+        )}
+        {(!showForm || !framed) && (
+          <SetupSection id="library-create-section-schedule" title="Zeitplan">
+            {scheduleSection}
+          </SetupSection>
+        )}
+      </SetupContext>
     </Box>
   )
 }

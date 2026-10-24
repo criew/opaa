@@ -7,11 +7,23 @@ import {
   nextcloudIssue,
   type NextcloudSourceValues,
 } from '../../utils/nextcloudSource'
-import NextcloudSourceForm from '../NextcloudSourceForm'
+import ServerFolderSetup from '../setup/ServerFolderSetup'
+import { accountIssues, addressIssue, folderListIssue } from '../setup/validation'
+import { collectIssues } from '../setup/setupContext'
+import { folderSummary } from '../setup/summaries'
+import { MAX_NEXTCLOUD_FOLDERS } from '../../utils/nextcloudSource'
+import type { SourceFormContext } from './types'
 import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
+
+function credentialsKept(values: NextcloudSourceValues, context: SourceFormContext) {
+  return (
+    !connectionFields(context).asksSecret ||
+    (context.credentialsStored && sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl))
+  )
+}
 
 export const nextcloudSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.NEXTCLOUD,
@@ -48,16 +60,42 @@ export const nextcloudSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
+    validateAll: (values: NextcloudSourceValues, context) => [
+      ...collectIssues(addressIssue('sourceUrl', values.sourceUrl)),
+      ...(connectionFields(context).asksSecret
+        ? accountIssues(
+            { field: 'username', value: values.username },
+            { field: 'appPassword', value: values.appPassword },
+            credentialsKept(values, context),
+          )
+        : []),
+      ...collectIssues(folderListIssue(values.folders, MAX_NEXTCLOUD_FOLDERS)),
+    ],
+    checkStages: ['address', 'signIn', 'access'],
+    summary: (values: NextcloudSourceValues, context) => ({
+      connection: [{ label: 'Adresse', value: values.sourceUrl.trim(), mono: true }],
+      credentials: connectionFields(context).asksSecret
+        ? [{ label: 'Kennung und Kennwort', value: values.username ? `${values.username} · Kennwort gesetzt` : 'gesetzt' }]
+        : undefined,
+      scope: folderSummary(values.folders),
+    }),
     Form: ({ values, onChange, context }) => (
-      <NextcloudSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-nextcloud`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
+      <ServerFolderSetup<NextcloudSourceValues>
         values={values}
         onChange={onChange}
+        context={context}
+        addressLabel="Adresse der Nextcloud"
+        addressPlaceholder="https://cloud.example.de"
+        userField="username"
+        secretField="appPassword"
+        secretHint="Ein App-Kennwort aus den Nextcloud-Einstellungen."
+        credentialsOf={nextcloudCredentialsOf}
+        credentialsKept={credentialsKept(values, context)}
+        payloadOf={(v) => ({
+          sourceUrl: v.sourceUrl.trim(),
+          sourceCredentials: nextcloudCredentialsOf(v),
+          sourceSettings: { folders: nextcloudFoldersOf(v) },
+        })}
       />
     ),
     StoredView: NextcloudStoredView,

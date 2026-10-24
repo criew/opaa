@@ -4,6 +4,7 @@ import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
+import type { CheckStage } from '../setup/ConnectionCheck'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -45,6 +46,16 @@ export interface SourceFormProps<V> {
   onChange: (patch: Partial<V>) => void
   context: SourceFormContext
 }
+
+/** One line of a summary: a label and its value; `mono` for machine values. */
+export interface SummaryRow {
+  label: string
+  value: string
+  mono?: boolean
+}
+
+/** The rows of a source's configuration, by section of the setup frame. */
+export type SourceSummary = Partial<Record<'connection' | 'credentials' | 'scope', SummaryRow[]>>
 
 /** The one-line Umfang in the page head and the warning about a scope the last run could not read. */
 export interface SourceScopeHero {
@@ -103,6 +114,18 @@ export interface SourceConfiguration<V> {
    * settings as a whole instead of keeping the parts a request leaves out (Google Drive).
    */
   rhythmSettingsBase?: (library: StoredLibrarySource) => Record<string, unknown> | null
+  /**
+   * Every rejection of the values at once, each at its field; the frame shows them together with
+   * a summary. Falls back to {@link validate}.
+   */
+  validateAll?: (values: V, context: SourceFormContext) => SourceIssue[]
+  /** The stages the connection check names; absent for a source without a check. */
+  checkStages?: CheckStage[]
+  /**
+   * The values as the step „Prüfen“ and the Reiter „Quelle“ show them, by section of the setup
+   * frame (Verbindung, Zugangsdaten, Umfang).
+   */
+  summary?: (values: V, context: SourceFormContext) => SourceSummary
   /** The sentence under the wizard's immediate-first-run switch. */
   firstRunHint?: string
   /** The explanation above the run history. */
