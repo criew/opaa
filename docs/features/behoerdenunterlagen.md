@@ -39,9 +39,7 @@
 > **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
 > Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
-> (#2562, #2563, #2566) und die
-> Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3018). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die

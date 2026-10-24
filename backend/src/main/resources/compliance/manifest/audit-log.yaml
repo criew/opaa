@@ -584,3 +584,6 @@ auditEvents:
   - id: SELF_DISCLOSURE_SETTINGS_CHANGED
     trigger: Die Systemverwaltung schaltet die Selbstauskunft um oder ändert ihre Tagesgrenze
     details: Vorher/Nachher der geänderten Schlüssel (enabled, dailyLimit)
+  - id: LINK_TARGETS_CHANGED
+    trigger: Die Systemverwaltung ändert die erlaubten Linkziele in Antworten
+    details: Vorher/Nachher der ganzen Liste (allowedOrigins)

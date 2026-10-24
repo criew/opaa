@@ -87,7 +87,7 @@ class McpHitDigest {
       entries.add(
           new Entry(
               best,
-              excerpt(best.excerpt(), query),
+              excerpt(McpForeignContent.strip(best.excerpt()), query),
               List.copyOf(passages.subList(1, passages.size()))));
     }
     return List.copyOf(entries);
