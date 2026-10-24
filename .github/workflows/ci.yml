@@ -165,6 +165,9 @@ jobs:
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'
+              # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
+              - '.github/workflows/opencode-mirror.yml'
+              - 'publiccode.yml'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
               - '.github/workflows/**'

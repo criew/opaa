@@ -1,6 +1,10 @@
 package io.opaa.format;
 
+import io.opaa.format.shared.IngestTextSanitizer;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalLong;
 import org.springframework.ai.document.Document;
 
@@ -34,13 +38,16 @@ import org.springframework.ai.document.Document;
  *     {@link DocumentProperties#EMPTY} by default. Attached via {@link #withProperties} by every
  *     pipeline that has them cheaply at hand; the interpretation into core fields happens
  *     centrally, never here.
+ * @param sanitizerFindings what {@link IngestTextSanitizer} found in the chunk texts, summed per
+ *     class over all chunks; set only by {@link DocumentFormatRunner}, empty otherwise
  */
 public record DocumentFormatResult(
     Outcome outcome,
     List<Document> chunks,
     List<DiscoveredAttachment> discoveredAttachments,
     OptionalLong contentByteSizeOverride,
-    DocumentProperties properties) {
+    DocumentProperties properties,
+    Map<IngestTextSanitizer.Finding, Integer> sanitizerFindings) {
 
   public enum Outcome {
     /** At least one chunk was produced. */
@@ -73,6 +80,20 @@ public record DocumentFormatResult(
     contentByteSizeOverride =
         contentByteSizeOverride == null ? OptionalLong.empty() : contentByteSizeOverride;
     properties = properties == null ? DocumentProperties.EMPTY : properties;
+    sanitizerFindings =
+        sanitizerFindings == null || sanitizerFindings.isEmpty()
+            ? Map.of()
+            : Collections.unmodifiableMap(new EnumMap<>(sanitizerFindings));
+  }
+
+  /** A result without findings of the cleanup; the pipelines' own constructor. */
+  public DocumentFormatResult(
+      Outcome outcome,
+      List<Document> chunks,
+      List<DiscoveredAttachment> discoveredAttachments,
+      OptionalLong contentByteSizeOverride,
+      DocumentProperties properties) {
+    this(outcome, chunks, discoveredAttachments, contentByteSizeOverride, properties, Map.of());
   }
 
   public static DocumentFormatResult chunked(List<Document> chunks) {
@@ -153,6 +174,11 @@ public record DocumentFormatResult(
   /** The same result with {@code properties} attached (ADR-0024). */
   public DocumentFormatResult withProperties(DocumentProperties properties) {
     return new DocumentFormatResult(
-        outcome, chunks, discoveredAttachments, contentByteSizeOverride, properties);
+        outcome,
+        chunks,
+        discoveredAttachments,
+        contentByteSizeOverride,
+        properties,
+        sanitizerFindings);
   }
 }

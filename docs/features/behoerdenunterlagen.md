@@ -35,13 +35,12 @@
 >   zum vorigen finalen Release, Lizenzübersicht und Vorlage Update-Vermerk, attestiert; der
 >   Release-Lauf bricht vorher bei unvollständigem Manifest ab (#2556)
 > - Betriebsfolgen und Antwortqualität im Update-Paket (#2555)
+> - das Offline-Bündel für Netze ohne Internetzugang am GitHub-Release jeder Version (#2557)
 >
 > **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
-> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
+> Konfigurationsexport der Instanz (#2558, #2559); außerdem der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
-> (#2562, #2563, #2566) und die
-> Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -417,7 +416,7 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 Paket zu jedem Release, hängt es an und attestiert es (#2556); Faktenblätter und Lizenzübersicht
 stammen aus #2550 und #2551, das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den
 gekennzeichneten Pull Requests aus #2553 und #2554, Betriebsfolgen und Antwortqualität aus #2555.
-**(Zielbild)** Teil 7 (#2558, #2559) und das Offline-Bündel (#2557).
+**(gebaut, #2557)** Das Offline-Bündel. **(Zielbild)** Teil 7 (#2558, #2559).
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -460,8 +459,9 @@ Retrieval-Regression beider Versionen mit Messdatum; einen Messlauf auf dem Rele
 Projekt nicht ab, das Paket sagt das als „nicht gemessen“. Quellen, Regeln und Grenzen im Einzelnen:
 [releases.md](../releases.md#betriebsfolgen-und-antwortqualität). Gleicher Commit ergibt gleiche Dateien, bis auf die
 gekennzeichneten Pull Requests im Delta, die dem Label-Stand zum Zeitpunkt des Laufs folgen.
-**(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
-Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
+**(gebaut, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
+Chart, SBOMs und Attestierungen für Netze ohne Internetzugang; Aufbau und Prüfung ohne Netz
+beschreibt [releases.md](../releases.md#offline-bündel).
 
 ### Das kumulierte Delta
 
@@ -475,9 +475,11 @@ Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas
 Vorab-Releases ebenso: zum höchsten finalen Tag unter der eigenen Version, das der getaggte Commit
 enthält. Vor dem ersten finalen Release vergleicht es mit einem Stand ohne Manifest, jeder Eintrag
 erscheint als neu. Die Regel trägt auch mehrere [Supportlinien](../releases.md#supportlinien): Ein
-Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(Zielbild, #3020)** Ein
-LTS-Release bekommt zusätzlich das Delta zur vorigen LTS-Linie
-([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5).
+Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(gebaut, #3020)** Ein
+LTS-Release und seine Kandidaten bekommen zusätzlich Delta, Betriebsfolgen und Antwortqualität
+gegenüber dem jüngsten Release der vorigen LTS-Linie, getrennt in `delta-lts/` und `betrieb-lts/`
+([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5;
+[Update-Paket](../releases.md#update-paket)).
 
 **(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
 ([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):
@@ -623,7 +625,8 @@ abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update
 Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
 eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
 (bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
-erneut gestuft. Alle Deltas erzeugt der Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
+erneut gestuft. Das Delta von der vorigen LTS-Linie zum Kandidaten liegt dem Paket bei; ein Delta
+von einer anderen Version erzeugt der Betrieb. Steht eine
 Sicherheitskorrektur nur in einem Funktionsupdate bereit (etwa weil die eingesetzte Linie ausgelaufen
 ist oder sich die Korrektur nicht zurückportieren lässt), darf die Dienststellenleitung es als
 vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine

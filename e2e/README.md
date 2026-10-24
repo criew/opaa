@@ -237,7 +237,8 @@ für echte Chat-/Embedding-Läufe bleibt eigenes, noch offenes Issue (#256).
 (`QueryDecompositionService`), Chat-Titel (`ChatTitleGenerationService`), Modellmetadaten
 (`ModelMetadataExtractor`), der Verbindungstest der Modellverwaltung (`LlmModelService`) und
 `ChatHealthIndicator`. **Die Gesprächsnotiz ist der einzige Prompt mit einer eigenen Regel; alle
-übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben.** Praktisch sichtbar ist das beim
+übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben;** nur der Antwort-Prompt kennt
+zusätzlich Auslösewörter für die Linkregel (siehe unten). Praktisch sichtbar ist das beim
 Chat-Titel: Sein Prompt trägt keine Zitationsmarkierung, also bekommt jeder erzeugte Titel dieser
 Suite denselben Text — Szenarien verankern sich deshalb nie an einem Titelwortlaut (siehe
 `fixtures/chat.ts`, `chatSidebarEntries`).
@@ -249,6 +250,13 @@ einem festen Textstück und beantwortet ihn als reine Funktion der Nutzernachric
 ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Punkt „Möchte knappe
 Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort (Art-Präfix,
 200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
+
+Für die **Linkregel** (#3051) hängt der Stub an die Antwort einen festen Markdown-Teil, wenn die
+Frage der Person ein Auslösewort enthält; erkannt wird der Antwort-Prompt an seinen Zitierregeln,
+Zerlegung, Titel und Notiz bleiben unberührt. `E2E-ANTWORT-LINKS` ergibt einen Link auf das
+Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANTWORT-BILD` ein
+Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
+des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
 ### Nextcloud statt Testkonnektor
 
@@ -674,6 +682,15 @@ lassen.
   angemeldet gilt. Nicht abgedeckt ist die Startgrenze (Tagesgrenze plus vier Starts): Ein Start
   zählt erst, wenn der Server das Ticket einlöst, und ein Export dieses Umfangs ist geschrieben,
   bevor ein Abbruch im Browser ihn erreichen kann; sie prüft der Backend-Test.
+
+- `tests/link-rule.spec.ts` (#3051, Epic #3008) — die Linkregel in Antworten mit festen
+  Stub-Antworten (Auslösewörter oben): Nach dem Eintragen von `https://intranet.e2e.example` als
+  erlaubtes Linkziel ist der Link dorthin klickbar, der fremde erscheint als Text mit Adresse; ein
+  Markdown-Bild erscheint als „[Bild: …]“, und der Browser fragt seine Adresse nie an; `dev-user`
+  erreicht die Verwaltung der Linkziele nicht; aus einem präparierten Merkblatt
+  (`praepariertes-merkblatt.txt`) übernommene Links bleiben Text, und der Beleg zeigt das Merkblatt.
+  Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
+  her.
 
 ## Demo-Smoke (#232)
 

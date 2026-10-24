@@ -3,6 +3,7 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -47,23 +48,74 @@ class EvalChatModelExternalTest {
   }
 
   /**
-   * The key comes from the environment, never from a {@code -D} value. The test asserts the
-   * behaviour reachable without setting an environment variable: both properties present and no key
-   * is a failure, not a run against an unauthenticated endpoint.
+   * The key comes from the environment only and is optional: an endpoint without authentication,
+   * such as an Ollama in the own network, is measured without one instead of with a dummy.
    */
   @Test
-  void aMissingApiKeyFailsAndNamesTheEnvironmentVariable() {
+  void withoutAnApiKeyTheEndpointIsMeasuredUnauthenticated() {
     Assumptions.assumeTrue(
         System.getenv("OPAA_EVAL_CHAT_API_KEY") == null,
-        "Diese Maschine hat einen Schlüssel gesetzt - der Fehlerfall ist hier nicht herstellbar.");
+        "Diese Maschine hat einen Schlüssel gesetzt - der Fall ohne Schlüssel ist hier nicht"
+            + " herstellbar.");
     withProperties(
-        "https://api.anthropic.com/v1",
-        "claude-haiku-4-5",
-        () ->
-            assertThatThrownBy(EvalChatModel::external)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("OPAA_EVAL_CHAT_API_KEY")
-                .hasMessageContaining("process list"));
+        "http://ollama.intern:11434/v1",
+        "gemma3:4b",
+        () -> {
+          EvalChatModel.External external = EvalChatModel.external().orElseThrow();
+          assertThat(external.apiKey()).isNull();
+          assertThat(external.model()).isEqualTo("gemma3:4b");
+        });
+  }
+
+  /** A key in the address would reach log and report, so such an address is refused outright. */
+  @Test
+  void anAddressWithUserInformationOrAQueryIsRefused() {
+    for (String address :
+        List.of(
+            "https://nutzer:geheim@llm.example/v1",
+            "http://u:geheim@llm_gw/v1",
+            "https://llm.example/v1?api-key=geheim",
+            "https://llm.example/v1#geheim")) {
+      withProperties(
+          address,
+          "modell",
+          () ->
+              assertThatThrownBy(EvalChatModel::external)
+                  .isInstanceOf(IllegalArgumentException.class)
+                  .hasMessageContaining("OPAA_EVAL_CHAT_API_KEY")
+                  .hasMessageNotContaining("geheim"));
+    }
+    String previous = System.getProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY);
+    try {
+      System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://u:geheim@localhost:11434");
+      assertThatThrownBy(EvalOllamaEndpoint::externalBaseUrl)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageNotContaining("geheim");
+      // an address URI cannot parse is refused as well, and nothing of it travels as a cause
+      System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://u:ge heim@llm gw:11434");
+      assertThatThrownBy(EvalOllamaEndpoint::externalBaseUrl)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasNoCause()
+          .hasMessageNotContaining("heim");
+      System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://localhost:11434");
+      assertThat(EvalOllamaEndpoint.externalBaseUrl()).isEqualTo("http://localhost:11434");
+    } finally {
+      set(EvalOllamaEndpoint.BASE_URL_PROPERTY, previous);
+    }
+  }
+
+  /** A report names the endpoint, never a key carried in user information or a query. */
+  @Test
+  void theReportedEndpointCarriesNoUserInformationAndNoQuery() {
+    assertThat(
+            EvalChatModel.endpointWithoutSecrets(
+                "https://nutzer:geheim@llm.example:8443/v1?api-key=geheim#x"))
+        .isEqualTo("https://llm.example:8443/v1");
+    assertThat(EvalChatModel.endpointWithoutSecrets("http://localhost:11434/v1"))
+        .isEqualTo("http://localhost:11434/v1");
+    assertThat(EvalChatModel.endpointWithoutSecrets("kein url geheim"))
+        .isEqualTo("(Adresse nicht lesbar)");
+    assertThat(EvalChatModel.endpointWithoutSecrets(null)).isNull();
   }
 
   /** A Befundlauf reproduces an installation's temperature; the pinned model never leaves 0. */
