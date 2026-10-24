@@ -30,7 +30,8 @@ export function SummaryValue({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          columnGap: 1,
+          // the status dot separates target and state; no „·“ in front of it
+          columnGap: 1.5,
         }}
       >
         <Typography
@@ -42,11 +43,6 @@ export function SummaryValue({
           }}
         >
           {text ?? emptyText}
-          {status && (
-            <Box component="span" aria-hidden sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {' ·'}
-            </Box>
-          )}
         </Typography>
         {status && (
           <Box sx={{ flexBasis: { xs: '100%', sm: 'auto' } }}>
