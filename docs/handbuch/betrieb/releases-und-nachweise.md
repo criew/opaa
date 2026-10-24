@@ -161,8 +161,7 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
-  ([#2557](https://github.com/criew/opaa/issues/2557)).
+Alles, was dieses Kapitel beschreibt, ist gebaut.
 
 ## Weiterführende Kapitel
 

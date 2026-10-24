@@ -35,9 +35,10 @@
 >   zum vorigen finalen Release, Lizenzübersicht und Vorlage Update-Vermerk, attestiert; der
 >   Release-Lauf bricht vorher bei unvollständigem Manifest ab (#2556)
 > - Betriebsfolgen und Antwortqualität im Update-Paket (#2555)
+> - das Offline-Bündel für Netze ohne Internetzugang am GitHub-Release jeder Version (#2557)
 >
 > **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
-> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
+> Konfigurationsexport der Instanz (#2558, #2559); außerdem der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
 > (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
@@ -415,7 +416,7 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 Paket zu jedem Release, hängt es an und attestiert es (#2556); Faktenblätter und Lizenzübersicht
 stammen aus #2550 und #2551, das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den
 gekennzeichneten Pull Requests aus #2553 und #2554, Betriebsfolgen und Antwortqualität aus #2555.
-**(Zielbild)** Teil 7 (#2558, #2559) und das Offline-Bündel (#2557).
+**(gebaut, #2557)** Das Offline-Bündel. **(Zielbild)** Teil 7 (#2558, #2559).
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -458,8 +459,9 @@ Retrieval-Regression beider Versionen mit Messdatum; einen Messlauf auf dem Rele
 Projekt nicht ab, das Paket sagt das als „nicht gemessen“. Quellen, Regeln und Grenzen im Einzelnen:
 [releases.md](../releases.md#betriebsfolgen-und-antwortqualität). Gleicher Commit ergibt gleiche Dateien, bis auf die
 gekennzeichneten Pull Requests im Delta, die dem Label-Stand zum Zeitpunkt des Laufs folgen.
-**(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
-Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
+**(gebaut, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
+Chart, SBOMs und Attestierungen für Netze ohne Internetzugang; Aufbau und Prüfung ohne Netz
+beschreibt [releases.md](../releases.md#offline-bündel).
 
 ### Das kumulierte Delta
 

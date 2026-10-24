@@ -87,8 +87,9 @@ Takt von Spring Boot, ohne Funktionsversprechen.
 
 Je geplantem Funktionsrelease der Roadmap gibt es einen GitHub-Meilenstein mit dem letzten Tag des
 geplanten Monats als Fälligkeitsdatum (ein Release außerhalb des Takts hat keines) und einer kurzen
-Beschreibung: Art (LTS oder normal) und Verweis auf die Roadmap. Der Meilenstein nennt kein Supportende und verspricht keine Funktion;
-Supportenden stehen nur in der Roadmap, damit es keine zweite Stelle gibt, die auseinanderläuft.
+Beschreibung: Art (LTS oder normal) und Verweis auf die Roadmap. Der Meilenstein nennt kein
+Supportende und verspricht keine Funktion; Supportenden stehen nur in der Roadmap, damit es keine
+zweite Stelle gibt, die auseinanderläuft.
 So lassen sich Issues einem geplanten Release zuordnen, und Außenstehende sehen den Plan ohne
 Repository-Lektüre.
 

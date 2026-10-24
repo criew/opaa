@@ -418,9 +418,10 @@ Ablauf:
    per PR auf `main` die [Liste der Linien](#liste-der-linien)
    nachziehen: die neue Linie eintragen und beim Vorgänger, einer normalen Linie, das Supportende
    setzen; dazu die Zeile in der Roadmap. Eine LTS-Linie steht schon seit ihrem ersten
-   Release-Kandidaten in der Liste (unten). Den [Meilenstein](#roadmap) des Release schließen,
-   offene Issues darin in den nächsten verschieben und für jede neue Zeile der Roadmap einen
-   Meilenstein anlegen:
+   Release-Kandidaten in der Liste (unten). Die Roadmap um eine Zeile für das nächste geplante
+   Funktionsrelease verlängern. Den
+   [Meilenstein](#roadmap) des erschienenen Release schließen, offene Issues darin in den nächsten
+   verschieben und für die neue Zeile der Roadmap einen Meilenstein anlegen:
 
    ```bash
    gh api repos/criew/opaa/milestones -f title='Juni-Release 2029' -f due_on=2029-06-30T12:00:00Z \
