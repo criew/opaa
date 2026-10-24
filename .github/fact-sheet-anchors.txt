@@ -64,6 +64,7 @@ protokollereignisse#asset-succession-opened
 protokollereignisse#asset-visibility-changed
 protokollereignisse#audit-log-accessed
 protokollereignisse#audit-log-configuration-changed
+protokollereignisse#audit-log-month-sealed
 protokollereignisse#auditor-role-granted
 protokollereignisse#auditor-role-revoked
 protokollereignisse#bereich-audit-log

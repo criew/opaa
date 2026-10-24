@@ -1609,6 +1609,7 @@ kube-prometheus-stack wieder `release: <Release-Name>`.
 | `OpaaHighErrorRate` | warning | der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt, bei einer Mindestzahl von Anfragen | Protokoll; oft ein nicht erreichbares Modell |
 | `OpaaIndexingStalled` | warning | in einem Pod die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
 | `OpaaAuditRetentionOverdue` | warning | die automatische Löschung des Revisionsprotokolls seit mehr als 35 Tagen nicht gelaufen ist (sie läuft am 1. jedes Monats um 03:00) | Log des Pods zu diesem Zeitpunkt, Sperre `audit-retention` in der Tabelle `shedlock` |
+| `OpaaAuditChainStalled` | warning | der älteste Protokolleintrag ohne Kontrollpunkt der Prüfsummenkette eine Stunde lang älter als sechs Stunden ist (der Lauf findet alle zehn Minuten statt) | Log der Pods, Sperre `audit-chain` in der Tabelle `shedlock`, offene Transaktionen in `pg_stat_activity` |
 | `OpaaHeapUsageHigh` | warning | der Heap eines Pods 15 Minuten lang über der Schwelle belegt ist | Speicher-Limit oder Heap-Anteil anheben |
 
 | Wert | Vorgabe | Wirkung |

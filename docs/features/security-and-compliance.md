@@ -388,24 +388,35 @@ entfernt **nie einen einzelnen Satz**, sondern immer eine vollständige abgelauf
 Ablage ist nach Monaten unterteilt). Damit ist „löschen" eine Mengenoperation nach Fristablauf und kein
 Griff in einen einzelnen Vorgang.
 
-**Eine Prüfsummenverkettung gibt es in dieser Stufe nicht.** Das ist eine bewusste Abwägung, und ihre
-Grenze gehört ausgesprochen:
+**Die Prüfsummenkette macht eine Änderung am Bestand erkennbar.** Jeder Protokollmonat trägt eine
+Kette von Prüfsummen über alle seine Sätze in der Reihenfolge ihres Eintrags, nachgezogen alle zehn
+Minuten von einem Lauf außerhalb des Schreibwegs, mit Kontrollpunkten je Stapel. Ist ein Monat zu
+Ende und vollständig verkettet, wird er **versiegelt**: Die Kopf-Prüfsumme steht mit der Anzahl der
+Sätze als eigener Protokolleintrag `AUDIT_LOG_MONTH_SEALED` im Folgemonat, wo sie selbst verkettet
+wird, und geht über die [Ausleitung](#anbindung-an-ein-zentrales-sicherheitsmonitoring) mit der
+Prüfsumme als eigenem Feld an das Sicherheitsmonitoring. Kontrollpunkte und Siegel liegen in
+Tabellen, die wie die Ablage selbst dem Wartungskonto gehören und von der Anwendung nur angefügt
+und gelesen werden. Die Revision prüft einen Monat über einen eigenen Abfrageweg (`GET
+/api/v1/audit/chain/<JJJJ-MM>`, Anlass pflichtig, selbst protokolliert): Die Antwort sagt, ob die
+Kette zu Kontrollpunkten und Siegel passt, und nennt bei einem Bruch die erste Abweichung mit
+Position, Art (geändert oder eingefügt/entfernt) und dem Zeitsegment zwischen den Kontrollpunkten,
+ohne einen Inhalt herauszugeben
+([ADR-0058](../decisions/0058-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md)).
 
-> **Eine Manipulation durch jemanden mit direktem Datenbankzugang fällt nicht auf.** Wer als
-> Datenbankadministrator an der Anwendung vorbei schreibt, kann Sätze ändern oder entfernen, ohne dass
-> OPAA das erkennt oder belegen kann.
+Die Grenze gehört weiter ausgesprochen:
 
-Der Schutz der ersten Stufe stützt sich damit auf zwei Dinge, und nur auf sie: darauf, dass die
-**Anwendung** selbst kein Änderungsrecht hat — das ist der häufige und der wahrscheinliche Fall —, und
-darauf, dass der **direkte Datenbankzugang betrieblich beschränkt** ist. Dieser zweite Teil ist keine
-Produkteigenschaft: Er wird außerhalb von OPAA durch den Betreiber geregelt und nachgewiesen, über die
-Vergabe der Datenbankrechte, das Vier-Augen-Prinzip beim administrativen Zugang und die Protokollierung
-der Datenbank selbst. Genau danach wird eine Prüfung fragen, und die ehrliche Antwort lautet: OPAA
-liefert dafür keinen Nachweis, sondern setzt ihn voraus. Die
+> **Wer die Datenbank beherrscht, kann Sätze ändern und die Kette neu rechnen.** Erkennbar bleibt das
+> an dem Siegel, das die Datenbank verlassen hat, im Sicherheitsmonitoring oder in einem anderen
+> System, das die Siegel-Einträge aufbewahrt. Ohne einen solchen zweiten Ort belegt die Kette nur,
+> dass seit dem letzten Kontrollpunkt nichts geändert wurde.
+
+Der Schutz stützt sich damit auf drei Dinge: darauf, dass die **Anwendung** selbst kein
+Änderungsrecht hat — das ist der häufige und der wahrscheinliche Fall —, auf die **Kette mit dem
+Siegel außerhalb der Datenbank**, und darauf, dass der **direkte Datenbankzugang betrieblich
+beschränkt** ist. Dieser dritte Teil ist keine Produkteigenschaft: Er wird außerhalb von OPAA durch
+den Betreiber geregelt und nachgewiesen, über die Vergabe der Datenbankrechte, das
+Vier-Augen-Prinzip beim administrativen Zugang und die Protokollierung der Datenbank selbst. Die
 [Verantwortungsmatrix](#zwei-wege--die-behörde-wählt) führt diesen Punkt auf der Betreiberseite.
-
-Die Verkettung der Einträge über Prüfsummen ist die naheliegende nächste Stufe und unter
-[Offene Fragen](#offene-fragen) geführt.
 
 ### Zugriffswege: was es gibt und was es nicht gibt
 
@@ -716,7 +727,10 @@ der dokumentierten Zweckbindung und damit Gegenstand der Dienstvereinbarung.
 
 Gebaut ist die Ausleitung des Revisionsprotokolls als Syslog mit CEF, ohne Pseudonyme und als
 Vorgabe ohne Objektnamen, ab dem Einschalten und ohne stillen Verlust
-([ADR-0055](../decisions/0055-ausleitung-an-ein-sicherheitsmonitoring.md)).
+([ADR-0055](../decisions/0055-ausleitung-an-ein-sicherheitsmonitoring.md)). Die eine Nutzlast, die
+hinausgeht, ist das Monatssiegel der [Prüfsummenkette](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen):
+Monat, Anzahl und Kopf-Prüfsumme als eigene Felder der Meldung `AUDIT_LOG_MONTH_SEALED`, damit das
+Siegel außerhalb der Datenbank liegt.
 Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche bleiben im Anwendungslog und
 erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde.
 
@@ -1793,12 +1807,9 @@ eine Stufe 2 wäre eine neue mitbestimmungspflichtige Änderung.
 
 ## Offene Fragen
 
-- **Prüfsummenverkettung der Protokolleinträge** — die naheliegende nächste Stufe des Sicherheitsgrads
-  und die Antwort auf die benannte Grenze der ersten: Erst sie macht eine Manipulation mit direktem
-  Datenbankzugang erkennbar. Offen ist der Zuschnitt: Verkettung je Satz oder je Zeitabschnitt,
-  Veröffentlichung der Ankerwerte, und wie sich das Schwärzen des Personenbezugs beim Löschen eines
-  Kontos mit einer Kette verträgt (heute betrifft es nur die getrennte Zuordnungstabelle und lässt das
-  Protokoll unberührt — das bleibt auch mit Kette die richtige Auflösung, muss aber nachgewiesen werden).
+- **Zweiter Ort für die Monatssiegel** der Prüfsummenkette außerhalb des Sicherheitsmonitorings, etwa
+  eine Ablage der Behörde, die die Einträge `AUDIT_LOG_MONTH_SEALED` aufbewahrt; und eine Ansicht des
+  Prüfergebnisses in der Oberfläche der Revision.
 - Verlangt eine C5-Prüfung die Netzadresse im Protokollsatz zwingend? Falls ja, ist die Ausnahme
   schriftlich zu begründen.
 - Wie wird die technische Trennung der Auswertungswege für Revision und Leitung konkret durchgesetzt —

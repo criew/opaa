@@ -65,6 +65,46 @@ die Instanz dabei endete. Abgewiesene Versuche stehen nicht im Protokoll, nur in
 [Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken). Ändert die Systemverwaltung Notabschaltung oder
 Tagesgrenze, entsteht ebenfalls ein Eintrag.
 
+## Prüfsummenkette und Monatssiegel
+
+Das Revisionsprotokoll kann von der Anwendung nur angefügt und gelesen werden; eine Änderung mit
+direkten Datenbankrechten fiele allein dadurch nicht auf. Dafür trägt jeder Protokollmonat eine
+**Prüfsummenkette**: Ein Lauf alle zehn Minuten verkettet die Einträge in ihrer Reihenfolge und
+schreibt je Stapel einen Kontrollpunkt. Ist ein Monat zu Ende und vollständig verkettet, wird er
+**versiegelt**: Die Kopf-Prüfsumme steht mit der Anzahl der Einträge als Protokolleintrag
+`AUDIT_LOG_MONTH_SEALED` im Folgemonat und geht, wenn die [Ausleitung an ein
+Sicherheitsmonitoring](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)
+eingeschaltet ist, mit der Prüfsumme als eigenem Feld dorthin. So liegt das Siegel außerhalb der
+Datenbank. Kontrollpunkte und Siegel liegen in Tabellen, die wie das Protokoll dem Wartungskonto
+gehören; eine abgelaufene Monatspartition nimmt bei ihrer Löschung ihre Kontrollpunkte und ihr
+Siegel mit.
+
+> **Beispiel.** Der Rechnungshof prüft 2029 eine Vergabe aus dem März 2027. Die Revisorin ruft
+> `GET /api/v1/audit/chain/2027-03?reason=Pruefung%20RH%202029` ab und erhält `INTACT`, die Zahl
+> der verketteten Einträge und die Kopf-Prüfsumme. Dieselbe Prüfsumme findet der Betrieb in der
+> Meldung `AUDIT_LOG_MONTH_SEALED` vom April 2027 im Sicherheitsmonitoring. Beides zusammen belegt,
+> dass der Monat seit seinem Abschluss unverändert ist, ohne dass jemand an die Datenbank muss.
+
+Die Prüfung läuft über die Rolle AUDITOR mit Anlass als Pflichtfeld und wird wie jeder Zugriff auf
+Protokolldaten selbst protokolliert (`AUDIT_LOG_ACCESSED`, Abfrageweg `chain-verification`). Die
+Antwort nennt:
+
+| Feld | Bedeutung |
+|---|---|
+| `status` | `INTACT`: Kette passt zu jedem Kontrollpunkt und zum Siegel; `BROKEN`: eine Abweichung; `UNCHAINED`: noch kein Kontrollpunkt, etwa für einen künftigen Monat |
+| `sealed`, `sealEventId` | ob der Monat versiegelt ist, und der Eintrag `AUDIT_LOG_MONTH_SEALED` dazu |
+| `chainedEntries`, `unchainedEntries` | Einträge bis zum Kettenkopf und Einträge darüber, die der nächste Lauf verkettet |
+| `headHash`, `algorithm` | Kopf-Prüfsumme (SHA-256, hexadezimal) und Verfahren der Kette |
+| `deviation` | bei `BROKEN` die erste Abweichung: `position` des Kontrollpunkts, `kind` `CHANGED` (ein Eintrag wurde geändert) oder `INSERTED_OR_REMOVED` (ein Eintrag fehlt oder kam hinzu) und das Zeitsegment `segmentFrom`/`segmentTo` zwischen den Kontrollpunkten |
+
+Ein Monat gilt als `BROKEN`, sobald ein Eintrag nachträglich in ihn geschrieben wurde, auch durch
+eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Kein Inhalt eines Eintrags
+verlässt dabei das Protokoll; wer gehandelt hat, klärt nur die Revision über ihre Abfragewege. Wie
+weit die Kette hinterherläuft, zeigen die Metriken `opaa_audit_chain_lag_seconds` und
+`opaa_audit_chain_unsealed_months` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+Was die Kette nicht leistet: Wer die Datenbank beherrscht, kann Einträge ändern und die Kette neu
+rechnen; erkennbar bleibt das nur an einem Siegel, das die Datenbank verlassen hat.
+
 ## Pseudonymisierung im Protokoll
 
 Das Revisionsprotokoll hält fest, wer was verwaltet hat, etwa Rechte vergeben, Einstellungen
@@ -348,6 +388,8 @@ woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
   Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
+- Eine Ansicht des Kettenprüfergebnisses in der Oberfläche der Revision und ein zweiter Ort für die
+  Monatssiegel außer dem Sicherheitsmonitoring; bis dahin der Abruf über die Schnittstelle.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

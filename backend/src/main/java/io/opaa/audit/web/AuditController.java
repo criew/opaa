@@ -1,5 +1,6 @@
 package io.opaa.audit.web;
 
+import io.opaa.api.dto.AuditChainVerification;
 import io.opaa.api.dto.AuditEventPage;
 import io.opaa.api.dto.AuditEventResponse;
 import io.opaa.api.dto.AuditIncidentScopeRequest;
@@ -29,10 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The revision access path (AUDITOR role only) - exactly the four bounded queries the specification
- * allows plus the one personenbezogene exception, all funnelled through {@link AuditQueryService},
- * the single seam of the self-logging. Deliberately no generic "search" endpoint and no {@code
- * actor}/{@code sort} request parameter anywhere below - see {@link AuditQueryService}'s own
- * Javadoc for why.
+ * allows plus the one personenbezogene exception and the verification of the checksum chain, all
+ * funnelled through {@link AuditQueryService}, the single seam of the self-logging. Deliberately no
+ * generic "search" endpoint and no {@code actor}/{@code sort} request parameter anywhere below -
+ * see {@link AuditQueryService}'s own Javadoc for why.
  *
  * <p>None of the five read endpoints below declares {@code @PreAuthorize} - both the AUDITOR role
  * and the mandatory {@code reason} are enforced inside {@link AuditQueryService} itself, the only
@@ -186,6 +187,20 @@ public class AuditController {
         queryService.byIncidentScope(
             caller.organizationId(), caller.id(), reason, scopeId, from, to, page, size);
     return toPage(result);
+  }
+
+  /**
+   * The verification of the checksum chain of one month (ADR-0058, Entscheidung 5). {@code month}
+   * is bound as text so that a malformed value reaches {@link AuditQueryService} and its rejection
+   * is logged, like a missing {@code reason}.
+   */
+  @GetMapping("/chain/{month}")
+  public AuditChainVerification verifyAuditChain(
+      @PathVariable("month") String month,
+      @RequestParam(name = "reason", required = false) String reason,
+      @Caller CurrentUser caller) {
+    return AuditChainResponseMapper.toResponse(
+        queryService.verifyChain(caller.organizationId(), caller.id(), reason, month));
   }
 
   private AuditEventPage toPage(Page<AuditLogEntry> page) {

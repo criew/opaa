@@ -82,6 +82,8 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "audit_actor_pseudonyms",
                   "audit_retention_settings",
                   "siem_export_cursor",
+                  "audit_chain_checkpoints",
+                  "audit_chain_seals",
                   "audit_incident_scope_grants",
                   "audit_incident_scope_case_counts",
                   "audit_incident_scope_monthly_counts",

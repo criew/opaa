@@ -62,6 +62,29 @@ class CefSyslogFormatterTest {
   }
 
   @Test
+  void theMonthSealTravelsAsItsOwnFields() {
+    String hash = "ab".repeat(32);
+    String message =
+        formatter.format(
+            new AuditExportEntry(
+                eventId,
+                recordedAt,
+                organizationId,
+                "AUDIT_LOG_MONTH_SEALED",
+                "AUDIT_LOG",
+                "2026-09",
+                null,
+                "SUCCESS",
+                new AuditExportEntry.Seal("2026-09", 4711, hash)));
+
+    assertThat(message)
+        .contains("|AUDIT_LOG_MONTH_SEALED|")
+        .contains("cs5Label=sealMonth cs5=2026-09")
+        .contains("cs6Label=sealHash cs6=" + hash)
+        .contains("cn1Label=sealedEntries cn1=4711");
+  }
+
+  @Test
   void extensionValuesAndHeaderFieldsAreEscaped() {
     assertThat(CefSyslogFormatter.extensionValue("a=b\\c\nd")).isEqualTo("a\\=b\\\\c\\nd");
     assertThat(CefSyslogFormatter.header("a|b\\c\nd")).isEqualTo("a\\|b\\\\c d");

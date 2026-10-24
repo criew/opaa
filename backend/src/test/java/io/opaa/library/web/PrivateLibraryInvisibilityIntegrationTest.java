@@ -338,6 +338,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
       probes.put(protocol, protocol());
     }
     probes.put("listAuditEventsByEventType", protocol().withQuery("eventType", "LIBRARY_CREATED"));
+    // the chain report names counts and hashes of a month, never an entry: the same for everyone
+    probes.put("verifyAuditChain", same());
     probes.put("rerunContextPrefixBatch", same("{\"libraryId\": \"{library}\"}"));
     probes.put("backfillMetadataBatch", same("{\"libraryId\": \"{library}\"}"));
     probes.put(
@@ -1538,6 +1540,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
       case "assetType" -> KnowledgeLibrary.ASSET_TYPE.value();
       case "sourceType" -> PersonProbeSourceConnector.TYPE.key();
       case "fieldKey" -> "document_type";
+      case "month" -> "2000-01";
       case "from" -> Instant.now().minus(1, ChronoUnit.HOURS).toString();
       case "to" -> Instant.now().plus(1, ChronoUnit.HOURS).toString();
       case "reason" -> "Prüfung der Unsichtbarkeit privater Bibliotheken";

@@ -86,6 +86,8 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
     try (Statement statement = bootstrapConnection.createStatement()) {
       statement.execute("CREATE ROLE " + APP_ROLE + " LOGIN PASSWORD '" + APP_ROLE_PASSWORD + "'");
       statement.execute("GRANT INSERT, SELECT ON audit_log, audit_actor_pseudonyms TO " + APP_ROLE);
+      statement.execute(
+          "GRANT INSERT, SELECT ON audit_chain_checkpoints, audit_chain_seals TO " + APP_ROLE);
       statement.execute("GRANT SELECT ON audit_retention_settings TO " + APP_ROLE);
       statement.execute(
           "GRANT UPDATE (retention_months, updated_at) ON audit_retention_settings TO " + APP_ROLE);
@@ -155,6 +157,38 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
                 execute(appConnection, "DELETE FROM audit_log WHERE event_id = '" + eventId + "'"))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("permission denied");
+  }
+
+  /**
+   * The checkpoints and seals of the checksum chain follow the model of the log itself (ADR-0058,
+   * Entscheidung 4): the application appends and reads, and may neither move a chain head back nor
+   * remove a seal.
+   */
+  @Test
+  void applicationAccountCanAppendToTheChainButNeitherChangeNorRemoveIt() throws Exception {
+    execute(
+        appConnection,
+        "INSERT INTO audit_chain_checkpoints (month, position, last_recorded_at, last_event_id,"
+            + " head_hash, algorithm, created_at) VALUES (date_trunc('month', now())::date, 1,"
+            + " now(), gen_random_uuid(), decode(repeat('ab', 32), 'hex'), 'OPAA-AUDIT-CHAIN-1',"
+            + " now())");
+    execute(
+        appConnection,
+        "INSERT INTO audit_chain_seals (month, entry_count, head_hash, algorithm, sealed_at,"
+            + " seal_event_id) VALUES (date_trunc('month', now())::date, 1,"
+            + " decode(repeat('ab', 32), 'hex'), 'OPAA-AUDIT-CHAIN-1', now(), gen_random_uuid())");
+
+    for (String table : List.of("audit_chain_checkpoints", "audit_chain_seals")) {
+      assertThatThrownBy(() -> execute(appConnection, "UPDATE " + table + " SET algorithm = 'x'"))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("permission denied");
+      assertThatThrownBy(() -> execute(appConnection, "DELETE FROM " + table))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("permission denied");
+      assertThatThrownBy(() -> execute(appConnection, "TRUNCATE TABLE " + table))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("permission denied");
+    }
   }
 
   @Test

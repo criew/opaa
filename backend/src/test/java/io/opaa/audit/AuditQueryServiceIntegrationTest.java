@@ -510,8 +510,8 @@ class AuditQueryServiceIntegrationTest {
     // A regression that removed every public method would make the loop below vacuously pass -
     // guard against that the same way AuditControllerTest guards its own method count.
     assertThat(publicMethods)
-        .as("AuditQueryService must still declare its five #393 access paths")
-        .hasSize(5);
+        .as("AuditQueryService must still declare its five #393 access paths and the chain check")
+        .hasSize(6);
 
     for (Method method : publicMethods) {
       for (Parameter parameter : method.getParameters()) {
