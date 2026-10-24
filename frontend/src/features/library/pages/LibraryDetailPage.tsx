@@ -292,7 +292,7 @@ export default function LibraryDetailPage() {
             {privateLibrary && <PrivateMark />}
             {erasing && <ErasingMark />}
             {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
-            <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
+            <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
         }
         administrative={isAdministrativeOverride}

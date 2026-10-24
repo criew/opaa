@@ -250,7 +250,13 @@ export function sharePointItemsOf(libraries: SharePointLibraryChoice[]): Selecti
     const site: Crumb[] = library.site
       ? [{ key: `site:${library.site.id}`, name: library.site.name ?? library.site.id }]
       : []
-    const drive = { key: `drive:${library.driveId}`, name: sharePointLibraryLabel(library) }
+    // the stored name repeats the site („Dokumente (Rathaus)“); the site crumb already names it
+    const label = sharePointLibraryLabel(library)
+    const siteSuffix = library.site?.name ? ` (${library.site.name})` : null
+    const drive = {
+      key: `drive:${library.driveId}`,
+      name: siteSuffix && label.endsWith(siteSuffix) ? label.slice(0, -siteSuffix.length) : label,
+    }
     if (library.folders.length === 0) return [{ ...drive, trail: site }]
     return library.folders.map((folder) => ({
       key: `folder:${folder.id}`,

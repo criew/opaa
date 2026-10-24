@@ -38,6 +38,8 @@ const SEARCH_FROM = 7
 const PAGE = 100
 /** Answers faster than this show no loading state at all (Prüfliste #39). */
 const LOADING_DELAY = 300
+/** Stored entries outside the opened level shown ticked above the list; the rest in „Auswahl ansehen“. */
+const PINNED_SHOWN = 5
 
 interface Listing {
   /** The level and server-side search the answer belongs to. */
@@ -374,7 +376,7 @@ function SelectionDialogBody({
       )}
       {pinned.length > 0 && (
         <Box role="group" aria-label="Bereits ausgewählt">
-          {pinned.map((item) => (
+          {pinned.slice(0, PINNED_SHOWN).map((item) => (
             <Box
               key={item.key}
               sx={{
@@ -397,6 +399,11 @@ function SelectionDialogBody({
               </Box>
             </Box>
           ))}
+          {pinned.length > PINNED_SHOWN && (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', py: 1 }}>
+              und {pinned.length - PINNED_SHOWN} weitere ausgewählt
+            </Typography>
+          )}
         </Box>
       )}
       {coveringParent && entries.length > 0 && (
