@@ -1,8 +1,8 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
-rechtsstand: 2026-10-23
+rechtsstand: 2026-10-24
 pruefvermerk: nicht rechtlich geprüft
 naechste-durchsicht: 2027-04-23
 ---
@@ -181,4 +181,4 @@ Personalrat erfährt es danach.
 |---|---|
 | Unterrichtung des Personalrats mit den erforderlichen Unterlagen | § 66 Abs. 1 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__66.html) |
 | Mitbestimmung bei technischen Einrichtungen zur Überwachung | § 80 Abs. 1 Nr. 21 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__80.html) |
-| Personalvertretungsgesetz des Landes | zu prüfen |
+| Personalvertretungsgesetz des Landes | [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
