@@ -47,6 +47,12 @@ class RateLimitSecurityChainIntegrationTest {
   private static final int SEARCH_PER_ACCOUNT = 4;
   private static final int GLOBAL_SEARCH_CEILING = 5;
 
+  /** {@code window-seconds} of the query and search rules, left at the production default. */
+  private static final int GLOBAL_WINDOW_SECONDS = 60;
+
+  /** Time a test that exhausts a global ceiling needs at most, with room for a slow CI runner. */
+  private static final int GLOBAL_CEILING_TEST_SECONDS = 20;
+
   /** One byte above the push intake's body bound, which it refuses before any secret check. */
   private static final int OVERSIZED_PUSH_BYTES = 256 * 1024 + 1;
 
@@ -78,6 +84,24 @@ class RateLimitSecurityChainIntegrationTest {
         InstallationRateLimit.KEY_PREFIX + "query",
         InstallationRateLimit.KEY_PREFIX + "webhook",
         InstallationRateLimit.KEY_PREFIX + "search");
+  }
+
+  /**
+   * A global ceiling estimates its sliding window from two fixed windows of the database clock and
+   * weights the previous one down as time passes, so a ceiling filled just before a window boundary
+   * admits again just after it. A test that expects the ceiling to refuse therefore starts in a
+   * fixed window with enough time left to run entirely inside it.
+   */
+  private void startWithRoomInTheGlobalWindow() throws InterruptedException {
+    double secondsLeft =
+        jdbcTemplate.queryForObject(
+            "SELECT ? - mod(extract(epoch FROM clock_timestamp()), ?)",
+            Double.class,
+            GLOBAL_WINDOW_SECONDS,
+            GLOBAL_WINDOW_SECONDS);
+    if (secondsLeft < GLOBAL_CEILING_TEST_SECONDS) {
+      Thread.sleep((long) Math.ceil(secondsLeft * 1000) + 100);
+    }
   }
 
   @Test
@@ -129,6 +153,7 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Test
   void anAuthenticatedRequestKeepsItsGlobalToken() throws Exception {
+    startWithRoomInTheGlobalWindow();
     String bearer = signIn("198.51.100.50");
     for (int person = 1; person <= GLOBAL_QUERY_CEILING; person++) {
       assertThat(query(bearer, "198.51.100." + (50 + person))).isNotEqualTo(429);
@@ -202,6 +227,7 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Test
   void theSearchCeilingCountsSignedInSearchesOfAllClients() throws Exception {
+    startWithRoomInTheGlobalWindow();
     // one account per address, so that no budget per account answers before the ceiling
     for (int client = 1; client <= GLOBAL_SEARCH_CEILING; client++) {
       int status =
