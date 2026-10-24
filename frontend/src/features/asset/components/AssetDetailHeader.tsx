@@ -88,7 +88,12 @@ export function HeaderFigure({ children }: { icon?: ReactNode; children: ReactNo
         fontSize: 13,
         color: 'text.secondary',
         whiteSpace: 'nowrap',
-        '&:not(:first-of-type)::before': { content: '"·"', mx: 1, color: 'text.disabled' },
+        // below 600 px a wrapped line would start with the dot: spacing only there
+        '&:not(:first-of-type)::before': {
+          content: { xs: 'none', sm: '"·"' },
+          mx: 1,
+          color: 'text.disabled',
+        },
       }}
     >
       {children}
@@ -251,7 +256,7 @@ export default function AssetDetailHeader({
       sx={{
         position: 'relative',
         // no line of its own: the tab bar below draws the one separator
-        pb: band ? 2 : { xs: 2.5, md: 3 },
+        pb: band ? { xs: 1, sm: 2 } : { xs: 2.5, md: 3 },
         mb: band ? 0 : 3,
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
@@ -276,7 +281,14 @@ export default function AssetDetailHeader({
           direction="row"
           spacing={1}
           useFlexGap
-          sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
+          // below 600 px one line that fades out, so a fourth chip does not push the head down
+          sx={{
+            alignItems: 'center',
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            overflow: { xs: 'hidden', sm: 'visible' },
+            maskImage: { xs: 'linear-gradient(to right, #000 88%, transparent)', sm: 'none' },
+            minWidth: 0,
+          }}
         >
           {definition && <TypeBadge definition={definition} />}
           {isPublic && <PublicMark />}
@@ -322,9 +334,14 @@ export default function AssetDetailHeader({
       <Box
         sx={{
           display: 'flex',
-          flexWrap: 'wrap',
+          // one line at every width: below 600 px the line ends in a fade instead of wrapping,
+          // so the head keeps its height for every asset
+          flexWrap: { xs: 'nowrap', sm: 'wrap' },
+          overflow: { xs: 'hidden', sm: 'visible' },
+          maskImage: { xs: 'linear-gradient(to right, #000 88%, transparent)', sm: 'none' },
           alignItems: 'center',
           rowGap: 0.5,
+          columnGap: { xs: 2, sm: 0 },
           mt: band ? 1 : 2.5,
           position: 'relative',
           minHeight: 22,

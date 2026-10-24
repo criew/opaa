@@ -65,18 +65,42 @@ export function BandState({
   )
 }
 
+/**
+ * Below 600 px the link shrinks to its chevron and stretches over the whole field, so the field is
+ * one line and still one tap target; its name stays for assistive tech.
+ */
 function FieldLink({ link }: { link: BandLink }) {
-  const sx = { fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap' } as const
+  const sx = {
+    fontSize: 12.5,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    '& .band-link-text': { display: { xs: 'none', sm: 'inline' } },
+    '&::after': { content: { xs: '""', sm: 'none' }, position: 'absolute', inset: 0 },
+  } as const
+  const label = link.label.replace(/ ›$/, '')
+  const content = (
+    <>
+      <span className="band-link-text">{label}</span>
+      {' ›'}
+    </>
+  )
   if ('to' in link) {
     return (
-      <Link component={RouterLink} to={link.to} underline="hover" sx={sx}>
-        {link.label}
+      <Link component={RouterLink} to={link.to} underline="hover" aria-label={label} sx={sx}>
+        {content}
       </Link>
     )
   }
   return (
-    <Link component="button" type="button" underline="hover" onClick={link.onClick} sx={sx}>
-      {link.label}
+    <Link
+      component="button"
+      type="button"
+      underline="hover"
+      onClick={link.onClick}
+      aria-label={label}
+      sx={sx}
+    >
+      {content}
     </Link>
   )
 }
@@ -88,9 +112,8 @@ const BAND_WIDTH = 880
  * The status band under the title: three fields that never move and look the same for every
  * source type - only their text differs. A hairline above and between them, no frame, no
  * tint, no icons. Each field holds
- * its label, one line of value and one line for the way to the details, reserved even when
- * empty, so the tab bar below sits at the same height in every state. Below 600 px the fields
- * stack as one line each.
+ * its label with the way to the details beside it and one line of value, so the tab bar below
+ * sits at the same height in every state. Below 600 px the fields stack as one line each.
  */
 export default function LibraryStatusBand({
   fields,
@@ -122,21 +145,31 @@ export default function LibraryStatusBand({
             minWidth: 0,
             pl: { xs: 0, sm: index > 0 ? 2 : 0 },
             pr: { xs: 0, sm: 2 },
-            py: { xs: 1, sm: 1.25 },
+            py: { xs: 0.5, sm: 1 },
             borderStyle: 'solid',
             borderColor: 'divider',
             borderWidth: 0,
             borderLeftWidth: { xs: 0, sm: index > 0 ? 1 : 0 },
             borderTopWidth: { xs: index > 0 ? 1 : 0, sm: 0 },
-            display: { xs: 'grid', sm: 'block' },
-            gridTemplateColumns: { xs: '92px minmax(0, 1fr) auto' },
+            // label and link share the first line, the value has the second; below 600 px
+            // label | value | link in one line
+            display: 'grid',
+            gridTemplateColumns: { xs: '88px minmax(0, 1fr) auto', sm: 'minmax(0, 1fr) auto' },
+            gridTemplateAreas: { xs: '"label value link"', sm: '"label link" "value value"' },
+            gridTemplateRows: { xs: '22px', sm: '20px 22px' },
             columnGap: 1.5,
             alignItems: 'baseline',
           }}
         >
           <Typography
             component="dt"
-            sx={{ fontSize: 12, fontWeight: 500, color: 'text.secondary', lineHeight: '18px' }}
+            sx={{
+              gridArea: 'label',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'text.secondary',
+              lineHeight: '20px',
+            }}
           >
             {field.label}
           </Typography>
@@ -144,8 +177,8 @@ export default function LibraryStatusBand({
             component="dd"
             title={field.title}
             sx={{
+              gridArea: 'value',
               m: 0,
-              mt: { xs: 0, sm: 0.25 },
               fontSize: 13.5,
               lineHeight: '22px',
               color: 'text.primary',
@@ -156,10 +189,7 @@ export default function LibraryStatusBand({
           >
             {field.value}
           </Typography>
-          <Box
-            component="dd"
-            sx={{ m: 0, minHeight: { xs: 0, sm: 20 }, lineHeight: '20px', textAlign: 'left' }}
-          >
+          <Box component="dd" sx={{ gridArea: 'link', m: 0, lineHeight: '20px' }}>
             {field.link && <FieldLink link={field.link} />}
           </Box>
           {field.progress != null && (

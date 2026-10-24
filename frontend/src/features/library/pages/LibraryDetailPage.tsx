@@ -13,7 +13,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { useDocumentStore } from '../stores/documentStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
-import { documentSourceTypeLabel } from '../components/sources/sourceLabels'
+import { documentSourceTypeShortLabel } from '../components/sources/sourceLabels'
 import { AssetDetailHeader, HeaderFigure } from '@/features/asset'
 import { responsibleParty } from '@/features/asset'
 import { ErasingMark, PrivateMark } from '@/features/asset'
@@ -410,7 +410,7 @@ export default function LibraryDetailPage() {
                 : 'keine Angabe',
           },
           {
-            label: 'Zuletzt hochgeladen',
+            label: 'Hochgeladen',
             // the newest of the loaded documents, or the library's own last change
             value:
               (library.documentCount ?? 0) > 0
@@ -453,7 +453,15 @@ export default function LibraryDetailPage() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
+    <Box
+      sx={{
+        flexGrow: 1,
+        px: { xs: 2.5, md: 5 },
+        pb: { xs: 2.5, md: 5 },
+        pt: { xs: 2, md: 3 },
+        overflowY: 'auto',
+      }}
+    >
       <AssetDetailHeader
         assetType="KNOWLEDGE_LIBRARY"
         assetId={libraryId}
@@ -464,7 +472,8 @@ export default function LibraryDetailPage() {
           <>
             {privateLibrary && <PrivateMark />}
             {erasing && <ErasingMark />}
-            {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
+            {/* the short form of the catalog tile: one name, no double label (P19) */}
+            {details && <MetaBadge>{documentSourceTypeShortLabel(details.sourceType)}</MetaBadge>}
             <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
         }

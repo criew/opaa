@@ -103,8 +103,20 @@ async function rest(page) {
 
 async function tabExists(page, tab) {
   if (!tab) return true
-  const label = { quelle: /^Quelle$/, metadaten: /^Metadaten$/, freigaben: /^Freigaben$/, zuordnungen: /^Zuordnungen$/ }[tab]
+  const label = { quelle: /^Quelle$/, verlauf: /^Verlauf$/, metadaten: /^Metadaten$/, freigaben: /^Freigaben$/, zuordnungen: /^Zuordnungen$/ }[tab]
   return page.getByRole('tab', { name: label }).first().waitFor({ state: 'visible', timeout: 15000 }).then(() => true, () => false)
+}
+
+/**
+ * A variant with its own tab „Verlauf“: the newest run row (a button in the list „Läufe“) is
+ * expanded and the page stays at its top, so the head with the state is in the shot.
+ */
+async function openHistory(page) {
+  const row = page.locator('#library-tabpanel-verlauf ul[aria-label="Läufe"] > li > button').first()
+  if (!(await row.count())) return (await page.locator('#library-tabpanel-verlauf').count()) > 0
+  if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click().catch(() => {})
+  await sleep(400)
+  return true
 }
 
 /** Expands the newest run, waits for its details and scrolls the „Läufe“ heading to the top. */
@@ -142,6 +154,19 @@ export async function run(page, job, ctx) {
         await rest(page)
         await ctx.shoot(area)
         continue
+      }
+      if (area === 'laeufe') {
+        // runs in a tab of their own where the variant has one, else under „Quelle“
+        await open(page, ctx, job, 'verlauf')
+        if (await page.getByRole('tab', { name: /^Verlauf$/ }).count()) {
+          if (!(await openHistory(page))) {
+            ctx.notFound(area, 'no run list')
+            continue
+          }
+          await rest(page)
+          await ctx.shoot(area)
+          continue
+        }
       }
       const tab = TABS[area]
       await open(page, ctx, job, tab)

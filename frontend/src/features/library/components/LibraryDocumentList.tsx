@@ -211,7 +211,10 @@ export default function LibraryDocumentList({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 2,
+            // below 600 px the actions move under the name instead of squeezing it
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+            columnGap: 2,
+            rowGap: 0.5,
             p: 1.5,
             ...(isAttachment && { py: 1.25 }),
           }}
@@ -225,7 +228,10 @@ export default function LibraryDocumentList({
               sx={{ p: 0.5 }}
             />
           )}
-          <Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}>
+          <Stack
+            spacing={0.25}
+            sx={{ minWidth: 0, flexGrow: 1, flexBasis: { xs: 'calc(100% - 56px)', sm: 'auto' } }}
+          >
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
               {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
               <Typography
@@ -283,7 +289,11 @@ export default function LibraryDocumentList({
               )}
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center', flexShrink: 0, ml: { xs: 'auto', sm: 0 } }}
+          >
             {attachments.length > 0 && (
               <Button
                 size="small"
@@ -505,10 +515,13 @@ export default function LibraryDocumentList({
                 }}
               >
                 <FolderIcon color="action" />
-                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word', minWidth: 0 }}>
                   {folder.name}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
                   {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
                 </Typography>
               </Box>

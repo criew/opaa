@@ -113,7 +113,16 @@ const PAGE_METRICS = () => {
     perForm.set(form, (perForm.get(form) ?? 0) + 1)
   }
   const helpLines = helpEls.map(lineCount)
+  // top edge of the first tab bar in page coordinates, scroll containers included
+  const tablist = document.querySelector('[role=tablist]')
+  let tabsTop = null
+  if (tablist && visible(tablist)) {
+    let top = tablist.getBoundingClientRect().top + window.scrollY
+    for (let el = tablist.parentElement; el; el = el.parentElement) top += el.scrollTop || 0
+    tabsTop = Math.round(top)
+  }
   return {
+    tabsTop,
     title: document.title,
     url: location.pathname + location.search,
     overflowX: overflow,

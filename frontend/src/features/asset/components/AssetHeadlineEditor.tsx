@@ -127,7 +127,8 @@ export default function AssetHeadlineEditor({
 
   if (!draft) {
     return (
-      <Box sx={{ minWidth: 0 }}>
+      // a long compound breaks instead of running out of the head at 320 px
+      <Box sx={{ minWidth: 0, '& h1': { overflowWrap: 'anywhere', hyphens: 'auto' } }}>
         {headingRow}
         {/* one line, reserved even when empty: the head keeps its height for every asset */}
         <Typography
