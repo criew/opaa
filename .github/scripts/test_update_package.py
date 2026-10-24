@@ -1377,3 +1377,246 @@ def test_a_bold_reindexing_line_keeps_no_asterisks_in_the_estimate(interval: dic
     reindexing = section(report(interval, current=now)["betriebsfolgen.md"], "Neuindizierung")
 
     assert "Dauerschätzung (1.2.3): rund 2 h\n" in reindexing
+
+
+# --- Second comparison of an LTS release (docs/releases.md, "Update-Paket") -----------------------
+
+LINES = ".github/support-lines.json"
+
+
+def lines_json(*entries: tuple[str, str, str | None]) -> str:
+    return json.dumps({"lines": [{"line": l, "kind": k, "supportEnd": e} for l, k, e in entries]})
+
+
+@pytest.fixture
+def lts_repo(tmp_path: Path) -> dict:
+    """main: a (v0.3.0, LTS) - b (v0.4.0) - c (v0.5.0-rc.1, LTS); release/0.3 forks at a and carries
+    v0.3.1 and v0.3.2, which main never contains. Each commit holds the list of lines of its day."""
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, CHANGELOG + "foundation/2026-06-01-start.yaml", changeset_file("foundation-start"))
+    put(work, LINES, lines_json(("0.3", "lts", "2028-06-30")))
+    a = snapshot(work, "a")
+    git(work, "tag", "v0.3.0", a)
+    git(work, "checkout", "-q", "-b", "release/0.3")
+    put(work, CHANGELOG + "foundation/2026-07-01-fix.yaml", changeset_file("foundation-fix"))
+    git(work, "tag", "v0.3.1", snapshot(work, "p1"))
+    p2 = commit(work, "p2")
+    git(work, "tag", "v0.3.2", p2)
+    git(work, "tag", "v0.3.3-rc.1", commit(work, "p3"))
+    git(work, "checkout", "-q", "main")
+    put(work, CHANGELOG + "foundation/2026-07-01-fix.yaml", changeset_file("foundation-fix"))
+    put(work, CHANGELOG + "workspace/2026-11-01-spaces.yaml", changeset_file("workspace-spaces"))
+    put(work, NOTES + "0.4.0.md", "- Vorbereitung des Dezember-Release.\n")
+    put(work, LINES, lines_json(("0.3", "lts", "2028-06-30"), ("0.4", "normal", None)))
+    b = snapshot(work, "b")
+    git(work, "tag", "v0.4.0", b)
+    put(work, CHANGELOG + "workspace/2027-05-01-more.yaml", changeset_file("workspace-more"))
+    put(work, NOTES + "0.5.0-rc.1.md", "- Vorbereitung des LTS-Kandidaten.\n")
+    put(work, LINES, lines_json(("0.3", "lts", "2028-06-30"), ("0.4", "normal", "2027-07-31"),
+                                ("0.5", "lts", "2029-06-30")))
+    c = snapshot(work, "c")
+    git(work, "tag", "v0.5.0-rc.1", c)
+    return dict(repo=work, a=a, b=b, c=c, p2=p2)
+
+
+def lts_previous(lts: dict, tag: str, at: str) -> str | None:
+    return update_package.lts_previous_tag(lts["repo"], tag, lts[at])
+
+
+@pytest.mark.parametrize("tag", ["v0.5.0-rc.1", "v0.5.0"])
+def test_an_lts_release_and_its_candidates_compare_also_with_the_newest_release_of_the_previous_lts(
+        lts_repo: dict, tag: str) -> None:
+    # v0.3.2 lies on release/0.3, outside the history of c; the candidate v0.3.3-rc.1 never counts.
+    assert lts_previous(lts_repo, tag, "c") == "v0.3.2"
+    assert previous(lts_repo["repo"], "v0.5.0-rc.1") == "v0.4.0"
+
+
+def test_a_normal_release_has_no_second_comparison(lts_repo: dict) -> None:
+    assert lts_previous(lts_repo, "v0.4.0", "b") is None
+
+
+def test_the_first_lts_release_has_no_second_comparison(lts_repo: dict) -> None:
+    assert lts_previous(lts_repo, "v0.3.0", "a") is None
+
+
+def test_a_patch_release_of_an_lts_line_has_no_second_comparison(lts_repo: dict) -> None:
+    git(lts_repo["repo"], "tag", "v0.5.1", lts_repo["c"])
+
+    assert lts_previous(lts_repo, "v0.5.1", "c") is None
+
+
+def test_a_line_missing_from_the_list_of_the_commit_is_no_lts(lts_repo: dict) -> None:
+    assert lts_previous(lts_repo, "v0.6.0", "c") is None
+
+
+def test_the_list_is_read_from_the_tagged_commit_not_the_working_tree(lts_repo: dict) -> None:
+    put(lts_repo["repo"], LINES, lines_json(("0.4", "lts", "2028-06-30")))
+
+    assert lts_previous(lts_repo, "v0.4.0", "b") is None
+
+
+def test_a_previous_lts_line_without_final_release_gives_no_second_comparison(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, lines_json(("0.2", "lts", "2027-06-30"), ("0.5", "lts", "2029-06-30")))
+    git(work, "tag", "v0.5.0", snapshot(work, "x"))
+
+    assert update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0") is None
+
+
+def test_a_malformed_list_fails_the_package(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, "{\"lines\": \"0.5\"}")
+    git(work, "tag", "v0.5.0", snapshot(work, "x"))
+
+    with pytest.raises(update_package.PackageError, match="support-lines.json"):
+        update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0")
+
+
+def test_the_command_prints_the_lts_comparison_or_nothing(lts_repo: dict) -> None:
+    def cli(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(SCRIPT), "lts-previous", *args],
+                              cwd=lts_repo["repo"], capture_output=True, text=True)
+
+    assert cli("--tag", "v0.5.0-rc.1").stdout == "v0.3.2\n"
+    normal = cli("--tag", "v0.4.0")
+    assert (normal.returncode, normal.stdout) == (0, "")
+
+
+def test_operations_compare_with_a_release_outside_the_history(lts_repo: dict) -> None:
+    # The backport foundation-fix is in both; the notes count by version, the changesets by id.
+    files = update_package.operations(
+        lts_repo["repo"],
+        update_package.Side("v0.3.2", lts_repo["p2"], "0.3.2"),
+        update_package.Side("v0.5.0-rc.1", lts_repo["c"], "0.5.0-rc.1"),
+        None,
+    )
+    text = files["betriebsfolgen.md"]
+
+    assert "Vorbereitung des Dezember-Release." in text
+    assert "Vorbereitung des LTS-Kandidaten." in text
+    migration = section(text, "Schemamigration")
+    assert "2 neue Changesets" in migration
+    assert "| workspace | 2 |" in migration and "foundation" not in migration.split("|", 1)[1]
+
+
+def test_the_lts_delta_compares_with_the_given_release_in_gradle() -> None:
+    command = update_package.lts_gradle_command("v0.3.2", "v0.5.0", "criew/opaa", "prs.json")
+
+    assert command[:2] == ["./gradlew", "complianceDelta"]
+    assert "-PfromRef=v0.3.2" in command and "-PtoRef=v0.5.0" in command
+    assert "-Prepository=criew/opaa" in command
+    assert any(arg.startswith("-PlabelledPrs=") for arg in command)
+
+
+def lts_inputs(tmp_path: Path, inputs: dict) -> dict:
+    delta = tmp_path / "in" / "delta-lts"
+    delta.mkdir()
+    (delta / "manifest-delta.md").write_bytes(b"# Delta LTS\n")
+    (delta / "manifest-delta.json").write_text("{}\n")
+    operations = tmp_path / "in" / "betrieb-lts"
+    operations.mkdir()
+    for name in update_package.OPERATIONS_FILES:
+        (operations / name).write_text(f"# LTS {name}\n")
+    return {**inputs, "lts_delta": delta, "lts_operations": operations}
+
+
+def test_an_lts_package_holds_both_comparisons_apart(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(
+        release(version="1.4.0", tag="v1.4.0", previous="v1.3.0", lts_previous="v1.2.7",
+                lts_previous_commit="c" * 40),
+        out=tmp_path / "out", **lts_inputs(tmp_path, inputs))
+
+    root = "opaa-update-paket-1.4.0/"
+    names = set(members(archive))
+    for part in ("delta-lts/manifest-delta.md", "delta-lts/manifest-delta.json",
+                 "betrieb-lts/betriebsfolgen.md", "betrieb-lts/antwortqualitaet.md",
+                 "delta/manifest-delta.md", "betrieb/betriebsfolgen.md"):
+        assert root + part in names
+    assert read(archive, root + "delta-lts/manifest-delta.md") == b"# Delta LTS\n"
+    text = read(archive, root + "LIESMICH.md").decode()
+    assert "vorgaenger-lts: v1.2.7\n" in text
+    assert "| `delta-lts/manifest-delta.md` |" in text and "| `betrieb-lts/betriebsfolgen.md` |" in text
+    assert "v1.2.7" in section(text, "Welcher Vergleich für wen")
+    assert "v1.3.0" in section(text, "Welcher Vergleich für wen")
+
+
+def test_a_package_without_lts_comparison_names_none(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "delta-lts" not in text and "vorgaenger-lts" not in text
+    assert not [n for n in members(archive) if "-lts/" in n]
+
+
+def test_an_lts_comparison_needs_both_parts(tmp_path: Path, inputs: dict) -> None:
+    parts = lts_inputs(tmp_path, inputs)
+    del parts["lts_operations"]
+
+    with pytest.raises(update_package.PackageError, match="LTS"):
+        update_package.assemble(release(lts_previous="v1.2.7", lts_previous_commit="c" * 40),
+                                out=tmp_path / "out", **parts)
+
+
+def test_a_second_comparison_with_the_base_of_the_first_is_dropped(
+        monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
+    monkeypatch.setattr(update_package, "lts_previous_tag", lambda repo, tag, head: "v0.3.2")
+
+    assert update_package.lts_comparison(Path("."), "v0.5.0", "c" * 40, "v0.3.2") is None
+    assert "Kein LTS-Vergleich für v0.5.0" in capsys.readouterr().out
+    assert update_package.lts_comparison(Path("."), "v0.5.0", "c" * 40, "v0.4.0") == "v0.3.2"
+    assert "Zweiter Vergleich mit v0.3.2" in capsys.readouterr().out
+
+
+def test_the_first_delta_is_kept_before_the_second_overwrites_its_directory(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # complianceDelta writes both deltas to the same directory.
+    root = tmp_path / "root"
+    built = root / update_package.DELTA
+    built.mkdir(parents=True)
+    for name in update_package.DELTA_FILES:
+        (built / name).write_text("first\n")
+
+    def gradle(args: list[str], cwd: Path, stdout=None) -> str:
+        assert "-PfromRef=v0.3.2" in args
+        for name in update_package.DELTA_FILES:
+            (built / name).write_text("lts\n")
+        return ""
+
+    def operations(repo: Path, previous, current, delta_json: Path) -> dict[str, str]:
+        return {name: f"{previous.label} {delta_json.read_text()}" for name in update_package.OPERATIONS_FILES}
+
+    monkeypatch.setattr(update_package, "ROOT", root)
+    monkeypatch.setattr(update_package, "run", gradle)
+    monkeypatch.setattr(update_package, "operations", operations)
+    reports = tmp_path / "reports"
+    reports.mkdir()
+
+    delta, betrieb, lts_delta, lts_betrieb = update_package.comparisons(
+        release(version="0.5.0", tag="v0.5.0", previous="v0.4.0", lts_previous="v0.3.2",
+                lts_previous_commit="c" * 40),
+        update_package.Side("v0.4.0", "b" * 40, "0.4.0"),
+        update_package.Side("v0.5.0", "a" * 40, "0.5.0"),
+        reports, "criew/opaa", None)
+
+    assert (delta / "manifest-delta.md").read_text() == "first\n"
+    assert (lts_delta / "manifest-delta.md").read_text() == "lts\n"
+    assert (betrieb / "betriebsfolgen.md").read_text() == "v0.4.0 first\n"
+    assert (lts_betrieb / "betriebsfolgen.md").read_text() == "v0.3.2 lts\n"
+
+
+def test_a_previous_lts_line_without_final_release_above_one_with_releases_warns(
+        tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, LINES, lines_json(("0.2", "lts", "2027-06-30"), ("0.3", "lts", "2028-06-30"),
+                                ("0.5", "lts", "2029-06-30")))
+    x = snapshot(work, "x")
+    git(work, "tag", "v0.2.0", x)
+    git(work, "tag", "v0.3.0-rc.1", x)
+    git(work, "tag", "v0.5.0", x)
+
+    assert update_package.lts_previous_tag(work, "v0.5.0", "v0.5.0") is None
+    assert "::warning::Kein LTS-Vergleich für v0.5.0: die vorige LTS-Linie 0.3" in capsys.readouterr().err

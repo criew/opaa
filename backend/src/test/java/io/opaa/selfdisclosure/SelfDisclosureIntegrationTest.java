@@ -9,6 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.NotificationType;
 import io.opaa.auth.DevAuthFilter;
@@ -33,6 +37,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Date;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -47,6 +52,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
@@ -236,7 +242,8 @@ class SelfDisclosureIntegrationTest {
   @Test
   void anAbortedDeliveryConsumesNothingAndTheStatusOffersANewAttempt() throws Exception {
     SelfDisclosureService.Run run = service.start(ticketOf("dev-user"));
-    assertThat(service.stream(run, new BreakingOutputStream(40))).isFalse();
+    assertThat(service.stream(run, new BreakingOutputStream(40)))
+        .isEqualTo(SelfDisclosureService.Outcome.CLIENT_DISCONNECTED);
 
     mockMvc
         .perform(get(STATUS).with(dev("dev-user")))
@@ -260,17 +267,24 @@ class SelfDisclosureIntegrationTest {
     manyNotifications();
     String ticket = ticketOf("dev-user");
 
-    HttpResponse<InputStream> response = openDownload(ticket);
-    assertThat(response.statusCode()).isEqualTo(200);
-    try (InputStream body = response.body()) {
-      body.readNBytes(4096);
-      registry.stop();
-      assertThatThrownBy(() -> readSlowly(body)).isInstanceOf(IOException.class);
-    } finally {
-      registry.start();
-    }
+    RequestThreadWarnings warnings = RequestThreadWarnings.attach();
+    try {
+      HttpResponse<InputStream> response = openDownload(ticket);
+      assertThat(response.statusCode()).isEqualTo(200);
+      try (InputStream body = response.body()) {
+        body.readNBytes(4096);
+        registry.stop();
+        assertThatThrownBy(() -> readSlowly(body)).isInstanceOf(IOException.class);
+      } finally {
+        registry.start();
+      }
 
-    assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("SHUTDOWN");
+      assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("SHUTDOWN");
+      // regression guard for #3024: a shutdown is expected, it breaks the connection quietly
+      assertThat(warnings.awaitAny(Duration.ofSeconds(3))).isEmpty();
+    } finally {
+      warnings.detach();
+    }
     mockMvc
         .perform(get(STATUS).with(dev("dev-user")))
         .andExpect(jsonPath("$.completedToday").value(0))
@@ -282,13 +296,22 @@ class SelfDisclosureIntegrationTest {
   void aClientThatGoesAwayOverARealConnectionConsumesNothing() throws Exception {
     manyNotifications();
     String ticket = ticketOf("dev-user");
+    RequestThreadWarnings warnings = RequestThreadWarnings.attach();
 
-    HttpResponse<InputStream> response = openDownload(ticket);
-    try (InputStream body = response.body()) {
-      body.readNBytes(4096);
+    try {
+      HttpResponse<InputStream> response = openDownload(ticket);
+      try (InputStream body = response.body()) {
+        body.readNBytes(4096);
+      }
+
+      assertThat(awaitFinished())
+          .contains("\"result\":\"ABORTED\"")
+          .contains("CLIENT_DISCONNECTED");
+      // regression guard for #3024: a client going away is expected, no WARN or ERROR follows it
+      assertThat(warnings.awaitAny(Duration.ofSeconds(3))).isEmpty();
+    } finally {
+      warnings.detach();
     }
-
-    assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("CLIENT_DISCONNECTED");
     mockMvc
         .perform(get(STATUS).with(dev("dev-user")))
         .andExpect(jsonPath("$.completedToday").value(0))
@@ -405,7 +428,8 @@ class SelfDisclosureIntegrationTest {
 
     assertThat(runs).hasSize(1);
     assertThat(refusals).singleElement().isInstanceOf(NotFoundException.class);
-    assertThat(service.stream(runs.getFirst(), OutputStream.nullOutputStream())).isTrue();
+    assertThat(service.stream(runs.getFirst(), OutputStream.nullOutputStream()))
+        .isEqualTo(SelfDisclosureService.Outcome.DELIVERED);
     assertThat(usage.find(person).orElseThrow().completedCount()).isEqualTo(1);
   }
 
@@ -601,6 +625,45 @@ class SelfDisclosureIntegrationTest {
       request.addHeader(DevAuthFilter.DEV_USER_HEADER, devUser);
       return request;
     };
+  }
+
+  /** WARN and ERROR events logged on the server's request threads while attached. */
+  private static final class RequestThreadWarnings extends AppenderBase<ILoggingEvent> {
+
+    private final List<String> events = new CopyOnWriteArrayList<>();
+
+    static RequestThreadWarnings attach() {
+      RequestThreadWarnings appender = new RequestThreadWarnings();
+      appender.start();
+      root().addAppender(appender);
+      return appender;
+    }
+
+    void detach() {
+      root().detachAppender(this);
+      stop();
+    }
+
+    @Override
+    protected void append(ILoggingEvent event) {
+      if (event.getLevel().isGreaterOrEqual(Level.WARN)
+          && event.getThreadName().startsWith("http-nio")) {
+        events.add(event.getLevel() + " " + event.getLoggerName() + ": " + event.getMessage());
+      }
+    }
+
+    /** Waits up to {@code wait} for a first event, so a container log after the export counts. */
+    List<String> awaitAny(Duration wait) throws InterruptedException {
+      long deadline = System.nanoTime() + wait.toNanos();
+      while (events.isEmpty() && System.nanoTime() < deadline) {
+        Thread.sleep(50);
+      }
+      return List.copyOf(events);
+    }
+
+    private static Logger root() {
+      return (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    }
   }
 
   /** A client that goes away after {@code limit} bytes, as a closed connection does. */
