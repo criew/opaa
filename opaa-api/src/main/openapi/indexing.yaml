@@ -745,6 +745,9 @@ components:
           * SUMMARY - the run's own figures at its end (requests, bytes, listed/skipped/
             processed objects, time per container) for a source that counts them; one note per
             run, never an item outcome.
+          * SUSPICIOUS_PATTERNS - the cleanup after extraction found patterns typical of prompt
+            injection in an indexed document; one note per document with counts per class, never
+            with content, and not counted among documentsSkipped/documentsFailed.
       enum:
         [
           REJECTED,
@@ -758,6 +761,7 @@ components:
           RATE_LIMITED,
           BUDGET_EXHAUSTED,
           SUMMARY,
+          SUSPICIOUS_PATTERNS,
         ]
       example: REJECTED
 

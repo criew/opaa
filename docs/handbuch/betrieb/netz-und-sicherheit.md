@@ -81,6 +81,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 - Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher.
 
+Wie leicht sich das eingesetzte Chat-Modell von präparierten Dokumenten lenken lässt, misst ein
+Testsatz ([Modell gegen Prompt-Injection messen](modelle.md#modell-gegen-prompt-injection-messen)).
+
 ## Härtung für erreichbare Deployments
 
 Ist die Installation aus einem größeren Netz oder dem Internet erreichbar, gilt:
@@ -173,17 +176,20 @@ nennen Nachweis und Grenzen unten.
 die Compose-Installation in einem Netz ohne Weg nach außen. Alle Images liegen vor dem Start bereit;
 das Modell ist ein OpenAI-kompatibler Dienst im selben Netz. Der Lauf meldet sich lokal an, legt eine
 Bibliothek an, nimmt ein Dokument auf und stellt eine Frage, deren Antwort das Dokument als
-Fundstelle nennt. Jede Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von
-einer fremden Adresse lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
+Fundstelle nennt. In einer zweiten Bibliothek nimmt er eine Tabelle, eine HTML-Seite und eine Mail
+mit Anhang auf, damit auch die Verarbeitung dieser Formate ohne Weg nach außen läuft. Jede
+Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von einer fremden Adresse
+lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
 dass diese Erkennung greift. Das Ergebnis steht mit Version und Datum in der Zusammenfassung des
 Laufs.
 
 **Grenzen des Nachweises:**
 
-- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload eines Textdokuments, in
-  einem Lauf von rund einer Minute. Andere Formate, Reranking, Transkription und zeitgesteuerte
-  Aufgaben sind nicht Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter,
-  Mailversand und der Betrieb unter Kubernetes.
+- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload von Text, Tabelle,
+  HTML-Seite und Mail, in einem Lauf von rund einer Minute. Weitere Formate wie PDF, Word- und
+  Präsentationsdateien und Bilder, Reranking, Transkription und zeitgesteuerte Aufgaben sind nicht
+  Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter, Mailversand und der Betrieb unter Kubernetes. Eine
+  eingebundene Bibliothek, die nur in einem dieser Teile nach außen ruft, bleibt unbemerkt.
 - **Modelle:** Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
   Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb.
 - **Erkennung:** Verbindungen an feste IP-Adressen ohne Namensauflösung scheitern im Netz ebenfalls.

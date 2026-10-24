@@ -151,7 +151,9 @@ jobs:
             # the packages of update_package.py, which this job tests. support-lines.json belongs
             # here because test_support_lines.py validates it, docs/releases.md because it checks
             # the roadmap there against the list, cve-scan.yml because it checks its scan targets
-            # and alarm.
+            # and alarm. accessibility-report.yml, e2e/fixtures/a11y.ts, e2e/scripts/run-e2e.mjs and
+            # both seed requirement files belong here because test_accessibility_report.py checks
+            # the release wiring, the record the fixture writes and the hash-pinned seed install.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -162,9 +164,17 @@ jobs:
               - 'docs/releases.md'
               - '.github/workflows/ci.yml'
               - '.github/workflows/cve-scan.yml'
+              - '.github/workflows/accessibility-report.yml'
+              - 'e2e/fixtures/a11y.ts'
+              - 'e2e/scripts/run-e2e.mjs'
+              - 'demo/seed/requirements.txt'
+              - '.github/requirements-seed.txt'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'
+              # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
+              - '.github/workflows/opencode-mirror.yml'
+              - 'publiccode.yml'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
               - '.github/workflows/**'

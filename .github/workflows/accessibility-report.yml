@@ -1,0 +1,166 @@
+name: Prüfbericht Barrierefreiheit
+
+# The axe results for the accessibility report of the update package (docs/releases.md,
+# "Prüfbericht Barrierefreiheit"): called by publish-images.yml on a release tag, before the update
+# package is assembled. It builds both images from the checked-out commit, starts the stack of the
+# regular E2E target and of the local-auth target and runs only their axe scenarios in report mode
+# (e2e/fixtures/a11y.ts), so a finding is recorded instead of failing. The artifact
+# accessibility-results holds one directory per target; update_package.py renders the report.
+# A pull request runs it when it changes one of the parts below, so the wiring is tried before a
+# release depends on it.
+on:
+  workflow_call: {}
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - .github/workflows/accessibility-report.yml
+      - .github/scripts/accessibility_report.py
+      - e2e/fixtures/a11y.ts
+      - e2e/scripts/run-e2e.mjs
+      - .github/requirements-seed.txt
+      - demo/seed/requirements.txt
+
+permissions:
+  contents: read
+
+jobs:
+  axe:
+    runs-on: ubuntu-latest
+    # Two cold image builds, two stacks and their seeds; the scenarios themselves take minutes.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # No gha cache, like every build of a release (docs/renovate.md, "Sicherheitsmodell des
+      # gha-Caches"): the images come only from this commit, the base images and the package sources.
+      # Tagged as Compose names them for both projects, so run-e2e.mjs reuses them (E2E_SKIP_BUILD).
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: |
+            opaa-e2e-backend:latest
+            opaa-local-auth-backend:latest
+          load: true
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: |
+            opaa-e2e-frontend:latest
+            opaa-local-auth-frontend:latest
+          load: true
+
+      # Installs the pnpm version pinned in the "packageManager" field of e2e/package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: e2e/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # scripts/run-e2e.mjs seeds the regular target with demo/seed/seed.py.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: E2E-Abhängigkeiten installieren
+        working-directory: e2e
+        run: pnpm install --frozen-lockfile
+
+      - name: Playwright-Browser installieren
+        working-directory: e2e
+        timeout-minutes: 8
+        run: pnpm exec playwright install --with-deps chromium
+
+      # The ownership of the upload directory of an installation, as in e2e.yml.
+      - name: Eigentümer der Bind-Mounts wie in einer Installation setzen
+        run: |
+          mkdir -p documents uploads
+          sudo chown -R 65532:65532 uploads
+          chmod -R o+rX documents
+
+      # A finding or a scenario that stops early leaves the step green: the report names both. The
+      # Playwright JSON report tells it which scenarios did not finish, expected.txt which spec files
+      # have to deliver records: every spec that calls the axe check, found here rather than listed,
+      # so a new one is measured without a change to this file. The regular target runs only those;
+      # the local-auth target runs whole, because its scenarios build on the state the earlier ones
+      # leave (e2e/local-auth/playwright.config.ts).
+      - name: axe-Szenarien der regulären Suite
+        working-directory: e2e
+        env:
+          E2E_SKIP_BUILD: 'true'
+          E2E_SEED_HASHED: 'true'
+          E2E_A11Y_REPORT_ONLY: 'true'
+          E2E_A11Y_RESULTS_DIR: ${{ runner.temp }}/accessibility-results/e2e
+        run: |
+          mkdir -p "$E2E_A11Y_RESULTS_DIR"
+          mapfile -t specs < <(grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename | sort)
+          if ((${#specs[@]} == 0)); then
+            echo "::error::Keine Spec-Datei unter e2e/tests ruft die axe-Prüfung auf"
+            exit 1
+          fi
+          printf '%s\n' "${specs[@]}" >"$E2E_A11Y_RESULTS_DIR/expected.txt"
+          rc=0
+          pnpm test "${specs[@]}" || rc=$?
+          echo "Suite beendet mit $rc"
+          if [[ -f test-results/results.json ]]; then
+            cp test-results/results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
+          fi
+
+      - name: axe-Szenarien der lokalen Anmeldung
+        working-directory: e2e
+        env:
+          E2E_SKIP_BUILD: 'true'
+          E2E_A11Y_REPORT_ONLY: 'true'
+          E2E_A11Y_RESULTS_DIR: ${{ runner.temp }}/accessibility-results/local-auth
+        run: |
+          mkdir -p "$E2E_A11Y_RESULTS_DIR"
+          grep -l 'expectNoSeriousA11yViolations(' local-auth/tests/*.spec.ts | xargs -n1 basename | sort \
+            >"$E2E_A11Y_RESULTS_DIR/expected.txt"
+          if [[ ! -s "$E2E_A11Y_RESULTS_DIR/expected.txt" ]]; then
+            echo "::error::Keine Spec-Datei unter e2e/local-auth/tests ruft die axe-Prüfung auf"
+            exit 1
+          fi
+          rc=0
+          pnpm run test:local-auth || rc=$?
+          echo "Suite beendet mit $rc"
+          if [[ -f test-results/local-auth-results.json ]]; then
+            cp test-results/local-auth-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
+          fi
+
+      # Fails when a target or an expected spec file delivered no record or a target no Playwright
+      # report, e.g. a stack or a seed that never came up; the release then publishes nothing.
+      # Rendering here as well shows the report in the run.
+      - name: Bericht probeweise erzeugen
+        run: python3 .github/scripts/accessibility_report.py "$RUNNER_TEMP/accessibility-results"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: accessibility-results
+          path: ${{ runner.temp }}/accessibility-results/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+      - name: Container-Logs hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: accessibility-docker-compose-logs
+          path: |
+            e2e/docker-compose.log
+            e2e/docker-compose.local-auth.log
+          if-no-files-found: ignore
+          retention-days: 7

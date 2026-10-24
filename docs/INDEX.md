@@ -187,6 +187,8 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen,
   CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten
+- **[`opencode.md`](./opencode.md)** — Ablage auf openCode: Bedingungen der Plattform, Spiegel des
+  Repositorys, `publiccode.yml` und die Schritte der Einrichtung
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
   Trivy-Image-Scan und die Triage von Image-Alerts
 - **[`SECURITY.md`](../SECURITY.md)** — Sicherheitsrichtlinie: vertraulicher Meldeweg für

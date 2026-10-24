@@ -194,7 +194,7 @@ def index(heading: str, notice: str | None, titles: dict[str, str], files, names
         ("handbuch", "Handbuch", [p for p in ("handbuch/README.md", "handbuch/glossar.md") if p in files]),
         ("faktenblaetter", "Faktenblätter", under("faktenblaetter/")),
         ("aenderungen", "Änderungen und Betrieb", under("delta/") + under("betrieb/")),
-        ("nachweise", "Nachweise", under("lizenzen/") + under("sbom/")
+        ("nachweise", "Nachweise", under("barrierefreiheit/") + under("lizenzen/") + under("sbom/")
          + [p for p in ("SHA256SUMS",) if p in files]),
     ]
     body = [f"<h1>{html.escape(heading)}</h1>"]
