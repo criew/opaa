@@ -398,7 +398,7 @@ export default function GoogleDriveSourceForm({
 
       <Box>
         <BusyButton
-          variant="contained"
+          variant="outlined"
           onClick={() => void runTest()}
           disabled={!keyServes || values.scopes.length === 0}
           busy={testing}

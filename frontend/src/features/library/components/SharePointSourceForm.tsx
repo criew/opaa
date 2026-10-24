@@ -568,7 +568,7 @@ export default function SharePointSourceForm({
 
       <Box>
         <BusyButton
-          variant="contained"
+          variant="outlined"
           onClick={() => void runTest()}
           disabled={!usable || values.libraries.length === 0}
           busy={testing}

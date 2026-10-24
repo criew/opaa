@@ -64,7 +64,7 @@ export default function SourceConsentPanel({
             missing={confirmationMissing}
           />
           <BusyButton
-            variant="contained"
+            variant="outlined"
             sx={{ mt: 1 }}
             busy={busy}
             busyAnnouncement="Die Weiterleitung zum Anbieter wird vorbereitet."
