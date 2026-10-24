@@ -4,6 +4,7 @@ import type {
   GroupResponse,
   SelectableGroupResponse,
 } from '@/shared/api/types'
+import { currentMockScenario, generate, scenarioName } from '@/shared/mocks/mockScenario'
 
 export const mockGroups: GroupListResponse[] = [
   {
@@ -446,6 +447,46 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
 export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
   mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
 )
+
+/**
+ * The groups of the mock user under the active fixture scenario: 300 more with long names in
+ * `scale`, only the first one in `small`.
+ */
+export function myGroupsForScenario(): GroupListResponse[] {
+  const scenario = currentMockScenario()
+  if (scenario === 'small') return mockMyGroups.slice(0, 1)
+  if (scenario !== 'scale') return mockMyGroups
+  const template = mockMyGroups[0] ?? mockGroups[0]
+  return [
+    ...mockMyGroups,
+    ...generate(300, (i) => ({
+      ...template,
+      id: `group-scale-${i}`,
+      name: scenarioName('Arbeitsgruppe', i),
+      description: null,
+      memberCount: (i % 40) + 1,
+      stewards: [],
+    })),
+  ]
+}
+
+/** The selectable groups under the active fixture scenario, the scale groups included. */
+export function selectableGroupsForScenario(): SelectableGroupResponse[] {
+  if (currentMockScenario() !== 'scale') return mockSelectableGroups
+  const template = mockSelectableGroups[0]
+  return [
+    ...mockSelectableGroups,
+    ...myGroupsForScenario()
+      .filter((group) => group.id.startsWith('group-scale-'))
+      .map((group) => ({
+        ...template,
+        id: group.id,
+        name: group.name,
+        sourcePath: null,
+        activeMemberCount: group.memberCount,
+      })),
+  ]
+}
 
 /**
  * Groups the mock user is responsible for - what GET /api/v1/me/stewarded-groups returns.

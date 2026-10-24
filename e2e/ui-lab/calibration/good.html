@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalibrierung: gute Seite</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1f1f1f; --muted: #595959; --line: #8a8a8a; --accent: #1a56db; --on-accent: #ffffff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121212; --fg: #e8e8e8; --muted: #b0b0b0; --line: #8a8a8a; --accent: #8ab4f8; --on-accent: #121212; }
+  }
+  /* theme transition like the MUI surfaces; only visible when the scheme changes in a session */
+  * { transition: color 1.2s linear, background-color 1.2s linear, border-color 1.2s linear; }
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+  label { display: block; font-weight: 600; margin-top: 16px; }
+  input { display: block; width: 100%; box-sizing: border-box; min-height: 40px; padding: 8px; font: inherit;
+          background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; }
+  .MuiFormHelperText-root { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--muted); }
+  button { margin-top: 24px; min-height: 40px; padding: 8px 16px; font: inherit; border: 0; border-radius: 4px;
+           background: var(--accent); color: var(--on-accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Quelle einrichten</h1>
+  <p>Adresse und Zugang der Freigabe.</p>
+  <form>
+    <label for="address">Adresse</label>
+    <input id="address" name="address" placeholder="smb://server/freigabe" aria-describedby="address-help">
+    <p id="address-help" class="MuiFormHelperText-root">Freigabe mit Server und Pfad.</p>
+    <label for="user">Dienstkonto</label>
+    <input id="user" name="user" autocomplete="username">
+    <label for="password">Passwort</label>
+    <input id="password" name="password" type="password" autocomplete="current-password">
+    <button type="submit">Weiter</button>
+  </form>
+</main>
+</body>
+</html>

@@ -382,7 +382,8 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         case NOT_FOUND, FORBIDDEN ->
-            new FileAccessException.ContainerUnlistable(LIBRARY_NOT_VISIBLE);
+            new FileAccessException.ContainerUnlistable(
+                e.consentMissing() ? e.getMessage() : LIBRARY_NOT_VISIBLE);
         default -> new FileAccessException.ContainerUnlistable(e.getMessage());
       };
     }
