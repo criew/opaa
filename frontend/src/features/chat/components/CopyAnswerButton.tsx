@@ -22,7 +22,6 @@ import {
   markdownWithNote,
   plainTextWithNote,
 } from './copyFormats'
-import { answerAsHtml } from './copyHtml'
 import { useClipboardCopy } from './useClipboardCopy'
 import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
 
@@ -68,7 +67,9 @@ export default function CopyAnswerButton({
   // person marks by hand and copies themselves is not touched - there is no copy handler.
   function copyMarkdown(markdown: string) {
     const note = copyNote(branding.aiNotice, branding.productName, answeredAt)
-    void copy(markdownWithNote(markdown, note), answerAsHtml(markdown, note, allowedOrigins))
+    void copy(markdownWithNote(markdown, note), () =>
+      import('./copyHtml').then((module) => module.answerAsHtml(markdown, note, allowedOrigins)),
+    )
   }
 
   function copyPlainText() {

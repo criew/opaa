@@ -6,16 +6,19 @@ import { announceCopy } from './copyAnnouncer'
 const CONFIRMATION_MS = 2000
 
 /**
- * Writes `text` and, where the browser supports `ClipboardItem`, `html` as a second flavour; a
- * browser without it - or one that refuses the multi-flavour write - gets the plain text alone.
+ * Writes `text` and, where the browser supports `ClipboardItem`, the HTML from `html` as a second
+ * flavour; a browser without it - or one that refuses the multi-flavour write - gets the plain
+ * text alone. `html` is only called when the flavour is written, and its result may arrive later:
+ * the browser keeps the user gesture for a `ClipboardItem` whose parts are still promises, which
+ * lets the HTML code load on demand.
  */
-async function writeClipboard(text: string, html?: string): Promise<void> {
+async function writeClipboard(text: string, html?: () => Promise<string>): Promise<void> {
   if (html !== undefined && typeof ClipboardItem !== 'undefined' && navigator.clipboard.write) {
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/plain': new Blob([text], { type: 'text/plain' }),
-          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/html': html().then((markup) => new Blob([markup], { type: 'text/html' })),
         }),
       ])
       return
@@ -43,7 +46,7 @@ export function useClipboardCopy(what: string) {
   )
 
   const copy = useCallback(
-    async (text: string, html?: string) => {
+    async (text: string, html?: () => Promise<string>) => {
       try {
         if (!navigator.clipboard) throw new Error('Clipboard API unavailable')
         await writeClipboard(text, html)

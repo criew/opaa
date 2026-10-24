@@ -43,6 +43,19 @@ describe('answerAsHtml', () => {
     expect(html).toContain('<a href="https://opaa.example/api/docs/1">b</a>')
   })
 
+  test('resolves single-slash and reference-style scheme-only targets as well', () => {
+    const html = answerAsHtml(
+      '[a](https:/evil.example/y) [b][r]\n\n[r]: https:evil.example/r',
+      NOTE,
+      [],
+      PAGE,
+    )
+
+    expect(html).not.toMatch(/href="https:(?!\/\/opaa\.example\/)/)
+    expect(html).toContain('href="https://opaa.example/evil.example/y"')
+    expect(html).toContain('href="https://opaa.example/evil.example/r"')
+  })
+
   test('shows footnotes with a German visible heading and without jump links', () => {
     const html = answerAsHtml('Kostet 42 Euro[^1].\n\n[^1]: 001_personalausweis.md', NOTE, [], PAGE)
 
