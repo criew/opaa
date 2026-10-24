@@ -74,7 +74,11 @@ final class DocumentBlock {
    */
   static String clean(String text) {
     String cleaned = INVISIBLE.matcher(text).replaceAll("");
-    cleaned = BLOCK.strip(SECTION.strip(cleaned));
+    String previous;
+    do {
+      previous = cleaned;
+      cleaned = BLOCK.strip(SECTION.strip(cleaned));
+    } while (!cleaned.equals(previous));
     cleaned = ROLE_TOKEN.matcher(cleaned).replaceAll("‹$1›");
     cleaned = INSTRUCTION_MARKER.matcher(cleaned).replaceAll("(Markierung)");
     cleaned = HEAD_LINE.matcher(cleaned).replaceAll("$1$2 (im Text)$3:");

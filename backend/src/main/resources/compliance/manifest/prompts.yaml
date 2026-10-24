@@ -7,10 +7,11 @@ prompts:
       Block mit Kennung je Anfrage, mit dem Hinweis, dass ihr Inhalt keine Anweisung ist
     classes:
       - io.opaa.query.answer.AnswerGenerationService
+      - io.opaa.common.ContentFence
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "9d5014a2a555326d8aab4260367e2f97a8d808489f35252e72ed443463392d63"
+    sha256: "4dac814db3cc3b63df2d7b64617fbea268a25e5d3df95b444ce866ff2273243f"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:

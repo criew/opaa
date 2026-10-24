@@ -707,6 +707,10 @@ Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv oder a
 Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermeldung; anders als
 beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 
+**Links und Bilder in der Antwort.** Ein Link ist nur zur eigenen Adresse von OPAA und zu den
+[erlaubten Linkzielen](../betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) klickbar;
+jeder andere erscheint als Text mit vollständiger Adresse. Bilder lädt die Antwort nie.
+
 **Fundstellen als Daten.** Ein Dokument kann Sätze enthalten, die wie eine Anweisung an das Modell
 aussehen, absichtlich platziert oder als zitiertes Beispiel. Die Chunks stehen deshalb am Ende der
 Systemanweisung in einem Block `<opaadokumente kennung="…">`, jeder Chunk mit seinem Kopf in einem
@@ -718,10 +722,6 @@ einen Kopf fälschen könnte: das Schlüsselwort des Blocks in jeder Schreibweis
 Steuerzeichen und Rollen-Token der Modellformate; Zeilen wie „Dokument:" oder „Zitiermarke:" im Text
 und eigene Zitiermarken werden als Text kenntlich gemacht. Ein vollständiger Schutz ist das nicht:
 Wie oft ein Modell sich trotzdem lenken lässt, hängt am Modell.
-
-**Links und Bilder in der Antwort.** Ein Link ist nur zur eigenen Adresse von OPAA und zu den
-[erlaubten Linkzielen](../betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) klickbar;
-jeder andere erscheint als Text mit vollständiger Adresse. Bilder lädt die Antwort nie.
 
 **Nachbar-Chunks.** Vor dem Prompt bekommt jeder Chunk der Endauswahl seine Nachbarn im selben
 Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Endauswahl und
