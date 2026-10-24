@@ -2,6 +2,42 @@
 
 Grundlage D (Zeilen „Verbindung · Umfang · Zeitplan“, höchstens eine offen, gleiche Zeilen in Assistent, Prüfschritt, Reiter „Quelle“). Prototyp, wird nicht gemerged.
 
+## Review-Runde 1 (24.10.2026) – Stand
+Befunde in [`REVIEW-1.md`](REVIEW-1.md). Matrix neu mit den Werkzeugen aus PR #3101 (Schema je Kontext direkt geladen, `opaa.mockSlowMs`, Dialog-`__full`, 320-`__full` ohne Kappung): **708 Aufnahmen** + `__full`, `metrics.jsonl` 712 Zeilen. axe hell: nur `region` 8× (Tooltip eines gekürzten Namens unter dem Mauszeiger, außerhalb der Landmarks) · Kontrast dunkel **0** · `overflowX` 0 · Zählbudgets 0 Überschreitungen · not-found: nur Dropbox-Validierung (gewollt). `focusObscured` 76 Aufnahmen, alle bei 320 px (feste Kopfleiste der App, Bestand). small, hell: 40 UI-Wörter, 0,16 Hilfetexte je Aufnahme bei 1280 und 39 / 0,16 bei 320 (die 320er-Zahlen der ersten Runde gelten als unzuverlässig: dort maß das Skript die geschlossene Mobil-Schublade).
+
+| Punkt | Stand |
+|---|---|
+| N1 Eine Breite | erledigt: Reiterleiste, Zeilen, Fußleiste im Assistenten und Prüfschritt 720 px; Reiter „Quelle“ 720 px. Bewusst nicht: Reiterleiste der Detailseite bleibt seitenbreit, der Reiter „Dokumente“ braucht die Breite |
+| N2 Trennlinien | erledigt: eine Linie unter jeder Zeile, keine unter dem Detailkopf, keine doppelte vor der Fußleiste |
+| N3 Ein Raster | erledigt: Titel · Inhalt · „Ändern“; Umfang als Liste „12 Spaces“ + 5 + „und n weitere“, kein Unterlabel |
+| N4 „Ändern“ nie Knopf | erledigt. Direkt in den Dialog: SharePoint (keine Inline-Auswahl); alle anderen haben das Radiopaar und klappen die Zeile auf, Dialog über „<Objekte> auswählen …“ |
+| N5 Zugänge | erledigt: Radioliste Name + Adresse, „Eigene Adresse“ zuletzt, ein Zugang = Zeile, Zeile zugeklappt, wenn nichts auszufüllen ist; Mock: zweiter SharePoint-Zugang „Microsoft 365 Schulamt“. Bewusst nicht: Suche ab 8 Zugängen (kein Fall im Mock) |
+| N6 Werkzeuge | erledigt: `capture.mjs`, `record-flows.mjs`, `contact_sheets.py`, `lib/`, `flows/` übernommen; F-Schritte in `flows/libraries.mjs`, Videos in `flows/f-videos.mjs`; Mock `opaa.mockSlowMs` |
+| R1-1 Umfang im Kopf | erledigt (Kopf zeigt nur noch die Warnung zu nicht gelesenen Bereichen) |
+| R1-2 „Übernehmen“ | erledigt; Verbindung wird beim Wechsel in eine andere Zeile getestet |
+| R1-3 Warnbanner | erledigt: entfernt, der Grund steht in der Laufzeile |
+| R1-4 Laufzeile | erledigt: „Teilweise fehlgeschlagen“ (Punkt orange), Ereigniszahl entfällt |
+| R1-5 Fehlerzusammenfassung | erledigt: „Verbindung: Adresse“; Feldfehler „<Label> fehlt“ (Mehrzahl „Ordner fehlen“) |
+| R1-6 Laden/Ladefehler | erledigt |
+| R1-7 320 px Kopf | erledigt: „Vollabgleich starten“ im „…“-Menü, Titel bricht um, Reiter scrollbar mit Randverlauf, Kennzahlen ohne Trenner |
+| R1-8 Bearbeiten-Dialog | erledigt: gespeicherte Auswahl angehakt oben (5 + „und n weitere ausgewählt“), Höhe nach Inhalt |
+| R1-9 „Alle n auswählen“ | erledigt: „Alle 134 wählbaren auswählen“, „Alle geladenen auswählen“ bei unvollständiger Liste |
+| R1-10 Ebene, 0 Einträge | erledigt |
+| R1-11 Ändern/Öffner | erledigt |
+| R1-12 Handeingabe | erledigt: überall „Von Hand eintragen …“, gleiches Feld |
+| R1-13 Radiopaar überall | erledigt für Nextcloud, SMB, Dropbox, Confluence, Drive, S3 (Vorgabe „Alle“; Flags `allSpaces`/`allScopes`/`allBuckets` nur im Mock, Backend nötig). Bewusst nicht: SharePoint – „alle Sites“ gibt `Sites.Selected` nicht her; je Bibliothek ganz oder Ordner wählt der Dialog |
+| R1-14 Verbindungsstatus | erledigt: Punkt + Wort, bei Fehler mit Stufe; bei 320 px eigene Zeile. Im Reiter „Quelle“ „nicht geprüft“ bis zum Test |
+| R1-15 Listen, Pfade | erledigt: ein Trenner „ / “, Kürzung in der Mitte |
+| R1-16 Knöpfe | erledigt: „Jetzt indizieren“ sekundär; Zeile „Abbrechen · Speichern“ rechts wie die Fußleiste |
+| R1-17 Inhaltsbreite | erledigt (720 px); Feldbreiten teilweise (Region kurz, sonst volle Breite) |
+| R1-18 Textlinks | erledigt |
+| R1-19 Überschriften, Titel | erledigt: „Läufe“ wie die Zeilentitel, ein Seitentitel „Neue Wissensbibliothek“, Schrittüberschrift nur für Screenreader |
+| R1-20 Tri-State | erledigt: „teilweise“ entfällt, Sperrgrund einmal oben, Tooltip nur bei Kürzung |
+| R1-21 S3-Muster | erledigt: „· 2 Muster“ in Prüfen und Detail, Umschalter mit festem Namen, Muster-Textarea höchstens 6 Zeilen |
+| R1-22 „keine“ | erledigt |
+| R1-23–26 Hilfetexte, KI-Look | erledigt: Zugangs-Erklärungen, Läufe-Hinweis, Graph-Satz, Vorgaben weg; Fundort-Hilfen bleiben auch im Fehlerfall; kein Verlauf, neutrale Chips (auch Rolle), Kachel ohne Tönung, Fixture-Titel ohne „(Quellart)“ |
+| R1-27–33 Mocks/Aufnahme | erledigt: nächster Lauf 06:00; S3-Test ohne Bereiche prüft nur die Anmeldung; slow über `opaa.mockSlowMs`; Dateisystem antwortet in empty/scale anders; Dialog-`__full`, 320-`__full`; Space-Namen aus demselben Generator |
+
 ## Was kam woher
 | Teil | Herkunft | Umsetzung |
 |---|---|---|
@@ -46,6 +82,8 @@ Volle Matrix: 8 Typen × small/scale/empty/slow/failed/partial × 1280/320, **he
 - Runden: quick 4 Typen → Namensliste statt Fließtext, Space-Schlüssel raus, SharePoint-Ordner mit Bibliothek; quick 8 Typen → Grid-Überlauf, Fixtures passend zur Auflistung; failed/empty/partial → doppelte Leerzeilen, „Von Hand eintragen …“ direkt offen; Videos → interaktive Tooltips verdeckten Knöpfe, Site-Eingabe nur oben, „Verzeichnispfad“-Meldung.
 
 ## Videos (1280×800, Mauszeiger, ~600 ms je Aktion, H.264 crf 30, je < 1 MB)
+
+> **Veraltet:** Die Videos dieses Abschnitts zeigen den Stand vor der Review-Runde 1 (Commit `9d73ea1`); sie werden mit `flows/f-videos.mjs` neu aufgenommen.
 Skript `ui-lab/harness/record-flows.mjs`. Erste 2 s (Laden) abgeschnitten; vier „viele“-Videos auf 59 s beschleunigt (Faktor 0,94–0,97).
 
 | Datei | Länge | Inhalt |
