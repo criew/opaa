@@ -77,8 +77,9 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
   ändern nur die Systemverwaltung.
 - Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher. Die Oberfläche
-  lädt die Liste einmal je Fenster: In bereits geöffneten Fenstern anderer Personen gilt eine
-  Änderung erst nach dem Neuladen der Seite, auch das Entfernen eines Ziels. Lässt sich die Liste
+  lädt die Liste einmal je Fenster: In anderen bereits geöffneten Fenstern gilt eine Änderung erst
+  nach dem Neuladen der Seite, auch das Entfernen eines Ziels; nur das Fenster mit der Verwaltung
+  übernimmt sie sofort. Lässt sich die Liste
   nicht laden, ist nur die eigene Adresse klickbar.
 
 ## Härtung für erreichbare Deployments
@@ -228,10 +229,20 @@ Ablage landet.
 
 **Als fremd gilt jeder Inhalt, den nicht das Haus selbst verantwortet:** Feeds und Webseiten,
 E-Mail-Dateien, Wikis wie Confluence (jede Person mit Bearbeitungsrecht im Wiki), geteilte Ablagen
-(SMB, SharePoint, Nextcloud, Google Drive, Dropbox, S3) und Uploads. Was dort steht, erreicht über
-die Suche das Modell.
+wie SMB-Freigaben oder SharePoint und Uploads; alle Quellen nennt die
+[Übersicht der Konnektoren](../arbeitsmittel/wissensbibliotheken/konnektoren/README.md). Was dort
+steht, erreicht über die Suche das Modell.
 
-**Was OPAA dagegen tut:**
+**Was unabhängig vom Modell wirkt:**
+
+- **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
+  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss
+  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
+  Anweisung folgt.
+- **Rechte und Belege:** Die Suche findet nur Dokumente, die die Person lesen darf, und die
+  Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.
+
+**Was dem Modell hilft, aber nichts garantiert:**
 
 - **Fundstellen als Daten:** Die Chunks stehen im Antwort-Prompt in einem gekennzeichneten Block mit
   einer Kennung je Frage, und die Regeln davor sagen dem Modell, dass ihr Inhalt keine Anweisung ist
@@ -241,21 +252,18 @@ die Suche das Modell.
   Laufprotokoll und in einer Metrik
   ([Wissensbibliotheken, Parsen und Chunken](../arbeitsmittel/wissensbibliotheken/README.md#54-parsen-und-chunken)
   und [Ergebnis je Dokument](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)).
-- **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
-  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)).
 - **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../spaces/fremdzugaenge.md#der-mcp-server)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
   lenken lässt ([Modelle](modelle.md), Abschnitt „Modell gegen Prompt-Injection messen“).
-- Unabhängig vom Modell gelten weiter die Rechteprüfung vor der Suche, die nur Dokumente findet, die
-  die Person lesen darf, und die Belegprüfung nach der Antwort, deren Belege auf das präparierte
-  Dokument zeigen.
 
 **Was nicht gebaut ist:** Eine vollständige Erkennung gibt es nicht, und kein Sprachmodell trennt
-Anweisung und Inhalt zuverlässig. Eine falsche Angabe im sichtbaren Text hält keine Kennzeichnung
-auf. Versteckter Text wie weiße Schrift im PDF, verborgener Text in DOCX oder ausgeblendete
-Abschnitte in HTML wird mit aufgenommen und nicht erkannt; die Bereinigung entfernt nur unsichtbare
-Zeichen. Ein vorgeschaltetes Klassifikationsmodell gibt es nicht.
+Anweisung und Inhalt zuverlässig. Gemessen mit dem Testsatz hat die Kennzeichnung als Daten die
+Angriffsrate nicht gesenkt, die Bereinigung ist nicht eigens gemessen; erfolgreich waren vor allem
+falsche Angaben im sichtbaren Text, die keine Kennzeichnung aufhält. Versteckter Text wie weiße
+Schrift im PDF, verborgener Text in DOCX oder
+ausgeblendete Abschnitte in HTML wird mit aufgenommen und nicht erkannt; die Bereinigung entfernt
+nur unsichtbare Zeichen. Ein vorgeschaltetes Klassifikationsmodell gibt es nicht.
 
 **Was beim Haus bleibt:** nur geprüfte Quellen anbinden, Schreibrechte an den Quellen begrenzen, die
 erlaubten Linkziele pflegen, das Modell anhand der Messung wählen und Antworten als Entwurf
