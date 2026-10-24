@@ -347,6 +347,43 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void documentLibrariesCutAtTheLimitOfPagesSaySo() {
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 9; i++) {
+      server.drive(SITE, "b!library" + i, "Bibliothek " + i, "documentLibrary");
+    }
+
+    SourceListing libraries = browse(Map.of("site", SITE));
+
+    assertThat(libraries.complete()).isFalse();
+    assertThat(libraries.entries()).isNotEmpty();
+    assertThat(libraries.message())
+        .startsWith(
+            "Es werden die ersten "
+                + libraries.entries().size()
+                + " Dokumentbibliotheken gezeigt.");
+  }
+
+  @Test
+  void aLevelCutBeforeItsFirstFolderSaysThatThePartReadHoldsNone() {
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 10; i++) {
+      server.file(
+          DRIVE_0,
+          "datei" + i,
+          "A-Datei " + i + ".txt",
+          FakeGraphServer.rootId(DRIVE_0),
+          bytes("x"));
+    }
+
+    SourceListing folders = browse(Map.of("drive", DRIVE_0));
+
+    assertThat(folders.complete()).isFalse();
+    assertThat(folders.entries()).isEmpty();
+    assertThat(folders.message()).startsWith("Im gelesenen Teil der Liste sind keine Ordner.");
+  }
+
+  @Test
   void theSiteSearchFollowsFurtherPagesUpToTheLimitAndThenSaysSo() {
     server.pageSizeAtMost(1);
     server.site(siteId(1), "contoso.sharepoint.com", "/sites/team1", "Team 1");

@@ -256,9 +256,10 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     if (GoogleDriveSettings.subjectOf(asked) != null) {
       entries.add(new SourceListing.Entry(GoogleDriveScope.MY_DRIVE_KEY, "Meine Ablage"));
     }
-    boolean complete;
+    boolean drivesComplete;
+    boolean foldersComplete;
     try {
-      complete =
+      drivesComplete =
           collect(
               api,
               "drives",
@@ -274,17 +275,31 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       folders.put("includeItemsFromAllDrives", "true");
       folders.put("supportsAllDrives", "true");
       folders.put("fields", "nextPageToken,files(id,name)");
-      complete &= collect(api, "files", folders, "files", "folder:", entries);
+      foldersComplete = collect(api, "files", folders, "files", "folder:", entries);
     } catch (DriveApiException e) {
       return new SourceListing(false, List.of(), e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Auflistung wurde unterbrochen.");
     }
-    return complete
-        ? new SourceListing(true, entries, null)
-        : SourceListing.cutAt(
-            entries, "Bereiche", "Weitere Ordner lassen sich unten über ihre ID eintragen.");
+    if (drivesComplete && foldersComplete) {
+      return new SourceListing(true, entries, null);
+    }
+    return new SourceListing(false, entries, cutMessage(drivesComplete, foldersComplete));
+  }
+
+  /** Names which of the two lists was cut and, for shared folders, the way to the others. */
+  private static String cutMessage(boolean drivesComplete, boolean foldersComplete) {
+    String cut =
+        drivesComplete
+            ? "der freigegebenen Ordner"
+            : foldersComplete
+                ? "der geteilten Ablagen"
+                : "der geteilten Ablagen und der freigegebenen Ordner";
+    return "Die Auflistung zeigt nur einen Teil "
+        + cut
+        + "."
+        + (foldersComplete ? "" : " Weitere Ordner lassen sich unten über ihre ID eintragen.");
   }
 
   /**

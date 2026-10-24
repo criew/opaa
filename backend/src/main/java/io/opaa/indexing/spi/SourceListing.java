@@ -18,15 +18,16 @@ public record SourceListing(boolean complete, List<Entry> entries, String messag
   }
 
   /**
-   * An incomplete listing of the first {@code entries} found before a limit of the connector;
-   * {@code noun} names them in the plural ({@code "Ordner"}), {@code hint} says how to reach the
-   * others.
+   * An incomplete listing of the first {@code entries} found before a limit of the connector,
+   * possibly none when the part read held nothing selectable; {@code noun} names them in the plural
+   * ({@code "Ordner"}), {@code hint} says how to reach the others.
    */
   public static SourceListing cutAt(List<Entry> entries, String noun, String hint) {
-    return new SourceListing(
-        false,
-        entries,
-        "Es werden die ersten " + entries.size() + " " + noun + " gezeigt. " + hint);
+    String shown =
+        entries.isEmpty()
+            ? "Im gelesenen Teil der Liste sind keine " + noun + "."
+            : "Es werden die ersten " + entries.size() + " " + noun + " gezeigt.";
+    return new SourceListing(false, entries, shown + " " + hint);
   }
 
   /** One selectable item: the key the configuration stores, and a display name if there is one. */

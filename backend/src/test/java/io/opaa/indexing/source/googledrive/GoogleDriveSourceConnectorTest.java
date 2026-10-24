@@ -218,7 +218,8 @@ class GoogleDriveSourceConnectorTest {
     assertThat(ten.entries()).hasSize(11);
     assertThat(eleven.complete()).isFalse();
     assertThat(eleven.entries()).hasSize(11);
-    assertThat(eleven.message()).contains("ersten 11 Bereiche");
+    assertThat(eleven.message())
+        .isEqualTo("Die Auflistung zeigt nur einen Teil der geteilten Ablagen.");
   }
 
   @Test
@@ -233,7 +234,10 @@ class GoogleDriveSourceConnectorTest {
 
     assertThat(eleven.complete()).isFalse();
     assertThat(eleven.entries()).hasSize(11);
-    assertThat(eleven.message()).contains("ersten 11 Bereiche");
+    assertThat(eleven.message())
+        .isEqualTo(
+            "Die Auflistung zeigt nur einen Teil der freigegebenen Ordner. Weitere Ordner lassen"
+                + " sich unten über ihre ID eintragen.");
   }
 
   @Test
