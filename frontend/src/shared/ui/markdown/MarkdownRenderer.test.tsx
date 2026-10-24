@@ -1,11 +1,17 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
 import MarkdownRenderer from './MarkdownRenderer'
 import { buildCitationIndex } from './citations'
+import { useLinkTargetsStore } from '../../linkTargets/linkTargetsStore'
 
 describe('MarkdownRenderer', () => {
+  // A loaded list, so no request of one test lands in the next and rebuilds what it clicks.
+  beforeEach(() => {
+    useLinkTargetsStore.setState({ allowedOrigins: [], status: 'loaded' })
+  })
+
   it('renders plain text', () => {
     renderWithProviders(<MarkdownRenderer content="Hello world" />)
     expect(screen.getByText('Hello world')).toBeInTheDocument()
@@ -75,6 +81,7 @@ describe('MarkdownRenderer', () => {
   })
 
   it('renders links with target _blank', () => {
+    useLinkTargetsStore.getState().setAllowedOrigins(['https://example.com'])
     renderWithProviders(<MarkdownRenderer content="[Example](https://example.com)" />)
     const link = screen.getByText('Example')
     expect(link.closest('a')).toHaveAttribute('target', '_blank')
@@ -302,5 +309,103 @@ describe('MarkdownRenderer', () => {
   it('does not render citation chips when no citations present', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()
+  })
+
+  describe('links and images', () => {
+    const own = window.location.origin
+
+    beforeEach(() => {
+      useLinkTargetsStore.getState().setAllowedOrigins(['https://intranet.stadt.example'])
+    })
+
+    it('keeps a link to the own origin and a relative link clickable', () => {
+      renderWithProviders(
+        <MarkdownRenderer content={`[Hilfe](${own}/hilfe) und [Space](/spaces/1)`} />,
+      )
+      expect(screen.getByRole('link', { name: 'Hilfe' })).toHaveAttribute('href', `${own}/hilfe`)
+      expect(screen.getByRole('link', { name: 'Space' })).toHaveAttribute('href', '/spaces/1')
+    })
+
+    it('keeps a link to an allowed origin clickable, also in another case', () => {
+      renderWithProviders(
+        <MarkdownRenderer content="[Formular](HTTPS://Intranet.Stadt.Example/antrag)" />,
+      )
+      expect(screen.getByRole('link', { name: 'Formular' })).toBeInTheDocument()
+    })
+
+    it('shows a link to any other origin as text with its address', () => {
+      renderWithProviders(
+        <MarkdownRenderer content="Siehe [Antragsportal](https://x.example/?d=Zusammenfassung)." />,
+      )
+      expect(screen.queryByRole('link')).toBeNull()
+      expect(screen.getByTestId('blocked-link')).toHaveTextContent(
+        'Antragsportal (https://x.example/?d=Zusammenfassung)',
+      )
+    })
+
+    it('matches no subdomain, suffix or protocol-relative look-alike', () => {
+      renderWithProviders(
+        <MarkdownRenderer
+          content={
+            '[a](https://evil.intranet.stadt.example) [b](https://intranet.stadt.example.evil.example)' +
+            ' [c](//x.example/pfad) [d](http://intranet.stadt.example)'
+          }
+        />,
+      )
+      expect(screen.queryByRole('link')).toBeNull()
+      expect(screen.getAllByTestId('blocked-link')).toHaveLength(4)
+    })
+
+    it.each([
+      ['javascript', '[Klick](javascript:alert(1))'],
+      ['data', '[Klick](data:text/html,<b>x</b>)'],
+      ['mailto', '[Klick](mailto:poststelle@stadt.example)'],
+    ])('shows a %s: link as text', (_, content) => {
+      renderWithProviders(<MarkdownRenderer content={content} />)
+      expect(screen.queryByRole('link')).toBeNull()
+      expect(screen.getByTestId('blocked-link')).toHaveTextContent('Klick (')
+    })
+
+    it('shows an autolink and a reference link to another origin as text', () => {
+      renderWithProviders(
+        <MarkdownRenderer
+          content={'<https://x.example/a> und [Ref][r]\n\n[r]: https://x.example/b'}
+        />,
+      )
+      expect(screen.queryByRole('link')).toBeNull()
+      const blocked = screen.getAllByTestId('blocked-link').map((node) => node.textContent)
+      expect(blocked).toEqual(['https://x.example/a', 'Ref (https://x.example/b)'])
+    })
+
+    it('renders raw HTML neither as link nor as image', () => {
+      const { container } = renderWithProviders(
+        <MarkdownRenderer
+          content={'<a href="https://x.example">Klick</a> <img src="https://x.example/p.png">'}
+        />,
+      )
+      expect(container.querySelector('a')).toBeNull()
+      expect(container.querySelector('img')).toBeNull()
+    })
+
+    it('never loads an image, neither from another nor from the own origin', () => {
+      const { container } = renderWithProviders(
+        <MarkdownRenderer
+          content={`![Status](https://x.example/s.png?d=1) ![Logo](${own}/logo.png)`}
+        />,
+      )
+      expect(container.querySelector('img')).toBeNull()
+      const blocked = screen.getAllByTestId('blocked-image').map((node) => node.textContent)
+      expect(blocked).toEqual([
+        '[Bild: Status] (https://x.example/s.png?d=1)',
+        `[Bild: Logo] (${own}/logo.png)`,
+      ])
+    })
+
+    it('applies the same rule to a document preview', () => {
+      renderWithProviders(
+        <MarkdownRenderer content="[Portal](https://x.example)" preserveCitationMarkers />,
+      )
+      expect(screen.queryByRole('link')).toBeNull()
+    })
   })
 })

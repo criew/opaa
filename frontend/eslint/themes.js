@@ -32,6 +32,7 @@ export const THEMES = [
   'notification',
   'compliance',
   'auth',
+  'link-targets',
 ]
 
 /** Cross-cutting building blocks; may depend on nothing but itself. */
@@ -70,6 +71,7 @@ export const ALLOWED = {
   notification: [],
   compliance: [],
   auth: ['user'],
+  'link-targets': [],
 }
 
 /** All files of a theme. */
