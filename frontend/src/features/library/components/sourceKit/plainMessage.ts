@@ -6,10 +6,15 @@ const CODE =
  * a person reads is the sentence, not the code. A code's own explanation after a colon stays.
  */
 export function plainMessage(message: string): string {
+  // the HTTP client's own wording when no German message came back
+  if (/Request failed with status code|Network Error|timeout of \d+ms/i.test(message)) {
+    return 'Die Quelle hat nicht geantwortet.'
+  }
   return message
     .replace(CODE, (_match, explanation?: string) => (explanation ? `: ${explanation}` : ''))
     .replace(/\s*\bHTTP \d{3}\b/g, '')
     .replace(/\s+([.,:;])/g, '$1')
     .replace(/:\s*:/g, ':')
+    .replace(/^[\s:;,.]+/, '')
     .trim()
 }

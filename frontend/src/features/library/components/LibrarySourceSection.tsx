@@ -42,6 +42,7 @@ import {
   QUOTA_EXHAUSTED_REMEDY,
 } from './privateLibrary'
 import StateDot from '@/shared/ui/StateDot'
+import { plainMessage } from './sourceKit/plainMessage'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 
 export interface LibrarySourceSectionProps {
@@ -608,7 +609,7 @@ function LibraryIndexingHistorySection({
                 )}
                 {run.message && (
                   <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                    {run.message}
+                    {plainMessage(run.message)}
                   </Typography>
                 )}
                 <RunMetricsLine run={run} />
@@ -627,7 +628,7 @@ function LibraryIndexingHistorySection({
                           <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
                             {indexingRunEventCategoryLabel(event.category)}
                           </Typography>
-                          <Typography variant="body2">{event.message}</Typography>
+                          <Typography variant="body2">{plainMessage(event.message)}</Typography>
                         </Stack>
                         {event.reference && (
                           <Typography

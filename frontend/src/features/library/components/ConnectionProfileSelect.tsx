@@ -224,11 +224,7 @@ export default function ConnectionProfileSelect({
           {excludeProfileId ? 'kein weiterer Zugang' : 'kein Zugang'} zur Verfügung. Zugänge legt
           die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.
         </Alert>
-      ) : (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-          Zugänge legt die Systemverwaltung an und gibt sie frei.
-        </Typography>
-      )}
+      ) : null}
     </Box>
   )
 }
