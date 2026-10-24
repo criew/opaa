@@ -449,10 +449,14 @@ Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
 
 ### 5.9 Popup-Benachrichtigungen
 
-Rückmeldungen auf einmalige Aktionen — ein fehlgeschlagener oder gestarteter Download, ein
-abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** unten mittig
+Rückmeldungen auf einmalige Aktionen — ein gestarteter Download, ein abgeschlossener
+Hintergrundschritt, „gespeichert" — erscheinen als **Popup-Benachrichtigung** unten mittig
 (Ebene 2: Rahmen plus Schatten auf `bg-1`), nach sechs Sekunden automatisch ausgeblendet und
-jederzeit per Schließen-Knopf verwerfbar. Sie laufen über den globalen Mechanismus
+jederzeit per Schließen-Knopf verwerfbar. **Der Timer pausiert, solange Mauszeiger oder Fokus
+auf der Meldung liegen**, und beginnt neu, wenn beide sie verlassen haben (WCAG 2.2.1).
+**Ein Fehler, der eine Handlung verlangt, steht nie nur im Popup**, sondern bleibt an seinem Ort
+sichtbar (am Feld, an der Zeile, am Bereich); ein fehlgeschlagener Download nennt dort, wie es
+weitergeht. Sie laufen über den globalen Mechanismus
 (`frontend/src/shared/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
 einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
 **nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
