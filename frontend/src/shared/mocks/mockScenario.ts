@@ -50,9 +50,25 @@ export function currentMockScenario(): MockScenario {
 /** Latency of listings and connection tests in the `slow` scenario. */
 export const SLOW_SCENARIO_DELAY_MS = 3000
 
+const SLOW_DELAY_STORAGE_KEY = 'opaa.mockSlowMs'
+
+/**
+ * The latency of the `slow` scenario: a positive whole number of milliseconds in the tab's
+ * sessionStorage under `opaa.mockSlowMs` replaces the default, so a screenshot run can hold the
+ * loading state open while it measures every scheme and width.
+ */
+export function slowScenarioDelayMs(): number {
+  try {
+    const stored = Number(window.sessionStorage.getItem(SLOW_DELAY_STORAGE_KEY))
+    return Number.isInteger(stored) && stored > 0 ? stored : SLOW_SCENARIO_DELAY_MS
+  } catch {
+    return SLOW_SCENARIO_DELAY_MS
+  }
+}
+
 /** Waits like a slow source in the `slow` scenario, otherwise not at all. */
 export async function scenarioLatency(): Promise<void> {
-  if (currentMockScenario() === 'slow') await delay(SLOW_SCENARIO_DELAY_MS)
+  if (currentMockScenario() === 'slow') await delay(slowScenarioDelayMs())
 }
 
 /** A 35-character German compound, the longest single word the fixtures carry. */
