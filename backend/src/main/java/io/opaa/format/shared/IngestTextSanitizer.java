@@ -1,18 +1,20 @@
 package io.opaa.format.shared;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Cleans extracted text before it reaches index and prompt: removes characters that carry no
- * meaning in an administrative document but hide text from a reader (Unicode tag block, BiDi
- * controls, zero-width characters outside emoji sequences, variation selectors outside emoji, soft
- * hyphens), replaces exotic spaces by a plain one and defuses chat-template role tokens. Typical
- * injection phrases are only counted, never removed. No confusables mapping: it would falsify
- * legitimate foreign-language text.
+ * Cleans extracted text before it reaches index and prompt. Removed and counted is only what has no
+ * place in ordinary text: the tag block, the zero-width space, a byte order mark inside the text,
+ * BiDi embeddings and overrides, and BiDi isolates without their partner. Joiners, non-joiners,
+ * variation selectors and direction marks stay: emoji and several scripts need them. Soft hyphens
+ * go without a finding, exotic spaces become plain ones, role tokens are defused, and injection
+ * phrases are only counted. No confusables mapping: it would falsify foreign-language text.
  */
 public final class IngestTextSanitizer {
 
@@ -22,7 +24,7 @@ public final class IngestTextSanitizer {
     INVISIBLE_CHARACTERS,
     /** Defused role tokens such as {@code <|im_start|>} or {@code [INST]}. */
     ROLE_TOKEN,
-    /** Phrases like "ignoriere alle vorherigen Anweisungen" or "you are now". */
+    /** Phrases like "ignoriere alle vorherigen Anweisungen" or "ignore previous instructions". */
     INSTRUCTION_PHRASE,
     /** URLs whose query carries a placeholder for data, such as {@code ?d=DATEN}. */
     DATA_URL_PLACEHOLDER
@@ -43,14 +45,20 @@ public final class IngestTextSanitizer {
 
   private static final int SOFT_HYPHEN = 0x00AD;
 
+  private static final int BYTE_ORDER_MARK = 0xFEFF;
+
+  private static final int POP_DIRECTIONAL_ISOLATE = 0x2069;
+
   /** Role tokens between bars, ASCII or full-width: {@code <|im_start|>}, {@code <｜User｜>}. */
   private static final Pattern ROLE_TOKEN =
       Pattern.compile("<[|\\uFF5C]([^|\\uFF5C<>\\s]{1,40})[|\\uFF5C]>");
 
-  /** Turn and sequence tokens without bars: {@code <start_of_turn>}, {@code <s>}, {@code </s>}. */
+  /**
+   * Turn and sequence tokens without bars, exactly as models spell them: {@code <start_of_turn>},
+   * {@code <s>}, {@code </s>}; a type parameter such as {@code List<S>} stays.
+   */
   private static final Pattern TURN_TOKEN =
-      Pattern.compile(
-          "<\\s*(start_of_turn|end_of_turn|bos|eos|/?s)\\s*>", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("<(start_of_turn|end_of_turn|bos|eos|/?s)>");
 
   private static final Pattern INSTRUCTION_MARKER =
       Pattern.compile("\\[\\s*/?\\s*INST\\s*]|<<\\s*/?\\s*SYS\\s*>>", Pattern.CASE_INSENSITIVE);
@@ -59,15 +67,11 @@ public final class IngestTextSanitizer {
       Pattern.compile(
           "ignorier(?:e|en sie)\\s+(?:alle\\s+)?(?:vorherigen|bisherigen|obigen)\\s+anweisungen"
               + "|vergiss\\s+(?:alle\\s+)?(?:vorherigen|bisherigen)\\s+anweisungen"
-              + "|du\\s+bist\\s+(?:jetzt|ab\\s+sofort|nun)\\b"
-              + "|ignore\\s+(?:all\\s+)?(?:previous|prior|above)\\s+instructions"
-              + "|you\\s+are\\s+now\\b",
+              + "|ignore\\s+(?:all\\s+)?(?:previous|prior|above)\\s+instructions",
           Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
   private static final Pattern DATA_URL_PLACEHOLDER =
-      Pattern.compile(
-          "https?://\\S+[?&][\\w-]+=(?:DATEN|DATA|\\{[^}\\s]{1,40}}|<[^>\\s]{1,40}>)",
-          Pattern.CASE_INSENSITIVE);
+      Pattern.compile("https?://\\S+[?&][\\w-]+=(?:DATEN|DATA)\\b", Pattern.CASE_INSENSITIVE);
 
   private IngestTextSanitizer() {}
 
@@ -79,22 +83,17 @@ public final class IngestTextSanitizer {
       return new Result(null, Map.of());
     }
     Map<Finding, Integer> findings = new EnumMap<>(Finding.class);
+    int[] codePoints = text.codePoints().toArray();
+    boolean[] unpaired = unpairedIsolates(codePoints);
     StringBuilder cleaned = new StringBuilder(text.length());
     int removed = 0;
-    int[] codePoints = text.codePoints().toArray();
     for (int i = 0; i < codePoints.length; i++) {
       int cp = codePoints[i];
-      int previous = i > 0 ? codePoints[i - 1] : -1;
-      int next = i + 1 < codePoints.length ? codePoints[i + 1] : -1;
       if (isExoticSpace(cp)) {
         cleaned.append(' ');
-      } else if (cp == 0x200D && isEmoji(previous) && isEmoji(next)) {
-        cleaned.appendCodePoint(cp);
-      } else if (isVariationSelector(cp) && isEmoji(previous)) {
-        cleaned.appendCodePoint(cp);
-      } else if (cp == SOFT_HYPHEN) {
-        // removed, but ordinary typography in word-processor exports, so not a finding
-      } else if (isHidden(cp)) {
+      } else if (cp == SOFT_HYPHEN || (cp == BYTE_ORDER_MARK && i == 0)) {
+        // typography of word-processor exports, or the mark of the encoding: no finding
+      } else if (unpaired[i] || isHidden(cp)) {
         removed++;
       } else {
         cleaned.appendCodePoint(cp);
@@ -131,21 +130,37 @@ public final class IngestTextSanitizer {
     return new Result(result, findings);
   }
 
+  /**
+   * Characters with no place in ordinary text; isolates are judged by {@link #unpairedIsolates}.
+   */
   private static boolean isHidden(int cp) {
     return (cp >= 0xE0000 && cp <= 0xE007F)
         || (cp >= 0x202A && cp <= 0x202E)
-        || (cp >= 0x2066 && cp <= 0x2069)
-        || cp == 0x200E
-        || cp == 0x200F
-        || cp == 0x061C
-        || (cp >= 0x200B && cp <= 0x200D)
-        || cp == 0x2060
-        || cp == 0xFEFF
-        || isVariationSelector(cp);
+        || cp == 0x200B
+        || cp == BYTE_ORDER_MARK;
   }
 
-  private static boolean isVariationSelector(int cp) {
-    return (cp >= 0xFE00 && cp <= 0xFE0F) || (cp >= 0xE0100 && cp <= 0xE01EF);
+  /**
+   * Marks every BiDi isolate initiator (U+2066 to U+2068) without a closing U+2069 and every U+2069
+   * without an opener; a matched pair, as word processors write it, stays.
+   */
+  private static boolean[] unpairedIsolates(int[] codePoints) {
+    boolean[] unpaired = new boolean[codePoints.length];
+    Deque<Integer> open = new ArrayDeque<>();
+    for (int i = 0; i < codePoints.length; i++) {
+      int cp = codePoints[i];
+      if (cp >= 0x2066 && cp <= 0x2068) {
+        open.push(i);
+      } else if (cp == POP_DIRECTIONAL_ISOLATE) {
+        if (open.isEmpty()) {
+          unpaired[i] = true;
+        } else {
+          open.pop();
+        }
+      }
+    }
+    open.forEach(index -> unpaired[index] = true);
+    return unpaired;
   }
 
   private static boolean isExoticSpace(int cp) {
@@ -154,17 +169,6 @@ public final class IngestTextSanitizer {
         || cp == 0x202F
         || cp == 0x205F
         || cp == 0x3000;
-  }
-
-  /** Pictographic characters an emoji sequence joins or qualifies; a coarse, safe superset. */
-  private static boolean isEmoji(int cp) {
-    return cp >= 0x1F000 && cp <= 0x1FAFF
-        || cp >= 0x2600 && cp <= 0x27BF
-        || cp >= 0x2190 && cp <= 0x21FF
-        || cp >= 0x2B00 && cp <= 0x2BFF
-        || cp == 0x00A9
-        || cp == 0x00AE
-        || cp == 0x2122;
   }
 
   private static int occurrences(Pattern pattern, CharSequence text) {

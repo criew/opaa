@@ -13,7 +13,13 @@ class CitationFactCheckSanitizedTextTest {
 
   @Test
   void aFigureWithRemovedInvisibleCharactersIsStillSupported() {
-    String source = "Die Gebühr beträgt 3​7,00⁠ Euro, fällig zum 1‌5.03.2026.";
+    String zeroWidthSpace = Character.toString(0x200B);
+    String source =
+        "Die Gebühr beträgt 3"
+            + zeroWidthSpace
+            + "7,00 Euro, fällig zum 1"
+            + Character.toString(0xE0041)
+            + "5.03.2026.";
     String stored = IngestTextSanitizer.sanitize(source).text();
 
     assertThat(stored).isEqualTo("Die Gebühr beträgt 37,00 Euro, fällig zum 15.03.2026.");

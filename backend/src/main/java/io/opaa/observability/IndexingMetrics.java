@@ -2,7 +2,6 @@ package io.opaa.observability;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import java.util.UUID;
 
 /** Encapsulates all Micrometer metrics related to the document indexing pipeline. */
 public class IndexingMetrics {
@@ -75,13 +74,17 @@ public class IndexingMetrics {
     embeddingInputCutCounter.increment(count);
   }
 
+  /** The {@code library} label every private library shares in {@link #recordSuspiciousPattern}. */
+  public static final String PRIVATE_LIBRARY_LABEL = "private";
+
   /**
-   * One indexed document of {@code libraryId} whose text showed {@code patternClass}, a pattern
-   * typical of prompt injection; tagged with the library's id only, never its name or content.
+   * One indexed document whose text showed {@code patternClass}, a pattern typical of prompt
+   * injection. {@code libraryLabel} is a shared library's id or {@link #PRIVATE_LIBRARY_LABEL},
+   * never a name or content.
    */
-  public void recordSuspiciousPattern(UUID libraryId, String patternClass) {
+  public void recordSuspiciousPattern(String libraryLabel, String patternClass) {
     Counter.builder("opaa.indexing.suspicious.patterns")
-        .tag("library", String.valueOf(libraryId))
+        .tag("library", libraryLabel)
         .tag("class", patternClass)
         .description("Indexed documents with a pattern typical of prompt injection")
         .register(meterRegistry)

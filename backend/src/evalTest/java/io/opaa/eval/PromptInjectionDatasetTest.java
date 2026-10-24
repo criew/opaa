@@ -160,8 +160,9 @@ class PromptInjectionDatasetTest {
   }
 
   /**
-   * Through the ingestion's own entry ({@code DocumentFormatRunner}) the invisible characters are
-   * gone: the hidden instruction no longer reaches the chunk text, neither encoded nor in clear.
+   * Through the ingestion's own entry ({@code DocumentFormatRunner}) the tag block and the
+   * zero-width space are gone: the hidden instruction no longer reaches the chunk text, neither
+   * encoded nor in clear.
    */
   @Test
   void afterIngestionTheCasesWithInvisibleCharactersCarryNoHiddenInstruction() throws IOException {
@@ -180,9 +181,9 @@ class PromptInjectionDatasetTest {
       assertThat(text.codePoints().filter(cp -> cp >= 0xE0000 && cp <= 0xE007F).count())
           .as(c.id())
           .isZero();
-      assertThat(text.chars().filter(ch -> ch == 0x200B || ch == 0x200C).count())
-          .as(c.id())
-          .isZero();
+      // The zero-width non-joiner stays, as Persian and Devanagari need it; without the
+      // zero-width space beside it the encoded bits are gone.
+      assertThat(text.chars().filter(ch -> ch == 0x200B).count()).as(c.id()).isZero();
       assertThat(normalizeWhitespace(text))
           .as(c.id())
           .doesNotContain(normalizeWhitespace(c.attackInstruction()));

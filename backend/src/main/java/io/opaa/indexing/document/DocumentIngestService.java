@@ -46,6 +46,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -195,12 +196,15 @@ public class DocumentIngestService {
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
    */
-  public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
+  public DocumentIngestResult ingest(DocumentIngest declared, AttachmentAccess attachmentAccess)
       throws IOException {
     IndexingEventSink events =
-        ingest.events() != null
-            ? ingest.events()
+        declared.events() != null
+            ? declared.events()
             : attachmentAccess == null ? null : attachmentAccess.events();
+    Map<IngestTextSanitizer.Finding, Integer> findings =
+        new EnumMap<>(IngestTextSanitizer.Finding.class);
+    DocumentIngest ingest = declared.withCleanNames(findings);
     KnowledgeLibrary library = ingest.library();
     LoggedName names = library.loggedNames();
     String filePath = ingest.filePath();
@@ -285,7 +289,6 @@ public class DocumentIngestService {
     DocumentFormat pipeline = selection.pipeline();
     boolean preservingPreviousChunks = replacingExistingChunks;
     boolean[] attachmentAtQuota = {false};
-    Map<IngestTextSanitizer.Finding, Integer> findings;
     try {
       DocumentFormatResult parsed =
           DocumentFormatRunner.run(
@@ -344,7 +347,7 @@ public class DocumentIngestService {
         case CHUNKED ->
             log.debug("{} chunked via pipeline {}", names.of(filePath, documentId), pipeline.id());
       }
-      findings = parsed.sanitizerFindings();
+      parsed.sanitizerFindings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
@@ -394,12 +397,18 @@ public class DocumentIngestService {
     }
 
     metrics.recordProcessed();
-    reportSuspiciousPatterns(library, filePath, findings, events);
+    reportSuspiciousPatterns(library, names.of(filePath, documentId), filePath, findings, events);
     return DocumentIngestResult.PROCESSED;
   }
 
+  /**
+   * The cleanup's findings of a processed document: a log line and the metric with counts per class
+   * only, and one protocol entry when the caller has a protocol. Private libraries share one metric
+   * label, so no series stands for one person.
+   */
   private void reportSuspiciousPatterns(
       KnowledgeLibrary library,
+      Object loggedName,
       String filePath,
       Map<IngestTextSanitizer.Finding, Integer> findings,
       IndexingEventSink events) {
@@ -407,12 +416,21 @@ public class DocumentIngestService {
     if (note == null) {
       return;
     }
+    log.info("Sanitized extracted text of {}: {}", loggedName, findings);
+    String libraryLabel = metricLabel(library);
     findings
         .keySet()
-        .forEach(finding -> metrics.recordSuspiciousPattern(library.getId(), finding.name()));
+        .forEach(finding -> metrics.recordSuspiciousPattern(libraryLabel, finding.name()));
     if (events != null) {
       events.record(IndexingEventCategory.SUSPICIOUS_PATTERNS, note, filePath);
     }
+  }
+
+  /** The metric label of {@code library}: its id, for a private library the shared label. */
+  static String metricLabel(KnowledgeLibrary library) {
+    return library.isOwnerOnly()
+        ? IndexingMetrics.PRIVATE_LIBRARY_LABEL
+        : String.valueOf(library.getId());
   }
 
   /**

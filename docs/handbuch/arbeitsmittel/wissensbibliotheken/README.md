@@ -317,16 +317,19 @@ Seiten, Folien oder Zeilengruppen. Nur wer das Format kennt, weiß, wo diese Gre
   extrahierbarer Text**, typisch für eingescannte PDFs (abgewiesen, der alte Stand wird entfernt).
 
 **Bereinigung.** Direkt nach dem Format, für jedes Format und jeden Konnektor, entfernt OPAA aus
-dem Text der Chunks und aus Titel und erster Überschrift Zeichen, die in einem Verwaltungsdokument
-nichts bedeuten, aber Text vor dem Auge verbergen können: unsichtbare Zeichen des Unicode-Tag-Blocks,
-Steuerzeichen der Schreibrichtung, Zeichen ohne Breite (außer dem Verbinder innerhalb eines Emoji),
-Variantenwähler außerhalb eines Emoji und weiche Trennstriche. Besondere Leerzeichen werden zu
-normalen, und Rollen-Markierungen der Modellformate wie `<|im_start|>` oder `<start_of_turn>`
-werden entschärft. Umlaute,
-Schrift von rechts nach links und Emoji bleiben unverändert; ähnlich aussehende Buchstaben anderer
-Schriften werden nicht ersetzt. Index, Antwort-Prompt und Belegprüfung sehen denselben bereinigten
-Text. Typische Wendungen wie „ignoriere alle vorherigen Anweisungen“ und Adressen mit einem
-Platzhalter für Daten bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1).
+dem Text der Chunks, ihrem Fundort, dem Dateinamen, dem Titel und dem Pfad in der Quelle Zeichen, die
+in gewöhnlichem Text nichts zu suchen haben, aber Text vor dem Auge verbergen können: Zeichen des
+Unicode-Tag-Blocks, das Leerzeichen ohne Breite, eine Bytereihenfolge-Marke mitten im Text,
+Steuerzeichen, die die Schreibrichtung einbetten oder überschreiben, und Isolierzeichen der
+Schreibrichtung ohne ihr Gegenstück. Weiche Trennstriche fallen ebenfalls weg, besondere
+Leerzeichen werden zu normalen, und Rollen-Markierungen der Modellformate wie `<|im_start|>` oder
+`<start_of_turn>` werden entschärft. Unverändert bleiben Verbinder und Nicht-Verbinder, die Emoji,
+Persisch oder Devanagari brauchen, Variantenwähler und die Richtungsmarken in arabischem oder
+hebräischem Text; ähnlich aussehende Buchstaben anderer Schriften werden nicht ersetzt. Ein Chunk,
+der danach leer ist, entfällt; bleibt keiner, gilt das Dokument als ohne extrahierbaren Text. Index,
+Kontextpräfix, Antwort-Prompt und Belegprüfung sehen so denselben bereinigten Text. Typische
+Wendungen wie „ignoriere alle vorherigen Anweisungen“ und Adressen mit einem Platzhalter für Daten
+bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1).
 
 Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 
@@ -392,14 +395,17 @@ Jedes Dokument eines Laufs endet in genau einem von fünf Ergebnissen: **verarbe
 **Auffällige Muster.** Findet die Bereinigung (Abschnitt 5.4) in einem verarbeiteten Dokument Muster,
 die typisch für untergeschobene Anweisungen an das Modell sind, bekommt das Dokument zusätzlich einen
 Eintrag „Auffällige Muster“ im Laufprotokoll. Gezählt werden vier Arten: entfernte unsichtbare
-Zeichen, entschärfte Rollen-Markierungen, Wendungen wie „ignoriere alle vorherigen Anweisungen“ oder
-„you are now“ und Adressen mit einem Platzhalter für Daten. Weiche Trennstriche werden entfernt, aber
-nicht gezählt, weil Textverarbeitungen sie üblicherweise setzen. Der Eintrag nennt nur die Anzahl je
-Art, nie den Inhalt; das Dokument ist trotzdem aufgenommen und zählt als verarbeitet. Ein Treffer
-ist ein Hinweis zum Nachsehen, kein Beleg für einen Angriff: Eine Schulungsunterlage über
-Prompt-Injection enthält solche Wendungen ganz legitim. Ein Upload hat kein Laufprotokoll; dort
-erscheint der Befund nur in Log und Metrik. Die Metrik zählt je Bibliothek und Art die Dokumente mit
-Treffer ([Überwachung](../../betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+Zeichen, entschärfte Rollen-Markierungen, Wendungen wie „ignoriere alle vorherigen Anweisungen“ und
+Adressen mit einem Platzhalter für Daten. Weiche Trennstriche und eine Bytereihenfolge-Marke am
+Textanfang werden entfernt, aber nicht gezählt, weil Textverarbeitungen sie üblicherweise setzen.
+Der Eintrag nennt nur die Anzahl je Art, nie den Inhalt; das Dokument ist trotzdem aufgenommen und
+zählt als verarbeitet. Ein Treffer ist ein Hinweis zum Nachsehen, kein Beleg für einen Angriff: Eine
+Schulungsunterlage über Prompt-Injection enthält solche Wendungen ganz legitim. Diese Einträge haben
+eine eigene Obergrenze je Lauf, damit sie Fehler und Ablehnungen nicht aus dem Protokoll verdrängen;
+darüber hinaus fasst eine Zeile am Ende des Laufs zusammen, wie viele weitere Dokumente betroffen
+sind. Ein Upload hat kein Laufprotokoll; dort erscheint der Befund nur in Log und Metrik. Die Metrik
+zählt je Bibliothek und Art die Dokumente mit Treffer, private Bibliotheken gemeinsam unter einem
+Wert ([Überwachung](../../betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 
 ### 6.2 Laufprotokoll
 
@@ -421,7 +427,8 @@ Jeder Lauf führt ein Protokoll mit einer lesbaren Begründung je Eintrag.
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |
 
 - Je Lauf werden höchstens 500 Einträge gespeichert, darüber hinaus nur gezählt („… und N
-  weitere"). Notizen über den Lauf als Ganzes zählen nicht gegen diese Grenze.
+  weitere"). Notizen über den Lauf als Ganzes zählen nicht gegen diese Grenze, „Auffällige Muster“
+  haben eine eigene von 50 Einträgen.
 - Je Bibliothek bleiben die letzten zehn Läufe samt Protokoll erhalten.
 - Ein Fehler beim Schreiben des Protokolls bricht den Lauf nie ab.
 

@@ -1,8 +1,10 @@
 package io.opaa.format;
 
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.IngestTextSanitizer;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +53,7 @@ public final class DocumentFormatRunner {
     // finding - attached here, once, so every ingest path carries it without every pipeline copying
     // it.
     DocumentFormatResult result =
-        sanitized(withFormatExtension(runPipeline(pipeline, source), source), source);
+        sanitized(withFormatExtension(runPipeline(pipeline, source), source));
     try {
       resultHandler.accept(result);
     } finally {
@@ -88,37 +90,36 @@ public final class DocumentFormatRunner {
   }
 
   /**
-   * Chunk texts and the format's title properties cleaned by {@link IngestTextSanitizer} - the one
-   * place every format and every connector passes, so index, context prefix, prompt and citation
-   * check see the same text. Id and metadata of a chunk stay as they are. What the cleanup found
-   * travels in {@link DocumentFormatResult#sanitizerFindings()} and is logged as counts per class,
-   * never with content.
+   * Chunk texts, their Fundort and the format's title properties cleaned by {@link
+   * IngestTextSanitizer} - the one place every format and every connector passes, so index, context
+   * prefix, prompt and citation check see the same text. A chunk left blank is dropped; with none
+   * left the document has no extractable text. What the cleanup found travels in {@link
+   * DocumentFormatResult#sanitizerFindings()}, as counts per class only.
    */
-  private static DocumentFormatResult sanitized(
-      DocumentFormatResult result, DocumentFormatSource source) {
+  private static DocumentFormatResult sanitized(DocumentFormatResult result) {
     Map<IngestTextSanitizer.Finding, Integer> findings =
         new EnumMap<>(IngestTextSanitizer.Finding.class);
-    List<Document> chunks =
-        result.chunks().stream()
-            .map(
-                chunk -> {
-                  IngestTextSanitizer.Result cleaned =
-                      IngestTextSanitizer.sanitize(chunk.getText());
-                  cleaned
-                      .findings()
-                      .forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
-                  return new Document(
-                      chunk.getId(), cleaned.text(), new HashMap<>(chunk.getMetadata()));
-                })
-            .toList();
+    List<Document> chunks = new ArrayList<>();
+    for (Document chunk : result.chunks()) {
+      String text = cleaned(chunk.getText(), findings);
+      if (text == null || text.isBlank()) {
+        continue;
+      }
+      Map<String, Object> metadata = new HashMap<>(chunk.getMetadata());
+      if (metadata.get(ChunkMetadataKeys.LOCATION_METADATA_KEY) instanceof String location) {
+        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, cleaned(location, findings));
+      }
+      chunks.add(new Document(chunk.getId(), text, metadata));
+    }
     DocumentProperties properties = result.properties();
     properties =
         properties
-            .withTitle(IngestTextSanitizer.sanitize(properties.title()).text())
-            .withTitleLine(IngestTextSanitizer.sanitize(properties.titleLine()).text())
-            .withFirstHeading(IngestTextSanitizer.sanitize(properties.firstHeading()).text());
-    if (!findings.isEmpty()) {
-      log.info("Sanitized extracted text of {}: {}", source.logName(), findings);
+            .withTitle(cleaned(properties.title(), findings))
+            .withTitleLine(cleaned(properties.titleLine(), findings))
+            .withFirstHeading(cleaned(properties.firstHeading(), findings));
+    if (result.outcome() == DocumentFormatResult.Outcome.CHUNKED && chunks.isEmpty()) {
+      return DocumentFormatResult.noExtractableText(result.discoveredAttachments())
+          .withProperties(properties);
     }
     return new DocumentFormatResult(
         result.outcome(),
@@ -127,6 +128,12 @@ public final class DocumentFormatRunner {
         result.contentByteSizeOverride(),
         properties,
         findings);
+  }
+
+  private static String cleaned(String text, Map<IngestTextSanitizer.Finding, Integer> findings) {
+    IngestTextSanitizer.Result cleaned = IngestTextSanitizer.sanitize(text);
+    cleaned.findings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
+    return cleaned.text();
   }
 
   private static DocumentFormatResult withFormatExtension(
