@@ -154,6 +154,20 @@ transcription:
   # default (4).
   maxConcurrent: ""
 
+# Malware scan of every file before a library takes it in, against a clamd daemon of the house
+# (TCP, INSTREAM). The chart runs no scanner itself. clamd's StreamMaxLength must cover the largest
+# file; a NetworkPolicy must let the backend reach host:port.
+malwareScan:
+  enabled: false
+  # Host name or address of clamd, without scheme; required when enabled.
+  host: ""
+  # Empty keeps the application default (3310).
+  port: ""
+  # Budget of one whole scan; empty keeps the default (30s).
+  timeout: ""
+  # REJECT (default when empty) keeps a file the scanner could not judge out, ACCEPT takes it in.
+  onUnavailable: ""
+
 # Time limits of the SMTP connection. The mail server itself is an administration setting in the
 # user interface, not a value of the chart. Empty keeps the application defaults (10s, 15s, 15s).
 mail:

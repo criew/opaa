@@ -27,6 +27,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilePathLimit;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.QuotaVerdict;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
@@ -116,6 +117,9 @@ public class DocumentIngestService {
   /** Switched off, the ingest extracts the Kernfeld Titel alone and asks no model (ADR-0044). */
   private final FeatureFlags featureFlags;
 
+  /** Judges every file before it is parsed; a {@link DocumentIngest.Text} is not scanned. */
+  private final MalwareScanService malwareScanService;
+
   private final Clock clock;
 
   public DocumentIngestService(
@@ -132,6 +136,7 @@ public class DocumentIngestService {
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor,
       FeatureFlags featureFlags,
+      MalwareScanService malwareScanService,
       Clock clock) {
     requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
@@ -148,6 +153,7 @@ public class DocumentIngestService {
     this.documentMetadataService = documentMetadataService;
     this.modelMetadataExtractor = modelMetadataExtractor;
     this.featureFlags = featureFlags;
+    this.malwareScanService = malwareScanService;
     this.clock = clock;
   }
 
@@ -250,6 +256,14 @@ public class DocumentIngestService {
         selection = select(ingest, doc);
       } else if (existing.isPresent()) {
         Document existingDoc = existing.get();
+        if (checksum.equals(existingDoc.getChecksum()) && existingDoc.hasMalwareFinding()) {
+          // The same file the scan already kept out: neither scanned nor recorded again.
+          log.info(
+              "Skipping unchanged document with a malware finding: {}",
+              names.of(filePath, existingDoc.getId()));
+          metrics.recordSkipped();
+          return DocumentIngestResult.SKIPPED;
+        }
         if (checksum.equals(existingDoc.getChecksum())
             && existingDoc.getStatus() == DocumentStatus.INDEXED) {
           refreshProvenance(existingDoc, ingest, checksum);
@@ -295,6 +309,11 @@ public class DocumentIngestService {
     boolean preservingPreviousChunks = replacingExistingChunks;
     boolean[] attachmentAtQuota = {false};
     try {
+      DocumentIngestResult keptOut =
+          scanForMalware(ingest, documentId, replacingExistingChunks, checksum, events);
+      if (keptOut != null) {
+        return keptOut;
+      }
       DocumentFormatResult parsed =
           DocumentFormatRunner.run(
               pipeline,
@@ -815,6 +834,58 @@ public class DocumentIngestService {
     }
     metrics.recordSkipped();
     return DocumentIngestResult.NO_EXTRACTABLE_TEXT;
+  }
+
+  /**
+   * The malware scan of a file before it is parsed, or {@code null} to go on. A finding removes the
+   * previous chunks and marks the row {@code FAILED} with the signature and the file's checksum;
+   * the same unchanged file is then skipped. A file the scanner could not judge is marked {@code
+   * FAILED} with its previous chunks kept, so the next run tries again, and a re-index leaves the
+   * row as it is; taken in unscanned under {@code ACCEPT}, the run protocol says so.
+   */
+  private DocumentIngestResult scanForMalware(
+      DocumentIngest ingest,
+      UUID documentId,
+      boolean replacingExistingChunks,
+      String checksum,
+      IndexingEventSink events) {
+    if (ingest.malwareScanned() || !(ingest.content() instanceof DocumentIngest.File file)) {
+      return null;
+    }
+    return switch (malwareScanService.check(file.path(), ingest.library(), ingest.fileName())) {
+      case MalwareScanService.Verdict.Clean clean -> null;
+      case MalwareScanService.Verdict.AcceptedUnscanned accepted -> {
+        if (events != null) {
+          events.record(
+              IndexingEventCategory.UNSCANNED,
+              MalwareScanService.ACCEPTED_UNSCANNED_MESSAGE,
+              ingest.filePath());
+        }
+        yield null;
+      }
+      case MalwareScanService.Verdict.Infected infected -> {
+        deletePreviousChunks(replacingExistingChunks, documentId);
+        yield markMalwareFound(documentId, infected.signature(), checksum);
+      }
+      case MalwareScanService.Verdict.Unscanned unscanned ->
+          ingest.reindex()
+              ? DocumentIngestResult.FAILED
+              : markConnectorFailed(documentId, false, MalwareScanService.UNSCANNED_MESSAGE);
+    };
+  }
+
+  private DocumentIngestResult markMalwareFound(
+      UUID documentId, String signature, String checksum) {
+    int updated =
+        documentRepository.markMalwareFound(
+            documentId, MalwareScanService.INFECTED_MESSAGE, signature, checksum);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked as infected", documentId);
+      metrics.recordSkipped();
+      return DocumentIngestResult.SKIPPED;
+    }
+    metrics.recordSkipped();
+    return DocumentIngestResult.MALWARE_FOUND;
   }
 
   /**

@@ -64,7 +64,9 @@ Das Formular fragt weder Adresse noch Zugangsdaten ab. „Eigene Adresse" gibt e
    („Verbunden als …"). Erst dann laden Ordnerauswahl und Test etwas.
 3. **„Team-Bereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **„Ordner"**: ein Pfad je Zeile, wie `/Projekte`; kein Ordner darf in einem anderen liegen.
-   „Ordner anzeigen unter" nennt den Pfad, dessen Unterordner „Ordner laden" vorschlägt.
+   „Ordner anzeigen unter" nennt den Pfad, dessen Unterordner „Ordner laden" vorschlägt. Bei sehr
+   vielen Unterordnern zeigt der Vorschlag nur die ersten und sagt das; die übrigen lassen sich über
+   ihren Pfad eintragen.
 5. **„Verbindung testen"** prüft jeden Ordner.
 
 Unter „Umfang" stehen die Ordner für alle Leseberechtigten, beim Team-Bereich mit „im Team-Bereich".

@@ -71,6 +71,7 @@ final class FakeDriveServer implements AutoCloseable {
   private volatile String alsoAcceptedToken = TOKEN;
   private final List<String> tokens = new CopyOnWriteArrayList<>();
   private volatile boolean cursorsExpired;
+  private volatile int maxPageSize = Integer.MAX_VALUE;
 
   FakeDriveServer() {
     try {
@@ -133,6 +134,14 @@ final class FakeDriveServer implements AutoCloseable {
   /** Notes a removal ({@code removed=true}) of {@code id}. */
   void removed(String id, String driveId) {
     changeLog.add(new String[] {driveId == null ? "user" : driveId, id, "true"});
+  }
+
+  /**
+   * From now on a page of shared drives or files holds at most {@code size} entries, as Drive may
+   * answer with fewer than {@code pageSize} asks for.
+   */
+  void pageSizeAtMost(int size) {
+    maxPageSize = size;
   }
 
   void failNext(String pathPart, int status, String reason, int times) {
@@ -201,7 +210,7 @@ final class FakeDriveServer implements AutoCloseable {
     if (path.equals("drives")) {
       List<Map<String, Object>> list = new ArrayList<>();
       drives.forEach((id, name) -> list.add(Map.of("id", id, "name", name)));
-      json(exchange, Map.of("drives", list));
+      page(exchange, query, list, "drives");
       return;
     }
     if (path.startsWith("drives/")) {
@@ -356,7 +365,7 @@ final class FakeDriveServer implements AutoCloseable {
   private void page(
       HttpExchange exchange, Map<String, String> query, List<Map<String, Object>> all, String field)
       throws IOException {
-    int size = Integer.parseInt(query.getOrDefault("pageSize", "100"));
+    int size = Math.min(maxPageSize, Integer.parseInt(query.getOrDefault("pageSize", "100")));
     int start = query.containsKey("pageToken") ? Integer.parseInt(query.get("pageToken")) : 0;
     int end = Math.min(all.size(), start + size);
     Map<String, Object> answer = new LinkedHashMap<>();

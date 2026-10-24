@@ -182,6 +182,25 @@ class DropboxSourceConnectorTest {
   }
 
   @Test
+  void aListingCutAtTheLimitOfPagesSaysSoAndOneWithinItIsComplete() {
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 10; i++) {
+      server.folder("/Zehn/Ordner %02d".formatted(i));
+      server.folder("/Elf/Ordner %02d".formatted(i));
+    }
+    server.folder("/Elf/Ordner 11");
+
+    SourceListing ten = browsePath("/Zehn");
+    SourceListing eleven = browsePath("/Elf");
+
+    assertThat(ten.complete()).isTrue();
+    assertThat(ten.entries()).hasSize(10);
+    assertThat(eleven.complete()).isFalse();
+    assertThat(eleven.entries()).hasSize(10);
+    assertThat(eleven.message()).contains("ersten 10 Ordner");
+  }
+
+  @Test
   void theTeamSpaceIsListedFromItsRootAndRefusedWithoutOne() {
     SourceListing without =
         connector.browse(
@@ -258,6 +277,11 @@ class DropboxSourceConnectorTest {
     when(document.getContentType()).thenReturn("text/plain");
     when(document.getId()).thenReturn(UUID.randomUUID());
     return document;
+  }
+
+  private SourceListing browsePath(String path) {
+    return connector.browse(
+        new SourceBrowser.Query(connected(ConnectorData.of(Map.of("path", path))), null));
   }
 
   private SourceSettings connected(ConnectorData settings) {

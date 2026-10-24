@@ -156,6 +156,7 @@ protokollereignisse#mail-settings-changed
 protokollereignisse#mail-template-changed
 protokollereignisse#mail-template-reset
 protokollereignisse#mail-test-sent
+protokollereignisse#malware-detected
 protokollereignisse#model-policy-changed
 protokollereignisse#oidc-provider-changed
 protokollereignisse#oidc-provider-created
@@ -210,6 +211,7 @@ datenfluesse#datenfluesse
 datenfluesse#directory-sync
 datenfluesse#embedding-model
 datenfluesse#mail
+datenfluesse#malware-scanner
 datenfluesse#mcp-discovery
 datenfluesse#model-endpoint
 datenfluesse#oidc-provider
@@ -292,6 +294,8 @@ voreinstellungen#opaa-indexing-filesystem-allowlist
 voreinstellungen#opaa-indexing-google-drive-full-sync-interval
 voreinstellungen#opaa-indexing-nextcloud-full-descent-interval
 voreinstellungen#opaa-indexing-sharepoint-full-sync-interval
+voreinstellungen#opaa-malware-scan-enabled
+voreinstellungen#opaa-malware-scan-host
 voreinstellungen#opaa-permission-minimum-group-size
 voreinstellungen#opaa-rerank-base-url
 voreinstellungen#opaa-rerank-enabled

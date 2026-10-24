@@ -45,3 +45,6 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 
 Abgewiesene Dateien werden gezählt und im Laufprotokoll namentlich als „Format nicht unterstützt"
 geführt; bei der Löscherkennung gelten sie als vorhanden.
+
+Die Formatprüfung erkennt keinen Schadcode. Dafür kann der Betrieb eine Virenprüfung einschalten, die
+jede Datei vor dem Lesen prüft ([Netz und Sicherheit](../../../betrieb/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)).

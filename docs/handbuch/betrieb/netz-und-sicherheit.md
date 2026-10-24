@@ -2,7 +2,8 @@
 
 Dieses Kapitel beschreibt, wie Anfragen eine Installation erreichen, was eine erreichbare
 Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was ein Betrieb ohne
-Internet voraussetzt und wie OPAA Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
+Internet voraussetzt, wie aufgenommene Dateien auf Schadprogramme geprüft werden und wie OPAA
+Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
 und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
 beschreibt die [Betriebsübersicht](README.md).
 
@@ -195,6 +196,71 @@ Laufs.
 - **Erkennung:** Verbindungen an feste IP-Adressen ohne Namensauflösung scheitern im Netz ebenfalls.
   Der Lauf erkennt sie aber nur, wenn das Log sie als nicht erreichbares Netz meldet; ein Fehler,
   der nicht oder nur auf niedriger Stufe protokolliert wird, bleibt unbemerkt.
+
+## Virenprüfung der aufgenommenen Dateien
+
+OPAA kann jede Datei, die eine Bibliothek aufnehmen soll, vorher an einen Virenscanner geben: einen
+Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber“ wird sie gelesen,
+geschnitten und, beim Upload, in der Originalablage abgelegt.
+
+> **Beispiel.** Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
+> Der Betrieb trägt dessen Adresse ein und schaltet die Prüfung ein. Lädt eine Sachbearbeiterin eine
+> befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
+> der Originalablage noch im Index.
+
+- **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. OPAA
+  bringt keinen Scanner mit; der Dienst der Behörde oder ein eigener Container neben dem Backend wird
+  eingetragen. Die Verbindung geht direkt, nie über den Ausgangsproxy, und trägt nur den Inhalt der
+  Datei, weder Namen noch Bibliothek noch Person.
+- **Ab Werk aus.** Eingeschaltet ohne Adresse bricht der Start ab.
+- **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
+  Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
+  abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
+  daraus, ebenso wenig bei einem Upload, den eine spätere Neuindizierung mit neuen Signaturen als
+  befallen erkennt. Dieselbe unveränderte Datei wird weder erneut geprüft noch erneut protokolliert;
+  erst eine geänderte Datei wird wieder geprüft. Das Dokument zählt weiter zum Speicherkontingent
+  der Bibliothek, bis es aus der Quelle verschwindet oder gelöscht wird.
+- **Revisionsprotokoll:** Jeder Befund steht dort als Systemvorgang mit Bibliothek und Signatur,
+  ohne Dateinamen und ohne die Person, die die Datei hochgeladen hat. Bei einer privaten Bibliothek
+  nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
+  Bibliothek auf ihre Eigentümerin schließen ließe.
+- **Scanner nicht erreichbar:** Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
+  seiner Grenze für Datenströme gilt als nicht geprüft. Mit `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` auf
+  `REJECT` wird sie nicht aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim
+  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen; das Laufprotokoll
+  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
+  Einstellung.
+- **Frist:** `OPAA_MALWARE_SCAN_TIMEOUT` begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
+  Antwort; danach gilt die Datei als nicht geprüft.
+- **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
+  annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
+  Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
+  sie dennoch als sauber, solange `AlertExceedsMax` aus ist; verschlüsselte Archive meldet er nur
+  mit `AlertEncrypted`. Beides stellt der Betrieb des Scanners ein.
+- **Metrik:** `opaa_malware_scans_total` nach Ergebnis (`clean`, `infected`, `failed`).
+- **Grenzen der Prüfung:**
+  - „Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
+    seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim
+    nächsten Lauf. Gesperrt ist nur ein Original, für das ein Befund vorliegt.
+  - Bei Dateisystem-Bibliotheken liest OPAA die Datei zweimal von der Freigabe, einmal zum Prüfen
+    und einmal zum Verarbeiten. Wer auf die Freigabe schreiben darf, kann sie dazwischen austauschen.
+  - Wird eine früher saubere Mail nach einer Änderung als befallen erkannt, bleiben ihre bisherigen
+    Anhänge als eigene Dokumente im Index. Ihr Abruf ist gesperrt, weil er über die Mail geht.
+
+Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands mit neuen Signaturen
+und die Prüfung von Seiteninhalten, die eine Quelle als Text liefert (Confluence-Seiten, Einträge
+eines Feeds).
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `OPAA_MALWARE_SCAN_ENABLED` | `false` | Virenprüfung ein |
+| `OPAA_MALWARE_SCAN_HOST` | — | Adresse des clamd-Dienstes, ohne Schema |
+| `OPAA_MALWARE_SCAN_PORT` | `3310` | Port des clamd-Dienstes |
+| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist eines Scans insgesamt |
+| `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `REJECT` | Umgang mit einer nicht geprüften Datei: `REJECT` oder `ACCEPT` |
+
+Unter Kubernetes stehen dieselben Werte unter `malwareScan` im Helm-Chart; eine NetworkPolicy muss
+dem Backend den Weg zum Scanner öffnen.
 
 ## Schlüssel und Geheimnisse
 

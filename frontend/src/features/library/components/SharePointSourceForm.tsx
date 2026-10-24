@@ -148,11 +148,12 @@ export default function SharePointSourceForm({
           severity: 'warning',
           text: result.message ?? 'Die Dokumentbibliotheken sind nicht auflistbar.',
         })
-        return
+        // An incomplete listing with entries is cut at a limit: offer what it found.
+        if (result.entries.length === 0) return
       }
       const found = entriesOf(result, 'drive')
       setDrives(found)
-      if (found.length === 0) {
+      if (result.complete && found.length === 0) {
         setDrivesMessage({
           severity: 'info',
           text: `Die Site „${chosen.name ?? chosen.id}“ hat keine Dokumentbibliothek, die die Anwendung lesen kann. OneDrive und andere Laufwerke liest der Konnektor nicht.`,
@@ -185,6 +186,8 @@ export default function SharePointSourceForm({
       if (siteGeneration.current !== mine) return
       if (!result.complete) {
         setSiteMessage({ severity: 'warning', text: result.message ?? 'Keine Site gefunden.' })
+        if (result.entries.length === 0) return
+        setSites(entriesOf(result, 'site'))
         return
       }
       const found = entriesOf(result, 'site')
@@ -246,7 +249,7 @@ export default function SharePointSourceForm({
       setFolders({
         driveId,
         trail,
-        entries: result.complete ? entriesOf(result, 'folder') : null,
+        entries: result.complete || result.entries.length > 0 ? entriesOf(result, 'folder') : null,
         message: result.complete
           ? null
           : { severity: 'warning', text: result.message ?? 'Die Ordner sind nicht auflistbar.' },

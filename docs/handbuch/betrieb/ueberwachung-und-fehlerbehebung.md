@@ -27,6 +27,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modelle.md)) |
 | `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)) |
+| `opaa_malware_scans_total` | Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)) |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
 | `opaa_siem_export_lag_seconds` | Alter des ältesten Eintrags, der noch nicht ausgeleitet ist, `0` ohne offene Einträge; wächst der Wert stetig, hält eine offene Transaktion oder der Empfänger die Ausleitung an |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |

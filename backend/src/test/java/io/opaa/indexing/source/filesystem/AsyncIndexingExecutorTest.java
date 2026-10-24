@@ -268,6 +268,7 @@ class AsyncIndexingExecutorTest {
             io.opaa.indexing.document.TestDocumentMetadataServices.returningEmpty(),
             io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting(),
             io.opaa.common.TestFeatureFlags.allOn(),
+            io.opaa.knowledge.MalwareScanService.disabled(),
             Clock.systemUTC());
 
     FilesystemPathAllowlist realFlowAllowlist = mock(FilesystemPathAllowlist.class);

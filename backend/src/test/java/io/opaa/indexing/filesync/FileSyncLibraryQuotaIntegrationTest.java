@@ -171,6 +171,7 @@ class FileSyncLibraryQuotaIntegrationTest {
             documentMetadataService,
             modelMetadataExtractor,
             io.opaa.common.TestFeatureFlags.allOn(),
+            io.opaa.knowledge.MalwareScanService.disabled(),
             Clock.systemUTC());
     attachmentIndexer[0] =
         new AttachmentIndexer(

@@ -35,6 +35,15 @@ public enum DocumentIngestResult {
   FILE_PATH_TOO_LONG,
 
   /**
+   * The malware scan found malware in the file: the row is marked {@code FAILED} with {@code
+   * MalwareScanService#INFECTED_MESSAGE} and without chunks, and a caller reports a rejection, like
+   * {@link #NO_EXTRACTABLE_TEXT}. The row keeps the file's checksum and signature, so the same
+   * unchanged file is skipped in {@code DocumentIngestService#ingest}, neither scanned nor recorded
+   * again.
+   */
+  MALWARE_FOUND,
+
+  /**
    * A pipeline produced no chunks and did not reject the document as text-free: it either could not
    * read the source at all ({@code PARSE_FAILED}) or read it and found it empty ({@code
    * NO_CONTENT}). The row is marked {@code FAILED} either way, and a caller must report it like an

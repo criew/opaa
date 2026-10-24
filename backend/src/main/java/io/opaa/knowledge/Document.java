@@ -129,6 +129,14 @@ public class Document {
   private String errorMessage;
 
   /**
+   * The signature the malware scan found in this document's file, or {@code null} without a
+   * finding. Set, the row is {@code FAILED} without chunks and its original is not served; a later
+   * successful indexing clears it.
+   */
+  @Column(name = "malware_signature", columnDefinition = "text")
+  private String malwareSignature;
+
+  /**
    * When this row was first created - backs {@code UploadPendingRecoveryRunner}'s "how long has
    * this been PENDING" check, since {@link #indexedAt} stays {@code null} for a row's entire {@code
    * PENDING} lifetime. Set once in the constructor and never updated afterwards, the same {@code
@@ -395,6 +403,19 @@ public class Document {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public String getMalwareSignature() {
+    return malwareSignature;
+  }
+
+  public void setMalwareSignature(String malwareSignature) {
+    this.malwareSignature = malwareSignature;
+  }
+
+  /** Whether the malware scan found malware in this document's file. */
+  public boolean hasMalwareFinding() {
+    return malwareSignature != null;
   }
 
   public Instant getCreatedAt() {

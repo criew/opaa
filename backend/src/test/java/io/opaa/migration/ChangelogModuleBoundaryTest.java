@@ -84,6 +84,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "siem_export_cursor",
                   "audit_incident_scope_grants",
                   "audit_incident_scope_case_counts",
+                  "audit_incident_scope_monthly_counts",
                   "self_disclosure_settings",
                   "self_disclosure_usage",
                   "link_target_settings")),

@@ -210,7 +210,8 @@ final class AuditSelfDisclosurePayload {
         INDEXING_PIPELINE_REINDEX_TRIGGERED,
         INDEXING_METADATA_BACKFILL_TRIGGERED,
         INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
-        UPLOAD_ORPHAN_ORIGINALS_DELETED);
+        UPLOAD_ORPHAN_ORIGINALS_DELETED,
+        MALWARE_DETECTED);
     put(
         keys,
         Set.of("status"),
