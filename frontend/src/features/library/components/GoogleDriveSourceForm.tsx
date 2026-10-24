@@ -10,6 +10,7 @@ import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
@@ -373,13 +374,15 @@ export default function GoogleDriveSourceForm({
                   key={key}
                   disableGutters
                   secondaryAction={
-                    <IconButton
-                      edge="end"
-                      aria-label={`Bereich ${googleDriveScopeLabel(scope)} entfernen`}
-                      onClick={() => toggle(scope)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Tooltip title="Bereich entfernen">
+                      <IconButton
+                        edge="end"
+                        aria-label={`Bereich ${googleDriveScopeLabel(scope)} entfernen`}
+                        onClick={() => toggle(scope)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
                   }
                 >
                   <Typography variant="body2">

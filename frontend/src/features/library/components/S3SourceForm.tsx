@@ -16,6 +16,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -563,18 +564,28 @@ export default function S3SourceForm({
                     }}
                   />
                 </Box>
-                <IconButton
-                  ref={(node) => {
-                    removeButtons.current[index] = node
-                  }}
-                  size="small"
-                  aria-label={`Bereich ${index + 1} entfernen`}
-                  disabled={values.scopes.length === 1}
-                  onClick={() => removeScope(index)}
-                  sx={{ alignSelf: 'end', mb: bucketError || prefixError ? 3 : 0.5 }}
-                >
-                  <DeleteIcon sx={{ fontSize: 18 }} />
-                </IconButton>
+                <Tooltip title="Bereich entfernen">
+                  <Box
+                    component="span"
+                    sx={{
+                      display: 'flex',
+                      alignSelf: 'end',
+                      mb: bucketError || prefixError ? 3 : 0.5,
+                    }}
+                  >
+                    <IconButton
+                      ref={(node) => {
+                        removeButtons.current[index] = node
+                      }}
+                      size="small"
+                      aria-label={`Bereich ${index + 1} entfernen`}
+                      disabled={values.scopes.length === 1}
+                      onClick={() => removeScope(index)}
+                    >
+                      <DeleteIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
+                </Tooltip>
               </ListItem>
             )
           })}

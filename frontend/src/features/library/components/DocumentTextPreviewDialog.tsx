@@ -3,6 +3,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
@@ -61,14 +62,16 @@ export default function DocumentTextPreviewDialog({
         <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
           {previewDocument?.fileName}
         </Typography>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          aria-label="Vorschau schließen"
-          sx={{ flex: 'none' }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        <Tooltip title="Schließen">
+          <IconButton
+            size="small"
+            onClick={onClose}
+            aria-label="Vorschau schließen"
+            sx={{ flex: 'none' }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </DialogTitle>
       <DialogContent dividers>
         {previewDocument?.contentType === 'text/markdown' ? (
