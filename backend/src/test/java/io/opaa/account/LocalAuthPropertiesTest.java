@@ -17,7 +17,7 @@ class LocalAuthPropertiesTest {
   @Test
   void fillsInTheAdrDefaults() {
     LocalAuthProperties properties =
-        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null);
+        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null, null);
 
     assertThat(properties.jwtSecret()).isEmpty();
     assertThat(properties.accessTokenTtl()).isEqualTo(Duration.ofMinutes(15));
@@ -30,6 +30,7 @@ class LocalAuthPropertiesTest {
     assertThat(properties.hasInitialAdminPassword()).isFalse();
     assertThat(properties.isAdminResetForced()).isFalse();
     assertThat(properties.adminAllowedCidrs()).isEmpty();
+    assertThat(properties.refreshGracePeriod()).isEqualTo(Duration.ofSeconds(20));
   }
 
   @Test
@@ -45,7 +46,8 @@ class LocalAuthPropertiesTest {
             null,
             "  ci-passwort  ",
             " Force ",
-            List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"));
+            List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"),
+            null);
 
     // never trimmed: a password may begin or end with a space
     assertThat(properties.initialAdminPassword()).isEqualTo("  ci-passwort  ");
@@ -59,14 +61,34 @@ class LocalAuthPropertiesTest {
     assertThatThrownBy(
             () ->
                 new LocalAuthProperties(
-                    null, null, null, null, null, null, null, null, null, List.of("10.0.0.0/33")))
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of("10.0.0.0/33"),
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS")
         .hasMessageContaining("10.0.0.0/33");
     assertThatThrownBy(
             () ->
                 new LocalAuthProperties(
-                    null, null, null, null, null, null, null, null, null, List.of("kein-netz")))
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of("kein-netz"),
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS");
   }
@@ -134,6 +156,29 @@ class LocalAuthPropertiesTest {
     assertThat(properties.sessionMaxLifetime()).isEqualTo(Duration.ofDays(90));
   }
 
+  @Test
+  void acceptsAGracePeriodUpToSixtySecondsAndZeroToSwitchItOff() {
+    assertThat(gracePeriod(Duration.ofSeconds(60)).refreshGracePeriod())
+        .isEqualTo(Duration.ofSeconds(60));
+    assertThat(gracePeriod(Duration.ZERO).refreshGracePeriod()).isZero();
+  }
+
+  @Test
+  void refusesANegativeOrOversizedGracePeriodNamingTheVariable() {
+    assertThatThrownBy(() -> gracePeriod(Duration.ofSeconds(61)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD")
+        .hasMessageContaining("60 seconds");
+    assertThatThrownBy(() -> gracePeriod(Duration.ofSeconds(-1)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD");
+  }
+
+  private static LocalAuthProperties gracePeriod(Duration gracePeriod) {
+    return new LocalAuthProperties(
+        null, null, null, null, null, null, null, null, null, null, gracePeriod);
+  }
+
   private static LocalAuthProperties properties(
       String secret,
       Duration access,
@@ -142,6 +187,6 @@ class LocalAuthPropertiesTest {
       Duration adminRefresh,
       Duration adminSession) {
     return new LocalAuthProperties(
-        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null);
+        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null, null);
   }
 }

@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -51,8 +51,8 @@ Faktenblatt.
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
 | M-01 | ja | [LLM-Anbieter](../../handbuch/betrieb/modelle.md#llm-anbieter), [OpenAI-kompatible Server](../../handbuch/betrieb/modelle.md#vllm--openai-kompatible-server), {{faktenblatt:voreinstellungen#ki-funktionen}} | Handbuch, Konfiguration, Faktenblatt |
-| M-02 | ja | {{faktenblatt:datenfluesse}}; der Wächter lässt den Build scheitern, wenn eine Verbindung nach außen keinen Eintrag hat ([Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird)) | Faktenblatt, Test |
-| M-03 | ja; ein nächtlicher Lauf in der CI des Projekts belegt Anmeldung, Aufnahme eines Textdokuments und Antwort mit Fundstelle in einem Netz ohne Weg nach außen und scheitert an jeder Namensauflösung außerhalb der Installation und jedem fremden Abruf des Browsers; Verbindungen an feste IP-Adressen erkennt er nur über das Log; Images und Modelle stellt die Behörde vorab im Haus bereit | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betrieb/modelle.md#vllm--openai-kompatible-server) | Handbuch, Test, Faktenblatt |
+| M-02 | teilweise; vollständig erzwungen für die ausgehenden Clients im Code von OPAA, deren Eintrag der Wächter im Build verlangt; Abrufe, die eingebundene Bibliotheken von sich aus aufbauen, belegt nur der nächtliche Lauf ohne Internetzugang, im Umfang dessen, was er durchläuft, und Verbindungen an feste IP-Adressen nur über das Log; bekannte Abrufe eingebundener Bibliotheken sind abgeschaltet | {{faktenblatt:datenfluesse}}, [Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird), [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet) | Faktenblatt, Test |
+| M-03 | ja; ein nächtlicher Lauf in der CI des Projekts belegt Anmeldung, Aufnahme von Dokumenten in mehreren Formaten und Antwort mit Fundstelle in einem Netz ohne Weg nach außen und scheitert an jeder Namensauflösung außerhalb der Installation und jedem fremden Abruf des Browsers; Verbindungen an feste IP-Adressen erkennt er nur über das Log; Images und Modelle stellt die Behörde vorab im Haus bereit | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betrieb/modelle.md#vllm--openai-kompatible-server) | Handbuch, Test, Faktenblatt |
 | M-04 | ja | [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy) | Handbuch, Konfiguration |
 | M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/betrieb/modelle.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 
@@ -76,6 +76,8 @@ Faktenblatt.
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
 | S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/betrieb/kubernetes.md#pod-security) | Handbuch |
 | S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Korrekturen und Scan für `main` und jede unterstützte Linie | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
+| S-07 | ja; Links nur zu erlaubten Zielen, keine Bilder, Bereinigung beim Aufnehmen mit Meldung auffälliger Muster, Testsatz für das eigene Modell, Fundstellen im Prompt als Daten gekennzeichnet. Grenzen: Kennzeichnung und Bereinigung ohne gemessene Senkung der Angriffsrate, versteckter Text (weiße Schrift, verborgener Text) wird nicht erkannt, keine vollständige Erkennung | [Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection), [Erlaubte Linkziele](../../handbuch/betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) | Handbuch, Test |
+| S-08 | teilweise; über clamd, nicht über ICAP; ab Werk aus; geprüft wird jede Datei aus Upload, Quelle und Anhang, nicht ein Seiteninhalt, den eine Quelle als Text liefert; Befund im Revisionsprotokoll, Verbindung im Datenfluss-Faktenblatt | [Virenprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien), {{faktenblatt:protokollereignisse#malware-detected}}, {{faktenblatt:datenfluesse}} | Handbuch, Konfiguration, Faktenblatt |
 
 ## B · Betrieb
 

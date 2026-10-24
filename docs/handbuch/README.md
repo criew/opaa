@@ -72,8 +72,8 @@ verweisen dürfen. Die Ordner folgen dem Baum.
       von Backend und Frontend, Speicher und Container-Grenzen, Readiness und Liveness, Graceful
       Shutdown
     - [Netz und Sicherheit](betrieb/netz-und-sicherheit.md) — Netzwerkzugang, Sicherheits-Header,
-      Härtung, vertraute Proxys, Zielprüfung, Ausgangsproxy, Betrieb ohne Internet, Schlüssel und
-      Geheimnisse
+      Härtung, vertraute Proxys, Zielprüfung, Ausgangsproxy, Betrieb ohne Internet, Virenprüfung,
+      Schlüssel und Geheimnisse
     - [Sicherung und Wiederherstellung](betrieb/sicherung-und-wiederherstellung.md) — was gesichert
       wird, Zurückspielen, Wiederherstellungsprobe
     - [Aktualisierung](betrieb/aktualisierung.md) — Ablauf eines Updates, was ein Update mit dem

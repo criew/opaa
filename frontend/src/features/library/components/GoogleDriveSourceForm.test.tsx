@@ -126,6 +126,21 @@ describe('GoogleDriveSourceForm (ADR-0040)', () => {
     expect(latest?.scopes).toEqual([{ kind: 'drive', id: 'd1', name: 'Projektablage' }])
   })
 
+  it('offers the areas of a listing cut at a limit and says that more exist', async () => {
+    const user = userEvent.setup()
+    mockBrowseSource.mockResolvedValue({
+      complete: false,
+      entries: [{ key: 'drive:d1', name: 'Projektablage' }],
+      message: 'Es werden die ersten 1 Bereiche gezeigt.',
+    })
+    renderWithProviders(<Harness initial={{ keyFile: KEY_FILE }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Bereiche laden' }))
+
+    expect(await screen.findByLabelText('Projektablage (Geteilte Ablage)')).toBeInTheDocument()
+    expect(screen.getByText('Es werden die ersten 1 Bereiche gezeigt.')).toBeVisible()
+  })
+
   it('asks for the key again when the imitated account of a stored key changes', async () => {
     const user = userEvent.setup()
     renderWithProviders(

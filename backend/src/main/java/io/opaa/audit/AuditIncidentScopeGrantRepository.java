@@ -2,6 +2,7 @@ package io.opaa.audit;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Persistence for {@link AuditIncidentScopeGrant} - a plain, mutable JPA entity, unlike {@link
- * AuditLogRepository} - and for the number of approved cases per year and purpose, which outlives
- * the grants it counts.
+ * AuditLogRepository} - and for the number of requests, approvals and ends of usability per month
+ * and purpose, which outlives the grants it counts.
  */
 public interface AuditIncidentScopeGrantRepository
     extends JpaRepository<AuditIncidentScopeGrant, UUID> {
@@ -50,35 +51,45 @@ public interface AuditIncidentScopeGrantRepository
       @Param("usableBefore") Instant usableBefore,
       @Param("requestedBefore") Instant requestedBefore);
 
-  /** Counts one approved case of {@code purpose} in {@code year} for the annual report. */
+  /**
+   * Counts one {@code transition} of a case of {@code purpose} in {@code month}, the first day of a
+   * calendar month, without any reference to the grant or a person.
+   */
   @Modifying
   @Query(
       value =
-          "INSERT INTO audit_incident_scope_case_counts"
-              + " (organization_id, case_year, purpose, case_count)"
-              + " VALUES (:organizationId, :year, :purpose, 1)"
-              + " ON CONFLICT (organization_id, case_year, purpose)"
-              + " DO UPDATE SET case_count = audit_incident_scope_case_counts.case_count + 1",
+          "INSERT INTO audit_incident_scope_monthly_counts"
+              + " (organization_id, case_month, purpose, transition, case_count)"
+              + " VALUES (:organizationId, :month, :purpose, :transition, 1)"
+              + " ON CONFLICT (organization_id, case_month, purpose, transition)"
+              + " DO UPDATE SET case_count = audit_incident_scope_monthly_counts.case_count + 1",
       nativeQuery = true)
-  void countCase(
+  void countTransition(
       @Param("organizationId") UUID organizationId,
-      @Param("year") int year,
-      @Param("purpose") String purpose);
+      @Param("month") LocalDate month,
+      @Param("purpose") String purpose,
+      @Param("transition") String transition);
 
-  /** The approved cases of one year by purpose, without any reference to a grant or a person. */
+  /** The counted transitions of the months {@code fromMonth} to {@code toMonth} by purpose. */
   @Query(
       value =
-          "SELECT purpose AS purpose, case_count AS case_count"
-              + " FROM audit_incident_scope_case_counts"
-              + " WHERE organization_id = :organizationId AND case_year = :year",
+          "SELECT purpose AS purpose, transition AS transition, sum(case_count) AS total"
+              + " FROM audit_incident_scope_monthly_counts"
+              + " WHERE organization_id = :organizationId"
+              + " AND case_month BETWEEN :fromMonth AND :toMonth"
+              + " GROUP BY purpose, transition",
       nativeQuery = true)
-  List<CaseCount> findCaseCounts(
-      @Param("organizationId") UUID organizationId, @Param("year") int year);
+  List<TransitionCount> sumTransitions(
+      @Param("organizationId") UUID organizationId,
+      @Param("fromMonth") LocalDate fromMonth,
+      @Param("toMonth") LocalDate toMonth);
 
-  /** One row of {@link #findCaseCounts}. */
-  interface CaseCount {
+  /** One row of {@link #sumTransitions}. */
+  interface TransitionCount {
     String getPurpose();
 
-    int getCaseCount();
+    String getTransition();
+
+    long getTotal();
   }
 }

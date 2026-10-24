@@ -1,8 +1,11 @@
 package io.opaa.audit.web;
 
 import io.opaa.api.dto.DataCollectionDisclosure;
+import io.opaa.api.dto.DisclosureCaseCount;
 import io.opaa.api.dto.DisclosureConnectorType;
 import io.opaa.api.dto.DisclosureDataFlow;
+import io.opaa.api.dto.DisclosureIncidentScopeCases;
+import io.opaa.api.dto.DisclosureIncidentScopePurposeCases;
 import io.opaa.api.dto.DisclosureInstanceState;
 import io.opaa.api.dto.DisclosureModelProvider;
 import io.opaa.api.dto.DisclosureProtocol;
@@ -10,8 +13,11 @@ import io.opaa.api.dto.DisclosureProtocolField;
 import io.opaa.api.dto.DisclosureQueryPath;
 import io.opaa.api.dto.DisclosureRunningInstance;
 import io.opaa.api.dto.DisclosureSetting;
+import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.compliance.FactSheetRenderer;
 import io.opaa.compliance.InstanceDisclosure;
+import io.opaa.compliance.InstanceDisclosure.CaseCount;
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosureRenderer;
 
@@ -108,6 +114,32 @@ final class DataCollectionDisclosureResponseMapper {
                         new DisclosureQueryPath().name(path.name()).description(path.description()))
                 .toList())
         .absentQueryPaths(protocol.absentQueryPaths())
-        .networkAddress(protocol.networkAddress());
+        .networkAddress(protocol.networkAddress())
+        .incidentScopeCases(incidentScopeCases(protocol.incidentScopeCases()));
+  }
+
+  private static DisclosureIncidentScopeCases incidentScopeCases(IncidentScopeCases cases) {
+    return new DisclosureIncidentScopeCases()
+        .from(cases.period().from())
+        .to(cases.period().to())
+        .smallCountThreshold(CaseCount.THRESHOLD)
+        .purposes(
+            cases.purposes().stream()
+                .map(
+                    purpose ->
+                        new DisclosureIncidentScopePurposeCases()
+                            .purpose(AuditIncidentScopePurpose.valueOf(purpose.purpose()))
+                            .label(purpose.label())
+                            .requested(caseCount(purpose.requested()))
+                            .approved(caseCount(purpose.approved()))
+                            .expired(caseCount(purpose.expired())))
+                .toList())
+        .notes(cases.notes());
+  }
+
+  private static DisclosureCaseCount caseCount(CaseCount count) {
+    return new DisclosureCaseCount()
+        .count(count.count() == null ? null : Math.toIntExact(count.count()))
+        .belowThreshold(count.belowThreshold());
   }
 }

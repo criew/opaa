@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,6 +17,8 @@ import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -49,6 +52,7 @@ class DataCollectionDisclosureIntegrationTest {
   private static final String RETENTION_KEY = "audit_retention_settings.retention_months";
   private static final String CIPHERTEXT = "S3CR3T-CIPHERTEXT-OF-A-MODEL-KEY";
   private static final String URL_PASSWORD = "S3CR3T-PASSWORD-IN-A-MODEL-ADDRESS";
+  private static final String PERIOD_MARCH_APRIL_2001 = "?from=2001-03-01&to=2001-04-30";
 
   /** Secrets the shared test context sets; none of them may leave with the export. */
   private static final List<String> SECRET_KEYS =
@@ -63,6 +67,7 @@ class DataCollectionDisclosureIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private Environment environment;
+  @Autowired private Clock clock;
 
   private final UUID libraryId = UUID.randomUUID();
   private final UUID libraryOwnerId = UUID.randomUUID();
@@ -71,6 +76,7 @@ class DataCollectionDisclosureIntegrationTest {
   @BeforeEach
   void setUp() {
     deleteOwnEvents();
+    deleteOwnCaseCounts();
   }
 
   /**
@@ -80,6 +86,7 @@ class DataCollectionDisclosureIntegrationTest {
   @AfterEach
   void tearDown() {
     deleteOwnEvents();
+    deleteOwnCaseCounts();
     jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE owner_user_id = ?", libraryOwnerId);
@@ -289,6 +296,183 @@ class DataCollectionDisclosureIntegrationTest {
                     .contains("für die Person selbst ihre Selbstauskunft"));
   }
 
+  @Test
+  void onlyTheCasesOfTheReportingPeriodAreCountedAndSmallCountsAreNotExact() throws Exception {
+    insertCaseCount("2001-02-01", "REQUESTED", 5);
+    insertCaseCount("2001-03-01", "REQUESTED", 3);
+    insertCaseCount("2001-04-01", "REQUESTED", 4);
+    insertCaseCount("2001-05-01", "REQUESTED", 6);
+    insertCaseCount("2001-03-01", "APPROVED", 2);
+    insertCaseCount("2001-04-01", "EXPIRED", 3);
+    insertCaseCount("2001-05-01", "EXPIRED", 9);
+
+    JsonNode cases =
+        JSON.readTree(body(JSON_PATH + PERIOD_MARCH_APRIL_2001, "dev-admin"))
+            .path("protocol")
+            .path("incidentScopeCases");
+
+    assertThat(cases.path("from").asString()).isEqualTo("2001-03-01");
+    assertThat(cases.path("to").asString()).isEqualTo("2001-04-30");
+    assertThat(cases.path("smallCountThreshold").asInt()).isEqualTo(3);
+    assertThat(cases.path("notes")).isNotEmpty();
+    JsonNode security = purpose(cases, "SECURITY_INCIDENT");
+    assertThat(security.path("label").asString()).isNotBlank();
+    assertThat(security.path("requested").path("count").asInt()).isEqualTo(7);
+    assertThat(security.path("requested").path("belowThreshold").asBoolean()).isFalse();
+    assertThat(security.path("approved").path("belowThreshold").asBoolean()).isTrue();
+    assertThat(security.path("approved").path("count").isNumber()).isFalse();
+    assertThat(security.path("expired").path("count").asInt()).isEqualTo(3);
+    assertThat(purpose(cases, "DATA_BREACH_INVESTIGATION").path("requested").path("count").asInt())
+        .isZero();
+
+    String markdown = body(MARKDOWN_PATH + PERIOD_MARCH_APRIL_2001, "dev-admin");
+    assertThat(markdown)
+        .contains("### Anlassbezogene Klärungen im Berichtszeitraum")
+        .contains("2001-03-01 bis 2001-04-30")
+        .contains("| 7 | weniger als 3 | 3 |");
+  }
+
+  @Test
+  void theRetrievalEventNamesTheReportingPeriod() throws Exception {
+    body(JSON_PATH + PERIOD_MARCH_APRIL_2001, "dev-admin");
+    body(MARKDOWN_PATH, "dev-admin");
+
+    LocalDate today = LocalDate.now(clock);
+    assertThat(ownEvents())
+        .extracting(event -> (String) event.get("after"))
+        .satisfiesExactly(
+            after -> assertThat(after).contains("2001-03-01").contains("2001-04-30"),
+            after ->
+                assertThat(after)
+                    .contains(LocalDate.of(today.getYear() - 1, 1, 1).toString())
+                    .contains(today.withDayOfMonth(1).minusDays(1).toString()));
+  }
+
+  @Test
+  void withoutAPeriodThePreviousYearAndTheCompletedMonthsOfThisOneAreReported() throws Exception {
+    LocalDate today = LocalDate.now(clock);
+
+    JsonNode cases = exportAsAdmin().path("protocol").path("incidentScopeCases");
+
+    assertThat(cases.path("from").asString())
+        .isEqualTo(LocalDate.of(today.getYear() - 1, 1, 1).toString());
+    assertThat(cases.path("to").asString())
+        .isEqualTo(today.withDayOfMonth(1).minusDays(1).toString());
+  }
+
+  @Test
+  void aPeriodIntoTheRunningMonthEndsWithTheLastCompletedOne() throws Exception {
+    LocalDate runningMonth = LocalDate.now(clock).withDayOfMonth(1);
+    String period =
+        "?from=" + runningMonth.minusMonths(1) + "&to=" + runningMonth.plusMonths(1).minusDays(1);
+
+    JsonNode cases =
+        JSON.readTree(body(JSON_PATH + period, "dev-admin"))
+            .path("protocol")
+            .path("incidentScopeCases");
+
+    assertThat(cases.path("from").asString()).isEqualTo(runningMonth.minusMonths(1).toString());
+    assertThat(cases.path("to").asString()).isEqualTo(runningMonth.minusDays(1).toString());
+    mockMvc
+        .perform(
+            get(JSON_PATH)
+                .param("from", runningMonth.toString())
+                .param("to", runningMonth.plusMonths(1).minusDays(1).toString())
+                .with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void aPeriodThatCutsAMonthIsRefused() throws Exception {
+    mockMvc
+        .perform(get(JSON_PATH + "?from=2001-03-15&to=2001-04-30").with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get(MARKDOWN_PATH + "?from=2001-05-01&to=2001-04-30").with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
+  }
+
+  /** A year outside the plausibility bounds is refused, never an internal error. */
+  @Test
+  void aPeriodBeyondThePlausibleYearsIsRefused() throws Exception {
+    mockMvc
+        .perform(
+            get(JSON_PATH)
+                .param("from", "-5000-01-01")
+                .param("to", "2001-04-30")
+                .with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().string(containsString("1970")));
+    mockMvc
+        .perform(
+            get(MARKDOWN_PATH)
+                .param("from", "2001-01-01")
+                .param("to", "+6000000-12-31")
+                .with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
+  }
+
+  /** The counts carry purposes and numbers only: no person, no grant, no reason. */
+  @Test
+  void theCasesNameNoPersonAndNoGrant() throws Exception {
+    insertCaseCount("2001-03-01", "REQUESTED", 4);
+
+    JsonNode cases =
+        JSON.readTree(body(JSON_PATH + PERIOD_MARCH_APRIL_2001, "dev-admin"))
+            .path("protocol")
+            .path("incidentScopeCases");
+
+    assertThat(fieldNames(cases))
+        .containsOnly(
+            "from",
+            "to",
+            "smallCountThreshold",
+            "purposes",
+            "notes",
+            "purpose",
+            "label",
+            "requested",
+            "approved",
+            "expired",
+            "count",
+            "belowThreshold");
+    assertThat(cases.toString()).doesNotContainPattern("[0-9a-f]{8}-[0-9a-f]{4}-");
+  }
+
+  private static JsonNode purpose(JsonNode cases, String purpose) {
+    for (JsonNode candidate : cases.path("purposes")) {
+      if (candidate.path("purpose").asString().equals(purpose)) {
+        return candidate;
+      }
+    }
+    throw new AssertionError("no purpose " + purpose);
+  }
+
+  private static Set<String> fieldNames(JsonNode node) {
+    Set<String> names = new HashSet<>();
+    if (node.isObject()) {
+      for (Map.Entry<String, JsonNode> field : node.properties()) {
+        names.add(field.getKey());
+        names.addAll(fieldNames(field.getValue()));
+      }
+    } else if (node.isArray()) {
+      for (JsonNode element : node) {
+        names.addAll(fieldNames(element));
+      }
+    }
+    return names;
+  }
+
+  private void insertCaseCount(String month, String transition, int count) {
+    jdbcTemplate.update(
+        "INSERT INTO audit_incident_scope_monthly_counts (organization_id, case_month, purpose,"
+            + " transition, case_count) VALUES (?, ?, 'SECURITY_INCIDENT', ?, ?)",
+        Organization.DEFAULT_ID,
+        LocalDate.parse(month),
+        transition,
+        count);
+  }
+
   private JsonNode exportAsAdmin() throws Exception {
     return JSON.readTree(body(JSON_PATH, "dev-admin"));
   }
@@ -362,6 +546,14 @@ class DataCollectionDisclosureIntegrationTest {
             + " object_id = ? ORDER BY recorded_at",
         AuditEventType.DATA_COLLECTION_DISCLOSURE_EXPORTED.name(),
         DataCollectionDisclosureService.OBJECT_ID.toString());
+  }
+
+  /** The counts this class inserts lie in 2001 of the default organization. */
+  private void deleteOwnCaseCounts() {
+    jdbcTemplate.update(
+        "DELETE FROM audit_incident_scope_monthly_counts WHERE organization_id = ?"
+            + " AND case_month BETWEEN DATE '2001-01-01' AND DATE '2001-12-01'",
+        Organization.DEFAULT_ID);
   }
 
   private void deleteOwnEvents() {

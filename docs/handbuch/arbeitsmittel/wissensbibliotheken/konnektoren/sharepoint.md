@@ -69,6 +69,10 @@ Verfügung, verweist der Assistent an die Systemverwaltung.
    Unterordnern. Ohne Ordner liest OPAA die ganze Dokumentbibliothek.
 4. **„Verbindung testen"** prüft jede gewählte Dokumentbibliothek samt Ordnern.
 
+Sites, Dokumentbibliotheken und Ordner einer Ebene listet der Assistent nur bis zu einer festen Grenze;
+ist die Liste länger, steht darüber „Es werden die ersten … gezeigt". Eine fehlende Site lässt sich über
+einen engeren Suchbegriff oder ihre Adresse öffnen.
+
 Unter „Umfang" stehen die Dokumentbibliotheken für alle Leseberechtigten, jeweils mit „ganze
 Dokumentbibliothek" oder den Ordnern. Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle …
 Tage". Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen; ein geänderter Anzeigename

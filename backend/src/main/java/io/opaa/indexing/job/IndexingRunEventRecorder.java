@@ -27,12 +27,21 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
    */
   static final int MAX_RUN_NOTES_PER_RUN = 20;
 
+  /**
+   * Hints about indexed documents ({@link IndexingEventCategory#SUSPICIOUS_PATTERNS}) have a cap of
+   * their own, so a large first run cannot push errors and rejections out of the protocol; the rest
+   * is summed up in one note at the end of the run.
+   */
+  static final int MAX_SUSPICIOUS_PATTERN_EVENTS_PER_RUN = 50;
+
   private final IndexingRunEventRepository repository;
   private final IndexingJobService indexingJobService;
   private final UUID jobId;
   private int persistedCount;
   private int runNoteCount;
   private int overflowCount;
+  private int suspiciousPatternCount;
+  private int suspiciousPatternOverflow;
 
   public IndexingRunEventRecorder(
       IndexingRunEventRepository repository, IndexingJobService indexingJobService, UUID jobId) {
@@ -48,6 +57,10 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
    */
   @Override
   public void record(IndexingEventCategory category, String message, String reference) {
+    if (category == IndexingEventCategory.SUSPICIOUS_PATTERNS) {
+      recordSuspiciousPatterns(message, reference);
+      return;
+    }
     if (persistedCount >= MAX_EVENTS_PER_RUN) {
       overflowCount++;
       return;
@@ -61,6 +74,22 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
       // cause here is a write failure rather than the cap.
       log.warn("Failed to record indexing run event for job {}, continuing the run", jobId, e);
       overflowCount++;
+    }
+  }
+
+  private void recordSuspiciousPatterns(String message, String reference) {
+    if (suspiciousPatternCount >= MAX_SUSPICIOUS_PATTERN_EVENTS_PER_RUN) {
+      suspiciousPatternOverflow++;
+      return;
+    }
+    try {
+      repository.save(
+          new IndexingRunEvent(
+              jobId, IndexingEventCategory.SUSPICIOUS_PATTERNS, message, reference));
+      suspiciousPatternCount++;
+    } catch (Exception e) {
+      log.warn("Failed to record indexing run event for job {}, continuing the run", jobId, e);
+      suspiciousPatternOverflow++;
     }
   }
 
@@ -84,11 +113,20 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
   }
 
   /**
-   * Persists this run's overflow count on the job, once, at the end of a run - a no-op when nothing
-   * was truncated. Never throws - see the class Javadoc; called from every executor's terminal
-   * branches ({@code progress.complete()}/{@code progress.fail()}).
+   * Sums up the hints beyond their own cap in one note, then persists this run's overflow count on
+   * the job, once, at the end of a run - a no-op when nothing was truncated. Never throws - see the
+   * class Javadoc; called from every executor's terminal branches ({@code
+   * progress.complete()}/{@code progress.fail()}).
    */
   public void finalizeRun() {
+    if (suspiciousPatternOverflow > 0) {
+      recordRunNote(
+          IndexingEventCategory.SUSPICIOUS_PATTERNS,
+          "Weitere "
+              + suspiciousPatternOverflow
+              + " Dokumente mit auffälligen Mustern sind nicht einzeln aufgeführt.");
+      suspiciousPatternOverflow = 0;
+    }
     if (overflowCount == 0) {
       return;
     }

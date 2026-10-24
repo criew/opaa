@@ -74,6 +74,9 @@ geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.
 | „Imitiertes Konto (optional)" | nur ohne Zugang und nur mit Delegation; eine Änderung verlangt den Schlüssel neu |
 | Bereiche | aus der Auflistung gewählt — geteilte Ablagen und freigegebene Ordner, mit imitiertem Konto auch „Meine Ablage" — oder per „Ordner-ID" eingetragen |
 
+Bei sehr vielen geteilten Ablagen oder freigegebenen Ordnern zeigt die Auflistung nur die ersten und
+sagt das; weitere Ordner lassen sich per „Ordner-ID" eintragen.
+
 Überlappende Bereiche sind erlaubt; eine Datei bleibt ein Dokument, ihr Ordner kommt aus dem ersten
 Bereich, der sie listet. Den eigenen
 Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". **„Verbindung testen"** meldet sich an und

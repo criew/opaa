@@ -12,6 +12,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.IngestTextSanitizer;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
@@ -19,11 +20,14 @@ import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
 import io.opaa.indexing.chunk.EmbeddingInputCheck;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilePathLimit;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.QuotaVerdict;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
@@ -43,6 +47,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -112,6 +117,9 @@ public class DocumentIngestService {
   /** Switched off, the ingest extracts the Kernfeld Titel alone and asks no model (ADR-0044). */
   private final FeatureFlags featureFlags;
 
+  /** Judges every file before it is parsed; a {@link DocumentIngest.Text} is not scanned. */
+  private final MalwareScanService malwareScanService;
+
   private final Clock clock;
 
   public DocumentIngestService(
@@ -128,6 +136,7 @@ public class DocumentIngestService {
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor,
       FeatureFlags featureFlags,
+      MalwareScanService malwareScanService,
       Clock clock) {
     requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
@@ -144,6 +153,7 @@ public class DocumentIngestService {
     this.documentMetadataService = documentMetadataService;
     this.modelMetadataExtractor = modelMetadataExtractor;
     this.featureFlags = featureFlags;
+    this.malwareScanService = malwareScanService;
     this.clock = clock;
   }
 
@@ -181,7 +191,10 @@ public class DocumentIngestService {
    * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments a storage
    * quota rejected is stored without checksum and change marker, so the next run reads it again; it
    * is then measured by what it adds beyond its stored footprint ({@link #storedFootprint}), so the
-   * attachments already stored do not count a second time.
+   * attachments already stored do not count a second time. A document indexed with findings of the
+   * cleanup after extraction gets one {@code SUSPICIOUS_PATTERNS} entry in the protocol ({@link
+   * DocumentIngest#events()}, else that of {@code attachmentAccess}), with counts per class only,
+   * and counts once per class in the library's metric.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
@@ -189,8 +202,15 @@ public class DocumentIngestService {
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
    */
-  public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
+  public DocumentIngestResult ingest(DocumentIngest declared, AttachmentAccess attachmentAccess)
       throws IOException {
+    IndexingEventSink events =
+        declared.events() != null
+            ? declared.events()
+            : attachmentAccess == null ? null : attachmentAccess.events();
+    Map<IngestTextSanitizer.Finding, Integer> findings =
+        new EnumMap<>(IngestTextSanitizer.Finding.class);
+    DocumentIngest ingest = declared.withCleanNames(findings);
     KnowledgeLibrary library = ingest.library();
     LoggedName names = library.loggedNames();
     String filePath = ingest.filePath();
@@ -227,10 +247,23 @@ public class DocumentIngestService {
           return DocumentIngestResult.SKIPPED;
         }
         doc = existing.get();
+        // the row was created before the cleanup, under the name as uploaded or as stored
+        if (fileName != null && !fileName.equals(doc.getFileName())) {
+          documentRepository.updateFileName(doc.getId(), fileName);
+          doc.setFileName(fileName);
+        }
         replacingExistingChunks = true;
         selection = select(ingest, doc);
       } else if (existing.isPresent()) {
         Document existingDoc = existing.get();
+        if (checksum.equals(existingDoc.getChecksum()) && existingDoc.hasMalwareFinding()) {
+          // The same file the scan already kept out: neither scanned nor recorded again.
+          log.info(
+              "Skipping unchanged document with a malware finding: {}",
+              names.of(filePath, existingDoc.getId()));
+          metrics.recordSkipped();
+          return DocumentIngestResult.SKIPPED;
+        }
         if (checksum.equals(existingDoc.getChecksum())
             && existingDoc.getStatus() == DocumentStatus.INDEXED) {
           refreshProvenance(existingDoc, ingest, checksum);
@@ -276,6 +309,11 @@ public class DocumentIngestService {
     boolean preservingPreviousChunks = replacingExistingChunks;
     boolean[] attachmentAtQuota = {false};
     try {
+      DocumentIngestResult keptOut =
+          scanForMalware(ingest, documentId, replacingExistingChunks, checksum, events);
+      if (keptOut != null) {
+        return keptOut;
+      }
       DocumentFormatResult parsed =
           DocumentFormatRunner.run(
               pipeline,
@@ -333,6 +371,7 @@ public class DocumentIngestService {
         case CHUNKED ->
             log.debug("{} chunked via pipeline {}", names.of(filePath, documentId), pipeline.id());
       }
+      parsed.sanitizerFindings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
@@ -382,7 +421,40 @@ public class DocumentIngestService {
     }
 
     metrics.recordProcessed();
+    reportSuspiciousPatterns(library, names.of(filePath, documentId), filePath, findings, events);
     return DocumentIngestResult.PROCESSED;
+  }
+
+  /**
+   * The cleanup's findings of a processed document: a log line and the metric with counts per class
+   * only, and one protocol entry when the caller has a protocol. Private libraries share one metric
+   * label, so no series stands for one person.
+   */
+  private void reportSuspiciousPatterns(
+      KnowledgeLibrary library,
+      Object loggedName,
+      String filePath,
+      Map<IngestTextSanitizer.Finding, Integer> findings,
+      IndexingEventSink events) {
+    String note = SuspiciousPatternNote.of(findings);
+    if (note == null) {
+      return;
+    }
+    log.info("Sanitized extracted text of {}: {}", loggedName, findings);
+    String libraryLabel = metricLabel(library);
+    findings
+        .keySet()
+        .forEach(finding -> metrics.recordSuspiciousPattern(libraryLabel, finding.name()));
+    if (events != null) {
+      events.record(IndexingEventCategory.SUSPICIOUS_PATTERNS, note, filePath);
+    }
+  }
+
+  /** The metric label of {@code library}: its id, for a private library the shared label. */
+  static String metricLabel(KnowledgeLibrary library) {
+    return library.isOwnerOnly()
+        ? IndexingMetrics.PRIVATE_LIBRARY_LABEL
+        : String.valueOf(library.getId());
   }
 
   /**
@@ -762,6 +834,58 @@ public class DocumentIngestService {
     }
     metrics.recordSkipped();
     return DocumentIngestResult.NO_EXTRACTABLE_TEXT;
+  }
+
+  /**
+   * The malware scan of a file before it is parsed, or {@code null} to go on. A finding removes the
+   * previous chunks and marks the row {@code FAILED} with the signature and the file's checksum;
+   * the same unchanged file is then skipped. A file the scanner could not judge is marked {@code
+   * FAILED} with its previous chunks kept, so the next run tries again, and a re-index leaves the
+   * row as it is; taken in unscanned under {@code ACCEPT}, the run protocol says so.
+   */
+  private DocumentIngestResult scanForMalware(
+      DocumentIngest ingest,
+      UUID documentId,
+      boolean replacingExistingChunks,
+      String checksum,
+      IndexingEventSink events) {
+    if (ingest.malwareScanned() || !(ingest.content() instanceof DocumentIngest.File file)) {
+      return null;
+    }
+    return switch (malwareScanService.check(file.path(), ingest.library(), ingest.fileName())) {
+      case MalwareScanService.Verdict.Clean clean -> null;
+      case MalwareScanService.Verdict.AcceptedUnscanned accepted -> {
+        if (events != null) {
+          events.record(
+              IndexingEventCategory.UNSCANNED,
+              MalwareScanService.ACCEPTED_UNSCANNED_MESSAGE,
+              ingest.filePath());
+        }
+        yield null;
+      }
+      case MalwareScanService.Verdict.Infected infected -> {
+        deletePreviousChunks(replacingExistingChunks, documentId);
+        yield markMalwareFound(documentId, infected.signature(), checksum);
+      }
+      case MalwareScanService.Verdict.Unscanned unscanned ->
+          ingest.reindex()
+              ? DocumentIngestResult.FAILED
+              : markConnectorFailed(documentId, false, MalwareScanService.UNSCANNED_MESSAGE);
+    };
+  }
+
+  private DocumentIngestResult markMalwareFound(
+      UUID documentId, String signature, String checksum) {
+    int updated =
+        documentRepository.markMalwareFound(
+            documentId, MalwareScanService.INFECTED_MESSAGE, signature, checksum);
+    if (updated == 0) {
+      log.warn("Document {} was deleted before it could be marked as infected", documentId);
+      metrics.recordSkipped();
+      return DocumentIngestResult.SKIPPED;
+    }
+    metrics.recordSkipped();
+    return DocumentIngestResult.MALWARE_FOUND;
   }
 
   /**

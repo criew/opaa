@@ -274,30 +274,30 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
                     + "/items/"
                     + SharePointLibrary.requireId(string(asked, "folder"))
                     + "/children";
-        return new SourceListing(
-            true,
-            collect(
-                graph,
-                children,
-                Map.of("$select", "id,name,folder"),
-                item -> item.get("folder") != null ? "folder:" + text(item, "id") : null,
-                "name"),
-            null);
+        return collect(
+            graph,
+            children,
+            Map.of("$select", "id,name,folder"),
+            item ->
+                item.get("folder") != null
+                    ? new SourceListing.Entry("folder:" + text(item, "id"), text(item, "name"))
+                    : null,
+            "Ordner",
+            "Weitere zeigt die Auswahl nicht.");
       }
       if (asked.get("site") != null) {
         String site = requireSiteId(string(asked, "site"));
-        return new SourceListing(
-            true,
-            collect(
-                graph,
-                "sites/" + site + "/drives",
-                Map.of("$select", "id,name,driveType"),
-                drive ->
-                    "documentLibrary".equals(text(drive, "driveType"))
-                        ? SharePointLibrary.KEY_PREFIX + text(drive, "id")
-                        : null,
-                "name"),
-            null);
+        return collect(
+            graph,
+            "sites/" + site + "/drives",
+            Map.of("$select", "id,name,driveType"),
+            drive ->
+                "documentLibrary".equals(text(drive, "driveType"))
+                    ? new SourceListing.Entry(
+                        SharePointLibrary.KEY_PREFIX + text(drive, "id"), text(drive, "name"))
+                    : null,
+            "Dokumentbibliotheken",
+            "Weitere zeigt die Auswahl nicht.");
       }
       if (asked.get("siteUrl") != null) {
         JsonNode site = graph.get(sitePath(string(asked, "siteUrl")), Map.of());
@@ -312,11 +312,13 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
           throw new ValidationException("Der Suchbegriff hat 1 bis 200 Zeichen.");
         }
         try {
-          List<SourceListing.Entry> sites = new ArrayList<>();
-          for (JsonNode site : graph.page("sites", Map.of("search", search), null).value()) {
-            sites.add(new SourceListing.Entry("site:" + text(site, "id"), siteName(site)));
-          }
-          return new SourceListing(true, sites, null);
+          return collect(
+              graph,
+              "sites",
+              Map.of("search", search),
+              site -> new SourceListing.Entry("site:" + text(site, "id"), siteName(site)),
+              "Sites",
+              "Bitte den Suchbegriff eingrenzen oder die Adresse der Site angeben.");
         } catch (GraphException e) {
           if (e.kind() == GraphException.Kind.FORBIDDEN) {
             return new SourceListing(
@@ -339,29 +341,39 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   }
 
   @FunctionalInterface
-  private interface KeyOf {
-    String keyOf(JsonNode item);
+  private interface EntryOf {
+    /** The entry {@code item} offers, {@code null} for none. */
+    SourceListing.Entry entryOf(JsonNode item);
   }
 
-  private static List<SourceListing.Entry> collect(
-      GraphClient graph, String path, Map<String, String> query, KeyOf keyOf, String nameField)
+  /**
+   * The entries of up to {@link #MAX_BROWSE_PAGES} pages of {@code path}; a further page left
+   * unread makes the listing incomplete, named by {@code noun} and {@code hint}.
+   */
+  private static SourceListing collect(
+      GraphClient graph,
+      String path,
+      Map<String, String> query,
+      EntryOf entryOf,
+      String noun,
+      String hint)
       throws GraphException, InterruptedException {
     List<SourceListing.Entry> entries = new ArrayList<>();
     String token = null;
     for (int page = 0; page < MAX_BROWSE_PAGES; page++) {
       GraphPage answer = graph.page(path, query, token);
       for (JsonNode item : answer.value()) {
-        String key = keyOf.keyOf(item);
-        if (key != null && text(item, "id") != null) {
-          entries.add(new SourceListing.Entry(key, text(item, nameField)));
+        SourceListing.Entry entry = text(item, "id") == null ? null : entryOf.entryOf(item);
+        if (entry != null) {
+          entries.add(entry);
         }
       }
       token = answer.nextToken();
       if (token == null) {
-        break;
+        return new SourceListing(true, entries, null);
       }
     }
-    return entries;
+    return SourceListing.cutAt(entries, noun, hint);
   }
 
   private static String browseFailure(GraphException e) {

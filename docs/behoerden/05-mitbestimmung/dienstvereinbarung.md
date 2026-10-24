@@ -41,7 +41,8 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
   Mustertexts, dazu die Vorlage [Update-Vermerk](../09-betrieb-update/update-vermerk.md). Die Klassen
   stammen aus einer gemeinsamen Quelle, den
   [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln). Das Delta im Paket
-  vergleicht mit dem vorigen finalen Release; für einen größeren Sprung erzeugt der Betrieb es selbst
+  vergleicht mit dem vorigen finalen Release, bei einem LTS-Release zusätzlich mit der vorigen
+  LTS-Linie; für einen anderen Sprung erzeugt der Betrieb es selbst
   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - **Supportlinien:** Patch-Releases bringen nur Sicherheitskorrekturen und Behebungen kritischer
   Fehler, für ältere Linien über eigene Wartungsbranches
@@ -418,9 +419,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 - **Zeit für den Linienwechsel:** Der Release-Kandidat eines LTS erscheint nur wenige Wochen vor dem
   Supportende der laufenden LTS-Linie. Wer mehr Zeit braucht, beginnt mit dem Delta zum
   Dezember-Release (Nummer 15 Absatz 12).
-- **Delta bei übersprungenen Versionen:** Das Delta im Update-Paket vergleicht nur mit dem vorigen
-  finalen Release, auch bei einem LTS-Release. Wer Versionen überspringt, etwa von LTS zu LTS,
-  braucht das selbst erzeugte Delta über den ganzen Sprung
+- **Delta bei übersprungenen Versionen:** Das Update-Paket eines LTS-Release und seiner
+  Kandidaten enthält das Delta über den ganzen Sprung von der vorigen LTS-Linie. Wer andere
+  Versionen überspringt, braucht das selbst erzeugte Delta über den ganzen Sprung
   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - Ohne „standardmäßig aus“ kann ein Funktionsupdate eine zustimmungspflichtige Funktion sofort aktiv
   mitbringen. Nummer 15 fängt das auf: Ein Funktionsupdate wartet, bis zugestimmt oder die Funktion

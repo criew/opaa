@@ -344,7 +344,13 @@ export interface DocumentContent {
 // free from axios.
 export async function mapDocumentContentError(err: unknown): Promise<never> {
   if (err instanceof AxiosError && err.response?.status === 404) {
-    if ((await blobErrorCode(err.response.data)) === LIBRARY_BEING_ERASED) {
+    const code = await blobErrorCode(err.response.data)
+    if (code === MALWARE_FOUND) {
+      throw new Error('Die Datei ist gesperrt, weil die Virenprüfung einen Befund hatte.', {
+        cause: err,
+      })
+    }
+    if (code === LIBRARY_BEING_ERASED) {
       throw new Error(
         'Die Bibliothek wird gelöscht – ihre Dokumente lassen sich nicht mehr öffnen.',
         {
@@ -369,6 +375,9 @@ export async function mapDocumentContentError(err: unknown): Promise<never> {
 
 /** The `code` of the 404 for a document whose private library is marked for erasure. */
 const LIBRARY_BEING_ERASED = 'LIBRARY_BEING_ERASED'
+
+/** The `code` of the 404 for an original the malware scan found malware in. */
+const MALWARE_FOUND = 'MALWARE_FOUND'
 
 /** The ErrorResponse inside a blob body, `null` for anything else. */
 async function blobErrorBody(body: unknown): Promise<ErrorResponse | null> {

@@ -237,7 +237,8 @@ für echte Chat-/Embedding-Läufe bleibt eigenes, noch offenes Issue (#256).
 (`QueryDecompositionService`), Chat-Titel (`ChatTitleGenerationService`), Modellmetadaten
 (`ModelMetadataExtractor`), der Verbindungstest der Modellverwaltung (`LlmModelService`) und
 `ChatHealthIndicator`. **Die Gesprächsnotiz ist der einzige Prompt mit einer eigenen Regel; alle
-übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben.** Praktisch sichtbar ist das beim
+übrigen fallen auf den Zitat-Echo-/Ohne-Kontext-Zweig oben;** nur der Antwort-Prompt kennt
+zusätzlich Auslösewörter für die Linkregel (siehe unten). Praktisch sichtbar ist das beim
 Chat-Titel: Sein Prompt trägt keine Zitationsmarkierung, also bekommt jeder erzeugte Titel dieser
 Suite denselben Text — Szenarien verankern sich deshalb nie an einem Titelwortlaut (siehe
 `fixtures/chat.ts`, `chatSidebarEntries`).
@@ -249,6 +250,13 @@ einem festen Textstück und beantwortet ihn als reine Funktion der Nutzernachric
 ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Punkt „Möchte knappe
 Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort (Art-Präfix,
 200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
+
+Für die **Linkregel** (#3051) hängt der Stub an die Antwort einen festen Markdown-Teil, wenn die
+Frage der Person ein Auslösewort enthält; erkannt wird der Antwort-Prompt an seinen Zitierregeln,
+Zerlegung, Titel und Notiz bleiben unberührt. `E2E-ANTWORT-LINKS` ergibt einen Link auf das
+Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANTWORT-BILD` ein
+Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
+des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
 ### Nextcloud statt Testkonnektor
 
@@ -328,6 +336,12 @@ lassen.
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
   seit #805 in `tests/admin-area-navigation.spec.ts` (mit 320-px-Geometrie-Zusicherung), weil
   er keine axe-Analyse ausführt.
+  **Berichtsmodus für den Release-Lauf:** Mit `E2E_A11Y_RESULTS_DIR` legt die Fixture jede Analyse
+  als JSON-Datensatz in diesem Verzeichnis ab, mit `E2E_A11Y_REPORT_ONLY=true` hält sie Verstöße fest,
+  statt den Test scheitern zu lassen. Daraus entsteht der Prüfbericht Barrierefreiheit im
+  Update-Paket (`docs/releases.md`, „Prüfbericht Barrierefreiheit“). Der Lauf dort findet jede Spec mit
+  axe-Prüfung selbst und scheitert, wenn eine davon keinen Datensatz liefert; `E2E_SEED_HASHED=true`
+  installiert den Seed nur aus den per Hash gepinnten Wheels in `.github/requirements-seed.txt`.
 - `tests/csp.spec.ts` (#707) — lädt die App durch die echte nginx-Auslieferung des Stacks und
   sammelt Content-Security-Policy-Verstöße aus der Browser-Konsole ein; die Konsole muss leer
   bleiben. Reproduziert den Fall, in dem Vite kleine Font-Subsets als `data:`-URIs bündelt, die
@@ -665,6 +679,15 @@ lassen.
   zählt erst, wenn der Server das Ticket einlöst, und ein Export dieses Umfangs ist geschrieben,
   bevor ein Abbruch im Browser ihn erreichen kann; sie prüft der Backend-Test.
 
+- `tests/link-rule.spec.ts` (#3051, Epic #3008) — die Linkregel in Antworten mit festen
+  Stub-Antworten (Auslösewörter oben): Nach dem Eintragen von `https://intranet.e2e.example` als
+  erlaubtes Linkziel ist der Link dorthin klickbar, der fremde erscheint als Text mit Adresse; ein
+  Markdown-Bild erscheint als „[Bild: …]“, und der Browser fragt seine Adresse nie an; `dev-user`
+  erreicht die Verwaltung der Linkziele nicht; aus einem präparierten Merkblatt
+  (`praepariertes-merkblatt.txt`) übernommene Links bleiben Text, und der Beleg zeigt das Merkblatt.
+  Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
+  her.
+
 ## Demo-Smoke (#232)
 
 Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
@@ -805,6 +828,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
+| `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
 
 `/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das

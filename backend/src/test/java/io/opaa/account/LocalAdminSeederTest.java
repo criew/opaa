@@ -108,6 +108,7 @@ class LocalAdminSeederTest {
             null,
             envPassword,
             reset,
+            null,
             null);
     return new LocalAdminSeeder(
         auth,

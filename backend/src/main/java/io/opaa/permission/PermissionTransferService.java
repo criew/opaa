@@ -753,13 +753,14 @@ public class PermissionTransferService {
    * Quelle, Ziel, Umfang und Zahl der Zeilen - what ADR-0036, Entscheidung 10 asks the audit entry
    * to carry. The object is the source (a group, or the account of a succession), so a reader finds
    * the operation where they look for it; the target rides in the payload, since an entry names one
-   * object.
+   * object. A person appears only by pseudonym - as object, subject and target - so no entry puts
+   * an account id next to the pseudonym that hides it everywhere else.
    */
   private void recordEvent(
       AuditEventType type, Parties parties, PermissionTransferCounts counts, CurrentUser caller) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("targetType", parties.target().type().name());
-    payload.put("targetId", parties.target().id().toString());
+    payload.put("targetId", auditRef(parties.target(), parties.organizationId()).toString());
     payload.put("scope", parties.scope().stream().map(Enum::name).toList());
     payload.put("assetGrants", counts.assetGrants());
     payload.put("spaceMemberships", counts.spaceMemberships());
@@ -776,7 +777,7 @@ public class PermissionTransferService {
             .type(type)
             .object(
                 groupSource ? AuditObjectType.GROUP : AuditObjectType.USER_ACCOUNT,
-                parties.source().id(),
+                auditRef(parties.source(), parties.organizationId()),
                 parties.sourceLabel())
             .after(payload)
             .outcome(AuditOutcome.SUCCESS);
@@ -786,6 +787,15 @@ public class PermissionTransferService {
     }
     auditEventRecorder.recordUserActionOnSubject(
         event.subject(AuditSubjectKind.USER, parties.source().id()).build());
+  }
+
+  /**
+   * A group by its id, a person by their audit pseudonym ({@link AuditEventRecorder#pseudonymFor}).
+   */
+  private UUID auditRef(PermissionSubject party, UUID organizationId) {
+    return party.type() == PermissionSubjectType.GROUP
+        ? party.id()
+        : auditEventRecorder.pseudonymFor(party.id(), organizationId);
   }
 
   /**

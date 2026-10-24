@@ -289,6 +289,13 @@ public enum AuditEventType {
    */
   UPLOAD_ORPHAN_ORIGINALS_DELETED,
   /**
+   * The malware scanner reported a finding in a file on its way into a library, so the file was not
+   * taken in. Written by the scanning system process with the library as object and the signature
+   * in the payload; for a private library the scan itself is the object and only the source type
+   * remains. Neither file name nor uploading person is recorded.
+   */
+  MALWARE_DETECTED,
+  /**
    * A person set, changed or removed a core metadata value of a document by hand
    * (docs/features/metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig"). One entry per
    * document and field, carrying the old and the new value - also for every document of a
@@ -571,8 +578,8 @@ public enum AuditEventType {
   // Auskunft über die Datenerhebung (ADR-0052)
   /**
    * The disclosure of the data collection with the configuration export of the instance was
-   * retrieved, or the attempt refused; {@code after} names the format. Carries no content of the
-   * disclosure itself.
+   * retrieved, or the attempt refused; {@code after} names the format and the reporting period
+   * ({@code periodFrom}, {@code periodTo}). Carries no content of the disclosure itself.
    */
   DATA_COLLECTION_DISCLOSURE_EXPORTED,
 

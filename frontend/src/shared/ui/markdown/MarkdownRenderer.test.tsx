@@ -1,6 +1,8 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { server } from '@/test/server'
 import { renderWithProviders } from '../../../test/test-utils'
 import MarkdownRenderer from './MarkdownRenderer'
 import { buildCitationIndex } from './citations'
@@ -316,6 +318,31 @@ describe('MarkdownRenderer', () => {
 
     beforeEach(() => {
       useLinkTargetsStore.getState().setAllowedOrigins(['https://intranet.stadt.example'])
+    })
+
+    it('allows only the own origin when the list cannot be loaded', async () => {
+      let requested = false
+      server.use(
+        http.get('/api/v1/link-targets', () => {
+          requested = true
+          return new HttpResponse(null, { status: 500 })
+        }),
+      )
+      useLinkTargetsStore.setState({ allowedOrigins: [], status: 'idle' })
+
+      renderWithProviders(
+        <MarkdownRenderer
+          content={`[Hilfe](${own}/hilfe) und [Formular](https://intranet.stadt.example/antrag)`}
+        />,
+      )
+
+      await waitFor(() => expect(requested).toBe(true))
+      await waitFor(() => expect(useLinkTargetsStore.getState().status).toBe('idle'))
+      expect(screen.getByRole('link', { name: 'Hilfe' })).toHaveAttribute('href', `${own}/hilfe`)
+      expect(screen.queryByRole('link', { name: 'Formular' })).toBeNull()
+      expect(screen.getByTestId('blocked-link')).toHaveTextContent(
+        'Formular (https://intranet.stadt.example/antrag)',
+      )
     })
 
     it('keeps a link to the own origin and a relative link clickable', () => {

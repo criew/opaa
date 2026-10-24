@@ -93,7 +93,10 @@ class LocalAuthLogPrivacyIntegrationTest {
             .andExpect(status().isOk())
             .andReturn();
     Cookie second = refreshed.getResponse().getCookie(LocalRefreshCookies.COOKIE_NAME);
-    // replay
+    // the successor is used, so presenting the first cookie again is a replay
+    mockMvc
+        .perform(withCsrf(post("/api/v1/auth/local/refresh"), login).cookie(second))
+        .andExpect(status().isOk());
     mockMvc
         .perform(withCsrf(post("/api/v1/auth/local/refresh"), login).cookie(first))
         .andExpect(status().isUnauthorized());

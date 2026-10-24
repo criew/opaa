@@ -182,6 +182,34 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "malwareScan": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "malwareScan": {
+            "required": [
+              "host"
+            ],
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -378,6 +406,39 @@
           "type": "string",
           "pattern": "^([1-9][0-9]*)?$",
           "description": "Recordings passed on at the same time; empty keeps the application default"
+        }
+      }
+    },
+    "malwareScan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^([^\\s/:]+)?$",
+          "description": "Host name or address of clamd, without scheme or port"
+        },
+        "port": {
+          "type": "string",
+          "pattern": "^([1-9][0-9]{0,4})?$",
+          "description": "TCP port of clamd; empty keeps the application default"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        },
+        "onUnavailable": {
+          "type": "string",
+          "enum": [
+            "",
+            "REJECT",
+            "ACCEPT"
+          ],
+          "description": "What happens to a file the scanner could not judge; empty keeps REJECT"
         }
       }
     },

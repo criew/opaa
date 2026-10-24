@@ -159,11 +159,12 @@ export default function GoogleDriveSourceForm({
         }),
       )
       if (listingGeneration.current !== mine) return
+      const found = result.entries
+        .map((entry) => googleDriveScopeFromKey(entry.key, entry.name ?? null))
+        .filter((scope): scope is GoogleDriveScope => scope !== null)
+      // An incomplete listing with entries is cut at a limit: offer what it found.
+      if (result.complete || found.length > 0) setOptions(found)
       if (result.complete) {
-        const found = result.entries
-          .map((entry) => googleDriveScopeFromKey(entry.key, entry.name ?? null))
-          .filter((scope): scope is GoogleDriveScope => scope !== null)
-        setOptions(found)
         setListingMessage({
           severity: 'success',
           text:

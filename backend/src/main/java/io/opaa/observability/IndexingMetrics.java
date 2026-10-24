@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 /** Encapsulates all Micrometer metrics related to the document indexing pipeline. */
 public class IndexingMetrics {
 
+  private final MeterRegistry meterRegistry;
   private final Counter processedCounter;
   private final Counter skippedCounter;
   private final Counter failedCounter;
@@ -14,6 +15,7 @@ public class IndexingMetrics {
   private final Counter embeddingInputCutCounter;
 
   public IndexingMetrics(MeterRegistry meterRegistry) {
+    this.meterRegistry = meterRegistry;
     this.processedCounter =
         Counter.builder("opaa.indexing.documents")
             .tag("result", "processed")
@@ -70,5 +72,22 @@ public class IndexingMetrics {
 
   public void recordEmbeddingInputsCut(int count) {
     embeddingInputCutCounter.increment(count);
+  }
+
+  /** The {@code library} label every private library shares in {@link #recordSuspiciousPattern}. */
+  public static final String PRIVATE_LIBRARY_LABEL = "private";
+
+  /**
+   * One indexed document whose text showed {@code patternClass}, a pattern typical of prompt
+   * injection. {@code libraryLabel} is a shared library's id or {@link #PRIVATE_LIBRARY_LABEL},
+   * never a name or content.
+   */
+  public void recordSuspiciousPattern(String libraryLabel, String patternClass) {
+    Counter.builder("opaa.indexing.suspicious.patterns")
+        .tag("library", libraryLabel)
+        .tag("class", patternClass)
+        .description("Indexed documents with a pattern typical of prompt injection")
+        .register(meterRegistry)
+        .increment();
   }
 }

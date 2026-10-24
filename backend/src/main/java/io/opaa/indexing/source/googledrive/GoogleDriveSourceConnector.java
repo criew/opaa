@@ -256,14 +256,17 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     if (GoogleDriveSettings.subjectOf(asked) != null) {
       entries.add(new SourceListing.Entry(GoogleDriveScope.MY_DRIVE_KEY, "Meine Ablage"));
     }
+    boolean drivesComplete;
+    boolean foldersComplete;
     try {
-      collect(
-          api,
-          "drives",
-          Map.of("pageSize", "100", "fields", "nextPageToken,drives(id,name)"),
-          "drives",
-          "drive:",
-          entries);
+      drivesComplete =
+          collect(
+              api,
+              "drives",
+              Map.of("pageSize", "100", "fields", "nextPageToken,drives(id,name)"),
+              "drives",
+              "drive:",
+              entries);
       Map<String, String> folders = new LinkedHashMap<>();
       folders.put(
           "q",
@@ -272,17 +275,38 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       folders.put("includeItemsFromAllDrives", "true");
       folders.put("supportsAllDrives", "true");
       folders.put("fields", "nextPageToken,files(id,name)");
-      collect(api, "files", folders, "files", "folder:", entries);
+      foldersComplete = collect(api, "files", folders, "files", "folder:", entries);
     } catch (DriveApiException e) {
       return new SourceListing(false, List.of(), e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Auflistung wurde unterbrochen.");
     }
-    return new SourceListing(true, entries, null);
+    if (drivesComplete && foldersComplete) {
+      return new SourceListing(true, entries, null);
+    }
+    return new SourceListing(false, entries, cutMessage(drivesComplete, foldersComplete));
   }
 
-  private static void collect(
+  /** Names which of the two lists was cut and, for shared folders, the way to the others. */
+  private static String cutMessage(boolean drivesComplete, boolean foldersComplete) {
+    String cut =
+        drivesComplete
+            ? "der freigegebenen Ordner"
+            : foldersComplete
+                ? "der geteilten Ablagen"
+                : "der geteilten Ablagen und der freigegebenen Ordner";
+    return "Die Auflistung zeigt nur einen Teil "
+        + cut
+        + "."
+        + (foldersComplete ? "" : " Weitere Ordner lassen sich unten über ihre ID eintragen.");
+  }
+
+  /**
+   * Adds the entries of up to {@link #MAX_BROWSE_PAGES} pages of {@code path} to {@code entries};
+   * {@code false} when a further page is left unread.
+   */
+  private static boolean collect(
       DriveApi api,
       String path,
       Map<String, String> query,
@@ -308,10 +332,11 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       }
       JsonNode next = answer.get("nextPageToken");
       if (next == null || next.isNull()) {
-        return;
+        return true;
       }
       token = next.asString();
     }
+    return false;
   }
 
   // --- original --------------------------------------------------------------------------------

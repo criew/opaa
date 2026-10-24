@@ -35,13 +35,13 @@
 >   zum vorigen finalen Release, Lizenzübersicht und Vorlage Update-Vermerk, attestiert; der
 >   Release-Lauf bricht vorher bei unvollständigem Manifest ab (#2556)
 > - Betriebsfolgen und Antwortqualität im Update-Paket (#2555)
+> - das Offline-Bündel für Netze ohne Internetzugang am GitHub-Release jeder Version (#2557)
+> - der [Instanzbezug](#instanzbezug): Konfigurationsexport der Instanz (#2558) und sein Abgleich
+>   mit dem Delta, lokal mit `./gradlew complianceInstanceMatch` (#2559)
 >
-> **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
-> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
+> **Zielbild** sind der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
-> (#2562, #2563, #2566) und die
-> Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -413,11 +413,13 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 
 ## Das Update-Paket
 
-**(in Teilen gebaut, #2552)** Gebaut sind die Teile 1 bis 6, 8 und 9: Der Release-Lauf erzeugt das
+**(gebaut, #2552)** Gebaut sind die Teile 1 bis 9: Der Release-Lauf erzeugt das
 Paket zu jedem Release, hängt es an und attestiert es (#2556); Faktenblätter und Lizenzübersicht
 stammen aus #2550 und #2551, das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den
 gekennzeichneten Pull Requests aus #2553 und #2554, Betriebsfolgen und Antwortqualität aus #2555.
-**(Zielbild)** Teil 7 (#2558, #2559) und das Offline-Bündel (#2557).
+Teil 7 ist kein Teil des Archivs, weil er die Konfiguration einer Instanz braucht: Die Behörde
+gleicht das Delta des Pakets mit dem Export ihrer Instanz ab (#2558, #2559, [Instanzbezug](#instanzbezug)).
+**(gebaut, #2557)** Das Offline-Bündel.
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -460,8 +462,9 @@ Retrieval-Regression beider Versionen mit Messdatum; einen Messlauf auf dem Rele
 Projekt nicht ab, das Paket sagt das als „nicht gemessen“. Quellen, Regeln und Grenzen im Einzelnen:
 [releases.md](../releases.md#betriebsfolgen-und-antwortqualität). Gleicher Commit ergibt gleiche Dateien, bis auf die
 gekennzeichneten Pull Requests im Delta, die dem Label-Stand zum Zeitpunkt des Laufs folgen.
-**(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
-Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
+**(gebaut, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
+Chart, SBOMs und Attestierungen für Netze ohne Internetzugang; Aufbau und Prüfung ohne Netz
+beschreibt [releases.md](../releases.md#offline-bündel).
 
 ### Das kumulierte Delta
 
@@ -475,9 +478,11 @@ Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas
 Vorab-Releases ebenso: zum höchsten finalen Tag unter der eigenen Version, das der getaggte Commit
 enthält. Vor dem ersten finalen Release vergleicht es mit einem Stand ohne Manifest, jeder Eintrag
 erscheint als neu. Die Regel trägt auch mehrere [Supportlinien](../releases.md#supportlinien): Ein
-Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(Zielbild, #3020)** Ein
-LTS-Release bekommt zusätzlich das Delta zur vorigen LTS-Linie
-([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5).
+Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(gebaut, #3020)** Ein
+LTS-Release und seine Kandidaten bekommen zusätzlich Delta, Betriebsfolgen und Antwortqualität
+gegenüber dem jüngsten Release der vorigen LTS-Linie, getrennt in `delta-lts/` und `betrieb-lts/`
+([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5;
+[Update-Paket](../releases.md#update-paket)).
 
 **(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
 ([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):
@@ -583,10 +588,21 @@ beteiligungsrelevant wie eine Produktänderung. Deshalb:
   Instanz, ohne Geheimnisse und ohne personenbezogene Daten; jeder Abruf wird protokolliert. Das ist
   der in [security-and-compliance.md](./security-and-compliance.md#export-und-auskunft) beschriebene
   zweite Export; die JSON-Fassung trägt das Manifest in der Form von `faktenblaetter.json`.
-- Ein Werkzeug gleicht das Delta gegen diesen Export ab und kennzeichnet je Eintrag „betrifft diese
-  Instanz“ oder „betrifft sie nicht“; der Vergleich zweier Exporte zeigt zusätzlich die „Änderungen der
+- **(gebaut, #2559)** Ein Werkzeug gleicht das Delta gegen diesen Export ab und kennzeichnet je
+  Eintrag „betrifft diese Instanz“, „betrifft sie nicht (überschrieben)“ oder „betrifft sie nicht
+  (nicht eingeschaltet)“; der Vergleich zweier Exporte zeigt zusätzlich die „Änderungen der
   Dienststelle“ mit denselben Stufenregeln. Es läuft offline auf Dateien, auch beim
-  Datenschutzbeauftragten (#2559).
+  Datenschutzbeauftragten: `./gradlew complianceInstanceMatch -Pdelta=<manifest-delta.json>
+  -Pexport=<export.json> [-PpreviousExport=<export.json>]` (aus `backend/`, Klasse
+  `InstanceMatch` in `io.opaa.compliance`). Nicht betroffen ist nur eine geänderte Voreinstellung,
+  deren Wert in der Instanz von der bisherigen Voreinstellung genau dieses Felds abweicht (beim
+  Helm-Chart also von dessen Voreinstellung), ein dort ausgeschalteter Datenfluss und ein neuer Datenfluss
+  der Gruppe `CONNECTOR`; alles andere gilt im Zweifel als betroffen. Änderungen der Dienststelle
+  sind geänderte wirksame Werte der Einstellungen (Stufenregel einer geänderten Voreinstellung,
+  eine Frist also über ihre Länge), ein- oder ausgeschaltete Datenflüsse (wie ein neuer bzw.
+  entfallener Datenfluss) und je Modellrolle das aktive Ziel, das in oder außer Gebrauch kommt
+  oder Adresse bzw. Modell wechselt. Vertauschte Exporte (der frühere nicht älter) lehnt das
+  Werkzeug ab; Werte der Exporte gehen nur geprüft oder maskiert in den Bericht.
 
 ---
 
@@ -623,7 +639,8 @@ abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update
 Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
 eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
 (bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
-erneut gestuft. Alle Deltas erzeugt der Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
+erneut gestuft. Das Delta von der vorigen LTS-Linie zum Kandidaten liegt dem Paket bei; ein Delta
+von einer anderen Version erzeugt der Betrieb. Steht eine
 Sicherheitskorrektur nur in einem Funktionsupdate bereit (etwa weil die eingesetzte Linie ausgelaufen
 ist oder sich die Korrektur nicht zurückportieren lässt), darf die Dienststellenleitung es als
 vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine

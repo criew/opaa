@@ -1197,7 +1197,7 @@ Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
 1. **Zweckausschluss.** Der Pfad steht für arbeitsrechtliche, disziplinarische und leistungsbezogene Fragen **nicht** zur Verfügung — auch dann nicht, wenn ein Sachverhalt beides berührt.
 2. **Umfangsbegrenzung vorab.** Person, Zeitraum und Zweck werden vor der Freigabe festgelegt und begrenzen die Abfrage **technisch**. Sonst klärt man einen Vorfall vom Mai und liest dabei zwei Jahre.
 3. **Unterrichtung der betroffenen Person** nach Abschluss, mit Anlass und Umfang — außer die Klärung richtet sich gegen einen Dritten.
-4. **Jahresbericht an die Personalvertretung:** Zahl der Fälle und Anlässe in Kategorien, ohne Namen.
+4. **Bericht an die Personalvertretung:** Zahl der Fälle und Anlässe in Kategorien, ohne Namen, für einen wählbaren Berichtszeitraum ([Auskunft über die Datenerhebung](./security-and-compliance.md#auskunft-über-die-datenerhebung)).
 
 ### Stellschrauben, die das Produkt anbietet
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-23
+Akzeptiert · zuletzt geändert 2026-10-24
 
 ## Kontext
 
@@ -105,6 +105,10 @@ nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `Targ
 Eine Liste allein veraltet unbemerkt, ein Anker am Code fällt beim Bauen auf. Der Fachtext bleibt im
 Manifest, damit Faktenblätter ihn lesen, ohne den Code zu kennen.
 
+Ein Abruf, den eine eingebundene Bibliothek von sich aus aufbaut, wird abgeschaltet. Braucht ihn eine
+Funktion, bekommt er einen Eintrag in `outbound.yaml` und eine Kennzeichnung über die Hüllklasse
+(`@DataFlowCarrier`) und ihre Aufrufer (`@DataFlow`).
+
 ### 9. Konfigurationsschlüssel und Voreinstellungen
 
 Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-configuration-processor`
@@ -148,6 +152,10 @@ Anker. Werte aus der Datenbank, Datenflüsse, Konnektornutzung und Modellanbiete
 über den Port `InstanceStateSource` in `io.opaa.compliance`; private Bibliotheken zählen nicht.
 Abrufen darf nur `SYSTEM_ADMIN`. Jeder Abruf schreibt `DATA_COLLECTION_DISCLOSURE_EXPORTED`, auch
 der abgewiesene (`DENIED`) und der gescheiterte (`FAILURE`); deshalb prüft der Service die Rolle.
+Das Ereignis nennt Format und Berichtszeitraum. Der Berichtszeitraum besteht aus ganzen,
+abgeschlossenen Kalendermonaten (ein Ende im laufenden Monat wird auf den Vormonat gekappt) und gilt für die Zahl der anlassbezogenen Klärungen je Anlass (beantragt,
+freigegeben, abgelaufen), die das Modul des Protokolls aus einer Monatszählung ohne Personen liefert;
+Zahlen unter 3 gehen nur als „weniger als 3“ hinaus.
 
 Eine Negativliste geheimer Schlüssel veraltet unbemerkt, das Manifest führt ohnehin jeden
 datenwirksamen Schlüssel. Der Port hält foundation frei von Abhängigkeiten nach oben und legt jede
@@ -193,7 +201,10 @@ Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sicher
 Drift-Routine.
 Ein ausgehender Client eines Typs, der weder in `OUTBOUND_CLIENTS` noch in `OUTBOUND_BEANS` steht, oder
 ein Zugriff über Reflection entgeht dem Strukturtest (Entscheidung 8); die Liste wächst mit jedem neuen
-Client-Typ, und das Review prüft neue Abhängigkeiten darauf. Bewusst nicht erkannt wird eine neue
+Client-Typ, und das Review prüft neue Abhängigkeiten darauf. Ebenso entgeht ihm jede Verbindung, die
+eine eingebundene Bibliothek in ihrem eigenen Code aufbaut, etwa der Abruf einer Konfiguration beim
+Hersteller; solche Abrufe erkennt nur der Lauf ohne Internetzugang (`e2e/offline/`), und nur in den
+Funktionen, die er durchläuft. Bewusst nicht erkannt wird eine neue
 Klasse, die über eine bereits annotierte Klasse (etwa `RerankClient`) Daten an ein bestehendes Ziel
 schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routine auf.
 Das Delta erkennt eine rein redaktionelle Textänderung nur an Leerzeichen; jede andere geänderte

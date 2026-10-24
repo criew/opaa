@@ -117,10 +117,12 @@ ein Update verantworten, ohne den Code zu lesen:
 | Teil | Inhalt |
 |---|---|
 | `index.html` | Startseite der HTML-Fassung: Neben jeder Markdown-Datei liegt dieselbe Seite als HTML, untereinander verlinkt und ohne Internetzugang lesbar |
-| `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle |
+| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle |
 | `delta/` | Was sich an den Fakten seit dem vorigen finalen Release geändert hat, je Änderung vorher und nachher, mit Stufenvorschlag (Bagatelle, Anzeige, Zustimmung) und dem Hinweis, ob Verzeichnis der Verarbeitungstätigkeiten, Datenschutz-Folgenabschätzung oder Sicherheitskonzept betroffen sind; dazu die als datenrelevant gekennzeichneten Änderungen, deren Wirkung nicht im Manifest steht |
+| `delta-lts/`, `betrieb-lts/` | nur bei einem LTS-Release und seinen Kandidaten: dasselbe wie `delta/` und `betrieb/`, aber gegenüber dem jüngsten Release der vorigen LTS-Linie, für Installationen, die nur LTS-Linien betreiben; `LIESMICH.md` sagt, welcher Vergleich für wen gilt |
 | `betrieb/` | Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da |
 | `faktenblaetter/` | die Faktenblätter dieser Version |
+| `barrierefreiheit/` | der Prüfbericht der automatisierten Barrierefreiheitsprüfung dieser Version mit axe-core: geprüfte Seiten und Zustände, jeder im Farbschema, das sein Prüfszenario einstellt, ein Teil der Zustände in beiden, und welche Zustände (Seite, Dialog, Menü) nur in einem geprüft sind; angewandte Regeln, jeder Befund mit Stufe, was das Werkzeug nicht entscheiden konnte und welche Szenarien vorzeitig abbrachen. Ein Befund hält das Release nicht auf. Tastatur, Screenreader und Vergrößerung prüft er nicht |
 | `lizenzen/` | die Lizenzübersicht der ausgelieferten Abhängigkeiten |
 | `sbom/` | die CycloneDX-SBOMs von Backend und Frontend der Version |
 | `vorlagen/` | alle Vorlagen für Behörden dieser Version, nach Themen geordnet; ihre Verweise auf Faktenblätter und Handbuch führen auf Blätter und Kapitel im Paket, Verweise auf weitere Dokumentation auf deren Stand in dieser Version |
@@ -195,11 +197,22 @@ curl -s -H "Authorization: Bearer <token>" \
 # lesbar, für Datenschutz und Personalrat
 curl -s -H "Authorization: Bearer <token>" \
   https://<host>/api/v1/admin/compliance/data-collection-disclosure/markdown > auskunft.md
+# mit Berichtszeitraum für die anlassbezogenen Klärungen, in ganzen Monaten
+curl -s -H "Authorization: Bearer <token>" \
+  "https://<host>/api/v1/admin/compliance/data-collection-disclosure/markdown?from=2026-01-01&to=2026-06-30"
 ```
 
 Ein Konto ohne die Rolle erhält `403`. **Jeder Abruf steht im Revisionsprotokoll**, auch der
-abgewiesene, mit dem Format, aber ohne den Inhalt der Auskunft. Die Ereignisart dafür führt das
-Faktenblatt `protokollereignisse` wie jede andere.
+abgewiesene, mit Format und Berichtszeitraum, aber ohne den Inhalt der Auskunft. Die Ereignisart
+dafür führt das Faktenblatt `protokollereignisse` wie jede andere.
+
+Der **Berichtszeitraum** gilt nur für die anlassbezogenen Klärungen. Er beginnt am Ersten und endet
+am Letzten eines Monats; ein Zeitraum, der einen Monat anschneidet, wird mit `400` abgewiesen, ebenso
+einer vor 1970 oder nach 9999. Ohne Angabe umfasst er das laufende und das vorige Kalenderjahr.
+Ausgewiesen werden nur **abgeschlossene Monate**: Reicht der Zeitraum in den laufenden Monat oder
+später, endet er mit dem letzten abgeschlossenen Monat, und die Auskunft nennt dieses Ende. Ein
+Zeitraum ganz im laufenden Monat oder später wird mit `400` abgewiesen. So lässt sich eine Klärung
+auch durch wiederholte Abrufe nicht erkennen, solange ihr Monat läuft.
 
 Die Auskunft enthält:
 
@@ -208,10 +221,11 @@ Die Auskunft enthält:
 | Kopf | OPAA-Version, Commit des Images und Zeitpunkt des Abrufs |
 | Abweichungen von der Voreinstellung | jede Einstellung mit Datenwirkung, deren Wert in dieser Installation vom ausgelieferten abweicht |
 | Einstellungen mit Datenwirkung | alle diese Einstellungen mit Voreinstellung, wirksamem Wert und, bei Fristen aus der Verwaltung, dem Zeitpunkt der letzten Änderung |
-| Ausgehende Datenflüsse | jede Verbindung nach außen und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
+| Ausgehende Datenflüsse | jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
+| Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest
 beide gleich.
@@ -222,6 +236,75 @@ erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protoko
 von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
 Bibliotheken.
 
+**Anlassbezogene Klärungen** zählt OPAA je Monat und Anlass, ohne Person, Begründung und Verweis
+auf die Freigabe; die Zahlen bleiben erhalten, wenn Anträge und Freigaben nach ihrer Frist gelöscht
+sind. „Abgelaufen“ heißt, dass die Nutzbarkeit einer Freigabe im Zeitraum endete.
+Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, bleibt unbeantwortet.
+Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall nicht hervortritt.
+Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
+Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.
+
+### Abgleich eines Updates mit der Installation
+
+Das Delta im Update-Paket beschreibt, was sich am Produkt ändert. Ob eine Änderung die eigene
+Installation tatsächlich trifft, zeigt erst der **Abgleich** mit ihrer Auskunft. Eine geänderte
+Voreinstellung wirkt nicht, wo die Installation einen eigenen Wert gesetzt hat. Ein neuer Konnektor
+wirkt erst, wenn jemand eine Bibliothek oder einen Zugang dieser Art einrichtet. Umgekehrt ist eine
+Frist, die die Dienststelle selbst verlängert hat, ebenso beteiligungsrelevant wie eine Änderung des
+Produkts.
+
+> **Beispiel.** Vor dem Update auf eine neue Version legt die Systemverwaltung dem
+> Datenschutzbeauftragten die aktuelle Auskunft und die vom letzten Update vor. Er gleicht sie mit
+> dem Delta aus dem Update-Paket ab. Die neue Voreinstellung für die Zahl der Punkte in der
+> Gesprächsnotiz eines Chats (`opaa.chat.note.max-items`) steht als „betrifft sie nicht
+> (überschrieben)“ da, weil das Haus einen eigenen Wert nutzt. Unter „Änderungen der
+> Dienststelle“ steht die zwischen beiden Auskünften verlängerte Aufbewahrung des
+> Revisionsprotokolls mit dem Vorschlag „Zustimmung“.
+
+Der Abgleich läuft auf Dateien, ohne Zugang zur Installation und ohne Netz. Gebraucht werden ein
+Checkout des Quellcodes **im Stand der Zielversion des Deltas**, also des Tags der Version, auf die
+aktualisiert wird, und das Java-Werkzeug des Backends. Die Stufenregeln für die Änderungen der
+Dienststelle kommen aus diesem Checkout:
+
+```bash
+# aus backend/
+./gradlew complianceInstanceMatch -Pdelta=<pfad>/delta/manifest-delta.json \
+  -Pexport=<pfad>/auskunft.json [-PpreviousExport=<pfad>/auskunft-vorher.json]
+```
+
+Das Ergebnis liegt unter `backend/build/compliance/instanz-abgleich/`, als `instanz-abgleich.md`
+zum Lesen und `instanz-abgleich.json` für Werkzeuge.
+
+| Teil | Inhalt |
+|---|---|
+| Kopf | die beiden Versionen des Deltas, Version, Commit und Zeitpunkt jeder Auskunft, Hinweise wie eine Auskunft einer anderen Version als der, bei der das Delta beginnt |
+| Änderungen des Updates | jede Änderung des Deltas mit ihrem Stufenvorschlag und der Einordnung „betrifft diese Instanz“, „betrifft sie nicht (überschrieben)“ oder „betrifft sie nicht (nicht eingeschaltet)“, jeweils mit Grund |
+| Änderungen der Dienststelle | nur mit einer früheren Auskunft: geänderte Werte von Einstellungen, ein- oder ausgeschaltete Datenflüsse, neue, entfallene oder umgestellte Modellanbieter, je mit Stufenvorschlag nach denselben Regeln wie das Delta |
+
+Regeln der Einordnung:
+
+- **Im Zweifel betroffen.** Nur drei Fälle gelten als nicht betroffen: eine geänderte
+  Voreinstellung, wenn der Wert der Installation von der bisherigen Voreinstellung abweicht; ein
+  Datenfluss, der dort ausgeschaltet ist; ein neuer Datenfluss eines Konnektors. Alles andere, auch
+  eine Einstellung ohne ermittelten Wert, gilt als betroffen.
+- **Verglichen wird mit der bisherigen Voreinstellung des geänderten Felds**, bei einer Voreinstellung
+  des Helm-Charts also mit der des Charts, nicht der der Anwendung.
+- **Ein eigener Wert gleich der alten Voreinstellung** lässt sich in der Auskunft nicht von der
+  Voreinstellung unterscheiden; die Änderung steht dann als „betrifft diese Instanz“ da.
+- **Einstellungen aus der Verwaltung** liegen in der Datenbank der Installation. Eine neue
+  Voreinstellung gilt für Neuinstallationen; eine bestehende Installation behält ihren Wert, sofern
+  kein Datenbank-Update ihn ändert. Der Bericht nennt das als Grund und ordnet im Zweifel als
+  betroffen ein.
+- **Modellanbieter** vergleicht der Abgleich je Modellrolle über das aktive Ziel, nicht über den
+  Anzeigenamen: Ein anderes Modell auf demselben Server ist ein geändertes Modell, kein neuer
+  Datenfluss.
+- **Vertauschte Auskünfte** lehnt der Abgleich ab: Die frühere Auskunft muss älter sein als die
+  aktuelle.
+- **Der Stufenvorschlag bleibt.** „Betrifft sie nicht“ heißt nur, dass die Änderung in dieser
+  Konfiguration nicht wirkt. Schaltet die Dienststelle den Konnektor später ein, wird sie wirksam.
+- **Die Auskunft gehört zum Ausgangsstand.** Sie wird auf der Version abgerufen, bei der das Delta
+  beginnt, also vor dem Update.
+
 ## Was bei jeder Änderung geprüft wird
 
 Kein Mensch muss daran denken, die Fakten nachzutragen: Mehrere Prüfungen schlagen fehl, wenn
@@ -229,15 +312,22 @@ Code und Beschreibung auseinanderlaufen.
 
 | Prüfung | Wann | Was sie erzwingt |
 |---|---|---|
-| **Wächter im Backend-Build** | bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf `main` | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jeder Verbindung nach außen und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
+| **Wächter im Backend-Build** | bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf `main` | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jedem ausgehenden Client im Code von OPAA und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
 | **Kennzeichnung `data-impact`** | an jedem Pull Request (Prüfung „Datenwirkung“) | Die Beschreibung jedes Pull Requests fragt ab, ob er personenbezogene Daten, Sichtbarkeit, Auswertungen, Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung ändert. Trifft etwas zu, trägt er das Label `data-impact` und einen Satz in Alltagssprache. Ändert er Dateien, in denen Datenwirkung typischerweise entsteht, ohne Label und ohne die Angabe „Keine Wirkung“, schlägt die Prüfung fehl. Solche Änderungen erscheinen in den Release-Notizen als erste Rubrik „Datenrelevante Änderungen“ |
 | **Verweise der Behördenunterlagen** | bei jeder Änderung an den Unterlagen und am Manifest | Jeder Verweis einer Vorlage auf ein Faktenblatt trifft ein vorhandenes Blatt und einen vorhandenen Eintrag darin |
 | **Lizenzprüfung** | an Pull Requests, die Abhängigkeiten berühren, und bei jedem Stand auf `main` | Jede ausgelieferte Abhängigkeit steht unter einer freigegebenen Lizenz oder auf einer begründeten Ausnahmeliste. Die Lizenzübersicht liegt als Artefakt `license-report-backend` bzw. `license-report-frontend` am CI-Lauf und im Update-Paket jedes Release |
+| **Lauf ohne Internetzugang** | jede Nacht, auf Zuruf und an Pull Requests mit dem Label `offline-suite` | Die Compose-Installation arbeitet in einem Netz ohne Weg nach außen, und keine Namensauflösung und kein Abruf des Browsers verlässt es. Er sieht auch Abrufe eingebundener Bibliotheken, aber nur in dem, was er durchläuft ([Betrieb ohne Internet](netz-und-sicherheit.md#betrieb-ohne-internet)) |
 | **Wöchentliche Drift-Routine** | einmal je Woche, nach dem Merge | Eine nur lesende Prüfroutine sieht die Änderungen der Woche auf `main` durch: ob ein Pull Request mit Datenwirkung ohne Kennzeichnung blieb, ob ein Eintrag im Manifest sachlich nicht mehr stimmt, ob sich Verhalten ohne Schemaänderung geändert hat und ob eine Vorlage einen geänderten Wert abschreibt. Ihre Befunde gehen an den Maintainer |
 
 Die Prüfungen ergänzen sich: Der Wächter stellt sicher, **dass** es einen Eintrag gibt, nicht, ob
 er stimmt. Ob ein Personenbezug, ein Zweck oder eine Sichtbarkeit zutrifft, prüfen das Review jedes
 Pull Requests und die Drift-Routine.
+
+**Verbindungen eingebundener Bibliotheken.** Der Wächter liest den Code von OPAA. Eine Bibliothek,
+die von sich aus eine Verbindung aufbaut, etwa zum Abruf einer Konfiguration bei ihrem Hersteller,
+erkennt er nicht. Solche Abrufe fallen nur im Lauf ohne Internetzugang auf, und nur in dem, was er
+durchläuft; was er nicht abdeckt, steht unter den Grenzen seines Nachweises. Bekannte Abrufe
+eingebundener Bibliotheken sind abgeschaltet.
 
 ## Behördenunterlagen
 
@@ -254,9 +344,6 @@ woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
 
 - Ein Messwert der Suchqualität genau für die Commits eines Release; das Update-Paket nennt die
   Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
-- Ein Abgleich des Deltas mit der [Auskunft einer
-  Installation](#auskunft-über-die-datenerhebung-einer-installation)
-  ([#2559](https://github.com/criew/opaa/issues/2559)).
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang

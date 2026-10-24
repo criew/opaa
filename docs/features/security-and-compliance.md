@@ -464,7 +464,8 @@ Vier-Augen-Prinzip unter Beteiligung der Personalvertretung, mit vorab festgeleg
 festgelegtem Zeitraum und dokumentiertem Zweck, die die Abfrage **technisch** begrenzen. Ohne
 freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Der
 Zugriff erzeugt seinen eigenen Eintrag, die betroffene Person wird unterrichtet, und die Zahl der Fälle
-geht in den Jahresbericht an die Personalvertretung.
+geht in den Bericht an die Personalvertretung, für einen wählbaren Berichtszeitraum aus der
+[Auskunft über die Datenerhebung](#auskunft-über-die-datenerhebung).
 
 **Für die Person selbst gibt es genau eine Ausnahme, nur über sie: die
 [Selbstauskunft](#selbstauskunft-stufe-1)**; für Dritte bleibt allein die anlassbezogene Klärung. Sie liest die Protokolleinträge, in denen die angemeldete Person handelnd, betroffen oder als
@@ -483,8 +484,11 @@ derselben). **Noch nicht technisch durchgesetzt, sondern organisatorisch abzugre
 freigebenden Personen tatsächlich unterschiedliche Rollen im Sinne der Mitbestimmung besetzen (heute
 genügen zwei beliebige AUDITOR-Konten — die **Beteiligung der Personalvertretung** an der Freigabe
 selbst ist ein organisatorischer Prozessschritt, kein technisches Gate), die **Unterrichtung der
-betroffenen Person** nach Abschluss und die Aufnahme in den Jahresbericht. Diese drei bleiben
-Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet.
+betroffenen Person** nach Abschluss und der Bericht an die Personalvertretung als Dokument. Diese
+drei bleiben Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet. Technisch
+geliefert werden die Zahlen für den Bericht: Die [Auskunft über die
+Datenerhebung](#auskunft-über-die-datenerhebung) nennt je Anlass, wie viele Klärungen in einem
+wählbaren Berichtszeitraum beantragt, freigegeben und abgelaufen sind.
 
 **Aufbewahrung der Freigaben (#2859).** Antrag und Freigabe sind nach dem Ende der Nutzbarkeit nur
 noch Nachweis und haben eine Löschfrist: Gelöscht wird am Ende des Kalenderjahres, das auf das Ende
@@ -493,10 +497,11 @@ Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit d
 plus die 30 Tage (freigeben lässt er sich unverändert auch danach). Die
 Frist ist einstellbar (`opaa.audit.incident-scope-retention-years`, 1 bis 10 Jahre), damit eine
 Dienstvereinbarung sie verlängern kann; gelöscht wird in einem täglichen Lauf ohne eigenen
-Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Jahresbericht bleibt
-erhalten:** Jede Freigabe wird bei ihrer Erteilung je Kalenderjahr und Zweck gezählt, in einer
-Zähltabelle ohne Person und ohne Verweis auf die Freigabe; nie freigegebene Anträge zählen nicht.
-Den Bericht selbst erstellt OPAA nicht.
+Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Bericht an die
+Personalvertretung bleibt erhalten:** Jeder Antrag wird bei seiner Stellung, jede Freigabe bei ihrer Erteilung und das Ende
+ihrer Nutzbarkeit je Kalendermonat und Zweck gezählt (#2895), in einer Zähltabelle ohne Person und
+ohne Verweis auf den Antrag. Die [Auskunft über die
+Datenerhebung](#export-und-auskunft) gibt diese Zahlen für einen Berichtszeitraum aus.
 
 **Eine laufende Klärung hält die Konten, eine abgeschlossene nicht.** Solange ein Antrag offen ist
 oder eine Freigabe noch nutzbar, lehnt OPAA die Löschung der Konten der betroffenen, der
@@ -1413,8 +1418,43 @@ jeder Abruf, auch der abgewiesene, ist ein Protokollereignis `DATA_COLLECTION_DI
 Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 sie ist der Eingang für das Update-Delta gegen die Instanz (#2559) und für die statischen Anlagen der
 Dienstvereinbarung ([Behördenunterlagen und Update-Paket](./behoerdenunterlagen.md#instanzbezug)).
-Die Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum folgen mit #2895;
-das Ergebnis der automatisierten Prüfung je Abfrageweg ist noch nicht enthalten.
+Das Ergebnis der automatisierten Prüfung je Abfrageweg ist noch nicht enthalten.
+
+**Anlassbezogene Klärungen im Berichtszeitraum (#2895).** Der Abruf nimmt einen Berichtszeitraum
+(`from`, `to`) aus ganzen Kalendermonaten, ohne Angabe das laufende und das vorige Kalenderjahr.
+Ausgewiesen werden nur abgeschlossene Monate: Reicht der Zeitraum in den laufenden Monat oder
+später, endet er mit dem letzten abgeschlossenen Monat, und die Auskunft nennt dieses Ende; ein
+Zeitraum ohne abgeschlossenen Monat wird abgewiesen. Der ausgewiesene Zeitraum steht im
+Protokollereignis des Abrufs. Je Anlasskategorie nennt die Auskunft, wie viele
+Klärungen im Zeitraum beantragt, freigegeben und abgelaufen sind, ohne Personen, Begründungen und
+Kennungen der Freigaben. Die Grenzen dieser Zahlen:
+
+- **Ganze Monate.** Gezählt wird je Kalendermonat; ein Zeitraum, der einen Monat anschneidet, wird
+  abgewiesen, statt eine Genauigkeit vorzutäuschen, die die Zählung nicht hat. Weil nur
+  abgeschlossene Monate hinausgehen, ist der Monat zugleich die feinste zeitliche Auflösung, die über
+  einen Fall erkennbar wird: Auch wer alle paar Minuten abruft, sieht einen Antrag frühestens nach
+  Ende seines Monats. Gerade bei einem Verdacht auf unbefugten Zugriff kann die Systemverwaltung
+  selbst Gegenstand der Klärung sein; sie soll aus der Auskunft nicht erfahren, dass eine läuft.
+- **Kleine Zahlen.** Eine Zahl von 1 oder 2 erscheint als „weniger als 3". In einem kleinen Haus
+  kann schon die Angabe „eine Klärung wegen Verdachts auf unbefugten Zugriff im März" mit
+  Flurwissen auf eine Person deuten; der Auszug geht über die Personalvertretung hinaus in
+  Anlagen und Akten. Die Schwelle schützt die einzelne Auskunft, nicht gegen gezieltes Abfragen:
+  Aus zwei überlappenden Zeiträumen lässt sich die Zahl eines Monats erschließen. Dagegen steht,
+  dass jeder Abruf mit seinem Zeitraum im Revisionsprotokoll steht und nur die Systemverwaltung
+  ihn auslösen kann.
+- **Keine Ablehnung.** Einen Zustand „abgelehnt" gibt es nicht (ein nicht gewollter Antrag wird nicht
+  freigegeben und mit seiner Frist gelöscht); die Auskunft erfindet ihn nicht. „Beantragt" minus
+  „freigegeben" ist keine Zahl abgelehnter Anträge, weil Antrag und Freigabe in verschiedene Monate
+  fallen können.
+- **Abgelaufen** heißt: Die Nutzbarkeit einer Freigabe (30 Tage) endete im Zeitraum. Weil nichts
+  eine Freigabe widerruft oder verlängert, steht ihr Ende bei der Freigabe fest und wird dann
+  gezählt; in einem abgeschlossenen Monat ist jedes so gezählte Ende eingetreten.
+- **Ablösung der Jahreszählung.** Die monatliche Zählung ersetzt die jährliche Zählung der
+  Freigaben (#2859); diese wird nicht mehr geschrieben und entfällt mit einem Contract-Changeset im
+  Folgerelease. Fälle vor Einführung der Monatszählung werden nicht nachgerechnet: Vor `v0.1.0`
+  gibt es keine Bestandsinstallationen, deren Zahlen zu übernehmen wären. Aus demselben Grund
+  hingenommen: Beim Rolling Update auf die Version mit der Monatszählung fehlen dort Anträge und
+  Freigaben, die die noch laufende Vorgängerversion annimmt; das betrifft nur Updates vor `v0.1.0`.
 
 ### Berichte
 
@@ -1643,7 +1683,8 @@ Die anlassbezogene Klärung ist **inhaltlich begrenzt, nicht nur formal** — si
    begrenzen die Abfrage **technisch**. Sonst klärt man einen Vorfall vom Mai und liest dabei zwei Jahre.
 3. **Unterrichtung der betroffenen Person** nach Abschluss, mit Anlass und Umfang — außer die Klärung
    richtet sich gegen einen Dritten.
-4. **Jahresbericht an die Personalvertretung** über Zahl der Fälle und Anlässe in Kategorien, ohne Namen.
+4. **Bericht an die Personalvertretung** über Zahl der Fälle und Anlässe in Kategorien, ohne Namen,
+   für einen wählbaren Berichtszeitraum ([Auskunft über die Datenerhebung](#auskunft-über-die-datenerhebung)).
 
 ### 3. Keine Ranglisten
 

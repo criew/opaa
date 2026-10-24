@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -43,7 +43,7 @@ Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums (E
 |  | CON.9 Informationsaustausch (je nach Einsatz) | externe KI-Werkzeuge: [Freigabe je Bibliothek](../../handbuch/spaces/fremdzugaenge.md#4-die-freigabe-einer-wissensbibliothek), [Kontingent und Abflussalarm](../../handbuch/spaces/fremdzugaenge.md#10-kontingent-und-abflussalarm) |
 | OPS – Betrieb | OPS.1.1.2 Ordnungsgemäße IT-Administration | [Systemverwalter-Konto beim Erststart](../../handbuch/betrieb/authentifizierung.md#erststart-und-systemverwalter-konto), [Rollen](../../handbuch/konten-und-rechte/benutzerverwaltung.md#7-rollen), [Notfallzugang](../../handbuch/betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen) |
 |  | OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
-|  | OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate)); keine eigene Virenprüfung |
+|  | OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate)); zuschaltbare Virenprüfung jeder aufgenommenen Datei über einen clamd-Dienst der Behörde, vor dem Lesen und vor der Ablage des Originals, Befund im Revisionsprotokoll, Verhalten bei Ausfall des Scanners einstellbar; ab Werk aus, Seiteninhalte einer Quelle ohne Datei werden nicht geprüft; „Original öffnen“ liefert bei Quellen die aktuelle Fassung, die erst beim nächsten Lauf geprüft wird; bei Dateisystem-Quellen ist ein Austausch der Datei zwischen Prüfung und Verarbeitung möglich; Anhänge einer später befallenen Mail bleiben im Index, ihr Abruf ist gesperrt ([Virenprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien), {{faktenblatt:datenfluesse}}) |
 |  | OPS.1.1.5 Protokollierung | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}} |
 |  | OPS.1.1.6 Software-Tests und -Freigaben | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Aktualisierung und Rückweg](../../handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg), [Wiederherstellungsprobe](../../handbuch/betrieb/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) |
 |  | OPS.2.2 Cloud-Nutzung, OPS.2.3 Nutzung von Outsourcing | bei externem Modellanbieter oder Betrieb durch einen Dienstleister; Ziele in {{faktenblatt:datenfluesse}} |
@@ -90,7 +90,7 @@ Für KI-Risiken gibt es keinen Baustein; sie gehören in die Risikoanalyse.
 | Risiko | Was OPAA mitbringt | Was die Behörde festlegt |
 |---|---|---|
 | Falsche oder erfundene Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden)) | Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
-| Prompt-Injection: in Dokumenten versteckte Anweisungen an das Modell | keine eigene Erkennung | nur geprüfte Quellen anbinden, Schreibrechte an Quellen begrenzen |
+| Prompt-Injection: in Dokumenten versteckte Anweisungen an das Modell | Unabhängig vom Modell wirksam: Links in Antworten nur zu erlaubten Zielen, keine Bilder, Suche nur in lesbaren Dokumenten, Belege zeigen auf das präparierte Dokument. Als Hilfe für das Modell, ohne gemessene Senkung der Angriffsrate: Fundstellen im Prompt als Daten gekennzeichnet, unsichtbare Steuerzeichen beim Aufnehmen entfernt und auffällige Muster gemeldet, Treffer für externe KI-Werkzeuge als Fremdinhalt gekennzeichnet. Dazu ein Testsatz zum Messen des eigenen Modells ([Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection)). Grenzen: keine vollständige Erkennung, versteckter Text wie weiße Schrift oder verborgener Text wird nicht erkannt, eine falsche Angabe im sichtbaren Text hält keine Kennzeichnung auf | nur geprüfte Quellen anbinden, Schreibrechte an Quellen begrenzen, [erlaubte Linkziele](../../handbuch/betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) pflegen, Modell anhand der [Messung](../../handbuch/betrieb/modelle.md#modell-gegen-prompt-injection-messen) wählen, Regel „Antwort ist ein Entwurf“ in der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) |
 | Abfluss von Inhalten an einen Modellanbieter | Modelle im Haus betreibbar, Ziele in {{faktenblatt:datenfluesse}} | Wahl des Anbieters, Vertrag, Netzregeln |
 | Antworten aus Dokumenten ohne Leserecht | Suche nur in Dokumenten, die die Person lesen darf ([Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md)) | Rechtevergabe je Bibliothek |
 
@@ -134,6 +134,11 @@ Nächste Fortschreibung: mit dem nächsten Update, spätestens [Datum]
 - [AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html):
   Prüfkatalog des BSI für KI-Cloud-Dienste, als Ideengeber für die KI-Risikoanalyse; OPAA ist danach
   nicht geprüft, ebenso wenig nach dem neueren Prüfkatalog A5.
+- [Basisschutz gegen Indirect Prompt Injections in dokumentbasierten LLM-Chats](https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/KI/Basisschutz_Indirect-Prompt-Injections_LLM.pdf?__blob=publicationFile&v=6):
+  die fünf Basismaßnahmen des BSI, als Gliederung für die Zeile „Prompt-Injection“ der
+  Risikoanalyse. OPAA setzt um: Eingabe-Bereinigung (2.1) ohne Erkennung versteckten Texts,
+  Kennzeichnung der Dokumentinhalte im Prompt und gehärteter System-Prompt (2.2, 2.3), ein Testsatz für die
+  Modellauswahl (2.4) und den Egress-Filter für Links und Bilder (2.5, Schritt 4).
 - [Releases und Nachweise](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert): wie Release-Notizen
   datenrelevante Änderungen kennzeichnen.
 

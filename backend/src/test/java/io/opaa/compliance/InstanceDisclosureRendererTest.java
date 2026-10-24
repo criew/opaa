@@ -4,15 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.compliance.ComplianceManifest.DataFlowGroup;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
+import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
+import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
+import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
 import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -80,7 +85,23 @@ class InstanceDisclosureRendererTest {
                       "recorded_at", "Zeitpunkt auf die Mikrosekunde", "Zeitachse", "24 Monate")),
               List.of(new QueryPath("nach Objekt", "alle Ereignisse an einem Objekt")),
               List.of("kein Filter nach handelnder Person"),
-              "Wird nicht erhoben"));
+              "Wird nicht erhoben",
+              new IncidentScopeCases(
+                  new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2026-12-31")),
+                  List.of(
+                      new PurposeCases(
+                          "SECURITY_INCIDENT",
+                          "Sicherheitsvorfall",
+                          CaseCount.of(4),
+                          CaseCount.of(3),
+                          CaseCount.of(0)),
+                      new PurposeCases(
+                          "DATA_BREACH_INVESTIGATION",
+                          "Untersuchung einer Datenschutzverletzung",
+                          CaseCount.of(2),
+                          CaseCount.of(1),
+                          CaseCount.of(1))),
+                  List.of("Eine Ablehnung gibt es nicht"))));
 
   @Test
   void headsTheDocumentWithVersionCommitAndTime() {
@@ -149,6 +170,22 @@ class InstanceDisclosureRendererTest {
         .contains("### Nicht vorhandene Abfragewege")
         .contains("- kein Filter nach handelnder Person")
         .contains("Wird nicht erhoben");
+  }
+
+  @Test
+  void countsTheIncidentScopesOfThePeriodWithoutGivingSmallNumbersExactly() {
+    String markdown = InstanceDisclosureRenderer.render(DISCLOSURE);
+
+    int section = markdown.indexOf("### Anlassbezogene Klärungen im Berichtszeitraum");
+    assertThat(section).isPositive();
+    assertThat(markdown.substring(section))
+        .contains("2025-01-01 bis 2026-12-31")
+        .contains("| Anlass | Beantragt | Freigegeben | Abgelaufen |")
+        .contains("| Sicherheitsvorfall | 4 | 3 | 0 |")
+        .contains(
+            "| Untersuchung einer Datenschutzverletzung | weniger als 3 | weniger als 3 |"
+                + " weniger als 3 |")
+        .contains("- Eine Ablehnung gibt es nicht");
   }
 
   @Test

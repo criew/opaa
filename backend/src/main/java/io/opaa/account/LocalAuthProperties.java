@@ -39,6 +39,9 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     administrator once at start-up (Entscheidung 5); the operator removes it afterwards
  * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
  *     SYSTEM_ADMIN} may sign in from (Entscheidung 9); empty means no restriction
+ * @param refreshGracePeriod how long after its rotation a refresh token whose successor was never
+ *     used is renewed once more instead of being treated as a replay - the reload that discarded
+ *     the rotation's answer (default 20 seconds, at most 60; zero switches it off, Entscheidung 7)
  */
 @PerInstance("session limits and seed values of this process")
 @NoDataImpact("signing secret, cookie and bootstrap of local accounts")
@@ -53,10 +56,14 @@ public record LocalAuthProperties(
     Boolean cookieSecure,
     String initialAdminPassword,
     String adminReset,
-    @InstallationWide List<String> adminAllowedCidrs) {
+    @InstallationWide List<String> adminAllowedCidrs,
+    @InstallationWide @NoDataImpact("tolerance of the replay detection, keeps no data longer")
+        Duration refreshGracePeriod) {
 
   public static final Duration MAX_REFRESH_TOKEN_TTL = Duration.ofDays(30);
   public static final Duration MAX_SESSION_MAX_LIFETIME = Duration.ofDays(90);
+  public static final Duration DEFAULT_REFRESH_GRACE_PERIOD = Duration.ofSeconds(20);
+  public static final Duration MAX_REFRESH_GRACE_PERIOD = Duration.ofSeconds(60);
   public static final String ADMIN_RESET_FORCE = "force";
   public static final String INITIAL_ADMIN_PASSWORD_VARIABLE = "OPAA_INITIAL_ADMIN_PASSWORD";
   public static final String ADMIN_RESET_VARIABLE = "OPAA_LOCAL_ADMIN_RESET";
@@ -77,6 +84,8 @@ public record LocalAuthProperties(
     adminSessionMaxLifetime =
         adminSessionMaxLifetime != null ? adminSessionMaxLifetime : Duration.ofHours(12);
     cookieSecure = cookieSecure == null ? Boolean.TRUE : cookieSecure;
+    refreshGracePeriod =
+        refreshGracePeriod != null ? refreshGracePeriod : DEFAULT_REFRESH_GRACE_PERIOD;
 
     requirePositive(accessTokenTtl, Setting.ACCESS_TOKEN_TTL);
     requirePositive(refreshTokenTtl, Setting.REFRESH_TOKEN_TTL);
@@ -84,6 +93,14 @@ public record LocalAuthProperties(
     requirePositive(adminRefreshTokenTtl, Setting.ADMIN_REFRESH_TOKEN_TTL);
     requirePositive(adminSessionMaxLifetime, Setting.ADMIN_SESSION_MAX_LIFETIME);
     requireAtMost(refreshTokenTtl, MAX_REFRESH_TOKEN_TTL, Setting.REFRESH_TOKEN_TTL, "30 days");
+    if (refreshGracePeriod.isNegative()) {
+      throw new IllegalArgumentException(
+          Setting.REFRESH_GRACE_PERIOD.describe()
+              + " must not be negative, got "
+              + refreshGracePeriod);
+    }
+    requireAtMost(
+        refreshGracePeriod, MAX_REFRESH_GRACE_PERIOD, Setting.REFRESH_GRACE_PERIOD, "60 seconds");
     requireAtMost(
         sessionMaxLifetime, MAX_SESSION_MAX_LIFETIME, Setting.SESSION_MAX_LIFETIME, "90 days");
     requireOrdered(
@@ -179,7 +196,8 @@ public record LocalAuthProperties(
     SESSION_MAX_LIFETIME("session-max-lifetime", "OPAA_AUTH_LOCAL_SESSION_MAX_LIFETIME"),
     ADMIN_REFRESH_TOKEN_TTL("admin-refresh-token-ttl", "OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL"),
     ADMIN_SESSION_MAX_LIFETIME(
-        "admin-session-max-lifetime", "OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME");
+        "admin-session-max-lifetime", "OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME"),
+    REFRESH_GRACE_PERIOD("refresh-grace-period", "OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD");
 
     private final String property;
     private final String variable;

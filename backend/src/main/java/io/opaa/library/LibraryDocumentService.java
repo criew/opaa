@@ -39,6 +39,7 @@ import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalRef;
@@ -86,6 +87,12 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /** The {@code code} of the 404 for a library being erased; only a reader of it sees it. */
   public static final String LIBRARY_BEING_ERASED = "LIBRARY_BEING_ERASED";
 
+  /** The {@code code} of the 404 for an original the malware scan found malware in. */
+  public static final String MALWARE_FOUND = "MALWARE_FOUND";
+
+  static final String MALWARE_FOUND_MESSAGE =
+      "Die Datei ist gesperrt, weil die Virenprüfung ein Schadprogramm gefunden hat";
+
   /** The 503 a reader sees when the core cannot sign in; account and endpoint stay in the log. */
   static final String ORIGINAL_SIGN_IN_FAILED =
       "Das Original ist derzeit nicht abrufbar. Bitte später erneut versuchen.";
@@ -110,6 +117,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final SourceConnectionResolver connectionResolver;
   private final SourceSyncStateRepository syncStateRepository;
   private final CurrentInstance currentInstance;
+  private final MalwareScanService malwareScanService;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -138,6 +146,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       SourceConnectionResolver connectionResolver,
       SourceSyncStateRepository syncStateRepository,
       CurrentInstance currentInstance,
+      MalwareScanService malwareScanService,
       Clock clock) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -160,6 +169,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.connectionResolver = connectionResolver;
     this.syncStateRepository = syncStateRepository;
     this.currentInstance = currentInstance;
+    this.malwareScanService = malwareScanService;
     this.clock = clock;
   }
 
@@ -236,6 +246,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     Document storedRow;
     try {
       requireContentMatchesExtension(storedFile, extension);
+      requireNoMalware(storedFile, library, displayFileName);
 
       String checksum = checksumService.computeSha256(storedFile);
       // Dedup is scoped per library: the same file uploaded into two different libraries is two
@@ -296,6 +307,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
                 .fileName(displayFileName)
                 .sourceType(library.getSourceType())
                 .existingRow()
+                .malwareScanned()
                 .build(),
             new StandaloneAttachmentAccess(library, "Upload"),
             accepted::release);
@@ -342,6 +354,22 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     markUploadAsContentChange(libraryId);
     return new LibraryDocumentEntry(
         storedRow, LibraryFolderPaths.pathOf(folderRepository, storedRow.getFolderId()));
+  }
+
+  /**
+   * The malware scan of an upload, before its original is stored or a row exists: a finding is a
+   * {@code 400} naming the signature, a file the scanner could not judge a {@code 503}.
+   */
+  private void requireNoMalware(Path file, KnowledgeLibrary library, String fileName) {
+    switch (malwareScanService.check(file, library, fileName)) {
+      case MalwareScanService.Verdict.Clean clean -> {}
+      case MalwareScanService.Verdict.AcceptedUnscanned accepted -> {}
+      case MalwareScanService.Verdict.Infected infected ->
+          throw new ValidationException(
+              MalwareScanService.INFECTED_MESSAGE + " (" + infected.signature() + ")");
+      case MalwareScanService.Verdict.Unscanned unscanned ->
+          throw new ServiceUnavailableException(MalwareScanService.UNSCANNED_MESSAGE);
+    }
   }
 
   /**
@@ -420,10 +448,18 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       throw new NotFoundException("Die Bibliothek wird gelöscht", LIBRARY_BEING_ERASED);
     }
 
+    requireNoMalwareFinding(document);
     if (isReExtractableAttachment(document)) {
       return loadAttachmentContent(document, library);
     }
     return loadOriginal(document, library);
+  }
+
+  /** An original the malware scan found malware in is never served, nor anything extracted. */
+  private static void requireNoMalwareFinding(Document document) {
+    if (document.hasMalwareFinding()) {
+      throw new NotFoundException(MALWARE_FOUND_MESSAGE, MALWARE_FOUND);
+    }
   }
 
   /**
@@ -505,6 +541,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
             current.getParentDocumentId());
         throw noOriginalAvailable();
       }
+      requireNoMalwareFinding(parent);
       if (AttachmentFilePath.indexIn(parent.getFilePath(), current.getFilePath()) < 0) {
         // current has a source identity of its own (a downloaded .eml, itself an attachment of an
         // RSS entry) - it is the root to fetch, its own parent is not part of the extraction.

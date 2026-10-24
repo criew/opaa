@@ -27,6 +27,8 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   // Indexed anyway, only the deviation between the file's own extension and its detected
   // content is reported here.
   FORMAT_MISMATCH: 'Endung weicht vom Inhalt ab',
+  // Indexed anyway, without a malware scan: the scanner could not judge it (policy ACCEPT).
+  UNSCANNED: 'Ohne Virenprüfung aufgenommen',
   SCHEDULE_SKIPPED: 'Geplanter Lauf übersprungen',
   // The document no longer exists at its source and was removed at the end of a
   // successful, complete run - a note about the removal, not a skip/reject/error of this run.
@@ -36,6 +38,8 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   BUDGET_EXHAUSTED: 'Anfragebudget erschöpft',
   // The run's own figures, one note per run for a source that counts them.
   SUMMARY: 'Kennzahlen',
+  // Counts per class of what the cleanup after extraction found; the document was indexed.
+  SUSPICIOUS_PATTERNS: 'Auffällige Muster',
 }
 
 // ADR-0023, Entscheidung 4: the Betriebsart of a run - whether its listing was complete

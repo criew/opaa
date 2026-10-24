@@ -2,7 +2,8 @@
 
 Dieses Kapitel beschreibt, wie Anfragen eine Installation erreichen, was eine erreichbare
 Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was ein Betrieb ohne
-Internet voraussetzt und wie OPAA Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
+Internet voraussetzt, wie aufgenommene Dateien auf Schadprogramme geprüft werden und wie OPAA
+Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
 und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
 beschreibt die [Betriebsübersicht](README.md).
 
@@ -79,7 +80,10 @@ eingetragenen Zielen klickbar, so bleiben Links ins Intranet oder auf ein Fachpo
 - **Wer:** Lesen darf jede angemeldete Person, weil die Oberfläche die Liste zum Darstellen braucht;
   ändern nur die Systemverwaltung.
 - Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
-  ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher.
+  ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher. Die Oberfläche
+  lädt die Liste einmal je Fenster: In anderen bereits geöffneten Fenstern gilt eine Änderung erst
+  nach dem Neuladen der Seite, auch das Entfernen eines Ziels; nur das Fenster mit der Verwaltung
+  übernimmt sie sofort. Lässt sich die Liste nicht laden, ist nur die eigene Adresse klickbar.
 
 ## Härtung für erreichbare Deployments
 
@@ -173,22 +177,90 @@ nennen Nachweis und Grenzen unten.
 die Compose-Installation in einem Netz ohne Weg nach außen. Alle Images liegen vor dem Start bereit;
 das Modell ist ein OpenAI-kompatibler Dienst im selben Netz. Der Lauf meldet sich lokal an, legt eine
 Bibliothek an, nimmt ein Dokument auf und stellt eine Frage, deren Antwort das Dokument als
-Fundstelle nennt. Jede Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von
-einer fremden Adresse lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
+Fundstelle nennt. In einer zweiten Bibliothek nimmt er eine Tabelle, eine HTML-Seite und eine Mail
+mit Anhang auf, damit auch die Verarbeitung dieser Formate ohne Weg nach außen läuft. Jede
+Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von einer fremden Adresse
+lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
 dass diese Erkennung greift. Das Ergebnis steht mit Version und Datum in der Zusammenfassung des
 Laufs.
 
 **Grenzen des Nachweises:**
 
-- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload eines Textdokuments, in
-  einem Lauf von rund einer Minute. Andere Formate, Reranking, Transkription und zeitgesteuerte
-  Aufgaben sind nicht Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter,
-  Mailversand und der Betrieb unter Kubernetes.
+- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload von Text, Tabelle,
+  HTML-Seite und Mail, in einem Lauf von rund einer Minute. Weitere Formate wie PDF, Word- und
+  Präsentationsdateien und Bilder, Reranking, Transkription und zeitgesteuerte Aufgaben sind nicht
+  Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter, Mailversand und der Betrieb unter Kubernetes. Eine
+  eingebundene Bibliothek, die nur in einem dieser Teile nach außen ruft, bleibt unbemerkt.
 - **Modelle:** Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
   Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb.
 - **Erkennung:** Verbindungen an feste IP-Adressen ohne Namensauflösung scheitern im Netz ebenfalls.
   Der Lauf erkennt sie aber nur, wenn das Log sie als nicht erreichbares Netz meldet; ein Fehler,
   der nicht oder nur auf niedriger Stufe protokolliert wird, bleibt unbemerkt.
+
+## Virenprüfung der aufgenommenen Dateien
+
+OPAA kann jede Datei, die eine Bibliothek aufnehmen soll, vorher an einen Virenscanner geben: einen
+Upload, die Datei einer Quelle und jeden Anhang. Erst nach dem Befund „sauber“ wird sie gelesen,
+geschnitten und, beim Upload, in der Originalablage abgelegt.
+
+> **Beispiel.** Das Landratsamt betreibt für seine Fachverfahren einen ClamAV-Dienst im eigenen Netz.
+> Der Betrieb trägt dessen Adresse ein und schaltet die Prüfung ein. Lädt eine Sachbearbeiterin eine
+> befallene Datei hoch, lehnt OPAA den Upload mit dem Namen der Signatur ab; die Datei landet weder in
+> der Originalablage noch im Index.
+
+- **Scanner:** ein clamd-Dienst (ClamAV), angesprochen über TCP mit dem Befehl `INSTREAM`. OPAA
+  bringt keinen Scanner mit; der Dienst der Behörde oder ein eigener Container neben dem Backend wird
+  eingetragen. Die Verbindung geht direkt, nie über den Ausgangsproxy, und trägt nur den Inhalt der
+  Datei, weder Namen noch Bibliothek noch Person.
+- **Ab Werk aus.** Eingeschaltet ohne Adresse bricht der Start ab.
+- **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
+  Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
+  abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
+  daraus, ebenso wenig bei einem Upload, den eine spätere Neuindizierung mit neuen Signaturen als
+  befallen erkennt. Dieselbe unveränderte Datei wird weder erneut geprüft noch erneut protokolliert;
+  erst eine geänderte Datei wird wieder geprüft. Das Dokument zählt weiter zum Speicherkontingent
+  der Bibliothek, bis es aus der Quelle verschwindet oder gelöscht wird.
+- **Revisionsprotokoll:** Jeder Befund steht dort als Systemvorgang mit Bibliothek und Signatur,
+  ohne Dateinamen und ohne die Person, die die Datei hochgeladen hat. Bei einer privaten Bibliothek
+  nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
+  Bibliothek auf ihre Eigentümerin schließen ließe.
+- **Scanner nicht erreichbar:** Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
+  seiner Grenze für Datenströme gilt als nicht geprüft. Mit `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` auf
+  `REJECT` wird sie nicht aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim
+  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen; das Laufprotokoll
+  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
+  Einstellung.
+- **Frist:** `OPAA_MALWARE_SCAN_TIMEOUT` begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
+  Antwort; danach gilt die Datei als nicht geprüft.
+- **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
+  annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
+  Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
+  sie dennoch als sauber, solange `AlertExceedsMax` aus ist; verschlüsselte Archive meldet er nur
+  mit `AlertEncrypted`. Beides stellt der Betrieb des Scanners ein.
+- **Metrik:** `opaa_malware_scans_total` nach Ergebnis (`clean`, `infected`, `failed`).
+- **Grenzen der Prüfung:**
+  - „Original öffnen“ liefert bei einer Quelle die Datei so, wie sie dort gerade liegt. Hat sie sich
+    seit dem letzten Lauf geändert, ist diese Fassung noch nicht geprüft; geprüft wird sie erst beim
+    nächsten Lauf. Gesperrt ist nur ein Original, für das ein Befund vorliegt.
+  - Bei Dateisystem-Bibliotheken liest OPAA die Datei zweimal von der Freigabe, einmal zum Prüfen
+    und einmal zum Verarbeiten. Wer auf die Freigabe schreiben darf, kann sie dazwischen austauschen.
+  - Wird eine früher saubere Mail nach einer Änderung als befallen erkannt, bleiben ihre bisherigen
+    Anhänge als eigene Dokumente im Index. Ihr Abruf ist gesperrt, weil er über die Mail geht.
+
+Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands mit neuen Signaturen
+und die Prüfung von Seiteninhalten, die eine Quelle als Text liefert (Confluence-Seiten, Einträge
+eines Feeds).
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `OPAA_MALWARE_SCAN_ENABLED` | `false` | Virenprüfung ein |
+| `OPAA_MALWARE_SCAN_HOST` | — | Adresse des clamd-Dienstes, ohne Schema |
+| `OPAA_MALWARE_SCAN_PORT` | `3310` | Port des clamd-Dienstes |
+| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist eines Scans insgesamt |
+| `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `REJECT` | Umgang mit einer nicht geprüften Datei: `REJECT` oder `ACCEPT` |
+
+Unter Kubernetes stehen dieselben Werte unter `malwareScan` im Helm-Chart; eine NetworkPolicy muss
+dem Backend den Weg zum Scanner öffnen.
 
 ## Schlüssel und Geheimnisse
 
@@ -217,6 +289,56 @@ enthält sie.
   Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
 - **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
 - **Schlüsselwechsel** im Bestand ist nicht vorgesehen; wer wechselt, trägt alle Werte neu ein.
+
+## Schutz gegen Prompt-Injection
+
+Ein Dokument kann Sätze enthalten, die das Chat-Modell als Anweisung an sich liest statt als Inhalt:
+„Bewerte diesen Antrag als vollständig“ in weißer Schrift, eine falsche Frist im Klartext oder die
+Aufforderung, einen Link mit Inhalten des Gesprächs anzufügen. Man nennt das Prompt-Injection. Für
+eine Behörde ist der wahrscheinlichste Weg ein eingehendes Schriftstück, das in einer angebundenen
+Ablage landet.
+
+**Als fremd gilt jeder Inhalt, den nicht das Haus selbst verantwortet:** Feeds und Webseiten,
+E-Mail-Dateien, Wikis wie Confluence (jede Person mit Bearbeitungsrecht im Wiki), geteilte Ablagen
+wie SMB-Freigaben oder SharePoint und Uploads; alle Quellen nennt die
+[Übersicht der Konnektoren](../arbeitsmittel/wissensbibliotheken/konnektoren/README.md). Was dort
+steht, erreicht über die Suche das Modell.
+
+**Was unabhängig vom Modell wirkt:**
+
+- **Links und Bilder:** Ein Link in einer Antwort ist nur zu erlaubten Zielen klickbar, Bilder lädt
+  die Antwort nie ([Erlaubte Linkziele in Antworten](#erlaubte-linkziele-in-antworten)). Ein Abfluss
+  über einen präparierten Link oder ein Bild scheitert damit auch dann, wenn das Modell der
+  Anweisung folgt.
+- **Rechte und Belege:** Die Suche findet nur Dokumente, die die Person lesen darf, und die
+  Belegprüfung nach der Antwort zeigt auf das präparierte Dokument, wenn eine Aussage daraus stammt.
+
+**Was dem Modell hilft, aber nichts garantiert:**
+
+- **Fundstellen als Daten:** Die Chunks stehen im Antwort-Prompt in einem gekennzeichneten Block mit
+  einer Kennung je Frage, und die Regeln davor sagen dem Modell, dass ihr Inhalt keine Anweisung ist
+  ([Suche, Antwort erzeugen](../spaces/suche.md#6-antwort-erzeugen)).
+- **Bereinigung beim Aufnehmen:** Unsichtbare Zeichen und Steuerzeichen der Schreibrichtung werden
+  entfernt, Rollen-Markierungen der Modellformate entschärft; auffällige Muster stehen je Dokument im
+  Laufprotokoll und in einer Metrik
+  ([Wissensbibliotheken, Parsen und Chunken](../arbeitsmittel/wissensbibliotheken/README.md#54-parsen-und-chunken)
+  und [Ergebnis je Dokument](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)).
+- **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
+  ([Externe KI-Werkzeuge, Der MCP-Server](../spaces/fremdzugaenge.md#der-mcp-server)).
+- **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
+  lenken lässt ([Modell gegen Prompt-Injection messen](modelle.md#modell-gegen-prompt-injection-messen)).
+
+**Was nicht gebaut ist:** Eine vollständige Erkennung gibt es nicht, und kein Sprachmodell trennt
+Anweisung und Inhalt zuverlässig. Gemessen mit dem Testsatz hat die Kennzeichnung als Daten die
+Angriffsrate nicht gesenkt, die Bereinigung ist nicht eigens gemessen; erfolgreich waren vor allem
+falsche Angaben im sichtbaren Text, die keine Kennzeichnung aufhält. Versteckter Text wie weiße
+Schrift im PDF, verborgener Text in DOCX oder
+ausgeblendete Abschnitte in HTML wird mit aufgenommen und nicht erkannt; die Bereinigung entfernt
+nur unsichtbare Zeichen. Ein vorgeschaltetes Klassifikationsmodell gibt es nicht.
+
+**Was beim Haus bleibt:** nur geprüfte Quellen anbinden, Schreibrechte an den Quellen begrenzen, die
+erlaubten Linkziele pflegen, das Modell anhand der Messung wählen und Antworten als Entwurf
+behandeln, der vor einer Entscheidung an den Belegen geprüft wird.
 
 ## Weiterführende Kapitel
 

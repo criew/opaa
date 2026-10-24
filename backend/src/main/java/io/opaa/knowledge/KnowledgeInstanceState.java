@@ -10,10 +10,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The connector types the shared libraries of one organization read from and the store of the
- * originals, for the disclosure. A private library is counted nowhere, so the disclosure cannot
- * tell one from none (ADR-0049, Entscheidung 1); the flows it may open are reported by the
- * connection profiles that admit persons.
+ * The connector types the shared libraries of one organization read from, the store of the
+ * originals and the malware scanner, for the disclosure. A private library is counted nowhere, so
+ * the disclosure cannot tell one from none (ADR-0049, Entscheidung 1); the flows it may open are
+ * reported by the connection profiles that admit persons.
  */
 @Component
 class KnowledgeInstanceState implements InstanceStateSource {
@@ -23,11 +23,15 @@ class KnowledgeInstanceState implements InstanceStateSource {
 
   private final KnowledgeLibraryRepository libraries;
   private final UploadedOriginalStore originalStore;
+  private final MalwareScanService malwareScanService;
 
   KnowledgeInstanceState(
-      KnowledgeLibraryRepository libraries, UploadedOriginalStore originalStore) {
+      KnowledgeLibraryRepository libraries,
+      UploadedOriginalStore originalStore,
+      MalwareScanService malwareScanService) {
     this.libraries = libraries;
     this.originalStore = originalStore;
+    this.malwareScanService = malwareScanService;
   }
 
   @Override
@@ -52,6 +56,7 @@ class KnowledgeInstanceState implements InstanceStateSource {
     flows.put("source-original", ORIGINAL_AT_THE_SOURCE.stream().anyMatch(counts::containsKey));
     flows.put("source-attachment", counts.containsKey("RSS_FEED"));
     flows.put("original-store", originalStore instanceof S3UploadedOriginalStore);
+    flows.put("malware-scanner", malwareScanService.enabled());
     return flows;
   }
 

@@ -141,6 +141,7 @@ public final class FakeGraphServer implements AutoCloseable {
   private volatile DownloadHost downloadHost = DownloadHost.HTTPS;
   private volatile DeltaLinkForm deltaLinkForm = DeltaLinkForm.QUERY;
   private volatile UnaryOperator<String> linkRewrite = UnaryOperator.identity();
+  private volatile int maxPageSize = Integer.MAX_VALUE;
 
   public FakeGraphServer() {
     acceptedTokens.add(TOKEN);
@@ -268,6 +269,14 @@ public final class FakeGraphServer implements AutoCloseable {
    */
   public void grantOnly(String... siteIds) {
     grantedSites = Set.of(siteIds);
+  }
+
+  /**
+   * From now on a collection page - children, the drives of a site, the site search - holds at most
+   * {@code size} entries, as Graph may answer with fewer than {@code $top} asks for.
+   */
+  public void pageSizeAtMost(int size) {
+    maxPageSize = size;
   }
 
   /** From now on also {@code token} is accepted. */
@@ -430,7 +439,7 @@ public final class FakeGraphServer implements AutoCloseable {
       sites.values().stream()
           .filter(site -> site.name().toLowerCase().contains(search))
           .forEach(site -> found.add(site(site)));
-      json(exchange, path, query, Map.of("value", found));
+      paged(exchange, path, query, found);
     } else if ((matcher = Pattern.compile("sites/([^/:]+):(/.*)").matcher(path)).matches()) {
       String hostname = matcher.group(1);
       String sitePath = matcher.group(2);
@@ -450,7 +459,7 @@ public final class FakeGraphServer implements AutoCloseable {
       drives.values().stream()
           .filter(drive -> drive.siteId().equals(siteId))
           .forEach(drive -> list.add(drive(drive)));
-      json(exchange, path, query, Map.of("value", list));
+      paged(exchange, path, query, list);
     } else if ((matcher = Pattern.compile("sites/([^/]+)").matcher(path)).matches()) {
       Site site = sites.get(matcher.group(1));
       answer(exchange, site == null ? null : site(site));
@@ -601,7 +610,14 @@ public final class FakeGraphServer implements AutoCloseable {
         .filter(item -> parentId.equals(item.parentId) && !item.deleted)
         .sorted((a, b) -> a.name.compareTo(b.name))
         .forEach(item -> all.add(item(item)));
-    int top = Integer.parseInt(query.getOrDefault("$top", "200"));
+    paged(exchange, path, query, all);
+  }
+
+  /** One page of {@code all} from the position {@code $skiptoken} names, with a next link. */
+  private void paged(
+      HttpExchange exchange, String path, Map<String, String> query, List<Map<String, Object>> all)
+      throws IOException {
+    int top = Math.min(maxPageSize, Integer.parseInt(query.getOrDefault("$top", "200")));
     String skip = query.get("$skiptoken");
     int start = skip == null ? 0 : Integer.parseInt(skip.substring(1));
     int end = Math.min(all.size(), start + top);

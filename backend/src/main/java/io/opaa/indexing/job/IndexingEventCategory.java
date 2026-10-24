@@ -17,6 +17,11 @@ public enum IndexingEventCategory {
    * never a reason to skip or reinterpret it, only to report the deviation.
    */
   FORMAT_MISMATCH,
+  /**
+   * The item was indexed without a malware scan: the scanner could not judge it and the policy is
+   * {@code ACCEPT} - a note about an accepted item, like {@link #FORMAT_MISMATCH}.
+   */
+  UNSCANNED,
   /** A scheduled run was skipped because the library was still indexing. */
   SCHEDULE_SKIPPED,
   /**
@@ -40,5 +45,12 @@ public enum IndexingEventCategory {
    * The run's own figures at its end - requests, bytes, listed/skipped/processed objects, the time
    * each container took - one note per run for a source that counts them, never an item outcome.
    */
-  SUMMARY
+  SUMMARY,
+  /**
+   * The cleanup after extraction found patterns typical of prompt injection in an indexed document
+   * - removed invisible characters, defused role tokens, instruction phrases, URLs with a data
+   * placeholder. One note per document with counts per class, never with content; the document was
+   * indexed.
+   */
+  SUSPICIOUS_PATTERNS
 }
