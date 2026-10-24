@@ -40,7 +40,7 @@ class PersonalSpaceDeletionListener {
               .actor(event.actor().id())
               .type(AuditEventType.SPACE_DELETED)
               .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-              .before(spaceAuditPayload(space))
+              .before(spaceAuditPayload(space, audit))
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
@@ -48,9 +48,10 @@ class PersonalSpaceDeletionListener {
   }
 
   /** The same payload {@code SpaceService} writes for a space deletion. */
-  private static Map<String, Object> spaceAuditPayload(Space space) {
+  private static Map<String, Object> spaceAuditPayload(Space space, AuditEventRecorder audit) {
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("ownerId", space.getOwnerId().toString());
+    payload.put(
+        "ownerId", audit.pseudonymFor(space.getOwnerId(), space.getOrganizationId()).toString());
     return payload;
   }
 }

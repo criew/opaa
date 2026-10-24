@@ -4,6 +4,7 @@ import static io.opaa.api.types.AuditEventType.*;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.compliance.SelfDisclosureLabels;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,11 +18,12 @@ import tools.jackson.databind.json.JsonMapper;
  * The positive list of {@code before}/{@code after} keys per {@link AuditEventType} that a
  * self-disclosure may repeat. Every event type has an entry, an empty one where nothing of the
  * payload goes out; a listed key carries no person, a key not listed and a nested object never
- * leave. {@link #PERSON_KEYS} carry an account id and go out only as "Sie" or another person.
+ * leave. {@link #PERSON_KEYS} carry a person's pseudonym (older entries: the account id) or a group
+ * id and go out only as "Sie" or another person.
  */
 final class AuditSelfDisclosurePayload {
 
-  /** Keys whose value is the id of an account (or an owning group). */
+  /** Keys whose value names a person (pseudonym or account id) or an owning group. */
   static final Set<String> PERSON_KEYS = Set.of("ownerId");
 
   /** What stands for an id under {@link #PERSON_KEYS} that is not the person's own. */
@@ -35,9 +37,10 @@ final class AuditSelfDisclosurePayload {
 
   /**
    * The listed part of a stored payload as compact JSON, or {@code null} when nothing of it may go
-   * out. {@code accountId} is the person's own id, compared against {@link #PERSON_KEYS}.
+   * out. {@code ownRefs} are the person's own pseudonym and account id, compared against {@link
+   * #PERSON_KEYS}.
    */
-  static String disclose(AuditEventType type, String storedJson, String accountId) {
+  static String disclose(AuditEventType type, String storedJson, String... ownRefs) {
     Set<String> allowed = type == null ? Set.of() : KEYS.getOrDefault(type, Set.of());
     if (storedJson == null || allowed.isEmpty()) {
       return null;
@@ -60,7 +63,7 @@ final class AuditSelfDisclosurePayload {
       if (PERSON_KEYS.contains(key)) {
         disclosed.put(
             key,
-            value.isString() && value.stringValue().equals(accountId)
+            value.isString() && Arrays.asList(ownRefs).contains(value.stringValue())
                 ? SelfDisclosureLabels.YOU
                 : OTHER_OWNER);
       } else if (value.isValueNode() || isListOfValues(value)) {
