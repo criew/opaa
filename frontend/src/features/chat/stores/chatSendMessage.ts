@@ -224,6 +224,7 @@ export async function sendChatMessage(
       id: generateId(),
       role: 'assistant',
       content: response.answer,
+      generatedByAi: response.generatedByAi,
       sources: response.sources,
       answeredWithoutKnowledge: response.metadata.answeredWithoutKnowledge ?? false,
       noKnowledgeAssignedToSpace: response.metadata.noKnowledgeAssignedToSpace ?? false,
