@@ -39,8 +39,8 @@ export function detectedConfluenceEdition(
 /**
  * Everything the Confluence source configuration consists of (ADR-0023): the address, the edition
  * the connection test detected (fixed after creation), the credentials in the edition's shape, the
- * verification state and the space selection. Owned by the wizard or the edit dialog; the form
- * only proposes changes through onChange.
+ * verification state and the space selection. Owned by the wizard or the rows of the Reiter
+ * „Quelle“, which change it through onChange.
  */
 export interface ConfluenceSourceValues {
   sourceUrl: string
