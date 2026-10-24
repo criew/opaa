@@ -80,7 +80,7 @@ export default function LibraryConnectionPanel({
       sx={{ alignItems: 'center', flexWrap: 'wrap' }}
       data-testid="connection-profile-panel"
     >
-      <Typography variant="body2" data-testid="connection-profile">
+      <Typography variant="body2" sx={{ color: 'text.primary' }} data-testid="connection-profile">
         {current
           ? `Zugang: ${current.name}`
           : connectionProfileRemoved
