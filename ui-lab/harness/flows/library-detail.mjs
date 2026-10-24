@@ -81,31 +81,46 @@ async function open(page, ctx, job, tab) {
   const { id, role } = resolve(job.type)
   const query = new URLSearchParams({ mockScenario: job.scenario, mockRole: role })
   if (tab) query.set('tab', tab)
-  await page.goto(`${ctx.base}/libraries/${id}?${query}`, { waitUntil: 'domcontentloaded' })
-  await page.waitForSelector('main, [role=main]', { timeout: 15000 }).catch(() => {})
-  await page.getByRole('tab').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
-  // a running run polls for ever; settle on the rendered state instead of network idle
-  await settle(page, job.scenario === 'slow' ? 300 : 700)
-  await sleep(job.scenario === 'slow' ? 1200 : 200)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto(`${ctx.base}/libraries/${id}?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    await page.waitForSelector('main, [role=main]', { timeout: 15000 }).catch(() => {})
+    await page.getByRole('tab').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
+    // a running run polls for ever; settle on the rendered state instead of network idle
+    await settle(page, job.scenario === 'slow' ? 300 : 700)
+    await sleep(job.scenario === 'slow' ? 1200 : 200)
+    // a request that left before the mock worker took over reaches the dev proxy: load again
+    if (!(await page.getByText(/HTTP 50\d: Request failed/).count())) return
+    ctx.log(`  ${job.type} ${job.scenario}: proxy answered instead of the mock, reloading`)
+  }
+}
+
+/** The page at rest: no focus ring, no skip link. */
+async function rest(page) {
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+  const size = page.viewportSize()
+  if (size) await page.mouse.move(size.width - 2, size.height - 2)
 }
 
 async function tabExists(page, tab) {
   if (!tab) return true
   const label = { quelle: /^Quelle$/, metadaten: /^Metadaten$/, freigaben: /^Freigaben$/, zuordnungen: /^Zuordnungen$/ }[tab]
-  return Boolean(await firstVisible(page.getByRole('tab', { name: label })))
+  return page.getByRole('tab', { name: label }).first().waitFor({ state: 'visible', timeout: 15000 }).then(() => true, () => false)
 }
 
-/** Expands the newest run and scrolls the „Läufe“ heading to the top of the viewport. */
+/** Expands the newest run, waits for its details and scrolls the „Läufe“ heading to the top. */
 async function openRuns(page) {
   const heading = await firstVisible(page.getByRole('heading', { name: /^Läufe$/ }).or(page.getByText(/^Läufe$/)))
   if (!heading) return false
-  const first = await firstVisible(page.locator('#library-tabpanel-quelle .MuiAccordionSummary-root'))
-  if (first) {
-    await first.click().catch(() => {})
-    await settle(page, 300)
+  const first = page.locator('#library-tabpanel-quelle .MuiAccordionSummary-root').first()
+  if (await first.count()) {
+    if ((await first.getAttribute('aria-expanded')) !== 'true') await first.click().catch(() => {})
+    await page.waitForFunction((el) => el?.getAttribute('aria-expanded') === 'true', await first.elementHandle(), { timeout: 5000 }).catch(() => {})
+    // the collapse transition ends before the shot
+    await page.locator('#library-tabpanel-quelle .MuiCollapse-entered').first().waitFor({ timeout: 5000 }).catch(() => {})
+    await sleep(400)
   }
   await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))
-  await sleep(200)
+  await sleep(300)
   return true
 }
 
@@ -124,8 +139,7 @@ export async function run(page, job, ctx) {
         }
         await input.setInputFiles(uploadFiles).catch((e) => ctx.log('  upload', String(e).split('\n')[0]))
         await settle(page, 1200)
-        // the file chooser leaves the focus on the skip link; the shot shows the page at rest
-        await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+        await rest(page)
         await ctx.shoot(area)
         continue
       }
@@ -139,6 +153,7 @@ export async function run(page, job, ctx) {
         ctx.notFound(area, 'no runs section (reader)')
         continue
       }
+      await rest(page)
       await ctx.shoot(area)
     } catch (e) {
       ctx.error(area, e)

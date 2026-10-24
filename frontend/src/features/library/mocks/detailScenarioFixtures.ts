@@ -246,7 +246,8 @@ function grant(
   }
 }
 
-const OWNER_GRANT = grant(0, 'USER', 'Admin', 'OWNER')
+// the owner's own grant, named like the library's owner (ownerName in libraryScenarioFixtures)
+const OWNER_GRANT = grant(0, 'USER', 'Erika Muster', 'OWNER')
 const ROLES: AssetRole[] = ['VIEWER', 'VIEWER', 'EDITOR', 'VIEWER', 'MANAGER']
 
 /** The grants of a fixture library under a scenario; null keeps the regular fixtures. */

@@ -17,6 +17,7 @@ import {
 } from './libraryFixtures'
 import { mockLibraryGrants } from '@/features/asset/mocks/assetFixtures'
 import {
+  runningStatus,
   detailLabLibraries,
   scenarioDocuments,
   scenarioFolders,
@@ -215,7 +216,13 @@ export function applyLibraryScenario(): void {
     const original = structuredClone(originals.get(id)!)
     const overlay = overlayFor(scenario, id)
     const next: LibraryResponse = overlay ? { ...original, ...overlay(original) } : original
-    if (role && !next.privateLibrary) next.myRole = role
+    if (role && !next.privateLibrary) {
+      next.myRole = role
+      next.diagnosticsLockToggleable = role === 'OWNER'
+    }
+    if (next.privateLibrary && scenario !== 'default') {
+      next.sourceSettings = { ...next.sourceSettings, folders: ['/Dokumente', '/Fortbildung'] }
+    }
     // the backend always names the owner; the fixtures leave it out
     if (scenario !== 'default') next.ownerName ??= 'Erika Muster'
     const documents = scenarioDocuments(next, scenario)
@@ -273,48 +280,78 @@ interface RunSpec {
   minutes?: number
 }
 
-function runOf(i: number, spec: RunSpec, documents = 1340): Run {
-  const started = new Date(Date.UTC(2026, 9, 24 - i, 4, 0))
+/** What a run knows of its library: size, kind of source and whether a schedule triggers it. */
+interface RunContext {
+  documents: number
+  library?: LibraryResponse
+}
+
+/** Where an event points, in the form the source names its entries. */
+function eventReference(library: LibraryResponse | undefined, e: number): string {
+  const name = scenarioName('Vorgang', e)
+  switch (library?.sourceType) {
+    case 'HTTP_DIRECTORY':
+    case 'RSS_FEED':
+      return `${library.sourceUrl ?? 'https://example.org/'}eintrag-${e}.html`
+    case 'CONFLUENCE':
+      return `Space BAU › ${name} › Anhang-${e}.pdf`
+    case 'S3':
+      return `protokolle/2025/${name.replace(/ /g, '-').toLowerCase()}.pdf`
+    case 'SHAREPOINT':
+      return `Rathaus › Dokumente › ${name}/Anlage-${e}.pdf`
+    default:
+      return `/Projekte/${name}/Anlage-${e}.pdf`
+  }
+}
+
+function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Run {
+  // runs start at the schedule's hour; without a schedule every run was started by hand
+  const hour = library?.schedule?.hour ?? 6
+  const scheduled = Boolean(library?.schedule && library.schedule.frequency !== 'DISABLED')
+  const started = new Date(Date.UTC(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0))
   const minutes = spec.minutes ?? 7
   const completed = new Date(started.getTime() + minutes * 60_000)
-  const events = spec.events ?? 0
-  const shown = Math.min(events, EVENT_CAP)
   const failed = spec.failed ?? 0
   const ended = spec.status === 'FAILED'
-  const total = ended ? 0 : documents + failed + 3
+  const running = spec.status === 'RUNNING'
+  const events = ended ? 0 : (spec.events ?? 0)
+  const shown = Math.min(events, EVENT_CAP)
+  const live =
+    running && library ? runningStatus(library.id, library.sourceType === 'RSS_FEED') : null
+  const total = live ? live.totalDocuments : ended ? 0 : documents + failed + 3
+  const processed = live ? live.documentCount : ended ? 0 : total - failed - 3
   return {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     status: spec.status,
-    triggeredBy: i % 3 === 0 ? 'MANUAL' : 'SCHEDULED',
+    triggeredBy: !scheduled || i % 3 === 0 ? 'MANUAL' : 'SCHEDULED',
     runMode: i % 7 === 0 ? 'FULL' : 'INCREMENTAL',
-    documentCount: ended ? 0 : total - failed - 3,
+    documentCount: processed,
     totalDocuments: total,
-    documentsSkipped: ended ? 0 : 3,
+    documentsSkipped: live ? live.documentsSkipped : ended ? 0 : 3,
     documentsFailed: failed,
-    documentsIndexedTotal: ended ? 0 : total - failed - 3,
-    message: spec.message ?? 'Indizierung abgeschlossen',
+    documentsIndexedTotal: processed,
+    message: spec.message ?? (running ? 'Indizierung läuft' : 'Indizierung abgeschlossen'),
     failureCategory: spec.failureCategory ?? null,
     incomplete: spec.incomplete ?? null,
     unreadableScopeCount: spec.unreadableScopeCount ?? null,
     startedAt: started.toISOString(),
-    completedAt: spec.status === 'RUNNING' ? null : completed.toISOString(),
-    metrics: {
-      requestsSent: 1842 + i,
-      throttleCount: i % 4 === 0 ? 3 : 0,
-      throttleWaitSeconds: i % 4 === 0 ? 45 : 0,
-      attachmentsProcessed: 120,
-      attachmentsSkipped: 4,
-      attachmentsFailed: failed > 0 ? 2 : 0,
-      bytesDownloaded: 734 * 1024 ** 2,
-    },
+    completedAt: running ? null : completed.toISOString(),
+    // a run refused at the sign-in sent nothing worth counting
+    metrics: ended
+      ? undefined
+      : {
+          requestsSent: total * 2 + i,
+          throttleCount: i % 4 === 0 ? 3 : 0,
+          throttleWaitSeconds: i % 4 === 0 ? 45 : 0,
+          attachmentsProcessed: Math.round(total / 10),
+          attachmentsSkipped: 1,
+          attachmentsFailed: failed > 0 ? 2 : 0,
+          bytesDownloaded: total * 512 * 1024,
+        },
     events: generate(shown, (e) => {
       // a run without failures records only removals and throttling
-      const kinds = failed > 0 || ended ? EVENT_KINDS : EVENT_KINDS.slice(4)
-      const kind = kinds[e % kinds.length]
-      return {
-        ...kind,
-        reference: `/Projekte/${scenarioName('Vorgang', e)}/Anlage-${e}.pdf`,
-      }
+      const kinds = failed > 0 ? EVENT_KINDS : EVENT_KINDS.slice(4)
+      return { ...kinds[e % kinds.length], reference: eventReference(library, e) }
     }),
     eventsTruncatedCount: events - shown,
   }
@@ -333,8 +370,9 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
     return { runs: [] }
   }
   // the runs read as many documents as the library holds
-  const held = libraryId ? mockLibraryDocuments[libraryId]?.length : undefined
-  const run = (i: number, spec: RunSpec) => runOf(i, spec, held)
+  const library = libraryId ? mockLibraryDetails[libraryId] : undefined
+  const documents = (libraryId ? mockLibraryDocuments[libraryId]?.length : undefined) ?? 1340
+  const run = (i: number, spec: RunSpec) => runOf(i, spec, { documents, library })
   switch (scenario) {
     case 'small':
       return { runs: [run(1, { status: 'COMPLETED' }), run(2, { status: 'COMPLETED', events: 1 })] }
@@ -373,7 +411,6 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
             failed: 17,
             events: 17,
             unreadableScopeCount: 2,
-            message: 'Indizierung abgeschlossen: 1320 verarbeitet, 17 fehlgeschlagen',
           }),
           run(2, { status: 'COMPLETED' }),
         ],
