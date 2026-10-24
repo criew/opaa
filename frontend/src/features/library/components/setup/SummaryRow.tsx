@@ -42,7 +42,11 @@ export default function SummaryRow({
       component="section"
       aria-labelledby={`${id}-title`}
       data-row={id}
-      sx={{ borderTop: 1, borderColor: 'divider', '&:last-of-type': { borderBottom: 1, borderColor: 'divider' } }}
+      sx={{
+        borderTop: 1,
+        borderColor: 'divider',
+        '&:last-of-type': { borderBottom: 1, borderColor: 'divider' },
+      }}
     >
       <Box
         sx={{
@@ -97,7 +101,12 @@ export default function SummaryRow({
             aria-expanded={false}
             aria-controls={bodyId}
             aria-describedby={issues.length > 0 ? issuesId : undefined}
-            sx={{ gridColumn: { xs: '2', sm: '3' }, gridRow: '1', minWidth: 0, alignSelf: 'center' }}
+            sx={{
+              gridColumn: { xs: '2', sm: '3' },
+              gridRow: '1',
+              minWidth: 0,
+              alignSelf: 'center',
+            }}
           >
             Ändern
             <Box component="span" sx={visuallyHidden}>

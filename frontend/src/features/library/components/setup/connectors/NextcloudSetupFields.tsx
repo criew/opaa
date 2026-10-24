@@ -6,7 +6,14 @@ import type { SetupFieldsProps } from '../setupTypes'
 import { credentialsKept } from './common'
 import FolderScope from './FolderScope'
 
-export function NextcloudConnectionFields({ values, onChange, context, fields, issueAt, fieldId }: SetupFieldsProps<NextcloudSourceValues>) {
+export function NextcloudConnectionFields({
+  values,
+  onChange,
+  context,
+  fields,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<NextcloudSourceValues>) {
   return (
     <Stack spacing={2}>
       <SetupTextField
@@ -44,7 +51,13 @@ export function NextcloudConnectionFields({ values, onChange, context, fields, i
   )
 }
 
-export function NextcloudScopeFields({ values, onChange, fields, issueAt, fieldId }: SetupFieldsProps<NextcloudSourceValues>) {
+export function NextcloudScopeFields({
+  values,
+  onChange,
+  fields,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<NextcloudSourceValues>) {
   return (
     <FolderScope
       id={fieldId('folders')}
@@ -52,9 +65,11 @@ export function NextcloudScopeFields({ values, onChange, fields, issueAt, fieldI
       folders={values.folders}
       onChange={(folders) => onChange({ folders })}
       fields={fields}
-      connection={{ sourceUrl: values.sourceUrl.trim(), sourceCredentials: nextcloudCredentialsOf(values) }}
+      connection={{
+        sourceUrl: values.sourceUrl.trim(),
+        sourceCredentials: nextcloudCredentialsOf(values),
+      }}
       error={issueAt('folders')}
     />
   )
 }
-

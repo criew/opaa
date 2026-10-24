@@ -16,9 +16,10 @@ export interface ReviewEntry {
  */
 export default function LibraryReviewStep({ entries }: { entries: ReviewEntry[] }) {
   return (
-    <Box component="dl" sx={{ m: 0, maxWidth: 640 }}>
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', maxWidth: 640 }}>
       {entries.map((entry) => (
         <Box
+          component="li"
           key={entry.label}
           sx={{
             display: 'grid',
@@ -32,13 +33,12 @@ export default function LibraryReviewStep({ entries }: { entries: ReviewEntry[] 
             '&:last-of-type': { borderBottom: 1, borderColor: 'divider' },
           }}
         >
-          <Typography component="dt" sx={{ fontSize: 14, fontWeight: 600 }}>
+          <Typography component="span" sx={{ fontSize: 15, fontWeight: 600 }}>
             {entry.label}
           </Typography>
           <Typography
-            component="dd"
+            component="span"
             sx={{
-              m: 0,
               fontSize: 13.5,
               gridColumn: { xs: '1 / -1', sm: '2' },
               gridRow: { xs: '2', sm: '1' },

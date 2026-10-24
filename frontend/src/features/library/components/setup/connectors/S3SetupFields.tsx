@@ -26,7 +26,14 @@ import type { SetupFieldsProps } from '../setupTypes'
 import { credentialsKept } from './common'
 import { s3Nodes, s3PrefixNode, s3ScopeFromNode } from './s3Nodes'
 
-export function S3ConnectionFields({ values, onChange, context, fields, issueAt, fieldId }: SetupFieldsProps<S3SourceValues>) {
+export function S3ConnectionFields({
+  values,
+  onChange,
+  context,
+  fields,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<S3SourceValues>) {
   const [advanced, setAdvanced] = useState(false)
   return (
     <Stack spacing={2}>
@@ -134,18 +141,27 @@ export function S3ConnectionFields({ values, onChange, context, fields, issueAt,
   )
 }
 
-export function S3ScopeFields({ values, onChange, fields, issueAt, fieldId }: SetupFieldsProps<S3SourceValues>) {
+export function S3ScopeFields({
+  values,
+  onChange,
+  fields,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<S3SourceValues>) {
   const [advanced, setAdvanced] = useState(
     values.includePatterns.trim() !== '' || values.excludePatterns.trim() !== '',
   )
-  const connection = { sourceUrl: values.sourceUrl.trim(), sourceCredentials: s3CredentialsOf(values) }
+  const connection = {
+    sourceUrl: values.sourceUrl.trim(),
+    sourceCredentials: s3CredentialsOf(values),
+  }
   const query = { region: values.region.trim() || undefined, pathStyle: values.pathStyle }
   return (
     <Stack spacing={2}>
       <PickCombo
         id={fieldId('scopes')}
         label="Buckets und Präfixe"
-        hint="Ein ganzer Bucket oder ein Präfix darin. Präfixe öffnen Sie mit dem Pfeil oder tippen bucket/präfix."
+        hint="Ein ganzer Bucket oder ein Präfix darin. Präfixe: Pfeil am Eintrag, Pfeiltaste rechts oder bucket/präfix tippen."
         error={issueAt('scopes')}
         noun={['Geltungsbereich', 'Geltungsbereiche']}
         selected={s3Nodes(values.scopes)}
@@ -181,14 +197,22 @@ export function S3ScopeFields({ values, onChange, fields, issueAt, fieldId }: Se
         manual={(text) => {
           const [bucket, ...rest] = text.split('/').filter(Boolean)
           if (!bucket) return null
-          return rest.length ? s3PrefixNode(bucket, `${rest.join('/')}/`) : { key: bucket, label: bucket, trail: [], branch: true }
+          return rest.length
+            ? s3PrefixNode(bucket, `${rest.join('/')}/`)
+            : { key: bucket, label: bucket, trail: [], branch: true }
         }}
         manualLabel={(text) => `„${text}“ übernehmen`}
         loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
         placeholder="Bucket suchen oder bucket/präfix tippen"
       />
       <Box>
-        <Button size="small" variant="text" aria-expanded={advanced} onClick={() => setAdvanced((a) => !a)} sx={{ ml: -1 }}>
+        <Button
+          size="small"
+          variant="text"
+          aria-expanded={advanced}
+          onClick={() => setAdvanced((a) => !a)}
+          sx={{ ml: -1 }}
+        >
           {advanced ? 'Muster ausblenden' : 'Ein- und Ausschlussmuster'}
         </Button>
       </Box>

@@ -47,6 +47,8 @@ export default function FolderScope({
           label: entry.name ?? segments[segments.length - 1] ?? entry.key,
           trail,
           branch: true,
+          // the connector separates folders with commas; such a folder cannot be stored
+          disabledReason: entry.key.includes(',') ? 'Pfad mit Komma, nicht wählbar' : undefined,
         }
       }),
     }
@@ -55,7 +57,7 @@ export default function FolderScope({
     <PickCombo
       id={id}
       label="Ordner"
-      hint="„/ (alles)“ liest die ganze Ablage. Unterordner öffnen Sie mit dem Pfeil oder tippen den Pfad, z. B. Projekte/2024."
+      hint="„/ (alles)“ liest die ganze Ablage. Unterordner: Pfeil am Eintrag, Pfeiltaste rechts oder Pfad tippen, z. B. Projekte/2024."
       error={error}
       noun={['Ordner', 'Ordner']}
       selected={folderNodes(folders)}

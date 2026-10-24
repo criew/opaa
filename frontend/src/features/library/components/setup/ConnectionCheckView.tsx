@@ -54,7 +54,15 @@ export default function ConnectionCheckView({
           <>
             <Box
               component="ul"
-              sx={{ listStyle: 'none', p: 0, m: 0, display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 0.5 }}
+              sx={{
+                listStyle: 'none',
+                p: 0,
+                m: 0,
+                display: 'flex',
+                flexWrap: 'wrap',
+                columnGap: 2,
+                rowGap: 0.5,
+              }}
             >
               {outcome.stages.map((stage) => {
                 const { Icon, color } = STAGE_ICON[stage.state]
@@ -79,10 +87,7 @@ export default function ConnectionCheckView({
               <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, fontSize: 13 }}>
                 {shown.map((name) => (
                   <li key={name}>
-                    <Typography
-                      component="span"
-                      sx={{ fontSize: 13, overflowWrap: 'anywhere' }}
-                    >
+                    <Typography component="span" sx={{ fontSize: 13, overflowWrap: 'anywhere' }}>
                       {name}
                     </Typography>
                   </li>
@@ -91,7 +96,9 @@ export default function ConnectionCheckView({
             )}
             {unreadable.length > UNREADABLE_SHOWN && (
               <Button size="small" variant="text" onClick={() => setShowAll((s) => !s)}>
-                {showAll ? 'Weniger anzeigen' : `${unreadable.length - UNREADABLE_SHOWN} weitere anzeigen`}
+                {showAll
+                  ? 'Weniger anzeigen'
+                  : `${unreadable.length - UNREADABLE_SHOWN} weitere anzeigen`}
               </Button>
             )}
             {allowAccept && outcome.state === 'failed' && !check.accepted && (

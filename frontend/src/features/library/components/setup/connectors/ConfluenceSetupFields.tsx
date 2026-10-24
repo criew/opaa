@@ -27,7 +27,8 @@ export function ConfluenceConnectionFields({
 }: SetupFieldsProps<ConfluenceSourceValues>) {
   const [detection, setDetection] = useState<{ url: string; text: string } | null>(null)
   const url = values.sourceUrl.trim()
-  const detectable = addressIssue(url) === null && values.edition === null && context.mode === 'create'
+  const detectable =
+    addressIssue(url) === null && values.edition === null && context.mode === 'create'
 
   useEffect(() => {
     if (!detectable) return
@@ -135,7 +136,8 @@ export function ConfluenceScopeFields({
       selected={values.spaces.map(spaceNode)}
       onChange={(nodes) => onChange({ spaces: nodes.map((n) => ({ key: n.key, name: n.label })) })}
       load={async () => {
-        if (!values.edition) throw new Error('Zuerst unter „Verbindung“ eine gültige Adresse angeben.')
+        if (!values.edition)
+          throw new Error('Zuerst unter „Verbindung“ eine gültige Adresse angeben.')
         const result = await browseSource(
           'CONFLUENCE',
           fields.probeRequest({
@@ -144,10 +146,19 @@ export function ConfluenceScopeFields({
             query: { edition: values.edition },
           }),
         )
-        return { complete: result.complete, message: result.message, nodes: result.entries.map(spaceNode) }
+        return {
+          complete: result.complete,
+          message: result.message,
+          nodes: result.entries.map(spaceNode),
+        }
       }}
       max={500}
-      loadKey={JSON.stringify({ url: values.sourceUrl, credentials, edition: values.edition, probe: fields.probe })}
+      loadKey={JSON.stringify({
+        url: values.sourceUrl,
+        credentials,
+        edition: values.edition,
+        probe: fields.probe,
+      })}
       placeholder="Space suchen"
     />
   )

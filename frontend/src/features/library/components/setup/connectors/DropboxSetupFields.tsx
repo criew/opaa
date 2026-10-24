@@ -6,7 +6,11 @@ import { DROPBOX_API, type DropboxSourceValues } from '../../../utils/dropboxSou
 import type { SetupFieldsProps } from '../setupTypes'
 import FolderScope from './FolderScope'
 
-export function DropboxConnectionFields({ values, onChange, fieldId }: SetupFieldsProps<DropboxSourceValues>) {
+export function DropboxConnectionFields({
+  values,
+  onChange,
+  fieldId,
+}: SetupFieldsProps<DropboxSourceValues>) {
   return (
     <Box>
       <FormControlLabel
@@ -26,7 +30,13 @@ export function DropboxConnectionFields({ values, onChange, fieldId }: SetupFiel
   )
 }
 
-export function DropboxScopeFields({ values, onChange, fields, issueAt, fieldId }: SetupFieldsProps<DropboxSourceValues>) {
+export function DropboxScopeFields({
+  values,
+  onChange,
+  fields,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<DropboxSourceValues>) {
   return (
     <FolderScope
       id={fieldId('folders')}

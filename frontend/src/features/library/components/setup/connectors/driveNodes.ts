@@ -11,7 +11,9 @@ export function driveNode(scope: GoogleDriveScope): PickNode {
     key: googleDriveScopeKey(scope),
     label: googleDriveScopeLabel(scope),
     trail: [],
-    secondary: scope.name ? googleDriveScopeKindLabel(scope.kind) : `${googleDriveScopeKindLabel(scope.kind)} · ID`,
+    secondary: scope.name
+      ? googleDriveScopeKindLabel(scope.kind)
+      : `${googleDriveScopeKindLabel(scope.kind)} · ID`,
     data: scope,
   }
 }

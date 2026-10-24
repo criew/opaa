@@ -16,8 +16,14 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
     {
       id: 'connection',
       summary: (values, context, check) => {
-        const account = values.keyAccount || (storedKeyServes(values, context.credentialsStored) ? 'Schlüssel gesetzt' : '')
-        return joinSummary(account, values.subject.trim() && `als ${values.subject.trim()}`, account && checkWord(check))
+        const account =
+          values.keyAccount ||
+          (storedKeyServes(values, context.credentialsStored) ? 'Schlüssel gesetzt' : '')
+        return joinSummary(
+          account,
+          values.subject.trim() && `als ${values.subject.trim()}`,
+          account && checkWord(check),
+        )
       },
       Fields: GoogleDriveConnectionFields,
     },
@@ -30,14 +36,35 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
   ],
   issues: (values, context) => {
     const { at, list } = issueList()
-    if (connectionFields(context).asksSecret && values.keyFile === '' && !storedKeyServes(values, context.credentialsStored)) {
-      at('keyFile', context.credentialsStored ? 'Für ein anderes imitiertes Konto die Schlüsseldatei neu wählen' : 'Schlüsseldatei fehlt')
+    if (
+      connectionFields(context).asksSecret &&
+      values.keyFile === '' &&
+      !storedKeyServes(values, context.credentialsStored)
+    ) {
+      at(
+        'keyFile',
+        context.credentialsStored
+          ? 'Für ein anderes imitiertes Konto die Schlüsseldatei neu wählen'
+          : 'Schlüsseldatei fehlt',
+      )
     }
     const subject = values.subject.trim()
-    at('subject', '„Meine Ablage“ braucht ein imitiertes Konto', subject === '' && values.scopes.some((s) => s.kind === 'myDrive'))
-    at('subject', 'Imitiertes Konto ist eine E-Mail-Adresse', subject !== '' && !/^[^@\s]+@[^@\s]+$/.test(subject))
+    at(
+      'subject',
+      '„Meine Ablage“ braucht ein imitiertes Konto',
+      subject === '' && values.scopes.some((s) => s.kind === 'myDrive'),
+    )
+    at(
+      'subject',
+      'Imitiertes Konto ist eine E-Mail-Adresse',
+      subject !== '' && !/^[^@\s]+@[^@\s]+$/.test(subject),
+    )
     at('scopes', 'Mindestens einen Bereich wählen', values.scopes.length === 0)
-    at('scopes', `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche`, values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES)
+    at(
+      'scopes',
+      `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche`,
+      values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES,
+    )
     return list
   },
   rowOf: (field) => (field === 'scopes' ? 'scope' : 'connection'),

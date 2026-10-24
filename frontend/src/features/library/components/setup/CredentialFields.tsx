@@ -56,7 +56,9 @@ export default function CredentialFields({ account, secret, stored }: Credential
             Ersetzen
           </Button>
         </Box>
-        {error && <Typography sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>{error}</Typography>}
+        {error && (
+          <Typography sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>{error}</Typography>
+        )}
       </Box>
     )
   }

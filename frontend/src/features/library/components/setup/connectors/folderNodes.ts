@@ -38,4 +38,3 @@ export function folderSummary(text: string): string | null {
   if (nodes.length === 1) return nodes[0].key
   return counted(nodes.length, ['Ordner', 'Ordner'])
 }
-

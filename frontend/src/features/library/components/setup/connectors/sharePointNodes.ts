@@ -16,7 +16,12 @@ export function libraryNode(driveId: string, label: string): PickNode {
   return { key: `drive:${driveId}`, label, trail: [], branch: true, data: { driveId } }
 }
 
-export function folderNode(driveId: string, folderId: string, label: string, trail: string[]): PickNode {
+export function folderNode(
+  driveId: string,
+  folderId: string,
+  label: string,
+  trail: string[],
+): PickNode {
   return { key: `folder:${folderId}`, label, trail, branch: true, data: { driveId, folderId } }
 }
 

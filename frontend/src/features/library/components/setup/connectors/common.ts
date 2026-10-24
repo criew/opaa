@@ -87,6 +87,9 @@ export function folderIssues(
 ) {
   add('folders', 'Mindestens einen Ordner wählen, / für alles', folders.length === 0)
   add('folders', `Höchstens ${max} Ordner`, folders.length > max)
-  add('folders', 'Ein Ordnerpfad enthält kein Komma', folders.some((f) => f.includes(',')))
+  add(
+    'folders',
+    'Ein Ordnerpfad enthält kein Komma',
+    folders.some((f) => f.includes(',')),
+  )
 }
-

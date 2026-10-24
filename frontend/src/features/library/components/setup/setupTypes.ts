@@ -41,7 +41,11 @@ export interface SourceSetupSpec<V> {
   /** The row an issue's field belongs to. */
   rowOf: (field: string) => Exclude<SetupRowId, 'schedule'>
   /** The connection test of the values; absent for a source without one. */
-  probe?: (values: V, fields: ConnectionFields, context: SourceFormContext) => SourceConnectionTestRequest
+  probe?: (
+    values: V,
+    fields: ConnectionFields,
+    context: SourceFormContext,
+  ) => SourceConnectionTestRequest
   /** Whether the source signs in at all; without, the check skips the stage „Anmeldung“. */
   signsIn?: boolean
 }

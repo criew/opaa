@@ -501,10 +501,12 @@ export default function LibraryCreatePage() {
     ...(configuration && setup
       ? setup.sections.map((section) => ({
           label: section.id === 'connection' ? 'Verbindung' : 'Umfang',
-          value:
-            [section.id === 'connection' ? connectionLead : null, section.summary(values, formContext, 'unchecked')]
-              .filter(Boolean)
-              .join(' · '),
+          value: [
+            section.id === 'connection' ? connectionLead : null,
+            section.summary(values, formContext, 'unchecked'),
+          ]
+            .filter(Boolean)
+            .join(' · '),
           onChange: () => changeAt(STEP_SOURCE_SETUP, section.id),
         }))
       : []),
@@ -644,7 +646,10 @@ export default function LibraryCreatePage() {
               setSourceValues((prev) => ({
                 ...prev,
                 [valuesKey]: {
-                  ...(withConnection(prev[valuesKey] ?? configuration?.empty, connection) as object),
+                  ...(withConnection(
+                    prev[valuesKey] ?? configuration?.empty,
+                    connection,
+                  ) as object),
                   ...withoutFixed(patch, connection),
                 },
               }))

@@ -37,8 +37,14 @@ export default function ErrorSummary({
         '&:focus-visible': { boxShadow: (t) => `0 0 0 3px ${t.palette.primary.main}52` },
       }}
     >
-      <Typography id="setup-error-summary-title" component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
-        {entries.length === 1 ? '1 Angabe fehlt oder ist ungültig' : `${entries.length} Angaben fehlen oder sind ungültig`}
+      <Typography
+        id="setup-error-summary-title"
+        component="h3"
+        sx={{ fontSize: 14, fontWeight: 600 }}
+      >
+        {entries.length === 1
+          ? '1 Angabe fehlt oder ist ungültig'
+          : `${entries.length} Angaben fehlen oder sind ungültig`}
       </Typography>
       <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
         {entries.map((entry) => (

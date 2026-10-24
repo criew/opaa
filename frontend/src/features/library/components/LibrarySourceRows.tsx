@@ -84,7 +84,8 @@ export default function LibrarySourceRows({
   }
   const rhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
     ? {
-        intervalDays: (library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null,
+        intervalDays:
+          (library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null,
         defaultDays: library.fullSyncIntervalDefaultDays ?? null,
       }
     : undefined

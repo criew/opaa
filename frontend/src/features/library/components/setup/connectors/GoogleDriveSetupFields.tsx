@@ -55,7 +55,15 @@ export function GoogleDriveConnectionFields({
       {fields.asksSecret && (
         <Box>
           <FieldLabel htmlFor={fieldId('keyFile')}>Schlüsseldatei</FieldLabel>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, minHeight: 40 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 1.5,
+              minHeight: 40,
+            }}
+          >
             <Typography sx={{ fontSize: 13.5, overflowWrap: 'anywhere' }}>{status}</Typography>
             <Button
               size="small"

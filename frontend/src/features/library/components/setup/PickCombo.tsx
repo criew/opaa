@@ -2,14 +2,15 @@ import { useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react
 import Autocomplete, { type AutocompleteChangeDetails } from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import ChevronLeft from '@mui/icons-material/ChevronLeft'
+import CheckBoxIcon from '@mui/icons-material/CheckBox'
+import BlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
+import IndeterminateIcon from '@mui/icons-material/IndeterminateCheckBox'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 
 /** One object of a source: a space, a bucket, a folder. */
@@ -22,6 +23,8 @@ export interface PickNode {
   branch?: boolean
   /** A second word that tells equal names apart, e.g. „Geteilte Ablage“. */
   secondary?: string
+  /** Why the node cannot be chosen; it stays visible with this reason. */
+  disabledReason?: string
   /** Whatever the connector needs to turn the node back into its values. */
   data?: unknown
 }
@@ -150,7 +153,8 @@ export default function PickCombo({
       .then((listing) => ({ status: 'ok' as const, listing }))
       .catch((err: unknown) => ({
         status: 'error' as const,
-        error: err instanceof Error && err.message ? err.message : 'Die Liste ließ sich nicht laden.',
+        error:
+          err instanceof Error && err.message ? err.message : 'Die Liste ließ sich nicht laden.',
       }))
       .then((entry) => {
         clearTimeout(timer)
@@ -162,14 +166,16 @@ export default function PickCombo({
 
   /** The level a typed path points at: its node, the term below it, and a level still missing. */
   function resolve(text: string, levels: Record<string, CacheEntry>) {
-    if (!hierarchical || !text.includes('/')) return { parent: null, term: text.trim(), missing: false, unknown: null as string | null }
+    if (!hierarchical || !text.includes('/'))
+      return { parent: null, term: text.trim(), missing: false, unknown: null as string | null }
     const parts = text.split('/')
     const term = (parts.pop() ?? '').trim()
     const names = parts.map((p) => p.trim()).filter(Boolean)
     let parent: PickNode | null = null
     for (const name of names) {
       const level: CacheEntry | undefined = levels[entryKey(parent, '')]
-      if (!level || level.status === 'loading') return { parent, term, missing: !level, unknown: null }
+      if (!level || level.status === 'loading')
+        return { parent, term, missing: !level, unknown: null }
       if (level.status === 'error') return { parent, term, missing: false, unknown: null }
       const next: PickNode | undefined = level.listing?.nodes.find(
         (node: PickNode) => node.label.toLowerCase() === name.toLowerCase(),
@@ -177,7 +183,12 @@ export default function PickCombo({
       if (!next) return { parent, term, missing: false, unknown: name }
       parent = next
     }
-    return { parent, term, missing: !levels[entryKey(parent, serverSearch ? term : '')], unknown: null }
+    return {
+      parent,
+      term,
+      missing: !levels[entryKey(parent, serverSearch ? term : '')],
+      unknown: null,
+    }
   }
 
   /** Loads whatever the current input still needs, level by level. */
@@ -204,7 +215,9 @@ export default function PickCombo({
     : levelNodes.filter((node) =>
         target.term === ''
           ? true
-          : `${node.label} ${node.secondary ?? ''}`.toLowerCase().includes(target.term.toLowerCase()),
+          : `${node.label} ${node.secondary ?? ''}`
+              .toLowerCase()
+              .includes(target.term.toLowerCase()),
       )
   const isSelected = (node: PickNode) => selected.some((s) => s.key === node.key)
   const coveredBy = (node: PickNode) => selected.find((s) => covers(s, node))
@@ -220,10 +233,9 @@ export default function PickCombo({
 
   const options: Option[] = []
   if (target.parent) {
-    const up = target.parent.trail.length
-      ? `Eine Ebene höher (${target.parent.trail[target.parent.trail.length - 1]})`
-      : 'Eine Ebene höher'
-    options.push(pseudo('__up', up))
+    options.push(pseudo('__status', `In ${pathText(target.parent)}`))
+    const above = target.parent.trail[target.parent.trail.length - 1]
+    options.push(pseudo('__up', above ? `Zurück zu „${above}“` : 'Zurück zur obersten Ebene'))
   }
   if (!target.parent && allNode && target.term === '') options.push(allNode)
   if (target.unknown) {
@@ -236,7 +248,9 @@ export default function PickCombo({
   } else {
     const listing = levelEntry.listing!
     if (!listing.complete && listing.message) options.push(pseudo('__status', listing.message))
-    const selectable = matches.filter((node) => !isSelected(node) && !coveredBy(node))
+    const selectable = matches.filter(
+      (node) => !isSelected(node) && !coveredBy(node) && !node.disabledReason,
+    )
     if (!single && selectable.length >= 2 && !full) {
       options.push(
         pseudo(
@@ -257,7 +271,9 @@ export default function PickCombo({
       options.push(
         pseudo(
           '__status',
-          target.parent ? `Keine ${noun[1]} unter „${target.parent.label}“.` : `Keine ${noun[1]} vorhanden.`,
+          target.parent
+            ? `Keine ${noun[1]} unter „${target.parent.label}“.`
+            : `Keine ${noun[1]} vorhanden.`,
         ),
       )
     } else if (matches.length === 0 && target.term !== '') {
@@ -267,7 +283,10 @@ export default function PickCombo({
   }
   const manualNode = manual && target.term ? manual(input.trim()) : null
   if (manualNode && !matches.some((n) => n.key === manualNode.key)) {
-    options.push({ ...pseudo('__manual', manualLabel?.(input.trim()) ?? `„${input.trim()}“ übernehmen`), data: manualNode })
+    options.push({
+      ...pseudo('__manual', manualLabel?.(input.trim()) ?? `„${input.trim()}“ übernehmen`),
+      data: manualNode,
+    })
   }
 
   function add(nodes: PickNode[]) {
@@ -324,7 +343,9 @@ export default function PickCombo({
       case '__up':
         return goUp()
       case '__all':
-        return add(matches.filter((node) => !isSelected(node) && !coveredBy(node)))
+        return add(
+          matches.filter((node) => !isSelected(node) && !coveredBy(node) && !node.disabledReason),
+        )
       case '__manual':
         return add([option.data as PickNode])
       case '__retry': {
@@ -399,7 +420,9 @@ export default function PickCombo({
         filterOptions={(o) => o}
         isOptionEqualToValue={(a, b) => a.key === b.key}
         getOptionLabel={(o) => o.label}
-        getOptionDisabled={(o) => o.pseudo === '__status' || o.pseudo === '__more'}
+        getOptionDisabled={(o) =>
+          o.pseudo === '__status' || o.pseudo === '__more' || Boolean(o.disabledReason)
+        }
         onHighlightChange={(_e, option) => {
           highlighted.current = option
         }}
@@ -431,59 +454,69 @@ export default function PickCombo({
           const chosen = isSelected(option)
           const covering = coveredBy(option)
           const mixed = partly(option)
+          // icons, not controls: an option holds nothing focusable of its own
+          const Mark = chosen || covering ? CheckBoxIcon : mixed ? IndeterminateIcon : BlankIcon
           return (
-            <li key={key} {...rest}>
-              <Checkbox
-                size="small"
-                checked={chosen || Boolean(covering)}
-                indeterminate={mixed}
-                disabled={Boolean(covering)}
-                tabIndex={-1}
-                sx={{ p: 0.5, mr: 1 }}
-                slotProps={{ input: { 'aria-hidden': true } }}
+            <li key={key} {...rest} data-pick="">
+              <Mark
+                aria-hidden
+                fontSize="small"
+                sx={{
+                  mr: 1,
+                  flex: 'none',
+                  color: chosen || mixed ? 'primary.main' : 'text.secondary',
+                  opacity: covering || option.disabledReason ? 0.5 : 1,
+                }}
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
-                  sx={{ fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  sx={{
+                    fontSize: 13.5,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
                   title={option.label}
                 >
                   {option.label}
                 </Typography>
-                {(option.secondary || covering || mixed) && (
+                {(option.secondary || covering || mixed || option.disabledReason) && (
                   <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                    {covering
-                      ? `enthalten in „${covering.label}“`
-                      : mixed
-                        ? 'teilweise ausgewählt'
-                        : option.secondary}
+                    {option.disabledReason ??
+                      (covering
+                        ? `enthalten in „${covering.label}“`
+                        : mixed
+                          ? 'teilweise ausgewählt'
+                          : option.secondary)}
                   </Typography>
                 )}
               </Box>
               {hierarchical && option.branch && (
                 <Tooltip title="Unterordner anzeigen">
-                  <IconButton
-                    size="small"
-                    aria-label={`Unterordner von „${option.label}“ anzeigen`}
-                    tabIndex={-1}
+                  <Box
+                    component="span"
+                    aria-hidden
+                    data-drill={option.label}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={(e) => {
                       e.stopPropagation()
                       drill(option)
                     }}
+                    sx={{
+                      display: 'inline-flex',
+                      p: 0.75,
+                      borderRadius: 1,
+                      color: 'text.secondary',
+                      '&:hover': { bgcolor: 'action.hover' },
+                    }}
                   >
                     <ChevronRight fontSize="small" />
-                  </IconButton>
+                  </Box>
                 </Tooltip>
               )}
             </li>
           )
         }}
-        renderGroup={undefined}
-        groupBy={
-          hierarchical
-            ? () => (target.parent ? `In ${pathText(target.parent)}` : 'Oberste Ebene')
-            : undefined
-        }
         renderInput={(params) => (
           <TextField
             {...params}
@@ -508,7 +541,10 @@ export default function PickCombo({
                 variant="outlined"
                 label={pathText(node)}
                 onDelete={() => onChange(selected.filter((s) => s.key !== node.key))}
-                sx={{ maxWidth: '100%', '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+                sx={{
+                  maxWidth: '100%',
+                  '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+                }}
               />
             </Tooltip>
           ))}

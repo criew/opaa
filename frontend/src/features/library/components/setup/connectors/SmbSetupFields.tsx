@@ -64,7 +64,10 @@ export function SmbScopeFields({
       folders={values.folders}
       onChange={(folders) => onChange({ folders })}
       fields={fields}
-      connection={{ sourceUrl: values.sourceUrl.trim(), sourceCredentials: smbCredentialsOf(values) }}
+      connection={{
+        sourceUrl: values.sourceUrl.trim(),
+        sourceCredentials: smbCredentialsOf(values),
+      }}
       error={issueAt('folders')}
     />
   )

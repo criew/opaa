@@ -300,13 +300,13 @@ async function triggerListings(page, { slow }) {
 
 /** Ticks up to `n` unchecked object options of the open listbox (variant D combo boxes). */
 async function pickComboOptions(page, n) {
-  const options = page.locator('[role=listbox] li[role=option]:has(input[type=checkbox])')
+  const options = page.locator('[role=listbox] li[role=option][data-pick]:not([aria-disabled=true])')
   const count = Math.min(await options.count().catch(() => 0), 200)
   let picked = 0
   for (let i = 0; i < count && picked < n; i++) {
     const o = options.nth(i)
     if (!(await o.isVisible().catch(() => false))) continue
-    if (await o.locator('input[type=checkbox]').isChecked().catch(() => true)) continue
+    if ((await o.getAttribute('aria-selected')) === 'true') continue
     await o.click({ timeout: 1000 }).catch(() => {})
     picked++
   }
@@ -338,7 +338,7 @@ async function fillScopeRows(page, type, scenario, many, slow) {
     if (slow) return true
     if (scenario === 'scale' && type !== 'confluence' && type !== 'gdrive') {
       // one level down, to show the path in the options
-      const drill = page.getByRole('button', { name: /^Unterordner von/ }).first()
+      const drill = page.locator('[role=listbox] [data-drill]').first()
       if (await drill.isVisible().catch(() => false)) {
         await drill.click().catch(() => {})
         await sleep(1000)

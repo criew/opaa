@@ -7,7 +7,15 @@ import {
 } from '../../../utils/confluenceSource'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
-import { addressIssue, checkWord, counted, credentialsKept, hostOf, issueList, joinSummary } from './common'
+import {
+  addressIssue,
+  checkWord,
+  counted,
+  credentialsKept,
+  hostOf,
+  issueList,
+  joinSummary,
+} from './common'
 import { ConfluenceConnectionFields, ConfluenceScopeFields } from './ConfluenceSetupFields'
 
 export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
@@ -37,13 +45,20 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
     if (address) at('sourceUrl', address)
     at('sourceUrl', 'Edition nicht erkannt, Adresse prüfen', values.edition === null)
     const kept = credentialsKept(context, values.sourceUrl)
-    if (connectionFields(context).asksSecret && (!kept || values.token !== '' || values.email !== '')) {
+    if (
+      connectionFields(context).asksSecret &&
+      (!kept || values.token !== '' || values.email !== '')
+    ) {
       const cloud = values.edition !== 'DATA_CENTER'
       at('email', 'E-Mail-Adresse fehlt', cloud && values.email.trim() === '')
       at('token', 'Token fehlt', values.token.trim() === '')
     }
     at('spaces', 'Mindestens einen Space wählen', values.spaces.length === 0)
-    at('spaces', `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces`, values.spaces.length > MAX_CONFLUENCE_SPACES)
+    at(
+      'spaces',
+      `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces`,
+      values.spaces.length > MAX_CONFLUENCE_SPACES,
+    )
     return list
   },
   rowOf: (field) => (field === 'spaces' ? 'scope' : 'connection'),

@@ -9,7 +9,16 @@ import {
 } from '../../../utils/s3Source'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
-import { addressIssue, checkWord, counted, credentialsKept, hostOf, issueList, joinSummary, pairIssues } from './common'
+import {
+  addressIssue,
+  checkWord,
+  counted,
+  credentialsKept,
+  hostOf,
+  issueList,
+  joinSummary,
+  pairIssues,
+} from './common'
 import { S3ConnectionFields, S3ScopeFields } from './S3SetupFields'
 
 const SCOPE_FIELDS = ['scopes', 'includePatterns', 'excludePatterns']
@@ -40,7 +49,11 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
     const { at, list } = issueList()
     const address = addressIssue(values.sourceUrl)
     if (address) at('sourceUrl', address.replace('Adresse', 'Endpoint'))
-    at('region', 'Region: nur Buchstaben, Ziffern und Bindestriche', !/^[A-Za-z0-9-]{0,64}$/.test(values.region.trim()))
+    at(
+      'region',
+      'Region: nur Buchstaben, Ziffern und Bindestriche',
+      !/^[A-Za-z0-9-]{0,64}$/.test(values.region.trim()),
+    )
     if (connectionFields(context).asksSecret) {
       pairIssues(
         at,
@@ -51,7 +64,11 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
         'Access Key',
         'Secret Key',
       )
-      at('sessionToken', 'Session-Token ohne Doppelpunkt angeben', values.sessionToken.includes(':'))
+      at(
+        'sessionToken',
+        'Session-Token ohne Doppelpunkt angeben',
+        values.sessionToken.includes(':'),
+      )
     }
     const scopes = values.scopes.filter((scope) => scope.bucket.trim() !== '')
     at('scopes', 'Mindestens einen Bucket wählen', scopes.length === 0)

@@ -6,7 +6,12 @@ import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
 import { credentialsKept } from './common'
 
-export function PathConnectionFields({ values, onChange, issueAt, fieldId }: SetupFieldsProps<FilesystemSourceValues>) {
+export function PathConnectionFields({
+  values,
+  onChange,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<FilesystemSourceValues>) {
   return (
     <SetupTextField
       id={fieldId('sourcePath')}
@@ -21,7 +26,12 @@ export function PathConnectionFields({ values, onChange, issueAt, fieldId }: Set
   )
 }
 
-export function PathScopeFields({ values, onChange, issueAt, fieldId }: SetupFieldsProps<FilesystemSourceValues>) {
+export function PathScopeFields({
+  values,
+  onChange,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<FilesystemSourceValues>) {
   return (
     <SetupTextField
       id={fieldId('excludePatterns')}
@@ -38,7 +48,13 @@ export function PathScopeFields({ values, onChange, issueAt, fieldId }: SetupFie
   )
 }
 
-export function UrlConnectionFields({ values, onChange, context, issueAt, fieldId }: SetupFieldsProps<GenericSourceValues>) {
+export function UrlConnectionFields({
+  values,
+  onChange,
+  context,
+  issueAt,
+  fieldId,
+}: SetupFieldsProps<GenericSourceValues>) {
   return (
     <Stack spacing={2}>
       <SetupTextField

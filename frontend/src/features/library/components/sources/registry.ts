@@ -20,7 +20,10 @@ import { sharePointSetup } from '../setup/connectors/sharePointSetup'
 import { smbSetup } from '../setup/connectors/smbSetup'
 
 /** The registration with the rows of the summary-row setup attached to its configuration. */
-function withSetup<V>(registration: SourceRegistration, setup: SourceSetupSpec<V>): SourceRegistration {
+function withSetup<V>(
+  registration: SourceRegistration,
+  setup: SourceSetupSpec<V>,
+): SourceRegistration {
   return registration.configuration
     ? { ...registration, configuration: { ...registration.configuration, setup } }
     : registration

@@ -9,7 +9,14 @@ import {
 } from '../../../utils/smbSource'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceSetupSpec } from '../setupTypes'
-import { checkWord, credentialsKept, folderIssues, issueList, joinSummary, pairIssues } from './common'
+import {
+  checkWord,
+  credentialsKept,
+  folderIssues,
+  issueList,
+  joinSummary,
+  pairIssues,
+} from './common'
 import { folderSummary } from './folderNodes'
 import { SmbConnectionFields, SmbScopeFields } from './SmbSetupFields'
 

@@ -27,7 +27,11 @@ export const nextcloudSetup: SourceSetupSpec<NextcloudSourceValues> = {
         values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl), checkWord(check)) : null,
       Fields: NextcloudConnectionFields,
     },
-    { id: 'scope', summary: (values) => folderSummary(values.folders), Fields: NextcloudScopeFields },
+    {
+      id: 'scope',
+      summary: (values) => folderSummary(values.folders),
+      Fields: NextcloudScopeFields,
+    },
   ],
   issues: (values, context) => {
     const { at, list } = issueList()

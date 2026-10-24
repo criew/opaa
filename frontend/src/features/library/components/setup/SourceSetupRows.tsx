@@ -199,7 +199,9 @@ export default function SourceSetupRows<V>({
       return
     }
     if (row === 'connection' && request && check.state === 'unchecked') void check.run()
-    const next = rows.slice(rows.indexOf(row) + 1).find((r) => r !== 'schedule' && summaryOf(r) === null)
+    const next = rows
+      .slice(rows.indexOf(row) + 1)
+      .find((r) => r !== 'schedule' && summaryOf(r) === null)
     setOpenRow(next ?? null)
   }
 
@@ -224,7 +226,11 @@ export default function SourceSetupRows<V>({
       setShowSummary(false)
       setShownFields(new Set())
     } catch (err) {
-      setSaveError(err instanceof Error && err.message ? err.message : 'Die Änderung ließ sich nicht speichern.')
+      setSaveError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Die Änderung ließ sich nicht speichern.',
+      )
     } finally {
       setSaving(false)
     }
@@ -298,7 +304,11 @@ export default function SourceSetupRows<V>({
             busyAnnouncement="Wird gespeichert"
             onClick={() => void saveRow(row)}
           >
-            {saving ? 'Wird gespeichert …' : row === 'connection' && request ? 'Testen und speichern' : 'Speichern'}
+            {saving
+              ? 'Wird gespeichert …'
+              : row === 'connection' && request
+                ? 'Testen und speichern'
+                : 'Speichern'}
           </BusyButton>
           <Button variant="text" size="small" onClick={() => void cancelRow(row)} disabled={saving}>
             Abbrechen
@@ -315,7 +325,8 @@ export default function SourceSetupRows<V>({
       <ErrorSummary entries={entries} ref={summaryRef} />
       {rows.map((row) => {
         const section = row === 'schedule' ? null : spec.sections.find((s) => s.id === row)
-        if (row !== 'schedule' && !section && !(row === 'connection' && connectionPrelude)) return null
+        if (row !== 'schedule' && !section && !(row === 'connection' && connectionPrelude))
+          return null
         const Fields = section?.Fields
         return (
           <SummaryRow

@@ -95,7 +95,11 @@ export function outcomeOf(
         ]
       : [
           { label: 'Adresse', state: 'failed', text: 'nicht erreichbar' },
-          { ...signIn, state: signsIn ? 'open' : 'skipped', text: signsIn ? 'nicht geprüft' : 'entfällt' },
+          {
+            ...signIn,
+            state: signsIn ? 'open' : 'skipped',
+            text: signsIn ? 'nicht geprüft' : 'entfällt',
+          },
           { label: 'Rechte', state: 'open', text: 'nicht geprüft' },
         ],
     message: result.message,
@@ -158,7 +162,9 @@ export function useConnectionCheck(
     } catch (err) {
       next = failedOutcome(
         mine,
-        err instanceof Error && err.message ? err.message : 'Die Verbindung ließ sich nicht prüfen.',
+        err instanceof Error && err.message
+          ? err.message
+          : 'Die Verbindung ließ sich nicht prüfen.',
         signsIn,
       )
     }
