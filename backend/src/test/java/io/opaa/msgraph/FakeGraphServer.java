@@ -42,12 +42,12 @@ import javax.net.ssl.TrustManagerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Microsoft Graph v1.0 on loopback, held in memory: sites, document libraries, items and their
- * children, {@code delta} with {@code $top} and {@code token=latest}, and {@code /content}
- * redirecting to a second, pre-signed {@code https} host on another port. Switches answer the next
- * matching requests with a Graph error body, trickle an answer, or bend the links Graph hands out.
- * Microsoft offers no emulator; this double is what the tests trust about Graph, so its forms
- * follow the reference, not a tenant.
+ * Microsoft Graph v1.0 on loopback, held in memory: sites, document libraries, the OneDrive {@code
+ * me/drive} names per bearer token, items and their children, {@code delta} with {@code $top} and
+ * {@code token=latest}, and {@code /content} redirecting to a second, pre-signed {@code https} host
+ * on another port. Switches answer the next matching requests with a Graph error body, trickle an
+ * answer, or bend the links Graph hands out. Microsoft offers no emulator; this double is what the
+ * tests trust about Graph, so its forms follow the reference, not a tenant.
  */
 public final class FakeGraphServer implements AutoCloseable {
 
@@ -101,7 +101,14 @@ public final class FakeGraphServer implements AutoCloseable {
 
   private record Site(String id, String hostname, String path, String name) {}
 
-  private record Drive(String id, String siteId, String name, String driveType) {}
+  /** A drive; a OneDrive has no site of the fake's and names its owner. */
+  private record Drive(
+      String id,
+      String siteId,
+      String name,
+      String driveType,
+      String ownerEmail,
+      String ownerName) {}
 
   private record Failure(
       String pathPart, int status, String code, String message, String retryAfter, int[] left) {}
@@ -122,6 +129,7 @@ public final class FakeGraphServer implements AutoCloseable {
 
   private final Map<String, Site> sites = new ConcurrentHashMap<>();
   private final Map<String, Drive> drives = new ConcurrentHashMap<>();
+  private final Map<String, String> ownDrives = new ConcurrentHashMap<>();
   private final Map<String, Item> items = new ConcurrentHashMap<>();
   private final Map<String, List<String>> changeLogs = new ConcurrentHashMap<>();
   private final Map<String, Pending> pending = new ConcurrentHashMap<>();
@@ -199,7 +207,28 @@ public final class FakeGraphServer implements AutoCloseable {
 
   /** A document library of {@code siteId} with its root folder {@code root-<driveId>}. */
   public void drive(String siteId, String driveId, String name, String driveType) {
-    drives.put(driveId, new Drive(driveId, siteId, name, driveType));
+    addDrive(new Drive(driveId, siteId, name, driveType, null, null));
+  }
+
+  /**
+   * The OneDrive of one person, of {@code driveType} ({@code business} or {@code personal}), with
+   * its root folder: {@code me/drive} answers it for every one of {@code tokens}, each of which is
+   * accepted from now on. Any accepted token may still read it under {@code drives/<id>}.
+   *
+   * @param ownerEmail the {@code owner.user.email} it names, {@code null} for none
+   */
+  public void oneDrive(
+      String driveId, String driveType, String ownerEmail, String ownerName, String... tokens) {
+    addDrive(new Drive(driveId, null, "OneDrive", driveType, ownerEmail, ownerName));
+    for (String token : tokens) {
+      acceptedTokens.add(token);
+      ownDrives.put(token, driveId);
+    }
+  }
+
+  private void addDrive(Drive drive) {
+    String driveId = drive.id();
+    drives.put(driveId, drive);
     changeLogs.put(driveId, new CopyOnWriteArrayList<>());
     Item root = new Item(rootId(driveId), driveId, true);
     root.name = "root";
@@ -401,6 +430,11 @@ public final class FakeGraphServer implements AutoCloseable {
         error(exchange, 403, "accessDenied", null);
         return;
       }
+      if (path.equals(VERSION + "me/drive")) {
+        String own = ownDrives.get(sent);
+        answer(exchange, own == null ? null : drive(drives.get(own)));
+        return;
+      }
       route(exchange, path.substring(VERSION.length()), query(uri.getRawQuery()));
     } finally {
       exchange.close();
@@ -431,7 +465,7 @@ public final class FakeGraphServer implements AutoCloseable {
     Matcher drive = Pattern.compile("drives/([^/]+).*").matcher(path);
     if (drive.matches()) {
       Drive known = drives.get(drive.group(1));
-      return known == null || granted.contains(known.siteId());
+      return known == null || known.siteId() == null || granted.contains(known.siteId());
     }
     return true;
   }
@@ -756,7 +790,22 @@ public final class FakeGraphServer implements AutoCloseable {
   }
 
   private Map<String, Object> drive(Drive drive) {
-    return Map.of("id", drive.id(), "name", drive.name(), "driveType", drive.driveType());
+    Map<String, Object> json = new LinkedHashMap<>();
+    json.put("id", drive.id());
+    json.put("name", drive.name());
+    json.put("driveType", drive.driveType());
+    if (drive.ownerName() != null || drive.ownerEmail() != null) {
+      Map<String, Object> user = new LinkedHashMap<>();
+      user.put("id", "user-" + drive.id());
+      if (drive.ownerName() != null) {
+        user.put("displayName", drive.ownerName());
+      }
+      if (drive.ownerEmail() != null) {
+        user.put("email", drive.ownerEmail());
+      }
+      json.put("owner", Map.of("user", user));
+    }
+    return json;
   }
 
   private Map<String, Object> item(Item item) {
