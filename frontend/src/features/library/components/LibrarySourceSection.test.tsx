@@ -1120,3 +1120,166 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
     expect(sent.sourceSettings.spaces).toHaveLength(2)
   })
 })
+
+describe('LibrarySourceSection - Zugangsdaten beim Bearbeiten (#3140, #1868)', () => {
+  const update = vi.fn()
+  let probes: SourceConnectionTestRequest[] = []
+  const smb = {
+    name: 'Ablage',
+    sourceType: 'SMB',
+    sourceUrl: 'smb://dateiserver/Daten',
+    sourceCredentialsSet: true,
+    sourceSettings: { folders: ['/'] },
+  }
+
+  beforeEach(() => {
+    update.mockReset().mockResolvedValue(undefined)
+    useLibraryStore.setState({ updateExistingLibrary: update })
+    probes = []
+    server.use(
+      http.post('/api/v1/libraries/source-test', async ({ request }) => {
+        probes.push((await request.json()) as SourceConnectionTestRequest)
+        return HttpResponse.json({
+          reachable: true,
+          credentialsVerified: true,
+          message: 'Verbindung hergestellt; 1 Ordner lesbar.',
+        })
+      }),
+    )
+  })
+
+  async function editAddress(user: ReturnType<typeof userEvent.setup>, address: string) {
+    await openConnection(user)
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    const field = within(row).getByRole('textbox', { name: 'Adresse' })
+    await user.clear(field)
+    await user.type(field, address)
+    return row
+  }
+
+  function renderSmb() {
+    renderWithProviders(
+      <LibrarySourceSection libraryId="library-smb" library={smb} canEditSource />,
+      { withRouter: true },
+    )
+  }
+
+  it('keeps the stored credentials while the fields stay empty and the share stays', async () => {
+    const user = userEvent.setup()
+    renderSmb()
+
+    const row = await editAddress(user, 'smb://Dateiserver/Daten')
+    expect(within(row).getByRole('button', { name: 'Zugangsdaten ersetzen' })).toBeVisible()
+    await user.click(within(row).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1))
+    expect(update.mock.calls[0][1].sourceCredentials).toBeUndefined()
+  })
+
+  it('asks for new credentials once the share changes on the same server', async () => {
+    const user = userEvent.setup()
+    renderSmb()
+
+    const row = await editAddress(user, 'smb://dateiserver/Personal')
+    await user.click(within(row).getByRole('button', { name: 'Speichern' }))
+
+    expect(await within(row).findByText('Passwort fehlt')).toBeVisible()
+    expect(within(row).queryByRole('button', { name: 'Zugangsdaten ersetzen' })).toBeNull()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('asks for new credentials once the server changes', async () => {
+    const user = userEvent.setup()
+    renderSmb()
+
+    const row = await editAddress(user, 'smb://anderer/Daten')
+    await user.click(within(row).getByRole('button', { name: 'Speichern' }))
+
+    expect(await within(row).findByText('Passwort fehlt')).toBeVisible()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('replaces the stored credentials with newly entered ones', async () => {
+    const user = userEvent.setup()
+    renderSmb()
+
+    await openConnection(user)
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    await user.click(within(row).getByRole('button', { name: 'Zugangsdaten ersetzen' }))
+    await user.type(within(row).getByRole('textbox', { name: 'Benutzername' }), 'svc-neu')
+    await user.type(within(row).getByLabelText('Passwort'), 'geheim')
+    await user.click(within(row).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        'library-smb',
+        expect.objectContaining({ sourceCredentials: 'svc-neu:geheim' }),
+      ),
+    )
+  })
+
+  it('tests the connection of the stored library by its id (#1868)', async () => {
+    const user = userEvent.setup()
+    renderSmb()
+
+    await openConnection(user)
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    await user.click(within(row).getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() => expect(probes).toHaveLength(1))
+    expect(probes[0]).toMatchObject({ libraryId: 'library-smb', sourceType: 'SMB' })
+    expect(probes[0].sourceCredentials).toBeUndefined()
+  })
+})
+
+describe('LibrarySourceSection - SharePoint-Kennungen (#3140)', () => {
+  const update = vi.fn()
+
+  beforeEach(() => {
+    update.mockReset().mockResolvedValue(undefined)
+    useLibraryStore.setState({ updateExistingLibrary: update })
+    server.use(
+      http.post('/api/v1/source-types/SHAREPOINT/browse', async ({ request }) => {
+        const body = (await request.json()) as { query?: Record<string, unknown> }
+        const entries =
+          typeof body.query?.site === 'string'
+            ? [{ key: 'drive:d-2', name: 'Protokolle' }]
+            : [{ key: 'site:s-1', name: 'Rathaus' }]
+        return HttpResponse.json({ entries, complete: true, message: null })
+      }),
+    )
+  })
+
+  it('rejects a document library whose id the connector does not accept, at the field', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-sp"
+        library={{
+          name: 'Rathaus',
+          sourceType: 'SHAREPOINT',
+          sourceUrl: 'https://graph.microsoft.com',
+          connectionProfile: {
+            id: 'profile-sp',
+            name: 'Microsoft 365',
+            serverUrl: 'https://graph.microsoft.com',
+            authMethod: 'CLIENT_CREDENTIALS',
+          },
+          sourceSettings: { libraries: [{ driveId: 'd 1/..', name: 'Dokumente', folders: [] }] },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    const dialog = await screen.findByRole('dialog', { name: /auswählen/ })
+    await user.click(await within(dialog).findByRole('button', { name: '„Rathaus“ öffnen' }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Protokolle' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Übernehmen' }))
+
+    const row = screen.getByRole('region', { name: 'Umfang' })
+    expect(await within(row).findByText(/keine gültige Kennung/)).toBeVisible()
+    expect(update).not.toHaveBeenCalled()
+  })
+})

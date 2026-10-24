@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
   EMPTY_SHAREPOINT_VALUES,
-  sharePointCoverageLabel,
   sharePointFolderPath,
-  sharePointKeyOf,
   sharePointLibrariesOf,
   sharePointLibraryName,
   sharePointPayloadOf,
   sharePointSettingsFromLibrary,
-  validateSharePointValues,
+  sharePointIdsValid,
+  type SharePointLibraryChoice,
 } from './sharePointSource'
+import { sharePointSetup } from '../components/setup/connectors/sharePointSetup'
+import type { SourceFormContext } from '../components/sources/types'
+
+const context: SourceFormContext = {
+  mode: 'edit',
+  sourceType: 'SHAREPOINT',
+  idPrefix: 'sp',
+  credentialsStored: false,
+}
 
 describe('sharePointSource (ADR-0047)', () => {
   it('reads stored folders as plain ids and with their shown names', () => {
@@ -77,45 +85,41 @@ describe('sharePointSource (ADR-0047)', () => {
     })
   })
 
-  it('refuses no library, more than fifty and ids the connector would refuse', () => {
-    expect(validateSharePointValues(EMPTY_SHAREPOINT_VALUES)).toBe(
-      'Bitte mindestens eine Dokumentbibliothek wählen.',
+  it('accepts only Graph ids the connector takes', () => {
+    expect(sharePointIdsValid({ driveId: 'b!a_-9', folders: [{ id: '01X', name: null }] })).toBe(
+      true,
     )
+    expect(sharePointIdsValid({ driveId: 'b!a', folders: [{ id: '../x', name: null }] })).toBe(
+      false,
+    )
+    expect(sharePointIdsValid({ driveId: 'd 1', folders: [] })).toBe(false)
+    expect(sharePointIdsValid({ driveId: '', folders: [] })).toBe(false)
+  })
+
+  it('refuses no library, more than fifty and ids the connector would refuse, at the field', () => {
+    const issues = (libraries: SharePointLibraryChoice[]) =>
+      sharePointSetup.issues({ libraries, fullSyncIntervalDays: null }, context)
+    expect(issues(EMPTY_SHAREPOINT_VALUES.libraries)).toEqual([
+      { field: 'libraries', message: 'Dokumentbibliotheken fehlen' },
+    ])
     const many = Array.from({ length: 51 }, (_, i) => ({
       driveId: `b!d${i}`,
       name: null,
       folders: [],
     }))
-    expect(validateSharePointValues({ libraries: many, fullSyncIntervalDays: null })).toBe(
-      'Höchstens 50 Dokumentbibliotheken sind möglich.',
+    expect(issues(many)).toEqual([
+      { field: 'libraries', message: 'Höchstens 50 Dokumentbibliotheken' },
+    ])
+    expect(issues([{ driveId: 'b!a', name: null, folders: [{ id: '../x', name: null }] }])).toEqual(
+      [{ field: 'libraries', message: expect.stringMatching(/keine gültige Kennung/) }],
     )
-    expect(
-      validateSharePointValues({
-        libraries: [{ driveId: 'b!a', name: null, folders: [{ id: '../x', name: null }] }],
-        fullSyncIntervalDays: null,
-      }),
-    ).toMatch(/keine gültige Kennung/)
-    expect(
-      validateSharePointValues({
-        libraries: [{ driveId: 'b!a', name: null, folders: [] }],
-        fullSyncIntervalDays: null,
-      }),
-    ).toBeNull()
+    expect(issues([{ driveId: 'b!a', name: null, folders: [] }])).toEqual([])
   })
 
-  it('words names, paths, coverage and listing keys', () => {
+  it('words names and paths', () => {
     expect(sharePointLibraryName('Dokumente', 'Bauamt')).toBe('Dokumente (Bauamt)')
     expect(sharePointLibraryName(null, 'Bauamt')).toBe('Bauamt')
     expect(sharePointLibraryName('x'.repeat(300), null)).toHaveLength(200)
     expect(sharePointFolderPath(['Akten'], '2026')).toBe('Akten / 2026')
-    expect(
-      sharePointCoverageLabel({ driveId: 'b!a', name: null, folders: [{ id: '01X', name: null }] }),
-    ).toBe('Ordner: Ordner 01X')
-    expect(sharePointCoverageLabel({ driveId: 'b!a', name: null, folders: [] })).toBe(
-      'ganze Dokumentbibliothek',
-    )
-    expect(sharePointKeyOf('site:host,a,b')).toEqual({ kind: 'site', id: 'host,a,b' })
-    expect(sharePointKeyOf('drive:b!a')).toEqual({ kind: 'drive', id: 'b!a' })
-    expect(sharePointKeyOf('myDrive')).toBeNull()
   })
 })

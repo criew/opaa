@@ -1,15 +1,11 @@
 import {
   EMPTY_SMB_VALUES,
-  sameSmbShare,
   smbCredentialsOf,
   smbFoldersOf,
   smbSettingsOf,
-  smbIssue,
   type SmbSourceValues,
 } from '../../utils/smbSource'
-import SmbSourceForm from '../SmbSourceForm'
-import { SmbScope, SmbStoredView } from './SmbSourceViews'
-import { connectionFields } from './sourceConnection'
+import { smbSetup } from '../setup/connectors/smbSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -30,12 +26,6 @@ export const smbSource: SourceRegistration = {
       values.account !== '' ||
       values.password !== '' ||
       values.folders.trim() !== '/',
-    validate: (values: SmbSourceValues, context) =>
-      smbIssue(
-        values,
-        !connectionFields(context).asksSecret ||
-          (context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl)),
-      ),
     toPayload: (values: SmbSourceValues) => {
       const folders = smbFoldersOf(values)
       return {
@@ -58,20 +48,6 @@ export const smbSource: SourceRegistration = {
         return share
       }
     },
-    Form: ({ values, onChange, context }) => (
-      <SmbSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-smb`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: SmbStoredView,
-    Scope: SmbScope,
     scopeNoteId: 'smb-sharing-consequence',
     scopeHero: {
       summary: (library) => {
@@ -87,5 +63,6 @@ export const smbSource: SourceRegistration = {
     },
     firstRunHint:
       'Jeder Lauf liest die Ordner vollständig ein; unveränderte Dateien (gleiche Änderungszeit und Größe) werden dabei nicht neu abgerufen.',
+    setup: smbSetup,
   },
 }

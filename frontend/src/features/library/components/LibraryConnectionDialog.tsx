@@ -49,8 +49,8 @@ interface LibraryConnectionDialogProps {
   descriptor: SourceTypeDescriptor
   /** The profile the library is connected through now; `null` for its own address. */
   current: ConnectionProfileRef | null
-  /** Opens „Quelle bearbeiten“, where a discarded secret is entered anew. */
-  onEditSource: () => void
+  /** Opens „Quelle bearbeiten“, where a discarded secret is entered anew; absent where it has none. */
+  onEditSource?: () => void
   /** The library is private: only profiles with a connected account of its owner are offered. */
   privateLibrary?: boolean
 }
@@ -159,7 +159,7 @@ export default function LibraryConnectionDialog({
         notify(
           `Die Bibliothek ist jetzt über den Zugang „${name}“ verbunden. Weil sich dabei der Server geändert hat, wurden die hinterlegten Zugangsdaten verworfen; bis sie neu eingetragen sind, läuft die Bibliothek nicht.`,
           'warning',
-          { label: 'Quelle bearbeiten', onClick: onEditSource },
+          onEditSource && { label: 'Quelle bearbeiten', onClick: onEditSource },
         )
       } else {
         notify(`Die Bibliothek ist jetzt über den Zugang „${name}“ verbunden.${tested}`, 'success')

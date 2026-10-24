@@ -3,8 +3,6 @@ package io.opaa.indexing.source.s3.events;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +18,7 @@ import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3TestSettings;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;
@@ -35,9 +34,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The adapter's contract (ADR-0027, Entscheidung 6): one 401 for every way a request fails to
- * authenticate, events outside the scopes dropped and counted, the admitted keys handed to the
- * shared intake, and the targeted run delegated to the executor's object refresh. Collecting,
- * overflow and deferral are the intake's own contract.
+ * authenticate, events outside the scopes dropped and counted, the admitted keys returned to the
+ * core for the shared intake, and the targeted run delegated to the executor's object refresh.
+ * Collecting, overflow and deferral are the intake's own contract.
  */
 class S3EventServiceTest {
 
@@ -47,6 +46,7 @@ class S3EventServiceTest {
   private S3IndexingExecutor executor;
   private SourceEventIntake intake;
   private S3EventService service;
+  private SourceEventTarget target;
   private KnowledgeLibrary library;
   private UUID libraryId;
 
@@ -78,14 +78,16 @@ class S3EventServiceTest {
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     service = new S3EventService(executor, intake, JsonMapper.builder().build());
     // the target is registered once, at creation, so any instance drains this connector's batches
-    org.mockito.Mockito.verify(intake).register(org.mockito.ArgumentMatchers.any());
+    ArgumentCaptor<SourceEventTarget> registered = ArgumentCaptor.forClass(SourceEventTarget.class);
+    verify(intake).register(registered.capture());
+    target = registered.getValue();
     org.mockito.Mockito.clearInvocations(intake);
   }
 
   /** The way the shared push intake calls in: the library loaded, its stored settings beside it. */
-  private void accept(UUID id, byte[] body, String authorization, String sharedSecret) {
+  private PushNotification accept(UUID id, byte[] body, String authorization, String sharedSecret) {
     KnowledgeLibrary loaded = libraryRepository.findById(id).orElse(null);
-    service.accept(
+    return service.accept(
         id,
         loaded,
         loaded == null ? null : ConnectorData.storedIn(loaded),
@@ -108,8 +110,8 @@ class S3EventServiceTest {
     return json.append("]}").toString().getBytes(StandardCharsets.UTF_8);
   }
 
-  private void acceptWithBearer(byte[] body) {
-    accept(libraryId, body, "Bearer " + TOKEN, null);
+  private PushNotification acceptWithBearer(byte[] body) {
+    return accept(libraryId, body, "Bearer " + TOKEN, null);
   }
 
   @Test
@@ -157,23 +159,35 @@ class S3EventServiceTest {
   }
 
   @Test
-  void handsTheAdmittedKeysToTheIntakeAndCountsWhatLiesOutside() {
-    acceptWithBearer(records("dokumente/2025/a.pdf", "fremd/x.pdf", "dokumente/2024/alt.pdf"));
-    accept(libraryId, records("satzungen/haupt.txt", "dokumente/2025/entwurf-b.pdf"), null, TOKEN);
+  void returnsTheAdmittedKeysAndCountsWhatLiesOutside() {
+    assertThat(
+            acceptWithBearer(
+                records("dokumente/2025/a.pdf", "fremd/x.pdf", "dokumente/2024/alt.pdf")))
+        .isEqualTo(new PushNotification(Set.of("dokumente/2025/a.pdf"), 2));
+    assertThat(
+            accept(
+                libraryId,
+                records("satzungen/haupt.txt", "dokumente/2025/entwurf-b.pdf"),
+                null,
+                TOKEN))
+        .isEqualTo(new PushNotification(Set.of("satzungen/haupt.txt"), 1));
 
-    ArgumentCaptor<SourceEventTarget> target = ArgumentCaptor.forClass(SourceEventTarget.class);
-    verify(intake)
-        .enqueue(target.capture(), eq(libraryId), eq(Set.of("dokumente/2025/a.pdf")), eq(2));
-    verify(intake).enqueue(any(), eq(libraryId), eq(Set.of("satzungen/haupt.txt")), eq(1));
-    assertThat(target.getValue().sourceType()).isEqualTo(SourceTypes.S3);
-    assertThat(target.getValue().targetedRunMode()).isEqualTo(IndexingRunMode.EVENT);
-    assertThat(target.getValue().executor()).isSameAs(executor);
+    verifyNoInteractions(intake);
+    assertThat(target.sourceType()).isEqualTo(SourceTypes.S3);
+    assertThat(target.targetedRunMode()).isEqualTo(IndexingRunMode.EVENT);
+    assertThat(target.executor()).isSameAs(executor);
   }
 
   @Test
   void theSetUpTestEventAndAnAllOutsideBatchQueueNothing() {
-    accept(libraryId, "{\"Event\":\"s3:TestEvent\"}".getBytes(StandardCharsets.UTF_8), null, TOKEN);
-    acceptWithBearer(records("fremd/x.pdf"));
+    assertThat(
+            accept(
+                libraryId,
+                "{\"Event\":\"s3:TestEvent\"}".getBytes(StandardCharsets.UTF_8),
+                null,
+                TOKEN))
+        .isEqualTo(PushNotification.none());
+    assertThat(acceptWithBearer(records("fremd/x.pdf")).isEmpty()).isTrue();
 
     verifyNoInteractions(intake, executor);
   }
@@ -194,19 +208,17 @@ class S3EventServiceTest {
     UUID unconfiguredId = UUID.randomUUID();
     when(libraryRepository.findById(unconfiguredId)).thenReturn(Optional.of(unconfigured));
 
-    accept(unconfiguredId, records("dokumente/2025/a.pdf"), "Bearer " + TOKEN, null);
-
-    verifyNoInteractions(intake);
+    assertThat(
+            accept(unconfiguredId, records("dokumente/2025/a.pdf"), "Bearer " + TOKEN, null)
+                .isEmpty())
+        .isTrue();
   }
 
   @Test
   void theTargetedRunChecksExactlyTheCollectedObjectsWithTheDroppedCount() {
-    acceptWithBearer(records("dokumente/2025/a.pdf"));
-    ArgumentCaptor<SourceEventTarget> target = ArgumentCaptor.forClass(SourceEventTarget.class);
-    verify(intake).enqueue(target.capture(), any(), any(), anyInt());
     UUID jobId = UUID.randomUUID();
 
-    target.getValue().refresh(jobId, library, Set.of("dokumente/2025/a.pdf"), 3);
+    target.refresh(jobId, library, Set.of("dokumente/2025/a.pdf"), 3);
 
     verify(executor).refreshObjects(jobId, library, Set.of("dokumente/2025/a.pdf"), 3);
     verify(executor, never()).execute(any(), any(), any());

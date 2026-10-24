@@ -35,4 +35,12 @@ public interface SuccessionFindingSource {
   default Optional<SuccessionFinding> findingFor(UUID objectId) {
     return Optional.empty();
   }
+
+  /**
+   * The reading this source shares with the sources of other tabs - empty for one that reads on its
+   * own. Counting every tab asks a shared reading once instead of each of its sources.
+   */
+  default Optional<SuccessionFindingReading> sharedReading() {
+    return Optional.empty();
+  }
 }

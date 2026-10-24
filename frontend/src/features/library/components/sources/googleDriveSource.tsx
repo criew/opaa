@@ -4,12 +4,9 @@ import {
   googleDriveScopeLabel,
   googleDriveScopesOf,
   googleDriveSettingsFromLibrary,
-  googleDriveIssue,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import GoogleDriveSourceForm from '../GoogleDriveSourceForm'
-import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
-import { connectionFields } from './sourceConnection'
+import { googleDriveSetup } from '../setup/connectors/googleDriveSetup'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -32,27 +29,9 @@ export const googleDriveSource: SourceRegistration = {
     },
     isDirty: (values: GoogleDriveSourceValues) =>
       values.keyFile !== '' || values.subject !== '' || values.scopes.length > 0,
-    validate: (values: GoogleDriveSourceValues, context) =>
-      connectionFields(context).asksSecret
-        ? googleDriveIssue(values, context.credentialsStored)
-        : // without a key of the library's own, no key has to serve the imitated account
-          googleDriveIssue({ ...values, storedSubject: values.subject }, true),
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
-    Form: ({ values, onChange, context }) => (
-      <GoogleDriveSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-google-drive`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
-    StoredView: GoogleDriveStoredView,
-    Scope: GoogleDriveScopeView,
     scopeNoteId: 'google-drive-sharing-consequence',
     scopeHero: {
       summary: (library) => {
@@ -72,5 +51,6 @@ export const googleDriveSource: SourceRegistration = {
       'Der erste Lauf ist ein Vollabgleich über alle Bereiche; danach liest jeder Lauf nur das Änderungsprotokoll von Google Drive.',
     runsHint:
       '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Ablagen und Ordner neu.',
+    setup: googleDriveSetup,
   },
 }

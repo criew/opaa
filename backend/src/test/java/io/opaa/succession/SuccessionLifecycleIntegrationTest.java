@@ -54,6 +54,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -362,6 +363,34 @@ class SuccessionLifecycleIntegrationTest {
         successionService.list(organizationId, SuccessionKind.GROUP_WITHOUT_EFFECT, 0, 50);
 
     assertThat(page.entries()).extracting(entry -> entry.finding().objectId()).contains(empty);
+  }
+
+  /** The figure of every tab is the totalElements its list answers - one entry in each here. */
+  @Test
+  void theCountsOfTheTabsEqualTheTotalsOfTheirLists() {
+    CurrentUser owner = user(SystemRole.USER);
+    libraryOwnedByUser(owner.id());
+    lock(owner.id());
+    CurrentUser member = user(SystemRole.USER);
+    UUID group = group("Referat 50", member.id());
+    grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
+        libraryOwnedByUser(admin.id()),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group, AssetRole.VIEWER),
+        admin);
+    lock(member.id());
+    membershipResolver.invalidateUser(member.id());
+    group("Arbeitskreis ohne Wirkung");
+
+    Map<SuccessionKind, Integer> counts = successionService.counts(organizationId);
+
+    assertThat(counts).containsOnlyKeys(SuccessionKind.values());
+    for (SuccessionKind kind : SuccessionKind.values()) {
+      assertThat(counts.get(kind))
+          .as(kind.name())
+          .isPositive()
+          .isEqualTo(successionService.list(organizationId, kind, 0, 1).totalElements());
+    }
   }
 
   /** An internal group without an active steward is an open succession, not a dead group. */

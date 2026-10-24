@@ -232,8 +232,8 @@ class SharePointSourceConnectorTest {
     assertThat(result.reachable()).isFalse();
     assertThat(result.message()).contains("2 von 3");
     assertThat(result.details().toJson())
-        .contains(SharePointFileStore.NOT_A_LIBRARY)
-        .contains(SharePointFileStore.LIBRARY_NOT_VISIBLE);
+        .contains(DriveRule.NOT_A_LIBRARY)
+        .contains(DriveRule.LIBRARY_NOT_VISIBLE);
   }
 
   @Test
@@ -250,7 +250,7 @@ class SharePointSourceConnectorTest {
     assertThat(refused.reachable()).isFalse();
     assertThat(refused.details().toJson())
         .contains("Administratorzustimmung erteilen")
-        .doesNotContain(SharePointFileStore.LIBRARY_NOT_VISIBLE)
+        .doesNotContain(DriveRule.LIBRARY_NOT_VISIBLE)
         .doesNotContain("scp or roles");
     assertThat(rejected.reachable()).isFalse();
     assertThat(rejected.message())
@@ -483,17 +483,17 @@ class SharePointSourceConnectorTest {
   void theOriginalComesThroughGraphFromAConfiguredLibraryOnly() throws Exception {
     Optional<DocumentContent> original =
         connector.openOriginal(
-            document(SharePointFileStore.filePath(DRIVE_0, "bericht")),
+            document(DriveRule.SHAREPOINT.filePath(DRIVE_0, "bericht")),
             mock(KnowledgeLibrary.class),
             withToken(libraries(DRIVE_0)));
     Optional<DocumentContent> otherLibrary =
         connector.openOriginal(
-            document(SharePointFileStore.filePath(DRIVE_1, "bericht")),
+            document(DriveRule.SHAREPOINT.filePath(DRIVE_1, "bericht")),
             mock(KnowledgeLibrary.class),
             withToken(libraries(DRIVE_0)));
     Optional<DocumentContent> gone =
         connector.openOriginal(
-            document(SharePointFileStore.filePath(DRIVE_0, "fehlt")),
+            document(DriveRule.SHAREPOINT.filePath(DRIVE_0, "fehlt")),
             mock(KnowledgeLibrary.class),
             withToken(libraries(DRIVE_0)));
 

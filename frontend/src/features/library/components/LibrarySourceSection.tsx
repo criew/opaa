@@ -25,7 +25,6 @@ import {
   indexingTriggerSourceLabel,
 } from './indexingLabels'
 import { scheduleFrequencyLabel } from './scheduleLabels'
-import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
 import { CONTENT_WIDTH } from './setup/rowStyles'
@@ -74,10 +73,10 @@ export interface LibrarySourceSectionProps {
 }
 
 /**
- * The Reiter „Quelle" of a connector library, in four sections: **Umfang** for every
- * reader, then - behind the MANAGER bar - **Anbindung** (source configuration,
- * connection test, webhook or events), **Zeitplan** and **Läufe**. Triggering and the live progress
- * live in the page head, visible from every area.
+ * The Reiter „Quelle" of a connector library: the rows Verbindung, Umfang and Zeitplan of its
+ * setup, then - behind the MANAGER bar - webhook or events and the **Läufe**. A type this client
+ * has no registration for shows **Anbindung** without a configuration and its **Zeitplan**.
+ * Triggering and the live progress live in the page head, visible from every area.
  */
 export default function LibrarySourceSection({
   libraryId,
@@ -85,7 +84,6 @@ export default function LibrarySourceSection({
   canEditSource,
   erasing = false,
 }: LibrarySourceSectionProps) {
-  const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [reconnectOpen, setReconnectOpen] = useState(false)
@@ -120,13 +118,7 @@ export default function LibrarySourceSection({
   ) : undefined
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const editAction = (
-    <Button
-      color="inherit"
-      size="small"
-      onClick={() =>
-        configuration?.setup ? rowsRef.current?.openRow('connection') : setEditSourceOpen(true)
-      }
-    >
+    <Button color="inherit" size="small" onClick={() => rowsRef.current?.openRow('connection')}>
       Quelle bearbeiten
     </Button>
   )
@@ -149,12 +141,7 @@ export default function LibrarySourceSection({
       }
     }
   })()
-  const Scope = configuration?.Scope
-  const StoredView = configuration?.StoredView
   const Push = configuration?.Push
-  const fullSyncIntervalDays = configuration?.fullSyncRhythm
-    ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
-    : null
 
   return (
     <Stack sx={{ maxWidth: CONTENT_WIDTH }}>
@@ -200,7 +187,7 @@ export default function LibrarySourceSection({
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
         </Alert>
       )}
-      {configuration?.setup ? (
+      {configuration ? (
         <Box sx={{ mb: 4 }}>
           <LibrarySourceRows
             // a fresh instance whenever the stored source changes, so the rows start from it; the
@@ -262,16 +249,6 @@ export default function LibrarySourceSection({
         </Box>
       ) : (
         <>
-          {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
-         with read access - they are here instead of in the header, with an explanation. */}
-          {Scope && (
-            <PageSection title="Umfang">
-              <Stack spacing={1}>
-                <Scope library={library} />
-              </Stack>
-            </PageSection>
-          )}
-
           {!canEditSource && (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Anbindung, Zeitplan und Läufe dieser Bibliothek sehen nur Verwaltende.
@@ -280,25 +257,7 @@ export default function LibrarySourceSection({
 
           {canEditSource && !erasing && (
             <>
-              <PageSection
-                title="Anbindung"
-                action={
-                  configuration ? (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => setEditSourceOpen(true)}
-                      aria-label="Quellkonfiguration bearbeiten"
-                      sx={{ flexShrink: 0 }}
-                    >
-                      Bearbeiten
-                    </Button>
-                  ) : undefined
-                }
-              >
-                {/* sourcePath/sourceUrl expose internal server paths and source URLs - the backend only
-              * serves them to a caller with at least MANAGER, and
-                this whole area only renders behind the same bar. */}
+              <PageSection title="Anbindung">
                 <Stack spacing={1}>
                   <LibraryConnectionPanel
                     libraryId={libraryId}
@@ -307,7 +266,6 @@ export default function LibrarySourceSection({
                     connectionProfile={library.connectionProfile}
                     connectionProfileRemoved={library.connectionProfileRemoved}
                     privateLibrary={Boolean(library.privateLibrary)}
-                    onEditSource={() => setEditSourceOpen(true)}
                     dialogOpen={connectOpen}
                     onDialogOpenChange={setConnectOpen}
                   />
@@ -318,30 +276,13 @@ export default function LibrarySourceSection({
                       onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
                     />
                   )}
-                  {StoredView ? (
-                    <StoredView library={library} libraryId={libraryId} />
-                  ) : (
-                    <Typography variant="body2" data-testid="source-not-configurable">
-                      Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske; ihre
-                      Anbindung ist hier nicht konfigurierbar.
-                    </Typography>
-                  )}
+                  <Typography variant="body2" data-testid="source-not-configurable">
+                    Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske; ihre
+                    Anbindung ist hier nicht konfigurierbar.
+                  </Typography>
                 </Stack>
-                {configuration && (
-                  <EditLibrarySourceDialog
-                    // Forces a remount every time the dialog opens, so its internal field state always
-                    // starts fresh from the current library configuration without an effect calling
-                    // setState on open (react-hooks/set-state-in-effect).
-                    key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
-                    open={editSourceOpen}
-                    onClose={() => setEditSourceOpen(false)}
-                    libraryId={libraryId}
-                    library={library}
-                  />
-                )}
               </PageSection>
 
-              {/* Schedule - the same threshold as the source connection (canEditSource). */}
               <PageSection
                 title="Zeitplan"
                 action={
@@ -359,18 +300,6 @@ export default function LibrarySourceSection({
                 <Typography variant="body2">
                   {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
                 </Typography>
-                {configuration?.fullSyncRhythm && (
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {(() => {
-                      const days = fullSyncIntervalDays ?? library.fullSyncIntervalDefaultDays ?? 7
-                      const rhythm =
-                        days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
-                      return fullSyncIntervalDays == null
-                        ? `${rhythm} (Vorgabe der Instanz)`
-                        : rhythm
-                    })()}
-                  </Typography>
-                )}
                 {library.schedule?.nextRunAt && (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Nächster geplanter Lauf:{' '}
@@ -387,21 +316,12 @@ export default function LibrarySourceSection({
                   </Alert>
                 )}
                 <EditLibraryScheduleDialog
-                  // Mirrors EditLibrarySourceDialog's own remount-on-open pattern above.
+                  // a fresh instance on every opening starts from the stored schedule
                   key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
                   open={editScheduleOpen}
                   onClose={() => setEditScheduleOpen(false)}
                   libraryId={libraryId}
                   schedule={library.schedule}
-                  confluence={
-                    configuration?.fullSyncRhythm
-                      ? {
-                          intervalDays: fullSyncIntervalDays,
-                          defaultDays: library.fullSyncIntervalDefaultDays ?? null,
-                        }
-                      : undefined
-                  }
-                  settingsBase={configuration?.rhythmSettingsBase?.(library) ?? undefined}
                   library={library}
                 />
               </PageSection>

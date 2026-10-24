@@ -88,14 +88,6 @@ export function sharePointFolderLabel(folder: SharePointFolder) {
   return folder.name?.trim() || `Ordner ${folder.id}`
 }
 
-/** What a chosen library covers, in words: all of it or its folders. */
-export function sharePointCoverageLabel(library: SharePointLibraryChoice) {
-  if (library.folders.length === 0) return 'ganze Dokumentbibliothek'
-  return `${library.folders.length === 1 ? 'Ordner' : `${library.folders.length} Ordner`}: ${library.folders
-    .map(sharePointFolderLabel)
-    .join(', ')}`
-}
-
 /** The name a document library listed for a site is stored under: its own and the site's. */
 export function sharePointLibraryName(libraryName: string | null, siteName: string | null) {
   const name = libraryName?.trim() || null
@@ -110,32 +102,9 @@ export function sharePointFolderPath(trail: string[], name: string | null) {
   return path.slice(0, MAX_SHAREPOINT_NAME_LENGTH)
 }
 
-/** A listing key (`site:<id>`, `drive:<id>`, `folder:<id>`) split into its kind and id. */
-export function sharePointKeyOf(
-  key: string,
-): { kind: 'site' | 'drive' | 'folder'; id: string } | null {
-  const match = /^(site|drive|folder):(.+)$/.exec(key)
-  if (!match) return null
-  return { kind: match[1] as 'site' | 'drive' | 'folder', id: match[2] }
-}
-
-/** The German rejection of the values, null when they may be sent. */
-export function validateSharePointValues(values: SharePointSourceValues): string | null {
-  if (values.libraries.length === 0) {
-    return 'Bitte mindestens eine Dokumentbibliothek wählen.'
-  }
-  if (values.libraries.length > MAX_SHAREPOINT_LIBRARIES) {
-    return `Höchstens ${MAX_SHAREPOINT_LIBRARIES} Dokumentbibliotheken sind möglich.`
-  }
-  for (const library of values.libraries) {
-    if (!GRAPH_ID.test(library.driveId) || library.folders.some((f) => !GRAPH_ID.test(f.id))) {
-      return 'Eine Dokumentbibliothek oder ein Ordner hat keine gültige Kennung; bitte neu aus der Auflistung wählen.'
-    }
-    if (library.folders.length > MAX_SHAREPOINT_FOLDERS) {
-      return `Höchstens ${MAX_SHAREPOINT_FOLDERS} Ordner je Dokumentbibliothek sind möglich („${sharePointLibraryLabel(library)}“).`
-    }
-  }
-  return null
+/** Whether the connector accepts the Graph ids of the library and of its folders. */
+export function sharePointIdsValid(library: Pick<SharePointLibraryChoice, 'driveId' | 'folders'>) {
+  return GRAPH_ID.test(library.driveId) && library.folders.every((f) => GRAPH_ID.test(f.id))
 }
 
 /** The settings part of a request. */
@@ -164,18 +133,4 @@ export function sharePointPayloadOf(values: SharePointSourceValues): LibrarySour
     sourceUrl: SHAREPOINT_API,
     sourceSettings: sharePointSettingsOf(values),
   }
-}
-
-/** One finding of the connection test per document library, from its `details.libraries`. */
-export interface SharePointLibraryCheck {
-  driveId: string
-  reachable: boolean
-  message?: string | null
-}
-
-export function sharePointLibraryChecksOf(
-  details: Record<string, unknown> | null | undefined,
-): SharePointLibraryCheck[] | null {
-  const libraries = details?.libraries
-  return Array.isArray(libraries) ? (libraries as SharePointLibraryCheck[]) : null
 }
