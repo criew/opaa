@@ -657,7 +657,9 @@ seine `README`. Die Seiten laden nichts aus dem Internet und enthalten kein Skri
 zeichnet der Lauf vorab in einem Headless-Chromium zu SVG (`.github/tools/mermaid/render.mjs`,
 Mermaid und playwright-core aus der Lockfile daneben, ohne Netz im Browser) und bettet sie in die
 Seite ein, den Diagrammtext aufklappbar darunter; ein Diagramm, das nicht rendert, bricht den Lauf
-ab. Gezeichnet wird mit Google Chrome des Runners, lokal mit dem Browser aus `CHROMIUM`. Ein
+ab. Gezeichnet werden die Diagramme von Vorlagen, Update-Vermerk und Handbuch, in anderen Teilen wie
+den Upgrade-Hinweisen bleibt ein Diagramm Code. Jede `id` steht auf einer Seite nur einmal, sonst
+bricht der Lauf ab. Gezeichnet wird mit Google Chrome des Runners, lokal mit dem Browser aus `CHROMIUM`. Ein
 relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
 Attestierung decken die HTML-Dateien wie alle anderen ab. Jeder PR prüft
 dieselben Verweise vorab: Der Job `changes` der CI ruft `update_package.py links` auf, ohne
@@ -673,7 +675,10 @@ dieselben Dateien und dieselben Zeilen in `SHA256SUMS`, mit einer Ausnahme: Der 
 Zeitpunkt des Laufs; wird ein Label zwischen zwei Läufen gesetzt oder entfernt, unterscheidet sich
 das Delta. Ebenso folgt `barrierefreiheit/` dem axe-Lauf des Jobs `accessibility`: Prüfdatum,
 abgebrochene Szenarien und Befunde, die nur zeitweise auftreten, können sich zwischen zwei Läufen
-unterscheiden. Die Bytes des Archivs hängen zusätzlich von der zlib-Version des Runners ab. Ein
+unterscheiden. Die Maße der Diagramm-SVGs misst Chrome beim Zeichnen; ein Lauf mit
+anderer Chrome-Version des Runners kann um Bruchteile eines Pixels abweichende SVGs und damit andere
+Zeilen in `SHA256SUMS` ergeben. Die Schrift ist dafür festgelegt (Arial bzw. das metrisch gleiche
+Liberation Sans). Die Bytes des Archivs hängen zusätzlich von der zlib-Version des Runners ab. Ein
 wiederholter Job `update-package` erzeugt das Archiv neu, eine wiederholte Attestierung attestiert
 das dann hochgeladene. Die PR-Liste fragt der Job mit einem Limit von 1000 ab; erreicht sie es,
 bricht er ab, statt eine abgeschnittene Liste zu verwenden.

@@ -91,10 +91,12 @@ def mermaid_sources(files: dict[str, bytes]) -> list[str]:
 
 def diagram(source: str, svg: str) -> str:
     """A rendered diagram, followed by its source text for copying and for readers without
-    graphics."""
+    graphics; the SVG names that text as its description."""
+    text = diagram_id(source) + "-source-text"
+    svg = re.sub(r"^\s*<svg\b", f'<svg aria-describedby="{text}"', svg, count=1)
     return (f'<figure class="diagram">{svg}</figure>\n'
             '<details class="diagram-source"><summary>Diagramm als Text</summary>'
-            f'<pre><code class="language-mermaid">{html.escape(source, quote=False)}</code></pre>'
+            f'<pre id="{text}"><code class="language-mermaid">{html.escape(source, quote=False)}</code></pre>'
             "</details>\n")
 
 
@@ -270,16 +272,29 @@ class _References(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.ids: set[str] = set()
+        self.repeated: set[str] = set()
         self.links: list[str] = []
 
     def handle_starttag(self, tag, attrs) -> None:
         values = dict(attrs)
+        if values.get("id") in self.ids:
+            self.repeated.add(values["id"])
         for name in ("id", "name") if tag == "a" else ("id",):
             if values.get(name):
                 self.ids.add(values[name])
         for name in ("href", "src"):
             if values.get(name) is not None:
                 self.links.append(values[name])
+
+
+def repeated_ids(site: dict[str, bytes]) -> list[str]:
+    """Every id that occurs more than once on an HTML page of `site`, as '<page>: <id>'."""
+    found = []
+    for path in sorted(p for p in site if p.endswith(".html")):
+        parser = _References()
+        parser.feed(site[path].decode("utf-8"))
+        found += [f"{path}: {name}" for name in sorted(parser.repeated)]
+    return found
 
 
 def broken_links(site: dict[str, bytes]) -> list[str]:

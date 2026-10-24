@@ -110,9 +110,11 @@ def test_a_rendered_mermaid_diagram_shows_as_svg_with_its_source_beside_it() -> 
     page = site({"a.md": f"# Titel\n\n```mermaid\n{source}```\n"},
                 diagrams={source: '<svg id="d"></svg>'})["a.html"]
 
-    assert '<figure class="diagram"><svg id="d"></svg></figure>' in page
+    text = package_html.diagram_id(source) + "-source-text"
+    assert f'<figure class="diagram"><svg aria-describedby="{text}" id="d"></svg></figure>' in page
     assert ('<details class="diagram-source"><summary>Diagramm als Text</summary>'
-            '<pre><code class="language-mermaid">flowchart LR\n  A --&gt; B\n</code></pre></details>') in page
+            f'<pre id="{text}"><code class="language-mermaid">flowchart LR\n  A --&gt; B\n</code></pre>'
+            '</details>') in page
 
 
 def test_a_mermaid_diagram_without_rendering_stays_code() -> None:
@@ -163,3 +165,10 @@ def test_a_missing_file_or_anchor_is_reported() -> None:
 
     assert package_html.broken_links(raw) == [
         "a.html: b.md", "a.html: c.html#gibt-es-nicht", "a.html: #gibt-es-auch-nicht", "a.html: d/"]
+
+
+def test_repeated_ids_names_each_id_that_occurs_twice_on_a_page() -> None:
+    pages = {"a.html": b'<h1 id="x"></h1><svg id="d1"><path id="e"/></svg><svg id="d2"><path id="e"/></svg>',
+             "b.html": b'<h1 id="e"></h1><a name="e"></a>', "c.md": b'id="x" id="x"'}
+
+    assert package_html.repeated_ids(pages) == ["a.html: e"]

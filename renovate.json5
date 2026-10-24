@@ -239,9 +239,10 @@
     // Mermaid und playwright-core (.github/tools/mermaid) zeichnen die Diagramme der HTML-Fassung des
     // Update-Pakets. Der Schritt "Mermaid-Diagramme ... rendern" im Job changes übt sie bei jedem
     // Update aus; eigene Gruppe, damit beide gemeinsam und getrennt vom Frontend wandern.
+    // packageManager in derselben package.json bleibt wie bei cdxgen im Sammel-PR mit frontend/.
     {
       matchManagers: ['npm'],
-      matchFileNames: ['.github/tools/mermaid/**'],
+      matchDepNames: ['mermaid', 'playwright-core'],
       groupName: 'mermaid',
       minimumReleaseAge: '1 day',
       addLabels: ['ci'],
