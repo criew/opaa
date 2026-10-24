@@ -169,7 +169,7 @@ function helpers(page, args, log) {
 
 function toMp4(webm, mp4) {
   const ffmpeg = process.env.FFMPEG || 'ffmpeg'
-  execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', webm, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '28', '-movflags', '+faststart', mp4])
+  execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', webm, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '30', '-movflags', '+faststart', mp4])
 }
 
 const ARGS = parseArgs(process.argv.slice(2))
