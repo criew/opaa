@@ -89,6 +89,14 @@ class AssetOwnershipTransferControllerIntegrationTest {
                 Integer.class,
                 library))
         .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT row_to_json(a)::text FROM audit_log a WHERE object_id = ? AND event_type ="
+                    + " 'ASSET_OWNER_CHANGED'",
+                String.class,
+                library))
+        .doesNotContain(admin.toString())
+        .doesNotContain(successor.toString());
     // The successor now reads their own library through the moved grant, not through the
     // administration - the cache of the access formula was invalidated with the transfer.
     mockMvc
