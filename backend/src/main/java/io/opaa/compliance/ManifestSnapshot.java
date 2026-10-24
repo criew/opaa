@@ -123,14 +123,22 @@ public record ManifestSnapshot(
     } catch (IOException e) {
       throw new UncheckedIOException("cannot read " + file, e);
     }
+    return fromJsonNode(root, displayPath(file));
+  }
+
+  /**
+   * The manifest held by {@code root}, the JSON form of the fact sheets or a configuration export,
+   * both of which carry it as {@code manifest}; {@code source} names where it was read.
+   */
+  static ManifestSnapshot fromJsonNode(JsonNode root, String source) {
     JsonNode manifest = root.path("manifest");
     if (!manifest.isObject()) {
-      throw new IllegalArgumentException(file + " holds no 'manifest' object");
+      throw new IllegalArgumentException(source + " holds no 'manifest' object");
     }
     Origin origin =
         new Origin(
             "json",
-            displayPath(file),
+            source,
             text(root.path("opaaVersion"), UNKNOWN),
             commit(text(root.path("commit"), UNKNOWN)),
             true);
@@ -148,7 +156,7 @@ public record ManifestSnapshot(
       for (JsonNode node : section.getValue()) {
         @SuppressWarnings("unchecked")
         Map<String, Object> entry = JSON.convertValue(node, Map.class);
-        add(entries, section.getKey(), entry, file.toString());
+        add(entries, section.getKey(), entry, source);
       }
       sections.put(section.getKey(), entries);
     }

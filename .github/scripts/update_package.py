@@ -812,9 +812,15 @@ def readme(release: Release) -> str:
         "  --out <Verzeichnis> --delta-json backend/build/compliance/delta/manifest-delta.json",
         "```",
         "",
-        "## Noch nicht enthalten",
+        "## Abgleich mit der eigenen Installation",
         "",
-        "- Der Abgleich mit der Konfiguration einer bestimmten Installation.",
+        "Ob eine Änderung des Deltas die eigene Installation betrifft, zeigt der Abgleich mit ihrer"
+        " Auskunft über die Datenerhebung (JSON-Fassung), aus `backend/` desselben Checkouts:",
+        "",
+        "```bash",
+        "./gradlew complianceInstanceMatch -Pdelta=<Paket>/delta/manifest-delta.json \\",
+        "  -Pexport=<auskunft.json> [-PpreviousExport=<frühere auskunft.json>]",
+        "```",
         "",
     ]
     return "\n".join(lines)

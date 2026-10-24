@@ -799,6 +799,39 @@ tasks.register<JavaExec>("complianceDelta") {
     )
 }
 
+// The manifest delta of an update matched against the configuration export of one instance, offline
+// on files: -Pdelta=<manifest-delta.json> -Pexport=<export.json> [-PpreviousExport=<export.json>].
+tasks.register<JavaExec>("complianceInstanceMatch") {
+    group = "documentation"
+    description = "Matches a compliance manifest delta against the configuration export of an instance."
+    val outputDir = layout.buildDirectory.dir("compliance/instanz-abgleich")
+    val projectDirectory = layout.projectDirectory.asFile
+    val delta = providers.gradleProperty("delta")
+    val export = providers.gradleProperty("export")
+    val previousExport = providers.gradleProperty("previousExport")
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "io.opaa.compliance.InstanceMatchGenerator"
+    outputs.dir(outputDir)
+    outputs.upToDateWhen { false }
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            fun path(value: String) = projectDirectory.resolve(value).path
+            if (!delta.isPresent || !export.isPresent) {
+                throw GradleException("complianceInstanceMatch needs -Pdelta=<manifest-delta.json> and -Pexport=<file>")
+            }
+            val args = mutableListOf(
+                "--out", outputDir.get().asFile.path,
+                "--delta", path(delta.get()),
+                "--export", path(export.get()),
+            )
+            if (previousExport.isPresent) {
+                args += listOf("--previous-export", path(previousExport.get()))
+            }
+            args
+        },
+    )
+}
+
 // The placeholder targets of the fact sheets (sheet names and anchors), checked in at
 // .github/fact-sheet-anchors.txt so the header check of docs/behoerden/ needs no backend build.
 // FactSheetReferenceTest fails while the file differs from the manifest.
