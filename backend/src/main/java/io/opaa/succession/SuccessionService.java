@@ -7,17 +7,22 @@ import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionCaseCloser;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.permission.SuccessionFindingReading;
 import io.opaa.permission.SuccessionFindingSource;
 import io.opaa.permission.SuccessionReachGuard;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -124,6 +129,32 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
         size,
         entries.size(),
         (int) Math.ceil((double) entries.size() / size));
+  }
+
+  /**
+   * How many entries each tab holds - per kind of entry only, never per person (ADR-0036,
+   * Entscheidung 6). Drawn from the same findings as {@link #list}, so each figure equals that
+   * tab's {@code totalElements}; a reading several tabs share runs once.
+   */
+  @Transactional(readOnly = true)
+  public Map<SuccessionKind, Integer> counts(UUID organizationId) {
+    Map<SuccessionKind, Integer> counts = new EnumMap<>(SuccessionKind.class);
+    for (SuccessionKind kind : SuccessionKind.values()) {
+      counts.put(kind, 0);
+    }
+    Set<SuccessionFindingReading> read = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (SuccessionFindingSource source : sources) {
+      Optional<SuccessionFindingReading> shared = source.sharedReading();
+      if (shared.isEmpty()) {
+        counts.merge(source.kind(), source.findingsOf(organizationId).size(), Integer::sum);
+      } else if (read.add(shared.get())) {
+        shared
+            .get()
+            .findingsByKindOf(organizationId)
+            .forEach((kind, findings) -> counts.merge(kind, findings.size(), Integer::sum));
+      }
+    }
+    return counts;
   }
 
   /**

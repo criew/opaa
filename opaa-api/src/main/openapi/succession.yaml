@@ -193,6 +193,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/admin/succession/counts:
+    get:
+      operationId: countSuccessionEntries
+      tags: [succession]
+      summary: How many entries each tab of the operational list holds (ADR-0036 Entscheidung 6).
+      description: >
+        One figure per tab, per kind of entry only - never per previous owner or acting person
+        (Personalrat E1). Drawn from the same derivation as the list, so each figure equals the
+        totalElements of that tab; the reading the two group tabs share runs once for both.
+      responses:
+        "200":
+          description: The figure of every tab
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionCountsResponse"
+        "403":
+          description: The operational list is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     PermissionTransferScope:
@@ -551,6 +574,24 @@ components:
           type: integer
         totalPages:
           type: integer
+
+    SuccessionCountsResponse:
+      type: object
+      required: [openSuccession, grantsWithoutRecipient, groupWithoutEffect]
+      description: The number of entries per tab, one field per SuccessionKind.
+      properties:
+        openSuccession:
+          type: integer
+          description: Entries of the tab OPEN_SUCCESSION.
+          example: 4
+        grantsWithoutRecipient:
+          type: integer
+          description: Entries of the tab GRANTS_WITHOUT_RECIPIENT.
+          example: 1
+        groupWithoutEffect:
+          type: integer
+          description: Entries of the tab GROUP_WITHOUT_EFFECT.
+          example: 0
 
     SuccessionStateResponse:
       type: object
