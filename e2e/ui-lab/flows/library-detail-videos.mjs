@@ -89,6 +89,8 @@ export async function run(h, { type, kind, scenario }) {
     const query = new URLSearchParams({ mockScenario: scenario })
     if (TAB[type]) query.set('tab', TAB[type])
     await h.goto(`/libraries/${LIBRARIES[name]}?${query}`)
+    // the lazily loaded page is ready once its tabs are there
+    await h.page.getByRole('tab').first().waitFor({ state: 'visible', timeout: 30000 }).catch(() => h.log('  missing: tabs'))
     await h.caption(`${name} · ${type === 'kopf' ? 'Kopf' : type}`)
     await h.pause(type === 'kopf' ? 1400 : 700)
     if (type === 'dokumente') await documents(h, name, kind)

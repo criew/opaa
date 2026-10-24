@@ -115,9 +115,9 @@ async function openRuns(page) {
   if (await first.count()) {
     if ((await first.getAttribute('aria-expanded')) !== 'true') await first.click().catch(() => {})
     await page.waitForFunction((el) => el?.getAttribute('aria-expanded') === 'true', await first.elementHandle(), { timeout: 5000 }).catch(() => {})
-    // the collapse transition ends before the shot
-    await page.locator('#library-tabpanel-quelle .MuiCollapse-entered').first().waitFor({ timeout: 5000 }).catch(() => {})
-    await sleep(400)
+    // the details of the newest run are rendered and painted (500 events take a while)
+    await page.locator('#library-tabpanel-quelle .MuiAccordionDetails-root').first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    await sleep(1500)
   }
   await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))
   await sleep(300)
