@@ -18,7 +18,7 @@ import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import { connectionFields } from '../sources/sourceConnection'
 import { fieldDomId, useSourceIssue } from '../sources/sourceIssueContext'
 import type { SourceFormProps } from '../sources/types'
-import { FieldGroup, SecretField, SourceTextField } from '../sourceKit/fields'
+import { FieldGroup, SecretField, SourceTextField, StoredCredentials } from '../sourceKit/fields'
 import SelectionSummary from '../sourceKit/SelectionSummary'
 import { s3Item, s3ScopeOfItem, s3SelectionSource } from '../sourceKit/selectionSources'
 
@@ -59,7 +59,7 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
       <FieldGroup title="Verbindung">
         {!fields.isFixed('sourceUrl') && !fields.connection && (
           <Box>
-            <FieldLabel htmlFor={providerId}>Anbieter</FieldLabel>
+            <FieldLabel id={`${providerId}-label`}>Anbieter</FieldLabel>
             <TextField
               id={providerId}
               select
@@ -68,6 +68,7 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
               value={values.provider}
               onChange={(e) => onChange(s3ProviderTemplate(e.target.value as S3Provider))}
               helperText="Füllt Adresse und Region vor."
+              slotProps={{ select: { labelId: `${providerId}-label` } }}
             >
               {S3_PROVIDERS.map((provider) => (
                 <MenuItem key={provider} value={provider}>
@@ -103,27 +104,34 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
       </FieldGroup>
       {fields.asksSecret && (
         <FieldGroup title="Anmeldung">
-          <SourceTextField
+          <StoredCredentials
             idPrefix={prefix}
-            field="accessKey"
-            label="Kennung"
-            value={values.accessKey}
-            onChange={(accessKey) => onChange({ accessKey })}
-            hint={
-              stored ? 'Access Key; leer lassen, um den gespeicherten zu behalten.' : 'Access Key'
-            }
-            maxLength={128}
-          />
-          <SecretField
-            idPrefix={prefix}
-            field="secretKey"
-            label="Kennwort"
-            value={values.secretKey}
             stored={stored}
-            onChange={(secretKey) => onChange({ secretKey })}
-            hint="Secret Key"
-            maxLength={128}
-          />
+            entered={values.accessKey !== '' || values.secretKey !== ''}
+            onKeep={() => onChange({ accessKey: '', secretKey: '' })}
+          >
+            <SourceTextField
+              idPrefix={prefix}
+              field="accessKey"
+              label="Kennung"
+              value={values.accessKey}
+              onChange={(accessKey) => onChange({ accessKey })}
+              hint={
+                stored ? 'Access Key; leer lassen, um den gespeicherten zu behalten.' : 'Access Key'
+              }
+              maxLength={128}
+            />
+            <SecretField
+              idPrefix={prefix}
+              field="secretKey"
+              label="Kennwort"
+              value={values.secretKey}
+              stored={false}
+              onChange={(secretKey) => onChange({ secretKey })}
+              hint="Secret Key"
+              maxLength={128}
+            />
+          </StoredCredentials>
         </FieldGroup>
       )}
       <FieldGroup title="Umfang">

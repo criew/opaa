@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { SummaryRow } from './sourceKit/summaries'
 
 export interface ReviewSection {
@@ -71,12 +72,3 @@ export default function CreateReviewStep({ sections }: { sections: ReviewSection
     </Box>
   )
 }
-
-const visuallyHidden = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-} as const

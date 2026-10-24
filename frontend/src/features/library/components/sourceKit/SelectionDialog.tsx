@@ -275,11 +275,11 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
     <Box>
       {current?.result && !current.result.complete && current.result.message && (
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
-          Liste unvollständig: {current.result.message}
+          {current.result.message}
         </Typography>
       )}
       {loading && showLoading && (
-        <Box aria-busy="true" aria-label={`${levelName} wird geladen`}>
+        <Box role="status" aria-busy="true" aria-label={`${levelName} wird geladen`}>
           {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} variant="rounded" height={32} sx={{ my: 0.5 }} />
           ))}
@@ -304,7 +304,9 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
           {current.result.complete
             ? `In „${levelName}“ liegen keine ${source.noun[1]}.`
-            : 'Die Quelle hat für diese Ebene nichts geliefert.'}
+            : current.result.message
+              ? null
+              : 'Die Quelle hat für diese Ebene nichts geliefert.'}
         </Typography>
       )}
       {current?.result && entries.length === 0 && filtered && (
@@ -497,7 +499,7 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
         {title}
       </DialogTitle>
       <Box sx={{ px: 3, pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-        {reviewing ? (
+        {!reviewing && !source.nested && level.length === 0 ? null : reviewing ? (
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
             Ausgewählt über alle Ebenen
           </Typography>
@@ -585,7 +587,7 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 13.5 }} aria-live="polite">
             {draft.length === 0 && source.emptyMeans
-              ? 'Nichts ausgewählt'
+              ? source.emptyMeans
               : `${draft.length} ausgewählt`}
           </Typography>
           <Button size="small" onClick={() => setReviewing((r) => !r)}>

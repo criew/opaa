@@ -109,10 +109,10 @@ export default function SelectionSummary({
       </Typography>
       <Box
         sx={{
-          border: 1,
+          borderLeft: 3,
           borderColor: error ? 'error.main' : 'divider',
-          borderRadius: '10px',
-          p: 1.5,
+          pl: 1.5,
+          py: 0.5,
           display: 'flex',
           gap: 1.5,
           alignItems: 'flex-start',

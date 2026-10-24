@@ -12,7 +12,7 @@ import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import { connectionFields } from '../sources/sourceConnection'
 import { fieldDomId, useSourceIssue } from '../sources/sourceIssueContext'
 import type { SourceFormProps } from '../sources/types'
-import { FieldGroup, SecretField, SourceTextField } from '../sourceKit/fields'
+import { FieldGroup, SecretField, SourceTextField, StoredCredentials } from '../sourceKit/fields'
 import SelectionSummary from '../sourceKit/SelectionSummary'
 import { spaceItem, spaceOfItem, spaceSelectionSource } from '../sourceKit/selectionSources'
 
@@ -112,28 +112,35 @@ export default function ConfluenceForm({
       </FieldGroup>
       {fields.asksSecret && (
         <FieldGroup title="Anmeldung">
-          {values.edition !== 'DATA_CENTER' && (!stored || values.token !== '') && (
-            <SourceTextField
-              idPrefix={prefix}
-              field="email"
-              label="Kennung"
-              value={values.email}
-              onChange={(email) => onChange({ email, credentialsVerified: false })}
-              placeholder="dienstkonto@example.org"
-              hint="E-Mail-Adresse des Dienstkontos"
-              maxLength={255}
-            />
-          )}
-          <SecretField
+          <StoredCredentials
             idPrefix={prefix}
-            field="token"
-            label="Kennwort"
-            value={values.token}
             stored={stored}
-            onChange={(token) => onChange({ token, credentialsVerified: false })}
-            hint={values.edition === 'DATA_CENTER' ? 'Persönliches Zugriffstoken' : 'API-Token'}
-            maxLength={2000}
-          />
+            entered={values.email !== '' || values.token !== ''}
+            onKeep={() => onChange({ email: '', token: '' })}
+          >
+            {values.edition !== 'DATA_CENTER' && (
+              <SourceTextField
+                idPrefix={prefix}
+                field="email"
+                label="Kennung"
+                value={values.email}
+                onChange={(email) => onChange({ email, credentialsVerified: false })}
+                placeholder="dienstkonto@example.org"
+                hint="E-Mail-Adresse des Dienstkontos"
+                maxLength={255}
+              />
+            )}
+            <SecretField
+              idPrefix={prefix}
+              field="token"
+              label="Kennwort"
+              value={values.token}
+              stored={false}
+              onChange={(token) => onChange({ token, credentialsVerified: false })}
+              hint={values.edition === 'DATA_CENTER' ? 'Persönliches Zugriffstoken' : 'API-Token'}
+              maxLength={2000}
+            />
+          </StoredCredentials>
         </FieldGroup>
       )}
       <FieldGroup title="Umfang">

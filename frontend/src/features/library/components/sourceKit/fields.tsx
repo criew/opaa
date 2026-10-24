@@ -180,3 +180,63 @@ export function SecretField({
     </Box>
   )
 }
+
+interface StoredCredentialsProps {
+  idPrefix: string
+  /** Credentials are stored and still serve the address. */
+  stored: boolean
+  /** Whether new values were typed already; the fields then stay open. */
+  entered: boolean
+  /** Drops what was typed, so the stored credentials stand again. */
+  onKeep: () => void
+  children: ReactNode
+}
+
+/**
+ * The sign-in of a stored source (Prüfliste #34): kennung and secret are one stored credential,
+ * shown as „Gesetzt“ with „Ersetzen“; only replacing opens the fields, „Beibehalten“ closes them.
+ */
+export function StoredCredentials({
+  idPrefix,
+  stored,
+  entered,
+  onKeep,
+  children,
+}: StoredCredentialsProps) {
+  const [replacing, setReplacing] = useState(false)
+  if (!stored) return <>{children}</>
+  if (!replacing && !entered) {
+    return (
+      <Box>
+        <FieldLabel id={`${idPrefix}-credentials-label`}>Kennung und Kennwort</FieldLabel>
+        <Box
+          role="group"
+          aria-labelledby={`${idPrefix}-credentials-label`}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}
+        >
+          <Typography sx={{ fontSize: 14 }}>Gesetzt</Typography>
+          <Button size="small" variant="outlined" onClick={() => setReplacing(true)}>
+            Ersetzen
+          </Button>
+        </Box>
+      </Box>
+    )
+  }
+  return (
+    <>
+      {children}
+      <Box>
+        <Button
+          size="small"
+          sx={{ px: 0.5 }}
+          onClick={() => {
+            onKeep()
+            setReplacing(false)
+          }}
+        >
+          Gespeicherte beibehalten
+        </Button>
+      </Box>
+    </>
+  )
+}

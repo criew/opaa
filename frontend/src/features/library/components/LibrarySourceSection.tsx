@@ -183,10 +183,7 @@ export default function LibrarySourceSection({
       {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
          with read access - they are here instead of in the header, with an explanation. */}
       {Scope && (
-        <PageSection
-          title="Umfang"
-          description="Was diese Bibliothek aus ihrer Quelle liest."
-        >
+        <PageSection title="Umfang" description="Was diese Bibliothek aus ihrer Quelle liest.">
           <Stack spacing={1}>
             <Scope library={library} />
           </Stack>

@@ -91,7 +91,9 @@ export function folderSelectionSource(
         selectable: true,
         openable: true,
         // the stored settings separate folders by comma
-        ...(key.includes(',') ? { blocked: 'Nicht wählbar: Komma im Pfad' } : {}),
+        ...(key.includes(',')
+          ? { blocked: `Nicht wählbar: Komma im ${name.includes(',') ? 'Namen' : 'Pfad'}` }
+          : {}),
       }))
     },
     manual: {

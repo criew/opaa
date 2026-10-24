@@ -26,10 +26,10 @@ const ErrorSummary = forwardRef<HTMLDivElement, { issues: SummaryIssue[] }>(func
       role="alert"
       aria-labelledby="error-summary-title"
       sx={{
-        border: 1,
+        borderLeft: 3,
         borderColor: 'error.main',
-        borderRadius: '10px',
-        p: 2,
+        pl: 2,
+        py: 1,
         mb: 3,
         outline: 'none',
         '&:focus-visible': { boxShadow: '0 0 0 3px rgba(18,144,239,0.32)' },

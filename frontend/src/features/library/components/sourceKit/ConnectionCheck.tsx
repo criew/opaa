@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import type { SourceConnectionTestResponse } from '@/shared/api/types'
 import type { ConnectionCheckState } from './useConnectionCheck'
@@ -62,7 +63,7 @@ export default function ConnectionCheck({
                   </Box>
                   <span>
                     {stage.name}
-                    <Box component="span" sx={visuallyHiddenSx}>
+                    <Box component="span" sx={visuallyHidden}>
                       {stage.state === 'ok' ? ' in Ordnung' : ' fehlgeschlagen'}
                     </Box>
                   </span>
@@ -103,12 +104,3 @@ export default function ConnectionCheck({
     </Box>
   )
 }
-
-const visuallyHiddenSx = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-} as const

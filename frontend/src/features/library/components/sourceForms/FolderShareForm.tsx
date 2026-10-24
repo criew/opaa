@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import { connectionFields } from '../sources/sourceConnection'
 import { fieldDomId, useSourceIssue } from '../sources/sourceIssueContext'
 import type { SourceFormProps } from '../sources/types'
-import { FieldGroup, SecretField, SourceTextField } from '../sourceKit/fields'
+import { FieldGroup, SecretField, SourceTextField, StoredCredentials } from '../sourceKit/fields'
 import SelectionSummary from '../sourceKit/SelectionSummary'
 import { folderItemsOf, folderSelectionSource, foldersOfItems } from '../sourceKit/selectionSources'
 
@@ -70,25 +70,32 @@ export default function FolderShareForm<V extends FolderValues>({
       </FieldGroup>
       {fields.asksSecret && (
         <FieldGroup title="Anmeldung">
-          <SourceTextField
+          <StoredCredentials
             idPrefix={prefix}
-            field={shape.userKey}
-            label="Kennung"
-            value={user}
-            onChange={(next) => onChange({ [shape.userKey]: next } as Partial<V>)}
-            placeholder={shape.userPlaceholder}
-            maxLength={255}
-          />
-          <SecretField
-            idPrefix={prefix}
-            field={shape.secretKey}
-            label="Kennwort"
-            value={secret}
             stored={stored}
-            onChange={(next) => onChange({ [shape.secretKey]: next } as Partial<V>)}
-            hint={shape.secretHint}
-            maxLength={3800}
-          />
+            entered={user !== '' || secret !== ''}
+            onKeep={() => onChange({ [shape.userKey]: '', [shape.secretKey]: '' } as Partial<V>)}
+          >
+            <SourceTextField
+              idPrefix={prefix}
+              field={shape.userKey}
+              label="Kennung"
+              value={user}
+              onChange={(next) => onChange({ [shape.userKey]: next } as Partial<V>)}
+              placeholder={shape.userPlaceholder}
+              maxLength={255}
+            />
+            <SecretField
+              idPrefix={prefix}
+              field={shape.secretKey}
+              label="Kennwort"
+              value={secret}
+              stored={false}
+              onChange={(next) => onChange({ [shape.secretKey]: next } as Partial<V>)}
+              hint={shape.secretHint}
+              maxLength={3800}
+            />
+          </StoredCredentials>
         </FieldGroup>
       )}
       <FieldGroup title="Umfang">

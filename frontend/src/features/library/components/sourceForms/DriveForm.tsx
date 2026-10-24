@@ -86,20 +86,19 @@ export default function DriveForm({
                   id={keyId}
                   variant="outlined"
                   size="small"
-                  component="label"
+                  onClick={() => fileInput.current?.click()}
                   aria-describedby={keyIssue ? `${keyId}-error` : undefined}
-                  aria-invalid={keyIssue ? true : undefined}
                 >
                   {values.keyAccount !== '' || stored ? 'Ersetzen' : 'Datei wählen'}
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept="application/json,.json"
-                    hidden
-                    aria-label="Schlüsseldatei des Dienstkontos"
-                    onChange={(e) => void onKeyFile(e.target.files?.[0])}
-                  />
                 </Button>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="application/json,.json"
+                  hidden
+                  aria-label="Schlüsseldatei des Dienstkontos"
+                  onChange={(e) => void onKeyFile(e.target.files?.[0])}
+                />
               </Box>
               {keyIssue ? (
                 <Typography
