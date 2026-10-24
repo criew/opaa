@@ -3,24 +3,18 @@ package io.opaa.indexing.source.sharepoint;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.filesync.FileSync;
-import io.opaa.indexing.filesync.FileSyncSettings;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
-import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
-import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.VanishedDocumentPolicy;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
-import io.opaa.msgraph.GraphClient;
-import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
@@ -38,13 +32,10 @@ import org.springframework.scheduling.annotation.Async;
 public class SharePointIndexingExecutor implements SourceIndexingExecutor {
 
   private final GraphConnections graphs;
-  private final DocumentIngestService documentIngestService;
-  private final DocumentRepository documentRepository;
-  private final LibraryFolderService folderService;
   private final ScanJournal journal;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
-  private final SupportedDocumentFormats supportedFormats;
+  private final DriveRun driveRun;
 
   SharePointIndexingExecutor(
       GraphConnections graphs,
@@ -56,13 +47,18 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunTemplate runTemplate,
       SupportedDocumentFormats supportedFormats) {
     this.graphs = graphs;
-    this.documentIngestService = documentIngestService;
-    this.documentRepository = documentRepository;
-    this.folderService = folderService;
     this.journal = journal;
     this.clock = clock;
     this.runTemplate = runTemplate;
-    this.supportedFormats = supportedFormats;
+    this.driveRun =
+        new DriveRun(
+            graphs,
+            documentIngestService,
+            documentRepository,
+            folderService,
+            journal,
+            clock,
+            supportedFormats);
   }
 
   @Override
@@ -115,37 +111,8 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
     if (settings == null) {
       throw new IndexingRunFailedException("Die Bibliothek hat keine SharePoint-Bibliotheken.");
     }
-    SharePointProperties properties = graphs.properties();
-    RequestBudget budget =
-        new RequestBudget(
-            new SourceRequestMeter(),
-            properties.requestBudgetPerRun(),
-            properties.maxThrottleWaitPerRun());
-    GraphClient graph = graphs.open(run.settings(), run.credentials(), budget);
-    run.recordRequestCost(budget.meter());
-    UUID libraryId = run.library().getId();
-    SourceSyncState state = journal.load(libraryId);
-    try (SharePointFileStore store =
-            new SharePointFileStore(graph, budget.meter(), settings, properties.pageSize());
-        FileSync sync =
-            new FileSync(
-                run,
-                store,
-                new FileSyncSettings(
-                    properties.maxFileSizeBytes(),
-                    properties.maxFilesPerRun(),
-                    properties.downloadConcurrency(),
-                    "sharepoint-download-"),
-                new SharePointWording(),
-                documentIngestService,
-                documentRepository,
-                folderService,
-                state,
-                journal,
-                clock,
-                supportedFormats)) {
-      return runMode == IndexingRunMode.INCREMENTAL ? sync.runChanges() : sync.run();
-    }
+    return driveRun.sync(
+        run, runMode, DriveRule.SHAREPOINT, settings.libraries(), new SharePointWording());
   }
 
   private Duration interval(SharePointSettings settings) {
