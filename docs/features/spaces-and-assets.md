@@ -928,7 +928,7 @@ Der Gedanke, alles einheitlich als Asset zu modellieren, ist naheliegend, trägt
 ### Dokumente liegen in Bibliotheken
 
 **Umsetzungsstand:** Die Wissensbibliothek als Container ist mit #201 umgesetzt (ehemals Migration
-012, seit #904/#1492/#2001 Teil der Liquibase-Baseline, siehe `backend/src/main/resources/db/changelog/knowledge/2026-09-27-baseline.yaml`) — Eigentümerschaft
+012, seit #904/#1492/#2001 heute Teil der Flyway-Baseline, siehe `backend/src/main/resources/db/migration/knowledge/V1.4__knowledge_baseline.sql`) — Eigentümerschaft
 (Nutzer oder Gruppe), Organisationsgrenze, Sichtbarkeitsstufen, `listed`-Flag (mit #2092 entfallen) und, bis #521, die
 Zuweisung jedes bestehenden Dokuments an eine eigens dafür angelegte System-Bibliothek (#521 hat sie
 samt Inhalt gelöscht, siehe oben). Die abgestuften Asset-Rollen weiter unten

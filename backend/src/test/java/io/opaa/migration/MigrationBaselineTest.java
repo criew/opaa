@@ -131,6 +131,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "oidc_providers",
             "self_disclosure_settings",
             "self_disclosure_usage",
+            "siem_export_cursor",
             "users",
             // rights
             "account_state_history",

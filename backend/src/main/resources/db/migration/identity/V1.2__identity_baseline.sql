@@ -431,6 +431,16 @@ CREATE TABLE self_disclosure_usage (
     CONSTRAINT chk_self_disclosure_usage_last_result CHECK (((last_result)::text = ANY (ARRAY[('COMPLETED'::character varying)::text, ('ABORTED'::character varying)::text])))
 );
 
+CREATE TABLE siem_export_cursor (
+    id smallint NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    last_recorded_at timestamp with time zone NOT NULL,
+    last_event_id uuid,
+    disabled_at timestamp with time zone,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT chk_siem_export_cursor_singleton CHECK ((id = 1))
+);
+
 CREATE TABLE users (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     subject character varying(255) NOT NULL,
@@ -516,6 +526,9 @@ ALTER TABLE ONLY self_disclosure_settings
 ALTER TABLE ONLY self_disclosure_usage
     ADD CONSTRAINT pk_self_disclosure_usage PRIMARY KEY (account_id);
 
+ALTER TABLE ONLY siem_export_cursor
+    ADD CONSTRAINT siem_export_cursor_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY audit_actor_pseudonyms
     ADD CONSTRAINT uk_audit_actor_pseudonyms_user UNIQUE (user_id);
 
@@ -549,6 +562,8 @@ CREATE INDEX idx_audit_log_event_type ON audit_log USING btree (organization_id,
 CREATE INDEX idx_audit_log_object ON audit_log USING btree (organization_id, object_type, object_id, recorded_at);
 
 CREATE INDEX idx_audit_log_time_range ON audit_log USING btree (organization_id, recorded_at);
+
+CREATE INDEX idx_audit_log_recorded_event ON audit_log USING btree (recorded_at, event_id);
 
 CREATE INDEX idx_audit_incident_scope_grants_org ON audit_incident_scope_grants USING btree (organization_id);
 
