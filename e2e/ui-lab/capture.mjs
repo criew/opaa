@@ -8,7 +8,8 @@
  *        [--schemes light,dark] [--widths 1280,320] [--areas wizard,review,detail,edit]
  *        [--quick] [--no-axe] [--no-full] [--concurrency 2] [--chromium <path>]
  *
- * Each scheme gets its own browser context that loads every page in that scheme from the start.
+ * Each scheme gets its own browser context that loads every page in that scheme from the start;
+ * in the "slow" scenario listings and connection tests never answer, so its shots show one state.
  * Per job (type or page × scenario) the flow runs in a fresh page load, so mock state and scenario
  * start anew; a state that cannot be reached is recorded as {"status":"not-found"} instead of
  * failing the run. Output: <name>.png, <name>__full.png, metrics.jsonl and run.json in --out.
@@ -84,6 +85,14 @@ log(`scenarios ${ARGS.scenarios.join(',')} | schemes ${ARGS.schemes.join(',')} |
 const browser = await launch(ARGS.chromium)
 for (const scheme of ARGS.schemes) {
   const context = await schemeContext(browser, scheme, { width: ARGS.widths[0] })
+  // the "slow" scenario stays in its loading state, so every scheme and width shows the same state
+  await context.addInitScript(() => {
+    try {
+      sessionStorage.setItem('opaa.mockSlowMs', String(10 * 60 * 1000))
+    } catch {
+      /* storage blocked: the scenario falls back to its default latency */
+    }
+  })
   const queue = flow.jobs(ARGS)
   const worker = async () => {
     const page = await context.newPage()

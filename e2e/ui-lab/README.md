@@ -15,6 +15,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
 | `record-flows.mjs` | Klickpfade als MP4 mit sichtbarem Mauszeiger |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
+| `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
 | `build_site.py` | statische Vergleichsseite: Ist-Stand und Entwürfe mit Bewertung, Bildschirmen und Videos |
 | `site-template/` | Vorlage der Vergleichsseite und Beispielkonfiguration `site.example.json` |
 | `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs` |
@@ -69,7 +70,7 @@ des Tabs, Navigation und Neuladen behalten sie; `?mockScenario=default` setzt zu
 | `small` | 1 Site · 1 Dokumentbibliothek · 2 Ordner je Ebene, 2 Ebenen · 2 Spaces · 1 Drive-Bereich · 1 Bucket · 2 Ordner (Nextcloud, SMB, Dropbox) | Erfolg | je Bibliothek 1 Auswahl; 1 Gruppe |
 | `scale` | 17 Sites × 25 Dokumentbibliotheken · 200 Ordner je Ebene, 8 Ebenen · 450 Spaces (jeder 10. persönlich) · 300 Drive-Bereiche · 600 Buckets, Präfixe 200 je Ebene · Nextcloud, SMB, Dropbox 200 Ordner je Ebene, 8 Ebenen · jeder 3. Name 80–120 Zeichen mit Umlauten, Nr. 7 mit dem Kompositum „Grundstücksverkehrsgenehmigungsakte“ | Erfolg, Zählung nach Anfrage | lange Bibliotheksnamen; Confluence 120 Spaces, SharePoint 25 Bibliotheken, übrige 50 Auswahlen (Ordnerpfade bis 8 Ebenen); 10 Läufe mit bis zu 140 Ereignissen; 302 Gruppen |
 | `empty` | 0 Einträge überall | Erfolg | 0 Dokumente, keine Läufe |
-| `slow` | wie `default`, Antwort nach 3 s | wie `default`, nach 3 s | – |
+| `slow` | wie `default`, Antwort nach 3 s (`sessionStorage` `opaa.mockSlowMs` überschreibt die Dauer) | wie `default`, nach 3 s | – |
 | `failed` | HTTP 403 (SharePoint, Drive, S3) bzw. 502 (Confluence, Nextcloud, SMB, Dropbox) mit deutscher Meldung | `reachable:false`, `credentialsVerified:false` mit passender Ablehnung; Webverzeichnis und RSS HTTP 502 | `lastScheduledRunsFailed`, 3 fehlgeschlagene Läufe |
 | `partial` | 6 Sites · 8 Bibliotheken · 30 Ordner, 4 Ebenen · 40 Spaces · 25 Bereiche · 30 Buckets · 30 Ordner; alle `complete:false` mit Meldung | Teilfehler je Bereich: jeder 2. Bereich scheitert (`details.scopes`, `details.libraries`, `details.folders`, `details.unreadableSpaces`) | Lauf mit 17 Fehlern |
 
@@ -110,7 +111,12 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
 - Je Ablauf und Szenario ein frischer Seitenaufruf; ein nicht erreichbarer Zustand steht als
   `status: "not-found"` mit `reason` in `metrics.jsonl`, statt den Lauf abzubrechen.
 - Dateien: `<bereich>__<typ>__<szenario>__<schema>__<breite>.png` (900 px hoch) und `…__full.png`
-  (auf Inhaltshöhe vergrößert, bei offenem Dialog nur dessen Inhalt, höchstens 16 000 px).
+  (auf Inhaltshöhe vergrößert, höchstens 16 000 px; bei offenem Dialog nur der Dialog selbst).
+  Als offen gilt ein Dialog nur, wenn er sichtbar ist; die geschlossene Navigationsschublade bei
+  320 px zählt nicht.
+- Im Szenario `slow` antworten Auflistungen und Verbindungstests während der Aufnahme nie
+  (`opaa.mockSlowMs` = 10 min); so zeigen alle Schemata und Breiten denselben Ladezustand.
+  `record-flows.mjs` behält die 3 s.
 - `metrics.jsonl`, eine Zeile je Screenshot: `appliedScheme` (tatsächlich dargestelltes Schema),
   `overflowX`, `docHeight`, `clippedText`, `disabledSubmits`, `alertCount`/`alertSeverities`,
   `invalidFields`, `focusable`, `fontSizes`, `colors`, `words`, `uiWords`, `helpTexts`,
@@ -166,6 +172,21 @@ Erzeugt `<dir>/sheets/<screen>.jpg` (Varianten nebeneinander, beschriftet, 560 p
 320-px-Aufnahmen bleiben in Originalgröße), `<dir>/index.html` (alle Bögen nach Bereich) und
 `<dir>/metrics-summary.md` (Kennzahlen je Variante, darunter Überschreitungen der Zählbudgets,
 Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; axe-Regeln).
+
+## contact_sheets.py
+
+```bash
+.venv/bin/python -I ui-lab/contact_sheets.py --dir <matrix> --out <dir> [--full] [--schemes light]
+     [--widths 1280,320] [--filter <text>] [--per-reviewer 2]
+```
+
+Für das Konsistenz-Review einer Variante (Skill, Abschnitt 4):
+- `<dir>/sheets/<bereich>__<szenario>__<schema>__<breite>.jpg` stellt denselben Bildschirm aller
+  Typen nebeneinander; `<dir>/index.html` listet sie. So fallen Unterschiede zwischen Konnektoren
+  oder Objekten auf, die je Einzelbild unsichtbar bleiben.
+- `<dir>/reviewers/<n>-<typen>.txt` teilt die Typen in Gruppen von `--per-reviewer` und nennt je
+  Prüfer alle hellen Bilder, alle 320er und je Bereich mindestens ein dunkles. Ein `__full`, das
+  byte-gleich zu seinem Viewport-Bild ist, fällt weg.
 
 ## build_site.py
 

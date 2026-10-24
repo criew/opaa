@@ -18,9 +18,17 @@ const WORD_BUDGET_SCENARIOS = ['small', 'default']
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 
+/*
+ * Page functions below decide with the same `isOpen` whether a [role=dialog] element is open: a
+ * closed MUI drawer keeps its paper mounted with role=dialog and visibility hidden, and must neither
+ * count as open dialog nor replace <main>. It is repeated inline because page functions are
+ * serialised without their module scope.
+ */
+
 /** Runs in the page: layout, text and control metrics of the main area (or the open dialog). */
 const PAGE_METRICS = () => {
-  const main = document.querySelector('[role=dialog]:not([aria-hidden=true])') ?? document.querySelector('main') ?? document.body
+  const isOpen = (d) => { const cs = getComputedStyle(d); const r = d.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 0 && r.height > 0 && !d.closest('[aria-hidden=true]') }
+  const main = [...document.querySelectorAll('[role=dialog]')].find(isOpen) ?? document.querySelector('main') ?? document.body
   const visible = (el) => {
     const r = el.getBoundingClientRect()
     const cs = getComputedStyle(el)
@@ -40,7 +48,7 @@ const PAGE_METRICS = () => {
     }
   }
   // content height: the viewport plus the largest hidden overflow of a scroll container (dialog first)
-  const dialogEl = [...document.querySelectorAll('[role=dialog]')].find(visible)
+  const dialogEl = [...document.querySelectorAll('[role=dialog]')].find(isOpen)
   let hiddenOverflow = document.documentElement.scrollHeight - window.innerHeight
   for (const el of dialogEl ? [dialogEl, ...dialogEl.querySelectorAll('*')] : document.querySelectorAll('*')) {
     if (!/(auto|scroll)/.test(getComputedStyle(el).overflowY)) continue
@@ -170,7 +178,8 @@ async function growForFull(page, width) {
   for (let i = 0; i < 4; i++) {
     const extra = await page.evaluate(() => {
       // with an open dialog only its own scroll area counts; the page behind stays as it is
-      const dialog = [...document.querySelectorAll('[role=dialog]')].find((d) => d.offsetParent !== null || getComputedStyle(d).position === 'fixed')
+      const isOpen = (d) => { const cs = getComputedStyle(d); const r = d.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 0 && r.height > 0 && !d.closest('[aria-hidden=true]') }
+      const dialog = [...document.querySelectorAll('[role=dialog]')].find(isOpen)
       let max = 0
       for (const el of dialog ? [dialog, ...dialog.querySelectorAll('*')] : document.querySelectorAll('*')) {
         if (!/(auto|scroll)/.test(getComputedStyle(el).overflowY)) continue
@@ -183,6 +192,19 @@ async function growForFull(page, width) {
     await page.setViewportSize({ width, height: Math.min(vp.height + extra + 8, 16000) })
     await sleep(200)
   }
+}
+
+/** The whole page, or with an open dialog the dialog itself rather than the dimmed page behind it. */
+async function fullScreenshot(page, file) {
+  const marked = await page.evaluate(() => {
+    const isOpen = (d) => { const cs = getComputedStyle(d); const r = d.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 0 && r.height > 0 && !d.closest('[aria-hidden=true]') }
+    const dialogs = [...document.querySelectorAll('[role=dialog]')].filter(isOpen)
+    document.querySelectorAll('[data-ui-lab-full]').forEach((d) => d.removeAttribute('data-ui-lab-full'))
+    dialogs.at(-1)?.setAttribute('data-ui-lab-full', '')
+    return dialogs.length > 0
+  })
+  const target = marked ? page.locator('[data-ui-lab-full]') : page
+  await target.screenshot({ path: file }).catch(() => {})
 }
 
 async function saveScroll(page) {
@@ -217,7 +239,8 @@ export async function tabTrace(page) {
   const scroll = await saveScroll(page)
   await page.evaluate(() => {
     document.activeElement?.blur?.()
-    if (!document.querySelector('[role=dialog]')) window.scrollTo(0, 0)
+    const isOpen = (d) => { const cs = getComputedStyle(d); const r = d.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 0 && r.height > 0 && !d.closest('[aria-hidden=true]') }
+    if (![...document.querySelectorAll('[role=dialog]')].some(isOpen)) window.scrollTo(0, 0)
   })
   const stops = []
   let hidden = 0
@@ -294,7 +317,7 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
       const axe = noAxe ? null : await runAxe(page, { contrastOnly: scheme !== 'light' })
       if (!noFull) {
         await growForFull(page, width)
-        await page.screenshot({ path: path.join(out, `${name}__full.png`) }).catch(() => {})
+        await fullScreenshot(page, path.join(out, `${name}__full.png`))
         await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
         await sleep(150)
       }
