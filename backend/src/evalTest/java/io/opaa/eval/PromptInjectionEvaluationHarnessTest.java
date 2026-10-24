@@ -63,11 +63,12 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The run measures and reports; it fails only on a broken precondition (manifest, indexing),
  * never on the attack success rate - there is no gate on it. The chat model is the pinned {@link
  * EvalChatModel#MODEL} or, with {@code -Dopaa.eval.chatBaseUrl} and {@code -Dopaa.eval.chatModel},
- * an external one. Run with {@code ./gradlew evaluatePromptInjection}; needs Docker.
+ * an external one. Run with {@code ./gradlew evaluatePromptInjection}; needs Docker. Without Docker
+ * the run fails instead of being skipped, so no earlier report passes for a fresh one.
  */
 @SpringBootTest
 @ActiveProfiles("dev")
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class PromptInjectionEvaluationHarnessTest {
 
   private static final Logger log =

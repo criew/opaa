@@ -80,8 +80,10 @@ Antwortweg (`QueryService` in einem Chat), jeden in einem eigenen Space mit dem 
 Dokument und den sauberen Dokumenten. Chat-Modell ist das gepinnte `qwen2.5:1.5b-instruct` oder ein
 externes Modell über `-Dopaa.eval.chatBaseUrl`, `-Dopaa.eval.chatModel` und, falls der Endpunkt
 einen Schlüssel verlangt, `OPAA_EVAL_CHAT_API_KEY` (siehe „Dritter Messpfad: Mehrrunden-Fälle“).
-Ein Ollama als Chat-Modell braucht keinen Schlüssel, auch keinen Platzhalter. Der Bericht nennt den
-Endpunkt ohne Anmeldedaten und Abfrageparameter. Den Ablauf für Betreiber beschreibt das Handbuch
+Ein Ollama als Chat-Modell braucht keinen Schlüssel, auch keinen Platzhalter. Eine Adresse mit Anmeldedaten,
+Abfrageparametern oder Anker weist der Lauf ab, auch bei `-Dopaa.eval.ollamaBaseUrl`. Ohne Docker
+scheitert `evaluatePromptInjection`, statt übersprungen zu werden, und ein alter Bericht wird zu
+Beginn gelöscht. Den Ablauf für Betreiber beschreibt das Handbuch
 (`docs/handbuch/betrieb/modelle.md`, „Modell gegen Prompt-Injection messen“). Bericht:
 `build/eval-reports/prompt-injection.md` und `.json`, mit Angriffserfolgsquote gesamt, je
 Angriffsziel und je Verstecktechnik und jeder Antwort im Wortlaut.

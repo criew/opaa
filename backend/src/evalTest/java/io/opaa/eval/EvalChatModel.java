@@ -98,6 +98,7 @@ final class EvalChatModel {
               + " belong together - a run with only one of them would silently measure the pinned "
               + "model while reporting nothing about it.");
     }
+    refuseSecretsInAddress(BASE_URL_PROPERTY, baseUrl.strip());
     String apiKey = System.getenv(API_KEY_ENVIRONMENT_VARIABLE);
     return Optional.of(
         new External(
@@ -105,6 +106,28 @@ final class EvalChatModel {
             model.strip(),
             apiKey == null || apiKey.isBlank() ? null : apiKey.strip(),
             requestedTemperature()));
+  }
+
+  /**
+   * Refuses an address of {@code property} that carries user information or a query: either may
+   * hold a key, and the address reaches the model row, the client's log line and the report as it
+   * is. A key belongs in {@value #API_KEY_ENVIRONMENT_VARIABLE} only.
+   */
+  static void refuseSecretsInAddress(String property, String address) {
+    URI uri;
+    try {
+      uri = new URI(address);
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException(property + " is no valid address.", e);
+    }
+    if (uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+      throw new IllegalArgumentException(
+          property
+              + " must not carry user information, a query or a fragment - a key there would"
+              + " reach log and report. Pass the key in "
+              + API_KEY_ENVIRONMENT_VARIABLE
+              + " instead.");
+    }
   }
 
   /**

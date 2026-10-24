@@ -3,6 +3,7 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -64,6 +65,36 @@ class EvalChatModelExternalTest {
           assertThat(external.apiKey()).isNull();
           assertThat(external.model()).isEqualTo("gemma3:4b");
         });
+  }
+
+  /** A key in the address would reach log and report, so such an address is refused outright. */
+  @Test
+  void anAddressWithUserInformationOrAQueryIsRefused() {
+    for (String address :
+        List.of(
+            "https://nutzer:geheim@llm.example/v1",
+            "https://llm.example/v1?api-key=geheim",
+            "https://llm.example/v1#geheim")) {
+      withProperties(
+          address,
+          "modell",
+          () ->
+              assertThatThrownBy(EvalChatModel::external)
+                  .isInstanceOf(IllegalArgumentException.class)
+                  .hasMessageContaining("OPAA_EVAL_CHAT_API_KEY")
+                  .hasMessageNotContaining("geheim"));
+    }
+    String previous = System.getProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY);
+    try {
+      System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://u:geheim@localhost:11434");
+      assertThatThrownBy(EvalOllamaEndpoint::externalBaseUrl)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageNotContaining("geheim");
+      System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://localhost:11434");
+      assertThat(EvalOllamaEndpoint.externalBaseUrl()).isEqualTo("http://localhost:11434");
+    } finally {
+      set(EvalOllamaEndpoint.BASE_URL_PROPERTY, previous);
+    }
   }
 
   /** A report names the endpoint, never a key carried in user information or a query. */
