@@ -65,9 +65,12 @@ abstract class SelfDisclosureDownloadFramingContract {
         .perform(post("/api/v1/me/self-disclosure/tickets"))
         .andExpect(header().stringValues("X-Frame-Options", "DENY"))
         .andExpect(header().doesNotExist("Content-Security-Policy"));
-    mockMvc
-        .perform(post(DOWNLOAD + "/other").contentType(MediaType.APPLICATION_FORM_URLENCODED))
-        .andExpect(header().stringValues("X-Frame-Options", "DENY"))
-        .andExpect(header().doesNotExist("Content-Security-Policy"));
+    for (String path : new String[] {DOWNLOAD + "/", DOWNLOAD + "/other"}) {
+      mockMvc
+          .perform(
+              post(path).contentType(MediaType.APPLICATION_FORM_URLENCODED).param("ticket", "x"))
+          .andExpect(header().stringValues("X-Frame-Options", "DENY"))
+          .andExpect(header().doesNotExist("Content-Security-Policy"));
+    }
   }
 }
