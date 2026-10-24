@@ -12,7 +12,8 @@ Punkt steht, wie er geprüft wird:
 
 - **gemessen** – `e2e/ui-lab/capture.mjs` schreibt die Kennzahl je Screenshot in `metrics.jsonl`,
   `compare.py` fasst sie je Variante zusammen ([Werkzeuge](../../e2e/ui-lab/README.md)).
-- **Sicht** – Prüfung an Screenshots und Videos.
+- **Sicht** – Prüfung an Screenshots, Querbögen und Videos, im UI-Lab im Konsistenz-Review
+  (`.claude/skills/ui-lab/konsistenz-review.md`).
 - **Tastatur** – Durchgang nach [accessibility.md](./accessibility.md), 3.2.
 
 ## Zählbudgets
@@ -30,7 +31,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 | Wörter je Status | 1 | Sicht (P16) |
 | Wörter je Schrittname | 1 | Sicht (P9) |
 | Textzeilen je Listenzeile | höchstens 2 | Sicht (P6) |
-| Einträge ohne Suchfeld | höchstens 6; ab 7 Einträgen Suche bzw. Filter beim Tippen | Sicht im Szenario `scale` (P20, P35) |
+| Fremde Objekte direkt in der Zeile | bis 7 flache Einträge als Checkboxen ohne Suche; ab 8 oder bei jeder Hierarchie der Auswahldialog mit Suche | Sicht in `small` und `scale` (P20, P35) |
 | Primärschaltflächen je Fläche | 1 | Sicht ([guidelines.md](./guidelines.md), 5.1) |
 
 ## Visuell
@@ -64,8 +65,11 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 
 12. **Labels aus 1–3 Wörtern** („Adresse“, nicht „Bitte geben Sie hier die vollständige Adresse
     ein“). – Sicht
-13. **Hilfetext nur, wenn er etwas Neues sagt**; er wiederholt nie Label oder Platzhalter. Budget
-    siehe oben. – gemessen und Sicht
+13. **Hilfetext nur, wenn er einen wahrscheinlichen Fehler verhindert oder sagt, wo man einen Wert
+    findet** („In Nextcloud unter Einstellungen › Sicherheit“). Dann höchstens eine Zeile, und er
+    bleibt auch im Fehlerfall sichtbar. Er wiederholt nie Label oder Platzhalter; Selbstverständliches
+    entfällt („In Confluence sieht man nur, was der Zugang sieht“, „Zugänge legt die
+    Systemverwaltung an“). Budget siehe oben. – gemessen und Sicht
 14. **Platzhalter sind Beispiel oder Format**, keine Anleitung. – Sicht
 15. **Fehlermeldung:** was falsch ist und gegebenenfalls was zu tun ist, in höchstens einem Satz.
     Keine Entschuldigung, keine Schuldzuweisung („Die von Ihnen …“), kein Fehlercode für
@@ -75,11 +79,17 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 17. Schaltflächen tragen das Verb: [guidelines.md](./guidelines.md), 5.1 und 5.10.
 18. **Keine Redundanz:** „Sind Sie sicher?“, „nicht rückgängig“ und „dauerhaft und unwiderruflich“
     werden ein Satz. – Sicht
-19. **Begriffsregel:** eine Sache, ein Begriff, in allen Bereichen und für alle Arten gleich.
-    Gleichartige Felder heißen überall gleich (Adresse, Kennung, Kennwort); der Begriff des
-    Herstellers (App-Passwort, API-Token, Access Key) steht höchstens im Hilfetext. Maßgeblich
-    sind [guidelines.md](./guidelines.md), 6 und das [Glossar](../handbuch/glossar.md); wo 6 einen
-    Begriff festlegt, gilt 6. – Sicht über alle Varianten einer Art
+19. **Begriffsregel:**
+    - Eigene Konzepte tragen überall denselben eigenen Begriff: Verbindung, Umfang, Zeitplan,
+      Zugang, „Gesetzt · Ersetzen“.
+    - Werte, die man aus einem Herstellerportal abschreibt oder dort wiederfinden muss, tragen den
+      Begriff des Herstellers in dessen offiziellem Deutsch: API-Token, App-Passwort, Access Key,
+      Secret Key, Endpoint, Space, Dokumentbibliothek, Geteilte Ablage.
+    - Keine Doppel-Labels in Klammern und kein künstlich allgemeines „Kennwort“ für ein Token.
+
+    Maßgeblich sind daneben [guidelines.md](./guidelines.md), 6 und das
+    [Glossar](../handbuch/glossar.md); die Regel wird mit #3102 in 6 übernommen. – Sicht über
+    alle Arten einer Variante
 
 ## Große Mengen
 
@@ -88,8 +98,10 @@ Jede Variante wird mit den Mock-Szenarien geprüft (`?mockScenario=`, siehe
 zwei Einträgen.
 
 20. **Viele Einträge** (Szenario `scale`: 17 Sites mit je 25 Bibliotheken, 450 Spaces, 200 Ordner
-    je Ebene): ab 7 Einträgen Suche oder Filter beim Tippen; die Mehrfachauswahl bleibt sichtbar
-    (Chips oder „12 ausgewählt“). – Sicht
+    je Ebene): bis 7 flache Einträge stehen als Checkboxen direkt in der Zeile, ohne Suche; ab 8
+    Einträgen oder bei jeder Hierarchie öffnet sich ein gemeinsamer Auswahldialog mit
+    Brotkrumen, Suche und Teilauswahl. Die Mehrfachauswahl bleibt sichtbar (Chips oder
+    „12 ausgewählt“). – Sicht
 21. **Hierarchie** (Site → Bibliothek → Ordner) ohne Kontextverlust, über Brotkrumen oder Baum;
     die Auswahl bleibt über Ebenen hinweg nachvollziehbar. – Sicht und Video
 22. **Lange Namen** (80 und mehr Zeichen): gekürzt mit Tooltip, kein Layoutbruch. – gemessen
@@ -126,10 +138,11 @@ zwei Einträgen.
       [guidelines.md](./guidelines.md), 5.11; wächst sie über 12, gruppieren statt durchsuchen;
     - *offene Menge eigener Objekte* (Katalog, Zuordnung, Token): Asset-Kacheln mit Filterzeile
       nach 5.11; Stresstest mit 300 Assets;
-    - *fremde Objekte aus einer Quelle* (Sites, Spaces, Buckets, Ordner): Liste oder Baum, Suche
-      ab 7 Einträgen, keine Kacheln. Dieser Fall steht so noch nicht in 5.11; die Ergänzung der
-      Guideline läuft als eigenes Issue. Bis dahin gilt dieser Teil als Vorschlag, und ein Entwurf,
-      der ihm folgt, begründet die Abweichung von 5.11 im PR.
+    - *fremde Objekte aus einer Quelle* (Sites, Spaces, Buckets, Ordner): Liste oder Baum, nie
+      Kacheln; bis 7 flache Einträge in der Zeile, ab 8 oder bei Hierarchie der Auswahldialog
+      (P20). Dieser Fall steht noch nicht in 5.11; die Ergänzung der Guideline läuft in #3102.
+      Bis dahin begründet ein Entwurf, der ihm folgt, die Abweichung von 5.11 im PR.
+    - *gleichartige Wahl ohne unterscheidendes Icon* (z. B. Zugänge): siehe P49.
 
     – Sicht im Szenario `scale`
 36. **Tri-State im Baum** (`aria-checked="mixed"`). – Tastatur oder Screenreader
@@ -150,6 +163,23 @@ zwei Einträgen.
     [guidelines.md](./guidelines.md), 2.4, in beiden Schemata; Screenshots hell und dunkel bei
     320 und 1280 px. – gemessen (`axe`; das dunkle Schema wird direkt geladen, siehe
     [README der Werkzeuge](../../e2e/ui-lab/README.md#kalibrierung))
+
+## Layout
+
+45. **„Ändern“ nur als Textlink** an einer gemeinsamen rechten Kante, nie als Knopf. – Sicht
+    (Querbögen)
+46. **Eine Inhaltsbreite** für Reiterleiste, Zeilen und Fußleiste; sie springt nicht zwischen
+    Assistent, Prüfen, Bearbeiten und Detail. – Sicht (Querbögen)
+47. **Keine doppelten Trennlinien:** Die Unterkante der Reiterleiste ist der erste Trenner; danach
+    je ein Trenner zwischen den Abschnitten und einer vor den Knöpfen. – Sicht
+48. **Zeilenraster** Titel | Inhalt | „Ändern“ für zusammengefasste Abschnitte, gleich in
+    Assistent, Prüfen und Detail. – Sicht (Querbögen)
+49. **Gleichartige Wahl ohne unterscheidendes Icon** (z. B. Zugänge) als Radioliste statt Kacheln;
+    gibt es nur eine Option, gibt es keine Wahl, sondern eine Zeile. Wird mit #3102 Teil von
+    [guidelines.md](./guidelines.md), 5.11. – Sicht
+50. **Dieselbe Information nie zweimal auf einer Fläche** – weder als Kopfzeile und Abschnitt noch
+    als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt. – Sicht
+    (Konsistenz-Review, Kategorie A)
 
 ## Pflege
 
