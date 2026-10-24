@@ -12,8 +12,8 @@ freigegebene Richtung; die Umsetzung läuft danach als eigenes Issue.
 Werkzeuge und Maßstab:
 
 - **Messskript, Videos, Vergleich:** [`e2e/ui-lab/`](../../../e2e/ui-lab/README.md) – `capture.mjs`,
-  `record-flows.mjs`, `calibrate.mjs`, `compare.py` und der Generator der Vergleichsseite
-  `build_site.py`; alle Befehle aus `e2e/`
+  `record-flows.mjs`, `calibrate.mjs`, `compare.py`, die Querbögen `contact_sheets.py` und der
+  Generator der Vergleichsseite `build_site.py`; alle Befehle aus `e2e/`
 - **Mock-Szenarien:** `?mockScenario=default|small|scale|empty|slow|failed|partial`
   (`frontend/src/shared/mocks/mockScenario.ts`, Tabelle im README der Werkzeuge)
 - **Prüfliste:** [`docs/design/ui-pruefliste.md`](../../../docs/design/ui-pruefliste.md) mit den
@@ -33,8 +33,11 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
 3. **Zweistufig: erst Richtung, dann Breite.** Die Skizzenrunde entscheidet an drei typischen
    Fällen über die Richtung. Erst danach werden alle Arten, Szenarien, Schemata und Breiten
    gebaut und gemessen.
-4. **Videos ab dem ersten Messlauf.** Screenshots zeigen keine Übergänge, kein Flackern, keinen
-   Kontextverlust. Jeder Messlauf nimmt auch die Klickpfade auf.
+4. **Videos in jeder Runde, aber erst nach dem Konsistenz-Review.** Screenshots zeigen keine
+   Übergänge, kein Flackern, keinen Kontextverlust; deshalb hat jede Variante schon in der ersten
+   Runde Videos. Aufgenommen werden sie erst, wenn die Screenshot-Matrix das Konsistenz-Review
+   bestanden hat, sonst zeigen die aufwendigen Videos Fehler, die ein Blick auf die Bilder
+   gefunden hätte.
 5. **Zählbudgets statt weicher Textregeln.** „Hilfetexte sparsam“ wird „höchstens 3 je
    Formular, je eine Zeile“. Eine Regel, die sich nicht zählen lässt, wird zur Sichtprüfung mit
    Beispiel, nicht zum Appell.
@@ -114,14 +117,37 @@ Der Auftrag an jede Session enthält:
   Schritt, C: alles auf einer Seite);
 - die freigegebene Prüfliste als verbindlicher Maßstab, Budgets eingeschlossen;
 - Dev-Server mit eigenem Port, `calibrate.mjs` vor dem ersten Lauf;
-- volle Matrix `capture.mjs` (alle Arten, Szenarien, hell und dunkel, 1280 und 320 px) und
-  `record-flows.mjs` für die Klickpfade, ab dem ersten Lauf;
+- die feste Reihenfolge je Runde:
+  1. Variante bauen.
+  2. Screenshot-Matrix mit `capture.mjs` aufnehmen (alle Arten, Szenarien, hell und dunkel,
+     1280 und 320 px), committen und pushen, dann auf das Review warten.
+  3. Konsistenz-Review (läuft beim Orchestrator, siehe unten).
+  4. Befunde aus `REVIEW-<n>.md` beheben.
+  5. Matrix neu aufnehmen.
+  6. Kurzer Nachcheck: die Querbögen der betroffenen Bildschirme gegen die Befundliste.
+  7. Erst dann die Videos mit `record-flows.mjs`.
 - `ui-lab/results/<X>/REPORT.md`: Tabelle `Nr | Status | Beleg` über alle Prüflistenpunkte,
-  Kennzahlen aus `compare.py`, bekannte Lücken; Ergebnisse committen und pushen;
+  Kennzahlen aus `compare.py`, bekannte Lücken und je Review-Befund erledigt oder bewusst nicht,
+  mit Grund; Ergebnisse committen und pushen;
 - Regeln aus `AGENTS.md`, Code-Kommentare und Tests wie in jedem Frontend-PR, aber kein PR.
 
 Die Sessions laufen ohne Rückfragen durch. Den Stand mit `get_session` und `list_events`
 prüfen, nicht in einer Schleife warten; eine Rückmeldung mit `send_later` planen.
+
+**Konsistenz-Review** (Schritt 3 der Reihenfolge, jede Runde, vor den Videos). Es findet, was
+zwischen den Arten, Bereichen und Szenarien einer Variante auseinanderläuft; Messwerte und
+Prüfliste allein sehen das nicht. Ablauf und Prüfkategorien:
+[konsistenz-review.md](./konsistenz-review.md).
+
+1. Querbögen erzeugen: `contact_sheets.py --dir <matrix> --out <dir>` stellt denselben
+   Bildschirm (Bereich × Szenario × Breite) aller Arten nebeneinander und schreibt je Prüfer eine
+   Bilderliste: alle hellen Bilder, alle 320er, je Bereich mindestens ein dunkles, ohne
+   `__full`, das byte-gleich zu seinem Viewport-Bild ist.
+2. Parallele Detailprüfer als Agenten, je zwei Arten pro Prüfer, mit ihrer Bilderliste und den
+   Querbögen; jeder Befund in einer festen Kategorie, mit Datei als Beleg und Vorschlag.
+3. Die Befunde zu `ui-lab/results/<X>/REVIEW-<n>.md` zusammenführen (Doppelte vereinen, nach
+   Wirkung ordnen, Mock- und Aufnahmefehler getrennt) und mit `send_message` an die Session der
+   Variante geben.
 
 ### 5 · Bewertung durch drei Juroren
 
@@ -143,7 +169,8 @@ Befunde mit Beleg und die Teile, die in eine Mischung gehören. Keine Gesamtnote
 Aus den Urteilen eine Mischvariante M festlegen: Grundgerüst der stärksten Variante, einzelne
 Muster der anderen, jedes mit Herkunft und Prüflistenpunkt. M in einer weiteren Session (oder
 in der Session der Grundvariante) bauen und mit voller Matrix und Videos messen. M muss alle
-Zählbudgets einhalten und axe- und kontrastfrei sein; was offen bleibt, steht im Bericht.
+Zählbudgets einhalten und axe- und kontrastfrei sein; auch M durchläuft das Konsistenz-Review
+vor den Videos. Was offen bleibt, steht im Bericht.
 
 ### 7 · Vergleichsseite
 
