@@ -135,7 +135,10 @@ class InstanceMatchTest {
 
     Entry entry = only(match);
     assertThat(entry.relevance()).isEqualTo(Relevance.OVERRIDDEN);
-    assertThat(entry.reason()).contains("„8“").contains("„5“");
+    assertThat(entry.values())
+        .containsExactly(
+            new InstanceMatch.Value("Wert der Instanz", "8"),
+            new InstanceMatch.Value("bisherige Voreinstellung", "5"));
     assertThat(match.notes()).isEmpty();
   }
 
@@ -299,7 +302,13 @@ class InstanceMatchTest {
             null,
             null);
 
-    assertThat(match.notes()).singleElement().asString().contains("Version 1.1.0");
+    assertThat(match.notes())
+        .singleElement()
+        .satisfies(
+            note -> {
+              assertThat(note.text()).contains("anderen Version");
+              assertThat(note.values()).contains(new InstanceMatch.Value("Export", "1.1.0"));
+            });
   }
 
   @Test
@@ -541,9 +550,12 @@ class InstanceMatchTest {
     assertThat(match.ownChanges()).isEmpty();
     assertThat(match.notes())
         .singleElement()
-        .asString()
-        .startsWith("Nicht vergleichbar")
-        .contains(TOP_K);
+        .satisfies(
+            note -> {
+              assertThat(note.text()).startsWith("Nicht vergleichbar");
+              assertThat(note.values())
+                  .containsExactly(new InstanceMatch.Value("Einstellung", TOP_K));
+            });
   }
 
   @Test
@@ -556,7 +568,7 @@ class InstanceMatchTest {
             at("1.1.0", "2026-04-24T08:00:00Z"),
             export("1.1.0", List.of(), List.of(), List.of(), "2026-04-24T08:00:00Z"));
 
-    assertThat(match.notes()).anyMatch(note -> note.contains("verschiedenen Versionen"));
+    assertThat(match.notes()).anyMatch(note -> note.text().contains("verschiedenen Versionen"));
   }
 
   @Test
@@ -571,5 +583,41 @@ class InstanceMatchTest {
                     export("1.2.0", List.of(), List.of(), List.of(), "2026-10-24T08:00:00Z")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("is not older than");
+  }
+
+  // regression guard: a value of an export reaches the report as code, never as Markdown that
+  // renders an image, a link or emphasis.
+  @Test
+  void exportValuesReachTheReportOnlyAsCode() {
+    String image = "![x](https://evil.example/a.png)";
+    String bold = "**fett**";
+    JsonNode current =
+        export(
+            "1.2.0",
+            List.of(setting(TOP_K, image, true), setting(bold, null, false)),
+            List.of(),
+            List.of(),
+            "2026-10-24T08:00:00Z");
+    JsonNode earlier =
+        export(
+            "1.2.0",
+            List.of(setting(bold, "5", false)),
+            List.of(),
+            List.of(),
+            "2026-04-24T08:00:00Z");
+
+    String markdown =
+        InstanceMatchRenderer.markdown(
+            InstanceMatch.of(
+                delta(change("settings", TOP_K, "CHANGED", "defaultValue", "5", "10")),
+                at("1.2.0", "2026-10-24T08:00:00Z"),
+                current,
+                at("1.2.0", "2026-04-24T08:00:00Z"),
+                earlier));
+
+    assertThat(markdown).contains("Wert der Instanz: `" + image + "`");
+    assertThat(markdown).contains("Einstellung: `" + bold + "`");
+    String outsideCode = markdown.replaceAll("`[^`\n]*`", "");
+    assertThat(outsideCode).doesNotContain("![x]").doesNotContain("**fett**");
   }
 }

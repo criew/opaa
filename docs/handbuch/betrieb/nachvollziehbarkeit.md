@@ -234,8 +234,8 @@ Produkts.
 
 > **Beispiel.** Vor dem Update auf eine neue Version legt die Systemverwaltung dem
 > Datenschutzbeauftragten die aktuelle Auskunft und die vom letzten Update vor. Er gleicht sie mit
-> dem Delta aus dem Update-Paket ab. Die neue Voreinstellung für die Zahl der Einträge im
-> Vermerk zu einer Antwort (`opaa.chat.note.max-items`) steht als „betrifft sie nicht
+> dem Delta aus dem Update-Paket ab. Die neue Voreinstellung für die Zahl der Punkte in der
+> Gesprächsnotiz eines Chats (`opaa.chat.note.max-items`) steht als „betrifft sie nicht
 > (überschrieben)“ da, weil das Haus einen eigenen Wert nutzt. Unter „Änderungen der
 > Dienststelle“ steht die zwischen beiden Auskünften verlängerte Aufbewahrung des
 > Revisionsprotokolls mit dem Vorschlag „Zustimmung“.

@@ -66,8 +66,11 @@ public final class InstanceMatchRenderer {
             + " den sie nicht eingeschaltet hat. Im Zweifel gilt eine Änderung als betroffen."
             + " Stufenvorschläge stammen aus dem Delta und gelten unverändert; „betrifft sie"
             + " nicht“ heißt nur, dass die Änderung in dieser Konfiguration nicht wirkt.\n\n");
-    for (String note : match.notes()) {
-      out.append("> **Hinweis:** ").append(FactSheetRenderer.text(note)).append("\n\n");
+    for (InstanceMatch.Note note : match.notes()) {
+      out.append("> **Hinweis:** ")
+          .append(FactSheetRenderer.text(note.text()))
+          .append(values(note.values()))
+          .append("\n\n");
     }
     overview(out, match);
     entries(out, match.entries());
@@ -140,7 +143,7 @@ public final class InstanceMatchRenderer {
           change(entry),
           proposal(entry.assessment()),
           "**" + entry.relevance().title() + "**",
-          FactSheetRenderer.text(entry.reason()));
+          FactSheetRenderer.text(entry.reason()) + values(entry.values()));
     }
     out.append('\n');
   }
@@ -241,6 +244,20 @@ public final class InstanceMatchRenderer {
       }
     }
     return stage.isEmpty() ? "–" : FactSheetRenderer.text(stage);
+  }
+
+  /** The values as labelled code spans in parentheses, empty without any. */
+  private static String values(List<InstanceMatch.Value> values) {
+    if (values.isEmpty()) {
+      return "";
+    }
+    return " ("
+        + String.join(
+            ", ",
+            values.stream()
+                .map(v -> FactSheetRenderer.text(v.label()) + ": " + code(v.value()))
+                .toList())
+        + ")";
   }
 
   /** {@code value} as a code span on one line, whatever it holds. */

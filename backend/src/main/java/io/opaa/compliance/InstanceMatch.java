@@ -24,6 +24,9 @@ import tools.jackson.databind.JsonNode;
  * <p>In doubt a change concerns the instance: only an overridden default and a data flow that is
  * switched off, or a new connector flow nobody has set up, are marked as not concerning it.
  *
+ * <p>Every value taken from the delta or an export travels as a {@link Value}, apart from the plain
+ * text it is explained in, so a report can show it as code and never as markup.
+ *
  * @param delta the update as the delta names its two versions
  * @param export the instance the update is matched against
  * @param previousExport the earlier export of the same instance, {@code null} without one
@@ -37,7 +40,7 @@ public record InstanceMatch(
     Export previousExport,
     List<Entry> entries,
     List<OwnChange> ownChanges,
-    List<String> notes) {
+    List<Note> notes) {
 
   public InstanceMatch {
     Objects.requireNonNull(delta, "delta");
@@ -62,6 +65,17 @@ public record InstanceMatch(
     /** The German label. */
     public String title() {
       return title;
+    }
+  }
+
+  /** A value from the delta or an export, with the label the report shows it under. */
+  public record Value(String label, String value) {}
+
+  /** A condition the reader has to know: plain text and the values it is about. */
+  public record Note(String text, List<Value> values) {
+
+    public Note {
+      values = List.copyOf(values);
     }
   }
 
@@ -107,7 +121,8 @@ public record InstanceMatch(
    * One change of the delta with its proposal, as the delta holds it, and whether it concerns the
    * instance.
    *
-   * @param reason why the change concerns the instance or not
+   * @param reason why the change concerns the instance or not, plain text without values
+   * @param values the values the reason is about, such as the value the instance holds
    */
   public record Entry(
       String group,
@@ -120,7 +135,13 @@ public record InstanceMatch(
       JsonNode after,
       JsonNode assessment,
       Relevance relevance,
-      String reason) {}
+      String reason,
+      List<Value> values) {
+
+    public Entry {
+      values = List.copyOf(values);
+    }
+  }
 
   /**
    * A change the department made between two exports.
@@ -176,16 +197,17 @@ public record InstanceMatch(
     for (JsonNode change : delta.path("changes")) {
       entries.add(entry(change, settings, flows));
     }
-    List<String> notes = new ArrayList<>();
+    List<Note> notes = new ArrayList<>();
     if (!withoutPrefix(update.fromVersion()).equals(withoutPrefix(exportInfo.version()))
         && !update.fromCommit().equals(exportInfo.commit())) {
       notes.add(
-          "Der Export stammt von Version "
-              + exportInfo.version()
-              + ", das Delta beginnt bei "
-              + update.fromVersion()
-              + ". Der Abgleich setzt voraus, dass die Instanz den Ausgangsstand des Deltas"
-              + " betreibt; Einstellungen, die es dort noch nicht gibt, gelten als betroffen.");
+          new Note(
+              "Der Export stammt von einer anderen Version als der Ausgangsstand des Deltas. Der"
+                  + " Abgleich setzt voraus, dass die Instanz den Ausgangsstand des Deltas"
+                  + " betreibt; Einstellungen, die es dort noch nicht gibt, gelten als betroffen.",
+              List.of(
+                  new Value("Export", exportInfo.version()),
+                  new Value("Delta ab", update.fromVersion()))));
     }
     List<OwnChange> own =
         previous == null
@@ -202,6 +224,7 @@ public record InstanceMatch(
     String field = change.path("field").isString() ? change.path("field").asString() : null;
     Relevance relevance = Relevance.CONCERNED;
     String reason;
+    List<Value> values = List.of();
     switch (section) {
       case "settings" -> {
         JsonNode setting = settings.get(id);
@@ -218,14 +241,16 @@ public record InstanceMatch(
         } else {
           String effective = setting.path("effectiveValue").asString();
           String before = change.path("before").asString();
-          if (!sameValue(effective, before)) {
+          values =
+              List.of(
+                  new Value("Wert der Instanz", effective),
+                  new Value("bisherige Voreinstellung", before));
+          // The export holds addresses without user information; the delta compares as exported.
+          if (!sameValue(effective, InstanceDisclosureAssembler.exportable(before))) {
             relevance = Relevance.OVERRIDDEN;
             reason =
-                "Die Instanz setzt „"
-                    + effective
-                    + "“, nicht die bisherige Voreinstellung „"
-                    + before
-                    + "“; die neue Voreinstellung wirkt dort nicht.";
+                "Die Instanz setzt einen eigenen Wert, nicht die bisherige Voreinstellung; die neue"
+                    + " Voreinstellung wirkt dort nicht.";
           } else if ("DATABASE".equals(text(setting.path("source")))) {
             reason =
                 "Die Einstellung liegt in der Datenbank der Instanz. Eine neue Voreinstellung gilt"
@@ -274,7 +299,8 @@ public record InstanceMatch(
         change.path("after"),
         change.path("assessment"),
         relevance,
-        reason);
+        reason,
+        values);
   }
 
   private static List<OwnChange> ownChanges(
@@ -282,7 +308,7 @@ public record InstanceMatch(
       JsonNode current,
       Export previousInfo,
       Export currentInfo,
-      List<String> notes) {
+      List<Note> notes) {
     Context context =
         ManifestDelta.context(snapshot(previous, previousInfo), snapshot(current, currentInfo));
     List<OwnChange> changes = new ArrayList<>();
@@ -317,17 +343,21 @@ public record InstanceMatch(
     }
     if (!undetermined.isEmpty()) {
       notes.add(
-          "Nicht vergleichbar, weil ein Export den Wert nicht ermittelt hat: "
-              + String.join(", ", undetermined.stream().map(key -> "„" + key + "“").toList())
-              + ".");
+          new Note(
+              "Nicht vergleichbar, weil ein Export den Wert nicht ermittelt hat.",
+              undetermined.stream().map(key -> new Value("Einstellung", key)).toList()));
     }
     flowChanges(previous, current, context, changes);
     modelChanges(previous, current, context, changes);
     if (!previousInfo.version().equals(currentInfo.version())) {
       notes.add(
-          "Die beiden Exporte stammen von verschiedenen Versionen; Einstellungen und Datenflüsse,"
-              + " die nur eine der beiden kennt, sind Änderungen des Produkts und stehen nicht unter"
-              + " den Änderungen der Dienststelle.");
+          new Note(
+              "Die beiden Exporte stammen von verschiedenen Versionen; Einstellungen und"
+                  + " Datenflüsse, die nur eine der beiden kennt, sind Änderungen des Produkts und"
+                  + " stehen nicht unter den Änderungen der Dienststelle.",
+              List.of(
+                  new Value("früherer Export", previousInfo.version()),
+                  new Value("Export", currentInfo.version()))));
     }
     return changes;
   }
