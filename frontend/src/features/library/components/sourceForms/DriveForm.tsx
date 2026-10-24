@@ -75,7 +75,7 @@ export default function DriveForm({
                   minHeight: 40,
                 }}
               >
-                <Typography sx={{ fontSize: 14, overflowWrap: 'anywhere' }}>
+                <Typography sx={{ fontSize: 14, overflowWrap: 'anywhere', color: 'text.primary' }}>
                   {values.keyAccount !== ''
                     ? values.keyAccount
                     : stored

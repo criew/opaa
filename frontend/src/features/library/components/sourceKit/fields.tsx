@@ -14,7 +14,7 @@ import { fieldDomId, useSourceIssue } from '../sources/sourceIssueContext'
 export function FieldGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600 }}>
+      <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, color: 'text.primary' }}>
         {title}
       </Typography>
       {children}
@@ -134,7 +134,7 @@ export function SecretField({
           role="group"
           aria-labelledby={`${id}-label`}
         >
-          <Typography sx={{ fontSize: 14 }}>Gesetzt</Typography>
+          <Typography sx={{ fontSize: 14, color: 'text.primary' }}>Gesetzt</Typography>
           <Button
             id={id}
             size="small"
@@ -214,7 +214,7 @@ export function StoredCredentials({
           aria-labelledby={`${idPrefix}-credentials-label`}
           sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}
         >
-          <Typography sx={{ fontSize: 14 }}>Gesetzt</Typography>
+          <Typography sx={{ fontSize: 14, color: 'text.primary' }}>Gesetzt</Typography>
           <Button size="small" variant="outlined" onClick={() => setReplacing(true)}>
             Ersetzen
           </Button>

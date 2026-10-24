@@ -35,7 +35,11 @@ const ErrorSummary = forwardRef<HTMLDivElement, { issues: SummaryIssue[] }>(func
         '&:focus-visible': { boxShadow: '0 0 0 3px rgba(18,144,239,0.32)' },
       }}
     >
-      <Typography id="error-summary-title" component="h3" sx={{ fontSize: 15, fontWeight: 600 }}>
+      <Typography
+        id="error-summary-title"
+        component="h3"
+        sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary' }}
+      >
         {issues.length === 1 ? '1 Angabe prüfen' : `${issues.length} Angaben prüfen`}
       </Typography>
       <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.5 }}>
@@ -43,7 +47,7 @@ const ErrorSummary = forwardRef<HTMLDivElement, { issues: SummaryIssue[] }>(func
           <Box
             component="li"
             key={`${issue.targetId ?? ''}${issue.message}`}
-            sx={{ fontSize: 14, py: 0.25 }}
+            sx={{ fontSize: 14, py: 0.25, color: 'text.primary' }}
           >
             {issue.targetId ? (
               <Link

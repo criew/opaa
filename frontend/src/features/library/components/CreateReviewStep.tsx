@@ -33,7 +33,10 @@ export default function CreateReviewStep({ sections }: { sections: ReviewSection
               mb: 1,
             }}
           >
-            <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600 }}>
+            <Typography
+              component="h3"
+              sx={{ fontSize: 16, fontWeight: 600, color: 'text.primary' }}
+            >
               {section.title}
             </Typography>
             <Button size="small" onClick={section.onChange} sx={{ flexShrink: 0 }}>
@@ -61,7 +64,10 @@ export default function CreateReviewStep({ sections }: { sections: ReviewSection
                 >
                   {row.label}
                 </Box>
-                <Box component="dd" sx={{ m: 0, fontSize: 14, overflowWrap: 'anywhere' }}>
+                <Box
+                  component="dd"
+                  sx={{ m: 0, fontSize: 14, overflowWrap: 'anywhere', color: 'text.primary' }}
+                >
                   {row.value || '—'}
                 </Box>
               </Box>

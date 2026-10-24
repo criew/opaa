@@ -41,7 +41,7 @@ export function SelectionLines({
         {items.slice(0, SHOWN).map((item) => (
           <Box component="li" key={item.key} sx={{ display: 'flex', minWidth: 0, py: '2px' }}>
             <Tooltip title={pathLabel(item)} placement="bottom-start" enterDelay={500}>
-              <Typography sx={{ ...ellipsis, fontSize: 14 }}>
+              <Typography sx={{ ...ellipsis, fontSize: 14, color: 'text.primary' }}>
                 {item.name}
                 {item.trail.length > 0 && (
                   <Box component="span" sx={{ color: 'text.secondary' }}>

@@ -247,7 +247,7 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
               }}
             >
               <Tooltip title={pathLabel(item)} placement="bottom-start">
-                <Typography sx={{ ...ellipsis, flex: 1, fontSize: 14 }}>
+                <Typography sx={{ ...ellipsis, flex: 1, fontSize: 14, color: 'text.primary' }}>
                   {item.name}
                   {item.trail.length > 0 && (
                     <Box component="span" sx={{ color: 'text.secondary' }}>
@@ -287,7 +287,7 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
       )}
       {current?.error && (
         <Box sx={{ py: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 500 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 500, color: 'text.primary' }}>
             {/^.*(403|verweiger|Berechtigung|AccessDenied)/i.test(current.error)
               ? `Kein Zugriff auf „${levelName}“.`
               : `„${levelName}“ ließ sich nicht laden.`}
@@ -345,7 +345,9 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
                 indeterminate={selectableChosen > 0 && selectableChosen < selectable.length}
                 onChange={switchAll}
               />
-              <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>{allLabel}</Typography>
+              <Typography sx={{ fontSize: 13.5, fontWeight: 500, color: 'text.primary' }}>
+                {allLabel}
+              </Typography>
             </Box>
           )}
           {entries.slice(0, shown).map((entry) => {
@@ -585,7 +587,7 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5 }} aria-live="polite">
+          <Typography sx={{ fontSize: 13.5, color: 'text.primary' }} aria-live="polite">
             {draft.length === 0 && source.emptyMeans
               ? source.emptyMeans
               : `${draft.length} ausgewählt`}

@@ -36,11 +36,14 @@ export default function SourceConsentPanel({
 }: SourceConsentPanelProps) {
   return (
     <Box data-testid="source-consent">
-      <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      <Typography
+        component="h3"
+        sx={{ fontSize: 16, fontWeight: 600, mb: 1, color: 'text.primary' }}
+      >
         Verbindung
       </Typography>
       {pending ? (
-        <Typography sx={{ fontSize: 14 }} role="status">
+        <Typography sx={{ fontSize: 14, color: 'text.primary' }} role="status">
           {pending.accountLabel ? `Verbunden als „${pending.accountLabel}“.` : 'Verbunden.'}{' '}
           <Box component="span" sx={{ color: 'text.secondary' }}>
             Die Zustimmung gilt bis {clockTime(pending.expiresAt)} Uhr.

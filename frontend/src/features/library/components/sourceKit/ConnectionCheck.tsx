@@ -49,7 +49,7 @@ export default function ConnectionCheck({
                 <Box
                   component="li"
                   key={stage.name}
-                  sx={{ fontSize: 14, display: 'flex', gap: 0.5 }}
+                  sx={{ fontSize: 14, display: 'flex', gap: 0.5, color: 'text.primary' }}
                 >
                   <Box
                     component="span"
