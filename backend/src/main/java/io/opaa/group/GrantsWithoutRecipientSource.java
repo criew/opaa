@@ -3,8 +3,10 @@ package io.opaa.group;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.permission.SuccessionFindingReading;
 import io.opaa.permission.SuccessionFindingSource;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +32,11 @@ class GrantsWithoutRecipientSource implements SuccessionFindingSource {
   @Override
   public boolean answersFor(SuccessionObjectType objectType) {
     return objectType == SuccessionObjectType.GROUP;
+  }
+
+  @Override
+  public Optional<SuccessionFindingReading> sharedReading() {
+    return Optional.of(reader);
   }
 
   @Override

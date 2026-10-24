@@ -76,4 +76,16 @@ class SuccessionListSpecificationTest {
     assertThat(get.get("operationId")).isEqualTo("listSuccessionEntries");
     assertThat((List<?>) get.get("parameters")).hasSize(3);
   }
+
+  /** The figures of the tabs are counted per kind of entry only: no parameter can add an axis. */
+  @Test
+  @SuppressWarnings("unchecked")
+  void theCountsTakeNoParameterAtAll() {
+    Map<String, Object> paths = (Map<String, Object>) spec.get("paths");
+    Map<String, Object> get =
+        (Map<String, Object>) ((Map<String, Object>) paths.get(LIST_PATH + "/counts")).get("get");
+
+    assertThat(get.get("operationId")).isEqualTo("countSuccessionEntries");
+    assertThat(get.get("parameters")).isNull();
+  }
 }

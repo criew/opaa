@@ -32,6 +32,21 @@ class SuccessionControllerIntegrationTest {
         .andExpect(jsonPath("$.entries").isArray());
   }
 
+  /** The figures of the tabs, one per kind of entry, for the system administration alone. */
+  @Test
+  void onlyTheSystemAdministrationReadsTheCounts() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/succession/counts").with(devUser()))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(get("/api/v1/admin/succession/counts").with(devAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.openSuccession").isNumber())
+        .andExpect(jsonPath("$.grantsWithoutRecipient").isNumber())
+        .andExpect(jsonPath("$.groupWithoutEffect").isNumber());
+  }
+
   /** The tab is the one thing the list needs; without it there is no list to answer. */
   @Test
   void aListWithoutATabIsNoRequest() throws Exception {

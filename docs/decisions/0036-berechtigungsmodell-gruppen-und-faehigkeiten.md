@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
@@ -205,7 +205,7 @@ Vorgänge unterliegen der Aufbewahrungsfrist des Protokolls, nicht der Rechtehis
 - **Wirkung:** Das Objekt bleibt nutzbar, Rechte bleiben, die **Reichweite ist eingefroren** (keine neuen
   Grants, keine höhere Freigabestufe, keine neue Bereitstellung, keine neuen Space-Mitglieder). Nichts
   wird gelöscht.
-- **Betriebsliste** (`GET /api/v1/admin/succession`, `SuccessionKind`): vollständig ab dem ersten Tag,
+- **Betriebsliste** (`GET /api/v1/admin/succession`, Zahl je Reiter `GET /api/v1/admin/succession/counts`, `SuccessionKind`): vollständig ab dem ersten Tag,
   drei Reiter mit derselben Mechanik — **Offene Nachfolgen** (Objekt, derzeitiger Adressat, Alter;
   Stufung Space → übrige handlungsfähige `ADMIN`, Asset einer internen Gruppe → deren Verantwortliche,
   sonst Systemverwaltung — eine Zuständigkeitsangabe, keine Zugangsbeschränkung), **Freigaben ohne
