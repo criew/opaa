@@ -6,6 +6,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.selfdisclosure.SelfDisclosureService;
+import io.opaa.selfdisclosure.SelfDisclosureService.Outcome;
 import io.opaa.selfdisclosure.SelfDisclosureService.Run;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -65,8 +66,9 @@ public class SelfDisclosureController {
             .toString());
     response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     response.setHeader("X-Accel-Buffering", "no");
-    if (service.stream(run, response.getOutputStream())
-        != SelfDisclosureService.Outcome.DELIVERED) {
+    Outcome outcome = service.stream(run, response.getOutputStream());
+    // A client that went away hears nothing more; failing would only log an expected abort.
+    if (outcome == Outcome.ABORTED_BY_SERVER) {
       // Once the ZIP has begun, GlobalExceptionHandler cannot answer any more and lets the
       // failure reach the container, which breaks the connection instead of ending it cleanly.
       if (!response.isCommitted()) {
