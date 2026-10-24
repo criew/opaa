@@ -511,6 +511,41 @@ class GraphClientTest {
   }
 
   @Test
+  void aTokenWithoutPermissionClaimsNamesTheMissingConsent() {
+    String graphSays = "Either scp or roles claim need to be present in the token.";
+    server.failNextSaying("drives/unconsented", 401, "InvalidAuthenticationToken", graphSays, 1);
+    server.failNextSaying("drives/refused", 403, "AccessDenied", graphSays, 1);
+    server.failNext("drives/forbidden", 403, "accessDenied", null, 1);
+    GraphClient client = client();
+
+    GraphException unauthorized =
+        assertFailure(
+            () -> client.get("drives/unconsented", Map.of()),
+            GraphException.Kind.UNAUTHORIZED,
+            401,
+            "InvalidAuthenticationToken");
+    GraphException forbidden =
+        assertFailure(
+            () -> client.get("drives/refused", Map.of()),
+            GraphException.Kind.FORBIDDEN,
+            403,
+            "AccessDenied");
+    GraphException plain =
+        assertFailure(
+            () -> client.get("drives/forbidden", Map.of()),
+            GraphException.Kind.FORBIDDEN,
+            403,
+            "accessDenied");
+
+    for (GraphException failure : List.of(unauthorized, forbidden)) {
+      assertThat(failure.consentMissing()).isTrue();
+      assertThat(failure.getMessage()).isEqualTo(GraphClient.CONSENT_MISSING).doesNotContain("scp");
+    }
+    assertThat(plain.consentMissing()).isFalse();
+    assertThat(plain.getMessage()).doesNotContain("Administratorzustimmung");
+  }
+
+  @Test
   void anAnswerTricklingInPastTheTimeoutIsCutOff() {
     server.trickle("sites/site-1");
     GraphClient client =
