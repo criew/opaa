@@ -1605,7 +1605,7 @@ describe('LibraryDetailPage', () => {
 
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     await user.click(await screen.findByRole('button', { name: /^zeitplan bearbeiten$/i }))
-    await user.click(screen.getByRole('combobox', { name: /^zeitplan$/i }))
+    await user.click(screen.getByRole('combobox', { name: /^häufigkeit$/i }))
     await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
     await user.click(screen.getByRole('button', { name: /^speichern$/i }))
 

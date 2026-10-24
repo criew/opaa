@@ -448,7 +448,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       await chooseType(user, /Dateisystem/)
       await user.type(screen.getByLabelText(/Verzeichnispfad/), '/data/dokumente')
-      await user.click(screen.getByRole('combobox', { name: 'Zeitplan' }))
+      await user.click(screen.getByRole('combobox', { name: 'Häufigkeit' }))
       await user.click(await screen.findByRole('option', { name: 'Täglich' }))
       await next(user)
       await nameItAndContinue(user, 'Dienstanweisungen')
