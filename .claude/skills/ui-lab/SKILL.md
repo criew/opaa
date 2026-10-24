@@ -212,3 +212,13 @@ Kennzahlen aus `metrics-summary.md` und die offenen Fragen (Grundregel 6) gehör
 neben der Seite. **Halt: Der Maintainer
 entscheidet.** Danach: Umsetzungs-Issue mit der gewählten Variante als Spezifikation, eigenes
 Issue für Guideline-Änderungen, Lab-Sessions archivieren.
+
+### 8 · Umsetzung auf `main`
+
+Die E2E-Suite läuft nicht bei Pull Requests, nur danach auf `main`. Ein Umsetzungs-PR baut
+Bedienabläufe um, deshalb vor dem Merge:
+
+- Texte aus `getByRole`/`getByLabel`/`getByText` in `e2e/tests/` gegen den neuen Stand von
+  `frontend/src` greppen. Jeder Treffer, den es nicht mehr gibt, ist eine kaputte Spec.
+- Betroffene Specs im selben PR umstellen und die E2E-Suite lokal laufen lassen
+  ([`e2e/README.md`](../../../e2e/README.md)); das Ergebnis gehört in die PR-Beschreibung.
