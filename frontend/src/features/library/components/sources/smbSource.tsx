@@ -8,7 +8,7 @@ import {
   type SmbSourceValues,
 } from '../../utils/smbSource'
 import AccountFolderForm from '../setup/forms/AccountFolderForm'
-import { collectIssues } from '../setup/collectIssues'
+import { accountIssues, collectIssues } from '../setup/collectIssues'
 import { pickedOfFolders } from '../setup/pathSelection'
 import { MAX_SMB_FOLDERS } from '../../utils/smbSource'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
@@ -61,12 +61,36 @@ export const smbSource: SourceRegistration = {
         return share
       }
     },
-    validateAll: (values: SmbSourceValues, context) =>
-      collectIssues(values, (probe) => smbSource.configuration!.validate(probe, context), {
-        sourceUrl: 'smb://server/freigabe',
-        account: 'konto',
-        password: 'passwort',
-      }),
+    validateAll: (values: SmbSourceValues, context) => {
+      const asks = connectionFields(context).asksSecret
+      const first = (probe: SmbSourceValues) =>
+        smbSource.configuration?.validate(probe, context) ?? null
+      const own = asks
+        ? accountIssues(
+            values.account,
+            values.password,
+            Boolean(context.credentialsStored) &&
+              sameSmbShare(context.originalSourceUrl, values.sourceUrl),
+            {
+              account: 'account',
+              secret: 'password',
+              secretLabel: 'Passwort',
+            },
+          )
+        : []
+      const rest = collectIssues(
+        { ...values, account: '', password: '' },
+        (probe) => first({ ...probe, account: 'konto', password: 'x' }),
+        {
+          sourceUrl: 'smb://server/freigabe',
+        },
+      )
+      return [
+        ...rest.filter((issue) => issue.field === 'sourceUrl'),
+        ...own,
+        ...rest.filter((issue) => issue.field !== 'sourceUrl'),
+      ]
+    },
     summary: (values: SmbSourceValues, context) => ({
       connection: [
         { label: 'Adresse', value: values.sourceUrl.trim(), mono: true },

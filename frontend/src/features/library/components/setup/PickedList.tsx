@@ -64,17 +64,19 @@ export default function PickedList({
                     {item.name}
                   </Typography>
                 </Tooltip>
-                <Typography
-                  sx={{
-                    fontSize: 12,
-                    color: 'text.secondary',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {[rootLabel, ...item.trail.map((crumb) => crumb.name)].join(' › ')}
-                </Typography>
+                {item.trail.length > 0 && (
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      color: 'text.secondary',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {[rootLabel, ...item.trail.map((crumb) => crumb.name)].join(' › ')}
+                  </Typography>
+                )}
                 {problem && (
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start', mt: 0.5 }}>
                     <ErrorOutlineIcon aria-hidden sx={{ fontSize: 16, color: 'error.main' }} />

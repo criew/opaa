@@ -14,7 +14,6 @@ import Typography from '@mui/material/Typography'
 import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
-import { fontFamily } from '@/shared/theme/tokens'
 import { SourceIssueContext, issueList } from '../sources/sourceIssueContext'
 import { ConnectionGateContext } from './connectionGate'
 import { STAGE_LABELS, type ConnectionOutcome, type ConnectionStageKey } from './connectionOutcome'
@@ -137,7 +136,6 @@ export default function ConnectionStage({
             sx={{
               fontSize: 13,
               color: 'text.secondary',
-              fontFamily: fontFamily.mono,
               minWidth: 0,
               flex: '1 1 12rem',
               overflowWrap: 'anywhere',
@@ -159,7 +157,10 @@ export default function ConnectionStage({
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box ref={firstField} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box
+            ref={firstField}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640 }}
+          >
             {children}
           </Box>
           <Box>
@@ -232,8 +233,8 @@ function StageResult({
 
 const visuallyHiddenSx = {
   position: 'absolute',
-  width: 1,
-  height: 1,
+  width: '1px',
+  height: '1px',
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
   whiteSpace: 'nowrap',

@@ -26,10 +26,12 @@ export function levelOf(response: SourceBrowseResponse, hasChildren: boolean): P
   return {
     complete: response.complete,
     message: response.message ?? null,
+    // the connector stores folders comma-separated: a path with a comma cannot be chosen
     entries: response.entries.map((entry) => ({
       key: entry.key,
       name: entry.name ?? entry.key,
-      selectable: true,
+      hint: entry.key.includes(',') ? 'Nicht wählbar: Komma im Pfad' : null,
+      selectable: !entry.key.includes(','),
       hasChildren,
     })),
   }

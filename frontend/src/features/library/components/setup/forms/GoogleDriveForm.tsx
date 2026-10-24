@@ -225,6 +225,7 @@ export default function GoogleDriveForm({
           emptySelection="Noch kein Bereich gewählt."
           issueFields={['scopes']}
           problems={problems}
+          manualEntryLabel="Ordner-ID von Hand eintragen"
           manualEntry={
             <ManualFolder
               idPrefix={id}

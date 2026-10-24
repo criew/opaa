@@ -23,3 +23,27 @@ export function collectIssues<V extends object>(
   }
   return issues
 }
+
+/**
+ * The issues of an account with a password in the shared wording: each missing half at its own
+ * field. With `kept`, a stored pair stands as long as neither half is typed.
+ */
+export function accountIssues(
+  account: string,
+  secret: string,
+  kept: boolean,
+  fields: { account: string; secret: string; secretLabel: string },
+): SourceIssue[] {
+  const issues: SourceIssue[] = []
+  const typed = account.trim() !== '' || secret !== ''
+  if (kept && !typed) return issues
+  if (account.includes(':')) {
+    issues.push({ field: fields.account, message: 'Das Konto darf keinen Doppelpunkt enthalten' })
+  } else if (account.trim() === '') {
+    issues.push({ field: fields.account, message: 'Bitte das Konto eingeben' })
+  }
+  if (secret === '') {
+    issues.push({ field: fields.secret, message: `Bitte das ${fields.secretLabel} eingeben` })
+  }
+  return issues
+}

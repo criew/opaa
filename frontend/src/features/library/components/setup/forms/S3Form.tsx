@@ -7,7 +7,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { browseSource, testLibrarySource } from '../../../api/libraryApi'
+import { browseSource } from '../../../api/libraryApi'
 import { sameLibrarySourceOrigin } from '../../../utils/librarySourceConfig'
 import {
   MAX_S3_SCOPES,
@@ -17,7 +17,6 @@ import {
   s3CredentialsOf,
   s3ProviderTemplate,
   s3ScopeChecksOf,
-  s3SettingsOf,
   type S3Provider,
   type S3ScopeInput,
   type S3SourceValues,
@@ -25,7 +24,7 @@ import {
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceFormProps } from '../../sources/types'
 import ConnectionStage from '../ConnectionStage'
-import { outcomeOf, outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
+import { outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
 import SecretField from '../SecretField'
 import SourceField from '../SourceField'
 import { pickedOfScopes } from '../pickedOf'
@@ -61,21 +60,21 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
     sourceCredentials: s3CredentialsOf(values),
   })
 
+  // a test needs chosen scopes; before the choice, the bucket listing proves address and key. A
+  // key that may not list buckets is common (least privilege): the buckets are then typed by hand.
   const run = async (): Promise<ConnectionOutcome> => {
     try {
-      const response = await testLibrarySource(
+      await browseSource(
+        'S3',
         connection.probeRequest({
-          sourceType: 'S3',
           ...payload(),
-          sourceSettings: { ...s3SettingsOf(values), scopes: [] },
+          query: { region: values.region.trim() || undefined, pathStyle: values.pathStyle },
         }),
       )
-      return outcomeOf(
-        { ...response, reachable: response.reachable || response.credentialsVerified === true },
-        ['address', 'auth', 'rights'],
-      )
+      return { ok: true, message: 'Anmeldung erfolgreich.' }
     } catch (err) {
-      return outcomeOfError(err, ['address', 'auth', 'rights'])
+      const outcome = outcomeOfError(err, ['address', 'auth', 'rights'])
+      return outcome.failedStage === 'rights' ? { ok: true, message: outcome.message } : outcome
     }
   }
 
@@ -222,6 +221,7 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
         <Box>
           <Button
             size="small"
+            sx={{ ml: -1 }}
             aria-expanded={advanced}
             aria-controls={`${id}-advanced`}
             onClick={() => setAdvanced((open) => !open)}
@@ -283,6 +283,7 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
           emptySelection="Noch kein Bucket gewählt."
           issueFields={['scopes']}
           problems={problems}
+          manualEntryLabel="Bucket von Hand eintragen"
           manualEntry={
             <ManualScope
               idPrefix={id}
@@ -296,7 +297,7 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
         <SelectionPending issueFields={['scopes']} />
       )}
 
-      <Box>
+      <Box sx={{ maxWidth: 640 }}>
         <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Muster
         </Typography>

@@ -83,8 +83,18 @@ export const s3Source: SourceRegistration = {
         sessionToken: '',
       }
       const scopeIssue = s3ValuesIssue(repaired, kept)
+      // the shared wording for a missing value; the connector's own for a wrong one
+      const missing: Record<string, string> = {
+        sourceUrl: 'Bitte den Endpoint eingeben',
+        accessKey: 'Bitte den Access Key eingeben',
+        secretKey: 'Bitte den Secret Key eingeben',
+      }
       return [
-        ...connectionIssues,
+        ...connectionIssues.map((issue) =>
+          issue.field && missing[issue.field] && issue.message.endsWith('erforderlich')
+            ? { ...issue, message: missing[issue.field] }
+            : issue,
+        ),
         ...(scopeIssue
           ? [
               {

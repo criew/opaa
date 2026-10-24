@@ -8,7 +8,7 @@ import {
   type NextcloudSourceValues,
 } from '../../utils/nextcloudSource'
 import AccountFolderForm from '../setup/forms/AccountFolderForm'
-import { collectIssues } from '../setup/collectIssues'
+import { accountIssues, collectIssues } from '../setup/collectIssues'
 import { pickedOfFolders } from '../setup/pathSelection'
 import { MAX_NEXTCLOUD_FOLDERS } from '../../utils/nextcloudSource'
 import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
@@ -51,12 +51,36 @@ export const nextcloudSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    validateAll: (values: NextcloudSourceValues, context) =>
-      collectIssues(values, (probe) => nextcloudSource.configuration!.validate(probe, context), {
-        sourceUrl: 'https://cloud.example.org',
-        username: 'konto',
-        appPassword: 'passwort',
-      }),
+    validateAll: (values: NextcloudSourceValues, context) => {
+      const asks = connectionFields(context).asksSecret
+      const first = (probe: NextcloudSourceValues) =>
+        nextcloudSource.configuration?.validate(probe, context) ?? null
+      const own = asks
+        ? accountIssues(
+            values.username,
+            values.appPassword,
+            Boolean(context.credentialsStored) &&
+              sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl),
+            {
+              account: 'username',
+              secret: 'appPassword',
+              secretLabel: 'App-Passwort',
+            },
+          )
+        : []
+      const rest = collectIssues(
+        { ...values, username: '', appPassword: '' },
+        (probe) => first({ ...probe, username: 'konto', appPassword: 'x' }),
+        {
+          sourceUrl: 'https://cloud.example.org',
+        },
+      )
+      return [
+        ...rest.filter((issue) => issue.field === 'sourceUrl'),
+        ...own,
+        ...rest.filter((issue) => issue.field !== 'sourceUrl'),
+      ]
+    },
     summary: (values: NextcloudSourceValues, context) => ({
       connection: [
         { label: 'Adresse', value: values.sourceUrl.trim(), mono: true },

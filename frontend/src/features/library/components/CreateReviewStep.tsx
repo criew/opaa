@@ -59,7 +59,7 @@ export default function CreateReviewStep({
       step: steps.setup,
       content: (
         <Box>
-          {connectionName && (
+          {connectionName && !summary.connection.some((row) => row.label === 'Zugang') && (
             <KeyValueList entries={[{ label: 'Zugang', value: connectionName }]} sx={{ mb: 0.5 }} />
           )}
           <SummaryConnection summary={summary} />
@@ -70,7 +70,7 @@ export default function CreateReviewStep({
       sections.push({
         title: 'Auswahl',
         step: steps.setup,
-        content: <SummarySelection summary={summary} limit={6} />,
+        content: <SummarySelection summary={summary} limit={5} />,
       })
     }
   }

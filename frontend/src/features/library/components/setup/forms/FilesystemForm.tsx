@@ -58,7 +58,7 @@ export default function FilesystemForm({
           mono
         />
       </ConnectionStage>
-      <Box>
+      <Box sx={{ maxWidth: 640 }}>
         <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Auswahl
         </Typography>

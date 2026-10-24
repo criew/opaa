@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { browseSource, testLibrarySource } from '../../../api/libraryApi'
+import { browseSource } from '../../../api/libraryApi'
 import {
   MAX_SHAREPOINT_LIBRARIES,
   SHAREPOINT_API,
@@ -14,7 +14,7 @@ import {
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceFormProps } from '../../sources/types'
 import ConnectionStage from '../ConnectionStage'
-import { outcomeOf, outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
+import { outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
 import { librariesOfPicked, pickedOfLibraries } from '../pickedOf'
 import SplitPicker from '../SplitPicker'
 import type { PickerCrumb, PickerLevel } from '../pickerTypes'
@@ -44,16 +44,14 @@ export default function SharePointForm({
   const browse = (query: Record<string, unknown>) =>
     browseSource('SHAREPOINT', connection.probeRequest({ sourceUrl: SHAREPOINT_API, query }))
 
+  // a test needs chosen libraries; before the choice, the site listing proves the sign-in
   const run = async (): Promise<ConnectionOutcome> => {
     try {
-      const response = await testLibrarySource(
-        connection.probeRequest({
-          sourceType: 'SHAREPOINT',
-          sourceUrl: SHAREPOINT_API,
-          sourceSettings: { libraries: [] },
-        }),
-      )
-      return outcomeOf(response, ['auth', 'rights'])
+      const response = await browse({ search: '' })
+      return {
+        ok: true,
+        message: response.complete ? 'Anmeldung erfolgreich.' : (response.message ?? ''),
+      }
     } catch (err) {
       return outcomeOfError(err, ['auth', 'rights'])
     }

@@ -59,8 +59,12 @@ interface SplitPickerProps {
   millerColumns?: boolean
   /** Why chosen objects could not be read at the last test, by key. */
   problems?: Record<string, string>
-  /** An entry typed by hand when the listing is refused or does not show it. */
+  /**
+   * An entry typed by hand when the listing is refused or does not show it: open below a failed or
+   * empty level, behind „<manualEntryLabel>" otherwise.
+   */
   manualEntry?: ReactNode
+  manualEntryLabel?: string
   /** The form values the selection stands for; their issues show under the title. */
   issueFields?: string[]
 }
@@ -124,8 +128,10 @@ export default function SplitPicker({
   millerColumns = false,
   problems,
   manualEntry,
+  manualEntryLabel = 'Von Hand eintragen',
   issueFields = [],
 }: SplitPickerProps) {
+  const [manualOpen, setManualOpen] = useState(false)
   const headingId = useId()
   const issues = issueList(useContext(SourceIssueContext)).filter(
     (issue) => issue.field !== undefined && issueFields.includes(issue.field),
@@ -326,37 +332,39 @@ export default function SplitPicker({
 
   const browse = (
     <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <Breadcrumbs
-        aria-label="Ebene"
-        maxItems={4}
-        itemsBeforeCollapse={1}
-        itemsAfterCollapse={2}
-        sx={{ fontSize: 13, '& .MuiBreadcrumbs-ol': { flexWrap: 'wrap' } }}
-      >
-        {[{ key: '', name: rootLabel }, ...trail].map((crumb, index, all) =>
-          index === all.length - 1 ? (
-            <Typography
-              key={crumb.key || 'root'}
-              aria-current="location"
-              sx={{ ...crumbSx, fontSize: 13, fontWeight: 600 }}
-              title={crumb.name}
-            >
-              {crumb.name}
-            </Typography>
-          ) : (
-            <Link
-              key={crumb.key || 'root'}
-              component="button"
-              type="button"
-              onClick={() => open(trail.slice(0, index))}
-              title={crumb.name}
-              sx={{ ...crumbSx, fontSize: 13, verticalAlign: 'bottom' }}
-            >
-              {crumb.name}
-            </Link>
-          ),
-        )}
-      </Breadcrumbs>
+      {(trail.length > 0 || entries.some((entry) => entry.hasChildren)) && (
+        <Breadcrumbs
+          aria-label="Ebene"
+          maxItems={4}
+          itemsBeforeCollapse={1}
+          itemsAfterCollapse={2}
+          sx={{ fontSize: 13, '& .MuiBreadcrumbs-ol': { flexWrap: 'wrap' } }}
+        >
+          {[{ key: '', name: rootLabel }, ...trail].map((crumb, index, all) =>
+            index === all.length - 1 ? (
+              <Typography
+                key={crumb.key || 'root'}
+                aria-current="location"
+                sx={{ ...crumbSx, fontSize: 13, fontWeight: 600 }}
+                title={crumb.name}
+              >
+                {crumb.name}
+              </Typography>
+            ) : (
+              <Link
+                key={crumb.key || 'root'}
+                component="button"
+                type="button"
+                onClick={() => open(trail.slice(0, index))}
+                title={crumb.name}
+                sx={{ ...crumbSx, fontSize: 13, verticalAlign: 'bottom' }}
+              >
+                {crumb.name}
+              </Link>
+            ),
+          )}
+        </Breadcrumbs>
+      )}
 
       {(entries.length >= SEARCH_FROM || query !== '' || (remoteQuery && trail.length === 0)) && (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
@@ -530,7 +538,16 @@ export default function SplitPicker({
           )}
         </Box>
       </Box>
-      {manualEntry}
+      {manualEntry &&
+        (current?.status === 'error' || (level && entries.length === 0) || manualOpen ? (
+          manualEntry
+        ) : (
+          <Box>
+            <Button size="small" sx={{ ml: -1 }} onClick={() => setManualOpen(true)}>
+              {manualEntryLabel}
+            </Button>
+          </Box>
+        ))}
     </Box>
   )
 
@@ -785,8 +802,8 @@ const listBoxSx = {
 
 const visuallyHidden = {
   position: 'absolute',
-  width: 1,
-  height: 1,
+  width: '1px',
+  height: '1px',
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
   whiteSpace: 'nowrap',
