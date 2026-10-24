@@ -171,8 +171,9 @@ die Compose-Installation in einem Netz ohne Weg nach außen. Alle Images liegen 
 das Modell ist ein OpenAI-kompatibler Dienst im selben Netz. Der Lauf meldet sich lokal an, legt eine
 Bibliothek an, nimmt ein Dokument auf und stellt eine Frage, deren Antwort das Dokument als
 Fundstelle nennt. In einer zweiten Bibliothek nimmt er eine Tabelle, eine HTML-Seite und eine Mail
-mit Anhang auf, damit auch die Verarbeitung dieser Formate ohne Weg nach außen läuft. Jede Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von
-einer fremden Adresse lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
+mit Anhang auf, damit auch die Verarbeitung dieser Formate ohne Weg nach außen läuft. Jede
+Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von einer fremden Adresse
+lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
 dass diese Erkennung greift. Das Ergebnis steht mit Version und Datum in der Zusammenfassung des
 Laufs.
 
@@ -180,8 +181,8 @@ Laufs.
 
 - **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload von Text, Tabelle,
   HTML-Seite und Mail, in einem Lauf von rund einer Minute. Weitere Formate wie PDF, Word- und
-  Präsentationsdateien und Bilder, Reranking, Transkription und zeitgesteuerte Aufgaben sind nicht Teil des Laufs, ebenso
-  Konnektoren zu Quellen, Identitätsanbieter, Mailversand und der Betrieb unter Kubernetes. Eine
+  Präsentationsdateien und Bilder, Reranking, Transkription und zeitgesteuerte Aufgaben sind nicht
+  Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter, Mailversand und der Betrieb unter Kubernetes. Eine
   eingebundene Bibliothek, die nur in einem dieser Teile nach außen ruft, bleibt unbemerkt.
 - **Modelle:** Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
   Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb.

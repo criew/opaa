@@ -105,6 +105,10 @@ nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `Targ
 Eine Liste allein veraltet unbemerkt, ein Anker am Code fällt beim Bauen auf. Der Fachtext bleibt im
 Manifest, damit Faktenblätter ihn lesen, ohne den Code zu kennen.
 
+Ein Abruf, den eine eingebundene Bibliothek von sich aus aufbaut, wird abgeschaltet. Braucht ihn eine
+Funktion, bekommt er einen Eintrag in `outbound.yaml` und eine Kennzeichnung über die Hüllklasse
+(`@DataFlowCarrier`) und ihre Aufrufer (`@DataFlow`).
+
 ### 9. Konfigurationsschlüssel und Voreinstellungen
 
 Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-configuration-processor`

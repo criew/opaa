@@ -215,8 +215,8 @@ pnpm run test:offline
 ```
 
 **Nicht abgedeckt:** ein echter Modellserver (ob er ohne Internet startet, ist dessen Sache),
-weitere Formate (PDF, Word- und Präsentationsdateien, Bilder), Reranking, Transkription, zeitgesteuerte Aufgaben,
-Konnektoren zu Quellen, Identitätsanbieter, Mailversand und Kubernetes.
+weitere Formate (PDF, Word- und Präsentationsdateien, Bilder), Reranking, Transkription,
+zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversand und Kubernetes.
 
 `.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label
 `offline-suite`; kein Required Check.

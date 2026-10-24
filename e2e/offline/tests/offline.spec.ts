@@ -115,6 +115,12 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
       formatLibraryName,
       FORMAT_DOCUMENTS.map((name) => ({ path: join(FIXTURE_DIR, name), name })),
     );
+    // The mail's attachment is its own indexed row: expanding the group shows a fourth chip.
+    const toggle = page.getByRole("button", { name: "Anhänge von formatdokument.eml anzeigen" });
+    await expect(toggle).toHaveText(/1 Anhang/);
+    await toggle.click();
+    await expect(page.getByText("formatdokument-anhang.txt", { exact: true })).toBeVisible();
+    await expect(page.getByText("indiziert", { exact: true })).toHaveCount(4, { timeout: 30_000 });
   });
 
   test("ein Verbindungsversuch nach außen wird erkannt", async () => {

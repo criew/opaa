@@ -208,7 +208,7 @@ Die Auskunft enthält:
 | Kopf | OPAA-Version, Commit des Images und Zeitpunkt des Abrufs |
 | Abweichungen von der Voreinstellung | jede Einstellung mit Datenwirkung, deren Wert in dieser Installation vom ausgelieferten abweicht |
 | Einstellungen mit Datenwirkung | alle diese Einstellungen mit Voreinstellung, wirksamem Wert und, bei Fristen aus der Verwaltung, dem Zeitpunkt der letzten Änderung |
-| Ausgehende Datenflüsse | jede Verbindung nach außen und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
+| Ausgehende Datenflüsse | jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
@@ -243,7 +243,8 @@ Pull Requests und die Drift-Routine.
 **Verbindungen eingebundener Bibliotheken.** Der Wächter liest den Code von OPAA. Eine Bibliothek,
 die von sich aus eine Verbindung aufbaut, etwa zum Abruf einer Konfiguration bei ihrem Hersteller,
 erkennt er nicht. Solche Abrufe fallen nur im Lauf ohne Internetzugang auf, und nur in dem, was er
-durchläuft; was er nicht abdeckt, steht unter den Grenzen seines Nachweises.
+durchläuft; was er nicht abdeckt, steht unter den Grenzen seines Nachweises. Bekannte Abrufe
+eingebundener Bibliotheken sind abgeschaltet.
 
 ## Behördenunterlagen
 
