@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -36,9 +37,29 @@ class AuditLogReaderStructureTest {
 
   private static final JavaClasses MAIN = MainClasses.get();
 
-  /** A query naming the table itself, not one of its monthly partitions. */
+  private static final String QUERY_KEYWORD = "\\b(?:FROM|JOIN|INTO|UPDATE)\\s+(?:ONLY\\s+)?";
+
+  /** A query naming the table itself, not one of its monthly partitions, in any letter case. */
   private static final Pattern QUERY_ON_AUDIT_LOG =
-      Pattern.compile("\\b(FROM|JOIN|INTO|UPDATE)\\s+(ONLY\\s+)?audit_log\\b");
+      Pattern.compile(QUERY_KEYWORD + "audit_log\\b", Pattern.CASE_INSENSITIVE);
+
+  /** A string literal that is the bare table name, so it can stand in a query as a constant. */
+  private static final Pattern TABLE_NAME_LITERAL =
+      Pattern.compile("\"audit_log\"", Pattern.CASE_INSENSITIVE);
+
+  /** The constant a {@link #TABLE_NAME_LITERAL} is assigned to; group 1 is its name. */
+  private static final Pattern TABLE_NAME_CONSTANT =
+      Pattern.compile("(\\w+)\\s*=\\s*\"audit_log\"", Pattern.CASE_INSENSITIVE);
+
+  /**
+   * The lines that hold the bare table name without querying it: the JPA mapping, read only through
+   * the funnel of {@link AuditFunnelStructureTest}, and the private object id of the self-log
+   * entry. Any other such literal counts as a reader.
+   */
+  private static final Set<String> NON_QUERY_TABLE_NAME_LINES =
+      Set.of(
+          "@Table(name = \"audit_log\")",
+          "private static final String AUDIT_LOG_SELF_OBJECT_ID = \"audit_log\";");
 
   @Test
   void onlyTheSelfDisclosureExporterQueriesTheAuditLogInSql() {
@@ -93,22 +114,58 @@ class AuditLogReaderStructureTest {
             MethodReferenceCaller.class.getName(), LambdaCaller.class.getName());
   }
 
+  /**
+   * The sources that query {@code audit_log}: by name in any letter case, by a constant holding the
+   * name, or by holding the name in a literal outside {@link #NON_QUERY_TABLE_NAME_LINES}.
+   */
   private static Set<String> sqlReaders(Map<String, String> sources) {
     return sources.entrySet().stream()
-        .filter(source -> QUERY_ON_AUDIT_LOG.matcher(source.getValue()).find())
+        .filter(source -> queriesTheAuditLog(source.getValue()))
         .map(Map.Entry::getKey)
         .collect(Collectors.toCollection(TreeSet::new));
   }
 
+  private static boolean queriesTheAuditLog(String source) {
+    if (QUERY_ON_AUDIT_LOG.matcher(source).find()) {
+      return true;
+    }
+    boolean literalOutsideKnownLines =
+        source
+            .lines()
+            .map(String::strip)
+            .anyMatch(
+                line ->
+                    TABLE_NAME_LITERAL.matcher(line).find()
+                        && !NON_QUERY_TABLE_NAME_LINES.contains(line));
+    if (literalOutsideKnownLines) {
+      return true;
+    }
+    Matcher constants = TABLE_NAME_CONSTANT.matcher(source);
+    while (constants.find()) {
+      Pattern queryOnConstant =
+          Pattern.compile(
+              QUERY_KEYWORD + "\"\\s*\\+\\s*(?:\\w+\\.)?" + constants.group(1) + "\\b",
+              Pattern.CASE_INSENSITIVE);
+      if (queryOnConstant.matcher(source).find()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** The classes that call {@code export} on an exporter, directly or as a method reference. */
   private static Set<String> exporterCallers(JavaClasses classes) {
     return classes.stream()
         .filter(
             type ->
-                type.getMethodCallsFromSelf().stream()
+                Stream.concat(
+                        type.getMethodCallsFromSelf().stream(),
+                        type.getMethodReferencesFromSelf().stream())
                     .anyMatch(
-                        call ->
-                            call.getName().equals("export")
-                                && call.getTargetOwner()
+                        access ->
+                            access.getName().equals("export")
+                                && access
+                                    .getTargetOwner()
                                     .isAssignableTo(SelfDisclosureExporter.class)))
         .map(JavaClass::getName)
         .collect(Collectors.toSet());
