@@ -62,12 +62,12 @@ export default function UrlSourceForm({
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zum {documentSourceTypeLabel(sourceType)}
         </Typography>
       )}
       {sourceType === 'RSS_FEED' && (
-        <Alert severity="info" sx={{ mb: 1.75 }}>
+        <Alert severity="info" sx={{ mb: 1.5 }}>
           OPAA ruft neben dem Feed auch die von ihm verlinkten Detailseiten ab. Welche Adressen das
           sind, bestimmt der Betreiber des Feeds, nicht Sie selbst.
         </Alert>
@@ -76,7 +76,7 @@ export default function UrlSourceForm({
         sx={{
           display: 'grid',
           gridTemplateColumns: isCreate ? { xs: '1fr', sm: '1fr 1fr' } : '1fr',
-          gap: '14px',
+          gap: 2,
         }}
       >
         <Box sx={{ gridColumn: '1 / -1' }}>

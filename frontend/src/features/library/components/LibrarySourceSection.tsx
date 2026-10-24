@@ -219,7 +219,7 @@ export default function LibrarySourceSection({
             {/* sourcePath/sourceUrl expose internal server paths and source URLs - the backend only
               * serves them to a caller with at least MANAGER, and
                 this whole area only renders behind the same bar. */}
-            <Stack spacing={0.75}>
+            <Stack spacing={1}>
               <LibraryConnectionPanel
                 libraryId={libraryId}
                 sourceType={library.sourceType}

@@ -148,30 +148,31 @@ export default function DropboxSourceForm({
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Ordner in Dropbox
         </Typography>
       )}
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-        <FormControlLabel
-          control={
-            <Switch
-              id={`${idPrefix}-team-space`}
-              checked={values.teamSpace}
-              onChange={(e) => onChange({ teamSpace: e.target.checked })}
-              slotProps={{ input: { 'aria-describedby': `${idPrefix}-team-space-help` } }}
-            />
-          }
-          label="Team-Bereich lesen"
-        />
-        <Typography
-          id={`${idPrefix}-team-space-help`}
-          variant="body2"
-          sx={{ mt: -1, color: 'text.secondary' }}
-        >
-          Aus: die Ordner des verbundenen Kontos. An: die Ordner des Team-Bereichs, wenn das Konto
-          zu einem Dropbox-Team gehört.
-        </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                id={`${idPrefix}-team-space`}
+                checked={values.teamSpace}
+                onChange={(e) => onChange({ teamSpace: e.target.checked })}
+                slotProps={{ input: { 'aria-describedby': `${idPrefix}-team-space-help` } }}
+              />
+            }
+            label="Team-Bereich lesen"
+          />
+          <Typography
+            id={`${idPrefix}-team-space-help`}
+            sx={{ fontSize: 12, color: 'text.secondary' }}
+          >
+            Aus: die Ordner des verbundenen Kontos. An: die Ordner des Team-Bereichs, wenn das Konto
+            zu einem Dropbox-Team gehört.
+          </Typography>
+        </Box>
         <Box>
           <FieldLabel htmlFor={`${idPrefix}-folders`}>Ordner</FieldLabel>
           <TextField

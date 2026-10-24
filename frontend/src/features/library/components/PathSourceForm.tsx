@@ -27,7 +27,7 @@ export default function PathSourceForm({ mode, idPrefix, values, onChange }: Pat
   return (
     <Box>
       {mode === 'create' && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zum Dateisystem
         </Typography>
       )}

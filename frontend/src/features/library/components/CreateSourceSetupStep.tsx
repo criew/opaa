@@ -114,7 +114,7 @@ export default function CreateSourceSetupStep({
 
       {/* Schedule and immediate start apply to every connector type. */}
       <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Zeitplan
         </Typography>
         <LibraryScheduleForm

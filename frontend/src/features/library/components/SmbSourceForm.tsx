@@ -166,7 +166,7 @@ export default function SmbSourceForm({
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zur Dateifreigabe
         </Typography>
       )}
@@ -174,7 +174,7 @@ export default function SmbSourceForm({
         sx={{
           display: 'grid',
           gridTemplateColumns: isCreate ? { xs: '1fr', sm: '1fr 1fr' } : '1fr',
-          gap: '14px',
+          gap: 2,
         }}
       >
         <Box sx={{ gridColumn: '1 / -1' }}>

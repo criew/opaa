@@ -305,7 +305,7 @@ export default function S3SourceForm({
     <Stack spacing={2.5}>
       {/* Stage 1: provider template and connection */}
       <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zum Objektspeicher
         </Typography>
         {/* Under a profile the endpoint comes from the profile, so no template applies. */}
@@ -340,9 +340,7 @@ export default function S3SourceForm({
             Push ist dort nicht möglich) und Verschlüsselung nur als SSE-C.
           </Alert>
         )}
-        <Box
-          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
-        >
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
           <Box>
             <FieldLabel htmlFor={`${idPrefix}-region`}>
               {values.provider === 'HETZNER' ? 'Standort (Region)' : 'Region'}
@@ -415,12 +413,10 @@ export default function S3SourceForm({
       {/* Stage 2: the static key */}
       {connection.asksSecret && (
         <Box>
-          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
             Zugangsdaten
           </Typography>
-          <Box
-            sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
-          >
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <Box>
               <FieldLabel htmlFor={`${idPrefix}-access-key`}>
                 {mode === 'edit' && credentialsStored ? 'Neuer Access Key' : 'Access Key'}
@@ -523,7 +519,7 @@ export default function S3SourceForm({
               <ListItem
                 key={index}
                 disableGutters
-                sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 1.5, py: 0.75 }}
+                sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 1.5, py: 1 }}
               >
                 <Box>
                   <FieldLabel htmlFor={`${idPrefix}-scope-${index}-bucket`}>
@@ -605,7 +601,7 @@ export default function S3SourceForm({
             {loadingBuckets ? 'Buckets werden geladen …' : 'Buckets laden'}
           </BusyButton>
         </Stack>
-        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
+        <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
           {`${values.scopes.length} von höchstens ${MAX_S3_SCOPES} Bereichen.`}
           {mode === 'edit' &&
             ' Ein entfernter Bereich verschwindet mit dem nächsten Lauf aus dem Index; jede Änderung der Bereiche verwirft den Wiederaufnahmestand.'}
@@ -629,7 +625,7 @@ export default function S3SourceForm({
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: '14px',
+              gap: 2,
             }}
           >
             <Box>
