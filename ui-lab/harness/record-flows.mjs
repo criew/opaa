@@ -3,13 +3,17 @@
  * UI-Lab videos: records click paths through the frontend in MSW mock mode as MP4.
  *
  *   node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
- *        [--flows flows/library-videos.mjs] [--only name,name] [--scheme light|dark]
- *        [--width 1280] [--height 800] [--pause 700] [--keep-webm] [--chromium <path>]
+ *        [--flows flows/library-videos.mjs] [--types a,b] [--kinds ok,viele,fehler]
+ *        [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
+ *        [--chromium <path>]
  *
- * A flows module exports `videos`: [{ name, type, scenario, run(h) }]; `type` is the area the video
- * belongs to on the comparison page (build_site.py). Each video gets its own browser
+ * The video matrix: a flows module exports `TYPES` (the areas, e.g. connectors), `KINDS` (kind ->
+ * mock scenario, by default ok -> small, viele -> scale, fehler -> failed) and one
+ * `run(h, { type, kind, scenario })` that plays the flow of a type in that kind. Every
+ * type × kind becomes <type>__<kind>__<scheme>.mp4. Each video gets its own browser
  * context (scheme set before the first load) with Playwright's recordVideo, a visible mouse
- * pointer with a click ring, and an optional caption line. `h` moves the pointer to an element
+ * pointer with a click ring, and an optional caption line. `h` (goto, click, type, visible, pause,
+ * caption) moves the pointer to an element
  * before every click, pauses between steps and never throws on a missing element; a missing
  * element is logged and the step skipped. ffmpeg (PATH or FFMPEG) turns the WebM into H.264 MP4;
  * <out>/manifest.json lists every video with name, type, scenario and scheme.
@@ -48,7 +52,8 @@ function parseArgs(argv) {
     if (a === '--base') args.base = next().replace(/\/$/, '')
     else if (a === '--out') args.out = path.resolve(next())
     else if (a === '--flows') args.flows = path.resolve(next())
-    else if (a === '--only') args.only = next().split(',')
+    else if (a === '--types') args.types = next().split(',')
+    else if (a === '--kinds') args.kinds = next().split(',')
     else if (a === '--scheme') args.scheme = next()
     else if (a === '--width') args.width = count(a, next())
     else if (a === '--height') args.height = count(a, next())
@@ -119,7 +124,14 @@ function helpers(page, args, log) {
   }
   const h = {
     page,
+    out: args.out,
+    log,
     pause: (ms = args.pause) => sleep(ms),
+    /** Whether the target is visible within `timeout` ms. */
+    async visible(target, timeout = 1500) {
+      const locator = typeof target === 'string' ? page.locator(target) : target
+      return locator.first().waitFor({ state: 'visible', timeout }).then(() => true, () => false)
+    },
     async goto(p) {
       await page.goto(`${args.base}${p}`, { waitUntil: 'domcontentloaded' })
       await settle(page, 600)
@@ -169,15 +181,22 @@ function helpers(page, args, log) {
 
 function toMp4(webm, mp4) {
   const ffmpeg = process.env.FFMPEG || 'ffmpeg'
-  execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', webm, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '30', '-movflags', '+faststart', mp4])
+  execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', webm, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '28', '-movflags', '+faststart', mp4])
 }
 
 const ARGS = parseArgs(process.argv.slice(2))
 const T0 = Date.now()
 const log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0).padStart(5)}s]`, ...a)
-const { videos } = await import(pathToFileURL(ARGS.flows).href)
-const chosen = ARGS.only ? videos.filter((v) => ARGS.only.includes(v.name)) : videos
-if (!chosen.length) throw new Error(`no video selected; known: ${videos.map((v) => v.name).join(', ')}`)
+const flows = await import(pathToFileURL(ARGS.flows).href)
+const KINDS = flows.KINDS ?? { ok: 'small', viele: 'scale', fehler: 'failed' }
+const pick = (wanted, known, what) => {
+  const unknown = (wanted ?? []).filter((x) => !known.includes(x))
+  if (unknown.length) throw new Error(`unknown ${what} ${unknown.join(',')}; known: ${known.join(', ')}`)
+  return wanted ?? known
+}
+const types = pick(ARGS.types, flows.TYPES, 'type(s)')
+const kinds = pick(ARGS.kinds, Object.keys(KINDS), 'kind(s)')
+const chosen = types.flatMap((type) => kinds.map((kind) => ({ name: `${type}__${kind}`, type, kind, scenario: KINDS[kind] })))
 fs.mkdirSync(ARGS.out, { recursive: true })
 const raw = path.join(ARGS.out, '.webm')
 const browser = await launch(ARGS.chromium)
@@ -185,7 +204,7 @@ const done = []
 const manifestFile = path.join(ARGS.out, 'manifest.json')
 const manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : []
 for (const video of chosen) {
-  log(`== ${video.name} (${video.scenario ?? 'default'}, ${ARGS.scheme})`)
+  log(`== ${video.name} (${video.scenario}, ${ARGS.scheme})`)
   const context = await schemeContext(browser, ARGS.scheme, {
     width: ARGS.width,
     recordVideo: { dir: raw, size: { width: ARGS.width, height: ARGS.height } },
@@ -195,7 +214,7 @@ for (const video of chosen) {
   await page.setViewportSize({ width: ARGS.width, height: ARGS.height })
   const h = helpers(page, ARGS, log)
   try {
-    await video.run(h, { scenario: video.scenario ?? 'default' })
+    await flows.run(h, { type: video.type, kind: video.kind, scenario: video.scenario })
     await h.pause(1200)
   } catch (e) {
     log(`  error: ${String(e.message).split('\n')[0]}`)
@@ -213,7 +232,7 @@ for (const video of chosen) {
     if (ARGS.keepWebm) fs.renameSync(webm, mp4.replace(/\.mp4$/, '.webm'))
     else fs.rmSync(webm)
     done.push(path.basename(mp4))
-    const entry = { file: path.basename(mp4), name: video.name, type: video.type ?? null, scenario: video.scenario ?? 'default', scheme: ARGS.scheme }
+    const entry = { file: path.basename(mp4), name: video.name, type: video.type, kind: video.kind, scenario: video.scenario, scheme: ARGS.scheme }
     manifest.splice(0, manifest.length, ...manifest.filter((m) => m.file !== entry.file), entry)
     log(`  -> ${mp4}`)
   } catch (e) {

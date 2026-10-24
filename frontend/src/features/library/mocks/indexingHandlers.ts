@@ -4,7 +4,9 @@ import {
   mockIndexingIdle,
   mockIndexingCompleted,
 } from './indexingFixtures'
-import { scenarioIndexingRuns } from './libraryScenarioFixtures'
+import { applyLibraryScenario, scenarioIndexingRuns } from './libraryScenarioFixtures'
+import { runningStatus, unlistedKeysOf } from './detailScenarioFixtures'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
 import { mockSearchStatus } from '../../search-admin/mocks/searchAdminFixtures'
 import { mockLibraryDetails, mockSourceTypes } from './libraryFixtures'
 import type { IndexingStatusResponse, PushSecretResponse } from '@/shared/api/types'
@@ -157,6 +159,35 @@ export const indexingHandlers = [
 
   http.get('/api/v1/libraries/:libraryId/indexing/status', ({ params }) => {
     const libraryId = params.libraryId as string
+    // the `slow` scenario keeps a run going on every connected library, for the head and „Läufe“
+    if (!indexingActive && currentMockScenario() === 'slow') {
+      const library = mockLibraryDetails[libraryId]
+      if (library && library.sourceType !== 'UPLOAD') {
+        return HttpResponse.json(runningStatus(libraryId, library.sourceType === 'RSS_FEED'))
+      }
+    }
+    // under a scenario the status reports the newest run of the history, as the backend does
+    if (!indexingActive && currentMockScenario() !== 'default') {
+      applyLibraryScenario()
+      const newest = scenarioIndexingRuns(libraryId).runs[0]
+      const library = mockLibraryDetails[libraryId]
+      if (newest && library) {
+        return HttpResponse.json({
+          libraryId,
+          status: newest.status,
+          documentCount: newest.documentCount,
+          totalDocuments: newest.totalDocuments,
+          documentsSkipped: newest.documentsSkipped,
+          documentsFailed: newest.documentsFailed,
+          documentsIndexedTotal: newest.documentsIndexedTotal,
+          message: newest.message,
+          failureCategory: newest.failureCategory,
+          incomplete: newest.incomplete,
+          unlistedScopeKeys: currentMockScenario() === 'partial' ? unlistedKeysOf(library) : null,
+          timestamp: newest.completedAt ?? newest.startedAt,
+        } satisfies IndexingStatusResponse)
+      }
+    }
     if (!indexingActive) {
       return HttpResponse.json({ ...mockIndexingIdle, libraryId })
     }
@@ -171,8 +202,9 @@ export const indexingHandlers = [
     return HttpResponse.json({ ...getRunningStatus(indexingPollCount), libraryId })
   }),
 
-  http.get('/api/v1/libraries/:libraryId/indexing/runs', () => {
-    return HttpResponse.json(scenarioIndexingRuns())
+  http.get('/api/v1/libraries/:libraryId/indexing/runs', ({ params }) => {
+    applyLibraryScenario()
+    return HttpResponse.json(scenarioIndexingRuns(String(params.libraryId)))
   }),
 
   // The fixture is static, so the remaining work is counted down here: every call processes one

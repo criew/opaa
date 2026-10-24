@@ -1,6 +1,7 @@
 import type { IndexingRunListResponse, LibraryResponse } from '@/shared/api/types'
 import {
   LONG_COMPOUND,
+  currentMockRole,
   currentMockScenario,
   generate,
   scenarioName,
@@ -8,7 +9,19 @@ import {
 } from '@/shared/mocks/mockScenario'
 import { mockIndexingRuns } from './indexingFixtures'
 import { scenarioSpaces, siteName } from './sourceScenarioMock'
-import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
+import {
+  mockLibraries,
+  mockLibraryDetails,
+  mockLibraryDocuments,
+  mockLibraryFolders,
+} from './libraryFixtures'
+import { mockLibraryGrants } from '@/features/asset/mocks/assetFixtures'
+import {
+  detailLabLibraries,
+  scenarioDocuments,
+  scenarioFolders,
+  scenarioGrants,
+} from './detailScenarioFixtures'
 import { SOURCE_LIBRARY_IDS, SOURCE_LIBRARY_LAST_INDEXED } from './sourceLibraryFixtures'
 
 /**
@@ -140,7 +153,6 @@ function overlayFor(scenario: MockScenario, id: string): Overlay | null {
       return (library) => ({
         ...SCALE[id]?.(library),
         name: `${library.name} ${LONG_LIBRARY_SUFFIX}`.slice(0, 120),
-        documentCount: 18342,
       })
     case 'small':
       return SMALL[id] ?? null
@@ -154,106 +166,217 @@ function overlayFor(scenario: MockScenario, id: string): Overlay | null {
 }
 
 const originals = new Map<string, LibraryResponse>()
-let applied: MockScenario = 'default'
+let applied = 'default'
+
+/** The private fixture library; the scenarios give it documents and runs like the others. */
+const PRIVATE_LIBRARY_ID = 'library-private-ablage'
+
+/** Registers the detail lab's own libraries (upload, web directory, feed) once. */
+function registerLabLibraries() {
+  for (const detail of detailLabLibraries()) {
+    if (mockLibraryDetails[detail.id]) continue
+    mockLibraryDetails[detail.id] = detail
+    mockLibraries.push({
+      id: detail.id,
+      name: detail.name,
+      description: detail.description,
+      ownerType: detail.ownerType,
+      reach: detail.reach,
+      myRole: detail.myRole,
+      sourceType: detail.sourceType,
+      lastIndexedAt: detail.sourceType === 'UPLOAD' ? undefined : SOURCE_LIBRARY_LAST_INDEXED,
+      documentCount: 0,
+      createdAt: detail.createdAt,
+      updatedAt: detail.updatedAt,
+    })
+  }
+}
 
 /**
- * Brings the connected-library fixtures in line with the active scenario; cheap to call from every
- * handler that reads libraries. Switching scenarios restores the regular fixtures first.
+ * Brings the fixture libraries in line with the active scenario and `?mockRole=`; cheap to call
+ * from every handler that reads libraries. Switching scenarios restores the regular fixtures
+ * first. Outside `default` it also fills documents, folders and grants (detailScenarioFixtures).
  */
 export function applyLibraryScenario(): void {
   const scenario = currentMockScenario()
-  if (scenario === applied) return
-  for (const id of Object.values(SOURCE_LIBRARY_IDS)) {
+  const role = currentMockRole()
+  const key = `${scenario}/${role ?? ''}`
+  if (key === applied) return
+  if (scenario !== 'default' || role) registerLabLibraries()
+  const ids = [
+    ...Object.values(SOURCE_LIBRARY_IDS),
+    ...detailLabLibraries().map((library) => library.id),
+    PRIVATE_LIBRARY_ID,
+  ]
+  for (const id of ids) {
     const current = mockLibraryDetails[id]
     if (!current) continue
     if (!originals.has(id)) originals.set(id, structuredClone(current))
     const original = structuredClone(originals.get(id)!)
     const overlay = overlayFor(scenario, id)
-    const next = overlay ? { ...original, ...overlay(original) } : original
+    const next: LibraryResponse = overlay ? { ...original, ...overlay(original) } : original
+    if (role && !next.privateLibrary) next.myRole = role
+    const documents = scenarioDocuments(next, scenario)
+    if (documents) {
+      mockLibraryDocuments[id] = documents
+      next.documentCount = documents.length
+    }
+    const folders = scenarioFolders(next, scenario)
+    if (folders) mockLibraryFolders[id] = folders
+    const grants = scenarioGrants(scenario)
+    if (grants && !next.privateLibrary) mockLibraryGrants[id] = grants
     mockLibraryDetails[id] = next
     const listed = mockLibraries.find((entry) => entry.id === id)
     if (listed) {
       listed.name = next.name
+      listed.myRole = next.myRole
       listed.documentCount = next.documentCount ?? 0
-      listed.lastIndexedAt = scenario === 'empty' ? undefined : SOURCE_LIBRARY_LAST_INDEXED
+      if (next.sourceType !== 'UPLOAD') {
+        listed.lastIndexedAt = scenario === 'empty' ? undefined : SOURCE_LIBRARY_LAST_INDEXED
+      }
     }
   }
-  applied = scenario
+  applied = key
 }
 
-const EVENT_MESSAGES = [
-  'Vom Quellserver abgewiesen (HTTP 403)',
-  'Dateiformat wird nicht unterstützt (application/x-msaccess)',
-  'Datei ist größer als 200 MB und wurde übersprungen',
-  'Zeitüberschreitung beim Abruf (30 Sekunden)',
+const EVENT_KINDS: Array<{
+  category: IndexingRunListResponse['runs'][number]['events'][number]['category']
+  message: string
+}> = [
+  { category: 'REJECTED', message: 'Vom Quellserver abgewiesen (HTTP 403)' },
+  {
+    category: 'UNSUPPORTED_FORMAT',
+    message: 'Dateiformat wird nicht unterstützt (application/x-msaccess)',
+  },
+  { category: 'ERROR', message: 'Datei ist größer als 200 MB und wurde übersprungen' },
+  { category: 'UNREACHABLE', message: 'Zeitüberschreitung beim Abruf (30 Sekunden)' },
+  { category: 'REMOVED', message: 'In der Quelle gelöscht, aus dem Bestand entfernt' },
+  { category: 'RATE_LIMITED', message: 'Die Quelle hat gedrosselt, Abruf wiederholt' },
 ]
 
-function run(
-  i: number,
-  status: 'COMPLETED' | 'FAILED',
-  failed: number,
-  events: number,
-  message: string,
-): IndexingRunListResponse['runs'][number] {
-  const started = new Date(Date.UTC(2026, 9, 24 - i, 4, 0)).toISOString()
-  const completed = new Date(Date.UTC(2026, 9, 24 - i, 4, 7)).toISOString()
-  const shown = Math.min(events, 20)
+/** The backend keeps at most this many events per run (IndexingRunEventRecorder). */
+const EVENT_CAP = 500
+
+type Run = IndexingRunListResponse['runs'][number]
+
+interface RunSpec {
+  status: 'COMPLETED' | 'FAILED' | 'RUNNING'
+  failed?: number
+  events?: number
+  message?: string
+  failureCategory?: string
+  incomplete?: boolean
+  unreadableScopeCount?: number
+  minutes?: number
+}
+
+function run(i: number, spec: RunSpec): Run {
+  const started = new Date(Date.UTC(2026, 9, 24 - i, 4, 0))
+  const minutes = spec.minutes ?? 7
+  const completed = new Date(started.getTime() + minutes * 60_000)
+  const events = spec.events ?? 0
+  const shown = Math.min(events, EVENT_CAP)
+  const failed = spec.failed ?? 0
+  const ended = spec.status === 'FAILED'
+  const total = ended ? 0 : 1340
   return {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
-    status,
+    status: spec.status,
     triggeredBy: i % 3 === 0 ? 'MANUAL' : 'SCHEDULED',
     runMode: i % 7 === 0 ? 'FULL' : 'INCREMENTAL',
-    documentCount: status === 'FAILED' ? 0 : 214 - failed,
-    totalDocuments: status === 'FAILED' ? 0 : 214,
-    documentsSkipped: 3,
+    documentCount: ended ? 0 : total - failed - 3,
+    totalDocuments: total,
+    documentsSkipped: ended ? 0 : 3,
     documentsFailed: failed,
-    documentsIndexedTotal: status === 'FAILED' ? 0 : 214 - failed,
-    message,
-    startedAt: started,
-    completedAt: completed,
-    events: generate(shown, (e) => ({
-      category: e % 2 === 0 ? 'REJECTED' : 'UNREACHABLE',
-      message: EVENT_MESSAGES[e % EVENT_MESSAGES.length],
-      reference: `/Projekte/${scenarioName('Vorgang', e)}/Anlage-${e}.pdf`,
-    })),
+    documentsIndexedTotal: ended ? 0 : total - failed - 3,
+    message: spec.message ?? 'Indizierung abgeschlossen',
+    failureCategory: spec.failureCategory ?? null,
+    incomplete: spec.incomplete ?? null,
+    unreadableScopeCount: spec.unreadableScopeCount ?? null,
+    startedAt: started.toISOString(),
+    completedAt: spec.status === 'RUNNING' ? null : completed.toISOString(),
+    metrics: {
+      requestsSent: 1842 + i,
+      throttleCount: i % 4 === 0 ? 3 : 0,
+      throttleWaitSeconds: i % 4 === 0 ? 45 : 0,
+      attachmentsProcessed: 120,
+      attachmentsSkipped: 4,
+      attachmentsFailed: failed > 0 ? 2 : 0,
+      bytesDownloaded: 734 * 1024 ** 2,
+    },
+    events: generate(shown, (e) => {
+      // a run without failures records only removals and throttling
+      const kinds = failed > 0 || ended ? EVENT_KINDS : EVENT_KINDS.slice(4)
+      const kind = kinds[e % kinds.length]
+      return {
+        ...kind,
+        reference: `/Projekte/${scenarioName('Vorgang', e)}/Anlage-${e}.pdf`,
+      }
+    }),
     eventsTruncatedCount: events - shown,
   }
 }
 
-/** The run history of a library under the active scenario. */
-export function scenarioIndexingRuns(): IndexingRunListResponse {
-  switch (currentMockScenario()) {
+const REFUSED = 'Lauf abgebrochen: Die Quelle hat die Anmeldung abgelehnt (HTTP 401).'
+
+/** The run history of a library under the active scenario; an upload library has none. */
+export function scenarioIndexingRuns(libraryId?: string): IndexingRunListResponse {
+  const scenario = currentMockScenario()
+  if (
+    scenario !== 'default' &&
+    libraryId &&
+    mockLibraryDetails[libraryId]?.sourceType === 'UPLOAD'
+  ) {
+    return { runs: [] }
+  }
+  switch (scenario) {
+    case 'small':
+      return { runs: [run(1, { status: 'COMPLETED' }), run(2, { status: 'COMPLETED', events: 1 })] }
     case 'scale':
+      // the full retention: ten runs, one at the event cap, mixed outcomes
       return {
-        runs: generate(10, (i) =>
-          run(i, 'COMPLETED', i % 2 ? 12 : 0, i % 2 ? 140 : 3, 'Indizierung abgeschlossen'),
-        ),
+        runs: generate(10, (i) => {
+          if (i === 1)
+            return run(i, { status: 'COMPLETED', failed: 38, events: 1740, minutes: 192 })
+          if (i === 4)
+            return run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'AUTH' })
+          if (i === 6) {
+            return run(i, {
+              status: 'COMPLETED',
+              incomplete: true,
+              unreadableScopeCount: 4,
+              events: 26,
+            })
+          }
+          return run(i, { status: 'COMPLETED', failed: i % 2 ? 12 : 0, events: i % 2 ? 140 : 3 })
+        }),
       }
     case 'empty':
       return { runs: [] }
     case 'failed':
       return {
         runs: generate(3, (i) =>
-          run(
-            i,
-            'FAILED',
-            0,
-            0,
-            'Lauf abgebrochen: Die Quelle hat die Anmeldung abgelehnt (HTTP 401).',
-          ),
+          run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'AUTH' }),
         ),
       }
     case 'partial':
       return {
         runs: [
-          run(
-            1,
-            'COMPLETED',
-            17,
-            17,
-            'Indizierung abgeschlossen: 197 verarbeitet, 17 fehlgeschlagen',
-          ),
-          run(2, 'COMPLETED', 0, 0, 'Indizierung abgeschlossen'),
+          run(1, {
+            status: 'COMPLETED',
+            failed: 17,
+            events: 17,
+            unreadableScopeCount: 2,
+            message: 'Indizierung abgeschlossen: 1320 verarbeitet, 17 fehlgeschlagen',
+          }),
+          run(2, { status: 'COMPLETED' }),
+        ],
+      }
+    case 'slow':
+      return {
+        runs: [
+          run(0, { status: 'RUNNING', events: 4 }),
+          run(1, { status: 'COMPLETED', events: 2 }),
         ],
       }
     default:

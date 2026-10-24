@@ -3,7 +3,7 @@
  * UI-Lab capture: screenshots and metrics of the frontend in MSW mock mode.
  *
  *   node ui-lab/capture.mjs --base http://localhost:5191 --out <dir>
- *        [--flow libraries|pages] [--pages /spaces,/admin/users]
+ *        [--flow libraries|pages|library-detail] [--pages /spaces,/admin/users]
  *        [--types filesystem,confluence,...] [--scenarios small,scale,...]
  *        [--schemes light,dark] [--widths 1280,320] [--areas wizard,review,detail,edit]
  *        [--quick] [--no-axe] [--no-full] [--concurrency 2] [--chromium <path>]
@@ -21,7 +21,7 @@ import { launch, schemeContext } from './lib/browser.mjs'
 import { createRecorder } from './lib/measure.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const FLOWS = ['libraries', 'pages']
+const FLOWS = ['libraries', 'pages', 'library-detail']
 
 function parseArgs(argv) {
   const args = { base: 'http://localhost:5191', out: path.join(HERE, 'out'), flow: 'libraries' }

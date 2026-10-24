@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import { currentMockRole } from './mockScenario'
 import { mockAuthConfig, mockLocalAccount, mockLocalTokenResponse, mockUser } from './authFixtures'
 
 export const authHandlers = [
@@ -87,7 +88,8 @@ export const authHandlers = [
     return HttpResponse.json({ ...mockLocalTokenResponse, passwordChangeRequired: false })
   }),
 
+  // a role override (`?mockRole=`) takes the system administration away, else it would override it
   http.get('/api/v1/auth/me', () => {
-    return HttpResponse.json(mockUser)
+    return HttpResponse.json(currentMockRole() ? { ...mockUser, systemRole: 'USER' } : mockUser)
   }),
 ]

@@ -47,6 +47,35 @@ export function currentMockScenario(): MockScenario {
   }
 }
 
+/** The caller's role on the fixture libraries, chosen with `?mockRole=<role>` next to the scenario. */
+export const MOCK_ROLES = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER'] as const
+
+export type MockRole = (typeof MOCK_ROLES)[number]
+
+const ROLE_STORAGE_KEY = 'opaa.mockRole'
+
+/**
+ * The role override of the mock mode: `?mockRole=viewer` (any case) is remembered in this tab's
+ * sessionStorage like the scenario, `?mockRole=default` drops it. Null keeps each fixture's own
+ * role; tests never set it.
+ */
+export function currentMockRole(): MockRole | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const fromQuery = new URLSearchParams(window.location.search).get('mockRole')?.toUpperCase()
+    if (fromQuery === 'DEFAULT') window.sessionStorage.removeItem(ROLE_STORAGE_KEY)
+    else if (fromQuery && (MOCK_ROLES as readonly string[]).includes(fromQuery)) {
+      window.sessionStorage.setItem(ROLE_STORAGE_KEY, fromQuery)
+    }
+    const stored = window.sessionStorage.getItem(ROLE_STORAGE_KEY)
+    return stored && (MOCK_ROLES as readonly string[]).includes(stored)
+      ? (stored as MockRole)
+      : null
+  } catch {
+    return null
+  }
+}
+
 /** Latency of listings and connection tests in the `slow` scenario. */
 export const SLOW_SCENARIO_DELAY_MS = 3000
 

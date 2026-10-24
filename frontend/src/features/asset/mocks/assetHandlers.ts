@@ -4,6 +4,9 @@ import { mockPromptLibraries } from '@/features/prompt/mocks/promptLibraryFixtur
 import { mockUser } from '@/shared/mocks/authFixtures'
 import { mockSpaceDetails } from '@/features/space/mocks/spaceFixtures'
 import { mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
+import { applyLibraryScenario } from '@/features/library/mocks/libraryScenarioFixtures'
+import { scenarioSpaces } from '@/features/library/mocks/detailScenarioFixtures'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
 import {
   associationListOf,
   mockSpaceAssetAssociations,
@@ -127,8 +130,23 @@ export const assetHandlers = [
   // hiddenCount stays 0 because no mock space is PRIVATE-without-membership.
   http.get('/api/v1/assets/:assetType/:assetId/spaces', ({ params }) => {
     const assetId = String(params.assetId)
+    applyLibraryScenario()
     if (!mockAssetOf(String(params.assetType), assetId)) {
       return HttpResponse.json({ error: 'Asset nicht gefunden' }, { status: 404 })
+    }
+    // a fixture scenario answers with its own spaces for a library (detailScenarioFixtures)
+    const seeded =
+      String(params.assetType) === 'KNOWLEDGE_LIBRARY'
+        ? scenarioSpaces(currentMockScenario())
+        : null
+    if (seeded) {
+      const items = seeded.map((space) => ({
+        ...space,
+        createdByUserId: mockUser.id,
+        createdAt: '2026-09-12T08:00:00Z',
+        narrowerReaderCircle: false,
+      }))
+      return HttpResponse.json({ items, hiddenCount: 0 })
     }
     const spaces = Object.entries(mockSpaceAssetAssociations)
       .filter(([, list]) => list.items.some((item) => item.assetId === assetId))
@@ -147,6 +165,7 @@ export const assetHandlers = [
 
   http.get('/api/v1/assets/:assetType/:libraryId/grants', ({ params }) => {
     const libraryId = String(params.libraryId)
+    applyLibraryScenario()
     const assetType = String(params.assetType)
     if (!mockAssetOf(assetType, libraryId)) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })

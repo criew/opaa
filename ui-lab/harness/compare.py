@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Side-by-side comparison sheets and a metrics summary for capture.mjs runs.
 
-    python3 compare.py --variants A=<dir>,B=<dir>,... --out <dir>
+    .venv/bin/python -I ui-lab/compare.py --variants A=<dir>,B=<dir>,... --out <dir>
                        [--full] [--cell-width 560] [--max-height 2400] [--filter <substring>]
 
 Per screen key (file name without extension, identical across variants) one JPEG sheet in
@@ -151,6 +151,10 @@ def summarize(rows, run):
     s['Schriftgrößen (Median)'] = med([r.get('fontSizes') for r in light])
     s['Textfarben (Median)'] = med([r.get('colors') for r in light])
     s['Wörter im Hauptbereich (Median)'] = med([r.get('words') for r in light])
+    s['Bedienwörter ohne Daten (Median, small)'] = med([r.get('uiWords') for r in light if r.get('scenario') in ('small', 'default')])
+    for key, label in (('helpTextsPerForm', 'Hilfetexte je Formular'), ('helpTextLines', 'Hilfetext > 1 Zeile'), ('uiWords', 'Bedienwörter')):
+        s[f'Über Budget: {label} (Shots)'] = sum(1 for r in ok if key in (r.get('budgetViolations') or []))
+    s['Schema nicht wie angefordert (Shots)'] = sum(1 for r in ok if r.get('appliedScheme') and r.get('appliedScheme') != r.get('scheme'))
     s['Fokussierbare Elemente (Median)'] = med([r.get('focusable') for r in light])
     s['Dokumenthöhe 1280 px (Median)'] = med([r.get('docHeight') for r in light if r.get('width') == 1280])
     s['Dokumenthöhe 1280 px (Max)'] = max([r.get('docHeight') or 0 for r in light if r.get('width') == 1280] or [0])

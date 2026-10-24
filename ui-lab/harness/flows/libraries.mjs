@@ -121,87 +121,14 @@ async function triggerListings(page, { slow }) {
   return clicked
 }
 
-const SELECT_LINK = /auswählen …$/
-
-/**
- * Variant F: summary rows. „Ändern Umfang“ opens the scope row (SharePoint: straight into the
- * selection dialog); the radio pair goes to „Nur ausgewählte“, then inline checkboxes or the dialog.
- */
-async function fillScopeRowsF(page, type, scenario, ctx) {
-  if (!(await page.locator('[data-row]').count().catch(() => 0))) return false
-  const slow = scenario === 'slow'
-  const many = scenario === 'scale' ? 12 : 2
-  const row = page.locator('[data-row$="-row-scope"]')
-  if (!(await firstVisible(row.getByRole('radio')))) await clickButton(page, /^Ändern Umfang$/, { wait: 900 })
-  if (type === 'filesystem') {
-    await fillByLabel(page, [/^Ausschlussmuster/], 'Archiv/**\n**/*.tmp')
-    return true
-  }
-  if (type !== 'sharepoint') {
-    const some = await firstVisible(row.getByRole('radio', { name: /^Nur ausgewählte/ }))
-    if (some && scenario !== 'empty') await some.click().catch(() => {})
-    await sleep(slow ? 900 : 1100)
-    if (slow) return true
-    const boxes = row.getByRole('group').getByRole('checkbox')
-    if ((await boxes.count().catch(() => 0)) > 0 && scenario !== 'scale') {
-      let picked = 0
-      for (let i = 0; i < (await boxes.count()) && picked < many; i++) {
-        const b = boxes.nth(i)
-        if ((await b.isChecked().catch(() => true)) || !(await b.isEnabled().catch(() => false))) continue
-        await b.click().catch(() => {})
-        picked++
-      }
-      return true
-    }
-    const link = await firstVisible(row.getByRole('button', { name: SELECT_LINK }))
-    if (!link) return true
-    await link.click().catch(() => {})
-  }
-  await settle(page, slow ? 100 : 500)
-  const dialog = () => page.getByRole('dialog').last()
-  if (slow || scenario === 'failed' || scenario === 'empty') {
-    if (!slow) await settle(page, 300)
-    await ctx.shoot('wizard-select')
-    if (!slow) await clickButton(page, /^Abbrechen$/, { wait: 400 })
-    return true
-  }
-  const open = () => firstVisible(dialog().getByRole('button', { name: /^„.*“ öffnen$/ }))
-  if (type === 'sharepoint') {
-    const site = await open()
-    if (site) {
-      await site.click().catch(() => {})
-      await settle(page, 500)
-    }
-    if (scenario === 'scale') {
-      await selectSome(page, 2)
-      const lib = await open()
-      if (lib) {
-        await lib.click().catch(() => {})
-        await settle(page, 400)
-      }
-    }
-  }
-  if (scenario === 'scale' && ['nextcloud', 'smb', 'dropbox', 's3'].includes(type)) {
-    const deeper = await open()
-    if (deeper) {
-      await deeper.click().catch(() => {})
-      await settle(page, 400)
-    }
-  }
-  await selectSome(page, many)
-  await sleep(200)
-  await ctx.shoot('wizard-select')
-  if (scenario !== 'partial') await clickButton(page, /^Übernehmen$/, { wait: 500 })
-  return true
-}
-
-export async function fillSource(page, type, scenario, ctx) {
+export async function fillSource(page, type, scenario) {
   const slow = scenario === 'slow'
   const many = scenario === 'scale' ? 12 : 2
   switch (type) {
     case 'filesystem':
-      await fillByLabel(page, [/^Verzeichnis/, /Verzeichnispfad/, /Pfad/], '/srv/opaa/sozialamt')
-            break
+      await fillByLabel(page, [/Verzeichnispfad/, /Pfad/], '/srv/opaa/sozialamt')
+      await fillByLabel(page, [/Ausschlussmuster/, /Ausschl/], 'Archiv/**\n**/*.tmp')
+      break
     case 'confluence':
       await fillByLabel(page, [/Adresse der Confluence/, /Adresse/, /URL/], 'https://rheinfurt.atlassian.net/wiki')
       await clickButton(page, /^(Edition erkennen|Adresse prüfen|Prüfen)$/, { wait: 800 })
@@ -233,19 +160,18 @@ export async function fillSource(page, type, scenario, ctx) {
       await settle(page, 200)
       break
     case 'nextcloud':
-      await fillByLabel(page, [/^Adresse$/, /Adresse der Nextcloud/], 'https://cloud.rheinfurt.example')
-      await fillByLabel(page, [/^Benutzername/, /Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
+      await fillByLabel(page, [/Adresse der Nextcloud/, /Adresse/], 'https://cloud.rheinfurt.example')
+      await fillByLabel(page, [/Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
       await fillByLabel(page, [/App-Passwort/, /Passwort/], 'app-passwort')
       break
     case 'smb':
-      await fillByLabel(page, [/^Adresse$/, /Adresse der Freigabe/], 'smb://dateiserver.rheinfurt.example/Ablage')
-      await fillByLabel(page, [/^Benutzername/, /Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
+      await fillByLabel(page, [/Adresse der Freigabe/, /Adresse/], 'smb://dateiserver.rheinfurt.example/Ablage')
+      await fillByLabel(page, [/Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
       await fillByLabel(page, [/^Passwort/, /Passwort/], 'geheim')
       break
     case 'dropbox':
       break
   }
-  if (ctx && (await fillScopeRowsF(page, type, scenario, ctx))) return
   // listings, then a selection, then the explicit test
   if (type === 'confluence') {
     await clickButton(page, TEST_BUTTON, { wait: slow ? 900 : 1000 })
@@ -333,7 +259,7 @@ async function wizardFlow(page, { type, scenario }, ctx, states) {
       await clickButton(page, /^Zurück$/, { wait: 600 })
     }
   }
-  await fillSource(page, type, scenario, ctx)
+  await fillSource(page, type, scenario)
   if (states.includes('wizard-filled')) await ctx.shoot('wizard-filled')
   if (states.includes('review')) {
     if (scenario === 'slow') await settle(page, 3500)
@@ -365,24 +291,12 @@ async function detailFlow(page, { type, scenario }, ctx, states) {
   }
   if (!states.includes('edit')) return
   if (!opened) return ctx.notFound('edit', 'tab Quelle')
-  const edit =
-    (await clickButton(page, /^Ändern Umfang$/, { wait: 900 })) ||
-    (await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 }))
+  const edit = await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 })
   if (!edit) return ctx.notFound('edit', 'edit button')
-  await settle(page, 600)
+  await settle(page, 300)
   // the listing in the edit flow too, so the selection UI shows its real size
   await triggerListings(page, { slow: scenario === 'slow' })
   await ctx.shoot('edit')
-  // variant F: the stored selection, preselected in the shared dialog
-  const row = page.locator('[data-row$="-row-scope"]')
-  const some = await firstVisible(row.getByRole('radio', { name: /^Nur ausgewählte/ }))
-  if (some && !(await some.isChecked().catch(() => true))) return
-  const link = await firstVisible(row.getByRole('button', { name: SELECT_LINK }))
-  if (link && (scenario === 'scale' || scenario === 'small')) {
-    await link.click().catch(() => {})
-    await settle(page, 700)
-    await ctx.shoot('edit-select')
-  }
 }
 
 /** ctx: { base, areas, shoot(area, extra?), notFound(area, reason), error(area, e), log } */

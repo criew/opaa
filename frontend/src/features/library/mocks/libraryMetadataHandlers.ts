@@ -7,6 +7,9 @@ import type {
   LibraryMetadataFieldResponse,
 } from '@/shared/api/types'
 import { canManageMockLibrary } from './libraryHandlers'
+import { applyLibraryScenario } from './libraryScenarioFixtures'
+import { scenarioMetadataFields } from './detailScenarioFixtures'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
 
 /**
  * The running schema changes per library - in the mock exactly as in the backend: the
@@ -195,8 +198,13 @@ export const libraryMetadataHandlers = [
   // Abbildungsdialog and the filter popover all read the same schema in dev mode.
   http.get('/api/v1/libraries/:libraryId/metadata-fields', ({ params }) => {
     const libraryId = String(params.libraryId)
+    applyLibraryScenario()
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!(libraryId in mockLibraryMetadataFields)) {
+      const seeded = scenarioMetadataFields(currentMockScenario())
+      if (seeded) mockLibraryMetadataFields[libraryId] = seeded
     }
     return HttpResponse.json({
       items: mockLibraryMetadataFields[libraryId] ?? [],

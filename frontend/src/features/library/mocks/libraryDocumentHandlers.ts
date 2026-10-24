@@ -17,6 +17,8 @@ import type {
 } from '@/shared/api/types'
 import { countMockFolderDocuments } from './libraryFolderHandlers'
 import { canManageMockLibrary } from './libraryHandlers'
+import { applyLibraryScenario } from './libraryScenarioFixtures'
+import { currentMockScenario } from '@/shared/mocks/mockScenario'
 
 // Mirrors what the registered DocumentFormats admit (DocumentFormat#admittedFormats,
 // backend/src/main/java/io/opaa/format) - kept as a literal list here rather than
@@ -162,6 +164,7 @@ export function resolveOrCreateMockFolderPath(
 export const libraryDocumentHandlers = [
   http.get('/api/v1/libraries/:libraryId/documents', ({ params, request }) => {
     const libraryId = String(params.libraryId)
+    applyLibraryScenario()
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
@@ -169,8 +172,9 @@ export const libraryDocumentHandlers = [
     // Simulates the indexing pipeline resolving a freshly uploaded document after a couple of
     // polls, mirroring the INDEXING_POLL_STEPS pattern of the indexing handlers - lets tests exercise the "PENDING
     // until the list refresh settles" acceptance criterion without staying PENDING forever.
+    // a fixture scenario keeps its pending documents pending, so every shot shows the same state
     allDocuments.forEach((doc) => {
-      if (doc.status !== 'PENDING') return
+      if (doc.status !== 'PENDING' || currentMockScenario() !== 'default') return
       const pollCount = (documentPollCounts.get(doc.id) ?? 0) + 1
       documentPollCounts.set(doc.id, pollCount)
       if (pollCount >= 2) {
@@ -293,6 +297,13 @@ export const libraryDocumentHandlers = [
     }
     const formData = await request.formData()
     const file = formData.get('file')
+    // the `failed` scenario turns every upload away at the library's storage quota
+    if (currentMockScenario() === 'failed') {
+      return HttpResponse.json(
+        { error: 'Das Speicherkontingent dieser Bibliothek ist ausgeschöpft' },
+        { status: 413 },
+      )
+    }
     if (!(file instanceof File) || file.size === 0) {
       return HttpResponse.json({ error: 'Datei ist erforderlich' }, { status: 400 })
     }
