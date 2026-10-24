@@ -25,7 +25,8 @@ class LocalAdminNetworkPolicyTest {
             null,
             null,
             null,
-            cidrs));
+            cidrs,
+            null));
   }
 
   @Test

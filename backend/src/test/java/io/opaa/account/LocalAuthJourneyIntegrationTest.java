@@ -238,12 +238,10 @@ class LocalAuthJourneyIntegrationTest {
         .andExpect(jsonPath("$.email").value(invitedAddress))
         .andExpect(jsonPath("$.createdReason").value("Sachbearbeitung, Vertretung"));
 
-    // 5a. The refresh rotates within its family, and presenting the *old* cookie again is a replay:
-    //     it ends every session of the account, not just that one (ADR-0033, Entscheidung 7). This
-    // is
-    //     the step the single-purpose tests cover only in isolation - here the rotated session is
-    // one
-    //     a real sign-in produced.
+    // 5a. The refresh rotates within its family, and once the successor is used, presenting the
+    //     *old* cookie again is a replay: it ends every session of the account, not just that one
+    //     (ADR-0033, Entscheidung 7). This is the step the single-purpose tests cover only in
+    //     isolation - here the rotated session is one a real sign-in produced.
     MvcResult rotated =
         mockMvc
             .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(invitedCookie))
@@ -256,6 +254,13 @@ class LocalAuthJourneyIntegrationTest {
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, rotatedBearer))
         .andExpect(status().isOk());
 
+    Cookie usedCookie =
+        refreshCookie(
+            mockMvc
+                .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(rotatedCookie))
+                .andExpect(status().isOk())
+                .andReturn());
+
     assertThat(reuseDetectedRevocationOf(invitedId))
         .as("no reuse has been detected for this account before the replay")
         .isEmpty();
@@ -265,7 +270,7 @@ class LocalAuthJourneyIntegrationTest {
 
     // The whole family is dead, successor included - not only the token that was replayed.
     mockMvc
-        .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(rotatedCookie))
+        .perform(withCsrf(post(REFRESH), invitedSignIn).cookie(usedCookie))
         .andExpect(status().isUnauthorized());
     // And it died as a *detected reuse* - the branch that also invalidates every access token of
     // the account. Asserted on the reason rather than through a request with the session's token: a

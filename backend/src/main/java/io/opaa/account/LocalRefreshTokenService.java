@@ -34,23 +34,30 @@ import org.springframework.transaction.support.TransactionTemplate;
  * of randomness in base64url; only its HMAC lookup hash is stored. A sign-in opens a family with
  * the idle limit and the absolute end of the account's role; a rotation revokes the presented token
  * as {@code ROTATED} and issues a successor of the same family whose idle limit never passes the
- * family's end. The presentation of an already <em>rotated</em> token - or losing the atomic
- * rotation to a concurrent refresh with the same cookie - is a replay: every family of the account
- * is revoked as {@code REUSE_DETECTED}, every access token of the account is invalidated, the act
- * is audited as {@code LOCAL_SESSION_REVOKED} and logged at WARN with the account id, never the
- * address.
+ * family's end.
  *
- * <p>Transactions: successor insert and {@link LocalRefreshTokenRepository#rotateIfActive} form one
- * transaction that is rolled back when the rotation was lost, so the loser leaves no active
- * successor behind; the replay handling then runs in a transaction of its own. Failure directions:
- * if the rotation transaction fails, nothing changed and the presented token stays active for a
- * retry; if the replay transaction fails, the presented token is already revoked and the next
- * presentation detects the replay again.
+ * <p>An already <em>rotated</em> token presented again is renewed once more within {@code
+ * refresh-grace-period} after its rotation if its successor is still active - never used, never
+ * revoked - and the account may still sign in: the unused successor is rotated away atomically and
+ * a new one issued, the reload that discarded the rotation's answer. Every other presentation of a
+ * rotated token is a replay: every family of the account is revoked as {@code REUSE_DETECTED},
+ * every access token of the account is invalidated, the act is audited as {@code
+ * LOCAL_SESSION_REVOKED} and logged at WARN with the account id, never the address.
+ *
+ * <p>Concurrency: losing the atomic rotation to a concurrent refresh with the same cookie is judged
+ * like a presentation of the then rotated token, once; losing the renewal within the grace period
+ * to a concurrent one is a replay, so two renewals of the same token never both win.
+ *
+ * <p>Transactions: successor insert and the conditional updates form one transaction that is rolled
+ * back when the rotation was lost, so the loser leaves no active successor behind; the replay
+ * handling then runs in a transaction of its own. Failure directions: if the rotation transaction
+ * fails, nothing changed and the presented token stays as it was for a retry; if the replay
+ * transaction fails, the presented token is already revoked and the next presentation detects the
+ * replay again.
  *
  * <p>A rotation is refused like an unknown token when the account is no longer login-capable or the
  * management switch excludes it: a session that could only mint tokens the validator refuses ends
- * here instead of looping. Two concurrent refreshes with the same cookie are a replay by ADR-0033 -
- * the SPA serialises {@code /refresh}.
+ * here instead of looping.
  */
 @Service
 public class LocalRefreshTokenService {
@@ -112,8 +119,7 @@ public class LocalRefreshTokenService {
       return new RotationResult.Unknown();
     }
     if (presented.getRevocationReason() == RevocationReason.ROTATED) {
-      handleReuse(presented, now);
-      return new RotationResult.Reused(presented.getUserId());
+      return renewWithinGracePeriodOrReplay(presented, now);
     }
     if (presented.getRevokedAt() != null) {
       // ended by a sign-out, a password change or an act of administration: the other devices of
@@ -123,29 +129,14 @@ public class LocalRefreshTokenService {
     if (!presented.isActive(now)) {
       return new RotationResult.Unknown();
     }
-    User user = users.findById(presented.getUserId()).orElse(null);
-    LocalCredentials row = credentials.findById(presented.getUserId()).orElse(null);
-    if (user == null
-        || row == null
-        || !LocalAccountAccess.isLoginCapable(row, now)
-        || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
+    User user = loginCapableOwner(presented, now);
+    if (user == null) {
       return new RotationResult.Unknown();
     }
-    Instant expiresAt = now.plus(limitsFor(user).idle());
-    if (expiresAt.isAfter(presented.getFamilyExpiresAt())) {
-      expiresAt = presented.getFamilyExpiresAt();
-    }
-    Instant successorExpiresAt = expiresAt;
     IssuedRefreshToken successor =
         transactions.execute(
             status -> {
-              IssuedRefreshToken issued =
-                  insert(
-                      presented.getFamilyId(),
-                      presented.getUserId(),
-                      now,
-                      successorExpiresAt,
-                      presented.getFamilyExpiresAt());
+              IssuedRefreshToken issued = insertSuccessor(presented, user, now);
               int rotated =
                   repository.rotateIfActive(
                       presented.getId(), issued.id(), RevocationReason.ROTATED, now);
@@ -155,11 +146,93 @@ public class LocalRefreshTokenService {
               }
               return issued;
             });
-    if (successor == null) {
-      handleReuse(presented, now);
-      return new RotationResult.Reused(presented.getUserId());
+    if (successor != null) {
+      return new RotationResult.Rotated(user, successor);
     }
-    return new RotationResult.Rotated(user, successor);
+    LocalRefreshToken current = repository.findById(presented.getId()).orElse(null);
+    if (current != null && current.getRevocationReason() == RevocationReason.ROTATED) {
+      return renewWithinGracePeriodOrReplay(current, now);
+    }
+    handleReuse(presented, now);
+    return new RotationResult.Reused(presented.getUserId());
+  }
+
+  /**
+   * The presentation of an already rotated token: renewed when its rotation lies at most {@code
+   * refresh-grace-period} back, its successor is still active and the account may sign in -
+   * otherwise, or when a concurrent renewal takes the successor first, a replay.
+   */
+  private RotationResult renewWithinGracePeriodOrReplay(LocalRefreshToken presented, Instant now) {
+    LocalRefreshToken unusedSuccessor = unusedSuccessorWithinGracePeriod(presented, now);
+    User user = unusedSuccessor == null ? null : loginCapableOwner(presented, now);
+    if (user != null) {
+      IssuedRefreshToken renewed =
+          transactions.execute(
+              status -> {
+                IssuedRefreshToken issued = insertSuccessor(presented, user, now);
+                if (repository.rotateIfActive(
+                            unusedSuccessor.getId(), issued.id(), RevocationReason.ROTATED, now)
+                        == 0
+                    || repository.redirectRotation(
+                            presented.getId(), unusedSuccessor.getId(), issued.id())
+                        == 0) {
+                  status.setRollbackOnly();
+                  return null;
+                }
+                return issued;
+              });
+      if (renewed != null) {
+        log.debug(
+            "Rotated refresh token of local account {} presented again within the grace period;"
+                + " its unused successor was replaced",
+            presented.getUserId());
+        return new RotationResult.Rotated(user, renewed);
+      }
+    }
+    handleReuse(presented, now);
+    return new RotationResult.Reused(presented.getUserId());
+  }
+
+  /** The still active successor of a token rotated at most the grace period ago, or null. */
+  private LocalRefreshToken unusedSuccessorWithinGracePeriod(
+      LocalRefreshToken presented, Instant now) {
+    Duration gracePeriod = properties.refreshGracePeriod();
+    if (gracePeriod.isZero()
+        || presented.getRotatedToId() == null
+        || presented.getRevokedAt().plus(gracePeriod).isBefore(now)
+        || !presented.getFamilyExpiresAt().isAfter(now)) {
+      return null;
+    }
+    return repository
+        .findById(presented.getRotatedToId())
+        .filter(successor -> successor.isActive(now))
+        .orElse(null);
+  }
+
+  /** The owner of the token if the account may still sign in, otherwise null. */
+  private User loginCapableOwner(LocalRefreshToken token, Instant now) {
+    User user = users.findById(token.getUserId()).orElse(null);
+    LocalCredentials row = credentials.findById(token.getUserId()).orElse(null);
+    if (user == null
+        || row == null
+        || !LocalAccountAccess.isLoginCapable(row, now)
+        || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
+      return null;
+    }
+    return user;
+  }
+
+  private IssuedRefreshToken insertSuccessor(LocalRefreshToken presented, User user, Instant now) {
+    Instant expiresAt = now.plus(limitsFor(user).idle());
+    if (expiresAt.isAfter(presented.getFamilyExpiresAt())) {
+      expiresAt = presented.getFamilyExpiresAt();
+    }
+    return insert(
+        presented.getFamilyId(),
+        presented.getUserId(),
+        now,
+        expiresAt,
+        presented.getFamilyExpiresAt());
   }
 
   /** Revokes the family behind a presented raw token; {@code false} when none matched. */
@@ -268,7 +341,7 @@ public class LocalRefreshTokenService {
     /** Rotated; the caller mints a new access token for {@code user}. */
     record Rotated(User user, IssuedRefreshToken token) implements RotationResult {}
 
-    /** A replay: the family and every session of the account are revoked. */
+    /** A replay: every session of the account is revoked. */
     record Reused(UUID userId) implements RotationResult {}
 
     /** No active token matched - unknown, expired or of a deleted account. */
