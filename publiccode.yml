@@ -1,0 +1,114 @@
+# Metadata for the software directory of openCode (docs/opencode.md), format publiccode.yml 0.4.
+# Describes the built state of main; softwareVersion and releaseDate follow with the first final
+# release.
+publiccodeYmlVersion: "0.4"
+
+name: OPAA
+url: "https://github.com/criew/opaa"
+landingURL: "https://github.com/criew/opaa"
+
+platforms:
+  - web
+  - linux
+
+categories:
+  - knowledge-management
+  - document-management
+  - collaboration
+
+developmentStatus: beta
+softwareType: "standalone/web"
+
+intendedAudience:
+  countries:
+    - de
+  scope:
+    - local-authorities
+
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de
+
+description:
+  de:
+    genericName: "KI-Assistent für Wissen"
+    shortDescription: >-
+      Quelloffene KI-Plattform für die öffentliche Verwaltung: das Wissen des Hauses belegbar
+      befragen, im eigenen Rechenzentrum.
+    longDescription: >-
+      OPAA (Open Project AI Assistant) macht verstreutes Wissen einer Behörde befragbar und
+      nachweisbar. Dokumente aus Dateiablagen, Wikis, Webseiten und Cloud-Speichern werden in
+      Wissensbibliotheken eingelesen; Beschäftigte stellen in Spaces, gemeinsamen Arbeitsräumen,
+      Fragen in natürlicher Sprache. Jede Antwort nennt ihre Fundstellen, und für
+      haftungskritische Zusammenhänge lässt sich OPAA so einstellen, dass ohne Beleg keine Antwort
+      ergeht. Rechte werden je Bibliothek und Space vergeben, ein revisionssicheres Protokoll hält
+      fest, wer welche Rechte wann erhalten hat.
+
+
+      OPAA läuft im eigenen Rechenzentrum, mit Docker Compose oder Kubernetes (Helm-Chart), und
+      nutzt Sprach- und Einbettungsmodelle über eine OpenAI-kompatible Schnittstelle, etwa ein
+      Modell im Behördennetz. Daten verlassen das Haus nur dorthin, wohin die Verwaltung es
+      einstellt; jede Verbindung nach außen steht im Fakten-Manifest der Version.
+
+
+      Für Datenschutz, Personalvertretung und Informationssicherheit liefert jedes Release ein
+      Update-Paket: Faktenblätter über gespeicherte Daten, Protokollereignisse, Rollen,
+      Datenflüsse und Voreinstellungen, das Delta zum vorigen Release mit Stufenvorschlägen für die
+      Beteiligung, Betriebsfolgen, Lizenzübersicht, SBOMs und Vorlagen für Behördenunterlagen.
+      Images, Chart und Update-Paket sind attestiert; für Netze ohne Internetzugang gibt es ein
+      Offline-Bündel. OPAA steht unter der GNU Affero General Public License 3.0 und wird offen
+      auf GitHub entwickelt.
+    features:
+      - Fragen an das Wissen des Hauses mit Fundstelle zu jeder Aussage
+      - Wissensbibliotheken aus Upload, Dateiablagen, Webseiten, Wikis und Cloud-Speichern
+      - Spaces als gemeinsame Arbeitsräume mit Rechten je Mitglied und Gruppe
+      - Prompt-Bibliotheken und Katalog zum Teilen von Arbeitsmitteln
+      - Anbindung externer KI-Werkzeuge über MCP
+      - Anmeldung über OIDC oder lokale Konten, revisionssicheres Protokoll
+      - Update-Paket mit Faktenblättern, Delta und Vorlagen für Behördenunterlagen
+      - Betrieb mit Docker Compose oder Helm-Chart, auch ohne Internetzugang
+  en:
+    genericName: "AI knowledge assistant"
+    shortDescription: >-
+      Open source AI platform for public administration: ask the knowledge of your organisation
+      with sources, in your own data centre.
+    longDescription: >-
+      OPAA (Open Project AI Assistant) makes the scattered knowledge of a public authority
+      searchable and verifiable. Documents from file shares, wikis, websites and cloud storage are
+      ingested into knowledge libraries; staff ask questions in natural language in spaces, shared
+      workspaces. Every answer cites its sources, and for contexts with liability OPAA can be set
+      to give no answer without a source. Permissions are granted per library and space, and a
+      tamper-evident audit log records who received which rights and when.
+
+
+      OPAA runs in your own data centre with Docker Compose or Kubernetes (Helm chart) and uses
+      language and embedding models through an OpenAI compatible interface, such as a model inside
+      the authority's network. Data leaves the organisation only where the administration sets it
+      to; every outbound connection is listed in the fact manifest of the version.
+
+
+      For data protection, staff councils and information security every release ships an update
+      package: fact sheets on stored data, audit events, roles, data flows and defaults, the delta
+      to the previous release with proposed participation levels, operational consequences,
+      license overview, SBOMs and templates for the authority's documents. Images, chart and
+      update package are attested, and an offline bundle serves networks without internet access.
+      OPAA is licensed under the GNU Affero General Public License 3.0 and developed openly on
+      GitHub. Its documentation and user interface are in German.
+    features:
+      - Questions on the organisation's knowledge with a source for every statement
+      - Knowledge libraries from uploads, file shares, websites, wikis and cloud storage
+      - Spaces as shared workspaces with permissions per member and group
+      - Prompt libraries and a catalogue for sharing work tools
+      - Access for external AI tools through MCP
+      - Sign-in through OIDC or local accounts, tamper-evident audit log
+      - Update package with fact sheets, delta and templates for public authority documents
+      - Operation with Docker Compose or Helm chart, also without internet access
+
+legal:
+  license: AGPL-3.0-only
+
+maintenance:
+  type: community
+  contacts:
+    - name: "Christoph Ewerlin"
