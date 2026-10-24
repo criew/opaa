@@ -68,7 +68,12 @@ class VectorStoreColdStartTest extends AbstractMigrationTest {
   private Void prepare(CyclicBarrier together) throws Exception {
     try (Connection connection = connect()) {
       together.await();
-      applyMigrations(connection, Migrations.all());
+      Migrations.applyAsTheApplication(
+          connection.getMetaData().getURL(),
+          connection.getMetaData().getUserName(),
+          POSTGRES.getPassword(),
+          connection.getSchema(),
+          Migrations.all());
       together.await();
       PgVectorStore.builder(
               new JdbcTemplate(new SingleConnectionDataSource(connection, true)),
