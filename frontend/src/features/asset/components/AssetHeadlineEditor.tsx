@@ -129,11 +129,22 @@ export default function AssetHeadlineEditor({
     return (
       <Box sx={{ minWidth: 0 }}>
         {headingRow}
-        {description && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>
-            {description}
-          </Typography>
-        )}
+        {/* one line, reserved even when empty: the head keeps its height for every asset */}
+        <Typography
+          title={description ?? undefined}
+          sx={{
+            fontSize: 13.5,
+            lineHeight: '22px',
+            minHeight: 22,
+            color: 'text.secondary',
+            maxWidth: 640,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {description}
+        </Typography>
       </Box>
     )
   }

@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import LinearProgress from '@mui/material/LinearProgress'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import DataUsageIcon from '@mui/icons-material/DataUsage'
-import HistoryIcon from '@mui/icons-material/History'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import type { IndexingRunResponse } from '@/shared/api/types'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
 import { sourceRegistration } from '../components/sources/registry'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
+import { useDocumentStore } from '../stores/documentStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
 import { documentSourceTypeLabel } from '../components/sources/sourceLabels'
 import { AssetDetailHeader, HeaderFigure } from '@/features/asset'
@@ -32,17 +29,67 @@ import {
   canDeleteLibrary,
   canEditLibrary,
   canManageDocuments,
-  formatIndexedAt,
   resolveTab,
 } from '../components/libraryDetailAccess'
 import type { LibraryDetailTab } from '../components/libraryDetailAccess'
 import { useLibraryDeletion } from '../components/useLibraryDeletion'
-import LibraryHeaderNote from '../components/LibraryHeaderNote'
-import LibraryScopeHero from '../components/LibraryScopeHero'
-import LibraryRoleNotices from '../components/LibraryRoleNotices'
 import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
+import LibraryRunHistory from '../components/LibraryRunHistory'
+import LibraryStatusBand, { BandState, type BandField } from '../components/LibraryStatusBand'
+import {
+  connectorState,
+  formatShortDate,
+  runState,
+  uploadState,
+  type LibraryState,
+} from '../components/libraryState'
+import { scopeShort, unreadableNames } from '../components/scopeFacts'
+import type { RowStatus } from '../components/setup/setupTypes'
+import {
+  LIBRARY_QUOTA_EXHAUSTED_REMEDY,
+  PRIVATE_LIBRARY_ERASING_NOTE,
+  QUOTA_EXHAUSTED_REMEDY,
+} from '../components/privateLibrary'
+
+// A stable empty history, so the store selector never returns a fresh array identity.
+const NO_RUNS: IndexingRunResponse[] = []
+
+/** The connection's last known state, from the newest finished run (D10). */
+function connectionStatusOf(run: IndexingRunResponse | null, signsIn: boolean): RowStatus | null {
+  if (!run || run.status === 'RUNNING') return null
+  const { word } = runState(run)
+  if (word === 'Anmeldung abgelehnt' || word === 'Zustimmung abgelaufen') {
+    return { tone: 'error', label: word }
+  }
+  if (run.status === 'FAILED') return null
+  const date = formatShortDate(run.completedAt ?? run.startedAt)
+  return { tone: 'success', label: `${signsIn ? 'Anmeldung ok' : 'erreichbar'} · zuletzt ${date}` }
+}
+
+/** „25.10.2026, 06:00 · täglich“ - the next planned run in short form. */
+function nextRunLabel(
+  schedule: { frequency?: string; nextRunAt?: string | null } | null | undefined,
+): string {
+  if (!schedule) return 'keine Angabe'
+  if (!schedule.frequency || schedule.frequency === 'DISABLED') return 'kein Zeitplan'
+  const rhythm =
+    schedule.frequency === 'HOURLY'
+      ? 'stündlich'
+      : schedule.frequency === 'WEEKLY'
+        ? 'wöchentlich'
+        : 'täglich'
+  if (!schedule.nextRunAt) return rhythm
+  const at = new Date(schedule.nextRunAt).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return `${at} · ${rhythm}`
+}
 
 export default function LibraryDetailPage() {
   const { libraryId } = useParams()
@@ -101,10 +148,6 @@ export default function LibraryDetailPage() {
     erasing,
     setLocalError,
   })
-  const newestRunCategory = useIndexingStore((s) =>
-    libraryId ? s.runsByLibrary[libraryId]?.failureCategory : undefined,
-  )
-  const quotaExhausted = privateLibrary && !erasing && newestRunCategory === 'QUOTA_EXHAUSTED'
   const ownsPrivateLibrary = privateLibrary && library?.myRole === 'OWNER'
   const [storageRefreshToken, setStorageRefreshToken] = useState(0)
   const privateStorage = useMyPrivateStorage(ownsPrivateLibrary, storageRefreshToken)
@@ -130,10 +173,13 @@ export default function LibraryDetailPage() {
     details != null &&
     details.sourceType !== 'UPLOAD' &&
     details.allAccountsGrantAllowed != null
+  // The run list is readable from MANAGER on, like the rows of „Quelle“ behind it.
+  const showRunsTab = showSourceTab && canEdit
   const activeTab: LibraryDetailTab = resolveTab(
     searchParams.get('tab'),
     showSourceTab,
     showMetadataTab,
+    showRunsTab,
   )
 
   // Status polling lives at page level, not inside the (hideable) "Indizierung" area: a running
@@ -145,8 +191,21 @@ export default function LibraryDetailPage() {
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
   const retryStatusPolling = useIndexingStore((s) => s.retryStatusPolling)
-  // Takes the focus from „Erneut versuchen", which disappears with the notice it belongs to.
-  const runStatusRef = useRef<HTMLDivElement>(null)
+  const runs = useIndexingStore((s) =>
+    libraryId ? (s.runHistoryByLibrary[libraryId] ?? NO_RUNS) : NO_RUNS,
+  )
+  const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
+  const uploadErrors = useDocumentStore((s) => s.uploadErrors)
+  const loadedDocuments = useDocumentStore((s) =>
+    libraryId ? s.documentsByLibrary[libraryId] : undefined,
+  )
+  const newestRun = runs[0] ?? null
+
+  // The head, the run table and the run detail read one history (D3).
+  useEffect(() => {
+    if (!libraryId || !connectorSourceType || !canEdit) return
+    void loadRunHistory(libraryId)
+  }, [libraryId, connectorSourceType, canEdit, loadRunHistory])
 
   useEffect(() => {
     if (!libraryId || !connectorSourceType) return
@@ -166,12 +225,13 @@ export default function LibraryDetailPage() {
   const wasRunningRef = useRef(false)
   useEffect(() => {
     if (wasRunningRef.current && !isRunning && libraryId) {
+      void loadRunHistory(libraryId)
       void loadLibraryDetails(libraryId)
       setDocumentsRefreshToken((token) => token + 1)
       setStorageRefreshToken((token) => token + 1)
     }
     wasRunningRef.current = isRunning
-  }, [isRunning, libraryId, loadLibraryDetails])
+  }, [isRunning, libraryId, loadLibraryDetails, loadRunHistory])
 
   /**
    * The area's own address - a tab is a link, so middle-click and „open in new tab" work, and the
@@ -262,17 +322,130 @@ export default function LibraryDetailPage() {
     )
   }
 
-  const isRssFeedRun = Boolean(sourceRegistration(connectorSourceType)?.runCountsEntries)
-  const runFailedSuffix =
-    run.documentsFailed > 0 ? `, davon ${run.documentsFailed} fehlgeschlagen` : ''
-
   const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
     { value: 'dokumente', label: 'Dokumente' },
+    ...(showRunsTab ? ([{ value: 'verlauf', label: 'Verlauf' }] as const) : []),
     ...(showSourceTab ? ([{ value: 'quelle', label: 'Quelle' }] as const) : []),
     ...(showMetadataTab ? ([{ value: 'metadaten', label: 'Metadaten' }] as const) : []),
     { value: 'freigaben', label: 'Freigaben' },
     { value: 'zuordnungen', label: 'Zuordnungen' },
   ]
+
+  const successionOpen = Boolean(details?.succession ?? library.succession)
+  const quotaRemedy = privateLibrary ? QUOTA_EXHAUSTED_REMEDY : LIBRARY_QUOTA_EXHAUSTED_REMEDY
+  const unreadable =
+    details && connectorSourceType ? unreadableNames(details, run.unlistedScopeKeys, newestRun) : []
+  const isUpload = (details?.sourceType ?? listEntry?.sourceType) === 'UPLOAD'
+  const libraryState: LibraryState = isUpload
+    ? uploadState({
+        erasureRequestedAt,
+        successionOpen,
+        quotaFull:
+          uploadErrors.some((message) => /kontingent/i.test(message)) ||
+          (details?.storageQuotaBytes != null &&
+            details.storageUsedBytes != null &&
+            details.storageUsedBytes >= details.storageQuotaBytes),
+        // the loaded page of the list: the backend reports no count per status yet
+        failedDocuments: (loadedDocuments ?? []).filter((d) => d.status === 'FAILED').length,
+        documentCount: library.documentCount ?? 0,
+      })
+    : connectorState({
+        erasureRequestedAt,
+        successionOpen,
+        sourceBlock: details?.sourceBlock ?? null,
+        newestRun: newestRun?.status === 'RUNNING' && !isRunning ? (runs[1] ?? null) : newestRun,
+        status: {
+          status: run.status,
+          timestamp: run.timestamp,
+          documentsFailed: run.documentsFailed,
+          unlistedScopeKeys: run.unlistedScopeKeys,
+          failureCategory: run.failureCategory,
+          percent: isRunning && run.totalDocuments > 0 ? runProgressPercent : null,
+        },
+        lastScheduledRunsFailed: Boolean(details?.lastScheduledRunsFailed),
+      })
+  const stateLink = (() => {
+    if (isRunning && run.statusUnknown) {
+      return { label: 'Erneut versuchen', onClick: () => retryStatusPolling(libraryId) }
+    }
+    switch (libraryState.target) {
+      case 'verlauf':
+        return showRunsTab ? { label: 'Verlauf ›', to: tabSearch('verlauf') } : null
+      case 'verbindung':
+        return showSourceTab ? { label: 'Verbindung ›', to: tabSearch('quelle') } : null
+      case 'freigaben':
+        return { label: 'Freigaben ›', to: tabSearch('freigaben') }
+      case 'dokumente':
+        return activeTab === 'dokumente'
+          ? null
+          : { label: 'Dokumente ›', to: tabSearch('dokumente') }
+      default:
+        return null
+    }
+  })()
+  const stateField: BandField = {
+    label: 'Stand',
+    value: (
+      <BandState
+        tone={libraryState.tone}
+        word={libraryState.word}
+        extra={isRunning && run.statusUnknown ? 'Stand unbekannt' : libraryState.extra}
+      />
+    ),
+    title: erasing
+      ? PRIVATE_LIBRARY_ERASING_NOTE
+      : [libraryState.word, libraryState.extra].filter(Boolean).join(' · '),
+    link: stateLink,
+    progress: isRunning && !run.statusUnknown && run.totalDocuments > 0 ? runProgressPercent : null,
+  }
+  const bandFields: [BandField, BandField, BandField] =
+    isUpload || !details
+      ? [
+          stateField,
+          {
+            label: 'Speicher',
+            value:
+              details?.storageQuotaBytes != null && details.storageUsedBytes != null
+                ? `${formatFileSize(details.storageUsedBytes)} von ${formatFileSize(details.storageQuotaBytes)}`
+                : 'keine Angabe',
+          },
+          {
+            label: 'Zuletzt hochgeladen',
+            // the newest of the loaded documents, or the library's own last change
+            value:
+              (library.documentCount ?? 0) > 0
+                ? (formatShortDate(
+                    [library.updatedAt, ...(loadedDocuments ?? []).map((d) => d.indexedAt)]
+                      .filter((value): value is string => Boolean(value))
+                      .sort()
+                      .at(-1),
+                  ) ?? '—')
+                : 'noch nichts',
+          },
+        ]
+      : [
+          stateField,
+          {
+            label: 'Umfang',
+            title: scopeShort(details),
+            value: (
+              <>
+                {scopeShort(details)}
+                {unreadable.length > 0 && (
+                  <Box component="span" sx={{ color: 'warning.main' }}>
+                    {` · ${unreadable.length} nicht lesbar`}
+                  </Box>
+                )}
+              </>
+            ),
+            link: { label: 'Quelle ›', to: tabSearch('quelle') },
+          },
+          {
+            label: 'Nächster Lauf',
+            value: nextRunLabel(details.schedule),
+            link: canEdit ? { label: 'Zeitplan ›', to: tabSearch('quelle') } : null,
+          },
+        ]
 
   function associationsChanged() {
     catalog.reload()
@@ -306,41 +479,24 @@ export default function LibraryDetailPage() {
         extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
           (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
         }`}
-        // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only.
+        spacesTo={tabSearch('zuordnungen')}
+        responsibleTo={tabSearch('freigaben')}
+        band={
+          <Box ref={erasureNoticeRef} tabIndex={-1} sx={{ outline: 'none' }}>
+            <LibraryStatusBand label="Stand dieser Bibliothek" fields={bandFields} />
+          </Box>
+        }
+        // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only; an upload
+        // library shows its own storage in the band.
         figures={
           <>
-            {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
-              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
-                {formatFileSize(details.storageUsedBytes)} von{' '}
-                {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
-              </HeaderFigure>
-            )}
             {privateStorage && (
-              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
+              <HeaderFigure>
                 <span data-testid="private-storage-figure">
                   {privateStorage.quotaBytes > 0
-                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} in Ihren privaten Bibliotheken belegt`
-                    : `${formatFileSize(privateStorage.usedBytes)} in Ihren privaten Bibliotheken belegt (unbegrenzt)`}
+                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} belegt`
+                    : `${formatFileSize(privateStorage.usedBytes)} belegt`}
                 </span>
-              </HeaderFigure>
-            )}
-            {connectorSourceType && canTrigger && !isRunning && run.status !== 'IDLE' && (
-              <HeaderFigure
-                icon={
-                  <HistoryIcon
-                    sx={{
-                      fontSize: 16,
-                      color: run.status === 'COMPLETED' ? 'success.main' : 'error.main',
-                    }}
-                  />
-                }
-              >
-                Letzter Lauf: {run.status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
-                {' · '}
-                {isRssFeedRun
-                  ? `${run.totalDocuments} Feed-Einträge, ${run.documentsSkipped} übersprungen, ${run.documentCount} indiziert (${run.documentsIndexedTotal} Dokumente insgesamt)${runFailedSuffix}`
-                  : `Dokumente: ${run.documentCount} verarbeitet${run.documentsSkipped > 0 ? ` (${run.documentsSkipped} übersprungen)` : ''}${runFailedSuffix}`}
-                {run.timestamp ? ` · ${formatIndexedAt(run.timestamp)}` : ''}
               </HeaderFigure>
             )}
           </>
@@ -351,8 +507,6 @@ export default function LibraryDetailPage() {
           ownerLabel: library.ownerName,
           succession: details?.succession ?? library.succession,
         })}
-        // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
-        updatedAt={listEntry?.lastIndexedAt ?? library.updatedAt}
         favorite={catalog.entry?.favorite}
         onFavoriteChange={catalog.setFavorite}
         mayUseInSpace={mayUseInSpace}
@@ -366,129 +520,25 @@ export default function LibraryDetailPage() {
         }
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
-        // ADR-0023, Entscheidung 4: the full reconciliation can be forced, from the „…“ menu
-        menuItems={
-          connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
-            ? [
-                {
-                  label: 'Vollabgleich starten',
-                  disabled: isRunning,
-                  onClick: () => void triggerIndexing(libraryId, connectorSourceType, 'FULL'),
-                },
-              ]
-            : undefined
-        }
         actions={
           connectorSourceType &&
           mayManageDocuments && (
             <>
               <Button
-                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
+                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs;
+                // a running run shows its progress in the band, not on the button (D7)
                 variant="outlined"
                 size="small"
                 startIcon={<PlayArrowIcon />}
                 onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
                 disabled={isRunning}
               >
-                {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
+                Jetzt indizieren
               </Button>
             </>
           )
         }
-        // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
-        // owner, no reason.
-        note={
-          <LibraryHeaderNote
-            succession={details?.succession}
-            erasureRequestedAt={erasureRequestedAt}
-            erasureNoticeRef={erasureNoticeRef}
-            quotaExhausted={quotaExhausted}
-          />
-        }
-      >
-        {/* The header shows the scope only as a short line with a jump into the „Quelle"
-           tab; it is complete there, for every role. The warning about a
-           partially read scope, by contrast, stays here: it concerns the content that
-           every view of the page shows, not the setting behind it. */}
-        {details && connectorConfiguration?.scopeHero && (
-          <LibraryScopeHero
-            details={details}
-            scopeHero={connectorConfiguration.scopeHero}
-            unlistedScopeKeys={run.unlistedScopeKeys}
-            sourceSearch={tabSearch('quelle')}
-          />
-        )}
-
-        {/* A running indexing stays visible no matter which area below is active (guidelines
-            5.7) - anchored in the hero with a pulsing dot as the one moving element. */}
-        {connectorSourceType && isRunning && (
-          <Box
-            ref={runStatusRef}
-            tabIndex={-1}
-            sx={{ mt: 2.5, pt: 2, borderTop: 1, borderTopColor: 'divider', position: 'relative' }}
-          >
-            {run.statusUnknown ? (
-              // The last known status stays RUNNING: failed fetches say nothing about the run.
-              <Alert
-                severity="warning"
-                role="status"
-                data-testid="library-run-status-unknown"
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    onClick={() => {
-                      runStatusRef.current?.focus()
-                      retryStatusPolling(libraryId)
-                    }}
-                  >
-                    Erneut versuchen
-                  </Button>
-                }
-              >
-                <AlertTitle>Status unbekannt</AlertTitle>
-                Der Stand des Indizierungslaufs konnte wiederholt nicht abgerufen werden. Der Lauf
-                kann im Hintergrund weiterlaufen.
-              </Alert>
-            ) : (
-              <>
-                <LinearProgress
-                  variant={run.totalDocuments > 0 ? 'determinate' : 'indeterminate'}
-                  value={runProgressPercent}
-                  sx={{ mb: 1, borderRadius: 999 }}
-                />
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Box
-                    aria-hidden
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '999px',
-                      bgcolor: 'primary.main',
-                      '@keyframes opaaPulse': {
-                        '0%': { opacity: 0.35 },
-                        '50%': { opacity: 1 },
-                        '100%': { opacity: 0.35 },
-                      },
-                      animation: 'opaaPulse 1.2s ease-in-out infinite',
-                      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-                    }}
-                  />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }} role="status">
-                    {run.totalDocuments > 0
-                      ? isRssFeedRun
-                        ? `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Feed-Einträgen verarbeitet (${run.documentsIndexedTotal} Dokumente indiziert)`
-                        : `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Dokumenten verarbeitet`
-                      : isRssFeedRun
-                        ? 'Feed-Einträge werden ermittelt …'
-                        : 'Dokumente werden ermittelt …'}
-                  </Typography>
-                </Stack>
-              </>
-            )}
-          </Box>
-        )}
-      </AssetDetailHeader>
+      />
 
       {localError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
@@ -511,11 +561,6 @@ export default function LibraryDetailPage() {
           es in einem Moment erneut.
         </Alert>
       )}
-      <LibraryRoleNotices
-        canTrigger={canTrigger}
-        canEdit={canEdit}
-        isAdministrativeOverride={isAdministrativeOverride}
-      />
 
       <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
 
@@ -549,6 +594,53 @@ export default function LibraryDetailPage() {
         )}
       </Box>
 
+      {showRunsTab && connectorSourceType && (
+        <Box
+          role="tabpanel"
+          id="library-tabpanel-verlauf"
+          aria-labelledby="library-tab-verlauf"
+          hidden={activeTab !== 'verlauf'}
+        >
+          <LibraryRunHistory
+            runs={runs}
+            showMode={Boolean(connectorConfiguration?.fullSyncRhythm)}
+            live={
+              isRunning && run.totalDocuments > 0
+                ? {
+                    percent: runProgressPercent,
+                    processed: run.documentCount + run.documentsSkipped,
+                    total: run.totalDocuments,
+                  }
+                : null
+            }
+            connectionTo={tabSearch('quelle')}
+            quotaRemedy={quotaRemedy}
+            actions={
+              mayManageDocuments ? (
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    size="small"
+                    disabled={isRunning}
+                    onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+                  >
+                    Jetzt indizieren
+                  </Button>
+                  {connectorConfiguration?.fullSyncRhythm && (
+                    <Button
+                      size="small"
+                      disabled={isRunning}
+                      onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
+                    >
+                      Vollabgleich starten
+                    </Button>
+                  )}
+                </Box>
+              ) : undefined
+            }
+          />
+        </Box>
+      )}
+
       {showSourceTab && (
         <Box
           role="tabpanel"
@@ -564,6 +656,11 @@ export default function LibraryDetailPage() {
               library={details}
               canEditSource={canEdit}
               erasing={erasing}
+              connectionStatus={connectionStatusOf(
+                newestRun,
+                connectorConfiguration?.setup?.signsIn ?? true,
+              )}
+              unreadable={unreadable}
             />
           ) : (
             <Typography sx={{ color: 'text.secondary' }}>

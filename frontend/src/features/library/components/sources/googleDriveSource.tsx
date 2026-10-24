@@ -1,6 +1,7 @@
 import {
   EMPTY_GOOGLE_DRIVE_VALUES,
   googleDrivePayloadOf,
+  googleDriveScopeKey,
   googleDriveScopeLabel,
   googleDriveScopesOf,
   googleDriveSettingsFromLibrary,
@@ -65,6 +66,12 @@ export const googleDriveSource: SourceRegistration = {
           : `Der letzte Lauf konnte die Bereiche ${keys.map((key) => `„${key}“`).join(', ')} nicht erreichen; ihr Bestand ist möglicherweise veraltet.`) +
         ' Der Hinweis bleibt, bis ein Vollabgleich wieder alle Bereiche auflisten kann.',
       unlistedTestId: 'google-drive-incomplete-listing-warning',
+      scopeName: (key, library) => {
+        const scope = googleDriveScopesOf(googleDriveSettingsFromLibrary(library)).find(
+          (entry) => googleDriveScopeKey(entry) === key,
+        )
+        return scope ? googleDriveScopeLabel(scope) : key
+      },
     },
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,

@@ -82,6 +82,7 @@ export const confluenceSource: SourceRegistration = {
           : `Der letzte Vollabgleich konnte die Spaces ${keys.map((key) => confluenceSpaceLabel(key, spaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet. Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.`
       },
       unlistedTestId: 'confluence-incomplete-listing-warning',
+      scopeName: (key, library) => confluenceSpaceLabel(key, confluenceSettingsOf(library).spaces),
     },
     fullSyncRhythm: true,
     firstRunHint:

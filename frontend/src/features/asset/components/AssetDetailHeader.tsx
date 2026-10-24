@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
+import Link from '@mui/material/Link'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
@@ -8,7 +10,6 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType } from '@/shared/api/types'
@@ -59,6 +60,12 @@ export interface AssetDetailHeaderProps {
   note?: ReactNode
   /** Under the figures, e.g. the scope of a source or a running indexing. */
   children?: ReactNode
+  /** The spread as a link into the tab that lists the spaces (search of the page). */
+  spacesTo?: string
+  /** The responsible party as a link into the tab that names it (search of the page). */
+  responsibleTo?: string
+  /** The type's fixed status band under the figures; it then carries the date instead. */
+  band?: ReactNode
 }
 
 function formatDate(value: string): string {
@@ -70,28 +77,31 @@ function formatDate(value: string): string {
 }
 
 /**
- * One figure of the head's band: a flat statement („87 Dokumente") with a pictogram that
- * carries no text of its own, set off from the next one by a hairline.
+ * One figure of the head's line: a flat statement („87 Dokumente“), set off from the previous
+ * one by a middle dot. No pictogram: it would tell apart nothing the words do not.
  */
-export function HeaderFigure({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+export function HeaderFigure({ children }: { icon?: ReactNode; children: ReactNode }) {
   return (
-    <Box
+    <Typography
+      component="span"
       sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        // spacing only: a separator line would hang at the end of a wrapped row
+        fontSize: 13,
+        color: 'text.secondary',
+        whiteSpace: 'nowrap',
+        '&:not(:first-of-type)::before': { content: '"·"', mx: 1, color: 'text.disabled' },
       }}
     >
-      {icon && (
-        <Box aria-hidden sx={{ display: 'flex', color: 'text.disabled' }}>
-          {icon}
-        </Box>
-      )}
-      <Typography component="div" sx={{ fontSize: 13, color: 'text.secondary' }}>
-        {children}
-      </Typography>
-    </Box>
+      {children}
+    </Typography>
+  )
+}
+
+function FigureLink({ to, children }: { to?: string; children: ReactNode }) {
+  if (!to) return <>{children}</>
+  return (
+    <Link component={RouterLink} to={to} underline="hover" sx={{ color: 'inherit' }}>
+      {children}
+    </Link>
   )
 }
 
@@ -230,17 +240,19 @@ export default function AssetDetailHeader({
   menuItems,
   note,
   children,
+  spacesTo,
+  responsibleTo,
+  band,
 }: AssetDetailHeaderProps) {
   const definition = assetTypeDefinition(assetType)
-  const ExtentIcon = definition?.Icon
   return (
     <Box
       component="header"
       sx={{
         position: 'relative',
         // no line of its own: the tab bar below draws the one separator
-        pb: { xs: 2.5, md: 3 },
-        mb: 3,
+        pb: band ? 2 : { xs: 2.5, md: 3 },
+        mb: band ? 0 : 3,
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'none' },
@@ -306,31 +318,34 @@ export default function AssetDetailHeader({
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
 
-      <Stack
-        direction="row"
-        spacing={2.25}
-        useFlexGap
-        sx={{ flexWrap: 'wrap', rowGap: 1, mt: 2.5, position: 'relative' }}
+      {/* one line of figures; a figure that sums up a tab leads into it */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          rowGap: 0.5,
+          mt: band ? 1 : 2.5,
+          position: 'relative',
+          minHeight: 22,
+        }}
       >
-        <HeaderFigure icon={ExtentIcon ? <ExtentIcon sx={{ fontSize: 16 }} /> : undefined}>
-          {extent}
-        </HeaderFigure>
+        <HeaderFigure>{extent}</HeaderFigure>
         {figures}
         {spaceCount != null && (
-          <HeaderFigure icon={<WorkspacesOutlinedIcon sx={{ fontSize: 16 }} />}>
-            {spreadLabel(spaceCount)}
+          <HeaderFigure>
+            <FigureLink to={spacesTo}>{spreadLabel(spaceCount)}</FigureLink>
           </HeaderFigure>
         )}
         <HeaderFigure>
-          <ResponsibleLine responsible={responsible} fontSize={13} />
+          <FigureLink to={responsibleTo}>
+            <ResponsibleLine responsible={responsible} fontSize={13} />
+          </FigureLink>
         </HeaderFigure>
-        {updatedAt && (
-          <HeaderFigure icon={<EventOutlinedIcon sx={{ fontSize: 16 }} />}>
-            Aktualisiert am {formatDate(updatedAt)}
-          </HeaderFigure>
-        )}
-      </Stack>
+        {updatedAt && !band && <HeaderFigure>Aktualisiert am {formatDate(updatedAt)}</HeaderFigure>}
+      </Box>
 
+      {band}
       {children}
     </Box>
   )

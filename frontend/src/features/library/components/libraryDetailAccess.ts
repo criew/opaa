@@ -20,7 +20,8 @@ export function formatIndexedAt(indexedAt: string | null | undefined): string {
 }
 
 /** The page's areas; the active one is shareable via the "tab" search param (URL as state). */
-export type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben' | 'zuordnungen'
+export type LibraryDetailTab =
+  'dokumente' | 'verlauf' | 'quelle' | 'metadaten' | 'freigaben' | 'zuordnungen'
 
 /**
  * The area named by `?tab=`. Every role sees every area, so only the source area can be missing -
@@ -32,8 +33,11 @@ export function resolveTab(
   requested: string | null,
   hasSourceTab: boolean,
   hasMetadataTab: boolean,
+  hasRunsTab = false,
 ): LibraryDetailTab {
   switch (requested) {
+    case 'verlauf':
+      return hasRunsTab ? 'verlauf' : 'dokumente'
     case 'quelle':
       return hasSourceTab ? 'quelle' : 'dokumente'
     case 'metadaten':

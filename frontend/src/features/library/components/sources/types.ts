@@ -52,6 +52,8 @@ export interface SourceScopeHero {
   summary: (library: StoredLibrarySource) => string
   unlistedWarning: (keys: string[], library: StoredLibrarySource) => string
   unlistedTestId: string
+  /** The name a reported scope key has in the stored settings; the key itself when absent. */
+  scopeName?: (key: string, library: StoredLibrarySource) => string
 }
 
 /**

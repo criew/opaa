@@ -74,6 +74,7 @@ export const sharePointSource: SourceRegistration = {
         )
       },
       unlistedTestId: 'sharepoint-incomplete-listing-warning',
+      scopeName: containerName,
     },
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,
