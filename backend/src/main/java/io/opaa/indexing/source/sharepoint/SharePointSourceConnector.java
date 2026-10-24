@@ -267,24 +267,10 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
       if (asked.get("drive") != null) {
         String drive = SharePointLibrary.requireId(string(asked, "drive"));
         Object folder = asked.get("folder");
-        String children =
-            folder == null
-                ? "drives/" + drive + "/root/children"
-                : "drives/"
-                    + drive
-                    + "/items/"
-                    + SharePointLibrary.requireId(string(asked, "folder"))
-                    + "/children";
-        return collect(
+        return folders(
             graph,
-            children,
-            Map.of("$select", "id,name,folder"),
-            item ->
-                item.get("folder") != null
-                    ? new SourceListing.Entry("folder:" + text(item, "id"), text(item, "name"))
-                    : null,
-            "Ordner",
-            "Weitere zeigt die Auswahl nicht.");
+            drive,
+            folder == null ? null : SharePointLibrary.requireId(string(asked, "folder")));
       }
       if (asked.get("site") != null) {
         String site = requireSiteId(string(asked, "site"));
@@ -339,6 +325,28 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Auflistung wurde unterbrochen.");
     }
+  }
+
+  /**
+   * The folders directly below {@code folder} of {@code drive}, or below its root for {@code null},
+   * keyed {@code folder:<id>}; both ids are checked by the caller.
+   */
+  static SourceListing folders(GraphClient graph, String drive, String folder)
+      throws GraphException, InterruptedException {
+    String children =
+        folder == null
+            ? "drives/" + drive + "/root/children"
+            : "drives/" + drive + "/items/" + folder + "/children";
+    return collect(
+        graph,
+        children,
+        Map.of("$select", "id,name,folder"),
+        item ->
+            item.get("folder") != null
+                ? new SourceListing.Entry("folder:" + text(item, "id"), text(item, "name"))
+                : null,
+        "Ordner",
+        "Weitere zeigt die Auswahl nicht.");
   }
 
   @FunctionalInterface
