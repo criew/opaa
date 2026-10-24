@@ -7,7 +7,13 @@ import {
   type ConfluenceSourceValues,
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
-import ConfluenceSourceForm from '../ConfluenceSourceForm'
+import ConfluenceSetup from '../setup/ConfluenceSetup'
+import { addressIssue } from '../setup/validation'
+import { collectIssues } from '../setup/setupContext'
+import { listed } from '../setup/summaries'
+import { issueAt } from '../../utils/sourceIssue'
+import { MAX_CONFLUENCE_SPACES } from '../../utils/confluenceSource'
+import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -45,18 +51,51 @@ export const confluenceSource: SourceRegistration = {
       if (!first) return ''
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
-    Form: ({ values, onChange, context }) => (
-      <ConfluenceSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-confluence`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: ConfluenceSourceValues, context) => {
+      const kept =
+        !connectionFields(context).asksSecret ||
+        (context.credentialsStored &&
+          sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl))
+      const cloud = values.edition !== 'DATA_CENTER'
+      return collectIssues(
+        addressIssue('sourceUrl', values.sourceUrl),
+        !kept && cloud && values.email.trim() === ''
+          ? issueAt('email', 'Bitte die E-Mail-Adresse eingeben.')
+          : null,
+        !kept && values.token.trim() === '' ? issueAt('token', 'Bitte das Token eingeben.') : null,
+        values.spaces.length === 0
+          ? issueAt('spaces', 'Bitte mindestens einen Space wählen.')
+          : null,
+        values.spaces.length > MAX_CONFLUENCE_SPACES
+          ? issueAt('spaces', `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces je Bibliothek.`)
+          : null,
+      )
+    },
+    checkStages: ['address', 'signIn', 'access'],
+    summary: (values: ConfluenceSourceValues) => ({
+      connection: [
+        { label: 'Adresse', value: values.sourceUrl.trim(), mono: true },
+        {
+          label: 'Edition',
+          value: values.edition
+            ? `Confluence ${confluenceEditionLabel(values.edition)}`
+            : 'unbekannt',
+        },
+      ],
+      credentials: [
+        {
+          label: values.edition === 'DATA_CENTER' ? 'Token' : 'E-Mail-Adresse und Token',
+          value: values.email ? `${values.email} · Token gesetzt` : 'gesetzt',
+        },
+      ],
+      scope: [
+        {
+          label: values.spaces.length === 1 ? 'Space' : `Spaces (${values.spaces.length})`,
+          value: listed(values.spaces.map((space) => space.name ?? space.key)),
+        },
+      ],
+    }),
+    Form: ConfluenceSetup,
     StoredView: ConfluenceStoredView,
     Scope: ConfluenceScope,
     scopeHero: {

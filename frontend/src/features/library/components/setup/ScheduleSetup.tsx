@@ -4,6 +4,7 @@ import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import type { ConfluenceFullSyncRhythm, LibraryScheduleValues } from '../../utils/librarySchedule'
 import LibraryScheduleForm from '../LibraryScheduleForm'
+import { fieldId, issueMessage, useSetup } from './setupContext'
 
 interface ScheduleSetupProps {
   idPrefix: string
@@ -15,20 +16,45 @@ interface ScheduleSetupProps {
 }
 
 /** The fourth section of the setup frame, the same in the wizard and in the edit dialog. */
-export default function ScheduleSetup({ idPrefix, values, onChange, rhythm, firstRun }: ScheduleSetupProps) {
+export default function ScheduleSetup({
+  idPrefix,
+  values,
+  onChange,
+  rhythm,
+  firstRun,
+}: ScheduleSetupProps) {
+  const setup = useSetup()
+  const message = issueMessage(setup.issues, 'schedule')
   return (
-    <Box id={`${idPrefix}-schedule`} tabIndex={-1} sx={{ outline: 'none', maxWidth: 360 }}>
-      <LibraryScheduleForm idPrefix={idPrefix} values={values} onChange={onChange} confluence={rhythm} />
+    <Box
+      id={fieldId(setup.idPrefix, 'schedule')}
+      tabIndex={-1}
+      sx={{ outline: 'none', maxWidth: 360 }}
+    >
+      {message && (
+        <Typography sx={{ fontSize: 12, color: 'error.main', mb: 1 }}>{message}</Typography>
+      )}
+      <LibraryScheduleForm
+        idPrefix={idPrefix}
+        values={values}
+        onChange={onChange}
+        confluence={rhythm}
+      />
       {firstRun && (
         <Box sx={{ mt: 2 }}>
           <FormControlLabel
             control={
-              <Switch checked={firstRun.checked} onChange={(event) => firstRun.onChange(event.target.checked)} />
+              <Switch
+                checked={firstRun.checked}
+                onChange={(event) => firstRun.onChange(event.target.checked)}
+              />
             }
             label="Erste Indizierung sofort starten"
           />
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
-            {firstRun.checked ? firstRun.hint : 'Sonst beginnt sie mit dem Zeitplan oder über „Jetzt indizieren“.'}
+            {firstRun.checked
+              ? firstRun.hint
+              : 'Sonst beginnt sie mit dem Zeitplan oder über „Jetzt indizieren“.'}
           </Typography>
         </Box>
       )}

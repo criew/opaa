@@ -173,7 +173,9 @@ interface StoredCredentialsProps {
 export function StoredCredentials({ stored, label, onKeep, children }: StoredCredentialsProps) {
   const [replacing, setReplacing] = useState(false)
   const { issues } = useSetup()
-  const credentialIssue = issues.some((issue) => issue.field && /user|account|password|token|secret|key|email/i.test(issue.field))
+  const credentialIssue = issues.some(
+    (issue) => issue.field && /user|account|password|token|secret|key|email/i.test(issue.field),
+  )
   if (!stored || replacing || credentialIssue) {
     return (
       <>
@@ -201,10 +203,32 @@ export function StoredCredentials({ stored, label, onKeep, children }: StoredCre
       <FieldLabel>{label}</FieldLabel>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}>
         <Typography sx={{ fontSize: 13.5 }}>gesetzt</Typography>
-        <Button size="small" variant="text" onClick={() => setReplacing(true)} aria-label={`${label} ersetzen`}>
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => setReplacing(true)}
+          aria-label={`${label} ersetzen`}
+        >
           Ersetzen
         </Button>
       </Box>
+    </Box>
+  )
+}
+
+/**
+ * The anchor of a choice (a list or tree) for its issue: the summary jumps here, and the message
+ * stands above the choice in danger.
+ */
+export function ScopeField({ field, children }: { field: string; children: ReactNode }) {
+  const { idPrefix, issues } = useSetup()
+  const message = issueMessage(issues, field)
+  return (
+    <Box id={fieldId(idPrefix, field)} tabIndex={-1} sx={{ outline: 'none' }}>
+      {message && (
+        <Typography sx={{ fontSize: 12, color: 'error.main', mb: 1 }}>{message}</Typography>
+      )}
+      {children}
     </Box>
   )
 }

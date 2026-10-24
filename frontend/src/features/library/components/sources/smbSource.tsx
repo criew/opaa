@@ -100,7 +100,12 @@ export const smbSource: SourceRegistration = {
     summary: (values: SmbSourceValues, context) => ({
       connection: [{ label: 'Adresse der Freigabe', value: values.sourceUrl.trim(), mono: true }],
       credentials: connectionFields(context).asksSecret
-        ? [{ label: 'Kennung und Kennwort', value: values.account ? `${values.account} · Kennwort gesetzt` : 'gesetzt' }]
+        ? [
+            {
+              label: 'Kennung und Kennwort',
+              value: values.account ? `${values.account} · Kennwort gesetzt` : 'gesetzt',
+            },
+          ]
         : undefined,
       scope: folderSummary(values.folders),
     }),

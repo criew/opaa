@@ -46,7 +46,11 @@ export default function SourceSetupLayout({
       {intro && <Box sx={{ fontSize: 13.5, color: 'text.secondary' }}>{intro}</Box>}
       {sections.map(([key, content]) =>
         content ? (
-          <SetupSection key={key} id={`${idPrefix}-section-${key}`} title={SETUP_SECTION_TITLES[key]}>
+          <SetupSection
+            key={key}
+            id={`${idPrefix}-section-${key}`}
+            title={SETUP_SECTION_TITLES[key]}
+          >
             {content}
             {key === checkAfter && check}
           </SetupSection>

@@ -373,11 +373,14 @@ export default function LibraryCreatePage() {
       if (awaitsConsent) return [formIssue(CONSENT_REQUIRED)]
       const found = configuration.validateAll
         ? configuration.validateAll(values, formContext)
-        : [configuration.validate(values, formContext)].filter((issue): issue is SourceIssue => issue !== null)
+        : [configuration.validate(values, formContext)].filter(
+            (issue): issue is SourceIssue => issue !== null,
+          )
       const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
       return scheduleError ? [...found, issueAt('schedule', scheduleError)] : found
     }
-    if (step === STEP_NAME && name.trim() === '') return [issueAt('name', 'Bitte einen Namen eingeben.')]
+    if (step === STEP_NAME && name.trim() === '')
+      return [issueAt('name', 'Bitte einen Namen eingeben.')]
     if (step === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
       return [formIssue('Bitte eine Gruppe auswählen.')]
     }
@@ -392,7 +395,12 @@ export default function LibraryCreatePage() {
 
   // Once shown, issues follow the input: a fixed field loses its message at once.
   const liveIssues = issues.length > 0 ? stepIssues(currentStep) : issues
-  const shownIssues = issues.length > 0 && liveIssues.length === 0 ? [] : issues.length > 0 ? mergeIssues(issues, liveIssues) : issues
+  const shownIssues =
+    issues.length > 0 && liveIssues.length === 0
+      ? []
+      : issues.length > 0
+        ? mergeIssues(issues, liveIssues)
+        : issues
 
   const handleNext = async () => {
     if (checking) return
@@ -672,7 +680,14 @@ export default function LibraryCreatePage() {
             sourceRows={[
               { label: 'Quellart', value: displayNameOf(sourceType) },
               ...(connection
-                ? [{ label: 'Zugang', value: privateLibrary ? `${connection.name} (eigenes Konto)` : connection.name }]
+                ? [
+                    {
+                      label: 'Zugang',
+                      value: privateLibrary
+                        ? `${connection.name} (eigenes Konto)`
+                        : connection.name,
+                    },
+                  ]
                 : []),
             ]}
             summary={configuration?.summary ? configuration.summary(values, formContext) : null}
@@ -681,7 +696,10 @@ export default function LibraryCreatePage() {
                 ? null
                 : [
                     ...scheduleSummary(schedule, confluenceRhythm),
-                    { label: 'Erste Indizierung', value: startFirstRun ? 'sofort nach dem Anlegen' : 'mit dem Zeitplan' },
+                    {
+                      label: 'Erste Indizierung',
+                      value: startFirstRun ? 'sofort nach dem Anlegen' : 'mit dem Zeitplan',
+                    },
                   ]
             }
             nameRows={[
@@ -691,7 +709,11 @@ export default function LibraryCreatePage() {
             sharingRows={
               steps.includes(STEP_SHARING)
                 ? [
-                    { label: 'Eigentümer', value: ownerType === 'GROUP' ? (selectedGroup?.name ?? 'Gruppe') : 'Mein Konto' },
+                    {
+                      label: 'Eigentümer',
+                      value:
+                        ownerType === 'GROUP' ? (selectedGroup?.name ?? 'Gruppe') : 'Mein Konto',
+                    },
                     {
                       label: 'Vorgemerkte Freigaben',
                       value: pendingGrants.length === 0 ? 'keine' : String(pendingGrants.length),

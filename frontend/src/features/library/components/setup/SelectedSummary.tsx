@@ -35,7 +35,13 @@ export default function SelectedSummary({ entries, noun, onRemove }: SelectedSum
             <Box
               component="span"
               title={entry.label}
-              sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
             >
               {entry.label}
             </Box>

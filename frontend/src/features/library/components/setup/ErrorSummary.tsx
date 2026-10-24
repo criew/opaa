@@ -45,7 +45,9 @@ const ErrorSummary = forwardRef<HTMLDivElement, ErrorSummaryProps>(function Erro
         component="h3"
         sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}
       >
-        {issues.length === 1 ? '1 Angabe fehlt oder ist ungültig' : `${issues.length} Angaben fehlen oder sind ungültig`}
+        {issues.length === 1
+          ? '1 Angabe fehlt oder ist ungültig'
+          : `${issues.length} Angaben fehlen oder sind ungültig`}
       </Typography>
       <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: 13.5 }}>
         {issues.map((issue, index) => (
@@ -55,7 +57,12 @@ const ErrorSummary = forwardRef<HTMLDivElement, ErrorSummaryProps>(function Erro
                 component="button"
                 type="button"
                 onClick={() => jump(issue.field!)}
-                sx={{ color: 'error.main', textAlign: 'left', fontSize: 13.5, verticalAlign: 'baseline' }}
+                sx={{
+                  color: 'error.main',
+                  textAlign: 'left',
+                  fontSize: 13.5,
+                  verticalAlign: 'baseline',
+                }}
               >
                 {issue.message}
               </Link>

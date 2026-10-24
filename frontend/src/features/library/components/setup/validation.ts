@@ -24,7 +24,8 @@ export function accountIssues(
 ): SourceIssue[] {
   const name = user.value.trim()
   const issues: SourceIssue[] = []
-  if (name.includes(':')) issues.push(issueAt(user.field, 'Die Kennung darf keinen Doppelpunkt enthalten.'))
+  if (name.includes(':'))
+    issues.push(issueAt(user.field, 'Die Kennung darf keinen Doppelpunkt enthalten.'))
   if (kept && name === '' && secret.value === '') return issues
   if (name === '') issues.push(issueAt(user.field, 'Bitte die Kennung eingeben.'))
   if (secret.value === '') {
@@ -35,7 +36,10 @@ export function accountIssues(
 
 /** A folder list, one per line: at least one, at most `max`, no commas. */
 export function folderListIssue(text: string, max: number): SourceIssue | null {
-  const folders = text.split('\n').map((line) => line.trim()).filter(Boolean)
+  const folders = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
   if (folders.length === 0) return issueAt('folders', 'Bitte mindestens einen Ordner wählen.')
   if (folders.length > max) return issueAt('folders', `Höchstens ${max} Ordner je Bibliothek.`)
   if (folders.some((folder) => folder.includes(','))) {

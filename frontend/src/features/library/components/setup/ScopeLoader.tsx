@@ -10,7 +10,7 @@ interface ScopeLoaderProps {
   hint: string
   /** The values the listing depends on; a change asks for a new load. */
   token: string
-  /** Load right away (edit mode, where the stored connection already works). */
+  /** Load right away, e.g. in edit mode or once the connection check passed. */
   autoLoad?: boolean
   /** The list or tree; mounted afresh on every load. */
   children: (generation: number) => ReactNode
@@ -22,11 +22,18 @@ interface ScopeLoaderProps {
  * The listing part of „Umfang“: nothing is fetched before the person asks for it, because the
  * listing signs in with the values above. One button, the same wording for every source.
  */
-export default function ScopeLoader({ loadLabel, hint, token, autoLoad = false, children, before }: ScopeLoaderProps) {
+export default function ScopeLoader({
+  loadLabel,
+  hint,
+  token,
+  autoLoad = false,
+  children,
+  before,
+}: ScopeLoaderProps) {
   const [loaded, setLoaded] = useState<{ token: string; generation: number } | null>(
     autoLoad ? { token, generation: 1 } : null,
   )
-  const current = loaded?.token === token ? loaded : null
+  const current = loaded?.token === token ? loaded : autoLoad ? { token, generation: 0 } : null
   return (
     <Box>
       {!current && (
@@ -40,7 +47,9 @@ export default function ScopeLoader({ loadLabel, hint, token, autoLoad = false, 
       <Button
         variant="outlined"
         size="small"
-        onClick={() => setLoaded({ token, generation: (loaded?.generation ?? 0) + 1 })}
+        onClick={() =>
+          setLoaded({ token, generation: (current?.generation ?? loaded?.generation ?? 0) + 1 })
+        }
         sx={{ mb: current ? 1.5 : 0 }}
       >
         {current ? 'Erneut laden' : loadLabel}

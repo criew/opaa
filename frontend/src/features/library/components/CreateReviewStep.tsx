@@ -41,10 +41,20 @@ export default function CreateReviewStep({
           ) : null,
         )}
       {scheduleRows && (
-        <SummaryBlock title={SETUP_SECTION_TITLES.schedule} rows={scheduleRows} onChange={() => onChange('source')} />
+        <SummaryBlock
+          title={SETUP_SECTION_TITLES.schedule}
+          rows={scheduleRows}
+          onChange={() => onChange('source')}
+        />
       )}
-      <SummaryBlock title="Name und Beschreibung" rows={nameRows} onChange={() => onChange('name')} />
-      {sharingRows && <SummaryBlock title="Freigaben" rows={sharingRows} onChange={() => onChange('sharing')} />}
+      <SummaryBlock
+        title="Name und Beschreibung"
+        rows={nameRows}
+        onChange={() => onChange('name')}
+      />
+      {sharingRows && (
+        <SummaryBlock title="Freigaben" rows={sharingRows} onChange={() => onChange('sharing')} />
+      )}
     </Box>
   )
 }

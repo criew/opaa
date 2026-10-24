@@ -7,7 +7,11 @@ import {
   googleDriveIssue,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import GoogleDriveSourceForm from '../GoogleDriveSourceForm'
+import GoogleDriveSetup from '../setup/GoogleDriveSetup'
+import { collectIssues } from '../setup/setupContext'
+import { listed } from '../setup/summaries'
+import { issueAt } from '../../utils/sourceIssue'
+import { MAX_GOOGLE_DRIVE_SCOPES, storedKeyServes } from '../../utils/googleDriveSource'
 import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -40,17 +44,45 @@ export const googleDriveSource: SourceRegistration = {
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
-    Form: ({ values, onChange, context }) => (
-      <GoogleDriveSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-google-drive`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: GoogleDriveSourceValues, context) => {
+      const asksSecret = connectionFields(context).asksSecret
+      const subject = values.subject.trim()
+      return collectIssues(
+        asksSecret && values.keyFile === '' && !storedKeyServes(values, context.credentialsStored)
+          ? issueAt(
+              'keyFile',
+              context.credentialsStored
+                ? 'Für ein anderes imitiertes Konto bitte die Schlüsseldatei neu wählen.'
+                : 'Bitte die Schlüsseldatei wählen.',
+            )
+          : null,
+        subject !== '' && !/^[^@\s]+@[^@\s]+$/.test(subject)
+          ? issueAt('subject', 'Das imitierte Konto ist eine E-Mail-Adresse.')
+          : values.scopes.some((scope) => scope.kind === 'myDrive') && subject === ''
+            ? issueAt('subject', '„Meine Ablage“ braucht ein imitiertes Konto.')
+            : null,
+        values.scopes.length === 0
+          ? issueAt('scopes', 'Bitte mindestens einen Bereich wählen.')
+          : null,
+        values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES
+          ? issueAt('scopes', `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche je Bibliothek.`)
+          : null,
+      )
+    },
+    checkStages: ['signIn', 'access'],
+    summary: (values: GoogleDriveSourceValues) => ({
+      credentials: [
+        { label: 'Dienstkonto', value: values.keyAccount || 'gesetzt' },
+        { label: 'Imitiertes Konto', value: values.subject.trim() || 'keines' },
+      ],
+      scope: [
+        {
+          label: values.scopes.length === 1 ? 'Bereich' : `Bereiche (${values.scopes.length})`,
+          value: listed(values.scopes.map(googleDriveScopeLabel)),
+        },
+      ],
+    }),
+    Form: GoogleDriveSetup,
     StoredView: GoogleDriveStoredView,
     Scope: GoogleDriveScopeView,
     scopeHero: {

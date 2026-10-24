@@ -53,7 +53,9 @@ export default function ServerFolderSetup<V extends ServerFolderValues>({
   const fields = connectionFields(context)
   const credentials = credentialsOf(values)
   const connectionToken = tokenOf(values.sourceUrl.trim(), credentials ?? null)
-  const ready = values.sourceUrl.trim() !== '' && (credentials !== undefined || credentialsKept || !fields.asksSecret)
+  const ready =
+    values.sourceUrl.trim() !== '' &&
+    (credentials !== undefined || credentialsKept || !fields.asksSecret)
   const browse = useCallback(
     (path: string) =>
       browseWith(context, {

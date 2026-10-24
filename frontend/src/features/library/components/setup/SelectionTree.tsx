@@ -7,23 +7,13 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import SelectionList, { VIRTUAL_FROM, type CheckState, type SelectionItem, type SelectionNoun } from './SelectionList'
+import SelectionList, { VIRTUAL_FROM, type CheckState, type SelectionNoun } from './SelectionList'
 import SelectedSummary from './SelectedSummary'
+import { toggleIn } from './selectionMapping'
 import { useDelayedFlag } from './useDelayedFlag'
 
-export interface TreeNode extends SelectionItem {
-  /** False for a node that only groups (a SharePoint site); default true. */
-  selectable?: boolean
-  /** A node known to have no children. */
-  leaf?: boolean
-}
-
-/** One chosen node with the path that leads to it, root first. */
-export interface TreeSelection {
-  id: string
-  label: string
-  ancestors: TreeNode[]
-}
+export type { TreeNode, TreeSelection } from './selectionMapping'
+import type { TreeNode, TreeSelection } from './selectionMapping'
 
 export interface TreeListing {
   items: TreeNode[]
@@ -84,17 +74,27 @@ export default function SelectionTree({
   const [viewPath, setViewPath] = useState<TreeNode[]>([])
 
   const load = useCallback(
-    (node: TreeNode | null, path: TreeNode[]) => {
+    function loadLevel(node: TreeNode | null, path: TreeNode[]) {
       const key = node?.id ?? ROOT
-      setLevels((prev) => ({ ...prev, [key]: { status: 'loading' } }))
       loadChildren(node, path).then(
-        (listing) => setLevels((prev) => ({ ...prev, [key]: { status: 'ok', listing } })),
+        (listing) => {
+          setLevels((prev) => ({ ...prev, [key]: { status: 'ok', listing } }))
+          // a single grouping node (one site) opens right away: there is nothing to choose
+          const only = listing.items.length === 1 ? listing.items[0] : null
+          if (only && only.selectable === false && !only.leaf) {
+            setExpanded((prev) => ({ ...prev, [only.id]: true }))
+            loadLevel(only, [...path, ...(node ? [node] : [])])
+          }
+        },
         (err: unknown) =>
           setLevels((prev) => ({
             ...prev,
             [key]: {
               status: 'error',
-              error: err instanceof Error && err.message ? err.message : `${noun.many} ließen sich nicht laden.`,
+              error:
+                err instanceof Error && err.message
+                  ? err.message
+                  : `${noun.many} ließen sich nicht laden.`,
             },
           })),
       )
@@ -138,7 +138,10 @@ export default function SelectionTree({
         level={level}
         depth={depth}
         noun={noun}
-        onRetry={() => load(parent, path)}
+        onRetry={() => {
+          setLevels((prev) => ({ ...prev, [key]: { status: 'loading' } }))
+          load(parent, path)
+        }}
       >
         {level?.listing && (
           <SelectionList
@@ -148,12 +151,26 @@ export default function SelectionTree({
             stateOf={stateOf}
             lockedOf={() => covered}
             selectable={(item) => (item as TreeNode).selectable !== false}
+            activate={(item) => {
+              const node = item as TreeNode
+              if (node.leaf) return
+              const drill = depth + 1 >= INLINE_DEPTH || level.listing!.items.length >= VIRTUAL_FROM
+              open(node, path, drill)
+            }}
+            expandedOf={(item) => Boolean(expanded[item.id])}
             selectedCount={selection.length}
             onToggle={(item, checked) => onChange(toggle(item as TreeNode, path, checked))}
             onToggleMany={(items, checked) =>
-              onChange(items.reduce((acc, item) => toggleIn(acc, item as TreeNode, path, checked), selection))
+              onChange(
+                items.reduce(
+                  (acc, item) => toggleIn(acc, item as TreeNode, path, checked),
+                  selection,
+                ),
+              )
             }
-            emptyText={depth === 0 && path.length === 0 ? emptyText : `Keine ${noun.many} darunter.`}
+            emptyText={
+              depth === 0 && path.length === 0 ? emptyText : `Keine ${noun.many} darunter.`
+            }
             renderAction={(item) => {
               const node = item as TreeNode
               if (node.leaf) return null
@@ -168,7 +185,11 @@ export default function SelectionTree({
                     aria-expanded={drill ? undefined : isOpen}
                     onClick={() => open(node, path, drill)}
                   >
-                    {isOpen ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+                    {isOpen ? (
+                      <ExpandMoreIcon fontSize="small" />
+                    ) : (
+                      <ChevronRightIcon fontSize="small" />
+                    )}
                   </IconButton>
                 </Tooltip>
               )
@@ -177,7 +198,9 @@ export default function SelectionTree({
               const node = item as TreeNode
               if (!expanded[node.id] || depth + 1 >= INLINE_DEPTH) return null
               return (
-                <Box sx={{ pl: 3, pr: 1, pb: 1 }}>{renderLevel(node, [...path, node], depth + 1)}</Box>
+                <Box sx={{ pl: 3, pr: 1, pb: 1 }}>
+                  {renderLevel(node, [...path, node], depth + 1)}
+                </Box>
               )
             }}
           />
@@ -192,9 +215,21 @@ export default function SelectionTree({
         <Box
           component="nav"
           aria-label={`Ebene in ${label}`}
-          sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mb: 1, fontSize: 13 }}
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 0.5,
+            mb: 1,
+            fontSize: 13,
+          }}
         >
-          <Link component="button" type="button" onClick={() => setViewPath([])} sx={{ fontSize: 13 }}>
+          <Link
+            component="button"
+            type="button"
+            onClick={() => setViewPath([])}
+            sx={{ fontSize: 13 }}
+          >
             {rootLabel}
           </Link>
           {viewPath.map((node, index) => (
@@ -206,7 +241,13 @@ export default function SelectionTree({
                 <Box
                   component="span"
                   aria-current="location"
-                  sx={{ fontWeight: 500, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  sx={{
+                    fontWeight: 500,
+                    maxWidth: 240,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
                   title={node.label}
                 >
                   {node.label}
@@ -216,7 +257,13 @@ export default function SelectionTree({
                   component="button"
                   type="button"
                   onClick={() => setViewPath(viewPath.slice(0, index + 1))}
-                  sx={{ fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  sx={{
+                    fontSize: 13,
+                    maxWidth: 200,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
                   title={node.label}
                 >
                   {node.label}
@@ -239,21 +286,6 @@ export default function SelectionTree({
   )
 }
 
-/** `selection` with `node` chosen (replacing what lies below it) or removed. */
-export function toggleIn(
-  selection: TreeSelection[],
-  node: TreeNode,
-  path: TreeNode[],
-  checked: boolean,
-): TreeSelection[] {
-  const rest = selection.filter((entry) => entry.id !== node.id)
-  if (!checked) return rest
-  return [
-    ...rest.filter((entry) => !entry.ancestors.some((a) => a.id === node.id)),
-    { id: node.id, label: node.label, ancestors: path },
-  ]
-}
-
 function LevelView({
   level,
   depth,
@@ -270,7 +302,10 @@ function LevelView({
   const showLoading = useDelayedFlag(!level || level.status === 'loading')
   if (!level || level.status === 'loading') {
     return showLoading ? (
-      <Typography role="status" sx={{ fontSize: 13, color: 'text.secondary', py: 1, pl: depth ? 1 : 0 }}>
+      <Typography
+        role="status"
+        sx={{ fontSize: 13, color: 'text.secondary', py: 1, pl: depth ? 1 : 0 }}
+      >
         {noun.many} werden geladen …
       </Typography>
     ) : (
@@ -280,7 +315,9 @@ function LevelView({
   if (level.status === 'error') {
     return (
       <Box sx={{ py: 1 }} role="alert">
-        <Typography sx={{ fontSize: 13, color: 'error.main', overflowWrap: 'anywhere' }}>{level.error}</Typography>
+        <Typography sx={{ fontSize: 13, color: 'error.main', overflowWrap: 'anywhere' }}>
+          {level.error}
+        </Typography>
         <Button size="small" variant="text" sx={{ ml: -1 }} onClick={onRetry}>
           Erneut versuchen
         </Button>
@@ -290,7 +327,9 @@ function LevelView({
   return (
     <Box>
       {level.listing?.note && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>{level.listing.note}</Typography>
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+          {level.listing.note}
+        </Typography>
       )}
       {children}
     </Box>

@@ -7,10 +7,11 @@ import {
   validateSharePointValues,
   type SharePointSourceValues,
 } from '../../utils/sharePointSource'
-import SharePointSourceForm from '../SharePointSourceForm'
+import SharePointSetup from '../setup/SharePointSetup'
+import { listed } from '../setup/summaries'
+import { issueAt } from '../../utils/sourceIssue'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
 import { formIssue, formIssueOf } from '../../utils/sourceIssue'
-import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
@@ -45,16 +46,44 @@ export const sharePointSource: SourceRegistration = {
     toPayload: sharePointPayloadOf,
     nameFromSource: (values: SharePointSourceValues) =>
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
+    validateAll: (values: SharePointSourceValues, context) => {
+      if (context.mode === 'create' && !context.connection) {
+        return [
+          formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.'),
+        ]
+      }
+      const message = validateSharePointValues(values)
+      return message ? [issueAt('libraries', message)] : []
+    },
+    checkStages: ['signIn', 'access'],
+    summary: (values: SharePointSourceValues, context) => ({
+      connection: [{ label: 'Zugang', value: context.connection?.name ?? 'Microsoft 365' }],
+      scope:
+        values.libraries.length === 0
+          ? []
+          : [
+              {
+                label:
+                  values.libraries.length === 1
+                    ? 'Dokumentbibliothek'
+                    : `Dokumentbibliotheken (${values.libraries.length})`,
+                value: listed(
+                  values.libraries.map((library) =>
+                    library.folders.length > 0
+                      ? `${sharePointLibraryLabel(library)}: ${library.folders.length} Ordner`
+                      : sharePointLibraryLabel(library),
+                  ),
+                ),
+              },
+            ],
+    }),
     Form: ({ values, onChange, context }) => (
-      <SharePointSourceForm
+      <SharePointSetup
         // listings belong to the profile they were made through; another one starts them afresh
         key={context.connection?.profileId ?? 'no-profile'}
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-sharepoint`}
-        libraryId={context.libraryId}
-        connection={connectionFields(context)}
         values={values}
         onChange={onChange}
+        context={context}
       />
     ),
     StoredView: SharePointStoredView,

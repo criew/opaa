@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Checkbox from '@mui/material/Checkbox'
 import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
@@ -53,6 +54,10 @@ interface SelectionListProps {
   emptyText: string
   /** Rendered without a checkbox: the row only opens its children. */
   selectable?: (item: SelectionItem) => boolean
+  /** What a click on the label of a row without a checkbox does, e.g. open its children. */
+  activate?: (item: SelectionItem) => void
+  /** Whether the row's children are shown, for `aria-expanded` on its label button. */
+  expandedOf?: (item: SelectionItem) => boolean | undefined
 }
 
 /**
@@ -74,6 +79,8 @@ export default function SelectionList({
   renderBelow,
   emptyText,
   selectable = () => true,
+  activate,
+  expandedOf,
 }: SelectionListProps) {
   const [query, setQuery] = useState('')
   const [scrollTop, setScrollTop] = useState(0)
@@ -91,7 +98,8 @@ export default function SelectionList({
   )
   const virtual = items.length >= VIRTUAL_FROM
   const choosable = shown.filter((item) => selectable(item) && !lockedOf(item.id))
-  const allChosen = choosable.length > 0 && choosable.every((item) => stateOf(item.id) === 'checked')
+  const allChosen =
+    choosable.length > 0 && choosable.every((item) => stateOf(item.id) === 'checked')
   const anyChosen = choosable.some((item) => stateOf(item.id) !== 'unchecked')
 
   if (items.length === 0) {
@@ -105,6 +113,8 @@ export default function SelectionList({
       state={lockedOf(item.id) ? 'checked' : stateOf(item.id)}
       locked={lockedOf(item.id)}
       selectable={selectable(item)}
+      activate={activate}
+      expanded={expandedOf?.(item)}
       onToggle={onToggle}
       action={renderAction?.(item)}
       below={virtual ? null : renderBelow?.(item)}
@@ -140,14 +150,19 @@ export default function SelectionList({
                 },
               }}
             />
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', whiteSpace: 'nowrap' }} aria-live="polite">
+            <Typography
+              sx={{ fontSize: 13, color: 'text.secondary', whiteSpace: 'nowrap' }}
+              aria-live="polite"
+            >
               {selectedCount} ausgewählt
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5, ml: -1 }}>
             {choosable.length > 0 && !allChosen && (
               <Button size="small" variant="text" onClick={() => onToggleMany(choosable, true)}>
-                {needle ? `Alle ${choosable.length} Treffer auswählen` : `Alle ${choosable.length} auswählen`}
+                {needle
+                  ? `Alle ${choosable.length} Treffer auswählen`
+                  : `Alle ${choosable.length} auswählen`}
               </Button>
             )}
             {anyChosen && (
@@ -194,7 +209,9 @@ export default function SelectionList({
       )}
       {virtual && shown.length > 0 && (
         <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
-          {needle ? `${shown.length} von ${items.length} ${noun.many}` : `${items.length} ${noun.many}`}
+          {needle
+            ? `${shown.length} von ${items.length} ${noun.many}`
+            : `${items.length} ${noun.many}`}
         </Typography>
       )}
     </Box>
@@ -210,11 +227,15 @@ function SelectionRow({
   action,
   below,
   height,
+  activate,
+  expanded,
 }: {
   item: SelectionItem
   state: CheckState
   locked: boolean
   selectable: boolean
+  activate?: (item: SelectionItem) => void
+  expanded?: boolean
   onToggle: (item: SelectionItem, checked: boolean) => void
   action: ReactNode
   below: ReactNode
@@ -224,7 +245,13 @@ function SelectionRow({
   const text = (
     <Box
       component="span"
-      sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13.5 }}
+      sx={{
+        minWidth: 0,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        fontSize: 13.5,
+      }}
     >
       {item.label}
       {item.secondary && (
@@ -247,7 +274,13 @@ function SelectionRow({
         {selectable ? (
           <Box
             component="label"
-            sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, cursor: locked ? 'default' : 'pointer' }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flex: 1,
+              minWidth: 0,
+              cursor: locked ? 'default' : 'pointer',
+            }}
           >
             <Checkbox
               size="small"
@@ -258,14 +291,37 @@ function SelectionRow({
               slotProps={{
                 input: {
                   'aria-checked': state === 'mixed' ? 'mixed' : state === 'checked',
-                  'aria-description': locked ? 'über den übergeordneten Eintrag gewählt' : undefined,
+                  'aria-description': locked
+                    ? 'über den übergeordneten Eintrag gewählt'
+                    : undefined,
                 } as Record<string, unknown>,
               }}
             />
             {labelled}
           </Box>
+        ) : activate ? (
+          <ButtonBase
+            onClick={() => activate(item)}
+            aria-expanded={expanded}
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              justifyContent: 'flex-start',
+              alignSelf: 'stretch',
+              pl: 1.5,
+              fontWeight: 500,
+              textAlign: 'left',
+              borderRadius: '6px',
+              '&:hover': { bgcolor: 'action.hover' },
+              '&.Mui-focusVisible': { boxShadow: '0 0 0 3px rgba(18,144,239,0.32)' },
+            }}
+          >
+            {text}
+          </ButtonBase>
         ) : (
-          <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, pl: 1.5 }}>{labelled}</Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, pl: 1.5 }}>
+            {labelled}
+          </Box>
         )}
         {action}
       </Box>

@@ -20,7 +20,10 @@ interface SummaryBlockProps {
 export default function SummaryBlock({ title, rows, onChange, level = 'h3' }: SummaryBlockProps) {
   if (rows.length === 0) return null
   return (
-    <Box component="section" sx={{ py: 2, '&:not(:first-of-type)': { borderTop: 1, borderColor: 'divider' } }}>
+    <Box
+      component="section"
+      sx={{ py: 2, '&:not(:first-of-type)': { borderTop: 1, borderColor: 'divider' } }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 1 }}>
         <Typography component={level} sx={{ fontSize: 15, fontWeight: 600, flex: 1 }}>
           {title}

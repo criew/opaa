@@ -71,7 +71,11 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
       return {
         connection: [{ label: 'Verzeichnispfad', value: values.sourcePath.trim(), mono: true }],
         scope: [
-          { label: 'Ausschlussmuster', value: patterns.length ? listed(patterns) : 'keine', mono: patterns.length > 0 },
+          {
+            label: 'Ausschlussmuster',
+            value: patterns.length ? listed(patterns) : 'keine',
+            mono: patterns.length > 0,
+          },
         ],
       }
     },

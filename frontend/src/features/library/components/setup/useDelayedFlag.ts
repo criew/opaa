@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 export function useDelayedFlag(flag: boolean, delayMs = 300): boolean {
   const [shown, setShown] = useState(false)
   useEffect(() => {
-    if (!flag) {
-      setShown(false)
-      return
-    }
+    if (!flag) return
     const timer = setTimeout(() => setShown(true), delayMs)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      setShown(false)
+    }
   }, [flag, delayMs])
   return flag && shown
 }

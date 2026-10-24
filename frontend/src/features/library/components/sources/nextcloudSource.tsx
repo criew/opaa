@@ -21,7 +21,8 @@ import type { SourceRegistration } from './types'
 function credentialsKept(values: NextcloudSourceValues, context: SourceFormContext) {
   return (
     !connectionFields(context).asksSecret ||
-    (context.credentialsStored && sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl))
+    (context.credentialsStored &&
+      sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl))
   )
 }
 
@@ -75,7 +76,12 @@ export const nextcloudSource: SourceRegistration = {
     summary: (values: NextcloudSourceValues, context) => ({
       connection: [{ label: 'Adresse', value: values.sourceUrl.trim(), mono: true }],
       credentials: connectionFields(context).asksSecret
-        ? [{ label: 'Kennung und Kennwort', value: values.username ? `${values.username} · Kennwort gesetzt` : 'gesetzt' }]
+        ? [
+            {
+              label: 'Kennung und Kennwort',
+              value: values.username ? `${values.username} · Kennwort gesetzt` : 'gesetzt',
+            },
+          ]
         : undefined,
       scope: folderSummary(values.folders),
     }),

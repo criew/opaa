@@ -9,66 +9,11 @@ import BusyButton from '@/shared/ui/a11y/BusyButton'
 import type { SourceConnectionTestRequest, SourceConnectionTestResponse } from '@/shared/api/types'
 import { testLibrarySource } from '../../api/libraryApi'
 import { useSetup, type CheckOutcome } from './setupContext'
-
-/** The stages a check reports, in the order the source passes them. */
-export type CheckStage = 'address' | 'signIn' | 'access'
-
-const STAGE_LABELS: Record<CheckStage, string> = {
-  address: 'Adresse',
-  signIn: 'Anmeldung',
-  access: 'Rechte',
-}
-
-type StageState = 'ok' | 'failed' | 'skipped'
-
-export interface CheckResult {
-  passed: boolean
-  stages: Partial<Record<CheckStage, StageState>>
-  message: string
-}
-
-const SIGN_IN_WORDS = /anmeld|abgelehnt|401|zugangsdaten|passwort|kennwort|token|schlüssel|zustimmung|signature|logon/i
-const ADDRESS_WORDS = /nicht erreichbar|antwortet nicht|zeitüberschreitung|nicht gefunden|dns|port|adresse/i
-
-/** Maps a test response (or a refused request) onto the stages the source has. */
-export function checkResultOf(
-  stages: CheckStage[],
-  outcome: { result?: SourceConnectionTestResponse; error?: string },
-): CheckResult {
-  const states: Partial<Record<CheckStage, StageState>> = {}
-  const set = (failed: CheckStage | null) => {
-    let passedFailure = false
-    for (const stage of stages) {
-      if (passedFailure) states[stage] = 'skipped'
-      else if (stage === failed) {
-        states[stage] = 'failed'
-        passedFailure = true
-      } else states[stage] = 'ok'
-    }
-  }
-  const { result, error } = outcome
-  if (error !== undefined || !result) {
-    set(stages.includes('signIn') && SIGN_IN_WORDS.test(error ?? '') ? 'signIn' : stages[0])
-    return { passed: false, stages: states, message: error ?? 'Verbindung ließ sich nicht prüfen.' }
-  }
-  if (result.reachable) {
-    set(null)
-    return { passed: true, stages: states, message: result.message }
-  }
-  let failed: CheckStage
-  if (result.credentialsVerified === true) failed = 'access'
-  else if (stages.includes('signIn') && (result.credentialsVerified === false || SIGN_IN_WORDS.test(result.message)))
-    failed = ADDRESS_WORDS.test(result.message) && !SIGN_IN_WORDS.test(result.message) ? 'address' : 'signIn'
-  else if (ADDRESS_WORDS.test(result.message) || !stages.includes('access')) failed = stages[0]
-  else failed = 'access'
-  if (!stages.includes(failed)) failed = stages[stages.length - 1]
-  set(failed)
-  return { passed: false, stages: states, message: result.message }
-}
+import { STAGE_LABELS, checkResultOf, type CheckResult, type CheckStage } from './checkResult'
 
 interface ConnectionCheckProps {
   /** The request of the current values; null while what it needs is missing. */
-  request: () => SourceConnectionTestRequest | null
+  request: () => SourceConnectionTestRequest | null | Promise<SourceConnectionTestRequest | null>
   /** Every value the result depends on; a different token hides the result. */
   token: string
   stages: CheckStage[]
@@ -103,14 +48,20 @@ export default function ConnectionCheck({
   const visible = outcome?.token === token ? outcome : null
 
   async function run(): Promise<CheckResult | null> {
-    const body = request()
-    if (!body) {
-      setMissing(token)
-      return null
-    }
+    const mine = token
     setMissing(null)
     setTesting(true)
-    const mine = token
+    let body: SourceConnectionTestRequest | null
+    try {
+      body = await request()
+    } catch {
+      body = null
+    }
+    if (!body) {
+      setTesting(false)
+      setMissing(mine)
+      return null
+    }
     try {
       const result = await testLibrarySource(body)
       const check = checkResultOf(stages, { result })
@@ -131,7 +82,9 @@ export default function ConnectionCheck({
 
   // the latest closure, so the flow always checks the values that stand now
   const latest = useRef({ run, visible })
-  latest.current = { run, visible }
+  useEffect(() => {
+    latest.current = { run, visible }
+  })
   useEffect(() => {
     if (!registerCheck) return
     registerCheck({
@@ -189,24 +142,45 @@ function CheckResultView({
       <Box
         component="ul"
         aria-label="Ergebnis des Verbindungstests"
-        sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, listStyle: 'none', m: 0, p: 0, fontSize: 13 }}
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 2,
+          listStyle: 'none',
+          m: 0,
+          p: 0,
+          fontSize: 13,
+        }}
       >
         {stages.map((stage) => {
           const state = check.stages[stage] ?? 'skipped'
           const Icon = state === 'ok' ? CheckIcon : state === 'failed' ? CloseIcon : RemoveIcon
           return (
-            <Box component="li" key={stage} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box
+              component="li"
+              key={stage}
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+            >
               <Icon
                 aria-hidden
                 sx={{
                   fontSize: 16,
-                  color: state === 'ok' ? 'success.main' : state === 'failed' ? 'error.main' : 'text.disabled',
+                  color:
+                    state === 'ok'
+                      ? 'success.main'
+                      : state === 'failed'
+                        ? 'error.main'
+                        : 'text.disabled',
                 }}
               />
               <span>
                 {STAGE_LABELS[stage]}
                 <Box component="span" sx={visuallyHiddenSx}>
-                  {state === 'ok' ? ': in Ordnung' : state === 'failed' ? ': fehlgeschlagen' : ': nicht geprüft'}
+                  {state === 'ok'
+                    ? ': in Ordnung'
+                    : state === 'failed'
+                      ? ': fehlgeschlagen'
+                      : ': nicht geprüft'}
                 </Box>
               </span>
             </Box>
@@ -222,7 +196,9 @@ function CheckResultView({
         </Button>
       )}
       {!check.passed && accepted && (
-        <Typography sx={{ fontSize: 13, mt: 0.5 }}>Sie fahren ohne erfolgreichen Test fort.</Typography>
+        <Typography sx={{ fontSize: 13, mt: 0.5 }}>
+          Sie fahren ohne erfolgreichen Test fort.
+        </Typography>
       )}
     </Box>
   )
