@@ -248,6 +248,7 @@ def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Pa
     assert files == [
         "opaa-update-paket-1.2.3/LIESMICH.md",
         "opaa-update-paket-1.2.3/SHA256SUMS",
+        "opaa-update-paket-1.2.3/barrierefreiheit/pruefbericht.md",
         "opaa-update-paket-1.2.3/betrieb/antwortqualitaet.md",
         "opaa-update-paket-1.2.3/betrieb/betriebsfolgen.md",
         "opaa-update-paket-1.2.3/delta/manifest-delta.json",
@@ -824,6 +825,47 @@ def test_operations_name_a_comparison_without_manifest_readably(interval: dict) 
         title = next(line for line in text.splitlines() if line.startswith("# "))
         assert title.endswith(f"gegenüber {readable}"), name
     assert f"| Kennzahl | {readable} | v1.2.3 |" in files["antwortqualitaet.md"]
+
+
+def test_the_accessibility_report_of_the_release_run_lies_in_the_package(tmp_path: Path, inputs: dict) -> None:
+    run = tmp_path / "axe" / "e2e"
+    run.mkdir(parents=True)
+    (run / "0001-t-0.json").write_text(json.dumps({
+        "sequence": 1, "context": "Chat (dunkles Farbschema)", "test": "Chat", "file": "a.spec.ts",
+        "retry": 0, "path": "/chat", "colorScheme": "dark", "measuredAt": "2026-10-24T08:00:00Z",
+        "axeVersion": "4.11.0", "tags": ["wcag21aa"], "violations": [{
+            "id": "color-contrast", "impact": "serious", "help": "Kontrast", "nodes": 1,
+            "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast", "targets": ["p"]}],
+        "passes": ["label"], "incomplete": []}), encoding="utf-8")
+    (run / "expected.txt").write_text("a.spec.ts\n", encoding="utf-8")
+    (run / "playwright.json").write_text('{"suites": []}', encoding="utf-8")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", accessibility=tmp_path / "axe", **inputs)
+
+    report = read(archive, "opaa-update-paket-1.2.3/barrierefreiheit/pruefbericht.md").decode()
+    assert "# Prüfbericht Barrierefreiheit OPAA 1.2.3" in report
+    assert "| `color-contrast` | schwerwiegend | 1 |" in report
+    names = members(archive)
+    assert "opaa-update-paket-1.2.3/barrierefreiheit/axe-ergebnisse.json" in names
+    assert "opaa-update-paket-1.2.3/barrierefreiheit/pruefbericht.html" in names
+    assert "barrierefreiheit/pruefbericht.html" in read(archive, "opaa-update-paket-1.2.3/index.html").decode()
+    assert "`barrierefreiheit/pruefbericht.md`" in read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+
+
+def test_a_package_without_axe_results_says_the_version_was_not_checked(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert "**Nicht geprüft.**" in read(archive, "opaa-update-paket-1.2.3/barrierefreiheit/pruefbericht.md").decode()
+
+
+def test_axe_results_without_a_record_fail_the_package(tmp_path: Path, inputs: dict) -> None:
+    run = tmp_path / "axe" / "e2e"
+    run.mkdir(parents=True)
+    (run / "expected.txt").write_text("a.spec.ts\n", encoding="utf-8")
+    (run / "playwright.json").write_text('{"suites": []}', encoding="utf-8")
+
+    with pytest.raises(update_package.PackageError, match="measured nothing"):
+        update_package.assemble(release(), out=tmp_path / "out", accessibility=tmp_path / "axe", **inputs)
 
 
 @pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations", "sbom"])
