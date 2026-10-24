@@ -10,17 +10,18 @@ import java.util.regex.Pattern;
 
 /**
  * Cleans extracted text before it reaches index and prompt. Removed and counted is only what has no
- * place in ordinary text: the tag block, the zero-width space, a byte order mark inside the text,
- * BiDi embeddings and overrides, and BiDi isolates without their partner. Joiners, non-joiners,
- * variation selectors and direction marks stay: emoji and several scripts need them. Soft hyphens
- * go without a finding, exotic spaces become plain ones, role tokens are defused, and injection
- * phrases are only counted. No confusables mapping: it would falsify foreign-language text.
+ * place in ordinary text: the tag block, the zero-width space, a byte order mark inside the text
+ * and BiDi embeddings and overrides. BiDi isolates without their partner are counted but kept,
+ * since a chunk boundary can split a pair. Joiners, non-joiners, variation selectors and direction
+ * marks stay: emoji and several scripts need them. Soft hyphens go without a finding, exotic spaces
+ * become plain ones, role tokens are defused, injection phrases only counted. No confusables
+ * mapping.
  */
 public final class IngestTextSanitizer {
 
   /** What the cleanup found in one text; counted per class, never with content. */
   public enum Finding {
-    /** Removed invisible or direction-changing characters. */
+    /** Removed invisible or direction-changing characters, and BiDi isolates without partner. */
     INVISIBLE_CHARACTERS,
     /** Defused role tokens such as {@code <|im_start|>} or {@code [INST]}. */
     ROLE_TOKEN,
@@ -54,11 +55,12 @@ public final class IngestTextSanitizer {
       Pattern.compile("<[|\\uFF5C]([^|\\uFF5C<>\\s]{1,40})[|\\uFF5C]>");
 
   /**
-   * Turn and sequence tokens without bars, exactly as models spell them: {@code <start_of_turn>},
-   * {@code <s>}, {@code </s>}; a type parameter such as {@code List<S>} stays.
+   * Turn tokens without bars, exactly as models spell them: {@code <start_of_turn>}, {@code <bos>}.
+   * {@code <s>} is left alone, as it is also the HTML strike-through; the answer prompt defuses it
+   * on its own.
    */
   private static final Pattern TURN_TOKEN =
-      Pattern.compile("<(start_of_turn|end_of_turn|bos|eos|/?s)>");
+      Pattern.compile("<(start_of_turn|end_of_turn|bos|eos)>");
 
   private static final Pattern INSTRUCTION_MARKER =
       Pattern.compile("\\[\\s*/?\\s*INST\\s*]|<<\\s*/?\\s*SYS\\s*>>", Pattern.CASE_INSENSITIVE);
@@ -71,7 +73,7 @@ public final class IngestTextSanitizer {
           Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
   private static final Pattern DATA_URL_PLACEHOLDER =
-      Pattern.compile("https?://\\S+[?&][\\w-]+=(?:DATEN|DATA)\\b", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("https?://\\S+[?&][\\w-]+=(?:DATEN|DATA)\\b");
 
   private IngestTextSanitizer() {}
 
@@ -93,7 +95,10 @@ public final class IngestTextSanitizer {
         cleaned.append(' ');
       } else if (cp == SOFT_HYPHEN || (cp == BYTE_ORDER_MARK && i == 0)) {
         // typography of word-processor exports, or the mark of the encoding: no finding
-      } else if (unpaired[i] || isHidden(cp)) {
+      } else if (unpaired[i]) {
+        removed++;
+        cleaned.appendCodePoint(cp);
+      } else if (isHidden(cp)) {
         removed++;
       } else {
         cleaned.appendCodePoint(cp);

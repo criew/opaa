@@ -319,9 +319,11 @@ Seiten, Folien oder Zeilengruppen. Nur wer das Format kennt, weiß, wo diese Gre
 **Bereinigung.** Direkt nach dem Format, für jedes Format und jeden Konnektor, entfernt OPAA aus
 dem Text der Chunks, ihrem Fundort, dem Dateinamen, dem Titel und dem Pfad in der Quelle Zeichen, die
 in gewöhnlichem Text nichts zu suchen haben, aber Text vor dem Auge verbergen können: Zeichen des
-Unicode-Tag-Blocks, das Leerzeichen ohne Breite, eine Bytereihenfolge-Marke mitten im Text,
-Steuerzeichen, die die Schreibrichtung einbetten oder überschreiben, und Isolierzeichen der
-Schreibrichtung ohne ihr Gegenstück. Weiche Trennstriche fallen ebenfalls weg, besondere
+Unicode-Tag-Blocks, das Leerzeichen ohne Breite, eine Bytereihenfolge-Marke mitten im Text und
+Steuerzeichen, die die Schreibrichtung einbetten oder überschreiben. Isolierzeichen der
+Schreibrichtung ohne ihr Gegenstück werden nur gezählt, weil eine Chunk-Grenze ein Paar trennen
+kann. Die Tag-Zeichen fallen ausnahmslos weg, auch in den Flaggen von Landesteilen wie England,
+die danach als schwarze Flagge erscheinen. Weiche Trennstriche fallen ebenfalls weg, besondere
 Leerzeichen werden zu normalen, und Rollen-Markierungen der Modellformate wie `<|im_start|>` oder
 `<start_of_turn>` werden entschärft. Unverändert bleiben Verbinder und Nicht-Verbinder, die Emoji,
 Persisch oder Devanagari brauchen, Variantenwähler und die Richtungsmarken in arabischem oder
@@ -329,7 +331,9 @@ hebräischem Text; ähnlich aussehende Buchstaben anderer Schriften werden nicht
 der danach leer ist, entfällt; bleibt keiner, gilt das Dokument als ohne extrahierbaren Text. Index,
 Kontextpräfix, Antwort-Prompt und Belegprüfung sehen so denselben bereinigten Text. Typische
 Wendungen wie „ignoriere alle vorherigen Anweisungen“ und Adressen mit einem Platzhalter für Daten
-bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1).
+bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1). Ein Restrisiko bleibt:
+Verbinder, Nicht-Verbinder und Variantenwähler können ebenfalls versteckten Text tragen, werden aber
+weder entfernt noch gezählt, weil normale Texte sie brauchen.
 
 Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 

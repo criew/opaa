@@ -241,6 +241,11 @@ public class DocumentIngestService {
           return DocumentIngestResult.SKIPPED;
         }
         doc = existing.get();
+        // the row was created before the cleanup, under the name as uploaded or as stored
+        if (fileName != null && !fileName.equals(doc.getFileName())) {
+          documentRepository.updateFileName(doc.getId(), fileName);
+          doc.setFileName(fileName);
+        }
         replacingExistingChunks = true;
         selection = select(ingest, doc);
       } else if (existing.isPresent()) {

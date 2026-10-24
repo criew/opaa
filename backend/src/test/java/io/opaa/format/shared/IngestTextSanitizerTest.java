@@ -64,13 +64,13 @@ class IngestTextSanitizerTest {
   }
 
   @Test
-  void pairedIsolatesStayAndUnpairedOnesAreRemoved() {
+  void pairedIsolatesStayAndUnpairedOnesAreCountedButKept() {
     String paired = "Name: " + chars(0x2067) + "שלום" + chars(0x2069) + " ist da";
     assertThat(IngestTextSanitizer.sanitize(paired).text()).isEqualTo(paired);
     assertThat(IngestTextSanitizer.sanitize(paired).findings()).isEmpty();
 
     Result unpaired = IngestTextSanitizer.sanitize(chars(0x2069) + "offen " + chars(0x2066) + "zu");
-    assertThat(unpaired.text()).isEqualTo("offen zu");
+    assertThat(unpaired.text()).isEqualTo(chars(0x2069) + "offen " + chars(0x2066) + "zu");
     assertThat(unpaired.findings()).containsEntry(Finding.INVISIBLE_CHARACTERS, 2);
   }
 
@@ -140,16 +140,17 @@ class IngestTextSanitizerTest {
                 + ">y <s>z</s>");
 
     assertThat(result.text())
-        .doesNotContain("<start_of_turn>", "<end_of_turn>", "<s>", "</s>")
-        .contains("‹start_of_turn›user", "‹User›y", "‹s›z‹/s›");
-    assertThat(result.findings()).containsEntry(Finding.ROLE_TOKEN, 5);
+        .doesNotContain("<start_of_turn>", "<end_of_turn>")
+        .contains("‹start_of_turn›user", "‹User›y", "<s>z</s>");
+    assertThat(result.findings()).containsEntry(Finding.ROLE_TOKEN, 3);
   }
 
   @Test
   void typeParametersAndCasualPhrasesAreNoFinding() {
     String text =
         "Iterable<S> findAll(); <S> S save(S entity); Du bist jetzt angemeldet. You are now"
-            + " signed in. GET /api/users?id={userId}";
+            + " signed in. GET /api/users?id={userId}, https://daten.example/x?format=data,"
+            + " Preis <s>alt</s> neu";
 
     Result result = IngestTextSanitizer.sanitize(text);
 

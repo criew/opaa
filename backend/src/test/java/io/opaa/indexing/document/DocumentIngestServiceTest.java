@@ -398,6 +398,36 @@ class DocumentIngestServiceTest {
           .containsExactly(IndexingEventCategory.SUSPICIOUS_PATTERNS);
     }
 
+    /**
+     * An upload's row exists before the cleanup; it gets the cleaned name, and so do its chunks.
+     */
+    @Test
+    void anUploadedRowGetsTheCleanedNameBeforeItsChunksAreStored() throws IOException {
+      Path file = fileNamed("upload.txt", "Inhalt");
+      String rawName = "Gebühren" + Character.toString(0x200B) + "ordnung.txt";
+      Document existing =
+          new Document(rawName, file.toAbsolutePath().toString(), null, 6L, SourceType.UPLOAD);
+      existing.setLibraryId(targetLibrary.getId());
+      existing.setOrganizationId(targetLibrary.getOrganizationId());
+      when(checksumService.computeSha256(file)).thenReturn("sp-5");
+      when(documentRepository.findByLibraryIdAndFilePath(
+              targetLibrary.getId(), file.toAbsolutePath().toString()))
+          .thenReturn(Optional.of(existing));
+      var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+      when(documentService.parseDocument(file)).thenReturn(parsed);
+      when(chunkingService.chunkDocuments(any(), eq(parsed))).thenReturn(chunks("Inhalt."));
+
+      DocumentIngestResult result =
+          service.ingest(
+              DocumentIngest.localFile(targetLibrary, file).fileName(rawName).existingRow().build(),
+              null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
+      verify(documentRepository).updateFileName(existing.getId(), "Gebührenordnung.txt");
+      assertThat(storedChunks().getFirst().getMetadata())
+          .containsEntry("file_name", "Gebührenordnung.txt");
+    }
+
     @Test
     void privateLibrariesShareOneMetricLabel() {
       KnowledgeLibrary privateLibrary =
