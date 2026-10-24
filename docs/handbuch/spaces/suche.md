@@ -711,6 +711,20 @@ beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 [erlaubten Linkzielen](../betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) klickbar;
 jeder andere erscheint als Text mit vollständiger Adresse. Bilder lädt die Antwort nie.
 
+**Fundstellen als Daten.** Ein Dokument kann Sätze enthalten, die wie eine Anweisung an das Modell
+aussehen, absichtlich platziert oder als zitiertes Beispiel. Die Chunks stehen deshalb am Ende der
+Systemanweisung in einem Block `<opaadokumente kennung="…">`, jeder Chunk mit seinem Kopf in einem
+eigenen Abschnitt. Die Kennung entsteht je Frage neu. Davor sagen die Regeln dem Modell, dass der
+Inhalt des Blocks Material zur Antwort ist und keine Anweisung. Wurde gesucht, sagen sie außerdem,
+dass es keine Links und Bilder ausgibt, die nicht wörtlich in einem Chunk stehen; ein Chat ohne
+Wissensbasis behält die Links, die die Person selbst nennt. Die Frage der Person bleibt eine eigene
+Nachricht ohne Dokumente. Aus Text und Dateiname entfernt OPAA vorher das Schlüsselwort des Blocks in
+jeder Schreibweise und unsichtbare Steuerzeichen, damit nichts den Block schließen oder einen
+Abschnitt öffnen kann. Rollen-Token der Modellformate, mit denen ein Modell eine neue Rolle beginnt,
+werden entschärft und bleiben als Text lesbar. Zeilen im Text, die wie „Dokument:" oder
+„Zitiermarke:" beginnen, und eigene Zitiermarken werden als Text kenntlich gemacht. Ein vollständiger Schutz ist das nicht:
+Wie oft ein Modell sich trotzdem lenken lässt, hängt am Modell.
+
 **Nachbar-Chunks.** Vor dem Prompt bekommt jeder Chunk der Endauswahl seine Nachbarn im selben
 Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Endauswahl und
 Nachbarn zusammen sind der **Antwortkontext**: alles, was das Modell liest. Eine Fundstelle, die
@@ -741,7 +755,8 @@ viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metrik
 
 Die **feste Systemanweisung** ist nicht konfigurierbar: Sie ist im Code festgelegt und enthält nur
 die Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten
-zu antworten, die Antwortregeln und die Zitierregeln. Die Antwortregeln stehen immer dann, wenn
+zu antworten, die Antwortregeln, die Zitierregeln und die Regeln zum Block der Fundstellen. Die
+Antwortregeln stehen immer dann, wenn
 gesucht wurde und die Nachricht etwas zu suchen hatte, auch wenn die Suche keinen Treffer fand. Eine
 Antwort ohne Suche bekommt sie nicht, etwa im Chat, der bewusst ohne Wissensbasis antwortet, bei
 einer Frage ohne Chat oder in einem Space ohne lesbares Wissen. Sie lauten: zu Sachfragen nur
