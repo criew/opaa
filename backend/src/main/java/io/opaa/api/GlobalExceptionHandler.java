@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -47,6 +48,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
@@ -54,6 +56,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.util.DisconnectedClientHelper;
 
 /**
  * <b>Declared without a selector on purpose:</b> any selector makes Spring skip exceptions raised
@@ -100,14 +103,36 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * A started body (a streamed download) can take no answer any more. The original failure goes
-   * back unchanged: Spring then logs no failure of the handler, and the container breaks the
-   * connection, logging a client that went away only at {@code DEBUG}.
+   * A started body (a streamed download) can take no answer any more. A write the response refused
+   * goes back unchanged: Spring logs the client that went away at {@code DEBUG} and completes the
+   * request. Every other failure must break the connection so that the truncated body does not end
+   * cleanly: it goes back unchanged unless Spring would take it for a client that went away (a read
+   * failure such as {@code EOFException}); then a failure of this handler, carrying no cause, makes
+   * Spring pass the original on to the container, which logs it and breaks the connection.
    */
   private static void rethrowIfCommitted(Throwable failure) {
-    if (responseCommitted()) {
+    if (!responseCommitted()) {
+      return;
+    }
+    if (responseRefusedWrite(failure)
+        || !DisconnectedClientHelper.isClientDisconnectedException(failure)) {
       throw GlobalExceptionHandler.<RuntimeException>sneakyThrow(failure);
     }
+    throw new IllegalStateException(
+        "A committed response failed for a reason other than its client");
+  }
+
+  private static boolean responseRefusedWrite(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ClientAbortException
+          || cause instanceof AsyncRequestNotUsableException) {
+        return true;
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return false;
   }
 
   @SuppressWarnings("unchecked")
