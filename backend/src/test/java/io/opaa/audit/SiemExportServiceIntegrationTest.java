@@ -44,7 +44,6 @@ class SiemExportServiceIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private List<PersonalAuditObjects> personalObjects;
   @Autowired private AuditEventRecorder auditEventRecorder;
-  @Autowired private io.opaa.audit.web.AuditedAdminCall auditedAdminCall;
   @Autowired private io.opaa.knowledge.KnowledgeLibraryRepository libraryRepository;
   @Autowired private io.opaa.space.SpaceRepository spaceRepository;
 
@@ -233,15 +232,17 @@ class SiemExportServiceIntegrationTest {
     SiemExportService service = service(true);
     service.cursor();
 
-    auditedAdminCall.run(
-        admin,
-        AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED,
-        AuditObjectType.KNOWLEDGE_LIBRARY,
-        library,
-        "Bibliothek " + library,
-        java.util.Map.of(),
-        () -> "done",
-        result -> java.util.Map.of());
+    // built like the admin controllers build it: AuditedAdminCall is no bean of its own
+    new io.opaa.audit.web.AuditedAdminCall(auditEventRecorder)
+        .run(
+            admin,
+            AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            library,
+            "Bibliothek " + library,
+            java.util.Map.of(),
+            () -> "done",
+            result -> java.util.Map.of());
     auditEventRecorder.recordPermissionHistoryAccess(
         Organization.DEFAULT_ID,
         person,
