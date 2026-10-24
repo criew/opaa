@@ -211,9 +211,10 @@ public class AuditQueryService {
 
   /**
    * The one personenbezogene exception: every event whose actor is the approved grant's named
-   * person, further bounded to a caller-requested time range that must lie entirely within the
-   * grant's own scope - a request reaching outside it is rejected, not clamped (see {@link
-   * AuditIncidentScopeGrant#covers}).
+   * person, and every event of a type with an owner that names the person as owner ({@link
+   * AuditOwnerPayload}), further bounded to a caller-requested time range that must lie entirely
+   * within the grant's own scope - a request reaching outside it is rejected, not clamped (see
+   * {@link AuditIncidentScopeGrant#covers}).
    *
    * <p>Looks the subject's pseudonym up, never mints one: unlike {@link
    * AuditActorPseudonymService#pseudonymFor}, a read must never have the side effect of creating a
@@ -257,8 +258,15 @@ public class AuditQueryService {
               .findExistingPseudonym(grant.getSubjectUserId())
               .map(
                   pseudonym ->
-                      auditLogRepository.findByOrganizationIdAndActorRefAndRecordedAtBetween(
-                          organizationId, pseudonym.toString(), from, to, pageable))
+                      auditLogRepository.findIncidentScope(
+                          organizationId,
+                          pseudonym.toString(),
+                          AuditOwnerPayload.EVENT_TYPES,
+                          AuditOwnerPayload.ownerPattern(pseudonym.toString()),
+                          AuditOwnerPayload.ownerPattern(grant.getSubjectUserId().toString()),
+                          from,
+                          to,
+                          pageable))
               .orElseGet(() -> Page.empty(pageable));
         });
   }

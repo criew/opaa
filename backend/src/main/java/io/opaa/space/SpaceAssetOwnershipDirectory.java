@@ -121,7 +121,7 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht übertragen werden");
     }
-    UUID previousOwnerId = space.getOwnerId();
+    PermissionSubject previousOwner = space.ownerSubject();
     space.transferOwnershipTo(newOwner.id());
     if (!membershipRepository.existsBySpaceIdAndUserId(space.getId(), newOwner.id())) {
       SpaceMembership membership =
@@ -138,16 +138,14 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-            .before(Map.of("ownerId", ownerRef(previousOwnerId, space)))
+            .before(Map.of("ownerId", previousOwner.auditRef(auditEventRecorder).toString()))
             .after(
                 Map.of(
-                    "ownerId", ownerRef(newOwner.id(), space), "transferId", transferId.toString()))
+                    "ownerId",
+                    newOwner.auditRef(auditEventRecorder).toString(),
+                    "transferId",
+                    transferId.toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-  }
-
-  /** A space owner is always a person: the audit log names them by pseudonym only. */
-  private String ownerRef(UUID ownerId, Space space) {
-    return auditEventRecorder.pseudonymFor(ownerId, space.getOrganizationId()).toString();
   }
 }

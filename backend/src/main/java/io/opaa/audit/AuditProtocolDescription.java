@@ -66,8 +66,8 @@ final class AuditProtocolDescription {
         new QueryPath(
             "anlassbezogene Klärung",
             "Die einzige Abfrage nach handelnder Person durch Dritte: alle Ereignisse der vorab"
-                + " festgelegten"
-                + " Person in einem Zeitraum innerhalb des freigegebenen Zeitraums; nur mit"
+                + " festgelegten Person und die Einträge, die sie als Besitzerin nennen, in einem"
+                + " Zeitraum innerhalb des freigegebenen Zeitraums; nur mit"
                 + " Freigabe im Vier-Augen-Prinzip durch eine zweite Person, nutzbar "
                 + AuditIncidentScopeGrant.USABLE_WINDOW.toDays()
                 + " Tage ab Freigabe"
@@ -75,7 +75,8 @@ final class AuditProtocolDescription {
         new QueryPath(
             "Selbstauskunft",
             "Nur über die angemeldete Person selbst, nie über eine andere und ohne Parameter:"
-                + " alle Ereignisse, in denen sie handelt, betroffen oder Konto als Objekt ist,"
+                + " alle Ereignisse, in denen sie handelt, betroffen, Konto als Objekt oder als"
+                + " Besitzerin genannt ist,"
                 + " ohne Zeit- und Seitengrenze; ohne Pseudonyme und Begründungen, andere"
                 + " Beteiligte als „andere Person“ oder „System“. Statt eines eigenen Abrufeintrags"
                 + " stehen Beginn und Ende des Exports im Protokoll"));

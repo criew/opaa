@@ -14,7 +14,9 @@ defaults:
       settings: [audit_retention_settings.retention_months]
     visibility:
       - AUDITOR über die vier begrenzten Abfragewege (nach Objekt, Zeitraum, Ereignisart, Vorgang)
-      - AUDITOR im Vier-Augen-Verfahren der anlassbezogenen Klärung (Personenfilter, befristet)
+      - >-
+        AUDITOR im Vier-Augen-Verfahren der anlassbezogenen Klärung (Personenfilter, befristet):
+        Einträge, in denen die Person handelt oder als Besitzerin genannt ist
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Automatisch über die Datenbankfunktion opaa_audit_delete_expired_partitions (ganze
@@ -76,7 +78,7 @@ data:
           - outcome
           - correlation_ref
         person:
-          columns: [actor_ref, subject_ref, object_id]
+          columns: [actor_ref, subject_ref, object_id, before, after]
           excludedColumns:
             actor_ref: >-
               Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
@@ -90,7 +92,10 @@ data:
               sagt nur, ob ein Anlass angegeben war
           note: >-
             Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
-            Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
+            Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. before und after führen nur bei
+            Ereignissen mit Besitzerin (Space angelegt, gelöscht oder stillgelegt, Besitzwechsel)
+            zur Person, über ownerId mit ihrem Pseudonym oder in älteren Einträgen ihrer
+            Kontokennung. Ereignisse einer anlassbezogenen
             Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
             entfällt, Bezeichnungen anderer Objekte (Spaces, Gruppen, Bibliotheken) bleiben
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
@@ -100,9 +105,9 @@ data:
     visibility:
       - AUDITOR
       - >-
-        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen oder
-        Kontoobjekt ist, ohne Pseudonyme und Begründungen, andere Beteiligte als „andere Person“
-        oder „System“
+        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen,
+        Kontoobjekt oder als Besitzerin genannt ist, ohne Pseudonyme und Begründungen, andere
+        Beteiligte als „andere Person“ oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
@@ -384,6 +389,11 @@ auditEvents:
     trigger: Nicht mehr geschrieben; frühere Fassung von ASSET_DETACHED_FROM_SPACE
   - id: ASSET_OWNER_CHANGED
     trigger: Die Eigentümerschaft eines Assets geht über
+    details: >-
+      before und after nennen die bisherige und die neue Besitzerin: eine Person als Pseudonym,
+      eine Gruppe mit ihrer Kennung. Ein Eintrag je Vorgang; beide Personen finden ihn in ihrer
+      Selbstauskunft und eine anlassbezogene Klärung über eine von beiden auch dann, wenn eine
+      Dritte handelt. Einträge von vor dem Update tragen die Kontokennung bis zum Ablauf der Frist
   - id: ASSET_OWNERSHIP_CLAIMED
     trigger: Ein Asset ohne Zuständigkeit wird übernommen (noch nicht verdrahtet)
   - id: ASSET_SUCCESSION_OPENED

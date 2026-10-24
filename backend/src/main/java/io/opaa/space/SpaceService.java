@@ -170,7 +170,7 @@ public class SpaceService {
             .actor(caller.id())
             .type(AuditEventType.SPACE_CREATED)
             .object(AuditObjectType.SPACE, saved.getId(), saved.auditName())
-            .after(spaceAuditPayload(saved))
+            .after(spaceAuditPayload(saved, auditEventRecorder))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     // Every member taken in at creation is audited like one added later; the owner's own
@@ -198,20 +198,18 @@ public class SpaceService {
     return saved;
   }
 
-  private Map<String, Object> spaceAuditPayload(Space space) {
+  /**
+   * The payload of the entries that create, archive or delete a space, wherever they are written.
+   */
+  static Map<String, Object> spaceAuditPayload(Space space, AuditEventRecorder audit) {
     Map<String, Object> payload = new LinkedHashMap<>();
     if (!space.isDefault()) {
       // the personal space's name is its owner's: the entry names it by id alone
       payload.put("name", space.getName());
     }
-    payload.put("ownerId", auditOwnerRef(space.getOwnerId(), space));
+    payload.put("ownerId", space.ownerSubject().auditRef(audit).toString());
     payload.put("chatAutoCleanup", space.isChatAutoCleanupEnabled());
     return payload;
-  }
-
-  /** A space owner is always a person: the audit log names them by pseudonym only. */
-  private String auditOwnerRef(UUID ownerId, Space space) {
-    return auditEventRecorder.pseudonymFor(ownerId, space.getOrganizationId()).toString();
   }
 
   public List<SpaceOverview> listSpaces(CurrentUser caller) {
@@ -694,7 +692,7 @@ public class SpaceService {
       throw new NotFoundException("Der ausgewählte Benutzer ist kein Mitglied dieses Space");
     }
 
-    UUID previousOwnerId = space.getOwnerId();
+    PermissionSubject previousOwner = space.ownerSubject();
     space.transferOwnershipTo(newOwnerUserId);
     spaceRepository.save(space);
     ownershipHistory.recordTransferred(
@@ -713,8 +711,8 @@ public class SpaceService {
             .actor(caller.id())
             .type(AuditEventType.ASSET_OWNER_CHANGED)
             .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-            .before(Map.of("ownerId", auditOwnerRef(previousOwnerId, space)))
-            .after(Map.of("ownerId", auditOwnerRef(newOwnerUserId, space)))
+            .before(Map.of("ownerId", previousOwner.auditRef(auditEventRecorder).toString()))
+            .after(Map.of("ownerId", space.ownerSubject().auditRef(auditEventRecorder).toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
@@ -836,7 +834,7 @@ public class SpaceService {
             .actor(caller.id())
             .type(AuditEventType.SPACE_DELETED)
             .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-            .before(spaceAuditPayload(space))
+            .before(spaceAuditPayload(space, auditEventRecorder))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     spaceRepository.delete(space);
@@ -886,7 +884,7 @@ public class SpaceService {
             .actor(caller.id())
             .type(AuditEventType.SPACE_ARCHIVED)
             .object(AuditObjectType.SPACE, archived.getId(), archived.auditName())
-            .before(spaceAuditPayload(archived))
+            .before(spaceAuditPayload(archived, auditEventRecorder))
             .outcome(AuditOutcome.SUCCESS)
             .build());
     return archived;

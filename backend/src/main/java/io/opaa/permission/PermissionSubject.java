@@ -1,6 +1,7 @@
 package io.opaa.permission;
 
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.audit.AuditEventRecorder;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -28,5 +29,14 @@ public record PermissionSubject(PermissionSubjectType type, UUID id, UUID organi
 
   public static PermissionSubject group(UUID groupId, UUID organizationId) {
     return new PermissionSubject(PermissionSubjectType.GROUP, groupId, organizationId);
+  }
+
+  /**
+   * How the audit log names this subject: a group by its id, a person by their audit pseudonym
+   * ({@link AuditEventRecorder#pseudonymFor}), never by the account id - which next to the
+   * pseudonym in the same row would undo it.
+   */
+  public UUID auditRef(AuditEventRecorder audit) {
+    return type == PermissionSubjectType.GROUP ? id : audit.pseudonymFor(id, organizationId);
   }
 }

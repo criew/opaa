@@ -760,7 +760,7 @@ public class PermissionTransferService {
       AuditEventType type, Parties parties, PermissionTransferCounts counts, CurrentUser caller) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("targetType", parties.target().type().name());
-    payload.put("targetId", auditRef(parties.target(), parties.organizationId()).toString());
+    payload.put("targetId", parties.target().auditRef(auditEventRecorder).toString());
     payload.put("scope", parties.scope().stream().map(Enum::name).toList());
     payload.put("assetGrants", counts.assetGrants());
     payload.put("spaceMemberships", counts.spaceMemberships());
@@ -777,7 +777,7 @@ public class PermissionTransferService {
             .type(type)
             .object(
                 groupSource ? AuditObjectType.GROUP : AuditObjectType.USER_ACCOUNT,
-                auditRef(parties.source(), parties.organizationId()),
+                parties.source().auditRef(auditEventRecorder),
                 parties.sourceLabel())
             .after(payload)
             .outcome(AuditOutcome.SUCCESS);
@@ -787,15 +787,6 @@ public class PermissionTransferService {
     }
     auditEventRecorder.recordUserActionOnSubject(
         event.subject(AuditSubjectKind.USER, parties.source().id()).build());
-  }
-
-  /**
-   * A group by its id, a person by their audit pseudonym ({@link AuditEventRecorder#pseudonymFor}).
-   */
-  private UUID auditRef(PermissionSubject party, UUID organizationId) {
-    return party.type() == PermissionSubjectType.GROUP
-        ? party.id()
-        : auditEventRecorder.pseudonymFor(party.id(), organizationId);
   }
 
   /**

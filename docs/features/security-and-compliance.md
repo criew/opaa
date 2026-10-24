@@ -461,14 +461,17 @@ diesen Weg.
 Vorgang der [anlassbezogenen Klärung](#2-einen-personenbezogenen-auswertungspfad-gibt-es-nicht) — im
 Vier-Augen-Prinzip unter Beteiligung der Personalvertretung, mit vorab festgelegter Person, vorab
 festgelegtem Zeitraum und dokumentiertem Zweck, die die Abfrage **technisch** begrenzen. Ohne
-freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Der
+freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Er
+findet die Einträge, in denen die Person handelt, und die Einträge der Ereignisarten mit Besitzerin
+(Space angelegt, gelöscht oder stillgelegt, Besitzwechsel), die sie in `before`/`after` als
+Besitzerin nennen, auch wenn eine Dritte handelt (#3135). Der
 Zugriff erzeugt seinen eigenen Eintrag, die betroffene Person wird unterrichtet, und die Zahl der Fälle
 geht in den Bericht an die Personalvertretung, für einen wählbaren Berichtszeitraum aus der
 [Auskunft über die Datenerhebung](#auskunft-über-die-datenerhebung).
 
 **Für die Person selbst gibt es genau eine Ausnahme, nur über sie: die
-[Selbstauskunft](#selbstauskunft-stufe-1)**; für Dritte bleibt allein die anlassbezogene Klärung. Sie liest die Protokolleinträge, in denen die angemeldete Person handelnd, betroffen oder als
-Kontoobjekt steht, ohne Zeitgrenze und ohne Seitengrenze — ein Personeneinstieg und ein Vollabzug,
+[Selbstauskunft](#selbstauskunft-stufe-1)**; für Dritte bleibt allein die anlassbezogene Klärung. Sie liest die Protokolleinträge, in denen die angemeldete Person handelnd, betroffen, als
+Kontoobjekt oder als Besitzerin steht, ohne Zeitgrenze und ohne Seitengrenze — ein Personeneinstieg und ein Vollabzug,
 beides sonst ausgeschlossen. Die Person ist dabei **kein Parameter**, sondern allein die Identität
 der Anfrage: Es gibt keinen Weg, die Auskunft für eine andere Person, „im Auftrag“, durch die
 Verwaltung, die Revision oder die Datenschutzstelle auszulösen. Die Pseudonymkennung verlässt OPAA
@@ -1179,7 +1182,7 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `account-state-history` | #2990 | Zeiträume, in denen das Konto nicht nutzbar war, mit Ursache | — |
 | `settings-editors` | #2990 | Bereich und Zeitpunkt der Einstellungen, die die Person zuletzt geändert hat | Werte der Einstellungen (keine Daten über die Person; Absender und Zugangsname der Mail-Einstellungen gehören dem Dienstkonto) |
 | `notifications` | #2990 | Art, Objektart, Titel, Text, Eingang, gelesen | — (Texte erzeugt OPAA und nennen Objekte, keine Personen; nennt ein Typ künftig eine andere Person, geht er ohne Text heraus) |
-| `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`) oder Kontoobjekt ist: Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
+| `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`), Kontoobjekt ist oder als Besitzerin genannt ist (`ownerId` in `before`/`after`, nur bei Ereignisarten mit Besitzerin, #3135): Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
 | `chats` | #2992 | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; je Nachricht eine Zeile mit Kennzeichnung als KI-erzeugt (`generatedByAi`); an Antworten die Fundstellen nur mit Dokumenttitel (Dateiname), heutigem Namen der Bibliothek und Seite (bzw. Folie, Zeile, Nachricht oder Teil), zitiert oder nicht | Textausschnitte der Fundstellen (Dokumentinhalt); Überschriftenpfade, Blattnamen und Folientitel des Fundorts (Text aus dem Dokument); Dokument- und Chunkkennungen, Quellverweise und Metadaten der Fundstelle; `content_tsv` (abgeleiteter Suchindex) |
 | `chat-cleanup-holds` | #2992 | ob und seit wann die Löschung der eigenen Chats nach einer Sperre angehalten ist; angehalten von „andere Person“ (nur die Verwaltung hält an) | — (eine Begründung wird nicht gespeichert; das Fortsetzen löscht die Zeile und steht im Protokoll) |
 | `connected-accounts` | #2991 | eigene verbundene Konten (Bezeichnung beim Anbieter, Zeitpunkte), von der Person verbundene Bibliotheken und Bibliotheken, für deren Einwilligung die Person verantwortlich ist (eine andere verantwortliche Person als „andere Person“) | `connection_tokens`, `connection_authorizations`, `connection_grant_revocations` (Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus oder Widerrufs, kurzlebig) |
@@ -1400,7 +1403,8 @@ Aufbewahrung: die allgemeine [Protokollfrist](#aufbewahrung).
 
 **Kein Index auf `subject_ref`.** Die Auskunft sucht die eigenen Einträge über `actor_ref` (Index der
 anlassbezogenen Klärung vorhanden), über das Kontoobjekt (Objektindex vorhanden) und über
-`subject_ref` ohne Index, also mit einem Scan über alle Partitionen der Frist. Ein Index auf
+`subject_ref` ohne Index, also mit einem Scan über alle Partitionen der Frist; im selben Scan über
+`ownerId` in `before`/`after` bei den Ereignisarten mit Besitzerin. Ein Index auf
 `subject_ref` wäre genau der Personeneinstieg „alle Ereignisse, bei denen Person X betroffen war“, den
 dieses Dokument ausschließt, und machte ihn für jeden künftigen Abfrageweg billig. #2990 misst den
 Scan auf einem Bestand von 10 Millionen Protokollsätzen über 36 Monatspartitionen. **Schwelle:**

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AuditEventType;
 import java.util.Arrays;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** The positive list of {@code before}/{@code after} keys a self-disclosure repeats. */
@@ -16,6 +17,17 @@ class AuditSelfDisclosurePayloadTest {
   void everyEventTypeHasADecision() {
     assertThat(AuditSelfDisclosurePayload.KEYS.keySet())
         .containsExactlyInAnyOrder(AuditEventType.values());
+  }
+
+  /** The event types searched for an owner are exactly those whose list repeats an owner. */
+  @Test
+  void theOwnerEventTypesAreThoseWhoseListHoldsTheOwner() {
+    assertThat(AuditOwnerPayload.EVENT_TYPES)
+        .containsExactlyInAnyOrderElementsOf(
+            AuditSelfDisclosurePayload.KEYS.entrySet().stream()
+                .filter(e -> e.getValue().contains(AuditOwnerPayload.KEY))
+                .map(Map.Entry::getKey)
+                .toList());
   }
 
   @Test

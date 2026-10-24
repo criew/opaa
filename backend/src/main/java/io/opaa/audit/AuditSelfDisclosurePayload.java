@@ -24,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 final class AuditSelfDisclosurePayload {
 
   /** Keys whose value names a person (pseudonym or account id) or an owning group. */
-  static final Set<String> PERSON_KEYS = Set.of("ownerId");
+  static final Set<String> PERSON_KEYS = Set.of(AuditOwnerPayload.KEY);
 
   /** What stands for an id under {@link #PERSON_KEYS} that is not the person's own. */
   static final String OTHER_OWNER = SelfDisclosureLabels.OTHER_PERSON + " oder Gruppe";

@@ -27,10 +27,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The category {@code audit-log}: the entries in which the person acts, is the subject or is the
- * account object, found through her existing pseudonym (never minted here). Besides {@link
- * AuditQueryService} the only reader of {@code audit_log}, for the person herself only, and without
- * an access entry of its own: the start and end events of the self-disclosure stand for it.
+ * The category {@code audit-log}: the entries in which the person acts, is the subject, is the
+ * account object or is named as owner ({@link AuditOwnerPayload}), found through her existing
+ * pseudonym (never minted here). Besides {@link AuditQueryService} the only reader of {@code
+ * audit_log}, for the person herself only, and without an access entry of its own: the start and
+ * end events of the self-disclosure stand for it.
  *
  * <p>No pseudonym, no {@code reason} and no other person leaves: actor, subject and account object
  * go out as "Sie", "andere Person" or "System", a label of another account is dropped, {@code
@@ -78,6 +79,8 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private static final String USER = "USER";
   private static final String USER_ACCOUNT = "USER_ACCOUNT";
+  private static final String[] OWNER_EVENT_TYPES =
+      AuditOwnerPayload.EVENT_TYPES.stream().map(Enum::name).sorted().toArray(String[]::new);
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
@@ -154,7 +157,9 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
 
   /**
    * The ids of the person's entries in one window, in order: the one scan of the window's
-   * partition. Only the ids are held; the rows follow page by page through the primary key.
+   * partition. Besides actor, subject and account object, an entry of an event type with an owner
+   * names the person under {@link AuditOwnerPayload#KEY}. Only the ids are held; the rows follow
+   * page by page through the primary key.
    */
   private List<UUID> keys(Person person, Window window) {
     return jdbc.query(
@@ -162,7 +167,9 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
             + " WHERE organization_id = ? AND recorded_at >= ? AND recorded_at < ?"
             + " AND ((actor_kind = 'USER' AND actor_ref = ?)"
             + " OR (subject_kind = 'USER' AND subject_ref = ?)"
-            + " OR (object_type = 'USER_ACCOUNT' AND object_id = ?))"
+            + " OR (object_type = 'USER_ACCOUNT' AND object_id = ?)"
+            + " OR (event_type = ANY (?) AND (before LIKE ? OR after LIKE ?"
+            + " OR before LIKE ? OR after LIKE ?)))"
             // no writer records a revision read with a subject or account object today; should
             // one, a read about the person by someone else belongs to an anlassbezogene Klärung
             + " AND (event_type <> 'AUDIT_LOG_ACCESSED' OR (actor_kind = 'USER' AND actor_ref = ?))"
@@ -174,6 +181,11 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
         person.pseudonym(),
         person.pseudonym(),
         person.pseudonym(),
+        OWNER_EVENT_TYPES,
+        AuditOwnerPayload.ownerPattern(person.pseudonym()),
+        AuditOwnerPayload.ownerPattern(person.pseudonym()),
+        AuditOwnerPayload.ownerPattern(person.accountId()),
+        AuditOwnerPayload.ownerPattern(person.accountId()),
         person.pseudonym());
   }
 
