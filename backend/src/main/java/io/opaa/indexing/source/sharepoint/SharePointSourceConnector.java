@@ -182,12 +182,13 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     }
     SharePointSettings sharePointSettings = SharePointSettings.read(effective);
     RequestBudget budget = RequestBudget.unbounded();
-    SharePointFileStore store =
-        new SharePointFileStore(
+    DriveFileStore store =
+        new DriveFileStore(
+            DriveRule.SHAREPOINT,
             graphs.open(
                 settings.withSourceUrl(apiBase.toString()), settings::sourceCredentials, budget),
             budget.meter(),
-            sharePointSettings,
+            sharePointSettings.libraries(),
             graphs.properties().pageSize());
     List<Map<String, Object>> findings = new ArrayList<>();
     int reachable = 0;
@@ -461,25 +462,18 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   @Override
   public Optional<DocumentContent> openOriginal(
       Document document, KnowledgeLibrary library, SourceSettings settings) {
-    String filePath = document.getFilePath();
-    if (filePath == null
-        || !filePath.startsWith(SharePointFileStore.PATH_PREFIX)
-        || settings.sourceCredentials() == null) {
+    Optional<DriveRule.ItemAddress> address = DriveRule.SHAREPOINT.address(document.getFilePath());
+    if (address.isEmpty() || settings.sourceCredentials() == null) {
       return Optional.empty();
     }
-    String[] parts = filePath.substring(SharePointFileStore.PATH_PREFIX.length()).split("/", -1);
-    if (parts.length != 2
-        || !SharePointLibrary.ID.matcher(parts[0]).matches()
-        || !SharePointLibrary.ID.matcher(parts[1]).matches()) {
-      return Optional.empty();
-    }
+    String driveId = address.get().driveId();
     SharePointSettings configured;
     try {
       configured = SharePointSettings.stored(settings.connectorSettings());
     } catch (ValidationException e) {
       return Optional.empty();
     }
-    if (configured == null || configured.library(parts[0]) == null) {
+    if (configured == null || configured.library(driveId) == null) {
       return Optional.empty();
     }
     GraphClient graph =
@@ -491,7 +485,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     try {
       file =
           graph.download(
-              "drives/" + parts[0] + "/items/" + parts[1] + "/content",
+              "drives/" + driveId + "/items/" + address.get().itemId() + "/content",
               graphs.properties().maxFileSizeBytes());
     } catch (GraphException e) {
       return switch (e.kind()) {

@@ -6,7 +6,7 @@ import {
   type MockSharePointFolder,
 } from './libraryFixtures'
 
-/** The wording of SharePointSourceConnector and SharePointFileStore, so the mock answers alike. */
+/** The wording of SharePointSourceConnector and DriveRule, so the mock answers alike. */
 export const SHAREPOINT_MESSAGES = {
   noProfile: 'Für die Auflistung ist ein Zugang mit App-Registrierung erforderlich',
   noStage: 'Bitte eine Site suchen oder ihre Adresse angeben.',

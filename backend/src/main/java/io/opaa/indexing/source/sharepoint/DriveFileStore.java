@@ -39,31 +39,25 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 
 /**
- * The {@link FileStore} and {@link ChangeFeed} of one SharePoint library for one run (ADR-0047).
- * Every document library is a container, listed and followed through {@code
- * /drives/<id>/root/delta}; a page token is both the continuation within a run and the checkpoint
- * across runs, a delta token the stream's cursor. Delta entries carry no path: the folder chain
- * follows the parents by id, each unknown folder read once per run. A folder filter keeps only
- * files below one of its folders. The identity is {@code sharepoint://<drive>/<item>}.
+ * The {@link FileStore} and {@link ChangeFeed} of the Graph drives of one library for one run
+ * (ADR-0047), each drive of the kind its {@link DriveRule} admits. Every drive is a container,
+ * listed and followed through {@code /drives/<id>/root/delta}; a page token is both the
+ * continuation within a run and the checkpoint across runs, a delta token the stream's cursor.
+ * Delta entries carry no path: the folder chain follows the parents by id, each unknown folder read
+ * once per run. A folder filter keeps only files below one of its folders. The identity is {@link
+ * DriveRule#filePath}.
  */
 @DataFlow("source-sharepoint")
-final class SharePointFileStore implements FileStore, ChangeFeed {
+final class DriveFileStore implements FileStore, ChangeFeed {
 
-  private static final Logger log = LoggerFactory.getLogger(SharePointFileStore.class);
+  private static final Logger log = LoggerFactory.getLogger(DriveFileStore.class);
 
-  static final String PATH_PREFIX = "sharepoint://";
   static final String ONENOTE_NOTE = " OneNote-Notizbücher und ihre Abschnitte übersprungen";
   static final String OUTSIDE_FOLDERS_NOTE = " Dateien außerhalb der gewählten Ordner übersprungen";
   static final String MALWARE =
       "Microsoft meldet in dieser Datei Schadsoftware; sie wird übersprungen.";
   static final String REFUSED_DOWNLOAD_SUFFIX =
       " Die Datei wird übersprungen; ein späterer Vollabgleich versucht es erneut.";
-  static final String NOT_A_LIBRARY =
-      "Das Laufwerk ist keine SharePoint-Dokumentbibliothek; OneDrive und andere Laufwerke werden"
-          + " nicht gelesen.";
-  static final String LIBRARY_NOT_VISIBLE =
-      "Die Dokumentbibliothek ist für die Anwendung nicht sichtbar. Bei der Berechtigung"
-          + " Sites.Selected muss die Site für die App freigegeben sein.";
   static final String LISTING_RESUMES_SUFFIX =
       " Der nächste Lauf setzt die Auflistung am zuletzt gesicherten Punkt fort.";
 
@@ -73,9 +67,10 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
   /** Longer parts of a change marker are hashed, so the marker keeps a short, bounded length. */
   private static final int MAX_MARKER_PART = 32;
 
+  private final DriveRule rule;
   private final GraphClient graph;
   private final SourceRequestMeter meter;
-  private final SharePointSettings settings;
+  private final List<SharePointLibrary> drives;
   private final int pageSize;
   private final Map<String, SharePointLibrary> librariesByKey = new LinkedHashMap<>();
   private final Map<String, String> libraryNames = new ConcurrentHashMap<>();
@@ -86,24 +81,25 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
   /** Files and packages a listing of this run delivered, by drive and item id. */
   private final Set<String> delivered = ConcurrentHashMap.newKeySet();
 
-  SharePointFileStore(
-      GraphClient graph, SourceRequestMeter meter, SharePointSettings settings, int pageSize) {
+  DriveFileStore(
+      DriveRule rule,
+      GraphClient graph,
+      SourceRequestMeter meter,
+      List<SharePointLibrary> drives,
+      int pageSize) {
+    this.rule = rule;
     this.graph = graph;
     this.meter = meter;
-    this.settings = settings;
+    this.drives = List.copyOf(drives);
     this.pageSize = pageSize;
-    for (SharePointLibrary library : settings.libraries()) {
+    for (SharePointLibrary library : this.drives) {
       librariesByKey.put(library.key(), library);
     }
   }
 
-  static String filePath(String driveId, String itemId) {
-    return PATH_PREFIX + driveId + "/" + itemId;
-  }
-
   @Override
   public List<FileContainer> containers() {
-    return settings.libraries().stream().map(SharePointLibrary::container).toList();
+    return drives.stream().map(SharePointLibrary::container).toList();
   }
 
   @Override
@@ -153,7 +149,8 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
         Chain chain = chain(library, item.parentId());
         if (chain == null) {
           log.info(
-              "Folder chain of SharePoint item {} no longer reaches its library - not listed",
+              "Folder chain of {} item {} no longer reaches its library - not listed",
+              rule.label(),
               item.id());
         } else if (chain.within(library) && delivered.add(key)) {
           // only a report that is listed counts: a stale earlier one must not hide the last
@@ -196,11 +193,11 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
     try {
       DriveItem item = holderOrItem(library, id);
       if (item == null || item.holdsItems()) {
-        throw new FileAccessException.Gone("Die Datei existiert in SharePoint nicht mehr.");
+        throw new FileAccessException.Gone(rule.fileGone());
       }
       Chain chain = chain(library, item.parentId());
       if (chain == null) {
-        throw new FileAccessException.Gone("Die Datei liegt nicht mehr in der Bibliothek.");
+        throw new FileAccessException.Gone(rule.fileOutsideDrive());
       }
       return entry(
           library,
@@ -279,13 +276,13 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
     } catch (GraphException e) {
       if (e.kind() == GraphException.Kind.NOT_FOUND || e.kind() == GraphException.Kind.FORBIDDEN) {
         // the listing names the library unreachable; the run goes on without a finding there
-        log.info("SharePoint library {} refused its start cursor", library.driveId());
+        log.info("{} library {} refused its start cursor", rule.label(), library.driveId());
         return UNREACHABLE_AT_START;
       }
       throw e.kind() == GraphException.Kind.UNAUTHORIZED
           ? new FileAccessException.CredentialsRejected(e.getMessage())
           : new FileAccessException.RunEnding(
-              "Dokumentbibliothek „" + displayName(library) + "“: " + e.getMessage());
+              rule.driveNamed(displayName(library)) + ": " + e.getMessage());
     }
   }
 
@@ -299,8 +296,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
       throws FileAccessException, InterruptedException {
     SharePointLibrary library = library(new FileContainer(feedKey));
     if (UNREACHABLE_AT_START.equals(cursor)) {
-      throw new FileAccessException.CursorExpired(
-          "Die Dokumentbibliothek war beim Beginn des letzten Vollabgleichs nicht erreichbar.");
+      throw new FileAccessException.CursorExpired(rule.unreachableAtStart());
     }
     try {
       GraphPage page = graph.page(deltaPath(library), query(), cursor);
@@ -310,7 +306,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
         if (item.id() == null) {
           continue;
         }
-        String filePath = filePath(library.driveId(), item.id());
+        String filePath = rule.filePath(library.driveId(), item.id());
         if (item.deleted()) {
           holders.remove(library.driveId() + "/" + item.id());
           changes.add(new Change.Removed(filePath));
@@ -348,7 +344,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
   }
 
   /**
-   * The library is a document library the application sees, and each folder of its filter still
+   * The drive is one of the rule's kind the application sees, and each folder of its filter still
    * exists in it - a filter folder gone would otherwise turn every file into a removal.
    */
   @Override
@@ -358,8 +354,8 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
     try {
       JsonNode drive =
           graph.get("drives/" + library.driveId(), Map.of("$select", "id,name,driveType"));
-      if (!"documentLibrary".equals(text(drive, "driveType"))) {
-        throw new FileAccessException.ContainerUnlistable(NOT_A_LIBRARY);
+      if (!rule.admits(text(drive, "driveType"))) {
+        throw new FileAccessException.ContainerUnlistable(rule.notAdmitted());
       }
       String name = text(drive, "name");
       libraryNames.put(
@@ -371,18 +367,14 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
         DriveItem item = holderOrItem(library, folder);
         if (item == null || !item.folder()) {
           throw new FileAccessException.ContainerUnlistable(
-              "Der gewählte Ordner „"
-                  + library.folderNames().getOrDefault(folder, folder)
-                  + "“ ist in der Dokumentbibliothek nicht mehr vorhanden; bitte die Ordnerauswahl"
-                  + " anpassen.");
+              rule.folderMissing(library.folderNames().getOrDefault(folder, folder)));
         }
       }
     } catch (GraphException e) {
       throw switch (e.kind()) {
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
-        case NOT_FOUND, FORBIDDEN ->
-            new FileAccessException.ContainerUnlistable(LIBRARY_NOT_VISIBLE);
+        case NOT_FOUND, FORBIDDEN -> new FileAccessException.ContainerUnlistable(rule.notVisible());
         default -> new FileAccessException.ContainerUnlistable(e.getMessage());
       };
     }
@@ -480,7 +472,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
   private FileEntry entry(
       SharePointLibrary library, DriveItem item, Chain chain, Exclusion exclusion) {
     List<String> segments = new ArrayList<>();
-    if (settings.libraries().size() > 1) {
+    if (drives.size() > 1) {
       segments.add(displayName(library));
     }
     segments.addAll(chain.names());
@@ -499,7 +491,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
     return new FileEntry(
         library.container(),
         item.id(),
-        filePath(library.driveId(), item.id()),
+        rule.filePath(library.driveId(), item.id()),
         name,
         SourceFolderPath.capped(segments),
         new SourceDocumentContext(library.key(), chain.hierarchyPath()),

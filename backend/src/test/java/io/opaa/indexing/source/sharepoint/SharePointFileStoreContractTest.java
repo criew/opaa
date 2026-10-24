@@ -126,7 +126,7 @@ class SharePointFileStoreContractTest extends FileStoreChangeFeedContract {
 
     @Override
     public String filePath(int container, String name) {
-      return SharePointFileStore.filePath(
+      return DriveRule.SHAREPOINT.filePath(
           SharePointTestStores.drive(container), id(container, name));
     }
 

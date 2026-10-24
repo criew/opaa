@@ -48,13 +48,14 @@ final class SharePointTestStores {
   }
 
   /** A store over {@code settings}, its requests charged to {@code budget}. */
-  static SharePointFileStore store(
+  static DriveFileStore store(
       FakeGraphServer server, SharePointSettings settings, int pageSize, RequestBudget budget) {
     SourceSettings source = new SourceSettings(null, server.origin().toString(), null, null);
-    return new SharePointFileStore(
+    return new DriveFileStore(
+        DriveRule.SHAREPOINT,
         connections(server).open(source, () -> FakeGraphServer.TOKEN, budget),
         budget.meter(),
-        settings,
+        settings.libraries(),
         pageSize);
   }
 }
