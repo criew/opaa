@@ -382,14 +382,14 @@ export function unlistedKeysOf(library: LibraryResponse): string[] {
     case 'CONFLUENCE':
       return list<{ key: string }>('spaces').map((space) => space.key)
     case 'SHAREPOINT':
-      return list<{ driveId: string }>('libraries').map((entry) => entry.driveId)
+      return list<{ driveId: string }>('libraries').map((entry) => `drive:${entry.driveId}`)
     case 'NEXTCLOUD':
     case 'SMB':
     case 'DROPBOX':
       return list<string>('folders')
     case 'GOOGLE_DRIVE':
-      return list<{ drive?: string; folder?: string }>('scopes').map(
-        (scope) => scope.drive ?? scope.folder ?? '',
+      return list<{ drive?: string; folder?: string }>('scopes').map((scope) =>
+        scope.drive ? `drive:${scope.drive}` : `folder:${scope.folder ?? ''}`,
       )
     case 'S3':
       return list<{ bucket: string; prefix?: string | null }>('scopes').map(
