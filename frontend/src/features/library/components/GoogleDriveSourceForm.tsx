@@ -348,19 +348,21 @@ export default function GoogleDriveSourceForm({
             ))}
           </List>
         )}
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'flex-start' }}>
-          <TextField
-            id={`${idPrefix}-folder`}
-            size="small"
-            label="Ordner-ID"
-            value={folderId}
-            onChange={(e) => setFolderId(e.target.value)}
-            sx={{ flex: 1 }}
-          />
-          <Button variant="text" onClick={addFolder} disabled={folderId.trim() === ''}>
-            Ordner hinzufügen
-          </Button>
-        </Stack>
+        <Box sx={{ mt: 1.5 }}>
+          <FieldLabel htmlFor={`${idPrefix}-folder`}>Ordner-ID</FieldLabel>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+            <TextField
+              id={`${idPrefix}-folder`}
+              size="small"
+              value={folderId}
+              onChange={(e) => setFolderId(e.target.value)}
+              sx={{ flex: 1 }}
+            />
+            <Button variant="text" onClick={addFolder} disabled={folderId.trim() === ''}>
+              Ordner hinzufügen
+            </Button>
+          </Stack>
+        </Box>
         {values.scopes.length > 0 && (
           <List dense aria-label="Gewählte Bereiche">
             {values.scopes.map((scope) => {
