@@ -1211,8 +1211,12 @@ describe('LibraryDetailPage', () => {
     expect(mockTrigger).toHaveBeenCalledWith(ownerLibrary.id, 'CONFLUENCE', 'FULL')
     await user.click(screen.getByRole('button', { name: 'Jetzt indizieren' }))
     expect(mockTrigger).toHaveBeenLastCalledWith(ownerLibrary.id, 'CONFLUENCE')
-    // no help text on what „Jetzt indizieren“ reads
+    // no help text on what „Jetzt indizieren“ reads; the two kinds of run are its tooltip
     expect(screen.queryByText(/in der Regel nur Änderungen seit dem letzten Lauf/)).toBeNull()
+    await user.hover(screen.getByRole('button', { name: 'Jetzt indizieren' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Spaces neu.',
+    )
     unmount()
 
     setLibraryState(

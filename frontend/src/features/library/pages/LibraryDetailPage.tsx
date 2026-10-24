@@ -6,6 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DataUsageIcon from '@mui/icons-material/DataUsage'
 import HistoryIcon from '@mui/icons-material/History'
@@ -382,16 +383,22 @@ export default function LibraryDetailPage() {
           connectorSourceType &&
           mayManageDocuments && (
             <>
-              <Button
-                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
-                variant="outlined"
-                size="small"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-                disabled={isRunning}
-              >
-                {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
-              </Button>
+              {/* what a run reads, where a source has two kinds of run; the span keeps the
+                  tooltip on a disabled button */}
+              <Tooltip title={connectorConfiguration?.runsHint ?? ''} describeChild>
+                <span>
+                  <Button
+                    // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
+                    variant="outlined"
+                    size="small"
+                    startIcon={<PlayArrowIcon />}
+                    onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+                    disabled={isRunning}
+                  >
+                    {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
+                  </Button>
+                </span>
+              </Tooltip>
             </>
           )
         }

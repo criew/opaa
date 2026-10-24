@@ -115,7 +115,7 @@ export interface SourceConfiguration<V> {
   rhythmSettingsBase?: (library: StoredLibrarySource) => Record<string, unknown> | null
   /** The sentence under the wizard's immediate-first-run switch. */
   firstRunHint?: string
-  /** The explanation above the run history. */
+  /** The tooltip of „Jetzt indizieren“: what a run reads, where a source has two kinds of run. */
   runsHint?: string
 }
 

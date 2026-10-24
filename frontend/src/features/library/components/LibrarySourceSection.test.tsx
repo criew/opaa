@@ -1050,6 +1050,37 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
     expect(await screen.findByText('Zeitplan gespeichert.')).toBeVisible()
   })
 
+  it('names a failed save without HTTP codes and keeps the row open', async () => {
+    update
+      .mockRejectedValueOnce(new Error('HTTP 502: Request failed with status code 502'))
+      .mockRejectedValueOnce(new Error('Der Zeitplan ist ungültig (HTTP 400).'))
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-fs"
+        library={{
+          name: 'Satzungen',
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/satzungen',
+          schedule: { frequency: 'DISABLED' },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const row = () => screen.getByRole('region', { name: 'Zeitplan' })
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Zeitplan$/ }))
+    await user.click(within(row()).getByRole('combobox', { name: /^häufigkeit$/i }))
+    await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
+    await user.click(within(row()).getByRole('button', { name: 'Speichern' }))
+    expect(await within(row()).findByText('Die Änderung ließ sich nicht speichern.')).toBeVisible()
+    await user.click(within(row()).getByRole('button', { name: 'Speichern' }))
+    expect(await within(row()).findByText('Der Zeitplan ist ungültig.')).toBeVisible()
+    expect(row()).not.toHaveTextContent(/HTTP|502|400/)
+    expect(within(row()).getByRole('combobox', { name: /^häufigkeit$/i })).toBeVisible()
+  })
+
   it('keeps a choice of an inline scope as a draft until „Speichern“', async () => {
     const user = userEvent.setup()
     renderWithProviders(

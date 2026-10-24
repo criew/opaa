@@ -77,6 +77,28 @@ describe('SelectionDialog', () => {
     expect(screen.getByRole('checkbox', { name: 'Archiv' })).not.toHaveAttribute('aria-checked')
   })
 
+  it('gives an entry that only leads deeper a single tab stop', async () => {
+    const user = userEvent.setup()
+    const site = (key: string): BrowseEntry => ({
+      key,
+      name: key,
+      selectable: false,
+      openable: true,
+    })
+    renderDialog(
+      treeSource({ '': [site('Rathaus'), site('Bauamt')], Rathaus: [flat('Dokumente')] }),
+    )
+
+    const open = await screen.findByRole('button', { name: '„Rathaus“ öffnen' })
+    // the chevron beside the name is a pointer target only
+    expect(screen.getAllByRole('button', { name: '„Rathaus“ öffnen' })).toHaveLength(1)
+    open.focus()
+    await user.tab()
+    expect(screen.getByRole('button', { name: '„Bauamt“ öffnen' })).toHaveFocus()
+    await user.click(open)
+    expect(await screen.findByRole('checkbox', { name: 'Dokumente' })).toBeInTheDocument()
+  })
+
   it('shows the search only from seven entries of a level on', async () => {
     const six = Array.from({ length: 6 }, (_, i) => flat(`s${i}`, `Space ${i + 1}`))
     const { unmount } = renderWithProviders(

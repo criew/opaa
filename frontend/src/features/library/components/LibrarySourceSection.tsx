@@ -203,12 +203,13 @@ export default function LibrarySourceSection({
       {configuration?.setup ? (
         <Box sx={{ mb: 4 }}>
           <LibrarySourceRows
-            // a fresh instance whenever the stored source changes, so the rows start from it
+            // a fresh instance whenever the stored source changes, so the rows start from it; the
+            // next run time moves after every run and must not discard a row being edited
             key={JSON.stringify([
               library.sourceUrl,
               library.sourcePath,
               library.sourceSettings,
-              library.schedule,
+              library.schedule && { ...library.schedule, nextRunAt: undefined },
               library.sourceCredentialsSet,
               library.connectionProfile?.id,
             ])}

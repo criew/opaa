@@ -486,6 +486,9 @@ function SelectionDialogBody({
                 <Box sx={{ flex: 1, minWidth: 0, py: entry.blocked ? 0.5 : 0 }}>
                   <Typography
                     component={entry.openable && !entry.selectable ? 'button' : 'span'}
+                    aria-label={
+                      entry.openable && !entry.selectable ? `„${entry.name}“ öffnen` : undefined
+                    }
                     onClick={
                       entry.openable && !entry.selectable
                         ? () => openLevel([...level, { key: entry.key, name: entry.name }])
@@ -508,10 +511,12 @@ function SelectionDialogBody({
                     <PathLabel path={entry.name} />
                   </Typography>
                 </Box>
+                {/* one tab stop per entry: where the name itself opens, the chevron is only a pointer target */}
                 {entry.openable && (
                   <Tooltip disableInteractive title="Öffnen">
                     <IconButton
                       aria-label={`„${entry.name}“ öffnen`}
+                      {...(!entry.selectable ? { tabIndex: -1, 'aria-hidden': true } : {})}
                       onClick={() => openLevel([...level, { key: entry.key, name: entry.name }])}
                     >
                       <ChevronRightIcon />

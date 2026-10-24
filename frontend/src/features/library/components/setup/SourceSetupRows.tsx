@@ -74,7 +74,7 @@ interface SourceSetupRowsProps<V> {
 
 /**
  * The setup of a source as quiet summary rows - Verbindung, Umfang, Zeitplan - of which at most one
- * is open. The same rows serve the wizard (with „Fertig“ and a check of all rows on „Weiter“) and
+ * is open. The same rows serve the wizard (with a check of all rows on „Weiter“) and
  * the Reiter „Quelle“ (with „Speichern“ per row). Validation shows every issue at once: at its
  * field in the open row, as a line under a closed row's summary, and gathered above the rows.
  */
@@ -240,8 +240,11 @@ export default function SourceSetupRows<V>({
       setShownFields(new Set())
     } catch (err) {
       setSaveError(
-        err instanceof Error && err.message
-          ? err.message
+        // the HTTP client's own wording names no reason: the plain sentence then says enough
+        err instanceof Error &&
+          err.message &&
+          !/Request failed with status code|Network Error|timeout of \d+ms/i.test(err.message)
+          ? plainMessage(err.message)
           : 'Die Änderung ließ sich nicht speichern.',
       )
     } finally {
