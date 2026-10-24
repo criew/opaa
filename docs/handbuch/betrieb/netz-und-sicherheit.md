@@ -209,15 +209,28 @@ geschnitten und, beim Upload, in der Originalablage abgelegt.
 - **Ab Werk aus.** Eingeschaltet ohne Adresse bricht der Start ab.
 - **Befund:** Ein Upload wird mit Meldung und Signatur abgewiesen. Bei einer Quelle steht das
   Dokument mit dem Grund in der Bibliothek, ohne Inhalt im Index, und das Laufprotokoll führt es als
-  abgewiesen; eine unveränderte Datei wird nicht erneut gelesen. Jeder Befund steht im
-  Revisionsprotokoll als Systemvorgang mit Bibliothek und Signatur, ohne Dateinamen und ohne die
-  Person, die die Datei hochgeladen hat.
+  abgewiesen. Das Original ist gesperrt: „Original öffnen“ liefert es nicht aus, auch keinen Anhang
+  daraus, ebenso wenig bei einem Upload, den eine spätere Neuindizierung mit neuen Signaturen als
+  befallen erkennt. Dieselbe unveränderte Datei wird weder erneut geprüft noch erneut protokolliert;
+  erst eine geänderte Datei wird wieder geprüft. Das Dokument zählt weiter zum Speicherkontingent
+  der Bibliothek, bis es aus der Quelle verschwindet oder gelöscht wird.
+- **Revisionsprotokoll:** Jeder Befund steht dort als Systemvorgang mit Bibliothek und Signatur,
+  ohne Dateinamen und ohne die Person, die die Datei hochgeladen hat. Bei einer privaten Bibliothek
+  nennt der Eintrag statt der Bibliothek nur die Virenprüfung und die Art der Quelle, weil die
+  Bibliothek auf ihre Eigentümerin schließen ließe.
 - **Scanner nicht erreichbar:** Ein Fehler des Scanners, eine Zeitüberschreitung oder eine Datei über
   seiner Grenze für Datenströme gilt als nicht geprüft. Mit `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` auf
   `REJECT` wird sie nicht aufgenommen: Der Upload antwortet `503`, ein Dokument einer Quelle wird beim
-  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen, mit Warnung im Log.
-- **Grenze des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
-  annimmt; sonst gilt jede größere Datei als nicht geprüft.
+  nächsten Lauf erneut versucht. Mit `ACCEPT` wird sie ungeprüft aufgenommen; das Laufprotokoll
+  nennt sie unter „Ohne Virenprüfung aufgenommen“, und beim Start warnt das Log vor dieser
+  Einstellung.
+- **Frist:** `OPAA_MALWARE_SCAN_TIMEOUT` begrenzt einen Scan insgesamt, vom Verbindungsaufbau bis zur
+  Antwort; danach gilt die Datei als nicht geprüft.
+- **Grenzen des Scanners:** `StreamMaxLength` von clamd muss die größte Datei fassen, die OPAA
+  annimmt; sonst gilt jede größere Datei als nicht geprüft, und das Log nennt diese Grenze als
+  Grund. Über `MaxFileSize` und `MaxScanSize` hinaus prüft clamd eine Datei nur teilweise und meldet
+  sie dennoch als sauber, solange `AlertExceedsMax` aus ist; verschlüsselte Archive meldet er nur
+  mit `AlertEncrypted`. Beides stellt der Betrieb des Scanners ein.
 - **Metrik:** `opaa_malware_scans_total` nach Ergebnis (`clean`, `infected`, `failed`).
 
 Nicht gebaut sind eine Prüfung über ICAP, eine erneute Prüfung des Bestands mit neuen Signaturen
@@ -229,7 +242,7 @@ eines Feeds).
 | `OPAA_MALWARE_SCAN_ENABLED` | `false` | Virenprüfung ein |
 | `OPAA_MALWARE_SCAN_HOST` | — | Adresse des clamd-Dienstes, ohne Schema |
 | `OPAA_MALWARE_SCAN_PORT` | `3310` | Port des clamd-Dienstes |
-| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist für den Verbindungsaufbau und jedes Warten auf den Scanner |
+| `OPAA_MALWARE_SCAN_TIMEOUT` | `30s` | Frist eines Scans insgesamt |
 | `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `REJECT` | Umgang mit einer nicht geprüften Datei: `REJECT` oder `ACCEPT` |
 
 Unter Kubernetes stehen dieselben Werte unter `malwareScan` im Helm-Chart; eine NetworkPolicy muss

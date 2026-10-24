@@ -422,6 +422,23 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int markFailedWithoutChunks(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
 
   /**
+   * Like {@link #markFailedWithoutChunks} for a file the malware scan found {@code signature} in:
+   * the {@code checksum} of that file is kept, so the same unchanged file is skipped instead of
+   * scanned and recorded again, and the signature marks the row for every reader of its original.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage, d.chunkCount = 0, d.checksum = :checksum, d.malwareSignature ="
+          + " :signature where d.id = :id")
+  int markMalwareFound(
+      @Param("id") UUID id,
+      @Param("errorMessage") String errorMessage,
+      @Param("signature") String signature,
+      @Param("checksum") String checksum);
+
+  /**
    * The successful counterpart to {@link #markFailed} - same reasoning, same
    * zero-rows-means-the-row-is-gone contract.
    */
@@ -429,7 +446,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Transactional
   @Query(
       "update Document d set d.status = io.opaa.api.types.DocumentStatus.INDEXED, d.chunkCount ="
-          + " :chunkCount, d.indexedAt = :indexedAt, d.errorMessage = null where d.id = :id")
+          + " :chunkCount, d.indexedAt = :indexedAt, d.errorMessage = null, d.malwareSignature ="
+          + " null where d.id = :id")
   int markIndexed(
       @Param("id") UUID id,
       @Param("chunkCount") int chunkCount,
@@ -571,7 +589,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query(
       "update Document d set d.status = io.opaa.api.types.DocumentStatus.INDEXED, d.chunkCount ="
           + " :chunkCount, d.indexedAt = :indexedAt, d.checksum = :checksum, d.lastModifiedRemote ="
-          + " :lastModifiedRemote, d.errorMessage = null where d.id = :id")
+          + " :lastModifiedRemote, d.errorMessage = null, d.malwareSignature = null where d.id = :id")
   int markIndexedFromSource(
       @Param("id") UUID id,
       @Param("chunkCount") int chunkCount,

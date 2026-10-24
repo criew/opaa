@@ -19,6 +19,7 @@ import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
 import io.opaa.indexing.chunk.EmbeddingInputCheck;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilePathLimit;
@@ -237,6 +238,14 @@ public class DocumentIngestService {
         selection = select(ingest, doc);
       } else if (existing.isPresent()) {
         Document existingDoc = existing.get();
+        if (checksum.equals(existingDoc.getChecksum()) && existingDoc.hasMalwareFinding()) {
+          // The same file the scan already kept out: neither scanned nor recorded again.
+          log.info(
+              "Skipping unchanged document with a malware finding: {}",
+              names.of(filePath, existingDoc.getId()));
+          metrics.recordSkipped();
+          return DocumentIngestResult.SKIPPED;
+        }
         if (checksum.equals(existingDoc.getChecksum())
             && existingDoc.getStatus() == DocumentStatus.INDEXED) {
           refreshProvenance(existingDoc, ingest, checksum);
@@ -282,7 +291,8 @@ public class DocumentIngestService {
     boolean preservingPreviousChunks = replacingExistingChunks;
     boolean[] attachmentAtQuota = {false};
     try {
-      DocumentIngestResult keptOut = scanForMalware(ingest, documentId, replacingExistingChunks);
+      DocumentIngestResult keptOut =
+          scanForMalware(ingest, documentId, replacingExistingChunks, checksum, attachmentAccess);
       if (keptOut != null) {
         return keptOut;
       }
@@ -776,20 +786,36 @@ public class DocumentIngestService {
 
   /**
    * The malware scan of a file before it is parsed, or {@code null} to go on. A finding removes the
-   * previous chunks and marks the row {@code FAILED} for good; a file the scanner could not judge
-   * is marked {@code FAILED} with its previous chunks kept, so the next run tries again, and a
-   * re-index leaves the row as it is.
+   * previous chunks and marks the row {@code FAILED} with the signature and the file's checksum;
+   * the same unchanged file is then skipped. A file the scanner could not judge is marked {@code
+   * FAILED} with its previous chunks kept, so the next run tries again, and a re-index leaves the
+   * row as it is; taken in unscanned under {@code ACCEPT}, the run protocol says so.
    */
   private DocumentIngestResult scanForMalware(
-      DocumentIngest ingest, UUID documentId, boolean replacingExistingChunks) {
+      DocumentIngest ingest,
+      UUID documentId,
+      boolean replacingExistingChunks,
+      String checksum,
+      AttachmentAccess attachmentAccess) {
     if (ingest.malwareScanned() || !(ingest.content() instanceof DocumentIngest.File file)) {
       return null;
     }
     return switch (malwareScanService.check(file.path(), ingest.library(), ingest.fileName())) {
       case MalwareScanService.Verdict.Clean clean -> null;
+      case MalwareScanService.Verdict.AcceptedUnscanned accepted -> {
+        if (attachmentAccess != null) {
+          attachmentAccess
+              .events()
+              .record(
+                  IndexingEventCategory.UNSCANNED,
+                  MalwareScanService.ACCEPTED_UNSCANNED_MESSAGE,
+                  ingest.filePath());
+        }
+        yield null;
+      }
       case MalwareScanService.Verdict.Infected infected -> {
         deletePreviousChunks(replacingExistingChunks, documentId);
-        yield markMalwareFound(documentId);
+        yield markMalwareFound(documentId, infected.signature(), checksum);
       }
       case MalwareScanService.Verdict.Unscanned unscanned ->
           ingest.reindex()
@@ -798,9 +824,11 @@ public class DocumentIngestService {
     };
   }
 
-  private DocumentIngestResult markMalwareFound(UUID documentId) {
+  private DocumentIngestResult markMalwareFound(
+      UUID documentId, String signature, String checksum) {
     int updated =
-        documentRepository.markFailedWithoutChunks(documentId, MalwareScanService.INFECTED_MESSAGE);
+        documentRepository.markMalwareFound(
+            documentId, MalwareScanService.INFECTED_MESSAGE, signature, checksum);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked as infected", documentId);
       metrics.recordSkipped();

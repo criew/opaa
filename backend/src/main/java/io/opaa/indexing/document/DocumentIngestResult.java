@@ -37,7 +37,9 @@ public enum DocumentIngestResult {
   /**
    * The malware scan found malware in the file: the row is marked {@code FAILED} with {@code
    * MalwareScanService#INFECTED_MESSAGE} and without chunks, and a caller reports a rejection, like
-   * {@link #NO_EXTRACTABLE_TEXT}. The same unchanged file is not read again.
+   * {@link #NO_EXTRACTABLE_TEXT}. The row keeps the file's checksum and signature, so the same
+   * unchanged file is skipped in {@code DocumentIngestService#ingest}, neither scanned nor recorded
+   * again.
    */
   MALWARE_FOUND,
 

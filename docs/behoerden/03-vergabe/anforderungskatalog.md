@@ -81,7 +81,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | S-04 | Es gibt einen öffentlichen, vertraulichen Meldeweg für Sicherheitslücken; behobene Lücken werden veröffentlicht. | Muss | Sicherheitsrichtlinie |
 | S-05 | Die Anwendung läuft als Container ohne Root-Rechte und mit Read-only Filesystem. | Muss oder Kann, Begründung im Vergabevermerk | Betriebsdokumentation |
 | S-06 | Die ausgelieferten Artefakte werden regelmäßig auf bekannte Schwachstellen geprüft; Reaktionszeiten je Schwere sind festgelegt. Für jede Version ist veröffentlicht, bis wann sie Sicherheitskorrekturen ohne neue Funktionen erhält. | Kann | Beschreibung des Verfahrens, Supportzeiträume |
-| S-07 | Prüft jede aufzunehmende Datei vor der Verarbeitung mit dem vorhandenen Virenscanner der Behörde [Schnittstelle, z. B. clamd oder ICAP]; eine befallene Datei wird nicht aufgenommen und der Befund protokolliert; das Verhalten bei Ausfall des Scanners ist einstellbar. | Kann | Beschreibung der Anbindung |
+| S-08 | Die Anwendung prüft jede aufzunehmende Datei vor der Verarbeitung mit dem vorhandenen Virenscanner der Behörde [Schnittstelle, z. B. clamd oder ICAP]; eine befallene Datei wird nicht aufgenommen und der Befund protokolliert; das Verhalten bei Ausfall des Scanners ist einstellbar. | Kann | Beschreibung der Anbindung |
 
 ## B · Betrieb
 

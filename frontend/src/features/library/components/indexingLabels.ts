@@ -27,6 +27,8 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   // Indexed anyway, only the deviation between the file's own extension and its detected
   // content is reported here.
   FORMAT_MISMATCH: 'Endung weicht vom Inhalt ab',
+  // Indexed anyway, without a malware scan: the scanner could not judge it (policy ACCEPT).
+  UNSCANNED: 'Ohne Virenprüfung aufgenommen',
   SCHEDULE_SKIPPED: 'Geplanter Lauf übersprungen',
   // The document no longer exists at its source and was removed at the end of a
   // successful, complete run - a note about the removal, not a skip/reject/error of this run.

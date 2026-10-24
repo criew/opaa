@@ -1503,6 +1503,33 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void loadContentNeverServesAnOriginalWithAMalwareFinding() throws IOException {
+    Document mail = uploadedMailRow("befallen.eml");
+    mail.setMalwareSignature("Eicar-Test-Signature");
+    when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
+    grantViewerOnUploadLibrary();
+
+    assertThatThrownBy(() -> service.loadContent(mail.getId(), caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage(LibraryDocumentService.MALWARE_FOUND_MESSAGE)
+        .extracting("code")
+        .isEqualTo(LibraryDocumentService.MALWARE_FOUND);
+  }
+
+  @Test
+  void loadContentExtractsNothingOutOfAParentWithAMalwareFinding() throws IOException {
+    Document mail = uploadedMailRow("befallen.eml");
+    mail.setMalwareSignature("Eicar-Test-Signature");
+    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
+    UUID documentId = stubAttachmentChain(mail, attachment);
+
+    assertThatThrownBy(() -> service.loadContent(documentId, caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage(LibraryDocumentService.MALWARE_FOUND_MESSAGE);
+    verifyNoInteractions(attachmentExtractor);
+  }
+
+  @Test
   void loadContentAnswers404WhenAnAncestorBelongsToAnotherLibrary() throws IOException {
     Document mail = uploadedMailRow("fremd.eml");
     mail.setLibraryId(UUID.randomUUID());

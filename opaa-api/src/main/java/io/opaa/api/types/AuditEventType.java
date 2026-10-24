@@ -291,7 +291,8 @@ public enum AuditEventType {
   /**
    * The malware scanner reported a finding in a file on its way into a library, so the file was not
    * taken in. Written by the scanning system process with the library as object and the signature
-   * name in the payload; the file name and the person who uploaded the file are not recorded.
+   * in the payload; for a private library the scan itself is the object and only the source type
+   * remains. Neither file name nor uploading person is recorded.
    */
   MALWARE_DETECTED,
   /**

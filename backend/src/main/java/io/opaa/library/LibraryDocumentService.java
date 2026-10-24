@@ -87,6 +87,12 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /** The {@code code} of the 404 for a library being erased; only a reader of it sees it. */
   public static final String LIBRARY_BEING_ERASED = "LIBRARY_BEING_ERASED";
 
+  /** The {@code code} of the 404 for an original the malware scan found malware in. */
+  public static final String MALWARE_FOUND = "MALWARE_FOUND";
+
+  static final String MALWARE_FOUND_MESSAGE =
+      "Die Datei ist gesperrt, weil die Virenprüfung ein Schadprogramm gefunden hat";
+
   /** The 503 a reader sees when the core cannot sign in; account and endpoint stay in the log. */
   static final String ORIGINAL_SIGN_IN_FAILED =
       "Das Original ist derzeit nicht abrufbar. Bitte später erneut versuchen.";
@@ -357,6 +363,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private void requireNoMalware(Path file, KnowledgeLibrary library, String fileName) {
     switch (malwareScanService.check(file, library, fileName)) {
       case MalwareScanService.Verdict.Clean clean -> {}
+      case MalwareScanService.Verdict.AcceptedUnscanned accepted -> {}
       case MalwareScanService.Verdict.Infected infected ->
           throw new ValidationException(
               MalwareScanService.INFECTED_MESSAGE + " (" + infected.signature() + ")");
@@ -441,10 +448,18 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       throw new NotFoundException("Die Bibliothek wird gelöscht", LIBRARY_BEING_ERASED);
     }
 
+    requireNoMalwareFinding(document);
     if (isReExtractableAttachment(document)) {
       return loadAttachmentContent(document, library);
     }
     return loadOriginal(document, library);
+  }
+
+  /** An original the malware scan found malware in is never served, nor anything extracted. */
+  private static void requireNoMalwareFinding(Document document) {
+    if (document.hasMalwareFinding()) {
+      throw new NotFoundException(MALWARE_FOUND_MESSAGE, MALWARE_FOUND);
+    }
   }
 
   /**
@@ -526,6 +541,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
             current.getParentDocumentId());
         throw noOriginalAvailable();
       }
+      requireNoMalwareFinding(parent);
       if (AttachmentFilePath.indexIn(parent.getFilePath(), current.getFilePath()) < 0) {
         // current has a source identity of its own (a downloaded .eml, itself an attachment of an
         // RSS entry) - it is the root to fetch, its own parent is not part of the extraction.

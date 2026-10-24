@@ -579,7 +579,13 @@ paths:
         (Tika) and embedding run afterwards, asynchronously, through the same executor
         infrastructure the directory/URL indexing paths use. Poll GET on this library's document
         list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
-        There is no malware scanning.
+
+        **Malware scan (opaa.malware-scan, off by default):** switched on, the file is sent to the
+        configured clamd scanner after the content check and before the original is stored. A
+        finding is answered with 400 and a German message naming the signature; under the policy
+        REJECT, a file the scanner could not judge (not reachable, an error, a file above its stream
+        limit) is answered with 503. In both cases nothing of the attempt survives: neither the
+        working file nor a document row.
 
         **folderId (ADR-0020):** optional; omitted or null uploads into
         the library's root, mirroring GET on this same path. When set, it must reference an
@@ -922,10 +928,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           description: >
-            Not found, for every case the description above names. One carries a code: the
-            library is a private one being erased (code LIBRARY_BEING_ERASED, "Die Bibliothek wird
-            gelöscht") - given only after the read check, so a caller who may not read the library
-            gets the plain 404 of an unknown document.
+            Not found, for every case the description above names. Two carry a code, both given
+            only after the read check, so a caller who may not read the library gets the plain 404
+            of an unknown document: the library is a private one being erased (code
+            LIBRARY_BEING_ERASED, "Die Bibliothek wird gelöscht"), or the malware scan found
+            malware in the document's file or in the file it was extracted from (code
+            MALWARE_FOUND) - such an original is never served.
           content:
             application/json:
               schema:

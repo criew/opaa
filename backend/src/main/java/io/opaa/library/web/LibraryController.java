@@ -466,6 +466,7 @@ public class LibraryController {
       case ALLOWLIST -> IndexingRunEventCategory.ALLOWLIST;
       case ERROR -> IndexingRunEventCategory.ERROR;
       case FORMAT_MISMATCH -> IndexingRunEventCategory.FORMAT_MISMATCH;
+      case UNSCANNED -> IndexingRunEventCategory.UNSCANNED;
       case REMOVED -> IndexingRunEventCategory.REMOVED;
       case RATE_LIMITED -> IndexingRunEventCategory.RATE_LIMITED;
       case BUDGET_EXHAUSTED -> IndexingRunEventCategory.BUDGET_EXHAUSTED;

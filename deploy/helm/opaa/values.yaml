@@ -147,7 +147,7 @@ malwareScan:
   host: ""
   # Empty keeps the application default (3310).
   port: ""
-  # Budget for the connection and each wait on the scanner; empty keeps the default (30s).
+  # Budget of one whole scan; empty keeps the default (30s).
   timeout: ""
   # REJECT (default when empty) keeps a file the scanner could not judge out, ACCEPT takes it in.
   onUnavailable: ""

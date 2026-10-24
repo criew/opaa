@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -62,7 +62,7 @@ Punkte = Höchstpunktzahl × niedrigster Preis ÷ Preis des Angebots.
 | Q4 | Supportzusagen: Erreichbarkeit, Reaktionszeiten je Schwere | L-04 |
 | Q5 | Schulungskonzept und Unterlagen | L-05 |
 | Q6 | Nachvollziehbarkeit je Version: Datenbeschreibung, Rollensicht, Datenflüsse, Änderungen gegenüber der Vorversion | D-01, D-04, D-05, M-02 |
-| Q7 | Übrige erfüllte Kann-Anforderungen, auch solche, die die Behörde von „Muss oder Kann“ auf Kann gesetzt hat | F-05 bis F-07, M-03, M-04, S-06, L-06, L-08; gegebenenfalls D-03, S-03, S-05, O-01, O-03 |
+| Q7 | Übrige erfüllte Kann-Anforderungen, auch solche, die die Behörde von „Muss oder Kann“ auf Kann gesetzt hat | F-05 bis F-07, M-03, M-04, S-06, S-08, L-06, L-08; gegebenenfalls D-03, S-03, S-05, O-01, O-03 |
 
 ## Digitale Souveränität
 

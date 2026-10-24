@@ -355,7 +355,7 @@ opaa:
   # Malware scan of every file before a library takes it in: a clamd daemon over TCP (INSTREAM).
   # Off by default; enabled without a host refuses the start. on-unavailable: REJECT keeps a file
   # the scanner could not judge out, ACCEPT takes it in unscanned. clamd's StreamMaxLength must
-  # cover the largest file, or such a file counts as not judged.
+  # cover the largest file, or such a file counts as not judged. timeout bounds one whole scan.
   malware-scan:
     enabled: ${OPAA_MALWARE_SCAN_ENABLED:false}
     host: ${OPAA_MALWARE_SCAN_HOST:}

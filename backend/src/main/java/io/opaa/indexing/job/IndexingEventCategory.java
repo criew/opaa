@@ -17,6 +17,11 @@ public enum IndexingEventCategory {
    * never a reason to skip or reinterpret it, only to report the deviation.
    */
   FORMAT_MISMATCH,
+  /**
+   * The item was indexed without a malware scan: the scanner could not judge it and the policy is
+   * {@code ACCEPT} - a note about an accepted item, like {@link #FORMAT_MISMATCH}.
+   */
+  UNSCANNED,
   /** A scheduled run was skipped because the library was still indexing. */
   SCHEDULE_SKIPPED,
   /**

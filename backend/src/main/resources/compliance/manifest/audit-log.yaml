@@ -2,8 +2,9 @@ title: Protokoll
 defaults:
   auditEvents:
     purpose: >-
-      Nachweis von Rechteänderungen, Verwaltungshandeln und Zugriffen auf Protokolldaten
-      (revisionssicheres Protokoll); kein Nachweis von Nutzungsverhalten
+      Nachweis von Rechteänderungen, Verwaltungshandeln, Zugriffen auf Protokolldaten und
+      Sicherheitsereignissen wie einem Befund der Virenprüfung (revisionssicheres Protokoll); kein
+      Nachweis von Nutzungsverhalten
     personalReference: EMPLOYEE
     storage: Tabelle audit_log der Anwendungsdatenbank, nach Monaten partitioniert, nur anfügend
     retention:
@@ -424,8 +425,10 @@ auditEvents:
       Die Virenprüfung meldet in einer Datei, die in eine Bibliothek aufgenommen werden soll, ein
       Schadprogramm; die Datei wird nicht aufgenommen (Systemvorgang)
     details: >-
-      Bibliothek als Objekt, Name der Signatur (nicht bei einer privaten Bibliothek) und Art der
-      Quelle; weder Dateiname noch die Person, die die Datei hochgeladen hat
+      Bibliothek als Objekt, Name der Signatur und Art der Quelle; bei einer privaten Bibliothek
+      statt der Bibliothek die Virenprüfung selbst als Objekt und nur die Art der Quelle; weder
+      Dateiname noch die Person, die die Datei hochgeladen hat. Dieselbe unveränderte Datei erzeugt
+      keinen weiteren Eintrag
   - id: DOCUMENT_METADATA_CHANGED
     trigger: Eine Person setzt, ändert oder entfernt einen Kernmetadatenwert von Hand
     details: Dokument, Feld, alter und neuer Wert; Sammelzuweisungen über correlation_ref

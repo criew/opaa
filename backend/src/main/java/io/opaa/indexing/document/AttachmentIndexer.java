@@ -508,7 +508,8 @@ public class AttachmentIndexer {
           return Optional.empty();
         }
         case NO_EXTRACTABLE_TEXT, MALWARE_FOUND -> {
-          // Rejected and marked FAILED for good - a scan PDF will not gain a text layer on retry.
+          // Rejected and marked FAILED for good: a scan PDF gains no text layer on retry, and an
+          // infected file is skipped while unchanged.
           access.recordIndexedAttachment(filePathIdentity, false);
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
           return Optional.empty();

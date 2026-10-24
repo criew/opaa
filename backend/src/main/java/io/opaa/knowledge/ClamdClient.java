@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Streams one file to a clamd daemon with its {@code INSTREAM} command and returns the reply line,
@@ -36,27 +38,53 @@ class ClamdClient {
   }
 
   /**
-   * The daemon's reply to {@code file}, without its terminating NUL.
+   * The daemon's reply to {@code file}, without its terminating NUL. The timeout bounds the whole
+   * scan: when it runs out, the socket is closed and a blocked write or read fails. A daemon that
+   * closes the stream early (its {@code StreamMaxLength}) usually answers first; that answer is
+   * returned rather than the write error.
    *
    * @throws IOException when the daemon cannot be reached, closes early or does not answer in time
    */
   String scan(Path file) throws IOException {
     try (Socket socket = new Socket()) {
+      CompletableFuture.delayedExecutor(timeoutMillis, TimeUnit.MILLISECONDS)
+          .execute(() -> closeQuietly(socket));
       socket.connect(new InetSocketAddress(host, port), timeoutMillis);
       socket.setSoTimeout(timeoutMillis);
-      OutputStream out = new BufferedOutputStream(socket.getOutputStream(), CHUNK_BYTES + 4);
-      out.write(COMMAND);
-      byte[] buffer = new byte[CHUNK_BYTES];
-      try (InputStream in = Files.newInputStream(file)) {
-        int read;
-        while ((read = in.read(buffer)) > 0) {
-          writeLength(out, read);
-          out.write(buffer, 0, read);
+      try {
+        stream(file, socket.getOutputStream());
+      } catch (IOException writeFailure) {
+        try {
+          return readReply(socket.getInputStream());
+        } catch (IOException noReply) {
+          writeFailure.addSuppressed(noReply);
+          throw writeFailure;
         }
       }
-      writeLength(out, 0);
-      out.flush();
       return readReply(socket.getInputStream());
+    }
+  }
+
+  private static void stream(Path file, OutputStream socketOut) throws IOException {
+    OutputStream out = new BufferedOutputStream(socketOut, CHUNK_BYTES + 4);
+    out.write(COMMAND);
+    byte[] buffer = new byte[CHUNK_BYTES];
+    try (InputStream in = Files.newInputStream(file)) {
+      int read;
+      while ((read = in.read(buffer)) > 0) {
+        writeLength(out, read);
+        out.write(buffer, 0, read);
+      }
+    }
+    writeLength(out, 0);
+    out.flush();
+  }
+
+  private static void closeQuietly(Socket socket) {
+    try {
+      socket.close();
+    } catch (IOException ignored) {
+      // the scan that owned the socket reports its own failure
     }
   }
 
