@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -47,6 +48,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
@@ -54,6 +56,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.util.DisconnectedClientHelper;
 
 /**
  * <b>Declared without a selector on purpose:</b> any selector makes Spring skip exceptions raised
@@ -94,14 +97,47 @@ public class GlobalExceptionHandler {
    * GlobalExceptionHandlerBodyFunnelTest}).
    */
   private ResponseEntity<ErrorResponse> respond(
-      ResponseEntity.BodyBuilder builder, ErrorResponse body) {
-    if (responseCommitted()) {
-      // A started body (a streamed download) can take no answer any more: thrown here, the
-      // original failure reaches the container, which breaks the connection rather than ending
-      // the truncated body cleanly or appending an envelope to it.
-      throw new IllegalStateException("The response is already committed: " + body.getError());
-    }
+      Throwable failure, ResponseEntity.BodyBuilder builder, ErrorResponse body) {
+    rethrowIfCommitted(failure);
     return acceptsErrorBody() ? builder.body(body) : builder.build();
+  }
+
+  /**
+   * A started body (a streamed download) can take no answer any more. A write the response refused
+   * goes back unchanged: Spring logs the client that went away at {@code DEBUG} and completes the
+   * request. Every other failure must break the connection so that the truncated body does not end
+   * cleanly: it goes back unchanged unless Spring would take it for a client that went away (a read
+   * failure such as {@code EOFException}); then a failure of this handler, carrying no cause, makes
+   * Spring pass the original on to the container, which logs it and breaks the connection.
+   */
+  private static void rethrowIfCommitted(Throwable failure) {
+    if (!responseCommitted()) {
+      return;
+    }
+    if (responseRefusedWrite(failure)
+        || !DisconnectedClientHelper.isClientDisconnectedException(failure)) {
+      throw GlobalExceptionHandler.<RuntimeException>sneakyThrow(failure);
+    }
+    throw new IllegalStateException(
+        "A committed response failed for a reason other than its client");
+  }
+
+  private static boolean responseRefusedWrite(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ClientAbortException
+          || cause instanceof AsyncRequestNotUsableException) {
+        return true;
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return false;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T extends Throwable> T sneakyThrow(Throwable failure) throws T {
+    throw (T) failure;
   }
 
   private static boolean responseCommitted() {
@@ -111,12 +147,14 @@ public class GlobalExceptionHandler {
         && servletAttributes.getResponse().isCommitted();
   }
 
-  private ResponseEntity<ErrorResponse> respond(HttpStatusCode status, ErrorResponse body) {
-    return respond(ResponseEntity.status(status), body);
+  private ResponseEntity<ErrorResponse> respond(
+      Throwable failure, HttpStatusCode status, ErrorResponse body) {
+    return respond(failure, ResponseEntity.status(status), body);
   }
 
-  private ResponseEntity<ErrorResponse> respond(HttpStatusCode status, String message) {
-    return respond(status, error(status, message));
+  private ResponseEntity<ErrorResponse> respond(
+      Throwable failure, HttpStatusCode status, String message) {
+    return respond(failure, status, error(status, message));
   }
 
   /** The envelope every branch answers with: the message, the numeric status, and the moment. */
@@ -146,13 +184,13 @@ public class GlobalExceptionHandler {
             .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
             .findFirst()
             .orElse("Validierung fehlgeschlagen");
-    return respond(HttpStatus.BAD_REQUEST, message);
+    return respond(ex, HttpStatus.BAD_REQUEST, message);
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ErrorResponse> handleMessageNotReadableException(
       HttpMessageNotReadableException ex) {
-    return respond(HttpStatus.BAD_REQUEST, "Der Anfragetext fehlt oder ist fehlerhaft");
+    return respond(ex, HttpStatus.BAD_REQUEST, "Der Anfragetext fehlt oder ist fehlerhaft");
   }
 
   /**
@@ -164,33 +202,33 @@ public class GlobalExceptionHandler {
     log.warn(
         "Request rejected with illegal argument: {}", errorSanitizer.sanitize(ex.getMessage()));
     log.debug("Request rejected with illegal argument", ex);
-    return respond(HttpStatus.BAD_REQUEST, "Die Anfrage enthält ungültige Angaben");
+    return respond(ex, HttpStatus.BAD_REQUEST, "Die Anfrage enthält ungültige Angaben");
   }
 
   /** A missing required {@code @RequestParam} is the caller's error: 400 naming the parameter. */
   @ExceptionHandler(MissingServletRequestParameterException.class)
   public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
       MissingServletRequestParameterException ex) {
-    return respond(HttpStatus.BAD_REQUEST, "Pflichtparameter fehlt: " + ex.getParameterName());
+    return respond(ex, HttpStatus.BAD_REQUEST, "Pflichtparameter fehlt: " + ex.getParameterName());
   }
 
   /** A malformed parameter, e.g. {@code ?from=gestern}, is the caller's error: 400. */
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
       MethodArgumentTypeMismatchException ex) {
-    return respond(HttpStatus.BAD_REQUEST, "Ungültiger Wert für Parameter: " + ex.getName());
+    return respond(ex, HttpStatus.BAD_REQUEST, "Ungültiger Wert für Parameter: " + ex.getName());
   }
 
   @ExceptionHandler(TransientAiException.class)
   public ResponseEntity<ErrorResponse> handleTransientAiException(TransientAiException ex) {
     log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return respond(HttpStatus.SERVICE_UNAVAILABLE, "KI-Dienst vorübergehend nicht verfügbar");
+    return respond(ex, HttpStatus.SERVICE_UNAVAILABLE, "KI-Dienst vorübergehend nicht verfügbar");
   }
 
   @ExceptionHandler(NonTransientAiException.class)
   public ResponseEntity<ErrorResponse> handleNonTransientAiException(NonTransientAiException ex) {
     log.error("Non-transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return respond(HttpStatus.BAD_GATEWAY, "Fehler im KI-Dienst");
+    return respond(ex, HttpStatus.BAD_GATEWAY, "Fehler im KI-Dienst");
   }
 
   /**
@@ -201,7 +239,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler({OpenAIIoException.class, OpenAIRetryableException.class})
   public ResponseEntity<ErrorResponse> handleOpenAiTransientException(RuntimeException ex) {
     log.warn("Transient AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return respond(HttpStatus.SERVICE_UNAVAILABLE, "KI-Dienst vorübergehend nicht verfügbar");
+    return respond(ex, HttpStatus.SERVICE_UNAVAILABLE, "KI-Dienst vorübergehend nicht verfügbar");
   }
 
   /**
@@ -228,6 +266,7 @@ public class GlobalExceptionHandler {
         }
       }
       return respond(
+          ex,
           responseBuilder,
           error(HttpStatus.SERVICE_UNAVAILABLE, "KI-Dienst vorübergehend nicht verfügbar"));
     }
@@ -235,7 +274,7 @@ public class GlobalExceptionHandler {
         "Non-transient AI service error ({}): {}",
         statusCode,
         errorSanitizer.sanitize(ex.getMessage()));
-    return respond(HttpStatus.BAD_GATEWAY, "Fehler im KI-Dienst");
+    return respond(ex, HttpStatus.BAD_GATEWAY, "Fehler im KI-Dienst");
   }
 
   /**
@@ -246,7 +285,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(OpenAIException.class)
   public ResponseEntity<ErrorResponse> handleOpenAiException(OpenAIException ex) {
     log.error("Unexpected AI service error: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return respond(HttpStatus.BAD_GATEWAY, "Fehler im KI-Dienst");
+    return respond(ex, HttpStatus.BAD_GATEWAY, "Fehler im KI-Dienst");
   }
 
   /**
@@ -256,7 +295,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
   public ResponseEntity<ErrorResponse> handleNoResourceFoundException(Exception ex) {
     log.debug("No handler found for request: {}", errorSanitizer.sanitize(ex.getMessage()));
-    return respond(HttpStatus.NOT_FOUND, "Die angeforderte Ressource wurde nicht gefunden");
+    return respond(ex, HttpStatus.NOT_FOUND, "Die angeforderte Ressource wurde nicht gefunden");
   }
 
   /**
@@ -274,6 +313,7 @@ public class GlobalExceptionHandler {
       response.allow(supportedMethods.toArray(new HttpMethod[0]));
     }
     return respond(
+        ex,
         response,
         error(
             HttpStatus.METHOD_NOT_ALLOWED,
@@ -286,7 +326,7 @@ public class GlobalExceptionHandler {
       HttpMediaTypeNotSupportedException ex) {
     log.debug("Unsupported media type: {}", errorSanitizer.sanitize(ex.getMessage()));
     return respond(
-        HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Der Inhaltstyp der Anfrage wird nicht unterstützt");
+        ex, HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Der Inhaltstyp der Anfrage wird nicht unterstützt");
   }
 
   /**
@@ -299,13 +339,13 @@ public class GlobalExceptionHandler {
       HttpMediaTypeNotAcceptableException ex) {
     log.debug("Unacceptable response format: {}", errorSanitizer.sanitize(ex.getMessage()));
     return respond(
-        HttpStatus.NOT_ACCEPTABLE, "Das angeforderte Antwortformat wird nicht unterstützt");
+        ex, HttpStatus.NOT_ACCEPTABLE, "Das angeforderte Antwortformat wird nicht unterstützt");
   }
 
   @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleAccessDeniedException(
       org.springframework.security.access.AccessDeniedException ex) {
-    return respond(HttpStatus.FORBIDDEN, "Zugriff verweigert");
+    return respond(ex, HttpStatus.FORBIDDEN, "Zugriff verweigert");
   }
 
   /**
@@ -319,7 +359,7 @@ public class GlobalExceptionHandler {
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
     }
-    return respond(HttpStatus.NOT_FOUND, body);
+    return respond(ex, HttpStatus.NOT_FOUND, body);
   }
 
   /**
@@ -335,7 +375,7 @@ public class GlobalExceptionHandler {
     if (ex.getReason() != null) {
       body.setReason(ex.getReason());
     }
-    return respond(HttpStatus.FORBIDDEN, body);
+    return respond(ex, HttpStatus.FORBIDDEN, body);
   }
 
   /** A conflict may carry a stable {@code code} the client acts on (ADR-0033, Entscheidung 4). */
@@ -345,7 +385,7 @@ public class GlobalExceptionHandler {
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
     }
-    return respond(HttpStatus.CONFLICT, body);
+    return respond(ex, HttpStatus.CONFLICT, body);
   }
 
   /** A refusal may carry a stable {@code code} the client acts on (e.g. {@code TOKEN_INVALID}). */
@@ -355,7 +395,7 @@ public class GlobalExceptionHandler {
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
     }
-    return respond(HttpStatus.BAD_REQUEST, body);
+    return respond(ex, HttpStatus.BAD_REQUEST, body);
   }
 
   /**
@@ -370,17 +410,17 @@ public class GlobalExceptionHandler {
         ex.fieldErrors().stream()
             .map(error -> new FieldError(error.field(), error.code(), error.message()))
             .toList());
-    return respond(HttpStatus.BAD_REQUEST, body);
+    return respond(ex, HttpStatus.BAD_REQUEST, body);
   }
 
   @ExceptionHandler(UnauthorizedException.class)
   public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException ex) {
-    return respond(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    return respond(ex, HttpStatus.UNAUTHORIZED, ex.getMessage());
   }
 
   @ExceptionHandler(PayloadTooLargeException.class)
   public ResponseEntity<ErrorResponse> handlePayloadTooLargeException(PayloadTooLargeException ex) {
-    return respond(HttpStatus.PAYLOAD_TOO_LARGE, ex.getMessage());
+    return respond(ex, HttpStatus.PAYLOAD_TOO_LARGE, ex.getMessage());
   }
 
   @ExceptionHandler(TooManyRequestsException.class)
@@ -395,7 +435,7 @@ public class GlobalExceptionHandler {
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
     }
-    return respond(response, body);
+    return respond(ex, response, body);
   }
 
   @ExceptionHandler(ServiceUnavailableException.class)
@@ -403,17 +443,18 @@ public class GlobalExceptionHandler {
       ServiceUnavailableException ex) {
     if (ex.retryAfterSeconds() > 0) {
       return respond(
+          ex,
           ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
               .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds())),
           error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
     }
     log.error("Server error raised by application", ex);
-    return respond(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    return respond(ex, HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
   }
 
   @ExceptionHandler(BadGatewayException.class)
   public ResponseEntity<ErrorResponse> handleBadGatewayException(BadGatewayException ex) {
-    return respond(HttpStatus.BAD_GATEWAY, ex.getMessage());
+    return respond(ex, HttpStatus.BAD_GATEWAY, ex.getMessage());
   }
 
   @ExceptionHandler(ResponseStatusException.class)
@@ -423,7 +464,7 @@ public class GlobalExceptionHandler {
       log.error("Server error raised by application", ex);
     }
     String message = ex.getReason() != null ? ex.getReason() : defaultMessageFor(status);
-    return respond(status, message);
+    return respond(ex, status, message);
   }
 
   /**
@@ -438,7 +479,7 @@ public class GlobalExceptionHandler {
         "Die Datei ist zu groß. Erlaubt sind höchstens "
             + (uploadProperties.maxFileSize() / (1024 * 1024))
             + " MB.";
-    return respond(HttpStatus.PAYLOAD_TOO_LARGE, message);
+    return respond(ex, HttpStatus.PAYLOAD_TOO_LARGE, message);
   }
 
   /** A multipart request without the expected part, e.g. {@code file}: 400 naming the part. */
@@ -446,7 +487,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
       MissingServletRequestPartException ex) {
     String message = "Der Anfrageteil '" + ex.getRequestPartName() + "' fehlt";
-    return respond(HttpStatus.BAD_REQUEST, message);
+    return respond(ex, HttpStatus.BAD_REQUEST, message);
   }
 
   /**
@@ -457,7 +498,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleMultipartException(MultipartException ex) {
     log.warn("Multipart request could not be processed", ex);
     return respond(
-        HttpStatus.BAD_REQUEST, "Die hochgeladene Datei konnte nicht verarbeitet werden");
+        ex, HttpStatus.BAD_REQUEST, "Die hochgeladene Datei konnte nicht verarbeitet werden");
   }
 
   /**
@@ -468,7 +509,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleCredentialsEncryptionKeyMissingException(
       CredentialsEncryptionKeyMissingException ex) {
     log.error("Credentials encryption key missing or invalid", ex);
-    return respond(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    return respond(ex, HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)
@@ -492,7 +533,7 @@ public class GlobalExceptionHandler {
       }
       default -> message = "Die Aktion widerspricht bestehenden Daten und wurde nicht ausgeführt";
     }
-    return respond(status, message);
+    return respond(ex, status, message);
   }
 
   private String defaultMessageFor(HttpStatusCode status) {
@@ -516,6 +557,9 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    // Before logging: a client that went away is no unexpected error, any other failure the
+    // container logs itself.
+    rethrowIfCommitted(ex);
     CredentialsEncryptionKeyMissingException credentialsCause =
         findCause(ex, CredentialsEncryptionKeyMissingException.class);
     if (credentialsCause != null) {
@@ -536,7 +580,7 @@ public class GlobalExceptionHandler {
       return handleOpenAiException(openAiCause);
     }
     log.error("Unexpected error", ex);
-    return respond(HttpStatus.INTERNAL_SERVER_ERROR, "Interner Serverfehler");
+    return respond(ex, HttpStatus.INTERNAL_SERVER_ERROR, "Interner Serverfehler");
   }
 
   private <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
