@@ -4,15 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
 import io.opaa.architecture.MainClasses;
 import io.opaa.compliance.SelfDisclosureExporter;
+import io.opaa.compliance.SelfDisclosureSink;
+import io.opaa.compliance.SelfDisclosureSubject;
 import io.opaa.selfdisclosure.SelfDisclosureService;
 import io.opaa.test.JavaSources;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,17 +41,8 @@ class AuditLogReaderStructureTest {
       Pattern.compile("\\b(FROM|JOIN|INTO|UPDATE)\\s+(ONLY\\s+)?audit_log\\b");
 
   @Test
-  void onlyTheSelfDisclosureExporterQueriesTheAuditLogInSql() throws IOException {
-    Set<String> readers = new TreeSet<>();
-    try (Stream<Path> files = Files.walk(JavaSources.MAIN_SOURCES)) {
-      for (Path file : files.filter(f -> f.toString().endsWith(".java")).toList()) {
-        if (QUERY_ON_AUDIT_LOG.matcher(Files.readString(file, StandardCharsets.UTF_8)).find()) {
-          readers.add(file.getFileName().toString());
-        }
-      }
-    }
-
-    assertThat(readers).containsExactly("AuditLogSelfDisclosureExporter.java");
+  void onlyTheSelfDisclosureExporterQueriesTheAuditLogInSql() {
+    assertThat(sqlReaders(mainSources())).containsExactly("AuditLogSelfDisclosureExporter.java");
   }
 
   @Test
@@ -62,19 +59,90 @@ class AuditLogReaderStructureTest {
 
   @Test
   void onlyTheSelfDisclosureServiceCallsAnExporter() {
-    Set<String> callers =
-        MAIN.stream()
-            .filter(
-                type ->
-                    type.getMethodCallsFromSelf().stream()
-                        .anyMatch(
-                            call ->
-                                call.getName().equals("export")
-                                    && call.getTargetOwner()
-                                        .isAssignableTo(SelfDisclosureExporter.class)))
-            .map(JavaClass::getName)
-            .collect(Collectors.toSet());
+    assertThat(exporterCallers(MAIN)).containsExactly(SelfDisclosureService.class.getName());
+  }
 
-    assertThat(callers).containsExactly(SelfDisclosureService.class.getName());
+  @Test
+  void aLowerCaseQueryCountsAsReader() {
+    assertThat(
+            sqlReaders(
+                Map.of("Fixture.java", "String sql = \"select event_id from audit_log where 1\";")))
+        .containsExactly("Fixture.java");
+  }
+
+  @Test
+  void aQueryOnTheTableNameFromAConstantCountsAsReader() {
+    assertThat(
+            sqlReaders(
+                Map.of(
+                    "Fixture.java",
+                    """
+                    private static final String TABLE = "audit_log";
+                    String sql = "SELECT event_id FROM " + TABLE;
+                    """)))
+        .containsExactly("Fixture.java");
+  }
+
+  @Test
+  void aMethodReferenceToExportCountsAsCall() {
+    JavaClasses fixtures =
+        new ClassFileImporter().importClasses(MethodReferenceCaller.class, LambdaCaller.class);
+
+    assertThat(exporterCallers(fixtures))
+        .containsExactlyInAnyOrder(
+            MethodReferenceCaller.class.getName(), LambdaCaller.class.getName());
+  }
+
+  private static Set<String> sqlReaders(Map<String, String> sources) {
+    return sources.entrySet().stream()
+        .filter(source -> QUERY_ON_AUDIT_LOG.matcher(source.getValue()).find())
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toCollection(TreeSet::new));
+  }
+
+  private static Set<String> exporterCallers(JavaClasses classes) {
+    return classes.stream()
+        .filter(
+            type ->
+                type.getMethodCallsFromSelf().stream()
+                    .anyMatch(
+                        call ->
+                            call.getName().equals("export")
+                                && call.getTargetOwner()
+                                    .isAssignableTo(SelfDisclosureExporter.class)))
+        .map(JavaClass::getName)
+        .collect(Collectors.toSet());
+  }
+
+  /** Every main source file by its file name. */
+  private static Map<String, String> mainSources() {
+    Map<String, String> sources = new TreeMap<>();
+    try (Stream<Path> files = Files.walk(JavaSources.MAIN_SOURCES)) {
+      for (Path file : files.filter(f -> f.toString().endsWith(".java")).toList()) {
+        sources.put(file.getFileName().toString(), Files.readString(file, StandardCharsets.UTF_8));
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return sources;
+  }
+
+  @FunctionalInterface
+  private interface Export {
+    void run(SelfDisclosureSubject subject, SelfDisclosureSink sink) throws IOException;
+  }
+
+  /** Fixture: hands the export on as a method reference instead of calling it. */
+  private static final class MethodReferenceCaller {
+    Export export(SelfDisclosureExporter exporter) {
+      return exporter::export;
+    }
+  }
+
+  /** Fixture: calls the export inside a lambda. */
+  private static final class LambdaCaller {
+    Export export(SelfDisclosureExporter exporter) {
+      return (subject, sink) -> exporter.export(subject, sink);
+    }
   }
 }
