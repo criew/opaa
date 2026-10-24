@@ -282,7 +282,6 @@ export default function LibraryConnectionDialog({
         {failed ? (
           <BusyButton
             variant="contained"
-            color="warning"
             onClick={() => void connect(visible)}
             busy={submitting}
             busyAnnouncement="Zugang wird zugeordnet"
