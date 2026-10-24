@@ -2,7 +2,7 @@ name: E2E Lokale Anmeldung
 
 # Bewusst NICHT bei jedem Pull Request und kein Required Check (ADR-0033, #1543): der Lauf startet
 # einen eigenen Compose-Stack im Betriebsmodus "oidc" ohne Keycloak samt Mail-Fänger, legt Konten an,
-# verschickt echte Mails an diesen Fänger und fährt acht Szenarien mit echten Anmeldevorgängen durch -
+# verschickt echte Mails an diesen Fänger und fährt neun Szenarien mit echten Anmeldevorgängen durch -
 # mehrere Minuten je Lauf. Die Fachszenarien der regulären Suite (.github/workflows/e2e.yml) laufen
 # weiterhin im dev-Modus ohne Anmeldevorgang (ADR-0009); diese Suite ist die zusätzliche Abnahme des
 # lokalen Anmeldewegs.
@@ -37,7 +37,7 @@ jobs:
     name: Lokaler Anmeldeweg im Compose-Stack
     if: github.event_name != 'pull_request' || github.event.label.name == 'local-auth-suite'
     runs-on: ubuntu-latest
-    # Acht Szenarien mit je mehreren echten Anmeldungen, dazu der Image-Build unten. Großzügig
+    # Neun Szenarien mit je mehreren echten Anmeldungen, dazu der Image-Build unten. Großzügig
     # bemessen, weil dieser Job auf keinem Merge-blockierenden Pfad liegt.
     timeout-minutes: 30
     steps:
