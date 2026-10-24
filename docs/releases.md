@@ -571,7 +571,7 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 
 | Datei | Inhalt |
 |---|---|
-| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, was noch fehlt |
+| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, der Abgleich mit der eigenen Installation ([Handbuch](handbuch/betrieb/nachvollziehbarkeit.md#abgleich-eines-updates-mit-der-installation)) |
 | `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |

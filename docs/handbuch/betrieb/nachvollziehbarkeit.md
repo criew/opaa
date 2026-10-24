@@ -224,6 +224,67 @@ erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protoko
 von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
 Bibliotheken.
 
+### Abgleich eines Updates mit der Installation
+
+Das Delta im Update-Paket beschreibt, was sich am Produkt ändert. Ob eine Änderung die eigene
+Installation tatsächlich trifft, zeigt erst der **Abgleich** mit ihrer Auskunft. Eine geänderte
+Voreinstellung wirkt nicht, wo die Installation einen eigenen Wert gesetzt hat. Ein neuer Konnektor
+wirkt erst, wenn jemand eine Bibliothek oder einen Zugang dieser Art einrichtet. Umgekehrt ist eine
+Frist, die die Dienststelle selbst verlängert hat, ebenso beteiligungsrelevant wie eine Änderung des
+Produkts.
+
+> **Beispiel.** Vor dem Update auf eine neue Version legt die Systemverwaltung dem
+> Datenschutzbeauftragten die aktuelle Auskunft und die vom letzten Update vor. Er gleicht sie mit
+> dem Delta aus dem Update-Paket ab. Die neue Voreinstellung für die Zahl der Punkte in der
+> Gesprächsnotiz eines Chats (`opaa.chat.note.max-items`) steht als „betrifft sie nicht
+> (überschrieben)“ da, weil das Haus einen eigenen Wert nutzt. Unter „Änderungen der
+> Dienststelle“ steht die zwischen beiden Auskünften verlängerte Aufbewahrung des
+> Revisionsprotokolls mit dem Vorschlag „Zustimmung“.
+
+Der Abgleich läuft auf Dateien, ohne Zugang zur Installation und ohne Netz. Gebraucht werden ein
+Checkout des Quellcodes **im Stand der Zielversion des Deltas**, also des Tags der Version, auf die
+aktualisiert wird, und das Java-Werkzeug des Backends. Die Stufenregeln für die Änderungen der
+Dienststelle kommen aus diesem Checkout:
+
+```bash
+# aus backend/
+./gradlew complianceInstanceMatch -Pdelta=<pfad>/delta/manifest-delta.json \
+  -Pexport=<pfad>/auskunft.json [-PpreviousExport=<pfad>/auskunft-vorher.json]
+```
+
+Das Ergebnis liegt unter `backend/build/compliance/instanz-abgleich/`, als `instanz-abgleich.md`
+zum Lesen und `instanz-abgleich.json` für Werkzeuge.
+
+| Teil | Inhalt |
+|---|---|
+| Kopf | die beiden Versionen des Deltas, Version, Commit und Zeitpunkt jeder Auskunft, Hinweise wie eine Auskunft einer anderen Version als der, bei der das Delta beginnt |
+| Änderungen des Updates | jede Änderung des Deltas mit ihrem Stufenvorschlag und der Einordnung „betrifft diese Instanz“, „betrifft sie nicht (überschrieben)“ oder „betrifft sie nicht (nicht eingeschaltet)“, jeweils mit Grund |
+| Änderungen der Dienststelle | nur mit einer früheren Auskunft: geänderte Werte von Einstellungen, ein- oder ausgeschaltete Datenflüsse, neue, entfallene oder umgestellte Modellanbieter, je mit Stufenvorschlag nach denselben Regeln wie das Delta |
+
+Regeln der Einordnung:
+
+- **Im Zweifel betroffen.** Nur drei Fälle gelten als nicht betroffen: eine geänderte
+  Voreinstellung, wenn der Wert der Installation von der bisherigen Voreinstellung abweicht; ein
+  Datenfluss, der dort ausgeschaltet ist; ein neuer Datenfluss eines Konnektors. Alles andere, auch
+  eine Einstellung ohne ermittelten Wert, gilt als betroffen.
+- **Verglichen wird mit der bisherigen Voreinstellung des geänderten Felds**, bei einer Voreinstellung
+  des Helm-Charts also mit der des Charts, nicht der der Anwendung.
+- **Ein eigener Wert gleich der alten Voreinstellung** lässt sich in der Auskunft nicht von der
+  Voreinstellung unterscheiden; die Änderung steht dann als „betrifft diese Instanz“ da.
+- **Einstellungen aus der Verwaltung** liegen in der Datenbank der Installation. Eine neue
+  Voreinstellung gilt für Neuinstallationen; eine bestehende Installation behält ihren Wert, sofern
+  kein Datenbank-Update ihn ändert. Der Bericht nennt das als Grund und ordnet im Zweifel als
+  betroffen ein.
+- **Modellanbieter** vergleicht der Abgleich je Modellrolle über das aktive Ziel, nicht über den
+  Anzeigenamen: Ein anderes Modell auf demselben Server ist ein geändertes Modell, kein neuer
+  Datenfluss.
+- **Vertauschte Auskünfte** lehnt der Abgleich ab: Die frühere Auskunft muss älter sein als die
+  aktuelle.
+- **Der Stufenvorschlag bleibt.** „Betrifft sie nicht“ heißt nur, dass die Änderung in dieser
+  Konfiguration nicht wirkt. Schaltet die Dienststelle den Konnektor später ein, wird sie wirksam.
+- **Die Auskunft gehört zum Ausgangsstand.** Sie wird auf der Version abgerufen, bei der das Delta
+  beginnt, also vor dem Update.
+
 ## Was bei jeder Änderung geprüft wird
 
 Kein Mensch muss daran denken, die Fakten nachzutragen: Mehrere Prüfungen schlagen fehl, wenn
@@ -263,9 +324,6 @@ woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
 
 - Ein Messwert der Suchqualität genau für die Commits eines Release; das Update-Paket nennt die
   Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
-- Ein Abgleich des Deltas mit der [Auskunft einer
-  Installation](#auskunft-über-die-datenerhebung-einer-installation)
-  ([#2559](https://github.com/criew/opaa/issues/2559)).
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang

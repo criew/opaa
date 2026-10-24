@@ -317,6 +317,8 @@ def test_the_readme_names_version_previous_release_and_the_verification(tmp_path
     assert "| `sbom/` |" in text
     assert "update_package.py operations --from <älteres Tag> --to v1.2.3" in text
     assert "Betriebsfolgen (Bruch" not in text
+    assert "./gradlew complianceInstanceMatch -Pdelta=<Paket>/delta/manifest-delta.json" in text
+    assert "Noch nicht enthalten" not in text
 
 
 def test_a_first_release_says_that_every_entry_is_new(tmp_path: Path, inputs: dict) -> None:
