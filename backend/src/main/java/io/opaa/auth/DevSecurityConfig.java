@@ -60,6 +60,7 @@ public class DevSecurityConfig {
     DevAuthFilter devAuthFilter = new DevAuthFilter(authProperties.dev());
     return http.csrf(AbstractHttpConfigurer::disable)
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
+        .headers(SelfDisclosureDownloadFraming.frameHeaders())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
