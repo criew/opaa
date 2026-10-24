@@ -1,0 +1,214 @@
+---
+name: ui-lab
+description: Neugestaltung eines Oberflächenbereichs (z. B. Spaces, Administration, Chat) als UI-Lab – Inventur, Prüfliste, Skizzenrunde, drei Varianten in parallelen Cloud-Sessions mit Screenshots und Videos, Bewertung durch drei Juroren, Mischung und Vergleichsseite. Einsetzen, wenn für einen Bereich mehrere Entwürfe gegeneinander abgewogen werden sollen, bevor einer umgesetzt wird.
+---
+
+# UI-Lab
+
+Ziel: in Stunden, nicht in Tagen, von „dieser Bereich wirkt unruhig“ zu einer begründeten
+Entscheidung des Maintainers mit messbaren Belegen. Ergebnis ist eine Vergleichsseite und eine
+freigegebene Richtung; die Umsetzung läuft danach als eigenes Issue.
+
+Werkzeuge und Maßstab:
+
+- **Messskript, Videos, Vergleich:** [`e2e/ui-lab/`](../../../e2e/ui-lab/README.md) – `capture.mjs`,
+  `record-flows.mjs`, `calibrate.mjs`, `compare.py`, die Querbögen `contact_sheets.py` und der
+  Generator der Vergleichsseite `build_site.py`; alle Befehle aus `e2e/`
+- **Mock-Szenarien:** `?mockScenario=default|small|scale|empty|slow|failed|partial`
+  (`frontend/src/shared/mocks/mockScenario.ts`, Tabelle im README der Werkzeuge)
+- **Prüfliste:** [`docs/design/ui-pruefliste.md`](../../../docs/design/ui-pruefliste.md) mit den
+  Zählbudgets; darüber [`guidelines.md`](../../../docs/design/guidelines.md) und
+  [`accessibility.md`](../../../docs/design/accessibility.md)
+
+## Grundregeln
+
+Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
+
+1. **Von Anfang an Cloud-Sessions.** Varianten laufen in eigenen Sessions (`create_session`), jede
+   mit eigenem Branch, Dev-Server und Port. Lokale Parallelität in einem Arbeitsverzeichnis
+   blockiert sich gegenseitig und kostet mehr, als sie spart.
+2. **Die Prüfliste vollständig in der ersten Runde.** Alle bereichsspezifischen Ergänzungen
+   kommen auf einmal zur Freigabe, nicht scheibchenweise nach jeder Variante. Was später
+   auffällt, wird ein neuer Punkt für das nächste Lab, keine neue Runde für dieses.
+3. **Zweistufig: erst Richtung, dann Breite.** Die Skizzenrunde entscheidet an drei typischen
+   Fällen über die Richtung. Erst danach werden alle Arten, Szenarien, Schemata und Breiten
+   gebaut und gemessen.
+4. **Videos in jeder Runde, aber erst nach dem Konsistenz-Review.** Screenshots zeigen keine
+   Übergänge, kein Flackern, keinen Kontextverlust; deshalb hat jede Variante schon in der ersten
+   Runde Videos: je Art drei, **ok** (`small`), **viele** (`scale`) und **fehler** (`failed`).
+   Aufgenommen werden sie erst, wenn die Screenshot-Matrix das Konsistenz-Review bestanden und
+   der Maintainer sie gesehen hat; sonst zeigen die aufwendigen Videos Fehler, die ein Blick auf
+   die Bilder gefunden hätte. Im ersten Lab kamen genau an dieser Stelle die wichtigsten
+   Rückmeldungen (Breite, Trenner, „Ändern“, Zugänge).
+5. **Zählbudgets statt weicher Textregeln.** „Hilfetexte sparsam“ wird „höchstens 3 je
+   Formular, je eine Zeile“. Eine Regel, die sich nicht zählen lässt, wird zur Sichtprüfung mit
+   Beispiel, nicht zum Appell.
+6. **Fragen an den Maintainer immer mit Beispiel und Folge.** Jede Frage nennt die Optionen, je
+   Option ein konkretes Beispiel aus dem Bereich (Screenshot oder Wortlaut) und die Folge für
+   Umsetzung und andere Bereiche, dazu eine Empfehlung. Fragen werden gebündelt, nicht einzeln
+   gestellt:
+
+   ```markdown
+   **F3 · Zeitplan schon im Assistenten oder erst nach dem Anlegen?**
+   - A: im Assistenten – Beispiel: Zeile „Zeitplan · Täglich 06:00 · Ändern“ vor „Prüfen“
+     (Bild wizard-filled__nextcloud__small). Folge: ein Schritt mehr; gilt für alle Arten.
+   - B: nach dem Anlegen – Beispiel: Detail, Reiter „Quelle“, Zeile „Zeitplan · Aus“.
+     Folge: die erste Indizierung läuft ohne Zeitplan; Prüflistenpunkt P32 bleibt unberührt.
+   Empfehlung: A, weil …
+   ```
+
+7. **Messung vor Meinung.** Ein Urteil nennt Prüflistennummer und Beleg (Screenshot-Datei, Zeile
+   aus `metrics.jsonl`, Videozeitpunkt). Vor dem ersten Lauf `cd e2e && node ui-lab/calibrate.mjs`
+   ausführen; schlägt sie fehl, wird nichts verglichen.
+8. **Der Ist-Stand ist immer eine Variante.** „Ist“ ist `main` nur mit Mock-Szenarien, ohne
+   Korrekturen, aufgenommen mit derselben Matrix und denselben Videos wie die Entwürfe. Jeder
+   Entwurf wird neben dem Ist-Stand gezeigt, nicht nur neben den anderen Entwürfen.
+
+## Branches und Ablage
+
+- Basis: `feature/<issue>_ui-lab-base` von `main`, mit den Mock-Lücken und Szenarien des Bereichs.
+- Varianten: `feature/<issue>_ui-lab-var-<x>` von der Basis, je Session eine.
+- Ergebnisse je Variante auf ihrem Branch unter `ui-lab/results/<X>/`: `REPORT.md`, verkleinerte
+  Screenshots (JPEG), `metrics.jsonl`, Videos mit `manifest.json` unter `videos/`. Der Ist-Stand
+  liegt auf dem Basis-Branch unter `ui-lab/results/ist/`. Lab-Branches werden nie gemerged.
+- Nach `main` gehören nur Werkzeuge, Szenarien und Mock-Lücken (eigenes Issue) sowie später die
+  umgesetzte Richtung (eigenes Issue).
+
+## Ablauf
+
+### 1 · Inventur
+
+Ist-Stand des Bereichs auf `main` erfassen, in `ui-lab/inputs/inventory.md` auf dem Basis-Branch:
+
+1. Mock-Szenarien für den Bereich ergänzen, falls sie fehlen: Handler fragen
+   `currentMockScenario()` ab; Vorlage `frontend/src/features/library/mocks/sourceScenarioMock.ts`.
+   Mock-Lücken (fehlende Endpunkte, Fixtures, die ein Neuladen nicht überstehen) zuerst schließen.
+2. Messen: `node ui-lab/capture.mjs --flow pages --pages <pfade> --out <dir>` über alle
+   Szenarien; für Assistenten und Dialoge einen eigenen Ablauf unter `e2e/ui-lab/flows/`
+   anlegen (Vorlage `flows/libraries.mjs`), dazu eine Ablaufdefinition je Art für die
+   Videomatrix (Vorlage `flows/library-videos.mjs`).
+3. Ist-Stand als Variante „Ist“ aufnehmen: von einem Arbeitsverzeichnis auf `main` (nur die
+   Szenarien aus Punkt 1, keine Korrekturen) die Matrix aus Abschnitt 4 mit `capture.mjs` und die
+   Videomatrix (je Art ok, viele, fehler) mit `record-flows.mjs` nach `ui-lab/results/ist/`.
+4. Randfälle je Art aus Datenmodell und API ableiten, nicht aus der heutigen Oberfläche: Menge,
+   Tiefe, Namen (Länge, Sonderzeichen), Rechte, Anmeldezustände, Ladeverhalten (langsam,
+   unvollständig, Teilfehler). Je Art eine Tabelle:
+
+   | Randfall | Größenordnung | Ist-Verhalten | bricht? |
+   | --- | --- | --- | --- |
+   | 450 Spaces | Confluence Data Center einer Landesbehörde | Checkbox-Liste ohne Suche, 9.000 px | ja |
+
+   Fehlende Randfälle werden Mock-Szenarien (Punkt 1).
+5. Festhalten, was dem kleinen Fall genügt (ein Space, ein Ordner): Jede Variante muss ihn so
+   leicht lassen, wie er heute ist.
+6. Nebenbefunde außerhalb der UI (Backend kürzt still, API liefert zu wenig) sofort als eigenes
+   Issue anlegen und im Inventar verlinken, nicht im Lab mitschleppen.
+7. Inventar gliedern: Aufbau des Bereichs · je Unterart (Komponente, Felder, Zustände) ·
+   Vergleichsmatrix konsistent/inkonsistent · Verstöße mit Prüflistennummer und Beleg · zehn
+   größte Probleme nach Wirkung · Lücken der Mocks · Randfalltabellen · kleiner Fall ·
+   Nebenbefund-Issues.
+
+### 2 · Prüfliste zur Freigabe
+
+Aus der Inventur die bereichsspezifischen Ergänzungen zur
+[UI-Prüfliste](../../../docs/design/ui-pruefliste.md) ableiten: neue Punkte, neue Zählbudgets,
+Szenarien, die jede Variante bestehen muss. Eingänge sind außerdem eine Best-Practice-Recherche
+mit Quellen (eine Regel je Zeile, nur was Guidelines und Prüfliste nicht schon sagen) und die
+Beispielbilder des Maintainers; beide gehören zur Vorlage. Vollständig in einer Runde (Grundregel 2), mit den
+offenen Fragen im Format aus Grundregel 6. **Halt: Der Maintainer gibt die Prüfliste frei.**
+Allgemeingültige Punkte kommen per PR in `docs/design/ui-pruefliste.md`; Vorschläge zur
+Guideline-Änderung als eigenes Issue.
+
+### 3 · Skizzenrunde mit drei typischen Fällen
+
+Drei Fälle wählen, die den Bereich aufspannen: klein und glatt (`small`), groß
+(`scale`), Fehler oder Teilfehler (`failed`/`partial`). Drei Richtungen skizzieren, je Richtung
+nur diese drei Fälle, im hellen Schema bei 1280 px, mit den Videos ok, viele und fehler der
+Hauptart. Skizzen
+dürfen grob sein; sie zeigen Struktur und Auswahlmuster, nicht Feinschliff. **Halt: Der
+Maintainer wählt die Richtung** oder eine Kombination (Frage mit Beispiel und Folge).
+
+### 4 · Drei Varianten in parallelen Cloud-Sessions
+
+Je Variante eine Session mit `create_session` (Repository, `source_revision` = Basis-Branch).
+Der Auftrag an jede Session enthält:
+
+- Branch `feature/<issue>_ui-lab-var-<x>` von der Basis; Richtung aus Schritt 3 und die Achse,
+  in der sich diese Variante unterscheiden soll (z. B. A: Dialog je Auswahl, B: Seite je
+  Schritt, C: alles auf einer Seite);
+- die freigegebene Prüfliste als verbindlicher Maßstab, Budgets eingeschlossen;
+- Dev-Server mit eigenem Port, `calibrate.mjs` vor dem ersten Lauf;
+- die feste Reihenfolge je Runde:
+  1. Variante bauen.
+  2. Screenshot-Matrix mit `capture.mjs` aufnehmen (alle Arten, Szenarien, hell und dunkel,
+     1280 und 320 px), committen und pushen, dann auf das Review warten.
+  3. Konsistenz-Review (läuft beim Orchestrator, siehe unten).
+  4. Befunde aus `REVIEW-<n>.md` beheben.
+  5. Matrix neu aufnehmen.
+  6. Kurzer Nachcheck: die Querbögen der betroffenen Bildschirme gegen die Befundliste.
+  7. **Halt: Der Maintainer sieht die Matrix** (Querbögen oder Vergleichsseite ohne Videos) und
+     gibt Rückmeldung; die Session baut sie ein und nimmt die Matrix neu auf.
+  8. Erst dann die Videos mit `record-flows.mjs`: je Art ok (`small`), viele (`scale`) und
+     fehler (`failed`), aus einer Ablaufdefinition je Art (README der Werkzeuge,
+     „record-flows.mjs“).
+- `ui-lab/results/<X>/REPORT.md`: Tabelle `Nr | Status | Beleg` über alle Prüflistenpunkte,
+  Kennzahlen aus `compare.py`, bekannte Lücken und je Review-Befund erledigt oder bewusst nicht,
+  mit Grund; Ergebnisse committen und pushen;
+- Regeln aus `AGENTS.md`, Code-Kommentare und Tests wie in jedem Frontend-PR, aber kein PR.
+
+Zwischen den Halten laufen die Sessions ohne Rückfragen; am Halt warten sie auf die
+Rückmeldung, die der Orchestrator mit `send_message` weitergibt. Den Stand mit `get_session` und `list_events`
+prüfen, nicht in einer Schleife warten; eine Rückmeldung mit `send_later` planen.
+
+**Konsistenz-Review** (Schritt 3 der Reihenfolge, jede Runde, vor dem Halt und den Videos).
+Es findet, was zwischen den Arten, Bereichen und Szenarien einer Variante auseinanderläuft; Messwerte und
+Prüfliste allein sehen das nicht. Ablauf und Prüfkategorien:
+[konsistenz-review.md](./konsistenz-review.md).
+
+1. Querbögen erzeugen: `contact_sheets.py --dir <matrix> --out <dir>` stellt denselben
+   Bildschirm (Bereich × Szenario × Breite) aller Arten nebeneinander und schreibt je Prüfer eine
+   Bilderliste: alle hellen Bilder, alle 320er, je Bereich mindestens ein dunkles, ohne
+   `__full`, das byte-gleich zu seinem Viewport-Bild ist.
+2. Parallele Detailprüfer als Agenten, je zwei Arten pro Prüfer, mit ihrer Bilderliste und den
+   Querbögen; jeder Befund in einer festen Kategorie, mit Datei als Beleg und Vorschlag.
+3. Die Befunde zu `ui-lab/results/<X>/REVIEW-<n>.md` zusammenführen (Doppelte vereinen, nach
+   Wirkung ordnen, Mock- und Aufnahmefehler getrennt) und mit `send_message` an die Session der
+   Variante geben.
+
+### 5 · Bewertung durch drei Juroren
+
+Drei Subagenten mit frischem Kontext, je einer pro Blickwinkel, ohne zu wissen, wer welche
+Variante gebaut hat. Alle bekommen dieselben Unterlagen: `compare.py --variants A=…,B=…,C=…`
+(Bögen und `metrics-summary.md`), Videos, die Berichte und die Prüfliste.
+
+| Juror | Blickwinkel | Belege |
+| --- | --- | --- |
+| Regeln | jeder Prüflistenpunkt und jede Guideline-Regel, mit Nummer | `metrics.jsonl`, axe, Budgets, Screenshots |
+| Skalierung | große Mengen, Hierarchie, lange Namen, Leer-, Lade- und Fehlerzustände | Szenarien `scale`, `partial`, `failed`, `slow`, 320 px, Videos |
+| Ruhe und Konsistenz | visuelle Ruhe, gleiche Muster und Begriffe über alle Arten, Begriffsregel | Bögen nebeneinander, Videos, `fontSizes`/`colors` |
+
+Jeder Juror liefert je Variante: bestanden/verfehlt je Prüflistenblock, die fünf schwersten
+Befunde mit Beleg und die Teile, die in eine Mischung gehören. Keine Gesamtnote ohne Belege.
+
+### 6 · Mischung
+
+Aus den Urteilen eine Mischvariante M festlegen: Grundgerüst der stärksten Variante, einzelne
+Muster der anderen, jedes mit Herkunft und Prüflistenpunkt. M in einer weiteren Session (oder
+in der Session der Grundvariante) bauen und mit voller Matrix und Videos messen. M muss alle
+Zählbudgets einhalten und axe- und kontrastfrei sein. Auch M läuft durch die feste Reihenfolge
+aus Abschnitt 4, mit Konsistenz-Review und **Halt vor den Videos: Der Maintainer sieht die
+Vergleichsseite mit der Screenshot-Matrix von M**, bevor die Videos entstehen. Was offen bleibt, steht im Bericht.
+
+### 7 · Vergleichsseite
+
+Eine Seite für den Maintainer, gebaut mit `build_site.py` und veröffentlicht als Artifact
+(README der Werkzeuge, „build_site.py“). `site.json` nennt Ist, A, B, C und M mit ihren
+Ergebnisordnern und füllt die Texte: je Entwurf Idee, Stärken, Schwächen und Bewertung der
+Juroren; „Gelernt und umgesetzt“ mit dem, was in M eingeflossen ist, was für die Guidelines
+entschieden wurde und was am Vorgehen besser wurde. Darunter wählt der Maintainer Variante →
+Bereich → Fall → Breite und sieht Videos und alle Bildschirme, auf Wunsch mit dem Ist-Stand
+daneben. Videos gehen als Assets ins Artifact, die Bildschirme als ein Sprite je Auswahl.
+Kennzahlen aus `metrics-summary.md` und die offenen Fragen (Grundregel 6) gehören in den Bericht
+neben der Seite. **Halt: Der Maintainer
+entscheidet.** Danach: Umsetzungs-Issue mit der gewählten Variante als Spezifikation, eigenes
+Issue für Guideline-Änderungen, Lab-Sessions archivieren.
