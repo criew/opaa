@@ -2,6 +2,7 @@
 """Builds the update package of a release (docs/releases.md, "Update-Paket").
 
     update_package.py previous --tag <vX.Y.Z[-pre]> [--commit <ref>]
+    update_package.py lts-previous --tag <vX.Y.Z[-pre]> [--commit <ref>]
     update_package.py build --tag <vX.Y.Z[-pre]> --out <dir> [--previous <ref>]
                             [--labelled-prs <file>] [--repository <owner/name>]
     update_package.py operations --from <ref> [--to <ref>] --out <dir> [--delta-json <file>]
@@ -10,6 +11,11 @@
 `previous` prints the final release tag vX.Y.Z the package compares with: the highest one below
 the version of --tag among the tags reachable from --commit (default: the tag). Pre-release tags
 never count; it prints nothing before the first final release.
+
+`lts-previous` prints, for an LTS release X.Y.0 or its candidates, the newest final tag of the
+previous LTS line, wherever it lies; which lines are LTS says .github/support-lines.json of --commit.
+It prints nothing for any other release. `build` compares with it a second time into delta-lts/ and
+betrieb-lts/.
 
 `build` describes the checked-out commit. If the tag exists it must point there; otherwise the run
 is a trial and the package says so. It renders fact sheets, manifest delta and backend SBOM with
@@ -73,6 +79,9 @@ HANDBOOK_DIR = "handbuch/"
 # Rules for authors of docs/behoerden/ and docs/handbuch/, no content; excluded at their top level only.
 AUTHOR_RULES = ("AGENTS.md", "CLAUDE.md")
 MANIFEST_PATH = "backend/src/main/resources/compliance/manifest/"
+SUPPORT_LINES = ".github/support-lines.json"
+LTS_DELTA_DIR = "delta-lts/"
+LTS_OPERATIONS_DIR = "betrieb-lts/"
 FACT_SHEETS = Path("backend/build/compliance/faktenblaetter")
 DELTA = Path("backend/build/compliance/delta")
 DELTA_FILES = ("manifest-delta.md", "manifest-delta.json")
@@ -158,6 +167,66 @@ def previous_final_tag(repo: Path, tag: str, commit: str) -> str | None:
             continue
         key = core(candidate_version)
         if key < core(version) and (best is None or key > best[0]):
+            best = (key, candidate)
+    return best[1] if best else None
+
+
+def line_key(line: str) -> tuple[int, int]:
+    major, minor = line.split(".")
+    return int(major), int(minor)
+
+
+def support_lines(repo: Path, commit: str) -> dict[str, str]:
+    """The kind ("lts" or "normal") of every line in the list of lines at `commit`, empty without it."""
+    if not git(repo, "ls-tree", "--name-only", "--full-tree", commit, "--", SUPPORT_LINES):
+        return {}
+    try:
+        entries = json.loads(read_at(repo, commit, SUPPORT_LINES))["lines"]
+        kinds = {entry["line"]: entry["kind"] for entry in entries}
+        for line in kinds:
+            line_key(line)
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        raise PackageError(f"{SUPPORT_LINES} at {commit} is malformed: {error!r}") from error
+    return kinds
+
+
+def lts_previous_tag(repo: Path, tag: str, commit: str) -> str | None:
+    """For an LTS release X.Y.0 and its candidates, the newest final tag of the previous LTS line,
+    wherever it lies (its patch releases are on release/A.B, outside the history of main); None for
+    any other release or without a previous LTS line with a final release. Which lines are LTS says
+    the list of lines in `commit` (docs/releases.md, "Liste der Linien")."""
+    version = release_version(tag)
+    if version is None:
+        raise PackageError(f"{tag} is no release tag vX.Y.Z or vX.Y.Z-<pre> (docs/releases.md)")
+    sha = resolve(repo, commit)
+    if sha is None:
+        raise PackageError(f"unknown commit {commit!r} (checked out with tags and history?)")
+    major, minor, patch = core(version)
+    own = f"{major}.{minor}"
+    kinds = support_lines(repo, sha)
+    if patch != 0 or kinds.get(own) != "lts":
+        return None
+    earlier = [line for line, kind in kinds.items() if kind == "lts" and line_key(line) < line_key(own)]
+    if not earlier:
+        return None
+    line = max(earlier, key=line_key)
+    found = newest_final_of_line(repo, line)
+    if found is None and any(newest_final_of_line(repo, older) for older in earlier if older != line):
+        # The comparison never falls back to an older LTS line; the run says so instead of staying silent.
+        print(f"::warning::Kein LTS-Vergleich für {tag}: die vorige LTS-Linie {line} hat kein finales"
+              " Release, eine ältere LTS-Linie schon", file=sys.stderr)
+    return found
+
+
+def newest_final_of_line(repo: Path, line: str) -> str | None:
+    """The highest final tag vX.Y.Z of the line X.Y, wherever it lies."""
+    best: tuple[tuple[int, int, int], str] | None = None
+    for candidate in git(repo, "tag", "--list", f"v{line}.*").splitlines():
+        candidate_version = release_version(candidate)
+        if candidate_version is None or "-" in candidate_version:
+            continue
+        key = core(candidate_version)
+        if (key[0], key[1]) == line_key(line) and (best is None or key > best[0]):
             best = (key, candidate)
     return best[1] if best else None
 
@@ -722,6 +791,10 @@ class Release:
     previous_given: bool = False
     # True when the given comparison is a commit id without manifest (Side.bare).
     previous_bare: bool = False
+    # An LTS release and its candidates: the newest release of the previous LTS line, compared
+    # with a second time under delta-lts/ and betrieb-lts/.
+    lts_previous: str | None = None
+    lts_previous_commit: str | None = None
 
 
 def readme(release: Release) -> str:
@@ -734,6 +807,8 @@ def readme(release: Release) -> str:
         f"commit: {release.commit}",
         f"vorgaenger: {release.previous or 'keiner'}",
         f"vorgaenger-commit: {release.previous_commit}",
+        *([f"vorgaenger-lts: {release.lts_previous}",
+           f"vorgaenger-lts-commit: {release.lts_previous_commit}"] if release.lts_previous else []),
         "---",
         "",
         f"# Update-Paket OPAA {release.version}",
@@ -777,6 +852,13 @@ def readme(release: Release) -> str:
         " Ports und Egress-Ziele, je mit Quelle |",
         "| `betrieb/antwortqualitaet.md` | Kennzahlen der Retrieval-Regression beider Versionen mit"
         " Messdatum; fehlende Werte stehen als „nicht gemessen“ da |",
+        *([
+            f"| `{LTS_DELTA_DIR}manifest-delta.md` | wie `delta/manifest-delta.md`, aber gegenüber"
+            f" {release.lts_previous}, dem jüngsten Release der vorigen LTS-Linie |",
+            f"| `{LTS_DELTA_DIR}manifest-delta.json` | dieselben Änderungen einzeln, für Werkzeuge |",
+            f"| `{LTS_OPERATIONS_DIR}betriebsfolgen.md` | Betriebsfolgen gegenüber {release.lts_previous} |",
+            f"| `{LTS_OPERATIONS_DIR}antwortqualitaet.md` | Antwortqualität gegenüber {release.lts_previous} |",
+        ] if release.lts_previous else []),
         "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
         "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
         f"| `{SBOM_DIR}` | Stücklisten (SBOM, CycloneDX) der ausgelieferten Abhängigkeiten,"
@@ -790,6 +872,25 @@ def readme(release: Release) -> str:
         " Dokumentation führen auf deren Stand in dieser Version |",
         "| `SHA256SUMS` | Prüfsummen aller Dateien des Pakets |",
         "",
+        *([
+            "## Welcher Vergleich für wen",
+            "",
+            ("Dieser Release-Kandidat" if "-" in release.version else "Dieses Release")
+            + " eröffnet eine LTS-Linie. Das Paket vergleicht deshalb zweimal:",
+            "",
+            f"- `delta/` und `betrieb/` gegenüber {release.previous or 'dem Vergleichsstand oben'}:"
+            f" für eine Installation auf {release.previous or 'diesem Stand'}, die jedem"
+            " Funktionsrelease folgt.",
+            f"- `{LTS_DELTA_DIR}` und `{LTS_OPERATIONS_DIR}` gegenüber {release.lts_previous}, dem"
+            " jüngsten Release der vorigen LTS-Linie: für eine Installation, die nur LTS-Linien"
+            " betreibt und von dort direkt auf dieses Release wechselt. Dieses Delta umfasst alle"
+            " Änderungen dazwischen, auch die des dazwischenliegenden Funktionsrelease. Eine Änderung,"
+            " die als Backport schon unverändert in der vorigen LTS-Linie steckt, führt es nicht noch"
+            " einmal auf; musste der Backport angepasst werden, steht sie dort ein zweites Mal.",
+            "",
+            "Wer eine andere Version betreibt, erzeugt das Delta für sein Versionspaar selbst (unten).",
+            "",
+        ] if release.lts_previous else []),
         "## Prüfen",
         "",
         "```bash",
@@ -1054,6 +1155,8 @@ def assemble(
     templates: Path,
     handbook: Path,
     out: Path,
+    lts_delta: Path | None = None,
+    lts_operations: Path | None = None,
 ) -> Path:
     """Writes <name>.tar.gz, <name>.tar.gz.sha256 and the SBOMs, by part such as "backend", into
     `out`; returns the archive. `templates` and `handbook` are docs/behoerden/ and docs/handbuch/ of
@@ -1077,6 +1180,16 @@ def assemble(
         if not (operations / file).is_file():
             raise PackageError(f"{operations / file} is missing")
         files[f"betrieb/{file}"] = (operations / file).read_bytes()
+    if release.lts_previous:
+        if lts_delta is None or lts_operations is None:
+            raise PackageError(f"the LTS comparison with {release.lts_previous} needs both"
+                               f" {LTS_DELTA_DIR} and {LTS_OPERATIONS_DIR}")
+        for directory, prefix, names in ((lts_delta, LTS_DELTA_DIR, DELTA_FILES),
+                                         (lts_operations, LTS_OPERATIONS_DIR, OPERATIONS_FILES)):
+            for file in names:
+                if not (directory / file).is_file():
+                    raise PackageError(f"{directory / file} of the LTS comparison is missing")
+                files[prefix + file] = (directory / file).read_bytes()
     for report in licenses:
         if not report.is_file():
             raise PackageError(f"license overview {report} is missing")
@@ -1139,11 +1252,65 @@ def gradle_command(version: str, day: str, from_ref: str, to_ref: str, repositor
     return gradle
 
 
+def lts_gradle_command(from_ref: str, to_ref: str, repository: str, labelled_prs: str | None) -> list[str]:
+    """The second delta of an LTS release, against a release that may lie outside its history."""
+    gradle = ["./gradlew", "complianceDelta", f"-PfromRef={from_ref}", f"-PtoRef={to_ref}",
+              f"-Prepository={repository}"]
+    if labelled_prs:
+        gradle.append(f"-PlabelledPrs={Path(labelled_prs).resolve()}")
+    return gradle
+
+
 def frontend_sbom_command(target: Path) -> list[str]:
     """The cdxgen run in frontend/ for the SBOM of what ships: the pnpm lockfile without
     devDependencies (docs/sbom.md)."""
     return [str(ROOT / CDXGEN), "-t", "pnpm", "--no-babel", "--required-only",
             "--project-name", "opaa-frontend", "-o", str(target), "."]
+
+
+def lts_comparison(repo: Path, tag: str, head: str, previous: str | None) -> str | None:
+    """The base of the second comparison, None if there is none or it equals `previous`. The
+    decision shows in the run: a June release whose line the list does not mark as LTS would
+    otherwise look like a normal one (docs/releases.md, step 4 of the release)."""
+    lts_previous = lts_previous_tag(repo, tag, head)
+    if lts_previous == previous:
+        lts_previous = None
+    if lts_previous:
+        print(f"::notice::Zweiter Vergleich mit {lts_previous}, dem jüngsten Release der vorigen LTS-Linie")
+    else:
+        print(f"::notice::Kein LTS-Vergleich für {tag}: Linie nicht als lts in {SUPPORT_LINES} geführt,"
+              " keine vorige LTS-Linie mit finalem Release oder derselbe Vergleichsstand wie das Delta")
+    return lts_previous
+
+
+def copy_delta(target: Path) -> Path:
+    target.mkdir()
+    for file in DELTA_FILES:
+        (target / file).write_bytes((ROOT / DELTA / file).read_bytes())
+    return target
+
+
+def comparisons(release: Release, previous: Side, current: Side, reports: Path, repository: str,
+                labelled_prs: str | None) -> tuple[Path, Path, Path | None, Path | None]:
+    """Copies the delta Gradle has built against `previous` and writes its operations; for an LTS
+    release then builds and writes the second comparison. complianceDelta writes both deltas to
+    the same directory, so the first is copied before the second is built."""
+    delta_dir = copy_delta(reports / "delta")
+    operations_dir = reports / "betrieb"
+    write_operations(operations(ROOT, previous, current, delta_dir / "manifest-delta.json"), operations_dir)
+    if not release.lts_previous:
+        return delta_dir, operations_dir, None, None
+    run(lts_gradle_command(release.lts_previous, current.label, repository, labelled_prs),
+        ROOT / "backend", stdout=None)
+    lts_delta = copy_delta(reports / "delta-lts")
+    lts_operations = reports / "betrieb-lts"
+    write_operations(
+        operations(ROOT, Side(release.lts_previous, release.lts_previous_commit,
+                              release_version(release.lts_previous)),
+                   current, lts_delta / "manifest-delta.json"),
+        lts_operations,
+    )
+    return delta_dir, operations_dir, lts_delta, lts_operations
 
 
 def build(args: argparse.Namespace) -> list[Path]:
@@ -1164,6 +1331,7 @@ def build(args: argparse.Namespace) -> list[Path]:
         previous = previous_final_tag(ROOT, args.tag, head)
         from_commit = resolve(ROOT, previous) if previous else empty_base(ROOT, head)
     epoch = int(git(ROOT, "show", "-s", "--format=%ct", head))
+    lts_previous = lts_comparison(ROOT, args.tag, head, previous)
     release = Release(
         version=version,
         tag=args.tag,
@@ -1175,6 +1343,8 @@ def build(args: argparse.Namespace) -> list[Path]:
         previous_bare=bool(args.previous) and is_bare(ROOT, previous, from_commit),
         repository=args.repository,
         epoch=epoch,
+        lts_previous=lts_previous,
+        lts_previous_commit=resolve(ROOT, lts_previous) if lts_previous else None,
     )
     day = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
     gradle = gradle_command(version, day, previous or from_commit, args.tag if tag_commit else head,
@@ -1211,22 +1381,17 @@ def build(args: argparse.Namespace) -> list[Path]:
             ROOT, stdout=None)
         run([sys.executable, str(CHECK_LICENSES), *policy, "--pnpm", str(pnpm),
              "--title", "Frontend", "--report", str(frontend)], ROOT, stdout=None)
-        operations_dir = reports / "betrieb"
-        write_operations(
-            operations(
-                ROOT,
-                Side(previous or from_commit, from_commit,
-                     release_version(previous) if previous else None,
-                     bare=is_bare(ROOT, previous or from_commit, from_commit)),
-                Side(args.tag if tag_commit else head, head, version),
-                ROOT / DELTA / "manifest-delta.json",
-            ),
-            operations_dir,
-        )
-        sboms = {"backend": ROOT / CYCLONEDX, "frontend": frontend_sbom}
-        archive = assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
+        current = Side(args.tag if tag_commit else head, head, version)
+        delta_dir, operations_dir, lts_delta, lts_operations = comparisons(
+            release,
+            Side(previous or from_commit, from_commit, release_version(previous) if previous else None,
+                 bare=is_bare(ROOT, previous or from_commit, from_commit)),
+            current, reports, args.repository, args.labelled_prs)
+        sboms ={"backend": ROOT / CYCLONEDX, "frontend": frontend_sbom}
+        archive = assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=delta_dir,
                            operations=operations_dir, licenses=[backend, frontend], sboms=sboms,
-                           templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out))
+                           templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out),
+                           lts_delta=lts_delta, lts_operations=lts_operations)
         return [archive, archive.with_name(archive.name + ".sha256"),
                 *(archive.with_name(sbom_name(part, release)) for part in sorted(sboms))]
 
@@ -1237,6 +1402,9 @@ def main(argv: list[str]) -> int:
     previous = commands.add_parser("previous")
     previous.add_argument("--tag", required=True)
     previous.add_argument("--commit")
+    lts = commands.add_parser("lts-previous")
+    lts.add_argument("--tag", required=True)
+    lts.add_argument("--commit")
     package = commands.add_parser("build")
     package.add_argument("--tag", required=True)
     package.add_argument("--out", required=True)
@@ -1254,6 +1422,10 @@ def main(argv: list[str]) -> int:
         if args.command == "previous":
             repo = Path.cwd()
             found = previous_final_tag(repo, args.tag, args.commit or args.tag)
+            if found:
+                print(found)
+        elif args.command == "lts-previous":
+            found = lts_previous_tag(Path.cwd(), args.tag, args.commit or args.tag)
             if found:
                 print(found)
         elif args.command == "links":

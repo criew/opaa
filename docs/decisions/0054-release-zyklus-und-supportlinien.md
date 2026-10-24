@@ -105,11 +105,13 @@ Zusage des Projekts über seine Kräfte.
 **Schwieriger:** Meist laufen zwei Linien nebeneinander, in den Wochen nach einem Juni-Release
 drei. Der Wechsel von LTS zu LTS hat kaum Übergangszeit; eine Behörde muss ihn anhand des
 Release-Kandidaten vorbereiten, damit sie das finale Release vor dem Supportende einspielen kann. Jeder Sicherheitsfix und jede Behebung eines kritischen Fehlers im Code braucht je Linie einen Backport mit eigenem CI-Lauf; je Linie
-kommen Renovate-PRs und vier Scans pro Nacht (zwei Images, zwei Plattformen) hinzu. Das
-Update-Paket braucht einen Umbau (#3020). Renovate und der CVE-Scan pflegen bzw. prüfen eine Linie
+kommen Renovate-PRs und vier Scans pro Nacht (zwei Images, zwei Plattformen) hinzu. Renovate und
+der CVE-Scan pflegen bzw. prüfen eine Linie
 bis zu ihrem Supportende, das in einer Liste im Repository steht. Der Release-Workflow nimmt Tags von
 `main` und vom Wartungsbranch ihrer Linie an; ein Patch-Release einer älteren Linie wird auf GitHub
-nicht „Latest“, damit die jüngste Linie ihre Markierung behält.
+nicht „Latest“, damit die jüngste Linie ihre Markierung behält. Das Update-Paket eines
+LTS-Release und seiner Kandidaten vergleicht zusätzlich mit dem jüngsten Release der vorigen
+LTS-Linie.
 
 **Restrisiken:** Abhängigkeiten außerhalb der Versionsverwaltung von Spring Boot (Spring AI, Tika,
 Frontend-Bibliotheken, Basis-Images) haben eigene Supportzeiträume. Gibt es einen Fix nur mit
