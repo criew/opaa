@@ -10,7 +10,7 @@ Gruppen: **Verbindung · Anmeldung · Umfang · Zeitplan** (+ „Erweiterte Eins
 
 ## Messlauf (volle Matrix, 8 Typen × 6 Szenarien × hell/dunkel × 1280/320)
 732 Aufnahmen (+ `__full`), 12 not-found: Dropbox-Validierung (leeres Formular ist gültig, „/“ = alles), SMB `scale` Detail/Bearbeiten (Reiter „Quelle“ unter Last nicht gefunden – Zeitproblem des Skripts, im Lauf davor vorhanden). Zusätzliche Zustände: `wizard-select` (Dialog offen) und `edit-select`.
-Kennzahlen: `overflowX` 0 · `disabledSubmits` 0 · axe hell: **0 Befunde** · axe dunkel: 42× `color-contrast`, fast nur an vorhandenen Bausteinen (Zugangszeile `connection-profile`, h2), schwankend je Aufnahme; Gegenprobe mit direkt im Dunkelschema geladener Seite: 0 Befunde → Artefakt des Schemawechsels im Skript (150 ms Wartezeit, `body`-Farbübergang). `clippedText` trifft nur die visuell versteckte h1 (Bestand).
+Kennzahlen: `overflowX` 0 · `disabledSubmits` 0 · axe hell: **0 Befunde** · axe dunkel: 52× `color-contrast`, fast nur an vorhandenen Bausteinen (Zugangszeile `connection-profile`, h2), schwankend je Aufnahme; Gegenprobe mit direkt im Dunkelschema geladener Seite: 0 Befunde → Artefakt des Schemawechsels im Skript (150 ms Wartezeit, `body`-Farbübergang). `clippedText` trifft nur die visuell versteckte h1 (Bestand).
 Iterationen: Lauf 1 (quick, 4 Typen) → Komma-Ordner, Pfadanzeige; Lauf 2 (Matrix ohne full) → Überlauf durch falsch versteckten Text, axe `aria-input-field-name`/`aria-allowed-role`/`aria-prohibited-attr`, Vollrahmen (Projektregel), Anmeldedaten im Bearbeiten; Lauf 3/4 → Textfarbe beim Schemawechsel, `aria-checked="mixed"`.
 
 ## Prüfliste
