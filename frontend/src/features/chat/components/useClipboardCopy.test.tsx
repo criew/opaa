@@ -45,15 +45,13 @@ describe('useClipboardCopy', () => {
     expect(item.types).toEqual(['text/plain', 'text/html'])
   })
 
-  it('falls back to the plain text when the markup is missing, e.g. after a failed chunk load', async () => {
+  it('falls back to the plain text when the HTML cannot be produced', async () => {
     userEvent.setup()
     vi.stubGlobal('ClipboardItem', FakeClipboardItem)
     rejectWritesWithFailingParts()
     const { result } = renderHook(() => useClipboardCopy('Die Antwort'))
 
-    await act(() =>
-      result.current.copy('Text', () => Promise.resolve(undefined as unknown as string)),
-    )
+    await act(() => result.current.copy('Text', () => Promise.reject(new Error('chunk'))))
 
     const [item] = await navigator.clipboard.read()
     expect(item.types).toEqual(['text/plain'])
