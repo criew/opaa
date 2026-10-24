@@ -19,8 +19,8 @@ async function enableMocking() {
   if (!import.meta.env.VITE_ENABLE_MOCKS) {
     return
   }
-  const { worker } = await import('./mocks/browser')
-  return worker.start({ onUnhandledFrame: 'bypass' })
+  const { startMockWorker } = await import('./mocks/browser')
+  return startMockWorker()
 }
 
 enableMocking()
