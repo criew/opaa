@@ -2,6 +2,8 @@ package io.opaa.compliance;
 
 import io.opaa.compliance.StageRules.Assessment;
 import io.opaa.compliance.StageRules.Context;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -65,8 +68,40 @@ public record InstanceMatch(
   /** The two versions of the delta. */
   public record Update(String fromVersion, String fromCommit, String toVersion, String toCommit) {}
 
-  /** One configuration export: the version it was taken on, its commit and when. */
-  public record Export(String source, String version, String commit, String generatedAt) {}
+  /**
+   * One configuration export: the version it was taken on, its commit and when. Each value must
+   * have the form the disclosure endpoint writes, so nothing else from the file reaches a report.
+   */
+  public record Export(String source, String version, String commit, String generatedAt) {
+
+    private static final Pattern VERSION = Pattern.compile("[0-9A-Za-z.+-]{1,64}");
+    private static final Pattern COMMIT = Pattern.compile("[0-9a-f]{7,64}");
+    private static final Pattern TIME = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z");
+
+    public Export {
+      Objects.requireNonNull(source, "source");
+      if (!VERSION.matcher(version).matches()) {
+        throw new IllegalArgumentException(
+            source + ": opaaVersion '" + version + "' is no version");
+      }
+      if (!COMMIT.matcher(commit).matches() && !commit.equals(ManifestSnapshot.UNKNOWN)) {
+        throw new IllegalArgumentException(source + ": commit '" + commit + "' is no commit id");
+      }
+      if (!TIME.matcher(generatedAt).matches() && !generatedAt.equals(ManifestSnapshot.UNKNOWN)) {
+        throw new IllegalArgumentException(
+            source + ": generatedAt '" + generatedAt + "' is no point in time");
+      }
+    }
+
+    /** When the export was taken; {@code null} when the export does not say. */
+    Instant taken() {
+      try {
+        return generatedAt.equals(ManifestSnapshot.UNKNOWN) ? null : Instant.parse(generatedAt);
+      } catch (DateTimeParseException e) {
+        return null;
+      }
+    }
+  }
 
   /**
    * One change of the delta with its proposal, as the delta holds it, and whether it concerns the
@@ -114,6 +149,20 @@ public record InstanceMatch(
     requireExport(export, exportInfo);
     if (previous != null) {
       requireExport(previous, previousInfo);
+      Instant earlier = previousInfo.taken();
+      Instant later = exportInfo.taken();
+      if (earlier != null && later != null && !earlier.isBefore(later)) {
+        throw new IllegalArgumentException(
+            "the earlier export "
+                + previousInfo.source()
+                + " ("
+                + previousInfo.generatedAt()
+                + ") is not older than the export "
+                + exportInfo.source()
+                + " ("
+                + exportInfo.generatedAt()
+                + "); swap -Pexport and -PpreviousExport");
+      }
     }
     Update update =
         new Update(
@@ -139,7 +188,9 @@ public record InstanceMatch(
               + " betreibt; Einstellungen, die es dort noch nicht gibt, gelten als betroffen.");
     }
     List<OwnChange> own =
-        previous == null ? List.of() : ownChanges(previous, export, previousInfo, notes);
+        previous == null
+            ? List.of()
+            : ownChanges(previous, export, previousInfo, exportInfo, notes);
     return new InstanceMatch(update, exportInfo, previousInfo, entries, own, notes);
   }
 
@@ -159,17 +210,30 @@ public record InstanceMatch(
           reason = "Die Änderung betrifft die Einstellung selbst und gilt für jede Instanz.";
         } else if (setting == null) {
           reason = "Der Export nennt die Einstellung nicht; im Zweifel betroffen.";
-        } else if (setting.path("deviates").asBoolean(false)) {
-          relevance = Relevance.OVERRIDDEN;
-          reason =
-              "Die Instanz setzt "
-                  + FactSheetRenderer.code(text(setting.path("effectiveValue")))
-                  + " statt der Voreinstellung; die neue Voreinstellung wirkt dort nicht.";
         } else if (!setting.path("sameOnAllInstances").asBoolean(true)
             || !setting.path("effectiveValue").isString()) {
           reason = "Der Wert der Instanz ist im Export nicht ermittelt; im Zweifel betroffen.";
+        } else if (!change.path("before").isString()) {
+          reason = "Das Delta nennt keine bisherige Voreinstellung; im Zweifel betroffen.";
         } else {
-          reason = "Die Instanz nutzt die Voreinstellung.";
+          String effective = setting.path("effectiveValue").asString();
+          String before = change.path("before").asString();
+          if (!sameValue(effective, before)) {
+            relevance = Relevance.OVERRIDDEN;
+            reason =
+                "Die Instanz setzt „"
+                    + effective
+                    + "“, nicht die bisherige Voreinstellung „"
+                    + before
+                    + "“; die neue Voreinstellung wirkt dort nicht.";
+          } else if ("DATABASE".equals(text(setting.path("source")))) {
+            reason =
+                "Die Einstellung liegt in der Datenbank der Instanz. Eine neue Voreinstellung gilt"
+                    + " für Neuinstallationen; die bestehende Einstellung behält ihren Wert, sofern"
+                    + " kein Datenbank-Update sie ändert. Im Zweifel betroffen.";
+          } else {
+            reason = "Die Instanz nutzt die bisherige Voreinstellung; die neue wirkt dort.";
+          }
         }
       }
       case "dataFlows" -> {
@@ -214,9 +278,13 @@ public record InstanceMatch(
   }
 
   private static List<OwnChange> ownChanges(
-      JsonNode previous, JsonNode current, Export previousInfo, List<String> notes) {
+      JsonNode previous,
+      JsonNode current,
+      Export previousInfo,
+      Export currentInfo,
+      List<String> notes) {
     Context context =
-        ManifestDelta.context(snapshot(previous, previousInfo), snapshot(current, previousInfo));
+        ManifestDelta.context(snapshot(previous, previousInfo), snapshot(current, currentInfo));
     List<OwnChange> changes = new ArrayList<>();
     Map<String, JsonNode> before = byKey(previous.path("instance").path("settings"), "key");
     Map<String, JsonNode> after = byKey(current.path("instance").path("settings"), "key");
@@ -250,12 +318,12 @@ public record InstanceMatch(
     if (!undetermined.isEmpty()) {
       notes.add(
           "Nicht vergleichbar, weil ein Export den Wert nicht ermittelt hat: "
-              + String.join(", ", undetermined.stream().map(FactSheetRenderer::code).toList())
+              + String.join(", ", undetermined.stream().map(key -> "„" + key + "“").toList())
               + ".");
     }
     flowChanges(previous, current, context, changes);
     modelChanges(previous, current, context, changes);
-    if (!text(previous.path("opaaVersion")).equals(text(current.path("opaaVersion")))) {
+    if (!previousInfo.version().equals(currentInfo.version())) {
       notes.add(
           "Die beiden Exporte stammen von verschiedenen Versionen; Einstellungen und Datenflüsse,"
               + " die nur eine der beiden kennt, sind Änderungen des Produkts und stehen nicht unter"
@@ -298,38 +366,33 @@ public record InstanceMatch(
 
   private static void modelChanges(
       JsonNode previous, JsonNode current, Context context, List<OwnChange> changes) {
-    Map<String, JsonNode> before = providers(previous);
-    Map<String, JsonNode> after = providers(current);
+    Map<String, JsonNode> before = activeProviders(previous);
+    Map<String, JsonNode> after = activeProviders(current);
     TreeSet<String> ids = new TreeSet<>(before.keySet());
     ids.addAll(after.keySet());
     for (String id : ids) {
       JsonNode old = before.get(id);
       JsonNode now = after.get(id);
-      boolean wasActive = old != null && old.path("active").asBoolean(false);
-      boolean isActive = now != null && now.path("active").asBoolean(false);
-      if (!wasActive && isActive) {
+      if (old == null) {
         changes.add(
             new OwnChange(
                 "modelProviders",
                 id,
-                "Modellanbieter in Gebrauch genommen",
-                old == null ? "–" : "inaktiv",
+                "Modellrolle in Gebrauch genommen",
+                "–",
                 text(now.path("baseUrl")),
                 StageRules.added("dataFlows", id, Map.of(), context)));
         continue;
       }
-      if (wasActive && !isActive) {
+      if (now == null) {
         changes.add(
             new OwnChange(
                 "modelProviders",
                 id,
-                "Modellanbieter außer Gebrauch",
+                "Modellrolle außer Gebrauch",
                 text(old.path("baseUrl")),
-                now == null ? "–" : "inaktiv",
+                "–",
                 StageRules.removed("dataFlows", id, Map.of(), context)));
-        continue;
-      }
-      if (old == null || now == null || !isActive) {
         continue;
       }
       String fromUrl = text(old.path("baseUrl"));
@@ -368,15 +431,38 @@ public record InstanceMatch(
     }
   }
 
-  /** Model endpoints by role and name, the name the administration gave it. */
-  private static Map<String, JsonNode> providers(JsonNode export) {
+  /**
+   * The endpoint each model role sends data to, by role. A display name is not unique and not what
+   * decides where data goes; only the active endpoint of a role does, and a role has at most one.
+   * Should an export list several, the one with the lowest address and model counts.
+   */
+  private static Map<String, JsonNode> activeProviders(JsonNode export) {
     Map<String, JsonNode> found = new TreeMap<>();
     for (JsonNode provider : export.path("instance").path("modelProviders")) {
-      String name = text(provider.path("name"));
-      String id = text(provider.path("role")) + (name.isEmpty() ? "" : " " + name);
-      found.put(id, provider);
+      if (!provider.path("active").asBoolean(false)) {
+        continue;
+      }
+      found.merge(
+          text(provider.path("role")),
+          provider,
+          (a, b) -> endpoint(a).compareTo(endpoint(b)) <= 0 ? a : b);
     }
     return found;
+  }
+
+  private static String endpoint(JsonNode provider) {
+    return text(provider.path("baseUrl")) + "\n" + text(provider.path("model"));
+  }
+
+  /** Values compare as the disclosure compares them: trimmed, booleans regardless of case. */
+  private static boolean sameValue(String a, String b) {
+    String x = a.strip();
+    String y = b.strip();
+    return isBoolean(x) && isBoolean(y) ? x.equalsIgnoreCase(y) : x.equals(y);
+  }
+
+  private static boolean isBoolean(String value) {
+    return value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false");
   }
 
   private static ManifestSnapshot snapshot(JsonNode export, Export info) {

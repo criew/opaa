@@ -595,12 +595,14 @@ beteiligungsrelevant wie eine Produktänderung. Deshalb:
   Datenschutzbeauftragten: `./gradlew complianceInstanceMatch -Pdelta=<manifest-delta.json>
   -Pexport=<export.json> [-PpreviousExport=<export.json>]` (aus `backend/`, Klasse
   `InstanceMatch` in `io.opaa.compliance`). Nicht betroffen ist nur eine geänderte Voreinstellung,
-  die der Export als abweichend führt, ein dort ausgeschalteter Datenfluss und ein neuer Datenfluss
+  deren Wert in der Instanz von der bisherigen Voreinstellung genau dieses Felds abweicht (beim
+  Helm-Chart also von dessen Voreinstellung), ein dort ausgeschalteter Datenfluss und ein neuer Datenfluss
   der Gruppe `CONNECTOR`; alles andere gilt im Zweifel als betroffen. Änderungen der Dienststelle
   sind geänderte wirksame Werte der Einstellungen (Stufenregel einer geänderten Voreinstellung,
   eine Frist also über ihre Länge), ein- oder ausgeschaltete Datenflüsse (wie ein neuer bzw.
-  entfallener Datenfluss) und Modellanbieter, die in oder außer Gebrauch kommen oder Adresse
-  bzw. Modell wechseln.
+  entfallener Datenfluss) und je Modellrolle das aktive Ziel, das in oder außer Gebrauch kommt
+  oder Adresse bzw. Modell wechselt. Vertauschte Exporte (der frühere nicht älter) lehnt das
+  Werkzeug ab; Werte der Exporte gehen nur geprüft oder maskiert in den Bericht.
 
 ---
 

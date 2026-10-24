@@ -234,13 +234,16 @@ Produkts.
 
 > **Beispiel.** Vor dem Update auf eine neue Version legt die Systemverwaltung dem
 > Datenschutzbeauftragten die aktuelle Auskunft und die vom letzten Update vor. Er gleicht sie mit
-> dem Delta aus dem Update-Paket ab. Die neue Voreinstellung einer Trefferzahl steht als „betrifft
-> sie nicht (überschrieben)“ da, weil das Haus einen eigenen Wert nutzt. Unter „Änderungen der
+> dem Delta aus dem Update-Paket ab. Die neue Voreinstellung für die Zahl der Einträge im
+> Vermerk zu einer Antwort (`opaa.chat.note.max-items`) steht als „betrifft sie nicht
+> (überschrieben)“ da, weil das Haus einen eigenen Wert nutzt. Unter „Änderungen der
 > Dienststelle“ steht die zwischen beiden Auskünften verlängerte Aufbewahrung des
 > Revisionsprotokolls mit dem Vorschlag „Zustimmung“.
 
 Der Abgleich läuft auf Dateien, ohne Zugang zur Installation und ohne Netz. Gebraucht werden ein
-Checkout des Quellcodes und das Java-Werkzeug des Backends:
+Checkout des Quellcodes **im Stand der Zielversion des Deltas**, also des Tags der Version, auf die
+aktualisiert wird, und das Java-Werkzeug des Backends. Die Stufenregeln für die Änderungen der
+Dienststelle kommen aus diesem Checkout:
 
 ```bash
 # aus backend/
@@ -259,12 +262,23 @@ zum Lesen und `instanz-abgleich.json` für Werkzeuge.
 
 Regeln der Einordnung:
 
-- **Im Zweifel betroffen.** Nur zwei Fälle gelten als nicht betroffen: eine geänderte Voreinstellung,
-  die die Installation überschrieben hat, und ein Datenfluss, der dort ausgeschaltet ist, oder ein
-  neuer Datenfluss eines Konnektors. Alles andere, auch eine Einstellung ohne ermittelten Wert,
-  gilt als betroffen.
+- **Im Zweifel betroffen.** Nur drei Fälle gelten als nicht betroffen: eine geänderte
+  Voreinstellung, wenn der Wert der Installation von der bisherigen Voreinstellung abweicht; ein
+  Datenfluss, der dort ausgeschaltet ist; ein neuer Datenfluss eines Konnektors. Alles andere, auch
+  eine Einstellung ohne ermittelten Wert, gilt als betroffen.
+- **Verglichen wird mit der bisherigen Voreinstellung des geänderten Felds**, bei einer Voreinstellung
+  des Helm-Charts also mit der des Charts, nicht der der Anwendung.
 - **Ein eigener Wert gleich der alten Voreinstellung** lässt sich in der Auskunft nicht von der
   Voreinstellung unterscheiden; die Änderung steht dann als „betrifft diese Instanz“ da.
+- **Einstellungen aus der Verwaltung** liegen in der Datenbank der Installation. Eine neue
+  Voreinstellung gilt für Neuinstallationen; eine bestehende Installation behält ihren Wert, sofern
+  kein Datenbank-Update ihn ändert. Der Bericht nennt das als Grund und ordnet im Zweifel als
+  betroffen ein.
+- **Modellanbieter** vergleicht der Abgleich je Modellrolle über das aktive Ziel, nicht über den
+  Anzeigenamen: Ein anderes Modell auf demselben Server ist ein geändertes Modell, kein neuer
+  Datenfluss.
+- **Vertauschte Auskünfte** lehnt der Abgleich ab: Die frühere Auskunft muss älter sein als die
+  aktuelle.
 - **Der Stufenvorschlag bleibt.** „Betrifft sie nicht“ heißt nur, dass die Änderung in dieser
   Konfiguration nicht wirkt. Schaltet die Dienststelle den Konnektor später ein, wird sie wirksam.
 - **Die Auskunft gehört zum Ausgangsstand.** Sie wird auf der Version abgerufen, bei der das Delta

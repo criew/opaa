@@ -17,8 +17,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Renders an {@link InstanceMatch} as Markdown for the staff council and the data protection
  * officer and as JSON for tools. Neither carries a generation date, so the same files give the same
- * output; every cell passes {@link FactSheetRenderer#text(String)} or {@link
- * FactSheetRenderer#code(String)}.
+ * output. Every value from the delta or an export passes {@link FactSheetRenderer#text(String)} or
+ * {@link #code(String)}, on one line; the front matter holds them as quoted strings.
  */
 public final class InstanceMatchRenderer {
 
@@ -36,13 +36,13 @@ public final class InstanceMatchRenderer {
     StringBuilder out = new StringBuilder();
     out.append("---\nerzeugung: generiert\n")
         .append("delta-von: ")
-        .append(match.delta().fromVersion())
+        .append(quoted(match.delta().fromVersion()))
         .append("\ndelta-bis: ")
-        .append(match.delta().toVersion())
+        .append(quoted(match.delta().toVersion()))
         .append("\nexport-version: ")
-        .append(match.export().version())
+        .append(quoted(match.export().version()))
         .append("\nexport-stand: ")
-        .append(match.export().generatedAt())
+        .append(quoted(match.export().generatedAt()))
         .append("\n---\n\n");
     out.append("# Abgleich des Update-Deltas mit der Instanz\n\n");
     out.append("> ").append(FactSheetRenderer.NOTICE).append(' ');
@@ -67,7 +67,7 @@ public final class InstanceMatchRenderer {
             + " Stufenvorschläge stammen aus dem Delta und gelten unverändert; „betrifft sie"
             + " nicht“ heißt nur, dass die Änderung in dieser Konfiguration nicht wirkt.\n\n");
     for (String note : match.notes()) {
-      out.append("> **Hinweis:** ").append(note).append("\n\n");
+      out.append("> **Hinweis:** ").append(FactSheetRenderer.text(note)).append("\n\n");
     }
     overview(out, match);
     entries(out, match.entries());
@@ -133,7 +133,7 @@ public final class InstanceMatchRenderer {
     for (Entry entry : entries) {
       row(
           out,
-          FactSheetRenderer.code(entry.id())
+          code(entry.id())
               + (entry.title().isEmpty() || entry.title().equals(entry.id())
                   ? ""
                   : " " + FactSheetRenderer.text(entry.title())),
@@ -166,7 +166,7 @@ public final class InstanceMatchRenderer {
     for (OwnChange change : match.ownChanges()) {
       row(
           out,
-          FactSheetRenderer.code(change.id()),
+          code(change.id()),
           FactSheetRenderer.text(change.change()),
           shown(change.before()),
           shown(change.after()),
@@ -177,13 +177,13 @@ public final class InstanceMatchRenderer {
 
   private static String export(Export export) {
     return "Version "
-        + FactSheetRenderer.code(export.version())
+        + code(export.version())
         + ", Commit "
-        + FactSheetRenderer.code(export.commit())
+        + code(export.commit())
         + ", Stand "
         + FactSheetRenderer.text(export.generatedAt())
         + " ("
-        + FactSheetRenderer.code(export.source())
+        + code(export.source())
         + ")";
   }
 
@@ -192,7 +192,7 @@ public final class InstanceMatchRenderer {
       case "ADDED" -> "neu";
       case "REMOVED" -> "entfällt";
       default ->
-          FactSheetRenderer.code(entry.field() == null ? "" : entry.field())
+          code(entry.field() == null ? "" : entry.field())
               + ": "
               + value(entry.before())
               + " → "
@@ -212,15 +212,13 @@ public final class InstanceMatchRenderer {
       return "–";
     }
     String line = value.replaceAll("\\s*\\R\\s*", " ").strip();
-    return line.length() > 80
-        ? FactSheetRenderer.code(line.substring(0, 79) + "…")
-        : FactSheetRenderer.code(line);
+    return line.length() > 80 ? code(line.substring(0, 79) + "…") : code(line);
   }
 
   private static String proposal(JsonNode assessment) {
     String stage = InstanceMatch.text(assessment.path("stage"));
     List<String> qualifiers = new ArrayList<>();
-    assessment.path("classes").forEach(c -> qualifiers.add(c.asString()));
+    assessment.path("classes").forEach(c -> qualifiers.add(FactSheetRenderer.text(c.asString(""))));
     if (assessment.path("undecided").asBoolean(false)) {
       qualifiers.add("Zuordnung offen");
     }
@@ -243,6 +241,17 @@ public final class InstanceMatchRenderer {
       }
     }
     return stage.isEmpty() ? "–" : FactSheetRenderer.text(stage);
+  }
+
+  /** {@code value} as a code span on one line, whatever it holds. */
+  private static String code(String value) {
+    return FactSheetRenderer.code(value.replaceAll("\\s*\\R\\s*", " ").strip());
+  }
+
+  /** {@code value} as a double-quoted YAML string on one line. */
+  private static String quoted(String value) {
+    String line = value.replaceAll("\\s*\\R\\s*", " ").strip();
+    return "\"" + line.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
   }
 
   private static void row(StringBuilder out, String... cells) {

@@ -916,7 +916,8 @@ def readme(release: Release) -> str:
         "## Abgleich mit der eigenen Installation",
         "",
         "Ob eine Änderung des Deltas die eigene Installation betrifft, zeigt der Abgleich mit ihrer"
-        " Auskunft über die Datenerhebung (JSON-Fassung), aus `backend/` desselben Checkouts:",
+        " Auskunft über die Datenerhebung (JSON-Fassung), aus `backend/` eines Checkouts im Stand"
+        f" dieser Version (`{target}`):",
         "",
         "```bash",
         "./gradlew complianceInstanceMatch -Pdelta=<Paket>/delta/manifest-delta.json \\",
