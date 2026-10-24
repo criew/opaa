@@ -801,6 +801,12 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 (Abschnitt 2). Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
 (Abschnitt 10.2).
 
+**Hinweis und Kennzeichen im Chat.** Dass Antworten von einer KI stammen, sagt der Chat an drei
+Stellen: im leeren Chat deutlich vor der ersten Frage, als dauerhafte Zeile unter dem Eingabefeld und
+als Kennzeichen „KI-erzeugt" im Fuß jeder Antwort, auch bei Antworten in älteren Chats. Der Text der
+ersten beiden Stellen ist der Hinweis zur KI-Nutzung aus dem Branding (Kapitel Branding); er lässt
+sich ändern, aber nicht abschalten. Screenreader lesen Hinweis und Kennzeichen vor.
+
 **Kennzeichnung als KI-erzeugt.** Jede erzeugte Antwort trägt in der Schnittstelle das Feld
 `generatedByAi` mit dem Wert `true`, im Chatverlauf ebenso jede Assistenten-Nachricht (Nutzernachrichten
 tragen `false`). Das Feld erlaubt es Programmen, die Antworten über `POST /api/v1/query` oder den
