@@ -17,6 +17,7 @@ export function toChatMessage(message: ChatMessageResponse): ChatMessage {
     id: message.id,
     role: message.role === 'USER' ? 'user' : 'assistant',
     content: message.content,
+    generatedByAi: message.generatedByAi,
     // Mirrors the QueryResponse#sources normalization in shared/api/types.ts: the generated schema
     // leaves indexedAt optional, the frontend's own SourceReference always carries it (null when
     // unknown) - persisted messages go through the same shape as a fresh query response.
