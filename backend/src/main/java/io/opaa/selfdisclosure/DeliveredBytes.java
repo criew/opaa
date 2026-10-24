@@ -10,12 +10,14 @@ import java.util.HexFormat;
 /**
  * Counts and hashes the bytes the response accepted: a byte counts only once the stream below took
  * it without an exception, so size and SHA-256 describe what was delivered, also after an abort.
- * Closing it closes nothing below - the servlet container owns the response stream.
+ * Closing it closes nothing below - the servlet container owns the response stream. A write or
+ * flush the stream below refused marks the response as failed: the client went away.
  */
 final class DeliveredBytes extends FilterOutputStream {
 
   private final MessageDigest digest;
   private long count;
+  private boolean failed;
 
   DeliveredBytes(OutputStream out) {
     super(out);
@@ -28,16 +30,36 @@ final class DeliveredBytes extends FilterOutputStream {
 
   @Override
   public void write(int b) throws IOException {
-    out.write(b);
+    try {
+      out.write(b);
+    } catch (IOException e) {
+      failed = true;
+      throw e;
+    }
     digest.update((byte) b);
     count++;
   }
 
   @Override
   public void write(byte[] b, int off, int len) throws IOException {
-    out.write(b, off, len);
+    try {
+      out.write(b, off, len);
+    } catch (IOException e) {
+      failed = true;
+      throw e;
+    }
     digest.update(b, off, len);
     count += len;
+  }
+
+  @Override
+  public void flush() throws IOException {
+    try {
+      out.flush();
+    } catch (IOException e) {
+      failed = true;
+      throw e;
+    }
   }
 
   @Override
@@ -47,6 +69,10 @@ final class DeliveredBytes extends FilterOutputStream {
 
   long count() {
     return count;
+  }
+
+  boolean failed() {
+    return failed;
   }
 
   /** The hex SHA-256 over every byte delivered so far; the stream may continue afterwards. */

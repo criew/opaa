@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import { buildCitationIndex } from '@/shared/ui/markdown/citations'
-import { answerAsMarkdown, answerAsPlainText, answerWithSources } from './copyFormats'
+import {
+  answerAsMarkdown,
+  answerAsPlainText,
+  answerWithSources,
+  copyNote,
+  markdownWithNote,
+  plainTextWithNote,
+} from './copyFormats'
 import type { SourceReference } from '@/shared/api/types'
 
 const ANSWER =
@@ -141,5 +148,31 @@ describe('answerAsPlainText', () => {
     expect(answerAsPlainText('Datei 001_personalausweis_neu.md und _kursiv_')).toBe(
       'Datei 001_personalausweis_neu.md und kursiv',
     )
+  })
+})
+
+describe('copy note', () => {
+  const answeredAt = new Date('2026-03-05T09:00:00')
+
+  test('names notice, product and the date of the answer in German format', () => {
+    expect(copyNote(' Antworten stammen von einer KI. ', 'Landesamt-Assistent', answeredAt)).toBe(
+      'Antworten stammen von einer KI. – Landesamt-Assistent, 05.03.2026',
+    )
+  })
+
+  test('drops direction controls and breaks from notice and product name', () => {
+    expect(copyNote('Hinweis\u202E.', 'OP\u2067AA\nX', answeredAt)).toBe(
+      'Hinweis. – OPAA X, 05.03.2026',
+    )
+    expect(copyNote('\u200Fa\u061Cb\u2066c\u2069', '\u202Dp', answeredAt)).toBe(
+      'abc – p, 05.03.2026',
+    )
+  })
+
+  test('ends the Markdown after a rule and the plain text after a blank line', () => {
+    const note = copyNote('Hinweis.', 'OPAA', answeredAt)
+
+    expect(markdownWithNote('Antwort', note)).toBe('Antwort\n\n---\n\nHinweis. – OPAA, 05.03.2026')
+    expect(plainTextWithNote('Antwort', note)).toBe('Antwort\n\nHinweis. – OPAA, 05.03.2026')
   })
 })

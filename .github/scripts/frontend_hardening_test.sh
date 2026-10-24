@@ -57,13 +57,21 @@ start_frontend() {
 docker network create "$network" >/dev/null
 
 # The echo answers with the header values in brackets; an empty pair means the header was absent.
-echo_conf='server {
+# On the self-disclosure download it adds the frame headers the backend sends there itself.
+echo_body='"forwarded=[$http_forwarded] host=[$http_x_forwarded_host] port=[$http_x_forwarded_port] prefix=[$http_x_forwarded_prefix]\n"'
+echo_conf="server {
     listen 8080;
     location / {
         default_type text/plain;
-        return 200 "forwarded=[$http_forwarded] host=[$http_x_forwarded_host] port=[$http_x_forwarded_port] prefix=[$http_x_forwarded_prefix]\n";
+        return 200 $echo_body;
     }
-}'
+    location = /api/v1/me/self-disclosure/download {
+        default_type text/plain;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Content-Security-Policy \"frame-ancestors 'self'\" always;
+        return 200 $echo_body;
+    }
+}"
 docker run -d --name "$echo_upstream" --network "$network" --network-alias echo \
   -e ECHO_CONF="$echo_conf" --entrypoint sh "$image" \
   -c 'mkdir -p /tmp/nginx/conf.d && printf "%s\n" "$ECHO_CONF" > /tmp/nginx/conf.d/echo.conf && exec nginx -g "daemon off;"' \

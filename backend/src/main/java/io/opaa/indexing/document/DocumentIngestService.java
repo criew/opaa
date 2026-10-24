@@ -12,6 +12,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.IngestTextSanitizer;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
@@ -19,6 +20,8 @@ import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
 import io.opaa.indexing.chunk.EmbeddingInputCheck;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilePathLimit;
@@ -43,6 +46,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -181,7 +185,10 @@ public class DocumentIngestService {
    * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments a storage
    * quota rejected is stored without checksum and change marker, so the next run reads it again; it
    * is then measured by what it adds beyond its stored footprint ({@link #storedFootprint}), so the
-   * attachments already stored do not count a second time.
+   * attachments already stored do not count a second time. A document indexed with findings of the
+   * cleanup after extraction gets one {@code SUSPICIOUS_PATTERNS} entry in the protocol ({@link
+   * DocumentIngest#events()}, else that of {@code attachmentAccess}), with counts per class only,
+   * and counts once per class in the library's metric.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
@@ -189,8 +196,15 @@ public class DocumentIngestService {
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
    */
-  public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
+  public DocumentIngestResult ingest(DocumentIngest declared, AttachmentAccess attachmentAccess)
       throws IOException {
+    IndexingEventSink events =
+        declared.events() != null
+            ? declared.events()
+            : attachmentAccess == null ? null : attachmentAccess.events();
+    Map<IngestTextSanitizer.Finding, Integer> findings =
+        new EnumMap<>(IngestTextSanitizer.Finding.class);
+    DocumentIngest ingest = declared.withCleanNames(findings);
     KnowledgeLibrary library = ingest.library();
     LoggedName names = library.loggedNames();
     String filePath = ingest.filePath();
@@ -227,6 +241,11 @@ public class DocumentIngestService {
           return DocumentIngestResult.SKIPPED;
         }
         doc = existing.get();
+        // the row was created before the cleanup, under the name as uploaded or as stored
+        if (fileName != null && !fileName.equals(doc.getFileName())) {
+          documentRepository.updateFileName(doc.getId(), fileName);
+          doc.setFileName(fileName);
+        }
         replacingExistingChunks = true;
         selection = select(ingest, doc);
       } else if (existing.isPresent()) {
@@ -333,6 +352,7 @@ public class DocumentIngestService {
         case CHUNKED ->
             log.debug("{} chunked via pipeline {}", names.of(filePath, documentId), pipeline.id());
       }
+      parsed.sanitizerFindings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
@@ -382,7 +402,40 @@ public class DocumentIngestService {
     }
 
     metrics.recordProcessed();
+    reportSuspiciousPatterns(library, names.of(filePath, documentId), filePath, findings, events);
     return DocumentIngestResult.PROCESSED;
+  }
+
+  /**
+   * The cleanup's findings of a processed document: a log line and the metric with counts per class
+   * only, and one protocol entry when the caller has a protocol. Private libraries share one metric
+   * label, so no series stands for one person.
+   */
+  private void reportSuspiciousPatterns(
+      KnowledgeLibrary library,
+      Object loggedName,
+      String filePath,
+      Map<IngestTextSanitizer.Finding, Integer> findings,
+      IndexingEventSink events) {
+    String note = SuspiciousPatternNote.of(findings);
+    if (note == null) {
+      return;
+    }
+    log.info("Sanitized extracted text of {}: {}", loggedName, findings);
+    String libraryLabel = metricLabel(library);
+    findings
+        .keySet()
+        .forEach(finding -> metrics.recordSuspiciousPattern(libraryLabel, finding.name()));
+    if (events != null) {
+      events.record(IndexingEventCategory.SUSPICIOUS_PATTERNS, note, filePath);
+    }
+  }
+
+  /** The metric label of {@code library}: its id, for a private library the shared label. */
+  static String metricLabel(KnowledgeLibrary library) {
+    return library.isOwnerOnly()
+        ? IndexingMetrics.PRIVATE_LIBRARY_LABEL
+        : String.valueOf(library.getId());
   }
 
   /**
