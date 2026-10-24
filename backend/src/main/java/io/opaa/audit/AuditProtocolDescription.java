@@ -1,5 +1,6 @@
 package io.opaa.audit;
 
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
@@ -17,13 +18,14 @@ final class AuditProtocolDescription {
 
   private AuditProtocolDescription() {}
 
-  /** The description with the retention period currently configured. */
-  static Protocol of(int retentionMonths) {
+  /** The description with the retention period currently configured and the cases counted. */
+  static Protocol of(int retentionMonths, IncidentScopeCases incidentScopeCases) {
     String retention =
         "Frist des Protokolls, in dieser Installation "
             + retentionMonths
             + " Monate; gelöscht werden ganze abgelaufene Monate";
-    return new Protocol(fields(retention), queryPaths(), ABSENT_QUERY_PATHS, NETWORK_ADDRESS);
+    return new Protocol(
+        fields(retention), queryPaths(), ABSENT_QUERY_PATHS, NETWORK_ADDRESS, incidentScopeCases);
   }
 
   private static final String NETWORK_ADDRESS =

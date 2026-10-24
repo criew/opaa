@@ -83,6 +83,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "audit_retention_settings",
                   "audit_incident_scope_grants",
                   "audit_incident_scope_case_counts",
+                  "audit_incident_scope_monthly_counts",
                   "self_disclosure_settings",
                   "self_disclosure_usage",
                   "link_target_settings")),

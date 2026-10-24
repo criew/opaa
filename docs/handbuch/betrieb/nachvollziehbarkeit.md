@@ -197,11 +197,22 @@ curl -s -H "Authorization: Bearer <token>" \
 # lesbar, für Datenschutz und Personalrat
 curl -s -H "Authorization: Bearer <token>" \
   https://<host>/api/v1/admin/compliance/data-collection-disclosure/markdown > auskunft.md
+# mit Berichtszeitraum für die anlassbezogenen Klärungen, in ganzen Monaten
+curl -s -H "Authorization: Bearer <token>" \
+  "https://<host>/api/v1/admin/compliance/data-collection-disclosure/markdown?from=2026-01-01&to=2026-06-30"
 ```
 
 Ein Konto ohne die Rolle erhält `403`. **Jeder Abruf steht im Revisionsprotokoll**, auch der
-abgewiesene, mit dem Format, aber ohne den Inhalt der Auskunft. Die Ereignisart dafür führt das
-Faktenblatt `protokollereignisse` wie jede andere.
+abgewiesene, mit Format und Berichtszeitraum, aber ohne den Inhalt der Auskunft. Die Ereignisart
+dafür führt das Faktenblatt `protokollereignisse` wie jede andere.
+
+Der **Berichtszeitraum** gilt nur für die anlassbezogenen Klärungen. Er beginnt am Ersten und endet
+am Letzten eines Monats; ein Zeitraum, der einen Monat anschneidet, wird mit `400` abgewiesen, ebenso
+einer vor 1970 oder nach 9999. Ohne Angabe umfasst er das laufende und das vorige Kalenderjahr.
+Ausgewiesen werden nur **abgeschlossene Monate**: Reicht der Zeitraum in den laufenden Monat oder
+später, endet er mit dem letzten abgeschlossenen Monat, und die Auskunft nennt dieses Ende. Ein
+Zeitraum ganz im laufenden Monat oder später wird mit `400` abgewiesen. So lässt sich eine Klärung
+auch durch wiederholte Abrufe nicht erkennen, solange ihr Monat läuft.
 
 Die Auskunft enthält:
 
@@ -214,6 +225,7 @@ Die Auskunft enthält:
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
+| Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest
 beide gleich.
@@ -223,6 +235,14 @@ Manifest als datenwirksam führt; Schlüssel, Passwörter und Token gehören nie
 erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protokollsätze und Inhalte
 von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
 Bibliotheken.
+
+**Anlassbezogene Klärungen** zählt OPAA je Monat und Anlass, ohne Person, Begründung und Verweis
+auf die Freigabe; die Zahlen bleiben erhalten, wenn Anträge und Freigaben nach ihrer Frist gelöscht
+sind. „Abgelaufen“ heißt, dass die Nutzbarkeit einer Freigabe im Zeitraum endete.
+Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, bleibt unbeantwortet.
+Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall nicht hervortritt.
+Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
+Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.
 
 ### Abgleich eines Updates mit der Installation
 

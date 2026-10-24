@@ -5,13 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
+import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
 import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +36,16 @@ class InstanceDisclosureAssemblerTest {
   private static final Instant NOW = Instant.parse("2026-10-17T08:00:00Z");
   private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
   private static final UUID ORGANIZATION = UUID.randomUUID();
-  private static final Protocol PROTOCOL = new Protocol(List.of(), List.of(), List.of(), "nein");
+  private static final Protocol PROTOCOL =
+      new Protocol(
+          List.of(),
+          List.of(),
+          List.of(),
+          "nein",
+          new IncidentScopeCases(
+              new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2026-12-31")),
+              List.of(),
+              List.of()));
 
   private static final String API_KEY = "sk-S3CR3T-API-KEY-4711";
   private static final String PASSWORD = "S3CR3T-PASSWORD-0815";
