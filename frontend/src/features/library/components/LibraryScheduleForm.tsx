@@ -89,7 +89,7 @@ export default function LibraryScheduleForm({
 
       {confluence && (
         <Box>
-          <FieldLabel htmlFor={`${idPrefix}-full-sync-days`}>Vollabgleich alle … Tage</FieldLabel>
+          <FieldLabel htmlFor={`${idPrefix}-full-sync-days`}>Vollabgleich in Tagen</FieldLabel>
           <TextField
             id={`${idPrefix}-full-sync-days`}
             type="number"
@@ -99,12 +99,12 @@ export default function LibraryScheduleForm({
             placeholder={
               confluence.defaultDays != null ? String(confluence.defaultDays) : undefined
             }
-            helperText={`${
+            helperText={
               confluence.defaultDays != null
                 ? `Leer = Vorgabe der Instanz (${confluence.defaultDays === 1 ? 'täglich' : `alle ${confluence.defaultDays} Tage`}).`
                 : 'Leer = Vorgabe der Instanz.'
-            } Der Vollabgleich ist verlängerbar, aber nicht abschaltbar — nur er gleicht den ganzen Bestand mit der Quelle ab.`}
-            slotProps={{ htmlInput: { min: 1, max: 365 } }}
+            }
+            slotProps={{ htmlInput: { min: 1, max: 365 }, formHelperText: { sx: { mx: 0 } } }}
             size="small"
           />
         </Box>

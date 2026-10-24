@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -6,8 +6,21 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import Stack from '@mui/material/Stack'
-import type { ConnectionProfileRef, SourceTypeKey } from '@/shared/api/types'
+import type { ConnectionProfileRef, LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
+import ErrorSummary from './setup/ErrorSummary'
+import ScheduleSetup from './setup/ScheduleSetup'
+import { SetupContext, type RegisteredCheck } from './setup/setupContext'
+import { SetupSection } from './setup/SourceSetupLayout'
+import {
+  scheduleUpdateFrom,
+  scheduleValuesFrom,
+  validateScheduleValues,
+  type ConfluenceFullSyncRhythm,
+  type LibraryScheduleValues,
+} from '../utils/librarySchedule'
 import { useLibraryStore } from '../stores/libraryStore'
 import { sourceRegistration } from './sources/registry'
 import {
@@ -17,10 +30,9 @@ import {
   withConnection,
   withoutFixed,
 } from './sources/sourceConnection'
-import { reportSourceIssue } from './sources/reportSourceIssue'
 import { SourceIssueContext } from './sources/sourceIssueContext'
 import type { SourceFormContext } from './sources/types'
-import { formIssue, type SourceIssue } from '../utils/sourceIssue'
+import { formIssue, issueAt, type SourceIssue } from '../utils/sourceIssue'
 
 /**
  * Editable snapshot of a connector library's source configuration. Deliberately narrower than
@@ -49,14 +61,17 @@ interface EditLibrarySourceDialogProps {
   open: boolean
   onClose: () => void
   libraryId: string
-  library: EditableLibrarySource
+  library: EditableLibrarySource & {
+    schedule?: LibrarySchedule | null
+    fullSyncIntervalDefaultDays?: number | null
+  }
 }
 
 /**
- * The Bearbeiten-Weg of the Reiter „Quelle": the form the library's source type registered, filled
- * from the stored configuration. Callers open it only for a type with a registered form. A library
- * on a profile is edited under what the library names of that profile; without it nothing can be
- * saved - the form would otherwise offer fields the profile sets.
+ * The Bearbeiten-Weg of the Reiter „Quelle": the registered form on the same frame as in the
+ * wizard - Verbindung, Zugangsdaten, Umfang, Zeitplan - filled from the stored configuration.
+ * „Speichern“ validates everything at once, runs the connection check and quits with a
+ * notification; closing a changed dialog asks first.
  */
 export default function EditLibrarySourceDialog({
   open,
@@ -79,110 +94,178 @@ export default function EditLibrarySourceDialog({
     connection,
     privateLibrary: library.privateLibrary,
   }
-
-  // Prefilled once from the library's current, non-secret configuration: the caller remounts this
-  // component via a key tied to `open`, so a fresh instance starts from the stored values. The
-  // credentials stay blank (write-only, ADR-0018) - there is nothing to prefill them with.
-  const [storedValues, setValues] = useState<unknown>(() => configuration?.fromLibrary(library))
+  const rhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
+    ? {
+        intervalDays:
+          (library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null,
+        defaultDays: library.fullSyncIntervalDefaultDays ?? null,
+      }
+    : undefined
+  // Prefilled once from the stored, non-secret configuration; the caller remounts on open.
+  const [initial] = useState(() => ({
+    values: configuration?.fromLibrary(library) as unknown,
+    schedule: scheduleValuesFrom(library.schedule, rhythm),
+  }))
+  const [storedValues, setValues] = useState<unknown>(initial.values)
+  const [schedule, setSchedule] = useState<LibraryScheduleValues>(initial.schedule)
   const values = withConnection(storedValues, connection)
-  const [issue, setIssue] = useState<SourceIssue | null>(null)
+  const [issues, setIssues] = useState<SourceIssue[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const formRef = useRef<HTMLDivElement>(null)
-  const alertRef = useRef<HTMLDivElement>(null)
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const checkRef = useRef<RegisteredCheck | null>(null)
+  const registerCheck = useCallback((check: RegisteredCheck | null) => {
+    checkRef.current = check
+  }, [])
+  const dirty =
+    JSON.stringify(storedValues) !== JSON.stringify(initial.values) ||
+    JSON.stringify(schedule) !== JSON.stringify(initial.schedule)
 
-  function report(next: SourceIssue) {
-    reportSourceIssue(next, setIssue, formRef.current, () => alertRef.current?.focus())
+  function collect(): SourceIssue[] {
+    if (!configuration) return []
+    const found = configuration.validateAll
+      ? configuration.validateAll(values, context)
+      : [configuration.validate(values, context)].filter(
+          (issue): issue is SourceIssue => issue !== null,
+        )
+    const scheduleError = validateScheduleValues(schedule, rhythm)
+    return scheduleError ? [...found, issueAt('schedule', scheduleError)] : found
+  }
+  // once shown, issues follow the input: a fixed field loses its message at once
+  const shownIssues =
+    issues.length === 0
+      ? issues
+      : collect()
+          .filter((issue) => issues.some((before) => before.field === issue.field))
+          .concat(issues.filter((issue) => !issue.field))
+
+  function show(next: SourceIssue[]) {
+    setIssues(next)
+    setTimeout(() => summaryRef.current?.focus(), 0)
   }
 
-  function handleClose() {
+  async function handleClose() {
     if (submitting) return
+    if (dirty) {
+      const discard = await confirmAction({
+        question: 'Änderungen an der Quelle verwerfen?',
+        confirmLabel: 'Verwerfen',
+        tone: 'neutral',
+      })
+      if (!discard) return
+    }
     onClose()
   }
 
   async function handleSave() {
-    if (!configuration || connectionMissing) return
-    const validationIssue = configuration.validate(values, context)
-    if (validationIssue) {
-      report(validationIssue)
+    if (submitting || !configuration || connectionMissing) return
+    const found = collect()
+    if (found.length > 0) {
+      show(found)
       return
     }
-    setIssue(null)
     setSubmitting(true)
+    if (checkRef.current) {
+      const outcome = await checkRef.current.ensure()
+      if (outcome === 'failed') {
+        setSubmitting(false)
+        show([
+          formIssue(
+            'Der Verbindungstest ist fehlgeschlagen. Prüfen Sie die Angaben oder wählen Sie „Trotzdem fortfahren“.',
+          ),
+        ])
+        return
+      }
+    }
+    setIssues([])
     try {
+      const source = payloadUnder(configuration.toPayload(values), connectionFields(context))
+      const scheduled = scheduleUpdateFrom(schedule, rhythm)
+      const base = configuration.rhythmSettingsBase?.(library) ?? undefined
+      const sourceSettings =
+        source.sourceSettings || scheduled.sourceSettings
+          ? { ...base, ...source.sourceSettings, ...scheduled.sourceSettings }
+          : undefined
       await updateExistingLibrary(libraryId, {
-        // name/description are resent unchanged - KnowledgeLibraryService#updateLibrary
-        // overwrites both unconditionally, so omitting them here would wipe the description even
-        // though this dialog only touches the source configuration.
+        // name/description are resent unchanged - the backend overwrites both unconditionally
         name: library.name,
         description: library.description ?? undefined,
-        // Blank credentials stay undefined: the backend keeps the stored ones, but only while the
-        // address still names the same origin.
-        ...payloadUnder(configuration.toPayload(values), connectionFields(context)),
+        ...source,
+        ...scheduled,
+        sourceSettings,
       })
+      notify('Quelle gespeichert. Die Änderung gilt ab dem nächsten Lauf.', 'success')
       onClose()
     } catch (err) {
-      report(
-        formIssue(
-          err instanceof Error ? err.message : 'Quellkonfiguration konnte nicht gespeichert werden',
-        ),
-      )
+      show([
+        formIssue(err instanceof Error ? err.message : 'Die Quelle ließ sich nicht speichern.'),
+      ])
     } finally {
       setSubmitting(false)
     }
   }
 
   const Form = configuration?.Form
-
+  const framed = Boolean(configuration?.checkStages)
+  const scheduleSection = (
+    <ScheduleSetup
+      idPrefix="edit-source-schedule"
+      values={schedule}
+      onChange={(patch) => setSchedule((prev) => ({ ...prev, ...patch }))}
+      rhythm={rhythm}
+    />
+  )
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Quellkonfiguration bearbeiten</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <Alert severity="info">
-            Diese Änderung wirkt erst mit dem nächsten Indizierungslauf dieser Bibliothek.
+    <Dialog open={open} onClose={() => void handleClose()} maxWidth="sm" fullWidth scroll="paper">
+      <DialogTitle>Quelle bearbeiten</DialogTitle>
+      <DialogContent dividers>
+        <ErrorSummary ref={summaryRef} issues={shownIssues} idPrefix="edit-source" />
+        {connectionMissing && (
+          <Alert severity="warning" data-testid="edit-source-connection-missing" sx={{ mb: 2 }}>
+            Die Angaben des Zugangs „{profile?.name}“ liegen nicht vor. Bitte die Seite neu laden;
+            besteht das Problem weiter, hilft die Systemverwaltung.
           </Alert>
-          {issue && !issue.field && (
-            <Alert severity="error" role="alert" ref={alertRef} tabIndex={-1}>
-              {issue.message}
-            </Alert>
-          )}
-          {connectionMissing && (
-            <Alert severity="warning" data-testid="edit-source-connection-missing">
-              Die Angaben des Zugangs „{profile?.name}“ liegen nicht vor. Ohne sie lässt sich die
-              Quelle nicht speichern, weil der Zugang Felder vorgibt. Bitte die Seite neu laden;
-              besteht das Problem weiter, hilft die Systemverwaltung.
-            </Alert>
-          )}
-          {Form && !connectionMissing && (
-            <Box ref={formRef}>
-              <SourceIssueContext value={issue}>
-                <Form
-                  values={values}
-                  context={context}
-                  onChange={(patch: object) => {
-                    setValues((prev: unknown) => ({
-                      ...(withConnection(prev, connection) as object),
-                      ...withoutFixed(patch, connection),
-                    }))
-                    setIssue(null)
-                  }}
-                />
-              </SourceIssueContext>
-            </Box>
-          )}
-        </Stack>
+        )}
+        {Form && !connectionMissing && (
+          <SetupContext
+            value={{
+              idPrefix: 'edit-source',
+              issues: shownIssues,
+              schedule: framed ? scheduleSection : undefined,
+              registerCheck,
+            }}
+          >
+            <SourceIssueContext value={shownIssues[0] ?? null}>
+              <Form
+                values={values}
+                context={context}
+                onChange={(patch: object) => {
+                  setValues((prev: unknown) => ({
+                    ...(withConnection(prev, connection) as object),
+                    ...withoutFixed(patch, connection),
+                  }))
+                }}
+              />
+            </SourceIssueContext>
+            {!framed && (
+              <Box sx={{ mt: 4 }}>
+                <SetupSection id="edit-source-section-schedule" title="Zeitplan">
+                  {scheduleSection}
+                </SetupSection>
+              </Box>
+            )}
+          </SetupContext>
+        )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button
+        <Button onClick={() => void handleClose()}>Abbrechen</Button>
+        <BusyButton
           onClick={() => void handleSave()}
           variant="contained"
-          disabled={submitting || !configuration || connectionMissing}
+          busy={submitting}
+          busyAnnouncement="Quelle wird gespeichert"
         >
           {submitting ? 'Wird gespeichert …' : 'Speichern'}
-        </Button>
+        </BusyButton>
       </DialogActions>
     </Dialog>
   )

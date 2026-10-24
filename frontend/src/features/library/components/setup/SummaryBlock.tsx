@@ -37,35 +37,42 @@ export default function SummaryBlock({ title, rows, onChange, level = 'h3' }: Su
           </Link>
         )}
       </Box>
-      <Box
-        component="dl"
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: '180px 1fr' },
-          columnGap: 2.5,
-          rowGap: { xs: 0.25, sm: 0.75 },
-          m: 0,
-          fontSize: 13.5,
-        }}
-      >
-        {rows.map((row) => (
-          <Box key={row.label} sx={{ display: 'contents' }}>
-            <Box component="dt" sx={{ color: 'text.secondary', mt: { xs: 1, sm: 0 } }}>
-              {row.label}
-            </Box>
-            <Box
-              component="dd"
-              sx={{
-                m: 0,
-                overflowWrap: 'anywhere',
-                ...(row.mono ? { fontFamily: fontFamily.mono, fontSize: 12.5 } : {}),
-              }}
-            >
-              {row.value}
-            </Box>
+      <SummaryRows rows={rows} />
+    </Box>
+  )
+}
+
+/** The label and value pairs of a summary as a description list. */
+export function SummaryRows({ rows }: { rows: SummaryRow[] }) {
+  return (
+    <Box
+      component="dl"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: '180px 1fr' },
+        columnGap: 2.5,
+        rowGap: { xs: 0.25, sm: 0.75 },
+        m: 0,
+        fontSize: 13.5,
+      }}
+    >
+      {rows.map((row) => (
+        <Box key={row.label} sx={{ display: 'contents' }}>
+          <Box component="dt" sx={{ color: 'text.secondary', mt: { xs: 1, sm: 0 } }}>
+            {row.label}
           </Box>
-        ))}
-      </Box>
+          <Box
+            component="dd"
+            sx={{
+              m: 0,
+              overflowWrap: 'anywhere',
+              ...(row.mono ? { fontFamily: fontFamily.mono, fontSize: 12.5 } : {}),
+            }}
+          >
+            {row.value}
+          </Box>
+        </Box>
+      ))}
     </Box>
   )
 }

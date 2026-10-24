@@ -338,13 +338,13 @@ async function fillSource(page, type, scenario) {
       break
     case 'nextcloud':
       await fillByLabel(page, [/Adresse der Nextcloud/, /Adresse/], 'https://cloud.rheinfurt.example')
-      await fillByLabel(page, [/Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
-      await fillByLabel(page, [/App-Passwort/, /Passwort/], 'app-passwort')
+      await fillByLabel(page, [/^Kennung/, /Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
+      await fillByLabel(page, [/^Kennwort/, /App-Passwort/, /Passwort/], 'app-passwort')
       break
     case 'smb':
       await fillByLabel(page, [/Adresse der Freigabe/, /Adresse/], 'smb://dateiserver.rheinfurt.example/Ablage')
-      await fillByLabel(page, [/Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
-      await fillByLabel(page, [/^Passwort/, /Passwort/], 'geheim')
+      await fillByLabel(page, [/^Kennung/, /Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
+      await fillByLabel(page, [/^Kennwort/, /^Passwort/, /Passwort/], 'geheim')
       break
     case 'dropbox':
       break

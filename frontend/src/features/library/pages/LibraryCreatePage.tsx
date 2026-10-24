@@ -627,9 +627,13 @@ export default function LibraryCreatePage() {
             values={values}
             formContext={formContext}
             onSourceChange={(patch: object) => {
+              // from the latest state: an async patch (a detected edition) must not undo typing
               setSourceValues((prev) => ({
                 ...prev,
-                [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
+                [valuesKey]: {
+                  ...(withConnection(prev[valuesKey] ?? configuration?.empty, connection) as object),
+                  ...withoutFixed(patch, connection),
+                },
               }))
               setError(null)
             }}

@@ -25,8 +25,9 @@ import {
   indexingRunModeLabel,
   indexingTriggerSourceLabel,
 } from './indexingLabels'
-import { scheduleFrequencyLabel } from './scheduleLabels'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
+import SourceSummarySections from './SourceSummarySections'
+import LegacySourceSections from './LegacySourceSections'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
@@ -130,8 +131,6 @@ export default function LibrarySourceSection({
       }
     }
   })()
-  const Scope = configuration?.Scope
-  const StoredView = configuration?.StoredView
   const fullSyncIntervalDays = configuration?.fullSyncRhythm
     ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
     : null
@@ -180,153 +179,95 @@ export default function LibrarySourceSection({
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
         </Alert>
       )}
-      {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
-         with read access - they are here instead of in the header, with an explanation. */}
-      {Scope && (
-        <PageSection
-          title="Umfang"
-          description="Was diese Bibliothek aus ihrer Quelle aufnimmt — ihr Geltungsbereich. Er gilt für alle Leseberechtigten der Bibliothek."
+      {configuration?.summary ? (
+        <SourceSummarySections
+          library={library}
+          libraryId={libraryId}
+          manager={canEditSource && !erasing}
+          onEdit={() => setEditSourceOpen(true)}
         >
-          <Stack spacing={1}>
-            <Scope library={library} />
-          </Stack>
-        </PageSection>
-      )}
-
-      {!canEditSource && (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Anbindung, Zeitplan und Läufe dieser Bibliothek sehen nur Verwaltende.
-        </Typography>
-      )}
-
-      {canEditSource && !erasing && (
-        <>
-          <PageSection
-            title="Anbindung"
-            description="Woher diese Bibliothek ihre Dokumente bezieht und wie die Quelle erreicht wird. Nur für Verwaltende sichtbar."
-            action={
-              configuration ? (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setEditSourceOpen(true)}
-                  aria-label="Quellkonfiguration bearbeiten"
-                  sx={{ flexShrink: 0 }}
-                >
-                  Bearbeiten
-                </Button>
-              ) : undefined
-            }
-          >
-            {/* sourcePath/sourceUrl expose internal server paths and source URLs - the backend only
-              * serves them to a caller with at least MANAGER, and
-                this whole area only renders behind the same bar. */}
-            <Stack spacing={1}>
-              <LibraryConnectionPanel
-                libraryId={libraryId}
-                sourceType={library.sourceType}
-                library={library}
-                connectionProfile={library.connectionProfile}
-                connectionProfileRemoved={library.connectionProfileRemoved}
-                privateLibrary={Boolean(library.privateLibrary)}
-                onEditSource={() => setEditSourceOpen(true)}
-                dialogOpen={connectOpen}
-                onDialogOpenChange={setConnectOpen}
-              />
-              {consent && (
-                <LibrarySourceConsent
+          {{
+            connectionExtras: (
+              <Stack spacing={1} sx={{ mt: 1.5 }}>
+                <LibraryConnectionPanel
                   libraryId={libraryId}
-                  consent={consent}
-                  onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
+                  sourceType={library.sourceType}
+                  library={library}
+                  connectionProfile={library.connectionProfile}
+                  connectionProfileRemoved={library.connectionProfileRemoved}
+                  privateLibrary={Boolean(library.privateLibrary)}
+                  onEditSource={() => setEditSourceOpen(true)}
+                  dialogOpen={connectOpen}
+                  onDialogOpenChange={setConnectOpen}
                 />
-              )}
-              {StoredView ? (
-                <StoredView library={library} libraryId={libraryId} />
-              ) : (
-                <Typography variant="body2" data-testid="source-not-configurable">
-                  Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske; ihre Anbindung
-                  ist hier nicht konfigurierbar.
-                </Typography>
-              )}
-            </Stack>
-            {configuration && (
-              <EditLibrarySourceDialog
-                // Forces a remount every time the dialog opens, so its internal field state always
-                // starts fresh from the current library configuration without an effect calling
-                // setState on open (react-hooks/set-state-in-effect).
-                key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
-                open={editSourceOpen}
-                onClose={() => setEditSourceOpen(false)}
-                libraryId={libraryId}
-                library={library}
-              />
-            )}
-          </PageSection>
-
-          {/* Schedule - the same threshold as the source connection (canEditSource). */}
-          <PageSection
-            title="Zeitplan"
-            description="Wann diese Bibliothek automatisch indiziert wird."
-            action={
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => setEditScheduleOpen(true)}
-                aria-label="Zeitplan bearbeiten"
-                sx={{ flexShrink: 0 }}
-              >
-                Bearbeiten
-              </Button>
-            }
-          >
-            <Typography variant="body2">
-              {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
-            </Typography>
-            {configuration?.fullSyncRhythm && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {(() => {
-                  const days = fullSyncIntervalDays ?? library.fullSyncIntervalDefaultDays ?? 7
-                  const rhythm =
-                    days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
-                  return fullSyncIntervalDays == null ? `${rhythm} (Vorgabe der Instanz)` : rhythm
-                })()}
-              </Typography>
-            )}
-            {library.schedule?.nextRunAt && (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Nächster geplanter Lauf:{' '}
-                {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </Typography>
-            )}
-            {library.lastScheduledRunsFailed && (
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan
-                bleibt aktiv und versucht es beim nächsten Termin erneut.
-              </Alert>
-            )}
-            <EditLibraryScheduleDialog
-              // Mirrors EditLibrarySourceDialog's own remount-on-open pattern above.
-              key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
-              open={editScheduleOpen}
-              onClose={() => setEditScheduleOpen(false)}
-              libraryId={libraryId}
-              schedule={library.schedule}
-              confluence={
-                configuration?.fullSyncRhythm
-                  ? {
-                      intervalDays: fullSyncIntervalDays,
-                      defaultDays: library.fullSyncIntervalDefaultDays ?? null,
-                    }
-                  : undefined
-              }
-              settingsBase={configuration?.rhythmSettingsBase?.(library) ?? undefined}
-              library={library}
-            />
-          </PageSection>
-        </>
+                {consent && (
+                  <LibrarySourceConsent
+                    libraryId={libraryId}
+                    consent={consent}
+                    onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
+                  />
+                )}
+              </Stack>
+            ),
+            scheduleExtras: (
+              <>
+                {library.schedule?.nextRunAt && (
+                  <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 1 }}>
+                    Nächster Lauf:{' '}
+                    {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </Typography>
+                )}
+                {library.lastScheduledRunsFailed && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Die letzten geplanten Läufe sind fehlgeschlagen. Der Zeitplan versucht es beim
+                    nächsten Termin erneut.
+                  </Alert>
+                )}
+              </>
+            ),
+          }}
+        </SourceSummarySections>
+      ) : (
+        <LegacySourceSections
+          library={library}
+          libraryId={libraryId}
+          canEditSource={canEditSource}
+          erasing={erasing}
+          onEdit={() => setEditSourceOpen(true)}
+          onEditSchedule={() => setEditScheduleOpen(true)}
+        />
+      )}
+      {configuration && canEditSource && !erasing && (
+        <EditLibrarySourceDialog
+          // a fresh instance on every opening starts from the stored configuration
+          key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
+          open={editSourceOpen}
+          onClose={() => setEditSourceOpen(false)}
+          libraryId={libraryId}
+          library={library}
+        />
+      )}
+      {canEditSource && !erasing && (
+        <EditLibraryScheduleDialog
+          key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
+          open={editScheduleOpen}
+          onClose={() => setEditScheduleOpen(false)}
+          libraryId={libraryId}
+          schedule={library.schedule}
+          confluence={
+            configuration?.fullSyncRhythm
+              ? {
+                  intervalDays: fullSyncIntervalDays,
+                  defaultDays: library.fullSyncIntervalDefaultDays ?? null,
+                }
+              : undefined
+          }
+          settingsBase={configuration?.rhythmSettingsBase?.(library) ?? undefined}
+          library={library}
+        />
       )}
 
       {canEditSource && (
