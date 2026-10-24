@@ -184,7 +184,8 @@ paths:
         "200":
           description: >
             What the source offers - complete false when the credentials may not list at all,
-            with a message inviting manual entry, never an error.
+            with a message inviting manual entry, or when the listing stopped at a limit, with
+            the first entries and a message saying so; never an error.
           content:
             application/json:
               schema:
@@ -1478,7 +1479,9 @@ components:
       description: >
         What the source offers, in its own order. complete false means the credentials may not
         list at all (a restricted S3 key, say) - entries is then empty and message invites
-        manual entry. An empty, complete list is a valid answer, distinct from an error.
+        manual entry - or that the listing stopped at a limit of the connector - entries then
+        holds the first ones found and message says so. An empty, complete list is a valid
+        answer, distinct from an error.
       properties:
         complete:
           type: boolean

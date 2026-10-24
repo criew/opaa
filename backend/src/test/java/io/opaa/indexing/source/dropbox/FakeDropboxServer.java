@@ -82,6 +82,7 @@ final class FakeDropboxServer implements AutoCloseable {
   private volatile String alsoAcceptedToken = TOKEN;
   private volatile boolean cursorsExpired;
   private volatile boolean team;
+  private volatile int maxPageSize = Integer.MAX_VALUE;
 
   FakeDropboxServer() {
     try {
@@ -108,6 +109,14 @@ final class FakeDropboxServer implements AutoCloseable {
   }
 
   // --- arranging -------------------------------------------------------------------------------
+
+  /**
+   * From now on a page of a listing holds at most {@code size} entries, as Dropbox may answer with
+   * fewer than {@code limit} asks for.
+   */
+  void pageSizeAtMost(int size) {
+    maxPageSize = size;
+  }
 
   /** The account belongs to a team with a team space. */
   void withTeamSpace() {
@@ -359,7 +368,9 @@ final class FakeDropboxServer implements AutoCloseable {
       json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
       return;
     }
-    page(exchange, cursor("l", root, folder, 0, limit) + (recursive ? "" : "|flat"));
+    page(
+        exchange,
+        cursor("l", root, folder, 0, Math.min(limit, maxPageSize)) + (recursive ? "" : "|flat"));
   }
 
   /** As Dropbox answers: a missing folder is {@code path/not_found}, a denied one restricted. */

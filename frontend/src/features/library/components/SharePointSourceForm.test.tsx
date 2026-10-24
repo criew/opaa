@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { renderWithProviders } from '@/test/test-utils'
 import SharePointSourceForm from './SharePointSourceForm'
@@ -262,6 +263,52 @@ describe('SharePointSourceForm (ADR-0047)', () => {
       query: { search: 'Bau' },
     })
   })
+
+  it('offers what a listing cut at a limit found and says that more exist', async () => {
+    const cut = (entries: { key: string; name: string }[], noun: string) =>
+      HttpResponse.json({
+        complete: false,
+        entries,
+        message: `Es werden die ersten ${entries.length} ${noun} gezeigt.`,
+      })
+    server.use(
+      http.post('/api/v1/source-types/SHAREPOINT/browse', async ({ request }) => {
+        const { query } = (await request.json()) as { query: Record<string, string> }
+        if (query.search) {
+          return cut(
+            [
+              { key: 'site:site-a', name: 'Bauamt' },
+              { key: 'site:site-b', name: 'Bauhof' },
+            ],
+            'Sites',
+          )
+        }
+        if (query.site)
+          return cut([{ key: 'drive:b!a', name: 'Dokumente' }], 'Dokumentbibliotheken')
+        return cut([{ key: 'folder:01A', name: 'Akten' }], 'Ordner')
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<Harness />)
+
+    await user.type(screen.getByLabelText('Oder nach Sites suchen'), 'Bau{Enter}')
+    const sites = await screen.findByRole('list', { name: 'Gefundene Sites' })
+    expect(within(sites).getAllByRole('button')).toHaveLength(2)
+    expect(screen.getByTestId('sharepoint-site-status')).toHaveTextContent(
+      'Es werden die ersten 2 Sites gezeigt.',
+    )
+
+    await user.click(within(sites).getByRole('button', { name: 'Bauamt' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Dokumente' }))
+    expect(screen.getByTestId('sharepoint-site-drives')).toHaveTextContent(
+      'Es werden die ersten 1 Dokumentbibliotheken gezeigt.',
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ordner von „Dokumente/ }))
+    const root = await screen.findByRole('list', { name: 'Ordner auf der Ebene Stamm' })
+    expect(within(root).getByRole('checkbox', { name: 'Akten' })).toBeInTheDocument()
+    expect(screen.getByText('Es werden die ersten 1 Ordner gezeigt.')).toBeVisible()
+  }, 20000)
 
   it('shows per library what the test found: OneDrive, a site not released and a missing folder', async () => {
     const user = userEvent.setup()
