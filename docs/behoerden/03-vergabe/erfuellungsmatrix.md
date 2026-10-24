@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -76,6 +76,7 @@ Faktenblatt.
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
 | S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/betrieb/kubernetes.md#pod-security) | Handbuch |
 | S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Korrekturen und Scan für `main` und jede unterstützte Linie | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
+| S-07 | teilweise; Fundstellen als Daten gekennzeichnet, Bereinigung beim Aufnehmen mit Meldung auffälliger Muster, Links nur zu erlaubten Zielen, keine Bilder, Testsatz für das eigene Modell; versteckter Text (weiße Schrift, verborgener Text) wird nicht erkannt, eine vollständige Erkennung gibt es nicht | [Schutz gegen Prompt-Injection](../../handbuch/betrieb/netz-und-sicherheit.md#schutz-gegen-prompt-injection), [Erlaubte Linkziele](../../handbuch/betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) | Handbuch, Test |
 
 ## B · Betrieb
 

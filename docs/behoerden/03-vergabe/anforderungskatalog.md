@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -81,6 +81,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | S-04 | Es gibt einen öffentlichen, vertraulichen Meldeweg für Sicherheitslücken; behobene Lücken werden veröffentlicht. | Muss | Sicherheitsrichtlinie |
 | S-05 | Die Anwendung läuft als Container ohne Root-Rechte und mit Read-only Filesystem. | Muss oder Kann, Begründung im Vergabevermerk | Betriebsdokumentation |
 | S-06 | Die ausgelieferten Artefakte werden regelmäßig auf bekannte Schwachstellen geprüft; Reaktionszeiten je Schwere sind festgelegt. Für jede Version ist veröffentlicht, bis wann sie Sicherheitskorrekturen ohne neue Funktionen erhält. | Kann | Beschreibung des Verfahrens, Supportzeiträume |
+| S-07 | Schützt die Antworten gegen Anweisungen, die in aufgenommenen Dokumenten stehen (Prompt-Injection): Dokumentinhalte gehen gekennzeichnet als Daten an das Modell, unsichtbare Steuerzeichen werden beim Aufnehmen entfernt, Links in Antworten sind nur zu konfigurierbaren Zielen klickbar, externe Bilder werden nicht geladen; ein Verfahren misst, wie leicht sich das eingesetzte Modell lenken lässt. Grenzen des Schutzes sind beschrieben. | Kann | Beschreibung der Maßnahmen und ihrer Grenzen, Messverfahren |
 
 ## B · Betrieb
 
