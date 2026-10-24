@@ -1,10 +1,10 @@
-import { Fragment } from 'react'
-import type { ReactNode } from 'react'
+import { Fragment, useState } from 'react'
+import type { DragEvent, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
+import StateDot from '@/shared/ui/StateDot'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
@@ -38,12 +38,13 @@ function formatIndexedAt(indexedAt: string | null | undefined): string {
   return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function statusChipColor(
-  status: LibraryDocumentResponse['status'],
-): 'success' | 'warning' | 'error' {
+/** Folders a level shows before „alle n Ordner anzeigen“. */
+const FOLDERS_SHOWN = 8
+
+function statusTone(status: LibraryDocumentResponse['status']): 'success' | 'neutral' | 'error' {
   if (status === 'INDEXED') return 'success'
   if (status === 'FAILED') return 'error'
-  return 'warning'
+  return 'neutral'
 }
 
 export interface LibraryDocumentListProps {
@@ -56,6 +57,14 @@ export interface LibraryDocumentListProps {
   confluenceSpaces?: ConfluenceSpaceRef[] | null
   /** What to say when neither a document nor a folder is left to show. */
   emptyMessage: string
+  /** The one action of the empty state, e.g. „Jetzt indizieren“. */
+  emptyAction?: ReactNode
+  /** Filters beside the search, e.g. „ohne Wert“. */
+  toolbarFilter?: ReactNode
+  /** Actions at the toolbar's right edge, e.g. „Hochladen“. */
+  toolbarActions?: ReactNode
+  /** Files dropped on the list are uploaded (upload library). */
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void
   /** Rendered directly above the search field - the Ordnerpfad of the open folder. */
   breadcrumb?: ReactNode
   searchInput: string
@@ -120,6 +129,10 @@ export default function LibraryDocumentList({
   isLoading,
   confluenceSpaces,
   emptyMessage,
+  emptyAction,
+  toolbarFilter,
+  toolbarActions,
+  onDrop,
   breadcrumb,
   searchInput,
   onSearchChange,
@@ -142,9 +155,21 @@ export default function LibraryDocumentList({
   onToggleAttachmentGroup,
 }: LibraryDocumentListProps) {
   const isSearchActive = Boolean(pageState?.q)
+  // an empty library shows its empty state alone: no search, no paging (D21)
+  const isEmptyRoot =
+    !isLoading &&
+    documents.length === 0 &&
+    folders.length === 0 &&
+    !searchInput &&
+    !pageState?.missingMetadataField &&
+    !breadcrumb
   const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
+  const [dragActive, setDragActive] = useState(false)
+  // many folders on one level are folded behind one link, the documents stay in reach (R1-37)
+  const [allFolders, setAllFolders] = useState(false)
+  const shownFolders = allFolders ? folders : folders.slice(0, FOLDERS_SHOWN)
   const documentsById = new Map(documents.map((doc) => [doc.id, doc]))
   // The backend guarantees each attachment row follows its (transitive) top-level parent
   // within the same page, so grouping is a single sequential pass. A row whose parent is missing
@@ -172,6 +197,29 @@ export default function LibraryDocumentList({
     return name ? `${name} (${key})` : key
   }
 
+  /** Where a document sits at its source - shown behind ⓘ, so the row keeps two lines (P6). */
+  function originOf(document: LibraryDocumentResponse): ReactNode {
+    if (document.sourceContainerKey) {
+      return `${sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'}: ${containerName(document.sourceContainerKey)}${document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}`
+    }
+    if (document.sourceEntryUrl) {
+      return (
+        <>
+          Herkunft: <ExternalAddress address={document.sourceEntryUrl} />
+        </>
+      )
+    }
+    if (document.sourceUrl) {
+      return (
+        <>
+          Quelle: <ExternalAddress address={document.sourceUrl} />
+        </>
+      )
+    }
+    if (document.sourceHierarchyPath) return `Pfad: ${document.sourceHierarchyPath}`
+    return null
+  }
+
   const visibleDocumentIds = documents.map((doc) => doc.id)
   const allVisibleSelected =
     visibleDocumentIds.length > 0 && visibleDocumentIds.every((id) => selectedIds.includes(id))
@@ -183,7 +231,9 @@ export default function LibraryDocumentList({
     const isAttachment = Boolean(document.parentDocumentId)
     const attachments = options.attachments ?? []
     const expanded = isGroupExpanded(document.id)
-    const metadataOpen = Boolean(renderMetadataPanel && metadataOpenById?.[document.id])
+    const origin = originOf(document)
+    const hasInfo = Boolean(renderMetadataPanel || origin)
+    const metadataOpen = Boolean(hasInfo && metadataOpenById?.[document.id])
     return (
       <Fragment key={document.id}>
         <Box
@@ -209,10 +259,12 @@ export default function LibraryDocumentList({
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
               {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
               <Typography
+                noWrap
+                title={document.fileName}
                 sx={{
                   fontWeight: isAttachment ? 500 : 600,
                   fontSize: isAttachment ? 13.5 : undefined,
-                  wordBreak: 'break-word',
+                  minWidth: 0,
                 }}
               >
                 {document.fileName}
@@ -224,23 +276,13 @@ export default function LibraryDocumentList({
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
             </Typography>
-            {/* ADR-0023/ADR-0027: a row names its container under the noun its source
-                registered (a Confluence space, an S3 bucket) and its position below it - as text,
-                since an s3:// path is no link a browser could open. */}
-            {document.sourceContainerKey && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {`${sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'}: ${containerName(document.sourceContainerKey)}`}
-                {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
-              </Typography>
-            )}
             {options.viaFileName && (
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Anhang von: {options.viaFileName}
               </Typography>
             )}
-            {/* Most useful on a search hit (bibliotheksweit, ADR-0020), whose result list has
-                no breadcrumb of its own to place it in the structure. */}
-            {document.folderPath && (
+            {/* a search hit names its folder - the result list has no breadcrumb to place it */}
+            {isSearchActive && document.folderPath && (
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Ordner:{' '}
                 <Link
@@ -250,26 +292,6 @@ export default function LibraryDocumentList({
                 >
                   {document.folderPath}
                 </Link>
-              </Typography>
-            )}
-            {/* sourceEntryUrl is carried only by an attachment from an RSS feed entry - the link
-               makes visible which entry it comes from. */}
-            {document.sourceEntryUrl && (
-              <Typography
-                variant="caption"
-                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
-              >
-                Herkunft: <ExternalAddress address={document.sourceEntryUrl} />
-              </Typography>
-            )}
-            {/* Only shown when sourceEntryUrl above is absent, so the same remote address
-                never appears twice for an RSS attachment. */}
-            {!document.sourceEntryUrl && document.sourceUrl && (
-              <Typography
-                variant="caption"
-                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
-              >
-                Quelle: <ExternalAddress address={document.sourceUrl} />
               </Typography>
             )}
             {attachments.length > 0 && (
@@ -294,17 +316,17 @@ export default function LibraryDocumentList({
               title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
               disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
             >
-              <Chip
-                label={documentStatusLabel(document.status)}
-                size="small"
-                color={statusChipColor(document.status)}
-                variant="outlined"
-              />
+              <Box component="span" sx={{ display: 'inline-flex', minWidth: 112 }}>
+                <StateDot
+                  tone={statusTone(document.status)}
+                  label={documentStatusLabel(document.status)}
+                />
+              </Box>
             </Tooltip>
-            {renderMetadataPanel && (
-              <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
+            {hasInfo && (
+              <Tooltip title={metadataOpen ? 'Angaben verbergen' : 'Angaben anzeigen'}>
                 <IconButton
-                  aria-label={`Metadaten von ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
+                  aria-label={`Angaben zu ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
                   aria-expanded={metadataOpen}
                   size="small"
                   color={metadataOpen ? 'primary' : 'default'}
@@ -326,6 +348,21 @@ export default function LibraryDocumentList({
             {renderRowActions?.(document)}
           </Stack>
         </Box>
+        {metadataOpen && origin && (
+          <Typography
+            variant="caption"
+            component="div"
+            sx={{
+              color: 'text.secondary',
+              px: 1.5,
+              pb: 1,
+              pl: selectable ? 6.5 : 1.5,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {origin}
+          </Typography>
+        )}
         {metadataOpen && renderMetadataPanel?.(document)}
       </Fragment>
     )
@@ -335,54 +372,62 @@ export default function LibraryDocumentList({
     <Box>
       {breadcrumb}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          fullWidth
-          value={searchInput}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Dokumente durchsuchen — Dateiname enthält …"
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16 }} />
-                </InputAdornment>
-              ),
-              endAdornment: searchInput ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label="Suche zurücksetzen"
-                    onClick={() => onSearchChange('')}
-                  >
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            },
-            htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
-          }}
-        />
-        <Select
-          size="small"
-          value={pageState?.size ?? DEFAULT_PAGE_SIZE}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          inputProps={{ 'aria-label': 'Dokumente je Seite' }}
-          sx={{ flexShrink: 0, minWidth: 132 }}
+      {!isEmptyRoot && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          sx={{ mb: 1.5, alignItems: { sm: 'center' } }}
         >
-          {[20, 50, 100].map((size) => (
-            <MenuItem key={size} value={size}>
-              {size} je Seite
-            </MenuItem>
-          ))}
-        </Select>
-      </Stack>
+          {selectable && (
+            <Checkbox
+              size="small"
+              checked={allVisibleSelected}
+              disabled={documents.length === 0}
+              indeterminate={!allVisibleSelected && selectedIds.length > 0}
+              onChange={onToggleAllVisible}
+              slotProps={{ input: { 'aria-label': 'Alle auf dieser Seite auswählen' } }}
+              sx={{
+                p: 0.5,
+                alignSelf: { xs: 'flex-start', sm: 'center' },
+                display: { xs: 'none', sm: 'inline-flex' },
+              }}
+            />
+          )}
+          <TextField
+            size="small"
+            fullWidth
+            value={searchInput}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Dateiname"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 16 }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchInput ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      aria-label="Suche zurücksetzen"
+                      onClick={() => onSearchChange('')}
+                    >
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : undefined,
+              },
+              htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
+            }}
+          />
+          {toolbarFilter}
+          {toolbarActions}
+        </Stack>
+      )}
 
-      {/* The selection toolbar also stands on the root level, where a library may show only
-          folders - hiding it there made "Alle auf dieser Seite auswählen" look unavailable rather
-          than simply empty. */}
-      {selectable && (documents.length > 0 || folders.length > 0) && (
+      {/* the selection's actions appear with a selection, not as a disabled bar before it */}
+      {selectable && selectedIds.length > 0 && (
         <Stack
           direction="row"
           spacing={1.5}
@@ -390,20 +435,6 @@ export default function LibraryDocumentList({
           role="toolbar"
           aria-label="Sammelaktionen"
         >
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={allVisibleSelected}
-                disabled={documents.length === 0}
-                indeterminate={!allVisibleSelected && selectedIds.length > 0}
-                onChange={onToggleAllVisible}
-              />
-            }
-            label="Alle auf dieser Seite auswählen"
-          />
-          {/* accessibility.md 2.8: the count changes without moving the focus, so it is announced
-              politely instead of staying silent for anyone not watching the checkboxes. */}
           <Typography
             variant="body2"
             role="status"
@@ -413,11 +444,9 @@ export default function LibraryDocumentList({
             {selectedIds.length} ausgewählt
           </Typography>
           {bulkActions}
-          {selectedIds.length > 0 && (
-            <Button size="small" onClick={onClearSelection}>
-              Auswahl aufheben
-            </Button>
-          )}
+          <Button size="small" onClick={onClearSelection}>
+            Auswahl aufheben
+          </Button>
         </Stack>
       )}
 
@@ -428,14 +457,44 @@ export default function LibraryDocumentList({
           <Skeleton variant="rounded" height={64} />
         </Stack>
       ) : documents.length === 0 && folders.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          {searchInput ? 'Kein Dokument entspricht dieser Suche.' : emptyMessage}
-        </Typography>
+        <Box>
+          <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+            {searchInput || pageState?.missingMetadataField
+              ? 'Kein Dokument entspricht dieser Auswahl.'
+              : emptyMessage}
+          </Typography>
+          {isEmptyRoot && emptyAction && <Box sx={{ mt: 1.5 }}>{emptyAction}</Box>}
+        </Box>
       ) : (
-        <Stack spacing={1}>
+        <Stack
+          spacing={1}
+          onDragOver={
+            onDrop
+              ? (event) => {
+                  event.preventDefault()
+                  setDragActive(true)
+                }
+              : undefined
+          }
+          onDragLeave={onDrop ? () => setDragActive(false) : undefined}
+          onDrop={
+            onDrop
+              ? (event) => {
+                  setDragActive(false)
+                  onDrop(event)
+                }
+              : undefined
+          }
+          sx={{
+            outline: dragActive ? '2px dashed' : 'none',
+            outlineColor: 'primary.main',
+            outlineOffset: 4,
+            borderRadius: 1,
+          }}
+        >
           {/* Folders are rows ahead of the documents, mirroring a plain file browser - a
               folder's documentCount already counts its own subtree recursively. */}
-          {folders.map((folder) => (
+          {shownFolders.map((folder) => (
             <Box
               key={folder.id}
               sx={{
@@ -449,26 +508,8 @@ export default function LibraryDocumentList({
                 '&:last-of-type': { borderBottom: 0 },
               }}
             >
-              {/* A folder is not a document and cannot be selected - said with a disabled
-                  checkbox and its reason, rather than by leaving the column blank and making the
-                  rows below look misaligned. */}
-              {selectable && (
-                <Tooltip title="Ordner lassen sich nicht auswählen — nur die Dokumente darin">
-                  <Box component="span" sx={{ display: 'inline-flex' }}>
-                    <Checkbox
-                      size="small"
-                      disabled
-                      checked={false}
-                      slotProps={{
-                        input: {
-                          'aria-label': `Ordner ${folder.name} ist nicht auswählbar`,
-                        },
-                      }}
-                      sx={{ p: 0.5 }}
-                    />
-                  </Box>
-                </Tooltip>
-              )}
+              {/* a folder cannot be selected; the spacer keeps the names on one edge */}
+              {selectable && <Box aria-hidden sx={{ width: 28, flex: 'none' }} />}
               <Box
                 role="button"
                 tabIndex={0}
@@ -490,16 +531,29 @@ export default function LibraryDocumentList({
                 }}
               >
                 <FolderIcon color="action" />
-                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                <Typography noWrap title={folder.name} sx={{ fontWeight: 600, minWidth: 0 }}>
                   {folder.name}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                <Typography variant="caption" noWrap sx={{ color: 'text.secondary', flex: 'none' }}>
                   {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
                 </Typography>
               </Box>
               {renderFolderActions?.(folder)}
             </Box>
           ))}
+          {folders.length > FOLDERS_SHOWN && (
+            <Box sx={{ py: 1, borderBottom: 1, borderColor: 'divider' }}>
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={() => setAllFolders((value) => !value)}
+                sx={{ fontSize: 13.5 }}
+              >
+                {allFolders ? 'Weniger Ordner anzeigen' : `Alle ${folders.length} Ordner anzeigen`}
+              </Link>
+            </Box>
+          )}
           {/* A top-level document with its attachments is one group - the attachments hang
               indented on a guide line below it, a divider closes the group against the next. */}
           {documentGroups.map(({ parent, attachments }) => (
@@ -566,6 +620,21 @@ export default function LibraryDocumentList({
                 }`}
             {pageCount > 1 ? ` · Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : ''}
           </Typography>
+          {pageState.totalElements > DEFAULT_PAGE_SIZE && (
+            <Select
+              size="small"
+              value={pageState.size ?? DEFAULT_PAGE_SIZE}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              inputProps={{ 'aria-label': 'Dokumente je Seite' }}
+              sx={{ minWidth: 120, ml: { sm: 'auto' } }}
+            >
+              {[20, 50, 100].map((size) => (
+                <MenuItem key={size} value={size}>
+                  {size} je Seite
+                </MenuItem>
+              ))}
+            </Select>
+          )}
           {pageCount > 1 && (
             <Pagination
               count={pageCount}

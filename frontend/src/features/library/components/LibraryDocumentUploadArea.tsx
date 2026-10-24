@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import Box from '@mui/material/Box'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
@@ -14,6 +17,11 @@ interface LibraryDocumentUploadAreaProps {
   upload: DocumentUpload
   canManageFolders: boolean
   onNewFolder: () => void
+  /**
+   * Once the library holds something: no drop zone, only „Hochladen“ (files or a folder) and
+   * „Neuer Ordner“ for the list's toolbar; files are then dropped on the list itself.
+   */
+  compact?: boolean
 }
 
 /**
@@ -24,7 +32,9 @@ export default function LibraryDocumentUploadArea({
   upload,
   canManageFolders,
   onNewFolder,
+  compact = false,
 }: LibraryDocumentUploadAreaProps) {
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const {
     isUploading,
     isDragActive,
@@ -37,39 +47,8 @@ export default function LibraryDocumentUploadArea({
     handleDrop,
   } = upload
 
-  return (
-    <Stack spacing={1.5} sx={{ mb: 3 }}>
-      <Box
-        role="button"
-        tabIndex={0}
-        aria-label="Dateien oder Ordner hierher ziehen zum Hochladen"
-        onClick={() => fileInputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            fileInputRef.current?.click()
-          }
-        }}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setIsDragActive(true)
-        }}
-        onDragLeave={() => setIsDragActive(false)}
-        onDrop={handleDrop}
-        sx={{
-          border: '2px dashed',
-          borderColor: isDragActive ? 'primary.main' : 'divider',
-          borderRadius: 1,
-          p: 3,
-          textAlign: 'center',
-          cursor: 'pointer',
-          color: 'text.secondary',
-          bgcolor: isDragActive ? 'action.hover' : 'transparent',
-        }}
-      >
-        <UploadFileIcon sx={{ fontSize: 32, mb: 1 }} />
-        <Typography>Dateien oder Ordner hierher ziehen</Typography>
-      </Box>
+  const inputs = (
+    <>
       <input
         ref={fileInputRef}
         type="file"
@@ -113,6 +92,89 @@ export default function LibraryDocumentUploadArea({
           e.target.value = ''
         }}
       />
+    </>
+  )
+
+  if (compact) {
+    return (
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+        {inputs}
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<UploadFileIcon />}
+          aria-haspopup="menu"
+          onClick={(event) => setMenuAnchor(event.currentTarget)}
+          disabled={isUploading}
+        >
+          {isUploading ? 'Lädt hoch …' : 'Hochladen'}
+        </Button>
+        <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)}>
+          <MenuItem
+            onClick={() => {
+              setMenuAnchor(null)
+              fileInputRef.current?.click()
+            }}
+          >
+            Dateien …
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setMenuAnchor(null)
+              folderInputRef.current?.click()
+            }}
+          >
+            Ordner …
+          </MenuItem>
+          {canManageFolders && (
+            <MenuItem
+              onClick={() => {
+                setMenuAnchor(null)
+                onNewFolder()
+              }}
+            >
+              Neuer Ordner
+            </MenuItem>
+          )}
+        </Menu>
+      </Stack>
+    )
+  }
+
+  return (
+    <Stack spacing={1.5} sx={{ mb: 3 }}>
+      <Box
+        role="button"
+        tabIndex={0}
+        aria-label="Dateien oder Ordner hierher ziehen zum Hochladen"
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            fileInputRef.current?.click()
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragActive(true)
+        }}
+        onDragLeave={() => setIsDragActive(false)}
+        onDrop={handleDrop}
+        sx={{
+          border: '2px dashed',
+          borderColor: isDragActive ? 'primary.main' : 'divider',
+          borderRadius: 1,
+          p: 3,
+          textAlign: 'center',
+          cursor: 'pointer',
+          color: 'text.secondary',
+          bgcolor: isDragActive ? 'action.hover' : 'transparent',
+        }}
+      >
+        <UploadFileIcon sx={{ fontSize: 32, mb: 1 }} />
+        <Typography>Dateien oder Ordner hierher ziehen</Typography>
+      </Box>
+      {inputs}
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
         <Button
           variant="contained"
@@ -136,7 +198,7 @@ export default function LibraryDocumentUploadArea({
           </Button>
         )}
       </Stack>
-      {isUploading && <LinearProgress aria-label="Hochladen läuft" />}
+      {isUploading && <LinearProgress aria-label="Hochladen läuft" sx={{ height: 2 }} />}
     </Stack>
   )
 }

@@ -337,20 +337,16 @@ function SteckbriefBlocks(props: LibrarySteckbriefProps) {
       {upload && (
         <Block title="Hochladen">
           {upload.storage && <Line>{upload.storage}</Line>}
-          {upload.lastUpload && <Line>zuletzt {upload.lastUpload}</Line>}
           {upload.rejections.length > 0 && (
             <Line>
               <Link
                 component="button"
                 type="button"
                 underline="hover"
-                color="inherit"
                 onClick={() => setRejectionsOpen(true)}
-                sx={{ fontSize: 13, color: 'error.main' }}
+                sx={{ fontSize: 13 }}
               >
-                {upload.rejections.length === 1
-                  ? '1 Datei abgelehnt'
-                  : `${upload.rejections.length} Dateien abgelehnt`}
+                Abgelehnte Dateien anzeigen
               </Link>
             </Line>
           )}

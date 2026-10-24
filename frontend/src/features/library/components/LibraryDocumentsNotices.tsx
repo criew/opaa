@@ -1,7 +1,5 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import type { LibraryFolderListItem } from '@/shared/api/types'
 import { useDocumentStore } from '../stores/documentStore'
 
@@ -21,30 +19,17 @@ export default function LibraryDocumentsNotices({
   renameFolderTarget,
 }: LibraryDocumentsNoticesProps) {
   const error = useDocumentStore((s) => s.error)
-  const uploadErrors = useDocumentStore((s) => s.uploadErrors)
   const deleteError = useDocumentStore((s) => s.deleteError)
   const folderError = useDocumentStore((s) => s.folderError)
   const folderNotFoundMessage = useDocumentStore((s) => s.folderNotFoundMessage)
   const pollingStoppedMessage = useDocumentStore((s) => s.pollingStoppedMessage)
   const loadDocuments = useDocumentStore((s) => s.loadDocuments)
-  const clearUploadErrors = useDocumentStore((s) => s.clearUploadErrors)
   const clearDeleteError = useDocumentStore((s) => s.clearDeleteError)
   const clearFolderError = useDocumentStore((s) => s.clearFolderError)
   const clearFolderNotFoundMessage = useDocumentStore((s) => s.clearFolderNotFoundMessage)
 
   return (
     <>
-      {uploadErrors.length > 0 && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadErrors}>
-          <Stack spacing={0.5}>
-            {uploadErrors.map((message) => (
-              <Typography key={message} variant="body2">
-                {message}
-              </Typography>
-            ))}
-          </Stack>
-        </Alert>
-      )}
       {deleteError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearDeleteError}>
           {deleteError}
