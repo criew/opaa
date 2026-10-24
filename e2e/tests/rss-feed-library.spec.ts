@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import { DEV_USER_HEADER } from '../fixtures/libraries'
 import type { Page, Response } from '@playwright/test'
-import { openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
 
 // Deterministic, generic, fully invented RSS-2.0 fixtures for a fictional "Beispielbehörde" -
 // served statically by the "rss-feed" service (e2e/docker-compose.e2e.yml), reachable from the
@@ -53,22 +53,16 @@ async function createRssLibrary(page: Page, name: string, feedUrl: string): Prom
   await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /RSS-Feed/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByLabel('Adresse (URL)').fill(feedUrl)
+  await page.getByLabel('Adresse', { exact: true }).fill(feedUrl)
   // The run each scenario measures is the one it triggers itself: an immediate first run from the
   // wizard can finish before the detail page polls, and the explicit trigger then measures a
   // second run over an unchanged feed instead.
-  await page
-    .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
-    .uncheck()
+  await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+  await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await Promise.all([
-    // /libraries/new is the wizard itself - without the lookahead the wait would resolve
-    // immediately against the current URL.
-    page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-  ])
+  await createFromReview(page)
   await expect(page.getByRole('heading', { name })).toBeVisible()
   const match = page.url().match(/\/libraries\/([^/]+)$/)
   if (!match) {

@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import {
   askQuestion,
+  createFromReview,
   expectCitedSource,
   openNewLibraryWizard,
   startFreshChat,
@@ -171,38 +172,39 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   }) => {
     await openRssSourceStep(page)
     const choice = connectionChoice(page)
-    await expect(choice.getByRole('radio', { name: /^Eigene Adresse/ })).toBeChecked()
+    // Der freigegebene Zugang ist vorgewählt, „Eigene Adresse“ steht als letzte Wahl daneben.
+    const profileWay = choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })
+    await expect(profileWay).toBeChecked()
     // Gegenprobe zum Wegfall unten: mit eigener Adresse fragt das Formular Zugangsdaten ab.
-    const credentials = page.getByLabel('Anmeldedaten (optional)')
+    await choice.getByRole('radio', { name: /^Eigene Adresse/ }).click()
+    const credentials = page.getByLabel('Zugangsdaten (optional)')
     await expect(credentials).toBeVisible()
-    await choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) }).click()
+    await profileWay.click()
 
     // Die Adresse kommt aus dem Zugang; ein Pfad darunter ist erlaubt.
-    const address = page.getByLabel('Adresse (URL)')
+    const address = page.getByLabel('Adresse', { exact: true })
     await expect(address).toHaveValue(SERVER_URL)
     // „ohne Anmeldung“: kein Feld für Zugangsdaten.
     await expect(credentials).toHaveCount(0)
     await address.fill(FEED_URL)
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
-    await expect(page.getByRole('alert').filter({ hasText: /erreichbar/ })).toBeVisible({
+    await expect(page.getByRole('status').filter({ hasText: 'Adresse erreichbar' })).toBeVisible({
       timeout: 15_000,
     })
-    await page
-      .getByRole('switch', {
-        name: 'Erste Indizierung sofort nach dem Anlegen starten',
-      })
-      .uncheck()
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name', { exact: true }).fill(PROFILE_LIBRARY)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     const libraryId = libraryIdFromCurrentUrl(page)
     createdLibraryIds.push(libraryId)
 
     await page.getByRole('tab', { name: 'Quelle' }).click()
+    await expect(page.getByRole('region', { name: 'Verbindung' })).toContainText(
+      `Zugang „${PROFILE_NAME}“`,
+    )
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
     await expect(page.getByTestId('connection-profile')).toHaveText(`Zugang: ${PROFILE_NAME}`)
 
     const status = await triggerIndexingInUi(page, libraryId)
@@ -221,7 +223,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   }) => {
     await openRssSourceStep(page)
     await expect(page.getByText('Zugänge werden geladen …')).toHaveCount(0)
-    await expect(page.getByLabel('Adresse (URL)')).toBeVisible()
+    await expect(page.getByLabel('Adresse', { exact: true })).toBeVisible()
     await expect(page.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })).toHaveCount(0)
     await expect(connectionChoice(page)).toHaveCount(0)
   })
@@ -270,14 +272,15 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     regularUserPage: page,
   }) => {
     await openRssSourceStep(page)
-    const choice = connectionChoice(page)
-    await expect(choice.getByRole('radio', { name: /^Eigene Adresse/ })).toHaveCount(0)
-    await expect(
-      page.getByText(
-        'Die Quellart „RSS-Feed“ ist nur über einen Zugang nutzbar; eine eigene Adresse ist nicht möglich.',
-      ),
-    ).toBeVisible()
-    await expect(choice.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })).toBeChecked()
+    // Der Zugang ist der einzige Weg: keine Wahl, auch keine „Eigene Adresse“, und die Zeile
+    // „Verbindung“ läuft über ihn.
+    await expect(page.getByRole('radio', { name: /^Eigene Adresse/ })).toHaveCount(0)
+    await expect(connectionChoice(page)).toHaveCount(0)
+    await expect(page.getByLabel('Adresse', { exact: true })).toHaveValue(SERVER_URL)
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await expect(page.getByRole('region', { name: 'Verbindung' })).toContainText(
+      `Zugang „${PROFILE_NAME}“`,
+    )
   })
 
   test('2c. Die Verwaltende repariert die gesperrte Bibliothek über „Zugang zuordnen“', async ({
@@ -297,6 +300,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expect(dialog).toHaveCount(0)
 
     await expect(lockNotice(page)).toHaveCount(0)
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
     await expect(page.getByTestId('connection-profile')).toHaveText(`Zugang: ${PROFILE_NAME}`)
     const status = await triggerIndexingInUi(page, stockLibraryId)
     expect(status.status).toBe('COMPLETED')

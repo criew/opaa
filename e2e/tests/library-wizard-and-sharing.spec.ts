@@ -89,7 +89,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
 test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
   const createdLibraryIds = cleanupLibraries()
 
-  test('Upload-Bibliothek: drei Schritte, Detailansicht ohne Reiter „Quelle", Freigaben', async ({
+  test('Upload-Bibliothek: vier Schritte, Detailansicht ohne Reiter „Quelle", Freigaben', async ({
     authenticatedPage: page,
   }) => {
     await openNewLibraryWizard(page)
@@ -107,6 +107,11 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')
+    await nextStep(page)
+
+    // The last step shows every answer once more before the library is created.
+    await expectWizardStep(page, 'Prüfen')
+    await expect(page.getByText(UPLOAD_LIBRARY)).toBeVisible()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -131,16 +136,15 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
     await nextStep(page)
 
-    // Step 2: source setup - connection, connection test, schedule and the immediate first run, which
-    // exists for every connector type. It stays off here: this is about the path, not
-    // about a run.
+    // Step 2: source setup - the rows „Verbindung“ with its connection test and „Zeitplan“ with the
+    // immediate first run, which exists for every connector type. It stays off here: this is
+    // about the path, not about a run.
     await expectWizardStep(page, 'Quelle einrichten')
-    await page.getByLabel('Adresse (URL)').fill(DIRECTORY_URL)
+    await page.getByLabel('Adresse', { exact: true }).fill(DIRECTORY_URL)
     await expect(page.getByRole('button', { name: 'Verbindung testen' })).toBeVisible()
     await expect(page.getByRole('heading', { level: 3, name: 'Zeitplan' })).toBeVisible()
-    await page
-      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
-      .uncheck()
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await nextStep(page)
 
     // Step 3: the name comes prefilled from the source - here its hostname - and stays editable.
@@ -151,6 +155,8 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')
+    await nextStep(page)
+    await expectWizardStep(page, 'Prüfen')
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -160,10 +166,13 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await expect(page.getByRole('heading', { level: 1, name: CONNECTOR_LIBRARY })).toBeVisible()
     await expectTabs(page, true)
 
-    // The tab "Quelle" carries the four sections of the target design; "Umfang" is absent
-    // for this source type, and "Anbindung" shows the stored address.
+    // The tab "Quelle" carries the rows of the wizard and the runs; "Umfang" is absent for this
+    // source type, and "Verbindung" holds the stored address.
     await page.getByRole('tab', { name: 'Quelle' }).click()
-    await expect(section(page, 'Anbindung')).toContainText(DIRECTORY_URL)
+    await expect(section(page, 'Verbindung')).toContainText('rss-feed')
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
+    await expect(page.getByLabel('Adresse', { exact: true })).toHaveValue(DIRECTORY_URL)
+    await expect(section(page, 'Umfang')).toHaveCount(0)
     await expect(section(page, 'Zeitplan')).toBeVisible()
     await expect(section(page, 'Läufe')).toBeVisible()
 

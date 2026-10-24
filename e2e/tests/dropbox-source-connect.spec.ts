@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import {
   askQuestion,
+  createFromReview,
   expectCitedSource,
   openNewLibraryWizard,
   startFreshChat,
@@ -60,12 +61,13 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
     await expect(
       page.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
     ).toBeVisible()
-    await page.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) }).click()
+    // The profile is the only way for Dropbox: it is set without a choice.
+    await expect(page.getByRole('radiogroup', { name: 'Zugang' })).toHaveCount(0)
 
     const consent = page.getByTestId('source-consent')
     await expect(consent).toContainText('Quelle verbinden')
-    // Folder choice and test wait for the consent.
-    await expect(page.getByRole('button', { name: 'Ordner laden' })).toHaveCount(0)
+    // The connection test waits for the consent.
+    await expect(page.getByRole('button', { name: 'Verbindung testen' })).toHaveCount(0)
 
     const visitsBefore = await authorizeVisits()
     const startRequests: string[] = []
@@ -97,33 +99,35 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
       .getByRole('checkbox', { name: 'Ich verbinde ein Dienstkonto, kein persönliches Konto' })
       .check()
     await consent.getByRole('button', { name: 'Quelle verbinden' }).click()
-    // Provider and back: the wizard returns to the step and names the account.
-    await expect(page.getByTestId('source-consent')).toContainText(
-      `Verbunden als „${STUB_ACCOUNT}“.`,
-      { timeout: 30_000 },
-    )
+    // Provider and back: the wizard returns to the step. Nothing is left to fill in under
+    // „Verbindung“, so „Umfang“ is open, listed through the consent.
+    await expect(page.getByRole('radio', { name: 'Nur ausgewählte Ordner' })).toBeVisible({
+      timeout: 30_000,
+    })
     expect(await authorizeVisits()).toBe(visitsBefore + 1)
-
-    await page.getByRole('button', { name: 'Ordner laden' }).click()
-    await page.getByRole('button', { name: `Ordner ${FOLDER} übernehmen` }).click()
+    await page.getByRole('radio', { name: 'Nur ausgewählte Ordner' }).check()
+    await page
+      .getByRole('group', { name: 'Ordner' })
+      .getByRole('checkbox', { name: new RegExp(FOLDER.slice(1)) })
+      .check()
+    // „Verbindung“ names the account the consent was given as.
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
+    await expect(page.getByTestId('source-consent')).toContainText(`Verbunden als „${STUB_ACCOUNT}“`)
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
     await expect(
-      page.getByRole('alert').filter({ hasText: 'Verbindung erfolgreich; der Ordner ist erreichbar.' }),
+      page.getByRole('status').filter({ hasText: 'Verbindung erfolgreich; der Ordner ist erreichbar.' }),
     ).toBeVisible({ timeout: 15_000 })
-    await page
-      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
-      .uncheck()
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name', { exact: true }).fill(LIBRARY_NAME)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     libraryId = libraryIdFromCurrentUrl(page)
 
     // The details name the account the consent was given as.
     await page.getByRole('tab', { name: 'Quelle' }).click()
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
     const connection = page.getByTestId('source-connection')
     await expect(connection).toContainText('Verbunden als')
     await expect(connection).toContainText(STUB_ACCOUNT)
