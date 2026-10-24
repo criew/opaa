@@ -11,7 +11,7 @@ prompts:
       - io.opaa.query.answer.DocumentBlock
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "4dac814db3cc3b63df2d7b64617fbea268a25e5d3df95b444ce866ff2273243f"
+    sha256: "5b65ccc51b6a2d1281a4cd0b603e4ddfd726e4f20a762c2fc8076782c78f9bb7"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:

@@ -633,14 +633,18 @@ Der Aufruf wird aus sechs Teilen zusammengesetzt:
    als gekennzeichnete Daten** am Ende des Systemvorspanns: in einem Block `<opaadokumente kennung="…">`,
    jede Passage in einem Abschnitt `<opaaabschnitt kennung="…">` mit ihrem Kopf. Die Kennung entsteht je
    Anfrage neu; die Regeln davor sagen dem Modell, dass der Inhalt Material ist und keine Anweisung.
-   Die Variante mit den Passagen in der Nachricht der Person vor ihrer Frage wurde mit dem Testsatz
-   präparierter Dokumente gemessen und verworfen: Eine eingebettete Anweisung galt dort als Wort der
-   Person und wurde häufiger befolgt (`gemma3:4b`: 5 statt 2 erfolgreiche Angriffe nach 15 von 28
-   Fällen, `qwen2.5:1.5b-instruct`: korrekte Auskunft 17 statt 19 von 28). Aus Text und
+   Gemessen mit dem Testsatz präparierter Dokumente senkt der Block die Angriffsrate nicht: Mit dem
+   Block am Ende des Systemvorspanns waren 5 von 28 Angriffen erfolgreich (`qwen2.5:1.5b-instruct`,
+   korrekte Auskunft 19 von 28) und 3 von 28 (`gemma3:4b`, korrekte Auskunft 25 von 28), vor #3048
+   3 und 2 von 28; die Unterschiede liegen im Bereich einzelner Fälle. Die Variante mit den Passagen
+   in der Nachricht der Person vor ihrer Frage wurde verworfen, weil eine eingebettete Anweisung dort
+   als Wort der Person gilt: Mit `gemma3:4b` waren nach 15 von 28 Fällen bereits 5 Angriffe
+   erfolgreich, der Lauf wurde abgebrochen. Aus Text und
    Dateiname werden vorher die Schlüsselwörter des Blocks in jeder Schreibweise
-   (`io.opaa.common.ContentFence`, wie beim MCP-Server), unsichtbare Steuerzeichen und Rollen-Token
-   entfernt; Zeilen, die wie ein Kopf aussehen, und eigene Zitiermarken im Text werden als Text
-   kenntlich gemacht (siehe [Untergeschobene Anweisungen](#untergeschobene-anweisungen-aus-dokumenten)).
+   (`io.opaa.common.ContentFence`, wie beim MCP-Server) und unsichtbare Steuerzeichen entfernt und
+   Rollen-Token der Modellformate entschärft (`<|im_start|>` wird zu `‹im_start›`, ebenso
+   `<start_of_turn>`, `<｜User｜>` und `<s>`); Zeilen, die wie ein Kopf aussehen, und eigene
+   Zitiermarken im Text werden als Text kenntlich gemacht (siehe [Untergeschobene Anweisungen](#untergeschobene-anweisungen-aus-dokumenten)).
 3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)** Zielbild
    (Epic #1482): das Gesprächsfenster ohne Zitiermarken früherer Antworten, siehe
    [conversation-memory.md](./conversation-memory.md).
@@ -743,8 +747,8 @@ Beispieltext. Zwei Festlegungen gelten:
   mit Herkunft (siehe [Übergabe der Passagen](#übergabe-der-passagen-und-form-der-antwort)); Anweisungen
   aus diesem Bereich werden nicht befolgt. Seit #3048 stehen die Passagen in einem Block mit Kennung je
   Anfrage, und der Systemvorspann verbietet,
-  Aufforderungen daraus zu befolgen oder Links und Bilder auszugeben, die nicht wörtlich in einer
-  Passage stehen. Wie oft ein Modell sich trotzdem lenken lässt, misst der Testsatz präparierter
+  Aufforderungen daraus zu befolgen und, wenn gesucht wurde, Links und Bilder auszugeben, die nicht
+  wörtlich in einer Passage stehen. Wie oft ein Modell sich trotzdem lenken lässt, misst der Testsatz präparierter
   Dokumente (`eval/corpus/prompt-injection/`).
 - **Das Restrisiko bleibt und wird nicht wegdefiniert.** Kein Sprachmodell trennt Anweisung und Material
   zuverlässig. Deshalb greifen dahinter die Sicherungen, die nicht am Modell hängen: Rechteprüfung vor

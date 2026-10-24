@@ -714,6 +714,26 @@ class AnswerGenerationServiceTest {
         .endsWith("Kontextdokumente:\n" + EMPTY_BLOCK + AnswerGenerationService.LANGUAGE_REMINDER);
   }
 
+  /** Without a search no passage can carry a link, so the person's own links stay allowed. */
+  @Test
+  void aChatWithoutKnowledgeBaseKeepsLinksThePersonNames() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer(
+        "Fasse https://example.org zusammen.",
+        List.of(),
+        "conv-links",
+        List.of(),
+        false,
+        true,
+        null);
+
+    assertThat(systemTextOf(capturedPrompt()))
+        .contains("KONTEXTDOKUMENTE (verbindlich)")
+        .doesNotContain("Gib keine Links und keine Bilder aus");
+  }
+
   /**
    * Regression guard for #2514: a search without a single hit is where a false "gibt es nicht" is
    * most likely, so it gets the answer rules and the reminder although no passage is there.
