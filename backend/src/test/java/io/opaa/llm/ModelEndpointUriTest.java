@@ -71,4 +71,20 @@ class ModelEndpointUriTest {
         .doesNotContain("geheim")
         .doesNotContain("modellserver.example.internal");
   }
+
+  /**
+   * A log line names the endpoint, never userinfo, a query or a fragment where a key could stand.
+   */
+  @Test
+  void anAddressForTheLogKeepsSchemeHostPortAndPathOnly() {
+    assertThat(
+            ModelEndpointUri.withoutSecrets(
+                "https://nutzer:geheim@llm.example:8443/v1?api-version=1&key=geheim#x"))
+        .isEqualTo("https://llm.example:8443/v1");
+    assertThat(ModelEndpointUri.withoutSecrets("http://u:geheim@llm_gw/v1"))
+        .isEqualTo("http://llm_gw/v1");
+    assertThat(ModelEndpointUri.withoutSecrets("http://localhost:11434/v1"))
+        .isEqualTo("http://localhost:11434/v1");
+    assertThat(ModelEndpointUri.withoutSecrets(null)).isNull();
+  }
 }

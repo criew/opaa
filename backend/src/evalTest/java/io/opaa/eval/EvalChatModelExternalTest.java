@@ -73,6 +73,7 @@ class EvalChatModelExternalTest {
     for (String address :
         List.of(
             "https://nutzer:geheim@llm.example/v1",
+            "http://u:geheim@llm_gw/v1",
             "https://llm.example/v1?api-key=geheim",
             "https://llm.example/v1#geheim")) {
       withProperties(
@@ -90,6 +91,12 @@ class EvalChatModelExternalTest {
       assertThatThrownBy(EvalOllamaEndpoint::externalBaseUrl)
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageNotContaining("geheim");
+      // an address URI cannot parse is refused as well, and nothing of it travels as a cause
+      System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://u:ge heim@llm gw:11434");
+      assertThatThrownBy(EvalOllamaEndpoint::externalBaseUrl)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasNoCause()
+          .hasMessageNotContaining("heim");
       System.setProperty(EvalOllamaEndpoint.BASE_URL_PROPERTY, "http://localhost:11434");
       assertThat(EvalOllamaEndpoint.externalBaseUrl()).isEqualTo("http://localhost:11434");
     } finally {

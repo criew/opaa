@@ -551,7 +551,8 @@ Für ein Ollama ist die Adresse dessen OpenAI-kompatibler Pfad, etwa
 `-Dopaa.eval.chatBaseUrl=http://ollama.stadt.example:11434/v1`; ein Schlüssel entfällt. Der
 Schlüssel steht nur in der Umgebungsvariable, nie in der Befehlszeile, wo ihn die Prozessliste
 zeigen würde; er erscheint weder im Bericht noch im Log. Eine Adresse mit Anmeldedaten,
-Abfrageparametern oder Anker weist der Lauf deshalb ab. Mit `-Dopaa.eval.chatTemperature` misst der
+Abfrageparametern oder Anker weist der Lauf deshalb ab; ein Endpunkt, der einen Abfrageparameter
+wie `api-version` braucht, lässt sich mit diesem Werkzeug nicht messen. Mit `-Dopaa.eval.chatTemperature` misst der
 Lauf mit der Temperatur der Installation statt mit Temperatur 0. Ohne die beiden Angaben zum Modell
 misst der Lauf ein kleines Vergleichsmodell im Container, nicht das Modell des Hauses.
 

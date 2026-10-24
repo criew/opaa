@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
+import io.opaa.llm.ModelEndpointUri;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -114,13 +115,9 @@ final class EvalChatModel {
    * is. A key belongs in {@value #API_KEY_ENVIRONMENT_VARIABLE} only.
    */
   static void refuseSecretsInAddress(String property, String address) {
-    URI uri;
-    try {
-      uri = new URI(address);
-    } catch (URISyntaxException e) {
-      throw new IllegalArgumentException(property + " is no valid address.", e);
-    }
-    if (uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+    if (ModelEndpointUri.containsCredentials(address)
+        || address.indexOf('?') >= 0
+        || address.indexOf('#') >= 0) {
       throw new IllegalArgumentException(
           property
               + " must not carry user information, a query or a fragment - a key there would"
