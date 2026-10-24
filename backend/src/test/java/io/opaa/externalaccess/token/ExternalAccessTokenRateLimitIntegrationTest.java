@@ -15,6 +15,7 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
+import io.opaa.test.GlobalCeilingWindow;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,6 +52,7 @@ class ExternalAccessTokenRateLimitIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private Environment environment;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private LibraryExternalAccessService libraryRelease;
@@ -116,6 +119,7 @@ class ExternalAccessTokenRateLimitIntegrationTest {
 
   @Test
   void aTokenSpendsNeitherTheBudgetOfItsAddressNorTheOneOfItsAccount() throws Exception {
+    GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, environment, "search");
     for (int request = 0; request < 2; request++) {
       assertThat(fetch("Bearer " + tokenValue)).isEqualTo(404);
     }
