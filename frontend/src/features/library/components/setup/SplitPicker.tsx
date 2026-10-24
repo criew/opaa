@@ -794,9 +794,9 @@ const crumbSx = {
 } as const
 
 const listBoxSx = {
-  border: 1,
+  borderTop: 1,
+  borderBottom: 1,
   borderColor: 'divider',
-  borderRadius: 1.25,
   maxHeight: 400,
   overflowY: 'auto',
 } as const
