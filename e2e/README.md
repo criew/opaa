@@ -488,6 +488,16 @@ lassen.
   enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
   OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
 
+- `tests/ai-labeling.spec.ts` (#3013, Teil von Epic #3010) — Kennzeichnung KI-erzeugter Antworten
+  nach Art. 50 KI-VO: Der leere Chat zeigt den Hinweis zur KI-Nutzung (Rolle `note`, Name „Hinweis
+  zur KI-Nutzung“) vor der ersten Frage und als Zeile unter dem Eingabefeld, jede Antwort trägt das
+  Kennzeichen „KI-erzeugt“ mit zugänglichem Namen, der Kopierknopf legt die Antwort mit einem
+  Vermerk aus Hinweistext, Produktname und Datum ab (ohne Modellname; die Zwischenablage braucht
+  `clipboard-read`/`clipboard-write`), und ein unter Administration → Branding geänderter
+  Hinweistext wirkt an beiden Stellen, bis „Hinweis auf Standard zurücksetzen“ den Standard
+  wiederherstellt. Der Hinweistext gehört der ganzen Installation; das Szenario setzt ihn vor jedem
+  Test und in jedem Fall am Ende über die API zurück.
+
 - `tests/space-chats.spec.ts` (#529, Teil von Epic #523) — Chats als space-eigene, persistente
   Objekte samt der neuen Suchbereichssteuerung im Eingabefeld: ein Chat wird im Space erstellt,
   eine Frage liefert eine Antwort mit Quellenangabe, und ein Neuladen der Seite stellt sowohl den
