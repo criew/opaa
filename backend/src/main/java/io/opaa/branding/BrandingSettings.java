@@ -45,6 +45,9 @@ public class BrandingSettings {
   @Column(name = "claim", length = 120)
   private String claim;
 
+  @Column(name = "ai_notice", length = 500)
+  private String aiNotice;
+
   @Column(name = "primary_color", length = 7)
   private String primaryColor;
 
@@ -105,6 +108,10 @@ public class BrandingSettings {
     return claim;
   }
 
+  public String getAiNotice() {
+    return aiNotice;
+  }
+
   public String getPrimaryColor() {
     return primaryColor;
   }
@@ -149,9 +156,14 @@ public class BrandingSettings {
    * deciding about the other three, and four setters would invite one.
    */
   void replaceSettings(
-      String productName, String claim, String primaryColor, ColorScheme defaultColorScheme) {
+      String productName,
+      String claim,
+      String aiNotice,
+      String primaryColor,
+      ColorScheme defaultColorScheme) {
     this.productName = productName;
     this.claim = claim;
+    this.aiNotice = aiNotice;
     this.primaryColor = primaryColor;
     this.defaultColorScheme = defaultColorScheme;
     this.updatedAt = Instant.now();

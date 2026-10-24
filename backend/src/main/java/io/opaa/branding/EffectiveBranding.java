@@ -19,6 +19,7 @@ import java.util.Optional;
 public record EffectiveBranding(
     String productName,
     String claim,
+    String aiNotice,
     String primaryColor,
     ColorScheme defaultColorScheme,
     Map<BrandingImageKind, ImageMetadata> images) {
