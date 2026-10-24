@@ -137,7 +137,7 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
             .organizationId(space.getOrganizationId())
             .actor(actorUserId)
             .type(AuditEventType.ASSET_OWNER_CHANGED)
-            .object(AuditObjectType.SPACE, space.getId(), space.getName())
+            .object(AuditObjectType.SPACE, space.getId(), space.auditName())
             .before(Map.of("ownerId", previousOwnerId.toString()))
             .after(Map.of("ownerId", newOwner.id().toString(), "transferId", transferId.toString()))
             .outcome(AuditOutcome.SUCCESS)

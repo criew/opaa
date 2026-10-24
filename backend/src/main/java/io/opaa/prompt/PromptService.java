@@ -7,6 +7,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditNeutralLabels;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
@@ -285,7 +286,10 @@ public class PromptService {
             .organizationId(library.getOrganizationId())
             .actor(caller.id())
             .type(type)
-            .object(AuditObjectType.PROMPT, prompt.getId(), prompt.getName())
+            .object(
+                AuditObjectType.PROMPT,
+                prompt.getId(),
+                library.isOwnerOnly() ? AuditNeutralLabels.PRIVATE_PROMPT : prompt.getName())
             .outcome(AuditOutcome.SUCCESS);
     if (type == AuditEventType.PROMPT_DELETED) {
       event.before(payload);

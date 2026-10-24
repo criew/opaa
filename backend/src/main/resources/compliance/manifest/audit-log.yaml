@@ -195,17 +195,35 @@ data:
 nonPersonalTables:
   audit_incident_scope_case_counts: [organization_id, case_year, purpose, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
-  siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, updated_at]
+  siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, disabled_at, heartbeat_at, updated_at]
 settings:
   - key: opaa.siem-export.enabled
     source: PROPERTY
     defaultValue: "false"
     effect: >-
       Ob das Revisionsprotokoll vollständig der Reihe nach gelesen und ohne Pseudonyme an das
-      zentrale Sicherheitsmonitoring gesendet wird
+      zentrale Sicherheitsmonitoring gesendet wird; beim Wiedereinschalten beginnt die Ausleitung neu
     bearings: [DATA_FLOW]
     helm:
       values: siemExport.enabled
+      defaultValue: "false"
+  - key: opaa.siem-export.tls
+    source: PROPERTY
+    defaultValue: "true"
+    effect: Ob die Ausleitung an das Sicherheitsmonitoring verschlüsselt (TLS) geht
+    bearings: [DATA_FLOW]
+    helm:
+      values: siemExport.tls
+      defaultValue: ""
+  - key: opaa.siem-export.include-labels
+    source: PROPERTY
+    defaultValue: "false"
+    effect: >-
+      Ob neben der Kennung eines Objekts auch sein Name (etwa eines Space oder einer Gruppe) an das
+      Sicherheitsmonitoring geht
+    bearings: [DATA_FLOW]
+    helm:
+      values: siemExport.includeLabels
       defaultValue: "false"
   - key: opaa.siem-export.host
     source: PROPERTY

@@ -17,9 +17,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param port the TCP port of the syslog receiver, 6514 when unset
  * @param tls whether the connection uses TLS with the JVM's trust store and host name check, {@code
  *     true} when unset
+ * @param includeLabels whether an object's name goes out next to its id, {@code false} when unset:
+ *     names of spaces and groups often name persons
  * @param timeout budget of one delivery, from connecting to the last byte, 30 seconds when unset
- * @param settleDelay how old an entry must be before it is sent, so that entries of transactions
- *     committing late are not overtaken, 2 minutes when unset
+ * @param settleDelay a small extra wait before an entry is sent, on top of waiting for every older
+ *     open transaction, 5 seconds when unset
  * @param batchSize how many entries one delivery carries at most, 500 when unset
  */
 @InstallationWide
@@ -29,14 +31,15 @@ public record SiemExportProperties(
     @DataImpact boolean enabled,
     @DataImpact String host,
     Integer port,
-    Boolean tls,
+    @DataImpact Boolean tls,
+    @DataImpact Boolean includeLabels,
     @NoDataImpact("budget of one delivery") Duration timeout,
-    @NoDataImpact("a delay before sending, nothing about what is sent") Duration settleDelay,
+    @NoDataImpact("a short wait before sending, nothing about what is sent") Duration settleDelay,
     Integer batchSize) {
 
   public static final int DEFAULT_PORT = 6514;
   public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
-  public static final Duration DEFAULT_SETTLE_DELAY = Duration.ofMinutes(2);
+  public static final Duration DEFAULT_SETTLE_DELAY = Duration.ofSeconds(5);
   public static final int DEFAULT_BATCH_SIZE = 500;
 
   public SiemExportProperties {
@@ -46,6 +49,9 @@ public record SiemExportProperties(
     }
     if (tls == null) {
       tls = true;
+    }
+    if (includeLabels == null) {
+      includeLabels = false;
     }
     if (timeout == null || timeout.isZero() || timeout.isNegative()) {
       timeout = DEFAULT_TIMEOUT;

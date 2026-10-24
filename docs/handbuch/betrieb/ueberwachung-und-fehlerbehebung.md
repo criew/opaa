@@ -50,29 +50,41 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
 > aber ohne die Person, die sie erteilt hat.
 
 - **Was hinausgeht:** je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis,
-  Organisation und betroffenes Objekt. Nie gehen Pseudonyme handelnder oder betroffener Personen,
-  Begründungen oder Inhalte hinaus; bei einem Konto, einem Zugangstoken und einer privaten
-  Bibliothek fehlen auch Kennung und Bezeichnung des Objekts. Wer gehandelt hat, klärt nur die
+  Organisation sowie Art und Kennung des betroffenen Objekts. Nie gehen Pseudonyme handelnder oder
+  betroffener Personen, Begründungen oder Inhalte hinaus. Den Namen des Objekts (etwa eines Space
+  oder einer Gruppe) sendet OPAA nur mit `OPAA_SIEM_EXPORT_INCLUDE_LABELS`, weil Namen oft Personen
+  nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
+  Bibliothek, privater Prompt), fehlen Kennung und Name immer. Wer gehandelt hat, klärt nur die
   anlassbezogene Klärung in OPAA
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
 - **Lesezugriff:** Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
   nach, sonst nicht. Das ist neben der Revision und der Selbstauskunft der einzige Leser.
 - **Format:** Syslog (RFC 5424) mit CEF-Inhalt über TCP, voreingestellt mit TLS und dem
   Vertrauensspeicher der Java-Laufzeit samt Prüfung des Hostnamens. Die Kennung jedes Eintrags steht
-  in `externalId`; daran erkennt das SIEM eine Meldung, die nach einem Abbruch doppelt kommt. Die
-  Verbindung geht direkt, nie über den Ausgangsproxy.
+  in `externalId`. Die Verbindung geht direkt, nie über den Ausgangsproxy.
 - **Ab dem Einschalten:** Gesendet wird, was nach dem ersten Lauf ins Protokoll kommt; der ältere
-  Bestand nicht. Abschalten hält die Ausleitung an, wieder eingeschaltet geht es an derselben Stelle
-  weiter.
-- **Kein stiller Verlust:** Ist der Empfänger nicht erreichbar, bleiben die Einträge fällig und
-  gehen beim nächsten erfolgreichen Lauf hinaus; das Log meldet jeden gescheiterten Lauf. Ein Lauf
-  findet alle 30 Sekunden auf einer Instanz statt. Ein Eintrag wartet vor dem Senden die Zeit
-  `OPAA_SIEM_EXPORT_SETTLE_DELAY`, damit ein später abgeschlossener Vorgang nicht übersprungen wird.
-- **Lücken:** Hat die Aufbewahrungsfrist Einträge gelöscht, bevor sie gesendet waren, kommt im SIEM
-  eine Meldung `AUDIT_EXPORT_GAP` mit dem Zeitraum an.
+  Bestand nicht. Nach dem Abschalten beginnt die Ausleitung beim Wiedereinschalten neu; die Pause
+  meldet sie als Lücke.
+- **Kein stiller Verlust:** Ein Eintrag geht erst hinaus, wenn jeder Vorgang abgeschlossen ist, der
+  vor ihm begann; so überholt die Ausleitung keinen langen Vorgang wie einen Verzeichnisabgleich.
+  Ist der Empfänger nicht erreichbar, bleiben die Einträge fällig und gehen beim nächsten
+  erfolgreichen Lauf hinaus. Ein Lauf findet alle 30 Sekunden auf einer Instanz statt; nach
+  Fehlschlägen wartet sie immer länger, höchstens zehn Minuten, und das Log meldet den ersten
+  Fehlschlag und danach den längsten Abstand.
+- **Zustellung mindestens einmal:** Eine Zustellung gilt als gelungen, wenn der Empfänger die Daten
+  angenommen und die Verbindung nicht abgewiesen hat; eine Bestätigung je Meldung gibt es nicht. Bricht
+  ein Lauf danach ab, kommt derselbe Stapel noch einmal; das SIEM erkennt die Wiederholung an
+  `externalId`.
+- **Lücken:** Hat die Aufbewahrungsfrist Einträge gelöscht, bevor sie gesendet waren, oder war die
+  Ausleitung abgeschaltet, kommt im SIEM eine Meldung `AUDIT_EXPORT_GAP` mit dem Zeitraum und dem
+  Grund (`retention` oder `disabled`) an.
 - **Sicherheitsereignisse des Logs:** Fehlgeschlagene Anmeldungen, abgewiesene Netzbereiche und der
   Abflussalarm externer KI-Werkzeuge stehen nur im Log auf der Standardausgabe. Die Behörde holt sie
-  mit ihrer Log-Sammlung ab, als JSON mit `LOGGING_STRUCTURED_FORMAT_CONSOLE`.
+  mit ihrer Log-Sammlung ab, als JSON mit `LOGGING_STRUCTURED_FORMAT_CONSOLE`. **Dabei entsteht ein
+  Weg zur Person:** Manche Logzeilen nennen die Kennung eines Kontos, etwa bei einer Kontosperre.
+  Liegen Log und Protokoll im selben SIEM, lässt sich ein Protokolleintrag ohne Kennung über den
+  Zeitpunkt mit dieser Logzeile verbinden. Die Dienstvereinbarung regelt, dass das nur in der
+  anlassbezogenen Klärung geschieht, und wie lange das SIEM beides aufbewahrt.
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
@@ -80,13 +92,15 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
 | `OPAA_SIEM_EXPORT_HOST` | — | Host des Syslog-Empfängers |
 | `OPAA_SIEM_EXPORT_PORT` | `6514` | Port des Syslog-Empfängers |
 | `OPAA_SIEM_EXPORT_TLS` | `true` | `false` sendet ohne TLS |
+| `OPAA_SIEM_EXPORT_INCLUDE_LABELS` | `false` | `true` sendet auch Objektnamen |
 | `OPAA_SIEM_EXPORT_TIMEOUT` | `30s` | Frist einer Zustellung insgesamt |
-| `OPAA_SIEM_EXPORT_SETTLE_DELAY` | `2m` | Wartezeit eines Eintrags vor dem Senden |
+| `OPAA_SIEM_EXPORT_SETTLE_DELAY` | `5s` | zusätzliche Wartezeit eines Eintrags vor dem Senden |
 | `OPAA_SIEM_EXPORT_BATCH_SIZE` | `500` | Einträge je Zustellung höchstens |
 
-Unter Kubernetes stehen Schalter, Host, Port, TLS und Frist unter `siemExport` im Helm-Chart; eine
-NetworkPolicy muss dem Backend den Weg zum Empfänger öffnen. Nicht gebaut sind ein
-Client-Zertifikat für TLS und ein eigener Vertrauensspeicher neben dem der Java-Laufzeit.
+Unter Kubernetes stehen Schalter, Host, Port, TLS, Namen und Frist unter `siemExport` im Helm-Chart.
+Den Weg zum Empfänger öffnet eine Regel unter `networkPolicy.egress.backendRules`; das Zertifikat
+einer internen Zertifizierungsstelle kommt über `extraCACertificates` in den Vertrauensspeicher
+([Kubernetes](kubernetes.md)). Nicht gebaut ist ein Client-Zertifikat für TLS.
 
 ## Diagnose ohne Shell
 

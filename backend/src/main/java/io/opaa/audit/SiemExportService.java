@@ -4,10 +4,12 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,79 +18,105 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Sends the audit log, in the order it was recorded, to the SIEM (ADR-0055). The position of the
  * last sent entry lives in {@code siem_export_cursor}; it moves only after a delivery succeeded, so
- * an unreachable receiver loses nothing and gets the same entries again (Entscheidung 5). The
- * export starts at the moment it is first switched on; entries the retention removed before they
- * were sent are reported as a gap (Entscheidung 6). The run itself is guarded by the scheduler lock
- * of {@link SiemExportSchedule}; the conditional cursor update keeps a second run from moving the
- * position twice (ADR-0053).
+ * an unreachable receiver loses nothing and gets the same entries again (Entscheidung 5). An entry
+ * goes out only once every transaction that began before it has ended. The export starts at the
+ * moment it is first switched on, and again after it was switched off; that pause and entries the
+ * retention removed before they were sent are reported as gaps (Entscheidung 6). The run itself is
+ * guarded by the scheduler lock of {@link SiemExportSchedule}; the conditional cursor update keeps
+ * a second run from moving the position twice (ADR-0053).
  *
- * <p>This is the one reader of {@code audit_log} besides the revision's access paths and the
- * self-disclosure (Entscheidung 3): it selects the columns it sends and never a pseudonym.
+ * <p>The one reader of {@code audit_log} besides the revision's access paths and the
+ * self-disclosure (Entscheidung 3). Its query never selects a pseudonym, a reason or a payload, and
+ * masks in SQL the id of an object that belongs to one person.
  */
 class SiemExportService {
 
   private static final Logger log = LoggerFactory.getLogger(SiemExportService.class);
 
-  /** The neutral label of an owner-only asset, {@code Asset#PRIVATE_AUDIT_NAME}. */
-  static final String PRIVATE_OBJECT_LABEL = "Private Bibliothek";
-
-  /** Object kinds whose id is a person's pseudonym or bound to one person. */
-  private static final Set<String> PERSONAL_OBJECT_TYPES = Set.of("USER_ACCOUNT", "API_TOKEN");
-
   /** Batches one run sends at most before it yields to the next tick. */
   static final int MAX_BATCHES_PER_RUN = 20;
+
+  /** The longest wait between two attempts while the receiver keeps failing. */
+  static final Duration MAX_BACKOFF = Duration.ofMinutes(10);
+
+  private static final String PERSONAL_OBJECT =
+      "(object_type IN ('USER_ACCOUNT', 'API_TOKEN') OR object_label IN (?, ?, ?))";
+
+  /**
+   * The oldest moment an entry of a still open transaction can carry: {@code recorded_at} is
+   * stamped inside its transaction, so it is never older than the transaction's start.
+   */
+  private static final String SETTLED_BEFORE =
+      "LEAST(clock_timestamp() - (? * interval '1 millisecond'),"
+          + " (SELECT coalesce(min(xact_start), clock_timestamp()) FROM pg_stat_activity"
+          + " WHERE datname = current_database() AND pid <> pg_backend_pid()"
+          + " AND xact_start IS NOT NULL))";
 
   private final JdbcTemplate jdbc;
   private final SiemExportProperties properties;
   private final SyslogSender sender;
   private final CefSyslogFormatter formatter;
-  private final AuditRetentionSettingsRepository retention;
   private final Counter sent;
   private final Counter failed;
   private final Counter gaps;
+
+  /** Process-local backoff of the instance holding the lock (ADR-0053, je Instanz). */
+  private int consecutiveFailures;
+
+  private Instant nextAttempt = Instant.EPOCH;
 
   SiemExportService(
       JdbcTemplate jdbc,
       SiemExportProperties properties,
       SyslogSender sender,
       CefSyslogFormatter formatter,
-      AuditRetentionSettingsRepository retention,
       MeterRegistry meterRegistry) {
     this.jdbc = jdbc;
     this.properties = properties;
     this.sender = sender;
     this.formatter = formatter;
-    this.retention = retention;
     this.sent = counter(meterRegistry, "sent", "Audit log entries delivered to the SIEM");
     this.failed = counter(meterRegistry, "failed", "Deliveries to the SIEM that failed");
-    this.gaps = counter(meterRegistry, "gap", "Gaps of removed entries reported to the SIEM");
+    this.gaps = counter(meterRegistry, "gap", "Gaps reported to the SIEM");
   }
 
   /** One run: as many batches as are due, up to {@link #MAX_BATCHES_PER_RUN}. */
   void run() {
     Cursor cursor = cursor();
+    if (Instant.now().isBefore(nextAttempt)) {
+      return;
+    }
     for (int batch = 0; batch < MAX_BATCHES_PER_RUN && cursor != null; batch++) {
       cursor = deliverNext(cursor);
     }
   }
 
   /**
-   * Delivers the next batch after {@code cursor}, with a gap note first where the retention removed
-   * entries behind it.
+   * Delivers the next batch after {@code cursor}, with a gap note first where the export was off or
+   * the retention removed entries behind it.
    *
    * @return the new position when a full batch went out and more may be due, otherwise {@code null}
    */
   Cursor deliverNext(Cursor cursor) {
+    Instant now = databaseNow();
+    Instant cutoffBefore = lastCutoff();
     List<String> messages = new ArrayList<>();
     Cursor position = cursor;
-    Instant cutoff =
-        retention.findSingleton().map(AuditRetentionSettings::getLastCutoff).orElse(null);
-    boolean gap = cutoff != null && cursor.recordedAt().isBefore(cutoff);
-    if (gap) {
-      messages.add(formatter.formatGap(cursor.recordedAt(), cutoff, Instant.now()));
-      position = new Cursor(cutoff, null);
+    String gapReason = null;
+    if (cursor.disabledAt() != null) {
+      messages.add(formatter.formatGap(cursor.recordedAt(), now, now, "disabled"));
+      position = new Cursor(now, null, null);
+      gapReason = "disabled";
+    } else if (cutoffBefore != null && cursor.recordedAt().isBefore(cutoffBefore)) {
+      messages.add(formatter.formatGap(cursor.recordedAt(), cutoffBefore, now, "retention"));
+      position = new Cursor(cutoffBefore, null, null);
+      gapReason = "retention";
     }
-    List<AuditExportEntry> entries = due(position);
+    List<AuditExportEntry> entries = gapReason == null ? due(position) : List.of();
+    if (!Objects.equals(cutoffBefore, lastCutoff())) {
+      // the retention ran meanwhile: the next run decides on the new limit
+      return null;
+    }
     for (AuditExportEntry entry : entries) {
       messages.add(formatter.format(entry));
     }
@@ -98,86 +126,149 @@ class SiemExportService {
     try {
       sender.send(messages);
     } catch (IOException | RuntimeException e) {
-      failed.increment();
-      log.warn(
-          "SIEM export to {}:{} failed, {} entries stay due: {}",
-          properties.host(),
-          properties.port(),
-          entries.size(),
-          e.getMessage());
+      recordFailure(entries.size(), e);
       return null;
     }
+    recordSuccess();
     Cursor next =
         entries.isEmpty()
             ? position
-            : new Cursor(entries.getLast().recordedAt(), entries.getLast().eventId());
+            : new Cursor(entries.getLast().recordedAt(), entries.getLast().eventId(), null);
     if (!advance(cursor, next)) {
       log.warn("SIEM export cursor moved meanwhile; this run stops");
       return null;
     }
     sent.increment(entries.size());
-    if (gap) {
+    if (gapReason != null) {
       gaps.increment();
-      log.warn(
-          "SIEM export reported a gap: entries recorded before {} were removed before export",
-          cutoff);
+      log.warn("SIEM export reported a gap ({}) from {}", gapReason, cursor.recordedAt());
+      return position;
     }
     return entries.size() == properties.batchSize() ? next : null;
   }
 
-  /** The position, created at the database clock's now when the export runs for the first time. */
+  /**
+   * The position, created at the database clock's now when the export runs for the first time; a
+   * run records its heartbeat on it.
+   */
   Cursor cursor() {
     jdbc.update(
         "INSERT INTO siem_export_cursor (id, started_at, last_recorded_at, last_event_id,"
             + " updated_at) VALUES (1, clock_timestamp(), clock_timestamp(), NULL,"
             + " clock_timestamp()) ON CONFLICT (id) DO NOTHING");
+    jdbc.update("UPDATE siem_export_cursor SET heartbeat_at = clock_timestamp() WHERE id = 1");
     return jdbc.queryForObject(
-        "SELECT last_recorded_at, last_event_id FROM siem_export_cursor WHERE id = 1",
-        (rs, row) ->
-            new Cursor(
-                rs.getTimestamp("last_recorded_at").toInstant(),
-                rs.getObject("last_event_id", UUID.class)));
+        "SELECT last_recorded_at, last_event_id, disabled_at FROM siem_export_cursor WHERE id = 1",
+        (rs, row) -> {
+          Timestamp disabledAt = rs.getTimestamp("disabled_at");
+          return new Cursor(
+              rs.getTimestamp("last_recorded_at").toInstant(),
+              rs.getObject("last_event_id", UUID.class),
+              disabledAt == null ? null : disabledAt.toInstant());
+        });
+  }
+
+  /**
+   * Marks that an instance started with the export switched off: the next run with it switched on
+   * begins anew and reports the pause. Nothing to mark before the export ever ran.
+   */
+  static void markDisabled(JdbcTemplate jdbc) {
+    jdbc.update(
+        "UPDATE siem_export_cursor SET disabled_at = coalesce(disabled_at, clock_timestamp())"
+            + " WHERE id = 1");
   }
 
   private List<AuditExportEntry> due(Cursor position) {
     UUID after = position.eventId() == null ? new UUID(0, 0) : position.eventId();
+    Timestamp from = Timestamp.from(position.recordedAt());
+    boolean labels = properties.includeLabels();
     return jdbc.query(
-        "SELECT event_id, recorded_at, organization_id, event_type, object_type, object_id,"
-            + " object_label, outcome FROM audit_log"
-            + " WHERE (recorded_at, event_id) > (?, ?)"
-            + " AND recorded_at <= clock_timestamp() - (? * interval '1 millisecond')"
+        "SELECT event_id, recorded_at, organization_id, event_type, object_type,"
+            + " CASE WHEN "
+            + PERSONAL_OBJECT
+            + " THEN NULL ELSE object_id END AS object_ref,"
+            + " CASE WHEN ? AND NOT "
+            + PERSONAL_OBJECT
+            + " THEN object_label END AS object_name,"
+            + " outcome FROM audit_log"
+            + " WHERE recorded_at >= ? AND (recorded_at, event_id) > (?, ?)"
+            + " AND recorded_at < "
+            + SETTLED_BEFORE
             + " ORDER BY recorded_at, event_id LIMIT ?",
-        (rs, row) -> {
-          String objectType = rs.getString("object_type");
-          String label = rs.getString("object_label");
-          boolean personal =
-              PERSONAL_OBJECT_TYPES.contains(objectType) || PRIVATE_OBJECT_LABEL.equals(label);
-          return new AuditExportEntry(
-              rs.getObject("event_id", UUID.class),
-              rs.getTimestamp("recorded_at").toInstant(),
-              rs.getObject("organization_id", UUID.class),
-              rs.getString("event_type"),
-              objectType,
-              personal ? null : rs.getString("object_id"),
-              personal ? null : label,
-              rs.getString("outcome"));
-        },
-        Timestamp.from(position.recordedAt()),
+        (rs, row) ->
+            new AuditExportEntry(
+                rs.getObject("event_id", UUID.class),
+                rs.getTimestamp("recorded_at").toInstant(),
+                rs.getObject("organization_id", UUID.class),
+                rs.getString("event_type"),
+                rs.getString("object_type"),
+                rs.getString("object_ref"),
+                rs.getString("object_name"),
+                rs.getString("outcome")),
+        AuditNeutralLabels.PRIVATE_ASSET,
+        AuditNeutralLabels.PERSONAL_SPACE,
+        AuditNeutralLabels.PRIVATE_PROMPT,
+        labels,
+        AuditNeutralLabels.PRIVATE_ASSET,
+        AuditNeutralLabels.PERSONAL_SPACE,
+        AuditNeutralLabels.PRIVATE_PROMPT,
+        from,
+        from,
         after,
         properties.settleDelay().toMillis(),
         properties.batchSize());
   }
 
+  private Instant lastCutoff() {
+    Timestamp cutoff =
+        jdbc.queryForObject(
+            "SELECT max(last_cutoff) FROM audit_retention_settings", Timestamp.class);
+    return cutoff == null ? null : cutoff.toInstant();
+  }
+
+  private Instant databaseNow() {
+    return jdbc.queryForObject("SELECT clock_timestamp()", Timestamp.class)
+        .toInstant()
+        .truncatedTo(ChronoUnit.MICROS);
+  }
+
   private boolean advance(Cursor from, Cursor to) {
     return jdbc.update(
             "UPDATE siem_export_cursor SET last_recorded_at = ?, last_event_id = ?,"
-                + " updated_at = clock_timestamp() WHERE id = 1 AND last_recorded_at = ?"
-                + " AND last_event_id IS NOT DISTINCT FROM ?",
+                + " disabled_at = NULL, updated_at = clock_timestamp() WHERE id = 1"
+                + " AND last_recorded_at = ? AND last_event_id IS NOT DISTINCT FROM ?",
             Timestamp.from(to.recordedAt()),
             to.eventId(),
             Timestamp.from(from.recordedAt()),
             from.eventId())
         == 1;
+  }
+
+  /** Waits twice as long after each failure, up to {@link #MAX_BACKOFF}; warns at the first. */
+  private void recordFailure(int entries, Exception e) {
+    failed.increment();
+    consecutiveFailures++;
+    long seconds = Math.min(MAX_BACKOFF.toSeconds(), 30L << Math.min(consecutiveFailures, 10));
+    nextAttempt = Instant.now().plusSeconds(seconds);
+    if (consecutiveFailures == 1 || seconds == MAX_BACKOFF.toSeconds()) {
+      log.warn(
+          "SIEM export to {}:{} failed ({} times in a row), {} entries stay due, next attempt in"
+              + " {}s: {}",
+          properties.host(),
+          properties.port(),
+          consecutiveFailures,
+          entries,
+          seconds,
+          e.getMessage());
+    }
+  }
+
+  private void recordSuccess() {
+    if (consecutiveFailures > 0) {
+      log.info("SIEM export delivers again after {} failed attempts", consecutiveFailures);
+    }
+    consecutiveFailures = 0;
+    nextAttempt = Instant.EPOCH;
   }
 
   private static Counter counter(MeterRegistry registry, String result, String description) {
@@ -187,6 +278,9 @@ class SiemExportService {
         .register(registry);
   }
 
-  /** The last sent entry; {@code eventId} is {@code null} at the start and after a gap. */
-  record Cursor(Instant recordedAt, UUID eventId) {}
+  /**
+   * The last sent entry; {@code eventId} is {@code null} at the start and after a gap, {@code
+   * disabledAt} set once an instance started with the export switched off.
+   */
+  record Cursor(Instant recordedAt, UUID eventId, Instant disabledAt) {}
 }

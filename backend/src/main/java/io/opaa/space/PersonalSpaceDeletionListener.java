@@ -39,7 +39,7 @@ class PersonalSpaceDeletionListener {
               .organizationId(space.getOrganizationId())
               .actor(event.actor().id())
               .type(AuditEventType.SPACE_DELETED)
-              .object(AuditObjectType.SPACE, space.getId(), space.getName())
+              .object(AuditObjectType.SPACE, space.getId(), space.auditName())
               .before(spaceAuditPayload(space))
               .outcome(AuditOutcome.SUCCESS)
               .build());

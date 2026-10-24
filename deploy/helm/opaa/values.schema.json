@@ -400,6 +400,9 @@
           ],
           "description": "\"false\" sends without TLS; empty keeps TLS on"
         },
+        "includeLabels": {
+          "type": "boolean"
+        },
         "timeout": {
           "type": "string",
           "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",

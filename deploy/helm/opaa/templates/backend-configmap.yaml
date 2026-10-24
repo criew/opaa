@@ -71,6 +71,7 @@ data:
   {{- with .Values.siemExport.tls }}
   OPAA_SIEM_EXPORT_TLS: {{ . | quote }}
   {{- end }}
+  OPAA_SIEM_EXPORT_INCLUDE_LABELS: {{ .Values.siemExport.includeLabels | quote }}
   {{- with .Values.siemExport.timeout }}
   OPAA_SIEM_EXPORT_TIMEOUT: {{ . | quote }}
   {{- end }}

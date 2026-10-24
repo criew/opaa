@@ -14,31 +14,37 @@ import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The SIEM export against the real schema (ADR-0055): only entries recorded after the first run,
- * never a pseudonym, no loss while the receiver is down, a gap where the retention removed entries.
- * The service is built here with a recording sender, so the suite's shared context stays as it is.
+ * never a pseudonym and, by default, no name; nothing overtaken while an older transaction is open;
+ * no loss while the receiver is down; a gap for a pause and for what the retention removed. The
+ * service is built here with a recording sender, so the suite's shared context stays as it is.
  */
 @OpaaIntegrationTest
 class SiemExportServiceIntegrationTest {
 
   @Autowired private AuditLogService auditLogService;
-  @Autowired private AuditRetentionSettingsRepository retention;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationId;
   private RecordingSender sender;
-  private SiemExportService service;
   private Timestamp originalCutoff;
 
   @BeforeEach
@@ -50,14 +56,6 @@ class SiemExportServiceIntegrationTest {
         jdbcTemplate.queryForObject(
             "SELECT last_cutoff FROM audit_retention_settings", Timestamp.class);
     sender = new RecordingSender();
-    service =
-        new SiemExportService(
-            jdbcTemplate,
-            new SiemExportProperties(true, "siem.example", null, false, null, Duration.ZERO, 1000),
-            sender,
-            new CefSyslogFormatter("test-host", "0.0.0-dev"),
-            retention,
-            new SimpleMeterRegistry());
   }
 
   @AfterEach
@@ -66,6 +64,20 @@ class SiemExportServiceIntegrationTest {
     jdbcTemplate.update("UPDATE audit_retention_settings SET last_cutoff = ?", originalCutoff);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  private SiemExportService service(boolean includeLabels) {
+    return new SiemExportService(
+        jdbcTemplate,
+        new SiemExportProperties(
+            true, "siem.example", null, false, includeLabels, null, Duration.ZERO, 1000),
+        sender,
+        new CefSyslogFormatter("test-host", "0.0.0-dev"),
+        new SimpleMeterRegistry());
+  }
+
+  private SiemExportService service() {
+    return service(false);
   }
 
   private AuditLogEntry record(AuditObjectType objectType, String objectId, String label) {
@@ -90,7 +102,8 @@ class SiemExportServiceIntegrationTest {
   }
 
   @Test
-  void onlyEntriesAfterTheStartGoOutWithoutPseudonymReasonOrPayload() {
+  void onlyEntriesAfterTheStartGoOutWithoutPseudonymReasonPayloadOrName() {
+    SiemExportService service = service();
     AuditLogEntry before = record(AuditObjectType.KNOWLEDGE_LIBRARY, "lib-0", "Vorher");
     service.cursor();
     AuditLogEntry after = record(AuditObjectType.KNOWLEDGE_LIBRARY, "lib-1", "Dienstanweisungen");
@@ -102,29 +115,86 @@ class SiemExportServiceIntegrationTest {
         .contains("externalId=" + after.getEventId())
         .contains("cs3=lib-1")
         .doesNotContain(before.getEventId().toString())
+        .doesNotContain("Dienstanweisungen")
         .doesNotContain("pseudonym-of-the-actor")
         .doesNotContain("Begründung")
         .doesNotContain("geheim");
   }
 
   @Test
-  void anAccountAndAPrivateLibraryGoOutWithoutTheirId() {
+  void theNameGoesOutOnlyWithItsOwnSwitch() {
+    SiemExportService service = service(true);
     service.cursor();
-    record(AuditObjectType.USER_ACCOUNT, "pseudonym-of-the-account", null);
-    record(
-        AuditObjectType.KNOWLEDGE_LIBRARY, "lib-private", SiemExportService.PRIVATE_OBJECT_LABEL);
+    record(AuditObjectType.SPACE, "space-1", "Bauamt");
 
     service.run();
 
-    assertThat(ours()).hasSize(2);
+    assertThat(ours()).hasSize(1).first().asString().contains("cs4=Bauamt");
+  }
+
+  @Test
+  void anObjectOfOnePersonGoesOutWithoutIdAndName() {
+    SiemExportService service = service(true);
+    service.cursor();
+    record(AuditObjectType.USER_ACCOUNT, "pseudonym-of-the-account", null);
+    record(AuditObjectType.API_TOKEN, "token-of-a-person", null);
+    record(AuditObjectType.KNOWLEDGE_LIBRARY, "lib-private", AuditNeutralLabels.PRIVATE_ASSET);
+    record(AuditObjectType.SPACE, "space-personal", AuditNeutralLabels.PERSONAL_SPACE);
+    record(AuditObjectType.PROMPT, "prompt-private", AuditNeutralLabels.PRIVATE_PROMPT);
+
+    service.run();
+
+    assertThat(ours()).hasSize(5);
     assertThat(String.join("\n", ours()))
         .doesNotContain("pseudonym-of-the-account")
+        .doesNotContain("token-of-a-person")
         .doesNotContain("lib-private")
-        .doesNotContain(SiemExportService.PRIVATE_OBJECT_LABEL);
+        .doesNotContain("space-personal")
+        .doesNotContain("prompt-private")
+        .doesNotContain("cs3=")
+        .doesNotContain("cs4=");
+  }
+
+  @Test
+  void anEntryOfAStillOpenOlderTransactionIsNotOvertaken() throws Exception {
+    SiemExportService service = service();
+    service.cursor();
+    CountDownLatch written = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    UUID[] lateId = new UUID[1];
+    CompletableFuture<Void> slow =
+        CompletableFuture.runAsync(
+            () ->
+                new TransactionTemplate(transactionManager)
+                    .executeWithoutResult(
+                        status -> {
+                          lateId[0] =
+                              record(AuditObjectType.SPACE, "space-late", "Spät").getEventId();
+                          written.countDown();
+                          try {
+                            release.await(30, TimeUnit.SECONDS);
+                          } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                          }
+                        }));
+    assertThat(written.await(30, TimeUnit.SECONDS)).isTrue();
+    AuditLogEntry younger = record(AuditObjectType.SPACE, "space-young", "Jung");
+
+    service.run();
+    assertThat(String.join("\n", ours()))
+        .doesNotContain(younger.getEventId().toString())
+        .doesNotContain(lateId[0].toString());
+
+    release.countDown();
+    slow.get(30, TimeUnit.SECONDS);
+    service.run();
+    assertThat(ours()).hasSize(2);
+    assertThat(ours().getFirst()).contains("externalId=" + lateId[0]);
   }
 
   @Test
   void whileTheReceiverIsDownNothingIsLost() {
+    SiemExportService service = service();
     service.cursor();
     AuditLogEntry entry = record(AuditObjectType.SPACE, "space-1", "Bauamt");
     sender.failing = true;
@@ -133,24 +203,45 @@ class SiemExportServiceIntegrationTest {
     assertThat(ours()).isEmpty();
 
     sender.failing = false;
-    service.run();
+    SiemExportService afterBackoff = service();
+    afterBackoff.run();
     assertThat(ours()).hasSize(1).first().asString().contains("externalId=" + entry.getEventId());
 
-    service.run();
+    afterBackoff.run();
     assertThat(ours()).hasSize(1);
   }
 
   @Test
-  void entriesTheRetentionRemovedBeforeTheExportAreReportedAsAGap() {
+  void afterAPauseTheExportBeginsAnewAndReportsTheGap() {
+    SiemExportService service = service();
     service.cursor();
-    Instant cutoff = Instant.now().plusSeconds(1).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+    SiemExportService.markDisabled(jdbcTemplate);
+    AuditLogEntry duringThePause = record(AuditObjectType.SPACE, "space-pause", "Pause");
+
+    service.run();
+
+    assertThat(sender.delivered)
+        .anySatisfy(message -> assertThat(message).contains("reason=disabled"));
+    assertThat(String.join("\n", ours())).doesNotContain(duringThePause.getEventId().toString());
+    assertThat(service.cursor().disabledAt()).isNull();
+  }
+
+  @Test
+  void entriesTheRetentionRemovedBeforeTheExportAreReportedAsAGap() {
+    SiemExportService service = service();
+    service.cursor();
+    Instant cutoff = Instant.now().plusSeconds(1).truncatedTo(ChronoUnit.MILLIS);
     jdbcTemplate.update(
         "UPDATE audit_retention_settings SET last_cutoff = ?", Timestamp.from(cutoff));
 
     service.run();
 
     assertThat(sender.delivered)
-        .anySatisfy(message -> assertThat(message).contains(CefSyslogFormatter.GAP_EVENT));
+        .anySatisfy(
+            message ->
+                assertThat(message)
+                    .contains(CefSyslogFormatter.GAP_EVENT)
+                    .contains("reason=retention"));
     assertThat(service.cursor().recordedAt()).isEqualTo(cutoff);
   }
 

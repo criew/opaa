@@ -353,15 +353,17 @@ opaa:
     # Recordings passed on at the same time, installation-wide; each is held in memory meanwhile.
     max-concurrent: ${OPAA_TRANSCRIPTION_MAX_CONCURRENT:4}
   # Export of the audit log to a SIEM (ADR-0055): syslog/CEF over TCP, TLS by default, without
-  # pseudonyms, from the moment it is switched on. Off by default; enabled without a host refuses
-  # the start. settle-delay holds an entry back so that late commits are not overtaken.
+  # pseudonyms and, unless include-labels, without object names, from the moment it is switched
+  # on. Off by default; enabled without a host refuses the start. An entry waits for every older
+  # open transaction; settle-delay is only a small extra margin.
   siem-export:
     enabled: ${OPAA_SIEM_EXPORT_ENABLED:false}
     host: ${OPAA_SIEM_EXPORT_HOST:}
     port: ${OPAA_SIEM_EXPORT_PORT:6514}
     tls: ${OPAA_SIEM_EXPORT_TLS:true}
+    include-labels: ${OPAA_SIEM_EXPORT_INCLUDE_LABELS:false}
     timeout: ${OPAA_SIEM_EXPORT_TIMEOUT:30s}
-    settle-delay: ${OPAA_SIEM_EXPORT_SETTLE_DELAY:2m}
+    settle-delay: ${OPAA_SIEM_EXPORT_SETTLE_DELAY:5s}
     batch-size: ${OPAA_SIEM_EXPORT_BATCH_SIZE:500}
   indexing:
     # Tokens; only the Tika fallback and plain texts. Structured formats cut by characters below.

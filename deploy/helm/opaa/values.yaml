@@ -126,8 +126,11 @@ siemExport:
   host: ""
   # Empty keeps the application default (6514).
   port: ""
-  # "false" sends without TLS; empty keeps TLS on.
+  # "false" sends without TLS; empty keeps TLS on. The receiver's certificate is checked against the
+  # JVM trust store; an internal CA goes into extraCACertificates.
   tls: ""
+  # true also sends the names of objects (spaces, groups, libraries); they often name persons.
+  includeLabels: false
   # Budget of one delivery; empty keeps the default (30s).
   timeout: ""
 
@@ -227,9 +230,9 @@ uploads:
 filesystemSources: []
 
 # CA certificates trusted in addition to the public CAs of the backend's Java runtime: for an
-# identity provider, model endpoint, object store or database with an internal PKI. Every key of
-# the ConfigMap or Secret is read, and every PEM certificate in it, so a bundle (e.g. from
-# trust-manager) works as well. An init container writes the runtime's CAs plus these into a fresh
+# identity provider, model endpoint, object store, database or SIEM receiver with an internal PKI.
+# Every key of the ConfigMap or Secret is read, and every PEM certificate in it, so a bundle (e.g.
+# from trust-manager) works as well. An init container writes the runtime's CAs plus these into a fresh
 # truststore on every start, so image updates keep bringing new public CAs.
 extraCACertificates:
   configMap: ""

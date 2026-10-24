@@ -50,6 +50,7 @@ siemExport:
   host: siem.security.svc
   port: "6514"
   tls: "true"
+  includeLabels: false
   timeout: 30s
 mail:
   connectTimeout: 5s
