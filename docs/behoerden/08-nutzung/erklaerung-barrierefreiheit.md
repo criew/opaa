@@ -28,8 +28,10 @@ geprüft ist, womit, auf welchem Stand und mit welchen Lücken.
   Tastatur-Durchgang von Hand bei jeder Änderung der Oberfläche; Screenreader-Stichproben bei neuen
   Bedienmustern.
 - **Prüfbericht je Version:** Der Release-Lauf prüft jede Version mit axe-core und legt den Bericht
-  ins Update-Paket (`barrierefreiheit/pruefbericht.md`): geprüfte Seiten in beiden Farbschemata,
-  angewandte Regeln, jeder Befund mit Stufe und die Regeln, die das Werkzeug nicht entscheiden konnte.
+  ins Update-Paket (`barrierefreiheit/pruefbericht.md`): geprüfte Seiten und Zustände, jeder im
+  Farbschema, das sein Prüfszenario einstellt, ein Teil der Seiten in beiden, und welche nur in einem
+  geprüft sind; dazu angewandte Regeln, jeder Befund mit Stufe und die Regeln, die das Werkzeug nicht
+  entscheiden konnte.
   Ein Befund hält das Release nicht auf, er steht im Bericht.
 
 ### Prüfstand

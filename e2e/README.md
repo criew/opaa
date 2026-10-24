@@ -339,8 +339,9 @@ lassen.
   **Berichtsmodus für den Release-Lauf:** Mit `E2E_A11Y_RESULTS_DIR` legt die Fixture jede Analyse
   als JSON-Datensatz in diesem Verzeichnis ab, mit `E2E_A11Y_REPORT_ONLY=true` hält sie Verstöße fest,
   statt den Test scheitern zu lassen. Daraus entsteht der Prüfbericht Barrierefreiheit im
-  Update-Paket (`docs/releases.md`, „Prüfbericht Barrierefreiheit“); ein neues Szenario mit axe-Prüfung
-  gehört in die Liste in `.github/workflows/accessibility-report.yml`.
+  Update-Paket (`docs/releases.md`, „Prüfbericht Barrierefreiheit“). Der Lauf dort findet jede Spec mit
+  axe-Prüfung selbst und scheitert, wenn eine davon keinen Datensatz liefert; `E2E_SEED_HASHED=true`
+  installiert den Seed nur aus den per Hash gepinnten Wheels in `.github/requirements-seed.txt`.
 - `tests/csp.spec.ts` (#707) — lädt die App durch die echte nginx-Auslieferung des Stacks und
   sammelt Content-Security-Policy-Verstöße aus der Browser-Konsole ein; die Konsole muss leer
   bleiben. Reproduziert den Fall, in dem Vite kleine Font-Subsets als `data:`-URIs bündelt, die

@@ -771,32 +771,35 @@ verweist. Tastatur, Screenreader und Vergrößerung prüft er nicht.
 
 **Ablauf.** Der Job `accessibility` ruft den wiederverwendbaren Workflow
 `.github/workflows/accessibility-report.yml` auf. Er baut beide Images aus dem getaggten Commit, ohne
-Cache wie jeder Bau eines Release, startet den Stack der regulären E2E-Suite und führt dort die
-Szenarien mit axe-Prüfung aus (`accessibility.spec.ts`, `space-chats.spec.ts`, `space-content.spec.ts`,
-`space-members.spec.ts`), danach das ganze Ziel `local-auth`, dessen Szenarien aufeinander aufbauen.
+Cache wie jeder Bau eines Release, startet den Stack der regulären E2E-Suite und führt dort jede
+Spec-Datei aus, die die axe-Prüfung aufruft (`expectNoSeriousA11yViolations(`, im Lauf gesucht, nicht
+gelistet), danach das ganze Ziel `local-auth`, dessen Szenarien aufeinander aufbauen. Der Seed
+installiert dabei nur die Wheels aus `.github/requirements-seed.txt`, per Hash gepinnt
+(`E2E_SEED_HASHED=true`, `--require-hashes --only-binary=:all: --no-deps`).
 Beide laufen im Berichtsmodus der Fixture `e2e/fixtures/a11y.ts`: `E2E_A11Y_RESULTS_DIR` legt jede
 Analyse als JSON-Datensatz ab, `E2E_A11Y_REPORT_ONLY=true` hält einen schwerwiegenden oder kritischen
 Befund fest, statt den Test scheitern zu lassen, sodass das Szenario seine übrigen Seiten noch prüft.
-Das Artefakt `accessibility-results` enthält je Ziel ein Verzeichnis mit den Datensätzen und dem
-Playwright-Bericht; `update-package` reicht es mit `--accessibility` an `update_package.py` weiter,
+Das Artefakt `accessibility-results` enthält je Ziel ein Verzeichnis mit den Datensätzen, dem
+Playwright-Bericht und `expected.txt`, den Spec-Dateien mit axe-Prüfung dieses Ziels; `update-package` reicht es mit `--accessibility` an `update_package.py` weiter,
 das den Bericht mit `.github/scripts/accessibility_report.py` erzeugt.
 
 **Inhalt.** Version, Commit, Prüfdatum, Version von axe-core und Regelsatz (WCAG 2.0 und 2.1, Stufen A
 und AA); jede geprüfte Seite und jeder Zustand mit Farbschema, Befunden und Ausnahmen des Szenarios;
+welche Seiten in beiden Farbschemata geprüft sind und welche nur in dem, das ihr Szenario einstellt;
 jeder Befund mit Regel, Stufe, Zahl der Elemente und bis zu fünf betroffenen Elementen; die Regeln,
 die axe nicht entscheiden konnte; alle angewandten Regeln; die Szenarien mit axe-Prüfung, die vor
 ihrem Ende abbrachen. `axe-ergebnisse.json` enthält dieselben Datensätze für Werkzeuge.
 
 **Wann der Lauf scheitert.** Ein Befund, gleich welcher Stufe, und ein abgebrochenes Szenario halten
-das Release nicht auf; beide stehen im Bericht. Liefert der Lauf keinen einzigen Datensatz, etwa weil
-ein Stack nicht startet, scheitert `accessibility` und mit ihm das Update-Paket; `publish` setzt dann
-keine Tags. *Re-run failed jobs* wiederholt die Prüfung.
+das Release nicht auf; beide stehen im Bericht. Fehlt einem Ziel der Playwright-Bericht oder
+`expected.txt`, oder hat eine erwartete Spec-Datei keinen einzigen Datensatz, etwa weil ein Stack, der
+Seed oder ein `beforeAll` scheitert, scheitert `accessibility` und mit ihm das Update-Paket; `publish`
+setzt dann keine Tags. *Re-run failed jobs* wiederholt die Prüfung.
 
 **Grenzen.** Geprüft sind nur die Seiten und Zustände, die die Szenarien aufrufen, mit den Testdaten
-der Suite. Ein neues Szenario mit axe-Prüfung kommt im regulären Ziel erst mit einem Eintrag im
-Workflow in den Bericht; `.github/scripts/test_accessibility_report.py` schlägt fehl, solange er fehlt.
-Der Lauf verlängert ein Release um die Zeit für zwei kalte Image-Bauten und zwei Stacks, weil
-`publish` auf das Update-Paket wartet. Jeder PR, der den Workflow, die Fixture oder das Skript ändert,
+der Suite, und jeder nur im Farbschema, das sein Szenario einstellt; nicht jede Seite ist in beiden
+Schemata geprüft. Der Lauf verlängert ein Release um rund 14 Minuten (gemessen: `axe` kalt rund
+13,5 Minuten, `update-package` wartet darauf), weil `publish` auf das Update-Paket wartet. Jeder PR, der den Workflow, die Fixture oder das Skript ändert,
 führt den Lauf aus.
 
 ## Offline-Bündel

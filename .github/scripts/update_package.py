@@ -864,7 +864,8 @@ def readme(release: Release) -> str:
         ] if release.lts_previous else []),
         "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
         "| `barrierefreiheit/pruefbericht.md` | Prüfbericht der automatisierten Barrierefreiheitsprüfung"
-        " mit axe-core an dieser Version: geprüfte Seiten in beiden Farbschemata, Regeln und Befunde |",
+        " mit axe-core an dieser Version: geprüfte Seiten und Zustände je im Farbschema ihres Szenarios,"
+        " ein Teil davon in beiden, dazu Regeln und Befunde |",
         "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
         f"| `{SBOM_DIR}` | Stücklisten (SBOM, CycloneDX) der ausgelieferten Abhängigkeiten,"
         f" `{sbom_name('backend', release)}` und `{sbom_name('frontend', release)}`;"

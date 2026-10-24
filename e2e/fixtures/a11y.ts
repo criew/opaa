@@ -38,7 +38,10 @@ type Violation = AxeResults['violations'][number]
 
 const RESULTS_DIR = process.env.E2E_A11Y_RESULTS_DIR
 const REPORT_ONLY = process.env.E2E_A11Y_REPORT_ONLY === 'true'
-/** Order of the analyses in this process; the suite runs with one worker, so it is the run order. */
+/**
+ * Order of the analyses in this worker process; a new worker after a failed test starts it anew,
+ * so the report orders by measuredAt first.
+ */
 let sequence = 0
 
 /** One analysis as the report of the update package reads it (update_package.py). */

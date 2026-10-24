@@ -16,6 +16,7 @@ on:
       - .github/workflows/accessibility-report.yml
       - .github/scripts/accessibility_report.py
       - e2e/fixtures/a11y.ts
+      - .github/requirements-seed.txt
 
 permissions:
   contents: read
@@ -89,20 +90,25 @@ jobs:
           chmod -R o+rX documents
 
       # A finding or a scenario that stops early leaves the step green: the report names both. The
-      # Playwright JSON report tells it which scenarios did not finish. The regular target runs only
-      # the specs with an axe check; the local-auth target runs whole, because its scenarios build on
-      # the state the earlier ones leave (e2e/local-auth/playwright.config.ts).
+      # Playwright JSON report tells it which scenarios did not finish, expected.txt which spec files
+      # have to deliver records: every spec that calls the axe check, found here rather than listed,
+      # so a new one is measured without a change to this file. The regular target runs only those;
+      # the local-auth target runs whole, because its scenarios build on the state the earlier ones
+      # leave (e2e/local-auth/playwright.config.ts).
       - name: axe-Szenarien der regulären Suite
         working-directory: e2e
         env:
           E2E_SKIP_BUILD: 'true'
+          E2E_SEED_HASHED: 'true'
           E2E_A11Y_REPORT_ONLY: 'true'
           E2E_A11Y_RESULTS_DIR: ${{ runner.temp }}/accessibility-results/e2e
         run: |
-          rc=0
-          pnpm test accessibility.spec.ts space-chats.spec.ts space-content.spec.ts space-members.spec.ts || rc=$?
-          echo "Suite beendet mit $rc"
           mkdir -p "$E2E_A11Y_RESULTS_DIR"
+          mapfile -t specs < <(grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename | sort)
+          printf '%s\n' "${specs[@]}" >"$E2E_A11Y_RESULTS_DIR/expected.txt"
+          rc=0
+          pnpm test "${specs[@]}" || rc=$?
+          echo "Suite beendet mit $rc"
           if [[ -f test-results/results.json ]]; then
             cp test-results/results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
           fi
@@ -114,16 +120,19 @@ jobs:
           E2E_A11Y_REPORT_ONLY: 'true'
           E2E_A11Y_RESULTS_DIR: ${{ runner.temp }}/accessibility-results/local-auth
         run: |
+          mkdir -p "$E2E_A11Y_RESULTS_DIR"
+          grep -l 'expectNoSeriousA11yViolations(' local-auth/tests/*.spec.ts | xargs -n1 basename | sort \
+            >"$E2E_A11Y_RESULTS_DIR/expected.txt"
           rc=0
           pnpm run test:local-auth || rc=$?
           echo "Suite beendet mit $rc"
-          mkdir -p "$E2E_A11Y_RESULTS_DIR"
           if [[ -f test-results/local-auth-results.json ]]; then
             cp test-results/local-auth-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
           fi
 
-      # Fails only when nothing was measured at all, e.g. a stack that never came up; the package
-      # would otherwise carry an empty report. Rendering here as well shows the report in the run.
+      # Fails when a target or an expected spec file delivered no record or a target no Playwright
+      # report, e.g. a stack or a seed that never came up; the release then publishes nothing.
+      # Rendering here as well shows the report in the run.
       - name: Bericht probeweise erzeugen
         run: python3 .github/scripts/accessibility_report.py "$RUNNER_TEMP/accessibility-results"
 

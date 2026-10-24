@@ -837,6 +837,8 @@ def test_the_accessibility_report_of_the_release_run_lies_in_the_package(tmp_pat
             "id": "color-contrast", "impact": "serious", "help": "Kontrast", "nodes": 1,
             "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast", "targets": ["p"]}],
         "passes": ["label"], "incomplete": []}), encoding="utf-8")
+    (run / "expected.txt").write_text("a.spec.ts\n", encoding="utf-8")
+    (run / "playwright.json").write_text('{"suites": []}', encoding="utf-8")
 
     archive = update_package.assemble(release(), out=tmp_path / "out", accessibility=tmp_path / "axe", **inputs)
 
@@ -857,7 +859,10 @@ def test_a_package_without_axe_results_says_the_version_was_not_checked(tmp_path
 
 
 def test_axe_results_without_a_record_fail_the_package(tmp_path: Path, inputs: dict) -> None:
-    (tmp_path / "axe" / "e2e").mkdir(parents=True)
+    run = tmp_path / "axe" / "e2e"
+    run.mkdir(parents=True)
+    (run / "expected.txt").write_text("a.spec.ts\n", encoding="utf-8")
+    (run / "playwright.json").write_text('{"suites": []}', encoding="utf-8")
 
     with pytest.raises(update_package.PackageError, match="measured nothing"):
         update_package.assemble(release(), out=tmp_path / "out", accessibility=tmp_path / "axe", **inputs)

@@ -20,6 +20,8 @@ spec = importlib.util.spec_from_file_location("accessibility_report", HERE / "ac
 accessibility_report = importlib.util.module_from_spec(spec)
 sys.modules["accessibility_report"] = accessibility_report
 spec.loader.exec_module(accessibility_report)
+sys.path.insert(0, str(HERE))
+import package_html  # noqa: E402
 
 PUBLISH = HERE.parent / "workflows" / "publish-images.yml"
 REUSABLE = HERE.parent / "workflows" / "accessibility-report.yml"
@@ -49,16 +51,24 @@ MINOR = {"id": "html-has-lang", "impact": "minor", "help": "<html> element must 
          "targets": ["html"]}
 
 
-def write(run: Path, *records: dict, playwright: dict | None = None) -> None:
+def write(run: Path, *records: dict, playwright: dict | None = None,
+          expected: list[str] | None = None) -> None:
+    """A run directory as the accessibility workflow leaves it: records, the Playwright report (by
+    default one passed scenario per spec file) and expected.txt (by default the files of the
+    records)."""
     run.mkdir(parents=True, exist_ok=True)
     for value in records:
         (run / f"{value['sequence']:04d}-t{value['retry']}.json").write_text(json.dumps(value), encoding="utf-8")
-    if playwright is not None:
-        (run / "playwright.json").write_text(json.dumps(playwright), encoding="utf-8")
+    files = expected if expected is not None else sorted({r["file"] for r in records})
+    (run / "expected.txt").write_text("".join(f"{f}\n" for f in files), encoding="utf-8")
+    report_value = playwright if playwright is not None else {
+        "suites": [{"title": f, "specs": [{"title": "x", "tests": [{"results": [{"status": "passed"}]}]}]}
+                   for f in files]}
+    (run / "playwright.json").write_text(json.dumps(report_value), encoding="utf-8")
 
 
-def playwright(*specs: tuple[str, str, str]) -> dict:
-    return {"suites": [{"title": "accessibility.spec.ts", "specs": [], "suites": [{
+def playwright(*specs: tuple[str, str, str], file: str = "accessibility.spec.ts") -> dict:
+    return {"suites": [{"title": file, "specs": [], "suites": [{
         "title": "Barrierefreiheit", "suites": [],
         "specs": [{"title": title, "tests": [{"results": [
             {"status": status, **({"error": {"message": f"\x1b[31m{error}\x1b[39m\nstack"}} if error else {})}
@@ -71,24 +81,30 @@ def report(results: Path) -> str:
     return files[accessibility_report.REPORT].decode("utf-8")
 
 
+ID = "0b6f1a52-2f0e-4c3f-9d55-6a7c1e2b3d4f"
+
+
 def test_the_report_names_version_tool_rule_set_and_every_checked_state(tmp_path: Path) -> None:
-    write(tmp_path / "e2e", record(1, "Chat (helles Farbschema)"),
-          record(2, "Chat (dunkles Farbschema)", "dark", path="/spaces/1/chats/new"),
+    write(tmp_path / "e2e", record(1, "Chat (helles Farbschema)", path=f"/spaces/{ID}/chats/new"),
+          record(2, "Chat (dunkles Farbschema)", "dark", path=f"/spaces/{ID}/chats/new"),
           playwright=playwright(("Chat", "passed", "")))
-    write(tmp_path / "local-auth", record(1, "Anmeldeseite", path="/login"))
+    write(tmp_path / "local-auth", record(1, "Anmeldeseite", path="/login", file="07-barrierefreiheit.spec.ts"))
 
     text = report(tmp_path)
 
     assert "gilt-fuer: 1.2.3\ncommit: " + "a" * 40 + "\ngeprueft-am: 2026-10-24\n" in text
     assert "# Prüfbericht Barrierefreiheit OPAA 1.2.3" in text
-    assert "| Werkzeug | axe-core 4.11.0 |" in text
+    assert "| Werkzeug | axe-core `4.11.0` |" in text
     assert "`wcag21aa`" in text
     assert "| Geprüfte Zustände | 3 (hell 2, dunkel 1) auf 2 Seiten |" in text
-    assert "| Chat (dunkles Farbschema) (dunkel) | `/spaces/1/chats/new` | keine | keine |" in text
+    assert "| Seiten in beiden Farbschemata | 1 von 2 |" in text
+    # A context that names its scheme keeps it once; identifiers in a path are folded.
+    assert "| Chat (dunkles Farbschema) | `/spaces/<id>/chats/new` | keine | keine |" in text
     assert "| Anmeldeseite (hell) | `/login` | keine | keine |" in text
+    assert "| `/login` | nur hell |" in text
+    assert "| Geprüfte Szenario-Dateien | `accessibility.spec.ts`, `07-barrierefreiheit.spec.ts` |" in text
     assert "Keine Befunde." in text
-    assert "Alle Szenarien liefen vollständig durch." not in text  # local-auth has no report
-    assert "Ohne Playwright-Bericht" in text and "`local-auth`" in text
+    assert "Alle Szenarien der geprüften Szenario-Dateien liefen vollständig durch." in text
 
 
 def test_a_finding_of_every_level_appears_with_rule_level_elements_and_explanation(tmp_path: Path) -> None:
@@ -98,13 +114,27 @@ def test_a_finding_of_every_level_appears_with_rule_level_elements_and_explanati
     text = report(tmp_path)
 
     assert "| Befunde | 2 (1 schwerwiegend, 1 gering) |" in text
-    assert "### Katalog (dunkles Farbschema) (dunkel)" in text
+    assert "### Katalog (dunkles Farbschema)\n" in text
     assert ("| `color-contrast` | schwerwiegend | 3 | Elements must meet minimum color contrast ratio"
             " thresholds ([Erläuterung](https://dequeuniversity.com/rules/axe/4.11/color-contrast)) |"
             " `.MuiChip-label`; `#menu > li:nth-child(2)` |") in text
     # An HTML tag of the axe help text must not reach the HTML version as markup.
     assert "| `<html>` element must have a lang attribute" in text
-    assert "Alle Szenarien liefen vollständig durch." in text
+
+
+def test_fields_of_a_record_are_masked_before_markdown_and_html(tmp_path: Path) -> None:
+    hostile = dict(SERIOUS, helpUrl="javascript:alert(1)", nodes="<b>3</b>")
+    write(tmp_path / "e2e", record(1, "Katalog <!-- x -->", violations=[hostile],
+                                   axeVersion="<script>x</script>", measuredAt="<img src=x>"))
+
+    files = accessibility_report.render(accessibility_report.load(tmp_path), "1.2.3", "a" * 40)
+    text = files[accessibility_report.REPORT].decode("utf-8")
+    page = package_html.render(files, "Paket")["barrierefreiheit/pruefbericht.html"].decode("utf-8")
+
+    for markup in ("<script", "<img", "<!--", "<b>", "javascript:"):
+        assert markup not in page, markup
+    assert "| `color-contrast` | schwerwiegend | 0 |" in text
+    assert "| Prüfdatum | unbekannt |" in text
 
 
 def test_a_scenario_that_stopped_early_is_named_with_its_first_error_line(tmp_path: Path) -> None:
@@ -120,15 +150,31 @@ def test_a_scenario_that_stopped_early_is_named_with_its_first_error_line(tmp_pa
 
 
 def test_a_stopped_scenario_of_a_spec_without_axe_check_is_not_listed(tmp_path: Path) -> None:
-    other = playwright(("Konten anlegen", "failed", "Timed out"))
-    other["suites"][0]["title"] = "02-konten.spec.ts"
+    other = playwright(("Konten anlegen", "failed", "Timed out"), file="02-konten.spec.ts")
+    other["suites"] += playwright(("Anmeldeseite", "passed", ""))["suites"]
     write(tmp_path / "local-auth", record(1, "Anmeldeseite"), playwright=other)
 
     text = report(tmp_path)
 
     assert "| Szenarien nicht vollständig | 0 |" in text
     assert "Konten anlegen" not in text
-    assert "| Szenario-Dateien mit Messung | `accessibility.spec.ts` |" in text
+
+
+# regression guard: one target without records while the other has some must fail the run, not
+# read as "every scenario finished".
+def test_a_target_without_a_single_record_fails_although_another_target_has_records(tmp_path: Path) -> None:
+    write(tmp_path / "e2e", playwright={"suites": []}, expected=["accessibility.spec.ts"])
+    write(tmp_path / "local-auth", record(1, "Anmeldeseite", file="07-barrierefreiheit.spec.ts"))
+
+    with pytest.raises(accessibility_report.ReportError, match="e2e measured nothing in accessibility.spec.ts"):
+        accessibility_report.load(tmp_path)
+
+
+def test_an_expected_spec_file_without_a_record_fails(tmp_path: Path) -> None:
+    write(tmp_path / "e2e", record(1, "Chat"), expected=["accessibility.spec.ts", "space-members.spec.ts"])
+
+    with pytest.raises(accessibility_report.ReportError, match="space-members.spec.ts"):
+        accessibility_report.load(tmp_path)
 
 
 def test_only_the_last_attempt_of_a_retried_scenario_counts(tmp_path: Path) -> None:
@@ -139,6 +185,15 @@ def test_only_the_last_attempt_of_a_retried_scenario_counts(tmp_path: Path) -> N
 
     assert "| Geprüfte Zustände | 1 (hell 1, dunkel 0) auf 1 Seiten |" in text
     assert "Keine Befunde." in text
+
+
+def test_states_are_ordered_by_measurement_time_across_a_worker_restart(tmp_path: Path) -> None:
+    write(tmp_path / "e2e", record(7, "Erster", measuredAt="2026-10-24T08:00:00.000Z", test="A"),
+          record(1, "Zweiter", measuredAt="2026-10-24T08:05:00.000Z", test="B"))
+
+    text = report(tmp_path)
+
+    assert text.index("| Erster (hell)") < text.index("| Zweiter (hell)")
 
 
 def test_undecided_rules_and_exceptions_are_listed(tmp_path: Path) -> None:
@@ -153,15 +208,19 @@ def test_undecided_rules_and_exceptions_are_listed(tmp_path: Path) -> None:
     assert "| `color-contrast` | 1 | 0 | 1 |" in text
 
 
-@pytest.mark.parametrize("case", ["missing", "empty", "only-report", "malformed"])
-def test_results_without_a_single_record_fail(tmp_path: Path, case: str) -> None:
+@pytest.mark.parametrize("case", ["missing", "no-expected", "no-report", "empty", "malformed"])
+def test_results_that_cannot_make_up_a_report_fail(tmp_path: Path, case: str) -> None:
     results = tmp_path / "results"
     if case != "missing":
-        (results / "e2e").mkdir(parents=True)
-    if case == "only-report":
-        (results / "e2e" / "playwright.json").write_text("{}", encoding="utf-8")
+        write(results / "e2e", record(1, "Chat"))
+    if case == "no-expected":
+        (results / "e2e" / "expected.txt").unlink()
+    if case == "no-report":
+        (results / "e2e" / "playwright.json").unlink()
+    if case == "empty":
+        (results / "e2e" / "0001-t0.json").unlink()
     if case == "malformed":
-        (results / "e2e" / "0001.json").write_text("{\"context\": 1}", encoding="utf-8")
+        (results / "e2e" / "0002.json").write_text("{\"context\": 1}", encoding="utf-8")
 
     with pytest.raises(accessibility_report.ReportError):
         accessibility_report.load(results)
@@ -174,6 +233,7 @@ def test_the_raw_results_lie_beside_the_report_for_tools(tmp_path: Path) -> None
 
     raw = json.loads(files[accessibility_report.RESULTS])
     assert raw["version"] == "1.2.3"
+    assert raw["runs"][0]["expected"] == ["accessibility.spec.ts"]
     assert raw["runs"][0]["records"][0]["violations"][0]["id"] == "color-contrast"
 
 
@@ -224,18 +284,37 @@ def test_the_accessibility_run_records_without_failing_and_takes_nothing_from_a_
     assert "name: accessibility-results" in body
 
 
-def test_every_spec_with_an_axe_check_runs_in_the_accessibility_run() -> None:
-    """A new spec calling the fixture would otherwise stay outside the report unnoticed."""
+def test_every_spec_with_an_axe_check_is_expected_and_runs_in_the_accessibility_run() -> None:
+    """The run finds the specs itself; a new one is measured, and expected, without a list."""
     body = job(REUSABLE.read_text(encoding="utf-8"), "axe")
-    calling = sorted(p.relative_to(ROOT) for p in (ROOT / "e2e").rglob("*.spec.ts")
-                     if "node_modules" not in p.parts
-                     and "expectNoSeriousA11yViolations(" in p.read_text(encoding="utf-8"))
 
-    regular = re.search(r"pnpm test (.*) \|\| rc=\$\?", body).group(1).split()
-    for path in calling:
-        if "local-auth" not in path.parts:
-            assert path.name in regular, path.name
-    assert "pnpm run test:local-auth || rc=$?" in body
+    assert ("grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename | sort)"
+            in body)
+    assert "pnpm test \"${specs[@]}\" || rc=$?" in body
+    assert "grep -l 'expectNoSeriousA11yViolations(' local-auth/tests/*.spec.ts" in body
+    assert body.count('"$E2E_A11Y_RESULTS_DIR/expected.txt"') == 2
+    # The pattern finds a call, not the import of the fixture.
+    calls = [p for p in (ROOT / "e2e").rglob("*.spec.ts") if "node_modules" not in p.parts
+             and "expectNoSeriousA11yViolations(" in p.read_text(encoding="utf-8")]
+    assert any(p.name == "accessibility.spec.ts" for p in calls)
+    assert any("local-auth" in p.parts for p in calls)
+
+
+def test_the_seed_of_the_accessibility_run_installs_only_hash_pinned_wheels() -> None:
+    body = job(REUSABLE.read_text(encoding="utf-8"), "axe")
+    runner = (ROOT / "e2e" / "scripts" / "run-e2e.mjs").read_text(encoding="utf-8")
+    pinned = (HERE.parent / "requirements-seed.txt").read_text(encoding="utf-8")
+    seed = (ROOT / "demo" / "seed" / "requirements.txt").read_text(encoding="utf-8")
+
+    assert "E2E_SEED_HASHED: 'true'" in body
+    assert "process.env.E2E_SEED_HASHED === 'true'" in runner
+    for flag in ("'--require-hashes'", "'--only-binary=:all:'", "'--no-deps'", "'.github/requirements-seed.txt'"):
+        assert flag in runner, flag
+    names = re.findall(r"^([A-Za-z0-9_.-]+)==\S+ \\\n    --hash=sha256:[0-9a-f]{64}", pinned, re.M)
+    assert names
+    for line in seed.splitlines():
+        if line.strip() and not line.startswith("#"):
+            assert re.split(r"[<>=!~\[ ]", line, maxsplit=1)[0] in names, line
 
 
 def test_the_fixture_writes_the_fields_the_report_reads_and_records_findings_in_report_mode() -> None:
