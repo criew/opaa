@@ -14,6 +14,7 @@ import java.time.Instant;
 public record BrandingSettingsView(
     String productName,
     String claim,
+    String aiNotice,
     String primaryColor,
     ColorScheme defaultColorScheme,
     String logoContentType,

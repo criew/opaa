@@ -640,6 +640,30 @@ lassen.
   (`AssetCatalogServiceIntegrationTest`). Vorbedingungen (Gruppe, zweite Bibliothek) legt
   `fixtures/promptLibraries.ts` über die API an; `dev-format-pipelines` stellt nie eine Frage und
   bekommt keinen durchsuchbaren Bestand, bleibt also für seinen eigentlichen Zweck unberührt.
+- `tests/self-disclosure.spec.ts` (#2994, Epic #2986) — die Selbstauskunft aus „Einstellungen →
+  Meine Daten“ über den vollen Stack. `dev-user` (Person A) und `dev-outsider` (Person B) sind
+  Mitglied eines eigenen Space; A fragt dort mit Belegen aus einem zur Laufzeit erzeugten PDF und
+  einem Markdown-Vermerk, B stellt eine eigene Frage. Das ZIP von A enthält `index.html`,
+  `manifest.json`, die Kategorien Konto und Chats und die Frage von A. Die Fundstellen stehen als
+  „Titel · Bibliothek: … · S. 1 · zitiert“ bzw. ohne Ort darin. Die Überschrift des Vermerks ist
+  laut Chat-API Teil der gespeicherten Fundstelle (`chunkLocations`), im ZIP steht sie nirgends,
+  ebenso wenig der Text der Dokumente; weder der Chat noch Name oder Adresse von B kommen vor. Ein
+  Download, dessen Verbindung abbricht (`route.abort()` auf dem Formular-POST), wird gemeldet und
+  nicht gezählt, der nächste am selben Tag gelingt. Nach einem vollständigen Download ist die
+  Tagesgrenze erreicht: Die Seite nennt den nächsten möglichen Zeitpunkt, der Knopf startet nichts
+  mehr, und das Ticket antwortet mit `429 SELF_DISCLOSURE_DAILY_LIMIT`. Danach hat die Person die
+  Benachrichtigung „Selbstauskunft gestartet“. Schaltet die Systemverwaltung die Selbstauskunft unter
+  „Administration → Datenschutz“ ab, steht auf „Meine Daten“ der Hinweis statt des Knopfs.
+
+  Der ZIP-Download läuft als Formular-POST in einen versteckten Frame; Playwright meldet ihn als
+  Download der Seite, `fixtures/selfDisclosure.ts` liest das Archiv ohne weitere Abhängigkeit
+  über sein Zentralverzeichnis. Tagesgrenze und Schalter sind installationsweit: Jedes Szenario
+  setzt über die Verwaltungs-API eine Grenze, die genau einen weiteren Download zulässt, und
+  `afterAll` stellt den Stand vor der Datei wieder her. Die Bestätigung mit dem Passwort prüft das
+  Ziel `local-auth` (`09-selbstauskunft.spec.ts`), weil im `dev`-Modus jede Anfrage als frisch
+  angemeldet gilt. Nicht abgedeckt ist die Startgrenze (Tagesgrenze plus vier Starts): Ein Start
+  zählt erst, wenn der Server das Ticket einlöst, und ein Export dieses Umfangs ist geschrieben,
+  bevor ein Abbruch im Browser ihn erreichen kann; sie prüft der Backend-Test.
 
 ## Demo-Smoke (#232)
 
@@ -780,6 +804,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `06-selbstregistrierung.spec.ts` | Einschalten nur mit Domänenliste, Registrierung innerhalb und außerhalb der Liste, Bestätigung der Adresse, erste Anmeldung |
 | `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
+| `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 
 `/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das
