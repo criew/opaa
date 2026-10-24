@@ -1,5 +1,11 @@
 import { useRef, useState } from 'react'
-import Alert from '@mui/material/Alert'
+import { flushSync } from 'react-dom'
+import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -17,10 +23,13 @@ import {
   withConnection,
   withoutFixed,
 } from './sources/sourceConnection'
-import { reportSourceIssue } from './sources/reportSourceIssue'
-import { SourceIssueContext } from './sources/sourceIssueContext'
+import { fieldDomId, SourceIssueContext } from './sources/sourceIssueContext'
+import { allSourceIssues, sourceTestRequest } from './sources/sourceFrame'
 import type { SourceFormContext } from './sources/types'
-import { formIssue, type SourceIssue } from '../utils/sourceIssue'
+import type { SourceIssue } from '../utils/sourceIssue'
+import ConnectionCheck from './sourceKit/ConnectionCheck'
+import { useConnectionCheck } from './sourceKit/useConnectionCheck'
+import ErrorSummary, { type SummaryIssue } from './sourceKit/ErrorSummary'
 
 /**
  * Editable snapshot of a connector library's source configuration. Deliberately narrower than
@@ -83,30 +92,81 @@ export default function EditLibrarySourceDialog({
   // Prefilled once from the library's current, non-secret configuration: the caller remounts this
   // component via a key tied to `open`, so a fresh instance starts from the stored values. The
   // credentials stay blank (write-only, ADR-0018) - there is nothing to prefill them with.
-  const [storedValues, setValues] = useState<unknown>(() => configuration?.fromLibrary(library))
+  const [initialValues] = useState<unknown>(() => configuration?.fromLibrary(library))
+  const [storedValues, setValues] = useState<unknown>(initialValues)
   const values = withConnection(storedValues, connection)
-  const [issue, setIssue] = useState<SourceIssue | null>(null)
+  const [issues, setIssues] = useState<SourceIssue[]>([])
+  const [otherIssues, setOtherIssues] = useState<SummaryIssue[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const formRef = useRef<HTMLDivElement>(null)
-  const alertRef = useRef<HTMLDivElement>(null)
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const narrow = useMediaQuery(useTheme().breakpoints.down('sm'))
+  const dirty = JSON.stringify(storedValues) !== JSON.stringify(initialValues)
+  const check = useConnectionCheck(
+    configuration && !connectionMissing ? sourceTestRequest(configuration, values, context) : null,
+  )
+  const checkId = 'edit-source-check'
 
-  function report(next: SourceIssue) {
-    reportSourceIssue(next, setIssue, formRef.current, () => alertRef.current?.focus())
+  // an issue at a field goes once the field is valid (Prüfliste #29)
+  const current =
+    configuration && issues.length > 0 ? allSourceIssues(configuration, values, context) : []
+  const shownIssues = issues
+    .map((shown) => current.find((issue) => issue.field === shown.field && shown.field))
+    .filter((issue): issue is SourceIssue => issue !== undefined)
+  const summary: SummaryIssue[] = [
+    ...shownIssues.map((issue) => ({
+      message: issue.message,
+      targetId: issue.field ? fieldDomId(context.idPrefix, issue.field) : undefined,
+    })),
+    ...otherIssues,
+  ]
+
+  function showIssues(source: SourceIssue[], other: SummaryIssue[]) {
+    flushSync(() => {
+      setIssues(source)
+      setOtherIssues(other)
+    })
+    summaryRef.current?.focus()
   }
 
-  function handleClose() {
+  async function handleClose() {
     if (submitting) return
+    if (dirty) {
+      const discard = await confirmAction({
+        question: 'Änderungen an der Quelle verwerfen?',
+        confirmLabel: 'Verwerfen',
+        tone: 'neutral',
+      })
+      if (!discard) return
+    }
     onClose()
   }
 
   async function handleSave() {
-    if (!configuration || connectionMissing) return
-    const validationIssue = configuration.validate(values, context)
-    if (validationIssue) {
-      report(validationIssue)
+    if (!configuration || connectionMissing || submitting || check.running) return
+    const found = allSourceIssues(configuration, values, context)
+    if (found.length > 0) {
+      showIssues(found, [])
       return
     }
-    setIssue(null)
+    // tested before saving, unless it passed or the person chose to go on (Prüfliste #33)
+    if (check.available && !check.passed && !check.waived) {
+      const outcome = await check.run()
+      if (!outcome.ok) {
+        showIssues(
+          [],
+          [
+            {
+              message:
+                'Der Verbindungstest ist fehlgeschlagen. Angaben prüfen oder „Trotzdem fortfahren“ wählen.',
+              targetId: checkId,
+            },
+          ],
+        )
+        return
+      }
+    }
+    setIssues([])
+    setOtherIssues([])
     setSubmitting(true)
     try {
       await updateExistingLibrary(libraryId, {
@@ -119,12 +179,16 @@ export default function EditLibrarySourceDialog({
         // address still names the same origin.
         ...payloadUnder(configuration.toPayload(values), connectionFields(context)),
       })
+      notify('Quelle gespeichert. Die Änderung wirkt ab dem nächsten Lauf.', 'success')
       onClose()
     } catch (err) {
-      report(
-        formIssue(
-          err instanceof Error ? err.message : 'Quellkonfiguration konnte nicht gespeichert werden',
-        ),
+      showIssues(
+        [],
+        [
+          {
+            message: err instanceof Error ? err.message : 'Die Quelle ließ sich nicht speichern.',
+          },
+        ],
       )
     } finally {
       setSubmitting(false)
@@ -134,28 +198,30 @@ export default function EditLibrarySourceDialog({
   const Form = configuration?.Form
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Quellkonfiguration bearbeiten</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={() => void handleClose()}
+      maxWidth="sm"
+      fullWidth
+      fullScreen={narrow}
+      aria-labelledby="edit-source-title"
+    >
+      <DialogTitle id="edit-source-title">Quelle bearbeiten</DialogTitle>
       <DialogContent>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <Alert severity="info">
-            Diese Änderung wirkt erst mit dem nächsten Indizierungslauf dieser Bibliothek.
-          </Alert>
-          {issue && !issue.field && (
-            <Alert severity="error" role="alert" ref={alertRef} tabIndex={-1}>
-              {issue.message}
-            </Alert>
-          )}
+        <Stack spacing={3} sx={{ mt: 0.5 }}>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            Änderungen wirken ab dem nächsten Lauf.
+          </Typography>
+          <ErrorSummary ref={summaryRef} issues={summary} />
           {connectionMissing && (
-            <Alert severity="warning" data-testid="edit-source-connection-missing">
-              Die Angaben des Zugangs „{profile?.name}“ liegen nicht vor. Ohne sie lässt sich die
-              Quelle nicht speichern, weil der Zugang Felder vorgibt. Bitte die Seite neu laden;
+            <Typography data-testid="edit-source-connection-missing" sx={{ fontSize: 14 }}>
+              Die Angaben des Zugangs „{profile?.name}“ liegen nicht vor. Bitte die Seite neu laden;
               besteht das Problem weiter, hilft die Systemverwaltung.
-            </Alert>
+            </Typography>
           )}
           {Form && !connectionMissing && (
-            <Box ref={formRef}>
-              <SourceIssueContext value={issue}>
+            <Box>
+              <SourceIssueContext value={shownIssues}>
                 <Form
                   values={values}
                   context={context}
@@ -164,25 +230,30 @@ export default function EditLibrarySourceDialog({
                       ...(withConnection(prev, connection) as object),
                       ...withoutFixed(patch, connection),
                     }))
-                    setIssue(null)
                   }}
                 />
               </SourceIssueContext>
             </Box>
           )}
+          {Form && !connectionMissing && check.available && (
+            <ConnectionCheck check={check} id={checkId} />
+          )}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button
+      <DialogActions sx={{ px: 3, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
+        <Button onClick={() => void handleClose()}>Abbrechen</Button>
+        <BusyButton
           onClick={() => void handleSave()}
           variant="contained"
-          disabled={submitting || !configuration || connectionMissing}
+          busy={submitting || check.running}
+          busyAnnouncement={check.running ? 'Verbindung wird getestet' : 'Quelle wird gespeichert'}
         >
-          {submitting ? 'Wird gespeichert …' : 'Speichern'}
-        </Button>
+          {check.running
+            ? 'Verbindung wird getestet …'
+            : submitting
+              ? 'Wird gespeichert …'
+              : 'Speichern'}
+        </BusyButton>
       </DialogActions>
     </Dialog>
   )

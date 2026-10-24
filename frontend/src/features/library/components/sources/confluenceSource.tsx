@@ -10,8 +10,10 @@ import ConfluenceForm from '../sourceForms/ConfluenceForm'
 import { listSummary } from '../sourceKit/summaries'
 import { detectedConfluenceEdition, MAX_CONFLUENCE_SPACES } from '../../utils/confluenceSource'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
+import { spaceItem } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceIssue } from '../../utils/sourceIssue'
-import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
+import { ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceFormContext, SourceRegistration } from './types'
@@ -104,7 +106,13 @@ export const confluenceSource: SourceRegistration = {
     },
     Form: ConfluenceForm,
     StoredView: ConfluenceStoredView,
-    Scope: ConfluenceScope,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Spaces"
+        items={(confluenceSettingsOf(library).spaces ?? []).map(spaceItem)}
+        emptyText="Keine Spaces"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const settings = confluenceSettingsOf(library)

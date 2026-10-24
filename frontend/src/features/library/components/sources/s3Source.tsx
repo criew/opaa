@@ -13,9 +13,11 @@ import {
 import S3Form from '../sourceForms/S3Form'
 import { collectIssues, unifyMissing } from '../sourceKit/collectIssues'
 import { listSummary } from '../sourceKit/summaries'
-import { S3Scope, S3StoredView } from './S3SourceViews'
+import { S3StoredView } from './S3SourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
+import { s3Item } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceFormContext, SourceRegistration } from './types'
 
 const s3Issues = (values: S3SourceValues, context: SourceFormContext) =>
@@ -91,7 +93,15 @@ export const s3Source: SourceRegistration = {
     },
     Form: S3Form,
     StoredView: S3StoredView,
-    Scope: S3Scope,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Buckets und Präfixe"
+        items={(s3SettingsFromLibrary(library)?.scopes ?? []).map((scope) =>
+          s3Item({ bucket: scope.bucket, prefix: scope.prefix ?? '' }),
+        )}
+        emptyText="Keine"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const count = s3SettingsFromLibrary(library)?.scopes?.length ?? 0

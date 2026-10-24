@@ -22,6 +22,8 @@ export interface BrowseEntry {
   selectable: boolean
   /** Whether the row leads to a level below. */
   openable: boolean
+  /** Why the object cannot be chosen although it is listed, shown under its name. */
+  blocked?: string
 }
 
 export interface BrowseResult {

@@ -216,6 +216,7 @@ async function settle(page, ms = 500) {
   await sleep(ms)
 }
 
+const SELECT_BUTTON = /^(Auswählen …|Ändern)$/
 const LISTING_BUTTONS = /^(Buckets laden|Bereiche laden|Ordner laden|Spaces laden|Sites suchen|Site öffnen|Ordner anzeigen|Durchsuchen|Laden|Liste laden|Erneut laden)$/
 const TEST_BUTTON = /^(Verbindung testen|Verbindung prüfen|Testen|Erneut testen|Erneut prüfen)$/
 
@@ -303,20 +304,20 @@ async function fillSource(page, type, scenario) {
   const many = scenario === 'scale' ? 12 : 2
   switch (type) {
     case 'filesystem':
-      await fillByLabel(page, [/Verzeichnispfad/, /Pfad/], '/srv/opaa/sozialamt')
+      await fillByLabel(page, [/^Verzeichnis/, /Verzeichnispfad/, /Pfad/], '/srv/opaa/sozialamt')
       await fillByLabel(page, [/Ausschlussmuster/, /Ausschl/], 'Archiv/**\n**/*.tmp')
       break
     case 'confluence':
       await fillByLabel(page, [/Adresse der Confluence/, /Adresse/, /URL/], 'https://rheinfurt.atlassian.net/wiki')
       await clickButton(page, /^(Edition erkennen|Adresse prüfen|Prüfen)$/, { wait: 800 })
       await settle(page, 200)
-      await fillByLabel(page, [/E-Mail/], 'dienstkonto@rheinfurt.example')
-      await fillByLabel(page, [/API-Token/, /Token/, /Zugangsschlüssel/], 'atl-token-123')
+      await fillByLabel(page, [/^Kennung/, /E-Mail/], 'dienstkonto@rheinfurt.example')
+      await fillByLabel(page, [/^Kennwort/, /API-Token/, /Token/, /Zugangsschlüssel/], 'atl-token-123')
       break
     case 's3':
       await fillByLabel(page, [/Endpoint/, /Adresse/], 'https://minio.intern.example:9000')
-      await fillByLabel(page, [/Access Key/, /Zugriffsschlüssel/, /Schlüssel-ID/], 'OPAAINDEXER')
-      await fillByLabel(page, [/Secret Key/, /Geheimer Schlüssel/, /Secret/], 'geheim')
+      await fillByLabel(page, [/^Kennung/, /Access Key/, /Zugriffsschlüssel/, /Schlüssel-ID/], 'OPAAINDEXER')
+      await fillByLabel(page, [/^Kennwort/, /Secret Key/, /Geheimer Schlüssel/, /Secret/], 'geheim')
       break
     case 'gdrive': {
       const input = page.locator('input[type=file]').first()
@@ -338,16 +339,21 @@ async function fillSource(page, type, scenario) {
       break
     case 'nextcloud':
       await fillByLabel(page, [/Adresse der Nextcloud/, /Adresse/], 'https://cloud.rheinfurt.example')
-      await fillByLabel(page, [/Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
-      await fillByLabel(page, [/App-Passwort/, /Passwort/], 'app-passwort')
+      await fillByLabel(page, [/^Kennung/, /Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
+      await fillByLabel(page, [/^Kennwort/, /App-Passwort/, /Passwort/], 'app-passwort')
       break
     case 'smb':
       await fillByLabel(page, [/Adresse der Freigabe/, /Adresse/], 'smb://dateiserver.rheinfurt.example/Ablage')
-      await fillByLabel(page, [/Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
-      await fillByLabel(page, [/^Passwort/, /Passwort/], 'geheim')
+      await fillByLabel(page, [/^Kennung/, /Dienstkonto/, /Benutzer/, /Konto/], 'RHEINFURT\\svc-opaa')
+      await fillByLabel(page, [/^Kennwort/, /^Passwort/, /Passwort/], 'geheim')
       break
     case 'dropbox':
       break
+  }
+  // Variante E: one selection dialog for every source
+  if (type !== 'filesystem' && (await firstVisible(page.getByRole('button', { name: SELECT_BUTTON })))) {
+    await selectInDialog(page, type, scenario)
+    return
   }
   // listings, then a selection, then the explicit test
   if (type === 'confluence') {
@@ -398,6 +404,55 @@ async function fillSource(page, type, scenario) {
       await clickButton(page, /^Fertig$/, { wait: 300 })
     }
   }
+  await clickButton(page, TEST_BUTTON, { wait: 1200 })
+  await settle(page, 200)
+}
+
+/** Variante E: opens „Auswählen …“, picks in the dialog (drilling into SharePoint levels), applies, tests. */
+async function selectInDialog(page, type, scenario) {
+  const slow = scenario === 'slow'
+  const many = scenario === 'scale' ? 12 : 2
+  await clickButton(page, SELECT_BUTTON, { wait: slow ? 900 : 900 })
+  await settle(page, slow ? 100 : 400)
+  const dialog = () => page.getByRole('dialog').last()
+  if (slow || scenario === 'failed' || scenario === 'empty') {
+    // the dialog's loading, error or empty state is the interesting part: shoot it open
+    if (!slow) await settle(page, 300)
+    return
+  }
+  if (type === 'sharepoint') {
+    const site = await firstVisible(dialog().getByRole('button', { name: /^„.*“ öffnen$/ }))
+    if (site) {
+      await site.click().catch(() => {})
+      await settle(page, 500)
+    }
+    if (scenario === 'scale') {
+      // into a document library and two folder levels, choosing there too
+      await selectSome(page, 2)
+      const lib = await firstVisible(dialog().getByRole('button', { name: /^„.*“ öffnen$/ }))
+      if (lib) {
+        await lib.click().catch(() => {})
+        await settle(page, 400)
+        const folder = await firstVisible(dialog().getByRole('button', { name: /^„.*“ öffnen$/ }))
+        if (folder) {
+          await folder.click().catch(() => {})
+          await settle(page, 400)
+        }
+      }
+    }
+  }
+  if (scenario === 'scale' && (type === 'nextcloud' || type === 'smb' || type === 'dropbox' || type === 's3')) {
+    const deeper = await firstVisible(dialog().getByRole('button', { name: /^„.*“ öffnen$/ }))
+    if (deeper) {
+      await deeper.click().catch(() => {})
+      await settle(page, 400)
+    }
+  }
+  await selectSome(page, many)
+  await sleep(200)
+  await shoot(page, 'wizard-select', type, scenario)
+  if (scenario === 'partial') return
+  await clickButton(page, /^Übernehmen$/, { wait: 500 })
   await clickButton(page, TEST_BUTTON, { wait: 1200 })
   await settle(page, 200)
 }
@@ -752,12 +807,18 @@ async function detailFlow(page, type, scenario, states) {
   }
   if (!states.includes('edit') || !wantArea('edit')) return
   if (!opened) return notFound('edit', type, scenario, 'tab Quelle')
-  const edit = await clickButton(page, /^(Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 })
+  const edit = await clickButton(page, /^(Quelle bearbeiten|Quellkonfiguration bearbeiten|Quelle bearbeiten|Anbindung bearbeiten|Verbindung bearbeiten|Bearbeiten|Ändern)$/, { wait: 900 })
   if (!edit) return notFound('edit', type, scenario, 'edit button')
   await settle(page, 300)
   // load the listing in the edit flow too, so the selection UI shows its real size
   await triggerListings(page, { slow: scenario === 'slow' })
   await shoot(page, 'edit', type, scenario)
+  const selectButton = await firstVisible(page.getByRole('dialog').getByRole('button', { name: SELECT_BUTTON }))
+  if (selectButton && (scenario === 'scale' || scenario === 'small')) {
+    await selectButton.click().catch(() => {})
+    await settle(page, 600)
+    await shoot(page, 'edit-select', type, scenario)
+  }
 }
 
 ;(async () => {

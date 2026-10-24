@@ -36,9 +36,7 @@ export default function ConfluenceForm({
     context.credentialsStored &&
     sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl)
   // the edition belongs to the address it was detected for; a late answer for another is dropped
-  const [detected, setDetected] = useState<{ url: string; edition: ConfluenceEdition } | null>(
-    null,
-  )
+  const [detected, setDetected] = useState<{ url: string; edition: ConfluenceEdition } | null>(null)
   const url = values.sourceUrl.trim()
   useEffect(() => {
     if (detected && detected.url === url && values.edition === null) {
@@ -114,7 +112,7 @@ export default function ConfluenceForm({
       </FieldGroup>
       {fields.asksSecret && (
         <FieldGroup title="Anmeldung">
-          {values.edition !== 'DATA_CENTER' && (
+          {values.edition !== 'DATA_CENTER' && (!stored || values.token !== '') && (
             <SourceTextField
               idPrefix={prefix}
               field="email"

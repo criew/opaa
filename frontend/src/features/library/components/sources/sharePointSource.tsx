@@ -10,9 +10,11 @@ import {
 } from '../../utils/sharePointSource'
 import SharePointForm from '../sourceForms/SharePointForm'
 import { listSummary } from '../sourceKit/summaries'
-import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
+import { SharePointStoredView } from './SharePointSourceViews'
 import { formIssue, issueAt } from '../../utils/sourceIssue'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
+import { sharePointItemsOf } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
 const selectionIssue = (message: string | null) => (message ? issueAt('selection', message) : null)
@@ -66,7 +68,13 @@ export const sharePointSource: SourceRegistration = {
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
     Form: SharePointForm,
     StoredView: SharePointStoredView,
-    Scope: SharePointScopeView,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Dokumentbibliotheken und Ordner"
+        items={sharePointItemsOf(sharePointLibrariesOf(sharePointSettingsFromLibrary(library)))}
+        emptyText="Keine"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const count = sharePointLibrariesOf(sharePointSettingsFromLibrary(library)).length

@@ -42,12 +42,13 @@ export function SelectionLines({
           <Box component="li" key={item.key} sx={{ display: 'flex', minWidth: 0, py: '2px' }}>
             <Tooltip title={pathLabel(item)} placement="bottom-start" enterDelay={500}>
               <Typography sx={{ ...ellipsis, fontSize: 14 }}>
+                {item.name}
                 {item.trail.length > 0 && (
                   <Box component="span" sx={{ color: 'text.secondary' }}>
-                    {item.trail.map((crumb) => crumb.name).join(' / ')} /{' '}
+                    {' · in '}
+                    {item.trail.map((crumb) => crumb.name).join(' / ')}
                   </Box>
                 )}
-                {item.name}
               </Typography>
             </Tooltip>
           </Box>

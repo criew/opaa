@@ -10,9 +10,11 @@ import {
 import FolderShareForm, { type FolderShareShape } from '../sourceForms/FolderShareForm'
 import { collectIssues, unifyMissing } from '../sourceKit/collectIssues'
 import { folderSummary } from '../sourceKit/summaries'
-import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
+import { NextcloudStoredView } from './NextcloudSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
+import { folderItem } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceFormContext, SourceRegistration } from './types'
 
 const nextcloudShape: FolderShareShape<NextcloudSourceValues> = {
@@ -82,7 +84,15 @@ export const nextcloudSource: SourceRegistration = {
     },
     Form: (props) => <FolderShareForm {...props} shape={nextcloudShape} />,
     StoredView: NextcloudStoredView,
-    Scope: NextcloudScope,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Ordner"
+        items={(nextcloudSettingsOf(library).folders ?? [])
+          .filter((f) => f !== '/')
+          .map(folderItem)}
+        emptyText="Alle Ordner (/)"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const count = nextcloudSettingsOf(library).folders?.length ?? 0

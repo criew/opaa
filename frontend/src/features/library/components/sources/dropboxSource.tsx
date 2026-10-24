@@ -8,8 +8,10 @@ import {
 } from '../../utils/dropboxSource'
 import DropboxForm from '../sourceForms/DropboxForm'
 import { folderSummary } from '../sourceKit/summaries'
-import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
+import { DropboxStoredView } from './DropboxSourceViews'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
+import { folderItem } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceRegistration } from './types'
 
 export const dropboxSource: SourceRegistration = {
@@ -50,7 +52,13 @@ export const dropboxSource: SourceRegistration = {
     },
     Form: DropboxForm,
     StoredView: DropboxStoredView,
-    Scope: DropboxScope,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Ordner"
+        items={(dropboxSettingsOf(library).folders ?? []).filter((f) => f !== '/').map(folderItem)}
+        emptyText="Alle Ordner (/)"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const count = dropboxSettingsOf(library).folders?.length ?? 0

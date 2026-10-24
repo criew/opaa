@@ -10,9 +10,11 @@ import {
 import FolderShareForm, { type FolderShareShape } from '../sourceForms/FolderShareForm'
 import { collectIssues, unifyMissing } from '../sourceKit/collectIssues'
 import { folderSummary } from '../sourceKit/summaries'
-import { SmbScope, SmbStoredView } from './SmbSourceViews'
+import { SmbStoredView } from './SmbSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
+import { folderItem } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceFormContext, SourceRegistration } from './types'
 
 const smbShape: FolderShareShape<SmbSourceValues> = {
@@ -92,7 +94,13 @@ export const smbSource: SourceRegistration = {
     },
     Form: (props) => <FolderShareForm {...props} shape={smbShape} />,
     StoredView: SmbStoredView,
-    Scope: SmbScope,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Ordner"
+        items={(smbSettingsOf(library).folders ?? []).filter((f) => f !== '/').map(folderItem)}
+        emptyText="Alle Ordner (/)"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const count = smbSettingsOf(library).folders?.length ?? 1

@@ -142,7 +142,9 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
 
   const chosenKeys = useMemo(() => new Set(draft.map((item) => item.key)), [draft])
   const coveringParent = level.find((crumb) => chosenKeys.has(crumb.key))
-  const selectable = coveringParent ? [] : entries.filter((entry) => entry.selectable)
+  const selectable = coveringParent
+    ? []
+    : entries.filter((entry) => entry.selectable && !entry.blocked)
   const selectableChosen = selectable.filter((entry) => chosenKeys.has(entry.key)).length
   const dirty = draft.length !== value.length || draft.some((item, i) => item.key !== value[i]?.key)
 
@@ -246,12 +248,13 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
             >
               <Tooltip title={pathLabel(item)} placement="bottom-start">
                 <Typography sx={{ ...ellipsis, flex: 1, fontSize: 14 }}>
+                  {item.name}
                   {item.trail.length > 0 && (
                     <Box component="span" sx={{ color: 'text.secondary' }}>
-                      {item.trail.map((crumb) => crumb.name).join(' / ')} /{' '}
+                      {' · in '}
+                      {item.trail.map((crumb) => crumb.name).join(' / ')}
                     </Box>
                   )}
-                  {item.name}
                 </Typography>
               </Tooltip>
               <Tooltip title="Entfernen">
@@ -364,7 +367,7 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
                     size="small"
                     checked={checked || covered}
                     indeterminate={!checked && !covered && mixed}
-                    disabled={covered}
+                    disabled={covered || (Boolean(entry.blocked) && !checked)}
                     onChange={() => {
                       setDraft((prev) => toggle(prev, entry, level))
                       setApplyError(null)
@@ -374,30 +377,38 @@ function SelectionDialogBody({ title, source, value, onApply, onClose }: Selecti
                 ) : (
                   <Box sx={{ width: 38, flexShrink: 0 }} />
                 )}
-                <Tooltip title={entry.name} placement="bottom-start" enterDelay={600}>
-                  <Typography
-                    component={entry.openable && !entry.selectable ? 'button' : 'span'}
-                    onClick={
-                      entry.openable && !entry.selectable
-                        ? () => openLevel([...level, { key: entry.key, name: entry.name }])
-                        : undefined
-                    }
-                    sx={{
-                      ...ellipsis,
-                      flex: 1,
-                      fontSize: 14,
-                      textAlign: 'left',
-                      border: 0,
-                      bgcolor: 'transparent',
-                      color: 'text.primary',
-                      p: 0,
-                      font: 'inherit',
-                      cursor: entry.openable && !entry.selectable ? 'pointer' : 'default',
-                    }}
-                  >
-                    {entry.name}
-                  </Typography>
-                </Tooltip>
+                <Box sx={{ flex: 1, minWidth: 0, py: entry.blocked ? 0.5 : 0 }}>
+                  <Tooltip title={entry.name} placement="bottom-start" enterDelay={600}>
+                    <Typography
+                      component={entry.openable && !entry.selectable ? 'button' : 'span'}
+                      onClick={
+                        entry.openable && !entry.selectable
+                          ? () => openLevel([...level, { key: entry.key, name: entry.name }])
+                          : undefined
+                      }
+                      sx={{
+                        ...ellipsis,
+                        display: 'block',
+                        width: '100%',
+                        fontSize: 14,
+                        textAlign: 'left',
+                        border: 0,
+                        bgcolor: 'transparent',
+                        color: 'text.primary',
+                        p: 0,
+                        font: 'inherit',
+                        cursor: entry.openable && !entry.selectable ? 'pointer' : 'default',
+                      }}
+                    >
+                      {entry.name}
+                    </Typography>
+                  </Tooltip>
+                  {entry.blocked && (
+                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                      {entry.blocked}
+                    </Typography>
+                  )}
+                </Box>
                 {mixed && !checked && (
                   <Typography sx={{ fontSize: 12, color: 'text.secondary', flexShrink: 0 }}>
                     teilweise

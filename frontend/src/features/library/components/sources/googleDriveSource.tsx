@@ -9,8 +9,10 @@ import {
 } from '../../utils/googleDriveSource'
 import DriveForm from '../sourceForms/DriveForm'
 import { listSummary } from '../sourceKit/summaries'
+import { driveItem } from '../sourceKit/selectionSources'
+import StoredSelection from '../sourceKit/StoredSelection'
 import type { SourceIssue } from '../../utils/sourceIssue'
-import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
+import { GoogleDriveStoredView } from './GoogleDriveSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceFormContext, SourceRegistration } from './types'
@@ -69,7 +71,13 @@ export const googleDriveSource: SourceRegistration = {
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
     Form: DriveForm,
     StoredView: GoogleDriveStoredView,
-    Scope: GoogleDriveScopeView,
+    Scope: ({ library }) => (
+      <StoredSelection
+        label="Ablagen und Ordner"
+        items={googleDriveScopesOf(googleDriveSettingsFromLibrary(library)).map(driveItem)}
+        emptyText="Keine"
+      />
+    ),
     scopeHero: {
       summary: (library) => {
         const count = googleDriveScopesOf(googleDriveSettingsFromLibrary(library)).length

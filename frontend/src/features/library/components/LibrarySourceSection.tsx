@@ -185,7 +185,7 @@ export default function LibrarySourceSection({
       {Scope && (
         <PageSection
           title="Umfang"
-          description="Was diese Bibliothek aus ihrer Quelle aufnimmt — ihr Geltungsbereich. Er gilt für alle Leseberechtigten der Bibliothek."
+          description="Was diese Bibliothek aus ihrer Quelle liest."
         >
           <Stack spacing={1}>
             <Scope library={library} />
@@ -210,10 +210,9 @@ export default function LibrarySourceSection({
                   size="small"
                   variant="outlined"
                   onClick={() => setEditSourceOpen(true)}
-                  aria-label="Quellkonfiguration bearbeiten"
                   sx={{ flexShrink: 0 }}
                 >
-                  Bearbeiten
+                  Quelle bearbeiten
                 </Button>
               ) : undefined
             }

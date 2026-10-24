@@ -90,6 +90,8 @@ export function folderSelectionSource(
         name: name.includes('/') ? lastSegment(name) : name,
         selectable: true,
         openable: true,
+        // the stored settings separate folders by comma
+        ...(key.includes(',') ? { blocked: 'Nicht wählbar: Komma im Pfad' } : {}),
       }))
     },
     manual: {
