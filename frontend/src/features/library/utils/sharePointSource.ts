@@ -102,23 +102,9 @@ export function sharePointFolderPath(trail: string[], name: string | null) {
   return path.slice(0, MAX_SHAREPOINT_NAME_LENGTH)
 }
 
-/** The German rejection of the values, null when they may be sent. */
-export function validateSharePointValues(values: SharePointSourceValues): string | null {
-  if (values.libraries.length === 0) {
-    return 'Bitte mindestens eine Dokumentbibliothek wählen.'
-  }
-  if (values.libraries.length > MAX_SHAREPOINT_LIBRARIES) {
-    return `Höchstens ${MAX_SHAREPOINT_LIBRARIES} Dokumentbibliotheken sind möglich.`
-  }
-  for (const library of values.libraries) {
-    if (!GRAPH_ID.test(library.driveId) || library.folders.some((f) => !GRAPH_ID.test(f.id))) {
-      return 'Eine Dokumentbibliothek oder ein Ordner hat keine gültige Kennung; bitte neu aus der Auflistung wählen.'
-    }
-    if (library.folders.length > MAX_SHAREPOINT_FOLDERS) {
-      return `Höchstens ${MAX_SHAREPOINT_FOLDERS} Ordner je Dokumentbibliothek sind möglich („${sharePointLibraryLabel(library)}“).`
-    }
-  }
-  return null
+/** Whether the connector accepts the Graph ids of the library and of its folders. */
+export function sharePointIdsValid(library: Pick<SharePointLibraryChoice, 'driveId' | 'folders'>) {
+  return GRAPH_ID.test(library.driveId) && library.folders.every((f) => GRAPH_ID.test(f.id))
 }
 
 /** The settings part of a request. */
