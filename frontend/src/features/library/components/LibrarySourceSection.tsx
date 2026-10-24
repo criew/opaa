@@ -443,31 +443,29 @@ function LibraryIndexingHistorySection({
                     />
                   )}
                   {run.incomplete && (
-                    <Chip
-                      label={
-                        quotaExhausted(run)
-                          ? QUOTA_EXHAUSTED_LABEL
-                          : 'unvollständig, wird fortgesetzt'
-                      }
-                      size="small"
-                      color="warning"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-incomplete-${run.id}`}
-                    />
+                    >
+                      {quotaExhausted(run)
+                        ? QUOTA_EXHAUSTED_LABEL
+                        : 'unvollständig, wird fortgesetzt'}
+                    </Typography>
                   )}
                   {run.unreadableScopeCount != null && run.unreadableScopeCount > 0 && (
-                    <Chip
-                      label={`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
-                      size="small"
-                      color="warning"
+                    <Typography
+                      variant="body2"
+                      sx={{ color: 'text.secondary' }}
                       data-testid={`run-unreadable-${run.id}`}
-                    />
+                    >
+                      {`${run.unreadableScopeCount} ${run.unreadableScopeCount === 1 ? 'Bereich' : 'Bereiche'} nicht lesbar`}
+                    </Typography>
                   )}
                   {run.events.length > 0 && (
-                    <Chip
-                      label={runEventsLabel(run.events)}
-                      size="small"
-                      color={countUnreadable(run.events) > 0 ? 'warning' : 'default'}
-                    />
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {runEventsLabel(run.events)}
+                    </Typography>
                   )}
                 </Stack>
               </AccordionSummary>

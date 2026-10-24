@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
@@ -9,6 +8,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SelectionList, { VIRTUAL_FROM, type CheckState, type SelectionNoun } from './SelectionList'
 import SelectedSummary from './SelectedSummary'
+import LoadError from './LoadError'
 import { toggleIn } from './selectionMapping'
 import { useDelayedFlag } from './useDelayedFlag'
 
@@ -45,6 +45,8 @@ interface SelectionTreeProps {
   openLabel?: (node: TreeNode, depth: number) => string
   /** Text when the top level is empty. */
   emptyText: string
+  /** The noun of one level (sites, then libraries), the tree's noun by default. */
+  levelNoun?: (parent: TreeNode | null) => SelectionNoun
   /** Nodes open from the start, e.g. the synthetic root of a folder tree. */
   initiallyExpanded?: TreeNode[]
 }
@@ -66,6 +68,7 @@ export default function SelectionTree({
   openLabel = (node) => `Unterordner von „${node.label}“ anzeigen`,
   emptyText,
   initiallyExpanded = [],
+  levelNoun = () => noun,
 }: SelectionTreeProps) {
   const [levels, setLevels] = useState<Record<string, LevelState>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
@@ -147,7 +150,7 @@ export default function SelectionTree({
           <SelectionList
             items={level.listing.items}
             label={parent ? `${label} in „${parent.label}“` : label}
-            noun={noun}
+            noun={levelNoun(parent)}
             stateOf={stateOf}
             lockedOf={() => covered}
             selectable={(item) => (item as TreeNode).selectable !== false}
@@ -313,16 +316,7 @@ function LevelView({
     )
   }
   if (level.status === 'error') {
-    return (
-      <Box sx={{ py: 1 }} role="alert">
-        <Typography sx={{ fontSize: 13, color: 'error.main', overflowWrap: 'anywhere' }}>
-          {level.error}
-        </Typography>
-        <Button size="small" variant="text" sx={{ ml: -1 }} onClick={onRetry}>
-          Erneut versuchen
-        </Button>
-      </Box>
-    )
+    return <LoadError message={level.error ?? ''} onRetry={onRetry} />
   }
   return (
     <Box>

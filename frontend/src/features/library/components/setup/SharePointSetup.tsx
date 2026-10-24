@@ -129,8 +129,11 @@ export default function SharePointSetup({
     [search?.generation],
   )
 
-  const runSearch = () =>
+  // the same search again keeps the tree with what is open in it
+  const runSearch = () => {
+    if (search && search.text === query.trim()) return
     setSearch({ text: query.trim(), generation: (search?.generation ?? 0) + 1 })
+  }
   const selection = librariesToSelection(values.libraries)
   return (
     <SourceSetupLayout
@@ -146,11 +149,11 @@ export default function SharePointSetup({
           stages={['signIn', 'access']}
           token={tokenOf(fields.probe, values.libraries)}
           request={() =>
-            fields.connection || context.mode === 'edit'
+            (fields.connection || context.mode === 'edit') && values.libraries.length > 0
               ? testRequestOf(context, sharePointPayloadOf(values))
               : null
           }
-          missingHint="Bitte zuerst einen Zugang wählen."
+          missingHint="Bitte zuerst einen Zugang und eine Dokumentbibliothek wählen."
         />
       }
       scope={
@@ -187,6 +190,13 @@ export default function SharePointSetup({
               <SelectionTree
                 label="Sites"
                 noun={{ one: 'Eintrag', many: 'Einträge' }}
+                levelNoun={(parent) =>
+                  !parent
+                    ? { one: 'Site', many: 'Sites' }
+                    : parent.id.startsWith('s:')
+                      ? { one: 'Dokumentbibliothek', many: 'Dokumentbibliotheken' }
+                      : { one: 'Ordner', many: 'Ordner' }
+                }
                 rootLabel="Sites"
                 loadChildren={loadChildren}
                 selection={selection}

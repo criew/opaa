@@ -309,6 +309,7 @@ function SelectionRow({
               justifyContent: 'flex-start',
               alignSelf: 'stretch',
               pl: 1.5,
+              fontFamily: 'inherit',
               fontWeight: 500,
               textAlign: 'left',
               borderRadius: '6px',

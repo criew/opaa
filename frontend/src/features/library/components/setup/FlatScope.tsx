@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import type { SourceBrowseResponse } from '@/shared/api/types'
 import SelectionList, { type SelectionItem, type SelectionNoun } from './SelectionList'
 import SelectedSummary from './SelectedSummary'
 import { listingNote } from './probe'
 import { useDelayedFlag } from './useDelayedFlag'
+import LoadError from './LoadError'
 
 interface FlatScopeProps {
   /** Loads the whole list once. */
@@ -81,22 +81,13 @@ export default function FlatScope({
           <Box sx={{ minHeight: 24 }} />
         ))}
       {state.status === 'error' && (
-        <Box role="alert">
-          <Typography sx={{ fontSize: 13, color: 'error.main', overflowWrap: 'anywhere' }}>
-            {state.error}
-          </Typography>
-          <Button
-            size="small"
-            variant="text"
-            sx={{ ml: -1 }}
-            onClick={() => {
-              setState({ status: 'loading' })
-              setAttempt(attempt + 1)
-            }}
-          >
-            Erneut versuchen
-          </Button>
-        </Box>
+        <LoadError
+          message={state.error ?? ''}
+          onRetry={() => {
+            setState({ status: 'loading' })
+            setAttempt(attempt + 1)
+          }}
+        />
       )}
       {state.status === 'ok' && state.items && (
         <>

@@ -631,7 +631,10 @@ export default function LibraryCreatePage() {
               setSourceValues((prev) => ({
                 ...prev,
                 [valuesKey]: {
-                  ...(withConnection(prev[valuesKey] ?? configuration?.empty, connection) as object),
+                  ...(withConnection(
+                    prev[valuesKey] ?? configuration?.empty,
+                    connection,
+                  ) as object),
                   ...withoutFixed(patch, connection),
                 },
               }))
