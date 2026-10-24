@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.test.GlobalCeilingWindow;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -53,6 +55,7 @@ class RateLimitSecurityChainIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private Environment environment;
 
   private LocalAccountFixtures fixtures;
 
@@ -129,6 +132,7 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Test
   void anAuthenticatedRequestKeepsItsGlobalToken() throws Exception {
+    GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, environment, "query");
     String bearer = signIn("198.51.100.50");
     for (int person = 1; person <= GLOBAL_QUERY_CEILING; person++) {
       assertThat(query(bearer, "198.51.100." + (50 + person))).isNotEqualTo(429);
@@ -202,6 +206,7 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Test
   void theSearchCeilingCountsSignedInSearchesOfAllClients() throws Exception {
+    GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, environment, "search");
     // one account per address, so that no budget per account answers before the ceiling
     for (int client = 1; client <= GLOBAL_SEARCH_CEILING; client++) {
       int status =
@@ -220,6 +225,7 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Test
   void anAccountRotatingItsAddressesIsRefusedPerAccountAndGivesBackTheCeiling() throws Exception {
+    GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, environment, "search");
     String anna = signIn("198.51.100.160");
     for (int address = 1; address <= SEARCH_PER_ACCOUNT; address++) {
       int status =
