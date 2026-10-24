@@ -36,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The category {@code audit-log} against entries the real writers produce - role change, group
@@ -48,6 +49,7 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
 
   private static final String ADMIN_NAME = "Adalbert Verwalter";
   private static final String ADMIN_EMAIL = "adalbert.verwalter@sd2990.example";
+  private static final JsonMapper JSON = JsonMapper.builder().build();
 
   @Autowired private AuditLogSelfDisclosureExporter exporter;
   @Autowired private UserService userService;
@@ -168,13 +170,16 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
         .filteredOn(r -> "SPACE_CREATED".equals(r.get("eventType")))
         .singleElement()
         .satisfies(
-            r ->
-                assertThat(r)
-                    .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
-                    .containsEntry("subject", null)
-                    .containsEntry(
-                        "after",
-                        "{\"name\":\"Referat 3135\",\"ownerId\":\"Sie\",\"chatAutoCleanup\":false}"));
+            r -> {
+              assertThat(r)
+                  .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
+                  .containsEntry("subject", null);
+              // the recorder keeps no key order: compared as JSON, not as text
+              assertThat(JSON.readTree((String) r.get("after")))
+                  .isEqualTo(
+                      JSON.readTree(
+                          "{\"name\":\"Referat 3135\",\"ownerId\":\"Sie\",\"chatAutoCleanup\":false}"));
+            });
     assertThat(ofPrevious)
         .filteredOn(r -> "ASSET_OWNER_CHANGED".equals(r.get("eventType")))
         .singleElement()
