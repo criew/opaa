@@ -54,7 +54,7 @@ test.describe("Selbstauskunft nach bestätigter Anmeldung", () => {
    * Loads „Meine Daten“ afresh: the page load restores the session over the refresh cookie, whose
    * token carries no time of sign-in, so the ticket asks for a confirmation. Waits for the refresh
    * to answer - a navigation that cut it off would send the rotated-away cookie again, which the
-   * backend treats as reuse and answers by ending every session of the account.
+   * backend renews only within its grace period and otherwise treats as reuse.
    */
   async function loadMyDataWithoutRecentLogin(page: Page): Promise<void> {
     const [refreshed] = await Promise.all([
