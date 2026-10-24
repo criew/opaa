@@ -3,6 +3,7 @@ package io.opaa.ratelimit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.ratelimit.RateLimitService.Decision;
+import io.opaa.test.GlobalCeilingWindow;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.TwoInstanceRace;
 import java.time.Duration;
@@ -27,6 +28,11 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 class InstallationCountersTwoInstanceIntegrationTest {
 
   private static final Duration MINUTE = Duration.ofMinutes(1);
+
+  /** Long enough that waiting for room in it is rarely needed. */
+  private static final int LONG_WINDOW_SECONDS = 3600;
+
+  private static final Duration LONG_WINDOW = Duration.ofSeconds(LONG_WINDOW_SECONDS);
 
   @Autowired private JdbcInstallationCounters instanceA;
   @Autowired private DataSource dataSource;
@@ -130,6 +136,62 @@ class InstallationCountersTwoInstanceIntegrationTest {
     assertThat(JdbcInstallationCounters.waitSeconds(0, 10, 15, 60, 10)).isEqualTo(45);
     // a previous window of twenty alone: room once it weighs below ten, half-way through
     assertThat(JdbcInstallationCounters.waitSeconds(20, 0, 10, 60, 10)).isEqualTo(20);
+  }
+
+  /**
+   * Right after a window change the requests of the previous window still count, weighted by the
+   * share of it the sliding window still covers: a ceiling exhausted just before the change refuses
+   * just after it, although the new fixed window is still empty.
+   */
+  @Test
+  void afterAWindowChangeThePreviousWindowCountsByTheShareItStillCovers() throws Exception {
+    GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, LONG_WINDOW_SECONDS);
+    seedWindowsBack(1, 1000);
+    double into = secondsIntoWindow();
+
+    // the weighted previous window, with a margin for the seconds the test itself takes
+    int belowWeighted = (int) Math.floor(1000 * (1 - (into + 5) / LONG_WINDOW_SECONDS));
+    assertThat(instanceA.tryCount(key, LONG_WINDOW, belowWeighted).allowed()).isFalse();
+
+    int aboveWeighted = (int) Math.ceil(1000 * (1 - into / LONG_WINDOW_SECONDS)) + 1;
+    assertThat(instanceA.tryCount(key, LONG_WINDOW, aboveWeighted).allowed()).isTrue();
+    assertThat(storedCounts()).containsExactly(1000, 1);
+  }
+
+  @Test
+  void aWindowOlderThanThePreviousOneCountsNoLonger() throws Exception {
+    GlobalCeilingWindow.startWithRoomIn(jdbcTemplate, LONG_WINDOW_SECONDS);
+    seedWindowsBack(2, 1000);
+
+    assertThat(instanceA.tryCount(key, LONG_WINDOW, 1).allowed()).isTrue();
+    assertThat(storedCounts()).containsExactly(0, 1);
+  }
+
+  /** A row whose current window lies {@code windowsBack} fixed windows before the one of now. */
+  private void seedWindowsBack(int windowsBack, int count) {
+    jdbcTemplate.update(
+        "INSERT INTO installation_counters (counter_key, window_seconds, window_start,"
+            + " current_count, previous_count, counted_at) SELECT ?, ?, w, ?, 0, w FROM (SELECT"
+            + " date_bin(make_interval(secs => ?), clock_timestamp(), TIMESTAMPTZ 'epoch')"
+            + " - make_interval(secs => ?) AS w) s",
+        key,
+        LONG_WINDOW_SECONDS,
+        count,
+        LONG_WINDOW_SECONDS,
+        windowsBack * LONG_WINDOW_SECONDS);
+  }
+
+  private double secondsIntoWindow() {
+    return jdbcTemplate.queryForObject(
+        "SELECT mod(extract(epoch FROM clock_timestamp()), ?)", Double.class, LONG_WINDOW_SECONDS);
+  }
+
+  /** The previous and the current count of the row. */
+  private List<Integer> storedCounts() {
+    return jdbcTemplate.queryForObject(
+        "SELECT previous_count, current_count FROM installation_counters WHERE counter_key = ?",
+        (rs, row) -> List.of(rs.getInt(1), rs.getInt(2)),
+        key);
   }
 
   private JdbcInstallationCounters instanceB() {
