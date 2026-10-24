@@ -7,7 +7,8 @@ import {
   googleDriveIssue,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import GoogleDriveForm, { pickedOfDriveScopes } from '../setup/forms/GoogleDriveForm'
+import GoogleDriveForm from '../setup/forms/GoogleDriveForm'
+import { pickedOfDriveScopes } from '../setup/pickedOf'
 import { issueAt, type SourceIssue } from '../../utils/sourceIssue'
 import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
 import { connectionFields } from './sourceConnection'
@@ -47,7 +48,11 @@ export const googleDriveSource: SourceRegistration = {
         connectionFields(context).asksSecret
           ? googleDriveIssue(probe, context.credentialsStored)
           : googleDriveIssue({ ...probe, storedSubject: probe.subject }, true)
-      const keyIssue = first({ ...values, scopes: [{ kind: 'drive', id: 'x', name: null }], subject: '' })
+      const keyIssue = first({
+        ...values,
+        scopes: [{ kind: 'drive', id: 'x', name: null }],
+        subject: '',
+      })
       if (keyIssue && !keyIssue.field) issues.push(issueAt('keyFile', keyIssue.message))
       const rest = first({ ...values, keyFile: values.keyFile || 'key' })
       if (rest) {
@@ -62,7 +67,11 @@ export const googleDriveSource: SourceRegistration = {
       connection: [
         {
           label: 'Dienstkonto',
-          value: values.keyAccount || (context.credentialsStored ? 'Schlüssel gespeichert' : context.connection?.name ?? ''),
+          value:
+            values.keyAccount ||
+            (context.credentialsStored
+              ? 'Schlüssel gespeichert'
+              : (context.connection?.name ?? '')),
         },
         { label: 'Im Namen von', value: values.subject.trim() },
       ],

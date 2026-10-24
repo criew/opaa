@@ -8,16 +8,17 @@ import { sourceRegistration } from './sources/registry'
  * therefore three steps.
  */
 export const STEP_SOURCE_TYPE = 'Quellart'
-export const STEP_SOURCE_SETUP = 'Quelle einrichten'
-export const STEP_NAME = 'Name & Beschreibung'
+export const STEP_SOURCE_SETUP = 'Quelle'
+export const STEP_NAME = 'Name'
 export const STEP_SHARING = 'Freigaben'
+export const STEP_REVIEW = 'Prüfen'
 
-/** A private library has no sharing step: only its owner ever reads it. */
+/** A private library has no sharing step: only its owner ever reads it. Every way ends in „Prüfen". */
 export function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
-  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING]
+  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING, STEP_REVIEW]
   return privateLibrary
-    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME]
-    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING]
+    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_REVIEW]
+    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING, STEP_REVIEW]
 }
 
 export const stepHeadings: Record<string, string> = {
@@ -25,6 +26,7 @@ export const stepHeadings: Record<string, string> = {
   [STEP_SOURCE_SETUP]: 'Quelle einrichten',
   [STEP_NAME]: 'Name & Beschreibung',
   [STEP_SHARING]: 'Freigaben',
+  [STEP_REVIEW]: 'Prüfen',
 }
 
 export const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'

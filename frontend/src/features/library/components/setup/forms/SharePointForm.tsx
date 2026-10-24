@@ -5,21 +5,19 @@ import { browseSource, testLibrarySource } from '../../../api/libraryApi'
 import {
   MAX_SHAREPOINT_LIBRARIES,
   SHAREPOINT_API,
-  sharePointFolderLabel,
   sharePointFolderPath,
   sharePointKeyOf,
   sharePointLibraryChecksOf,
-  sharePointLibraryLabel,
   sharePointLibraryName,
-  type SharePointLibraryChoice,
   type SharePointSourceValues,
 } from '../../../utils/sharePointSource'
 import { connectionFields } from '../../sources/sourceConnection'
 import type { SourceFormProps } from '../../sources/types'
 import ConnectionStage from '../ConnectionStage'
 import { outcomeOf, outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
+import { librariesOfPicked, pickedOfLibraries } from '../pickedOf'
 import SplitPicker from '../SplitPicker'
-import type { PickedItem, PickerCrumb, PickerLevel } from '../pickerTypes'
+import type { PickerCrumb, PickerLevel } from '../pickerTypes'
 import { SelectionPending } from './AccountFolderForm'
 
 const LEVELS = [
@@ -27,59 +25,6 @@ const LEVELS = [
   { one: 'Dokumentbibliothek', many: 'Dokumentbibliotheken' },
   { one: 'Ordner', many: 'Ordner' },
 ]
-
-/** „Dokumente (Rathaus)" split into the library's and the site's name. */
-function splitLibraryName(name: string): { library: string; site: string | null } {
-  const match = /^(.*) \(([^()]+)\)$/.exec(name)
-  return match ? { library: match[1], site: match[2] } : { library: name, site: null }
-}
-
-/** The chosen libraries and folders as items with site and library in their trail. */
-export function pickedOfLibraries(libraries: SharePointLibraryChoice[]): PickedItem[] {
-  return libraries.flatMap((library): PickedItem[] => {
-    const { library: name, site } = splitLibraryName(sharePointLibraryLabel(library))
-    const siteCrumbs: PickerCrumb[] = site ? [{ key: `site-name:${site}`, name: site }] : []
-    const driveCrumb: PickerCrumb = { key: `drive:${library.driveId}`, name, raw: { driveId: library.driveId } }
-    if (library.folders.length === 0) {
-      return [{ key: driveCrumb.key, name, trail: siteCrumbs, raw: { driveId: library.driveId, libraryName: library.name } }]
-    }
-    return library.folders.map((folder) => {
-      const segments = sharePointFolderLabel(folder).split(' / ')
-      return {
-        key: `folder:${folder.id}`,
-        name: segments[segments.length - 1],
-        trail: [
-          ...siteCrumbs,
-          driveCrumb,
-          ...segments.slice(0, -1).map((segment, index) => ({
-            key: `folder-name:${library.driveId}:${segments.slice(0, index + 1).join('/')}`,
-            name: segment,
-          })),
-        ],
-        raw: { driveId: library.driveId, libraryName: library.name, folderId: folder.id, path: folder.name },
-      }
-    })
-  })
-}
-
-/** The selection back as libraries, each whole or with its chosen folders. */
-function librariesOfPicked(items: PickedItem[]): SharePointLibraryChoice[] {
-  const byDrive = new Map<string, SharePointLibraryChoice>()
-  for (const item of items) {
-    const driveId = String(item.raw?.driveId ?? '')
-    if (!driveId) continue
-    const library = byDrive.get(driveId) ?? {
-      driveId,
-      name: (item.raw?.libraryName as string | null) ?? null,
-      folders: [],
-    }
-    if (item.raw?.folderId) {
-      library.folders.push({ id: String(item.raw.folderId), name: String(item.raw.path ?? item.name) })
-    }
-    byDrive.set(driveId, library)
-  }
-  return [...byDrive.values()]
-}
 
 /**
  * The source form of a SharePoint library: the connection is the profile's app registration, so
@@ -118,7 +63,9 @@ export default function SharePointForm({
     async (trail: PickerCrumb[], query?: string): Promise<PickerLevel> => {
       if (trail.length === 0) {
         const text = query?.trim() ?? ''
-        const response = await browse(/^https:\/\//i.test(text) ? { siteUrl: text } : { search: text })
+        const response = await browse(
+          /^https:\/\//i.test(text) ? { siteUrl: text } : { search: text },
+        )
         return {
           complete: response.complete,
           message: response.message ?? null,
@@ -126,7 +73,15 @@ export default function SharePointForm({
             const key = sharePointKeyOf(entry.key)
             if (key?.kind !== 'site') return []
             const name = entry.name ?? key.id
-            return [{ key: entry.key, name, selectable: false, hasChildren: true, raw: { siteId: key.id, siteName: name } }]
+            return [
+              {
+                key: entry.key,
+                name,
+                selectable: false,
+                hasChildren: true,
+                raw: { siteId: key.id, siteName: name },
+              },
+            ]
           }),
         }
       }
@@ -208,7 +163,11 @@ export default function SharePointForm({
         token={token}
         stages={['auth', 'rights']}
         run={run}
-        summary={[connection.connection ? `Zugang „${connection.connection.name}“` : 'Gespeicherte Anmeldung']}
+        summary={[
+          connection.connection
+            ? `Zugang „${connection.connection.name}“`
+            : 'Gespeicherte Anmeldung',
+        ]}
         fields={[]}
         autoTest
         onOutcome={setOutcome}

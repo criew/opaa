@@ -310,7 +310,7 @@ async function fillSource(page, type, scenario) {
       await fillByLabel(page, [/Adresse der Confluence/, /Adresse/, /URL/], 'https://rheinfurt.atlassian.net/wiki')
       await clickButton(page, /^(Edition erkennen|Adresse prüfen|Prüfen)$/, { wait: 800 })
       await settle(page, 200)
-      await fillByLabel(page, [/E-Mail/], 'dienstkonto@rheinfurt.example')
+      await fillByLabel(page, [/E-Mail/, /^Konto$/], 'dienstkonto@rheinfurt.example')
       await fillByLabel(page, [/API-Token/, /Token/, /Zugangsschlüssel/], 'atl-token-123')
       break
     case 's3':
@@ -331,14 +331,16 @@ async function fillSource(page, type, scenario) {
         await settle(page, 200)
         await clickByName(page, ['button', 'radio', 'option', 'treeitem', 'checkbox'], /^Rathaus$|^Team-Site 0|^Projekt 0/, { wait: 800 })
       } else {
-        await fillByLabel(page, [/Adresse der Site/, /Site-Adresse/, /Adresse/], 'https://rheinfurt.sharepoint.com/sites/rathaus')
+        await fillByLabel(page, [/Adresse der Site/, /Site-Adresse/, /Adresse/, /^Sites suchen$/], 'https://rheinfurt.sharepoint.com/sites/rathaus')
         await clickButton(page, /^(Site öffnen|Öffnen|Laden)$/, { wait: 900 })
+        await settle(page, 200)
+        await clickByName(page, ['button'], /^Rathaus$/, { wait: 800 })
       }
       await settle(page, 200)
       break
     case 'nextcloud':
       await fillByLabel(page, [/Adresse der Nextcloud/, /Adresse/], 'https://cloud.rheinfurt.example')
-      await fillByLabel(page, [/Technischer Nutzer/, /Benutzer/, /Nutzer/], 'svc-opaa')
+      await fillByLabel(page, [/Technischer Nutzer/, /Benutzer/, /Nutzer/, /^Konto$/], 'svc-opaa')
       await fillByLabel(page, [/App-Passwort/, /Passwort/], 'app-passwort')
       break
     case 'smb':
@@ -363,6 +365,9 @@ async function fillSource(page, type, scenario) {
     }
     return
   }
+  // a variant that offers the selection only after a passed connection test
+  await clickButton(page, TEST_BUTTON, { wait: slow ? 900 : 1000 })
+  await settle(page, 200)
   await triggerListings(page, { slow })
   if (slow) return
   if (type === 's3') {
@@ -385,14 +390,15 @@ async function fillSource(page, type, scenario) {
     if (bucket && (await bucket.inputValue().catch(() => 'x')) === '') {
       await bucket.fill(scenario === 'scale' ? 'bucket-0001' : 'protokolle').catch(() => {})
       await page.keyboard.press('Escape').catch(() => {})
+      await clickButton(page, /^Hinzufügen$/, { wait: 300 })
     }
   }
   if (type === 'sharepoint') {
     // open the folder level of the first chosen library and pick there too
-    if (await clickButton(page, /^(Ordner wählen|Ordner von|Ordner auswählen|Öffnen)/, { wait: 900 })) {
+    if (await clickButton(page, /^(Ordner wählen|Ordner von|Ordner auswählen|Öffnen)|öffnen$/, { wait: 900 })) {
       await settle(page, 200)
       if (scenario === 'scale') {
-        for (let d = 0; d < 3; d++) await clickButton(page, /^(Öffnen|Unterordner von)/, { wait: 600 })
+        for (let d = 0; d < 3; d++) await clickButton(page, /^(Öffnen|Unterordner von)|öffnen$/, { wait: 600 })
       }
       await selectSome(page, many)
       await clickButton(page, /^Fertig$/, { wait: 300 })

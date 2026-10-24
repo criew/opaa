@@ -7,7 +7,8 @@ import {
   validateSharePointValues,
   type SharePointSourceValues,
 } from '../../utils/sharePointSource'
-import SharePointForm, { pickedOfLibraries } from '../setup/forms/SharePointForm'
+import SharePointForm from '../setup/forms/SharePointForm'
+import { pickedOfLibraries } from '../setup/pickedOf'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
 import { formIssue, formIssueOf, issueAt } from '../../utils/sourceIssue'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -46,7 +47,9 @@ export const sharePointSource: SourceRegistration = {
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
     validateAll: (values: SharePointSourceValues, context) => {
       if (context.mode === 'create' && !context.connection) {
-        return [formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')]
+        return [
+          formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.'),
+        ]
       }
       const message = validateSharePointValues(values)
       return message ? [issueAt('libraries', message)] : []

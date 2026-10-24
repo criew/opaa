@@ -17,8 +17,10 @@ export interface ConnectionOutcome {
   details?: Record<string, unknown> | null
 }
 
-const AUTH_WORDS = /Anmeld|abgelehnt|401|Zugangsdaten|Passwort|Token|Schlüssel|invalid_grant|LOGON|Zustimmung/i
-const RIGHTS_WORDS = /Zugriff|verweigert|Berechtig|AccessDenied|403|nicht lesbar|nicht erreichbar;|Bereich/i
+const AUTH_WORDS =
+  /Anmeld|abgelehnt|401|Zugangsdaten|Passwort|Token|Schlüssel|invalid_grant|LOGON|Zustimmung/i
+const RIGHTS_WORDS =
+  /Zugriff|verweigert|Berechtig|AccessDenied|403|nicht lesbar|nicht erreichbar;|Bereich/i
 
 /**
  * The stage a test response failed at. A refused sign-in is „Anmeldung"; a source that accepted

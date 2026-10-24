@@ -25,18 +25,10 @@ import type { SourceFormProps } from '../../sources/types'
 import ConnectionStage from '../ConnectionStage'
 import { outcomeOf, outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
 import SourceField from '../SourceField'
+import { pickedOfDriveScopes } from '../pickedOf'
 import SplitPicker from '../SplitPicker'
-import type { PickedItem, PickerLevel } from '../pickerTypes'
+import type { PickerLevel } from '../pickerTypes'
 import { SelectionPending } from './AccountFolderForm'
-
-export function pickedOfDriveScopes(scopes: GoogleDriveScope[]): PickedItem[] {
-  return scopes.map((scope) => ({
-    key: googleDriveScopeKey(scope),
-    name: googleDriveScopeLabel(scope),
-    trail: [],
-    raw: { kind: scope.kind, id: scope.id },
-  }))
-}
 
 /**
  * The source form of a Google Drive library: the service account's key file and an optional
@@ -54,11 +46,17 @@ export default function GoogleDriveForm({
   const [outcome, setOutcome] = useState<ConnectionOutcome | null>(null)
   const [keyError, setKeyError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
-  const keyStored =
-    context.mode === 'edit' && storedKeyServes(values, context.credentialsStored)
+  const keyStored = context.mode === 'edit' && storedKeyServes(values, context.credentialsStored)
   const profileSubject = connection.connection?.defaults.subject
-  const token = JSON.stringify({ probe: connection.probe, key: values.keyFile, subject: values.subject })
-  const request = () => ({ sourceUrl: GOOGLE_DRIVE_API, sourceCredentials: values.keyFile || undefined })
+  const token = JSON.stringify({
+    probe: connection.probe,
+    key: values.keyFile,
+    subject: values.subject,
+  })
+  const request = () => ({
+    sourceUrl: GOOGLE_DRIVE_API,
+    sourceCredentials: values.keyFile || undefined,
+  })
 
   const run = async (): Promise<ConnectionOutcome> => {
     try {
@@ -135,7 +133,8 @@ export default function GoogleDriveForm({
         stages={['auth', 'rights']}
         run={run}
         summary={[
-          values.keyAccount || (keyStored ? 'gespeicherter Schlüssel' : connection.connection?.name ?? ''),
+          values.keyAccount ||
+            (keyStored ? 'gespeicherter Schlüssel' : (connection.connection?.name ?? '')),
           values.subject.trim() ? `für ${values.subject.trim()}` : '',
         ]}
         fields={['keyFile', 'subject']}
@@ -145,7 +144,15 @@ export default function GoogleDriveForm({
         {connection.asksSecret && (
           <Box>
             <FieldLabel id={`${id}-key-label`}>Schlüsseldatei</FieldLabel>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', minHeight: 40 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                flexWrap: 'wrap',
+                minHeight: 40,
+              }}
+            >
               <Typography sx={{ fontSize: 14, overflowWrap: 'anywhere' }} id={`${id}-key-state`}>
                 {values.keyAccount ? values.keyAccount : keyStored ? 'gesetzt' : 'keine gewählt'}
               </Typography>
@@ -168,7 +175,10 @@ export default function GoogleDriveForm({
               </Button>
             </Box>
             {keyIssue ? (
-              <Typography id={`${id}-key-issue`} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+              <Typography
+                id={`${id}-key-issue`}
+                sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}
+              >
                 {keyIssue}
               </Typography>
             ) : (
@@ -219,7 +229,9 @@ export default function GoogleDriveForm({
             <ManualFolder
               idPrefix={id}
               onAdd={(scope) => {
-                if (!values.scopes.some((s) => googleDriveScopeKey(s) === googleDriveScopeKey(scope))) {
+                if (
+                  !values.scopes.some((s) => googleDriveScopeKey(s) === googleDriveScopeKey(scope))
+                ) {
                   onChange({ scopes: [...values.scopes, scope] })
                 }
               }}
@@ -259,25 +271,30 @@ function ManualFolder({
       sx={{ mt: 1 }}
     >
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-end' }}>
-      <Box sx={{ flex: '1 1 14rem' }}>
-        <FieldLabel htmlFor={`${idPrefix}-folder-id`}>Ordner-ID von Hand</FieldLabel>
-        <TextField
-          id={`${idPrefix}-folder-id`}
-          size="small"
-          fullWidth
-          value={text}
-          error={error !== null}
-          slotProps={{ htmlInput: { 'aria-describedby': error ? `${idPrefix}-folder-id-error` : undefined } }}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="1AbCdEfGhIjKlMnOp"
-        />
-      </Box>
-      <Button type="submit" variant="outlined">
-        Hinzufügen
-      </Button>
+        <Box sx={{ flex: '1 1 14rem' }}>
+          <FieldLabel htmlFor={`${idPrefix}-folder-id`}>Ordner-ID von Hand</FieldLabel>
+          <TextField
+            id={`${idPrefix}-folder-id`}
+            size="small"
+            fullWidth
+            value={text}
+            error={error !== null}
+            slotProps={{
+              htmlInput: { 'aria-describedby': error ? `${idPrefix}-folder-id-error` : undefined },
+            }}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="1AbCdEfGhIjKlMnOp"
+          />
+        </Box>
+        <Button type="submit" variant="outlined">
+          Hinzufügen
+        </Button>
       </Box>
       {error && (
-        <Typography id={`${idPrefix}-folder-id-error`} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+        <Typography
+          id={`${idPrefix}-folder-id-error`}
+          sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}
+        >
           {error}
         </Typography>
       )}

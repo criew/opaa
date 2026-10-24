@@ -20,14 +20,10 @@ import {
 } from '../connectionOutcome'
 import SecretField from '../SecretField'
 import SourceField from '../SourceField'
+import { pickedOfSpaces } from '../pickedOf'
 import SplitPicker from '../SplitPicker'
-import type { PickedItem, PickerLevel } from '../pickerTypes'
+import type { PickerLevel } from '../pickerTypes'
 import { SelectionPending } from './AccountFolderForm'
-
-/** The chosen spaces as items of the selection. */
-export function pickedOfSpaces(spaces: ConfluenceSourceValues['spaces']): PickedItem[] {
-  return spaces.map((space) => ({ key: space.key, name: space.name ?? space.key, trail: [] }))
-}
 
 /**
  * The source form of a Confluence library. „Verbindung testen" first recognises the edition behind
@@ -147,7 +143,11 @@ export default function ConfluenceForm({
             value={values.email}
             onChange={(next) => onChange({ email: next, credentialsVerified: false })}
             placeholder="name@example.org"
-            hint={values.edition === 'CLOUD' ? undefined : 'E-Mail-Adresse; nur Confluence Cloud braucht sie.'}
+            hint={
+              values.edition === 'CLOUD'
+                ? undefined
+                : 'E-Mail-Adresse; nur Confluence Cloud braucht sie.'
+            }
           />
         )}
         <SecretField

@@ -123,7 +123,11 @@ export default function AccountFolderForm<V extends AccountFolderValues>({
               label="Konto"
               value={account}
               onChange={(next) => onChange({ [accountKey]: next } as Partial<V>)}
-              hint={stored && account === '' ? 'Leer lassen, um das gespeicherte Konto zu behalten.' : undefined}
+              hint={
+                stored && account === ''
+                  ? 'Leer lassen, um das gespeicherte Konto zu behalten.'
+                  : undefined
+              }
             />
             <SecretField
               id={`${id}-secret`}

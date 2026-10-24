@@ -1,8 +1,8 @@
 import {
-  createContext,
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useId,
   useRef,
   useState,
@@ -16,30 +16,8 @@ import CloseIcon from '@mui/icons-material/Close'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { fontFamily } from '@/shared/theme/tokens'
 import { SourceIssueContext, issueList } from '../sources/sourceIssueContext'
+import { ConnectionGateContext } from './connectionGate'
 import { STAGE_LABELS, type ConnectionOutcome, type ConnectionStageKey } from './connectionOutcome'
-
-/**
- * Lets a wizard or dialog make sure the connection of the shown form was tested before it moves
- * on: „Weiter" and „Speichern" call `ensure`, which runs the test unless a passed result for the
- * current fields stands.
- */
-export interface ConnectionGate {
-  register: (ensure: (() => Promise<boolean>) | null) => void
-}
-
-export const ConnectionGateContext = createContext<ConnectionGate | null>(null)
-
-/** A gate for the surrounding wizard or dialog; `ensure` is true when no form registered. */
-export function useConnectionGateHost() {
-  const ensureRef = useRef<(() => Promise<boolean>) | null>(null)
-  const gate = useRef<ConnectionGate>({
-    register: (ensure) => {
-      ensureRef.current = ensure
-    },
-  }).current
-  const ensure = useCallback(async () => (ensureRef.current ? ensureRef.current() : true), [])
-  return { gate, ensure }
-}
 
 interface ConnectionStageProps {
   idPrefix: string
@@ -94,7 +72,9 @@ export default function ConnectionStage({
   const collapsed = passed && !editing && !fieldIssue
 
   const latest = useRef({ token, run, current })
-  latest.current = { token, run, current }
+  useLayoutEffect(() => {
+    latest.current = { token, run, current }
+  })
 
   const test = useCallback(async (): Promise<ConnectionOutcome> => {
     const measuredToken = latest.current.token
@@ -219,7 +199,8 @@ function StageResult({
         sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, listStyle: 'none', m: 0, p: 0 }}
       >
         {stages.map((stage, index) => {
-          const state = failedAt < 0 || index < failedAt ? 'ok' : index === failedAt ? 'failed' : 'open'
+          const state =
+            failedAt < 0 || index < failedAt ? 'ok' : index === failedAt ? 'failed' : 'open'
           if (state === 'open') return null
           return (
             <Box

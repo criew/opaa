@@ -34,7 +34,7 @@ interface CreateSourceSetupStepProps {
   SourceForm: NonNullable<SourceRegistration['configuration']>['Form'] | undefined
   awaitsConsent: boolean
   sourceFormRef: Ref<HTMLDivElement>
-  sourceIssue: SourceIssue | null
+  issues: SourceIssue[]
   values: unknown
   formContext: SourceFormContext
   onSourceChange: (patch: object) => void
@@ -63,7 +63,7 @@ export default function CreateSourceSetupStep({
   SourceForm,
   awaitsConsent,
   sourceFormRef,
-  sourceIssue,
+  issues,
   values,
   formContext,
   onSourceChange,
@@ -74,8 +74,9 @@ export default function CreateSourceSetupStep({
   onStartFirstRunChange,
   firstRunHint,
 }: CreateSourceSetupStepProps) {
+  const scheduleIssue = issues.find((issue) => issue.field === 'schedule')?.message
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {showConnectionSelect && descriptor && (
         <ConnectionProfileSelect
           descriptor={descriptor}
@@ -88,19 +89,21 @@ export default function CreateSourceSetupStep({
         />
       )}
       {consentProfile && (
-        <SourceConsentPanel
-          profileName={consentProfile.name}
-          pending={pendingConnection}
-          confirmed={serviceAccountConfirmed}
-          onConfirmedChange={onServiceAccountConfirmedChange}
-          confirmationMissing={confirmationMissing}
-          busy={connectingSource}
-          onConnect={onConnectSource}
-        />
+        <Box sx={{ maxWidth: 640 }}>
+          <SourceConsentPanel
+            profileName={consentProfile.name}
+            pending={pendingConnection}
+            confirmed={serviceAccountConfirmed}
+            onConfirmedChange={onServiceAccountConfirmedChange}
+            confirmationMissing={confirmationMissing}
+            busy={connectingSource}
+            onConnect={onConnectSource}
+          />
+        </Box>
       )}
       {SourceForm && connectionChoice !== null && !awaitsConsent && (
         <Box ref={sourceFormRef}>
-          <SourceIssueContext value={sourceIssue}>
+          <SourceIssueContext value={issues}>
             <SourceForm
               // a new profile starts the form afresh, so no probe result outlives its profile
               key={connectionChoice}
@@ -113,7 +116,7 @@ export default function CreateSourceSetupStep({
       )}
 
       {/* Schedule and immediate start apply to every connector type. */}
-      <Box>
+      <Box sx={{ maxWidth: 640 }} data-source-field="schedule" tabIndex={-1}>
         <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Zeitplan
         </Typography>
@@ -133,7 +136,12 @@ export default function CreateSourceSetupStep({
           }
           label="Erste Indizierung sofort nach dem Anlegen starten"
         />
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+        {scheduleIssue && (
+          <Typography sx={{ fontSize: 12.5, color: 'error.main', mt: 1 }}>
+            {scheduleIssue}
+          </Typography>
+        )}
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
           {startFirstRun
             ? firstRunHint
             : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}

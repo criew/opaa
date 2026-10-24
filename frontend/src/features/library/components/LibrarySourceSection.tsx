@@ -27,6 +27,9 @@ import {
 } from './indexingLabels'
 import { scheduleFrequencyLabel } from './scheduleLabels'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
+import { SummaryConnection, SummarySelection } from './setup/SourceSummaryView'
+import { summaryOfLibrary } from './setup/summaryOfLibrary'
+import { sourceConnectionOfRef } from './sources/sourceConnection'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
@@ -132,6 +135,11 @@ export default function LibrarySourceSection({
   })()
   const Scope = configuration?.Scope
   const StoredView = configuration?.StoredView
+  const StoredExtras = configuration?.StoredExtras
+  const profileConnection = library.connectionProfile
+    ? (sourceConnectionOfRef(library.connectionProfile) ?? undefined)
+    : undefined
+  const summary = summaryOfLibrary(configuration, library, profileConnection)
   const fullSyncIntervalDays = configuration?.fullSyncRhythm
     ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
     : null
@@ -182,15 +190,24 @@ export default function LibrarySourceSection({
       )}
       {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
          with read access - they are here instead of in the header, with an explanation. */}
-      {Scope && (
+      {summary?.selection ? (
         <PageSection
           title="Umfang"
-          description="Was diese Bibliothek aus ihrer Quelle aufnimmt — ihr Geltungsbereich. Er gilt für alle Leseberechtigten der Bibliothek."
+          description="Was die Bibliothek aus ihrer Quelle liest; sichtbar für alle Leseberechtigten."
         >
-          <Stack spacing={1}>
-            <Scope library={library} />
-          </Stack>
+          <SummarySelection summary={summary} />
         </PageSection>
+      ) : (
+        Scope && (
+          <PageSection
+            title="Umfang"
+            description="Was die Bibliothek aus ihrer Quelle liest; sichtbar für alle Leseberechtigten."
+          >
+            <Stack spacing={1}>
+              <Scope library={library} />
+            </Stack>
+          </PageSection>
+        )
       )}
 
       {!canEditSource && (
@@ -210,7 +227,7 @@ export default function LibrarySourceSection({
                   size="small"
                   variant="outlined"
                   onClick={() => setEditSourceOpen(true)}
-                  aria-label="Quellkonfiguration bearbeiten"
+                  aria-label="Quelle bearbeiten"
                   sx={{ flexShrink: 0 }}
                 >
                   Bearbeiten
@@ -240,7 +257,12 @@ export default function LibrarySourceSection({
                   onReconnect={consentProfile ? () => setReconnectOpen(true) : undefined}
                 />
               )}
-              {StoredView ? (
+              {summary ? (
+                <>
+                  <SummaryConnection summary={summary} />
+                  {StoredExtras && <StoredExtras library={library} libraryId={libraryId} />}
+                </>
+              ) : StoredView ? (
                 <StoredView library={library} libraryId={libraryId} />
               ) : (
                 <Typography variant="body2" data-testid="source-not-configurable">

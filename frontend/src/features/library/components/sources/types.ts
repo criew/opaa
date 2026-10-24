@@ -109,6 +109,11 @@ export interface SourceConfiguration<V> {
   Form: ComponentType<SourceFormProps<V>>
   /** The stored connection as the Bereich „Anbindung" shows it to a manager. */
   StoredView: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
+  /**
+   * What the Bereich „Anbindung" shows beyond the summary (push events, webhooks); with a
+   * `summary`, it replaces `StoredView` there.
+   */
+  StoredExtras?: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
   /** The scope every reader sees in the Bereich „Umfang"; absent for a source without one. */
   Scope?: ComponentType<{ library: StoredLibrarySource }>
   scopeHero?: SourceScopeHero

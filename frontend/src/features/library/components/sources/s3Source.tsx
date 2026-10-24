@@ -8,10 +8,12 @@ import {
   s3ValuesIssue,
   type S3SourceValues,
 } from '../../utils/s3Source'
-import S3Form, { pickedOfScopes } from '../setup/forms/S3Form'
+import S3Form from '../setup/forms/S3Form'
+import { pickedOfScopes } from '../setup/pickedOf'
 import { collectIssues } from '../setup/collectIssues'
 import { S3_PROVIDER_LABELS } from '../../utils/s3Source'
 import { S3Scope, S3StoredView } from './S3SourceViews'
+import S3EventSection from '../S3EventSection'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
@@ -84,7 +86,12 @@ export const s3Source: SourceRegistration = {
       return [
         ...connectionIssues,
         ...(scopeIssue
-          ? [{ ...scopeIssue, field: scopeIssue.field?.startsWith('scopes') ? 'scopes' : scopeIssue.field }]
+          ? [
+              {
+                ...scopeIssue,
+                field: scopeIssue.field?.startsWith('scopes') ? 'scopes' : scopeIssue.field,
+              },
+            ]
           : []),
       ]
     },
@@ -108,6 +115,13 @@ export const s3Source: SourceRegistration = {
     }),
     Form: S3Form,
     StoredView: S3StoredView,
+    StoredExtras: ({ library, libraryId }) => (
+      <S3EventSection
+        libraryId={libraryId}
+        tokenSet={library.pushSecretSet}
+        scopes={s3SettingsFromLibrary(library)?.scopes ?? []}
+      />
+    ),
     Scope: S3Scope,
     scopeHero: {
       summary: (library) => {

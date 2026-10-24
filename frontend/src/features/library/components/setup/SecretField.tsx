@@ -39,11 +39,7 @@ export default function SecretField({
           <Typography sx={{ fontSize: 14 }} aria-labelledby={`${id}-label`}>
             gesetzt
           </Typography>
-          <Button
-            size="small"
-            onClick={() => setReplacing(true)}
-            aria-label={`${label} ersetzen`}
-          >
+          <Button size="small" onClick={() => setReplacing(true)} aria-label={`${label} ersetzen`}>
             Ersetzen
           </Button>
         </Box>

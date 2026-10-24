@@ -7,11 +7,13 @@ import {
   type ConfluenceSourceValues,
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
-import ConfluenceForm, { pickedOfSpaces } from '../setup/forms/ConfluenceForm'
+import ConfluenceForm from '../setup/forms/ConfluenceForm'
+import { pickedOfSpaces } from '../setup/pickedOf'
 import { issueAt, type SourceIssue } from '../../utils/sourceIssue'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import { MAX_CONFLUENCE_SPACES } from '../../utils/confluenceSource'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
+import ConfluenceWebhookSection from '../ConfluenceWebhookSection'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
@@ -58,7 +60,11 @@ export const confluenceSource: SourceRegistration = {
       const stored =
         context.credentialsStored && sameLibrarySourceOrigin(context.originalSourceUrl, url)
       if (connectionFields(context).asksSecret) {
-        if (values.edition !== 'DATA_CENTER' && values.email.trim() === '' && (!stored || values.token !== '')) {
+        if (
+          values.edition !== 'DATA_CENTER' &&
+          values.email.trim() === '' &&
+          (!stored || values.token !== '')
+        ) {
           issues.push(issueAt('email', 'Bitte die E-Mail-Adresse des Kontos eingeben'))
         }
         if (values.token.trim() === '' && !stored) {
@@ -90,6 +96,9 @@ export const confluenceSource: SourceRegistration = {
     }),
     Form: ConfluenceForm,
     StoredView: ConfluenceStoredView,
+    StoredExtras: ({ library, libraryId }) => (
+      <ConfluenceWebhookSection libraryId={libraryId} secretSet={library.pushSecretSet} />
+    ),
     Scope: ConfluenceScope,
     scopeHero: {
       summary: (library) => {

@@ -10,8 +10,10 @@ import { CATALOG_ROUTE } from '@/shared/routes'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
 import type { SourceFormContext } from '../components/sources/types'
-import { reportSourceIssue } from '../components/sources/reportSourceIssue'
-import type { SourceIssue } from '../utils/sourceIssue'
+import { issueAt, type SourceIssue } from '../utils/sourceIssue'
+import IssueSummary from '../components/setup/IssueSummary'
+import { ConnectionGateContext, useConnectionGateHost } from '../components/setup/connectionGate'
+import CreateReviewStep from '../components/CreateReviewStep'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -64,6 +66,7 @@ import {
   NOTHING_CREATABLE,
   PENDING_CONNECTION_UNUSABLE,
   STEP_NAME,
+  STEP_REVIEW,
   STEP_SHARING,
   STEP_SOURCE_SETUP,
   STEP_SOURCE_TYPE,
@@ -93,9 +96,15 @@ export default function LibraryCreatePage() {
   const draft = restored?.draft
   const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
   const [error, setError] = useState<string | null>(null)
-  // an issue of the source form that names a field; it is shown there instead of in `error`
-  const [sourceIssue, setSourceIssue] = useState<SourceIssue | null>(null)
+  // every issue of the last „Weiter": shown at its field and listed above the step
+  const [issues, setIssues] = useState<SourceIssue[]>([])
   const sourceFormRef = useRef<HTMLDivElement>(null)
+  const stepRef = useRef<HTMLDivElement>(null)
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const [checking, setChecking] = useState(false)
+  // after „Ändern" on the review step, „Weiter" leads straight back to it
+  const [returnToReview, setReturnToReview] = useState(false)
+  const { gate, ensure } = useConnectionGateHost()
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
   // connector library reaches server paths and stored credentials. A missing right is explained
@@ -233,7 +242,7 @@ export default function LibraryCreatePage() {
       }))
     }
     setError(null)
-    setSourceIssue(null)
+    setIssues([])
   }
   // a new library has no rhythm of its own yet; empty means the instance's, named by the type
   const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
@@ -343,7 +352,17 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleNext = () => {
+  /** Shows `found` at their fields and above the step, and moves the focus to the list. */
+  function report(found: SourceIssue[]) {
+    setError(null)
+    setIssues(found)
+    requestAnimationFrame(() => summaryRef.current?.focus())
+  }
+
+  const SELECTION_FIELDS = ['folders', 'spaces', 'scopes', 'libraries']
+
+  const handleNext = async () => {
+    if (checking) return
     if (currentStep === STEP_SOURCE_TYPE && typesUnavailable) {
       setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
       return
@@ -365,23 +384,36 @@ export default function LibraryCreatePage() {
         setError(CONSENT_REQUIRED)
         return
       }
-      const validationIssue = configuration.validate(values, formContext)
-      if (validationIssue) {
-        // a field's issue takes the focus to the field; one without is announced in place
-        reportSourceIssue(
-          validationIssue,
-          (shown) => {
-            setSourceIssue(shown.field ? shown : null)
-            setError(shown.field ? null : shown.message)
-          },
-          sourceFormRef.current,
-          () => {},
+      const found =
+        configuration.validateAll?.(values, formContext) ??
+        [configuration.validate(values, formContext)].filter(
+          (issue): issue is SourceIssue => issue !== null,
         )
+      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
+      const scheduleIssues = scheduleError ? [issueAt('schedule', scheduleError)] : []
+      const connectionIssues = found.filter(
+        (issue) => !issue.field || !SELECTION_FIELDS.includes(issue.field),
+      )
+      if (connectionIssues.length > 0) {
+        report([...connectionIssues, ...scheduleIssues])
         return
       }
-      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
-      if (scheduleError) {
-        setError(scheduleError)
+      // the connection is tested on „Weiter" unless a passed result for these fields stands
+      setChecking(true)
+      const connected = await ensure()
+      setChecking(false)
+      if (!connected) {
+        report([
+          issueAt(
+            'connection',
+            'Die Verbindung steht nicht; das Ergebnis des Tests steht unter „Verbindung“.',
+          ),
+          ...scheduleIssues,
+        ])
+        return
+      }
+      if (found.length > 0 || scheduleIssues.length > 0) {
+        report([...found, ...scheduleIssues])
         return
       }
       // Where the source provides it, the name comes from it - as long as nobody has typed one.
@@ -390,7 +422,7 @@ export default function LibraryCreatePage() {
       }
     }
     if (currentStep === STEP_NAME && name.trim() === '') {
-      setError('Bitte einen Namen angeben')
+      report([issueAt('name', 'Bitte einen Namen eingeben')])
       return
     }
     if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
@@ -398,11 +430,26 @@ export default function LibraryCreatePage() {
       return
     }
     setError(null)
-    setSourceIssue(null)
+    setIssues([])
+    if (returnToReview) {
+      setReturnToReview(false)
+      setActiveStep(steps.indexOf(STEP_REVIEW))
+      return
+    }
     setActiveStep((s) => s + 1)
   }
 
   const handleCreate = async () => {
+    if (submitting) return
+    if (missingCapability) {
+      setError(missingCapability)
+      return
+    }
+    if (name.trim() === '') {
+      setActiveStep(steps.indexOf(STEP_NAME))
+      report([issueAt('name', 'Bitte einen Namen eingeben')])
+      return
+    }
     if (!privateLibrary && ownerType === 'GROUP' && !selectedGroup) {
       setError('Bitte eine Gruppe auswählen')
       return
@@ -477,11 +524,15 @@ export default function LibraryCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: 720 }}>
+      <Box sx={{ maxWidth: currentStep === STEP_SOURCE_SETUP ? 1040 : 720 }} ref={stepRef}>
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
           Neue Wissensbibliothek
         </Typography>
-        <PageHeading title="Neue Wissensbibliothek" visuallyHidden />
+        <PageHeading
+          title="Neue Wissensbibliothek"
+          documentTitle={`${issues.length > 0 ? 'Fehler: ' : ''}Schritt ${activeStep + 1} von ${steps.length}: ${stepHeadings[currentStep] ?? currentStep} – Neue Wissensbibliothek`}
+          visuallyHidden
+        />
         <Typography
           ref={stepHeadingRef}
           component="h2"
@@ -506,6 +557,8 @@ export default function LibraryCreatePage() {
             </Alert>
           )}
         </Box>
+
+        <IssueSummary ref={summaryRef} issues={issues} scope={() => stepRef.current} />
 
         {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
@@ -549,46 +602,49 @@ export default function LibraryCreatePage() {
           )}
 
         {currentStep === STEP_SOURCE_SETUP && (
-          <CreateSourceSetupStep
-            showConnectionSelect={showConnectionSelect}
-            descriptor={descriptor}
-            profileOptions={profileOptions}
-            connectionChoice={connectionChoice}
-            onChooseConnection={chooseConnection}
-            consentProfile={consentProfile}
-            pendingConnection={pendingConnection}
-            serviceAccountConfirmed={serviceAccountConfirmed}
-            onServiceAccountConfirmedChange={(checked) => {
-              setServiceAccountConfirmed(checked)
-              if (checked) setConfirmationMissing(false)
-            }}
-            confirmationMissing={confirmationMissing}
-            connectingSource={connectingSource}
-            onConnectSource={() => void handleConnectSource()}
-            SourceForm={SourceForm}
-            awaitsConsent={awaitsConsent}
-            sourceFormRef={sourceFormRef}
-            sourceIssue={sourceIssue}
-            values={values}
-            formContext={formContext}
-            onSourceChange={(patch: object) => {
-              setSourceValues((prev) => ({
-                ...prev,
-                [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
-              }))
-              setError(null)
-              setSourceIssue(null)
-            }}
-            schedule={schedule}
-            onScheduleChange={(patch) => {
-              setSchedule((prev) => ({ ...prev, ...patch }))
-              setError(null)
-            }}
-            confluenceRhythm={confluenceRhythm}
-            startFirstRun={startFirstRun}
-            onStartFirstRunChange={setStartFirstRun}
-            firstRunHint={firstRunHint}
-          />
+          <ConnectionGateContext value={gate}>
+            <CreateSourceSetupStep
+              showConnectionSelect={showConnectionSelect}
+              descriptor={descriptor}
+              profileOptions={profileOptions}
+              connectionChoice={connectionChoice}
+              onChooseConnection={chooseConnection}
+              consentProfile={consentProfile}
+              pendingConnection={pendingConnection}
+              serviceAccountConfirmed={serviceAccountConfirmed}
+              onServiceAccountConfirmedChange={(checked) => {
+                setServiceAccountConfirmed(checked)
+                if (checked) setConfirmationMissing(false)
+              }}
+              confirmationMissing={confirmationMissing}
+              connectingSource={connectingSource}
+              onConnectSource={() => void handleConnectSource()}
+              SourceForm={SourceForm}
+              awaitsConsent={awaitsConsent}
+              sourceFormRef={sourceFormRef}
+              issues={issues}
+              values={values}
+              formContext={formContext}
+              onSourceChange={(patch: object) => {
+                setSourceValues((prev) => ({
+                  ...prev,
+                  [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
+                }))
+                setError(null)
+                // an issue goes once its field changes; the rest stays until the next „Weiter"
+                setIssues((prev) => prev.filter((issue) => !issue.field || !(issue.field in patch)))
+              }}
+              schedule={schedule}
+              onScheduleChange={(patch) => {
+                setSchedule((prev) => ({ ...prev, ...patch }))
+                setError(null)
+              }}
+              confluenceRhythm={confluenceRhythm}
+              startFirstRun={startFirstRun}
+              onStartFirstRunChange={setStartFirstRun}
+              firstRunHint={firstRunHint}
+            />
+          </ConnectionGateContext>
         )}
 
         {currentStep === STEP_NAME && (
@@ -612,7 +668,9 @@ export default function LibraryCreatePage() {
                 setNameTouched(true)
                 setName(next)
                 setError(null)
+                setIssues((prev) => prev.filter((issue) => issue.field !== 'name'))
               }}
+              nameError={issues.find((issue) => issue.field === 'name')?.message ?? null}
               description={description}
               onDescriptionChange={setDescription}
               namePlaceholder="z. B. Rechtsquellen Soziales"
@@ -639,21 +697,53 @@ export default function LibraryCreatePage() {
           />
         )}
 
+        {currentStep === STEP_REVIEW && (
+          <CreateReviewStep
+            sourceTypeName={displayNameOf(sourceType)}
+            connectionName={connection?.name ?? null}
+            summary={configuration?.summary?.(values, formContext) ?? null}
+            schedule={uploadLibrary ? null : schedule}
+            startFirstRun={startFirstRun}
+            name={name}
+            description={description}
+            owner={
+              privateLibrary
+                ? 'Nur Sie (private Bibliothek)'
+                : ownerType === 'GROUP'
+                  ? `Gruppe „${selectedGroup?.name ?? '–'}“`
+                  : 'Ihr Konto'
+            }
+            grantCount={privateLibrary ? null : pendingGrants.length}
+            steps={{
+              sourceType: steps.indexOf(STEP_SOURCE_TYPE),
+              setup: steps.includes(STEP_SOURCE_SETUP) ? steps.indexOf(STEP_SOURCE_SETUP) : null,
+              name: steps.indexOf(STEP_NAME),
+              sharing: steps.includes(STEP_SHARING) ? steps.indexOf(STEP_SHARING) : null,
+            }}
+            onChange={(step) => {
+              setReturnToReview(step !== steps.indexOf(STEP_SOURCE_TYPE))
+              setError(null)
+              setIssues([])
+              setActiveStep(step)
+            }}
+          />
+        )}
+
         <LibraryCreateFooter
           activeStep={activeStep}
           stepCount={steps.length}
           submitting={submitting}
           pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
-          nextDisabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
+          checking={checking}
+          returnToReview={returnToReview}
           missingCapability={missingCapability}
-          hasName={name.trim() !== ''}
           onCancel={() => void handleCancel()}
           onBack={() => {
             setError(null)
-            setSourceIssue(null)
+            setIssues([])
             setActiveStep((s) => s - 1)
           }}
-          onNext={handleNext}
+          onNext={() => void handleNext()}
           onCreate={() => void handleCreate()}
         />
       </Box>

@@ -3,23 +3,12 @@ import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import type { SourceIssue } from '../../utils/sourceIssue'
+import { focusIssue } from './focusIssue'
 
 interface IssueSummaryProps {
   issues: SourceIssue[]
   /** The element whose fields the links jump to. */
   scope: () => HTMLElement | null
-}
-
-/** Focuses the field of `issue` inside `scope`, or the group it belongs to. */
-export function focusIssue(issue: SourceIssue, scope: HTMLElement | null) {
-  if (!scope) return
-  const target =
-    (issue.field && scope.querySelector<HTMLElement>(`[data-source-field="${issue.field}"]`)) ||
-    scope.querySelector<HTMLElement>('[data-source-field="selection"]') ||
-    scope.querySelector<HTMLElement>('[data-source-field="connection"]')
-  if (!target) return
-  target.scrollIntoView({ block: 'center' })
-  target.focus()
 }
 
 /**
@@ -48,7 +37,9 @@ const IssueSummary = forwardRef<HTMLDivElement, IssueSummaryProps>(function Issu
       }}
     >
       <Typography id="issue-summary-title" component="h3" sx={{ fontSize: 15, fontWeight: 600 }}>
-        {issues.length === 1 ? 'Eine Angabe fehlt oder stimmt nicht' : `${issues.length} Angaben fehlen oder stimmen nicht`}
+        {issues.length === 1
+          ? 'Eine Angabe fehlt oder stimmt nicht'
+          : `${issues.length} Angaben fehlen oder stimmen nicht`}
       </Typography>
       <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
         {issues.map((issue) => (

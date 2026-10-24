@@ -26,7 +26,12 @@ import { browseSource, testLibrarySource } from '../api/libraryApi'
 import { sameLibrarySourceOrigin } from '../utils/librarySourceConfig'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { SourceIssueContext, issueList, useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import {
+  SourceIssueContext,
+  issueList,
+  useSourceIssue,
+  withIssue,
+} from './sources/sourceIssueContext'
 import type { SourceIssue } from '../utils/sourceIssue'
 
 import {

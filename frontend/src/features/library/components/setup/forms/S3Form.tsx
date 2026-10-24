@@ -14,7 +14,6 @@ import {
   S3_PROVIDERS,
   S3_PROVIDER_LABELS,
   derivedS3Endpoint,
-  normalizeS3Prefix,
   s3CredentialsOf,
   s3ProviderTemplate,
   s3ScopeChecksOf,
@@ -29,30 +28,10 @@ import ConnectionStage from '../ConnectionStage'
 import { outcomeOf, outcomeOfError, type ConnectionOutcome } from '../connectionOutcome'
 import SecretField from '../SecretField'
 import SourceField from '../SourceField'
+import { pickedOfScopes } from '../pickedOf'
 import SplitPicker from '../SplitPicker'
-import type { PickedItem, PickerCrumb, PickerLevel } from '../pickerTypes'
+import type { PickerCrumb, PickerLevel } from '../pickerTypes'
 import { SelectionPending } from './AccountFolderForm'
-
-/** A scope as a chosen item: the bucket, or a prefix inside it with its parent prefixes as trail. */
-export function pickedOfScope(scope: S3ScopeInput): PickedItem {
-  const bucket = scope.bucket.trim()
-  const prefix = normalizeS3Prefix(scope.prefix)
-  const segments = prefix.split('/').filter(Boolean)
-  if (segments.length === 0) return { key: bucket, name: bucket, trail: [], raw: { bucket, prefix: '' } }
-  const trail: PickerCrumb[] = [
-    { key: bucket, name: bucket, raw: { bucket } },
-    ...segments.slice(0, -1).map((name, index) => ({
-      key: `${bucket}/${segments.slice(0, index + 1).join('/')}/`,
-      name,
-      raw: { bucket, prefix: `${segments.slice(0, index + 1).join('/')}/` },
-    })),
-  ]
-  return { key: `${bucket}/${prefix}`, name: segments[segments.length - 1], trail, raw: { bucket, prefix } }
-}
-
-export function pickedOfScopes(scopes: S3ScopeInput[]): PickedItem[] {
-  return scopes.filter((scope) => scope.bucket.trim() !== '').map(pickedOfScope)
-}
 
 /**
  * The source form of an S3 library: provider, endpoint, region and key in „Verbindung"; buckets
@@ -145,11 +124,15 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
   const problems = Object.fromEntries(
     (s3ScopeChecksOf(outcome?.details) ?? [])
       .filter((check) => check.message)
-      .map((check) => [check.prefix ? `${check.bucket}/${check.prefix}` : check.bucket, String(check.message)]),
+      .map((check) => [
+        check.prefix ? `${check.bucket}/${check.prefix}` : check.bucket,
+        String(check.message),
+      ]),
   )
 
   const complete =
-    values.sourceUrl.trim() !== '' && (values.accessKey.trim() !== '' || stored || !connection.asksSecret)
+    values.sourceUrl.trim() !== '' &&
+    (values.accessKey.trim() !== '' || stored || !connection.asksSecret)
   const endpointDerived = derivedS3Endpoint(values.provider, values.region) !== null
 
   return (
@@ -166,7 +149,9 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
           values.accessKey.trim() || (stored ? 'gespeicherter Schlüssel' : ''),
         ]}
         fields={['sourceUrl', 'region', 'accessKey', 'secretKey', 'sessionToken']}
-        autoTest={complete && (context.mode === 'edit' || values.secretKey !== '' || !connection.asksSecret)}
+        autoTest={
+          complete && (context.mode === 'edit' || values.secretKey !== '' || !connection.asksSecret)
+        }
         onOutcome={setOutcome}
       >
         <Box sx={{ maxWidth: '34ch' }}>
@@ -217,7 +202,11 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
               label="Access Key"
               value={values.accessKey}
               onChange={(next) => onChange({ accessKey: next })}
-              hint={stored && values.accessKey === '' ? 'Leer lassen, um den gespeicherten Schlüssel zu behalten.' : undefined}
+              hint={
+                stored && values.accessKey === ''
+                  ? 'Leer lassen, um den gespeicherten Schlüssel zu behalten.'
+                  : undefined
+              }
               mono
             />
             <SecretField
@@ -240,7 +229,10 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
             {advanced ? 'Weniger Einstellungen' : 'Weitere Einstellungen'}
           </Button>
           {advanced && (
-            <Box id={`${id}-advanced`} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box
+              id={`${id}-advanced`}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+            >
               {connection.asksSecret && (
                 <SourceField
                   id={`${id}-session`}
@@ -294,7 +286,9 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
           manualEntry={
             <ManualScope
               idPrefix={id}
-              onAdd={(scope) => onChange({ scopes: [...values.scopes.filter((s) => s.bucket.trim()), scope] })}
+              onAdd={(scope) =>
+                onChange({ scopes: [...values.scopes.filter((s) => s.bucket.trim()), scope] })
+              }
             />
           }
         />

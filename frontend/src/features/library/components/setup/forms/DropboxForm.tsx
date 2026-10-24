@@ -55,7 +55,10 @@ export default function DropboxForm({
       const path = trail.length ? trail[trail.length - 1].key : '/'
       const response = await browseSource(
         'DROPBOX',
-        connection.probeRequest({ sourceUrl: serverUrl, query: { path, teamSpace: values.teamSpace } }),
+        connection.probeRequest({
+          sourceUrl: serverUrl,
+          query: { path, teamSpace: values.teamSpace },
+        }),
       )
       return levelOf(response, true)
     },

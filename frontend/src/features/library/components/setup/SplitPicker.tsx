@@ -87,18 +87,15 @@ function useWidth() {
   return { ref, width }
 }
 
-/** True once `active` has lasted 300 ms, so a quick answer never flashes a placeholder. */
-function useDelayed(active: boolean) {
-  const [shown, setShown] = useState(false)
+/** True once the wait for `key` has lasted 300 ms, so a quick answer never flashes a placeholder. */
+function useDelayed(key: string | null) {
+  const [late, setLate] = useState<string | null>(null)
   useEffect(() => {
-    if (!active) {
-      setShown(false)
-      return
-    }
-    const timer = setTimeout(() => setShown(true), 300)
+    if (key === null) return
+    const timer = setTimeout(() => setLate(key), 300)
     return () => clearTimeout(timer)
-  }, [active])
-  return shown
+  }, [key])
+  return key !== null && late === key
 }
 
 /**
@@ -144,10 +141,12 @@ export default function SplitPicker({
   const [notice, setNotice] = useState<string | null>(null)
   const listTop = useRef<HTMLDivElement>(null)
 
+  const inFlight = useRef(new Set<string>())
   const fetchLevel = useCallback(
     async (path: PickerCrumb[], remoteText = '') => {
       const key = trailKey(path, remoteText)
-      setCache((prev) => ({ ...prev, [key]: { status: 'loading' } }))
+      if (inFlight.current.has(key)) return
+      inFlight.current.add(key)
       try {
         const level = await load(path, remoteText || undefined)
         setCache((prev) => ({ ...prev, [key]: { status: 'ok', level } }))
@@ -155,6 +154,8 @@ export default function SplitPicker({
         const message =
           err instanceof Error && err.message ? err.message : 'Die Liste ließ sich nicht laden.'
         setCache((prev) => ({ ...prev, [key]: { status: 'error', message } }))
+      } finally {
+        inFlight.current.delete(key)
       }
     },
     [load],
@@ -163,11 +164,29 @@ export default function SplitPicker({
   const currentKey = trailKey(trail, trail.length === 0 ? remote : '')
   const current = cache[currentKey]
   useEffect(() => {
-    if (!current) void fetchLevel(trail, trail.length === 0 ? remote : '')
-  }, [current, fetchLevel, trail, remote])
+    if (current || inFlight.current.has(currentKey)) return
+    const key = currentKey
+    inFlight.current.add(key)
+    load(trail, trail.length === 0 && remote ? remote : undefined)
+      .then(
+        (level) => setCache((prev) => ({ ...prev, [key]: { status: 'ok', level } })),
+        (err: unknown) =>
+          setCache((prev) => ({
+            ...prev,
+            [key]: {
+              status: 'error',
+              message:
+                err instanceof Error && err.message
+                  ? err.message
+                  : 'Die Liste ließ sich nicht laden.',
+            },
+          })),
+      )
+      .finally(() => inFlight.current.delete(key))
+  }, [current, currentKey, load, trail, remote])
 
   const loading = current === undefined || current.status === 'loading'
-  const showSkeleton = useDelayed(loading)
+  const showSkeleton = useDelayed(loading ? currentKey : null)
   const level = current?.status === 'ok' ? current.level : null
   const entries = level?.entries ?? []
   const levelName = levelNoun(trail.length)
@@ -197,7 +216,9 @@ export default function SplitPicker({
       ...fresh.map((entry) => ({ key: entry.key, name: entry.name, trail, raw: entry.raw })),
     ]
     if (max && next.length > max) {
-      announce(`Höchstens ${countOf(max, noun)} je Bibliothek; ${countOf(next.length, noun)} wären gewählt.`)
+      announce(
+        `Höchstens ${countOf(max, noun)} je Bibliothek; ${countOf(next.length, noun)} wären gewählt.`,
+      )
       return
     }
     onChange(next)
@@ -240,7 +261,9 @@ export default function SplitPicker({
 
   const split = width >= SPLIT_FROM
   const miller = millerColumns && width >= MILLER_FROM && trail.length > 0
-  const parentLevel = miller ? cache[trailKey(trail.slice(0, -1), trail.length === 1 ? remote : '')] : undefined
+  const parentLevel = miller
+    ? cache[trailKey(trail.slice(0, -1), trail.length === 1 ? remote : '')]
+    : undefined
 
   const status = (
     <Box role="status" aria-live="polite" sx={visuallyHidden}>
@@ -267,30 +290,31 @@ export default function SplitPicker({
             Die Quelle zeigt keine {noun.many}.
           </Typography>
         )}
-        {[...entries, ...extra.map((item) => ({ ...item, selectable: true, hasChildren: false }))].map(
-          (entry) => (
-            <Box key={entry.key} sx={{ display: 'flex', alignItems: 'center', minHeight: 40 }}>
-              <Checkbox
-                id={`${idPrefix}-small-${entry.key}`}
-                size="small"
-                checked={selectedKeys.has(entry.key)}
-                onChange={() => toggle(entry as PickerEntry)}
-              />
-              <Typography
-                component="label"
-                htmlFor={`${idPrefix}-small-${entry.key}`}
-                sx={{ fontSize: 14, cursor: 'pointer', overflowWrap: 'anywhere' }}
-              >
-                {entry.name}
-                {'hint' in entry && entry.hint && (
-                  <Box component="span" sx={{ color: 'text.secondary', fontSize: 12.5, ml: 1 }}>
-                    {entry.hint}
-                  </Box>
-                )}
-              </Typography>
-            </Box>
-          ),
-        )}
+        {[
+          ...entries,
+          ...extra.map((item) => ({ ...item, selectable: true, hasChildren: false })),
+        ].map((entry) => (
+          <Box key={entry.key} sx={{ display: 'flex', alignItems: 'center', minHeight: 40 }}>
+            <Checkbox
+              id={`${idPrefix}-small-${entry.key}`}
+              size="small"
+              checked={selectedKeys.has(entry.key)}
+              onChange={() => toggle(entry as PickerEntry)}
+            />
+            <Typography
+              component="label"
+              htmlFor={`${idPrefix}-small-${entry.key}`}
+              sx={{ fontSize: 14, cursor: 'pointer', overflowWrap: 'anywhere' }}
+            >
+              {entry.name}
+              {'hint' in entry && entry.hint && (
+                <Box component="span" sx={{ color: 'text.secondary', fontSize: 12.5, ml: 1 }}>
+                  {entry.hint}
+                </Box>
+              )}
+            </Typography>
+          </Box>
+        ))}
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
           {selected.length === 0 ? emptySelection : `${countOf(selected.length, noun)} ausgewählt`}
         </Typography>
@@ -400,9 +424,7 @@ export default function SplitPicker({
           <Button
             size="small"
             onClick={() =>
-              allChosen
-                ? remove(new Set(choosable.map((entry) => entry.key)))
-                : choose(choosable)
+              allChosen ? remove(new Set(choosable.map((entry) => entry.key))) : choose(choosable)
             }
           >
             {allChosen
@@ -451,7 +473,10 @@ export default function SplitPicker({
               <Button
                 size="small"
                 sx={{ mt: 1 }}
-                onClick={() => void fetchLevel(trail, trail.length === 0 ? remote : '')}
+                onClick={() => {
+                  setCache((prev) => ({ ...prev, [currentKey]: { status: 'loading' } }))
+                  void fetchLevel(trail, trail.length === 0 ? remote : '')
+                }}
               >
                 Erneut versuchen
               </Button>
@@ -495,8 +520,8 @@ export default function SplitPicker({
           {filtered.length > shown.length && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, flexWrap: 'wrap' }}>
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                {shown.length.toLocaleString('de-DE')} von{' '}
-                {filtered.length.toLocaleString('de-DE')} angezeigt
+                {shown.length.toLocaleString('de-DE')} von {filtered.length.toLocaleString('de-DE')}{' '}
+                angezeigt
               </Typography>
               <Button size="small" onClick={() => setLimit((prev) => prev + PAGE)}>
                 Weitere anzeigen
