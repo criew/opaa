@@ -36,7 +36,8 @@ final class EvalOllamaEndpoint {
   /**
    * The configured external base URL, or {@code null} if {@value #BASE_URL_PROPERTY} is unset or
    * blank — the latter is treated the same as unset so a stray {@code -Dopaa.eval.ollamaBaseUrl=}
-   * does not silently disable the Testcontainer without pointing anywhere.
+   * does not silently disable the Testcontainer without pointing anywhere. An address with user
+   * information or a query is refused, since it is logged and reported as it is.
    */
   static String externalBaseUrl() {
     String value = System.getProperty(BASE_URL_PROPERTY);
@@ -44,7 +45,11 @@ final class EvalOllamaEndpoint {
       return null;
     }
     String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    EvalChatModel.refuseSecretsInAddress(BASE_URL_PROPERTY, trimmed);
+    return trimmed;
   }
 
   static boolean isExternal() {

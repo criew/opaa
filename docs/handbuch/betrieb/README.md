@@ -43,8 +43,9 @@ beim Identitätsanbieter.
 | Sicherheitsmonitoring (SIEM) | empfängt das Revisionsprotokoll ohne Pseudonyme als Syslog | nein, eigener Schalter | [Ausleitung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring) |
 
 Gesichert wird nur, was Zustand hält: Datenbank, Originalablage und Geheimnisse
-([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)). Jede Verbindung nach außen
-mit ihren Daten listet das Faktenblatt `datenfluesse` ([Nachvollziehbarkeit](nachvollziehbarkeit.md)).
+([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)). Jede Verbindung, die OPAA
+selbst aufbaut, listet mit ihren Daten das Faktenblatt `datenfluesse`; was davon geprüft wird, steht
+unter [Was bei jeder Änderung geprüft wird](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird).
 
 ## Eine oder mehrere Backend-Instanzen
 
