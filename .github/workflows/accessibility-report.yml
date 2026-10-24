@@ -16,7 +16,9 @@ on:
       - .github/workflows/accessibility-report.yml
       - .github/scripts/accessibility_report.py
       - e2e/fixtures/a11y.ts
+      - e2e/scripts/run-e2e.mjs
       - .github/requirements-seed.txt
+      - demo/seed/requirements.txt
 
 permissions:
   contents: read
@@ -105,6 +107,10 @@ jobs:
         run: |
           mkdir -p "$E2E_A11Y_RESULTS_DIR"
           mapfile -t specs < <(grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename | sort)
+          if ((${#specs[@]} == 0)); then
+            echo "::error::Keine Spec-Datei unter e2e/tests ruft die axe-Prüfung auf"
+            exit 1
+          fi
           printf '%s\n' "${specs[@]}" >"$E2E_A11Y_RESULTS_DIR/expected.txt"
           rc=0
           pnpm test "${specs[@]}" || rc=$?
@@ -123,6 +129,10 @@ jobs:
           mkdir -p "$E2E_A11Y_RESULTS_DIR"
           grep -l 'expectNoSeriousA11yViolations(' local-auth/tests/*.spec.ts | xargs -n1 basename | sort \
             >"$E2E_A11Y_RESULTS_DIR/expected.txt"
+          if [[ ! -s "$E2E_A11Y_RESULTS_DIR/expected.txt" ]]; then
+            echo "::error::Keine Spec-Datei unter e2e/local-auth/tests ruft die axe-Prüfung auf"
+            exit 1
+          fi
           rc=0
           pnpm run test:local-auth || rc=$?
           echo "Suite beendet mit $rc"

@@ -29,8 +29,8 @@ geprüft ist, womit, auf welchem Stand und mit welchen Lücken.
   Bedienmustern.
 - **Prüfbericht je Version:** Der Release-Lauf prüft jede Version mit axe-core und legt den Bericht
   ins Update-Paket (`barrierefreiheit/pruefbericht.md`): geprüfte Seiten und Zustände, jeder im
-  Farbschema, das sein Prüfszenario einstellt, ein Teil der Seiten in beiden, und welche nur in einem
-  geprüft sind; dazu angewandte Regeln, jeder Befund mit Stufe und die Regeln, die das Werkzeug nicht
+  Farbschema, das sein Prüfszenario einstellt, ein Teil der Zustände in beiden, und welche Zustände
+  (Seite, Dialog, Menü) nur in einem geprüft sind; dazu angewandte Regeln, jeder Befund mit Stufe und die Regeln, die das Werkzeug nicht
   entscheiden konnte.
   Ein Befund hält das Release nicht auf, er steht im Bericht.
 

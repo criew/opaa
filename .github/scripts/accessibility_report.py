@@ -34,6 +34,12 @@ ELEMENT = re.compile(r"<[^<>\n]+>")
 HELP_URL = re.compile(r"https://[A-Za-z0-9.-]+/[A-Za-z0-9._~/%-]*")
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 NAMES_SCHEME = re.compile(r"Farbschema|\((?:hell|dunkel|light|dark)\)", re.IGNORECASE)
+# A colour scheme named in a context: "(hell)", "(light)", "(helles Farbschema)" or ", dunkles Farbschema".
+SCHEME_IN_CONTEXT = re.compile(
+    r"\s*\((?:hell|dunkel|light|dark|helles Farbschema|dunkles Farbschema)\)"
+    r"|,\s*(?:helles|dunkles) Farbschema(?=\))", re.IGNORECASE)
+ENGLISH_SCHEME = {"(light)": "(hell)", "(dark)": "(dunkel)"}
+SKIPPED_AFTER_FAILURE = "übersprungen nach Fehlschlag"
 
 
 class ReportError(Exception):
@@ -109,8 +115,10 @@ def load(results: Path) -> list[dict]:
 
 
 def unfinished(report: Path, files: set[str]) -> list[dict]:
-    """Scenarios of a Playwright JSON report whose last attempt neither passed nor was skipped, with
-    the first line of their error, from the spec files in `files` only."""
+    """Scenarios of a Playwright JSON report whose last attempt did not pass, with the first line of
+    their error, from the spec files in `files` only. A skipped scenario counts as finished only
+    when it was meant to be skipped (`expectedStatus` "skipped"); one skipped because an earlier
+    scenario of its serial group failed did not run."""
     try:
         data = json.loads(report.read_text(encoding="utf-8"))
     except ValueError as error:
@@ -121,14 +129,17 @@ def unfinished(report: Path, files: set[str]) -> list[dict]:
         title = suite.get("title")
         here = [*path, title] if title else path
         for spec in suite.get("specs") or []:
-            results = [r for t in spec.get("tests") or [] for r in t.get("results") or []]
+            tests = spec.get("tests") or []
+            results = [r for t in tests for r in t.get("results") or []]
             last = results[-1] if results else None
-            if last is not None and last.get("status") in ("passed", "skipped"):
+            status = last.get("status") if last else None
+            meant = all(t.get("expectedStatus") == "skipped" for t in tests) if tests else False
+            if status == "passed" or (status == "skipped" and meant):
                 continue
             error = next((r["error"]["message"] for r in results
                           if isinstance(r.get("error"), dict) and r["error"].get("message")), "")
             found.append({"scenario": " › ".join([*here, spec.get("title", "")]),
-                          "status": last.get("status") if last else "not run",
+                          "status": SKIPPED_AFTER_FAILURE if status == "skipped" else status or "not run",
                           "error": ANSI.sub("", error).split("\n", 1)[0]})
         for child in suite.get("suites") or []:
             walk(child, here)
@@ -152,11 +163,21 @@ def count_by_impact(violations: list[dict]) -> str:
 
 
 def state(record: dict) -> str:
-    """The context of a record, with its colour scheme unless the context already names one."""
+    """The context of a record, with its colour scheme unless the context already names one, and an
+    English scheme name of a scenario in German."""
     context = str(record.get("context", ""))
+    for english, german in ENGLISH_SCHEME.items():
+        context = context.replace(english, german)
     if NAMES_SCHEME.search(context):
         return text(context)
     return f"{text(context)} ({SCHEMES.get(record.get('colorScheme'), 'Farbschema unbekannt')})"
+
+
+def bare_state(record: dict) -> str:
+    """The context of a record without the colour scheme it names, so both schemes of one state
+    share it."""
+    context = SCHEME_IN_CONTEXT.sub("", str(record.get("context", ""))).replace("()", "")
+    return " ".join(context.split()).rstrip(", ")
 
 
 def page(record: dict) -> str:
@@ -180,11 +201,12 @@ def render(runs: list[dict], version: str, commit: str) -> dict[str, bytes]:
     unclear = sorted({i["id"] for r in records for i in r.get("incomplete") or []})
     stopped = [s for run in runs for s in run["unfinished"] or []]
     schemes = {s: sum(1 for r in records if r.get("colorScheme") == s) for s in SCHEMES}
-    by_page: dict[str, set[str]] = {}
+    pages = {page(r) for r in records}
+    by_state: dict[tuple[str, str], set[str]] = {}
     for record in records:
-        by_page.setdefault(page(record), set()).add(str(record.get("colorScheme")))
-    both = sorted(p for p, s in by_page.items() if {"light", "dark"} <= s)
-    single = sorted(p for p in by_page if p not in both)
+        by_state.setdefault((page(record), bare_state(record)), set()).add(str(record.get("colorScheme")))
+    both = [k for k, s in by_state.items() if {"light", "dark"} <= s]
+    single = sorted(k for k in by_state if k not in both)
 
     lines = [
         "---",
@@ -201,7 +223,7 @@ def render(runs: list[dict], version: str, commit: str) -> dict[str, bytes]:
         f"Der Release-Lauf startet OPAA aus dem Commit `{commit}` dieser Version mit den Testdaten der"
         " E2E-Suite und prüft jede Seite und jeden Zustand, den die Barrierefreiheitsszenarien der Suite"
         " aufrufen, mit axe-core gegen WCAG 2.1, Stufen A und AA. Jeder Zustand ist in dem Farbschema"
-        " geprüft, das sein Szenario einstellt; ein Teil der Seiten in beiden, die übrigen nur in einem"
+        " geprüft, das sein Szenario einstellt; ein Teil der Zustände in beiden, die übrigen nur in einem"
         " (Abschnitt „Farbschemata“). Jeder Befund steht unten; ein Befund hält das Release nicht auf.",
         "",
         "## Ergebnis",
@@ -212,8 +234,8 @@ def render(runs: list[dict], version: str, commit: str) -> dict[str, bytes]:
         f"| Werkzeug | axe-core {', '.join(versions) or 'Version unbekannt'} |",
         f"| Regelsatz | {', '.join(code(t) for t in tags) or 'unbekannt'} |",
         f"| Geprüfte Zustände | {len(records)} (hell {schemes['light']}, dunkel {schemes['dark']})"
-        f" auf {len(by_page)} Seiten |",
-        f"| Seiten in beiden Farbschemata | {len(both)} von {len(by_page)} |",
+        f" auf {len(pages)} Seiten |",
+        f"| Zustände in beiden Farbschemata | {len(both)} von {len(by_state)} |",
         f"| Befunde | {count_by_impact(violations)} |",
         f"| Von Hand zu prüfen | {len(unclear)} Regeln, die axe nicht entscheiden konnte |",
         f"| Szenarien nicht vollständig | {len(stopped)} |",
@@ -235,13 +257,14 @@ def render(runs: list[dict], version: str, commit: str) -> dict[str, bytes]:
     lines += ["", "Eine Ausnahme nimmt eine Regel oder einen Bereich der Seite für dieses Szenario aus der"
               " Prüfung; ihre Begründung steht am Szenario in der E2E-Suite. `<id>` steht für die"
               " Kennung eines Space, einer Bibliothek oder eines Chats.", "", "## Farbschemata", "",
-              f"In beiden Farbschemata geprüft sind {len(both)} von {len(by_page)} Seiten; die übrigen nur"
-              " in dem Farbschema, das ihr Szenario einstellt.", ""]
+              f"In beiden Farbschemata geprüft sind {len(both)} von {len(by_state)} Zuständen (Seite,"
+              " Dialog, Menü); jeder übrige nur in dem Farbschema, das sein Szenario einstellt. Die"
+              " Tabelle nennt jeden Zustand ohne Gegenstück im anderen Schema.", ""]
     if single:
-        lines += ["| Seite | Farbschema |", "|---|---|"]
-        for path in single:
-            names = [SCHEMES.get(s, "unbekannt") for s in ("light", "dark") if s in by_page[path]]
-            lines.append(f"| {code(path)} | nur {', '.join(names) or 'unbekannt'} |")
+        lines += ["| Zustand | Seite | Farbschema |", "|---|---|---|"]
+        for path, context in single:
+            names = [SCHEMES.get(s, "unbekannt") for s in ("light", "dark") if s in by_state[(path, context)]]
+            lines.append(f"| {text(context) or '–'} | {code(path)} | nur {', '.join(names) or 'unbekannt'} |")
         lines.append("")
     lines += ["## Befunde", ""]
     found = [r for r in records if r["violations"]]

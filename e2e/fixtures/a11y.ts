@@ -44,6 +44,23 @@ const REPORT_ONLY = process.env.E2E_A11Y_REPORT_ONLY === 'true'
  */
 let sequence = 0
 
+/**
+ * The colour scheme the page actually shows, read from the background of the body the theme sets
+ * (CssBaseline); an own choice in the settings or a branding default wins over the media query, so
+ * the media query alone could name the wrong one. Falls back to the media query when the body has
+ * no opaque background. A string expression: the suite compiles without DOM typings.
+ */
+const APPLIED_SCHEME = `
+  (() => {
+    const parts = (getComputedStyle(document.body).backgroundColor.match(/[0-9.]+/g) || []).map(Number);
+    if (parts.length >= 3 && (parts.length < 4 || parts[3] > 0)) {
+      const luminance = (0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]) / 255;
+      return luminance < 0.5 ? 'dark' : 'light';
+    }
+    return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  })()
+`
+
 /** One analysis as the report of the update package reads it (update_package.py). */
 async function writeRecord(
   page: Page,
@@ -54,9 +71,7 @@ async function writeRecord(
 ): Promise<void> {
   if (!RESULTS_DIR) return
   const info = test.info()
-  const dark = (await page.evaluate(
-    "matchMedia('(prefers-color-scheme: dark)').matches",
-  )) as boolean
+  const colorScheme = (await page.evaluate(APPLIED_SCHEME)) as 'dark' | 'light'
   sequence += 1
   const record = {
     sequence,
@@ -65,7 +80,7 @@ async function writeRecord(
     file: info.titlePath[0],
     retry: info.retry,
     path: new URL(page.url()).pathname,
-    colorScheme: dark ? 'dark' : 'light',
+    colorScheme,
     measuredAt: results.timestamp,
     axeVersion: results.testEngine.version,
     tags: WCAG_TAGS,

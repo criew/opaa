@@ -97,11 +97,11 @@ def test_the_report_names_version_tool_rule_set_and_every_checked_state(tmp_path
     assert "| Werkzeug | axe-core `4.11.0` |" in text
     assert "`wcag21aa`" in text
     assert "| Geprüfte Zustände | 3 (hell 2, dunkel 1) auf 2 Seiten |" in text
-    assert "| Seiten in beiden Farbschemata | 1 von 2 |" in text
+    assert "| Zustände in beiden Farbschemata | 1 von 2 |" in text
     # A context that names its scheme keeps it once; identifiers in a path are folded.
     assert "| Chat (dunkles Farbschema) | `/spaces/<id>/chats/new` | keine | keine |" in text
     assert "| Anmeldeseite (hell) | `/login` | keine | keine |" in text
-    assert "| `/login` | nur hell |" in text
+    assert "| Anmeldeseite | `/login` | nur hell |" in text
     assert "| Geprüfte Szenario-Dateien | `accessibility.spec.ts`, `07-barrierefreiheit.spec.ts` |" in text
     assert "Keine Befunde." in text
     assert "Alle Szenarien der geprüften Szenario-Dateien liefen vollständig durch." in text
@@ -175,6 +175,50 @@ def test_an_expected_spec_file_without_a_record_fails(tmp_path: Path) -> None:
 
     with pytest.raises(accessibility_report.ReportError, match="space-members.spec.ts"):
         accessibility_report.load(tmp_path)
+
+
+# regression guard: a scenario Playwright skips because an earlier one of its describe.serial group
+# failed did not run, and must not read as finished; a scenario meant to be skipped stays out.
+def test_scenarios_skipped_after_a_failure_in_a_serial_group_are_named(tmp_path: Path) -> None:
+    serial = {"suites": [{"title": "space-members.spec.ts", "specs": [], "suites": [{
+        "title": "Space-Anlage und Mitglieder", "suites": [], "specs": [
+            {"title": "A", "tests": [{"expectedStatus": "passed", "status": "expected",
+                                      "results": [{"status": "passed"}, {"status": "passed"}]}]},
+            {"title": "B", "tests": [{"expectedStatus": "passed", "status": "unexpected",
+                                      "results": [{"status": "failed", "error": {"message": "Timeout"}},
+                                                  {"status": "failed", "error": {"message": "Timeout"}}]}]},
+            {"title": "C", "tests": [{"expectedStatus": "passed", "status": "skipped",
+                                      "results": [{"status": "skipped"}, {"status": "skipped"}]}]},
+            {"title": "D", "tests": [{"expectedStatus": "skipped", "status": "skipped",
+                                      "results": [{"status": "skipped"}]}]},
+        ]}]}]}
+    write(tmp_path / "e2e", record(1, "A", file="space-members.spec.ts"), playwright=serial)
+
+    text = report(tmp_path)
+
+    assert "| Szenarien nicht vollständig | 2 |" in text
+    assert "| space-members.spec.ts › Space-Anlage und Mitglieder › B | `failed` | Timeout |" in text
+    assert ("| space-members.spec.ts › Space-Anlage und Mitglieder › C | `übersprungen nach Fehlschlag`"
+            in text)
+    assert "Mitglieder › D" not in text
+
+
+def test_colour_schemes_are_counted_per_state_not_per_page(tmp_path: Path) -> None:
+    write(tmp_path / "e2e",
+          record(1, "Katalog (helles Farbschema)", path="/catalog"),
+          record(2, "Katalog (dunkles Farbschema)", "dark", path="/catalog"),
+          record(3, "Katalog, Menü Weitere Aktionen", "dark", path="/catalog"),
+          record(4, "Passwort festlegen (light)", path="/set-password"),
+          record(5, "Passwort festlegen (dark)", "dark", path="/set-password"))
+
+    text = report(tmp_path)
+
+    assert "| Zustände in beiden Farbschemata | 2 von 3 |" in text
+    # The menu on a page checked in both schemes is named, though its page is not.
+    assert "| Katalog, Menü Weitere Aktionen | `/catalog` | nur dunkel |" in text
+    assert "| Katalog | `/catalog` |" not in text
+    # English scheme names of a scenario read in German.
+    assert "| Passwort festlegen (hell) |" in text and "(light)" not in text
 
 
 def test_only_the_last_attempt_of_a_retried_scenario_counts(tmp_path: Path) -> None:
@@ -292,7 +336,11 @@ def test_every_spec_with_an_axe_check_is_expected_and_runs_in_the_accessibility_
             in body)
     assert "pnpm test \"${specs[@]}\" || rc=$?" in body
     assert "grep -l 'expectNoSeriousA11yViolations(' local-auth/tests/*.spec.ts" in body
-    assert body.count('"$E2E_A11Y_RESULTS_DIR/expected.txt"') == 2
+    # An empty search stops before a suite runs, not after it.
+    assert body.index("if ((${#specs[@]} == 0)); then") < body.index('pnpm test "${specs[@]}"')
+    assert body.index('if [[ ! -s "$E2E_A11Y_RESULTS_DIR/expected.txt" ]]; then') < body.index(
+        "pnpm run test:local-auth")
+    assert body.count('>"$E2E_A11Y_RESULTS_DIR/expected.txt"') == 2
     # The pattern finds a call, not the import of the fixture.
     calls = [p for p in (ROOT / "e2e").rglob("*.spec.ts") if "node_modules" not in p.parts
              and "expectNoSeriousA11yViolations(" in p.read_text(encoding="utf-8")]

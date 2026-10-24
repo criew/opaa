@@ -785,7 +785,9 @@ das den Bericht mit `.github/scripts/accessibility_report.py` erzeugt.
 
 **Inhalt.** Version, Commit, Prüfdatum, Version von axe-core und Regelsatz (WCAG 2.0 und 2.1, Stufen A
 und AA); jede geprüfte Seite und jeder Zustand mit Farbschema, Befunden und Ausnahmen des Szenarios;
-welche Seiten in beiden Farbschemata geprüft sind und welche nur in dem, das ihr Szenario einstellt;
+wie viele Zustände (Seite, Dialog, Menü) in beiden Farbschemata geprüft sind und jeder Zustand, der nur in
+dem geprüft ist, das sein Szenario einstellt; als Farbschema gilt das, das die Seite tatsächlich zeigt;
+die Szenarien, die vor ihrem Ende abbrachen oder nach einem Fehlschlag ihrer Gruppe übersprungen wurden;
 jeder Befund mit Regel, Stufe, Zahl der Elemente und bis zu fünf betroffenen Elementen; die Regeln,
 die axe nicht entscheiden konnte; alle angewandten Regeln; die Szenarien mit axe-Prüfung, die vor
 ihrem Ende abbrachen. `axe-ergebnisse.json` enthält dieselben Datensätze für Werkzeuge.
@@ -797,7 +799,7 @@ Seed oder ein `beforeAll` scheitert, scheitert `accessibility` und mit ihm das U
 setzt dann keine Tags. *Re-run failed jobs* wiederholt die Prüfung.
 
 **Grenzen.** Geprüft sind nur die Seiten und Zustände, die die Szenarien aufrufen, mit den Testdaten
-der Suite, und jeder nur im Farbschema, das sein Szenario einstellt; nicht jede Seite ist in beiden
+der Suite, und jeder nur im Farbschema, das sein Szenario einstellt; nicht jeder Zustand ist in beiden
 Schemata geprüft. Der Lauf verlängert ein Release um rund 14 Minuten (gemessen: `axe` kalt rund
 13,5 Minuten, `update-package` wartet darauf), weil `publish` auf das Update-Paket wartet. Jeder PR, der den Workflow, die Fixture oder das Skript ändert,
 führt den Lauf aus.
