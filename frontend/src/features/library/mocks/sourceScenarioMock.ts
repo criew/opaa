@@ -322,7 +322,10 @@ interface TestBody {
   sourceSettings?: Record<string, unknown> | null
 }
 
-/** Whether the scope at `index` of `total` fails in the `partial` scenario: every second one. */
+/**
+ * Whether the scope at `index` of `total` fails in the `partial` scenario: every second one, and
+ * the only one when there is just one, so a partial failure always shows.
+ */
 function failsPartially(index: number, total: number) {
   return total === 1 || index % 2 === 1
 }

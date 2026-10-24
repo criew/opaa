@@ -249,7 +249,9 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
   },
 }
 
-for (const detail of sourceLibraryDetails()) {
+// the browser's mock mode shows one fixture library per source type; the tests keep the libraries
+// their assertions count on, as they do not see the profiles SharePoint and Dropbox libraries need
+for (const detail of import.meta.env.MODE === 'test' ? [] : sourceLibraryDetails()) {
   mockLibraryDetails[detail.id] = detail
   mockLibraries.push({
     id: detail.id,
