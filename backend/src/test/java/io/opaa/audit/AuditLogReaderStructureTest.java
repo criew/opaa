@@ -37,11 +37,18 @@ class AuditLogReaderStructureTest {
 
   private static final JavaClasses MAIN = MainClasses.get();
 
-  private static final String QUERY_KEYWORD = "\\b(?:FROM|JOIN|INTO|UPDATE)\\s+(?:ONLY\\s+)?";
+  /** Whitespace in the SQL, written out or as an escape sequence of the Java literal. */
+  private static final String SQL_SPACE = "(?:\\s|\\\\[tnr])+";
 
-  /** A query naming the table itself, not one of its monthly partitions, in any letter case. */
+  private static final String QUERY_KEYWORD =
+      "(?:\\b|(?<=\\\\[tnr]))(?:FROM|JOIN|INTO|UPDATE)" + SQL_SPACE + "(?:ONLY" + SQL_SPACE + ")?";
+
+  /**
+   * A query naming the table itself, not one of its monthly partitions, in any letter case and also
+   * as a quoted identifier.
+   */
   private static final Pattern QUERY_ON_AUDIT_LOG =
-      Pattern.compile(QUERY_KEYWORD + "audit_log\\b", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(QUERY_KEYWORD + "(?:\\\\?\")?audit_log(?!\\w)", Pattern.CASE_INSENSITIVE);
 
   /** A string literal that is the bare table name, so it can stand in a query as a constant. */
   private static final Pattern TABLE_NAME_LITERAL =
@@ -52,18 +59,21 @@ class AuditLogReaderStructureTest {
       Pattern.compile("(\\w+)\\s*=\\s*\"audit_log\"", Pattern.CASE_INSENSITIVE);
 
   /**
-   * The lines that hold the bare table name without querying it: the JPA mapping, read only through
-   * the funnel of {@link AuditFunnelStructureTest}, and the private object id of the self-log
-   * entry. Any other such literal counts as a reader.
+   * The lines, by source path, that hold the bare table name without querying it: the JPA mapping,
+   * read only through the funnel of {@link AuditFunnelStructureTest}, and the private object id of
+   * the self-log entry. Any other such literal counts as a reader.
    */
-  private static final Set<String> NON_QUERY_TABLE_NAME_LINES =
-      Set.of(
+  private static final Map<String, String> NON_QUERY_TABLE_NAME_LINES =
+      Map.of(
+          "io/opaa/audit/AuditLogEntry.java",
           "@Table(name = \"audit_log\")",
+          "io/opaa/audit/AuditEventRecorder.java",
           "private static final String AUDIT_LOG_SELF_OBJECT_ID = \"audit_log\";");
 
   @Test
   void onlyTheSelfDisclosureExporterQueriesTheAuditLogInSql() {
-    assertThat(sqlReaders(mainSources())).containsExactly("AuditLogSelfDisclosureExporter.java");
+    assertThat(sqlReaders(mainSources()))
+        .containsExactly("io/opaa/audit/AuditLogSelfDisclosureExporter.java");
   }
 
   @Test
@@ -105,6 +115,45 @@ class AuditLogReaderStructureTest {
   }
 
   @Test
+  void aQueryOnTheAllowedObjectIdConstantCountsAsReader() {
+    assertThat(
+            sqlReaders(
+                Map.of(
+                    "io/opaa/audit/AuditEventRecorder.java",
+                    """
+                    private static final String AUDIT_LOG_SELF_OBJECT_ID = "audit_log";
+                    String sql = "SELECT 1 FROM " + AUDIT_LOG_SELF_OBJECT_ID;
+                    """)))
+        .containsExactly("io/opaa/audit/AuditEventRecorder.java");
+  }
+
+  @Test
+  void anAllowedTableNameLineCountsAsReaderInAnotherFile() {
+    assertThat(sqlReaders(Map.of("io/opaa/other/SecondEntry.java", "@Table(name = \"audit_log\")")))
+        .containsExactly("io/opaa/other/SecondEntry.java");
+  }
+
+  @Test
+  void aQuotedIdentifierOrAnEscapedSeparatorCountsAsReader() {
+    assertThat(
+            sqlReaders(
+                Map.of(
+                    "Quoted.java",
+                    "String sql = \"select * from \\\"audit_log\\\"\";",
+                    "Tab.java",
+                    "String sql = \"select * from\\taudit_log\";",
+                    "Newline.java",
+                    "String sql = \"select *\\nfrom audit_log\";")))
+        .containsExactlyInAnyOrder("Quoted.java", "Tab.java", "Newline.java");
+  }
+
+  @Test
+  void aMonthlyPartitionIsNoReader() {
+    assertThat(sqlReaders(Map.of("Fixture.java", "\"DROP TABLE IF EXISTS audit_log_2026_10\"")))
+        .isEmpty();
+  }
+
+  @Test
   void aMethodReferenceToExportCountsAsCall() {
     JavaClasses fixtures =
         new ClassFileImporter().importClasses(MethodReferenceCaller.class, LambdaCaller.class);
@@ -120,12 +169,12 @@ class AuditLogReaderStructureTest {
    */
   private static Set<String> sqlReaders(Map<String, String> sources) {
     return sources.entrySet().stream()
-        .filter(source -> queriesTheAuditLog(source.getValue()))
+        .filter(source -> queriesTheAuditLog(source.getKey(), source.getValue()))
         .map(Map.Entry::getKey)
         .collect(Collectors.toCollection(TreeSet::new));
   }
 
-  private static boolean queriesTheAuditLog(String source) {
+  private static boolean queriesTheAuditLog(String path, String source) {
     if (QUERY_ON_AUDIT_LOG.matcher(source).find()) {
       return true;
     }
@@ -136,7 +185,7 @@ class AuditLogReaderStructureTest {
             .anyMatch(
                 line ->
                     TABLE_NAME_LITERAL.matcher(line).find()
-                        && !NON_QUERY_TABLE_NAME_LINES.contains(line));
+                        && !line.equals(NON_QUERY_TABLE_NAME_LINES.get(path)));
     if (literalOutsideKnownLines) {
       return true;
     }
@@ -171,12 +220,13 @@ class AuditLogReaderStructureTest {
         .collect(Collectors.toSet());
   }
 
-  /** Every main source file by its file name. */
+  /** Every main source file by its path below the source root, with {@code /} as separator. */
   private static Map<String, String> mainSources() {
     Map<String, String> sources = new TreeMap<>();
-    try (Stream<Path> files = Files.walk(JavaSources.MAIN_SOURCES)) {
-      for (Path file : files.filter(f -> f.toString().endsWith(".java")).toList()) {
-        sources.put(file.getFileName().toString(), Files.readString(file, StandardCharsets.UTF_8));
+    try {
+      for (Path file : JavaSources.mainSources()) {
+        String path = JavaSources.MAIN_SOURCES.relativize(file).toString().replace('\\', '/');
+        sources.put(path, Files.readString(file, StandardCharsets.UTF_8));
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
