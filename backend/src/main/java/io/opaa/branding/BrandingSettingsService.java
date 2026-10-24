@@ -260,14 +260,17 @@ public class BrandingSettingsService {
   /**
    * Like {@link #validatedText}, but a value without a single visible character - blanks, no-break
    * and ideographic spaces, zero-width and other format characters - counts as empty ("back to the
-   * default"): the notice must not be switched off by a value that merely looks empty. Line and
-   * paragraph separators are rejected along with the control characters.
+   * default"): the notice must not be switched off by a value that merely looks empty. Characters
+   * that render empty are cut from the ends, except combining marks and tag characters that belong
+   * to a visible one before them (an emoji's variation selector). Control characters, line and
+   * paragraph separators and bidirectional controls are rejected, and a text equal to the standard
+   * is stored as "not set" so it keeps following the standard.
    */
   private String validatedNotice(String value, int maxLength, String fieldLabel) {
     if (value == null || value.codePoints().noneMatch(BrandingSettingsService::isVisible)) {
       return null;
     }
-    String trimmed = value.strip();
+    String trimmed = withoutInvisibleEdges(value);
     if (trimmed.length() > maxLength) {
       throw new ValidationException(
           fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein");
@@ -276,21 +279,77 @@ public class BrandingSettingsService {
       throw new ValidationException(
           fieldLabel + " darf keine Steuerzeichen und keinen Zeilenumbruch enthalten");
     }
-    return trimmed;
+    return trimmed.equals(BrandingDefaults.AI_NOTICE) ? null : trimmed;
   }
 
   private static boolean isVisible(int codePoint) {
     return !Character.isWhitespace(codePoint)
         && !Character.isSpaceChar(codePoint)
         && !Character.isISOControl(codePoint)
-        && Character.getType(codePoint) != Character.FORMAT;
+        && Character.getType(codePoint) != Character.FORMAT
+        && !isStandaloneBlank(codePoint)
+        && !isCombiningBlank(codePoint);
+  }
+
+  /** Characters that render empty on their own although they are neither space nor format. */
+  private static boolean isStandaloneBlank(int codePoint) {
+    return codePoint == 0x115F
+        || codePoint == 0x1160
+        || codePoint == 0x3164
+        || codePoint == 0xFFA0
+        || codePoint == 0x2800;
+  }
+
+  /** Combining marks that render nothing by themselves (variation selectors and the like). */
+  private static boolean isCombiningBlank(int codePoint) {
+    return codePoint == 0x034F
+        || codePoint == 0x17B4
+        || codePoint == 0x17B5
+        || (codePoint >= 0x180B && codePoint <= 0x180F)
+        || (codePoint >= 0xFE00 && codePoint <= 0xFE0F)
+        || (codePoint >= 0xE0100 && codePoint <= 0xE01EF);
+  }
+
+  private static boolean isTagCharacter(int codePoint) {
+    return codePoint >= 0xE0020 && codePoint <= 0xE007F;
+  }
+
+  /**
+   * Bidirectional embeddings, overrides and isolates would reorder text appended after the notice.
+   */
+  private static boolean isBidiControl(int codePoint) {
+    return (codePoint >= 0x202A && codePoint <= 0x202E)
+        || (codePoint >= 0x2066 && codePoint <= 0x2069);
   }
 
   private static boolean isControlOrLineBreak(int codePoint) {
     int type = Character.getType(codePoint);
     return Character.isISOControl(codePoint)
+        || isBidiControl(codePoint)
         || type == Character.LINE_SEPARATOR
         || type == Character.PARAGRAPH_SEPARATOR;
+  }
+
+  /** What may be cut from the end: invisible on its own, not part of the visible char before it. */
+  private static boolean isTrailingNoise(int codePoint) {
+    return Character.isWhitespace(codePoint)
+        || Character.isSpaceChar(codePoint)
+        || Character.isISOControl(codePoint)
+        || isStandaloneBlank(codePoint)
+        || (Character.getType(codePoint) == Character.FORMAT && !isTagCharacter(codePoint));
+  }
+
+  private static String withoutInvisibleEdges(String value) {
+    int[] points = value.codePoints().toArray();
+    int from = 0;
+    int to = points.length;
+    while (from < to && !isVisible(points[from])) {
+      from++;
+    }
+    while (to > from && isTrailingNoise(points[to - 1])) {
+      to--;
+    }
+    return new String(points, from, to - from);
   }
 
   private String validatedColor(String value) {
