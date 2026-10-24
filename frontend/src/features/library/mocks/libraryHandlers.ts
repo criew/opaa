@@ -463,11 +463,13 @@ export const libraryHandlers = [
           { status: 400 },
         )
       }
+      // no scope chosen yet: the sign-in alone is tested
       if (!settings?.scopes?.length) {
-        return HttpResponse.json(
-          { error: 'sourceSettings sind für den Verbindungstest erforderlich' },
-          { status: 400 },
-        )
+        return HttpResponse.json({
+          reachable: true,
+          credentialsVerified: true,
+          message: 'Endpoint erreichbar, Anmeldung angenommen.',
+        })
       }
       const scopes = settings.scopes.map((scope) => ({
         bucket: scope.bucket,

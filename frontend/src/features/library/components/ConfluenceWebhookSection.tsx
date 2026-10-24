@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography'
 import { generatePushSecret, removePushSecret } from '../api/indexingApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface ConfluenceWebhookSectionProps {
   libraryId: string
@@ -94,13 +95,13 @@ export default function ConfluenceWebhookSection({
         <strong>Webhook:</strong>{' '}
         {secretSet ? 'eingerichtet — Änderungen werden sofort aufgenommen' : 'nicht eingerichtet'}
       </Typography>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.25 }}>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
         Confluence kann OPAA über geänderte Seiten benachrichtigen; die gemeldeten Seiten werden
         dann gezielt neu geholt. Löschungen übernimmt weiterhin nur der Vollabgleich, sofern
         Confluence die Seite nicht selbst als im Papierkorb ausweist. Das Geheimnis wird nur einmal
         angezeigt.
       </Typography>
-      <Stack direction="row" spacing={1} sx={{ mt: 0.75, flexWrap: 'wrap' }} useFlexGap>
+      <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} useFlexGap>
         <Button
           size="small"
           variant="outlined"
@@ -140,7 +141,7 @@ export default function ConfluenceWebhookSection({
           <Typography
             component="code"
             data-testid="confluence-webhook-secret"
-            sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
+            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
           >
             {revealed?.secret}
           </Typography>
@@ -149,7 +150,7 @@ export default function ConfluenceWebhookSection({
           </Typography>
           <Typography
             component="code"
-            sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
+            sx={{ display: 'block', fontFamily: fontFamily.mono, wordBreak: 'break-all', mb: 2 }}
           >
             {revealed?.url}
           </Typography>

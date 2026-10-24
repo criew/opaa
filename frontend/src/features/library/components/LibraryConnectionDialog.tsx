@@ -31,6 +31,7 @@ import {
   framedBy,
   sourceConnectionOf,
 } from './sources/sourceConnection'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /** What the dialog reads of the stored library. */
 export interface ConnectableLibrary {
@@ -203,6 +204,7 @@ export default function LibraryConnectionDialog({
             offerOwnAddress={false}
             excludeProfileId={current?.id}
             onlyOwnAccounts={privateLibrary}
+            showSingle
             idPrefix="library-connection"
           />
           {next && !repair && (
@@ -237,7 +239,7 @@ export default function LibraryConnectionDialog({
                     ? `Liegt unter der Server-Adresse des Zugangs: ${next.serverUrl}`
                     : `Muss unter der Server-Adresse des Zugangs liegen: ${next.serverUrl}`
                 }
-                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
               />
             </>
           )}
@@ -281,7 +283,6 @@ export default function LibraryConnectionDialog({
         {failed ? (
           <BusyButton
             variant="contained"
-            color="warning"
             onClick={() => void connect(visible)}
             busy={submitting}
             busyAnnouncement="Zugang wird zugeordnet"

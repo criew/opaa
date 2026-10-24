@@ -62,6 +62,7 @@ export const nextcloudSource: SourceRegistration = {
     ),
     StoredView: NextcloudStoredView,
     Scope: NextcloudScope,
+    scopeNoteId: 'nextcloud-sharing-consequence',
     scopeHero: {
       summary: (library) => {
         const count = nextcloudSettingsOf(library).folders?.length ?? 0

@@ -24,6 +24,11 @@ export interface SharePointLibraryChoice {
   driveId: string
   name: string | null
   folders: SharePointFolder[]
+  /**
+   * The site the library was chosen in, known only while the page lives: the settings keep no
+   * site, so after saving or reloading the selection dialog starts at the sites again.
+   */
+  site?: { id: string; name: string | null } | null
 }
 
 /**

@@ -1,4 +1,3 @@
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { PendingSourceConnection } from '@/shared/api/types'
@@ -37,25 +36,18 @@ export default function SourceConsentPanel({
 }: SourceConsentPanelProps) {
   return (
     <Box data-testid="source-consent">
-      <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1 }}>
+      <Typography component="h4" sx={{ fontSize: 12, color: 'text.secondary', mb: '5px' }}>
         Quelle verbinden
       </Typography>
       {pending ? (
-        <Alert severity="success">
-          {pending.accountLabel
-            ? `Verbunden als „${pending.accountLabel}“.`
-            : 'Die Quelle ist verbunden.'}{' '}
-          Die Zustimmung gilt 60 Minuten für diese neue Bibliothek, bis{' '}
-          {clockTime(pending.expiresAt)} Uhr. Legen Sie die Bibliothek bis dahin an; sonst verbinden
-          Sie die Quelle erneut.
-        </Alert>
+        <Typography sx={{ fontSize: 13.5, color: 'text.primary' }}>
+          {pending.accountLabel ? `Verbunden als „${pending.accountLabel}“` : 'Verbunden'}
+          {` · bis ${clockTime(pending.expiresAt)} Uhr anlegen`}
+        </Typography>
       ) : (
         <>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Die Bibliothek liest ihre Quelle über eine eigene Zustimmung beim Anbieter des Zugangs „
-            {profileName}“. Sie werden dorthin weitergeleitet, melden sich mit einem Dienstkonto an
-            und stimmen zu; Ihre bisherigen Eingaben bleiben erhalten. Ordnerauswahl und
-            Verbindungstest folgen danach.
+            Weiter zu „{profileName}“; Ihre Eingaben bleiben erhalten.
           </Typography>
           <ServiceAccountConfirmation
             idPrefix="library-create"
@@ -64,7 +56,7 @@ export default function SourceConsentPanel({
             missing={confirmationMissing}
           />
           <BusyButton
-            variant="contained"
+            variant="outlined"
             sx={{ mt: 1 }}
             busy={busy}
             busyAnnouncement="Die Weiterleitung zum Anbieter wird vorbereitet."

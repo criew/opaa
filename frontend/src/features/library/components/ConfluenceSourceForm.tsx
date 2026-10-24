@@ -23,6 +23,7 @@ import {
   type ConfluenceSourceValues,
   type ConfluenceSpaceRef,
 } from '../utils/confluenceSource'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /** From this many selected spaces on, the limit is announced before the backend enforces it. */
 const SPACE_LIMIT_HINT_FROM = 450
@@ -279,12 +280,10 @@ export default function ConfluenceSourceForm({
     <Stack spacing={2.5}>
       {/* Stage 1: address */}
       <Box>
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zu Confluence
         </Typography>
-        <Box
-          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: '14px' }}
-        >
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
           <Box sx={{ gridColumn: '1 / -1' }}>
             <FieldLabel htmlFor={`${idPrefix}-url`}>Adresse der Confluence-Instanz</FieldLabel>
             <TextField
@@ -300,7 +299,7 @@ export default function ConfluenceSourceForm({
                   'Cloud: die Adresse Ihrer Site, mit oder ohne /wiki. Data Center: die Adresse samt Kontextpfad.',
               )}
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+              slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
             />
           </Box>
         </Box>
@@ -346,7 +345,7 @@ export default function ConfluenceSourceForm({
       {/* Stage 2: credentials in the edition's shape */}
       {values.edition && (
         <Box>
-          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
             {connection.asksSecret ? 'Zugangsdaten des Dienstkontos' : 'Verbindung prüfen'}
           </Typography>
           {connection.asksSecret && (
@@ -354,7 +353,7 @@ export default function ConfluenceSourceForm({
               sx={{
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: '14px',
+                gap: 2,
               }}
             >
               {values.edition === 'CLOUD' && (
@@ -438,7 +437,7 @@ export default function ConfluenceSourceForm({
       {/* Stage 4: space selection, only after a successful test */}
       {values.edition && (
         <Box aria-busy={loadingSpaces}>
-          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+          <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
             Ausgewählte Spaces
           </Typography>
           {!values.credentialsVerified && (
@@ -519,7 +518,7 @@ export default function ConfluenceSourceForm({
                   />
                 )}
               />
-              <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
+              <Typography role="status" sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
                 {availableSpaces === null
                   ? loadingSpaces
                     ? 'Spaces werden geladen …'

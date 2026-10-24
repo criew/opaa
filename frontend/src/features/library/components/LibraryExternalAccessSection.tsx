@@ -98,7 +98,7 @@ export default function LibraryExternalAccessSection({
   async function apply(enabled: boolean) {
     setError(null)
     if (enabled && !dateInput) {
-      setError('Bitte ein Ablaufdatum angeben - eine Freigabe ohne Ende ist nicht möglich.')
+      setError('Bitte ein Ablaufdatum angeben – eine Freigabe ohne Ende ist nicht möglich.')
       return
     }
     setSaving(true)

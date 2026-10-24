@@ -82,7 +82,7 @@ function libraryRoute(libraryId: string): string {
 /** Where the person goes on after the consent, and the message saying so. */
 function afterCompletion(completed: ConnectionAuthorizationCompleteResponse): {
   target: string
-  message: string
+  message: string | null
   severity: 'success' | 'info'
 } {
   switch (completed.purpose) {
@@ -100,9 +100,8 @@ function afterCompletion(completed: ConnectionAuthorizationCompleteResponse): {
       return {
         target,
         severity: 'success',
-        message: pending.accountLabel
-          ? `Die Quelle ist verbunden als „${pending.accountLabel}“.`
-          : 'Die Quelle ist verbunden.',
+        // the wizard names the account in its own row; no popup on top of it
+        message: null,
       }
     }
     case 'LIBRARY_RECONNECT': {
@@ -193,7 +192,7 @@ export default function ConnectionCallbackPage() {
       .then((completed) => {
         if (!active) return
         const { target, message, severity } = afterCompletion(completed)
-        notify(message, severity)
+        if (message) notify(message, severity)
         navigate(target, { replace: true })
       })
       .catch((err: unknown) => {

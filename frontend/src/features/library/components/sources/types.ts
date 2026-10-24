@@ -4,6 +4,7 @@ import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
+import type { SourceSetupSpec } from '../setup/setupTypes'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -88,10 +89,19 @@ export interface SourceConfiguration<V> {
   nameFromSource: (values: V) => string
   /** The form, including its own connection test. */
   Form: ComponentType<SourceFormProps<V>>
+  /** The rows „Verbindung“ and „Umfang“ of the summary-row setup, with every issue at once. */
+  setup?: SourceSetupSpec<V>
   /** The stored connection as the Bereich „Anbindung" shows it to a manager. */
   StoredView: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
   /** The scope every reader sees in the Bereich „Umfang"; absent for a source without one. */
   Scope?: ComponentType<{ library: StoredLibrarySource }>
+  /**
+   * Test id of the summary-row note that everything indexed is visible to every reader (ADR-0023,
+   * ADR-0027); absent for a source without a scope.
+   */
+  scopeNoteId?: string
+  /** What a manager sets up below the rows for pushed changes (webhook, event notifications). */
+  Push?: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
   scopeHero?: SourceScopeHero
   /**
    * Whether runs come in two modes - incremental and a forcible full reconciliation with its own
@@ -105,7 +115,7 @@ export interface SourceConfiguration<V> {
   rhythmSettingsBase?: (library: StoredLibrarySource) => Record<string, unknown> | null
   /** The sentence under the wizard's immediate-first-run switch. */
   firstRunHint?: string
-  /** The explanation above the run history. */
+  /** The tooltip of „Jetzt indizieren“: what a run reads, where a source has two kinds of run. */
   runsHint?: string
 }
 

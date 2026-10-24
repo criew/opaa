@@ -36,6 +36,11 @@ const library = {
   sourceConnection: consent,
 }
 
+/** The source connection lives in the row „Verbindung“, behind its „Ändern“. */
+async function openConnection(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
+}
+
 describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
   let started: ConnectionAuthorizationStartRequest[] = []
   let disconnected: string[] = []
@@ -75,7 +80,8 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
     )
   })
 
-  it('names the account, who answers for it and since when it is connected', () => {
+  it('names the account, who answers for it and since when it is connected', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection libraryId="library-1" library={library} canEditSource />,
       {
@@ -83,6 +89,7 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
       },
     )
 
+    await openConnection(user)
     const block = screen.getByTestId('source-connection')
     expect(block).toHaveTextContent('svc@bauamt.example')
     expect(block).toHaveTextContent('Gruppe „Bauamt Verwaltung“')
@@ -91,7 +98,8 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
     expect(within(block).getByRole('button', { name: 'Trennen' })).toBeInTheDocument()
   })
 
-  it('names why an ended connection ended, and offers no disconnect then', () => {
+  it('names why an ended connection ended, and offers no disconnect then', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
@@ -109,6 +117,7 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
       { withRouter: true },
     )
 
+    await openConnection(user)
     const block = screen.getByTestId('source-connection')
     expect(block).toHaveTextContent('Vom Anbieter abgelehnt')
     expect(block).toHaveTextContent('03.10.2026')
@@ -117,7 +126,8 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
     expect(within(block).getByRole('button', { name: 'Neu verbinden' })).toBeInTheDocument()
   })
 
-  it('offers no reconnect once the profile is gone, and points to „Zugang zuordnen“', () => {
+  it('offers no reconnect once the profile is gone, and points to „Zugang zuordnen“', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
@@ -136,6 +146,7 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
       { withRouter: true },
     )
 
+    await openConnection(user)
     const block = screen.getByTestId('source-connection')
     expect(block).toHaveTextContent('Zugang gelöscht')
     expect(block).toHaveTextContent('über „Zugang zuordnen“ einem anderen Zugang zu')
@@ -157,7 +168,8 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
     expect(screen.queryByRole('button', { name: /verbinden/ })).not.toBeInTheDocument()
   })
 
-  it('shows nothing new for a library without its own source connection', () => {
+  it('shows nothing new for a library without its own source connection', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <LibrarySourceSection
         libraryId="library-1"
@@ -171,6 +183,7 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
       { withRouter: true },
     )
 
+    await openConnection(user)
     expect(screen.queryByTestId('source-connection')).not.toBeInTheDocument()
     expect(screen.queryByText(SERVICE_ACCOUNT_CONFIRMATION)).not.toBeInTheDocument()
     expect(
@@ -187,6 +200,7 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
       },
     )
 
+    await openConnection(user)
     await user.click(screen.getByRole('button', { name: 'Trennen' }))
     await answerConfirm(user, 'Verbindung der Quelle trennen?', 'Abbrechen')
     expect(disconnected).toEqual([])
@@ -207,6 +221,7 @@ describe('LibrarySourceSection - Quelle verbinden (#2169)', () => {
       },
     )
 
+    await openConnection(user)
     await user.click(screen.getByRole('button', { name: 'Neu verbinden' }))
     const dialog = await screen.findByRole('dialog', { name: 'Quelle neu verbinden' })
     await user.click(within(dialog).getByRole('button', { name: 'Weiter zum Anbieter' }))

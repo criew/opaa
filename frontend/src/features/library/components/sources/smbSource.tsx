@@ -72,6 +72,7 @@ export const smbSource: SourceRegistration = {
     ),
     StoredView: SmbStoredView,
     Scope: SmbScope,
+    scopeNoteId: 'smb-sharing-consequence',
     scopeHero: {
       summary: (library) => {
         const count = smbSettingsOf(library).folders?.length ?? 1

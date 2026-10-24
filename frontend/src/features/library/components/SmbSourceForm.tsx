@@ -17,6 +17,7 @@ import {
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface SmbSourceFormProps {
   mode: 'create' | 'edit'
@@ -90,7 +91,7 @@ export default function SmbSourceForm({
       ? 'Für diese Bibliothek sind keine Zugangsdaten gespeichert.'
       : credentialsKept || !addressEntered
         ? 'Leer lassen, um die gespeicherten Zugangsdaten beizubehalten.'
-        : 'Die Adresse zeigt auf eine andere Freigabe oder einen anderen Server - bitte die Zugangsdaten neu eingeben.'
+        : 'Die Adresse zeigt auf eine andere Freigabe oder einen anderen Server – bitte die Zugangsdaten neu eingeben.'
 
   function connectionPayload() {
     return {
@@ -165,7 +166,7 @@ export default function SmbSourceForm({
   return (
     <Box>
       {isCreate && (
-        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+        <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.5 }}>
           Verbindung zur Dateifreigabe
         </Typography>
       )}
@@ -173,7 +174,7 @@ export default function SmbSourceForm({
         sx={{
           display: 'grid',
           gridTemplateColumns: isCreate ? { xs: '1fr', sm: '1fr 1fr' } : '1fr',
-          gap: '14px',
+          gap: 2,
         }}
       >
         <Box sx={{ gridColumn: '1 / -1' }}>
@@ -191,7 +192,7 @@ export default function SmbSourceForm({
               connection.addressHint ??
                 'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.',
             )}
-            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: fontFamily.mono } } }}
           />
         </Box>
         {connection.asksSecret && (
@@ -246,7 +247,7 @@ export default function SmbSourceForm({
               issueFor('folders'),
               'Ein Ordner je Zeile, ausgehend von der Freigabe, etwa /Projekte. / liest die ganze Freigabe.',
             )}
-            slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
+            slotProps={{ htmlInput: { sx: { fontFamily: fontFamily.mono } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
             <Stack

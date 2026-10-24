@@ -11,7 +11,7 @@ const DAILY = {
   frequency: 'DAILY' as const,
   hour: 6,
   minute: 0,
-  nextRunAt: '2026-10-25T04:00:00Z',
+  nextRunAt: '2026-10-25T06:00:00Z',
 }
 
 function base(
@@ -58,7 +58,7 @@ export function sourceLibraryDetails(): LibraryResponse[] {
     {
       ...base(
         SOURCE_LIBRARY_IDS.FILESYSTEM,
-        'Satzungen (Dateisystem)',
+        'Satzungen',
         'Ortsrecht vom Dateiserver',
         'FILESYSTEM',
       ),
@@ -112,7 +112,7 @@ export function sourceLibraryDetails(): LibraryResponse[] {
     {
       ...base(
         SOURCE_LIBRARY_IDS.NEXTCLOUD,
-        'Projektablage Nextcloud',
+        'Projektablage',
         'Gruppenordner der Projekte',
         'NEXTCLOUD',
       ),
@@ -129,7 +129,7 @@ export function sourceLibraryDetails(): LibraryResponse[] {
     {
       ...base(
         SOURCE_LIBRARY_IDS.GOOGLE_DRIVE,
-        'Projekte Google Drive',
+        'Projektordner',
         'Geteilte Ablage des Projektteams',
         'GOOGLE_DRIVE',
       ),
@@ -147,7 +147,7 @@ export function sourceLibraryDetails(): LibraryResponse[] {
     {
       ...base(
         SOURCE_LIBRARY_IDS.DROPBOX,
-        'Projekte Dropbox',
+        'Projektunterlagen',
         'Ordner aus dem Dropbox-Dienstkonto',
         'DROPBOX',
       ),

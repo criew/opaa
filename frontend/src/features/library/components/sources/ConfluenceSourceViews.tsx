@@ -61,3 +61,13 @@ export function ConfluenceStoredView({
     </>
   )
 }
+
+export function ConfluencePush({
+  library,
+  libraryId,
+}: {
+  library: StoredLibrarySource
+  libraryId: string
+}) {
+  return <ConfluenceWebhookSection libraryId={libraryId} secretSet={library.pushSecretSet} />
+}
