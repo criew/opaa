@@ -5,8 +5,51 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-23T05:10:03Z</updated>
+  <updated>2026-10-24T04:53:19Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 23. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-23.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-23.html</id>
+    <updated>2026-10-24T04:53:19Z</updated>
+    <summary type="text">feat: Selbstauskunft — eigene Daten als ZIP aus den Einstellungen exportieren (Stufe 1):
+— feat(auth): Erneute Anmeldung als Bestätigung vor der Selbstauskunft
+— feat(user): Selbstauskunft in den Einstellungen, Handbuch und Behördenunterlagen
+— feat(chat): Selbstauskunft-Exporteure für Chats, Prompts, Uploads-Verzeichnis und Diagnose
+— feat(permission): Selbstauskunft-Exporteure für Rechte, Gruppen, Spaces, Verbindungen und Zugangstokens
+docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise:
+— docs: Handbuch und Behördenvorlagen auf die Supportlinien aus ADR-0054 nachziehen
+— docs(handbuch): Kapitel „Releases und Nachweise“ für Betreiber
+— docs(behoerden): Vorlagen kürzen, verständlicher fassen und einheitlich benennen
+— docs(behoerden): Muster-Dienstvereinbarung mit Stufenmodell und Informationsmappe für den Personalrat
+feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug:
+— feat(release): Handbuch der Version ins Update-Paket, Verweise offline durchklickbar
+— test(betrieb): Betrieb ohne Internetzugang automatisiert belegen
+— feat(release): Alle Behördenvorlagen mit aufgelösten Verweisen ins Update-Paket
+— ci(release): Offline-Bündel für Netze ohne Internetzugang
+feat(security): Schutz gegen Prompt-Injection aus aufgenommenen Dokumenten:
+— docs(security): Schutz gegen Prompt-Injection in Handbuch und Grundschutz-Vorlage
+— test(e2e): Linkregel und präparierte Dokumente in Antworten
+— feat(mcp): Treffer des MCP-Servers als Fremdinhalt kennzeichnen
+— feat(indexing): Steuerzeichen beim Aufnehmen bereinigen und Injektionsmuster melden
+feat: Kennzeichnung KI-erzeugter Antworten nach Art. 50 KI-Verordnung:
+— feat(query): Kennzeichnungsfeld für KI-erzeugte Antworten in QueryResponse und Chatnachrichten
+— docs(behoerden): Einstufungshilfe KI-VO und Handbuch auf die Kennzeichnung nachziehen
+— test(e2e): KI-Hinweis, Kennzeichen an der Antwort und Kopiervermerk
+— feat(chat): Antwort über den Kopierknopf mit Vermerk aus Hinweistext, Produktname und Datum
+feat: Beschaffungs- und Einführungsunterstützung für Behörden — Fakten, Update-Paket und Unterlagen, die mit dem Produkt mitziehen:
+— docs(release): Release-Zyklus, Supportzeiträume (LTS) und Roadmap festlegen
+— docs(release): Öffentliche Roadmap über GitHub-Meilensteine entscheiden
+— chore(renovate): Renovate auf den Wartungsbranches der unterstützten Linien
+— ci(security): CVE-Scan aller unterstützten Release-Linien
+feat: Audit-Trail-Review: Ereignisvertrag, Integrität und extern anbindbarer Datenstrom:
+— feat(audit): Sicherheitsereignisse an ein zentrales Sicherheitsmonitoring ausleiten
+Sonstiges:
+— ci(release): CycloneDX-SBOMs je Ökosystem auch für Releases und im Update-Paket
+— feat(chat): Chats gesperrter Konten nach einer Frist löschen
+— fix(compliance): M-02 erfasst Abrufe eingebundener Bibliotheken nicht
+— fix(permission): Rechteübertragung schreibt die Kontokennung im Klartext ins Protokoll</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 22. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-22.html"/>
@@ -849,22 +892,5 @@ Sonstiges:
 — Volltext-Nachzug und FullTextBackfill-Infrastruktur entfernt
 — HTTP_DIRECTORY spiegelt Verzeichnisstruktur als schreibgeschützte Ordner
 — Diagnose im Rechtekontext einer benannten Person ermöglicht</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Donnerstag, 3. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-03.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-03.html</id>
-    <updated>2026-09-04T04:54:15Z</updated>
-    <summary type="text">feat(indexing): ADR-0022 umsetzen — Anhänge als eigene Dokumente:
-— ADR-0022 vollständig umgesetzt: Anhänge als eigene Dokumente mit parent_document_id
-— Mail-Anhänge aus Upload- und HTTP_DIRECTORY-Beständen indiziert
-feat: Confluence als Datenquelle anbinden (Konnektor für Cloud und Data Center):
-— ADR-0023 festgelegt: Confluence-Konnektor mit Space-Auswahl und Löschsemantik
-— Integrationstests gegen echte Confluence-Data-Center-Instanz geplant
-Sonstiges:
-— Rerank-Timeout auf 240s erhöht, Read-Timeout für Antwortkörper hinzugefügt
-— Confluence-Webhooks, inkrementeller Abgleich und Betriebsgrenzen implementiert
-— Testisolation: TRUNCATE durch bibliotheksbezogenes Aufräumen ersetzt
-— Rangreserve als Grenzstabilitäts-Kennzahl in Benchmark aufgenommen</summary>
   </entry>
 </feed>
