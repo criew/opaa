@@ -1,0 +1,39 @@
+{
+  "args": {
+    "base": "http://localhost:5191",
+    "out": "/tmp/claude-0/-home-user-opaa/a18f6e08-a85f-52a3-919a-7b750a630f0f/scratchpad/ist-extra",
+    "flow": "library-detail",
+    "types": [
+      "privat",
+      "upload-leser",
+      "confluence-leser",
+      "nextcloud-leser"
+    ],
+    "scenarios": [
+      "small",
+      "scale",
+      "failed"
+    ],
+    "concurrency": 3,
+    "schemes": [
+      "light",
+      "dark"
+    ],
+    "widths": [
+      1280,
+      320
+    ],
+    "areas": [
+      "dokumente",
+      "quelle",
+      "laeufe",
+      "metadaten",
+      "freigaben",
+      "zuordnungen",
+      "upload"
+    ]
+  },
+  "shots": 240,
+  "seconds": 645,
+  "finishedAt": "2026-10-24T21:45:20.920Z"
+}

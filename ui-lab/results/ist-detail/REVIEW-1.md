@@ -51,7 +51,9 @@
 36. **Begriffskollision „Space“ bei Confluence.** Der Kopf sagt „in 3 Spaces“ (OPAA), der Umfang „2 Spaces“ (Confluence). Beleg: `quelle__confluence__failed__light__1280`.
 37. **Upload: volles Kontingent im Kopf unsichtbar.** Der Kopf zeigt weiter „734 MB von 2 GB“, und die Zahl im Listenfuß weicht vom Kopf ab (938 gegenüber 1 250 auf der Ordnerebene). Dazu kommen 60 Ordner ungeblättert vor den Dateien. Beleg: `upload__upload__failed__light__1280__full`, `dokumente__upload__scale__light__1280__full`.
 38. **Rechte verdreht.** Ein Leser sieht „Sperre setzen“ (Diagnosesperre), der Eigentümer der privaten Bibliothek nicht. Beleg: `freigaben__confluence-leser__small__light__1280` (extra). Der erste Teil ist ein Mock-Fehler (behoben), der zweite ist gewolltes Verhalten (privat bleibt gesperrt).
-39. **Teilfehler zeigt Roh-IDs** (`b!rathausDokumente`, `0AMockDrive`). Der Grund ist der Code: `scopeHero.unlistedWarning` nutzt den Schlüssel, wenn der Name fehlt. Beleg: `dokumente__sharepoint__partial__light__1280`.
+39. **Teilfehler zeigt Roh-IDs** (`b!rathausDokumente`, `0AMockDrive`). Beleg: `dokumente__sharepoint__partial__light__1280`, `dokumente__gdrive__partial__light__1280`.
+    - SharePoint: Mock-Fehler. Der Mock lieferte den Schlüssel ohne das Präfix `drive:`, und `containerName` fand den Namen deshalb nicht. Behoben in 13a5528.
+    - Google Drive: **echter Fehler.** Das Backend meldet `drive:<id>` bzw. `folder:<id>` (`GoogleDriveScope.java`), und `googleDriveSource.tsx` gibt diese Schlüssel ungelöst aus. Nach dem Neulauf steht deshalb „drive:0AMockDrive“ im Bild.
 40. **Barrierefreiheit (axe, hell).** Gefunden wurden `heading-order` (36), `landmark-unique` (12), `aria-progressbar-name` (12, Fortschrittsbalken ohne Namen) und `label-content-name-mismatch` (8). Kontrast im dunklen Schema und `overflowX` sind überall 0.
 
 ## D · Hilfetexte, die weg müssen
