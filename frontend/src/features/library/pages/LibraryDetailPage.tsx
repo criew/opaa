@@ -1,23 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import LinearProgress from '@mui/material/LinearProgress'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import DataUsageIcon from '@mui/icons-material/DataUsage'
-import HistoryIcon from '@mui/icons-material/History'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
-import { sourceRegistration } from '../components/sources/registry'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
 import { documentSourceTypeLabel } from '../components/sources/sourceLabels'
-import { AssetDetailHeader, HeaderFigure } from '@/features/asset'
+import { AssetDetailHeader } from '@/features/asset'
 import { responsibleParty } from '@/features/asset'
 import { ErasingMark, PrivateMark } from '@/features/asset'
 import { useMyPrivateStorage } from '../components/useMyPrivateStorage'
@@ -32,17 +26,30 @@ import {
   canDeleteLibrary,
   canEditLibrary,
   canManageDocuments,
-  formatIndexedAt,
   resolveTab,
 } from '../components/libraryDetailAccess'
 import type { LibraryDetailTab } from '../components/libraryDetailAccess'
 import { useLibraryDeletion } from '../components/useLibraryDeletion'
 import LibraryHeaderNote from '../components/LibraryHeaderNote'
-import LibraryScopeHero from '../components/LibraryScopeHero'
-import LibraryRoleNotices from '../components/LibraryRoleNotices'
 import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
+import { useDocumentStore } from '../stores/documentStore'
+import { PlainPageSections } from '@/shared/ui/PageSection'
+import LibrarySteckbrief, {
+  STECKBRIEF_MEDIA,
+  STECKBRIEF_WIDTH,
+  type SteckbriefTarget,
+} from '../components/steckbrief/LibrarySteckbrief'
+import { formatDay, libraryStateOf, runPercent } from '../components/steckbrief/libraryState'
+import { useNextSteps } from '../components/steckbrief/nextSteps'
+import { sourceSummaryOf, unreadableScopeNames } from '../components/steckbrief/sourceSummary'
+
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
+
+function spreadLabel(spaceCount: number): string {
+  if (spaceCount === 0) return 'in keinem Space'
+  return spaceCount === 1 ? 'in 1 Space' : `in ${spaceCount} Spaces`
+}
 
 export default function LibraryDetailPage() {
   const { libraryId } = useParams()
@@ -112,7 +119,6 @@ export default function LibraryDetailPage() {
   // The connector-only concerns (status polling, trigger actions, the "Indizierung" area) hang
   // off the details' sourceType; a plain UPLOAD library has none of them.
   const connectorSourceType = details && details.sourceType !== 'UPLOAD' ? details.sourceType : null
-  const connectorConfiguration = sourceRegistration(connectorSourceType)?.configuration ?? null
 
   // Every role sees every area; a reader simply finds less inside it. Only an UPLOAD
   // library genuinely has no source area. The list entry decides it while the details are
@@ -145,8 +151,6 @@ export default function LibraryDetailPage() {
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
   const retryStatusPolling = useIndexingStore((s) => s.retryStatusPolling)
-  // Takes the focus from „Erneut versuchen", which disappears with the notice it belongs to.
-  const runStatusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!libraryId || !connectorSourceType) return
@@ -155,10 +159,16 @@ export default function LibraryDetailPage() {
   }, [libraryId, connectorSourceType, loadStatus, stopPolling])
 
   const isRunning = run.status === 'RUNNING'
-  const runProgressPercent =
-    run.totalDocuments > 0
-      ? Math.round(((run.documentCount + run.documentsSkipped) / run.totalDocuments) * 100)
-      : 0
+  // The newest run decides the state word, as the run list shows it (D3); managers load the list.
+  const runHistory = useIndexingStore((s) =>
+    libraryId ? s.runHistoryByLibrary[libraryId] : undefined,
+  )
+  const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
+  useEffect(() => {
+    if (!libraryId || !connectorSourceType || !canEdit) return
+    void loadRunHistory(libraryId)
+  }, [libraryId, connectorSourceType, canEdit, loadRunHistory, isRunning])
+  const uploadErrors = useDocumentStore((s) => s.uploadErrors)
 
   // A finished run changed the bestand: reload the library head (document count, storage) and
   // bump the token the documents area reloads its current view on - no manual page reload.
@@ -178,12 +188,33 @@ export default function LibraryDetailPage() {
    * other URL state of the page (open folder, Pflege-Anker filter) survives the change.
    */
   function tabSearch(tab: LibraryDetailTab): string {
+    return targetSearch({ tab })
+  }
+
+  /** A tab and, in the Reiter „Quelle“, the row it scrolls to (`row`). */
+  function targetSearch(target: SteckbriefTarget): string {
     const next = new URLSearchParams(searchParams)
-    if (tab === 'dokumente') next.delete('tab')
-    else next.set('tab', tab)
+    if (target.tab === 'dokumente') next.delete('tab')
+    else next.set('tab', target.tab)
+    if (target.row) next.set('row', target.row)
+    else next.delete('row')
     const query = next.toString()
     return query ? `?${query}` : ''
   }
+
+  // A link of the Steckbrief names a row: bring it into view once the tab shows it.
+  const rowParam = searchParams.get('row')
+  useEffect(() => {
+    if (!rowParam) return
+    const frame = requestAnimationFrame(() => {
+      const target =
+        rowParam === 'runs'
+          ? document.getElementById('library-runs-title')
+          : document.querySelector<HTMLElement>(`[data-row="edit-source-row-${rowParam}"]`)
+      target?.scrollIntoView({ block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [rowParam, activeTab, details])
 
   /** The PUT replaces name and description as a whole. */
   async function saveLibrary(fields: { name: string; description: string | null | undefined }) {
@@ -242,6 +273,17 @@ export default function LibraryDetailPage() {
     await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
   }
 
+  const nextSteps = useNextSteps({
+    libraryId: libraryId ?? '',
+    sourceType: details?.sourceType ?? null,
+    justCreated: searchParams.get('justCreated') === '1',
+    mayChange,
+    documentCount: library?.documentCount ?? 0,
+    spaceCount: catalog.entry?.spaceCount,
+    pushSecretSet: Boolean(details?.pushSecretSet),
+    metadataEnabled: showMetadataTab,
+  })
+
   if (!libraryId) {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
@@ -262,10 +304,6 @@ export default function LibraryDetailPage() {
     )
   }
 
-  const isRssFeedRun = Boolean(sourceRegistration(connectorSourceType)?.runCountsEntries)
-  const runFailedSuffix =
-    run.documentsFailed > 0 ? `, davon ${run.documentsFailed} fehlgeschlagen` : ''
-
   const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
     { value: 'dokumente', label: 'Dokumente' },
     ...(showSourceTab ? ([{ value: 'quelle', label: 'Quelle' }] as const) : []),
@@ -279,9 +317,26 @@ export default function LibraryDetailPage() {
     setAssociationsVersion((version) => version + 1)
   }
 
+  const state = libraryStateOf({
+    library: { ...library, ...(details ?? {}), sourceType: knownSourceType ?? 'UPLOAD' },
+    erasing,
+    status: run,
+    newestRun: runHistory?.[0] ?? null,
+    uploadErrors,
+  })
+  const documentCount = library.documentCount ?? 0
+  const responsible = responsibleParty({
+    ownerType: library.ownerType,
+    ownerLabel: library.ownerName,
+    succession: details?.succession ?? library.succession,
+  })
+  const summary = details && connectorSourceType ? sourceSummaryOf(details, libraryId) : null
+  const isUpload = knownSourceType === 'UPLOAD'
+
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <AssetDetailHeader
+        compact
         assetType="KNOWLEDGE_LIBRARY"
         assetId={libraryId}
         name={library.name}
@@ -303,56 +358,8 @@ export default function LibraryDetailPage() {
           canEdit: mayChange,
           onSave: saveHeadline,
         }}
-        extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
-          (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
-        }`}
-        // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only.
-        figures={
-          <>
-            {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
-              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
-                {formatFileSize(details.storageUsedBytes)} von{' '}
-                {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
-              </HeaderFigure>
-            )}
-            {privateStorage && (
-              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
-                <span data-testid="private-storage-figure">
-                  {privateStorage.quotaBytes > 0
-                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} in Ihren privaten Bibliotheken belegt`
-                    : `${formatFileSize(privateStorage.usedBytes)} in Ihren privaten Bibliotheken belegt (unbegrenzt)`}
-                </span>
-              </HeaderFigure>
-            )}
-            {connectorSourceType && canTrigger && !isRunning && run.status !== 'IDLE' && (
-              <HeaderFigure
-                icon={
-                  <HistoryIcon
-                    sx={{
-                      fontSize: 16,
-                      color: run.status === 'COMPLETED' ? 'success.main' : 'error.main',
-                    }}
-                  />
-                }
-              >
-                Letzter Lauf: {run.status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
-                {' · '}
-                {isRssFeedRun
-                  ? `${run.totalDocuments} Feed-Einträge, ${run.documentsSkipped} übersprungen, ${run.documentCount} indiziert (${run.documentsIndexedTotal} Dokumente insgesamt)${runFailedSuffix}`
-                  : `Dokumente: ${run.documentCount} verarbeitet${run.documentsSkipped > 0 ? ` (${run.documentsSkipped} übersprungen)` : ''}${runFailedSuffix}`}
-                {run.timestamp ? ` · ${formatIndexedAt(run.timestamp)}` : ''}
-              </HeaderFigure>
-            )}
-          </>
-        }
-        spaceCount={catalog.entry?.spaceCount}
-        responsible={responsibleParty({
-          ownerType: library.ownerType,
-          ownerLabel: library.ownerName,
-          succession: details?.succession ?? library.succession,
-        })}
-        // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
-        updatedAt={listEntry?.lastIndexedAt ?? library.updatedAt}
+        extent=""
+        responsible={responsible}
         favorite={catalog.entry?.favorite}
         onFavoriteChange={catalog.setFavorite}
         mayUseInSpace={mayUseInSpace}
@@ -366,33 +373,20 @@ export default function LibraryDetailPage() {
         }
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
-        // ADR-0023, Entscheidung 4: the full reconciliation can be forced, from the „…“ menu
-        menuItems={
-          connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
-            ? [
-                {
-                  label: 'Vollabgleich starten',
-                  disabled: isRunning,
-                  onClick: () => void triggerIndexing(libraryId, connectorSourceType, 'FULL'),
-                },
-              ]
-            : undefined
-        }
         actions={
           connectorSourceType &&
           mayManageDocuments && (
-            <>
-              <Button
-                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
-                variant="outlined"
-                size="small"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-                disabled={isRunning}
-              >
-                {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
-              </Button>
-            </>
+            <Button
+              // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
+              variant="outlined"
+              size="small"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+              // the run's progress stands once, in the Steckbrief (D7)
+              disabled={isRunning}
+            >
+              Jetzt indizieren
+            </Button>
           )
         }
         // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
@@ -405,90 +399,7 @@ export default function LibraryDetailPage() {
             quotaExhausted={quotaExhausted}
           />
         }
-      >
-        {/* The header shows the scope only as a short line with a jump into the „Quelle"
-           tab; it is complete there, for every role. The warning about a
-           partially read scope, by contrast, stays here: it concerns the content that
-           every view of the page shows, not the setting behind it. */}
-        {details && connectorConfiguration?.scopeHero && (
-          <LibraryScopeHero
-            details={details}
-            scopeHero={connectorConfiguration.scopeHero}
-            unlistedScopeKeys={run.unlistedScopeKeys}
-            sourceSearch={tabSearch('quelle')}
-          />
-        )}
-
-        {/* A running indexing stays visible no matter which area below is active (guidelines
-            5.7) - anchored in the hero with a pulsing dot as the one moving element. */}
-        {connectorSourceType && isRunning && (
-          <Box
-            ref={runStatusRef}
-            tabIndex={-1}
-            sx={{ mt: 2.5, pt: 2, borderTop: 1, borderTopColor: 'divider', position: 'relative' }}
-          >
-            {run.statusUnknown ? (
-              // The last known status stays RUNNING: failed fetches say nothing about the run.
-              <Alert
-                severity="warning"
-                role="status"
-                data-testid="library-run-status-unknown"
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    onClick={() => {
-                      runStatusRef.current?.focus()
-                      retryStatusPolling(libraryId)
-                    }}
-                  >
-                    Erneut versuchen
-                  </Button>
-                }
-              >
-                <AlertTitle>Status unbekannt</AlertTitle>
-                Der Stand des Indizierungslaufs konnte wiederholt nicht abgerufen werden. Der Lauf
-                kann im Hintergrund weiterlaufen.
-              </Alert>
-            ) : (
-              <>
-                <LinearProgress
-                  variant={run.totalDocuments > 0 ? 'determinate' : 'indeterminate'}
-                  value={runProgressPercent}
-                  sx={{ mb: 1, borderRadius: 999 }}
-                />
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Box
-                    aria-hidden
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '999px',
-                      bgcolor: 'primary.main',
-                      '@keyframes opaaPulse': {
-                        '0%': { opacity: 0.35 },
-                        '50%': { opacity: 1 },
-                        '100%': { opacity: 0.35 },
-                      },
-                      animation: 'opaaPulse 1.2s ease-in-out infinite',
-                      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-                    }}
-                  />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }} role="status">
-                    {run.totalDocuments > 0
-                      ? isRssFeedRun
-                        ? `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Feed-Einträgen verarbeitet (${run.documentsIndexedTotal} Dokumente indiziert)`
-                        : `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Dokumenten verarbeitet`
-                      : isRssFeedRun
-                        ? 'Feed-Einträge werden ermittelt …'
-                        : 'Dokumente werden ermittelt …'}
-                  </Typography>
-                </Stack>
-              </>
-            )}
-          </Box>
-        )}
-      </AssetDetailHeader>
+      />
 
       {localError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
@@ -507,125 +418,177 @@ export default function LibraryDetailPage() {
             </Button>
           }
         >
-          Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden. Versuchen Sie
-          es in einem Moment erneut.
+          Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden.
         </Alert>
       )}
-      <LibraryRoleNotices
-        canTrigger={canTrigger}
-        canEdit={canEdit}
-        isAdministrativeOverride={isAdministrativeOverride}
-      />
-
-      <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
-
-      {/* Every area stays mounted while another one is active: status polling, running uploads
-          and loaded run protocols keep living, only their visibility toggles. */}
-      <Box
-        role="tabpanel"
-        id="library-tabpanel-dokumente"
-        aria-labelledby="library-tab-dokumente"
-        hidden={activeTab !== 'dokumente'}
-      >
-        {details && (
-          <LibraryDocumentsSection
-            // Forces a remount on library change (rather than resetting local state like
-            // searchInput from within an effect, which react-hooks/set-state-in-effect flags as a
-            // cascading-render risk): a fresh component instance starts every piece of local
-            // state at its initial value for free. The prefix keeps the key distinct from the
-            // other keyed sections of this page - two siblings sharing the bare libraryId made
-            // React duplicate the spaces section into stuck "Wird geladen …" clones.
-            key={`documents-${libraryId}`}
-            libraryId={libraryId}
-            sourceType={details.sourceType}
-            canManage={mayManageDocuments}
-            refreshToken={documentsRefreshToken}
-            confluenceSpaces={confluenceSettingsOf(details).spaces}
-            // The document count in the header comes from the library
-            // itself, not from documentStore - without this it stays on whatever value was loaded
-            // on mount even after an upload or delete changes it.
-            onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
-          />
-        )}
-      </Box>
-
-      {showSourceTab && (
-        <Box
-          role="tabpanel"
-          id="library-tabpanel-quelle"
-          aria-labelledby="library-tab-quelle"
-          hidden={activeTab !== 'quelle'}
-        >
-          {/* Source paths and the run protocol stay behind the MANAGER
-              bar (canEditSource); the Umfang above them is visible to every reader. */}
-          {details ? (
-            <LibrarySourceSection
-              libraryId={libraryId}
-              library={details}
-              canEditSource={canEdit}
-              erasing={erasing}
-            />
-          ) : (
-            <Typography sx={{ color: 'text.secondary' }}>
-              {storeError
-                ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
-                : 'Quelle wird geladen …'}
-            </Typography>
-          )}
-        </Box>
-      )}
-
-      {showMetadataTab && (
-        <Box
-          role="tabpanel"
-          id="library-tabpanel-metadaten"
-          aria-labelledby="library-tab-metadaten"
-          hidden={activeTab !== 'metadaten'}
-        >
-          <LibraryMetadataTab libraryId={libraryId} mayChange={mayChange} canEdit={canEdit} />
-        </Box>
-      )}
 
       <Box
-        role="tabpanel"
-        id="library-tabpanel-freigaben"
-        aria-labelledby="library-tab-freigaben"
-        hidden={activeTab !== 'freigaben'}
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gridTemplateAreas: '"toggle" "main"',
+          [STECKBRIEF_MEDIA]: {
+            gridTemplateColumns: `minmax(0, 1fr) ${STECKBRIEF_WIDTH}px`,
+            gridTemplateAreas: '"main side"',
+            columnGap: 5,
+          },
+        }}
       >
-        <LibrarySharingTab
-          libraryId={libraryId}
-          library={library}
-          details={details}
-          privateLibrary={privateLibrary}
-          canEdit={canEdit}
-          externalAccessEnabled={externalAccessEnabled}
-          shareCapVisible={shareCapVisible}
-          onTransferred={() => reloadLibrary()}
-          onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
-          diagnosticsLockSaving={diagnosticsLockSaving}
-          diagnosticsLockError={diagnosticsLockError}
-          onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}
-          onDismissDiagnosticsLockError={() => setDiagnosticsLockError(null)}
+        <LibrarySteckbrief
+          state={state}
+          progress={isRunning ? runPercent(run) : null}
+          statusUnknown={isRunning && run.statusUnknown}
+          onRetryStatus={() => retryStatusPolling(libraryId)}
+          source={
+            summary
+              ? {
+                  // a reader sees the scope only, as in the Reiter „Quelle“
+                  connection: canEdit ? summary.connection : null,
+                  scope: summary.scope,
+                  unreadable: details ? unreadableScopeNames(run.unlistedScopeKeys, details) : [],
+                  schedule: canEdit ? summary.schedule : null,
+                }
+              : null
+          }
+          upload={
+            isUpload
+              ? {
+                  storage:
+                    details?.storageQuotaBytes != null && details.storageUsedBytes != null
+                      ? `${formatFileSize(details.storageUsedBytes)} von ${formatFileSize(details.storageQuotaBytes)} belegt`
+                      : null,
+                  lastUpload: formatDay(library.updatedAt),
+                  rejections: uploadErrors,
+                }
+              : null
+          }
+          documents={`${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`}
+          privateStorage={
+            privateStorage
+              ? privateStorage.quotaBytes > 0
+                ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} privat belegt`
+                : `${formatFileSize(privateStorage.usedBytes)} privat belegt`
+              : null
+          }
+          spaces={catalog.entry?.spaceCount != null ? spreadLabel(catalog.entry.spaceCount) : null}
+          responsible={responsible.label}
+          steps={nextSteps.steps}
+          onDismissSteps={nextSteps.dismiss}
+          targetSearch={targetSearch}
         />
-      </Box>
+        <Box sx={{ gridArea: 'main', minWidth: 0 }}>
+          <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
+          <PlainPageSections>
+            {/* Every area stays mounted while another one is active: status polling, running uploads
+          and loaded run protocols keep living, only their visibility toggles. */}
+            <Box
+              role="tabpanel"
+              id="library-tabpanel-dokumente"
+              aria-labelledby="library-tab-dokumente"
+              hidden={activeTab !== 'dokumente'}
+            >
+              {details && (
+                <LibraryDocumentsSection
+                  // Forces a remount on library change (rather than resetting local state like
+                  // searchInput from within an effect, which react-hooks/set-state-in-effect flags as a
+                  // cascading-render risk): a fresh component instance starts every piece of local
+                  // state at its initial value for free. The prefix keeps the key distinct from the
+                  // other keyed sections of this page - two siblings sharing the bare libraryId made
+                  // React duplicate the spaces section into stuck "Wird geladen …" clones.
+                  key={`documents-${libraryId}`}
+                  libraryId={libraryId}
+                  sourceType={details.sourceType}
+                  canManage={mayManageDocuments}
+                  refreshToken={documentsRefreshToken}
+                  confluenceSpaces={confluenceSettingsOf(details).spaces}
+                  // The document count in the header comes from the library
+                  // itself, not from documentStore - without this it stays on whatever value was loaded
+                  // on mount even after an upload or delete changes it.
+                  onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
+                />
+              )}
+            </Box>
 
-      <Box
-        role="tabpanel"
-        id="library-tabpanel-zuordnungen"
-        aria-labelledby="library-tab-zuordnungen"
-        hidden={activeTab !== 'zuordnungen'}
-      >
-        {activeTab === 'zuordnungen' && (
-          <AssetSpacesSection
-            assetType="KNOWLEDGE_LIBRARY"
-            assetId={libraryId}
-            name={library.name}
-            canManage={mayChange}
-            mayUseInSpace={mayUseInSpace}
-            refreshToken={associationsVersion}
-            onChanged={() => catalog.reload()}
-          />
-        )}
+            {showSourceTab && (
+              <Box
+                role="tabpanel"
+                id="library-tabpanel-quelle"
+                aria-labelledby="library-tab-quelle"
+                hidden={activeTab !== 'quelle'}
+              >
+                {/* Source paths and the run protocol stay behind the MANAGER
+              bar (canEditSource); the Umfang above them is visible to every reader. */}
+                {details ? (
+                  <LibrarySourceSection
+                    libraryId={libraryId}
+                    library={details}
+                    canEditSource={canEdit}
+                    erasing={erasing}
+                  />
+                ) : (
+                  <Typography sx={{ color: 'text.secondary' }}>
+                    {storeError
+                      ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
+                      : 'Quelle wird geladen …'}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {showMetadataTab && (
+              <Box
+                role="tabpanel"
+                id="library-tabpanel-metadaten"
+                aria-labelledby="library-tab-metadaten"
+                hidden={activeTab !== 'metadaten'}
+              >
+                <LibraryMetadataTab libraryId={libraryId} mayChange={mayChange} canEdit={canEdit} />
+              </Box>
+            )}
+
+            <Box
+              role="tabpanel"
+              id="library-tabpanel-freigaben"
+              aria-labelledby="library-tab-freigaben"
+              hidden={activeTab !== 'freigaben'}
+            >
+              <LibrarySharingTab
+                libraryId={libraryId}
+                library={library}
+                details={details}
+                privateLibrary={privateLibrary}
+                canEdit={canEdit}
+                externalAccessEnabled={externalAccessEnabled}
+                shareCapVisible={shareCapVisible}
+                onTransferred={() => reloadLibrary()}
+                onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
+                diagnosticsLockSaving={diagnosticsLockSaving}
+                diagnosticsLockError={diagnosticsLockError}
+                onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}
+                onDismissDiagnosticsLockError={() => setDiagnosticsLockError(null)}
+              />
+            </Box>
+
+            <Box
+              role="tabpanel"
+              id="library-tabpanel-zuordnungen"
+              aria-labelledby="library-tab-zuordnungen"
+              hidden={activeTab !== 'zuordnungen'}
+            >
+              {activeTab === 'zuordnungen' && (
+                <AssetSpacesSection
+                  assetType="KNOWLEDGE_LIBRARY"
+                  assetId={libraryId}
+                  name={library.name}
+                  canManage={mayChange}
+                  mayUseInSpace={mayUseInSpace}
+                  refreshToken={associationsVersion}
+                  onChanged={() => catalog.reload()}
+                />
+              )}
+            </Box>
+          </PlainPageSections>
+        </Box>
       </Box>
     </Box>
   )

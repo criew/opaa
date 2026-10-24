@@ -59,6 +59,11 @@ export interface AssetDetailHeaderProps {
   note?: ReactNode
   /** Under the figures, e.g. the scope of a source or a running indexing. */
   children?: ReactNode
+  /**
+   * Chips, name with description and actions only, at the same height for every asset: the
+   * figures move into a summary of the page itself (library detail page, Steckbrief).
+   */
+  compact?: boolean
 }
 
 function formatDate(value: string): string {
@@ -230,6 +235,7 @@ export default function AssetDetailHeader({
   menuItems,
   note,
   children,
+  compact = false,
 }: AssetDetailHeaderProps) {
   const definition = assetTypeDefinition(assetType)
   const ExtentIcon = definition?.Icon
@@ -239,8 +245,8 @@ export default function AssetDetailHeader({
       sx={{
         position: 'relative',
         // no line of its own: the tab bar below draws the one separator
-        pb: { xs: 2.5, md: 3 },
-        mb: 3,
+        pb: compact ? 0 : { xs: 2.5, md: 3 },
+        mb: compact ? 2 : 3,
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'none' },
@@ -258,6 +264,7 @@ export default function AssetDetailHeader({
           flexWrap: 'wrap',
           mb: 1,
           position: 'relative',
+          ...(compact && { minHeight: 40 }),
         }}
       >
         <Stack
@@ -301,35 +308,38 @@ export default function AssetDetailHeader({
           key={`headline-${assetId}`}
           name={name}
           description={description}
+          inline={compact}
           {...headline}
         />
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
 
-      <Stack
-        direction="row"
-        spacing={2.25}
-        useFlexGap
-        sx={{ flexWrap: 'wrap', rowGap: 1, mt: 2.5, position: 'relative' }}
-      >
-        <HeaderFigure icon={ExtentIcon ? <ExtentIcon sx={{ fontSize: 16 }} /> : undefined}>
-          {extent}
-        </HeaderFigure>
-        {figures}
-        {spaceCount != null && (
-          <HeaderFigure icon={<WorkspacesOutlinedIcon sx={{ fontSize: 16 }} />}>
-            {spreadLabel(spaceCount)}
+      {!compact && (
+        <Stack
+          direction="row"
+          spacing={2.25}
+          useFlexGap
+          sx={{ flexWrap: 'wrap', rowGap: 1, mt: 2.5, position: 'relative' }}
+        >
+          <HeaderFigure icon={ExtentIcon ? <ExtentIcon sx={{ fontSize: 16 }} /> : undefined}>
+            {extent}
           </HeaderFigure>
-        )}
-        <HeaderFigure>
-          <ResponsibleLine responsible={responsible} fontSize={13} />
-        </HeaderFigure>
-        {updatedAt && (
-          <HeaderFigure icon={<EventOutlinedIcon sx={{ fontSize: 16 }} />}>
-            Aktualisiert am {formatDate(updatedAt)}
+          {figures}
+          {spaceCount != null && (
+            <HeaderFigure icon={<WorkspacesOutlinedIcon sx={{ fontSize: 16 }} />}>
+              {spreadLabel(spaceCount)}
+            </HeaderFigure>
+          )}
+          <HeaderFigure>
+            <ResponsibleLine responsible={responsible} fontSize={13} />
           </HeaderFigure>
-        )}
-      </Stack>
+          {updatedAt && (
+            <HeaderFigure icon={<EventOutlinedIcon sx={{ fontSize: 16 }} />}>
+              Aktualisiert am {formatDate(updatedAt)}
+            </HeaderFigure>
+          )}
+        </Stack>
+      )}
 
       {children}
     </Box>

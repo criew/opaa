@@ -21,7 +21,9 @@ export function scheduleSummary(
     }
   })()
   if (!rhythm) return base
-  const days = values.fullSyncDays.trim() === '' ? rhythm.defaultDays : Number(values.fullSyncDays)
-  if (!days) return base
+  // without a value of its own the library follows the instance's default, 7 days unless set
+  const days =
+    values.fullSyncDays.trim() === '' ? (rhythm.defaultDays ?? 7) : Number(values.fullSyncDays)
+  if (!days || values.frequency === 'DISABLED') return base
   return `${base} · Vollabgleich ${days === 1 ? 'täglich' : `alle ${days} Tage`}`
 }

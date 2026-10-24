@@ -1,7 +1,17 @@
-import { useId, type ReactNode } from 'react'
+import { createContext, useContext, useId, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SectionHead from './SectionHead'
+
+const PlainSectionContext = createContext(false)
+
+/**
+ * Sections below it head themselves in running text - 15 px, weight 600, no hairline - like the
+ * summary rows of the Reiter „Quelle“; one heading style for every tab of a detail page.
+ */
+export function PlainPageSections({ children }: { children: ReactNode }) {
+  return <PlainSectionContext.Provider value>{children}</PlainSectionContext.Provider>
+}
 
 interface PageSectionProps {
   /** The section's head - monospace, spaced, on a hairline. Names the section for assistive tech. */
@@ -38,6 +48,38 @@ export default function PageSection({
   // `useId` instead of a module counter: stable across renders and unique even when
   // two sections carry the same title.
   const headId = useId()
+  const plain = useContext(PlainSectionContext)
+  if (plain) {
+    return (
+      <Box component="section" aria-labelledby={headId} sx={{ mb: 4 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 2,
+            flexWrap: 'wrap',
+            mb: description ? 0.5 : 1.5,
+          }}
+        >
+          <Typography
+            id={headId}
+            component={headingLevel}
+            sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary' }}
+          >
+            {title}
+          </Typography>
+          {action && <Box sx={{ flex: 'none' }}>{action}</Box>}
+        </Box>
+        {description && (
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5, maxWidth: '80ch' }}>
+            {description}
+          </Typography>
+        )}
+        {children}
+      </Box>
+    )
+  }
   return (
     <Box component="section" aria-labelledby={headId} sx={{ mb: 4 }}>
       {action ? (

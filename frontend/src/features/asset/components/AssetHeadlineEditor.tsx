@@ -33,6 +33,11 @@ export interface AssetHeadlineEditorProps {
   onSave: (name: string, description: string) => Promise<void>
   /** Badges on the heading's baseline - role, source type, administrative bypass. */
   badges?: ReactNode
+  /**
+   * Name and description on one line of fixed height: from `sm` on both end in an ellipsis and
+   * the full text stays in the tooltip; below `sm` the name wraps over at most three lines.
+   */
+  inline?: boolean
 }
 
 /**
@@ -53,6 +58,7 @@ export default function AssetHeadlineEditor({
   canEdit,
   onSave,
   badges,
+  inline = false,
 }: AssetHeadlineEditorProps) {
   const [draft, setDraft] = useState<{ name: string; description: string } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -124,6 +130,75 @@ export default function AssetHeadlineEditor({
       )}
     </Stack>
   )
+
+  if (!draft && inline) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          columnGap: 1,
+          minWidth: 0,
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ alignItems: 'center', minWidth: 0, maxWidth: '100%' }}
+        >
+          <Tooltip title={name} enterDelay={600}>
+            <Box sx={{ minWidth: 0 }}>
+              <PageHeading
+                title={name}
+                sx={{
+                  fontSize: 20,
+                  lineHeight: '30px',
+                  overflowWrap: 'anywhere',
+                  hyphens: 'auto',
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: { xs: 3, sm: 1 },
+                  overflow: 'hidden',
+                }}
+              />
+            </Box>
+          </Tooltip>
+          {badges}
+          {canEdit && (
+            <Tooltip title={editLabel}>
+              <IconButton
+                ref={acceptPencil}
+                size="small"
+                aria-label={editLabel}
+                onClick={startEditing}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
+        {description && (
+          <Typography
+            noWrap
+            title={description}
+            sx={{
+              fontSize: 13.5,
+              color: 'text.secondary',
+              minWidth: 0,
+              maxWidth: '100%',
+              flex: { sm: '0 1 auto' },
+            }}
+          >
+            <Box component="span" aria-hidden sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              {'· '}
+            </Box>
+            {description}
+          </Typography>
+        )}
+      </Box>
+    )
+  }
 
   if (!draft) {
     return (
