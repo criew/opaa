@@ -1,466 +1,228 @@
 #!/usr/bin/env node
 /*
- * Video matrix of the source setup (variant F) in MSW mock mode: per connector three flows.
+ * UI-Lab videos: records click paths through the frontend in MSW mock mode as MP4.
  *
- *   NODE_PATH=$(npm root -g) node record-flows.mjs --base http://localhost:5173 --out <dir>
- *        [--types filesystem,confluence,...] [--kinds ok,viele,fehler]
+ *   node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
+ *        [--flows flows/library-videos.mjs] [--only name,name] [--scheme light|dark]
+ *        [--width 1280] [--height 800] [--pause 700] [--keep-webm] [--chromium <path>]
  *
- *   ok      scenario small:  wizard to „Prüfen“, create, then the tab „Quelle“ with one „Ändern“
- *   viele   scenario scale:  the selection with many entries (levels, search, „Alle n auswählen“),
- *                            to „Prüfen“, then editing the fixture library with its selection
- *   fehler  scenario failed: error summary, failing test or listing, correction / retry
- *
- * 1280x800 WebM per flow, ~600 ms between actions, visible pointer dot, typing with delay.
- * Convert with ffmpeg afterwards (H.264, crf 30). A step that cannot be found is logged and
- * skipped, the flow goes on.
+ * A flows module exports `videos`: [{ name, type, scenario, run(h) }]; `type` is the area the video
+ * belongs to on the comparison page (build_site.py). Each video gets its own browser
+ * context (scheme set before the first load) with Playwright's recordVideo, a visible mouse
+ * pointer with a click ring, and an optional caption line. `h` moves the pointer to an element
+ * before every click, pauses between steps and never throws on a missing element; a missing
+ * element is logged and the step skipped. ffmpeg (PATH or FFMPEG) turns the WebM into H.264 MP4;
+ * <out>/manifest.json lists every video with name, type, scenario and scheme.
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { createRequire } from 'node:module'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { launch, schemeContext, sleep } from './lib/browser.mjs'
+import { firstVisible, settle } from './lib/ui.mjs'
 
-const require = createRequire(import.meta.url)
-const { chromium } = require('playwright')
+const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-const args = process.argv.slice(2)
-const opt = (name, fallback) => {
-  const i = args.indexOf(name)
-  return i >= 0 ? args[i + 1] : fallback
-}
-const BASE = opt('--base', 'http://localhost:5173')
-const OUT = opt('--out', '/tmp/flows-F')
-const TYPES = opt('--types', 'filesystem,confluence,sharepoint,nextcloud,smb,s3,gdrive,dropbox').split(',')
-const KINDS = opt('--kinds', 'ok,viele,fehler').split(',')
-const PACE = 600
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-fs.mkdirSync(OUT, { recursive: true })
-
-const FILE_NAMES = {
-  filesystem: 'dateisystem',
-  confluence: 'confluence',
-  sharepoint: 'sharepoint',
-  nextcloud: 'nextcloud',
-  smb: 'smb',
-  s3: 's3',
-  gdrive: 'googledrive',
-  dropbox: 'dropbox',
-}
-const TILES = {
-  filesystem: /^Dateisystem/,
-  confluence: /^Confluence/,
-  sharepoint: /^SharePoint/,
-  nextcloud: /^Nextcloud/,
-  smb: /^Windows-Dateifreigabe/,
-  s3: /^S3/,
-  gdrive: /^Google Drive/,
-  dropbox: /^Dropbox/,
-}
-const LIBRARIES = {
-  filesystem: 'library-filesystem-satzungen',
-  confluence: 'library-confluence-wiki',
-  sharepoint: 'library-sharepoint-rathaus',
-  nextcloud: 'library-nextcloud-projekte',
-  smb: 'library-smb-ablage',
-  s3: 'library-s3-protokolle',
-  gdrive: 'library-gdrive-projekte',
-  dropbox: 'library-dropbox-projekte',
-}
-
-const GDRIVE_KEY = path.join(OUT, '.fake-service-account.json')
-fs.writeFileSync(
-  GDRIVE_KEY,
-  JSON.stringify({
-    type: 'service_account',
-    project_id: 'rheinfurt-projekt',
-    client_email: 'opaa-indexer@rheinfurt-projekt.iam.gserviceaccount.com',
-    private_key_id: 'fake0123',
-    private_key: '-----BEGIN PRIVATE KEY-----\nFAKE\n-----END PRIVATE KEY-----\n',
-  }),
-)
-
-const POINTER = `
-  window.addEventListener('DOMContentLoaded', () => {
-    const dot = document.createElement('div')
-    dot.style.cssText = 'position:fixed;z-index:2147483647;width:18px;height:18px;margin:-9px 0 0 -9px;' +
-      'border-radius:50%;background:rgba(220,40,40,.55);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);' +
-      'pointer-events:none;left:-40px;top:-40px;transition:transform .12s'
-    document.body.appendChild(dot)
-    addEventListener('mousemove', (e) => { dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px' }, true)
-    addEventListener('mousedown', () => { dot.style.transform = 'scale(.7)' }, true)
-    addEventListener('mouseup', () => { dot.style.transform = '' }, true)
-  })
-`
-
-function actor(page, log) {
-  async function find(locator, timeout) {
-    try {
-      await locator.first().waitFor({ state: 'visible', timeout })
-      return locator.first()
-    } catch {
-      return null
-    }
+function parseArgs(argv) {
+  const args = {
+    base: 'http://localhost:5191',
+    out: path.join(HERE, 'videos'),
+    flows: path.join(HERE, 'flows', 'library-videos.mjs'),
+    scheme: 'light',
+    width: 1280,
+    height: 800,
+    pause: 700,
   }
-  async function point(el) {
+  const count = (a, v) => {
+    const n = Number(v)
+    if (!Number.isInteger(n) || n < 0) throw new Error(`${a} needs a whole number, got ${v}`)
+    return n
+  }
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]
+    const next = () => {
+      const v = argv[++i]
+      if (v === undefined) throw new Error(`${a} needs a value`)
+      return v
+    }
+    if (a === '--base') args.base = next().replace(/\/$/, '')
+    else if (a === '--out') args.out = path.resolve(next())
+    else if (a === '--flows') args.flows = path.resolve(next())
+    else if (a === '--only') args.only = next().split(',')
+    else if (a === '--scheme') args.scheme = next()
+    else if (a === '--width') args.width = count(a, next())
+    else if (a === '--height') args.height = count(a, next())
+    else if (a === '--pause') args.pause = count(a, next())
+    else if (a === '--keep-webm') args.keepWebm = true
+    else if (a === '--chromium') args.chromium = next()
+    else if (a === '--help' || a === '-h') {
+      console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0])
+      process.exit(0)
+    } else throw new Error(`unknown argument ${a}`)
+  }
+  return args
+}
+
+/** Pointer, click ring and caption, drawn above the page; pointer-events none, so clicks pass. */
+function overlayScript() {
+  const install = () => {
+    if (document.getElementById('ui-lab-pointer')) return
+    const style = document.createElement('style')
+    style.textContent = `
+      #ui-lab-pointer { position: fixed; z-index: 2147483647; left: -40px; top: -40px; width: 22px; height: 22px;
+        margin: -2px 0 0 -2px; pointer-events: none; }
+      #ui-lab-ring { position: fixed; z-index: 2147483646; width: 36px; height: 36px; margin: -18px 0 0 -18px;
+        border: 3px solid #d32f2f; border-radius: 50%; pointer-events: none; opacity: 0; }
+      #ui-lab-caption { position: fixed; z-index: 2147483647; left: 50%; bottom: 24px; transform: translateX(-50%);
+        max-width: 80vw; padding: 8px 16px; border-radius: 6px; background: rgba(20, 20, 20, 0.88); color: #fff;
+        font: 600 18px/1.4 system-ui, sans-serif; pointer-events: none; display: none; }`
+    document.documentElement.appendChild(style)
+    const pointer = document.createElement('div')
+    pointer.id = 'ui-lab-pointer'
+    pointer.innerHTML =
+      '<svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 2 L2 18 L6.5 13.5 L9.5 20 L12.5 18.7 L9.6 12.4 L16 12.4 Z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+    const ring = document.createElement('div')
+    ring.id = 'ui-lab-ring'
+    const caption = document.createElement('div')
+    caption.id = 'ui-lab-caption'
+    document.documentElement.append(pointer, ring, caption)
+    const last = window.__uiLabPointer ?? { x: -40, y: -40 }
+    pointer.style.left = `${last.x}px`
+    pointer.style.top = `${last.y}px`
+    window.addEventListener('mousemove', (e) => {
+      window.__uiLabPointer = { x: e.clientX, y: e.clientY }
+      pointer.style.left = `${e.clientX}px`
+      pointer.style.top = `${e.clientY}px`
+    }, true)
+    window.addEventListener('mousedown', (e) => {
+      ring.style.left = `${e.clientX}px`
+      ring.style.top = `${e.clientY}px`
+      ring.animate([{ opacity: 1, transform: 'scale(0.5)' }, { opacity: 0, transform: 'scale(1.4)' }], { duration: 500 })
+    }, true)
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install)
+  else install()
+}
+
+function helpers(page, args, log) {
+  let pointer = { x: args.width / 2, y: args.height / 2 }
+  const resolve = async (target) => (typeof target === 'string' ? firstVisible(page.locator(target)) : firstVisible(target))
+  const moveTo = async (el) => {
     await el.scrollIntoViewIfNeeded().catch(() => {})
     const box = await el.boundingBox()
-    if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 18 })
-    await sleep(250)
+    if (!box) return false
+    const to = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    const steps = Math.max(8, Math.round(Math.hypot(to.x - pointer.x, to.y - pointer.y) / 25))
+    await page.mouse.move(to.x, to.y, { steps })
+    pointer = to
+    return true
   }
-  const a = {
+  const h = {
     page,
-    wait: (ms = PACE) => sleep(ms),
-    /** Clicks when visible within `timeout`; returns whether it did. */
-    async click(locator, what, timeout = 6000) {
-      const el = await find(locator, timeout)
-      if (!el) {
-        log(`  skip: ${what}`)
+    pause: (ms = args.pause) => sleep(ms),
+    async goto(p) {
+      await page.goto(`${args.base}${p}`, { waitUntil: 'domcontentloaded' })
+      await settle(page, 600)
+      await page.mouse.move(pointer.x, pointer.y)
+    },
+    /** Moves to the element, clicks it and pauses; false (and a log line) when it is missing. */
+    async click(target, label = String(target)) {
+      const el = await resolve(target)
+      if (!el || !(await moveTo(el))) {
+        log(`  missing: ${label}`)
         return false
       }
-      await point(el)
-      await el.click().catch((e) => log(`  click failed: ${what}: ${e.message.split('\n')[0]}`))
-      await sleep(PACE)
+      await sleep(250)
+      await page.mouse.down()
+      await sleep(80)
+      await page.mouse.up()
+      await settle(page, 200)
+      await sleep(args.pause)
       return true
     },
-    async type(locator, text, what) {
-      const el = await find(locator, 6000)
-      if (!el) {
-        log(`  skip: ${what}`)
+    /** Clicks the field and types `text` visibly. */
+    async type(target, text, label = String(target)) {
+      const el = await resolve(target)
+      if (!el || !(await moveTo(el))) {
+        log(`  missing: ${label}`)
         return false
       }
-      await point(el)
-      await el.click()
-      await el.pressSequentially(text, { delay: 45 })
-      await sleep(PACE)
+      await el.click().catch(() => {})
+      await el.fill('').catch(() => {})
+      await page.keyboard.type(text, { delay: 45 })
+      await sleep(args.pause / 2)
       return true
     },
-    async clear(locator) {
-      const el = await find(locator, 2000)
-      if (el) await el.fill('')
+    /** Shows a caption line at the bottom of the video; an empty text hides it. */
+    async caption(text) {
+      await page.evaluate((t) => {
+        const el = document.getElementById('ui-lab-caption')
+        if (!el) return
+        el.textContent = t
+        el.style.display = t ? 'block' : 'none'
+      }, text).catch(() => {})
+      if (text) await sleep(args.pause)
     },
-    visible: async (locator, timeout = 1500) => (await find(locator, timeout)) !== null,
-    btn: (name, scope = page) =>
-      scope.getByRole('button', { name, exact: typeof name === 'string' }),
-    field: (label, scope = page) =>
-      scope.getByLabel(label, { exact: typeof label === 'string' }),
   }
-  return a
+  return h
 }
 
-const scopeRow = (page) => page.locator('[data-row$="-row-scope"]')
-const dialogOf = (page) => page.getByRole('dialog').last()
-
-async function startWizard(a, type, scenario) {
-  await a.page.goto(`${BASE}/libraries/new?mockScenario=${scenario}`)
-  await a.page.waitForSelector('main')
-  await a.wait(1200)
-  await a.click(a.page.getByRole('radio', { name: TILES[type] }), 'tile')
-  await a.click(a.btn('Weiter'), 'Weiter')
+function toMp4(webm, mp4) {
+  const ffmpeg = process.env.FFMPEG || 'ffmpeg'
+  execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', webm, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '28', '-movflags', '+faststart', mp4])
 }
 
-/** The fields of „Verbindung“; for Dropbox the consent round trip. */
-async function fillConnection(a, type, { path = '/srv/opaa/sozialamt' } = {}) {
-  const { page } = a
-  switch (type) {
-    case 'filesystem':
-      await a.type(a.field('Verzeichnis'), path, 'Verzeichnis')
-      break
-    case 'confluence':
-      await a.type(a.field('Adresse'), 'https://rheinfurt.atlassian.net/wiki', 'Adresse')
-      await a.wait(1000)
-      await a.type(a.field('E-Mail-Adresse'), 'dienstkonto@rheinfurt.example', 'E-Mail')
-      await a.type(a.field('API-Token'), 'atl-token-123', 'API-Token')
-      break
-    case 'sharepoint':
-      await a.click(page.getByRole('radio', { name: /Microsoft 365 Rheinfurt/ }), 'Zugang')
-      break
-    case 'nextcloud':
-      await a.click(page.getByRole('radio', { name: /Eigene Adresse/ }), 'Eigene Adresse')
-      await a.type(a.field('Adresse'), 'https://cloud.rheinfurt.example', 'Adresse')
-      await a.type(a.field('Benutzername'), 'svc-opaa', 'Benutzername')
-      await a.type(a.field('App-Passwort'), 'app-passwort', 'App-Passwort')
-      break
-    case 'smb':
-      await a.type(a.field('Adresse'), 'smb://dateiserver.rheinfurt.example/Ablage', 'Adresse')
-      await a.type(a.field('Benutzername'), 'RHEINFURT\\svc-opaa', 'Benutzername')
-      await a.type(a.field('Passwort'), 'geheim', 'Passwort')
-      break
-    case 's3':
-      await a.type(a.field('Endpoint'), 'https://minio.intern.example:9000', 'Endpoint')
-      await a.type(a.field('Access Key'), 'OPAAINDEXER', 'Access Key')
-      await a.type(a.field('Secret Key'), 'geheim', 'Secret Key')
-      break
-    case 'gdrive': {
-      const button = page.getByRole('button', { name: 'Datei wählen' })
-      if (await a.visible(button)) {
-        const box = await button.boundingBox()
-        if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 18 })
-      }
-      await page.locator('input[type=file]').first().setInputFiles(GDRIVE_KEY)
-      await a.wait(1000)
-      break
-    }
-    case 'dropbox':
-      await a.click(page.getByRole('radio', { name: /Dropbox Rheinfurt/ }), 'Zugang')
-      await a.click(page.getByRole('checkbox', { name: /Dienstkonto/ }), 'Dienstkonto')
-      await a.click(a.btn('Quelle verbinden'), 'Quelle verbinden')
-      await page.waitForURL(/\/libraries\/new/, { timeout: 15000 }).catch(() => {})
-      await page.waitForSelector('main')
-      await a.wait(2000)
-      break
-  }
-}
-
-/** Closes „Verbindung“ (which runs the test) and makes sure „Umfang“ is open. */
-async function toScope(a) {
-  await a.click(a.btn('Übernehmen'), 'Übernehmen Verbindung')
-  await a.wait(1200)
-  const row = scopeRow(a.page)
-  if (!(await a.visible(row.getByRole('button', { name: 'Übernehmen' }), 800))) {
-    await a.click(a.btn('Ändern Umfang'), 'Ändern Umfang')
-  }
-  return row
-}
-
-async function finishToReview(a, name, linger = 2000) {
-  await a.click(a.btn('Weiter'), 'Weiter')
-  await a.wait(800)
-  await a.type(a.field(/^Name/), name, 'Name')
-  for (let i = 0; i < 3; i++) {
-    if (await a.visible(a.page.getByRole('heading', { name: 'Prüfen', exact: true }), 500)) break
-    await a.click(a.btn('Weiter'), 'Weiter')
-    await a.wait(600)
-  }
-  await a.wait(linger)
-}
-
-async function openRows(a) {
-  await a.click(a.page.getByRole('tab', { name: /^Quelle/ }), 'Reiter Quelle')
-  await a.wait(1000)
-}
-
-// ---- ok: small ---------------------------------------------------------------------------------
-
-async function scopeSmall(a, type) {
-  const { page } = a
-  const row = await toScope(a)
-  if (type === 'filesystem') {
-    await a.type(a.field(/^Ausschlussmuster/), 'Archiv/**', 'Ausschlussmuster')
-  } else if (type === 'sharepoint') {
-    await a.click(a.btn('Auswählen …', row), 'Auswählen')
-    const d = dialogOf(page)
-    await a.wait(800)
-    await a.click(d.getByRole('button', { name: '„Rathaus“ öffnen' }), 'Rathaus öffnen')
-    await a.wait(800)
-    await a.click(d.getByRole('checkbox', { name: 'Dokumente' }), 'Dokumente')
-    await a.click(a.btn('Übernehmen', d), 'Übernehmen Dialog')
-  } else {
-    if (await a.visible(row.getByRole('radio').first(), 800)) {
-      await a.click(row.getByRole('radio', { name: /^Nur ausgewählte/ }), 'Nur ausgewählte')
-      await a.wait(800)
-    }
-    const boxes = row.getByRole('group').getByRole('checkbox')
-    await a.click(boxes.nth(0), 'erste Checkbox')
-    if ((await boxes.count()) > 1) await a.click(boxes.nth(1), 'zweite Checkbox')
-  }
-  await a.click(a.btn('Übernehmen', row), 'Übernehmen Umfang')
-  await a.wait(1000)
-}
-
-async function flowOk(a, type) {
-  await startWizard(a, type, 'small')
-  await fillConnection(a, type)
-  await scopeSmall(a, type)
-  await finishToReview(a, `${FILE_NAMES[type]} Projektablage`)
-  await a.click(a.btn('Bibliothek anlegen'), 'Bibliothek anlegen')
-  await a.page.waitForURL(/\/libraries\/(?!new)/, { timeout: 10000 }).catch(() => {})
-  await a.wait(2000)
-  await openRows(a)
-  await a.click(a.btn('Ändern Zeitplan'), 'Ändern Zeitplan')
-  await a.wait(1000)
-  const select = a.page.locator('[data-row$="-row-schedule"]').getByRole('combobox').first()
-  if (await a.click(select, 'Häufigkeit')) {
-    await a.click(a.page.getByRole('option', { name: /Wöchentlich/ }), 'Wöchentlich')
-  }
-  await a.click(a.btn('Speichern', a.page.locator('[data-row$="-row-schedule"]')), 'Speichern')
-  await a.wait(2500)
-}
-
-// ---- viele: scale ------------------------------------------------------------------------------
-
-async function pickAllHits(a, d, term) {
-  await a.clear(d.getByRole('searchbox'))
-  await a.type(d.getByRole('searchbox'), term, 'Suche')
-  await a.wait(900)
-  await a.click(d.getByText(/^Alle \d+ (Treffer )?auswählen$/), 'Alle n auswählen')
-}
-
-async function scopeScale(a, type) {
-  const { page } = a
-  const row = await toScope(a)
-  if (type === 'filesystem') {
-    await a.type(
-      a.field(/^Ausschlussmuster/),
-      'Archiv/**\n**/Entwurf_*/**\n**/*.tmp\nFachbereich-Soziales/Eingliederungshilfe/Altakten-2009-2014/**',
-      'Ausschlussmuster',
-    )
-    await a.click(a.btn('Übernehmen', row), 'Übernehmen Umfang')
-    return
-  }
-  if (await a.visible(row.getByRole('radio').first(), 800)) {
-    await a.click(row.getByRole('radio', { name: /^Nur ausgewählte/ }), 'Nur ausgewählte')
-    await a.wait(1200)
-  }
-  await a.click(a.btn('Auswählen …', row), 'Auswählen')
-  const d = dialogOf(page)
-  await a.wait(1200)
-  const open = (name) => d.getByRole('button', { name: `„${name}“ öffnen` })
-  switch (type) {
-    case 'confluence':
-      await pickAllHits(a, d, 'Bauamt')
-      break
-    case 'gdrive':
-      await pickAllHits(a, d, 'Ordner 01')
-      break
-    case 'sharepoint':
-      await a.type(d.getByRole('searchbox'), 'Rathaus', 'Site suchen')
-      await a.wait(1200)
-      await a.click(open('Rathaus'), 'Rathaus öffnen')
-      await a.wait(1000)
-      await a.click(d.getByRole('checkbox', { name: 'Dokumentbibliothek 002' }), 'Bibliothek 002')
-      await a.click(open('Dokumente'), 'Dokumente öffnen')
-      await a.wait(1000)
-      await pickAllHits(a, d, 'Ordner 00')
-      await a.click(d.getByRole('navigation').getByRole('button', { name: 'Rathaus' }), 'zurück zu Rathaus')
-      await a.wait(1200)
-      break
-    case 's3':
-      await a.click(open('bucket-0001'), 'bucket-0001 öffnen')
-      await a.wait(1000)
-      await pickAllHits(a, d, 'ordner-00')
-      await a.click(d.getByRole('navigation').getByRole('button', { name: 'Buckets' }), 'zurück zu Buckets')
-      await a.wait(1200)
-      break
-    default:
-      await a.click(open('Ordner 001'), 'Ordner 001 öffnen')
-      await a.wait(1000)
-      await pickAllHits(a, d, 'Vorgang 00')
-      await a.click(d.getByRole('navigation').getByRole('button').first(), 'zurück zur Wurzel')
-      await a.wait(1200)
-  }
-  await a.click(a.btn('Übernehmen', d), 'Übernehmen Dialog')
-  await a.wait(1200)
-  await a.click(a.btn('Übernehmen', row), 'Übernehmen Umfang')
-}
-
-async function flowViele(a, type) {
-  await startWizard(a, type, 'scale')
-  await fillConnection(a, type, {
-    path: '/srv/opaa/grundstuecksverkehrsgenehmigungsakte/fachbereich-soziales-jugend-und-familie/eingliederungshilfe',
+const ARGS = parseArgs(process.argv.slice(2))
+const T0 = Date.now()
+const log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0).padStart(5)}s]`, ...a)
+const { videos } = await import(pathToFileURL(ARGS.flows).href)
+const chosen = ARGS.only ? videos.filter((v) => ARGS.only.includes(v.name)) : videos
+if (!chosen.length) throw new Error(`no video selected; known: ${videos.map((v) => v.name).join(', ')}`)
+fs.mkdirSync(ARGS.out, { recursive: true })
+const raw = path.join(ARGS.out, '.webm')
+const browser = await launch(ARGS.chromium)
+const done = []
+const manifestFile = path.join(ARGS.out, 'manifest.json')
+const manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : []
+for (const video of chosen) {
+  log(`== ${video.name} (${video.scenario ?? 'default'}, ${ARGS.scheme})`)
+  const context = await schemeContext(browser, ARGS.scheme, {
+    width: ARGS.width,
+    recordVideo: { dir: raw, size: { width: ARGS.width, height: ARGS.height } },
   })
-  await scopeScale(a, type)
-  await finishToReview(a, `${FILE_NAMES[type]} Gesamt`, 1200)
-  // editing the stored library of the type: its selection is preselected
-  await a.page.goto(`${BASE}/libraries/${LIBRARIES[type]}?mockScenario=scale`)
-  await a.page.waitForSelector('main')
-  await a.wait(1000)
-  await openRows(a)
-  await a.click(a.btn('Ändern Umfang'), 'Ändern Umfang')
-  await a.wait(1200)
-  const row = scopeRow(a.page)
-  if (type !== 'filesystem' && (await a.click(a.btn('Ändern', row), 'Ändern Auswahl', 2500))) {
-    await a.wait(2500)
-    await a.click(a.btn('Abbrechen', dialogOf(a.page)), 'Abbrechen')
+  await context.addInitScript(overlayScript)
+  const page = await context.newPage()
+  await page.setViewportSize({ width: ARGS.width, height: ARGS.height })
+  const h = helpers(page, ARGS, log)
+  try {
+    await video.run(h, { scenario: video.scenario ?? 'default' })
+    await h.pause(1200)
+  } catch (e) {
+    log(`  error: ${String(e.message).split('\n')[0]}`)
   }
-  await a.wait(1000)
-}
-
-// ---- fehler: failed ----------------------------------------------------------------------------
-
-async function flowFehler(a, type) {
-  const { page } = a
-  await startWizard(a, type, 'failed')
-  if (type === 'dropbox' || type === 'sharepoint') {
-    // the Zugang first, then the empty scope runs into the summary
-    await fillConnection(a, type)
-    await a.click(a.btn('Weiter'), 'Weiter (leer)')
-    await a.wait(1500)
-  } else {
-    await a.click(a.btn('Weiter'), 'Weiter (leer)')
-    await a.wait(1500)
-    await a.click(page.getByRole('alert').getByRole('button').first(), 'erster Eintrag der Fehlerzusammenfassung')
-    await fillConnection(a, type)
+  const recording = page.video()
+  await context.close()
+  const webm = await recording.path()
+  const mp4 = path.join(ARGS.out, `${video.name}__${ARGS.scheme}.mp4`)
+  if (!fs.existsSync(webm)) {
+    log(`  no recording written; Playwright's ffmpeg is missing or incompatible (see README, "Videos")`)
+    continue
   }
-  if (!(await a.visible(a.btn('Verbindung testen'), 800))) {
-    await a.click(a.btn('Ändern Verbindung'), 'Ändern Verbindung')
-  }
-  await a.click(a.btn('Verbindung testen'), 'Verbindung testen')
-  await a.wait(2500)
-  await a.click(a.btn('Trotzdem fortfahren'), 'Trotzdem fortfahren', 2000)
-  const row = await toScope(a)
-  if (type === 'filesystem') {
-    await a.type(a.field(/^Ausschlussmuster/), 'Archiv/**', 'Ausschlussmuster')
-  } else {
-    if (await a.visible(row.getByRole('radio').first(), 800)) {
-      await a.click(row.getByRole('radio', { name: /^Nur ausgewählte/ }), 'Nur ausgewählte')
-      await a.wait(1500)
-    }
-    await a.click(a.btn('Erneut laden', row), 'Erneut laden', 3000)
-    await a.wait(1500)
-    const manualTexts = {
-      s3: 'protokolle/2026/',
-      gdrive: '1AbCdEfGhIjKlMnOp',
-      nextcloud: '/Projekte/2026',
-      smb: '/Projekte/2026',
-      dropbox: '/Projekte/2026',
-      sharepoint: 'https://rheinfurt.sharepoint.com/sites/rathaus',
-    }
-    const opener = (await a.visible(a.btn('Von Hand eintragen …', row), 800))
-      ? a.btn('Von Hand eintragen …', row)
-      : a.btn('Auswählen …', row)
-    if (manualTexts[type] && (await a.click(opener, 'Dialog öffnen', 2000))) {
-      const d = dialogOf(page)
-      await a.wait(1200)
-      if (!(await a.visible(d.getByRole('textbox').last(), 600))) {
-        await a.click(d.getByRole('button', { name: /von Hand eintragen$/ }), 'von Hand eintragen')
-      }
-      await a.type(d.locator('#selection-manual'), manualTexts[type], 'Eingabe von Hand')
-      await a.click(d.getByRole('button', { name: /^(Hinzufügen|Öffnen)$/ }), 'Hinzufügen')
-      await a.wait(1500)
-      await a.click(a.btn(type === 'sharepoint' ? 'Abbrechen' : 'Übernehmen', d), 'Dialog schließen')
-    }
-  }
-  await a.click(a.btn('Übernehmen', row), 'Übernehmen Umfang', 2000)
-  await a.wait(800)
-  await a.click(a.btn('Weiter'), 'Weiter')
-  await a.wait(2500)
-}
-
-const FLOWS = { ok: flowOk, viele: flowViele, fehler: flowFehler }
-
-const browser = await chromium.launch()
-for (const type of TYPES) {
-  for (const kind of KINDS) {
-    const name = `${FILE_NAMES[type]}__${kind}`
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-      locale: 'de-DE',
-      recordVideo: { dir: OUT, size: { width: 1280, height: 800 } },
-    })
-    await context.addInitScript(POINTER)
-    const page = await context.newPage()
-    const notes = []
-    const log = (line) => notes.push(line)
-    const t0 = Date.now()
-    try {
-      await FLOWS[kind](actor(page, log), type)
-      console.log(`ok   ${name} ${((Date.now() - t0) / 1000).toFixed(0)}s`)
-    } catch (err) {
-      console.log(`FAIL ${name}: ${String(err.message).split('\n')[0]}`)
-    }
-    for (const line of notes) console.log(line)
-    const video = page.video()
-    await context.close()
-    if (video) fs.renameSync(await video.path(), path.join(OUT, `${name}.webm`))
+  try {
+    toMp4(webm, mp4)
+    if (ARGS.keepWebm) fs.renameSync(webm, mp4.replace(/\.mp4$/, '.webm'))
+    else fs.rmSync(webm)
+    done.push(path.basename(mp4))
+    const entry = { file: path.basename(mp4), name: video.name, type: video.type ?? null, scenario: video.scenario ?? 'default', scheme: ARGS.scheme }
+    manifest.splice(0, manifest.length, ...manifest.filter((m) => m.file !== entry.file), entry)
+    log(`  -> ${mp4}`)
+  } catch (e) {
+    const kept = mp4.replace(/\.mp4$/, '.webm')
+    fs.renameSync(webm, kept)
+    log(`  ffmpeg failed (${String(e.message).split('\n')[0]}); WebM kept: ${kept}`)
   }
 }
 await browser.close()
-fs.rmSync(GDRIVE_KEY, { force: true })
+fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2))
+fs.rmSync(raw, { recursive: true, force: true })
+log(`done: ${done.length} of ${chosen.length} videos`)
