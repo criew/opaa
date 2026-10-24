@@ -2078,10 +2078,36 @@ describe('LibraryDetailPage', () => {
     }))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(
-      await screen.findByText(/bibliotheksdetails konnten nicht geladen werden/i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/konnten nicht vollständig geladen werden/i)).toBeInTheDocument()
     expect(screen.getByText(managerLibrary.name)).toBeInTheDocument()
+  })
+
+  it('keeps the Quelle area and offers a reload when the details of a connector library fail', async () => {
+    const user = userEvent.setup()
+    const connectorLibrary: LibraryListResponse = { ...managerLibrary, sourceType: 'FILESYSTEM' }
+    setLibraryState(connectorLibrary, detailsOf(connectorLibrary))
+    useLibraryStore.setState((state) => ({
+      libraryDetails: {},
+      error: 'HTTP 502: Request failed with status code 502',
+      libraries: state.libraries,
+      isLoading: false,
+    }))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByText(/konnten nicht vollständig geladen werden/i)).toBeInTheDocument()
+    expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Quelle' })).toBeInTheDocument()
+
+    mockGetLibrary.mockResolvedValueOnce(
+      detailsOf(connectorLibrary, { sourcePath: '/data/dokumente' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/konnten nicht vollständig geladen werden/i),
+      ).not.toBeInTheDocument(),
+    )
   })
 
   // The backend gates GET .../indexing/runs at MANAGER (canManage) since
