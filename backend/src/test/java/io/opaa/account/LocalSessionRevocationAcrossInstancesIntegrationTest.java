@@ -133,8 +133,15 @@ class LocalSessionRevocationAcrossInstancesIntegrationTest {
     Cookie refreshCookie = login.getResponse().getCookie(LocalRefreshCookies.COOKIE_NAME);
     String token = mintedOnB();
     expectAccepted(token);
+    MvcResult refreshed =
+        mockMvc
+            .perform(withCsrf(post(REFRESH), login).cookie(refreshCookie))
+            .andExpect(status().isOk())
+            .andReturn();
     mockMvc
-        .perform(withCsrf(post(REFRESH), login).cookie(refreshCookie))
+        .perform(
+            withCsrf(post(REFRESH), login)
+                .cookie(refreshed.getResponse().getCookie(LocalRefreshCookies.COOKIE_NAME)))
         .andExpect(status().isOk());
 
     mockMvc

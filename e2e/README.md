@@ -828,6 +828,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
+| `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
 
 `/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das

@@ -288,10 +288,10 @@ export function hadLocalSession(): boolean {
 let inFlightLocalRefresh: Promise<LocalTokenResponse | null> | null = null
 
 /**
- * Serialises the refresh across every tab of this browser. The refresh token rotates: two tabs
- * presenting the same one makes the loser a replay in the backend's eyes, which revokes every
- * session of the account. The Web Lock makes the second tab wait and then present the rotated
- * token instead. Where `navigator.locks` does not exist (jsdom, older browsers) the call simply
+ * Serialises the refresh across every tab of this browser. The refresh token rotates: of two tabs
+ * presenting the same one, only one keeps a valid token, and the other's next refresh is a replay
+ * in the backend's eyes, which revokes every session of the account. The Web Lock makes the second
+ * tab wait and then present the rotated token instead. Where `navigator.locks` does not exist (jsdom, older browsers) the call simply
  * runs - the tab-local single-flight below still holds.
  */
 async function withRefreshLock<T>(call: () => Promise<T>): Promise<T> {

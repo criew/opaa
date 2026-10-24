@@ -10,9 +10,20 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,9 +34,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Refresh-token families against Postgres (ADR-0033, Entscheidung 7): a new sign-in opens a family
  * with the idle limit and the absolute end of the account's role; a rotation revokes the presented
  * token as {@code ROTATED}, issues a successor of the same family and never moves the family's end;
- * a replay revokes the whole family as {@code REUSE_DETECTED}, ends every session of the account
- * ({@code password_invalidated_before}) and is the one refresh event that is audited; unknown and
- * expired tokens are simply unknown.
+ * a rotated token presented again within the grace period while its successor is unused is renewed
+ * once more; any other presentation of a rotated token is a replay that revokes the whole family as
+ * {@code REUSE_DETECTED}, ends every session of the account ({@code password_invalidated_before})
+ * and is the one refresh event that is audited; unknown and expired tokens are simply unknown.
  */
 @OpaaIntegrationTest
 class LocalRefreshTokenServiceIntegrationTest {
@@ -34,6 +46,7 @@ class LocalRefreshTokenServiceIntegrationTest {
   @Autowired private LocalRefreshTokenRepository repository;
   @Autowired private LocalAuthProperties properties;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private DataSource dataSource;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
 
   private LocalAccountFixtures fixtures;
@@ -125,7 +138,8 @@ class LocalRefreshTokenServiceIntegrationTest {
     long auditedBefore = auditedSessionRevocations();
     IssuedRefreshToken first = service.issue(user.user());
     IssuedRefreshToken otherFamily = service.issue(user.user());
-    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated used = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(used.token().value());
 
     RotationResult replay = service.rotate(first.value());
 
@@ -148,6 +162,127 @@ class LocalRefreshTokenServiceIntegrationTest {
     // is over, not a second replay: no second warning, no second event
     assertThat(service.rotate(rotated.token().value())).isEqualTo(new RotationResult.Unknown());
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore + 1);
+  }
+
+  /**
+   * The reload that discarded the answer of a refresh presents the rotated token again: within the
+   * grace period and with its successor never used, the unused successor is rotated away and a new
+   * one issued - no replay, no other session touched, no audit event. Twice in a row as well, the
+   * double reload (regression guard for #3062).
+   */
+  @Test
+  void aRotatedTokenPresentedAgainWithinTheGracePeriodIsRenewedNotAReplay() {
+    long auditedBefore = auditedSessionRevocations();
+    IssuedRefreshToken first = service.issue(user.user());
+    IssuedRefreshToken otherFamily = service.issue(user.user());
+    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value());
+
+    RotationResult reload = service.rotate(first.value());
+
+    assertThat(reload).isInstanceOf(RotationResult.Rotated.class);
+    RotationResult.Rotated renewed = (RotationResult.Rotated) reload;
+    assertThat(renewed.token().familyId()).isEqualTo(first.familyId());
+    LocalRefreshToken replaced = service.findPresented(discarded.token().value()).orElseThrow();
+    assertThat(replaced.getRevocationReason()).isEqualTo(RevocationReason.ROTATED);
+    assertThat(replaced.getRotatedToId()).isEqualTo(renewed.token().id());
+    assertThat(service.findPresented(first.value()).orElseThrow().getRotatedToId())
+        .isEqualTo(renewed.token().id());
+
+    RotationResult.Rotated secondReload = (RotationResult.Rotated) service.rotate(first.value());
+
+    assertThat(activeTokensOfFamily(first.familyId())).containsExactly(secondReload.token().id());
+    assertThat(service.findPresented(otherFamily.value()).orElseThrow().isActive(Instant.now()))
+        .isTrue();
+    assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore()).isNull();
+    assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore);
+    // the renewed session carries on with its own token
+    assertThat(service.rotate(secondReload.token().value()))
+        .isInstanceOf(RotationResult.Rotated.class);
+  }
+
+  @Test
+  void aRotatedTokenWhoseSuccessorWasUsedIsAReplayEvenWithinTheGracePeriod() {
+    IssuedRefreshToken first = service.issue(user.user());
+    IssuedRefreshToken otherFamily = service.issue(user.user());
+    RotationResult.Rotated used = (RotationResult.Rotated) service.rotate(first.value());
+    service.rotate(used.token().value());
+
+    assertThat(service.rotate(first.value())).isEqualTo(new RotationResult.Reused(user.id()));
+    assertThat(activeTokensOfFamily(first.familyId())).isEmpty();
+    assertThat(service.findPresented(otherFamily.value()).orElseThrow().getRevocationReason())
+        .isEqualTo(RevocationReason.REUSE_DETECTED);
+  }
+
+  @Test
+  void aRotatedTokenPresentedAfterTheGracePeriodIsAReplay() {
+    long auditedBefore = auditedSessionRevocations();
+    IssuedRefreshToken first = service.issue(user.user());
+    service.rotate(first.value());
+    LocalRefreshToken row = service.findPresented(first.value()).orElseThrow();
+    Instant past = Instant.now().minus(properties.refreshGracePeriod()).minusSeconds(1);
+    jdbc.update(
+        "UPDATE local_refresh_tokens SET issued_at = ?, revoked_at = ? WHERE id = ?",
+        java.sql.Timestamp.from(past.minusSeconds(1)),
+        java.sql.Timestamp.from(past),
+        row.getId());
+
+    assertThat(service.rotate(first.value())).isEqualTo(new RotationResult.Reused(user.id()));
+    assertThat(activeTokensOfFamily(first.familyId())).isEmpty();
+    assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore + 1);
+  }
+
+  @Test
+  void theGracePeriodIsRefusedForAnAccountThatMayNoLongerSignIn() {
+    IssuedRefreshToken first = service.issue(user.user());
+    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value());
+    LocalCredentials row = fixtures.credentialsOf(user);
+    row.setExpiresAt(Instant.now().minusSeconds(1), Instant.now());
+    fixtures.save(row);
+
+    assertThat(service.rotate(first.value())).isEqualTo(new RotationResult.Reused(user.id()));
+    assertThat(
+            service.findPresented(discarded.token().value()).orElseThrow().isActive(Instant.now()))
+        .isFalse();
+  }
+
+  /**
+   * Two renewals of the same rotated token racing for its unused successor: exactly one wins, the
+   * other is a replay - the grace period never hands out two live successors.
+   */
+  @Test
+  void twoConcurrentRenewalsWithinTheGracePeriodNeverBothWin() throws Exception {
+    IssuedRefreshToken first = service.issue(user.user());
+    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value());
+
+    List<RotationResult> results =
+        raceWhileLocked(discarded.token().id(), () -> service.rotate(first.value()));
+
+    assertThat(results).filteredOn(RotationResult.Rotated.class::isInstance).hasSize(1);
+    assertThat(results).contains(new RotationResult.Reused(user.id()));
+    assertThat(activeTokensOfFamily(first.familyId())).isEmpty();
+  }
+
+  /**
+   * The reload that sends the old cookie while the first refresh is still running loses the atomic
+   * rotation; it is then judged like the rotated token it presented, so both answers carry a
+   * session and the family keeps exactly one live token.
+   */
+  @Test
+  void theLoserOfAConcurrentRotationIsRenewedWithinTheGracePeriod() throws Exception {
+    IssuedRefreshToken first = service.issue(user.user());
+    LocalRefreshToken row = service.findPresented(first.value()).orElseThrow();
+
+    List<RotationResult> results =
+        raceWhileLocked(row.getId(), () -> service.rotate(first.value()));
+
+    assertThat(results).allMatch(RotationResult.Rotated.class::isInstance);
+    UUID last =
+        results.stream()
+            .map(result -> ((RotationResult.Rotated) result).token().id())
+            .filter(id -> repository.findById(id).orElseThrow().isActive(Instant.now()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(activeTokensOfFamily(first.familyId())).containsExactly(last);
   }
 
   /**
@@ -238,6 +373,63 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(service.findPresented(keep.value()).orElseThrow().getRevocationReason())
         .isEqualTo(RevocationReason.LOGOUT);
     assertThat(repository.count()).isGreaterThanOrEqualTo(3);
+  }
+
+  /**
+   * Runs {@code rotation} twice concurrently while a connection of the test holds the row lock of
+   * {@code lockedId}, and releases it only once both are waiting for a lock - the second queues
+   * behind the first - so both have read the state before either can commit.
+   */
+  private List<RotationResult> raceWhileLocked(UUID lockedId, Callable<RotationResult> rotation)
+      throws Exception {
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    List<Future<RotationResult>> futures;
+    try (Connection lock = dataSource.getConnection()) {
+      lock.setAutoCommit(false);
+      try (PreparedStatement select =
+          lock.prepareStatement("SELECT id FROM local_refresh_tokens WHERE id = ? FOR UPDATE")) {
+        select.setObject(1, lockedId);
+        select.executeQuery().close();
+      }
+      futures = List.of(pool.submit(rotation), pool.submit(rotation));
+      awaitWaiters(lock, 2);
+      lock.commit();
+    }
+    try {
+      List<RotationResult> results = new ArrayList<>();
+      for (Future<RotationResult> future : futures) {
+        results.add(future.get(30, TimeUnit.SECONDS));
+      }
+      return results;
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  private static void awaitWaiters(Connection lock, int expected) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+    try (PreparedStatement waiting =
+        lock.prepareStatement(
+            "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
+                + " AND cardinality(pg_blocking_pids(pid)) > 0")) {
+      while (System.nanoTime() < deadline) {
+        try (ResultSet rows = waiting.executeQuery()) {
+          rows.next();
+          if (rows.getInt(1) >= expected) {
+            return;
+          }
+        }
+        Thread.sleep(10);
+      }
+    }
+    throw new IllegalStateException("the concurrent rotations never waited for the row lock");
+  }
+
+  private List<UUID> activeTokensOfFamily(UUID familyId) {
+    return jdbc.queryForList(
+        "SELECT id FROM local_refresh_tokens WHERE family_id = ? AND revoked_at IS NULL",
+        UUID.class,
+        familyId);
   }
 
   private long auditedSessionRevocations() {

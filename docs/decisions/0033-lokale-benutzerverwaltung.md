@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-23 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -142,8 +142,17 @@ asymmetrischer Schlüssel, kein JWK-Set: derselbe Prozess stellt aus und prüft.
 ### 7. Sitzung: Refresh-Token als HttpOnly-Cookie, Rotation mit Wiederverwendungserkennung, Höchstdauer, zweistufiger Widerruf, harte Fristen
 
 Refresh-Token 256 Bit, nur der HMAC-Hash gespeichert; Familien mit Rotation (`ROTATED`), Replay
-widerruft die ganze Familie (`REUSE_DETECTED`); unbekannt, abgelaufen und wiederverwendet sind für
-den Client ununterscheidbar. Zwei Fristen: Leerlauf `refresh-token-ttl` (7 Tage, höchstens 30),
+widerruft alle Familien des Kontos (`REUSE_DETECTED`); unbekannt, abgelaufen und wiederverwendet
+sind für den Client ununterscheidbar. **Gnadenfrist:** Ein rotiertes Token ist kein Replay, wenn
+seine Rotation höchstens `refresh-grace-period` zurückliegt (20 s, höchstens 60, `0` schaltet ab),
+sein Nachfolger noch aktiv, also nie benutzt und nie widerrufen ist, und Familie und Konto gelten
+wie bei der Rotation; dann wird der Nachfolger per bedingtem Update wegrotiert, ein neuer
+ausgestellt und das Token auf ihn umgehängt. Von zwei gleichzeitigen Erneuerungen gewinnt eine,
+die andere ist ein Replay; der Verlierer einer gleichzeitigen Rotation wird einmal nach dieser Regel
+beurteilt. Grund: Ein Neuladen während `/refresh` verwirft Antwort und Cookie der committeten
+Rotation, und die nächste Seite legt das alte Token vor. Restrisiko: Wer ein Token in den Sekunden
+nach seiner Rotation abgreift, übernimmt die Sitzung, solange der Inhaber den Nachfolger nicht
+benutzt; dessen nächste Erneuerung ist dann ein Replay und beendet alle Sitzungen. Zwei Fristen: Leerlauf `refresh-token-ttl` (7 Tage, höchstens 30),
 absolute Höchstdauer `session-max-lifetime` (30 Tage, höchstens 90); für lokale `SYSTEM_ADMIN`
 `admin-refresh-token-ttl` 4 h und `admin-session-max-lifetime` 12 h; alle vier Werte werden beim
 Start validiert wie das Secret. Cookie `opaa_refresh`:

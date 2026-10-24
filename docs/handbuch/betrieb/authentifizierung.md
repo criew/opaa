@@ -589,6 +589,16 @@ gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genu
 beginnen neu — diesen Fall fängt die Gesamtgrenze auf. Damit die Grenzen je Person wirken, muss die
 Client-Adresse stimmen ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
 
+**Wiederverwendung eines Refresh-Tokens.** Jede Erneuerung einer Sitzung ersetzt das Refresh-Token.
+Taucht ein bereits ersetztes Token wieder auf, gilt das als Hinweis auf ein abgegriffenes Cookie:
+**Alle** Sitzungen des Kontos enden, das Nachweisprotokoll hält es fest, und das Log warnt mit der
+Konto-Kennung. Ausgenommen ist das Neuladen einer Seite mitten in der Erneuerung, bei dem der Browser
+das neue Cookie verwirft: Legt die nächste Seite das alte Token innerhalb von
+`OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD` nach der Erneuerung vor und wurde dessen Nachfolger noch nie
+benutzt, wird die Sitzung einfach noch einmal erneuert. Wer ein Token in diesen Sekunden abgreift,
+kann die Sitzung übernehmen; spätestens die nächste Erneuerung durch die Person selbst gilt dann als
+Wiederverwendung und beendet alle Sitzungen.
+
 **Nur über TLS.**
 
 - **Das Refresh-Cookie** trägt das Attribut `Secure`, solange `OPAA_AUTH_LOCAL_COOKIE_SECURE` nicht auf
