@@ -79,7 +79,7 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     - [Aktualisierung](betrieb/aktualisierung.md) — Ablauf eines Updates, was ein Update mit dem
       Index macht
     - [Überwachung und Fehlerbehebung](betrieb/ueberwachung-und-fehlerbehebung.md) — Logs und
-      Metriken, Diagnose ohne Shell, Fehlerbehebung
+      Metriken, Ausleitung an ein Sicherheitsmonitoring, Diagnose ohne Shell, Fehlerbehebung
     - [Mehrere Backend-Instanzen](betrieb/mehrere-instanzen.md) — wie mehrere Instanzen
       zusammenarbeiten: Abstimmung über die Datenbank, Instanzregister, Konfigurationsabdruck,
       Grenzen je Instanz, Update ohne Ausfall

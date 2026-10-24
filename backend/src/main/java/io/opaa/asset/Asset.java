@@ -2,6 +2,7 @@ package io.opaa.asset;
 
 import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
+import io.opaa.audit.AuditNeutralLabels;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.AssetTypeConverter;
 import io.opaa.permission.PermissionSubject;
@@ -48,7 +49,7 @@ import org.hibernate.annotations.DynamicUpdate;
 public class Asset implements OwnedAsset {
 
   /** The neutral name of an owner-only asset in every protocol (ADR-0041, Entscheidung 6). */
-  public static final String PRIVATE_AUDIT_NAME = "Private Bibliothek";
+  public static final String PRIVATE_AUDIT_NAME = AuditNeutralLabels.PRIVATE_ASSET;
 
   /** The payload keys that name no content: ids, kinds, states, flags and counts. */
   static final Set<String> NEUTRAL_AUDIT_KEYS =

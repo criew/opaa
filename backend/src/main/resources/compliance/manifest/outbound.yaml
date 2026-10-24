@@ -225,3 +225,17 @@ dataFlows:
     trigger: Jede Aufnahme einer Datei bei eingeschalteter Virenprüfung
     switchOff: Abschaltbar, Voreinstellung aus
     settings: [opaa.malware-scan.enabled, opaa.malware-scan.host]
+  - id: siem-export
+    group: SECURITY
+    viaOutboundProxy: false
+    target: Das zentrale Sicherheitsmonitoring (SIEM) der Behörde, ein Syslog-Empfänger
+    data: >-
+      Je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis, Organisation sowie Art
+      und Kennung des betroffenen Objekts, seinen Namen nur auf eigenen Schalter; keine Pseudonyme
+      handelnder oder betroffener Personen, keine Begründung und keine Inhalte. Bei einem Konto,
+      einem Zugangstoken, dem persönlichen Bereich, einer privaten Bibliothek und einem privaten
+      Prompt weder Kennung noch Name. Dazu ein Hinweis auf jede Lücke durch Abschalten oder die
+      Aufbewahrungsfrist
+    trigger: Laufend, alle 30 Sekunden, ab dem Einschalten
+    switchOff: Abschaltbar, Voreinstellung aus
+    settings: [opaa.siem-export.enabled, opaa.siem-export.host, opaa.siem-export.tls, opaa.siem-export.include-labels]

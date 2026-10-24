@@ -365,15 +365,14 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 | **Abfragen** — Frage, Suchbegriffe (auch die der [Chatsuche](./chat-list.md#chatsuche) über eigene Gespräche), angewandter Suchbereich, Trefferzahl | Das ist Verhalten, nicht Zugriffsänderung. In der Menge ergibt es das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Die Prüfbarkeit hängt nicht daran: Die Negativfrage beantwortet die Rechtehistorie |
 | **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
 | **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
-| **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
+| **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie bleiben im Anwendungslog und erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde, nicht über die [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring) des Protokolls. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
 | **Der Schwellenwertalarm des Zugriffswegs für externe KI-Werkzeuge** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [external-access.md](./external-access.md#kontingente-und-der-abflussalarm) |
 | **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie. Der Export der Selbstauskunft ist kein Lesezugriff in diesem Sinn: Er wird als Ganzes festgehalten, nie je Chat oder Dokument |
 | **Favoriten an Assets** — Setzen, Entfernen, Bestand | Persönliche Ordnung, keine Zugriffsänderung; in der Menge ein Interessenprofil. Favoriten werden weder protokolliert noch historisiert, nicht gezählt und sind für niemanden außer der Person selbst abrufbar; exportiert werden sie nur in ihrer Selbstauskunft, und als personenbeziehbares Feld gehören sie in die Auskunft über die Datenerhebung ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 7) |
 
 **Spätere Stufen** — nicht verworfen, nur nicht hier: das Teilen und Zurückziehen von Chats und
 Artefakten (es ändert Reichweite und gehört dazu, sobald die Funktion existiert), Agentenaktionen mit
-aufrufender Person, Agentenversion und Freigabeschritt, sowie die Ausleitung an ein zentrales
-Sicherheitsmonitoring.
+aufrufender Person, Agentenversion und Freigabeschritt.
 
 ### Der Sicherheitsgrad der ersten Stufe: einfaches Anfügen
 
@@ -706,15 +705,20 @@ Protokolleinträge bis dahin wieder ihr zuordnen (siehe
 ### Anbindung an ein zentrales Sicherheitsmonitoring
 
 Behörden betreiben ihr Sicherheitsmonitoring in aller Regel zentral, oft für viele Fachverfahren
-zusammen. OPAA liefert seine sicherheitsrelevanten Ereignisse deshalb in einem gängigen Format an ein
-solches System aus — fehlgeschlagene Anmeldungen, abgewiesene Verbindungsversuche aus unzulässigen
-Netzbereichen, Rechteänderungen, Verwaltungsaktionen, Zugriffe auf Protokolldaten.
+zusammen. OPAA liefert sein Revisionsprotokoll deshalb in einem gängigen Format an ein solches System
+aus — Rechteänderungen, Verwaltungsaktionen, Zugriffe auf Protokolldaten.
 
 **Der Export ist keine Umgehung.** Was hinausgeht, unterliegt denselben Zweck-, Zugriffs- und
 Sparsamkeitsregeln wie das Protokoll selbst. Insbesondere führt der Weg über das Sicherheitsmonitoring
 nicht an der Festlegung vorbei, dass es keinen personenbezogenen Auswertungspfad gibt: Was OPAA nicht
 nach Person gruppiert, liefert es auch nicht so aus. Welche Ereignisklassen ausgeleitet werden, ist Teil
 der dokumentierten Zweckbindung und damit Gegenstand der Dienstvereinbarung.
+
+Gebaut ist die Ausleitung des Revisionsprotokolls als Syslog mit CEF, ohne Pseudonyme und als
+Vorgabe ohne Objektnamen, ab dem Einschalten und ohne stillen Verlust
+([ADR-0055](../decisions/0055-ausleitung-an-ein-sicherheitsmonitoring.md)).
+Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche bleiben im Anwendungslog und
+erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde.
 
 ---
 
@@ -1795,9 +1799,6 @@ eine Stufe 2 wäre eine neue mitbestimmungspflichtige Änderung.
   Veröffentlichung der Ankerwerte, und wie sich das Schwärzen des Personenbezugs beim Löschen eines
   Kontos mit einer Kette verträgt (heute betrifft es nur die getrennte Zuordnungstabelle und lässt das
   Protokoll unberührt — das bleibt auch mit Kette die richtige Auflösung, muss aber nachgewiesen werden).
-- **Ausleitung an ein zentrales Sicherheitsmonitoring** — welche Ereignisklassen, in welchem Format und
-  ab welcher Stufe. Der Umfang der ersten Stufe schreibt Anmeldeereignisse bewusst nicht mit; sie kommen
-  über diesen Weg oder gar nicht.
 - Verlangt eine C5-Prüfung die Netzadresse im Protokollsatz zwingend? Falls ja, ist die Ausnahme
   schriftlich zu begründen.
 - Wie wird die technische Trennung der Auswertungswege für Revision und Leitung konkret durchgesetzt —
