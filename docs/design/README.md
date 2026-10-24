@@ -6,12 +6,12 @@ Redesign-Epic #600.
 
 ## Zielbild
 
-| Dokument                                   | Inhalt                                                                                         |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| [OPAA Mockups.html](<./OPAA Mockups.html>) | 9 Mockup-Seiten (Claude Design; zum Ansehen im Browser öffnen, JavaScript erforderlich)        |
-| [guidelines.md](./guidelines.md)           | Verbindliche Gestaltungsregeln: Farben, Typografie, Abstände, Komponenten, Begriffe            |
-| [accessibility.md](./accessibility.md)     | Barrierefreiheits-Richtlinie (BITV 2.0 / WCAG 2.1 AA): Prüfliste und Prüfverfahren je UI-Issue |
-| [redesign-prompt.md](./redesign-prompt.md) | Zielbild-Beschreibung der Oberfläche (Briefing, aus dem die Mockups entstanden)                |
+| Dokument                                   | Inhalt                                                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| [OPAA Mockups.html](<./OPAA Mockups.html>) | 9 Mockup-Seiten (Claude Design; zum Ansehen im Browser öffnen, JavaScript erforderlich)                                      |
+| [guidelines.md](./guidelines.md)           | Verbindliche Gestaltungsregeln: Farben, Typografie, Abstände, Komponenten, Begriffe                                          |
+| [accessibility.md](./accessibility.md)     | Barrierefreiheits-Richtlinie (Untergrenze BITV 2.0 / WCAG 2.1 AA, Ziel WCAG 2.2 AA): Prüfliste und Prüfverfahren je UI-Issue |
+| [redesign-prompt.md](./redesign-prompt.md) | Zielbild-Beschreibung der Oberfläche (Briefing, aus dem die Mockups entstanden)                                              |
 
 ### Mockup-Seiten
 
@@ -33,7 +33,7 @@ siehe Epic #600, „Außerhalb des Umfangs".
 **Überholt durch [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md):**
 Seite 1d zeigt die Wissensbibliotheken als eigene Übersicht in Tabellenform. Im Zielbild gibt es dafür
 den einen **Katalog** für alle Asset-Arten, ausschließlich als Kacheln; die Auswahl in 1b („Datenquellen
-zuordnen") und 1e (Herkunft) folgt der Kachelauswahl mit Icon
+zuordnen") und 1e (Herkunft) folgt der Auswahl aus einer Menge
 ([guidelines.md](./guidelines.md), 5.11). Maßgeblich sind in diesen Punkten die Guidelines, nicht die
 Mockups.
 
