@@ -29,7 +29,7 @@ Befunde in [`REVIEW-1.md`](REVIEW-1.md). Matrix neu mit den Werkzeugen aus PR #3
 | R1-10 Ebene, 0 Einträge | erledigt |
 | R1-11 Ändern/Öffner | erledigt |
 | R1-12 Handeingabe | erledigt: überall „Von Hand eintragen …“, gleiches Feld |
-| R1-13 Radiopaar überall | erledigt für die Ordnerquellen Nextcloud, SMB, Dropbox und Dateisystem („Alle Ordner“, Vorgabe). Für Confluence, S3, Drive und SharePoint folgt Punkt 13 in #3117 (Backend, API und Frontend). Der Prototyp zeigt das Radiopaar dort mit den Flags `allSpaces`/`allScopes`/`allBuckets`, die es nur im Mock gibt. Der PR nach `main` (#3104) bietet es bei diesen vier nicht an |
+| R1-13 Radiopaar überall | erledigt für die Ordnerquellen Nextcloud, SMB und Dropbox („Alle Ordner“, Vorgabe; das Dateisystem hat ein einzelnes Verzeichnis). Für Confluence, S3, Drive und SharePoint folgt Punkt 13 in #3117 (Backend, API und Frontend). Der Prototyp zeigt das Radiopaar dort mit den Flags `allSpaces`/`allScopes`/`allBuckets`, die es nur im Mock gibt. Der PR nach `main` (#3123) bietet es bei diesen vier nicht an |
 | R1-14 Verbindungsstatus | erledigt: Punkt + Wort, bei Fehler mit Stufe; bei 320 px eigene Zeile. Im Reiter „Quelle“ „nicht geprüft“ bis zum Test |
 | R1-15 Listen, Pfade | erledigt: ein Trenner „ / “, Kürzung in der Mitte |
 | R1-16 Knöpfe | erledigt: „Jetzt indizieren“ sekundär; Zeile „Abbrechen · Speichern“ rechts wie die Fußleiste |
