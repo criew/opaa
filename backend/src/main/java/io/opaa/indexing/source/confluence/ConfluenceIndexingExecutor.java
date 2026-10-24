@@ -586,6 +586,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
                   .changeMarker(version)
                   .modifiedAt(DocumentProperties.instantToLocalDate(page.lastModified()))
                   .pipelineId(ConfluenceStorageFormat.ID)
+                  .events(run.events)
                   .build(),
               null);
       if (run.frame.recordOutcome(result, pagePath)) {

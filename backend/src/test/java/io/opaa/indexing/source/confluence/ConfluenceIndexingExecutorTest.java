@@ -798,6 +798,8 @@ class ConfluenceIndexingExecutorTest {
               .filter(page -> "Abschnitt 1.1".equals(page.title()) && page.library() == library)
               .findFirst()
               .orElseThrow();
+      // a page ingests without AttachmentAccess, so its findings reach the run protocol this way
+      assertThat(abschnitt.events()).isNotNull();
       bodies.put(edition, DocumentIngests.textOf(abschnitt));
       server.close();
       server = null;
