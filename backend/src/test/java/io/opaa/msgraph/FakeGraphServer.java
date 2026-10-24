@@ -103,7 +103,8 @@ public final class FakeGraphServer implements AutoCloseable {
 
   private record Drive(String id, String siteId, String name, String driveType) {}
 
-  private record Failure(String pathPart, int status, String code, String retryAfter, int[] left) {}
+  private record Failure(
+      String pathPart, int status, String code, String message, String retryAfter, int[] left) {}
 
   /** A started delta enumeration: the entries still to hand out and where the log stood. */
   private record Pending(String driveId, List<Map<String, Object>> entries, int logPosition) {}
@@ -309,7 +310,12 @@ public final class FakeGraphServer implements AutoCloseable {
 
   /** The next {@code times} requests whose path contains {@code pathPart} fail this way. */
   public void failNext(String pathPart, int status, String code, String retryAfter, int times) {
-    failures.add(new Failure(pathPart, status, code, retryAfter, new int[] {times}));
+    failures.add(new Failure(pathPart, status, code, null, retryAfter, new int[] {times}));
+  }
+
+  /** As {@link #failNext}, the answer carrying {@code message} as Graph's {@code error.message}. */
+  public void failNextSaying(String pathPart, int status, String code, String message, int times) {
+    failures.add(new Failure(pathPart, status, code, message, null, new int[] {times}));
   }
 
   /** From now on only {@code token} is accepted. */
@@ -635,7 +641,7 @@ public final class FakeGraphServer implements AutoCloseable {
     for (Failure failure : failures) {
       if (path.contains(failure.pathPart()) && failure.left()[0] > 0) {
         failure.left()[0]--;
-        error(exchange, failure.status(), failure.code(), failure.retryAfter());
+        error(exchange, failure.status(), failure.code(), failure.message(), failure.retryAfter());
         return true;
       }
     }
@@ -832,12 +838,18 @@ public final class FakeGraphServer implements AutoCloseable {
 
   private static void error(HttpExchange exchange, int status, String code, String retryAfter)
       throws IOException {
+    error(exchange, status, code, null, retryAfter);
+  }
+
+  private static void error(
+      HttpExchange exchange, int status, String code, String message, String retryAfter)
+      throws IOException {
     if (retryAfter != null) {
       exchange.getResponseHeaders().set("Retry-After", retryAfter);
     }
     Map<String, Object> error = new LinkedHashMap<>();
     error.put("code", code);
-    error.put("message", "fake " + code);
+    error.put("message", message != null ? message : "fake " + code);
     error.put(
         "innerError",
         Map.of("date", "2026-10-04T10:00:00", "request-id", UUID.randomUUID().toString()));

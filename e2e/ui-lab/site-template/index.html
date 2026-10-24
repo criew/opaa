@@ -1,0 +1,332 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-Lab Vergleich</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: header with the variant profiles and lessons, below a viewer (control bar on top, screens as a grid). Colours follow the OPAA design guidelines. */
+:root {
+  --bg: #FFFFFF; --bg-2: #F5F7FA; --bg-3: #E6EBF1;
+  --fg: #012142; --fg-2: #3B4A5C; --fg-3: #5A6878;
+  --accent: #0B6FBC; --accent-fg: #FFFFFF; --accent-soft: #E7F4FE;
+  --border: #E1E6EC; --border-strong: #C4CEDA;
+  --ok: #11774F; --warn: #8F5A00;
+  --veil: rgba(0, 21, 45, 0.5);
+  --f-display: "Quicksand", "Inter", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A0D12; --bg-2: #141922; --bg-3: #1E2531;
+    --fg: #E3E8EF; --fg-2: #AEB8C5; --fg-3: #8C97A6;
+    --accent: #4BA9F5; --accent-fg: #00152D; --accent-soft: #0F2A44;
+    --border: #232B37; --border-strong: #35404F;
+    --ok: #3CC48E; --warn: #F0B54A;
+    --veil: rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A0D12; --bg-2: #141922; --bg-3: #1E2531;
+  --fg: #E3E8EF; --fg-2: #AEB8C5; --fg-3: #8C97A6;
+  --accent: #4BA9F5; --accent-fg: #00152D; --accent-soft: #0F2A44;
+  --border: #232B37; --border-strong: #35404F;
+  --ok: #3CC48E; --warn: #F0B54A;
+  --veil: rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--f-body); font-size: 14.5px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1200px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 21px; font-weight: 700; }
+h3 { font-size: 15px; font-weight: 600; font-family: var(--f-body); }
+p { margin: 0; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--fg-3); font-size: 13px; }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+header { padding-block: 36px 24px; display: grid; gap: 8px; }
+header p { color: var(--fg-2); max-width: 70ch; }
+section { padding-block: 28px; border-top: 1px solid var(--border); display: grid; gap: 16px; }
+
+/* Steckbriefe */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--border); }
+th { font-size: 12px; font-weight: 500; color: var(--fg-3); }
+td:first-child { white-space: nowrap; font-weight: 600; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plus { color: var(--ok); font-weight: 600; }
+.minus { color: var(--warn); font-weight: 600; }
+tr.pick td { background: var(--accent-soft); }
+tr.pick td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.cols ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
+.cols .src { color: var(--fg-3); font-size: 12px; }
+
+/* Betrachter */
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  padding-block: 12px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.ctl { display: grid; gap: 4px; min-width: 0; }
+.ctl > span { font-size: 11.5px; color: var(--fg-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+.seg button {
+  font: inherit; font-size: 13px; color: var(--fg-2); background: var(--bg); border: 0;
+  border-right: 1px solid var(--border-strong); padding: 7px 12px; min-height: 34px; cursor: pointer;
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.seg button:disabled { color: var(--fg-3); cursor: default; opacity: .6; }
+.chk { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--fg-2); min-height: 34px; }
+.chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.now { display: grid; gap: 4px; }
+.now p { color: var(--fg-2); font-size: 13.5px; max-width: 90ch; }
+
+.videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+.videos video { width: 100%; max-width: 100%; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-2); display: block; }
+.empty { border: 1px dashed var(--border-strong); border-radius: 6px; padding: 16px; color: var(--fg-3); font-size: 13px; }
+
+.screens { display: grid; gap: 28px; }
+.area { display: grid; gap: 8px; }
+.area-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.pair { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.pair.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pair.narrow { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 340px)); }
+.pane { display: grid; gap: 4px; min-width: 0; }
+.pane .lab { font-size: 12px; color: var(--fg-3); }
+.crop {
+  display: block; width: 100%; max-width: 100%; padding: 0; border: 1px solid var(--border); border-radius: 6px;
+  overflow: hidden; background: var(--bg-2); cursor: zoom-in; position: relative;
+}
+.crop.narrow { max-width: 322px; }
+.crop img { display: block; width: 100%; max-width: 100%; height: auto; }
+.cut { font-size: 12px; color: var(--fg-3); }
+.miss { border: 1px dashed var(--border-strong); border-radius: 6px; padding: 24px 16px; color: var(--fg-3); font-size: 13px; text-align: center; }
+
+dialog {
+  border: 1px solid var(--border); border-radius: 8px; padding: 0; background: var(--bg); color: var(--fg);
+  width: min(1100px, calc(100vw - 24px)); max-width: none; max-height: calc(100vh - 24px);
+}
+dialog::backdrop { background: var(--veil); }
+.lb { display: grid; grid-template-rows: auto 1fr; max-height: calc(100vh - 26px); }
+.lb-bar { display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.lb-bar strong { flex: 1; min-width: 0; font-size: 14px; }
+.btn { font: inherit; font-size: 13px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--fg); border-radius: 6px; padding: 6px 12px; min-height: 32px; cursor: pointer; }
+.lb-body { overflow: auto; padding: 14px; background: var(--bg-2); }
+.lb-body .crop { cursor: default; margin: 0 auto; }
+
+footer { padding-block: 28px 48px; border-top: 1px solid var(--border); color: var(--fg-3); font-size: 12.5px; display: grid; gap: 6px; }
+
+@media (max-width: 900px) {
+  .cols { grid-template-columns: 1fr; }
+  .pair.two { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+<header>
+  <h1 id="title">UI-Lab</h1>
+  <p id="intro"></p>
+</header>
+
+<section id="varianten">
+  <h2>Die Varianten</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Variante</th><th>Idee</th><th>Stärken</th><th>Schwächen</th><th class="n">Bewertung Ø</th></tr></thead>
+      <tbody id="variant-rows"></tbody>
+    </table>
+  </div>
+  <p class="muted" id="score-note"></p>
+</section>
+
+<section id="gelernt">
+  <h2>Gelernt und umgesetzt</h2>
+  <div class="cols" id="learned"></div>
+</section>
+
+<section id="ansehen">
+  <h2>Ansehen</h2>
+  <div class="bar" role="toolbar" aria-label="Auswahl">
+    <div class="ctl"><span id="l-v">Variante</span><div class="seg" id="s-v" role="group" aria-labelledby="l-v"></div></div>
+    <div class="ctl"><span id="l-t">Bereich</span><div class="seg" id="s-t" role="group" aria-labelledby="l-t"></div></div>
+    <div class="ctl"><span id="l-s">Fall</span><div class="seg" id="s-s" role="group" aria-labelledby="l-s"></div></div>
+    <div class="ctl"><span id="l-w">Breite</span><div class="seg" id="s-w" role="group" aria-labelledby="l-w"></div></div>
+    <label class="chk" for="cmp"><input type="checkbox" id="cmp"> Ist daneben</label>
+  </div>
+  <div class="now"><h3 id="now-title"></h3><p id="now-text"></p></div>
+  <div id="videos"></div>
+  <div class="screens" id="screens"></div>
+</section>
+
+<footer><p id="footer"></p></footer>
+</div>
+
+<dialog id="lb" aria-labelledby="lb-t">
+  <div class="lb">
+    <div class="lb-bar"><strong id="lb-t"></strong><button class="btn" type="button" id="lb-x">Schließen</button></div>
+    <div class="lb-body" id="lb-b"></div>
+  </div>
+</dialog>
+
+<script>
+// Renders data.json from build_site.py: variant table, lessons, and a viewer with one sprite per
+// (variant, area, scenario, width). All texts go in as textContent, never as markup.
+const IST = 'ist';
+let D = { variants: [], types: {}, scenarios: {}, widths: [], areas: {}, sprites: {}, videos: {}, learned: [], cap: 2400 };
+const state = { v: null, t: null, s: null, w: null, cmp: false };
+
+function rd(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function wr(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function vname(id) { const v = D.variants.find(x => x.id === id); return v ? (v.title || v.name || id) : id; }
+function has(v) { return Object.keys(D.sprites).some(k => k.startsWith(v + '|')); }
+function slabel(s) { const x = D.scenarios[s]; return x ? (x.label || s) : s; }
+
+function head() {
+  document.title = D.title || 'UI-Lab';
+  document.getElementById('title').textContent = D.title || 'UI-Lab';
+  document.getElementById('intro').textContent = D.intro || '';
+  document.getElementById('l-t').textContent = D.dimension || 'Bereich';
+  document.getElementById('score-note').textContent = D.scoreNote || '';
+  document.getElementById('footer').textContent = D.footer || '';
+  const rows = document.getElementById('variant-rows'); rows.textContent = '';
+  for (const v of D.variants) {
+    const tr = el('tr', v.pick ? 'pick' : '');
+    tr.append(el('td', '', v.title || v.name || v.id), el('td', '', v.idea || ''), el('td', '', v.strengths || '–'),
+      el('td', '', v.weaknesses || '–'), el('td', 'n', v.score != null ? String(v.score) : '–'));
+    rows.appendChild(tr);
+  }
+  const cols = document.getElementById('learned'); cols.textContent = '';
+  for (const col of D.learned || []) {
+    const div = el('div'); div.appendChild(el('h3', '', col.title));
+    const ul = el('ul');
+    for (const it of col.items || []) {
+      const li = el('li', '', typeof it === 'string' ? it : it.text);
+      if (it.src) { li.append(' '); li.appendChild(el('span', 'src', it.src)); }
+      ul.appendChild(li);
+    }
+    div.appendChild(ul); cols.appendChild(div);
+  }
+  document.getElementById('gelernt').hidden = !(D.learned || []).length;
+}
+
+function seg(id, dim, opts, enabled) {
+  const box = document.getElementById(id); box.textContent = '';
+  for (const [val, label] of opts) {
+    const b = el('button', '', label); b.type = 'button';
+    b.setAttribute('aria-pressed', String(state[dim] === val));
+    if (enabled && !enabled(val)) { b.disabled = true; b.title = 'Noch nicht aufgenommen'; }
+    b.addEventListener('click', () => { state[dim] = val; render(); });
+    box.appendChild(b);
+  }
+}
+function cropEl(sp, a, narrow, big) {
+  const b = el(big ? 'div' : 'button', 'crop' + (narrow ? ' narrow' : ''));
+  if (!big) b.type = 'button';
+  b.style.aspectRatio = sp.w + ' / ' + a.h;
+  if (big) b.style.maxWidth = sp.w + 'px';
+  const img = el('img');
+  img.src = sp.f; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+  img.style.marginTop = (-a.y / sp.w * 100) + '%';
+  b.appendChild(img);
+  return b;
+}
+function pane(vid, key, area) {
+  const p = el('div', 'pane');
+  const sp = D.sprites[vid + '|' + key];
+  const a = sp && sp.areas.find(x => x.a === area);
+  if (state.cmp) p.appendChild(el('div', 'lab', vname(vid)));
+  if (!a) { p.appendChild(el('div', 'miss', 'Gibt es in dieser Variante nicht')); return p; }
+  const narrow = Number(state.w) < 600;
+  const c = cropEl(sp, a, narrow, false);
+  c.setAttribute('aria-label', vname(vid) + ', ' + (D.areas[area] || area) + ' vergrößern');
+  c.addEventListener('click', () => openLb(vname(vid) + ' · ' + (D.areas[area] || area), sp, a, narrow));
+  p.appendChild(c);
+  if (a.cut) p.appendChild(el('div', 'cut', 'Seite ist länger, nach ' + D.cap.toLocaleString('de-DE') + ' px abgeschnitten.'));
+  return p;
+}
+function render() {
+  wr('uilab-state', JSON.stringify(state));
+  seg('s-v', 'v', D.variants.map(x => [x.id, x.name || x.id]), v => has(v));
+  seg('s-t', 't', Object.entries(D.types));
+  seg('s-s', 's', Object.keys(D.scenarios).map(s => [s, slabel(s)]));
+  seg('s-w', 'w', D.widths.map(w => [w, w + ' px']));
+  const cmp = document.getElementById('cmp');
+  cmp.checked = state.cmp; cmp.disabled = state.v === IST || !has(IST);
+  document.getElementById('now-title').textContent = [vname(state.v), D.types[state.t], slabel(state.s), state.w && state.w + ' px'].filter(Boolean).join(' · ');
+  document.getElementById('now-text').textContent = (D.scenarios[state.s] || {}).text || '';
+
+  const vbox = document.getElementById('videos'); vbox.textContent = '';
+  const list = D.videos[state.v + '|' + state.t + '|' + state.s] || [];
+  if (list.length) {
+    const wrap = el('div', 'videos');
+    for (const item of list) {
+      const v = el('video'); v.controls = true; v.preload = 'metadata'; v.src = item.url; v.muted = true; v.playsInline = true;
+      v.setAttribute('aria-label', 'Ablauf ' + item.name + ', ' + vname(state.v));
+      wrap.appendChild(v);
+    }
+    vbox.appendChild(wrap);
+  } else {
+    vbox.appendChild(el('div', 'empty', 'Für diese Auswahl gibt es kein Video.'));
+  }
+
+  const key = state.t + '|' + state.s + '|' + state.w;
+  const sp = D.sprites[state.v + '|' + key];
+  const ist = D.sprites[IST + '|' + key];
+  const both = state.cmp && state.v !== IST;
+  const box = document.getElementById('screens'); box.textContent = '';
+  const areas = Object.keys(D.areas).filter(a => (sp && sp.areas.some(x => x.a === a)) || (both && ist && ist.areas.some(x => x.a === a)));
+  if (!areas.length) { box.appendChild(el('div', 'miss', 'Für diese Auswahl gibt es keine Aufnahmen.')); return; }
+  for (const a of areas) {
+    const sec = el('div', 'area');
+    const h = el('div', 'area-head'); h.appendChild(el('h3', '', D.areas[a] || a)); sec.appendChild(h);
+    const narrow = Number(state.w) < 600;
+    const pair = el('div', 'pair' + (narrow ? ' narrow' : (both ? ' two' : '')));
+    if (both) pair.appendChild(pane(IST, key, a));
+    pair.appendChild(pane(state.v, key, a));
+    sec.appendChild(pair); box.appendChild(sec);
+  }
+}
+const lb = document.getElementById('lb');
+function openLb(title, sp, a, narrow) {
+  document.getElementById('lb-t').textContent = title;
+  const b = document.getElementById('lb-b'); b.textContent = '';
+  b.appendChild(cropEl(sp, a, narrow, true));
+  lb.showModal();
+}
+document.getElementById('lb-x').addEventListener('click', () => lb.close());
+lb.addEventListener('click', e => { if (e.target === lb) lb.close(); });
+document.getElementById('cmp').addEventListener('change', e => { state.cmp = e.target.checked; render(); });
+
+fetch('data.json').then(r => r.json()).then(data => {
+  D = Object.assign(D, data);
+  try { Object.assign(state, JSON.parse(rd('uilab-state') || '{}')); } catch (e) {}
+  const pick = (val, options) => (options.includes(val) ? val : options[0]);
+  const drafts = D.variants.map(v => v.id).filter(id => id !== IST && has(id));
+  state.v = has(state.v) ? state.v : (drafts[0] || IST);
+  state.t = pick(state.t, Object.keys(D.types));
+  state.s = pick(state.s, Object.keys(D.scenarios));
+  state.w = pick(state.w, D.widths);
+  head();
+  render();
+}).catch(() => {
+  document.getElementById('screens').appendChild(el('div', 'miss', 'data.json fehlt; die Seite entsteht mit build_site.py.'));
+});
+</script>

@@ -3,7 +3,7 @@
 Nachschlagewerk zu Befehlen außerhalb des täglichen Builds. Die Grundbefehle (Build, Test, Formatierung,
 Start von Backend und Frontend) und die Pre-Push-Checkliste stehen in [AGENTS.md](../../AGENTS.md#build--test).
 
-## Frontend lokal
+## Frontend mit Mocks
 
 ```bash
 # aus frontend/
@@ -12,9 +12,22 @@ VITE_ENABLE_MOCKS=true pnpm run dev     # Dev-Server mit MSW-Mocks
 # wechseln mit http://localhost:5173/?devUser=dev-user
 ```
 
+**Mock-Szenarien.** `?mockScenario=default|small|scale|empty|slow|failed|partial` an einer
+beliebigen URL wählt den Fixture-Satz, z. B. viele Einträge mit langen Namen (`scale`), leere
+(`empty`), langsame (3 s) oder fehlschlagende Antworten; die Wahl bleibt für den Tab bestehen,
+`?mockScenario=default` setzt zurück. Bisher folgen die Wissensbibliotheken samt Konnektoren und
+die Gruppen dem Szenario. Tabelle und Erweiterung um weitere Bereiche:
+[e2e/ui-lab/README.md](../../e2e/ui-lab/README.md#mock-szenarien).
+
+**UI-Lab.** Werkzeuge für Screenshots, Kennzahlen, Videos und Variantenvergleiche gegen dieses
+Frontend liegen unter [`e2e/ui-lab/`](../../e2e/ui-lab/README.md); den Ablauf für die
+Neugestaltung eines Bereichs beschreibt der Skill `.claude/skills/ui-lab/SKILL.md`, den
+Prüfmaßstab die [UI-Prüfliste](../design/ui-pruefliste.md).
+
 ## Integrationstest-Suiten
 
-Nicht Teil von `./gradlew build` und `./gradlew test`.
+Nicht Teil von `./gradlew build` und `./gradlew test`. Welche Teststufe ein Konnektor bekommt und
+wann er eine eigene Suite braucht, regelt [ADR-0057](../decisions/0057-teststufen-fuer-konnektoren.md).
 
 ```bash
 # aus backend/

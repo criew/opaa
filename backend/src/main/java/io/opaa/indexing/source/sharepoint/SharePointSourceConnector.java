@@ -321,7 +321,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
               "Sites",
               "Bitte den Suchbegriff eingrenzen oder die Adresse der Site angeben.");
         } catch (GraphException e) {
-          if (e.kind() == GraphException.Kind.FORBIDDEN) {
+          if (e.kind() == GraphException.Kind.FORBIDDEN && !e.consentMissing()) {
             return new SourceListing(
                 false,
                 List.of(),
@@ -378,6 +378,9 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   }
 
   private static String browseFailure(GraphException e) {
+    if (e.consentMissing()) {
+      return e.getMessage();
+    }
     return switch (e.kind()) {
       case NOT_FOUND ->
           "Microsoft Graph kennt die Site oder Bibliothek nicht oder zeigt sie der Anwendung nicht.";

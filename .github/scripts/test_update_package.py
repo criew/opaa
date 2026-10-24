@@ -735,6 +735,46 @@ def test_a_link_to_an_anchor_the_package_lacks_fails_the_package(
         update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
 
+def test_mermaid_diagrams_of_the_handbook_show_as_the_svg_they_render_to(
+        tmp_path: Path, inputs: dict) -> None:
+    source = "flowchart LR\n  A --> B\n"
+    put_handbook(inputs, "betrieb/kapitel.md", f"# Kapitel\n\n```mermaid\n{source}```\n")
+    asked = []
+
+    def diagrams(sources: list[str]) -> dict[str, str]:
+        asked.append(sources)
+        return {s: '<svg id="gezeichnet"></svg>' for s in sources}
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", diagrams=diagrams, **inputs)
+
+    assert asked == [[source]]
+    page = package_files(archive)["handbuch/betrieb/kapitel.html"]
+    assert '<figure class="diagram"><svg id="gezeichnet"></svg></figure>' in page
+
+
+def test_a_diagram_that_does_not_render_fails_the_package(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / update_package.MERMAID_TOOL / "node_modules").mkdir(parents=True)
+    monkeypatch.setattr(update_package, "ROOT", tmp_path)
+
+    def renderer(args: list[str], cwd: Path, stdout=None) -> str:
+        given = json.loads(Path(args[2]).read_text(encoding="utf-8"))
+        Path(args[3]).write_text(json.dumps([{"id": given[0]["id"], "svg": "<svg></svg>"},
+                                             {"id": given[1]["id"], "error": "Parse error on line 2"}]))
+        return ""
+
+    monkeypatch.setattr(update_package, "run", renderer)
+
+    with pytest.raises(update_package.PackageError, match="'flowchart TD': Parse error on line 2"):
+        update_package.render_diagrams(["flowchart LR\n  A --> B\n", "flowchart TD\n  A -->\n"])
+
+
+def test_without_the_mermaid_tool_diagrams_do_not_render(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(update_package, "ROOT", tmp_path)
+
+    with pytest.raises(update_package.PackageError, match="tools/mermaid is not installed"):
+        update_package.render_diagrams(["flowchart LR\n  A --> B\n"])
+
+
 def test_the_readme_names_the_handbook_and_the_html_start_page(tmp_path: Path, inputs: dict) -> None:
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 

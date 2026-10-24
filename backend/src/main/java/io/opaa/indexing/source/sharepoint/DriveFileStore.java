@@ -374,7 +374,9 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       throw switch (e.kind()) {
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
-        case NOT_FOUND, FORBIDDEN -> new FileAccessException.ContainerUnlistable(rule.notVisible());
+        case NOT_FOUND, FORBIDDEN ->
+            new FileAccessException.ContainerUnlistable(
+                e.consentMissing() ? e.getMessage() : rule.notVisible());
         default -> new FileAccessException.ContainerUnlistable(e.getMessage());
       };
     }
