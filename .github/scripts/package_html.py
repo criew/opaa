@@ -3,12 +3,14 @@
 Every Markdown file of the package gets an HTML file beside it, plus index.html as start page and
 style.css. Headings carry ids in GitHub's slug style, so anchors written for GitHub keep working;
 relative links to Markdown files lead to their HTML files, links to a folder to its README. Nothing
-is loaded from outside the package: no scripts, fonts or styles from the internet, Mermaid diagrams
-stay code. Requires markdown-it-py (.github/requirements-ci.txt).
+is loaded from outside the package: no scripts, fonts or styles from the internet. Mermaid diagrams
+become inline SVG rendered at build time (`diagrams` of render), with their source text beside them;
+without a rendering they stay code. Requires markdown-it-py (.github/requirements-ci.txt).
 """
 
 from __future__ import annotations
 
+import hashlib
 import html
 import posixpath
 import re
@@ -52,6 +54,10 @@ blockquote { margin: 1em 0; padding: .2em 1em; border-left: 4px solid var(--line
 .front-matter dl { display: grid; grid-template-columns: max-content 1fr; gap: .1em 1em; margin: 0; }
 .front-matter dt { font-weight: 600; }
 .front-matter dd { margin: 0; }
+.diagram { margin: 1em 0; padding: .8em; background: #ffffff; border: 1px solid var(--line);
+  border-radius: 6px; overflow-x: auto; }
+.diagram svg { display: block; height: auto; margin: 0 auto; }
+.diagram-source { margin: -.6em 0 1em; font-size: .85rem; color: var(--muted); }
 :target { scroll-margin-top: 1rem; background: rgba(255, 200, 0, .18); }
 """
 
@@ -65,6 +71,31 @@ NAVIGATION = (
 )
 
 PARSER = MarkdownIt("commonmark", {"html": True}).enable(["table", "strikethrough"])
+
+
+def diagram_id(source: str) -> str:
+    """The SVG id of a Mermaid diagram: the same for the same source text, in every run."""
+    return "diagram-" + hashlib.sha256(source.encode("utf-8")).hexdigest()[:12]
+
+
+def mermaid_sources(files: dict[str, bytes]) -> list[str]:
+    """The source text of every Mermaid block in the Markdown files of `files`, each once, sorted."""
+    found = set()
+    for path, content in files.items():
+        if path.endswith(".md"):
+            _, body = split_front_matter(content.decode("utf-8").replace("\r\n", "\n"))
+            found.update(token.content for token in PARSER.parse(body)
+                         if token.type == "fence" and token.info.strip() == "mermaid")
+    return sorted(found)
+
+
+def diagram(source: str, svg: str) -> str:
+    """A rendered diagram, followed by its source text for copying and for readers without
+    graphics."""
+    return (f'<figure class="diagram">{svg}</figure>\n'
+            '<details class="diagram-source"><summary>Diagramm als Text</summary>'
+            f'<pre><code class="language-mermaid">{html.escape(source, quote=False)}</code></pre>'
+            "</details>\n")
 
 
 def html_path(path: str) -> str:
@@ -146,8 +177,10 @@ def page(path: str, title: str, body: str, files) -> str:
     )
 
 
-def convert(path: str, text: str, files, folders: set[str]) -> tuple[str, str]:
-    """The HTML page of the Markdown file `path` and its title (first level-one heading)."""
+def convert(path: str, text: str, files, folders: set[str],
+            diagrams: dict[str, str] | None = None) -> tuple[str, str]:
+    """The HTML page of the Markdown file `path` and its title (first level-one heading); a Mermaid
+    block whose source `diagrams` maps to an SVG shows that SVG."""
     front_matter, body = split_front_matter(text.replace("\r\n", "\n"))
     tokens = PARSER.parse(body)
     slugger = Slugger()
@@ -158,6 +191,10 @@ def convert(path: str, text: str, files, folders: set[str]) -> tuple[str, str]:
             token.attrSet("id", slugger.anchor(text_of))
             if token.tag == "h1" and title == path:
                 title = text_of
+        elif token.type == "fence" and token.info.strip() == "mermaid" and diagrams \
+                and token.content in diagrams:
+            token.type = "html_block"
+            token.content = diagram(token.content, diagrams[token.content])
         elif token.type == "inline":
             for child in token.children or []:
                 if child.type == "link_open":
@@ -209,17 +246,18 @@ def index(heading: str, notice: str | None, titles: dict[str, str], files, names
 
 
 def render(files: dict[str, bytes], heading: str, notice: str | None = None,
-           pending: tuple[str, ...] = ()) -> dict[str, bytes]:
+           pending: tuple[str, ...] = (), diagrams: dict[str, str] | None = None) -> dict[str, bytes]:
     """The HTML files for the package `files` (path to content): one page beside each Markdown file,
     index.html with `heading` and `notice`, and style.css. `pending` names files the package gets
-    after rendering, such as SHA256SUMS; links and the start page treat them as present."""
+    after rendering, such as SHA256SUMS; links and the start page treat them as present. `diagrams`
+    maps Mermaid source text to its SVG (mermaid_sources lists what to render)."""
     names = (set(files) | set(pending) | {html_path(p) for p in files if p.endswith(".md")}
              | {"index.html", "style.css"})
     folders = directories(files)
     site: dict[str, bytes] = {}
     titles: dict[str, str] = {}
     for path in sorted(p for p in files if p.endswith(".md")):
-        text, titles[path] = convert(path, files[path].decode("utf-8"), names, folders)
+        text, titles[path] = convert(path, files[path].decode("utf-8"), names, folders, diagrams)
         site[html_path(path)] = text.encode("utf-8")
     if "LIESMICH.md" in titles:
         titles["LIESMICH.md"] = "LIESMICH: Inhalt und Prüfung des Pakets"

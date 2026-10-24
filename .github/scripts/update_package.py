@@ -8,6 +8,7 @@
                             [--accessibility <dir>]
     update_package.py operations --from <ref> [--to <ref>] --out <dir> [--delta-json <file>]
     update_package.py links
+    update_package.py diagrams
 
 `previous` prints the final release tag vX.Y.Z the package compares with: the highest one below
 the version of --tag among the tags reachable from --commit (default: the tag). Pre-release tags
@@ -30,11 +31,13 @@ docs/handbuch/ to handbuch/. In templates, fact sheet placeholders become links 
 in templates and handbook, links into the package stay relative and links out of it point to the
 tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
 nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
-(package_html.py); a link of the HTML version to a missing file or anchor fails the run. Links of
-the delta point into --repository. The axe results of the release run (--accessibility, one
-directory per run, accessibility_report.py) become barrierefreiheit/; without them the report says
-the version was not checked. Dates and file metadata come from the commit, so the same commit yields
-the same files, except the date and results of the accessibility run.
+(package_html.py); a link of the HTML version to a missing file or anchor fails the run. Mermaid
+diagrams show as SVG, drawn in Chromium by .github/tools/mermaid/ (installed like cdxgen), and a
+diagram that does not render fails the run. Links of the delta point into --repository. The axe
+results of the release run (--accessibility, one directory per run, accessibility_report.py) become
+barrierefreiheit/; without them the report says the version was not checked. Dates and file
+metadata come from the commit, so the same commit yields the same files, except the date and
+results of the accessibility run.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
@@ -47,8 +50,11 @@ file fails the run. `build` writes the same files for its interval into the pack
 would hold them, without fact sheets, and prints every link that would fail `build`; CI runs it on
 every pull request.
 
-Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build` and `links`, which
-need markdown-it-py for the HTML version (.github/requirements-release.txt).
+`diagrams` renders every Mermaid diagram of docs/behoerden/ and docs/handbuch/ as `build` does and
+prints every one that would fail it; CI runs it on every pull request.
+
+Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build`, `links` and
+`diagrams`, which need markdown-it-py for the HTML version (.github/requirements-release.txt).
 """
 
 from __future__ import annotations
@@ -94,6 +100,10 @@ CYCLONEDX = Path("backend/build/reports/cyclonedx/application.cdx.json")
 CDXGEN_TOOL = Path(".github/tools/cdxgen")
 CDXGEN = CDXGEN_TOOL / "node_modules" / ".bin" / "cdxgen"
 CDXGEN_INSTALL = "pnpm install --frozen-lockfile --ignore-scripts --no-optional"
+# Mermaid and playwright-core from their own lockfile (same install as cdxgen); render.mjs draws
+# the diagrams of the HTML version in Chromium: $CHROMIUM, otherwise the installed Google Chrome.
+MERMAID_TOOL = Path(".github/tools/mermaid")
+MERMAID_RENDER = MERMAID_TOOL / "render.mjs"
 SBOM_DIR = "sbom/"
 DEFAULT_REPOSITORY = "criew/opaa"
 PREFIX = "opaa-update-paket-"
@@ -1151,6 +1161,28 @@ def documents(templates: Path, handbook: Path, repository: str, ref: str,
     return files
 
 
+def render_diagrams(sources: list[str]) -> dict[str, str]:
+    """The SVG of every Mermaid source, by source, drawn by render.mjs; a diagram that does not
+    render fails the run."""
+    from package_html import diagram_id
+
+    if not (ROOT / MERMAID_TOOL / "node_modules").is_dir():
+        raise PackageError(f"{MERMAID_TOOL} is not installed; run `{CDXGEN_INSTALL}` there")
+    if not sources:
+        return {}
+    with tempfile.TemporaryDirectory() as work:
+        given, taken = Path(work) / "diagrams.json", Path(work) / "svg.json"
+        given.write_text(json.dumps([{"id": diagram_id(s), "source": s} for s in sources]),
+                         encoding="utf-8")
+        run(["node", str(ROOT / MERMAID_RENDER), str(given), str(taken)], ROOT, stdout=None)
+        results = json.loads(taken.read_text(encoding="utf-8"))
+    failed = [f"{source.splitlines()[0] if source else ''!r}: {result['error']}"
+              for source, result in zip(sources, results) if "error" in result]
+    if failed or len(results) != len(sources):
+        raise PackageError("Mermaid diagrams do not render: " + "; ".join(failed or ["result incomplete"]))
+    return {source: result["svg"] for source, result in zip(sources, results)}
+
+
 def check_links(templates: Path, handbook: Path) -> list[str]:
     """What would stop the package for links of templates and handbook: a relative link to nothing
     in the checkout, or a link of the HTML version to a missing file or anchor. Needs no fact
@@ -1177,15 +1209,17 @@ def assemble(
     lts_delta: Path | None = None,
     lts_operations: Path | None = None,
     accessibility: Path | None = None,
+    diagrams=None,
 ) -> Path:
     """Writes <name>.tar.gz, <name>.tar.gz.sha256 and the SBOMs, by part such as "backend", into
     `out`; returns the archive. `templates` and `handbook` are docs/behoerden/ and docs/handbuch/ of
     the checkout the release is built from. Placeholders are resolved in template text only, links
     in template and handbook text only, never in text from elsewhere such as pull request titles or
     upgrade notes. `accessibility` holds the axe results of the release run; without it the report
-    says the version was not checked."""
+    says the version was not checked. `diagrams` turns a list of Mermaid sources into their SVGs by
+    source (as render_diagrams does); without it diagrams stay code."""
     import accessibility_report
-    from package_html import broken_links, render
+    from package_html import broken_links, mermaid_sources, render
 
     name = PREFIX + release.version
     files: dict[str, bytes] = {"LIESMICH.md": readme(release).encode()}
@@ -1233,7 +1267,8 @@ def assemble(
                            release.commit if release.trial else release.tag, sheets))
     site = render(files, f"Update-Paket OPAA {release.version}",
                   f"Probelauf: kein veröffentlichtes Release, Commit {release.commit}" if release.trial else None,
-                  pending=("SHA256SUMS",))
+                  pending=("SHA256SUMS",),
+                  diagrams=diagrams(mermaid_sources(files)) if diagrams else None)
     files.update(site)
     broken = broken_links({**files, "SHA256SUMS": b""})
     if broken:
@@ -1380,6 +1415,8 @@ def build(args: argparse.Namespace) -> list[Path]:
                             args.repository, args.labelled_prs)
     if not (ROOT / CDXGEN).exists():
         raise PackageError(f"{CDXGEN} is missing; run `{CDXGEN_INSTALL}` in {CDXGEN_TOOL}")
+    if not (ROOT / MERMAID_TOOL / "node_modules").is_dir():
+        raise PackageError(f"{MERMAID_TOOL} is not installed; run `{CDXGEN_INSTALL}` there")
 
     with tempfile.TemporaryDirectory() as work:
         reports = Path(work)
@@ -1421,7 +1458,8 @@ def build(args: argparse.Namespace) -> list[Path]:
                            operations=operations_dir, licenses=[backend, frontend], sboms=sboms,
                            templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out),
                            lts_delta=lts_delta, lts_operations=lts_operations,
-                           accessibility=Path(args.accessibility) if args.accessibility else None)
+                           accessibility=Path(args.accessibility) if args.accessibility else None,
+                           diagrams=render_diagrams)
         return [archive, archive.with_name(archive.name + ".sha256"),
                 *(archive.with_name(sbom_name(part, release)) for part in sorted(sboms))]
 
@@ -1448,6 +1486,7 @@ def main(argv: list[str]) -> int:
     consequences.add_argument("--out", required=True)
     consequences.add_argument("--delta-json")
     commands.add_parser("links")
+    commands.add_parser("diagrams")
     args = parser.parse_args(argv)
     try:
         if args.command == "previous":
@@ -1467,6 +1506,12 @@ def main(argv: list[str]) -> int:
                 return 1
             print(f"links of {TEMPLATES.relative_to(ROOT).as_posix()} and"
                   f" {HANDBOOK.relative_to(ROOT).as_posix()} resolve in the package")
+        elif args.command == "diagrams":
+            from package_html import mermaid_sources
+
+            sources = mermaid_sources(documents(TEMPLATES, HANDBOOK, DEFAULT_REPOSITORY, "HEAD", None))
+            render_diagrams(sources)
+            print(f"{len(sources)} Mermaid diagrams render")
         elif args.command == "operations":
             repo = Path(git(Path.cwd(), "rev-parse", "--show-toplevel"))
             sides = []
