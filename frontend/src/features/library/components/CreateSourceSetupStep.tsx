@@ -46,6 +46,10 @@ interface CreateSourceSetupStepProps {
   firstRunHint: string
 }
 
+function clockTime(value: string): string {
+  return new Date(value).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+}
+
 /** The step „Quelle einrichten": way of connection, consent, source form, schedule, first run. */
 export default function CreateSourceSetupStep({
   showConnectionSelect,
@@ -88,7 +92,15 @@ export default function CreateSourceSetupStep({
           idPrefix="library-create"
         />
       )}
-      {consentProfile && (
+      {consentProfile && pendingConnection && (
+        // Variante C: the consent folds into one line; „Verbindung" below shows the state
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 640 }}>
+          Zustimmung
+          {pendingConnection.accountLabel ? ` als „${pendingConnection.accountLabel}“` : ''} gilt
+          bis {clockTime(pendingConnection.expiresAt)} Uhr; legen Sie die Bibliothek bis dahin an.
+        </Typography>
+      )}
+      {consentProfile && !pendingConnection && (
         <Box sx={{ maxWidth: 640 }}>
           <SourceConsentPanel
             profileName={consentProfile.name}

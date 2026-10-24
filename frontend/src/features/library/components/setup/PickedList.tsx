@@ -51,7 +51,7 @@ export default function PickedList({
               }}
             >
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Tooltip title={path} placement="top-start" enterDelay={500}>
+                <Tooltip describeChild title={path} placement="top-start" enterDelay={500}>
                   <Typography
                     sx={{
                       fontSize: 13.5,
@@ -85,7 +85,7 @@ export default function PickedList({
                 )}
               </Box>
               {onRemove && (
-                <Tooltip title="Entfernen">
+                <Tooltip describeChild title="Entfernen">
                   <IconButton
                     size="small"
                     aria-label={`„${item.name}“ entfernen`}

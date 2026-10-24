@@ -154,13 +154,14 @@ export default function S3Form({ values, onChange, context }: SourceFormProps<S3
         onOutcome={setOutcome}
       >
         <Box sx={{ maxWidth: '34ch' }}>
-          <FieldLabel htmlFor={`${id}-provider`}>Anbieter</FieldLabel>
+          <FieldLabel id={`${id}-provider-label`}>Anbieter</FieldLabel>
           <TextField
             id={`${id}-provider`}
             select
             size="small"
             fullWidth
             value={values.provider}
+            slotProps={{ select: { labelId: `${id}-provider-label` } }}
             onChange={(e) => onChange(s3ProviderTemplate(e.target.value as S3Provider))}
           >
             {S3_PROVIDERS.map((provider) => (

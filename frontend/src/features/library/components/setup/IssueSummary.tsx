@@ -48,7 +48,7 @@ const IssueSummary = forwardRef<HTMLDivElement, IssueSummaryProps>(function Issu
               component="button"
               type="button"
               onClick={() => focusIssue(issue, scope())}
-              sx={{ fontSize: 13.5, textAlign: 'left' }}
+              sx={{ fontSize: 13.5, textAlign: 'left', minHeight: 24, py: 0.25 }}
             >
               {issue.message}
             </Link>

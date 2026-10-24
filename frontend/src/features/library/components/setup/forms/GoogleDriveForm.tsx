@@ -159,20 +159,20 @@ export default function GoogleDriveForm({
               <Button
                 variant="outlined"
                 size="small"
-                component="label"
                 data-source-field="keyFile"
+                onClick={() => fileInput.current?.click()}
                 aria-describedby={`${id}-key-state${keyIssue ? ` ${id}-key-issue` : ''}`}
               >
                 {values.keyAccount || keyStored ? 'Ersetzen' : 'Datei wählen'}
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="application/json,.json"
-                  hidden
-                  aria-labelledby={`${id}-key-label`}
-                  onChange={(e) => void onKeyFile(e.target.files?.[0])}
-                />
               </Button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="application/json,.json"
+                hidden
+                aria-labelledby={`${id}-key-label`}
+                onChange={(e) => void onKeyFile(e.target.files?.[0])}
+              />
             </Box>
             {keyIssue ? (
               <Typography

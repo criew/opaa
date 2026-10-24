@@ -462,7 +462,12 @@ export default function SplitPicker({
         )}
         <Box sx={listBoxSx}>
           {loading && showSkeleton && (
-            <Box aria-busy="true" aria-label={`${levelName.many} werden geladen`} sx={{ p: 1 }}>
+            <Box
+              role="status"
+              aria-busy="true"
+              aria-label={`${levelName.many} werden geladen`}
+              sx={{ p: 1 }}
+            >
               {[0, 1, 2, 3, 4].map((row) => (
                 <Skeleton key={row} variant="rounded" height={28} sx={{ mb: 1 }} />
               ))}
@@ -659,7 +664,7 @@ function EntryRow({
 }) {
   const id = `${idPrefix}-entry-${entry.key.replace(/[^a-zA-Z0-9_-]/g, '_')}`
   const name = (
-    <Tooltip title={entry.name} placement="top-start" enterDelay={600}>
+    <Tooltip describeChild title={entry.name} placement="top-start" enterDelay={600}>
       <Box component="span" sx={{ display: 'block', minWidth: 0 }}>
         <Box component="span" sx={nameSx}>
           {entry.name}
@@ -676,11 +681,7 @@ function EntryRow({
     // a level only leads further down: the whole row opens it
     return (
       <Box component="li">
-        <ButtonBase
-          onClick={onOpen}
-          sx={{ ...rowSx, width: '100%', textAlign: 'left', pl: 1.5 }}
-          aria-label={entry.name}
-        >
+        <ButtonBase onClick={onOpen} sx={{ ...rowSx, width: '100%', textAlign: 'left', pl: 1.5 }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>{name}</Box>
           <ChevronRightIcon aria-hidden fontSize="small" sx={{ color: 'text.secondary' }} />
         </ButtonBase>
@@ -711,7 +712,7 @@ function EntryRow({
         {name}
       </Box>
       {entry.hasChildren && (
-        <Tooltip title="Öffnen">
+        <Tooltip describeChild title="Öffnen">
           <IconButton size="small" aria-label={`${entry.name} öffnen`} onClick={onOpen}>
             <ChevronRightIcon fontSize="small" />
           </IconButton>
