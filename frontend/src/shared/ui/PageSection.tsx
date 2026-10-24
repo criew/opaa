@@ -1,9 +1,8 @@
-import { createContext, useContext, useId, type ReactNode } from 'react'
+import { useContext, useId, type ReactNode } from 'react'
+import { PlainSectionContext } from './plainSections'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import SectionHead from './SectionHead'
-
-const PlainSectionContext = createContext(false)
 
 /**
  * Sections below it head themselves in running text - 15 px, weight 600, no hairline - like the

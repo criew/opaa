@@ -505,11 +505,11 @@ export default function LibraryDetailPage() {
                   // itself, not from documentStore - without this it stays on whatever value was loaded
                   // on mount even after an upload or delete changes it.
                   onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
-            onStartRun={
-              connectorSourceType && mayManageDocuments && !isRunning
-                ? () => void triggerIndexing(libraryId, connectorSourceType)
-                : undefined
-            }
+                  onStartRun={
+                    connectorSourceType && mayManageDocuments && !isRunning
+                      ? () => void triggerIndexing(libraryId, connectorSourceType)
+                      : undefined
+                  }
                 />
               )}
             </Box>

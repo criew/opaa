@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -173,19 +174,33 @@ export default function UseInSpaceButton({
   name,
   size = 'medium',
   onAssociated,
-}: UseInSpaceButtonProps) {
+  textLink = false,
+}: UseInSpaceButtonProps & { textLink?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Button
-        variant="outlined"
-        size={size}
-        startIcon={<WorkspacesOutlinedIcon />}
-        onClick={() => setOpen(true)}
-        aria-label={`„${name}“ in Space verwenden`}
-      >
-        In Space verwenden
-      </Button>
+      {textLink ? (
+        <Link
+          component="button"
+          type="button"
+          underline="hover"
+          onClick={() => setOpen(true)}
+          aria-label={`„${name}“ in Space verwenden`}
+          sx={{ fontSize: 13.5, fontWeight: 500 }}
+        >
+          In Space verwenden
+        </Link>
+      ) : (
+        <Button
+          variant="outlined"
+          size={size}
+          startIcon={<WorkspacesOutlinedIcon />}
+          onClick={() => setOpen(true)}
+          aria-label={`„${name}“ in Space verwenden`}
+        >
+          In Space verwenden
+        </Button>
+      )}
       <UseInSpaceDialog
         assetType={assetType}
         assetId={assetId}

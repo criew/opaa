@@ -6,6 +6,10 @@ import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import PageSection from '@/shared/ui/PageSection'
+import { TEXT_LINK } from '../setup/rowStyles'
+import FieldValues from './FieldValues'
+import SummaryRow from '../setup/SummaryRow'
 import { Link as RouterLink } from 'react-router'
 import { plural } from '@/shared/utils/format'
 import Link from '@mui/material/Link'
@@ -62,6 +66,7 @@ export default function LibraryMetadataFieldsSection({
   const unmounted = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [prefixOpen, setPrefixOpen] = useState(false)
   const [remapField, setRemapField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [remapCode, setRemapCode] = useState<string | null>(null)
   const [remapUsage, setRemapUsage] = useState<number | null>(null)
@@ -230,173 +235,218 @@ export default function LibraryMetadataFieldsSection({
 
   return (
     <Box>
-      <Stack direction="row" sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1">Metadatenfelder</Typography>
-        {canManageSchema && (
-          <Button size="small" onClick={() => setCreateOpen(true)}>
-            Feld anlegen
-          </Button>
+      <PageSection
+        title="Eigene Felder"
+        action={
+          canManageSchema ? (
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              onClick={() => setCreateOpen(true)}
+              sx={TEXT_LINK}
+            >
+              Feld anlegen
+            </Link>
+          ) : undefined
+        }
+      >
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
-      </Stack>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-        Eigene Felder dieser Bibliothek, zusätzlich zu Titel, Dokumentart und Datum/Stand. Jedes
-        Feld muss im Filter oder im Kontextpräfix wirken; höchstens fünf Felder je Bibliothek und
-        höchstens zwei davon in der Belegzeile.
-      </Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Wertelisten sind für jede Person sichtbar, die die Bibliothek benutzen darf. Sie dürfen
-        deshalb keine schutzbedürftigen Bezeichnungen tragen.
-      </Alert>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {awaitingRerun > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`} Der
-          Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
-          {/* Directly into the tab that carries the follow-up run - the bare path would land on
+        {awaitingRerun > 0 && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`}{' '}
+            Der Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
+            {/* Directly into the tab that carries the follow-up run - the bare path would land on
              the overview, and from there one would have to click on once more. */}
-          <Link component={RouterLink} to="/admin/search/index">
-            Suche &amp; Indexierung
-          </Link>{' '}
-          gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
-        </Alert>
-      )}
-      {pendingChanges.length > 0 && (
-        <Alert
-          severity="info"
-          sx={{ mb: 2 }}
-          action={
-            canManageSchema &&
-            (running ? (
-              <Button size="small" onClick={() => (paused.current = true)}>
-                Anhalten
-              </Button>
-            ) : (
-              <Button size="small" onClick={() => void runPendingChanges()}>
-                Fortsetzen
-              </Button>
-            ))
-          }
-        >
-          {pendingChanges.map((change) => (
-            <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
-              {describeChange(change, fields)}
+            <Link component={RouterLink} to="/admin/search/index">
+              Suche &amp; Indexierung
+            </Link>{' '}
+            gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
+          </Alert>
+        )}
+        {pendingChanges.length > 0 && (
+          <Alert
+            severity="info"
+            sx={{ mb: 2 }}
+            action={
+              canManageSchema &&
+              (running ? (
+                <Button size="small" onClick={() => (paused.current = true)}>
+                  Anhalten
+                </Button>
+              ) : (
+                <Button size="small" onClick={() => void runPendingChanges()}>
+                  Fortsetzen
+                </Button>
+              ))
+            }
+          >
+            {pendingChanges.map((change) => (
+              <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
+                {describeChange(change, fields)}
+              </Typography>
+            ))}
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
+              Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
             </Typography>
-          ))}
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
-            Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
+          </Alert>
+        )}
+        {fields.length === 0 ? (
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            Keine eigenen Felder.
           </Typography>
-        </Alert>
-      )}
-      {coreContextPrefix && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle2">Kernfelder im Kontextpräfix</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Der Titel steht immer im Kontextpräfix. Dokumentart und Datum/Stand sind je Bibliothek
-            eine bewusste Entscheidung — eingeschaltet kostet jede spätere Änderung daran ein
-            Neu-Einbetten.
-          </Typography>
-          <CoreContextPrefixSwitch
-            libraryId={libraryId}
-            label="Dokumentart"
-            fieldKey="document_type"
-            checked={coreContextPrefix.documentType}
-            disabled={!canManageSchema}
-            onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
-          />
-          <CoreContextPrefixSwitch
-            libraryId={libraryId}
-            label="Datum/Stand"
-            fieldKey="document_date"
-            checked={coreContextPrefix.documentDate}
-            disabled={!canManageSchema}
-            onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
-          />
-        </Box>
-      )}
-      {fields.length === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Diese Bibliothek führt keine eigenen Metadatenfelder — der Normalfall.
-        </Typography>
-      ) : (
-        <Stack spacing={2} divider={<Divider flexItem />}>
-          {fields.map((field) => (
-            <Box key={field.fieldKey}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Typography variant="subtitle2">{field.label}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {field.fieldKey} · {TYPE_LABELS[field.type]}
-                </Typography>
-                {effectChips(field).map((chip) => (
-                  <Chip key={chip} size="small" label={chip} />
-                ))}
-                {field.deletionPending && (
-                  <Chip size="small" color="warning" label="wird gelöscht" />
-                )}
-                {canManageSchema && !field.deletionPending && (
-                  <Button
-                    size="small"
-                    onClick={() => setEditField(field)}
-                    aria-label={`Feld ${field.label} bearbeiten`}
-                  >
-                    Bearbeiten
-                  </Button>
-                )}
-                {canManageSchema && !field.deletionPending && (
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => void openDelete(field)}
-                    aria-label={`Feld ${field.label} löschen`}
-                  >
-                    Löschen
-                  </Button>
-                )}
-              </Stack>
-              {field.valuePattern && (
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Muster: {field.valuePattern}
-                </Typography>
-              )}
-              {field.type === 'SELECT' && (
-                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
-                  {field.values.map((value) => (
-                    <Chip
-                      key={value.code}
-                      size="small"
-                      variant="outlined"
-                      color={value.retiring ? 'warning' : 'default'}
-                      label={
-                        value.retiring
-                          ? `${value.label} (${value.code}) — wird abgebildet`
-                          : `${value.label} (${value.code})`
-                      }
-                      clickable={canManageSchema && !value.retiring && !field.deletionPending}
-                      onClick={
-                        canManageSchema && !value.retiring && !field.deletionPending
-                          ? () => void openRemap(field, value.code)
-                          : undefined
-                      }
-                      aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
-                    />
-                  ))}
+        ) : (
+          <Stack spacing={2} divider={<Divider flexItem />}>
+            {fields.map((field) => (
+              <Box key={field.fieldKey}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>{field.label}</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary', flex: 1 }}>
+                    {[TYPE_LABELS[field.type], ...effectChips(field)].join(' · ')}
+                  </Typography>
+                  {field.deletionPending && (
+                    <Chip size="small" color="warning" label="wird gelöscht" />
+                  )}
                   {canManageSchema && !field.deletionPending && (
-                    <AddValueButton
-                      libraryId={libraryId}
-                      fieldKey={field.fieldKey}
-                      onAdded={() => void reload()}
-                      onError={setError}
-                    />
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      onClick={() => setEditField(field)}
+                      aria-label={`Feld ${field.label} bearbeiten`}
+                      sx={TEXT_LINK}
+                    >
+                      Ändern
+                    </Link>
+                  )}
+                  {canManageSchema && !field.deletionPending && (
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      color="error"
+                      onClick={() => void openDelete(field)}
+                      aria-label={`Feld ${field.label} löschen`}
+                      sx={TEXT_LINK}
+                    >
+                      Löschen
+                    </Link>
                   )}
                 </Stack>
-              )}
-            </Box>
-          ))}
-        </Stack>
+                {field.valuePattern && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Muster: {field.valuePattern}
+                  </Typography>
+                )}
+                {field.type === 'SELECT' && (
+                  <FieldValues
+                    count={field.values.length}
+                    render={(query, limit) => (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        useFlexGap
+                        sx={{ mt: 1, flexWrap: 'wrap' }}
+                      >
+                        {field.values
+                          .filter((value) => !query || value.label.toLowerCase().includes(query))
+                          .slice(0, limit)
+                          .map((value) => (
+                            <Chip
+                              key={value.code}
+                              size="small"
+                              variant="outlined"
+                              color={value.retiring ? 'warning' : 'default'}
+                              label={
+                                value.retiring
+                                  ? `${value.label} (${value.code}) — wird abgebildet`
+                                  : `${value.label} (${value.code})`
+                              }
+                              clickable={
+                                canManageSchema && !value.retiring && !field.deletionPending
+                              }
+                              onClick={
+                                canManageSchema && !value.retiring && !field.deletionPending
+                                  ? () => void openRemap(field, value.code)
+                                  : undefined
+                              }
+                              aria-label={
+                                canManageSchema ? `Wert ${value.label} bearbeiten` : undefined
+                              }
+                            />
+                          ))}
+                        {canManageSchema && !field.deletionPending && (
+                          <AddValueButton
+                            libraryId={libraryId}
+                            fieldKey={field.fieldKey}
+                            onAdded={() => void reload()}
+                            onError={setError}
+                          />
+                        )}
+                      </Stack>
+                    )}
+                  />
+                )}
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </PageSection>
+      {coreContextPrefix && (
+        <Box sx={{ borderTop: 1, borderColor: 'divider', mt: -2 }}>
+          <SummaryRow
+            id="metadata-row-prefix"
+            title="Kontextpräfix"
+            summary={[
+              'Titel',
+              coreContextPrefix.documentType ? 'Dokumentart' : null,
+              coreContextPrefix.documentDate ? 'Datum/Stand' : null,
+            ]
+              .filter(Boolean)
+              .join(', ')}
+            open={prefixOpen}
+            onOpen={canManageSchema ? () => setPrefixOpen(true) : undefined}
+            headingLevel="h2"
+          >
+            <Stack spacing={1}>
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                Jede spätere Änderung kostet ein Neu-Einbetten.
+              </Typography>
+              <CoreContextPrefixSwitch
+                libraryId={libraryId}
+                label="Dokumentart"
+                fieldKey="document_type"
+                checked={coreContextPrefix.documentType}
+                disabled={!canManageSchema}
+                onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
+              />
+              <CoreContextPrefixSwitch
+                libraryId={libraryId}
+                label="Datum/Stand"
+                fieldKey="document_date"
+                checked={coreContextPrefix.documentDate}
+                disabled={!canManageSchema}
+                onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
+              />
+              <Box sx={{ textAlign: 'right' }}>
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={() => setPrefixOpen(false)}
+                  sx={TEXT_LINK}
+                >
+                  Schließen
+                </Link>
+              </Box>
+            </Stack>
+          </SummaryRow>
+        </Box>
       )}
 
       <CreateFieldDialog

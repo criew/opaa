@@ -5,6 +5,9 @@ import Stack from '@mui/material/Stack'
 import type { AssetType } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import PageSection from '@/shared/ui/PageSection'
+import { usePlainSections } from '@/shared/ui/plainSections'
+import PlainRow from '@/shared/ui/PlainRow'
+import Box from '@mui/material/Box'
 import AccessDerivation from './AccessDerivation'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 
@@ -21,6 +24,7 @@ export default function AssetAccessDerivationSection({
   assetId: string
 }) {
   const [shown, setShown] = useState(false)
+  const plain = usePlainSections()
   const openButton = useRef<HTMLButtonElement | null>(null)
   const ownName = useAuthStore((s) => s.user?.displayName ?? null)
   const returnFocus = useRef(false)
@@ -30,6 +34,25 @@ export default function AssetAccessDerivationSection({
     returnFocus.current = false
     openButton.current?.focus()
   }, [shown])
+
+  if (plain) {
+    return (
+      <PlainRow
+        title="Herleitung"
+        value={
+          <Box component="span" sx={{ color: 'text.secondary' }}>
+            Ihr Weg zur wirksamen Rolle
+          </Box>
+        }
+        action={shown ? 'Schließen' : 'Anzeigen'}
+        onAction={() => setShown((value) => !value)}
+      >
+        {shown && (
+          <AccessDerivation target={{ kind: 'asset', assetType, assetId }} subjectName={ownName} />
+        )}
+      </PlainRow>
+    )
+  }
 
   return (
     <PageSection

@@ -5,10 +5,11 @@ import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
 import PageSection from '@/shared/ui/PageSection'
-import DiagnosticsLockControl from './DiagnosticsLockControl'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import PlainRow from '@/shared/ui/PlainRow'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
-import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 
 interface LibrarySharingTabProps {
   libraryId: string
@@ -60,66 +61,70 @@ export default function LibrarySharingTab({
           onTransferred={onTransferred}
         />
 
-        {privateLibrary && (
-          <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
-            {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
-            freigeben noch übertragen
-            {externalAccessEnabled ? ' noch für externe KI-Werkzeuge öffnen' : ''} — auch nicht
-            durch die Systemverwaltung.
-          </Alert>
-        )}
-
-        {canEdit && !privateLibrary && (
-          <>
-            <AssetGrantsSection
-              assetType="KNOWLEDGE_LIBRARY"
-              assetId={library.id}
-              capControl={
-                shareCapVisible ? (
-                  <ShareCapSwitch
-                    label="Freigabe an Alle erlaubt"
-                    description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
-                    checked={details?.allAccountsGrantAllowed ?? true}
-                    onSave={onSaveShareCap}
-                  />
-                ) : null
-              }
-            />
-
-            {externalAccessEnabled && (
-              <PageSection
-                title="Externer Zugang"
-                description="Ob externe KI-Werkzeuge diese Bibliothek außerhalb der Anmeldung erreichen."
-              >
-                <LibraryExternalAccessSection libraryId={libraryId} />
-              </PageSection>
-            )}
-          </>
-        )}
-
         {details && (
-          <PageSection
-            title="Diagnosesperre"
-            description="Ob diese Bibliothek in einer Suchdiagnose im Rechtekontext einer anderen Person auftauchen darf."
+          <PlainRow
+            title="Suchdiagnose"
+            value={(details.diagnosticsLocked ?? true) ? 'gesperrt' : 'freigegeben'}
+            // myRole bypasses to OWNER for a system admin unconditionally
+            // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+            // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
+            // grant never sees an action that is guaranteed to fail with 403.
+            action={
+              details.diagnosticsLockToggleable && !diagnosticsLockSaving
+                ? (details.diagnosticsLocked ?? true)
+                  ? 'Freigeben'
+                  : 'Sperren'
+                : undefined
+            }
+            onAction={onToggleDiagnosticsLock}
           >
-            <DiagnosticsLockControl
-              locked={details.diagnosticsLocked ?? true}
-              // myRole bypasses to OWNER for a system admin unconditionally
-              // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
-              // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
-              // grant never sees a button that is guaranteed to fail with 403.
-              canToggle={details.diagnosticsLockToggleable ?? false}
-              saving={diagnosticsLockSaving}
-              error={diagnosticsLockError}
-              onToggle={onToggleDiagnosticsLock}
-              onDismissError={onDismissDiagnosticsLockError}
-            />
-          </PageSection>
+            {diagnosticsLockError && (
+              <Alert severity="error" onClose={onDismissDiagnosticsLockError}>
+                {diagnosticsLockError}
+              </Alert>
+            )}
+          </PlainRow>
         )}
 
         {!privateLibrary && (
           <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
         )}
+
+        <Box sx={{ mt: 4 }}>
+          {privateLibrary && (
+            <Typography
+              sx={{ fontSize: 13.5, color: 'text.secondary' }}
+              data-testid="library-private-note"
+            >
+              Nur Sie sehen diese Bibliothek; sie lässt sich weder freigeben noch übertragen.
+            </Typography>
+          )}
+
+          {canEdit && !privateLibrary && (
+            <>
+              <AssetGrantsSection
+                assetType="KNOWLEDGE_LIBRARY"
+                assetId={library.id}
+                capControl={
+                  shareCapVisible ? (
+                    <ShareCapSwitch
+                      label="Freigabe an Alle erlaubt"
+                      description="Wird die Erlaubnis entzogen, wird eine bestehende Freigabe an alle sofort zurückgenommen."
+                      checked={details?.allAccountsGrantAllowed ?? true}
+                      onSave={onSaveShareCap}
+                    />
+                  ) : null
+                }
+              />
+
+              {externalAccessEnabled && (
+                <PageSection title="Externer Zugang">
+                  <LibraryExternalAccessSection libraryId={libraryId} />
+                </PageSection>
+              )}
+            </>
+          )}
+        </Box>
       </Stack>
     </>
   )

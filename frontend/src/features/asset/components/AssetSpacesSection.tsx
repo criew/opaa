@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
 import AssetSpacesList from './AssetSpacesList'
 import UseInSpaceButton from './UseInSpaceButton'
 import type { AssetType } from '@/shared/api/types'
@@ -35,18 +34,16 @@ export default function AssetSpacesSection({
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          justifyContent: 'flex-end',
           gap: 2,
           flexWrap: 'wrap',
           mb: 2,
         }}
       >
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
-          Die Spaces, in denen dieses Objekt als Datenquelle bereitsteht.
-        </Typography>
         {mayUseInSpace && (
           <UseInSpaceButton
+            textLink
             assetType={assetType}
             assetId={assetId}
             name={name}

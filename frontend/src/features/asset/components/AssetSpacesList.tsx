@@ -8,10 +8,10 @@ import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -94,6 +94,9 @@ function RowActions({ spaceName, onDetach }: { spaceName: string; onDetach: () =
  * space may detach the asset from that space. A plain reader sees the names of the spaces they
  * may know of and, as a number alone, how many further ones there are.
  */
+/** From this many spaces on, the list gets a search (pruefliste-detail D19). */
+const SEARCH_FROM = 8
+
 export default function AssetSpacesList({
   assetType,
   assetId,
@@ -106,6 +109,8 @@ export default function AssetSpacesList({
   const loadSpaces = useSpaceListLoader()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const noun = assetTypeLabel(assetType)
+  const [query, setQuery] = useState('')
+  const normalized = query.trim().toLowerCase()
 
   useEffect(() => {
     let cancelled = false
@@ -187,64 +192,81 @@ export default function AssetSpacesList({
           Diese {noun} ist derzeit keinem Space zugeordnet.
         </Typography>
       ) : (
-        <Stack component="ul" spacing={1} sx={{ m: 0, p: 0, listStyle: 'none' }}>
-          {links.items.map((association) => {
-            const origin = provenance(association)
-            return (
-              <Box
-                component="li"
-                key={association.spaceId}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 1.5,
-                  py: 0.75,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  useFlexGap
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
-                >
-                  <WorkspacesOutlinedIcon
-                    aria-hidden
-                    sx={{ fontSize: 18, color: 'text.secondary' }}
-                  />
-                  <Typography sx={{ fontWeight: 500 }}>{association.spaceName}</Typography>
-                  {origin && (
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                      · {origin}
-                    </Typography>
-                  )}
-                  {association.narrowerReaderCircle && (
-                    <Tooltip
-                      title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
-                    >
-                      <Chip label="nicht alle Mitglieder lesen" size="small" color="warning" />
-                    </Tooltip>
-                  )}
-                </Stack>
-                {mayDetach(association.spaceId) && (
-                  <RowActions
-                    spaceName={association.spaceName}
-                    onDetach={() => void handleDetach(association.spaceId, association.spaceName)}
-                  />
-                )}
-              </Box>
-            )
-          })}
-          {/* The number is there on purpose: it says that the list is incomplete without naming
-             a single private space. */}
-          {hiddenCount > 0 && (
-            <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
-              {hiddenNote}
-            </Typography>
+        <>
+          {links.items.length >= SEARCH_FROM && (
+            <TextField
+              size="small"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Space"
+              slotProps={{ htmlInput: { 'aria-label': 'Spaces durchsuchen' } }}
+              sx={{ width: { xs: '100%', sm: 280 }, mb: 1 }}
+            />
           )}
-        </Stack>
+          <Stack component="ul" spacing={0} sx={{ m: 0, p: 0, listStyle: 'none' }}>
+            {links.items
+              .filter(
+                (association) =>
+                  !normalized || association.spaceName.toLowerCase().includes(normalized),
+              )
+              .map((association) => {
+                const origin = provenance(association)
+                return (
+                  <Box
+                    component="li"
+                    key={association.spaceId}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                      py: 0.75,
+                      borderBottom: 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
+                    >
+                      <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                        {association.spaceName}
+                      </Typography>
+                      {origin && (
+                        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                          · {origin}
+                        </Typography>
+                      )}
+                      {association.narrowerReaderCircle && (
+                        <Tooltip
+                          title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
+                        >
+                          <Chip label="nicht alle Mitglieder lesen" size="small" color="warning" />
+                        </Tooltip>
+                      )}
+                    </Stack>
+                    {mayDetach(association.spaceId) && (
+                      <RowActions
+                        spaceName={association.spaceName}
+                        onDetach={() =>
+                          void handleDetach(association.spaceId, association.spaceName)
+                        }
+                      />
+                    )}
+                  </Box>
+                )
+              })}
+            {/* The number is there on purpose: it says that the list is incomplete without naming
+             a single private space. */}
+            {hiddenCount > 0 && (
+              <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
+                {hiddenNote}
+              </Typography>
+            )}
+          </Stack>
+        </>
       )}
     </Box>
   )

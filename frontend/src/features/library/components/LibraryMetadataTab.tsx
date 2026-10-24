@@ -1,5 +1,4 @@
 import Stack from '@mui/material/Stack'
-import PageSection from '@/shared/ui/PageSection'
 import LibraryMetadataFieldsSection from './metadata/LibraryMetadataFieldsSection'
 import MetadataExtractionSettingsSection from './metadata/MetadataExtractionSettingsSection'
 
@@ -19,23 +18,11 @@ export default function LibraryMetadataTab({
 }: LibraryMetadataTabProps) {
   return (
     <Stack>
-      <PageSection
-        title="Metadatenfelder"
-        description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
-      >
-        <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
-      </PageSection>
+      <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
       {/* The extraction settings are readable only from MANAGER on
                (GET .../metadata/extraction-settings) - for a reading role only an error message
                would remain here. */}
-      {canEdit && (
-        <PageSection
-          title="Modellgestützte Extraktion"
-          description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
-        >
-          <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
-        </PageSection>
-      )}
+      {canEdit && <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />}
     </Stack>
   )
 }

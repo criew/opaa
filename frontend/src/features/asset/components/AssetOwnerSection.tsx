@@ -5,6 +5,8 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import PageSection from '@/shared/ui/PageSection'
+import { usePlainSections } from '@/shared/ui/plainSections'
+import PlainRow from '@/shared/ui/PlainRow'
 import SectionHead from '@/shared/ui/SectionHead'
 import { SubjectPicker } from '@/features/principal'
 import {
@@ -47,6 +49,7 @@ export default function AssetOwnerSection({
 }: AssetOwnerSectionProps) {
   const [transferring, setTransferring] = useState(false)
   const [open, setOpen] = useState(false)
+  const plain = usePlainSections()
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -100,6 +103,50 @@ export default function AssetOwnerSection({
       setSaving(false)
       setTransferring(false)
     }
+  }
+
+  const ownerLabel =
+    ownerName ?? (ownerType === 'GROUP' ? 'Nicht benannte Gruppe' : 'Nicht benannte Person')
+  if (plain) {
+    return (
+      <PlainRow
+        title="Eigentümer"
+        value={
+          <>
+            {ownerLabel}
+            <Box component="span" sx={{ color: 'text.secondary' }}>
+              {` · ${kindLabel}`}
+            </Box>
+          </>
+        }
+        action={canTransfer && !open ? 'Übergeben' : undefined}
+        onAction={() => setOpen(true)}
+      >
+        {open && (
+          <Stack spacing={2}>
+            {error && <Alert severity="error">{error}</Alert>}
+            <SubjectPicker value={subject} onChange={setSubject} />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Eine Gruppe erhält die Rolle „Verwaltung" — die Eigentümerrolle selbst bleibt an eine
+              Person gebunden, damit sie nicht mit jedem neuen Mitglied mitwächst.
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => void handleTransfer()}
+                disabled={saving || transferring}
+              >
+                {saving ? 'Wird übergeben …' : 'Übergeben'}
+              </Button>
+              <Button size="small" onClick={reset} disabled={saving}>
+                Abbrechen
+              </Button>
+            </Stack>
+          </Stack>
+        )}
+      </PlainRow>
+    )
   }
 
   return (
