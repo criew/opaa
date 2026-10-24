@@ -1,7 +1,9 @@
 # Konsistenz-Review
 
 Gehört zum Skill [ui-lab](./SKILL.md), Abschnitt 4. Läuft in jeder Runde einer Variante nach der
-Screenshot-Matrix und vor den Videos. Die Muster unten stammen aus dem Review der Mischvariante F
+Screenshot-Matrix, vor dem Halt beim Maintainer und vor den Videos. Die allgemeinen Regeln dahinter
+stehen in der UI-Prüfliste, vor allem P13, P18, P19 und das Layout P45–P50; ein Befund nennt die
+Nummer, wenn er eine verletzt. Die Muster unten stammen aus dem Review der Mischvariante F
 im ersten UI-Lab (28 Befunde an rund 470 Bildern und 26 Querbögen); sie sind Beispiele dafür,
 wonach zu suchen ist, keine abschließende Liste.
 
@@ -109,4 +111,5 @@ Grundlage: <Zahl> Einzelbilder (<Prüfer> Prüfer, je 2 Arten) + <Zahl> Querbög
 
 Nummern laufen über alle Kategorien durch, damit `REPORT.md` sie abhaken kann („R1-12 erledigt“,
 „R1-15 bewusst nicht: …“). Der Nachcheck nach dem Neuaufnehmen prüft nur die Querbögen der
-betroffenen Bildschirme gegen diese Liste; erst danach folgen die Videos.
+betroffenen Bildschirme gegen diese Liste; danach sieht der Maintainer die Matrix, erst dann
+folgen die Videos.

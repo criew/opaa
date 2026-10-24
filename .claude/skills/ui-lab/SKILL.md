@@ -35,9 +35,11 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
    gebaut und gemessen.
 4. **Videos in jeder Runde, aber erst nach dem Konsistenz-Review.** Screenshots zeigen keine
    Übergänge, kein Flackern, keinen Kontextverlust; deshalb hat jede Variante schon in der ersten
-   Runde Videos. Aufgenommen werden sie erst, wenn die Screenshot-Matrix das Konsistenz-Review
-   bestanden hat, sonst zeigen die aufwendigen Videos Fehler, die ein Blick auf die Bilder
-   gefunden hätte.
+   Runde Videos: je Art drei, **ok** (`small`), **viele** (`scale`) und **fehler** (`failed`).
+   Aufgenommen werden sie erst, wenn die Screenshot-Matrix das Konsistenz-Review bestanden und
+   der Maintainer sie gesehen hat; sonst zeigen die aufwendigen Videos Fehler, die ein Blick auf
+   die Bilder gefunden hätte. Im ersten Lab kamen genau an dieser Stelle die wichtigsten
+   Rückmeldungen (Breite, Trenner, „Ändern“, Zugänge).
 5. **Zählbudgets statt weicher Textregeln.** „Hilfetexte sparsam“ wird „höchstens 3 je
    Formular, je eine Zeile“. Eine Regel, die sich nicht zählen lässt, wird zur Sichtprüfung mit
    Beispiel, nicht zum Appell.
@@ -47,10 +49,11 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
    gestellt:
 
    ```markdown
-   **F3 · Suche in Auswahllisten ab wie vielen Einträgen?**
-   - A: ab 7 – Beispiel: 12 Spaces zeigen ein Suchfeld (Bild wizard-filled__confluence__small).
-     Folge: gilt auch für Gruppen und Buckets; Prüflistenpunkt P20.
-   - B: ab 20 – Beispiel: 12 Spaces als reine Liste. Folge: kleinere Mengen scrollen.
+   **F3 · Zeitplan schon im Assistenten oder erst nach dem Anlegen?**
+   - A: im Assistenten – Beispiel: Zeile „Zeitplan · Täglich 06:00 · Ändern“ vor „Prüfen“
+     (Bild wizard-filled__nextcloud__small). Folge: ein Schritt mehr; gilt für alle Arten.
+   - B: nach dem Anlegen – Beispiel: Detail, Reiter „Quelle“, Zeile „Zeitplan · Aus“.
+     Folge: die erste Indizierung läuft ohne Zeitplan; Prüflistenpunkt P32 bleibt unberührt.
    Empfehlung: A, weil …
    ```
 
@@ -82,19 +85,36 @@ Ist-Stand des Bereichs auf `main` erfassen, in `ui-lab/inputs/inventory.md` auf 
    Mock-Lücken (fehlende Endpunkte, Fixtures, die ein Neuladen nicht überstehen) zuerst schließen.
 2. Messen: `node ui-lab/capture.mjs --flow pages --pages <pfade> --out <dir>` über alle
    Szenarien; für Assistenten und Dialoge einen eigenen Ablauf unter `e2e/ui-lab/flows/`
-   anlegen (Vorlage `flows/libraries.mjs`) und die Videos mit `record-flows.mjs`.
+   anlegen (Vorlage `flows/libraries.mjs`), dazu eine Ablaufdefinition je Art für die
+   Videomatrix (Vorlage `flows/library-videos.mjs`).
 3. Ist-Stand als Variante „Ist“ aufnehmen: von einem Arbeitsverzeichnis auf `main` (nur die
    Szenarien aus Punkt 1, keine Korrekturen) die Matrix aus Abschnitt 4 mit `capture.mjs` und die
-   Klickpfade mit `record-flows.mjs` nach `ui-lab/results/ist/`.
-4. Inventar gliedern: Aufbau des Bereichs · je Unterart (Komponente, Felder, Zustände) ·
+   Videomatrix (je Art ok, viele, fehler) mit `record-flows.mjs` nach `ui-lab/results/ist/`.
+4. Randfälle je Art aus Datenmodell und API ableiten, nicht aus der heutigen Oberfläche: Menge,
+   Tiefe, Namen (Länge, Sonderzeichen), Rechte, Anmeldezustände, Ladeverhalten (langsam,
+   unvollständig, Teilfehler). Je Art eine Tabelle:
+
+   | Randfall | Größenordnung | Ist-Verhalten | bricht? |
+   | --- | --- | --- | --- |
+   | 450 Spaces | Confluence Data Center einer Landesbehörde | Checkbox-Liste ohne Suche, 9.000 px | ja |
+
+   Fehlende Randfälle werden Mock-Szenarien (Punkt 1).
+5. Festhalten, was dem kleinen Fall genügt (ein Space, ein Ordner): Jede Variante muss ihn so
+   leicht lassen, wie er heute ist.
+6. Nebenbefunde außerhalb der UI (Backend kürzt still, API liefert zu wenig) sofort als eigenes
+   Issue anlegen und im Inventar verlinken, nicht im Lab mitschleppen.
+7. Inventar gliedern: Aufbau des Bereichs · je Unterart (Komponente, Felder, Zustände) ·
    Vergleichsmatrix konsistent/inkonsistent · Verstöße mit Prüflistennummer und Beleg · zehn
-   größte Probleme nach Wirkung · Lücken der Mocks · Verhalten bei großen Mengen.
+   größte Probleme nach Wirkung · Lücken der Mocks · Randfalltabellen · kleiner Fall ·
+   Nebenbefund-Issues.
 
 ### 2 · Prüfliste zur Freigabe
 
 Aus der Inventur die bereichsspezifischen Ergänzungen zur
 [UI-Prüfliste](../../../docs/design/ui-pruefliste.md) ableiten: neue Punkte, neue Zählbudgets,
-Szenarien, die jede Variante bestehen muss. Vollständig in einer Runde (Grundregel 2), mit den
+Szenarien, die jede Variante bestehen muss. Eingänge sind außerdem eine Best-Practice-Recherche
+mit Quellen (eine Regel je Zeile, nur was Guidelines und Prüfliste nicht schon sagen) und die
+Beispielbilder des Maintainers; beide gehören zur Vorlage. Vollständig in einer Runde (Grundregel 2), mit den
 offenen Fragen im Format aus Grundregel 6. **Halt: Der Maintainer gibt die Prüfliste frei.**
 Allgemeingültige Punkte kommen per PR in `docs/design/ui-pruefliste.md`; Vorschläge zur
 Guideline-Änderung als eigenes Issue.
@@ -103,7 +123,8 @@ Guideline-Änderung als eigenes Issue.
 
 Drei Fälle wählen, die den Bereich aufspannen: klein und glatt (`small`), groß
 (`scale`), Fehler oder Teilfehler (`failed`/`partial`). Drei Richtungen skizzieren, je Richtung
-nur diese drei Fälle, im hellen Schema bei 1280 px, mit je einem Video des Hauptpfads. Skizzen
+nur diese drei Fälle, im hellen Schema bei 1280 px, mit den Videos ok, viele und fehler der
+Hauptart. Skizzen
 dürfen grob sein; sie zeigen Struktur und Auswahlmuster, nicht Feinschliff. **Halt: Der
 Maintainer wählt die Richtung** oder eine Kombination (Frage mit Beispiel und Folge).
 
@@ -125,17 +146,22 @@ Der Auftrag an jede Session enthält:
   4. Befunde aus `REVIEW-<n>.md` beheben.
   5. Matrix neu aufnehmen.
   6. Kurzer Nachcheck: die Querbögen der betroffenen Bildschirme gegen die Befundliste.
-  7. Erst dann die Videos mit `record-flows.mjs`.
+  7. **Halt: Der Maintainer sieht die Matrix** (Querbögen oder Vergleichsseite ohne Videos) und
+     gibt Rückmeldung; die Session baut sie ein und nimmt die Matrix neu auf.
+  8. Erst dann die Videos mit `record-flows.mjs`: je Art ok (`small`), viele (`scale`) und
+     fehler (`failed`), aus einer Ablaufdefinition je Art (README der Werkzeuge,
+     „record-flows.mjs“).
 - `ui-lab/results/<X>/REPORT.md`: Tabelle `Nr | Status | Beleg` über alle Prüflistenpunkte,
   Kennzahlen aus `compare.py`, bekannte Lücken und je Review-Befund erledigt oder bewusst nicht,
   mit Grund; Ergebnisse committen und pushen;
 - Regeln aus `AGENTS.md`, Code-Kommentare und Tests wie in jedem Frontend-PR, aber kein PR.
 
-Die Sessions laufen ohne Rückfragen durch. Den Stand mit `get_session` und `list_events`
+Zwischen den Halten laufen die Sessions ohne Rückfragen; am Halt warten sie auf die
+Rückmeldung, die der Orchestrator mit `send_message` weitergibt. Den Stand mit `get_session` und `list_events`
 prüfen, nicht in einer Schleife warten; eine Rückmeldung mit `send_later` planen.
 
-**Konsistenz-Review** (Schritt 3 der Reihenfolge, jede Runde, vor den Videos). Es findet, was
-zwischen den Arten, Bereichen und Szenarien einer Variante auseinanderläuft; Messwerte und
+**Konsistenz-Review** (Schritt 3 der Reihenfolge, jede Runde, vor dem Halt und den Videos).
+Es findet, was zwischen den Arten, Bereichen und Szenarien einer Variante auseinanderläuft; Messwerte und
 Prüfliste allein sehen das nicht. Ablauf und Prüfkategorien:
 [konsistenz-review.md](./konsistenz-review.md).
 
@@ -169,8 +195,9 @@ Befunde mit Beleg und die Teile, die in eine Mischung gehören. Keine Gesamtnote
 Aus den Urteilen eine Mischvariante M festlegen: Grundgerüst der stärksten Variante, einzelne
 Muster der anderen, jedes mit Herkunft und Prüflistenpunkt. M in einer weiteren Session (oder
 in der Session der Grundvariante) bauen und mit voller Matrix und Videos messen. M muss alle
-Zählbudgets einhalten und axe- und kontrastfrei sein; auch M durchläuft das Konsistenz-Review
-vor den Videos. Was offen bleibt, steht im Bericht.
+Zählbudgets einhalten und axe- und kontrastfrei sein. Auch M läuft durch die feste Reihenfolge
+aus Abschnitt 4, mit Konsistenz-Review und **Halt vor den Videos: Der Maintainer sieht die
+Vergleichsseite mit der Screenshot-Matrix von M**, bevor die Videos entstehen. Was offen bleibt, steht im Bericht.
 
 ### 7 · Vergleichsseite
 

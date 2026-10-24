@@ -9,7 +9,7 @@
   ],
   "scoreNote": "Bewertung: Mittel aus drei unabhängigen Juroren (Regeln · Skalierung · Ruhe und Konsistenz), je 0–100, gegen Prüfliste und Gestaltungsleitlinien.",
   "learned": [
-    { "title": "In die Mischung übernommen", "items": [{ "text": "Ab 7 Einträgen Suche im Auswahldialog", "src": "B" }] },
+    { "title": "In die Mischung übernommen", "items": [{ "text": "Bis 7 Einträge in der Zeile, ab 8 der Auswahldialog mit Suche", "src": "B" }] },
     { "title": "Entschieden für die Leitlinien", "items": ["Sites, Spaces, Ordner als Liste oder Baum mit Suche, nie als Kacheln"] },
     { "title": "Am Vorgehen verbessert", "items": ["Videos ab dem ersten Messlauf"] }
   ],
