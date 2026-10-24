@@ -270,13 +270,15 @@ export async function tabTrace(page) {
 }
 
 /**
- * Screenshots and metrics into one output directory. `shoot` takes the current state in every
+ * Screenshots and metrics into one output directory; metrics.jsonl starts empty on every run, so a
+ * repeated run into the same directory never mixes old and new lines. `shoot` takes the current state in every
  * width of the run, in the scheme of the page's context; one metrics.jsonl line per screenshot.
  * The tab trace runs in the light scheme only, full axe in light, contrast-only axe in dark.
  */
 export function createRecorder({ out, widths, noAxe = false, noFull = false, log = console.log }) {
   fs.mkdirSync(out, { recursive: true })
   const metricsFile = path.join(out, 'metrics.jsonl')
+  fs.writeFileSync(metricsFile, '')
   const record = (line) => fs.appendFileSync(metricsFile, JSON.stringify(line) + '\n')
   let shots = 0
 

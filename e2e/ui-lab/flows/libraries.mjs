@@ -236,7 +236,10 @@ async function finishToReview(page, type) {
 
 async function wizardFlow(page, { type, scenario }, ctx, states) {
   await gotoWizard(page, ctx.base, scenario)
-  if (!(await pickType(page, type))) return ctx.notFound('wizard-empty', 'type tile')
+  if (!(await pickType(page, type))) {
+    for (const s of states.filter((s) => s.startsWith('wizard') || s === 'review')) ctx.notFound(s, 'type tile')
+    return
+  }
   await next(page)
   await chooseConnection(page, type)
   if (type === 'dropbox') {

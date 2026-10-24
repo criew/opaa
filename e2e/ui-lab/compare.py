@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Side-by-side comparison sheets and a metrics summary for capture.mjs runs.
 
-    python3 ui-lab/compare.py --variants A=<dir>,B=<dir>,... --out <dir>
+    .venv/bin/python -I ui-lab/compare.py --variants A=<dir>,B=<dir>,... --out <dir>
                        [--full] [--cell-width 560] [--max-height 2400] [--filter <substring>]
 
 Per screen key (file name without extension, identical across variants) one JPEG sheet in

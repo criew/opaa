@@ -25,9 +25,18 @@ const FLOWS = ['libraries', 'pages']
 function parseArgs(argv) {
   const args = { base: 'http://localhost:5191', out: path.join(HERE, 'out'), flow: 'libraries' }
   const list = (v) => v.split(',').map((s) => s.trim()).filter(Boolean)
+  const count = (a, v) => {
+    const n = Number(v)
+    if (!Number.isInteger(n) || n <= 0) throw new Error(`${a} needs a positive whole number, got ${v}`)
+    return n
+  }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
-    const next = () => argv[++i]
+    const next = () => {
+      const v = argv[++i]
+      if (v === undefined) throw new Error(`${a} needs a value`)
+      return v
+    }
     if (a === '--base') args.base = next().replace(/\/$/, '')
     else if (a === '--out') args.out = path.resolve(next())
     else if (a === '--flow') args.flow = next()
@@ -35,12 +44,12 @@ function parseArgs(argv) {
     else if (a === '--types') args.types = list(next())
     else if (a === '--scenarios') args.scenarios = list(next())
     else if (a === '--schemes') args.schemes = list(next())
-    else if (a === '--widths') args.widths = list(next()).map(Number)
+    else if (a === '--widths') args.widths = list(next()).map((w) => count(a, w))
     else if (a === '--areas') args.areas = list(next())
     else if (a === '--quick') args.quick = true
     else if (a === '--no-axe') args.noAxe = true
     else if (a === '--no-full') args.noFull = true
-    else if (a === '--concurrency') args.concurrency = Number(next())
+    else if (a === '--concurrency') args.concurrency = count(a, next())
     else if (a === '--chromium') args.chromium = next()
     else if (a === '--help' || a === '-h') {
       console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0])
@@ -63,6 +72,7 @@ ARGS.schemes ??= ['light', 'dark']
 ARGS.widths ??= [1280, 320]
 ARGS.areas ??= flow.AREAS
 ARGS.concurrency ??= 2
+flow.jobs(ARGS) // fails on missing or unknown flow arguments before a browser starts
 
 const T0 = Date.now()
 const log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0).padStart(5)}s]`, ...a)

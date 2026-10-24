@@ -11,6 +11,7 @@ const field = (h, label) => h.page.getByLabel(label)
 export const videos = [
   {
     name: 'sharepoint-einrichten',
+    type: 'sharepoint',
     scenario: 'small',
     async run(h, { scenario }) {
       await h.goto(`/libraries/new?mockScenario=${scenario}`)
@@ -28,6 +29,7 @@ export const videos = [
   },
   {
     name: 'nextcloud-viele-ordner',
+    type: 'nextcloud',
     scenario: 'scale',
     async run(h, { scenario }) {
       await h.goto(`/libraries/new?mockScenario=${scenario}`)
@@ -48,6 +50,7 @@ export const videos = [
   },
   {
     name: 's3-verbindung-abgelehnt',
+    type: 's3',
     scenario: 'failed',
     async run(h, { scenario }) {
       await h.goto(`/libraries/new?mockScenario=${scenario}`)

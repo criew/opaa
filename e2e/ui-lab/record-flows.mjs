@@ -6,11 +6,13 @@
  *        [--flows flows/library-videos.mjs] [--only name,name] [--scheme light|dark]
  *        [--width 1280] [--height 800] [--pause 700] [--keep-webm] [--chromium <path>]
  *
- * A flows module exports `videos`: [{ name, scenario, run(h) }]. Each video gets its own browser
+ * A flows module exports `videos`: [{ name, type, scenario, run(h) }]; `type` is the area the video
+ * belongs to on the comparison page (build_site.py). Each video gets its own browser
  * context (scheme set before the first load) with Playwright's recordVideo, a visible mouse
  * pointer with a click ring, and an optional caption line. `h` moves the pointer to an element
  * before every click, pauses between steps and never throws on a missing element; a missing
- * element is logged and the step skipped. ffmpeg (PATH or FFMPEG) turns the WebM into H.264 MP4.
+ * element is logged and the step skipped. ffmpeg (PATH or FFMPEG) turns the WebM into H.264 MP4;
+ * <out>/manifest.json lists every video with name, type, scenario and scheme.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -31,17 +33,26 @@ function parseArgs(argv) {
     height: 800,
     pause: 700,
   }
+  const count = (a, v) => {
+    const n = Number(v)
+    if (!Number.isInteger(n) || n < 0) throw new Error(`${a} needs a whole number, got ${v}`)
+    return n
+  }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
-    const next = () => argv[++i]
+    const next = () => {
+      const v = argv[++i]
+      if (v === undefined) throw new Error(`${a} needs a value`)
+      return v
+    }
     if (a === '--base') args.base = next().replace(/\/$/, '')
     else if (a === '--out') args.out = path.resolve(next())
     else if (a === '--flows') args.flows = path.resolve(next())
     else if (a === '--only') args.only = next().split(',')
     else if (a === '--scheme') args.scheme = next()
-    else if (a === '--width') args.width = Number(next())
-    else if (a === '--height') args.height = Number(next())
-    else if (a === '--pause') args.pause = Number(next())
+    else if (a === '--width') args.width = count(a, next())
+    else if (a === '--height') args.height = count(a, next())
+    else if (a === '--pause') args.pause = count(a, next())
     else if (a === '--keep-webm') args.keepWebm = true
     else if (a === '--chromium') args.chromium = next()
     else if (a === '--help' || a === '-h') {
@@ -171,6 +182,8 @@ fs.mkdirSync(ARGS.out, { recursive: true })
 const raw = path.join(ARGS.out, '.webm')
 const browser = await launch(ARGS.chromium)
 const done = []
+const manifestFile = path.join(ARGS.out, 'manifest.json')
+const manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : []
 for (const video of chosen) {
   log(`== ${video.name} (${video.scenario ?? 'default'}, ${ARGS.scheme})`)
   const context = await schemeContext(browser, ARGS.scheme, {
@@ -200,6 +213,8 @@ for (const video of chosen) {
     if (ARGS.keepWebm) fs.renameSync(webm, mp4.replace(/\.mp4$/, '.webm'))
     else fs.rmSync(webm)
     done.push(path.basename(mp4))
+    const entry = { file: path.basename(mp4), name: video.name, type: video.type ?? null, scenario: video.scenario ?? 'default', scheme: ARGS.scheme }
+    manifest.splice(0, manifest.length, ...manifest.filter((m) => m.file !== entry.file), entry)
     log(`  -> ${mp4}`)
   } catch (e) {
     const kept = mp4.replace(/\.mp4$/, '.webm')
@@ -208,5 +223,6 @@ for (const video of chosen) {
   }
 }
 await browser.close()
+fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2))
 fs.rmSync(raw, { recursive: true, force: true })
 log(`done: ${done.length} of ${chosen.length} videos`)

@@ -15,6 +15,8 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
 | `record-flows.mjs` | Klickpfade als MP4 mit sichtbarem Mauszeiger |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
+| `build_site.py` | statische Vergleichsseite: Ist-Stand und Entwürfe mit Bewertung, Bildschirmen und Videos |
+| `site-template/` | Vorlage der Vergleichsseite und Beispielkonfiguration `site.example.json` |
 | `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs` |
 | `lib/` | Browserstart, Messung, Elementhelfer |
 | `calibration/` | Kalibrierseiten `good.html` und `bad.html` |
@@ -24,10 +26,10 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 ```bash
 cd e2e && pnpm install                     # Playwright und axe aus der E2E-Suite
 pnpm exec playwright install chromium      # einmalig, falls kein Chromium vorhanden ist
-pip install pillow                         # nur für compare.py
+python3 -m venv .venv && .venv/bin/pip install pillow   # für compare.py und build_site.py
 ```
 
-Für Videos zusätzlich `ffmpeg` auf dem `PATH`.
+Für Videos zusätzlich `ffmpeg` auf dem `PATH`. `compare.py` und `build_site.py` brauchen Pillow.
 
 **Cloud-Session mit vorinstalliertem Browser.** Ist der Chromium einer anderen Playwright-Version
 schon installiert (etwa unter `/opt/pw-browsers/chromium`), nicht neu installieren, sondern
@@ -128,8 +130,8 @@ cd e2e && node ui-lab/calibrate.mjs
 ```
 
 Misst `calibration/good.html` und `calibration/bad.html` genau so wie `capture.mjs` und bricht
-mit Exit-Code 1 ab, wenn ein Ergebnis von der Erwartung abweicht: die gute Seite ohne axe-Befund
-und ohne Budgetüberschreitung in beiden Schemata, die schlechte mit Kontrastbefund in beiden
+mit Exit-Code 1 ab, wenn ein Ergebnis von der Erwartung abweicht: die gute Seite ohne
+Budgetüberschreitung in beiden Schemata, hell ohne axe-Befund, dunkel ohne Kontrastbefund, die schlechte mit Kontrastbefund in beiden
 Schemata, mit `label`, `button-name` und `target-size` und über allen drei Zählbudgets. Eine
 Gegenprobe misst die gute Seite auf dem verworfenen Weg, mit Umschalten des Schemas in der
 Sitzung: Die Theme-Übergänge sind dann noch nicht abgeschlossen, und axe meldet Kontrastfehler,
@@ -148,21 +150,44 @@ node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
 
 Nimmt jeden Klickpfad des Moduls als `<name>__<schema>.mp4` (H.264) auf: sichtbarer Mauszeiger,
 Klickring, optionale Bildunterschrift, Pause nach jedem Schritt. Ein Modul exportiert
-`videos: [{ name, scenario, run(h) }]`; `h` bietet `goto`, `click`, `type`, `pause` und
-`caption`. Ein fehlendes Element wird geloggt und übersprungen, der Pfad läuft weiter.
+`videos: [{ name, type, scenario, run(h) }]`; `type` ordnet das Video auf der Vergleichsseite
+einem Bereich zu, `h` bietet `goto`, `click`, `type`, `pause` und `caption`. `manifest.json` im
+Ausgabeordner listet alle Videos mit Name, Bereich, Szenario und Schema. Ein fehlendes Element wird geloggt und übersprungen, der Pfad läuft weiter.
 `flows/library-videos.mjs` enthält drei typische Fälle: SharePoint einrichten (`small`),
 Nextcloud mit vielen Ordnern (`scale`), S3 mit abgelehnter Anmeldung (`failed`).
 
 ## compare.py
 
 ```bash
-python3 -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<dirC> --out <dir> [--full] [--filter scale]
+e2e/.venv/bin/python -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<dirC> --out <dir> [--full] [--filter scale]
 ```
 
 Erzeugt `<dir>/sheets/<screen>.jpg` (Varianten nebeneinander, beschriftet, 560 px Zellbreite;
 320-px-Aufnahmen bleiben in Originalgröße), `<dir>/index.html` (alle Bögen nach Bereich) und
 `<dir>/metrics-summary.md` (Kennzahlen je Variante, darunter Überschreitungen der Zählbudgets,
 Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; axe-Regeln).
+
+## build_site.py
+
+```bash
+e2e/.venv/bin/python -I e2e/ui-lab/build_site.py --config site.json --out <dir> [--scheme light] [--cap 2400] [--video-urls urls.json]
+```
+
+Baut aus den Ergebnisordnern des Ist-Stands und der Entwürfe eine statische Vergleichsseite:
+oben je Variante Idee, Stärken, Schwächen und Bewertung sowie „Gelernt und umgesetzt“, darunter
+die Auswahl Variante → Bereich → Fall → Breite mit den Videos und allen Bildschirmen dieser
+Auswahl, wahlweise mit dem Ist-Stand daneben. `site.json` nennt je Variante den Ergebnisordner
+(`capture.mjs`-Ausgabe, Videos von `record-flows.mjs` im Unterordner `videos/`) und alle Texte;
+Vorlage: `site-template/site.example.json`. Die Variante mit der ID `ist` ist der Ist-Stand.
+Bereiche, Szenarien und Bildschirme ergeben sich aus den Dateinamen; `types`, `scenarios` und
+`areas` in `site.json` geben ihnen Namen und Reihenfolge, für jeden Bereich des Produkts.
+
+Je Auswahl entsteht ein senkrechtes Sprite (`shots/<variante>__<bereich>__<fall>__<breite>.jpg`)
+mit den Offsets in `data.json`; so bleibt die Seite unter der Dateigrenze einer Artifact-Version
+(511 Dateien). Videos werden nach `videos/` kopiert. Für ein Artifact die Videos stattdessen als
+Assets hochladen, die Zuordnung Dateiname (`<variante>__<datei>.mp4`) → Asset-URL als JSON
+ablegen und mit `--video-urls` erneut bauen; dann veröffentlicht man `index.html` mit `data.json`
+und `shots/` als Dateien.
 
 ## Grenzen
 
