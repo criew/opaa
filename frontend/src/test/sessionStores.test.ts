@@ -36,6 +36,7 @@ const NOT_SESSION_STORES = [
   'useBrandingStore',
   'useConfirmStore',
   'useCopyAnnouncement',
+  'useLinkTargetsStore',
   'useUiStore',
 ]
 

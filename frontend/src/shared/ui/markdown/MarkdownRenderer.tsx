@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -25,6 +25,8 @@ import {
 } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
 import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
+import { useLinkTargetsStore } from '../../linkTargets/linkTargetsStore'
+import { isAllowedLinkTarget } from './linkPolicy'
 import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
@@ -236,8 +238,23 @@ function makeProcessChildren(
   }
 }
 
+/** The link text, followed by the address unless the text already is the address. */
+function linkAsText(children: React.ReactNode, href: string | undefined): React.ReactNode {
+  if (!href) {
+    return children
+  }
+  const text = typeof children === 'string' ? children : null
+  return (
+    <Box component="span" data-testid="blocked-link">
+      {text === href ? null : children}
+      {text === href ? href : ` (${href})`}
+    </Box>
+  )
+}
+
 function makeComponents(
   processChildren: (children: React.ReactNode) => React.ReactNode,
+  allowedOrigins: readonly string[],
 ): Components {
   // The element level comes from rehypeNormalizeHeadings (per-message rank compression
   // starting at h2); the visual variant keeps following the ORIGINAL Markdown level, carried in
@@ -277,10 +294,23 @@ function makeComponents(
     ),
     strong: ({ children }) => <strong>{processChildren(children)}</strong>,
     em: ({ children }) => <em>{processChildren(children)}</em>,
-    a: ({ href, children }) => (
-      <Link href={href} target="_blank" rel="noopener noreferrer">
-        {children}
-      </Link>
+    // Only the own origin and the allowed link targets are clickable; any other address, a
+    // mailto: or a javascript: link stays text with the address visible.
+    a: ({ href, children }) =>
+      isAllowedLinkTarget(href, window.location.href, allowedOrigins) ? (
+        <Link href={href} target="_blank" rel="noopener noreferrer">
+          {children}
+        </Link>
+      ) : (
+        linkAsText(children, href)
+      ),
+    // An image is never loaded, not even from the own origin: an answer needs none, and its
+    // address could carry data out.
+    img: ({ src, alt }) => (
+      <Box component="span" data-testid="blocked-image">
+        {`[Bild: ${alt?.trim() || 'ohne Beschreibung'}]`}
+        {typeof src === 'string' && src !== '' ? ` (${src})` : null}
+      </Box>
     ),
     code: ({ className, children }) => {
       const isBlock = className?.includes('language-') || className?.includes('hljs')
@@ -353,15 +383,32 @@ function makeComponents(
   }
 }
 
+/**
+ * Keeps every address as written: the link and image components decide what becomes clickable, and
+ * a refused address must stay visible as text rather than be emptied.
+ */
+function keepUrl(url: string): string {
+  return url
+}
+
 export default function MarkdownRenderer({
   content,
   citations,
   onCitationClick,
   preserveCitationMarkers = false,
 }: MarkdownRendererProps) {
+  const allowedOrigins = useLinkTargetsStore((s) => s.allowedOrigins)
+  const loadLinkTargets = useLinkTargetsStore((s) => s.loadLinkTargets)
+  useEffect(() => {
+    void loadLinkTargets()
+  }, [loadLinkTargets])
   const components = useMemo(
-    () => makeComponents(makeProcessChildren(citations, onCitationClick, preserveCitationMarkers)),
-    [citations, onCitationClick, preserveCitationMarkers],
+    () =>
+      makeComponents(
+        makeProcessChildren(citations, onCitationClick, preserveCitationMarkers),
+        allowedOrigins,
+      ),
+    [citations, onCitationClick, preserveCitationMarkers, allowedOrigins],
   )
   return (
     <ReactMarkdown
@@ -370,6 +417,7 @@ export default function MarkdownRenderer({
       }
       rehypePlugins={[rehypeHighlight, rehypeNormalizeHeadings]}
       components={components}
+      urlTransform={keepUrl}
     >
       {preserveCitationMarkers ? content : escapeMarkerPipes(unwrapBracketedMarkers(content))}
     </ReactMarkdown>
