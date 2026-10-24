@@ -176,7 +176,8 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Der Scope … des Zugangs wird nicht angenommen …" / „Die Ressource des Scopes ist im Mandanten nicht bekannt …" | „Scopes" am Zugang falsch gefüllt | „Scopes" leer lassen |
 | „Client-ID oder Client-Secret werden nicht angenommen. Häufige Ursachen: …" | Entra nannte keinen bekannten Fehlercode | die genannten Ursachen prüfen, Entra-Code im Log nachschlagen |
 | „Microsoft Graph hat das Zugriffstoken abgewiesen" | Secret, Mandant oder Zustimmung stimmen nicht | Zugang prüfen |
-| „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch; der Bestand bleibt | Site freigeben (Abschnitt 2) |
+| „Das Token der App trägt keine Berechtigung: Für die App-Registrierung wurde keine Administratorzustimmung erteilt …" | Entra stellt das Token ohne Rollen aus, weil die Anwendungsberechtigung nicht bestätigt ist; Graph weist es mit 401 oder 403 ab, auch im Verbindungstest | in Entra unter „API-Berechtigungen" „Administratorzustimmung erteilen" (Abschnitt 2) |
+| „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch, bei erteilter Administratorzustimmung; der Bestand bleibt | Site freigeben (Abschnitt 2) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …" | Adresse falsch oder Site gelöscht | Adresse prüfen |
 | „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …" | Adresse in falscher Form | Adresse aus dem Browser übernehmen |
 | „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann …" / „… keine SharePoint-Dokumentbibliothek …" | nur OneDrive oder andere Laufwerke | nichts |

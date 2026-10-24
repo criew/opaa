@@ -27,12 +27,18 @@ public final class GraphException extends Exception {
   private final Kind kind;
   private final int status;
   private final String errorCode;
+  private final boolean consentMissing;
 
   GraphException(Kind kind, int status, String errorCode, String message) {
+    this(kind, status, errorCode, message, false);
+  }
+
+  GraphException(Kind kind, int status, String errorCode, String message, boolean consentMissing) {
     super(message);
     this.kind = kind;
     this.status = status;
     this.errorCode = errorCode;
+    this.consentMissing = consentMissing;
   }
 
   public Kind kind() {
@@ -47,5 +53,13 @@ public final class GraphException extends Exception {
   /** Graph's {@code error.code}, {@code null} when the answer carried none. */
   public String errorCode() {
     return errorCode;
+  }
+
+  /**
+   * Graph refused a token without {@code scp} and {@code roles} claim: the application permission
+   * lacks the administrator consent. The message then names the consent, not a missing grant.
+   */
+  public boolean consentMissing() {
+    return consentMissing;
   }
 }

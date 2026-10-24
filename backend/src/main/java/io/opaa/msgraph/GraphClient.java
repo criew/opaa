@@ -65,6 +65,16 @@ public final class GraphClient {
   private static final Pattern DELTA_FUNCTION = Pattern.compile("\\(token='?([^')]+)'?\\)$");
   private static final JsonMapper JSON = JsonMapper.builder().build();
 
+  /** Graph's {@code error.message} for a token issued without any granted permission. */
+  private static final Pattern NO_PERMISSION_CLAIM =
+      Pattern.compile("\\bscp or roles claim\\b", Pattern.CASE_INSENSITIVE);
+
+  /** The message of a {@link GraphException#consentMissing()} failure. */
+  public static final String CONSENT_MISSING =
+      "Das Token der App trägt keine Berechtigung: Für die App-Registrierung wurde keine"
+          + " Administratorzustimmung erteilt (API-Berechtigungen → „Administratorzustimmung"
+          + " erteilen“).";
+
   private final URI origin;
   private final Supplier<String> token;
   private final Predicate<String> renewedAfterRejection;
@@ -245,7 +255,7 @@ public final class GraphClient {
           continue;
         }
       }
-      String code = errorCode(response, deadline);
+      GraphError error = error(response, deadline);
       if ((status == 429 || status == 503) && retries < throttling.maxRetries()) {
         retries++;
         Duration wait = throttling.waitFor(response);
@@ -259,7 +269,7 @@ public final class GraphClient {
         rateLimit.sleeper().sleep(wait);
         continue;
       }
-      throw failure(status, fromGraph ? code : null, fromGraph);
+      throw failure(status, fromGraph ? error : GraphError.NONE, fromGraph);
     }
   }
 
@@ -299,7 +309,8 @@ public final class GraphClient {
     }
   }
 
-  private static GraphException failure(int status, String code, boolean fromGraph) {
+  private static GraphException failure(int status, GraphError error, boolean fromGraph) {
+    String code = error.code();
     if (!fromGraph) {
       return new GraphException(
           GraphException.Kind.TRANSIENT,
@@ -308,6 +319,14 @@ public final class GraphClient {
           ProxyRefusal.statusMessage(
               status,
               "Der Downloadserver von Microsoft Graph hat mit HTTP " + status + " geantwortet."));
+    }
+    if (error.consentMissing() && (status == 401 || status == 403)) {
+      return new GraphException(
+          status == 401 ? GraphException.Kind.UNAUTHORIZED : GraphException.Kind.FORBIDDEN,
+          status,
+          code,
+          CONSENT_MISSING,
+          true);
     }
     String suffix = code == null ? "." : " (" + code + ").";
     return switch (status) {
@@ -352,22 +371,33 @@ public final class GraphClient {
     };
   }
 
+  /** The parts of Graph's error object handed on; {@code error.message} itself never is. */
+  private record GraphError(String code, boolean consentMissing) {
+    static final GraphError NONE = new GraphError(null, false);
+  }
+
   /**
-   * Graph's {@code error.code}, reduced to a plain identifier; {@code null} when there is none.
-   * Reads and closes the body.
+   * Graph's {@code error.code}, reduced to a plain identifier ({@code null} when there is none),
+   * and the consent finding of {@code error.message}. Reads and closes the body.
    */
-  private static String errorCode(HttpResponse<InputStream> response, long deadline) {
+  private static GraphError error(HttpResponse<InputStream> response, long deadline) {
     try (InputStream body = response.body()) {
       JsonNode root =
           JSON.readTree(BoundedStreams.readFullyBefore(body, MAX_ERROR_BYTES, deadline));
-      JsonNode code = root == null ? null : root.path("error").get("code");
-      if (code == null || !code.isString()) {
-        return null;
+      JsonNode error = root == null ? null : root.path("error");
+      if (error == null) {
+        return GraphError.NONE;
       }
-      String text = code.asString();
-      return ERROR_CODE.matcher(text).matches() ? text : null;
+      JsonNode code = error.get("code");
+      JsonNode message = error.get("message");
+      String text = code != null && code.isString() ? code.asString() : null;
+      return new GraphError(
+          text != null && ERROR_CODE.matcher(text).matches() ? text : null,
+          message != null
+              && message.isString()
+              && NO_PERMISSION_CLAIM.matcher(message.asString()).find());
     } catch (IOException | JacksonException e) {
-      return null;
+      return GraphError.NONE;
     }
   }
 
