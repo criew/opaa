@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.sharepoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.source.sharepoint.DriveRule.ItemAddress;
 import java.util.Set;
@@ -60,8 +61,19 @@ class DriveRuleTest {
 
   @Test
   void sharePointSentencesStayAsTheyWere() {
-    assertThat(DriveRule.SHAREPOINT.notAdmitted()).isEqualTo(DriveRule.NOT_A_LIBRARY);
-    assertThat(DriveRule.SHAREPOINT.notVisible()).isEqualTo(DriveRule.LIBRARY_NOT_VISIBLE);
+    assertThat(DriveRule.SHAREPOINT.notAdmitted())
+        .isEqualTo(
+            "Das Laufwerk ist keine SharePoint-Dokumentbibliothek; OneDrive und andere Laufwerke"
+                + " werden nicht gelesen.");
+    assertThat(DriveRule.SHAREPOINT.notVisible())
+        .isEqualTo(
+            "Die Dokumentbibliothek ist für die Anwendung nicht sichtbar. Bei der Berechtigung"
+                + " Sites.Selected muss die Site für die App freigegeben sein.");
+    assertThat(DriveRule.SHAREPOINT.fileOutsideDrive())
+        .isEqualTo("Die Datei liegt nicht mehr in der Bibliothek.");
+    assertThat(DriveRule.SHAREPOINT.unreachableAtStart())
+        .isEqualTo(
+            "Die Dokumentbibliothek war beim Beginn des letzten Vollabgleichs nicht erreichbar.");
     assertThat(DriveRule.SHAREPOINT.fileGone())
         .isEqualTo("Die Datei existiert in SharePoint nicht mehr.");
     assertThat(DriveRule.SHAREPOINT.folderMissing("Akten 50%"))
@@ -70,6 +82,18 @@ class DriveRuleTest {
                 + " bitte die Ordnerauswahl anpassen.");
     assertThat(DriveRule.SHAREPOINT.driveNamed("Dokumente"))
         .isEqualTo("Dokumentbibliothek „Dokumente“");
+  }
+
+  @Test
+  void aSchemeThatWouldBreakIdentitiesIsRefused() {
+    assertThatThrownBy(() -> withScheme("Share/Point"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> withScheme("")).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private static DriveRule withScheme(String scheme) {
+    return new DriveRule(
+        scheme, "Other", Set.of("business"), "a", "b", "c", "d", "Ordner „%s“", "Laufwerk „%s“");
   }
 
   @Test

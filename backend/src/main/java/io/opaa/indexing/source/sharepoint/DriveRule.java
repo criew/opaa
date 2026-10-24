@@ -3,13 +3,14 @@ package io.opaa.indexing.source.sharepoint;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * What one kind of Graph drive sets in the shared {@link DriveFileStore}: the {@code driveType}s it
  * reads, the scheme of its identities {@code <scheme>://<drive>/<item>} (also the prefix of the
  * download threads), the product {@code label} of its logs and the sentences naming the drive;
  * {@code notVisible} answers a drive Graph refuses with {@code 403} or {@code 404}, the templates
- * {@code folderMissing} and {@code driveNamed} hold one {@code %s} for the name.
+ * {@code folderMissingTemplate} and {@code driveNamedTemplate} hold one {@code %s} for the name.
  */
 record DriveRule(
     String scheme,
@@ -19,8 +20,10 @@ record DriveRule(
     String notVisible,
     String fileOutsideDrive,
     String unreachableAtStart,
-    String folderMissing,
-    String driveNamed) {
+    String folderMissingTemplate,
+    String driveNamedTemplate) {
+
+  private static final Pattern SCHEME = Pattern.compile("[a-z][a-z0-9]*");
 
   static final String NOT_A_LIBRARY =
       "Das Laufwerk ist keine SharePoint-Dokumentbibliothek; OneDrive und andere Laufwerke werden"
@@ -45,6 +48,16 @@ record DriveRule(
 
   DriveRule {
     Objects.requireNonNull(scheme, "scheme");
+    Objects.requireNonNull(label, "label");
+    Objects.requireNonNull(notAdmitted, "notAdmitted");
+    Objects.requireNonNull(notVisible, "notVisible");
+    Objects.requireNonNull(fileOutsideDrive, "fileOutsideDrive");
+    Objects.requireNonNull(unreachableAtStart, "unreachableAtStart");
+    Objects.requireNonNull(folderMissingTemplate, "folderMissingTemplate");
+    Objects.requireNonNull(driveNamedTemplate, "driveNamedTemplate");
+    if (!SCHEME.matcher(scheme).matches()) {
+      throw new IllegalArgumentException("scheme must match " + SCHEME + ": " + scheme);
+    }
     driveTypes = Set.copyOf(driveTypes);
   }
 
@@ -86,10 +99,10 @@ record DriveRule(
   }
 
   String folderMissing(String folderName) {
-    return folderMissing.formatted(folderName);
+    return folderMissingTemplate.formatted(folderName);
   }
 
   String driveNamed(String driveName) {
-    return driveNamed.formatted(driveName);
+    return driveNamedTemplate.formatted(driveName);
   }
 }
