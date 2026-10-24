@@ -1,7 +1,6 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
@@ -29,17 +28,22 @@ export default function DiagnosticsLockControl({
 }: DiagnosticsLockControlProps) {
   return (
     <Box>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip
-          label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
-          size="small"
-          color={locked ? 'default' : 'warning'}
-          variant="outlined"
-        />
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{ alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+            {locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
+          </Typography>
+          <Typography variant="caption" component="p" sx={{ color: 'text.secondary' }}>
+            Gesperrt erscheint die Bibliothek in keiner Suchdiagnose für andere Personen.
+          </Typography>
+        </Box>
         {canToggle && (
           <Button
             size="small"
-            variant="outlined"
             onClick={onToggle}
             disabled={saving}
             aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
@@ -48,13 +52,6 @@ export default function DiagnosticsLockControl({
           </Button>
         )}
       </Stack>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
-        Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
-        anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
-        sehen.
-        {!canToggle &&
-          ' Setzen und lösen kann die Sperre nur die für die Bibliothek zuständige Stelle (Eigentümer), nicht die Systemverwaltung als solche.'}
-      </Typography>
       {error && (
         <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
           {error}

@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
+import TabSection from '@/shared/ui/TabSection'
 import AssetSpacesList from './AssetSpacesList'
 import UseInSpaceButton from './UseInSpaceButton'
 import type { AssetType } from '@/shared/api/types'
 
 /**
- * The content of the tab „Zuordnungen": „In Space verwenden" above the spaces the asset
- * stands in. Without a heading of its own - the tab already names it.
+ * The content of the tab „Zuordnungen": the spaces the asset stands in, „In Space verwenden" as a
+ * text button at the right content edge. Without a heading of its own - the tab already names it.
  */
 export default function AssetSpacesSection({
   assetType,
@@ -32,39 +32,31 @@ export default function AssetSpacesSection({
   const [version, setVersion] = useState(0)
   return (
     <Box component="section" aria-label="Zuordnungen">
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
-        }}
+      <TabSection
+        action={
+          mayUseInSpace ? (
+            <UseInSpaceButton
+              assetType={assetType}
+              assetId={assetId}
+              name={name}
+              size="small"
+              quiet
+              onAssociated={() => {
+                setVersion((v) => v + 1)
+                onChanged?.()
+              }}
+            />
+          ) : undefined
+        }
       >
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
-          Die Spaces, in denen dieses Objekt als Datenquelle bereitsteht.
-        </Typography>
-        {mayUseInSpace && (
-          <UseInSpaceButton
-            assetType={assetType}
-            assetId={assetId}
-            name={name}
-            size="small"
-            onAssociated={() => {
-              setVersion((v) => v + 1)
-              onChanged?.()
-            }}
-          />
-        )}
-      </Box>
-      <AssetSpacesList
-        key={`${assetType}-${assetId}-${refreshToken}-${version}`}
-        assetType={assetType}
-        assetId={assetId}
-        canManage={canManage}
-        onChanged={onChanged}
-      />
+        <AssetSpacesList
+          key={`${assetType}-${assetId}-${refreshToken}-${version}`}
+          assetType={assetType}
+          assetId={assetId}
+          canManage={canManage}
+          onChanged={onChanged}
+        />
+      </TabSection>
     </Box>
   )
 }

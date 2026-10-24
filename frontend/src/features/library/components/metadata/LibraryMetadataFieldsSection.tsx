@@ -3,9 +3,10 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import TabSection from '@/shared/ui/TabSection'
 import { Link as RouterLink } from 'react-router'
 import { plural } from '@/shared/utils/format'
 import Link from '@mui/material/Link'
@@ -229,24 +230,19 @@ export default function LibraryMetadataFieldsSection({
   }
 
   return (
-    <Box>
-      <Stack direction="row" sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1">Metadatenfelder</Typography>
-        {canManageSchema && (
+    <TabSection
+      title="Metadatenfelder"
+      action={
+        canManageSchema ? (
           <Button size="small" onClick={() => setCreateOpen(true)}>
             Feld anlegen
           </Button>
-        )}
-      </Stack>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-        Eigene Felder dieser Bibliothek, zusätzlich zu Titel, Dokumentart und Datum/Stand. Jedes
-        Feld muss im Filter oder im Kontextpräfix wirken; höchstens fünf Felder je Bibliothek und
-        höchstens zwei davon in der Belegzeile.
+        ) : undefined
+      }
+    >
+      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+        Bis zu fünf eigene Felder; jedes wirkt im Filter oder im Kontextpräfix.
       </Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Wertelisten sind für jede Person sichtbar, die die Bibliothek benutzen darf. Sie dürfen
-        deshalb keine schutzbedürftigen Bezeichnungen tragen.
-      </Alert>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -292,112 +288,52 @@ export default function LibraryMetadataFieldsSection({
           </Typography>
         </Alert>
       )}
-      {coreContextPrefix && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle2">Kernfelder im Kontextpräfix</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Der Titel steht immer im Kontextpräfix. Dokumentart und Datum/Stand sind je Bibliothek
-            eine bewusste Entscheidung — eingeschaltet kostet jede spätere Änderung daran ein
-            Neu-Einbetten.
+      <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+        {coreContextPrefix && (
+          <Box component="li" sx={{ ...FIELD_ROW, display: 'block' }}>
+            <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600 }}>
+              Kernfelder im Kontextpräfix
+            </Typography>
+            <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
+              <CoreContextPrefixSwitch
+                libraryId={libraryId}
+                label="Dokumentart"
+                fieldKey="document_type"
+                checked={coreContextPrefix.documentType}
+                disabled={!canManageSchema}
+                onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
+              />
+              <CoreContextPrefixSwitch
+                libraryId={libraryId}
+                label="Datum/Stand"
+                fieldKey="document_date"
+                checked={coreContextPrefix.documentDate}
+                disabled={!canManageSchema}
+                onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
+              />
+            </Stack>
+          </Box>
+        )}
+        {fields.length === 0 ? (
+          <Typography component="li" variant="body2" sx={{ color: 'text.secondary', py: 1.5 }}>
+            Keine eigenen Metadatenfelder.
           </Typography>
-          <CoreContextPrefixSwitch
-            libraryId={libraryId}
-            label="Dokumentart"
-            fieldKey="document_type"
-            checked={coreContextPrefix.documentType}
-            disabled={!canManageSchema}
-            onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
-          />
-          <CoreContextPrefixSwitch
-            libraryId={libraryId}
-            label="Datum/Stand"
-            fieldKey="document_date"
-            checked={coreContextPrefix.documentDate}
-            disabled={!canManageSchema}
-            onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
-          />
-        </Box>
-      )}
-      {fields.length === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Diese Bibliothek führt keine eigenen Metadatenfelder — der Normalfall.
-        </Typography>
-      ) : (
-        <Stack spacing={2} divider={<Divider flexItem />}>
-          {fields.map((field) => (
-            <Box key={field.fieldKey}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Typography variant="subtitle2">{field.label}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {field.fieldKey} · {TYPE_LABELS[field.type]}
-                </Typography>
-                {effectChips(field).map((chip) => (
-                  <Chip key={chip} size="small" label={chip} />
-                ))}
-                {field.deletionPending && (
-                  <Chip size="small" color="warning" label="wird gelöscht" />
-                )}
-                {canManageSchema && !field.deletionPending && (
-                  <Button
-                    size="small"
-                    onClick={() => setEditField(field)}
-                    aria-label={`Feld ${field.label} bearbeiten`}
-                  >
-                    Bearbeiten
-                  </Button>
-                )}
-                {canManageSchema && !field.deletionPending && (
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => void openDelete(field)}
-                    aria-label={`Feld ${field.label} löschen`}
-                  >
-                    Löschen
-                  </Button>
-                )}
-              </Stack>
-              {field.valuePattern && (
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Muster: {field.valuePattern}
-                </Typography>
-              )}
-              {field.type === 'SELECT' && (
-                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
-                  {field.values.map((value) => (
-                    <Chip
-                      key={value.code}
-                      size="small"
-                      variant="outlined"
-                      color={value.retiring ? 'warning' : 'default'}
-                      label={
-                        value.retiring
-                          ? `${value.label} (${value.code}) — wird abgebildet`
-                          : `${value.label} (${value.code})`
-                      }
-                      clickable={canManageSchema && !value.retiring && !field.deletionPending}
-                      onClick={
-                        canManageSchema && !value.retiring && !field.deletionPending
-                          ? () => void openRemap(field, value.code)
-                          : undefined
-                      }
-                      aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
-                    />
-                  ))}
-                  {canManageSchema && !field.deletionPending && (
-                    <AddValueButton
-                      libraryId={libraryId}
-                      fieldKey={field.fieldKey}
-                      onAdded={() => void reload()}
-                      onError={setError}
-                    />
-                  )}
-                </Stack>
-              )}
-            </Box>
-          ))}
-        </Stack>
-      )}
+        ) : (
+          fields.map((field) => (
+            <MetadataFieldRow
+              key={field.fieldKey}
+              field={field}
+              libraryId={libraryId}
+              canManageSchema={canManageSchema}
+              onEdit={() => setEditField(field)}
+              onDelete={() => void openDelete(field)}
+              onRemap={(code) => void openRemap(field, code)}
+              onValueAdded={() => void reload()}
+              onError={setError}
+            />
+          ))
+        )}
+      </Box>
 
       <CreateFieldDialog
         open={createOpen}
@@ -447,6 +383,145 @@ export default function LibraryMetadataFieldsSection({
         onConfirm={() => void confirmDelete()}
         onClose={() => setDeleteField(null)}
       />
+    </TabSection>
+  )
+}
+
+/** One entry of the field list: a hairline below, title and actions on its first line. */
+const FIELD_ROW = {
+  py: 1.5,
+  borderBottom: 1,
+  borderColor: 'divider',
+} as const
+
+/** From this many values on, a value list starts collapsed with a search (D19). */
+const VALUES_COLLAPSED_FROM = 8
+
+/**
+ * A field in two lines - name with its Wirkstellen, then type and value count - and its value
+ * list below: short lists stand open, long ones open on request and can be searched.
+ */
+function MetadataFieldRow({
+  field,
+  libraryId,
+  canManageSchema,
+  onEdit,
+  onDelete,
+  onRemap,
+  onValueAdded,
+  onError,
+}: {
+  field: LibraryMetadataFieldResponse
+  libraryId: string
+  canManageSchema: boolean
+  onEdit: () => void
+  onDelete: () => void
+  onRemap: (code: string) => void
+  onValueAdded: () => void
+  onError: (message: string) => void
+}) {
+  const long = field.values.length >= VALUES_COLLAPSED_FROM
+  const [open, setOpen] = useState(!long)
+  const [query, setQuery] = useState('')
+  const needle = query.trim().toLocaleLowerCase('de-DE')
+  const values = field.values.filter(
+    (value) =>
+      !needle ||
+      value.label.toLocaleLowerCase('de-DE').includes(needle) ||
+      value.code.toLocaleLowerCase('de-DE').includes(needle),
+  )
+  const editable = canManageSchema && !field.deletionPending
+  const valuesId = `metadata-values-${field.fieldKey}`
+  const effects = effectChips(field)
+  return (
+    <Box component="li" sx={FIELD_ROW}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600 }}>
+            {field.label}
+            {effects.length > 0 && (
+              <Box component="span" sx={{ fontWeight: 400, color: 'text.secondary' }}>
+                {` · ${effects.join(' · ')}`}
+              </Box>
+            )}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {TYPE_LABELS[field.type]}
+            {field.valuePattern ? ` · Muster: ${field.valuePattern}` : ''}
+            {field.type === 'SELECT' ? ` · ${plural(field.values.length, 'Wert', 'Werte')}` : ''}
+          </Typography>
+          {field.deletionPending && (
+            <Typography variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
+              wird gelöscht
+            </Typography>
+          )}
+        </Box>
+        {field.type === 'SELECT' && long && (
+          <Button
+            size="small"
+            aria-expanded={open}
+            aria-controls={valuesId}
+            onClick={() => setOpen((current) => !current)}
+          >
+            {open ? 'Werte ausblenden' : 'Werte anzeigen'}
+          </Button>
+        )}
+        {editable && (
+          <Button size="small" onClick={onEdit} aria-label={`Feld ${field.label} bearbeiten`}>
+            Bearbeiten
+          </Button>
+        )}
+        {editable && (
+          <Button
+            size="small"
+            color="error"
+            onClick={onDelete}
+            aria-label={`Feld ${field.label} löschen`}
+          >
+            Löschen
+          </Button>
+        )}
+      </Box>
+      {field.type === 'SELECT' && open && (
+        <Box id={valuesId} sx={{ mt: 1 }}>
+          {long && (
+            <TextField
+              size="small"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Wert suchen"
+              slotProps={{ htmlInput: { 'aria-label': `Werte von ${field.label} durchsuchen` } }}
+              sx={{ mb: 1, width: '100%', maxWidth: 280 }}
+            />
+          )}
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            {values.map((value) => (
+              <Chip
+                key={value.code}
+                size="small"
+                variant="outlined"
+                label={
+                  value.retiring
+                    ? `${value.label} (${value.code}) — wird abgebildet`
+                    : `${value.label} (${value.code})`
+                }
+                clickable={editable && !value.retiring}
+                onClick={editable && !value.retiring ? () => onRemap(value.code) : undefined}
+                aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
+              />
+            ))}
+            {editable && (
+              <AddValueButton
+                libraryId={libraryId}
+                fieldKey={field.fieldKey}
+                onAdded={onValueAdded}
+                onError={onError}
+              />
+            )}
+          </Stack>
+        </Box>
+      )}
     </Box>
   )
 }

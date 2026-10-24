@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -16,6 +15,8 @@ import {
   updateLibraryMetadataExtractionSettings,
 } from '../../api/libraryMetadataApi'
 import { formatShare } from '@/shared/utils/labels'
+import { plural } from '@/shared/utils/format'
+import TabSection from '@/shared/ui/TabSection'
 
 interface MetadataExtractionSettingsSectionProps {
   libraryId: string
@@ -79,118 +80,164 @@ export default function MetadataExtractionSettingsSection({
   const local = settings?.chatModel?.local === true
   const stats = quality?.modelExtraction
 
+  const qualityFields = quality?.fields ?? []
   return (
-    <Box component="section" aria-label="Modellgestützte Extraktion">
+    <TabSection title="Modellgestützte Extraktion">
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       {canManage && settings && (
-        <Stack spacing={1.5} sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.modelExtractionEnabled}
-                disabled={saving}
-                onChange={(event) => void save(event.target.checked, settings.keywordsEnabled)}
-                slotProps={{ input: { 'aria-label': 'Modellgestützte Extraktion' } }}
-              />
-            }
+        <Stack spacing={0.5} sx={{ mb: 3 }}>
+          <SwitchLine
             label="Modellgestützte Extraktion"
+            checked={settings.modelExtractionEnabled}
+            disabled={saving}
+            onChange={(next) => void save(next, settings.keywordsEnabled)}
+            hint={`Füllt leer gebliebene Auswahlfelder ab ${formatShare(settings.confidenceThreshold)} Konfidenz.`}
           />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Ergänzt nur die unscharfen Felder, die die regelbasierte Extraktion leer gelassen hat
-            (Dokumentart, Auswahlfelder dieser Bibliothek). Ein Wert unterhalb der Konfidenzschwelle
-            von {formatShare(settings.confidenceThreshold)} oder außerhalb der Werteliste bleibt
-            leer.
-          </Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.keywordsEnabled}
-                disabled={saving}
-                onChange={(event) =>
-                  void save(settings.modelExtractionEnabled, event.target.checked)
-                }
-                slotProps={{ input: { 'aria-label': 'Freie Schlagworte' } }}
-              />
-            }
+          <SwitchLine
             label="Freie Schlagworte"
+            checked={settings.keywordsEnabled}
+            disabled={saving}
+            onChange={(next) => void save(settings.modelExtractionEnabled, next)}
+            hint="Höchstens fünf je Dokument, nicht filterbar."
           />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Höchstens fünf Schlagworte je Dokument. Sie verbessern die Auffindbarkeit im Volltext,
-            sind aber nie filterbar und erscheinen nicht im Beleg.
-          </Typography>
-          <Alert severity={local ? 'info' : 'warning'} aria-label="Datenschutzhinweis">
-            {settings.chatModel ? (
-              <>
-                {local ? (
-                  <>
-                    Das aktive Chat-Modell wird lokal betrieben ({settings.chatModel.baseUrl},
-                    Modell {settings.chatModel.modelIdentifier}). Die Extraktion läuft ohne
-                    ausgehende Verbindung; es verlassen keine Dokumentinhalte das Haus.
-                  </>
-                ) : (
-                  <>
-                    <strong>
-                      Mit eingeschalteter Extraktion verlässt der Inhalt jedes aufgenommenen
-                      Dokuments dauerhaft das Haus
-                    </strong>{' '}
-                    — anders als im Chat ohne dass eine Person den Vorgang auslöst. Übertragen wird
-                    an das aktive Chat-Modell: {settings.chatModel.baseUrl}, Modell{' '}
-                    {settings.chatModel.modelIdentifier}. Für Bibliotheken mit schutzbedürftigen
-                    Unterlagen ist das die datenschutzrechtlich relevante Entscheidung an diesem
-                    Schalter.
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                Zurzeit ist kein Chat-Modell aktiv. Ohne aktives Modell bleibt die Extraktion
-                wirkungslos; die Felder bleiben leer.
-              </>
+          {/* the one consequence of the switch that matters beyond this page: where content goes */}
+          <Box
+            aria-label="Datenschutzhinweis"
+            role="note"
+            sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', pt: 0.5 }}
+          >
+            {!local && settings.chatModel && (
+              <Box
+                aria-hidden
+                sx={{
+                  width: 8,
+                  height: 8,
+                  mt: '6px',
+                  borderRadius: '50%',
+                  flex: 'none',
+                  bgcolor: 'warning.main',
+                }}
+              />
             )}
-          </Alert>
-          <Divider />
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+              {settings.chatModel
+                ? local
+                  ? `Lokales Modell ${settings.chatModel.modelIdentifier}: Es verlassen keine Dokumentinhalte das Haus.`
+                  : `Mit eingeschalteter Extraktion verlässt der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus – an ${settings.chatModel.baseUrl} (${settings.chatModel.modelIdentifier}).`
+                : 'Kein Chat-Modell aktiv: Die Extraktion bleibt wirkungslos.'}
+            </Typography>
+          </Box>
         </Stack>
       )}
 
-      <Typography variant="subtitle2" component="h4" sx={{ mb: 0.5 }}>
-        Extraktionsgüte
+      <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 1 }}>
+        Extraktionsgüte · {plural(quality?.totalDocuments ?? 0, 'Dokument', 'Dokumente')}
       </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-        Herkunft der Werte über {quality?.totalDocuments ?? 0} aufgenommene Dokumente dieser
-        Bibliothek.
-      </Typography>
-      <Stack spacing={0.75}>
-        {(quality?.fields ?? []).map((field) => (
-          <Stack
-            key={field.fieldKey}
-            direction="row"
-            spacing={1.5}
-            sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+      {qualityFields.length > 0 && (
+        <Box sx={{ overflowX: 'auto' }}>
+          <Box
+            component="table"
+            sx={{
+              borderCollapse: 'collapse',
+              width: '100%',
+              fontSize: 13,
+              '& th': {
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'text.secondary',
+                textAlign: 'right',
+                pb: 0.5,
+                borderBottom: 1,
+                borderColor: 'divider',
+              },
+              '& td': {
+                textAlign: 'right',
+                py: 0.75,
+                borderBottom: 1,
+                borderColor: 'divider',
+                fontVariantNumeric: 'tabular-nums',
+              },
+              '& th:first-of-type, & td:first-of-type': { textAlign: 'left' },
+            }}
           >
-            <Typography variant="body2" sx={{ minWidth: 120, color: 'text.secondary' }}>
-              {field.label}
-            </Typography>
-            <Typography variant="body2">
-              regelbasiert {field.deterministicDocuments} · modellbefüllt {field.derivedDocuments} ·
-              von Hand {field.manualDocuments} · kein Wert ermittelbar{' '}
-              {field.notDeterminableDocuments} · leer {field.emptyDocuments} (
-              {formatShare(field.emptyShare)})
-            </Typography>
-          </Stack>
-        ))}
-      </Stack>
-      {stats && (
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1.5 }}>
-          Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen (Konfidenz):{' '}
-          {stats.rejectedBelowThreshold} · verworfen (Werteliste): {stats.rejectedOutsideVocabulary}{' '}
-          · Fehler/Zeitüberschreitungen: {stats.failures} · nicht angefragt (ausgelastet):{' '}
-          {stats.rejectedPoolFull} · Schlagworte: {stats.keywordsAssigned}
-        </Typography>
+            <thead>
+              <tr>
+                <th scope="col">Feld</th>
+                <th scope="col">regelbasiert</th>
+                <th scope="col">Modell</th>
+                <th scope="col">von Hand</th>
+                <th scope="col">nicht ermittelbar</th>
+                <th scope="col">leer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {qualityFields.map((field) => (
+                <tr key={field.fieldKey}>
+                  <td>{field.label}</td>
+                  <td>{field.deterministicDocuments}</td>
+                  <td>{field.derivedDocuments}</td>
+                  <td>{field.manualDocuments}</td>
+                  <td>{field.notDeterminableDocuments}</td>
+                  <td>
+                    {field.emptyDocuments} ({formatShare(field.emptyShare)})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Box>
+        </Box>
       )}
+      {stats && (
+        <Box component="details" sx={{ mt: 1.5, fontSize: 12.5, color: 'text.secondary' }}>
+          <Box component="summary" sx={{ cursor: 'pointer', color: 'text.primary' }}>
+            Technische Angaben
+          </Box>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+            Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen
+            (Konfidenz): {stats.rejectedBelowThreshold} · verworfen (Werteliste):{' '}
+            {stats.rejectedOutsideVocabulary} · Fehler/Zeitüberschreitungen: {stats.failures} ·
+            nicht angefragt (ausgelastet): {stats.rejectedPoolFull} · Schlagworte:{' '}
+            {stats.keywordsAssigned}
+          </Typography>
+        </Box>
+      )}
+    </TabSection>
+  )
+}
+
+/** A switch with its one-line consequence beside the label. */
+function SwitchLine({
+  label,
+  checked,
+  disabled,
+  onChange,
+  hint,
+}: {
+  label: string
+  checked: boolean
+  disabled: boolean
+  onChange: (next: boolean) => void
+  hint: string
+}) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1 }}>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={checked}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.checked)}
+            slotProps={{ input: { 'aria-label': label } }}
+          />
+        }
+        label={label}
+        sx={{ mr: 0 }}
+      />
+      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{hint}</Typography>
     </Box>
   )
 }

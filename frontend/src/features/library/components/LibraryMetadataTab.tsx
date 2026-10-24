@@ -1,5 +1,4 @@
 import Stack from '@mui/material/Stack'
-import PageSection from '@/shared/ui/PageSection'
 import LibraryMetadataFieldsSection from './metadata/LibraryMetadataFieldsSection'
 import MetadataExtractionSettingsSection from './metadata/MetadataExtractionSettingsSection'
 
@@ -11,7 +10,10 @@ interface LibraryMetadataTabProps {
   canEdit: boolean
 }
 
-/** The „Metadaten" area: the library's own fields and the model-based extraction. */
+/**
+ * The „Metadaten" area: the library's own fields and the model-based extraction. The
+ * Extraktionsgüte is the only place of the fill level; the documents tab only filters by it.
+ */
 export default function LibraryMetadataTab({
   libraryId,
   mayChange,
@@ -19,23 +21,9 @@ export default function LibraryMetadataTab({
 }: LibraryMetadataTabProps) {
   return (
     <Stack>
-      <PageSection
-        title="Metadatenfelder"
-        description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
-      >
-        <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
-      </PageSection>
-      {/* The extraction settings are readable only from MANAGER on
-               (GET .../metadata/extraction-settings) - for a reading role only an error message
-               would remain here. */}
-      {canEdit && (
-        <PageSection
-          title="Modellgestützte Extraktion"
-          description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
-        >
-          <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
-        </PageSection>
-      )}
+      <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
+      {/* readable only from MANAGER on (GET .../metadata/extraction-settings) */}
+      {canEdit && <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />}
     </Stack>
   )
 }

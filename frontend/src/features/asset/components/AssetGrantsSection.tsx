@@ -2,8 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
@@ -16,10 +14,8 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
-import PageSection from '@/shared/ui/PageSection'
-import SectionHead from '@/shared/ui/SectionHead'
+import TabSection, { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import type {
   AssetGrantResponse,
   AssetGrantSubjectType,
@@ -44,7 +40,6 @@ import { getGrantedGroupMembers } from '../api/assetApi'
 import { resolveSelectableGroup } from '@/features/principal'
 import { allAccountsLabel, assetRoleLabel } from '@/shared/utils/labels'
 import {
-  assetGrantScopeHint,
   assetRoleDescription,
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
@@ -52,6 +47,17 @@ import {
 import { assetTypeLabel } from '../../../shared/assetTypes'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
+
+/** From this many grants on, the list gets a search (D19) ... */
+const SEARCH_FROM = 8
+/** ... and from this many it is grouped by recipient kind. */
+const GROUP_FROM = 50
+const GROUP_ORDER: AssetGrantSubjectType[] = ['GROUP', 'USER', 'ALL_ACCOUNTS']
+const GROUP_TITLES: Record<AssetGrantSubjectType, string> = {
+  GROUP: 'Gruppen',
+  USER: 'Personen',
+  ALL_ACCOUNTS: allAccountsLabel,
+}
 
 /**
  * The most „Alle Konten" may hold (ADR-0037 Entscheidung 1): management and
@@ -145,6 +151,7 @@ export default function AssetGrantsSection({
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [rowError, setRowError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     void loadGrants(assetType, assetId)
@@ -286,247 +293,305 @@ export default function AssetGrantsSection({
     }
   }
 
-  return (
-    <PageSection
-      title="Berechtigungen"
-      description={`${assetGrantScopeHint(assetType)} Der Empfänger muss ihr nicht zustimmen. Eine Freigabe an „${allAccountsLabel}" ist jederzeit wieder zurücknehmbar — auch die.`}
-    >
-      {loadError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {loadError}
-        </Alert>
-      )}
-      {rowError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRowError(null)}>
-          {rowError}
-        </Alert>
-      )}
+  const grantForm = (
+    <Stack spacing={2} sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>
+      {formError && <Alert severity="error">{formError}</Alert>}
 
-      {isLoading ? (
-        <Typography sx={{ color: 'text.secondary' }}>Berechtigungen werden geladen …</Typography>
-      ) : grants.length === 0 ? (
-        <Typography sx={{ color: 'text.secondary' }}>
-          Es sind noch keine Freigaben für diese {assetTypeLabel(assetType)} erteilt.
-        </Typography>
-      ) : (
-        <Stack spacing={1} sx={{ mb: 2 }}>
-          {grants.map((grant) => {
-            const expired = isExpired(grant.expiresAt)
-            const subjectName = subjectDisplayName(grant)
-            const sizeHint = grant.subjectType === 'GROUP' ? groupMemberCountLabel(grant) : null
-            const roleSelectId = `grant-role-${grant.id}`
-            return (
-              <Box
-                key={grant.id}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 1,
-                  py: 1.25,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  '&:last-of-type': { borderBottom: 0 },
-                }}
-              >
-                <Stack spacing={0.25} sx={{ minWidth: 160, flexGrow: 1 }}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>{subjectName}</Typography>
-                  {/* grantedByUserId names whoever conferred the role the grant carries now, not
-                      whoever created the row - so it is never paired with createdAt, which would
-                      assert a granter/date combination that never existed. */}
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {permissionSubjectTypeLabel(grant.subjectType)} · Rolle vergeben von{' '}
-                    {grantedByDisplayName(grant)} · zuletzt geändert am{' '}
-                    {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
-                    {sizeHint ? ` · ${sizeHint}` : ''}
-                  </Typography>
-                  {/* ADR-0036 Entscheidung 9: whoever granted a group a right here
-                       sees to whom — only on explicit request, never as a by-product of this
-                       list. An expired grant holds nothing any more; the service then answers
-                       as for an unknown group. */}
-                  {grant.subjectType === 'GROUP' && grant.subjectId && !expired && (
-                    <GroupMembersDisclosure
-                      key={grant.subjectId}
-                      groupLabel={grant.subjectDisplayName ?? subjectName}
-                      load={(offset, limit) =>
-                        getGrantedGroupMembers(
-                          assetType,
-                          assetId,
-                          grant.subjectId as string,
-                          offset,
-                          limit,
-                        )
-                      }
-                    />
-                  )}
-                </Stack>
-                <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel id={roleSelectId}>Rolle</InputLabel>
-                  <Select
-                    // Every row visually shows the same "Rolle" label, but a screen reader needs to
-                    // tell rows apart. Deliberately no labelId here (only the standalone InputLabel
-                    // above for the visual notch) - the ARIA accname algorithm resolves
-                    // aria-labelledby before aria-label, so keeping labelId would silently override
-                    // the aria-label below back to the shared "Rolle".
-                    label="Rolle"
-                    value={grant.role}
-                    aria-label={`Rolle für ${subjectName}`}
-                    onChange={(e) => void handleRoleChange(grant, e.target.value as AssetRole)}
-                  >
-                    {rolesFor(grant.subjectType).map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {assetRoleLabel(option)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Chip
-                  label={formatExpiry(grant.expiresAt)}
-                  size="small"
-                  variant="outlined"
-                  color={expired ? 'warning' : 'default'}
-                />
-                {expired && <Chip label="abgelaufen" size="small" color="warning" />}
-                <IconButton
-                  aria-label={`Freigabe für ${subjectName} entziehen`}
-                  size="small"
-                  onClick={() => void handleRevoke(grant)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            )
-          })}
-        </Stack>
-      )}
-
-      <Divider sx={{ mb: 2 }} />
-
-      {!showForm ? (
-        <Button startIcon={<AddIcon />} onClick={() => setShowForm(true)}>
-          Freigeben
-        </Button>
-      ) : (
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <SectionHead component="h3">Freigeben</SectionHead>
-          {formError && <Alert severity="error">{formError}</Alert>}
-
-          {manualIdEntry ? (
-            <>
-              <FormControl>
-                <Typography
-                  id="grant-manual-id-kind-label"
-                  component="span"
-                  sx={{ fontSize: 13, fontWeight: 600 }}
-                >
-                  Art der Kennung
-                </Typography>
-                <RadioGroup
-                  row
-                  aria-labelledby="grant-manual-id-kind-label"
-                  value={subject.type}
-                  onChange={(event) => {
-                    // A typed id belongs to exactly one kind of recipient.
-                    setManualId('')
-                    setSubject({
-                      type: event.target.value as AssetGrantSubjectType,
-                      user: null,
-                      group: null,
-                    })
-                  }}
-                >
-                  <FormControlLabel value="USER" control={<Radio />} label="Person" />
-                  <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
-                </RadioGroup>
-              </FormControl>
-              <TextField
-                label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
-                placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
-                value={manualId}
-                onChange={(e) => setManualId(e.target.value)}
-                size="small"
-              />
-            </>
-          ) : (
-            <SubjectPicker
-              allowAllAccounts
-              value={subject}
-              onChange={(next) => {
-                // The cap for „Alle Konten" applies to a previously chosen role as well.
-                if (!rolesFor(next.type).includes(role)) setRole('VIEWER')
-                setSubject(next)
-              }}
-            />
-          )}
-
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {manualIdEntry
-              ? 'Für die Eingabe per Kennung gilt dieselbe Regel wie für die Suche: Was Ihnen die Suche nicht zeigt, ist auch hier nicht zu finden.'
-              : 'Gesucht wird in Ihrer Organisation. Gruppen erscheinen, wenn sie aus einem Anbieter stammen oder ihre Verantwortlichen sie zur Verwendung freigegeben haben.'}{' '}
-            <Link
-              component="button"
-              type="button"
-              onClick={() => {
-                setManualIdEntry((current) => !current)
-                setSubject(emptySubjectSelection)
+      {manualIdEntry ? (
+        <>
+          <FormControl>
+            <Typography
+              id="grant-manual-id-kind-label"
+              component="span"
+              sx={{ fontSize: 13, fontWeight: 600 }}
+            >
+              Art der Kennung
+            </Typography>
+            <RadioGroup
+              row
+              aria-labelledby="grant-manual-id-kind-label"
+              value={subject.type}
+              onChange={(event) => {
+                // A typed id belongs to exactly one kind of recipient.
                 setManualId('')
+                setSubject({
+                  type: event.target.value as AssetGrantSubjectType,
+                  user: null,
+                  group: null,
+                })
               }}
             >
-              {manualIdEntry ? 'Stattdessen suchen' : 'Kennung eingeben'}
-            </Link>
-          </Typography>
-
-          <FormControl size="small">
-            <InputLabel id="grant-role-label">Rolle</InputLabel>
-            <Select
-              labelId="grant-role-label"
-              label="Rolle"
-              value={role}
-              onChange={(e) => setRole(e.target.value as AssetRole)}
-            >
-              {rolesFor(subject.type).map((option) => (
-                <MenuItem key={option} value={option}>
-                  {assetRoleLabel(option)}
-                </MenuItem>
-              ))}
-            </Select>
+              <FormControlLabel value="USER" control={<Radio />} label="Person" />
+              <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
+            </RadioGroup>
           </FormControl>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {assetRoleDescription(role, assetType)}
-          </Typography>
-
           <TextField
-            label="Befristung (optional)"
-            type="date"
-            value={expiryInput}
-            onChange={(e) => setExpiryInput(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
+            label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
+            placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
+            value={manualId}
+            onChange={(e) => setManualId(e.target.value)}
             size="small"
-            sx={{ maxWidth: 220 }}
           />
-
-          <Stack direction="row" spacing={1}>
-            <Button variant="contained" onClick={() => void handleSubmit()} disabled={submitting}>
-              {submitting ? 'Wird erteilt …' : 'Freigeben'}
-            </Button>
-            <Button onClick={resetForm} disabled={submitting}>
-              Abbrechen
-            </Button>
-          </Stack>
-        </Stack>
+        </>
+      ) : (
+        <SubjectPicker
+          allowAllAccounts
+          value={subject}
+          onChange={(next) => {
+            // The cap for „Alle Konten" applies to a previously chosen role as well.
+            if (!rolesFor(next.type).includes(role)) setRole('VIEWER')
+            setSubject(next)
+          }}
+        />
       )}
 
-      {capControl}
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        {manualIdEntry
+          ? 'Für die Eingabe per Kennung gilt dieselbe Regel wie für die Suche: Was Ihnen die Suche nicht zeigt, ist auch hier nicht zu finden.'
+          : 'Gesucht wird in Ihrer Organisation. Gruppen erscheinen, wenn sie aus einem Anbieter stammen oder ihre Verantwortlichen sie zur Verwendung freigegeben haben.'}{' '}
+        <Link
+          component="button"
+          type="button"
+          onClick={() => {
+            setManualIdEntry((current) => !current)
+            setSubject(emptySubjectSelection)
+            setManualId('')
+          }}
+        >
+          {manualIdEntry ? 'Stattdessen suchen' : 'Kennung eingeben'}
+        </Link>
+      </Typography>
 
-      <Divider sx={{ my: 2 }} />
-      <SectionHead component="h3">Rollen</SectionHead>
-      <Stack spacing={0.5}>
-        {grantableRoles.map((option) => (
-          <Typography key={option} sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-            <strong>{assetRoleLabel(option)}</strong> · {assetRoleDescription(option, assetType)}
-          </Typography>
-        ))}
+      <FormControl size="small">
+        <InputLabel id="grant-role-label">Rolle</InputLabel>
+        <Select
+          labelId="grant-role-label"
+          label="Rolle"
+          value={role}
+          onChange={(e) => setRole(e.target.value as AssetRole)}
+        >
+          {rolesFor(subject.type).map((option) => (
+            <MenuItem key={option} value={option}>
+              {assetRoleLabel(option)}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        {assetRoleDescription(role, assetType)}
+      </Typography>
+
+      <TextField
+        label="Befristung (optional)"
+        type="date"
+        value={expiryInput}
+        onChange={(e) => setExpiryInput(e.target.value)}
+        slotProps={{ inputLabel: { shrink: true } }}
+        size="small"
+        sx={{ maxWidth: 220 }}
+      />
+
+      <Stack direction="row" spacing={1}>
+        <Button variant="contained" onClick={() => void handleSubmit()} disabled={submitting}>
+          {submitting ? 'Wird erteilt …' : 'Freigeben'}
+        </Button>
+        <Button onClick={resetForm} disabled={submitting}>
+          Abbrechen
+        </Button>
       </Stack>
-    </PageSection>
+    </Stack>
+  )
+
+  const needle = query.trim().toLocaleLowerCase('de-DE')
+  const searchable = grants.length >= SEARCH_FROM
+  const shownGrants = grants.filter(
+    (grant) => !needle || subjectDisplayName(grant).toLocaleLowerCase('de-DE').includes(needle),
+  )
+  // A long list reads by recipient kind: groups first, then persons, then „Alle Konten".
+  const groups: Array<{ title: string | null; grants: AssetGrantResponse[] }> =
+    grants.length >= GROUP_FROM
+      ? GROUP_ORDER.map((type) => ({
+          title: GROUP_TITLES[type],
+          grants: shownGrants.filter((grant) => grant.subjectType === type),
+        })).filter((group) => group.grants.length > 0)
+      : [{ title: null, grants: shownGrants }]
+
+  function grantRow(grant: AssetGrantResponse) {
+    const expired = isExpired(grant.expiresAt)
+    const subjectName = subjectDisplayName(grant)
+    const sizeHint = grant.subjectType === 'GROUP' ? groupMemberCountLabel(grant) : null
+    // grantedByUserId names whoever conferred the role the grant carries now, so it is paired
+    // with updatedAt (the last role change), never with createdAt.
+    const detail = [
+      permissionSubjectTypeLabel(grant.subjectType),
+      sizeHint,
+      `vergeben von ${grantedByDisplayName(grant)} am ${new Date(grant.updatedAt).toLocaleDateString('de-DE')}`,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    return (
+      <Box
+        component="li"
+        key={grant.id}
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: 'minmax(0, 1fr) auto',
+            sm: 'minmax(0, 1fr) 148px 112px 34px',
+          },
+          columnGap: 1.5,
+          rowGap: 0.75,
+          alignItems: 'center',
+          py: 1,
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+            {subjectName}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, alignItems: 'baseline' }}>
+            <Typography
+              variant="caption"
+              title={detail}
+              sx={{
+                color: 'text.secondary',
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {detail}
+            </Typography>
+            {/* ADR-0036 Entscheidung 9: the members only on explicit request; an expired grant
+                holds nothing any more, the service then answers as for an unknown group. */}
+            {grant.subjectType === 'GROUP' && grant.subjectId && !expired && (
+              <GroupMembersDisclosure
+                key={grant.subjectId}
+                groupLabel={grant.subjectDisplayName ?? subjectName}
+                load={(offset, limit) =>
+                  getGrantedGroupMembers(
+                    assetType,
+                    assetId,
+                    grant.subjectId as string,
+                    offset,
+                    limit,
+                  )
+                }
+              />
+            )}
+          </Box>
+        </Box>
+        <Select
+          size="small"
+          value={grant.role}
+          // one column head names the column; each select tells the screen reader its row
+          inputProps={{ 'aria-label': `Rolle für ${subjectName}` }}
+          onChange={(e) => void handleRoleChange(grant, e.target.value as AssetRole)}
+          sx={{ fontSize: 13.5 }}
+        >
+          {rolesFor(grant.subjectType).map((option) => (
+            <MenuItem key={option} value={option}>
+              {assetRoleLabel(option)}
+            </MenuItem>
+          ))}
+        </Select>
+        <Typography
+          sx={{
+            fontSize: 12.5,
+            color: expired ? 'warning.main' : 'text.secondary',
+            gridRow: { xs: 2, sm: 'auto' },
+          }}
+        >
+          {expired
+            ? `abgelaufen (${formatExpiry(grant.expiresAt)})`
+            : formatExpiry(grant.expiresAt)}
+        </Typography>
+        <IconButton
+          aria-label={`Freigabe für ${subjectName} entziehen`}
+          size="small"
+          onClick={() => void handleRevoke(grant)}
+          sx={{ justifySelf: 'end' }}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    )
+  }
+
+  return (
+    <TabSection
+      title="Berechtigungen"
+      wide
+      action={
+        !showForm ? (
+          <Button size="small" onClick={() => setShowForm(true)}>
+            Freigeben
+          </Button>
+        ) : undefined
+      }
+      tools={
+        searchable ? (
+          <TextField
+            size="small"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Person oder Gruppe suchen"
+            slotProps={{ htmlInput: { 'aria-label': 'Freigaben durchsuchen' } }}
+            sx={{ width: '100%', maxWidth: 360 }}
+          />
+        ) : undefined
+      }
+    >
+      <Box sx={{ maxWidth: TAB_CONTENT_WIDTH }}>
+        {loadError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {loadError}
+          </Alert>
+        )}
+        {rowError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRowError(null)}>
+            {rowError}
+          </Alert>
+        )}
+
+        {showForm && grantForm}
+
+        {isLoading ? (
+          <Typography sx={{ color: 'text.secondary' }}>Berechtigungen werden geladen …</Typography>
+        ) : grants.length === 0 ? (
+          <Typography sx={{ color: 'text.secondary' }}>
+            Es sind noch keine Freigaben für diese {assetTypeLabel(assetType)} erteilt.
+          </Typography>
+        ) : shownGrants.length === 0 ? (
+          <Typography sx={{ color: 'text.secondary' }}>
+            Keine Freigabe passt zu „{query.trim()}“.
+          </Typography>
+        ) : (
+          <Box sx={{ mb: 2 }}>
+            {groups.map((group) => (
+              <Box key={group.title ?? 'all'} sx={{ mb: group.title ? 2 : 0 }}>
+                {group.title && (
+                  <Typography
+                    component="h3"
+                    sx={{ fontSize: 13.5, fontWeight: 600, color: 'text.secondary', mb: 0.5 }}
+                  >
+                    {group.title} · {group.grants.length}
+                  </Typography>
+                )}
+                <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+                  {group.grants.map(grantRow)}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {capControl}
+      </Box>
+    </TabSection>
   )
 }

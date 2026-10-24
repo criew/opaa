@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
@@ -11,7 +10,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import LinkOffIcon from '@mui/icons-material/LinkOff'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
+import TextField from '@mui/material/TextField'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -21,7 +20,11 @@ import { detachSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../../shared/assetTypes'
+import StateDot from '@/shared/ui/StateDot'
 import { useSpaceListLoader } from './spaceListContext'
+
+/** From this many associations on, the list gets a search (D19). */
+const SEARCH_FROM = 8
 
 interface AssetSpacesListProps {
   assetType: AssetType
@@ -103,6 +106,7 @@ export default function AssetSpacesList({
   const [links, setLinks] = useState<AssetSpaceAssociationListResponse | null>(null)
   const [curatedSpaceIds, setCuratedSpaceIds] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
   const loadSpaces = useSpaceListLoader()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const noun = assetTypeLabel(assetType)
@@ -166,6 +170,11 @@ export default function AssetSpacesList({
   }
 
   const hiddenCount = links?.hiddenCount ?? 0
+  const searchable = (links?.items.length ?? 0) >= SEARCH_FROM
+  const needle = query.trim().toLocaleLowerCase('de-DE')
+  const shown = (links?.items ?? []).filter(
+    (association) => !needle || association.spaceName.toLocaleLowerCase('de-DE').includes(needle),
+  )
   const hiddenNote =
     hiddenCount === 1
       ? '+ 1 weiterer Space, den Sie nicht sehen dürfen'
@@ -187,64 +196,86 @@ export default function AssetSpacesList({
           Diese {noun} ist derzeit keinem Space zugeordnet.
         </Typography>
       ) : (
-        <Stack component="ul" spacing={1} sx={{ m: 0, p: 0, listStyle: 'none' }}>
-          {links.items.map((association) => {
-            const origin = provenance(association)
-            return (
-              <Box
-                component="li"
-                key={association.spaceId}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 1.5,
-                  py: 0.75,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  useFlexGap
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
-                >
-                  <WorkspacesOutlinedIcon
-                    aria-hidden
-                    sx={{ fontSize: 18, color: 'text.secondary' }}
-                  />
-                  <Typography sx={{ fontWeight: 500 }}>{association.spaceName}</Typography>
-                  {origin && (
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                      · {origin}
-                    </Typography>
-                  )}
-                  {association.narrowerReaderCircle && (
-                    <Tooltip
-                      title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
-                    >
-                      <Chip label="nicht alle Mitglieder lesen" size="small" color="warning" />
-                    </Tooltip>
-                  )}
-                </Stack>
-                {mayDetach(association.spaceId) && (
-                  <RowActions
-                    spaceName={association.spaceName}
-                    onDetach={() => void handleDetach(association.spaceId, association.spaceName)}
-                  />
-                )}
-              </Box>
-            )
-          })}
-          {/* The number is there on purpose: it says that the list is incomplete without naming
-             a single private space. */}
-          {hiddenCount > 0 && (
-            <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
-              {hiddenNote}
+        <>
+          {searchable && (
+            <TextField
+              size="small"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Space suchen"
+              slotProps={{ htmlInput: { 'aria-label': 'Spaces durchsuchen' } }}
+              sx={{ mb: 1.5, width: '100%', maxWidth: 360 }}
+            />
+          )}
+          {searchable && needle && shown.length === 0 && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Kein Space passt zu „{query.trim()}“.
             </Typography>
           )}
-        </Stack>
+          <Stack component="ul" spacing={0} sx={{ m: 0, p: 0, listStyle: 'none' }}>
+            {shown.map((association) => {
+              const origin = provenance(association)
+              return (
+                <Box
+                  component="li"
+                  key={association.spaceId}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1.5,
+                    py: 1,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 500, overflowWrap: 'anywhere' }}>
+                      {association.spaceName}
+                    </Typography>
+                    {(origin || association.narrowerReaderCircle) && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        useFlexGap
+                        sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                      >
+                        {origin && (
+                          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                            {origin}
+                          </Typography>
+                        )}
+                        {association.narrowerReaderCircle && (
+                          <Tooltip
+                            title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
+                          >
+                            <Box component="span" tabIndex={0}>
+                              <StateDot tone="warning" label="nicht alle Mitglieder lesen" />
+                            </Box>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    )}
+                  </Box>
+                  {mayDetach(association.spaceId) && (
+                    <RowActions
+                      spaceName={association.spaceName}
+                      onDetach={() => void handleDetach(association.spaceId, association.spaceName)}
+                    />
+                  )}
+                </Box>
+              )
+            })}
+            {/* The number is there on purpose: it says that the list is incomplete without naming
+             a single private space. */}
+            {hiddenCount > 0 && (
+              <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
+                {hiddenNote}
+              </Typography>
+            )}
+          </Stack>
+        </>
       )}
     </Box>
   )

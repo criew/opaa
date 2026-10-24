@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '@/features/succession'
-import SectionHead from '@/shared/ui/SectionHead'
 import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../api/libraryApi'
 import { updateLibraryExternalAccess } from '@/features/external-access'
@@ -126,11 +124,6 @@ export default function LibraryExternalAccessSection({
   const released = access.state === 'ACTIVE'
   return (
     <Stack spacing={1}>
-      {/* The divider belongs to this section, not to the dialog: below the manager role
-         the backend does not deliver the release at all, and a divider without a following section
-         would be a line that separates nothing. */}
-      <Divider sx={{ my: 1 }} />
-      <SectionHead component="h3">Externe KI-Werkzeuge</SectionHead>
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
@@ -171,15 +164,7 @@ export default function LibraryExternalAccessSection({
         </Typography>
       </Stack>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Personen mit Lesezugriff können diese Bibliothek in einem eigenen Zugangstoken auswählen und
-        aus externen Werkzeugen darin suchen.
-      </Typography>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Derzeit in {access.tokenCount} Zugangstokens enthalten.
-      </Typography>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        {stateLine(access)} Nach Ablauf erlischt die Freigabe; die Erneuerung ist eine bewusste
-        Entscheidung der Bibliotheksverantwortung.
+        {stateLine(access)} Derzeit in {access.tokenCount} Zugangstokens enthalten.
       </Typography>
     </Stack>
   )

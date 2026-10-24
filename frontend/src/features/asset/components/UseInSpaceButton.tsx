@@ -30,6 +30,8 @@ interface UseInSpaceTarget {
 
 interface UseInSpaceButtonProps extends UseInSpaceTarget {
   size?: 'small' | 'medium'
+  /** A quiet text button without icon, as the add action at a section's right edge. */
+  quiet?: boolean
 }
 
 interface UseInSpaceDialogProps extends UseInSpaceTarget {
@@ -172,15 +174,16 @@ export default function UseInSpaceButton({
   assetId,
   name,
   size = 'medium',
+  quiet = false,
   onAssociated,
 }: UseInSpaceButtonProps) {
   const [open, setOpen] = useState(false)
   return (
     <>
       <Button
-        variant="outlined"
+        variant={quiet ? 'text' : 'outlined'}
         size={size}
-        startIcon={<WorkspacesOutlinedIcon />}
+        startIcon={quiet ? undefined : <WorkspacesOutlinedIcon />}
         onClick={() => setOpen(true)}
         aria-label={`„${name}“ in Space verwenden`}
       >

@@ -1,9 +1,8 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import Chip from '@mui/material/Chip'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -32,18 +31,19 @@ import { documentStatusLabel } from './indexingLabels'
 import { formatFileSize } from '@/shared/utils/labels'
 import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import { sourceRegistration } from './sources/registry'
+import StateDot from '@/shared/ui/StateDot'
+
+/** Folders shown before „Alle n Ordner anzeigen“ once a level holds more than this many. */
+const FOLDERS_SHOWN = 10
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
   if (!indexedAt) return '—'
   return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function statusChipColor(
-  status: LibraryDocumentResponse['status'],
-): 'success' | 'warning' | 'error' {
-  if (status === 'INDEXED') return 'success'
-  if (status === 'FAILED') return 'error'
-  return 'warning'
+/** Only a failure carries a signal colour; indexed and pending are quiet (guidelines 5.5). */
+function statusTone(status: LibraryDocumentResponse['status']): 'neutral' | 'error' {
+  return status === 'FAILED' ? 'error' : 'neutral'
 }
 
 export interface LibraryDocumentListProps {
@@ -90,6 +90,21 @@ export interface LibraryDocumentListProps {
   /** Per-parent expansion of the attachment group. */
   isGroupExpanded: (parentId: string) => boolean
   onToggleAttachmentGroup: (parentId: string) => void
+  /** Beside the search, e.g. the filter „ohne Wert“. */
+  filterControl?: ReactNode
+  /** At the toolbar's right edge, e.g. „Hochladen“. */
+  toolbarActions?: ReactNode
+}
+
+/** The caption's origin part in plain text, for the title of the cut line. */
+function originText(document: LibraryDocumentResponse, viaFileName?: string | null): string | null {
+  const parts = [
+    document.sourceHierarchyPath,
+    viaFileName ? `Anhang von ${viaFileName}` : null,
+    document.folderPath,
+    document.sourceEntryUrl ?? document.sourceUrl,
+  ].filter(Boolean)
+  return parts.length ? parts.join(' · ') : null
 }
 
 /** A source address from the document's metadata: a link for http(s), plain text otherwise. */
@@ -140,7 +155,12 @@ export default function LibraryDocumentList({
   onOpenOriginal,
   isGroupExpanded,
   onToggleAttachmentGroup,
+  filterControl,
+  toolbarActions,
 }: LibraryDocumentListProps) {
+  const [allFolders, setAllFolders] = useState(false)
+  const shownFolders =
+    allFolders || folders.length <= FOLDERS_SHOWN + 2 ? folders : folders.slice(0, FOLDERS_SHOWN)
   const isSearchActive = Boolean(pageState?.q)
   const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
@@ -211,82 +231,70 @@ export default function LibraryDocumentList({
               <Typography
                 sx={{
                   fontWeight: isAttachment ? 500 : 600,
-                  fontSize: isAttachment ? 13.5 : undefined,
+                  fontSize: isAttachment ? 13.5 : 14,
                   wordBreak: 'break-word',
                 }}
               >
                 {document.fileName}
               </Typography>
-              {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
             </Stack>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {/* One caption line (P6): size, sections and date, then where the row comes from -
+                cut with an ellipsis, the whole line in the title. */}
+            <Typography
+              variant="caption"
+              title={originText(document, options.viaFileName) ?? undefined}
+              sx={{
+                color: 'text.secondary',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
+              {/* ADR-0023/ADR-0027: a row names its container under the noun its source
+                  registered (a Confluence space, an S3 bucket) and its position below it. */}
+              {document.sourceContainerKey &&
+                ` · ${sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'}: ${containerName(document.sourceContainerKey)}${document.sourceHierarchyPath ? ` › ${document.sourceHierarchyPath}` : ''}`}
+              {options.viaFileName && ` · Anhang von ${options.viaFileName}`}
+              {/* most useful on a search hit, whose result list has no breadcrumb */}
+              {document.folderPath && (
+                <>
+                  {' · Ordner '}
+                  <Link
+                    component="button"
+                    underline="hover"
+                    onClick={() => onOpenFolder(document.folderId ?? null)}
+                    sx={{ fontSize: 'inherit', verticalAlign: 'baseline' }}
+                  >
+                    {document.folderPath}
+                  </Link>
+                </>
+              )}
+              {/* an RSS attachment names its feed entry; otherwise the plain source address */}
+              {(document.sourceEntryUrl ?? document.sourceUrl) && (
+                <>
+                  {document.sourceEntryUrl ? ' · Herkunft ' : ' · Quelle '}
+                  <ExternalAddress
+                    address={(document.sourceEntryUrl ?? document.sourceUrl) as string}
+                  />
+                </>
+              )}
             </Typography>
-            {/* ADR-0023/ADR-0027: a row names its container under the noun its source
-                registered (a Confluence space, an S3 bucket) and its position below it - as text,
-                since an s3:// path is no link a browser could open. */}
-            {document.sourceContainerKey && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {`${sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'}: ${containerName(document.sourceContainerKey)}`}
-                {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
-              </Typography>
-            )}
-            {options.viaFileName && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Anhang von: {options.viaFileName}
-              </Typography>
-            )}
-            {/* Most useful on a search hit (bibliotheksweit, ADR-0020), whose result list has
-                no breadcrumb of its own to place it in the structure. */}
-            {document.folderPath && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Ordner:{' '}
-                <Link
-                  component="button"
-                  underline="hover"
-                  onClick={() => onOpenFolder(document.folderId ?? null)}
-                >
-                  {document.folderPath}
-                </Link>
-              </Typography>
-            )}
-            {/* sourceEntryUrl is carried only by an attachment from an RSS feed entry - the link
-               makes visible which entry it comes from. */}
-            {document.sourceEntryUrl && (
-              <Typography
-                variant="caption"
-                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
-              >
-                Herkunft: <ExternalAddress address={document.sourceEntryUrl} />
-              </Typography>
-            )}
-            {/* Only shown when sourceEntryUrl above is absent, so the same remote address
-                never appears twice for an RSS attachment. */}
-            {!document.sourceEntryUrl && document.sourceUrl && (
-              <Typography
-                variant="caption"
-                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
-              >
-                Quelle: <ExternalAddress address={document.sourceUrl} />
-              </Typography>
-            )}
-            {attachments.length > 0 && (
-              <Box>
-                <Button
-                  size="small"
-                  onClick={() => onToggleAttachmentGroup(document.id)}
-                  aria-expanded={expanded}
-                  aria-label={`Anhänge von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
-                  startIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                >
-                  {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
-                </Button>
-              </Box>
-            )}
           </Stack>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+            {attachments.length > 0 && (
+              <Button
+                size="small"
+                onClick={() => onToggleAttachmentGroup(document.id)}
+                aria-expanded={expanded}
+                aria-label={`Anhänge von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
+                endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              >
+                {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
+              </Button>
+            )}
             {/* A FAILED document's asynchronous processing failure is only visible to the
                 user via this German errorMessage - the status chip alone only says something went
                 wrong, not what. */}
@@ -294,12 +302,12 @@ export default function LibraryDocumentList({
               title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
               disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
             >
-              <Chip
-                label={documentStatusLabel(document.status)}
-                size="small"
-                color={statusChipColor(document.status)}
-                variant="outlined"
-              />
+              <Box component="span" sx={{ minWidth: 112, display: 'inline-flex' }}>
+                <StateDot
+                  tone={statusTone(document.status)}
+                  label={documentStatusLabel(document.status)}
+                />
+              </Box>
             </Tooltip>
             {renderMetadataPanel && (
               <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
@@ -335,13 +343,18 @@ export default function LibraryDocumentList({
     <Box>
       {breadcrumb}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        useFlexGap
+        sx={{ mb: 2, alignItems: { sm: 'center' }, flexWrap: 'wrap' }}
+      >
         <TextField
           size="small"
-          fullWidth
           value={searchInput}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Dokumente durchsuchen — Dateiname enthält …"
+          placeholder="Dateiname suchen"
+          sx={{ width: { xs: '100%', sm: 280 } }}
           slotProps={{
             input: {
               startAdornment: (
@@ -364,6 +377,7 @@ export default function LibraryDocumentList({
             htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
           }}
         />
+        {filterControl}
         <Select
           size="small"
           value={pageState?.size ?? DEFAULT_PAGE_SIZE}
@@ -377,6 +391,7 @@ export default function LibraryDocumentList({
             </MenuItem>
           ))}
         </Select>
+        {toolbarActions && <Box sx={{ ml: { sm: 'auto' } }}>{toolbarActions}</Box>}
       </Stack>
 
       {/* The selection toolbar also stands on the root level, where a library may show only
@@ -410,9 +425,9 @@ export default function LibraryDocumentList({
             aria-live="polite"
             sx={{ color: 'text.secondary' }}
           >
-            {selectedIds.length} ausgewählt
+            {selectedIds.length > 0 ? `${selectedIds.length} ausgewählt` : ''}
           </Typography>
-          {bulkActions}
+          {selectedIds.length > 0 && bulkActions}
           {selectedIds.length > 0 && (
             <Button size="small" onClick={onClearSelection}>
               Auswahl aufheben
@@ -435,7 +450,7 @@ export default function LibraryDocumentList({
         <Stack spacing={1}>
           {/* Folders are rows ahead of the documents, mirroring a plain file browser - a
               folder's documentCount already counts its own subtree recursively. */}
-          {folders.map((folder) => (
+          {shownFolders.map((folder) => (
             <Box
               key={folder.id}
               sx={{
@@ -500,6 +515,13 @@ export default function LibraryDocumentList({
               {renderFolderActions?.(folder)}
             </Box>
           ))}
+          {shownFolders.length < folders.length && (
+            <Box sx={{ py: 1, borderBottom: 1, borderColor: 'divider' }}>
+              <Button size="small" onClick={() => setAllFolders(true)}>
+                Alle {folders.length} Ordner anzeigen
+              </Button>
+            </Box>
+          )}
           {/* A top-level document with its attachments is one group - the attachments hang
               indented on a guide line below it, a divider closes the group against the next. */}
           {documentGroups.map(({ parent, attachments }) => (

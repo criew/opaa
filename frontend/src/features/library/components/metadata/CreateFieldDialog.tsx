@@ -13,6 +13,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import { createLibraryMetadataField } from '../../api/libraryMetadataApi'
 import type { LibraryMetadataFieldType } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
@@ -76,6 +77,11 @@ export default function CreateFieldDialog({
       <DialogTitle>Metadatenfeld anlegen</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {/* value lists are visible to every reader of the library - said where they are made */}
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            Wertelisten sieht jede Person, die die Bibliothek benutzt – keine schutzbedürftigen
+            Bezeichnungen.
+          </Typography>
           <TextField
             size="small"
             label="Feldschlüssel"

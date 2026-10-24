@@ -1,4 +1,5 @@
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -9,6 +10,26 @@ interface LibraryDocumentsNoticesProps {
   libraryId: string
   newFolderDialogOpen: boolean
   renameFolderTarget: LibraryFolderListItem | null
+}
+
+/** An upload error names its file in a trailing „(Datei: …)“; the reason before it is shared. */
+const FILE_SUFFIX = /^(.*) \(Datei: (.*)\)$/
+
+/** The upload errors with each reason once and the files it hit below it. */
+function groupUploadErrors(messages: string[]): Array<{ reason: string; files: string[] }> {
+  const groups: Array<{ reason: string; files: string[] }> = []
+  for (const message of messages) {
+    const match = FILE_SUFFIX.exec(message)
+    const reason = match ? match[1] : message
+    const file = match ? match[2] : null
+    const group = groups.find((entry) => entry.reason === reason)
+    if (group) {
+      if (file) group.files.push(file)
+    } else {
+      groups.push({ reason, files: file ? [file] : [] })
+    }
+  }
+  return groups
 }
 
 /**
@@ -36,11 +57,20 @@ export default function LibraryDocumentsNotices({
     <>
       {uploadErrors.length > 0 && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadErrors}>
-          <Stack spacing={0.5}>
-            {uploadErrors.map((message) => (
-              <Typography key={message} variant="body2">
-                {message}
-              </Typography>
+          <Stack spacing={1}>
+            {groupUploadErrors(uploadErrors).map((group) => (
+              <Box key={group.reason}>
+                <Typography variant="body2">{group.reason}</Typography>
+                {group.files.length > 0 && (
+                  <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                    {group.files.map((file) => (
+                      <Typography component="li" key={file} variant="body2">
+                        {file}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             ))}
           </Stack>
         </Alert>
