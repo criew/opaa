@@ -645,6 +645,25 @@ Systemkonfiguration und ist für die ganze Installation gleich — er sagt dem f
 den Kanal überhaupt in Betracht ziehen soll und dass es seine Antworten mit Fundstellen zu belegen
 hat.
 
+### Treffer sind Fremdinhalt
+
+Fundstellen können Anweisungen enthalten, die jemand in ein Dokument geschrieben hat (Epic #3008,
+BSI-Basisschutz „Indirect Prompt Injections“, Abschnitt 2.2). Ein fremdes Werkzeug hat oft eigene
+Fähigkeiten, eine befolgte Anweisung richtet dort mehr an als im Chat von OPAA. Der Server
+kennzeichnet deshalb jeden Treffer von `search` und jede Fundstelle von `fetch`:
+
+- das Feld `untrustedContent: true` je Eintrag und den Hinweis `contentNotice` je Ergebnis;
+- den Text in einem Block `<fremdinhalt kennung="…">…</fremdinhalt kennung="…">` mit einer Kennung
+  je Ergebnis (`io.opaa.common.ContentFence`); aus Text, Titel, Dateiname, Fundort, Gliederung und
+  Metadaten wird vorher das Wort `fremdinhalt` entfernt, in jeder Groß- und Kleinschreibung, in
+  Vollbreitenzeichen und mit unsichtbaren Zeichen dazwischen, wiederholt bis nichts mehr übrig ist
+  und vor dem Schnitt des Auszugs;
+- einen Satz in den Beschreibungen von `search` und `fetch` und im voreingestellten Einleitungstext.
+  Ein von der Verwaltung geänderter Einleitungstext bleibt beim Update unverändert.
+
+Was das fremde Modell daraus macht, entscheidet der Client; der Server filtert und kürzt nichts nach
+Mustern.
+
 ### Protokollfassungen und ihr Wechsel
 
 Der SSE-Transport der Vorgängerfassung ist bereits abgekündigt; die Fassung, die dieser Kanal spricht,

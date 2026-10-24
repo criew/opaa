@@ -66,11 +66,13 @@ Liegt die Korrektur im Basis-Image, entsteht das Patch-Release aus demselben Cod
 das Tag `X.Y` verwendet, erhält ein Patch-Release mit dem nächsten Pull; wer `X.Y.Z` pinnt, wechselt
 bewusst.
 
-**Heute nur die jüngste Linie.** Patch-Releases für ältere Linien sind
-[noch nicht gebaut](#was-nicht-gebaut-ist). Bis dahin bekommt nur die jüngste Linie Patch-Releases,
-und eine Korrektur im Code nur, solange `main` seit ihrem letzten Release keine neue Funktion trägt;
-sonst erscheint sie mit dem nächsten Funktionsrelease. Eine ältere Linie bekommt keine Korrektur.
-Bis zum zweiten finalen Release gibt es ohnehin nur eine Linie.
+**Wartungsbranches.** Jede Linie wird auf einem eigenen Wartungsbranch gepflegt, die jüngste
+ebenso wie ältere. Eine Korrektur im Code kommt zuerst in den laufenden Entwicklungsstand `main`
+und von dort auf jede unterstützte Linie, die sie betrifft. Jedes Patch-Release entsteht auf dem
+Wartungsbranch seiner Linie; ein Patch-Release aus `main` lehnt der Release-Lauf ab. So enthält
+ein Patch-Release nie Funktionen einer neueren Linie. Ältere Linien gibt es ab dem zweiten finalen
+Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstützten Linie
+([Schwachstellen](#schwachstellen)).
 
 ## Was ein Release liefert
 
@@ -138,7 +140,8 @@ Update-Paket.
 ## Schwachstellen
 
 - **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
-  prüft die Images von `main` und des jüngsten Release.
+  prüft die Images von `main` und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
+  deren Supportende.
 - **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
 - **Melden:** Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
@@ -158,10 +161,6 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Patch-Releases für ältere Linien über eigene Wartungsbranches; bis dahin bekommt nur die
-  jüngste Linie Korrekturen ([#3017](https://github.com/criew/opaa/issues/3017)).
-- Der Schwachstellen-Scan aller unterstützten Linien; heute prüft er nur das jüngste Release
-  ([#3018](https://github.com/criew/opaa/issues/3018)).
 - Im Update-Paket eines LTS das Delta zur vorigen LTS-Linie; heute enthält es das Delta zum vorigen
   finalen Release ([#3020](https://github.com/criew/opaa/issues/3020)).
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang

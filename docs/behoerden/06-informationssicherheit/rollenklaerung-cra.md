@@ -63,7 +63,7 @@ ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
    öffentlichen Issue.
 3. **Updates einspielen und [Security Advisories](https://github.com/criew/opaa/security/advisories)
    verfolgen:** Sicherheitskorrekturen erhalten `main` und jede unterstützte Linie bis zu ihrem
-   Supportende, derzeit nur die jüngste Linie ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume),
+   Supportende ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume),
    [unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
 
 ## Gut zu wissen

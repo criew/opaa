@@ -114,28 +114,26 @@ describe('DocumentTextPreviewDialog', () => {
       expect((window as unknown as { __pwned?: boolean }).__pwned).toBeUndefined()
     })
 
-    it('strips a javascript: URL from a Markdown link instead of rendering it as href', () => {
+    it('shows a javascript: link as text instead of rendering it as href', () => {
       renderWithProviders(
         <DocumentTextPreviewDialog
           previewDocument={markdownDoc("[Klick mich](javascript:alert('x'))")}
           onClose={vi.fn()}
         />,
       )
-      const link = screen.getByText('Klick mich').closest('a')
-      expect(link).not.toBeNull()
-      expect(link).not.toHaveAttribute('href', expect.stringContaining('javascript:'))
+      expect(screen.getByText(/Klick mich/).closest('a')).toBeNull()
+      expect(document.querySelector('a[href^="javascript:"]')).toBeNull()
     })
 
-    it('strips a javascript: URL from a Markdown image src', () => {
+    it('never renders an image, a javascript: one included', () => {
       renderWithProviders(
         <DocumentTextPreviewDialog
           previewDocument={markdownDoc("![Bild](javascript:alert('x'))")}
           onClose={vi.fn()}
         />,
       )
-      const img = document.querySelector('img')
-      expect(img).toBeInTheDocument()
-      expect(img).not.toHaveAttribute('src', expect.stringContaining('javascript:'))
+      expect(document.querySelector('img')).toBeNull()
+      expect(screen.getByText(/\[Bild: Bild\]/)).toBeInTheDocument()
     })
   })
 })

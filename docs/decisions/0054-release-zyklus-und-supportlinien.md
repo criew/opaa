@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-23
+Akzeptiert · zuletzt geändert 2026-10-24
 
 ## Kontext
 
@@ -92,7 +92,7 @@ Eine Korrektur landet zuerst auf `main` und kommt per PR mit `git cherry-pick -x
 unterstützten Branch, den sie betrifft; nur wo `main` den Code nicht mehr hat, entsteht sie direkt
 auf dem Branch. Patch-Tags liegen auf `release/X.Y`. Rulesets, CI, Renovate (nur Patch-Updates und
 Basis-Images) und der nächtliche CVE-Scan behandeln jeden unterstützten Branch bzw. das jüngste
-Patch-Release jeder unterstützten Linie wie `main` bzw. heute das jüngste Release. Ein Branch, dessen
+Patch-Release jeder unterstützten Linie wie `main`. Ein Branch, dessen
 Linie ausgelaufen ist, bleibt bestehen und wird nicht mehr gepflegt.
 
 ## Konsequenzen
@@ -105,10 +105,11 @@ Zusage des Projekts über seine Kräfte.
 **Schwieriger:** Meist laufen zwei Linien nebeneinander, in den Wochen nach einem Juni-Release
 drei. Der Wechsel von LTS zu LTS hat kaum Übergangszeit; eine Behörde muss ihn anhand des
 Release-Kandidaten vorbereiten, damit sie das finale Release vor dem Supportende einspielen kann. Jeder Sicherheitsfix und jede Behebung eines kritischen Fehlers im Code braucht je Linie einen Backport mit eigenem CI-Lauf; je Linie
-kommen Renovate-PRs und vier Scans pro Nacht (zwei Images, zwei Plattformen) hinzu. Release-Workflow,
-Rulesets, CVE-Scan, Renovate und Update-Paket brauchen Umbauten (#3017–#3020). Bis `release/X.Y`
-gebaut ist (#3017), bekommt nur die jüngste Linie Patch-Releases, und ein Fix im Code erscheint
-dort nur, solange `main` keine neue Funktion trägt.
+kommen Renovate-PRs und vier Scans pro Nacht (zwei Images, zwei Plattformen) hinzu. Das
+Update-Paket braucht einen Umbau (#3020). Renovate und der CVE-Scan pflegen bzw. prüfen eine Linie
+bis zu ihrem Supportende, das in einer Liste im Repository steht. Der Release-Workflow nimmt Tags von
+`main` und vom Wartungsbranch ihrer Linie an; ein Patch-Release einer älteren Linie wird auf GitHub
+nicht „Latest“, damit die jüngste Linie ihre Markierung behält.
 
 **Restrisiken:** Abhängigkeiten außerhalb der Versionsverwaltung von Spring Boot (Spring AI, Tika,
 Frontend-Bibliotheken, Basis-Images) haben eigene Supportzeiträume. Gibt es einen Fix nur mit

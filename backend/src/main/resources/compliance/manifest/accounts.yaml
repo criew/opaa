@@ -231,6 +231,11 @@ data:
         nonPersonalColumns: [id, enabled, daily_limit, updated_at]
         person:
           columns: [updated_by]
+      - name: link_target_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, allowed_origins, updated_at]
+        person:
+          columns: [updated_by]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur nächsten Änderung der Einstellung
@@ -469,6 +474,15 @@ settings:
       Vollständige Exporte der Selbstauskunft je Person und Kalendertag; Starts je Tag höchstens
       Tagesgrenze plus vier
     bearings: [DATA]
+  - key: link_target_settings.allowed_origins
+    source: DATABASE
+    defaultValue: leer
+    range: höchstens 50 Ziele, je Schema https oder http, Host und optional Port
+    effect: >-
+      Erlaubte Linkziele: Links in Antworten sind nur zur eigenen Adresse der Anwendung und zu
+      diesen Zielen klickbar, alle anderen erscheinen als Text. Begrenzt, wohin ein Klick Inhalte
+      aus einer Antwort tragen kann; wirkt ohne Neustart auf allen Instanzen
+    bearings: [DATA_FLOW]
 roles:
   - id: USER
     seesAboutOthers: >-

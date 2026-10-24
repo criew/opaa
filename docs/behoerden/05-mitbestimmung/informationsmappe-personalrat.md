@@ -1,8 +1,8 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
-rechtsstand: 2026-10-23
+rechtsstand: 2026-10-24
 pruefvermerk: nicht rechtlich geprüft
 naechste-durchsicht: 2027-04-23
 ---
@@ -145,7 +145,7 @@ Personalrat erfährt es danach.
 | Manifest | Beschreibung im Programmcode, aus der die Faktenblätter entstehen; Prüfungen halten sie mit dem Code gleich |
 | Update-Paket | Unterlagen zu jedem Release: Faktenblätter, Delta, Betriebsfolgen |
 | Delta | Liste der Änderungen gegenüber einer früheren Version, je Änderung mit Stufenvorschlag |
-| Linie, LTS | Versionen einer Reihe, die Sicherheitsupdates ohne neue Funktionen bekommen sollen; LTS ist die Linie mit dem längsten Support. Heute bekommt nur die jüngste Linie solche Updates |
+| Linie, LTS | Versionen einer Reihe, die Sicherheitsupdates ohne neue Funktionen bekommen sollen; LTS ist die Linie mit dem längsten Support |
 | Release-Kandidat | Vorabfassung einer Version, an der die Beteiligung beginnen kann |
 | Space | Arbeitsbereich mit Chats und den ihm zugeordneten Bibliotheken |
 | System-Prompt | feste Anweisung von OPAA an das Sprachmodell, die bei jeder Frage mitgeht |
@@ -181,4 +181,4 @@ Personalrat erfährt es danach.
 |---|---|
 | Unterrichtung des Personalrats mit den erforderlichen Unterlagen | § 66 Abs. 1 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__66.html) |
 | Mitbestimmung bei technischen Einrichtungen zur Überwachung | § 80 Abs. 1 Nr. 21 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__80.html) |
-| Personalvertretungsgesetz des Landes | zu prüfen |
+| Personalvertretungsgesetz des Landes | [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |

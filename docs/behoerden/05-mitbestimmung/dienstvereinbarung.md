@@ -1,8 +1,8 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
-rechtsstand: 2026-10-23
+rechtsstand: 2026-10-24
 pruefvermerk: nicht rechtlich geprüft
 naechste-durchsicht: 2027-04-23
 ---
@@ -12,7 +12,8 @@ naechste-durchsicht: 2027-04-23
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
 **Gilt für:** Behörden mit Personalrat. Bundesbehörden folgen dem Bundespersonalvertretungsgesetz,
-Landes- und Kommunalbehörden dem Personalvertretungsgesetz ihres Landes. Betriebe mit Betriebsrat
+Landes- und Kommunalbehörden dem Personalvertretungsgesetz ihres Landes
+([Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md)). Betriebe mit Betriebsrat
 sind nicht erfasst.
 
 Eine Dienstvereinbarung ist ein Vertrag zwischen Dienststelle und Personalrat, der eine
@@ -42,11 +43,10 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
   [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln). Das Delta im Paket
   vergleicht mit dem vorigen finalen Release; für einen größeren Sprung erzeugt der Betrieb es selbst
   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
-- **Supportlinien:** Im Zielbild bringen Patch-Releases nur Sicherheitskorrekturen und Behebungen
-  kritischer Fehler. Heute bekommt nur die jüngste Linie Patch-Releases, und ein Patch-Release mit
-  Codeänderung enthält alles, was seit dem letzten Release dazukam, außer neuen Funktionen
+- **Supportlinien:** Patch-Releases bringen nur Sicherheitskorrekturen und Behebungen kritischer
+  Fehler, für ältere Linien über eigene Wartungsbranches
   ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Den
-  Schutz gibt deshalb die Sichtung des Deltas vor dem Einspielen.
+  Schutz gibt zusätzlich die Sichtung des Deltas vor dem Einspielen.
 - Die [Informationsmappe für den Personalrat](informationsmappe-personalrat.md) erklärt all das in
   Alltagssprache.
 
@@ -56,7 +56,8 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
 2. **Personalrat früh einbinden:** Informationsmappe übergeben, Testinstanz anbieten, schon vor einer
    Teststellung mit echten Beschäftigten.
 3. **Mustertext anpassen:** Angaben in eckigen Klammern ersetzen, Optionen wählen, Nummern streichen,
-   die die eingesetzte Version nicht betreffen, Landesrecht prüfen lassen.
+   die die eingesetzte Version nicht betreffen, Landesrecht prüfen lassen
+   ([Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md)).
 4. **Anlagen zusammenstellen** und jede mit Version und Commit aus dem Kopf des Faktenblatts
    beschriften.
 5. **Rollen benennen:** wer Systemverwaltung, Revision und Datenbankbetrieb wahrnimmt und wer bei
@@ -318,15 +319,13 @@ in der Installation abgeschaltet ist und bis zur Zustimmung abgeschaltet bleibt;
 hält das als Auflage fest. Lässt sich eine solche Funktion nicht abschalten, wartet das Update.
 
 (10) **Sicherheitsupdates:** Ein Patch-Release einer unterstützten Linie bringt keine neue Funktion;
-im Zielbild enthält es nur Sicherheitskorrekturen und Behebungen kritischer Fehler, heute alles seit
-dem letzten Release außer neuen Funktionen. [Stelle] sichtet deshalb vor dem Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
+es enthält nur Sicherheitskorrekturen und Behebungen kritischer Fehler. [Stelle] sichtet vor dem
+Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
 der Personalrat erhält den Update-Vermerk binnen [fünf] Arbeitstagen. Sonst gilt Absatz 9, für eine Sicherheitskorrektur Absatz 11.
 
 (11) Steht eine Sicherheitskorrektur nur in einem Funktionsupdate oder einem Patch-Release mit einer
 Änderung der Stufe Zustimmung bereit, darf die Dienststellenleitung es als vorläufige Maßnahme sofort
-einspielen. Das ist der Fall, wenn die eingesetzte Linie ausgelaufen ist oder wenn nur die jüngste
-Linie Patch-Releases bekommt und das Projekt die Korrektur deshalb mit dem nächsten Funktionsrelease
-ausliefert. Dann gilt:
+einspielen. Das ist etwa der Fall, wenn die eingesetzte Linie ausgelaufen ist. Dann gilt:
 
 1. Funktionen der Stufe Zustimmung, die sich abschalten lassen, werden abgeschaltet und bleiben es
    bis zur Zustimmung.
@@ -411,12 +410,11 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 
 ## Gut zu wissen
 
-- **Supportlinien heute und im Zielbild:** Im Zielbild bekommt jede unterstützte Linie
-  Patch-Releases ohne neue Funktion, und das Juni-Release ist eine LTS-Linie mit rund zwölf Monaten
-  Support. Heute bekommt nur die jüngste Linie Patch-Releases, und eine Korrektur im Code erscheint
-  nur dann als Patch-Release, wenn seit dem letzten Release keine neue Funktion hinzugekommen ist
-  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Bis
-  dahin ist Nummer 15 Absatz 11 der Regelfall für Sicherheitskorrekturen im Code.
+- **Supportlinien:** Jede unterstützte Linie bekommt Patch-Releases ohne neue Funktion, ältere
+  Linien über eigene Wartungsbranches, und das Juni-Release ist eine LTS-Linie mit rund zwölf
+  Monaten Support ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)).
+  Nummer 15 Absatz 11 bleibt für den Fall, dass eine Korrektur nur in einem Funktionsupdate
+  bereitsteht, etwa nach dem Supportende der eingesetzten Linie.
 - **Zeit für den Linienwechsel:** Der Release-Kandidat eines LTS erscheint nur wenige Wochen vor dem
   Supportende der laufenden LTS-Linie. Wer mehr Zeit braucht, beginnt mit dem Delta zum
   Dezember-Release (Nummer 15 Absatz 12).
@@ -460,8 +458,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 | Zustimmungsverfahren und Fristen | § 70 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__70.html) |
 | Vorläufige Maßnahmen, etwa ein dringendes Sicherheitsupdate | § 76 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__76.html) |
 | Einigungsstelle | §§ 72 bis 75 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__72.html) |
-| Hinzuziehung Sachverständiger und Kostentragung | zu prüfen |
-| Kündigung und Nachwirkung von Dienstvereinbarungen | zu prüfen |
-| Personalvertretungsgesetz des Landes, mit eigenen Tatbeständen und Fristen | zu prüfen |
+| Kosten der Personalratstätigkeit | § 46 Abs. 1 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__46.html) |
+| Hinzuziehung Sachverständiger | im BPersVG nicht ausdrücklich geregelt; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
+| Kündigung und Nachwirkung von Dienstvereinbarungen | im BPersVG nicht ausdrücklich geregelt; § 63 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__63.html) regelt Zulässigkeit und Form ohne Kündigung oder Nachwirkung; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
+| Personalvertretungsgesetz des Landes, mit eigenen Tatbeständen und Fristen | [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
 | Vereinbarungen nach Hamburger Personalvertretungsrecht | zu prüfen |
 | Daten über Beschäftigte | § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht |

@@ -45,8 +45,8 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 - Gemeldete Lücken bearbeitet das Projekt nach bestem Bemühen, ohne zugesagte Frist. Wer eine Version
   länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
-- Bis das Projekt Wartungsbranches betreibt, bekommt nur die jüngste Linie Korrekturen, und der
-  Schwachstellen-Scan prüft nur das jüngste Release.
+- Ältere Linien bekommen Korrekturen über eigene Wartungsbranches; der Schwachstellen-Scan prüft
+  `main` und das jüngste Patch-Release jeder unterstützten Linie.
 - Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 - Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist nicht gebaut.

@@ -37,7 +37,8 @@ import tools.jackson.databind.json.JsonMapper;
  * passage and in full.
  *
  * <p>Every result is delivered twice: as {@code structuredContent} for a client that reads it, and
- * as one JSON text block for the many that only read text.
+ * as one JSON text block for the many that only read text. Document content in a result is labelled
+ * as foreign content ({@link McpForeignContent}).
  *
  * <p>A refusal from the domain - an exhausted quota, an unknown or foreign hit - becomes an error
  * <em>result</em>, not a transport error: a tool result is what the calling model can act on, and a
@@ -114,10 +115,14 @@ class McpTools {
       // and the server-side cap of the search still bounds the number.
       SearchOutcome outcome =
           searchService.search(caller, query, libraryIds, null, digest.passagesFor(maxHits));
+      McpForeignContent foreign = McpForeignContent.forResult();
       Map<String, Object> result = new LinkedHashMap<>();
+      result.put(McpForeignContent.NOTICE_FIELD, McpForeignContent.NOTICE);
       result.put(
           "results",
-          digest.condense(outcome.hits(), query, maxHits).stream().map(McpTools::asMap).toList());
+          digest.condense(outcome.hits(), query, maxHits).stream()
+              .map(entry -> asMap(entry, foreign))
+              .toList());
       result.put(
           "searchedLibraries",
           outcome.searchedLibraries().stream()
@@ -158,7 +163,10 @@ class McpTools {
             "Es fehlt die Angabe, was gelesen werden soll: entweder „id“ — das Feld „id“ eines"
                 + " Treffers aus search — oder „documentId“, die Dokumentkennung eines Treffers.");
       }
-      return result(asMap(passage));
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put(McpForeignContent.NOTICE_FIELD, McpForeignContent.NOTICE);
+      result.putAll(asMap(passage, McpForeignContent.forResult()));
+      return result(result);
     } catch (NotFoundException | TooManyRequestsException e) {
       return error(e.getMessage());
     }
@@ -177,19 +185,22 @@ class McpTools {
   /**
    * One document, shown with its best passage: {@code id} and {@code text} belong to that passage,
    * {@code moreHits} names the document's further passages with their own ids, so a second
-   * occurrence can be fetched without being paid for in the hit list.
+   * occurrence can be fetched without being paid for in the hit list. The text stands in the
+   * foreign-content block of the result.
    */
-  private static Map<String, Object> asMap(McpHitDigest.Entry condensed) {
+  private static Map<String, Object> asMap(
+      McpHitDigest.Entry condensed, McpForeignContent foreign) {
     SearchHit hit = condensed.best();
     Map<String, Object> entry = new LinkedHashMap<>();
     entry.put("id", hit.hitId());
-    entry.put("title", hit.title());
-    entry.put("text", condensed.excerpt());
+    entry.put(McpForeignContent.FLAG, true);
+    entry.put("title", McpForeignContent.strip(hit.title()));
+    entry.put("text", foreign.wrap(condensed.excerpt()));
     entry.put("libraryId", hit.libraryId() == null ? null : hit.libraryId().toString());
     entry.put("library", hit.libraryName());
     entry.put("documentId", hit.documentId() == null ? null : hit.documentId().toString());
-    entry.put("document", hit.fileName());
-    entry.put("location", hit.location());
+    entry.put("document", McpForeignContent.strip(hit.fileName()));
+    entry.put("location", McpForeignContent.strip(hit.location()));
     entry.put("score", hit.relevanceScore());
     entry.put(
         "moreHits",
@@ -198,7 +209,7 @@ class McpTools {
                 further -> {
                   Map<String, Object> mapped = new LinkedHashMap<>();
                   mapped.put("id", further.hitId());
-                  mapped.put("location", further.location());
+                  mapped.put("location", McpForeignContent.strip(further.location()));
                   return mapped;
                 })
             .toList());
@@ -206,17 +217,22 @@ class McpTools {
     return entry;
   }
 
-  private static Map<String, Object> asMap(FetchedPassage passage) {
+  private static Map<String, Object> asMap(FetchedPassage passage, McpForeignContent foreign) {
     Map<String, Object> entry = new LinkedHashMap<>();
     entry.put("id", passage.hitId());
-    entry.put("title", passage.title());
-    entry.put("text", passage.text());
+    entry.put(McpForeignContent.FLAG, true);
+    entry.put("title", McpForeignContent.strip(passage.title()));
+    entry.put("text", foreign.wrap(passage.text()));
     entry.put("libraryId", passage.libraryId() == null ? null : passage.libraryId().toString());
     entry.put("library", passage.libraryName());
     entry.put("documentId", passage.documentId() == null ? null : passage.documentId().toString());
-    entry.put("document", passage.fileName());
-    entry.put("location", passage.location());
-    entry.put("headingPath", passage.headingPath());
+    entry.put("document", McpForeignContent.strip(passage.fileName()));
+    entry.put("location", McpForeignContent.strip(passage.location()));
+    entry.put(
+        "headingPath",
+        passage.headingPath() == null
+            ? null
+            : passage.headingPath().stream().map(McpForeignContent::strip).toList());
     entry.put("whole", passage.whole());
     entry.put("truncated", passage.truncated());
     entry.put("metadata", metadata(passage.metadata()));
@@ -239,9 +255,11 @@ class McpTools {
         .map(
             entry -> {
               Map<String, Object> mapped = new LinkedHashMap<>();
-              mapped.put("label", entry.label());
+              mapped.put("label", McpForeignContent.strip(entry.label()));
               mapped.put(
-                  "value", entry.displayValue() == null ? entry.value() : entry.displayValue());
+                  "value",
+                  McpForeignContent.strip(
+                      entry.displayValue() == null ? entry.value() : entry.displayValue()));
               return mapped;
             })
         .toList();

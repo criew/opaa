@@ -41,7 +41,7 @@
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
 > (#2562, #2563, #2566) und die
 > Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3017–#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -616,17 +616,16 @@ passenden Vorschlag, und die neue Fassung der Anlagen ersetzt die alte erst nach
 nachträglicher Unterrichtung des Personalrats. Das trägt nur, wenn sie keine neuen Funktionen
 enthalten — deshalb verweist die Vereinbarung auf die
 [Supportlinien](../releases.md#supportlinien) mit festem Zeitraum: Patch-Releases einer Linie
-bringen keine neue Funktion. Bis die Wartungsbranches gebaut sind (#3017), entsteht ein
-Patch-Release mit Codeänderung nur, solange `main` keine neue Funktion trägt
-([releases.md](../releases.md#versionsnummern)). Ein **Funktionsupdate** wird erst nach Abschluss
+bringen keine neue Funktion; eine Korrektur im Code kommt per
+[Backport](../releases.md#backport) auf den Wartungsbranch der Linie. Ein **Funktionsupdate** wird erst nach Abschluss
 der Stufe eingespielt, vorher nur, wenn jede Funktion der Stufe Zustimmung in der Installation
 abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Beim **Wechsel der
 Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
 eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
 (bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
 erneut gestuft. Alle Deltas erzeugt der Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
-Sicherheitskorrektur nur in einem Funktionsupdate bereit (heute der Regelfall für Korrekturen im
-Code, solange nur die jüngste Linie Patch-Releases bekommt), darf die Dienststellenleitung es als
+Sicherheitskorrektur nur in einem Funktionsupdate bereit (etwa weil die eingesetzte Linie ausgelaufen
+ist oder sich die Korrektur nicht zurückportieren lässt), darf die Dienststellenleitung es als
 vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine
 nicht abschaltbare zustimmungspflichtige Änderung wird bis zur Zustimmung weder genutzt noch
 ausgewertet, der Personalrat wird unverzüglich unterrichtet und die Beteiligung nachgeholt

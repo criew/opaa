@@ -125,6 +125,9 @@ class IdentitySelfDisclosureIntegrationTest {
         "absender-2990@dienst.example",
         "Absendername 2990",
         person.getId());
+    jdbc.update(
+        "UPDATE link_target_settings SET updated_by = ?, updated_at = now() WHERE id = 1",
+        person.getId());
 
     Map<String, String> zip = export();
 
@@ -138,7 +141,7 @@ class IdentitySelfDisclosureIntegrationTest {
         .contains("\"title\":\"Sitzungen und Links\"", "ACCOUNT_LOCKED", "RESET_PASSWORD");
     assertThat(zip.get("account-state-history.json"))
         .contains("\"title\":\"Kontozustände\"", "DIRECTORY_LOCKED");
-    assertThat(zip.get("settings-editors.json")).contains("E-Mail-Versand");
+    assertThat(zip.get("settings-editors.json")).contains("E-Mail-Versand", "Erlaubte Linkziele");
     String all = String.join("\n", zip.values());
     for (String secret : SECRETS) {
       assertThat(all).as("secret %s", secret).doesNotContain(secret);

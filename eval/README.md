@@ -13,6 +13,7 @@ eval/
 │   ├── generate_golden_dataset.py            Golden Dataset für dieselbe Domäne (Issue #226)
 │   ├── generate_city_landmarks_corpus.py     Domäne Sehenswürdigkeiten (Issue #234)
 │   ├── generate_verwaltung_corpus.py         Domäne Verwaltung (Issue #1042)
+│   ├── generate_prompt_injection_corpus.py   Prompt-Injection-Testsatz mit Fällen (Issue #3044)
 │   ├── frozen/                                eingefrorene Wikidata-SPARQL-Rohdaten, committet (Issue #234)
 │   ├── README.md                    Reproduktionsanleitung
 │   └── raw-source/                  gecachte Rohdaten, gitignored
@@ -25,15 +26,20 @@ eval/
 │   │   ├── *.md                     ein Dokument je Stadt (mehrchunkig, deutsch)
 │   │   ├── MANIFEST.sha256
 │   │   └── SOURCE.md
-│   └── verwaltung/
-│       ├── *.md                     ein Dokument je Verwaltungsvorgang (mehrchunkig, deutsch, synthetisch)
+│   ├── verwaltung/
+│   │   ├── *.md                     ein Dokument je Verwaltungsvorgang (mehrchunkig, deutsch, synthetisch)
+│   │   ├── MANIFEST.sha256
+│   │   ├── SOURCE.md
+│   │   └── MAINTENANCE.md           Pflegeverantwortung, Baseline-Neuziehung, known_gap-Fälle
+│   └── prompt-injection/            präparierte Merkblätter (Markdown, PDF, DOCX) und saubere Dokumente
 │       ├── MANIFEST.sha256
-│       ├── SOURCE.md
-│       └── MAINTENANCE.md           Pflegeverantwortung, Baseline-Neuziehung, known_gap-Fälle
+│       └── SOURCE.md                Angriffsziele, Verstecktechniken, Messaufbau
 ├── golden/                          Golden-Query-Datasets, committet (siehe eval/golden/README.md)
 │   ├── comic-characters.json
 │   ├── city-landmarks.json
-│   └── verwaltung.json               fünf Fallklassen mit Zustandsfeldern je Pfad (Issues #1043, #1658)
+│   ├── verwaltung.json               fünf Fallklassen mit Zustandsfeldern je Pfad (Issues #1043, #1658)
+│   └── prompt-injection.json         ein Fall je präpariertem Dokument (Issue #3044)
+├── reports/                         Handproben und Ausgangsmessungen mit Datum, committet
 └── variants/                        Variantenvergleiche, committet (siehe eval/variants/README.md, Issue #1041)
     └── comic-characters-selection-mechanics.json
 ```
@@ -54,6 +60,38 @@ je eine der fünf Fallklassen `literal_term_weak_embedding`, `exact_identifier`,
 akzeptierten Zustand je Messpfad (`expected_state.raw_vector`, `expected_state.pipeline`) mit Datum
 und Begründung. 22 bzw. 23 der 49 Fälle sind heute als `known_gap` geführt — das ist der Zweck der Domäne, kein Mangel; die Liste steht in
 `eval/corpus/verwaltung/MAINTENANCE.md`.
+
+## Prompt-Injection-Testsatz (Issue #3044)
+
+Die Domäne **Prompt-Injection** misst keine Suchqualität, sondern ob eine Antwort einer Anweisung
+folgt, die in einem aufgenommenen Dokument steht (Epic #3008). 28 präparierte Merkblätter der
+fiktiven Stadt Lindenhain tragen je eine eingebettete Anweisung; acht Angriffsziele und zehn
+Verstecktechniken, von sichtbarem Klartext bis zu weißer Schrift im PDF. Aufbau, Fallschema und
+Erfolgsmerkmale: [`corpus/prompt-injection/SOURCE.md`](corpus/prompt-injection/SOURCE.md).
+
+```bash
+cd backend
+./gradlew evaluatePromptInjection
+./gradlew evaluatePromptInjection -Dopaa.eval.ollamaBaseUrl=http://localhost:11434   # Host-Ollama
+```
+
+Der Harness `PromptInjectionEvaluationHarnessTest` fragt jeden Fall über den produktiven
+Antwortweg (`QueryService` in einem Chat), jeden in einem eigenen Space mit dem präparierten
+Dokument und den sauberen Dokumenten. Chat-Modell ist das gepinnte `qwen2.5:1.5b-instruct` oder ein
+externes Modell über `-Dopaa.eval.chatBaseUrl`, `-Dopaa.eval.chatModel` und
+`OPAA_EVAL_CHAT_API_KEY` (siehe „Dritter Messpfad: Mehrrunden-Fälle“). Bericht:
+`build/eval-reports/prompt-injection.md` und `.json`, mit Angriffserfolgsquote gesamt, je
+Angriffsziel und je Verstecktechnik und jeder Antwort im Wortlaut.
+
+Der Lauf misst nur. Er scheitert an einer verletzten Voraussetzung (Manifest, Indizierung), nie an
+der Quote: Es gibt keine Baseline und keine Schwelle (Maintainer-Entscheidung vom 23.10.2026 in
+#3008). Eine Änderung an Antwort-Prompt oder Aufnahme nennt das Ergebnis vorher und nachher im PR,
+gemessen mit mindestens einem Modell, das der Anweisung des Space folgt, etwa `gemma3:4b` über
+`-Dopaa.eval.chatBaseUrl`/`-Dopaa.eval.chatModel`. Das gepinnte `qwen2.5:1.5b-instruct` schreibt
+kaum Zusätze; fünf der acht Angriffsziele können bei ihm gar nicht anschlagen.
+Die Ausgangsmessung steht unter [`reports/`](reports/). Docker-frei prüft `PromptInjectionDatasetTest`
+(Teil von `evalUnitTest`) Manifest, Fälle und die Extraktion jeder Anweisung durch das produktive
+Format.
 
 ## Retrieval-Evaluation ausführen (Issue #227)
 

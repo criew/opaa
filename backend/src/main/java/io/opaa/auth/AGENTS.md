@@ -1,6 +1,7 @@
 # Modul identity
 
-Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification, selfdisclosure. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification, selfdisclosure, linktarget.
+Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -12,8 +13,7 @@ Branding, Mailversand, Benachrichtigungen und Selbstauskunft (Kategorien über `
 
 ## Invarianten und Stolpersteine
 
-- **Ohne Auth-Profil startet das Backend nicht** (`AuthProfileGuard`): Ohne die Filterkette eines
-  Modus stünde `/api/**` offen.
+- **Ohne Auth-Profil startet das Backend nicht** (`AuthProfileGuard`): ohne Filterkette stünde `/api/**` offen.
 - **`dev` ist ein echter Modus:** `DevAuthFilter` legt für jede Anfrage ein synthetisches `Jwt` in
   den Kontext, der Nutzer kommt aus einem Header, ein unbekanntes Subject ergibt `401`. Der Code
   dahinter kennt den aktiven Modus nicht.
@@ -31,9 +31,9 @@ Branding, Mailversand, Benachrichtigungen und Selbstauskunft (Kategorien über `
 - **Ein Sendeweg:** `MailService` meldet das Ergebnis, statt zu werfen; neue Anlässe bringen Vorlagen, keinen
   zweiten Weg. Ohne Wartenden geht die Mail per `enqueue` in der fachlichen Transaktion in die Outbox (ADR-0053).
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
-  (`BrandingImageValidator`).
+  (`BrandingImageValidator`). Erlaubte Linkziele ändert nur `LinkTargetSettingsService`, gelesen ohne Cache.
 - **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
-  `notification.web`, `selfdisclosure.web`; `audit.web.AuditedAdminCall` protokolliert
+  `notification.web`, `selfdisclosure.web`, `linktarget.web`; `audit.web.AuditedAdminCall` protokolliert
   `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
   `/api/v1/audit/access-as-of` in `revision.web`, `/api/v1/me` in `group.web`, Anbieter in `directory.web`.
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`), nie `local,dev`.
@@ -56,5 +56,5 @@ Branding, Mailversand, Benachrichtigungen und Selbstauskunft (Kategorien über `
 ```bash
 ./gradlew test --tests 'io.opaa.auth.*' --tests 'io.opaa.account.*' --tests 'io.opaa.audit.*' \
   --tests 'io.opaa.branding.*' --tests 'io.opaa.mail.*' --tests 'io.opaa.selfdisclosure.*' \
-  --tests 'io.opaa.architecture.*'
+  --tests 'io.opaa.linktarget.*' --tests 'io.opaa.architecture.*'
 ```
