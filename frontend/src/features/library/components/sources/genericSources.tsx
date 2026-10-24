@@ -12,7 +12,10 @@ import {
   filesystemIssue,
   type FilesystemSourceValues,
 } from '../../utils/filesystemSource'
-import { PathForm, StoredConnection, UrlForm } from './GenericSourceViews'
+import { StoredConnection, UrlForm } from './GenericSourceViews'
+import FilesystemForm from '../setup/forms/FilesystemForm'
+import { collectIssues } from '../setup/collectIssues'
+import { filesystemPatternsOf } from '../../utils/filesystemSource'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceConfiguration, SourceRegistration } from './types'
 
@@ -56,7 +59,19 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
       const segments = values.sourcePath.split(/[\\/]+/).filter(Boolean)
       return segments.length > 0 ? segments[segments.length - 1] : ''
     },
-    Form: PathForm,
+    validateAll: (values) =>
+      collectIssues(values, filesystemIssue, { sourcePath: '/pfad', excludePatterns: '' }),
+    summary: (values) => ({
+      connection: [
+        { label: 'Pfad', value: values.sourcePath.trim(), mono: true },
+        {
+          label: 'Ausschlussmuster',
+          value: filesystemPatternsOf(values.excludePatterns).join(' · ') || 'keine',
+          mono: true,
+        },
+      ],
+    }),
+    Form: FilesystemForm,
     StoredView: ({ library, libraryId }) => (
       <StoredConnection library={library} libraryId={libraryId} kind="path" />
     ),

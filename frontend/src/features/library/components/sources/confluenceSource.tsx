@@ -7,7 +7,10 @@ import {
   type ConfluenceSourceValues,
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
-import ConfluenceSourceForm from '../ConfluenceSourceForm'
+import ConfluenceForm, { pickedOfSpaces } from '../setup/forms/ConfluenceForm'
+import { issueAt, type SourceIssue } from '../../utils/sourceIssue'
+import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
+import { MAX_CONFLUENCE_SPACES } from '../../utils/confluenceSource'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -45,18 +48,47 @@ export const confluenceSource: SourceRegistration = {
       if (!first) return ''
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
-    Form: ({ values, onChange, context }) => (
-      <ConfluenceSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-confluence`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: ConfluenceSourceValues, context) => {
+      const issues: SourceIssue[] = []
+      const url = values.sourceUrl.trim()
+      if (!url) issues.push(issueAt('sourceUrl', 'Bitte die Adresse eingeben'))
+      else if (!/^https?:\/\//i.test(url)) {
+        issues.push(issueAt('sourceUrl', 'Die Adresse muss mit http:// oder https:// beginnen'))
+      }
+      const stored =
+        context.credentialsStored && sameLibrarySourceOrigin(context.originalSourceUrl, url)
+      if (connectionFields(context).asksSecret) {
+        if (values.edition !== 'DATA_CENTER' && values.email.trim() === '' && (!stored || values.token !== '')) {
+          issues.push(issueAt('email', 'Bitte die E-Mail-Adresse des Kontos eingeben'))
+        }
+        if (values.token.trim() === '' && !stored) {
+          issues.push(issueAt('token', 'Bitte das Token eingeben'))
+        }
+      }
+      if (values.spaces.length === 0) {
+        issues.push(issueAt('spaces', 'Bitte mindestens einen Space wählen'))
+      } else if (values.spaces.length > MAX_CONFLUENCE_SPACES) {
+        issues.push(issueAt('spaces', `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces je Bibliothek`))
+      }
+      return issues
+    },
+    summary: (values: ConfluenceSourceValues, context) => ({
+      connection: [
+        { label: 'Adresse', value: values.sourceUrl.trim(), mono: true },
+        { label: 'Edition', value: values.edition ? confluenceEditionLabel(values.edition) : '' },
+        {
+          label: 'Konto',
+          value: values.email.trim() || (context.credentialsStored ? 'gespeichert' : ''),
+        },
+      ],
+      selection: {
+        rootLabel: 'Confluence',
+        noun: { one: 'Space', many: 'Spaces' },
+        items: pickedOfSpaces(values.spaces),
+        empty: 'Kein Space gewählt',
+      },
+    }),
+    Form: ConfluenceForm,
     StoredView: ConfluenceStoredView,
     Scope: ConfluenceScope,
     scopeHero: {

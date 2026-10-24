@@ -7,7 +7,8 @@ import {
   googleDriveIssue,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import GoogleDriveSourceForm from '../GoogleDriveSourceForm'
+import GoogleDriveForm, { pickedOfDriveScopes } from '../setup/forms/GoogleDriveForm'
+import { issueAt, type SourceIssue } from '../../utils/sourceIssue'
 import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -40,17 +41,39 @@ export const googleDriveSource: SourceRegistration = {
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
-    Form: ({ values, onChange, context }) => (
-      <GoogleDriveSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-google-drive`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: GoogleDriveSourceValues, context) => {
+      const issues: SourceIssue[] = []
+      const first = (probe: GoogleDriveSourceValues) =>
+        connectionFields(context).asksSecret
+          ? googleDriveIssue(probe, context.credentialsStored)
+          : googleDriveIssue({ ...probe, storedSubject: probe.subject }, true)
+      const keyIssue = first({ ...values, scopes: [{ kind: 'drive', id: 'x', name: null }], subject: '' })
+      if (keyIssue && !keyIssue.field) issues.push(issueAt('keyFile', keyIssue.message))
+      const rest = first({ ...values, keyFile: values.keyFile || 'key' })
+      if (rest) {
+        issues.push(rest.field ? rest : issueAt('scopes', rest.message))
+        if (rest.field === 'subject' && values.scopes.length === 0) {
+          issues.push(issueAt('scopes', 'Bitte mindestens einen Bereich wählen.'))
+        }
+      }
+      return issues
+    },
+    summary: (values: GoogleDriveSourceValues, context) => ({
+      connection: [
+        {
+          label: 'Dienstkonto',
+          value: values.keyAccount || (context.credentialsStored ? 'Schlüssel gespeichert' : context.connection?.name ?? ''),
+        },
+        { label: 'Im Namen von', value: values.subject.trim() },
+      ],
+      selection: {
+        rootLabel: 'Google Drive',
+        noun: { one: 'Bereich', many: 'Bereiche' },
+        items: pickedOfDriveScopes(values.scopes),
+        empty: 'Kein Bereich gewählt',
+      },
+    }),
+    Form: GoogleDriveForm,
     StoredView: GoogleDriveStoredView,
     Scope: GoogleDriveScopeView,
     scopeHero: {

@@ -5,13 +5,19 @@ import type { SourceIssue } from '../../utils/sourceIssue'
 /** Marks the message of an issue in a helper text, so the field it describes can be found. */
 export const ISSUE_MARKER = 'data-source-issue'
 
-/** Hands the issue of a failed save to the source form, which shows it at its field. */
-export const SourceIssueContext = createContext<SourceIssue | null>(null)
+/** Hands the issues of a failed save to the source form, which shows each at its field. */
+export const SourceIssueContext = createContext<SourceIssue | readonly SourceIssue[] | null>(null)
 
-/** Looks up the message of the current issue for one form value, null for any other value. */
+/** The issues of the context as a list, whether one or several were handed down. */
+export function issueList(value: SourceIssue | readonly SourceIssue[] | null): SourceIssue[] {
+  if (!value) return []
+  return Array.isArray(value) ? [...value] : [value as SourceIssue]
+}
+
+/** Looks up the message of the current issues for one form value, null for any other value. */
 export function useSourceIssue(): (field: string) => string | null {
-  const issue = useContext(SourceIssueContext)
-  return (field) => (issue?.field === field ? issue.message : null)
+  const issues = issueList(useContext(SourceIssueContext))
+  return (field) => issues.find((issue) => issue.field === field)?.message ?? null
 }
 
 /**

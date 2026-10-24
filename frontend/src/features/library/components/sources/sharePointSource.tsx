@@ -7,10 +7,9 @@ import {
   validateSharePointValues,
   type SharePointSourceValues,
 } from '../../utils/sharePointSource'
-import SharePointSourceForm from '../SharePointSourceForm'
+import SharePointForm, { pickedOfLibraries } from '../setup/forms/SharePointForm'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
-import { formIssue, formIssueOf } from '../../utils/sourceIssue'
-import { connectionFields } from './sourceConnection'
+import { formIssue, formIssueOf, issueAt } from '../../utils/sourceIssue'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
@@ -45,16 +44,29 @@ export const sharePointSource: SourceRegistration = {
     toPayload: sharePointPayloadOf,
     nameFromSource: (values: SharePointSourceValues) =>
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',
+    validateAll: (values: SharePointSourceValues, context) => {
+      if (context.mode === 'create' && !context.connection) {
+        return [formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')]
+      }
+      const message = validateSharePointValues(values)
+      return message ? [issueAt('libraries', message)] : []
+    },
+    summary: (values: SharePointSourceValues, context) => ({
+      connection: [{ label: 'Zugang', value: context.connection?.name ?? '' }],
+      selection: {
+        rootLabel: 'Sites',
+        noun: { one: 'Eintrag', many: 'Einträge' },
+        items: pickedOfLibraries(values.libraries),
+        empty: 'Keine Dokumentbibliothek gewählt',
+      },
+    }),
     Form: ({ values, onChange, context }) => (
-      <SharePointSourceForm
+      <SharePointForm
         // listings belong to the profile they were made through; another one starts them afresh
         key={context.connection?.profileId ?? 'no-profile'}
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-sharepoint`}
-        libraryId={context.libraryId}
-        connection={connectionFields(context)}
         values={values}
         onChange={onChange}
+        context={context}
       />
     ),
     StoredView: SharePointStoredView,

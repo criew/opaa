@@ -6,9 +6,9 @@ import {
   dropboxIssue,
   type DropboxSourceValues,
 } from '../../utils/dropboxSource'
-import DropboxSourceForm from '../DropboxSourceForm'
+import DropboxForm from '../setup/forms/DropboxForm'
+import { pickedOfFolders } from '../setup/pathSelection'
 import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
-import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -37,15 +37,23 @@ export const dropboxSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
-    Form: ({ values, onChange, context }) => (
-      <DropboxSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-dropbox`}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: DropboxSourceValues) => {
+      const issue = dropboxIssue(values)
+      return issue ? [issue] : []
+    },
+    summary: (values: DropboxSourceValues, context) => ({
+      connection: [
+        { label: 'Zugang', value: context.connection?.name ?? '' },
+        { label: 'Bereich', value: values.teamSpace ? 'Team-Bereich' : 'Eigener Bereich' },
+      ],
+      selection: {
+        rootLabel: 'Dropbox',
+        noun: { one: 'Ordner', many: 'Ordner' },
+        items: pickedOfFolders(dropboxFoldersOf(values)),
+        empty: 'Die ganze Dropbox',
+      },
+    }),
+    Form: DropboxForm,
     StoredView: DropboxStoredView,
     Scope: DropboxScope,
     scopeHero: {

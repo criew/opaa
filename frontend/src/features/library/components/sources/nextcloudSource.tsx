@@ -7,7 +7,10 @@ import {
   nextcloudIssue,
   type NextcloudSourceValues,
 } from '../../utils/nextcloudSource'
-import NextcloudSourceForm from '../NextcloudSourceForm'
+import AccountFolderForm from '../setup/forms/AccountFolderForm'
+import { collectIssues } from '../setup/collectIssues'
+import { pickedOfFolders } from '../setup/pathSelection'
+import { MAX_NEXTCLOUD_FOLDERS } from '../../utils/nextcloudSource'
 import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -48,16 +51,45 @@ export const nextcloudSource: SourceRegistration = {
       const segments = folders[0].split('/').filter(Boolean)
       return segments[segments.length - 1] ?? ''
     },
+    validateAll: (values: NextcloudSourceValues, context) =>
+      collectIssues(values, (probe) => nextcloudSource.configuration!.validate(probe, context), {
+        sourceUrl: 'https://cloud.example.org',
+        username: 'konto',
+        appPassword: 'passwort',
+      }),
+    summary: (values: NextcloudSourceValues, context) => ({
+      connection: [
+        { label: 'Adresse', value: values.sourceUrl.trim(), mono: true },
+        {
+          label: 'Konto',
+          value: values.username.trim() || (context.credentialsStored ? 'gespeichert' : ''),
+        },
+      ],
+      selection: {
+        rootLabel: 'Nextcloud',
+        noun: { one: 'Ordner', many: 'Ordner' },
+        items: pickedOfFolders(nextcloudFoldersOf(values)),
+        empty: 'Die ganze Nextcloud',
+      },
+    }),
     Form: ({ values, onChange, context }) => (
-      <NextcloudSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-nextcloud`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
+      <AccountFolderForm<NextcloudSourceValues>
+        sourceType="NEXTCLOUD"
         values={values}
         onChange={onChange}
+        context={context}
+        accountKey="username"
+        secretKey="appPassword"
+        secretLabel="App-Passwort"
+        addressPlaceholder="https://cloud.example.org"
+        addressHint="Auch die WebDAV-Adresse wird angenommen."
+        rootLabel="Nextcloud"
+        credentialsOf={nextcloudCredentialsOf}
+        foldersOf={nextcloudFoldersOf}
+        keepsSecret={(current) =>
+          sameLibrarySourceOrigin(context.originalSourceUrl, current.sourceUrl)
+        }
+        max={MAX_NEXTCLOUD_FOLDERS}
       />
     ),
     StoredView: NextcloudStoredView,

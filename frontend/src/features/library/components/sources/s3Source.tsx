@@ -8,7 +8,9 @@ import {
   s3ValuesIssue,
   type S3SourceValues,
 } from '../../utils/s3Source'
-import S3SourceForm from '../S3SourceForm'
+import S3Form, { pickedOfScopes } from '../setup/forms/S3Form'
+import { collectIssues } from '../setup/collectIssues'
+import { S3_PROVIDER_LABELS } from '../../utils/s3Source'
 import { S3Scope, S3StoredView } from './S3SourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -56,18 +58,55 @@ export const s3Source: SourceRegistration = {
       const first = values.scopes.find((scope) => scope.bucket.trim() !== '')
       return first ? first.bucket.trim() : ''
     },
-    Form: ({ values, onChange, context }) => (
-      <S3SourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-s3`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
-        values={values}
-        onChange={onChange}
-      />
-    ),
+    validateAll: (values: S3SourceValues, context) => {
+      const kept =
+        !connectionFields(context).asksSecret ||
+        (context.credentialsStored &&
+          sameLibrarySourceOrigin(context.originalSourceUrl, values.sourceUrl))
+      const first = (probe: S3SourceValues) => s3ValuesIssue(probe, kept)
+      const validScopes = [{ bucket: 'bucket', prefix: '' }]
+      const connectionIssues = collectIssues({ ...values, scopes: validScopes }, first, {
+        sourceUrl: 'https://s3.example.org',
+        region: 'eu-central-1',
+        accessKey: 'key',
+        secretKey: 'secret',
+        sessionToken: '',
+      })
+      const repaired = {
+        ...values,
+        sourceUrl: 'https://s3.example.org',
+        region: 'eu-central-1',
+        accessKey: 'key',
+        secretKey: 'secret',
+        sessionToken: '',
+      }
+      const scopeIssue = s3ValuesIssue(repaired, kept)
+      return [
+        ...connectionIssues,
+        ...(scopeIssue
+          ? [{ ...scopeIssue, field: scopeIssue.field?.startsWith('scopes') ? 'scopes' : scopeIssue.field }]
+          : []),
+      ]
+    },
+    summary: (values: S3SourceValues, context) => ({
+      connection: [
+        { label: 'Anbieter', value: S3_PROVIDER_LABELS[values.provider] },
+        { label: 'Endpoint', value: values.sourceUrl.trim(), mono: true },
+        { label: 'Region', value: values.region.trim(), mono: true },
+        {
+          label: 'Access Key',
+          value: values.accessKey.trim() || (context.credentialsStored ? 'gespeichert' : ''),
+          mono: true,
+        },
+      ],
+      selection: {
+        rootLabel: 'Buckets',
+        noun: { one: 'Bereich', many: 'Bereiche' },
+        items: pickedOfScopes(values.scopes),
+        empty: 'Kein Bucket gewählt',
+      },
+    }),
+    Form: S3Form,
     StoredView: S3StoredView,
     Scope: S3Scope,
     scopeHero: {

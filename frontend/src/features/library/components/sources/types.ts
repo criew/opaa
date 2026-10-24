@@ -4,6 +4,21 @@ import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
+import type { PickedItem, PickerNoun } from '../setup/pickerTypes'
+
+/** The values of a source as the review step and the Reiter „Quelle" read them back. */
+export interface SourceSummary {
+  /** Address, account, way of connection and options, as label and value. */
+  connection: Array<{ label: string; value: string; mono?: boolean }>
+  /** The chosen objects; absent for a source without a selection (Dateisystem). */
+  selection?: {
+    rootLabel: string
+    noun: PickerNoun
+    items: PickedItem[]
+    /** What an empty selection means. */
+    empty: string
+  }
+}
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
 export interface StoredLibrarySource {
@@ -82,6 +97,10 @@ export interface SourceConfiguration<V> {
   isDirty: (values: V) => boolean
   /** The German rejection of the values, naming the field it concerns, or null when they may be sent. */
   validate: (values: V, context: SourceFormContext) => SourceIssue | null
+  /** Every rejection of the values at once, each naming its field where it has one. */
+  validateAll?: (values: V, context: SourceFormContext) => SourceIssue[]
+  /** The values read back for the review step and the Reiter „Quelle". */
+  summary?: (values: V, context: SourceFormContext) => SourceSummary
   /** The source fields of a LibraryRequest/LibraryUpdateRequest; call {@link validate} first. */
   toPayload: (values: V) => LibrarySourceConfigPayload
   /** The name the source already suggests for a new library, '' for none. */

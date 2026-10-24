@@ -7,7 +7,10 @@ import {
   smbIssue,
   type SmbSourceValues,
 } from '../../utils/smbSource'
-import SmbSourceForm from '../SmbSourceForm'
+import AccountFolderForm from '../setup/forms/AccountFolderForm'
+import { collectIssues } from '../setup/collectIssues'
+import { pickedOfFolders } from '../setup/pathSelection'
+import { MAX_SMB_FOLDERS } from '../../utils/smbSource'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
 import { connectionFields } from './sourceConnection'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
@@ -58,16 +61,43 @@ export const smbSource: SourceRegistration = {
         return share
       }
     },
+    validateAll: (values: SmbSourceValues, context) =>
+      collectIssues(values, (probe) => smbSource.configuration!.validate(probe, context), {
+        sourceUrl: 'smb://server/freigabe',
+        account: 'konto',
+        password: 'passwort',
+      }),
+    summary: (values: SmbSourceValues, context) => ({
+      connection: [
+        { label: 'Adresse', value: values.sourceUrl.trim(), mono: true },
+        {
+          label: 'Konto',
+          value: values.account.trim() || (context.credentialsStored ? 'gespeichert' : ''),
+        },
+      ],
+      selection: {
+        rootLabel: 'Freigabe',
+        noun: { one: 'Ordner', many: 'Ordner' },
+        items: pickedOfFolders(smbFoldersOf(values)),
+        empty: 'Die ganze Freigabe',
+      },
+    }),
     Form: ({ values, onChange, context }) => (
-      <SmbSourceForm
-        mode={context.mode}
-        idPrefix={`${context.idPrefix}-smb`}
-        libraryId={context.libraryId}
-        credentialsStored={context.credentialsStored}
-        originalSourceUrl={context.originalSourceUrl}
-        connection={connectionFields(context)}
+      <AccountFolderForm<SmbSourceValues>
+        sourceType="SMB"
         values={values}
         onChange={onChange}
+        context={context}
+        accountKey="account"
+        secretKey="password"
+        secretLabel="Passwort"
+        addressPlaceholder="smb://dateiserver/Ablage"
+        addressHint="Server und Freigabe, auch als \\server\freigabe."
+        rootLabel="Freigabe"
+        credentialsOf={smbCredentialsOf}
+        foldersOf={smbFoldersOf}
+        keepsSecret={(current) => sameSmbShare(context.originalSourceUrl, current.sourceUrl)}
+        max={MAX_SMB_FOLDERS}
       />
     ),
     StoredView: SmbStoredView,

@@ -26,7 +26,7 @@ import { browseSource, testLibrarySource } from '../api/libraryApi'
 import { sameLibrarySourceOrigin } from '../utils/librarySourceConfig'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { SourceIssueContext, useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { SourceIssueContext, issueList, useSourceIssue, withIssue } from './sources/sourceIssueContext'
 import type { SourceIssue } from '../utils/sourceIssue'
 
 import {
@@ -120,7 +120,7 @@ export default function S3SourceForm({
   )
   // every report of a pattern issue opens the section, even with the message of the previous one:
   // a report is a new issue object. The section stays open after the issue is cleared.
-  const reportedIssue = useContext(SourceIssueContext)
+  const reportedIssue = issueList(useContext(SourceIssueContext))[0] ?? null
   const patternIssue = includeIssue !== null || excludeIssue !== null ? reportedIssue : null
   const [shownPatternIssue, setShownPatternIssue] = useState<SourceIssue | null>(null)
   if (patternIssue !== shownPatternIssue) {
