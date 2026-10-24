@@ -92,6 +92,8 @@ class DataCollectionDisclosureIntegrationTest {
         "DELETE FROM asset_ownership_history WHERE owner_user_id = ?", libraryOwnerId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", libraryOwnerId);
     jdbcTemplate.update("DELETE FROM llm_models WHERE id = ?", modelId);
+    // the suite shares one database: other classes read the delivered retention period
+    jdbcTemplate.update("UPDATE audit_retention_settings SET retention_months = 36 WHERE id = 1");
   }
 
   @Test

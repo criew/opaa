@@ -212,7 +212,60 @@ tests:
               severity: warning
             exp_annotations:
               summary: Löschlauf des Revisionsprotokolls ausgeblieben
-              description: "Die automatische Löschung des Revisionsprotokolls von r-opaa-backend ist seit mehr als 35 Tagen nicht gelaufen. Abgelaufene Monate bleiben stehen und das Protokoll wächst über die Aufbewahrungsfrist hinaus. Log des Pods am 1. des Monats um 03:00 und die Sperre audit-retention in der Tabelle shedlock prüfen."
+              description: "Die automatische Löschung des Revisionsprotokolls von r-opaa-backend ist seit mehr als 35 Tagen nicht gelaufen, oder das Backend kann ihren Stand nicht lesen. Abgelaufene Monate bleiben dann womöglich stehen und das Protokoll wächst über die Aufbewahrungsfrist hinaus. Log des Pods prüfen, vor allem am 1. des Monats um 03:00."
+  # Neither pod can read the state (NaN): one alert after the hour of "for", as for a missed run.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: 'NaN+0x90'
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: 'NaN+0x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts: []
+      - eval_time: 61m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Löschlauf des Revisionsprotokolls ausgeblieben
+              description: "Die automatische Löschung des Revisionsprotokolls von r-opaa-backend ist seit mehr als 35 Tagen nicht gelaufen, oder das Backend kann ihren Stand nicht lesen. Abgelaufene Monate bleiben dann womöglich stehen und das Protokoll wächst über die Aufbewahrungsfrist hinaus. Log des Pods prüfen, vor allem am 1. des Monats um 03:00."
+  # One pod cannot read the state, the other reports a recent run: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: 'NaN+0x90'
+      - series: 'opaa_audit_retention_last_run_age_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: '864000x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts: []
+  # The backend runs but reports no series: one alert after the hour of "for".
+  - interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '1x90'
+    alert_rule_test:
+      - eval_time: 61m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Löschlauf des Revisionsprotokolls ausgeblieben
+              description: "Die automatische Löschung des Revisionsprotokolls von r-opaa-backend ist seit mehr als 35 Tagen nicht gelaufen, oder das Backend kann ihren Stand nicht lesen. Abgelaufene Monate bleiben dann womöglich stehen und das Protokoll wächst über die Aufbewahrungsfrist hinaus. Log des Pods prüfen, vor allem am 1. des Monats um 03:00."
+  # The backend is stopped on purpose (replicas 0): no series and no alert.
+  - interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '0x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: OpaaAuditRetentionOverdue
+        exp_alerts: []
   # A run in the current month: no alert.
   - interval: 1m
     input_series:
