@@ -15,8 +15,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The boundaries every permission-history writer records come from the database, strictly
  * increasing across instances whatever their host clocks say (ADR-0032, Entscheidung 3; ADR-0053,
  * Entscheidung 9). The database function itself - standing clock, step back, concurrency - is
- * {@code PermissionHistoryBoundaryMigrationTest}; that a state within one tick stays
- * reconstructable is {@code PermissionHistoryServiceIntegrationTest}.
+ * {@code PermissionHistoryBoundaryTest}; that a state within one tick stays reconstructable is
+ * {@code PermissionHistoryServiceIntegrationTest}.
  */
 @OpaaIntegrationTest
 class PermissionHistoryClockTest {

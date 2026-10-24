@@ -33,11 +33,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288.
+ * Runs against a real Postgres database with the real, versioned Flyway schema applied ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288.
  * {@code Space.ownerId}, {@code SpaceMembership.userId} and every {@code organizationId} are plain
  * {@code UUID} columns without {@code @ManyToOne}; Hibernate does not create foreign keys for
- * those, Liquibase does ({@code fk_spaces_owner}, {@code fk_space_memberships_user}, {@code
+ * those, Flyway does ({@code fk_spaces_owner}, {@code fk_space_memberships_user}, {@code
  * fk_spaces_organization}, {@code fk_space_memberships_organization}). Every test therefore creates
  * real {@link Organization} and {@link User} rows instead of using bare random UUIDs.
  */

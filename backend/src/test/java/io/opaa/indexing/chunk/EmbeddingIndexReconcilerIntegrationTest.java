@@ -19,10 +19,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The startup comparison of configured embedding model and vector index, against a real pgvector
- * with the Liquibase schema. The signature pins the configured size to 1536 and switches Spring
- * AI's schema initialisation off, so each test builds the table it needs - a table stuck at another
- * size included - and drops it again; that is why this class cannot share the canonical database.
- * The configured model is the default, {@code bge-m3}.
+ * with the Flyway schema. The signature pins the configured size to 1536 and switches Spring AI's
+ * schema initialisation off, so each test builds the table it needs - a table stuck at another size
+ * included - and drops it again; that is why this class cannot share the canonical database. The
+ * configured model is the default, {@code bge-m3}.
  */
 @OpaaPropertyVariantIntegrationTest
 class EmbeddingIndexReconcilerIntegrationTest {

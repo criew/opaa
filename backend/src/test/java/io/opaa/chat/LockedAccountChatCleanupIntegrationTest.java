@@ -39,9 +39,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * The deletion of the chats of local accounts locked by the administration against the real
- * Liquibase schema, with the default period of 365 days. Runs are driven with an explicit instant;
- * the moment from which periods count is set far back for each test and restored afterwards.
+ * The deletion of the chats of local accounts locked by the administration against the real Flyway
+ * schema, with the default period of 365 days. Runs are driven with an explicit instant; the moment
+ * from which periods count is set far back for each test and restored afterwards.
  */
 @OpaaIntegrationTest
 class LockedAccountChatCleanupIntegrationTest {

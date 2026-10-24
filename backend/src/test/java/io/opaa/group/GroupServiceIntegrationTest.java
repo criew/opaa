@@ -38,12 +38,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #308.
+ * Runs against a real Postgres database with the real, versioned Flyway schema applied ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #308.
  * {@code KnowledgeLibrary.ownerGroupId} and {@code AssetGrant.subjectGroupId} carry composite
  * foreign keys against {@code groups(id, organization_id)} ({@code
  * fk_assets_owner_group_organization}; {@code fk_asset_grants_subject_group_organization}) that
- * only the versioned changelog creates - Hibernate's {@code create-drop} schema (used here before
+ * only the versioned migrations create - Hibernate's {@code create-drop} schema (used here before
  * #308) never materialised either constraint, so {@link #cannotDeleteAGroupThatStillOwnsALibrary}
  * could not actually prove the {@link GroupService#deleteGroup} guard against {@code
  * fk_knowledge_libraries_owner_group_organization}: without the guard it failed with "expected a
@@ -241,7 +241,7 @@ class GroupServiceIntegrationTest {
     // Deleting a group that still owns an asset must be blocked with
     // a clean 409, not surface fk_knowledge_libraries_owner_group_organization as an unhandled
     // DataIntegrityViolationException (500). This is exactly the check the class Javadoc and
-    // #200's acceptance criteria describe. Proving it requires the real, versioned Liquibase
+    // #200's acceptance criteria describe. Proving it requires the real, versioned Flyway
     // schema - see the class Javadoc for why the previous Hibernate-generated schema could not
     // exercise this at all.
     UUID admin = createAdmin(organizationA);
@@ -442,7 +442,7 @@ class GroupServiceIntegrationTest {
     // This test used to construct a cross-organization membership row directly against the
     // repository (bypassing addMember's requireUserInOrganization check) to prove listMyGroups'
     // own filter as a second, independent defense line. Against the
-    // real Liquibase schema, fk_group_memberships_user_organization (a composite key
+    // real Flyway schema, fk_group_memberships_user_organization (a composite key
     // on user_id, organization_id) now rejects such a row outright: organization_id can no longer
     // diverge from the member's actual organization at all, so there is nothing left for
     // listMyGroups' own filter to defend against by construction, only by the database itself.

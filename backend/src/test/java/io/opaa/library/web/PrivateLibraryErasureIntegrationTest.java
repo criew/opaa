@@ -53,7 +53,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * The erasure of a private library against the Liquibase schema: afterwards no table of the schema
+ * The erasure of a private library against the Flyway schema: afterwards no table of the schema
  * holds a row naming the library, a document, a folder, a run, a chunk or a name or path of it -
  * the tables come from the catalog, so a new table without an erasure step fails here. Only the
  * protocols keep the library's id, never a name. The erasure is its owner's alone, waits for a
@@ -80,7 +80,7 @@ class PrivateLibraryErasureIntegrationTest {
           "asset_grant_history",
           "asset_ownership_history",
           "asset_visibility_history",
-          "databasechangelog");
+          "flyway_schema_history");
 
   /**
    * The text of the owner's chat answers stays with her chat (ADR-0049, Entscheidung 2; open
@@ -144,7 +144,7 @@ class PrivateLibraryErasureIntegrationTest {
     jdbc.update("DELETE FROM connection_profiles WHERE id = ?", profile);
   }
 
-  /** Acceptance criterion of #2165 against the Liquibase schema, tables from the catalog. */
+  /** Acceptance criterion of #2165 against the Flyway schema, tables from the catalog. */
   @Test
   void afterItsOwnerErasedItNoTableHoldsARowOfThePrivateLibrary(CapturedOutput output)
       throws Exception {

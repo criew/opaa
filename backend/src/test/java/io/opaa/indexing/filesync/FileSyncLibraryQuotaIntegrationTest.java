@@ -69,7 +69,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Runs of a shared library at its own storage quota, through the real document and attachment path
- * and the Liquibase schema. An upload that takes the room right after a mail archive was admitted
+ * and the Flyway schema. An upload that takes the room right after a mail archive was admitted
  * makes the archive's second attachment hit the quota: the run ends incomplete with {@code
  * QUOTA_EXHAUSTED}, the archive is stored without its change marker, and once the upload is gone
  * the next run reads the archive again and takes the attachment in - needing room only for what is

@@ -329,8 +329,8 @@ Anhänge (ADR-0022) sind ebenfalls nicht betroffen: Eine Elternmail, deren Parse
 Anhangsdokumente bleiben mitsamt ihrem `parent_document_id` unverändert stehen.
 
 **Keine Datenbankänderung nötig.** Die Pipeline-Version ist ein Chunk-Metadatum und liegt damit dort,
-wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring AI beim Start an,
-nicht Liquibase — eine Spalte wäre dort gar nicht verfügbar, und eine zweite Tabelle wäre eine dritte
+wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle hat das von Spring AI vorgegebene
+Format — eine eigene Spalte wäre dort ein Fremdkörper, und eine zweite Tabelle wäre eine dritte
 Zeile je Chunk für einen Wert, der definitorisch zum Chunk gehört.
 
 **Zweiter Rückgabekanal: entdeckte Anhänge (ADR-0022, Teil 2, #1181).** `DocumentFormatResult`

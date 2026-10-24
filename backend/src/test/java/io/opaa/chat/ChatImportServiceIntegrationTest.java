@@ -38,9 +38,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The seed-only transcript import against the real Liquibase schema: instants and sources end up
- * where the chat list, the conversation view and the chat search read them, and the import grants
- * the author nothing a regular chat would not - membership, a writable space, readable documents.
+ * The seed-only transcript import against the real Flyway schema: instants and sources end up where
+ * the chat list, the conversation view and the chat search read them, and the import grants the
+ * author nothing a regular chat would not - membership, a writable space, readable documents.
  */
 @OpaaIntegrationTest
 class ChatImportServiceIntegrationTest {

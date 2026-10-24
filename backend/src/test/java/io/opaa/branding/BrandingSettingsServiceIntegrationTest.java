@@ -27,7 +27,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link BrandingSettingsService} against a real Postgres with the real, versioned Liquibase schema
+ * {@link BrandingSettingsService} against a real Postgres with the real, versioned Flyway schema
  * applied. Covers what a test against a mocked repository could not - that an unconfigured
  * deployment really does resolve to the OPAA standard field by field, that a change writes exactly
  * one {@link AuditEventType#BRANDING_SETTINGS_CHANGED} entry carrying the effective before/after

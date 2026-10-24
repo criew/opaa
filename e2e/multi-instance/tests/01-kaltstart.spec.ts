@@ -50,11 +50,11 @@ test("die einmaligen Startaktionen liefen genau einmal", async () => {
   const b = await platform().instanceUrl("b");
   const admin = await prepareInstallation(a);
 
-  // The schema came from the migration step: no open lock, no changeset twice.
-  expect(await platform().sql("SELECT count(*) FROM databasechangeloglock WHERE locked")).toBe("0");
+  // The schema came from the migration step: every migration once, none failed.
   expect(
     await platform().sql(
-      "SELECT count(*) - count(DISTINCT (id, author, filename)) FROM databasechangelog",
+      "SELECT count(*) - count(DISTINCT version) + count(*) FILTER (WHERE NOT success)" +
+        " FROM flyway_schema_history WHERE version IS NOT NULL",
     ),
   ).toBe("0");
 

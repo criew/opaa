@@ -14,9 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 
 /**
  * Base of the per-module baseline test classes: every test method gets its own clone of a database
- * built from {@code db/changelog/test-master-through-baseline.yaml}, a connection in auto-commit
- * mode, and the row helpers the modules share. A helper writes the minimal valid row and returns
- * its id; everything a test asserts about is spelled out in the test itself.
+ * built from every migration ({@link Migrations#all()}), a connection in auto-commit mode, and the
+ * row helpers the modules share. A helper writes the minimal valid row and returns its id;
+ * everything a test asserts about is spelled out in the test itself.
  */
 abstract class AbstractBaselineTest extends AbstractMigrationTest {
 
@@ -25,8 +25,8 @@ abstract class AbstractBaselineTest extends AbstractMigrationTest {
   protected Connection connection;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-master-through-baseline.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return Migrations.all();
   }
 
   @BeforeEach

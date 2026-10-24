@@ -40,8 +40,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * token is genuinely anonymous - which is exactly the sign-in page's situation.
  *
  * <p>A {@code @WebMvcTest} slice, deliberately: this asserts a property of the filter chain's
- * authorization rules, which needs no database, no Liquibase and no application context beyond the
- * web layer. {@link BrandingControllerIntegrationTest} carries everything that does.
+ * authorization rules, which needs no database, no Flyway and no application context beyond the web
+ * layer. {@link BrandingControllerIntegrationTest} carries everything that does.
  */
 @WebMvcTest(controllers = {BrandingController.class, SystemBrandingController.class})
 @Import({OidcSecurityConfig.class, BrandingPublicAccessTest.CorsStub.class})

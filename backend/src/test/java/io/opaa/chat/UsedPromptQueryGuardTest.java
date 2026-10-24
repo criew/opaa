@@ -24,9 +24,9 @@ import org.junit.jupiter.api.Test;
 class UsedPromptQueryGuardTest {
 
   private static final Path MAIN_SOURCES = Path.of("src", "main", "java");
-  private static final Path CHANGELOGS = Path.of("src", "main", "resources", "db", "changelog");
+  private static final Path MIGRATIONS = Path.of("src", "main", "resources", "db", "migration");
   private static final Path ENTITY = MAIN_SOURCES.resolve("io/opaa/chat/ChatMessage.java");
-  private static final Path BASELINE = CHANGELOGS.resolve("assistant/2026-09-27-baseline.yaml");
+  private static final Path BASELINE = MIGRATIONS.resolve("assistant/V1.8__assistant_baseline.sql");
 
   @Test
   void noQueryStringNamesTheUsedPromptOutsideTheEntityMapping() {
@@ -63,12 +63,12 @@ class UsedPromptQueryGuardTest {
 
   /**
    * The columns and their pairing check are part of the {@code chat_messages} table definition in
-   * the assistant baseline; no other statement there, and no other changelog file, names them.
+   * the assistant baseline; no other statement there, and no other migration, names them.
    */
   @Test
   void onlyTheTableDefinitionTouchesTheColumns() throws IOException {
     List<String> offenses = new ArrayList<>();
-    try (Stream<Path> files = Files.walk(CHANGELOGS)) {
+    try (Stream<Path> files = Files.walk(MIGRATIONS)) {
       for (Path file : files.filter(Files::isRegularFile).toList()) {
         if (!file.equals(BASELINE)) {
           if (mentionsUsedPrompt(read(file))) {

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ersetzt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
+Akzeptiert · zuletzt geändert 2026-10-24 · ersetzt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
 · ergänzt [ADR-0027](0027-s3-konnektor.md) · ergänzt durch [ADR-0046](0046-smb-konnektor.md) und
 [ADR-0047](0047-sharepoint-konnektor.md)
 
@@ -210,7 +210,7 @@ gelistete Größe frei ist.
 
 `io.opaa.knowledge.FilePathLimit` fasst die Grenze des eindeutigen Index `(library_id, file_path)`
 als 2000 Zeichen und 2676 Byte UTF-8 (`DocumentFilePathIndexLimitTest` misst sie gegen das
-Liquibase-Schema). `DocumentIngestService` lehnt einen längeren Pfad vor jedem Schreibzugriff ab
+migrierte Schema). `DocumentIngestService` lehnt einen längeren Pfad vor jedem Schreibzugriff ab
 (`FILE_PATH_TOO_LONG`), bei einer Dateiablage schon vor dem Download; die Ablehnung gilt als erledigt,
 nicht als ungeklärt. `source_hierarchy_path` ist `text`; eine früher gekürzte Zeile stellt bei
 einem Store, der Ordner meldet, der nächste Lauf richtig, bei den übrigen bleibt sie bis zur nächsten

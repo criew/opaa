@@ -38,11 +38,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * End-to-end coverage: {@link StaleDocumentCleanupService}, wired into {@link
  * AsyncIndexingExecutor} (FILESYSTEM), removes a document - row and vector store chunks - that
- * vanished from the source, but only once a run finished successfully. Runs against the real
- * Liquibase schema and a real {@code vector_store} table (AGENTS.md "Reproduktionsnachweis"), the
- * same Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIntegrationTest}
- * class shares - the whole point of these tests is proving chunks are actually gone from pgvector,
- * not just that a repository method was called.
+ * vanished from the source, but only once a run finished successfully. Runs against the real Flyway
+ * schema and a real {@code vector_store} table (AGENTS.md "Reproduktionsnachweis"), the same
+ * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIntegrationTest} class
+ * shares - the whole point of these tests is proving chunks are actually gone from pgvector, not
+ * just that a repository method was called.
  */
 @OpaaIntegrationTest
 class StaleDocumentCleanupIntegrationTest {

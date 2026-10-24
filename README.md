@@ -89,7 +89,7 @@ Die Entscheidungen sind getroffen und in [ADR-0002](docs/decisions/0002-mvp-tech
 begründet:
 
 - **Backend:** Java 21, Spring Boot, Spring AI (Gradle, Kotlin DSL)
-- **Datenbank:** PostgreSQL mit pgvector, Schemaverwaltung über Liquibase
+- **Datenbank:** PostgreSQL mit pgvector, Schemaverwaltung über Flyway
 - **Frontend:** React, TypeScript, Material UI, Vite
 - **Modelle:** jede OpenAI-kompatible Schnittstelle. **Voreingestellt sind lokal betriebene Modelle** für
   Chat und Einbettung; ein anderer Anbieter ist konfigurierbar, aber nicht voreingestellt — und wer

@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
  * The delivered Dokumentart vocabulary of the baseline as an in-memory snapshot for tests that run
  * without a database - codes, labels, synonyms, Kompositum endings and their exclusions exactly as
  * seeded. {@code DocumentTypeVocabularySeedReconciliationTest} fails as soon as this snapshot and
- * the Liquibase seed differ in a single value.
+ * the migration seed differ in a single value.
  */
 public final class TestVocabularies {
 

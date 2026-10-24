@@ -75,11 +75,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * first stage requires - alongside, never instead of, the #238 rights-history calls those same
  * services already make (see each service's own Javadoc for that coexistence).
  *
- * <p>Runs against a real Postgres database with the real, versioned Liquibase schema applied
- * ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}), mirroring {@code
+ * <p>Runs against a real Postgres database with the real, versioned Flyway schema applied ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}), mirroring {@code
  * PermissionHistoryServiceIntegrationTest} and {@code SpaceServiceIntegrationTest}: {@code
  * audit_log.organization_id} is a plain {@code UUID} column with a real foreign key ({@code
- * fk_audit_log_organization}) that only the versioned changelog creates.
+ * fk_audit_log_organization}) that only the versioned migrations create.
  */
 @OpaaIntegrationTest
 class AuditEventRecordingIntegrationTest {
@@ -519,7 +519,7 @@ class AuditEventRecordingIntegrationTest {
                 .toList())
         .hasSize(1);
 
-    // updateGroup's own audit write had no coverage against the real Liquibase schema - this
+    // updateGroup's own audit write had no coverage against the real Flyway schema - this
     // remains the only place that exercises this specific event, even though
     // GroupServiceIntegrationTest no longer mocks AuditEventRecorder either.
     groupService.updateGroup(groupId, new GroupUpdate("Referat 5 neu", null), currentUserOf(admin));

@@ -1,7 +1,7 @@
 package io.opaa.config;
 
 import javax.sql.DataSource;
-import liquibase.integration.spring.SpringLiquibase;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -13,8 +13,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Refuses to start, before the schema migration, when the database lacks a prerequisite named in
- * {@link DatabasePrerequisites}. Every {@link SpringLiquibase} bean is made to depend on the check,
- * so the migration never runs into the missing prerequisite itself.
+ * {@link DatabasePrerequisites}. Every {@link Flyway} bean - and with it the initializer that
+ * migrates - is made to depend on the check, so the migration never runs into the missing
+ * prerequisite itself.
  */
 @Configuration(proxyBeanMethods = false)
 public class DatabasePrerequisiteCheck {
@@ -34,7 +35,7 @@ public class DatabasePrerequisiteCheck {
   }
 
   @Bean
-  static BeanFactoryPostProcessor liquibaseDependsOnDatabasePrerequisiteCheck() {
+  static BeanFactoryPostProcessor flywayDependsOnDatabasePrerequisiteCheck() {
     return beanFactory -> addDependency(beanFactory);
   }
 
@@ -42,15 +43,15 @@ public class DatabasePrerequisiteCheck {
     if (!beanFactory.containsBeanDefinition(CHECK_BEAN)) {
       return;
     }
-    for (String name : beanFactory.getBeanNamesForType(SpringLiquibase.class, true, false)) {
-      BeanDefinition liquibase = beanFactory.getBeanDefinition(name);
-      String[] dependsOn = liquibase.getDependsOn();
+    for (String name : beanFactory.getBeanNamesForType(Flyway.class, true, false)) {
+      BeanDefinition flyway = beanFactory.getBeanDefinition(name);
+      String[] dependsOn = flyway.getDependsOn();
       String[] extended = new String[dependsOn == null ? 1 : dependsOn.length + 1];
       if (dependsOn != null) {
         System.arraycopy(dependsOn, 0, extended, 0, dependsOn.length);
       }
       extended[extended.length - 1] = CHECK_BEAN;
-      liquibase.setDependsOn(extended);
+      flyway.setDependsOn(extended);
     }
   }
 }

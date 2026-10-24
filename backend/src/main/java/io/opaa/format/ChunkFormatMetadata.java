@@ -6,9 +6,9 @@ package io.opaa.format;
  * DocumentIngestService#storeChunks} onto every chunk and read back by {@code
  * io.opaa.indexing.maintenance.PipelineReindexService} to select "every chunk below version N".
  *
- * <p>Deliberately chunk metadata rather than a column: {@code vector_store} is created by Spring AI
- * at startup and is not Liquibase-owned, and a value that is definitionally a property of the chunk
- * belongs on the chunk rather than in a third row per chunk.
+ * <p>Deliberately chunk metadata rather than a column of {@code vector_store}, whose shape follows
+ * Spring AI's PgVectorStore: a value that is definitionally a property of the chunk belongs on the
+ * chunk rather than in a third row per chunk.
  */
 public final class ChunkFormatMetadata {
 

@@ -34,8 +34,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The expiry watch against the Liquibase schema: a named end of a person's OAuth consent is warned
- * of once to that person, 14 days ahead; a new consent anew, a lifetime shorter than that never. A
+ * The expiry watch against the Flyway schema: a named end of a person's OAuth consent is warned of
+ * once to that person, 14 days ahead; a new consent anew, a lifetime shorter than that never. A
  * client secret's expiry date is warned of once to the system administration, without a new version
  * of the profile.
  */

@@ -396,10 +396,10 @@ als keiner: Er liefert Treffer, und die fehlenden fallen niemandem auf. Der Back
 eigenes, benanntes Arbeitspaket und Voraussetzung dafür, dass der Volltextpfad überhaupt in die
 Fusion aufgenommen wurde.
 
-**Die Schemaänderung legt nur Spalte und Index an.** Das Liquibase-Changeset erzeugt die
+**Die Schemaänderung legt nur Spalte und Index an.** Die Migration erzeugt die
 `tsvector`-Spalte und den GIN-Index — Letzteren mit `CREATE INDEX CONCURRENTLY` und damit außerhalb
 einer Transaktion, weil ein Indexaufbau über die gesamte Chunk-Tabelle sonst den Schreibbetrieb für die
-Dauer der Migration sperrt. Das Changeset befüllt **nichts**; ein `UPDATE` über den ganzen Bestand
+Dauer der Migration sperrt. Die Migration befüllt **nichts**; ein `UPDATE` über den ganzen Bestand
 innerhalb der Migration würde den Anwendungsstart um die Dauer des Backfills verzögern und bei Abbruch
 in einem halb migrierten Zustand enden.
 
@@ -428,10 +428,9 @@ seines Messvertrags). Der Antwortpfad der Suche liest ihn nicht mehr — der Zä
 Nachprüfintervall (`FullTextIndexCompleteness`) ist mit #1429 entfallen: Der Rückstand ist ein
 Bestandszustand und gehört auf die Administrationsseite, nicht in jede Anfragenotiz.
 
-Auf einer Neuinstallation entsteht dieser Index erst beim **zweiten** Anwendungsstart: `vector_store`
-wird von Spring AI erst nach Liquibase angelegt, das Changeset überspringt sich deshalb beim ersten
-Start selbst und holt die Indexerstellung beim nächsten Start nach (siehe Kommentar zum ChangeSet
-`knowledge-2026-09-27-baseline--vector-store-library-id` in `db/changelog/knowledge/2026-09-27-baseline.yaml`).
+Auf einer Neuinstallation entsteht dieser Index mit der Migration selbst: `vector_store` samt
+Index `idx_vector_store_library_id` legt die Baseline des Moduls knowledge an
+(`db/migration/knowledge/V1.4__knowledge_baseline.sql`, ADR-0056).
 
 ### Die deutschen Besonderheiten
 

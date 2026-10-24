@@ -16,7 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The audit privilege model ADR-0015 describes, as the baseline's identity changeSet establishes it
+ * The audit privilege model ADR-0015 describes, as the baseline's identity migration establishes it
  * - ownership of {@code audit_log}/{@code audit_actor_pseudonyms}/{@code audit_retention_settings}
  * moved to the restricted {@code opaa_audit_owner} role, with the migration/application account
  * left only the narrow grants that group hands out. The sibling of {@link
@@ -31,9 +31,9 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Why this test does not re-run the baseline as a non-superuser role:</b> {@link
  * AbstractMigrationTest}'s template-database mechanism always builds {@link
- * #baseFixtureChangelogs()} as the container's bootstrap superuser. Instead, this test creates an
+ * #baseFixtureMigrations()} as the container's bootstrap superuser. Instead, this test creates an
  * ordinary, freshly provisioned role after the baseline has been applied and grants it exactly the
- * privileges the identity changeSet grants to {@code current_user} at migration time (INSERT/SELECT
+ * privileges the identity migration grants to {@code current_user} at migration time (INSERT/SELECT
  * on {@code audit_log}/{@code audit_actor_pseudonyms}, SELECT + narrow UPDATE on {@code
  * audit_retention_settings}) - the REVOKE/GRANT/ownership mechanism under test does not care which
  * role name holds those grants, only that holding exactly them (and no more) blocks the operations
@@ -51,8 +51,8 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   private Connection appConnection;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-master-through-baseline.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return Migrations.all();
   }
 
   @BeforeEach
@@ -77,7 +77,7 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   }
 
   /**
-   * Mirrors exactly what the baseline's identity changeSet grants to {@code current_user} at
+   * Mirrors exactly what the baseline's identity migration grants to {@code current_user} at
    * migration time - see this class's own Javadoc for why a fresh role rather than re-running the
    * migration as a restricted account.
    */
@@ -195,7 +195,7 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
 
   /**
    * The application account's grant on {@code audit_retention_settings} is narrowed to {@code
-   * (retention_months, updated_at)} (baseline, identity changeSet) - {@code last_cutoff} is written
+   * (retention_months, updated_at)} (baseline, identity migration) - {@code last_cutoff} is written
    * exclusively by {@code opaa_audit_delete_expired_partitions()}, so the recorded deletion
    * progress is a guarantee rather than a convention the application could bypass by writing the
    * column directly.

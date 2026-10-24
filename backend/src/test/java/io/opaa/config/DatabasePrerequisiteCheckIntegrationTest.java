@@ -3,7 +3,7 @@ package io.opaa.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.test.OpaaIntegrationTest;
-import liquibase.integration.spring.SpringLiquibase;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -15,7 +15,7 @@ class DatabasePrerequisiteCheckIntegrationTest {
 
   @Test
   void theSchemaMigrationOfTheApplicationWaitsForTheCheck() {
-    String[] migrations = context.getBeanNamesForType(SpringLiquibase.class);
+    String[] migrations = context.getBeanNamesForType(Flyway.class);
 
     assertThat(migrations).isNotEmpty();
     for (String migration : migrations) {

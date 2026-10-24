@@ -37,10 +37,10 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * Persisted enums under the expand/contract rule (backend/docs/liquibase.md, "Enum-Werte"): a value
- * stored by {@code @Enumerated(STRING)} or a converter that the release still running beside a new
- * one does not know makes every read of its row fail there - a notification list, an audit page, a
- * directory status. No changeSet shows that, so the registry {@value #REGISTRY} lists every
+ * Persisted enums under the expand/contract rule (backend/docs/migrationen.md, "Enum-Werte"): a
+ * value stored by {@code @Enumerated(STRING)} or a converter that the release still running beside
+ * a new one does not know makes every read of its row fail there - a notification list, an audit
+ * page, a directory status. No migration shows that, so the registry {@value #REGISTRY} lists every
  * persisted enum with the values the previous release reads ({@code readable}) and the values this
  * one knows but writes nowhere yet ({@code pending}): the expand step. A value moves from {@code
  * pending} to {@code readable} once a release that knows it has shipped; only then may code write
@@ -51,7 +51,7 @@ class PersistedEnumRegistryTest {
 
   static final String REGISTRY = "db/persisted-enums.yaml";
 
-  /** Why an unknown value is not read with a fallback: the reason classes of liquibase.md. */
+  /** Why an unknown value is not read with a fallback: the reason classes of migrationen.md. */
   enum Assessment {
     /** Rights, roles, account and token states: a fallback would move what someone may do. */
     SECURITY,
@@ -126,7 +126,7 @@ class PersistedEnumRegistryTest {
   }
 
   /**
-   * The two values that broke a running older release without any changeSet: written by the new
+   * The two values that broke a running older release without any migration: written by the new
    * release, unknown to the old one. Registered as readable before they existed, they fail here.
    */
   // regression guard for #2944: DirectorySyncOutcome.FAILED and a new AuditEventType
@@ -171,7 +171,7 @@ class PersistedEnumRegistryTest {
                         Set.of()))))
         .containsExactly(
             "x.Kind.GONE is gone: rows may still hold it and this release cannot read them - a"
-                + " contract changeSet rewrites them first, then the value leaves the registry");
+                + " contract migration rewrites them first, then the value leaves the registry");
   }
 
   /** The registry's problems with {@code discovered}: new and gone types, attributes and values. */
@@ -212,7 +212,7 @@ class PersistedEnumRegistryTest {
                   + "."
                   + value
                   + " is gone: rows may still hold it and this release cannot read them - a"
-                  + " contract changeSet rewrites them first, then the value leaves the registry");
+                  + " contract migration rewrites them first, then the value leaves the registry");
         }
       }
     }
@@ -342,7 +342,7 @@ class PersistedEnumRegistryTest {
     StringBuilder message =
         new StringBuilder("The registry ")
             .append(REGISTRY)
-            .append(" does not match the persisted enums (backend/docs/liquibase.md,")
+            .append(" does not match the persisted enums (backend/docs/migrationen.md,")
             .append(" \"Enum-Werte\"):\n");
     problems.forEach(problem -> message.append("- ").append(problem).append('\n'));
     Map<String, Persisted> discovered = discover();

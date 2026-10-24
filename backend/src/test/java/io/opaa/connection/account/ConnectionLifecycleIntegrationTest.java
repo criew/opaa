@@ -42,7 +42,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The lifecycle of a person's connections against the Liquibase schema (ADR-0041, Entscheidung 4):
+ * The lifecycle of a person's connections against the Flyway schema (ADR-0041, Entscheidung 4):
  * only a deactivated account ends its connections and deletes its secrets; a resting one keeps
  * everything and goes on after the next sign-in; a handover or a changed group ends nothing; the
  * reconciliation after commit and at start writes its log entries in a transaction of its own.

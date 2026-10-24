@@ -17,19 +17,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The privilege model of the diagnostic context log (ADR-0015), as the baseline's workspace
- * changeSet establishes it - the sibling of {@link AuditPrivilegeModelTest} for the second protocol
- * that uses the same non-superuser model. Two groups of assertions, matching the two things the
- * leitplanken make binding about it: a Personenkontext without Begründung cannot be stored at all,
- * and the entry is unveränderlich in the ADR-0015 sense - an account holding exactly the
- * application's own grants can insert and read but neither update, delete nor truncate, not even
- * through a named partition, and the SECURITY DEFINER partition-drop function is the only deletion
- * path.
+ * The privilege model of the diagnostic context log (ADR-0015), as the workspace migration
+ * establishes it - the sibling of {@link AuditPrivilegeModelTest} for the second protocol that uses
+ * the same non-superuser model. Two groups of assertions, matching the two things the leitplanken
+ * make binding about it: a Personenkontext without Begründung cannot be stored at all, and the
+ * entry is unveränderlich in the ADR-0015 sense - an account holding exactly the application's own
+ * grants can insert and read but neither update, delete nor truncate, not even through a named
+ * partition, and the SECURITY DEFINER partition-drop function is the only deletion path.
  *
  * <p>The restricted account is provisioned here rather than by re-running the baseline as a
  * non-superuser - same reasoning and same shape as {@link AuditPrivilegeModelTest}, see its
- * Javadoc: Liquibase runs as an account that must be able to create the objects in the first place,
- * so the account the application later uses cannot be the account that applied the baseline. That
+ * Javadoc: Flyway runs as an account that must be able to create the objects in the first place, so
+ * the account the application later uses cannot be the account that applied the baseline. That
  * hand-provisioned role is only as truthful as the grants it copies, which is why {@link
  * #grantsTheApplicationAccountExactlyInsertAndSelect} asserts the ACL the baseline itself produced
  * - without it, a baseline handing out {@code UPDATE} would leave every "permission denied"
@@ -49,8 +48,8 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
   private Connection appConnection;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-master-through-baseline.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return Migrations.all();
   }
 
   @BeforeEach

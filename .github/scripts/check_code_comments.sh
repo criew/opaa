@@ -10,9 +10,8 @@
 # and demo/*.conf; '#' lines and docstrings of the Python scripts under eval/, demo/ and
 # backend/src/test/resources/; '#' lines and '//' lines of inline scripts in the workflows
 # (.github/workflows/*.yml); every line of the OpenAPI fragments, whose summaries and descriptions
-# are the API documentation; the changeSet comment: values (folded ones with their continuation
-# lines) and '#' lines of the Liquibase changelogs; '//' and '/* */' comments of the TypeScript
-# sources under frontend/src, of frontend/vite.config.ts and of the ESLint configuration
+# are the API documentation; '--' lines of the Flyway migrations (*.sql); '//' and '/* */'
+# comments of the TypeScript sources under frontend/src, of frontend/vite.config.ts and of the ESLint configuration
 # (frontend/eslint.config.*, frontend/eslint/), each from the comment start on.
 #
 # Apart from the frontend sources, only a line that starts with its comment mark is read: a comment
@@ -39,7 +38,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 # label=path prefix; a line counts for the first entry whose prefix it starts with.
 TREES=(
-  changelog=backend/src/main/resources/db/changelog/
+  migration=backend/src/main/resources/db/migration/
   main=backend/src/main/
   main=opaa-api/src/main/
   main=backend/src/configMetadata/
@@ -68,7 +67,7 @@ REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
 AT='^[^:]+:[0-9]+:'
 REVIEW="(?i)${REF}\S*\s+((second|third|follow-up)\s+)?(code\s+|re-)?review\b|${REF}\s*\(review\)|\breview\s+(of|zu)\s+(PR\s+)?#[0-9]|\bre-review\b|\breview\s+(round|findings?)\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit[\s-]+[0-9]|\bReview-Runde\s+[0-9]|(?-i:\b(HIGH|MEDIUM|LOW)\s+[0-9]+\b)|\b(Befund|Wichtig)\s+([0-9]|\")"
 HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|seit|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
-MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|comment:\s*\"?)?\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
+MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|--)?\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
 EXEMPT="^backend/src/main/java/io/opaa/query/spike/|^\.github/scripts/check_code_comments\.sh:|(?i)\bspike\s+\(?#[0-9]"
 # The form a test may keep: it names the regression and, after the colon, the invariant it guards.
 TESTS='((backend/src/(test|evalTest)|e2e|frontend/src/test)/[^:]+|frontend/src/[^:]+\.test\.tsx?)'
@@ -103,18 +102,9 @@ python_comments() {
     count($0, "\047\047\047") % 2 { q = "\047\047\047"; data = 1 }'
 }
 
-# '#' lines and the comment: value of a changeSet; a folded one (comment: >-) with its indented lines.
-changelog_comments() {
-  git ls-files -z -- 'backend/src/main/resources/db/changelog/*.yaml' | xargs -0 -r awk '
-    FNR == 1 { fold = 0 }
-    fold && /^[ \t]*$/ { next }
-    fold { match($0, /^ */); if (RLENGTH > indent) { print FILENAME ":" FNR ":" $0; next } }
-    { fold = 0 }
-    /^[ \t]*#/ { print FILENAME ":" FNR ":" $0; next }
-    /^[ \t]*comment:/ {
-      print FILENAME ":" FNR ":" $0
-      if ($0 ~ /comment:[ \t]*[>|][-+]?[ \t]*$/) { fold = 1; match($0, /^ */); indent = RLENGTH }
-    }'
+# '--' lines of the SQL migrations.
+migration_comments() {
+  git ls-files -z -- 'backend/src/main/resources/db/migration/*.sql' | xargs -0 -r grep -nH '^[[:space:]]*--' || true
 }
 
 # TypeScript and JavaScript comments: a line inside a block comment whole, otherwise from the first
@@ -153,7 +143,7 @@ lines() {
   python_comments 'eval/*.py' 'demo/*.py' 'backend/src/test/resources/*.py'
   git ls-files -z -- '.github/workflows/*.yml' | xargs -0 -r grep -nHP '^\s*(#|//)' || true
   git ls-files -z -- 'opaa-api/src/main/openapi/*.yaml' | xargs -0 -r grep -nH '' || true
-  changelog_comments
+  migration_comments
   ts_comments
 }
 

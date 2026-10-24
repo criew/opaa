@@ -27,7 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Reproduces the deletion window against the real Liquibase schema, not just {@link
+ * Reproduces the deletion window against the real Flyway schema, not just {@link
  * DocumentIngestServiceTest}'s mocked {@link DocumentRepository}: a connector document is deleted
  * (e.g. by {@code LibraryDocumentService#deleteDocument}, or a whole connector library being
  * removed) after {@link DocumentIngestService#processFile}/{@code #processUrlFile}/{@code

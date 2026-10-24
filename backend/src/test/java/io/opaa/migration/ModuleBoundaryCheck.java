@@ -92,7 +92,7 @@ final class ModuleBoundaryCheck {
     tableModules.keySet().stream()
         .filter(table -> !previous.tables().containsKey(table))
         .sorted()
-        .forEach(table -> all.add(table + " is assigned to a module but no changelog creates it"));
+        .forEach(table -> all.add(table + " is assigned to a module but no migration creates it"));
     return all;
   }
 
@@ -110,7 +110,7 @@ final class ModuleBoundaryCheck {
                           + state.logicalTable()
                           + " (created by "
                           + module
-                          + ") is assigned to no module in ChangelogModuleBoundaryTest.TABLE_MODULES");
+                          + ") is assigned to no module in MigrationModuleBoundaryTest.TABLE_MODULES");
                 } else if (owner != module) {
                   violations.add(
                       module + " creates table " + table + ", which belongs to module " + owner);
@@ -304,13 +304,13 @@ final class ModuleBoundaryCheck {
           LEFT JOIN pg_class parent ON parent.oid = inh.inhparent
          WHERE n.nspname = current_schema()
            AND c.relkind IN ('r', 'p', 'v', 'm')
-           AND c.relname NOT IN ('databasechangelog', 'databasechangeloglock')
+           AND c.relname <> 'flyway_schema_history'
         """,
         rs -> tables.put(rs.getString(1), new TableState(rs.getString(2), rs.getString(3))));
     return tables;
   }
 
-  /** Every trigger a changelog created, keyed by {@code table.trigger}, with its table. */
+  /** Every trigger a migration created, keyed by {@code table.trigger}, with its table. */
   private Map<String, String> triggers() throws SQLException {
     Map<String, String> triggers = new HashMap<>();
     query(

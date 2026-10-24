@@ -49,8 +49,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * A folder chain longer than 2000 characters through the real document path and the Liquibase
- * schema: stored uncut, and a run over it without a change costs neither a download nor a failure.
+ * A folder chain longer than 2000 characters through the real document path and the Flyway schema:
+ * stored uncut, and a run over it without a change costs neither a download nor a failure.
  */
 @OpaaIntegrationTest
 class FileSyncLongHierarchyPathIntegrationTest {

@@ -10,10 +10,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's knowledge changeSet: knowledge libraries on the asset shell, their
+ * Invariants of the baseline's knowledge migration: knowledge libraries on the asset shell, their
  * source configuration (ADR-0038), documents, indexing runs, the full-text index, the metadata
- * schema (ADR-0024) and the model catalogue. The two {@code vector_store} indexes have their own
- * class, {@link VectorStoreExpressionIndexTest}.
+ * schema (ADR-0024) and the model catalogue.
  */
 class KnowledgeBaselineTest extends AbstractBaselineTest {
 
@@ -94,9 +93,6 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
     assertRejected(
         "UPDATE knowledge_libraries SET all_accounts_grant_allowed = false" + where,
         "chk_knowledge_libraries_share_cap_upload_unrestricted");
-    assertRejected(
-        "UPDATE knowledge_libraries SET listed_cap = false" + where,
-        "chk_knowledge_libraries_share_cap_upload_unrestricted");
   }
 
   /** The share cap of a connector library is unrestrictive until an administrator lowers it. */
@@ -104,10 +100,9 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
   void aConnectorLibraryStartsUnrestrictedAndMayBeCapped() throws SQLException {
     UUID library = insertLibrary("RSS_FEED", "https://example.org/feed.xml");
 
-    assertThat(booleanOf(libraryColumn("all_accounts_grant_allowed AND listed_cap", library)))
-        .isTrue();
+    assertThat(booleanOf(libraryColumn("all_accounts_grant_allowed", library))).isTrue();
     execute(
-        "UPDATE knowledge_libraries SET all_accounts_grant_allowed = false, listed_cap = false"
+        "UPDATE knowledge_libraries SET all_accounts_grant_allowed = false"
             + " WHERE id = '"
             + library
             + "'");

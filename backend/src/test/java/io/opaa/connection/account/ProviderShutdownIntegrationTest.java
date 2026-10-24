@@ -33,11 +33,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * Switching a sign-in provider off or deleting it against the Liquibase schema (ADR-0041,
- * Entscheidung 4): without the confirmation both are refused with 409 while a profile admits
- * persons; confirmed, switching off lets the connections of its persons rest and deletes nothing,
- * deleting ends them, deletes their secrets and starts the deletion period. No answer of the
- * administration, alone or together, tells 0 connected persons from 1.
+ * Switching a sign-in provider off or deleting it against the Flyway schema (ADR-0041, Entscheidung
+ * 4): without the confirmation both are refused with 409 while a profile admits persons; confirmed,
+ * switching off lets the connections of its persons rest and deletes nothing, deleting ends them,
+ * deletes their secrets and starts the deletion period. No answer of the administration, alone or
+ * together, tells 0 connected persons from 1.
  */
 @OpaaIntegrationTest
 class ProviderShutdownIntegrationTest {

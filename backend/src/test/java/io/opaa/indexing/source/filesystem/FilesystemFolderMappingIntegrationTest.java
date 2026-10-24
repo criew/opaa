@@ -42,8 +42,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * End-to-end coverage (ADR-0020): a FILESYSTEM library's real directory structure mirrored into
  * {@code library_folders} by {@link AsyncIndexingExecutor}/{@link
  * io.opaa.knowledge.LibraryFolderService#materializeFolderPath}, kept in sync by {@link
- * io.opaa.knowledge.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
- * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
+ * io.opaa.knowledge.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Flyway schema
+ * (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
  * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
  * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIntegrationTest} class
  * shares.
@@ -270,7 +270,7 @@ class FilesystemFolderMappingIntegrationTest {
     // a two-level chain (Temp/2025/datei.txt), not a single folder - the
     // mock-only unit coverage (LibraryFolderServiceTest#
     // pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild) proves the
-    // leaf-first *order* pruneRecursive walks in, but only the real Liquibase schema can prove
+    // leaf-first *order* pruneRecursive walks in, but only the real Flyway schema can prove
     // Hibernate actually flushes those deletes in that order within one transaction - a
     // parent-before-child flush would trip fk_library_folders_parent's RESTRICT
     // and fail the whole pruneOrphanedFolders call.

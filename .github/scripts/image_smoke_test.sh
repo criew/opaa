@@ -99,10 +99,10 @@ backend_environment=(
 hardening=(--read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700
   --cap-drop ALL --security-opt no-new-privileges)
 
-# The migration step: only Liquibase, then exit 0 - also with SPRING_LIQUIBASE_ENABLED=false, which
+# The migration step: only Flyway, then exit 0 - also with SPRING_FLYWAY_ENABLED=false, which
 # it shares with the instances.
 docker run --name "$migration" --network "$network" "${hardening[@]}" "${backend_environment[@]}" \
-  -e OPAA_MODE=migrate -e SPRING_LIQUIBASE_ENABLED=false "$backend_image" >/dev/null 2>&1 &&
+  -e OPAA_MODE=migrate -e SPRING_FLYWAY_ENABLED=false "$backend_image" >/dev/null 2>&1 &&
   migration_exit=0 || migration_exit=$?
 [[ "$migration_exit" == 0 ]] || fail "the migration mode ended with exit code $migration_exit"
 migration_log="$(docker logs "$migration" 2>&1)"
@@ -111,7 +111,7 @@ migration_log="$(docker logs "$migration" 2>&1)"
 echo "migration mode: exit code 0"
 
 # The wait for the migration step, which an instance's init container runs: on the migrated
-# database it reads the changelog out of the jar and ends at once with exit code 0.
+# database it reads the migrations out of the jar and ends at once with exit code 0.
 docker run --rm --network "$network" "${hardening[@]}" "${backend_environment[@]}" \
   -e OPAA_MODE=await-migration "$backend_image" >/dev/null 2>&1 &&
   await_exit=0 || await_exit=$?
@@ -119,7 +119,7 @@ docker run --rm --network "$network" "${hardening[@]}" "${backend_environment[@]
 echo "await-migration mode: exit code 0"
 
 docker run -d --name "$backend" --network "$network" --network-alias backend \
-  "${hardening[@]}" "${backend_environment[@]}" -e SPRING_LIQUIBASE_ENABLED=false \
+  "${hardening[@]}" "${backend_environment[@]}" -e SPRING_FLYWAY_ENABLED=false \
   -p 127.0.0.1::8080 "$backend_image" >/dev/null
 backend_port="$(docker port "$backend" 8080/tcp | head -n 1 | sed 's/.*://')"
 

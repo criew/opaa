@@ -6,7 +6,7 @@
 > [#2542](https://github.com/criew/opaa/issues/2542) mit den Epics #2543 (Fakten aus dem Code),
 > #2552 (Update-Paket), #2560 (Behördenunterlagen), #2570 (Agentenorganisation) und dem Einzel-Issue
 > #2575 (Release-Zyklus). Vorhanden sind die Bausteine, auf die es aufsetzt: Protokoll-Enums,
-> Liquibase-Changelogs, SBOM und Attestierung ([sbom.md](../sbom.md)), CVE-Prozess
+> Datenbankmigrationen, SBOM und Attestierung ([sbom.md](../sbom.md)), CVE-Prozess
 > ([cve-scanning.md](../cve-scanning.md)) und die Upgrade-Hinweise je Release
 > ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)).
 >
@@ -41,7 +41,7 @@
 >
 > **Zielbild** sind der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
-> (#2562, #2563, #2566). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#2562, #2563, #2566).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -60,7 +60,7 @@ Update**. In jedem Schritt fragt eine andere Stelle — Hausleitung, Vergabestel
 Personalrat, Informationssicherheitsbeauftragte (ISB) — nach denselben Fakten: welche Daten anfallen,
 wo sie liegen, wie lange, wer sie sieht, was das System verlässt und was voreingestellt ist.
 
-Ohne gemeinsame Quelle stehen diese Fakten verstreut in Spezifikationen, Enums, Liquibase-Changelogs
+Ohne gemeinsame Quelle stehen diese Fakten verstreut in Spezifikationen, Enums, Datenbankmigrationen
 und rund 50 Konfigurationsklassen. Eine Behörde müsste sie selbst zusammensuchen, und niemand bemerkt,
 wenn sie veralten. Besonders schwer wiegt das bei Updates: Weil neue Funktionen nicht ausgeschaltet
 ankommen (Beschluss 1), muss jede Behörde bei jedem Update beurteilen, ob sich an Daten, Sichtbarkeit oder
@@ -220,12 +220,12 @@ Kopfvermerk hält das Datum dieser Prüfung als `rechtsstand` fest.
 | Baustein | Quelle | Stand heute |
 |---|---|---|
 | Protokollereignisse, Rollen, Fähigkeiten | Enums der geteilten API-Typen (`AuditEventType` mit rund 130 Werten, `SystemRole`, `Capability`) | im Manifest, vom Wächter in beiden Richtungen geprüft (#2547) |
-| Tabellen und Spalten | Liquibase-Changelogs | im Manifest, vom Wächter ohne Datenbank in beiden Richtungen geprüft (#2547) |
+| Tabellen und Spalten | Datenbankmigrationen (Flyway) | im Manifest, vom Wächter ohne Datenbank in beiden Richtungen geprüft (#2547) |
 | Fristen | Einstellungen aus Anwendungskonfiguration, Datenbankspalte oder Konstante ([ADR-0052, Entscheidung 5](../decisions/0052-compliance-manifest.md#5-fristen-sind-einstellungen)) | im Manifest mit Standardwert; den wirksamen Wert einer Instanz, auch den in der Datenbank, liefert erst der Konfigurationsexport (Zielbild, #2558) |
 | Konfiguration und Voreinstellungen | rund 50 Konfigurationsklassen, vom Build erzeugte Konfigurationsmetadaten, Voreinstellungen des Helm-Charts | maschinenlesbar (#2548): jeder `opaa.*`-Schlüssel ist im Code als datenwirksam oder ohne Datenwirkung eingeordnet; die datenwirksamen stehen mit Standardwert und Helm-Voreinstellung im Manifest (`configuration.yaml` und Datei ihres Bereichs) |
 | System-Prompts, Standardmodelle | Quellcode der Antwort- und Suchstrecke, Anwendungskonfiguration | im Manifest: Prompts mit Prüfsumme und KI-Funktionen in `prompts.yaml` (#2547), Modell und Adresse jeder Modellrolle in `configuration.yaml` (#2548) |
 | Ausgehende Datenflüsse | `@DataFlow` an den sendenden Klassen, Fachtext im Manifest (`outbound.yaml`, ADR-0052, Entscheidung 8) | maschinenlesbar (#2549); per Strukturtest vollständig für die Typen in `OUTBOUND_CLIENTS`/`OUTBOUND_BEANS` |
-| Lizenzen | CycloneDX-SBOM des Backends, Produktionsabhängigkeiten des Frontends, Freigabe- und Ausnahmeliste unter `.github/licenses/` | in der CI geprüft, Lizenzübersicht als Artefakt (#2551, [sbom.md](../sbom.md#lizenzprüfung)); offen ist die Lizenz von Liquibase 5, bis zur Klärung als begründete Ausnahme geführt (#2825) |
+| Lizenzen | CycloneDX-SBOM des Backends, Produktionsabhängigkeiten des Frontends, Freigabe- und Ausnahmeliste unter `.github/licenses/` | in der CI geprüft, Lizenzübersicht als Artefakt (#2551, [sbom.md](../sbom.md#lizenzprüfung)); Liquibase 5 (FSL-1.1-ALv2) ist durch Flyway (Apache-2.0) ersetzt, [ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md) |
 
 ### Das Manifest
 
@@ -263,7 +263,7 @@ trotzdem jede neue Spalte auffallen.
 Ein Vollständigkeitswächter lässt den Build scheitern, wenn eine Seite ohne Gegenstück ist:
 
 - ein Wert von `AuditEventType`, `SystemRole` oder den Fähigkeiten ohne Manifest-Eintrag (#2547)
-- eine Tabelle oder Spalte des Liquibase-Stands ohne Eintrag (#2547)
+- eine Tabelle oder Spalte des Migrationsstands ohne Eintrag (#2547)
 - ein System-Prompt, dessen Prüfsumme nicht zum Manifest passt (#2547)
 - ein Konfigurationsschlüssel ohne Beschreibung oder Einordnung, ein datenwirksamer Schlüssel ohne
   Eintrag, oder ein geänderter Standardwert oder eine geänderte Helm-Voreinstellung eines
@@ -275,8 +275,8 @@ Ein Vollständigkeitswächter lässt den Build scheitern, wenn eine Seite ohne G
 Prompt-Prüfsummen und die Kennungen von `@DataFlow` in beiden Richtungen; `ModularArchitectureTest`
 lässt keinen ausgehenden Client ohne `@DataFlow` zu; `ConfigurationSettingsTest` prüft Beschreibung
 und Einordnung jedes `opaa.*`-Schlüssels, Standardwert und Helm-Voreinstellung jedes datenwirksamen
-Eintrags und die Standardmodelle. `ComplianceManifestTest` liest den Liquibase-Stand ohne Datenbank aus
-den Changelogs; alle drei laufen deshalb in jedem Testlauf, auch lokal ohne Docker. DDL, die der Leser
+Eintrags und die Standardmodelle. `ComplianceManifestTest` liest den Migrationsstand ohne Datenbank aus
+den SQL-Skripten; alle drei laufen deshalb in jedem Testlauf, auch lokal ohne Docker. DDL, die der Leser
 nicht sicher lesen kann, lässt ihn scheitern statt sie zu überspringen. Die Meldungen nennen Datei und
 einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
@@ -342,7 +342,7 @@ Eintrag und umgekehrt? Seine Fehlermeldung nennt den fehlenden Eintrag, die Date
 Konvention, damit die Nachpflege ohne Suchen gelingt.
 
 Eine neue Tabelle oder Spalte trifft Schicht 1 und 2 zugleich, ohne dass sie dasselbe prüfen: Der
-Wächter verlangt den Manifest-Eintrag, die Pfadliste (`db/changelog/**`, `compliance/manifest/**`) die
+Wächter verlangt den Manifest-Eintrag, die Pfadliste (`db/migration/**`, `compliance/manifest/**`) die
 Entscheidung über das Label. Ob der Eintrag stimmt, etwa eine Spalte zu Recht ohne Personenbezug steht,
 bleibt Schicht 3.
 
@@ -364,7 +364,7 @@ Workflow (`.github/workflows/data-impact.yml`, #2553) prüft das an jedem PR. Er
 Angabe sofort wirkt.
 
 Grundlage ist eine **statische Pfadliste** (`.github/data-impact-paths.txt`) mit den Stellen, an denen
-Datenwirkung typischerweise entsteht: Liquibase-Changelogs, die Enums der Protokollereignisse, Rollen
+Datenwirkung typischerweise entsteht: Datenbankmigrationen, die Enums der Protokollereignisse, Rollen
 und Fähigkeiten, Konfigurationsklassen und Anwendungskonfiguration einschließlich der Standardmodelle,
 ausgehende Clients, die Fundstellen der System-Prompts. Ändert ein PR eine gelistete Datei und trägt
 weder das Label `data-impact` noch die Angabe „Keine Wirkung“, **schlägt die Prüfung fehl**. Die
@@ -456,7 +456,7 @@ Internetzugang lesen; die Vorlagen setzen voraus, dass sie dort gelesen werden.
 Quelle. Sie stehen neben dem Delta, nicht darin: Ihre Quellen sind keine Fakten des Manifests.
 Bruch, Vorbereitung und Neuindizierung mit Dauerschätzung kommen aus den Upgrade-Hinweisen aller
 Versionen im Intervall (Zeile `Neuindizierung: ja|nein`), der Nachzug aus den Pipeline-Versionen der
-Baselines, die Schemamigration aus den Kennungen der Liquibase-Changesets, Ports aus dem Helm-Chart,
+Baselines, die Schemamigration aus den Versionen der Flyway-Migrationen, Ports aus dem Helm-Chart,
 Egress-Ziele aus den Datenflüssen des Manifest-Deltas. Die Antwortqualität sind die Referenzwerte der
 Retrieval-Regression beider Versionen mit Messdatum; einen Messlauf auf dem Release-Commit legt das
 Projekt nicht ab, das Paket sagt das als „nicht gemessen“. Quellen, Regeln und Grenzen im Einzelnen:

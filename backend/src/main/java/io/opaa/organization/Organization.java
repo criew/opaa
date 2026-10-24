@@ -12,8 +12,8 @@ import java.util.UUID;
  * The hard tenant boundary. Nothing crosses it, not even system administration.
  *
  * <p>Exactly one organization is seeded for this stage of the product; multi-organization
- * management is out of scope. {@link #DEFAULT_ID} matches the row inserted by the Liquibase seed
- * changelog and is used to assign every user and space to that single organization.
+ * management is out of scope. {@link #DEFAULT_ID} matches the row the foundation migration seeds
+ * and is used to assign every user and space to that single organization.
  */
 @Entity
 @Table(name = "organizations")

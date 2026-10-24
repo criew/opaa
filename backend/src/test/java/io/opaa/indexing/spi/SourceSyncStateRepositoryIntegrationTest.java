@@ -26,9 +26,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The change cursors, folder markers and round progress of {@link SourceSyncState} against the
- * Liquibase schema: they survive a round trip through their {@code jsonb} columns, which stay
- * {@code NULL} for a connector without them; the hierarchy query the file sync keeps unchanged
- * folders with; and a round's presence, which goes with its document and with the state.
+ * Flyway schema: they survive a round trip through their {@code jsonb} columns, which stay {@code
+ * NULL} for a connector without them; the hierarchy query the file sync keeps unchanged folders
+ * with; and a round's presence, which goes with its document and with the state.
  */
 @OpaaIntegrationTest
 class SourceSyncStateRepositoryIntegrationTest {

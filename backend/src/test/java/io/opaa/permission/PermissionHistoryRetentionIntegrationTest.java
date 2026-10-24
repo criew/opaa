@@ -33,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The governance setting itself against the real, Liquibase-built schema (ADR-0036 Entscheidung 8):
+ * The governance setting itself against the real, Flyway-built schema (ADR-0036 Entscheidung 8):
  * the delivered value, the bounds the database refuses to leave, who may change the period, and
  * that a change is a governance event.
  *

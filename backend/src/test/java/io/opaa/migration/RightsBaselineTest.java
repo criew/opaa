@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's rights changeSet (ADR-0036, ADR-0037): groups and their directory
+ * Invariants of the baseline's rights migration (ADR-0036, ADR-0037): groups and their directory
  * synchronisation, the asset shell with its grants, capabilities, the permission history with its
  * retention and transfers, account states and succession cases.
  */
@@ -300,8 +300,8 @@ class RightsBaselineTest extends AbstractBaselineTest {
   }
 
   /**
-   * The visibility history keeps listed state and external-access release per asset: one open
-   * interval per type and id, deletions recorded as ASSET_DELETED, releases with their own causes.
+   * The visibility history keeps the external-access release per asset: one open interval per type
+   * and id, deletions recorded as ASSET_DELETED, releases with their own causes.
    */
   @Test
   void theVisibilityHistoryKnowsItsCausesAndHoldsOneOpenIntervalPerAsset() throws SQLException {
@@ -310,7 +310,7 @@ class RightsBaselineTest extends AbstractBaselineTest {
     execute(visibilitySql("PROMPT_LIBRARY", asset, "CREATED"));
 
     assertRejected(
-        visibilitySql("KNOWLEDGE_LIBRARY", asset, "VISIBILITY_CHANGED"),
+        visibilitySql("KNOWLEDGE_LIBRARY", asset, "EXTERNAL_ACCESS_CHANGED"),
         "uk_asset_visibility_history_open");
     execute(
         "UPDATE asset_visibility_history SET valid_to = now() WHERE asset_type = 'KNOWLEDGE_LIBRARY'");
@@ -394,10 +394,11 @@ class RightsBaselineTest extends AbstractBaselineTest {
   // ---------------------------------------------------------------------------------------------
 
   /**
-   * Every organization starts with the delivered state - four capabilities for all accounts, each
-   * with an open DELIVERED interval - whether it is the seeded one or created later. Grant and
-   * interval date from the organization's own creation, so the point-in-time answer never says
-   * "nobody was allowed" for a moment the organization existed.
+   * Every organization starts with the delivered state - four capabilities for all accounts, the
+   * connector capability once per delivered source type, each grant with an open DELIVERED interval
+   * - whether it is the seeded one or created later. Grant and interval date from the
+   * organization's own creation, so the point-in-time answer never says "nobody was allowed" for a
+   * moment the organization existed.
    */
   @Test
   void everyOrganizationStartsWithTheFourDeliveredCapabilitiesAndAnOpenIntervalEach()
@@ -407,22 +408,30 @@ class RightsBaselineTest extends AbstractBaselineTest {
     for (String organization : List.of(SEEDED_ORGANIZATION_ID, later.toString())) {
       assertThat(
               strings(
-                  "SELECT capability FROM capability_grants WHERE subject_type = 'ALL_ACCOUNTS'"
+                  "SELECT DISTINCT capability FROM capability_grants WHERE subject_type = 'ALL_ACCOUNTS'"
                       + " AND organization_id = '"
                       + organization
                       + "' ORDER BY capability"))
           .containsExactlyElementsOf(DELIVERED_CAPABILITIES);
       assertThat(
               strings(
-                  "SELECT h.capability FROM capability_grant_history h JOIN capability_grants g"
-                      + " USING (organization_id, capability) JOIN organizations o"
-                      + " ON o.id = h.organization_id WHERE h.cause = 'DELIVERED'"
+                  "SELECT DISTINCT h.capability FROM capability_grant_history h"
+                      + " JOIN capability_grants g ON g.organization_id = h.organization_id"
+                      + " AND g.capability = h.capability AND g.scope IS NOT DISTINCT FROM h.scope"
+                      + " JOIN organizations o ON o.id = h.organization_id WHERE h.cause = 'DELIVERED'"
                       + " AND h.subject_type = 'ALL_ACCOUNTS' AND h.valid_to IS NULL"
                       + " AND h.valid_from = o.created_at AND g.created_at = o.created_at"
                       + " AND h.organization_id = '"
                       + organization
                       + "' ORDER BY h.capability"))
           .containsExactlyElementsOf(DELIVERED_CAPABILITIES);
+      assertThat(
+              countWhere(
+                  "capability_grant_history",
+                  "capability = 'CREATE_CONNECTOR_LIBRARY' AND valid_to IS NULL AND organization_id = '"
+                      + organization
+                      + "'"))
+          .isEqualTo(5);
     }
     assertThat(countWhere("capability_grants", "capability = 'CREATE_INTERNAL_GROUP'")).isZero();
   }
@@ -648,10 +657,10 @@ class RightsBaselineTest extends AbstractBaselineTest {
         accountStateSql(insertUser(), "SUSPENDED", "DIRECTORY_LOCKED"),
         "chk_account_state_history_state");
     assertRejected(
-        accountStateSql(insertUser(), "LOCKED", "ADMIN_LOCKED"), "chk_account_state_history_cause");
-    assertRejected(
-        "DELETE FROM users WHERE id = '" + user + "'",
-        "fk_account_state_history_user_organization");
+        accountStateSql(insertUser(), "LOCKED", "UNKNOWN_CAUSE"),
+        "chk_account_state_history_cause");
+    execute("DELETE FROM users WHERE id = '" + user + "'");
+    assertThat(countWhere("account_state_history", "user_id = '" + user + "'")).isZero();
   }
 
   /**
@@ -673,12 +682,11 @@ class RightsBaselineTest extends AbstractBaselineTest {
 
   /**
    * Nobody ended an open case; whoever ended a case stays deletable (a case says nothing about read
-   * rights) and so does whoever reviewed it, while the review goes with its case.
+   * rights).
    */
   @Test
-  void successionCasesAndReviewsNameTheirPersonsWithoutHoldingThem() throws SQLException {
+  void successionCasesNameTheirPersonsWithoutHoldingThem() throws SQLException {
     UUID closer = insertUser();
-    UUID reviewer = insertUser();
     UUID open = insertSuccessionCase("OPEN_SUCCESSION", "GROUP", null, UUID.randomUUID());
     assertRejected(
         "UPDATE succession_cases SET closed_by_user_id = '"
@@ -694,21 +702,8 @@ class RightsBaselineTest extends AbstractBaselineTest {
             + "' WHERE id = '"
             + open
             + "'");
-    execute(
-        "INSERT INTO succession_reviews (id, case_id, organization_id, reviewed_at,"
-            + " reviewed_by_user_id, reason) VALUES (gen_random_uuid(), '"
-            + open
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "', now(), '"
-            + reviewer
-            + "', 'weiterhin offen')");
-    execute("DELETE FROM users WHERE id IN ('" + closer + "', '" + reviewer + "')");
+    execute("DELETE FROM users WHERE id = '" + closer + "'");
     assertThat(countWhere("succession_cases", "closed_by_user_id IS NULL")).isEqualTo(1);
-    assertThat(countWhere("succession_reviews", "reviewed_by_user_id IS NULL")).isEqualTo(1);
-
-    execute("DELETE FROM succession_cases WHERE id = '" + open + "'");
-    assertThat(countRows("succession_reviews")).isZero();
   }
 
   /** An asset case says which asset type it concerns; no other case does. */
@@ -892,13 +887,13 @@ class RightsBaselineTest extends AbstractBaselineTest {
 
   private static String visibilitySql(String assetType, UUID asset, String cause) {
     return "INSERT INTO asset_visibility_history (id, asset_type, asset_id, organization_id,"
-        + " listed, cause, valid_from) VALUES (gen_random_uuid(), '"
+        + " cause, valid_from) VALUES (gen_random_uuid(), '"
         + assetType
         + "', '"
         + asset
         + "', '"
         + SEEDED_ORGANIZATION_ID
-        + "', false, '"
+        + "', '"
         + cause
         + "', now())";
   }

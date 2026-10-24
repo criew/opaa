@@ -17,19 +17,18 @@ import java.util.regex.Pattern;
 /**
  * What a still running previous release depends on in the catalog of the current schema: its tables
  * (partitions count as their parent), their columns with type, nullability and default, and their
- * {@code CHECK} constraints. Read before and after one changeSet, {@link #breakingChangesTo} names
+ * {@code CHECK} constraints. Read before and after one migration, {@link #breakingChangesTo} names
  * every change that release does not survive - from the catalog the database itself built, so the
  * spelling of the SQL, comments, string literals, dynamic SQL in a {@code DO} block and cascades
  * decide nothing. Function bodies only count once they run.
  *
  * <p>Not covered, left to the review: new foreign keys, unique constraints and triggers on existing
- * tables, and what the changeSet does to existing rows.
+ * tables, and what the migration does to existing rows.
  */
 final class RollingUpdateCatalog {
 
-  /** The tables Liquibase keeps for itself; they are no part of the application schema. */
-  private static final Set<String> LIQUIBASE_TABLES =
-      Set.of("databasechangelog", "databasechangeloglock");
+  /** The table Flyway keeps for itself; it is no part of the application schema. */
+  private static final String SCHEMA_HISTORY = "flyway_schema_history";
 
   private static final Pattern VARCHAR = Pattern.compile("character varying(?:\\((\\d+)\\))?");
 
@@ -71,7 +70,7 @@ final class RollingUpdateCatalog {
               "SELECT c.oid, c.relname FROM pg_class c WHERE c.oid IN (" + ownTables + ")")) {
         while (rows.next()) {
           String name = rows.getString(2);
-          if (!LIQUIBASE_TABLES.contains(name)) {
+          if (!SCHEMA_HISTORY.equals(name)) {
             tables.put(rows.getLong(1), new Table(rows.getLong(1), name));
           }
         }

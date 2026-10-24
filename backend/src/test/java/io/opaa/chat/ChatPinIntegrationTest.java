@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Pinning as a personal mark (docs/features/chat-list.md, "Anheften") against the real Liquibase
+ * Pinning as a personal mark (docs/features/chat-list.md, "Anheften") against the real Flyway
  * schema: it never touches the chat row, works in an archived space, and stays invisible to - and
  * unreachable for - every other person.
  */

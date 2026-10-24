@@ -260,7 +260,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
     assertThat(documents).allMatch(d -> d.getChecksum() != null && d.getChecksum().length() == 64);
-    // every document belongs to exactly one library - against the real Liquibase schema,
+    // every document belongs to exactly one library - against the real Flyway schema,
     // not just the mocked DocumentIngestServiceTest, so a missing fk_documents_library_organization
     // constraint or a NULL library_id would fail this insert, not just this assertion.
     assertThat(documents).allMatch(d -> targetLibraryId.equals(d.getLibraryId()));

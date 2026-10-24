@@ -33,8 +33,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The chat archive as a personal filing (docs/features/chat-list.md, "Archivieren") against the
- * real Liquibase schema: it moves a chat between the active list and the archive without changing
- * the chat, and it is distinct from an archived space.
+ * real Flyway schema: it moves a chat between the active list and the archive without changing the
+ * chat, and it is distinct from an archived space.
  */
 @OpaaIntegrationTest
 class ChatArchiveIntegrationTest {

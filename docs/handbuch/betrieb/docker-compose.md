@@ -626,19 +626,17 @@ Systemverwalter; bereits vergebene Rollen bleiben.
 ### Neu aufsetzen statt aktualisieren
 
 Fassen die Notizen eines Release die Schemahistorie zu einer neuen Baseline zusammen, lässt sich eine
-ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. So ist es beim Stand von Ende
-September 2026: Die Baseline liegt seitdem je Modul (`db/changelog/foundation/` bis
-`db/changelog/external/`), und eine Datenbank von vorher startet nicht. Ob eine Installation betroffen
-ist, zeigt vor dem Update:
+ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. So ist es beim Wechsel der
+Migrationsbibliothek von Liquibase zu Flyway (Oktober 2026): Die Historie beginnt dort neu mit einer
+Baseline je Modul, und eine Datenbank, die noch Liquibase migriert hat, startet nicht. Ob eine
+Installation betroffen ist, zeigt vor dem Update:
 
 ```bash
 docker compose exec postgres psql -U opaa -d opaa -tAc \
-  "SELECT count(*) FROM databasechangelog WHERE id = 'foundation-2026-09-27-baseline'
-     AND author = 'opaa' AND filename = 'db/changelog/foundation/2026-09-27-baseline.yaml'"
+  "SELECT to_regclass('flyway_schema_history') IS NOT NULL"
 ```
 
-`1` heißt: nicht betroffen. `0` heißt: neu aufsetzen. Die Abfrage prüft Kennung, Autor **und** Datei,
-weil die Migration einen Schritt an genau diesen drei Werten wiedererkennt. Neu aufsetzen:
+`t` heißt: nicht betroffen. `f` heißt: neu aufsetzen. Neu aufsetzen:
 
 1. **Was in der Datenbank liegt, geht verloren** — Konten, Anbieter, Gruppen, Bibliotheken samt
    Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands

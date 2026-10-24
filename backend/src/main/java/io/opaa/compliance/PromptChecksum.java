@@ -24,7 +24,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
  * For a prompt in code the texts are every string constant and every string annotation value
  * ({@code @Tool(description = ...)}) of the named class files, so any change of wording changes the
  * checksum; so does a changed log or error text in the same class. For a prompt held as a database
- * default the text is the last {@code DEFAULT} the changelog gives the column.
+ * default the text is the last {@code DEFAULT} the migrations give the column.
  */
 public final class PromptChecksum {
 
@@ -36,7 +36,7 @@ public final class PromptChecksum {
   private static final Set<String> PARAMETER_ANNOTATION_ATTRIBUTES =
       Set.of("RuntimeVisibleParameterAnnotations", "RuntimeInvisibleParameterAnnotations");
 
-  private static final String CHANGELOGS = "classpath*:db/changelog/**/*.yaml";
+  private static final String MIGRATIONS = "classpath*:db/migration/**/*.sql";
 
   private PromptChecksum() {}
 
@@ -59,9 +59,9 @@ public final class PromptChecksum {
   }
 
   /**
-   * The text the changelog last sets as default of {@code tableColumn} ({@code table.column}): a
+   * The text the migrations last set as default of {@code tableColumn} ({@code table.column}): a
    * {@code column type DEFAULT '...'} in a {@code CREATE TABLE} of that table or an {@code ALTER
-   * COLUMN column SET DEFAULT '...'}; changelog files count in the order of their dated names.
+   * COLUMN column SET DEFAULT '...'}; migration scripts count in the order of their file names.
    */
   static String databaseDefault(String tableColumn) {
     int dot = tableColumn.indexOf('.');
@@ -87,8 +87,8 @@ public final class PromptChecksum {
                 + "\\s+SET DEFAULT\\s+'((?:[^']|'')*)'",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     String found = null;
-    for (Resource changelog : changelogs()) {
-      String text = read(changelog);
+    for (Resource migration : migrations()) {
+      String text = read(migration);
       for (Pattern pattern : List.of(create, alter)) {
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
@@ -97,7 +97,7 @@ public final class PromptChecksum {
       }
     }
     if (found == null) {
-      throw new IllegalArgumentException("no DEFAULT for " + tableColumn + " in the changelog");
+      throw new IllegalArgumentException("no DEFAULT for " + tableColumn + " in the migrations");
     }
     return found;
   }
@@ -128,17 +128,17 @@ public final class PromptChecksum {
     }
   }
 
-  private static List<Resource> changelogs() {
+  private static List<Resource> migrations() {
     try {
       Resource[] found =
           new PathMatchingResourcePatternResolver(PromptChecksum.class.getClassLoader())
-              .getResources(CHANGELOGS);
+              .getResources(MIGRATIONS);
       return Arrays.stream(found)
           .sorted(
               (a, b) -> String.valueOf(a.getFilename()).compareTo(String.valueOf(b.getFilename())))
           .toList();
     } catch (IOException e) {
-      throw new IllegalStateException("cannot list " + CHANGELOGS, e);
+      throw new IllegalStateException("cannot list " + MIGRATIONS, e);
     }
   }
 

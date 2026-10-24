@@ -3,7 +3,7 @@
 # values the previous release reads (readable) and the values this release knows but writes nowhere
 # yet (pending). A new value goes to pending first and is written from the release after the one
 # that ships it; until the version boundary v0.1.0 ships, a new value may stand under readable at
-# once, because no earlier release runs beside v0.1.0. Rules: backend/docs/liquibase.md,
+# once, because no earlier release runs beside v0.1.0. Rules: backend/docs/migrationen.md,
 # "Enum-Werte"; checked by PersistedEnumRegistryTest.
 
 io.opaa.account.ActionTokenPurpose:

@@ -39,8 +39,8 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
   private static final String ORG = "00000000-0000-0000-0000-000000000001";
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-master-through-baseline.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return Migrations.all();
   }
 
   @Test

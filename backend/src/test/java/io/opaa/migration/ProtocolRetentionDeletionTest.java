@@ -11,8 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The retention deletion of both protocols ({@code audit_log} in the identity changeSet, {@code
- * diagnostic_context_log} in the workspace changeSet): a run deletes by the configured period
+ * The retention deletion of both protocols ({@code audit_log} in the identity migration, {@code
+ * diagnostic_context_log} in the workspace migration): a run deletes by the configured period
  * itself, and {@code last_cutoff} is a high-water mark that never moves back.
  *
  * <p>{@code opaa_audit_owner} is never dropped here: the baseline creates it at template-build time

@@ -19,10 +19,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Reproduces and guards the #271 organization-boundary gap in {@code AdminController} / {@link
- * UserService}, against a real Postgres database with the real, versioned Liquibase schema applied
- * ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - the same reasoning as {@code
+ * UserService}, against a real Postgres database with the real, versioned Flyway schema applied
+ * ({@code spring.flyway.enabled=true}, {@code ddl-auto=none}) - the same reasoning as {@code
  * SpaceServiceIntegrationTest}: {@code users.organization_id} is a plain {@code UUID} column
- * without {@code @ManyToOne}, so only Liquibase (not Hibernate-generated DDL) creates {@code
+ * without {@code @ManyToOne}, so only Flyway (not Hibernate-generated DDL) creates {@code
  * fk_users_organization}.
  *
  * <p>Before the fix, {@code AdminController#listUsers} called {@code UserService#findAll()} (=
@@ -50,7 +50,7 @@ class UserServiceOrganizationBoundaryIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Liquibase
+    // Organizations are never wiped wholesale: Organization.DEFAULT_ID is seeded once by Flyway
     // and every other class of this shared context depends on that row (fk_users_organization).
     foreignUserIds = ownUserFixtures.existingUserIds();
     organizationA =

@@ -26,7 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Accounts the administration creates at the same time, more of them than the pool has connections
  * (ten, application.yml): every creation holds one connection for its transaction, and its personal
- * space must not need a second one while it does. Real threads against Postgres with the Liquibase
+ * space must not need a second one while it does. Real threads against Postgres with the Flyway
  * schema, at the production pool size.
  */
 @OpaaLocalAuthMockMvcTest

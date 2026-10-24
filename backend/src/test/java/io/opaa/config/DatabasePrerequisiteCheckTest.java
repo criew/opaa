@@ -2,17 +2,17 @@ package io.opaa.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import liquibase.integration.spring.SpringLiquibase;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class DatabasePrerequisiteCheckTest {
 
   @Test
-  void makesLiquibaseWaitForTheCheck() {
+  void makesFlywayWaitForTheCheck() {
     new ApplicationContextRunner()
         .withUserConfiguration(DatabasePrerequisiteCheck.class)
-        .withBean("schemaMigration", InertMigration.class, InertMigration::new)
+        .withBean("schemaMigration", Flyway.class, () -> Flyway.configure().load())
         .run(
             context ->
                 assertThat(
@@ -24,15 +24,9 @@ class DatabasePrerequisiteCheckTest {
   }
 
   @Test
-  void startsWithoutDataSourceAndWithoutLiquibase() {
+  void startsWithoutDataSourceAndWithoutFlyway() {
     new ApplicationContextRunner()
         .withUserConfiguration(DatabasePrerequisiteCheck.class)
         .run(context -> assertThat(context).hasNotFailed());
-  }
-
-  /** A migration bean that does not migrate, so the context starts without a database. */
-  static class InertMigration extends SpringLiquibase {
-    @Override
-    public void afterPropertiesSet() {}
   }
 }

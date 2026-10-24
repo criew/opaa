@@ -78,7 +78,7 @@ Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector
 Ohne weitere Angabe legt OPAA alles im Schema `public` an. Mit `OPAA_DB_SCHEMA` lässt sich ein
 anderes Schema wählen, etwa um OPAA neben anderen Anwendungen in einer gemeinsam genutzten Datenbank
 zu betreiben. Das Backend setzt dann den `search_path` jeder Verbindung auf `<schema>, public`;
-Migrationen, Tabellen der Anwendung, die Vektortabelle und die Liquibase-Verwaltungstabellen landen
+Migrationen, Tabellen der Anwendung, die Vektortabelle und die Verwaltungstabelle der Migrationen landen
 im gewählten Schema. `public` bleibt nur als Rückfall im Suchpfad, damit eine dort bereits
 installierte Erweiterung `vector` auffindbar bleibt.
 
@@ -115,16 +115,15 @@ Voraussetzungen:
 
 Ohne weitere Angabe migriert jede Instanz die Datenbank beim Start, bevor sie Anfragen annimmt;
 Docker Compose und das Helm-Chart arbeiten mit einer Instanz so. Mit mehreren Instanzen trennen
-beide die Migration vom Start der Instanzen, damit kein Instanzstart eine Migration abbricht oder
-eine hängende Liquibase-Sperre hinterlässt: der Dienst `backend-migrate` der Mehrinstanz-Variante
+beide die Migration vom Start der Instanzen, damit kein Instanzstart eine Migration abbricht: der Dienst `backend-migrate` der Mehrinstanz-Variante
 ([Docker Compose](docker-compose.md#mehrere-backend-instanzen)) und der Migrations-Job des Charts
 ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)). Von Hand:
 
 1. Das Backend-Image einmal mit `OPAA_MODE=migrate` und denselben Datenbankwerten starten. Es wendet
    die Migrationen an, legt die Vektortabelle an und endet mit Exit-Code 0. Jeder andere Exit-Code
    heißt: Die Migration ist gescheitert, die Instanzen bleiben auf dem alten Stand.
-2. Die Instanzen mit `SPRING_LIQUIBASE_ENABLED=false` starten. Sie migrieren nicht und warten nicht
-   auf die Liquibase-Sperre.
+2. Die Instanzen mit `SPRING_FLYWAY_ENABLED=false` starten. Sie migrieren nicht und warten nicht
+   auf die Sperre der Migration.
 
 Wer die Reihenfolge nicht selbst abwarten kann, stellt jeder Instanz das Backend-Image mit
 `OPAA_MODE=await-migration` voran, wie es der Chart als Init-Container tut. Es liest nur, wartet,

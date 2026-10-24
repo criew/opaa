@@ -33,9 +33,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * next run, an empty account list locks nobody, an implausibly large one waits for a confirmation,
  * and the last login-capable system administrator is never locked.
  *
- * <p>Runs against the real, versioned Liquibase schema for the reason {@link
+ * <p>Runs against the real, versioned Flyway schema for the reason {@link
  * DirectorySyncServiceIntegrationTest} states: {@code account_state_history} carries a {@code
- * RESTRICT} foreign key that only the changelog creates.
+ * RESTRICT} foreign key that only the migrations create.
  */
 @OpaaIntegrationTest
 class DirectoryAccountLockIntegrationTest {

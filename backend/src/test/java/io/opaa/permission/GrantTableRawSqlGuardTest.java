@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
  * reassembles each SQL statement from the string literals a {@code +} chain concatenates - a
  * line-window scan would flag the neighbouring {@code asset_visibility_history} cleanups, whose own
  * column keeps that name. {@code io.opaa.migration} is excluded by construction, not by an
- * allowlist of known offenders: a delta test proves what a changeset does to the <em>old</em>
+ * allowlist of known offenders: a delta test proves what a migration does to the <em>old</em>
  * schema and therefore has to write the old column name.
  *
  * <p><b>What it cannot see</b>, named rather than left to be rediscovered: a statement assembled

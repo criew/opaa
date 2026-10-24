@@ -181,8 +181,10 @@ jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api" 
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api" }
 
 # Infrastructure (versions managed by Spring Boot BOM)
-# Spring Boot 4 moved the Liquibase auto-configuration into its own starter module
-spring-boot-starter-liquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
+# Spring Boot 4 moved the Flyway auto-configuration into its own starter module; since Flyway 10
+# each database has its own module
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 postgresql = { module = "org.postgresql:postgresql" }

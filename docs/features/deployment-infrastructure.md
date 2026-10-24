@@ -411,7 +411,7 @@ Schemaänderung hinweg führt über die Datenbanksicherung
 Beide Verfahren setzen voraus, dass **zwei Anwendungsstände kurzzeitig auf demselben Schema laufen
 können**. Das ist keine Betriebseinstellung, sondern eine Regel für die Entwicklung:
 
-1. **Schemaänderungen laufen nur vorwärts** und werden versioniert über Liquibase beim Start
+1. **Schemaänderungen laufen nur vorwärts** und werden versioniert über Flyway beim Start
    angewendet. Es gibt keinen automatischen Rückbau; der Weg zurück ist die Wiederherstellung aus
    der Sicherung.
 2. **Erweitern, dann umstellen, dann aufräumen — in getrennten Ausgaben.** Eine neue Spalte wird

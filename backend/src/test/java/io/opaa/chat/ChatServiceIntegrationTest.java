@@ -51,13 +51,13 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied ({@code
- * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288
- * and {@link io.opaa.space.SpaceServiceIntegrationTest}'s Javadoc, which this class follows the
- * same pattern from, including its cleanup: every row lives in the throwaway organization created
- * per test method, and only that organization is removed again. {@code chats.author_id} and {@code
+ * Runs against a real Postgres database with the real, versioned Flyway schema applied ({@code
+ * spring.flyway.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #288 and
+ * {@link io.opaa.space.SpaceServiceIntegrationTest}'s Javadoc, which this class follows the same
+ * pattern from, including its cleanup: every row lives in the throwaway organization created per
+ * test method, and only that organization is removed again. {@code chats.author_id} and {@code
  * chats.space_id} are plain {@code UUID} columns without {@code @ManyToOne}; Hibernate does not
- * create foreign keys for those, Liquibase does ({@code fk_chats_space_organization}, {@code
+ * create foreign keys for those, Flyway does ({@code fk_chats_space_organization}, {@code
  * fk_chats_author_organization}).
  */
 @OpaaMockedDocumentServiceIntegrationTest

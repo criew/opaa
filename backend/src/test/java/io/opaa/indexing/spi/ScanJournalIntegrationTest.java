@@ -28,9 +28,9 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link ScanJournal} against the Liquibase schema: a round's progress and the presence written
- * with it are committed together or not at all, the end of a round drops its presence, and only a
- * run whose job is still running writes at all.
+ * {@link ScanJournal} against the Flyway schema: a round's progress and the presence written with
+ * it are committed together or not at all, the end of a round drops its presence, and only a run
+ * whose job is still running writes at all.
  */
 @OpaaIntegrationTest
 class ScanJournalIntegrationTest {

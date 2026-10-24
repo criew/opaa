@@ -156,8 +156,8 @@ und `http.proxyHost` wertet OPAA nicht aus.
 
 OPAA ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
 Haus steht: Anmeldung, Aufnahme von Dokumenten, Fragen mit Antwort und Fundstelle. Die Oberfläche
-lädt Schriften, Skripte und Bilder von der eigenen Installation. Die Nutzungsstatistik der
-eingebauten Bibliothek für Datenbankmigrationen (Liquibase) ist abgeschaltet. Was davon belegt ist,
+lädt Schriften, Skripte und Bilder von der eigenen Installation. Die eingebaute Bibliothek für
+Datenbankmigrationen (Flyway) sendet nichts an ihren Hersteller. Was davon belegt ist,
 nennen Nachweis und Grenzen unten.
 
 **Voraussetzungen:**

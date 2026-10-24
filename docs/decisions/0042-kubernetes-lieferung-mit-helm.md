@@ -31,7 +31,7 @@ jüngste Version.
 
 ### 2. Umfang: eine Backend-Instanz als Vorgabe, Aktualisierung mit kurzer Unterbrechung
 
-In der Vorgabe läuft der Chart mit einem Replikat: Strategie `Recreate`, Liquibase migriert beim
+In der Vorgabe läuft der Chart mit einem Replikat: Strategie `Recreate`, Flyway migriert beim
 Start des Backends (kein Hook, kein Job), eine Startup-Probe gibt der Migration Zeit. Ein
 `helm rollback` über eine Schemaänderung hinweg ist dann kein Rückweg; zurück geht es über die
 Datenbanksicherung. Das Spring-Profil ist fest `oidc`; `dev` wird nicht angeboten (ADR-0005).

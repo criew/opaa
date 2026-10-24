@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's connectors changeSet: the RSS connector's per-library feed state.
+ * Invariants of the baseline's connectors migration: the RSS connector's per-library feed state.
  */
 class ConnectorsBaselineTest extends AbstractBaselineTest {
 

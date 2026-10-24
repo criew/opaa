@@ -3,7 +3,7 @@ package io.opaa.compliance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.SystemRole;
-import io.opaa.compliance.ChangelogSchema.Table;
+import io.opaa.compliance.MigrationSchema.Table;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ class ManifestCompletenessTest {
   private static final ComplianceManifest MANIFEST =
       ComplianceManifestLoader.load("classpath*:compliance-fixtures/valid/*.yaml");
 
-  private static final String FILE = "db/changelog/identity/2026-10-15-x.yaml";
+  private static final String FILE = "db/migration/identity/V2026.10.15.1__x.sql";
 
   private static final String MATCHING =
       """
@@ -133,13 +133,13 @@ class ManifestCompletenessTest {
 
   @Test
   void theReportClosesWithTheConvention() {
-    assertThat(ManifestCompleteness.report("Liquibase schema", List.of("gap")))
+    assertThat(ManifestCompleteness.report("migration schema", List.of("gap")))
         .isEqualTo(
-            "The compliance manifest does not match the Liquibase schema (1 gap):\n\ngap\n\n"
+            "The compliance manifest does not match the migration schema (1 gap):\n\ngap\n\n"
                 + "Convention: backend/docs/compliance-manifest.md");
   }
 
   private static Map<String, Table> schema(String sql) {
-    return ChangelogSchema.of(FILE, sql);
+    return MigrationSchema.of(FILE, sql);
   }
 }

@@ -4,9 +4,9 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The prerequisite of the schema migration whose absence Liquibase cannot report: the pgvector
+ * The prerequisite of the schema migration whose absence the migration cannot report: the pgvector
  * extension installed on the PostgreSQL server. {@code CREATE EXTENSION vector} then fails with
- * SQLState 0A000, on which the connection pool closes the connection; Liquibase reports only
+ * SQLState 0A000, on which the connection pool closes the connection; the migration reports only
  * "Connection is closed" and the cause is lost. Missing rights (SQLState 42501) arrive readable and
  * are left to the migration, so that managed services with their own administrator role are not
  * refused.

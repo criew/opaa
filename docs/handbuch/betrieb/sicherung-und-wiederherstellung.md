@@ -86,7 +86,7 @@ SELECT format('%I.%I', n.nspname, c.relname) AS tabelle,
 | P1 | `pg_restore --exit-on-error` | Rückgabewert 0 |
 | P2 | Zeilenzählung Quelle gegen Ziel | gleich für jede Tabelle |
 | P3 | Prüfsummenlisten der Originale | gleich |
-| P4 | Version; Zeilen in `databasechangelog` vor und nach dem Start | Version wie in Schritt 1; Zahl unverändert. Ausnahme: War die Quelle nur einmal gestartet, wächst sie um genau zwei ([Rückweg](kubernetes.md#rückweg)) |
+| P4 | Version; Zeilen in `flyway_schema_history` vor und nach dem Start | Version wie in Schritt 1; Zahl unverändert ([Rückweg](kubernetes.md#rückweg)) |
 | P5 | Seite „Suche & Indexierung“; Health Groups `embedding-model` und `vector-store` | gleiches Embedding-Modell, kein „Index veraltet“; beide `UP` |
 | P6 | Bericht verwaister Originale für T1 ([Originalablage](originalablage.md#originale-einer-vorhandenen-bibliothek)) | keine verwaisten; so viele referenzierte Originale wie Dokumente |
 | P7 | Anmeldung, Space T3, Frage nach M1, „Original öffnen“ | belegte Antwort aus T1, Original mit gleicher Prüfsumme, Chat T5 vorhanden |

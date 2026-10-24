@@ -19,7 +19,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * A connector's change marker is stored as it comes, whatever its length: the ingest runs against
- * the Liquibase schema and reads {@code documents.last_modified_remote} back unchanged.
+ * the Flyway schema and reads {@code documents.last_modified_remote} back unchanged.
  */
 @OpaaIntegrationTest
 class DocumentChangeMarkerPersistenceIntegrationTest {

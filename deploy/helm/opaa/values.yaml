@@ -337,8 +337,8 @@ backend:
   updateStrategy: ""
 
   # The schema migration as a job of its own (OPAA_MODE=migrate) before the pods; required for more
-  # than one pod and for RollingUpdate. The pods then start with SPRING_LIQUIBASE_ENABLED=false and
-  # wait in an init container (OPAA_MODE=await-migration) until the database holds every changeset
+  # than one pod and for RollingUpdate. The pods then start with SPRING_FLYWAY_ENABLED=false and
+  # wait in an init container (OPAA_MODE=await-migration) until the database holds every migration
   # of their version. Off: every pod migrates on its start.
   migration:
     enabled: false

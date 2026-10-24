@@ -20,20 +20,18 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Reconciles {@link TestVocabularies} - the database-free snapshot the unit tests and the Eval
- * corpus assertions run against - with the Dokumentart vocabulary the full changelog actually
- * seeds. Every code, label, sort order, synonym, Kompositum ending and exclusion must match; a seed
- * value added, removed or changed in any changeset fails here instead of drifting silently past the
+ * corpus assertions run against - with the Dokumentart vocabulary the migrations actually seed.
+ * Every code, label, sort order, synonym, Kompositum ending and exclusion must match; a seed value
+ * added, removed or changed in any migration fails here instead of drifting silently past the
  * snapshot.
  */
 class DocumentTypeVocabularySeedReconciliationTest extends AbstractMigrationTest {
 
-  private static final String MASTER_CHANGELOG_PATH = "db/changelog/db.changelog-master.yaml";
-
   private Connection connection;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-master-through-baseline.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return Migrations.all();
   }
 
   @BeforeEach
@@ -47,11 +45,7 @@ class DocumentTypeVocabularySeedReconciliationTest extends AbstractMigrationTest
   }
 
   @Test
-  void testVocabulariesMatchesTheSeededVocabularyOfTheFullChangelog() throws Exception {
-    // The whole master, not only 018/020: a later changeset extending or correcting the seed must
-    // reach this comparison too.
-    applyChangelog(connection, MASTER_CHANGELOG_PATH);
-
+  void testVocabulariesMatchesTheSeededVocabularyOfAllMigrations() throws Exception {
     // Compared in order, unsorted on purpose: TestVocabularies promises to list the entries in
     // sort_order, and a snapshot listing them in a different one would mismatch the repository.
     assertThat(readSeededVocabulary())

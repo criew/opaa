@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Values a connector takes from its source, whatever their length, against the Liquibase schema:
+ * Values a connector takes from its source, whatever their length, against the Flyway schema:
  * container key and file name are stored as they come; a file path beyond {@link FilePathLimit} -
  * the unique index on {@code (library_id, file_path)} sets it - is rejected before any write
  * instead of failing at the database.

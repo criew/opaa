@@ -1,8 +1,8 @@
 """Thin HTTP client for the seed script.
 
 Speaks only the public OPAA API (opaa-api/src/main/openapi/) - no direct
-database access, per the issue's own "Technische Hinweise": direct writes would bypass Liquibase
-and domain logic (validation, audit events, quota checks, ...).
+database access, per the issue's own "Technische Hinweise": direct writes would bypass the schema
+migration and domain logic (validation, audit events, quota checks, ...).
 """
 
 from __future__ import annotations

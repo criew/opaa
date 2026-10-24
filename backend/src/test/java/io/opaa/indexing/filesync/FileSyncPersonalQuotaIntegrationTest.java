@@ -56,10 +56,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Runs of a private library at its owner's exhausted storage quota, through the real document path
- * and the Liquibase schema: a file past the quota is rejected like one past the library's quota,
- * the run goes on to its reconciliation, and deleting at the source frees the room the next run
- * takes the rejected file in with. A listed size past the quota spares the download; the intake
- * stays the binding check.
+ * and the Flyway schema: a file past the quota is rejected like one past the library's quota, the
+ * run goes on to its reconciliation, and deleting at the source frees the room the next run takes
+ * the rejected file in with. A listed size past the quota spares the download; the intake stays the
+ * binding check.
  */
 @OpaaIntegrationTest
 class FileSyncPersonalQuotaIntegrationTest {

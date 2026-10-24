@@ -660,7 +660,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.image.pullPolicy` | `IfNotPresent` | — | Pull-Verhalten |
 | `backend.replicas` | `1` | — | Zahl der Backend-Pods, `0` hält das Backend an; mehr als `1` nur mit `backend.migration.enabled` und einer Originalablage, die jeder Pod sieht ([Mehrere Backend-Instanzen](#mehrere-backend-instanzen)) |
 | `backend.updateStrategy` | leer | — | `Recreate` oder `RollingUpdate`; leer wählt `Recreate` für einen Pod und `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) für mehr. `RollingUpdate` verlangt dasselbe wie mehrere Pods |
-| `backend.migration.enabled` | `false` | `OPAA_MODE`, `SPRING_LIQUIBASE_ENABLED` | Migration als eigener Job vor den Pods; die Pods laufen dann ohne eigene Migration und warten im Init-Container auf sie |
+| `backend.migration.enabled` | `false` | `OPAA_MODE`, `SPRING_FLYWAY_ENABLED` | Migration als eigener Job vor den Pods; die Pods laufen dann ohne eigene Migration und warten im Init-Container auf sie |
 | `backend.migration.backoffLimit` | `2` | — | Wiederholungen eines gescheiterten Migrations-Jobs |
 | `backend.migration.activeDeadlineSeconds` | leer | — | Höchstdauer des Migrations-Jobs in Sekunden; leer: keine |
 | `backend.migration.resources` | 250m CPU und 384Mi angefordert, 768Mi Grenze | — | Ressourcen des Jobs und des wartenden Init-Containers jedes Backend-Pods |
@@ -688,7 +688,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 
 Fest gesetzt und nicht über Werte änderbar sind `SPRING_PROFILES_ACTIVE=oidc`,
 `OPAA_SERVER_ADDRESS=0.0.0.0`, bei der Ablage auf einem Volume `OPAA_UPLOAD_STORAGE_PATH=/app/uploads`
-und mit dem Migrations-Job `SPRING_LIQUIBASE_ENABLED=false` in den Backend-Pods.
+und mit dem Migrations-Job `SPRING_FLYWAY_ENABLED=false` in den Backend-Pods.
 
 ### Frontend
 
@@ -1153,7 +1153,7 @@ Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kub
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
    Versionsfenster zu ([Rückweg](#rückweg)).
-3. **Schemastand notieren:** die Zahl der Zeilen in `databasechangelog` (siehe
+3. **Schemastand notieren:** die Zahl der Zeilen in `flyway_schema_history` (siehe
    [Rückweg](#rückweg)).
 4. **Aktualisieren**, mit derselben Werte-Datei wie bei der Installation:
 
@@ -1249,7 +1249,7 @@ einen Aufruf; ebenso, wenn sich ein Wert des Konfigurationsabdrucks ändert.
 
 ### Rückweg
 
-Liquibase migriert das Schema beim Start und **nur vorwärts**. `helm rollback` stellt Manifeste und
+Flyway migriert das Schema beim Start und **nur vorwärts**. `helm rollback` stellt Manifeste und
 Images der alten Revision wieder her, nicht die Datenbank. **Der verlässliche Rückweg auf eine
 ältere Version ist deshalb die Datenbanksicherung von vor dem Upgrade.** Ohne sie geht es mit
 `helm rollback` nur zurück, wenn die neue Version die vorige in ihrem Versionsfenster zulässt: Dann
@@ -1257,33 +1257,28 @@ hat ihr Schema die vorige Version nur erweitert, und deren Pods starten neben de
 ersten Release mit dieser Zusage und über eine Versionsgrenze ohne Rolling Update gibt es das nicht
 ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
 
-Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `databasechangelog`.
+Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `flyway_schema_history`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
 
 ```sql
-SELECT count(*) FROM databasechangelog;
+SELECT count(*) FROM flyway_schema_history;
 ```
 
 Mit der [Erprobungsdatenbank](#datenbank) läuft die Abfrage im Pod der Datenbank; die Zugangsdaten
 stehen dort in den Umgebungsvariablen. Mit einem eigenen Schema (`database.schema`) heißt die Tabelle
-`<schema>.databasechangelog`:
+`<schema>.flyway_schema_history`:
 
 ```bash
 kubectl -n opaa exec opaa-postgresql-0 -- \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM databasechangelog"'
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM flyway_schema_history"'
 ```
 
 Sichern und Zurückspielen der Erprobungsdatenbank stehen unter
 [Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern).
 
-Nach dem allerersten Start einer Installation wächst die Zahl beim nächsten Start einmalig um zwei,
-auch ohne neue Version: Zwei Indizes auf dem Vektorindex legt OPAA erst an, wenn dessen Tabelle
-besteht, und die entsteht während des ersten Starts. Dasselbe gilt für den ersten Start nach einer
-Rücksicherung, wenn die Sicherung von einer Installation stammt, die nur einmal gestartet war.
-
-- **Gleiche Zahl:** Kein Changeset ist hinzugekommen. `helm rollback` ist dann der vorgesehene Weg,
+- **Gleiche Zahl:** Keine Migration ist hinzugekommen. `helm rollback` ist dann der vorgesehene Weg,
   aber keine Garantie: Eine neue Version kann Daten in einer Form schreiben, die die alte nicht liest,
-  ohne dass dafür ein Changeset nötig war, etwa einen neuen Wert in einer Spalte ohne Prüfregel. Zeigt
+  ohne dass dafür eine Migration nötig war, etwa einen neuen Wert in einer Spalte ohne Prüfregel. Zeigt
   die alte Version danach Fehler, bleibt die Sicherung der Rückfall, wie unten beschrieben.
 
   ```bash
@@ -1310,9 +1305,9 @@ Rücksicherung, wenn die Sicherung von einer Installation stammt, die nur einmal
   [Verwaiste Originale aufräumen](originalablage.md#verwaiste-originale-aufräumen)).
 
 Ein Upgrade, dessen neuer Pod nie bereit wurde, kann trotzdem einen Teil der Migration ausgeführt
-haben. Auch dann gilt die Zahl der Zeilen als Signal. Wurde der Pod mitten in der Migration beendet,
-etwa von der Startup-Probe, bleibt außerdem die Sperre in `databasechangeloglock` stehen, und jeder
-weitere Start wartet auf sie (siehe [Fehlersuche](#installation-und-start)).
+haben. Auch dann gilt die Zahl der Zeilen als Signal. Wurde der Pod mitten in einer Migration
+beendet, etwa von der Startup-Probe, nimmt die Datenbank deren angefangene Änderungen zurück, und
+der nächste Start führt sie erneut aus; eine Sperre bleibt dabei nicht stehen.
 
 ## Sicherung und Wiederherstellung
 
@@ -1684,7 +1679,6 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Backend-Pod bleibt nach einer Knotenwartung im Zustand `Pending`, das Ereignis nennt `didn't match PersistentVolume's node affinity` | Die Originalablage liegt auf einem knotengebundenen Volume, und dessen Knoten ist gesperrt oder fort. Nach einer Wartung hilft `kubectl uncordon` auf diesen Knoten; ist er dauerhaft ausgefallen, hilft nur die Abhilfe unter [Originalablage](#originalablage), Netzspeicher oder Objektspeicher, mit den Originalen aus der Sicherung |
 | Anfragen enden nach 30 Sekunden mit `500`, das Protokoll nennt `Connection is not available, request timed out` | Der Datenbank-Pool des Pods ist erschöpft. `backend.databasePoolSize` anheben und die Grenze für `max_connections` prüfen ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)) |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
-| Backend wird nie bereit, das Protokoll zeigt `Waiting for changelog lock` | Ein früherer Start wurde mitten in der Migration beendet, etwa von der Startup-Probe, und die Sperre in `databasechangeloglock` ist stehen geblieben. Backend anhalten (`kubectl -n opaa scale deploy/opaa-backend --replicas=0`), in der Datenbank `UPDATE databasechangeloglock SET locked = false, lockgranted = null, lockedby = null WHERE id = 1;` ausführen, mit einem eigenen Schema vorangestellt, und das Backend wieder auf eine Instanz setzen. Vorher die Startup-Probe großzügiger stellen, sonst wiederholt sich der Abbruch |
 | `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql)) |
 | Migration bricht mit `permission denied to create extension "vector"` oder `permission denied to grant role` ab | Die Vorbereitung der Datenbank fehlt, siehe derselbe Abschnitt |
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |

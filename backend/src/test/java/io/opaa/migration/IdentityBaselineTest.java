@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Invariants of the baseline's identity changeSet: accounts, identity providers, local accounts
+ * Invariants of the baseline's identity migration: accounts, identity providers, local accounts
  * with their tokens and settings (ADR-0033), mail, branding, notifications and the object types of
  * the audit trail. The audit trail's privilege model has its own class, {@link
  * AuditPrivilegeModelTest}.

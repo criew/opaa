@@ -25,7 +25,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @EnableSchedulerLock(defaultLockAtMostFor = ScheduledRunLocks.DEFAULT_AT_MOST_FOR)
 public class ScheduledRunLockConfiguration {
 
-  /** The lock table of the foundation changelog. */
+  /** The lock table of the foundation migration. */
   static final String TABLE = "shedlock";
 
   @Bean

@@ -44,8 +44,8 @@ class InstanceStartTest extends AbstractMigrationTest {
   private Path uploads;
 
   @Override
-  protected List<String> baseFixtureChangelogs() {
-    return List.of("db/changelog/test-empty.yaml");
+  protected List<String> baseFixtureMigrations() {
+    return List.of();
   }
 
   @AfterEach
@@ -68,14 +68,14 @@ class InstanceStartTest extends AbstractMigrationTest {
         .isTrue();
     assertThat(migration.process().exitValue()).as(migration.log()).isZero();
     assertThat(migration.log()).contains("Started DatabaseMigrationMode").doesNotContain(STARTED);
-    long applied = count("SELECT count(*) FROM databasechangelog");
+    long applied = count("SELECT count(*) FROM flyway_schema_history");
     assertThat(applied).isPositive();
     assertThat(count("SELECT count(*) FROM pg_class WHERE relname = 'vector_store'")).isOne();
 
-    Instance instance = start("instance", Map.of("SPRING_LIQUIBASE_ENABLED", "false"));
+    Instance instance = start("instance", Map.of("SPRING_FLYWAY_ENABLED", "false"));
 
     assertThat(instance.started().get(START_SECONDS, TimeUnit.SECONDS)).as(instance.log()).isTrue();
-    assertThat(count("SELECT count(*) FROM databasechangelog")).isEqualTo(applied);
+    assertThat(count("SELECT count(*) FROM flyway_schema_history")).isEqualTo(applied);
   }
 
   @Test
@@ -84,7 +84,7 @@ class InstanceStartTest extends AbstractMigrationTest {
 
     assertThat(logReaches(waiting, "Waiting for the migration step")).as(waiting.log()).isTrue();
     assertThat(waiting.process().isAlive()).as(waiting.log()).isTrue();
-    assertThat(count("SELECT count(*) FROM databasechangelog"))
+    assertThat(count("SELECT count(*) FROM pg_class WHERE relname = 'flyway_schema_history'"))
         .as("waiting writes nothing")
         .isZero();
 

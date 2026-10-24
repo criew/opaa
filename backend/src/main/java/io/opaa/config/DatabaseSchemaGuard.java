@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>The schema name is spliced unquoted into the connection's {@code search_path}, into SECURITY
  * DEFINER functions' pinned {@code search_path} and into native SQL naming {@code vector_store}.
- * Runs as a {@link BeanFactoryPostProcessor} so the check precedes the data source and Liquibase.
+ * Runs as a {@link BeanFactoryPostProcessor} so the check precedes the data source and Flyway.
  */
 @InstallationWide
 @NoDataImpact("the database schema name")
@@ -31,7 +31,7 @@ public class DatabaseSchemaGuard implements BeanFactoryPostProcessor, Environmen
 
   /**
    * PostgreSQL keywords that cannot stand unquoted as a schema name: categories {@code R} and
-   * {@code T} of {@code pg_get_keywords()}, which SchemaPortabilityMigrationTest compares against.
+   * {@code T} of {@code pg_get_keywords()}, which SchemaPortabilityTest compares against.
    */
   public static final Set<String> NON_SCHEMA_KEYWORDS =
       Set.of(

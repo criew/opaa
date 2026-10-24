@@ -70,7 +70,7 @@ def repo(tmp_path: Path) -> Path:
     write(
         tmp_path,
         ".github/data-impact-paths.txt",
-        "# comment\n\nbackend/src/main/resources/db/changelog/**\nbackend/src/main/java/**/*Properties.java\n",
+        "# comment\n\nbackend/src/main/resources/db/migration/**\nbackend/src/main/java/**/*Properties.java\n",
     )
     write(tmp_path, "README.md")
     git(tmp_path, "add", "-A")
@@ -99,11 +99,11 @@ def run(repo: Path, body: str = "", label: bool = False) -> subprocess.Completed
 
 
 def test_matched_path_without_label_or_statement_fails(repo: Path) -> None:
-    change(repo, "backend/src/main/resources/db/changelog/x/2026-10-15-new.yaml")
+    change(repo, "backend/src/main/resources/db/migration/x/V2026.10.15.1__new.sql")
     result = run(repo)
     assert result.returncode == 1
     assert "::error::Files with possible data impact" in result.stdout
-    assert "db/changelog/x/2026-10-15-new.yaml" in result.stdout
+    assert "db/migration/x/V2026.10.15.1__new.sql" in result.stdout
 
 
 def test_double_star_spans_directories(repo: Path) -> None:
@@ -112,26 +112,26 @@ def test_double_star_spans_directories(repo: Path) -> None:
 
 
 def test_label_passes(repo: Path) -> None:
-    change(repo, "backend/src/main/resources/db/changelog/x/new.yaml")
+    change(repo, "backend/src/main/resources/db/migration/x/V1__new.sql")
     result = run(repo, label=True)
     assert result.returncode == 0
     assert "::notice::" in result.stdout
 
 
 def test_ticked_no_impact_passes_with_warning(repo: Path) -> None:
-    change(repo, "backend/src/main/resources/db/changelog/x/new.yaml")
+    change(repo, "backend/src/main/resources/db/migration/x/V1__new.sql")
     result = run(repo, body=NO_IMPACT)
     assert result.returncode == 0
     assert "::warning::" in result.stdout
 
 
 def test_crlf_body_is_read(repo: Path) -> None:
-    change(repo, "backend/src/main/resources/db/changelog/x/new.yaml")
+    change(repo, "backend/src/main/resources/db/migration/x/V1__new.sql")
     assert run(repo, body=NO_IMPACT.replace("\n", "\r\n")).returncode == 0
 
 
 def test_no_impact_ticked_outside_section_does_not_count(repo: Path) -> None:
-    change(repo, "backend/src/main/resources/db/changelog/x/new.yaml")
+    change(repo, "backend/src/main/resources/db/migration/x/V1__new.sql")
     assert run(repo, body=UNTICKED).returncode == 1
 
 
@@ -270,7 +270,7 @@ def test_every_ticked_template_impact_box_needs_the_label(repo: Path) -> None:
 
 
 def test_ticked_template_no_impact_box_passes(repo: Path) -> None:
-    change(repo, "backend/src/main/resources/db/changelog/x/new.yaml")
+    change(repo, "backend/src/main/resources/db/migration/x/V1__new.sql")
     body = TEMPLATE.read_text(encoding="utf-8")
     (no_impact,) = [box for box in template_boxes() if "Keine Wirkung" in box]
     assert run(repo, body=body).returncode == 1

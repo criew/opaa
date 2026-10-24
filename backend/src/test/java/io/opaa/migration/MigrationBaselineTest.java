@@ -16,17 +16,16 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
- * Applies the baseline file of every module to an empty database and asserts what spans the whole
- * baseline: one changeSet per logical module in dependency order, the complete table inventory,
- * pgvector, the delivered seed rows, the partitioned {@code audit_log} owned by the restricted
- * role, and the organization-boundary composite-foreign-key rule, which judges the delivered schema
- * rather than the baseline alone - see {@code applyEveryChangesetAfterTheBaseline()}.
+ * Applies every migration to an empty database and asserts what spans all modules: one baseline per
+ * logical module in dependency order, the complete table inventory, pgvector, the delivered seed
+ * rows, the partitioned {@code audit_log} owned by the restricted role, and the
+ * organization-boundary composite-foreign-key rule on the delivered schema.
  *
  * <p>The invariants of the individual modules live in one class per module ({@link
  * IdentityBaselineTest}, {@link RightsBaselineTest}, {@link KnowledgeBaselineTest}, {@link
  * ConnectorsBaselineTest}, {@link WorkspaceBaselineTest}, {@link AssistantBaselineTest}, {@link
- * ExternalBaselineTest}); the two privilege models, the retention deletion and the two guarded
- * {@code vector_store} changeSets have classes of their own.
+ * ExternalBaselineTest}); the privilege models and the retention deletion have classes of their
+ * own.
  */
 class MigrationBaselineTest extends AbstractBaselineTest {
 
@@ -39,40 +38,41 @@ class MigrationBaselineTest extends AbstractBaselineTest {
    */
   private static final List<BoundaryException> DOCUMENTED_EXCEPTIONS = List.of();
 
-  /** The rows the baseline delivers; every other table starts empty. */
+  /** The rows the migrations deliver; every other table starts empty. */
   private static final Map<String, Long> SEEDED_ROW_COUNTS =
       Map.ofEntries(
-          Map.entry("organizations", 1L),
-          Map.entry("branding_settings", 1L),
-          Map.entry("mail_settings", 1L),
-          Map.entry("local_auth_settings", 1L),
           Map.entry("audit_retention_settings", 1L),
-          Map.entry("permission_history_retention_settings", 1L),
-          Map.entry("capability_grants", 4L),
-          Map.entry("capability_grant_history", 4L),
-          Map.entry("document_type_vocabulary", 9L),
-          Map.entry("document_type_synonyms", 34L),
-          Map.entry("document_type_suffixes", 7L),
-          Map.entry("document_type_suffix_exclusions", 14L),
+          Map.entry("branding_settings", 1L),
+          Map.entry("capability_grant_history", 8L),
+          Map.entry("capability_grants", 8L),
+          Map.entry("chat_locked_account_cleanup_state", 1L),
+          Map.entry("connection_log_retention_settings", 1L),
           Map.entry("diagnostic_context_retention_settings", 1L),
-          Map.entry("external_access_settings", 1L));
+          Map.entry("document_type_suffix_exclusions", 14L),
+          Map.entry("document_type_suffixes", 7L),
+          Map.entry("document_type_synonyms", 34L),
+          Map.entry("document_type_vocabulary", 9L),
+          Map.entry("external_access_settings", 1L),
+          Map.entry("link_target_settings", 1L),
+          Map.entry("local_auth_settings", 1L),
+          Map.entry("mail_settings", 1L),
+          Map.entry("organizations", 1L),
+          Map.entry("permission_history_retention_settings", 1L),
+          Map.entry("self_disclosure_settings", 1L));
 
   // ---------------------------------------------------------------------------------------------
   // Baseline smoke tests
   // ---------------------------------------------------------------------------------------------
 
-  /**
-   * One changeSet per logical module, in the order modules may depend on each other, with the two
-   * precondition-guarded {@code vector_store} changeSets after the knowledge module. They stay
-   * unrecorded here because the fixture database has no {@code vector_store} (see {@link
-   * VectorStoreExpressionIndexTest}).
-   */
+  /** One baseline per logical module, in the order modules may depend on each other. */
   @Test
-  void consistsOfOneChangeSetPerModuleInDependencyOrder() throws SQLException {
+  void startsWithOneBaselinePerModuleInDependencyOrder() throws SQLException {
     List<String> executed = new ArrayList<>();
     try (Statement statement = connection.createStatement();
         ResultSet rs =
-            statement.executeQuery("SELECT id FROM databasechangelog ORDER BY orderexecuted")) {
+            statement.executeQuery(
+                "SELECT script FROM flyway_schema_history WHERE version LIKE '1.%'"
+                    + " ORDER BY installed_rank")) {
       while (rs.next()) {
         executed.add(rs.getString(1));
       }
@@ -80,109 +80,146 @@ class MigrationBaselineTest extends AbstractBaselineTest {
 
     assertThat(executed)
         .containsExactly(
-            "foundation-2026-09-27-baseline",
-            "identity-2026-09-27-baseline",
-            "rights-2026-09-27-baseline",
-            "knowledge-2026-09-27-baseline",
-            "connectors-2026-09-27-baseline",
-            "workspace-2026-09-27-baseline",
-            "assistant-2026-09-27-baseline",
-            "external-2026-09-27-baseline");
+            "foundation/V1.1__foundation_baseline.sql",
+            "identity/V1.2__identity_baseline.sql",
+            "rights/V1.3__rights_baseline.sql",
+            "knowledge/V1.4__knowledge_baseline.sql",
+            "connectors/V1.5__connectors_baseline.sql",
+            "connections/V1.6__connections_baseline.sql",
+            "workspace/V1.7__workspace_baseline.sql",
+            "assistant/V1.8__assistant_baseline.sql",
+            "external/V1.9__external_baseline.sql");
   }
 
   /**
-   * The complete table inventory, compared in both directions: a table missing from the baseline
-   * fails here, and so does one the baseline creates without this list naming it. {@code
-   * vector_store} is deliberately absent: Spring AI creates it at application startup.
+   * The complete table inventory, compared in both directions: a table missing from the migrations
+   * fails here, and so does one the migrations create without this list naming it.
    */
   @Test
   void createsEveryTableOfEveryModule() throws SQLException {
     assertThat(baseTableNames())
         .containsExactlyInAnyOrder(
             // foundation
+            "backend_instance_fingerprint_key",
+            "backend_instances",
+            "installation_counters",
             "organizations",
+            "outbound_proxy_settings",
+            "shedlock",
             // identity
-            "users",
-            "oidc_providers",
-            "oidc_provider_seed_marker",
+            "admin_review_reminders",
+            "audit_actor_pseudonyms",
+            "audit_incident_scope_case_counts",
+            "audit_incident_scope_grants",
+            "audit_incident_scope_monthly_counts",
+            "audit_log",
+            "audit_retention_settings",
+            "branding_settings",
+            "link_target_settings",
+            "local_action_tokens",
+            "local_admin_seed_marker",
+            "local_auth_settings",
             "local_credentials",
             "local_refresh_tokens",
             "local_revoked_tokens",
-            "local_action_tokens",
-            "local_auth_settings",
-            "local_admin_seed_marker",
-            "branding_settings",
+            "mail_outbox",
             "mail_settings",
             "mail_templates",
             "notifications",
-            "audit_log",
-            "audit_actor_pseudonyms",
-            "audit_retention_settings",
-            "audit_incident_scope_grants",
+            "oidc_provider_removals",
+            "oidc_provider_seed_marker",
+            "oidc_providers",
+            "self_disclosure_settings",
+            "self_disclosure_usage",
+            "siem_export_cursor",
+            "users",
             // rights
-            "groups",
+            "account_state_history",
+            "asset_favorites",
+            "asset_grant_history",
+            "asset_grants",
+            "asset_ownership_history",
+            "asset_visibility_history",
+            "assets",
+            "capability_grant_history",
+            "capability_grants",
+            "directory_connectors",
+            "directory_sync_pending_plans",
+            "directory_sync_status",
+            "group_membership_history",
             "group_memberships",
             "group_stewards",
-            "directory_sync_status",
-            "directory_sync_pending_plans",
-            "directory_connectors",
-            "assets",
-            "asset_visibility_history",
-            "asset_grants",
-            "asset_grant_history",
-            "asset_ownership_history",
-            "capability_grants",
-            "capability_grant_history",
-            "group_membership_history",
+            "groups",
             "permission_history_retention_settings",
-            "permission_transfers",
             "permission_transfer_objects",
-            "account_state_history",
+            "permission_transfers",
             "succession_cases",
-            "succession_reviews",
             // knowledge
-            "knowledge_libraries",
-            "library_folders",
+            "chunk_full_text",
+            "document_keywords",
+            "document_metadata_values",
+            "document_type_suffix_exclusions",
+            "document_type_suffixes",
+            "document_type_synonyms",
+            "document_type_vocabulary",
             "documents",
+            "embedding_index",
+            "embedding_rate_measurements",
             "indexing_jobs",
             "indexing_run_events",
-            "source_sync_state",
-            "chunk_full_text",
-            "document_type_vocabulary",
-            "document_type_synonyms",
-            "document_type_suffixes",
-            "document_type_suffix_exclusions",
-            "document_metadata_values",
-            "library_metadata_fields",
+            "knowledge_libraries",
+            "library_folders",
+            "library_maintenance_skips",
             "library_metadata_field_values",
+            "library_metadata_fields",
             "library_metadata_schema_changes",
-            "document_keywords",
+            "llm_model_seed_marker",
+            "llm_models",
             "metadata_model_extraction_stats",
             "metadata_model_rejections",
-            "llm_models",
-            "llm_model_seed_marker",
+            "model_role_observations",
+            "private_storage_quota_settings",
+            "source_event_batches",
+            "source_sync_presence",
+            "source_sync_revisits",
+            "source_sync_state",
+            "vector_store",
             // connectors
             "rss_feed_state",
+            // connections
+            "connected_accounts",
+            "connection_authorizations",
+            "connection_grant_revocations",
+            "connection_log",
+            "connection_log_retention_settings",
+            "connection_person_states",
+            "connection_profiles",
+            "connection_tokens",
+            "connector_type_policies",
+            "library_connections",
             // workspace
-            "spaces",
-            "space_memberships",
-            "space_membership_history",
-            "space_asset_associations",
-            "diagnostic_impersonation_grants",
             "diagnostic_context_log",
             "diagnostic_context_retention_settings",
+            "diagnostic_impersonation_grants",
+            "space_asset_associations",
+            "space_membership_history",
+            "space_memberships",
+            "spaces",
             // assistant
-            "chats",
-            "chat_messages",
+            "chat_cleanup_holds",
             "chat_library_references",
+            "chat_locked_account_cleanup_state",
+            "chat_messages",
             "chat_note_items",
             "chat_personal_marks",
+            "chats",
             "prompt_libraries",
             "prompts",
+            "search_status_probes",
             // external
             "external_access_settings",
-            "external_access_tokens",
-            "external_access_token_libraries");
+            "external_access_token_libraries",
+            "external_access_tokens");
   }
 
   /**
@@ -192,7 +229,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
    * of {@code source_settings}, and the library-only visibility history the asset shell replaced.
    */
   @Test
-  void createsNoTableThatOnlyEverExistedBetweenTwoHistoricalChangesets() throws SQLException {
+  void createsNoTableThatOnlyEverExistedBetweenTwoHistoricalMigrations() throws SQLException {
     for (String table :
         List.of(
             "confluence_sync_state",
@@ -243,14 +280,10 @@ class MigrationBaselineTest extends AbstractBaselineTest {
   // instance of: a table carrying organization_id whose foreign key to another organization_id-
   // carrying table is a plain, single-column key instead of the composite (fk_column,
   // organization_id) -> (referenced_pk, organization_id) shape the rest of the schema relies on.
-  // Every test here that asserts the absence of a violation first calls
-  // applyEveryChangesetAfterTheBaseline(): the rule binds the delivered schema, not just the
-  // baseline.
   // ---------------------------------------------------------------------------------------------
 
   @Test
   void everyOrganizationScopedForeignKeyIsComposite() throws Exception {
-    applyEveryChangesetAfterTheBaseline();
     List<Violation> violations = findViolations(connection);
 
     List<String> staleExceptions = staleExceptionDescriptions(violations, DOCUMENTED_EXCEPTIONS);
@@ -319,7 +352,6 @@ class MigrationBaselineTest extends AbstractBaselineTest {
   @Test
   void aSingleColumnForeignKeyBetweenTwoOrganizationScopedTablesIsDetectedAsAViolation()
       throws Exception {
-    applyEveryChangesetAfterTheBaseline();
     createArtificialOrganizationScopedTablesWithASingleColumnForeignKey();
 
     List<Violation> violations =
@@ -348,7 +380,6 @@ class MigrationBaselineTest extends AbstractBaselineTest {
    */
   @Test
   void aDocumentedExceptionCoversTheMatchingViolationAndIsNotStale() throws Exception {
-    applyEveryChangesetAfterTheBaseline();
     createArtificialOrganizationScopedTablesWithASingleColumnForeignKey();
     List<Violation> violations = findViolations(connection);
     List<BoundaryException> exceptions = new ArrayList<>(DOCUMENTED_EXCEPTIONS);
@@ -400,7 +431,6 @@ class MigrationBaselineTest extends AbstractBaselineTest {
    */
   @Test
   void aForeignKeyThatIsOnlyOrganizationIdIsNotAcceptedAsComposite() throws Exception {
-    applyEveryChangesetAfterTheBaseline();
     createArtificialOrganizationScopedTablesWithADegenerateOrganizationIdOnlyForeignKey();
 
     List<Violation> violations =
@@ -416,24 +446,6 @@ class MigrationBaselineTest extends AbstractBaselineTest {
     assertThat(violation.constraintName()).isEqualTo("fk_test_org_only_child_degenerate");
     assertThat(violation.baseColumns()).containsExactly("organization_id");
     assertThat(violation.referencedColumns()).containsExactly("organization_id");
-  }
-
-  /**
-   * Brings this test's database from the baseline (all this class's other tests work against) to
-   * the delivered schema: {@code db.changelog-master.yaml} shares the baseline's changeSet
-   * identities with this class's fixture chain, so only the changesets written after the baseline
-   * actually run. The organization-boundary rule is a property of the schema an installation ends
-   * up with, not of the baseline alone - without this step a changeset added after the baseline
-   * could introduce a single-column key and never be judged by the rule.
-   *
-   * <p>Runs once per test method, in that method's own cloned database. A future changeset that
-   * creates a cluster-wide object ({@code CREATE ROLE}, as the baseline does for {@code
-   * opaa_audit_owner}) therefore needs the per-method create/drop handling described in {@link
-   * AbstractMigrationTest}'s Javadoc; the second caller would otherwise find the role already
-   * present.
-   */
-  private void applyEveryChangesetAfterTheBaseline() throws Exception {
-    applyChangelog(connection, "db/changelog/db.changelog-master.yaml");
   }
 
   private void createArtificialOrganizationScopedTablesWithASingleColumnForeignKey()
@@ -687,7 +699,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
 
   /**
    * Every ordinary and partitioned table in the current schema, without the partitions themselves
-   * ({@code relispartition}) and without Liquibase's own two bookkeeping tables.
+   * ({@code relispartition}) and without Flyway's schema history.
    */
   private List<String> baseTableNames() throws SQLException {
     List<String> tables = new ArrayList<>();
@@ -697,7 +709,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
                 "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
                     + " WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p')"
                     + " AND NOT c.relispartition"
-                    + " AND c.relname NOT IN ('databasechangelog', 'databasechangeloglock')"
+                    + " AND c.relname <> 'flyway_schema_history'"
                     + " ORDER BY c.relname")) {
       while (rs.next()) {
         tables.add(rs.getString(1));

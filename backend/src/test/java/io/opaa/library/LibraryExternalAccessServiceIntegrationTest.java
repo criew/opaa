@@ -43,10 +43,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The Freigabe einer Bibliothek für Fremdzugänge against a real Postgres with the versioned
- * Liquibase schema: who may set it, that it cannot be set without a Befristung within the
- * systemwide bound, that it stops taking effect on its own, and that every one of those leaves an
- * audit entry with no Klarname.
+ * The Freigabe einer Bibliothek für Fremdzugänge against a real Postgres with the versioned Flyway
+ * schema: who may set it, that it cannot be set without a Befristung within the systemwide bound,
+ * that it stops taking effect on its own, and that every one of those leaves an audit entry with no
+ * Klarname.
  *
  * <p>The history side of the same operations - that the Stichtag reconstruction agrees with the
  * library - lives in {@code PermissionHistoryServiceIntegrationTest}, next to the two reach fields
