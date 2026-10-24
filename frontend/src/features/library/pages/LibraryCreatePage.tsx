@@ -517,6 +517,24 @@ export default function LibraryCreatePage() {
     }
   }
 
+  const sourceSummary = configuration?.summary ? configuration.summary(values, formContext) : null
+  // the Zugang belongs to Verbindung; a connector naming it there already keeps its own row
+  const zugangRow = connection
+    ? {
+        label: 'Zugang',
+        value: privateLibrary ? `${connection.name} (eigenes Konto)` : connection.name,
+      }
+    : null
+  const reviewSummary = sourceSummary && {
+    ...sourceSummary,
+    connection: [
+      ...(zugangRow && !sourceSummary.connection?.some((row) => row.label === 'Zugang')
+        ? [zugangRow]
+        : []),
+      ...(sourceSummary.connection ?? []),
+    ],
+  }
+
   const firstRunHint =
     configuration?.firstRunHint ??
     'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
@@ -524,7 +542,7 @@ export default function LibraryCreatePage() {
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
-      <Box sx={{ maxWidth: 720 }}>
+      <Box sx={{ maxWidth: 720, color: 'text.primary' }}>
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
           Neue Wissensbibliothek
         </Typography>
@@ -684,20 +702,8 @@ export default function LibraryCreatePage() {
 
         {currentStep === STEP_REVIEW && (
           <CreateReviewStep
-            sourceRows={[
-              { label: 'Quellart', value: displayNameOf(sourceType) },
-              ...(connection
-                ? [
-                    {
-                      label: 'Zugang',
-                      value: privateLibrary
-                        ? `${connection.name} (eigenes Konto)`
-                        : connection.name,
-                    },
-                  ]
-                : []),
-            ]}
-            summary={configuration?.summary ? configuration.summary(values, formContext) : null}
+            sourceRows={[{ label: 'Art', value: displayNameOf(sourceType) }]}
+            summary={reviewSummary}
             scheduleRows={
               uploadLibrary
                 ? null

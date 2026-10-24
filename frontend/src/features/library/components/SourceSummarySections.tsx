@@ -84,7 +84,10 @@ export default function SourceSummarySections({
   return (
     <>
       <PageSection title={SETUP_SECTION_TITLES.connection} action={edit}>
-        {summary.connection && <SummaryRows rows={summary.connection} />}
+        {/* the Zugang line of the panel below names the profile; no second row for it */}
+        {summary.connection && (
+          <SummaryRows rows={summary.connection.filter((row) => row.label !== 'Zugang')} />
+        )}
         {children.connectionExtras}
       </PageSection>
       {credentials && (

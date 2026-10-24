@@ -94,7 +94,7 @@ export default function ConfluenceSetup({
         fields.asksSecret ? (
           <StoredCredentials
             stored={kept}
-            label="Zugangsdaten"
+            label={values.edition === 'DATA_CENTER' ? 'Token' : 'E-Mail-Adresse und Token'}
             onKeep={() => onChange({ email: '', token: '' })}
           >
             {cloud && (

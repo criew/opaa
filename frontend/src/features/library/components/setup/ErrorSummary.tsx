@@ -61,6 +61,7 @@ const ErrorSummary = forwardRef<HTMLDivElement, ErrorSummaryProps>(function Erro
                   color: 'error.main',
                   textAlign: 'left',
                   fontSize: 13.5,
+                  minHeight: 24,
                   verticalAlign: 'baseline',
                 }}
               >

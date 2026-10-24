@@ -50,7 +50,7 @@ export default function SourceSetupLayout({
     ['schedule', schedule],
   ]
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'text.primary' }}>
       {intro && <Box sx={{ fontSize: 13.5, color: 'text.secondary' }}>{intro}</Box>}
       {sections.map(([key, content]) =>
         content ? (

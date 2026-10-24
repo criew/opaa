@@ -17,7 +17,10 @@ export function scheduleSummary(
   if (rhythm) {
     const days =
       values.fullSyncDays.trim() || (rhythm.defaultDays != null ? String(rhythm.defaultDays) : '')
-    rows.push({ label: 'Vollabgleich', value: days ? `alle ${days} Tage` : 'Vorgabe der Instanz' })
+    rows.push({
+      label: 'Vollabgleich',
+      value: days === '1' ? 'täglich' : days ? `alle ${days} Tage` : 'Vorgabe der Instanz',
+    })
   }
   return rows
 }

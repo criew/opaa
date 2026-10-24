@@ -54,6 +54,7 @@ export function SummaryRows({ rows }: { rows: SummaryRow[] }) {
         rowGap: { xs: 0.25, sm: 0.75 },
         m: 0,
         fontSize: 13.5,
+        color: 'text.primary',
       }}
     >
       {rows.map((row) => (
