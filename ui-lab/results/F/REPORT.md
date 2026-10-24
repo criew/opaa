@@ -3,7 +3,11 @@
 Grundlage D (Zeilen „Verbindung · Umfang · Zeitplan“, höchstens eine offen, gleiche Zeilen in Assistent, Prüfschritt, Reiter „Quelle“). Prototyp, wird nicht gemerged.
 
 ## Review-Runde 1 (24.10.2026) – Stand
-Befunde in [`REVIEW-1.md`](REVIEW-1.md). Matrix neu mit den Werkzeugen aus PR #3101 (Schema je Kontext direkt geladen, `opaa.mockSlowMs`, Dialog-`__full`, 320-`__full` ohne Kappung): **708 Aufnahmen** + `__full`, `metrics.jsonl` 712 Zeilen. axe hell: nur `region` 8× (Tooltip eines gekürzten Namens unter dem Mauszeiger, außerhalb der Landmarks) · Kontrast dunkel **0** · `overflowX` 0 · Zählbudgets 0 Überschreitungen · not-found: nur Dropbox-Validierung (gewollt). `focusObscured` 76 Aufnahmen, alle bei 320 px (feste Kopfleiste der App, Bestand). small, hell: 40 UI-Wörter, 0,16 Hilfetexte je Aufnahme bei 1280 und 39 / 0,16 bei 320 (die 320er-Zahlen der ersten Runde gelten als unzuverlässig: dort maß das Skript die geschlossene Mobil-Schublade).
+Befunde in [`REVIEW-1.md`](REVIEW-1.md). Matrix neu mit den Werkzeugen aus PR #3101 (Schema je Kontext direkt geladen, `opaa.mockSlowMs`, Dialog-`__full`, 320-`__full` ohne Kappung), Stand nach dem Nachcheck (Reiter, Drive-Aufnahme, kein „·“ vor dem Status): **698 Aufnahmen** + `__full`, `metrics.jsonl` 708 Zeilen, davon 10 not-found (nur die Dropbox-Validierung, gewollt).
+- axe hell: `region` 12× (Tooltip eines gekürzten Namens unter dem Mauszeiger, außerhalb der Landmarks); `landmark-one-main` und `page-has-heading-one` je 1× in `wizard-filled__dropbox__slow`, aufgenommen mitten in der Weiterleitung über `/connections/callback` (Aufnahmeeffekt). Kontrast dunkel **0**, `overflowX` 0, Zählbudgets ohne Überschreitung.
+- `focusObscured` in 77 Aufnahmen: 56 bei 320 px (feste Kopfleiste der App, Bestand), 21 bei 1280 px. Dort betrifft es ausschließlich den Skip-Link „Zum Inhalt springen“ der App-Shell auf gescrollten Seiten, keinen Baustein von F.
+- small, hell: 39 UI-Wörter und 0,16 Hilfetexte je Aufnahme, bei 1280 und bei 320 px gleich. Die 320er-Zahlen der ersten Runde gelten als unzuverlässig, dort maß das Skript die geschlossene Mobil-Schublade.
+- Nachcheck: Der falsch aktive Reiter in den Detail-`failed`-Aufnahmen ließ sich nicht nachstellen und ist ein Aufnahmeeffekt. Die gekachelte Drive-Aufnahme ist ersetzt.
 
 | Punkt | Stand |
 |---|---|
@@ -25,7 +29,7 @@ Befunde in [`REVIEW-1.md`](REVIEW-1.md). Matrix neu mit den Werkzeugen aus PR #3
 | R1-10 Ebene, 0 Einträge | erledigt |
 | R1-11 Ändern/Öffner | erledigt |
 | R1-12 Handeingabe | erledigt: überall „Von Hand eintragen …“, gleiches Feld |
-| R1-13 Radiopaar überall | erledigt für Nextcloud, SMB, Dropbox, Confluence, Drive, S3 (Vorgabe „Alle“; Flags `allSpaces`/`allScopes`/`allBuckets` nur im Mock, Backend nötig). Bewusst nicht: SharePoint – „alle Sites“ gibt `Sites.Selected` nicht her; je Bibliothek ganz oder Ordner wählt der Dialog |
+| R1-13 Radiopaar überall | erledigt für die Ordnerquellen Nextcloud, SMB, Dropbox und Dateisystem („Alle Ordner“, Vorgabe). Für Confluence, S3, Drive und SharePoint folgt Punkt 13 in #3117 (Backend, API und Frontend). Der Prototyp zeigt das Radiopaar dort mit den Flags `allSpaces`/`allScopes`/`allBuckets`, die es nur im Mock gibt. Der PR nach `main` (#3104) bietet es bei diesen vier nicht an |
 | R1-14 Verbindungsstatus | erledigt: Punkt + Wort, bei Fehler mit Stufe; bei 320 px eigene Zeile. Im Reiter „Quelle“ „nicht geprüft“ bis zum Test |
 | R1-15 Listen, Pfade | erledigt: ein Trenner „ / “, Kürzung in der Mitte |
 | R1-16 Knöpfe | erledigt: „Jetzt indizieren“ sekundär; Zeile „Abbrechen · Speichern“ rechts wie die Fußleiste |
@@ -83,35 +87,35 @@ Volle Matrix: 8 Typen × small/scale/empty/slow/failed/partial × 1280/320, **he
 
 ## Videos (1280×800, Mauszeiger, ~600 ms je Aktion, H.264 crf 30, je < 1 MB)
 
-> **Veraltet:** Die Videos dieses Abschnitts zeigen den Stand vor der Review-Runde 1 (Commit `9d73ea1`); sie werden mit `flows/f-videos.mjs` neu aufgenommen.
-Skript `ui-lab/harness/record-flows.mjs`. Erste 2 s (Laden) abgeschnitten; vier „viele“-Videos auf 59 s beschleunigt (Faktor 0,94–0,97).
+Stand nach Review-Runde 1 und Nachcheck, aufgenommen mit `flows/f-videos.mjs`. Die Beschreibungen nennen den Ablauf; die Begriffe folgen dem Stand nach der Runde (Radioliste der Zugänge, „<Objekte> auswählen …“, Zeile „Verbunden als …“).
+Skript `ui-lab/harness/record-flows.mjs`. Erste 2 s (Laden) abgeschnitten, Pause 600 ms je Aktion, keine Beschleunigung; das längste Video ist `dropbox__viele` mit 117 s (Zustimmung und tiefe Ordnerebenen).
 
 | Datei | Länge | Inhalt |
 |---|---|---|
-| `videos/dateisystem__ok.mp4` | 40 s | Verzeichnis, Ausschlussmuster, Prüfen, Anlegen; Reiter „Quelle“: Zeitplan „Ändern“ → wöchentlich → Speichern |
-| `videos/dateisystem__viele.mp4` | 45 s | Langer Pfad, vier Ausschlussmuster, Prüfen; Bearbeiten der Fixture (40 Muster) |
+| `videos/dateisystem__ok.mp4` | 39 s | Verzeichnis, Ausschlussmuster, Prüfen, Anlegen; Reiter „Quelle“: Zeitplan „Ändern“ → wöchentlich → Speichern |
+| `videos/dateisystem__viele.mp4` | 51 s | Langer Pfad, vier Ausschlussmuster, Prüfen; Bearbeiten der Fixture (40 Muster) |
 | `videos/dateisystem__fehler.mp4` | 27 s | „Weiter“ leer → „Fehler: 1 Angabe prüfen“, Sprung ins Feld, Test schlägt fehl (Zugriff verweigert), „Trotzdem fortfahren“ |
-| `videos/confluence__ok.mp4` | 47 s | Adresse (Edition erkannt), E-Mail-Adresse, API-Token, 2 Spaces als Checkboxen in der Zeile, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/confluence__viele.mp4` | 52 s | 450 Spaces im Dialog: Suche „Bauamt“, „Alle 45 Treffer auswählen“, Übernehmen, Prüfen; Bearbeiten: 120 Spaces vorausgewählt |
-| `videos/confluence__fehler.mp4` | 36 s | Fehlerzusammenfassung (4 Angaben), Felder füllen, Test: Anmeldung abgelehnt, Spaces „ließen sich nicht laden“ + „Erneut laden“ |
-| `videos/sharepoint__ok.mp4` | 43 s | Zugang wählen, Dialog: Sites › Rathaus › „Dokumente“ ankreuzen, Übernehmen, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/sharepoint__viele.mp4` | 59 s | 17 Sites: Suche „Rathaus“, Bibliothek 002 ganz, „Dokumente“ › Suche „Ordner 00“ › „Alle 9 Treffer“, Breadcrumb zurück („teilweise“); Bearbeiten: 100 Einträge über 17 Sites vorausgewählt |
-| `videos/sharepoint__fehler.mp4` | 44 s | Leerer Umfang → Fehlerzusammenfassung, Test: Entra ID lehnt ab, Dialog „Kein Zugriff auf Sites“, Site-Adresse von Hand |
-| `videos/nextcloud__ok.mp4` | 49 s | Eigene Adresse, Benutzername, App-Passwort, Radiopaar „Nur ausgewählte Ordner“, 2 Checkboxen, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/nextcloud__viele.mp4` | 59 s | 200 Ordner/Ebene: Ordner 001 öffnen, Suche „Vorgang 00“, „Alle 9 Treffer“, zurück; Bearbeiten: 50 tiefe Pfade, Eltern „teilweise“ |
+| `videos/confluence__ok.mp4` | 53 s | Adresse (Edition erkannt), E-Mail-Adresse, API-Token, 2 Spaces als Checkboxen in der Zeile, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/confluence__viele.mp4` | 59 s | 450 Spaces im Dialog: Suche „Bauamt“, „Alle 45 Treffer auswählen“, Übernehmen, Prüfen; Bearbeiten: 120 Spaces vorausgewählt |
+| `videos/confluence__fehler.mp4` | 38 s | Fehlerzusammenfassung (4 Angaben), Felder füllen, Test: Anmeldung abgelehnt, Spaces „ließen sich nicht laden“ + „Erneut laden“ |
+| `videos/sharepoint__ok.mp4` | 45 s | Zugang wählen, Dialog: Sites › Rathaus › „Dokumente“ ankreuzen, Übernehmen, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/sharepoint__viele.mp4` | 61 s | 17 Sites: Suche „Rathaus“, Bibliothek 002 ganz, „Dokumente“ › Suche „Ordner 00“ › „Alle 9 Treffer“, Breadcrumb zurück („teilweise“); Bearbeiten: 100 Einträge über 17 Sites vorausgewählt |
+| `videos/sharepoint__fehler.mp4` | 41 s | Leerer Umfang → Fehlerzusammenfassung, Test: Entra ID lehnt ab, Dialog „Kein Zugriff auf Sites“, Site-Adresse von Hand |
+| `videos/nextcloud__ok.mp4` | 51 s | Eigene Adresse, Benutzername, App-Passwort, Radiopaar „Nur ausgewählte Ordner“, 2 Checkboxen, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/nextcloud__viele.mp4` | 66 s | 200 Ordner/Ebene: Ordner 001 öffnen, Suche „Vorgang 00“, „Alle 9 Treffer“, zurück; Bearbeiten: 50 tiefe Pfade, Eltern „teilweise“ |
 | `videos/nextcloud__fehler.mp4` | 47 s | Fehlerzusammenfassung, Test: Anmeldung abgelehnt, „Ordner ließen sich nicht laden“, Erneut laden, Pfad von Hand |
-| `videos/smb__ok.mp4` | 47 s | Adresse, Benutzername, Passwort, Radiopaar, 2 Checkboxen, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/smb__viele.mp4` | 59 s | wie Nextcloud: Ebene öffnen, Suche, Alle Treffer, Breadcrumb; Bearbeiten vorausgewählt |
+| `videos/smb__ok.mp4` | 51 s | Adresse, Benutzername, Passwort, Radiopaar, 2 Checkboxen, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/smb__viele.mp4` | 67 s | wie Nextcloud: Ebene öffnen, Suche, Alle Treffer, Breadcrumb; Bearbeiten vorausgewählt |
 | `videos/smb__fehler.mp4` | 45 s | Fehlerzusammenfassung, Test: Anmeldung abgelehnt (ohne STATUS-Code), Freigabe nicht erreichbar, Pfad von Hand |
-| `videos/s3__ok.mp4` | 43 s | Endpoint, Access Key, Secret Key, Bucket als Checkbox, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/s3__viele.mp4` | 58 s | 600 Buckets: bucket-0001 öffnen, Suche „ordner-00“, Alle Treffer, zurück zu Buckets; Bearbeiten: 50 Einträge vorausgewählt |
-| `videos/s3__fehler.mp4` | 42 s | Fehlerzusammenfassung, Test: Access/Secret Key falsch, „Kein Zugriff auf die Buckets“, Bucket/Präfix von Hand |
-| `videos/googledrive__ok.mp4` | 37 s | Schlüsseldatei, Geteilte Ablage als Checkbox, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/googledrive__viele.mp4` | 46 s | 300 Ablagen und Ordner: Suche „Ordner 01“, Alle Treffer, Übernehmen; Bearbeiten vorausgewählt |
-| `videos/googledrive__fehler.mp4` | 36 s | Fehlerzusammenfassung, Test: Schlüssel widerrufen, „Kein Zugriff“, Ordner-ID von Hand |
-| `videos/dropbox__ok.mp4` | 46 s | Zugang, Dienstkonto bestätigen, Zustimmung (Mock), Zeile „Verbunden als …“, Radiopaar, Checkboxen, Prüfen, Anlegen, Zeitplan ändern |
-| `videos/dropbox__viele.mp4` | 59 s | nach der Zustimmung: Ordner-Ebene, Suche, Alle Treffer; Bearbeiten: 50 Pfade vorausgewählt |
-| `videos/dropbox__fehler.mp4` | 43 s | Zustimmung, leerer Umfang → Zusammenfassung, Test: Zustimmung abgelaufen, Ordner nicht ladbar, Pfad von Hand |
+| `videos/s3__ok.mp4` | 45 s | Endpoint, Access Key, Secret Key, Bucket als Checkbox, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/s3__viele.mp4` | 64 s | 600 Buckets: bucket-0001 öffnen, Suche „ordner-00“, Alle Treffer, zurück zu Buckets; Bearbeiten: 50 Einträge vorausgewählt |
+| `videos/s3__fehler.mp4` | 45 s | Fehlerzusammenfassung, Test: Access/Secret Key falsch, „Kein Zugriff auf die Buckets“, Bucket/Präfix von Hand |
+| `videos/googledrive__ok.mp4` | 42 s | Schlüsseldatei, Geteilte Ablage als Checkbox, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/googledrive__viele.mp4` | 57 s | 300 Ablagen und Ordner: Suche „Ordner 01“, Alle Treffer, Übernehmen; Bearbeiten vorausgewählt |
+| `videos/googledrive__fehler.mp4` | 41 s | Fehlerzusammenfassung, Test: Schlüssel widerrufen, „Kein Zugriff“, Ordner-ID von Hand |
+| `videos/dropbox__ok.mp4` | 45 s | Zugang, Dienstkonto bestätigen, Zustimmung (Mock), Zeile „Verbunden als …“, Radiopaar, Checkboxen, Prüfen, Anlegen, Zeitplan ändern |
+| `videos/dropbox__viele.mp4` | 118 s | nach der Zustimmung: Ordner-Ebene, Suche, Alle Treffer; Bearbeiten: 50 Pfade vorausgewählt |
+| `videos/dropbox__fehler.mp4` | 42 s | Zustimmung, leerer Umfang → Zusammenfassung, Test: Zustimmung abgelaufen, Ordner nicht ladbar, Pfad von Hand |
 
 ## Prüfliste
 | # | | Beleg |
