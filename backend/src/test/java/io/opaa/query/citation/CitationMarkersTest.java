@@ -177,6 +177,23 @@ class CitationMarkersTest {
   }
 
   @Test
+  void deeplyNestedBracketsAroundAMarkerAreReadInLinearTime() {
+    String text = "(".repeat(25_000) + "【source: doc-1#0 | a.md】" + ")".repeat(25_000);
+
+    assertTimeout(Duration.ofSeconds(2), () -> CitationMarkers.strip(text));
+  }
+
+  @Test
+  void upToEightBracketLevelsAroundMarkersAreUnwrapped() {
+    String marker = "【source: doc-1#0 | a.md】";
+
+    assertThat(CitationMarkers.unwrapBracketed("x " + "(".repeat(8) + marker + ")".repeat(8)))
+        .isEqualTo("x " + marker);
+    assertThat(CitationMarkers.unwrapBracketed("x " + "(".repeat(9) + marker + ")".repeat(9)))
+        .isEqualTo("x (" + marker + ")");
+  }
+
+  @Test
   void nullAndEmptyPassThrough() {
     assertThat(CitationMarkers.strip(null)).isNull();
     assertThat(CitationMarkers.strip("")).isEmpty();

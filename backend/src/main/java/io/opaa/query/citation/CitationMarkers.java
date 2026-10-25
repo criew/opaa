@@ -52,12 +52,16 @@ public final class CitationMarkers {
   private static final Pattern BRACKETED_MARKERS =
       Pattern.compile("\\(" + MARKER_LIST + "\\)|\\[" + MARKER_LIST + "\\](?!\\()");
 
+  /** Bracket levels unwrapped around markers; deeper nesting keeps its outer brackets. */
+  private static final int MAX_BRACKET_LEVELS = 8;
+
   private CitationMarkers() {}
 
   /**
    * {@code text} without the brackets the model put around its markers: {@code (【…】)} becomes
    * {@code 【…】}, several markers in one bracket follow each other without separator. Brackets that
-   * also hold other text are left alone. A text without such brackets is returned unchanged.
+   * also hold other text are left alone. A text without such brackets is returned unchanged. Each
+   * pass drops one level and scans the whole text, so at most {@value #MAX_BRACKET_LEVELS} run.
    */
   static String unwrapBracketed(String text) {
     if (text == null || text.isEmpty()) {
@@ -65,11 +69,12 @@ public final class CitationMarkers {
     }
     String result = text;
     String previous;
+    int passes = 0;
     // Each pass drops one bracket level, so "((【…】))" needs two; every pass shortens the text.
     do {
       previous = result;
       result = unwrapOnce(previous);
-    } while (!result.equals(previous));
+    } while (!result.equals(previous) && ++passes < MAX_BRACKET_LEVELS);
     return result.equals(text) ? text : result;
   }
 
