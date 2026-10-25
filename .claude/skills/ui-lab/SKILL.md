@@ -81,7 +81,7 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
 7. **Messung vor Meinung, Messlauf statt Bild-Review.** Ein Urteil nennt Prüflistennummer und
    Beleg (Zeile aus `metrics.jsonl`, Screenshot-Datei, Videozeitpunkt). Der **Messlauf** ist
    `capture.mjs` über die Szenarien des Bereichs, hell bei 1280 und 320 px, dunkel als Stichprobe
-   (ein Szenario); gelesen werden axe, Kontrast, `overflowX` und `budgetViolations` aus
+   (ein Szenario), je Variante mit `--variant <id>`; gelesen werden axe, Kontrast, `overflowX` und `budgetViolations` aus
    `metrics-summary.md` (`compare.py`), nicht die Bilder. Vor dem ersten Lauf
    `cd e2e && node ui-lab/calibrate.mjs` ausführen; schlägt sie fehl, wird nichts verglichen.
 8. **Der Ist-Stand ist immer eine Variante.** „Ist“ ist `main` nur mit Mock-Szenarien, ohne
@@ -90,8 +90,8 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
    ist das `?variant=none`.
 9. **Screenshots, wenn welche entstehen, in voller Auflösung.** Kein Herunterskalieren, keine
    verlustreiche Kompression, auch nicht auf Vergleichsseite und Querbögen: Ein verkleinertes Bild
-   ist für die Abnahme wertlos. Wo ein Werkzeug noch skaliert, verlinkt die Seite das Original
-   (README der Werkzeuge, „Grenzen“).
+   ist für die Abnahme wertlos. `compare.py`, `contact_sheets.py` und `build_site.py` schreiben
+   deshalb PNG ohne Skalierung.
 
 ## Branches und Ablage
 

@@ -9,8 +9,9 @@ record-flows.mjs in a "videos" subdirectory with its manifest.json) and the text
 site-template/site.example.json. The area of a page (connector, page, ...) is the `type` of the
 screenshots, so the page is not tied to one part of the product.
 
-Per (variant, type, scenario, width) one vertical JPEG sprite holds all screens of that selection,
-with their offsets in data.json, which keeps a page with hundreds of screens below the file limit
+Per (variant, type, scenario, width) one vertical PNG sprite holds all screens of that selection in
+their original pixels, never scaled (a screen longer than --cap is cut), with their offsets in
+data.json, which keeps a page with hundreds of screens below the file limit
 of an Artifact version. Videos are copied to <out>/videos/ unless --video-urls maps their file names
 to URLs (e.g. Artifact assets), which then replace the copies.
 """
@@ -60,26 +61,23 @@ def screens(directory, scheme):
     return found
 
 
-def sprite(parts, width, cap, path):
-    """Stacks the screens of one selection; returns the offsets of each area."""
-    target = 960 if width >= 1280 else width
-    max_h = round(cap * target / width)
+def sprite(parts, cap, path):
+    """Stacks the screens of one selection pixel for pixel; returns the offsets of each area."""
     images = []
     for area, src in parts:
         im = Image.open(src).convert('RGB')
-        if im.width != target:
-            im = im.resize((target, round(im.height * target / im.width)), Image.LANCZOS)
-        cut = im.height > max_h
+        cut = im.height > cap
         if cut:
-            im = im.crop((0, 0, target, max_h))
+            im = im.crop((0, 0, im.width, cap))
         images.append((area, im, cut))
+    target = max(im.width for _, im, _ in images)
     sheet = Image.new('RGB', (target, sum(im.height for _, im, _ in images)), 'white')
     y, areas = 0, []
     for area, im, cut in images:
         sheet.paste(im, (0, y))
         areas.append({'a': area, 'y': y, 'h': im.height, 'cut': cut})
         y += im.height
-    sheet.save(path, quality=62, optimize=True, progressive=True)
+    sheet.save(path, 'PNG')
     return {'w': target, 'h': sheet.height, 'areas': areas}
 
 
@@ -111,8 +109,8 @@ def main():
                 if a not in areas_seen:
                     areas_seen.append(a)
             order = [a for a in area_order if a in by_area] + sorted(a for a in by_area if a not in area_order)
-            name = f'{vid}__{typ}__{scenario}__{width}.jpg'
-            meta = sprite([(a, by_area[a]) for a in order], int(width), args.cap, os.path.join(shots_dir, name))
+            name = f'{vid}__{typ}__{scenario}__{width}.png'
+            meta = sprite([(a, by_area[a]) for a in order], args.cap, os.path.join(shots_dir, name))
             sprites[f'{vid}|{typ}|{scenario}|{width}'] = {'f': f'shots/{name}', **meta}
             if typ not in types:
                 types.append(typ)

@@ -147,9 +147,11 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
      [--types filesystem,confluence,sharepoint,nextcloud,smb,s3,gdrive,dropbox]
      [--scenarios small,scale,empty,slow,failed,partial]   # auch: default
      [--schemes light,dark] [--widths 1280,320]
-     [--areas wizard,review,detail,edit] [--concurrency 2] [--no-axe] [--no-full]
+     [--areas wizard,review,detail,edit] [--concurrency 2] [--no-axe] [--no-full] [--variant <id>]
 ```
 
+- `--variant <id>` hängt `?variant=<id>` an jede URL, die der Ablauf öffnet (vor den Hash), und
+  zeigt so eine Variante aus `UI_LAB_VARIANTS`; gleich in `record-flows.mjs`.
 - `--flow libraries` (Vorgabe) fährt den Quellassistenten, den Prüfschritt sowie Detail und
   Bearbeiten der Fixture-Bibliothek je Quellart. `--flow pages` lädt jeden Pfad aus `--pages` je
   Szenario einmal und nimmt ihn auf; das reicht für eine erste Inventur jedes Bereichs.
@@ -201,7 +203,7 @@ Nach einer Änderung an `lib/measure.mjs` oder `lib/browser.mjs` die Kalibrierun
 cd e2e
 node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
      [--flows ui-lab/flows/library-videos.mjs] [--types nextcloud,s3] [--kinds ok,viele,fehler]
-     [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
+     [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm] [--variant <id>]
 ```
 
 Nimmt die **Videomatrix** auf: je Art drei Videos, **ok** (`small`), **viele** (`scale`) und
@@ -223,11 +225,11 @@ Reiter mit echten Aktionen durchläuft und keinen Weg wiederholt.
 ## compare.py
 
 ```bash
-e2e/.venv/bin/python -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<dirC> --out <dir> [--full] [--filter scale]
+e2e/.venv/bin/python -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<dirC> --out <dir> [--full] [--filter scale] [--per-sheet 3]
 ```
 
-Erzeugt `<dir>/sheets/<screen>.jpg` (Varianten nebeneinander, beschriftet, 560 px Zellbreite;
-320-px-Aufnahmen bleiben in Originalgröße), `<dir>/index.html` (alle Bögen nach Bereich) und
+Erzeugt `<dir>/sheets/<screen>.png` (Varianten nebeneinander, beschriftet, jedes Bild in voller
+Auflösung; mehr als `--per-sheet` Varianten verteilen sich auf `<screen>__p<n>.png`), `<dir>/index.html` (alle Bögen nach Bereich) und
 `<dir>/metrics-summary.md` (Kennzahlen je Variante, darunter Überschreitungen der Zählbudgets,
 Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; axe-Regeln).
 
@@ -235,12 +237,13 @@ Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; a
 
 ```bash
 .venv/bin/python -I ui-lab/contact_sheets.py --dir <matrix> --out <dir> [--full] [--schemes light]
-     [--widths 1280,320] [--filter <text>] [--per-reviewer 2]
+     [--widths 1280,320] [--filter <text>] [--per-reviewer 2] [--per-sheet 3]
 ```
 
 Für das Konsistenz-Review einer Variante (Skill, Abschnitt 4):
-- `<dir>/sheets/<bereich>__<szenario>__<schema>__<breite>.jpg` stellt denselben Bildschirm aller
-  Typen nebeneinander; `<dir>/index.html` listet sie. So fallen Unterschiede zwischen Konnektoren
+- `<dir>/sheets/<bereich>__<szenario>__<schema>__<breite>.png` stellt denselben Bildschirm aller
+  Typen in voller Auflösung nebeneinander, je Bogen höchstens `--per-sheet` Typen (weitere in
+  `…__p<n>.png`); `<dir>/index.html` listet sie. So fallen Unterschiede zwischen Konnektoren
   oder Objekten auf, die je Einzelbild unsichtbar bleiben.
 - `<dir>/reviewers/<n>-<typen>.txt` teilt die Typen in Gruppen von `--per-reviewer` und nennt je
   Prüfer alle hellen Bilder, alle 320er und je Bereich mindestens ein dunkles. Ein `__full`, das
@@ -261,8 +264,9 @@ Vorlage: `site-template/site.example.json`. Die Variante mit der ID `ist` ist de
 Bereiche, Szenarien und Bildschirme ergeben sich aus den Dateinamen; `types`, `scenarios` und
 `areas` in `site.json` geben ihnen Namen und Reihenfolge, für jeden Bereich des Produkts.
 
-Je Auswahl entsteht ein senkrechtes Sprite (`shots/<variante>__<bereich>__<fall>__<breite>.jpg`)
-mit den Offsets in `data.json`; so bleibt die Seite unter der Dateigrenze einer Artifact-Version
+Je Auswahl entsteht ein senkrechtes PNG-Sprite (`shots/<variante>__<bereich>__<fall>__<breite>.png`)
+mit allen Bildschirmen in voller Auflösung, jeder höchstens `--cap` px hoch, und den Offsets in
+`data.json`; so bleibt die Seite unter der Dateigrenze einer Artifact-Version
 (511 Dateien). Videos werden nach `videos/` kopiert. Für ein Artifact die Videos stattdessen als
 Assets hochladen, die Zuordnung Dateiname (`<variante>__<datei>.mp4`) → Asset-URL als JSON
 ablegen und mit `--video-urls` erneut bauen; dann veröffentlicht man `index.html` mit `data.json`
@@ -275,11 +279,5 @@ und `shots/` als Dateien.
 - `__full` endet bei 16 000 px (300 Drive-Bereiche als Liste werden abgeschnitten).
 - Hilfetexte erkennt die Messung an `MuiFormHelperText-root`; ein Entwurf mit eigenem
   Hilfetext-Baustein muss diese Klasse tragen, sonst zählt das Budget ihn nicht.
-- `compare.py`, `contact_sheets.py` und `build_site.py` verkleinern die Bilder und speichern sie
-  als JPEG. Für die Abnahme gilt die volle Auflösung (Skill, Grundregel 9): Bögen und Sprites
-  dienen nur der Übersicht, beurteilt wird am PNG aus `capture.mjs`.
-- `capture.mjs` und `record-flows.mjs` setzen kein `?variant=`. Für den Messlauf einer Variante
-  aus `UI_LAB_VARIANTS` macht der Lab-Branch sie für diesen Lauf zur Vorgabe von
-  `currentUiLabVariant()`.
 - Die Kennzahl `uiWords` schließt Daten nur über ihre Struktur aus (Listen, Bäume, Tabellen,
   Beschreibungslisten, Auswahlkästchen). Deshalb gilt das Wortbudget nur in `small` und `default`.

@@ -37,6 +37,20 @@ export async function schemeContext(browser, scheme, { width = 1280, recordVideo
 }
 
 /**
+ * Every `page.goto` of this tab carries `?variant=<id>` (before the hash), so the frontend shows
+ * that UI-lab variant from the first load; without `variant` the tab stays untouched.
+ */
+export function pinVariant(page, variant) {
+  if (!variant) return
+  const goto = page.goto.bind(page)
+  page.goto = (url, options) => {
+    const target = new URL(url)
+    target.searchParams.set('variant', variant)
+    return goto(target.toString(), options)
+  }
+}
+
+/**
  * The scheme the page actually shows, from the luminance of the body background the theme sets;
  * falls back to the media query while the body is transparent.
  */

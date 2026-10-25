@@ -3,12 +3,12 @@
 
     .venv/bin/python -I ui-lab/contact_sheets.py --dir <capture output> --out <dir>
                      [--full] [--schemes light] [--widths 1280,320] [--filter <text>]
-                     [--per-reviewer 2] [--per-sheet 3] [--cell-width 640] [--max-height 2400]
+                     [--per-reviewer 2] [--per-sheet 3] [--max-height 2400]
 
-Cross sheets: per screen (area × scenario × scheme × width) one JPEG in <out>/sheets/ with that
-screen of every type (connector, page, ...) side by side, so differences between the types show;
-more than --per-sheet types are split over several sheets (<key>__p<n>.jpg) so that each stays
-readable at screen width; <out>/index.html lists them. Screenshots may be PNG or JPEG. Reviewer lists: the types are split into groups of --per-reviewer,
+Cross sheets: per screen (area × scenario × scheme × width) one PNG in <out>/sheets/ with that
+screen of every type (connector, page, ...) side by side in its original pixels, never scaled, so
+differences between the types show; more than --per-sheet types are split over several sheets
+(<key>__p<n>.png); a __full shot is cut, not scaled, at --max-height. <out>/index.html lists them. Screenshots may be PNG or JPEG. Reviewer lists: the types are split into groups of --per-reviewer,
 and <out>/reviewers/<n>-<types>.txt names the files one reviewer looks at: every light shot, every
 320 px shot and at least one dark shot per area; a __full shot byte-identical to its viewport
 shot is left out.
@@ -21,7 +21,7 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from compare import cell, font  # noqa: E402  (shared drawing helpers of the variant comparison)
+from compare import cell, font, shot_width  # noqa: E402  (shared drawing helpers of the variant comparison)
 
 from PIL import Image, ImageDraw  # noqa: E402
 
@@ -36,7 +36,6 @@ def parse_args():
     p.add_argument('--filter', default='', help='only screens whose key contains this text')
     p.add_argument('--per-reviewer', type=int, default=2)
     p.add_argument('--per-sheet', type=int, default=3, help='types per cross sheet; more go to further sheets')
-    p.add_argument('--cell-width', type=int, default=640)
     p.add_argument('--max-height', type=int, default=2400)
     return p.parse_args()
 
@@ -76,13 +75,11 @@ def cross_sheets(args, found, types):
     label_font, head_font = font(16), font(14)
     written = []
     for key in sorted(screens):
-        width = int(key.rsplit('__', 1)[1])
-        cell_width = min(args.cell_width, width)
         present = [t for t in types if t in screens[key]]
         chunks = [present[i:i + args.per_sheet] for i in range(0, len(present), args.per_sheet)]
         for n, chunk in enumerate(chunks, 1):
             name = key if len(chunks) == 1 else f'{key}__p{n}'
-            cells = [(t, cell(screens[key][t], cell_width, args.max_height, label_font)) for t in chunk]
+            cells = [(t, cell(screens[key][t], args.max_height, label_font, shot_width(key))) for t in chunk]
             gap, head = 12, 30
             sheet = Image.new('RGB', (sum(c.width for _, c in cells) + gap * (len(cells) + 1), max(c.height for _, c in cells) + head + 28 + gap), 'white')
             draw = ImageDraw.Draw(sheet)
@@ -93,8 +90,8 @@ def cross_sheets(args, found, types):
                 draw.text((x, head + 2), t, fill=(0, 0, 0), font=label_font)
                 sheet.paste(c, (x, head + 26))
                 x += c.width + gap
-            path = os.path.join(args.out, 'sheets', name + '.jpg')
-            sheet.save(path, 'JPEG', quality=80, optimize=True)
+            path = os.path.join(args.out, 'sheets', name + '.png')
+            sheet.save(path, 'PNG')
             written.append((name, os.path.relpath(path, args.out), len(chunk)))
     groups = defaultdict(list)
     for key, rel, n in written:

@@ -2,12 +2,13 @@
 """Side-by-side comparison sheets and a metrics summary for capture.mjs runs.
 
     .venv/bin/python -I ui-lab/compare.py --variants A=<dir>,B=<dir>,... --out <dir>
-                       [--full] [--cell-width 560] [--max-height 2400] [--filter <substring>]
+                       [--full] [--per-sheet 3] [--max-height 2400] [--filter <substring>]
 
-Per screen key (file name without extension, identical across variants) one JPEG sheet in
-<out>/sheets/ with the variants next to each other, labelled and downscaled; a missing screen
-shows as a grey "nicht erfasst" cell. Viewport shots by default; --full uses the __full shots
-(cropped to --max-height). <out>/index.html lists all sheets, <out>/metrics-summary.md holds one
+Per screen key (file name without extension, identical across variants) one PNG sheet in
+<out>/sheets/ with the variants next to each other, labelled and in their original pixels, never
+scaled; more than --per-sheet variants are split over several sheets (<key>__p<n>.png). A missing
+screen shows as a grey "nicht erfasst" cell. Viewport shots by default; --full uses the __full
+shots (cut, not scaled, at --max-height). <out>/index.html lists all sheets, <out>/metrics-summary.md holds one
 table per aspect with the variants as columns.
 """
 import argparse
@@ -25,7 +26,7 @@ def parse_args():
     p.add_argument('--variants', required=True, help='A=dir,B=dir,...')
     p.add_argument('--out', required=True)
     p.add_argument('--full', action='store_true', help='use the __full screenshots')
-    p.add_argument('--cell-width', type=int, default=560)
+    p.add_argument('--per-sheet', type=int, default=3, help='variants per sheet; more go to further sheets')
     p.add_argument('--max-height', type=int, default=2400)
     p.add_argument('--filter', default='', help='only screen keys containing this text')
     a = p.parse_args()
@@ -65,42 +66,51 @@ def screen_keys(variants, full, flt):
     return sorted(keys)
 
 
-def cell(path, width, max_h, label_font):
-    """One labelled cell: the screenshot scaled to `width` (320 px shots are never upscaled)."""
+def shot_width(key, fallback=1280):
+    """The capture width named in a screen key (`…__<width>` or `…__<width>__full`)."""
+    parts = [p for p in key.split('__') if p != 'full']
+    return int(parts[-1]) if parts and parts[-1].isdigit() else fallback
+
+
+def cell(path, max_h, label_font, placeholder_width):
+    """One cell: the screenshot pixel for pixel, cut at `max_h`; a placeholder when it is missing."""
     if path and os.path.exists(path):
         im = Image.open(path).convert('RGB')
-        scale = width / im.width if im.width > width else 1.0
-        w, h = int(im.width * scale), int(im.height * scale)
-        im = im.resize((w, h), Image.LANCZOS)
-        if h > max_h:
-            im = im.crop((0, 0, w, max_h))
+        if im.height > max_h:
+            im = im.crop((0, 0, im.width, max_h))
         return im
-    ph = Image.new('RGB', (width, 200), (225, 225, 225))
+    ph = Image.new('RGB', (placeholder_width, 200), (225, 225, 225))
     ImageDraw.Draw(ph).text((16, 90), 'nicht erfasst', fill=(90, 90, 90), font=label_font)
     return ph
 
 
-def build_sheet(key, variants, args, out_dir):
+def build_sheets(key, variants, args, out_dir):
+    chunks = [variants[i:i + args.per_sheet] for i in range(0, len(variants), args.per_sheet)]
+    return [build_sheet(key if len(chunks) == 1 else f'{key}__p{n}', key, chunk, args, out_dir)
+            for n, chunk in enumerate(chunks, 1)]
+
+
+def build_sheet(name, key, variants, args, out_dir):
     lf = font(18)
     hf = font(14)
     cells = []
-    for name, d in variants:
-        cells.append((name, cell(os.path.join(d, key + '.png'), args.cell_width, args.max_height, lf)))
+    for variant, d in variants:
+        cells.append((variant, cell(os.path.join(d, key + '.png'), args.max_height, lf, shot_width(key))))
     gap, head = 16, 34
     W = sum(c.width for _, c in cells) + gap * (len(cells) + 1)
     H = max(c.height for _, c in cells) + head + 30 + gap
     sheet = Image.new('RGB', (W, H), (255, 255, 255))
     draw = ImageDraw.Draw(sheet)
-    draw.text((gap, 6), key, fill=(60, 60, 60), font=hf)
+    draw.text((gap, 6), name, fill=(60, 60, 60), font=hf)
     x = gap
-    for name, c in cells:
+    for variant, c in cells:
         draw.rectangle([x - 1, head + 29, x + c.width, head + 30 + c.height], outline=(180, 180, 180))
-        draw.text((x, head + 4), name, fill=(0, 0, 0), font=lf)
+        draw.text((x, head + 4), variant, fill=(0, 0, 0), font=lf)
         sheet.paste(c, (x, head + 30))
         x += c.width + gap
-    path = os.path.join(out_dir, 'sheets', key + '.jpg')
-    sheet.save(path, 'JPEG', quality=82, optimize=True)
-    return path
+    path = os.path.join(out_dir, 'sheets', name + '.png')
+    sheet.save(path, 'PNG')
+    return name, path
 
 
 def load_metrics(d):
@@ -183,7 +193,7 @@ def main():
     keys = screen_keys(args.variants, args.full, args.filter)
     sheets = []
     for key in keys:
-        sheets.append((key, build_sheet(key, args.variants, args, args.out)))
+        sheets.extend(build_sheets(key, args.variants, args, args.out))
     # index.html grouped by area
     groups = defaultdict(list)
     for key, path in sheets:
