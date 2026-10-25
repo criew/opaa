@@ -93,15 +93,18 @@ Seed-Lauf.
 
 ```bash
 cp .env.docker.example .env.docker
+cp demo/installation.demo.json installation/installation.json
+printf '%s' '<eigener Wert, nur für die Dauer des Seeds; siehe unten>' > installation/admin-password
+sudo chown 65532:65532 installation/admin-password && sudo chmod 0400 installation/admin-password
 ```
 
 In der eigenen `.env.docker` zusätzlich setzen:
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
-OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
-OPAA_INITIAL_ADMIN_PASSWORD=<eigener Wert, nur für die Dauer des Seeds; siehe unten>
-OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore
+OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json
+OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost,keycloak
+OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore,ollama
 OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
@@ -118,15 +121,19 @@ OPAA_DEMO_CHAT_IMPORT_ENABLED=true
 
 Herkunft und Zwang jeder einzelnen Variable:
 
-- `OPAA_INITIAL_ADMIN_EMAIL` und `OPAA_INITIAL_ADMIN_PASSWORD` sind Adresse und Passwort des
-  **lokalen Notanker-Kontos der Systemverwaltung**, das OPAA beim allerersten Start im `oidc`-Modus
-  anlegt ([ADR-0033](../docs/decisions/0033-lokale-benutzerverwaltung.md), #1534). Seit diesem Stand
+- Die Antwortdatei `demo/installation.demo.json` (als `installation/installation.json`, mit
+  `OPAA_INSTALLATION_ANSWER_FILE`) installiert den Stapel beim allerersten Start
+  ([ADR-0060](../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md)): das
+  **lokale Notanker-Konto der Systemverwaltung** `admin@stadt-rheinfurt.example` mit dem Passwort aus
+  `installation/admin-password` ([ADR-0033](../docs/decisions/0033-lokale-benutzerverwaltung.md),
+  #1534), den gebündelten Keycloak als Anbieter „Verzeichnisdienst" und das Chat-Modell. Issuer und
+  JWK-Set des Keycloak liegen auf internen Adressen, deshalb `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`;
+  das Chat-Modell auf `ollama` ebenso, deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`. Seit diesem Stand
   wird der Keycloak-Nutzer `demo-admin` **nicht mehr von selbst** `SYSTEM_ADMIN`; Schritt 1 des Seeds
   (siehe unten) meldet sich als Notanker-Konto an und vergibt ihm die Rolle über die reguläre
-  Rollen-API. Dafür muss das Passwort beim allerersten Start gesetzt gewesen sein (ein erzeugtes
-  Passwort stünde nur im Log und würde einen Wechsel erzwingen) und dem Seed als
-  `--local-admin-email`/`--local-admin-password` bzw. als gleichnamige Umgebungsvariablen
-  vorliegen — sonst bricht Schritt 1 mit einer klaren Fehlermeldung ab, statt eine falsche Rolle
+  Rollen-API. Dafür muss das Passwort dem Seed als
+  `--local-admin-email`/`--local-admin-password` (oder in den Umgebungsvariablen
+  `OPAA_INITIAL_ADMIN_EMAIL`/`OPAA_INITIAL_ADMIN_PASSWORD` des Aufrufs) vorliegen — sonst bricht Schritt 1 mit einer klaren Fehlermeldung ab, statt eine falsche Rolle
   stillschweigend zu akzeptieren. Die Adresse darf dieselbe sein wie die des Keycloak-Nutzers
   (zwei Konten unter zwei Issuern); `admin@opaa.local` wird abgelehnt.
 - `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore` ist
@@ -735,7 +742,7 @@ Der Lauf richtet über die API ein:
    lässt. Trägt `demo-admin` danach noch nicht `SYSTEM_ADMIN`, meldet sich der Seed als lokales
    Notanker-Konto an (`POST /api/v1/auth/local/login`) und vergibt die Rolle über
    `POST /api/v1/admin/users/{id}/role`; gelingt das nicht, bricht der Lauf ab (siehe oben,
-   `OPAA_INITIAL_ADMIN_EMAIL`/`OPAA_INITIAL_ADMIN_PASSWORD`).
+   `--local-admin-email`/`--local-admin-password`).
 2. **Identitätsanbieter: Verzeichnisabgleich** (nur im `demo`-Profil, ADR-0036 Entscheidungen 2
    und 3, siehe „Gruppen" oben) — am Anbieter „Verzeichnisdienst" leert der Seed einen gesetzten
    Gruppen-Claim (`PUT /api/v1/admin/oidc-providers/{id}`), hinterlegt den Verzeichniszugang
@@ -920,8 +927,8 @@ die `client_id` der Anbieterzeile nennt oder diese in `aud` steht
 ([ADR-0025](../docs/decisions/0025-mehrere-oidc-anbieter.md), Entscheidung 1). Keycloak setzt `azp`
 immer auf den anfragenden Client, hier also `opaa-seed` — ohne den Mapper endet jeder API-Aufruf des
 Seed-Laufs mit HTTP 401, obwohl der Tokenerwerb selbst erfolgreich war. Maßgeblich ist dabei die
-`client_id` der Anbieterzeile in der Anbieterverwaltung, nicht `OPAA_OIDC_CLIENT_ID`: Die Variable
-ist nur der Bootstrap-Wert des ersten Starts, danach führt die Datenbank. Lautet sie nicht
+`client_id` der Anbieterzeile in der Anbieterverwaltung, nicht die Angabe der Antwortdatei: Sie
+wirkt nur bei der Installation, danach führt die Datenbank. Lautet sie nicht
 `opaa-frontend`, muss der Mapper auf denselben Wert zeigen. Ein
 Keycloak, dessen Realm bereits importiert ist (eigenes Volume oder bestehende Datenbank), liest den
 Export nicht erneut — dort wird der Mapper per `kcadm` nachgezogen
@@ -1021,7 +1028,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Konsequenz dieser Festlegung: Inhalte auf der Instanz — der Rheinfurt-Korpus — sind nur für
   angemeldete Nutzer sichtbar, nicht öffentlich ohne Anmeldung einsehbar.
 - **Administration:** Zwei Konten tragen die Rolle `SYSTEM_ADMIN`: das lokale Notanker-Konto der
-  Systemverwaltung (`OPAA_INITIAL_ADMIN_EMAIL`, seit ADR-0033 beim ersten Start angelegt; sein
+  Systemverwaltung (das erste Konto der Installation, ADR-0033 und ADR-0060; sein
   Passwort ist nach dem Seed versiegelt zu hinterlegen, nicht im Alltag zu benutzen) und das
   Administrationskonto `demo-admin`, dem der Seed die Rolle vergibt — nicht mehr ein persönliches
   Konto des Maintainers. Das Keycloak-Konto `demo-admin` samt Passwort stammt bereits aus

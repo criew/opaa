@@ -4,8 +4,9 @@
 # end with exit code 0, as must the wait for it), then the backend without migration, hardened as
 # in production (read-only root, /tmp and /app/uploads as tmpfs, no capabilities, profile "oidc"),
 # and the frontend hardened the same way in front of it. Passes when the backend reports readiness
-# UP, its health probe agrees, /api/health answers through the frontend's nginx and the frontend
-# serves index.html. Model endpoints do not exist; readiness does not depend on them.
+# UP, its health probe agrees, /api/health answers through the frontend's nginx, the frontend
+# serves index.html and the auth configuration reports the pending installation. Model endpoints
+# do not exist; readiness does not depend on them. Needs curl and jq.
 #
 #   .github/scripts/image_smoke_test.sh <backend image> <frontend image>
 #
@@ -14,7 +15,7 @@
 #   READY_TIMEOUT     seconds the backend may take to become ready (default: 300)
 #   EXPECT_VERSION    version the backend must report in its start line and under /actuator/info
 #                     and the frontend's entry bundle must carry for "Info zu OPAA", e.g. the
-#                     OPAA_VERSION build argument of both images (default: not checked); needs jq
+#                     OPAA_VERSION build argument of both images (default: not checked)
 set -euo pipefail
 
 if (($# != 2)); then
@@ -52,7 +53,7 @@ fail() {
   exit 1
 }
 
-[[ -z "$expect_version" ]] || command -v jq >/dev/null || fail "EXPECT_VERSION needs jq"
+command -v jq >/dev/null || fail "the smoke test needs jq"
 
 # A locally present image of the wrong architecture would run emulated and prove nothing.
 for image in "$backend_image" "$frontend_image"; do
@@ -78,6 +79,7 @@ done
 [[ "$db_ready" == true ]] || fail "PostgreSQL did not become ready"
 
 # Throwaway secrets, valid in form only: the jwt secret's minimum length and two Base64 AES-256 keys.
+# No answer file: the backend starts in installation mode (ADR-0060), whose readiness is UP.
 backend_environment=(
   -e SPRING_PROFILES_ACTIVE=oidc
   -e OPAA_SERVER_ADDRESS=0.0.0.0
@@ -89,12 +91,9 @@ backend_environment=(
   -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop
   -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
   -e OPAA_SETTINGS_ENCRYPTION_KEY=CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
-  -e OPAA_INITIAL_ADMIN_EMAIL=it-postfach@example.org
   -e OPAA_OPENAI_EMBEDDING_BASE_URL=http://models.invalid/v1
   -e OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text
   -e OPAA_PGVECTOR_DIMENSIONS=768
-  -e OPAA_OPENAI_CHAT_BASE_URL=http://models.invalid/v1
-  -e OPAA_OPENAI_CHAT_MODEL=qwen2.5:3b
 )
 hardening=(--read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700
   --cap-drop ALL --security-opt no-new-privileges)
@@ -186,4 +185,9 @@ health_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
   "http://127.0.0.1:$frontend_port/api/health" || true)"
 [[ "$health_status" == 200 ]] || fail "/api/health through the frontend answered HTTP $health_status"
 echo "/api/health through the frontend: HTTP 200"
+
+auth_config="$(curl -fsS --max-time 10 "http://127.0.0.1:$frontend_port/api/v1/auth/config" || true)"
+[[ "$(jq -r '.installationPending' <<<"$auth_config" 2>/dev/null)" == true ]] ||
+  fail "/api/v1/auth/config does not report the pending installation: ${auth_config:-no answer}"
+echo "/api/v1/auth/config through the frontend: installation pending"
 echo "OK: backend and frontend run on linux/$expect_arch"

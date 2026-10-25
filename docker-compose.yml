@@ -52,6 +52,9 @@ services:
     volumes:
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
+      # Answer file and its secret files (OPAA_INSTALLATION_ANSWER_FILE, .env.docker.example); read
+      # only while the installation is pending.
+      - ${OPAA_INSTALLATION_DIR_HOST:-./installation}:/run/opaa/installation:ro
       - opaa-backend-tmp:/tmp
     environment:
       OPAA_UPLOAD_STORAGE_PATH: /app/uploads
@@ -407,10 +410,9 @@ services:
       - ollama
 
   # One-shot init step: pulls both models this stack's own defaults need on first start -
-  # bge-m3 (OPAA_OPENAI_EMBEDDING_MODEL default) and phi3:mini (OPAA_OPENAI_CHAT_MODEL default -
-  # also the model io.opaa.llm.LlmModelSeeder takes over as the initial active chat model on first
-  # backend start). Without both pulled, the first chat/indexing request fails even though the
-  # "ollama" service itself is running and healthy.
+  # bge-m3 (OPAA_OPENAI_EMBEDDING_MODEL default) and phi3:mini (the chat model of the "dev" mode and
+  # of installation/installation.example.json). Without both pulled, the first chat/indexing request
+  # fails even though the "ollama" service itself is running and healthy.
   #
   # bge-m3 is then created anew under its own name with num_ctx and num_batch 8192: Ollama's
   # OpenAI-compatible route cuts an embedding input at num_batch (2048 when pulled unchanged). With
