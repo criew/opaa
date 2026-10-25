@@ -15,19 +15,24 @@ import io.opaa.organization.Organization;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SecondInstance;
 import java.net.URI;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -48,6 +53,9 @@ class PrivateLibraryDeletionRunIntegrationTest {
   @Autowired private ConnectedAccountService accounts;
   @Autowired private SourceBlocks blocks;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<UUID> persons = new ArrayList<>();
@@ -69,6 +77,7 @@ class PrivateLibraryDeletionRunIntegrationTest {
 
   @AfterEach
   void removeOwnRows() {
+    jdbc.update("DELETE FROM connection_lifecycle_settings");
     for (UUID library : libraries) {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", library.toString());
       jdbc.update("DELETE FROM asset_grant_history WHERE asset_id = ?", library);
@@ -270,6 +279,100 @@ class PrivateLibraryDeletionRunIntegrationTest {
     persons.add(person);
     connectAndCreate(person, "Lokale Besitzerin");
     return person;
+  }
+
+  /**
+   * Regression guard for ADR-0060, Entscheidung 13: a live instance that still sets the retired
+   * deletion period to a longer value holds back the erasure after the period while the
+   * administration set none; it is never taken over, and a stored value ends the pause.
+   */
+  @Test
+  void aLongerRetiredPeriodOnALiveInstancePausesTheErasureUntilAValueIsStored() {
+    UUID person = aPersonWithAPrivateLibrary();
+    UUID library = libraries.getLast();
+    deactivate(person);
+    reconciler.reconcile(List.of(person));
+    backdateDeactivation(person, 40);
+
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", "90"))) {
+      assertThat(deletionRun.runOnce().erased()).isZero();
+      assertThat(exists(library)).isTrue();
+
+      storeDeletionDays(30);
+      assertThat(deletionRun.runOnce().erased()).isEqualTo(1);
+      assertThat(exists(library)).isFalse();
+    }
+  }
+
+  /** A retired value no longer than the one in force does not pause. */
+  @Test
+  void aShorterRetiredPeriodDoesNotPause() {
+    UUID person = aPersonWithAPrivateLibrary();
+    UUID library = libraries.getLast();
+    deactivate(person);
+    reconciler.reconcile(List.of(person));
+    backdateDeactivation(person, 40);
+
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", "10"))) {
+      assertThat(deletionRun.runOnce().erased()).isEqualTo(1);
+      assertThat(exists(library)).isFalse();
+    }
+  }
+
+  /** An erasure asked for explicitly is no deletion after a period and runs during a pause. */
+  @Test
+  void aMarkedErasureRunsDuringAPause() {
+    UUID person = aPersonWithAPrivateLibrary();
+    UUID library = libraries.getLast();
+    jdbc.update(
+        "UPDATE knowledge_libraries SET erasure_requested_at = now(),"
+            + " erasure_cause = 'OWNER_REQUEST' WHERE id = ?",
+        library);
+
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("opaa.connection.private-library-deletion-days", "90"))) {
+      assertThat(deletionRun.runOnce().erased()).isEqualTo(1);
+      assertThat(exists(library)).isFalse();
+    }
+  }
+
+  /** The run uses the period the administration stored, not the factory default. */
+  @Test
+  void theRunUsesTheStoredPeriod() {
+    UUID person = aPersonWithAPrivateLibrary();
+    UUID library = libraries.getLast();
+    deactivate(person);
+    reconciler.reconcile(List.of(person));
+    backdateDeactivation(person, 40);
+    storeDeletionDays(60);
+
+    assertThat(deletionRun.runOnce().erased()).isZero();
+    assertThat(exists(library)).isTrue();
+
+    storeDeletionDays(35);
+    assertThat(deletionRun.runOnce().erased()).isEqualTo(1);
+  }
+
+  private void storeDeletionDays(int days) {
+    jdbc.update(
+        "INSERT INTO connection_lifecycle_settings (setting, setting_value, updated_at)"
+            + " VALUES ('PRIVATE_LIBRARY_DELETION_DAYS', ?, now()) ON CONFLICT (setting)"
+            + " DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = now()",
+        days);
   }
 
   private UUID aPersonWithAPrivateLibrary() {

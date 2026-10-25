@@ -10,13 +10,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SecondInstance;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,6 +42,9 @@ class ConnectionLifecycleSettingsIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private ConnectionLifecycleSettings settings;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
 
   @BeforeEach
   @AfterEach
@@ -147,6 +154,36 @@ class ConnectionLifecycleSettingsIntegrationTest {
             + " VALUES ('EXPIRED_CONNECTION_WARNING_THRESHOLD', 25, now())");
 
     assertThat(settings.expiredConnectionWarningThreshold()).isEqualTo(25);
+  }
+
+  /**
+   * The deletion period names why its erasure pauses - variable, its value and the value in force -
+   * until the administration stores a value, the factory default included.
+   */
+  @Test
+  void aLongerRetiredDeletionPeriodIsNamedAsThePauseUntilAValueIsStored() throws Exception {
+    mockMvc
+        .perform(get(PATH).with(devAdmin()))
+        .andExpect(jsonPath("$.settings[1].pausedBy").isEmpty());
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", "90"))) {
+      mockMvc
+          .perform(get(PATH).with(devAdmin()))
+          .andExpect(
+              jsonPath("$.settings[1].pausedBy[0].variable")
+                  .value("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS"))
+          .andExpect(jsonPath("$.settings[1].pausedBy[0].retiredValue").value("90"))
+          .andExpect(jsonPath("$.settings[1].pausedBy[0].effectiveValue").value("30"))
+          .andExpect(jsonPath("$.settings[0].pausedBy").isEmpty());
+
+      update("PRIVATE_LIBRARY_DELETION_DAYS", "{\"value\":30}")
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.pausedBy").isEmpty());
+    }
   }
 
   @Test
