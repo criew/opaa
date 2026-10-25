@@ -1,6 +1,6 @@
 # Variante B „Statusband“ – Bericht Runde 4 (25.10.2026)
 
-Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu eine Teilmatrix nach NACHCHECK-2 (Verlauf und Quelle in `scale`/`partial`, alle Arten in `empty`, Upload bei 320 px, privat bei 320 px). Vor dem Halt beim Maintainer und vor den Videos. Branch `feature/3084_ui-lab-detail-var-b`.
+Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu Teilmatrix Runde 4 (nur hell, Kennzahlen in `metrics-r4.jsonl`): Verlauf und Quelle in `scale`/`partial`, alle Arten in `empty`, Upload und privat bei 320 px, alle Arten `scale` bei 320 px (Kopf). Branch `feature/3084_ui-lab-detail-var-b`.
 
 ## Konzept
 
@@ -27,14 +27,14 @@ Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu eine Teilmatrix nach NACHCHE
   - Umfang markiert nicht lesbare Einträge direkt am Eintrag.
   - Web und RSS haben eine Zeile Umfang.
   - Live-Aktualisierung ist die 4. Zeile bei Confluence und S3.
-- **Übrige Reiter:** gemeinsamer Baustein `shared/ui/TabSection` mit einer Breite (720 px), einem Überschriftenstil und der Aktion oben rechts an der Kante.
+- **Übrige Reiter:** gemeinsamer Baustein `shared/ui/TabSection` mit einer Breite (880 px), einem Überschriftenstil und der Aktion oben rechts an der Kante.
 
 ## Kennzahlen (Matrix 3, aus `metrics.jsonl`, `metrics-extra.jsonl`)
 
 | Messung | Wert | Budget |
 |---|---|---|
 | `tabsTop` 1280, alle 11 Arten, privat und Leser | 249 in jedem Szenario, 255 in `scale` (± 0 je Szenario) | ≤ 260 ✓ |
-| `tabsTop` 320 | 344 in small, failed, partial und slow ✓; 365 in `empty` (Kennzahlzeile zweizeilig, über alle Arten gleich) und für privat (Speicherangabe); 391 in `scale` (dreizeiliger Titel) | ≤ 360, teils ✗ |
+| `tabsTop` 320 (Runde 4) | 296 in small, failed, partial, slow, empty; privat 317; `scale` 340 (zweizeiliger Titel) bzw. 357 (dreizeilig) | ≤ 360 ✓ |
 | `uiWords` small (Dokumente · Quelle · Verlauf · Metadaten · Freigaben · Zuordnungen) | 67–89 · 27–57 · 29–39 · 23–51 · 32–45 · 24–37 | ≤ 150 ✓ |
 | aufgeklappter Lauf `scale` | < 900 px | ≤ 900 ✓ |
 | Kontrast (axe, hell und dunkel) | 0 | 0 ✓ |
@@ -85,14 +85,8 @@ Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu eine Teilmatrix nach NACHCHE
 
 ## Schwächen und bewusste Abweichungen
 
-1. **320 px teils über dem Höhenbudget.** In den meisten Szenarien 344 px (≤ 360), nachdem Hauptaktion und Favorit unter 600 px ins ⋯-Menü gewandert sind.
-   - Über dem Budget:
-     - `empty` 365 px: „0 Dokumente · in keinem Space · Erika Muster“ ist zweizeilig.
-     - privat 365 px: wegen der Speicherangabe.
-     - `scale` 391 px: Titel dreizeilig, Kennzahlzeile zweizeilig.
-   - Ein weiteres Kürzen ginge nur auf Kosten von Zustand, Titel oder Kennzahlen, die das Review ungekürzt verlangt (R1-38, R1-54). Diese Abwägung entscheidet der Maintainer.
-   - Die Kennzahlzeile ist nicht mehr reserviert, sondern bricht nur bei Bedarf um. Innerhalb eines Szenarios bleibt die Höhe über alle 11 Arten gleich, außer privat.
-2. **Titel begrenzt**: höchstens 2 Zeilen ab 600 px, 3 darunter, voller Name im Tooltip. Sonst springt der Kopf je nach Namenslänge.
+1. **320 px im Budget, aber nicht ± 0 je Szenario.** 296 px in den meisten Szenarien, privat 317 (Speicherkennzahl bricht um), `scale` 340/357 (Titel 14 px, zwei oder drei Zeilen ungekürzt). Der kleinere Titel macht den Kopf unter 600 px weniger hierarchisch; Stift, Favorit und Hauptaktion sind nur über ⋯ erreichbar.
+2. **Titel begrenzt** ab 600 px auf 2 Zeilen, voller Name im Tooltip; darunter ungekürzt in 14 px.
 3. **Band ohne Rahmen** (Abweichung von der Skizze): Haarlinie oben und Trenner, kein Kasten. Gründe: Projektregel „kein ruhender Inhalt in einer Karte“ (`PageSection.test.tsx`) und P4.
 4. **Umfang zweimal** (Band und Reiter Quelle): gewollte Doppelung der Richtung B, im Band nur Kurzform mit Link; auf dem Reiter Quelle selbst fehlt der Link.
 5. **Upload ohne Verlauf** (D15, E6; keine API für Upload-Vorgänge). Der Upload-Stand liest die geladene Seite der Dokumentliste, nennt deshalb keine Zahlen; eine Zählung je Status fehlt im Backend.
@@ -272,15 +266,15 @@ Ursachen:
   - Upload leer: „Noch keine Dokumente. Dateien hochladen“, ohne Zieh-Anweisung; Dateien lassen sich trotzdem darauf ziehen.
   - Unter 600 px steht „Dateien hochladen“ als erster Knopf in der Werkzeugleiste.
   - „Ordner hochladen“ ist auch im ⋯-Menü erreichbar.
-- **`empty` bei 320 px** erledigt per Wortlaut: „kein Space ›“ statt „in keinem Space ›“. Die Kennzahlzeile ist einzeilig, `tabsTop` 344 wie in den anderen Szenarien.
+- **`empty` bei 320 px** erledigt per Wortlaut: „kein Space ›“ statt „in keinem Space ›“. Die Kennzahlzeile ist einzeilig, `tabsTop` wie in den anderen Szenarien.
+- **Maintainer-Entscheid Titel bei 320 px** umgesetzt: Unter 600 px ist der Titel 14/17 px ohne Zeilenbegrenzung; Stift (Name ändern), Favorit und Hauptaktion stehen im ⋯-Menü (32 px); privat zeigt ein Schloss neben dem Art-Chip statt „Wissen · privat“; Bandzeilen kompakter. Ergebnis: 296 / privat 317 / `scale` 340–357, alle ≤ 360, kein Abschneiden.
+- **Maintainer-Entscheid privat in Spaces:** „in n Spaces“ bleibt bei privat stehen.
 
 ## Für den Maintainer
 
 Bewusste Abweichungen, die diese Variante zur Entscheidung vorlegt:
 
-1. **Kopfhöhe bei 320 px über 360 px** in zwei Fällen:
-   - `scale`, 391 px: Ein langer Titel ist dreizeilig (auf 3 Zeilen begrenzt), die Kennzahlzeile zweizeilig.
-   - privat, 376 px: Die vierte Kennzahl „2,4 GB von 10 GB“ und der Chip „Wissen · privat“ brechen um.
+1. **Kopfhöhe bei 320 px nicht mehr ± 0 je Szenario** (alle ≤ 360, die früheren Ausnahmen entfallen): privat 317 statt 296, weil die Speicherkennzahl die Kennzahlzeile zweizeilig macht; in `scale` 340 oder 357 je nach Titellänge (zwei oder drei Zeilen, ungekürzt).
 2. **Kopfhöhe 1280 px in `scale` 6 px höher** (255 statt 249), weil der Titel zweizeilig ist (auf 2 Zeilen begrenzt). Innerhalb des Szenarios ist sie über alle Arten gleich.
 3. **Unter 600 px stehen Hauptaktion und Favorit im ⋯-Menü** der Chipzeile, damit es keine eigene Aktionszeile gibt (Budget). Für Upload ist „Dateien hochladen“ dort zusätzlich als erster Knopf der Werkzeugleiste sichtbar.
 4. **Reiterleiste unter 600 px zweizeilig** statt scrollbar: alle Reiter ganz sichtbar, der aktive unterstrichen.
