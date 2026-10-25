@@ -23,17 +23,21 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
+import io.opaa.test.SecondInstance;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -63,6 +67,9 @@ class LockedAccountChatCleanupIntegrationTest {
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
   private UUID organizationId;
@@ -458,6 +465,30 @@ class LockedAccountChatCleanupIntegrationTest {
     cleanupService.runOnce(now);
     assertThat(chatCountOf(person)).isOne();
     assertThat(store.countingSince()).isPresent();
+  }
+
+  /**
+   * A second instance that still switches the retired deletion off pauses it, whichever instance
+   * runs; before, the start would have switched it on again without a word. Removing the variable
+   * ends the pause.
+   */
+  @Test
+  void aRetiredSwitchOffOnASecondInstancePausesTheDeletionUntilItIsGone() {
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED", "false"))) {
+      cleanupService.runOnce(now);
+      assertThat(chatCountOf(person)).isOne();
+    }
+
+    cleanupService.runOnce(now);
+    assertThat(chatCountOf(person)).isZero();
   }
 
   @Test

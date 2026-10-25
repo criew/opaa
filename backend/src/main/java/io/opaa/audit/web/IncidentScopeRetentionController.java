@@ -2,11 +2,14 @@ package io.opaa.audit.web;
 
 import io.opaa.api.dto.IncidentScopeRetention;
 import io.opaa.api.dto.IncidentScopeRetentionUpdate;
+import io.opaa.api.dto.RetentionPause;
 import io.opaa.audit.AuditIncidentScopeRetentionSettings;
 import io.opaa.audit.AuditIncidentScopeRetentionSettings.Setting;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,10 +43,19 @@ public class IncidentScopeRetentionController {
         settings.change(caller.organizationId(), caller.id(), request.getRetentionYears()));
   }
 
-  private static IncidentScopeRetention toResponse(Setting setting) {
+  private IncidentScopeRetention toResponse(Setting setting) {
     return new IncidentScopeRetention(
         setting.retention().incidentScopeRetentionYears(),
         setting.defaults().incidentScopeRetentionYears(),
-        setting.overridden());
+        setting.overridden(),
+        pausedBy(settings.pauses(setting)));
+  }
+
+  private static List<RetentionPause> pausedBy(List<Pause> pauses) {
+    return pauses.stream()
+        .map(
+            pause ->
+                new RetentionPause(pause.variable(), pause.retiredValue(), pause.effectiveValue()))
+        .toList();
   }
 }

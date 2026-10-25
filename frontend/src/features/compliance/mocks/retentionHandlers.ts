@@ -17,6 +17,7 @@ function chatDefaults(): ChatAutoCleanupRetention {
     defaultArchiveAfterDays: 90,
     defaultDeleteAfterDays: 365,
     overridden: false,
+    pausedBy: [],
   }
 }
 
@@ -27,11 +28,12 @@ function lockedDefaults(): LockedAccountChatRetention {
     defaultEnabled: true,
     defaultDeleteAfterDays: 365,
     overridden: false,
+    pausedBy: [],
   }
 }
 
 function incidentDefaults(): IncidentScopeRetention {
-  return { retentionYears: 1, defaultRetentionYears: 1, overridden: false }
+  return { retentionYears: 1, defaultRetentionYears: 1, overridden: false, pausedBy: [] }
 }
 
 let chat = chatDefaults()
@@ -70,6 +72,7 @@ export const retentionHandlers = [
       archiveAfterDays: body.archiveAfterDays as number,
       deleteAfterDays: body.deleteAfterDays as number,
       overridden: true,
+      pausedBy: [],
     }
     return HttpResponse.json(chat)
   }),
@@ -88,6 +91,7 @@ export const retentionHandlers = [
       enabled: body.enabled,
       deleteAfterDays: body.deleteAfterDays as number,
       overridden: true,
+      pausedBy: [],
     }
     return HttpResponse.json(locked)
   }),
@@ -101,7 +105,7 @@ export const retentionHandlers = [
     if (!within(body.retentionYears, 1, 10)) {
       return invalid('Die Löschfrist muss zwischen 1 und 10 Jahren liegen')
     }
-    incident = { ...incident, retentionYears: body.retentionYears, overridden: true }
+    incident = { ...incident, retentionYears: body.retentionYears, overridden: true, pausedBy: [] }
     return HttpResponse.json(incident)
   }),
 ]

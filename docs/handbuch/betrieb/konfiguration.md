@@ -507,8 +507,16 @@ um.
 Liegt eine der entfallenen Ollama-Variablen, eine `OPAA_INDEXING_*_FULL_SYNC_INTERVAL`,
 `OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` oder eine der entfallenen Fristen der Chats und der
 anlassbezogenen Klärungen noch in der Umgebung, schreibt der Start eine Warnung. Wer einen dieser
-Werte abweichend von der Werkseinstellung gesetzt hatte, trägt ihn einmal in der Oberfläche ein, eine
-Frist vor dem nächsten nächtlichen Lauf; die Datenbank übernimmt ihn nicht von selbst. Zeigte
+Werte abweichend von der Werkseinstellung gesetzt hatte, trägt ihn einmal in der Oberfläche ein; die
+Datenbank übernimmt ihn nicht von selbst. Bei den Fristen bremst eine noch gesetzte Variable nur:
+Hält sie länger als die Werkseinstellung oder schaltet sie die Löschung nach einer Sperre ab, und hat
+die Verwaltung noch keinen eigenen Wert gespeichert, pausiert der betroffene Löschlauf. Das gilt,
+sobald eine laufende Instanz die Variable noch hat, gleich auf welcher Instanz der Lauf läuft; jede
+Instanz meldet das beim Start ins Instanzregister. Der Lauf schreibt dann jede Nacht einen Fehler ins
+Log, Administration → Datenschutz zeigt den Hinweis „Löschen pausiert“. Die Pause endet mit einem
+gespeicherten Wert, auch der Werkseinstellung („Angezeigte Werte festlegen“), oder wenn keine
+laufende Instanz die Variable mehr setzt. Bei der Chat-Bereinigung in Spaces pausiert nur das
+Löschen, das Archivieren läuft weiter. Zeigte
 `OPAA_OPENAI_BASE_URL` bisher auf einen Anbieter außerhalb des Hauses und die Einbettung lief über
 Ollama, gehört die Ollama-Adresse ausdrücklich nach `OPAA_OPENAI_EMBEDDING_BASE_URL` — sonst erbt die
 Einbettung die Adresse des Chats, und Dokumentinhalt ginge an einen dafür nie vorgesehenen Anbieter.

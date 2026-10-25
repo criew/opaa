@@ -1,7 +1,9 @@
 package io.opaa.audit;
 
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,14 @@ public class AuditIncidentScopeRetentionService {
    */
   @Transactional
   public int runOnce() {
-    Instant cutoff = settings.current().deletionCutoff(clock.instant(), clock.getZone());
+    AuditIncidentScopeRetentionSettings.Setting setting = settings.setting();
+    AuditIncidentScopeRetention retention = setting.retention();
+    List<Pause> pauses = settings.pauses(setting);
+    if (!pauses.isEmpty()) {
+      pauses.forEach(pause -> log.error(pause.error("Incident scope retention")));
+      return 0;
+    }
+    Instant cutoff = retention.deletionCutoff(clock.instant(), clock.getZone());
     int deleted =
         repository.deleteUsabilityEndedBefore(
             cutoff, cutoff.minus(AuditIncidentScopeGrant.USABLE_WINDOW));

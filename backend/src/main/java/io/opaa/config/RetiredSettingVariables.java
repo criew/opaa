@@ -63,7 +63,9 @@ public class RetiredSettingVariables {
                     + setting
                     + " "
                     + PRIVACY_SETTINGS
-                    + " before the next nightly run deletes after the factory default");
+                    + "; it is never taken over, it only brakes: while it keeps longer than the"
+                    + " factory default and no value is set there, the deletion it governs pauses,"
+                    + " otherwise deletion follows the factory default once its period is reached");
           }
         });
     return messages;

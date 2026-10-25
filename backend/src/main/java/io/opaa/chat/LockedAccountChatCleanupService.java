@@ -13,6 +13,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
 import io.opaa.chat.LockedAccountChatCleanupStore.DueAccount;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,7 +74,13 @@ public class LockedAccountChatCleanupService {
   }
 
   Result runOnce(Instant now, int maxChats) {
-    LockedAccountChatCleanupPolicy policy = settings.current();
+    LockedAccountChatCleanupSettings.Setting setting = settings.setting();
+    LockedAccountChatCleanupPolicy policy = setting.policy();
+    List<Pause> pauses = settings.pauses(setting);
+    if (!pauses.isEmpty()) {
+      pauses.forEach(pause -> log.error(pause.error("Locked-account chat cleanup")));
+      return Result.NONE;
+    }
     if (!policy.enabled()) {
       store.stopCounting();
       return Result.NONE;

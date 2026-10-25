@@ -1365,8 +1365,11 @@ sind keine Umgebungsvariablen, sondern Verwaltungseinstellungen: Die Systemverwa
 wiederherstellen“ kehrt zu ihr zurück. Einen Wert außerhalb der Grenzen weist die Oberfläche ab, die
 Datenbank erzwingt sie zusätzlich. Jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll und
 wirkt auf allen Instanzen mit dem nächsten nächtlichen Lauf; eine Verkürzung löscht dann früher, was
-schon gelöscht ist, kommt nicht zurück. Der Lauf der Chats gesperrter Konten ist täglich um 02:30 Uhr
-Serverzeit und löscht höchstens 5.000 Chats je Nacht, der Rest folgt in den nächsten Nächten. Eine
+schon gelöscht ist, kommt nicht zurück. Die Chat-Bereinigung läuft täglich um 03:50 Uhr Serverzeit,
+der Lauf der Chats gesperrter Konten um 02:30 Uhr; er löscht höchstens 5.000 Chats je Nacht, der
+Rest folgt in den nächsten Nächten. Setzt eine laufende Instanz noch eine der entfallenen Variablen
+auf eine längere Frist, pausiert das Löschen, bis hier ein Wert gespeichert ist
+([Konfiguration](../betrieb/konfiguration.md#entfallene-und-veraltete-variablen)). Eine
 Verlängerung dieser Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
 
 | Einstellung | Werkseinstellung | Grenzen | Wirkung |

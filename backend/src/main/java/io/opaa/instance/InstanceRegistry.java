@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -155,6 +156,27 @@ public class InstanceRegistry {
             Integer.class,
             seconds(deadAfter));
     return live == null ? 1 : Math.max(1, live);
+  }
+
+  /**
+   * Records the retired retention variables {@code id} still finds set in its own environment, with
+   * their values; an empty map clears them.
+   */
+  void recordRetiredSettings(UUID id, Map<String, String> values) {
+    jdbc.update(
+        "UPDATE backend_instances SET retired_settings = CAST(? AS jsonb) WHERE id = ?",
+        values.isEmpty() ? null : JSON.writeValueAsString(new TreeMap<>(values)),
+        id);
+  }
+
+  /** The retired retention variables the live instances reported, one map per instance. */
+  public List<Map<String, String>> liveRetiredSettings() {
+    return jdbc.query(
+        "SELECT CAST(retired_settings AS text) AS retired FROM backend_instances WHERE "
+            + ALIVE
+            + " AND retired_settings IS NOT NULL ORDER BY started_at, id",
+        (rs, row) -> (Map<String, String>) JSON.readValue(rs.getString("retired"), DIGESTS),
+        seconds(deadAfter));
   }
 
   /** The fingerprints of the live instances, by instance. */

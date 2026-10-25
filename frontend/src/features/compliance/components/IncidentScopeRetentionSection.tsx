@@ -5,6 +5,7 @@ import { useRetentionSetting } from '../hooks/useRetentionSetting'
 import RetentionForm from './RetentionForm'
 import { periodLabel, type RetentionField, type RetentionValues } from '../utils/retentionPeriod'
 import RetentionLoadState from './RetentionLoadState'
+import RetentionPauseNotice from './RetentionPauseNotice'
 
 const FIELDS: RetentionField[] = [
   { key: 'retentionYears', label: 'Löschfrist (Kalenderjahre)', unit: 'years', min: 1, max: 10 },
@@ -51,6 +52,22 @@ export default function IncidentScopeRetentionSection() {
     return save(updateIncidentScopeRetention({}), () => 'Es gilt wieder die Werkseinstellung.')
   }
 
+  async function handleConfirmShown() {
+    if (!current) return
+    const confirmed = await confirmAction({
+      question: `Löschfrist der anlassbezogenen Klärungen von ${periodLabel(current.retentionYears, 'years')} festlegen?`,
+      consequence:
+        'Danach gilt der angezeigte Wert als eigener Wert der Verwaltung, und der nächste nächtliche Lauf löscht nach ihm, sobald seine Frist erreicht ist. Die Änderung steht im Revisionsprotokoll.',
+      confirmLabel: 'Wert festlegen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
+    await save(
+      updateIncidentScopeRetention({ retentionYears: current.retentionYears }),
+      () => 'Die Löschfrist ist festgelegt.',
+    )
+  }
+
   return (
     <PageSection
       title="Anlassbezogene Klärungen"
@@ -59,15 +76,21 @@ export default function IncidentScopeRetentionSection() {
       {current === null ? (
         <RetentionLoadState loadError={loadError} onRetry={reload} />
       ) : (
-        <RetentionForm
-          key={`${current.retentionYears}-${current.overridden}`}
-          fields={FIELDS}
-          values={{ retentionYears: current.retentionYears }}
-          defaults={{ retentionYears: current.defaultRetentionYears }}
-          overridden={current.overridden}
-          onSave={handleSave}
-          onReset={handleReset}
-        />
+        <>
+          <RetentionPauseNotice
+            pauses={current.pausedBy}
+            onConfirm={() => void handleConfirmShown()}
+          />
+          <RetentionForm
+            key={`${current.retentionYears}-${current.overridden}`}
+            fields={FIELDS}
+            values={{ retentionYears: current.retentionYears }}
+            defaults={{ retentionYears: current.defaultRetentionYears }}
+            overridden={current.overridden}
+            onSave={handleSave}
+            onReset={handleReset}
+          />
+        </>
       )}
     </PageSection>
   )

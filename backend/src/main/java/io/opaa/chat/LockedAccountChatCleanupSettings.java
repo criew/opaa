@@ -7,7 +7,11 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
+import io.opaa.instance.RetiredRetentionVariables;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -32,14 +36,36 @@ public class LockedAccountChatCleanupSettings {
   private final LockedAccountChatCleanupSettingRepository repository;
   private final LockedAccountChatCleanupStore store;
   private final AuditEventRecorder auditEventRecorder;
+  private final RetiredRetentionVariables retired;
 
   LockedAccountChatCleanupSettings(
       LockedAccountChatCleanupSettingRepository repository,
       LockedAccountChatCleanupStore store,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      RetiredRetentionVariables retired) {
     this.repository = repository;
     this.store = store;
     this.auditEventRecorder = auditEventRecorder;
+    this.retired = retired;
+  }
+
+  /**
+   * Why the nightly deletion pauses: while the administration set nothing of its own, a retired
+   * variable a live instance still sets to {@code false} or to a longer period. Setting any value,
+   * the factory defaults included, ends the pause.
+   */
+  public List<Pause> pauses(Setting setting) {
+    if (setting.overridden()) {
+      return List.of();
+    }
+    List<Pause> pauses =
+        new ArrayList<>(
+            retired.switchedOff(
+                RetiredRetentionVariables.LOCKED_ENABLED, setting.policy().enabled()));
+    pauses.addAll(
+        retired.longerThan(
+            RetiredRetentionVariables.LOCKED_DELETE, setting.policy().deleteAfterDays()));
+    return List.copyOf(pauses);
   }
 
   /** The policy in force, the factory defaults and whether the administration set its own. */
@@ -125,7 +151,9 @@ public class LockedAccountChatCleanupSettings {
     return new LockedAccountChatCleanupPolicy(enabled, deleteAfterDays);
   }
 
-  Setting setting() {
+  /** The policy in force with the factory defaults and whether the administration set its own. */
+  @Transactional(readOnly = true)
+  public Setting setting() {
     return repository
         .findSingleton()
         .map(row -> new Setting(row.policy(), true))

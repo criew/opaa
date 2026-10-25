@@ -2,11 +2,14 @@ package io.opaa.chat.web;
 
 import io.opaa.api.dto.LockedAccountChatRetention;
 import io.opaa.api.dto.LockedAccountChatRetentionUpdate;
+import io.opaa.api.dto.RetentionPause;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.LockedAccountChatCleanupSettings;
 import io.opaa.chat.LockedAccountChatCleanupSettings.Setting;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,12 +41,21 @@ public class LockedAccountChatRetentionController {
     return toResponse(settings.change(caller, request.getEnabled(), request.getDeleteAfterDays()));
   }
 
-  private static LockedAccountChatRetention toResponse(Setting setting) {
+  private LockedAccountChatRetention toResponse(Setting setting) {
     return new LockedAccountChatRetention(
         setting.policy().enabled(),
         setting.policy().deleteAfterDays(),
         setting.defaults().enabled(),
         setting.defaults().deleteAfterDays(),
-        setting.overridden());
+        setting.overridden(),
+        pausedBy(settings.pauses(setting)));
+  }
+
+  private static List<RetentionPause> pausedBy(List<Pause> pauses) {
+    return pauses.stream()
+        .map(
+            pause ->
+                new RetentionPause(pause.variable(), pause.retiredValue(), pause.effectiveValue()))
+        .toList();
   }
 }

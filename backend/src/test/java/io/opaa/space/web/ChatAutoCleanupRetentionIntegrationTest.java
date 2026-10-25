@@ -7,14 +7,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.instance.RetiredRetentionVariables;
 import io.opaa.space.ChatAutoCleanupSettings;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SecondInstance;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +39,9 @@ class ChatAutoCleanupRetentionIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
   @Autowired private ChatAutoCleanupSettings settings;
 
   @BeforeEach
@@ -118,6 +126,36 @@ class ChatAutoCleanupRetentionIntegrationTest {
 
     assertThat(settings.current().archiveAfterDays()).isEqualTo(90);
     assertThat(eventCount()).isZero();
+  }
+
+  /**
+   * The page names why the deletion pauses - variable, its value and the value in force - until the
+   * administration sets a value of its own.
+   */
+  @Test
+  void aLongerRetiredPeriodIsNamedAsThePauseUntilAValueIsSet() throws Exception {
+    mockMvc.perform(get(URL).with(devAdmin())).andExpect(jsonPath("$.pausedBy").isEmpty());
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS", "120"))) {
+      mockMvc
+          .perform(get(URL).with(devAdmin()))
+          .andExpect(
+              jsonPath("$.pausedBy[0].variable").value(RetiredRetentionVariables.CHAT_ARCHIVE))
+          .andExpect(jsonPath("$.pausedBy[0].retiredValue").value("120"))
+          .andExpect(jsonPath("$.pausedBy[0].effectiveValue").value("90"));
+
+      mockMvc
+          .perform(
+              put(URL)
+                  .with(devAdmin())
+                  .content("{\"archiveAfterDays\":90,\"deleteAfterDays\":365}"))
+          .andExpect(jsonPath("$.overridden").value(true))
+          .andExpect(jsonPath("$.pausedBy").isEmpty());
+    }
   }
 
   @Test

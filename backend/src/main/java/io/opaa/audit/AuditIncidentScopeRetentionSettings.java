@@ -4,7 +4,10 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.common.ValidationException;
+import io.opaa.instance.RetiredRetentionVariables;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -26,12 +29,28 @@ public class AuditIncidentScopeRetentionSettings {
 
   private final AuditIncidentScopeRetentionSettingRepository repository;
   private final AuditEventRecorder auditEventRecorder;
+  private final RetiredRetentionVariables retired;
 
   AuditIncidentScopeRetentionSettings(
       AuditIncidentScopeRetentionSettingRepository repository,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      RetiredRetentionVariables retired) {
     this.repository = repository;
     this.auditEventRecorder = auditEventRecorder;
+    this.retired = retired;
+  }
+
+  /**
+   * Why the deletion run pauses: while the administration set no period of its own, the retired
+   * variable a live instance still sets to a longer period. Setting any value ends the pause.
+   */
+  public List<Pause> pauses(Setting setting) {
+    if (setting.overridden()) {
+      return List.of();
+    }
+    return retired.longerThan(
+        RetiredRetentionVariables.INCIDENT_SCOPE_YEARS,
+        setting.retention().incidentScopeRetentionYears());
   }
 
   /** The period in force, the factory default and whether the administration set its own. */

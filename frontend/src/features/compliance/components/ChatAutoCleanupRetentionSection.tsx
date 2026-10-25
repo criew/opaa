@@ -5,6 +5,7 @@ import { useRetentionSetting } from '../hooks/useRetentionSetting'
 import RetentionForm from './RetentionForm'
 import { periodLabel, type RetentionField, type RetentionValues } from '../utils/retentionPeriod'
 import RetentionLoadState from './RetentionLoadState'
+import RetentionPauseNotice from './RetentionPauseNotice'
 
 const FIELDS: RetentionField[] = [
   { key: 'archiveAfterDays', label: 'Archivieren nach (Tage)', unit: 'days', min: 90, max: 3650 },
@@ -43,15 +44,38 @@ export default function ChatAutoCleanupRetentionSection() {
 
   async function handleReset(): Promise<boolean> {
     if (!current) return false
+    const shorter =
+      current.defaultArchiveAfterDays < current.archiveAfterDays ||
+      current.defaultDeleteAfterDays < current.deleteAfterDays
     const confirmed = await confirmAction({
       question: `Fristen der Chat-Bereinigung auf die Werkseinstellung von ${periodLabel(current.defaultArchiveAfterDays, 'days')} und ${periodLabel(current.defaultDeleteAfterDays, 'days')} zurücksetzen?`,
-      consequence:
-        'Gilt ab dem nächsten nächtlichen Lauf für alle Spaces mit eingeschalteter Bereinigung. Die Änderung steht im Revisionsprotokoll.',
+      consequence: shorter
+        ? 'In Spaces mit eingeschalteter Bereinigung archiviert oder löscht der nächste nächtliche Lauf Chats früher als bisher; Gelöschtes kommt nicht zurück. Die Änderung steht im Revisionsprotokoll.'
+        : 'Gilt ab dem nächsten nächtlichen Lauf für alle Spaces mit eingeschalteter Bereinigung. Die Änderung steht im Revisionsprotokoll.',
       confirmLabel: 'Werkseinstellung wiederherstellen',
-      tone: 'caution',
+      tone: shorter ? 'danger' : 'caution',
     })
     if (!confirmed) return false
     return save(updateChatAutoCleanupRetention({}), () => 'Es gilt wieder die Werkseinstellung.')
+  }
+
+  async function handleConfirmShown() {
+    if (!current) return
+    const confirmed = await confirmAction({
+      question: `Fristen der Chat-Bereinigung von ${periodLabel(current.archiveAfterDays, 'days')} und ${periodLabel(current.deleteAfterDays, 'days')} festlegen?`,
+      consequence:
+        'Danach gilt der angezeigte Wert als eigener Wert der Verwaltung, und der nächste nächtliche Lauf löscht nach ihm, sobald seine Frist erreicht ist. Die Änderung steht im Revisionsprotokoll.',
+      confirmLabel: 'Werte festlegen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
+    await save(
+      updateChatAutoCleanupRetention({
+        archiveAfterDays: current.archiveAfterDays,
+        deleteAfterDays: current.deleteAfterDays,
+      }),
+      () => 'Die Fristen der Chat-Bereinigung sind festgelegt.',
+    )
   }
 
   return (
@@ -62,21 +86,27 @@ export default function ChatAutoCleanupRetentionSection() {
       {current === null ? (
         <RetentionLoadState loadError={loadError} onRetry={reload} />
       ) : (
-        <RetentionForm
-          key={`${current.archiveAfterDays}-${current.deleteAfterDays}-${current.overridden}`}
-          fields={FIELDS}
-          values={{
-            archiveAfterDays: current.archiveAfterDays,
-            deleteAfterDays: current.deleteAfterDays,
-          }}
-          defaults={{
-            archiveAfterDays: current.defaultArchiveAfterDays,
-            deleteAfterDays: current.defaultDeleteAfterDays,
-          }}
-          overridden={current.overridden}
-          onSave={handleSave}
-          onReset={handleReset}
-        />
+        <>
+          <RetentionPauseNotice
+            pauses={current.pausedBy}
+            onConfirm={() => void handleConfirmShown()}
+          />
+          <RetentionForm
+            key={`${current.archiveAfterDays}-${current.deleteAfterDays}-${current.overridden}`}
+            fields={FIELDS}
+            values={{
+              archiveAfterDays: current.archiveAfterDays,
+              deleteAfterDays: current.deleteAfterDays,
+            }}
+            defaults={{
+              archiveAfterDays: current.defaultArchiveAfterDays,
+              deleteAfterDays: current.defaultDeleteAfterDays,
+            }}
+            overridden={current.overridden}
+            onSave={handleSave}
+            onReset={handleReset}
+          />
+        </>
       )}
     </PageSection>
   )

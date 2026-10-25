@@ -191,7 +191,7 @@ paths:
       summary: >-
         Sets both periods of the automatic chat cleanup, or with both absent returns them to the
         factory defaults (system admin only); one period alone is refused. Acts on every instance
-        from the next nightly run. A change is the audit event CHAT_AUTO_CLEANUP_PERIODS_CHANGED
+        from the next nightly run, which pauses while a retired variable still sets another value. A change is the audit event CHAT_AUTO_CLEANUP_PERIODS_CHANGED
         with before and after; a call that changes nothing writes neither.
       requestBody:
         required: true
@@ -750,7 +750,12 @@ components:
     ChatAutoCleanupRetention:
       type: object
       required:
-        [archiveAfterDays, deleteAfterDays, defaultArchiveAfterDays, defaultDeleteAfterDays, overridden]
+        - archiveAfterDays
+        - deleteAfterDays
+        - defaultArchiveAfterDays
+        - defaultDeleteAfterDays
+        - overridden
+        - pausedBy
       properties:
         archiveAfterDays:
           type: integer
@@ -765,6 +770,13 @@ components:
         overridden:
           type: boolean
           description: Whether the administration set its own periods instead of the factory defaults.
+        pausedBy:
+          type: array
+          description: >-
+            The retired variables a live instance still sets to a value other than the one in
+            force; while there is one, the deletion run pauses.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
 
     ChatAutoCleanupRetentionUpdate:
       type: object
@@ -783,7 +795,7 @@ components:
 
     LockedAccountChatRetention:
       type: object
-      required: [enabled, deleteAfterDays, defaultEnabled, defaultDeleteAfterDays, overridden]
+      required: [enabled, deleteAfterDays, defaultEnabled, defaultDeleteAfterDays, overridden, pausedBy]
       properties:
         enabled:
           type: boolean
@@ -798,6 +810,13 @@ components:
         overridden:
           type: boolean
           description: Whether the administration set its own values instead of the factory defaults.
+        pausedBy:
+          type: array
+          description: >-
+            The retired variables a live instance still sets to a value other than the one in
+            force; while there is one, the deletion run pauses.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
 
     LockedAccountChatRetentionUpdate:
       type: object
@@ -814,7 +833,7 @@ components:
 
     IncidentScopeRetention:
       type: object
-      required: [retentionYears, defaultRetentionYears, overridden]
+      required: [retentionYears, defaultRetentionYears, overridden, pausedBy]
       properties:
         retentionYears:
           type: integer
@@ -826,6 +845,13 @@ components:
         overridden:
           type: boolean
           description: Whether the administration set its own period instead of the factory default.
+        pausedBy:
+          type: array
+          description: >-
+            The retired variables a live instance still sets to a value other than the one in
+            force; while there is one, the deletion run pauses.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
 
     IncidentScopeRetentionUpdate:
       type: object
@@ -836,3 +862,20 @@ components:
           nullable: true
           minimum: 1
           maximum: 10
+
+    RetentionPause:
+      type: object
+      required: [variable, retiredValue, effectiveValue]
+      description: >-
+        A retired environment variable that still sets a retention period on a live instance, with
+        its value and the value in force (ADR-0060, Entscheidung 1: never taken over).
+      properties:
+        variable:
+          type: string
+          example: OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS
+        retiredValue:
+          type: string
+          example: "730"
+        effectiveValue:
+          type: string
+          example: "365"

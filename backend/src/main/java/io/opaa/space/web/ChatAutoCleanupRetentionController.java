@@ -2,11 +2,14 @@ package io.opaa.space.web;
 
 import io.opaa.api.dto.ChatAutoCleanupRetention;
 import io.opaa.api.dto.ChatAutoCleanupRetentionUpdate;
+import io.opaa.api.dto.RetentionPause;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import io.opaa.space.ChatAutoCleanupSettings;
 import io.opaa.space.ChatAutoCleanupSettings.Setting;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,12 +42,21 @@ public class ChatAutoCleanupRetentionController {
         settings.change(caller, request.getArchiveAfterDays(), request.getDeleteAfterDays()));
   }
 
-  private static ChatAutoCleanupRetention toResponse(Setting setting) {
+  private ChatAutoCleanupRetention toResponse(Setting setting) {
     return new ChatAutoCleanupRetention(
         setting.periods().archiveAfterDays(),
         setting.periods().deleteAfterDays(),
         setting.defaults().archiveAfterDays(),
         setting.defaults().deleteAfterDays(),
-        setting.overridden());
+        setting.overridden(),
+        pausedBy(settings.pauses(setting)));
+  }
+
+  private static List<RetentionPause> pausedBy(List<Pause> pauses) {
+    return pauses.stream()
+        .map(
+            pause ->
+                new RetentionPause(pause.variable(), pause.retiredValue(), pause.effectiveValue()))
+        .toList();
   }
 }

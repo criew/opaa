@@ -52,8 +52,10 @@ class RetiredSettingVariablesTest {
     assertThat(RetiredSettingVariables.foundIn(environment))
         .containsExactly(
             "OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS is no longer read; set the retention of"
-                + " the anlassbezogene Klaerungen under Administration > Datenschutz before the"
-                + " next nightly run deletes after the factory default");
+                + " the anlassbezogene Klaerungen under Administration > Datenschutz; it is never"
+                + " taken over, it only brakes: while it keeps longer than the factory default and"
+                + " no value is set there, the deletion it governs pauses, otherwise deletion"
+                + " follows the factory default once its period is reached");
   }
 
   @Test

@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import io.opaa.space.ChatAutoCleanupPeriods;
 import io.opaa.space.ChatAutoCleanupSettings;
 import java.time.Instant;
@@ -15,9 +16,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The automatic chat cleanup of the spaces that switched it on (docs/features/chat-list.md,
  * "Automatisches Archivieren und Löschen je Space"): archives chats without activity and deletes
  * chats that stayed archived, each after its installation-wide period as read at the start of the
- * run, never counted from before switching on. Pinned chats take part in neither; bringing a chat
- * back from the archive restarts its archive period. Activity is {@code chats.updated_at} and
- * nothing else; the log names only totals, never a chat, space or person.
+ * run, never counted from before switching on; the deletion pauses while a retired variable keeps
+ * longer ({@link ChatAutoCleanupSettings#pauses}), archiving runs on. Pinned chats take part in
+ * neither; bringing a chat back from the archive restarts its archive period. Activity is {@code
+ * chats.updated_at} and nothing else; the log names only totals, never a chat, space or person.
  */
 @Service
 public class ChatAutoCleanupService {
@@ -47,8 +49,11 @@ public class ChatAutoCleanupService {
    * deleted in the same one. Each delete batch commits on its own; the caller holds no transaction.
    */
   public void runOnce(Instant now) {
-    ChatAutoCleanupPeriods periods = settings.current();
-    int deleted = deleteDue(periods.deleteCutoff(now));
+    ChatAutoCleanupSettings.Setting setting = settings.setting();
+    ChatAutoCleanupPeriods periods = setting.periods();
+    List<Pause> pauses = settings.pauses(setting);
+    pauses.forEach(pause -> log.error(pause.error("Chat auto cleanup")));
+    int deleted = pauses.isEmpty() ? deleteDue(periods.deleteCutoff(now)) : 0;
     Instant archiveCutoff = periods.archiveCutoff(now);
     Integer archived =
         transactionTemplate.execute(

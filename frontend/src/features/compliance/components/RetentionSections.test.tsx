@@ -132,3 +132,115 @@ describe('IncidentScopeRetentionSection', () => {
     await waitFor(async () => expect((await getIncidentScopeRetention()).retentionYears).toBe(3))
   })
 })
+
+describe('reset and pause', () => {
+  it('warns that a reset to the shorter factory periods deletes earlier', async () => {
+    const user = userEvent.setup()
+    render(<ChatAutoCleanupRetentionSection />)
+    const remove = await screen.findByLabelText('Löschen nach (Tage)')
+    await user.clear(remove)
+    await user.type(remove, '500')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Fristen ändern' }),
+    )
+    await waitFor(async () => expect((await getChatAutoCleanupRetention()).overridden).toBe(true))
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/früher als bisher/)).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    ).toHaveClass('MuiButton-colorError')
+  })
+
+  it('warns that a reset of the locked-account deletion to the shorter factory period deletes earlier', async () => {
+    const user = userEvent.setup()
+    render(<LockedAccountChatRetentionSection />)
+    const days = await screen.findByLabelText('Löschen nach (Tage)')
+    await user.clear(days)
+    await user.type(days, '700')
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ändern' }),
+    )
+    await waitFor(async () =>
+      expect((await getLockedAccountChatRetention()).deleteAfterDays).toBe(700),
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    )
+    expect(
+      within(await screen.findByRole('dialog')).getByText(/früher als bisher/),
+    ).toBeInTheDocument()
+  })
+
+  it('does not warn of an earlier deletion when the deletion is only switched on again', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('/api/v1/admin/retention/locked-account-chats', () =>
+        HttpResponse.json({
+          enabled: false,
+          deleteAfterDays: 365,
+          defaultEnabled: true,
+          defaultDeleteAfterDays: 365,
+          overridden: true,
+          pausedBy: [],
+        }),
+      ),
+    )
+    render(<LockedAccountChatRetentionSection />)
+    await user.click(await screen.findByRole('switch', { name: 'Chats nach der Sperre löschen' }))
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByText(/beginnt mit dem nächsten nächtlichen Lauf neu/),
+    ).toBeInTheDocument()
+    expect(within(dialog).queryByText(/früher als bisher/)).not.toBeInTheDocument()
+  })
+
+  it('names the paused deletion and sets the shown values as the own ones', async () => {
+    const user = userEvent.setup()
+    let sent: unknown = null
+    server.use(
+      http.get('/api/v1/admin/retention/incident-scopes', () =>
+        HttpResponse.json({
+          retentionYears: 1,
+          defaultRetentionYears: 1,
+          overridden: false,
+          pausedBy: [
+            {
+              variable: 'OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS',
+              retiredValue: '3',
+              effectiveValue: '1',
+            },
+          ],
+        }),
+      ),
+      http.put('/api/v1/admin/retention/incident-scopes', async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({
+          retentionYears: 1,
+          defaultRetentionYears: 1,
+          overridden: true,
+          pausedBy: [],
+        })
+      }),
+    )
+    render(<IncidentScopeRetentionSection />)
+
+    expect(await screen.findByText('Löschen pausiert')).toBeInTheDocument()
+    expect(screen.getByText('OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Angezeigte Werte festlegen' }))
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Wert festlegen' }),
+    )
+
+    await waitFor(() => expect(sent).toEqual({ retentionYears: 1 }))
+    await waitFor(() => expect(screen.queryByText('Löschen pausiert')).not.toBeInTheDocument())
+  })
+})

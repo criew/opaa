@@ -7,7 +7,11 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
+import io.opaa.instance.RetiredRetentionVariables;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -30,11 +34,34 @@ public class ChatAutoCleanupSettings {
 
   private final ChatAutoCleanupSettingRepository repository;
   private final AuditEventRecorder auditEventRecorder;
+  private final RetiredRetentionVariables retired;
 
   public ChatAutoCleanupSettings(
-      ChatAutoCleanupSettingRepository repository, AuditEventRecorder auditEventRecorder) {
+      ChatAutoCleanupSettingRepository repository,
+      AuditEventRecorder auditEventRecorder,
+      RetiredRetentionVariables retired) {
     this.repository = repository;
     this.auditEventRecorder = auditEventRecorder;
+    this.retired = retired;
+  }
+
+  /**
+   * Why the deletion of the cleanup pauses: while the administration set no periods of its own, a
+   * retired variable a live instance still sets to a longer period. Archiving is reversible and
+   * runs on; setting any value, the factory defaults included, ends the pause.
+   */
+  public List<Pause> pauses(Setting setting) {
+    if (setting.overridden()) {
+      return List.of();
+    }
+    List<Pause> pauses =
+        new ArrayList<>(
+            retired.longerThan(
+                RetiredRetentionVariables.CHAT_ARCHIVE, setting.periods().archiveAfterDays()));
+    pauses.addAll(
+        retired.longerThan(
+            RetiredRetentionVariables.CHAT_DELETE, setting.periods().deleteAfterDays()));
+    return List.copyOf(pauses);
   }
 
   /** The periods in force, the factory defaults and whether the administration set its own. */
@@ -126,7 +153,9 @@ public class ChatAutoCleanupSettings {
     return new ChatAutoCleanupPeriods(archiveAfterDays, deleteAfterDays);
   }
 
-  Setting setting() {
+  /** The periods in force with the factory defaults and whether the administration set its own. */
+  @Transactional(readOnly = true)
+  public Setting setting() {
     return repository
         .findSingleton()
         .map(row -> new Setting(row.periods(), true))
