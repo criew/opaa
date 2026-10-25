@@ -12,16 +12,21 @@ import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
+import io.opaa.test.SecondInstance;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -42,6 +47,9 @@ class ChatAutoCleanupIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
   private UUID organizationId;
@@ -102,6 +110,75 @@ class ChatAutoCleanupIntegrationTest {
 
     cleanupService.runOnce(now.plus(DAY.multipliedBy(366)));
     assertThat(chatExists(chatId)).isFalse();
+  }
+
+  /** The run reads the periods the administration set, not the factory defaults. */
+  @Test
+  void aDeletePeriodSetByTheAdministrationGovernsTheNextRun() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now);
+    UUID chatId = createArchivedChat(spaceId, author);
+    setArchivedAt(chatId, now.minus(DAY.multipliedBy(800)));
+    jdbcTemplate.update(
+        "INSERT INTO chat_auto_cleanup_settings"
+            + " (id, archive_after_days, delete_after_days, updated_at) VALUES (1, 90, 30, now())");
+
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(29)));
+    assertThat(chatExists(chatId)).isTrue();
+
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(31)));
+    assertThat(chatExists(chatId)).isFalse();
+  }
+
+  /**
+   * A second instance that still sets the retired delete period to a longer one pauses the
+   * deletion, whichever instance runs; archiving runs on. A value set by the administration, even
+   * the factory default, or the instance gone ends the pause.
+   */
+  @Test
+  void aLongerRetiredPeriodOnASecondInstancePausesOnlyTheDeletion() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now);
+    UUID archived = createArchivedChat(spaceId, author);
+    setArchivedAt(archived, now.minus(DAY.multipliedBy(800)));
+    UUID inactive = createChat(spaceId, author);
+    setLastActivity(inactive, now.minus(DAY.multipliedBy(800)));
+    Instant run = now.plus(DAY.multipliedBy(366));
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS", "730"))) {
+      cleanupService.runOnce(run);
+      assertThat(chatExists(archived)).isTrue();
+      assertThat(archivedAt(inactive, author)).isEqualTo(Timestamp.from(run));
+
+      jdbcTemplate.update(
+          "INSERT INTO chat_auto_cleanup_settings"
+              + " (id, archive_after_days, delete_after_days, updated_at)"
+              + " VALUES (1, 90, 365, now())");
+      cleanupService.runOnce(run);
+      assertThat(chatExists(archived)).isFalse();
+    }
+  }
+
+  /** A retired period that keeps shorter than the one in force brakes nothing. */
+  @Test
+  void aShorterRetiredPeriodUnderThePropertyNameDoesNotPause() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now);
+    UUID archived = createArchivedChat(spaceId, author);
+    setArchivedAt(archived, now.minus(DAY.multipliedBy(800)));
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("opaa.chat.auto-cleanup.delete-after-days", "100"))) {
+      cleanupService.runOnce(now.plus(DAY.multipliedBy(366)));
+      assertThat(chatExists(archived)).isFalse();
+    }
   }
 
   @Test

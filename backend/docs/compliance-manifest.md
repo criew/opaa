@@ -189,8 +189,8 @@ anderes, trägt jeder Eintrag die Zeile in eckigen Klammern im Schlüssel:
 ```
 
 `io.opaa.indexing.registry.FullSyncRhythmInstanceState` ist das Muster. Liegt die Einstellung in einer Tabelle mit
-höchstens einer Zeile (`succession_settings`), bleibt der Schlüssel ohne Klammern und steht in
-`DataCollectionDisclosureIntegrationTest.FACTORY_DEFAULT_KEYS`; Muster ist `io.opaa.succession.SuccessionInstanceState`.
+höchstens einer Zeile (`chat_auto_cleanup_settings`, `succession_settings`), bleibt der Schlüssel ohne Klammern und steht in
+`DataCollectionDisclosureIntegrationTest.FACTORY_DEFAULT_KEYS`; Muster ist `io.opaa.space.ChatAutoCleanupInstanceState`.
 
 ## Auskunft über die Datenerhebung (Instanzwerte)
 

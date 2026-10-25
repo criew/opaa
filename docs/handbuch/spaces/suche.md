@@ -1358,23 +1358,26 @@ die Notiz Chatinhalt ist und kein Suchparameter:
 |---|---|---|
 | `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg (`OPAA_CHAT_NOTE_MAX_ITEMS`) |
 
-Die Fristen der automatischen Chat-Bereinigung ([Spaces](README.md), Abschnitt 7) stehen unter `opaa.chat.auto-cleanup.*`.
-Ein Wert unter der Untergrenze bricht den Start mit einer Meldung im Log ab:
+Die Fristen der automatischen Chat-Bereinigung ([Spaces](README.md), Abschnitt 7) und die Löschung
+der Chats gesperrter Konten ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht))
+sind keine Umgebungsvariablen, sondern Verwaltungseinstellungen: Die Systemverwaltung stellt sie unter
+**Administration → Datenschutz** ein. Ohne eigenen Wert gilt die Werkseinstellung, „Werkseinstellung
+wiederherstellen“ kehrt zu ihr zurück. Einen Wert außerhalb der Grenzen weist die Oberfläche ab, die
+Datenbank erzwingt sie zusätzlich. Jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll und
+wirkt auf allen Instanzen mit dem nächsten nächtlichen Lauf; eine Verkürzung löscht dann früher, was
+schon gelöscht ist, kommt nicht zurück. Die Chat-Bereinigung läuft täglich um 03:50 Uhr Serverzeit,
+der Lauf der Chats gesperrter Konten um 02:30 Uhr; er löscht höchstens 5.000 Chats je Nacht, der
+Rest folgt in den nächsten Nächten. Setzt eine laufende Instanz noch eine der entfallenen Variablen
+auf eine längere Frist, pausiert das Löschen, bis hier ein Wert gespeichert ist
+([Konfiguration](../betrieb/konfiguration.md#entfallene-und-veraltete-variablen)). Eine
+Verlängerung dieser Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
 
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `archive-after-days` | 90 | Tage ohne Aktivität, nach denen ein nicht angehefteter Chat archiviert wird; mindestens 90 (`OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS`) |
-| `delete-after-days` | 365 | Tage im Chat-Archiv, nach denen ein Chat gelöscht wird; mindestens 30 (`OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS`) |
-
-Die Löschung der Chats gesperrter Konten ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht))
-steht unter `opaa.chat.locked-account-cleanup.*`; der Lauf ist täglich um 02:30 Uhr Serverzeit und
-löscht höchstens 5.000 Chats je Nacht, der Rest folgt in den nächsten Nächten. Eine Verlängerung der
-Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
-
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `enabled` | `true` | Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; nach dem Wiedereinschalten beginnt jede Frist neu (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED`) |
-| `delete-after-days` | 365 | Tage zwischen der Sperre durch die Verwaltung und der Löschung der Chats, frühestens ab der Einführung; mindestens 90, ein kleinerer Wert bricht den Start ab (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS`) |
+| Einstellung | Werkseinstellung | Grenzen | Wirkung |
+|---|---|---|---|
+| Bereinigung der Chats in Spaces: Archivieren nach | 90 Tage | 90 bis 3650 Tage | Tage ohne Aktivität, nach denen ein nicht angehefteter Chat archiviert wird |
+| Bereinigung der Chats in Spaces: Löschen nach | 365 Tage | 30 bis 3650 Tage | Tage im Chat-Archiv, nach denen ein Chat gelöscht wird |
+| Chats gesperrter Konten: Chats nach der Sperre löschen | eingeschaltet | ein oder aus | Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; das Abschalten vergisst den Beginn der Fristen, nach dem Wiedereinschalten beginnt jede Frist neu |
+| Chats gesperrter Konten: Löschen nach | 365 Tage | 90 bis 3650 Tage | Tage zwischen der Sperre durch die Verwaltung und der Löschung der Chats, frühestens ab der Einführung |
 
 Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Runde, 200 Zeichen je
 Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die

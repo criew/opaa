@@ -10,7 +10,7 @@ import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.SuccessionFinding;
-import io.opaa.space.ChatAutoCleanupProperties;
+import io.opaa.space.ChatAutoCleanupPeriods;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  */
 class SpaceResponseMapperTest {
 
-  private static final ChatAutoCleanupProperties CLEANUP = new ChatAutoCleanupProperties(120, 400);
+  private static final ChatAutoCleanupPeriods CLEANUP = new ChatAutoCleanupPeriods(120, 400);
 
   @Test
   void toResponseCopiesFieldsAndComputesRoleCountsForEveryRole() {

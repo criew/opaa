@@ -49,6 +49,13 @@ fehlerhaften Ollama-Fassung bei langen Eingaben ([Modelle](modelle.md#embedding)
 > DELETE FROM rss_feed_state WHERE library_id = '<library-id>';  -- nur bei Feed-Bibliotheken
 > ```
 
+## Fristen nach einem Rückweg
+
+Die Aufbewahrungsfristen der Chats und der anlassbezogenen Klärungen stehen in der Datenbank. Eine
+ältere Version liest sie dort nicht und löscht nach ihren eigenen Vorgaben oder nach den dann
+gesetzten Umgebungsvariablen. Vor einem Rückweg die Variablen wieder auf die gewünschten Werte
+setzen ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)).
+
 ## Weiterführende Kapitel
 
 - [Docker Compose](docker-compose.md#aktualisierung-auf-einen-neuen-stand) und

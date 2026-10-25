@@ -18,7 +18,7 @@ public record SpaceOverview(
     SpaceRole userRole,
     boolean successionOpen,
     SuccessionFinding succession,
-    ChatAutoCleanupProperties chatAutoCleanup) {
+    ChatAutoCleanupPeriods chatAutoCleanup) {
 
   public SpaceOverview(
       Space space,

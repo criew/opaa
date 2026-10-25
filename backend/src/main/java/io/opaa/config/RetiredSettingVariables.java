@@ -27,8 +27,13 @@ public class RetiredSettingVariables {
   private static final String CONNECTION_SETTINGS =
       "under Administration > Anbindungen > Einstellungen";
 
+  private static final String PRIVACY_SETTINGS = "under Administration > Datenschutz";
+
   /** Each retired variable with the setting it preset. */
   static final Map<String, String> RETIRED = retired();
+
+  /** The retired retention periods, held on the page of the data protection settings. */
+  static final Map<String, String> RETIRED_RETENTION = retiredRetention();
 
   /**
    * The retired administration values, each under its variable and its property name, with the
@@ -55,6 +60,20 @@ public class RetiredSettingVariables {
           if (environment.containsProperty(variable)) {
             messages.add(
                 variable + " is no longer read; set " + setting + " " + CONNECTION_SETTINGS);
+          }
+        });
+    RETIRED_RETENTION.forEach(
+        (variable, setting) -> {
+          if (environment.containsProperty(variable)) {
+            messages.add(
+                variable
+                    + " is no longer read; set "
+                    + setting
+                    + " "
+                    + PRIVACY_SETTINGS
+                    + "; it is never taken over, it only brakes: while it keeps longer than the"
+                    + " factory default and no value is set there, the deletion it governs pauses,"
+                    + " otherwise deletion follows the factory default once its period is reached");
           }
         });
     // The environment answers a property name for its variable too: one message per setting.
@@ -85,6 +104,21 @@ public class RetiredSettingVariables {
     String descent = "the full-sync rhythm of Nextcloud in whole days " + CONNECTION_SETTINGS;
     retired.put("OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL", descent);
     retired.put("opaa.indexing.nextcloud.full-descent-interval", descent);
+    return Collections.unmodifiableMap(retired);
+  }
+
+  private static Map<String, String> retiredRetention() {
+    Map<String, String> retired = new LinkedHashMap<>();
+    retired.put("OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS", "the periods of the chat cleanup");
+    retired.put("OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS", "the periods of the chat cleanup");
+    retired.put(
+        "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED", "the deletion of the chats of locked accounts");
+    retired.put(
+        "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS",
+        "the deletion of the chats of locked accounts");
+    retired.put(
+        "OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS",
+        "the retention of the anlassbezogene Klaerungen");
     return Collections.unmodifiableMap(retired);
   }
 

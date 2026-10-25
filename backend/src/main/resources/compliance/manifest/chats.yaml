@@ -43,10 +43,10 @@ data:
         einer offenen anlassbezogenen Klärung steht. Sperren wegen Inaktivität oder Fehlversuchen
         und Konten eines Identitätsanbieters lösen sie nicht aus
       settings:
-        - opaa.chat.auto-cleanup.archive-after-days
-        - opaa.chat.auto-cleanup.delete-after-days
-        - opaa.chat.locked-account-cleanup.enabled
-        - opaa.chat.locked-account-cleanup.delete-after-days
+        - chat_auto_cleanup_settings.archive_after_days
+        - chat_auto_cleanup_settings.delete_after_days
+        - locked_account_chat_cleanup_settings.enabled
+        - locked_account_chat_cleanup_settings.delete_after_days
     visibility: [nur die Autorin oder der Autor]
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
@@ -88,6 +88,8 @@ data:
       kein Filter und kein Export der angehaltenen Konten in der Oberfläche
 nonPersonalTables:
   chat_locked_account_cleanup_state: [id, counting_since]
+  chat_auto_cleanup_settings: [id, archive_after_days, delete_after_days, updated_at]
+  locked_account_chat_cleanup_settings: [id, enabled, delete_after_days, updated_at]
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
@@ -104,31 +106,47 @@ nonPersonalTables:
     - created_at
     - updated_at
 settings:
-  - key: opaa.chat.auto-cleanup.archive-after-days
-    source: PROPERTY
+  - key: chat_auto_cleanup_settings.archive_after_days
+    source: DATABASE
     defaultValue: "90"
-    range: mindestens 90 Tage
+    range: 90 bis 3650 Tage
     effect: Archivierung inaktiver Chats in Spaces mit eingeschalteter Bereinigung
     bearings: [DATA]
-  - key: opaa.chat.auto-cleanup.delete-after-days
-    source: PROPERTY
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
+        eigenen Wert setzt
+  - key: chat_auto_cleanup_settings.delete_after_days
+    source: DATABASE
     defaultValue: "365"
-    range: mindestens 30 Tage
+    range: 30 bis 3650 Tage
     effect: Löschung von Chats in Spaces mit eingeschalteter Bereinigung
     bearings: [DATA]
-  - key: opaa.chat.locked-account-cleanup.enabled
-    source: PROPERTY
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
+        eigenen Wert setzt
+  - key: locked_account_chat_cleanup_settings.enabled
+    source: DATABASE
     defaultValue: "true"
     range: true oder false
     effect: >-
       Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; nach dem
       Wiedereinschalten beginnt jede Frist neu
     bearings: [DATA]
-  - key: opaa.chat.locked-account-cleanup.delete-after-days
-    source: PROPERTY
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
+        eigenen Wert setzt
+  - key: locked_account_chat_cleanup_settings.delete_after_days
+    source: DATABASE
     defaultValue: "365"
-    range: mindestens 90 Tage
+    range: 90 bis 3650 Tage
     effect: >-
       Frist zwischen der Sperre eines lokalen Kontos durch die Verwaltung und der Löschung seiner
       Chats; eine Verlängerung ist eine längere Speicherfrist und gehört in die Dienstvereinbarung
     bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
+        eigenen Wert setzt

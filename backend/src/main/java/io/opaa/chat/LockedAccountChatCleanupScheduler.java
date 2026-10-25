@@ -3,8 +3,6 @@ package io.opaa.chat;
 import io.opaa.common.DatabaseClock;
 import io.opaa.instance.ScheduledRunLocks;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,12 +22,6 @@ public class LockedAccountChatCleanupScheduler {
       LockedAccountChatCleanupService cleanupService, DatabaseClock databaseClock) {
     this.cleanupService = cleanupService;
     this.databaseClock = databaseClock;
-  }
-
-  /** At start, on every instance: a start with the deletion switched off forgets the count. */
-  @EventListener(ApplicationReadyEvent.class)
-  public void onStart() {
-    cleanupService.forgetCountingWhenSwitchedOff();
   }
 
   @Scheduled(cron = "0 30 2 * * *")

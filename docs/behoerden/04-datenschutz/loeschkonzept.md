@@ -28,7 +28,7 @@ ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 | Einstellbare Fristen mit Standardwert und Wertebereich | {{faktenblatt:fristen#konfigurationsschluessel}} |
 | Löschmechanismus je Datum | Zeile „Löschmechanismus“ im {{faktenblatt:datenkatalog}} |
 | Welche Löschungen protokolliert werden | {{faktenblatt:protokollereignisse}} |
-| Frist für Chats gesperrter Konten, mit Schalter | {{faktenblatt:fristen#opaa-chat-locked-account-cleanup-delete-after-days}}, {{faktenblatt:voreinstellungen#opaa-chat-locked-account-cleanup-enabled}} |
+| Frist für Chats gesperrter Konten, mit Schalter | {{faktenblatt:fristen#locked-account-chat-cleanup-settings-delete-after-days}}, {{faktenblatt:voreinstellungen#locked-account-chat-cleanup-settings-enabled}} |
 | Technisches Anwendungslog | {{faktenblatt:datenkatalog#application-log}} |
 
 Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt

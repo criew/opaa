@@ -3,11 +3,13 @@ package io.opaa.test;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceConfiguration;
 import java.time.Clock;
+import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.StandardEnvironment;
@@ -38,10 +40,15 @@ public final class SecondInstance implements AutoCloseable {
   /** Starts and registers the instance; the test context's own instance stays as it is. */
   public static SecondInstance start(
       ConfigurableEnvironment environment, DataSource dataSource, Clock clock) {
+    return startCopy(copyOf(environment), dataSource, clock);
+  }
+
+  private static SecondInstance startCopy(
+      ConfigurableEnvironment copy, DataSource dataSource, Clock clock) {
     DataSource shared = new DelegatingDataSource(dataSource);
     JdbcTemplate jdbc = new JdbcTemplate(shared);
     AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-    context.setEnvironment(copyOf(environment));
+    context.setEnvironment(copy);
     context.registerBean(JdbcOperations.class, () -> jdbc);
     context.registerBean(
         PlatformTransactionManager.class, () -> new DataSourceTransactionManager(shared));
@@ -49,6 +56,20 @@ public final class SecondInstance implements AutoCloseable {
     context.register(InstanceConfiguration.class);
     context.refresh();
     return new SecondInstance(context, jdbc);
+  }
+
+  /**
+   * Starts and registers the instance with {@code properties} on top of the test context's
+   * environment, as a pod whose environment differs in values the fingerprint does not cover.
+   */
+  public static SecondInstance startWith(
+      ConfigurableEnvironment environment,
+      DataSource dataSource,
+      Clock clock,
+      Map<String, Object> properties) {
+    ConfigurableEnvironment copy = copyOf(environment);
+    copy.getPropertySources().addFirst(new MapPropertySource("secondInstance", properties));
+    return startCopy(copy, dataSource, clock);
   }
 
   public UUID id() {

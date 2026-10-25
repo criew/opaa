@@ -414,6 +414,22 @@ public enum AuditEventType {
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
   /**
+   * The system administration set the periods of the automatic chat cleanup of the spaces, or
+   * returned them to the factory defaults; {@code before} and {@code after} carry the periods only.
+   */
+  CHAT_AUTO_CLEANUP_PERIODS_CHANGED,
+  /**
+   * The system administration set switch or period of the deletion of the chats of locked local
+   * accounts, or returned them to the factory defaults; {@code before} and {@code after} carry
+   * both.
+   */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED,
+  /**
+   * The system administration set the period the grants of the anlassbezogene Klärung are kept, or
+   * returned it to the factory default; {@code before} and {@code after} carry the years only.
+   */
+  INCIDENT_SCOPE_RETENTION_CHANGED,
+  /**
    * The system administration changed the house-wide outbound proxy or its exclusion list;
    * before/after carry the proxy address and the exclusion list.
    */

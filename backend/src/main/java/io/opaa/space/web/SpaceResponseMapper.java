@@ -10,7 +10,7 @@ import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.web.PermissionTransferResponseMapper;
 import io.opaa.permission.web.SuccessionStateResponseMapper;
-import io.opaa.space.ChatAutoCleanupProperties;
+import io.opaa.space.ChatAutoCleanupPeriods;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -101,7 +101,7 @@ final class SpaceResponseMapper {
   }
 
   private static ChatAutoCleanupResponse toChatAutoCleanup(
-      Space space, ChatAutoCleanupProperties periods) {
+      Space space, ChatAutoCleanupPeriods periods) {
     return periods == null
         ? null
         : new ChatAutoCleanupResponse(

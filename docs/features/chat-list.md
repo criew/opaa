@@ -289,12 +289,13 @@ aussagekräftigste Teil der Daten über eine Person.
 - **Konten eines Identitätsanbieters** lassen sich in OPAA nicht sperren; die Frist greift für sie
   nicht. Maßgeblich ist nur die Sperre in OPAA, eine Deaktivierung beim Anbieter zählt nicht
   (Entscheidung 5). Eine Sperre von Anbieterkonten in OPAA ist ein eigenes Thema (#3025).
-- **Frist** `opaa.chat.locked-account-cleanup.delete-after-days`, ab Werk **365 Tage**, Untergrenze
-  **90 Tage**: Eine irrtümliche Sperre muss über Urlaub und Vertretung hinweg auffallen können. Ein
-  kleinerer Wert bricht den Start ab. Die wirksame Frist steht beim Start im Anwendungslog.
-- **Abschaltbar** mit `opaa.chat.locked-account-cleanup.enabled` (ab Werk an). Abgeschaltet löscht
-  nichts; schon der Start mit abgeschalteter Löschung vergisst den Zählbeginn, nach dem
-  Wiedereinschalten beginnt jede Frist neu.
+- **Frist** als Einstellung der Systemverwaltung unter Administration → Datenschutz
+  (`locked_account_chat_cleanup_settings`, ADR-0060), Werkseinstellung **365 Tage**, Grenzen
+  **90 bis 3650 Tage**: Eine irrtümliche Sperre muss über Urlaub und Vertretung hinweg auffallen
+  können. Jede Änderung ist das Ereignis `LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED`.
+- **Abschaltbar** in derselben Einstellung (Werkseinstellung an). Abgeschaltet löscht nichts; das
+  Abschalten vergisst in derselben Transaktion den Zählbeginn, nach dem Wiedereinschalten beginnt
+  jede Frist neu.
 - **Fristbeginn** ist der Beginn der aktuellen, ununterbrochenen Sperre durch die Verwaltung
   (`locked_at`), **frühestens die Einführung** bzw. das letzte Einschalten
   (`chat_locked_account_cleanup_state.counting_since`, einmalig gesetzt mit der Datenbankuhr). Ein

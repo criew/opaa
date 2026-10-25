@@ -227,7 +227,13 @@ class DataCollectionDisclosureIntegrationTest {
    * value (ADR-0060, Entscheidung 1): while the default applies they have no time of change.
    */
   private static final Set<String> FACTORY_DEFAULT_KEYS =
-      Set.of("succession_settings.aging_threshold_months");
+      Set.of(
+          "chat_auto_cleanup_settings.archive_after_days",
+          "chat_auto_cleanup_settings.delete_after_days",
+          "locked_account_chat_cleanup_settings.enabled",
+          "locked_account_chat_cleanup_settings.delete_after_days",
+          "audit_incident_scope_retention_settings.retention_years",
+          "succession_settings.aging_threshold_months");
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
@@ -262,6 +268,41 @@ class DataCollectionDisclosureIntegrationTest {
       }
     }
     assertThat(open).containsExactlyInAnyOrder("model-endpoint", "mcp-discovery");
+  }
+
+  /**
+   * With a row of the administration the factory-default keys answer its value and time: a source
+   * that ignored the row would report the factory default and fail here.
+   */
+  @Test
+  void theFactoryDefaultKeysAnswerTheRowOnceTheAdministrationSetsOne() throws Exception {
+    jdbcTemplate.update(
+        "INSERT INTO chat_auto_cleanup_settings (id, archive_after_days, delete_after_days,"
+            + " updated_at) VALUES (1, 120, 400, now())");
+    jdbcTemplate.update(
+        "INSERT INTO locked_account_chat_cleanup_settings (id, enabled, delete_after_days,"
+            + " updated_at) VALUES (1, false, 500, now())");
+    jdbcTemplate.update(
+        "INSERT INTO audit_incident_scope_retention_settings (id, retention_years, updated_at)"
+            + " VALUES (1, 4, now())");
+
+    JsonNode export = exportAsAdmin();
+
+    Map<String, String> expected =
+        Map.of(
+            "chat_auto_cleanup_settings.archive_after_days", "120",
+            "chat_auto_cleanup_settings.delete_after_days", "400",
+            "locked_account_chat_cleanup_settings.enabled", "false",
+            "locked_account_chat_cleanup_settings.delete_after_days", "500",
+            "audit_incident_scope_retention_settings.retention_years", "4");
+    assertThat(FACTORY_DEFAULT_KEYS).containsAll(expected.keySet());
+    expected.forEach(
+        (key, value) -> {
+          JsonNode setting = setting(export, key);
+          assertThat(setting.path("effectiveValue").asString()).as(key).isEqualTo(value);
+          assertThat(setting.path("deviates").asBoolean()).as(key).isTrue();
+          assertThat(setting.path("changedAt").isNull()).as(key).isFalse();
+        });
   }
 
   /**

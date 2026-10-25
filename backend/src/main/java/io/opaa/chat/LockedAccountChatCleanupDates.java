@@ -17,30 +17,31 @@ import org.springframework.stereotype.Component;
 class LockedAccountChatCleanupDates implements LockedAccountChatDeletion {
 
   private final LockedAccountChatCleanupStore store;
-  private final LockedAccountChatCleanupProperties properties;
+  private final LockedAccountChatCleanupSettings settings;
   private final Clock clock;
 
   LockedAccountChatCleanupDates(
-      LockedAccountChatCleanupStore store,
-      LockedAccountChatCleanupProperties properties,
-      Clock clock) {
+      LockedAccountChatCleanupStore store, LockedAccountChatCleanupSettings settings, Clock clock) {
     this.store = store;
-    this.properties = properties;
+    this.settings = settings;
     this.clock = clock;
   }
 
   @Override
   public Optional<Instant> earliestDeletionAt(UUID userId, Instant lockedAt) {
-    if (!properties.enabled() || store.isHeld(userId)) {
+    LockedAccountChatCleanupPolicy policy = settings.current();
+    if (!policy.enabled() || store.isHeld(userId)) {
       return Optional.empty();
     }
-    return Optional.of(dueAt(lockedAt));
+    return Optional.of(dueAt(lockedAt, policy));
   }
 
-  /** The earliest deletion of chats locked at {@code lockedAt}, holds aside. */
-  Instant dueAt(Instant lockedAt) {
+  /**
+   * The earliest deletion under {@code policy} of chats locked at {@code lockedAt}, holds aside.
+   */
+  Instant dueAt(Instant lockedAt, LockedAccountChatCleanupPolicy policy) {
     Instant since = store.countingSince().orElseGet(() -> Instant.now(clock));
     Instant start = since.isAfter(lockedAt) ? since : lockedAt;
-    return start.plus(properties.period());
+    return start.plus(policy.period());
   }
 }
