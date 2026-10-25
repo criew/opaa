@@ -270,10 +270,6 @@ public class MailSettingsService implements InvalidationSubscriber {
   }
 
   /**
-   * The three-way password rule from {@link MailSettingsUpdate}: unchanged for {@code null} or the
-   * mask, cleared for the empty string, replaced otherwise.
-   */
-  /**
    * A stored password belongs to the server, port, account and encryption it was entered for: if
    * any of them changes while the password would be kept, the change is refused on {@code password}
    * - the password is entered again or cleared, never sent to the new target.
@@ -330,6 +326,10 @@ public class MailSettingsService implements InvalidationSubscriber {
     }
   }
 
+  /**
+   * The three-way password rule from {@link MailSettingsUpdate}: unchanged for {@code null} or the
+   * mask, cleared for the empty string, replaced otherwise.
+   */
   private String resolvePassword(String submitted, String storedCiphertext) {
     if (submitted == null || PASSWORD_MASK.equals(submitted)) {
       return storedCiphertext;

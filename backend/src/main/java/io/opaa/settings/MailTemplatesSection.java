@@ -51,6 +51,12 @@ class MailTemplatesSection implements SettingsSection {
     return labels;
   }
 
+  /** A template carries the links of invitations and resets; another text can lead elsewhere. */
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return keyLabels().keySet();
+  }
+
   @Override
   public Map<String, Object> export(CurrentUser actor) {
     Map<String, Object> values = new LinkedHashMap<>();

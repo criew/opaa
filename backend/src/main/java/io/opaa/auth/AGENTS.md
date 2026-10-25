@@ -14,16 +14,13 @@ Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), E
 ## Invarianten und Stolpersteine
 
 - **Ohne Auth-Profil startet das Backend nicht** (`AuthProfileGuard`): ohne Filterkette stünde `/api/**` offen.
-- **`dev` ist ein echter Modus:** `DevAuthFilter` legt für jede Anfrage ein synthetisches `Jwt` in
-  den Kontext, der Nutzer kommt aus einem Header, ein unbekanntes Subject ergibt `401`. Der Code
-  dahinter kennt den aktiven Modus nicht.
-- **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen
-  `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
-  (`LocalAuthSecretGuard`).
-- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`,
-  `LocalAccountAccess`, `AccountUsability` (einzige Regel „Konto nutzbar“) und
-  `LocalAdminAvailabilityGuard`. Den Schalter der lokalen Konten erreicht `account` nur über den
-  Port `LocalAccountsSwitch`; die Verwaltung der Anbieter liegt in `io.opaa.directory` (rights).
+- **`dev` ist ein echter Modus:** `DevAuthFilter` legt für jede Anfrage ein synthetisches `Jwt` in den Kontext, der
+  Nutzer kommt aus einem Header, ein unbekanntes Subject ergibt `401`. Der Code dahinter kennt den aktiven Modus nicht.
+- **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen `LocalIssuer#URN`. Das
+  Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET` (`LocalAuthSecretGuard`).
+- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`, `LocalAccountAccess`,
+  `AccountUsability` (einzige Regel „Konto nutzbar“) und `LocalAdminAvailabilityGuard`. Den Schalter der lokalen
+  Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; Anbieter in `io.opaa.directory` (rights).
 - **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben über `AuditLogService#record`/`AuditEventRecorder`, gelesen
   nur über `AuditQueryService`, `AuditLogSelfDisclosureExporter` (Person selbst), eingeschaltet `SiemExportService`
   (ADR-0055) und `AuditChainService` (Prüfsummenkette, ADR-0059). `AuditLogRepository` ist package-private; das
@@ -36,6 +33,8 @@ Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), E
   `notification.web`, `selfdisclosure.web`, `linktarget.web`, `settings.web`; `AuditedAdminCall` protokolliert
   `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
   `/api/v1/audit/access-as-of` in `revision.web`, `/api/v1/me` in `group.web`, Anbieter in `directory.web`.
+- **Jede Einstellung gehört zu einer `settings.SettingsSection`** im Paket ihres Moduls (`SettingsSectionRegistryTest`);
+  `apply` nutzt den Schreibweg der Verwaltung. Geheimnisse nur als `AuditSecretChange`, Freitexte als `AuditTextDigest`.
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`), nie `local,dev`.
 
 ## Maßgebliche ADRs
@@ -46,6 +45,7 @@ Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), E
 - [ADR-0025](../../../../../../../docs/decisions/0025-mehrere-oidc-anbieter.md): mehrere OIDC-Anbieter, Identität
 - [ADR-0033](../../../../../../../docs/decisions/0033-lokale-benutzerverwaltung.md): lokale Konten, Token, Mail
 - [ADR-0041](../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 4): eine Regel „Konto nutzbar“
+- [ADR-0060](../../../../../../../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md) (Entscheidungen 11, 12): Nachweis, Export/Import
 
 ## Verweise
 

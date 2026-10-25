@@ -43,9 +43,11 @@ Brandings.
 
 Nach der Auswahl der Datei prüft OPAA sie gegen diese Installation, ohne etwas zu ändern, und zeigt
 jede Angabe, die sich ändern würde, mit bisherigem und neuem Wert. Änderungen, die erweitern oder
-umlenken, was die Installation erreicht oder zulässt — Mailserver und Absender, Ausgangsproxy,
-Selbstregistrierung, externe KI-Werkzeuge und ihre Netzbereiche, erlaubte Linkziele —, sind als
-„Sicherheitsrelevant“ markiert. Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
+umlenken, was die Installation erreicht oder zulässt, oder Nachweise früher löschen, sind als
+„Sicherheitsrelevant“ markiert: Mailserver und Absender, E-Mail-Vorlagen (ihre Links erreichen
+Eingeladene), Ausgangsproxy, Selbstregistrierung, Passwortlänge und Gültigkeit der Links, externe
+KI-Werkzeuge mit Netzbereichen, Ablauf und Kontingent, erlaubte Linkziele und jede
+Aufbewahrungsfrist. Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
   Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des

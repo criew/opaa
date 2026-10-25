@@ -95,6 +95,31 @@ describe('MailSettingsPage', () => {
     expect(sent!.username).toBe('opaa')
   })
 
+  it('verlangt das Passwort neu, wenn sich die Verbindung ändert, und zeigt die Ablehnung am Feld', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderPage()
+
+    const host = await screen.findByRole('textbox', { name: 'Server' })
+    await waitFor(() => expect(host).toHaveValue('smtp.intern.example'))
+    expect(
+      screen.getByText(/solange Server, Port, Benutzername und Verschlüsselung gleich bleiben/),
+    ).toBeInTheDocument()
+
+    await user.clear(host)
+    await user.type(host, 'smtp.fremd.example')
+    expect(screen.getByText(/Bitte das Passwort neu eingeben oder löschen/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    expect(
+      await screen.findByText(/Das gespeicherte Passwort geht nicht an ein neues Ziel/, {
+        selector: 'p',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passwort')).toHaveAttribute('aria-invalid', 'true')
+    expect(mockMailSettings.host).toBe('smtp.intern.example')
+  })
+
   it('meldet einen erfolgreichen Testversand mit der eigenen Adresse', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

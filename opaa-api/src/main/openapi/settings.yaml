@@ -153,9 +153,11 @@ components:
         securityRelevant:
           type: boolean
           description: >-
-            Whether the change widens or redirects what the installation reaches or admits: where
-            mail goes, the outbound proxy, self-registration, the external access channel and its
-            networks, the allowed link targets. The preview marks such a change.
+            Whether the change widens or redirects what the installation reaches or admits, or
+            shortens what it keeps as evidence: where mail goes, the mail templates (their links
+            reach invited persons), the outbound proxy, self-registration, password length and link
+            lifetimes, the external access channel with its networks, lifetime and quota, the
+            allowed link targets, and every retention period. The preview marks such a change.
         before:
           nullable: true
           description: >-

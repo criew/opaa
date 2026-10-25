@@ -264,13 +264,7 @@ public class MailTemplateService {
     return values;
   }
 
-  /**
-   * Everything an edited template must satisfy before it is stored or previewed: supported tag
-   * forms, declared placeholders only, and a trial render with the key's sample values under the
-   * very compilers the send path uses. The trial render is the part that closes the gap - a syntax
-   * error neither check above can see would otherwise turn every later send into a failure, found
-   * by the person waiting for their invitation.
-   */
+  /** The delivered locale, the required fields and the lengths, each refused on its field. */
   private static void requireWithinBounds(
       String locale, String subject, String bodyPlain, String bodyHtml) {
     List<FieldError> errors = new ArrayList<>();
@@ -310,6 +304,13 @@ public class MailTemplateService {
     }
   }
 
+  /**
+   * Everything an edited template must satisfy before it is stored or previewed: supported tag
+   * forms, declared placeholders only, and a trial render with the key's sample values under the
+   * very compilers the send path uses. The trial render is the part that closes the gap - a syntax
+   * error neither check above can see would otherwise turn every later send into a failure, found
+   * by the person waiting for their invitation.
+   */
   private void requireUsableContent(
       MailTemplateKey key, String subject, String bodyPlain, String bodyHtml) {
     checkField(key, "subject", subject, plainCompiler);

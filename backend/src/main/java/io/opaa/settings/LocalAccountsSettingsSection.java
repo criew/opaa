@@ -60,7 +60,12 @@ class LocalAccountsSettingsSection implements SettingsSection {
 
   @Override
   public Set<String> securityRelevantKeys() {
-    return Set.of("selfRegistrationEnabled", "selfRegistrationAllowedDomains", "passwordMinLength");
+    return Set.of(
+        "selfRegistrationEnabled",
+        "selfRegistrationAllowedDomains",
+        "passwordMinLength",
+        "invitationTokenTtlHours",
+        "resetTokenTtlMinutes");
   }
 
   @Override

@@ -52,7 +52,12 @@ class ExternalAccessSettingsSection implements SettingsSection {
 
   @Override
   public Set<String> securityRelevantKeys() {
-    return Set.of("enabled", "tokenMaxLifetimeDays", "allowedCidrs", "massRetrievalAlertThreshold");
+    return Set.of(
+        "enabled",
+        "tokenMaxLifetimeDays",
+        "tokenRateLimitPerHour",
+        "allowedCidrs",
+        "massRetrievalAlertThreshold");
   }
 
   @Override

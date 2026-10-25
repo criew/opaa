@@ -38,6 +38,12 @@ class PermissionHistoryRetentionSettingsSection implements SettingsSection {
     return Map.of("retentionMonths", "Aufbewahrungshöchstdauer in Monaten");
   }
 
+  /** A shorter period deletes evidence earlier. */
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return Set.of("retentionMonths");
+  }
+
   @Override
   public Map<String, Object> export(CurrentUser actor) {
     Map<String, Object> values = new LinkedHashMap<>();
