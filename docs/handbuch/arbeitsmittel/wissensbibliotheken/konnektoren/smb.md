@@ -54,7 +54,8 @@ flowchart LR
 
 Die Auswahl zeigt die Ordner der Freigabe Ebene für Ebene; darf das Konto den Stamm nicht auflisten,
 lassen sich die Pfade über „Von Hand eintragen …" angeben. Der Verbindungstest meldet sich an, öffnet die Freigabe und prüft jeden Ordner; jeder Befund hat
-einen eigenen Satz (Abschnitt 9). Eine geänderte Ordnerliste verwirft den Abgleichstand.
+einen eigenen Satz (Abschnitt 9). Eine Freigabe, die es nicht gibt, zeigt er an der Stufe „Adresse",
+abgelehnte Zugangsdaten an der Stufe „Anmeldung", eine fehlende Berechtigung an der Stufe „Rechte". Eine geänderte Ordnerliste verwirft den Abgleichstand.
 
 **Über einen Zugang:** Seine Server-Adresse ist `smb://server[:port]`; jede Bibliothek nennt ihre
 Freigabe darunter. Nennt der Zugang schon eine Freigabe, liegen alle Bibliotheken darauf. Dienstkonto

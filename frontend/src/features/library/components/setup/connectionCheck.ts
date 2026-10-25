@@ -112,6 +112,10 @@ export function outcomeOf(
         : [signsIn ? { label: 'Anmeldung', ...NOT_CHECKED } : signIn, rightsOpen],
     )
   }
+  // an accepted sign-in presupposes a reached address; only the rights can be missing
+  if (signsIn && result.credentialsVerified === true) {
+    return outcome('failed', [...address, signIn, unreadable])
+  }
   return outcome('failed', [
     { label: 'Adresse', state: 'failed', text: 'nicht erreichbar' },
     signsIn ? { label: 'Anmeldung', ...NOT_CHECKED } : signIn,

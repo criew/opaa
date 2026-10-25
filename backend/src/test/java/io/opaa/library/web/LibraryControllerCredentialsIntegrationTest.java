@@ -262,10 +262,12 @@ class LibraryControllerCredentialsIntegrationTest {
     String testBody = testResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(testBody)
         .contains("\"reachable\":false")
-        .contains("\"credentialsVerified\":false")
         .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST")
         .doesNotContain(secret)
         .doesNotContain("AKIAEXAMPLE");
+    // regression guard for #3175: a refused target says nothing about the key - sent as null
+    java.util.Map<String, Object> testJson = JsonPath.read(testBody, "$");
+    assertThat(testJson).containsEntry("credentialsVerified", null);
 
     String listing =
         """

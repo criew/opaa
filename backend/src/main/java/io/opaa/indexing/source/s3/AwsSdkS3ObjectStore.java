@@ -268,8 +268,8 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
           scope.bucket(),
           null,
           () -> s3.headBucket(HeadBucketRequest.builder().bucket(scope.bucket()).build()));
-    } catch (S3AccessException.ListForbidden e) {
-      // a HEAD answer carries no error code, so a 403 here may be a rights gap or a refused key;
+    } catch (S3AccessException.ListForbidden | S3AccessException.BucketNotFound e) {
+      // a HEAD answer carries no error code, so a 403 or 404 here may also be a refused key;
       // the listing below answers with a body and settles it
     } catch (S3AccessException e) {
       return new S3AccessCheck(false, false, null, 0, false, e);
@@ -277,7 +277,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     S3ListPage page;
     try {
       page = listObjects(scope, null);
-    } catch (S3AccessException.Authentication e) {
+    } catch (S3AccessException.Authentication | S3AccessException.BucketNotFound e) {
       return new S3AccessCheck(false, false, null, 0, false, e);
     } catch (S3AccessException e) {
       return new S3AccessCheck(true, false, null, 0, false, e);

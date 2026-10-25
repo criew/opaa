@@ -537,6 +537,14 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(refused.listAllowed()).isFalse();
     assertThat(refused.failure()).isInstanceOf(S3AccessException.Authentication.class);
 
+    // HeadBucket answers 404 without a body, the listing names the real reason: a refused key,
+    // never a missing bucket the key would have been accepted for
+    server.failNextMatching("HEAD", "/gibtsnicht", 404, "NoSuchBucket");
+    server.failNextMatching("GET", "/gibtsnicht", 403, "InvalidAccessKeyId");
+    S3AccessCheck refusedMissing = store.testAccess(S3Scope.of("gibtsnicht", ""));
+    assertThat(refusedMissing.bucketReachable()).isFalse();
+    assertThat(refusedMissing.failure()).isInstanceOf(S3AccessException.Authentication.class);
+
     // HeadBucket and the listing pass, HeadObject on the first object is refused
     server.failNextMatching("HEAD", "/docs/2024/", 403, "AccessDenied");
     S3AccessCheck noRead = store.testAccess(S3Scope.of("docs", "2024"));

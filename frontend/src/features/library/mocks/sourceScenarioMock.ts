@@ -133,8 +133,8 @@ const BROWSE_FAILURES: Partial<Record<SourceTypeKey, [number, string]>> = {
 const TEST_FAILURES: Partial<Record<SourceTypeKey, string>> = {
   FILESYSTEM: 'Das Verzeichnis ist nicht lesbar: Zugriff verweigert.',
   CONFLUENCE:
-    'Confluence hat die Zugangsdaten abgelehnt (HTTP 401). Prüfen Sie E-Mail-Adresse und API-Token.',
-  S3: 'Der Objektspeicher hat die Anmeldung abgelehnt (SignatureDoesNotMatch): Access Key oder Secret Key ist falsch.',
+    'Confluence hat die Zugangsdaten abgelehnt (HTTP 401). Prüfen Sie Token und, bei Cloud, die E-Mail-Adresse.',
+  S3: 'Der Objektspeicher hat die Zugangsdaten abgelehnt (Access Key oder Secret Key ungültig, Session-Token abgelaufen; SignatureDoesNotMatch).',
   GOOGLE_DRIVE:
     'Google hat den Dienstkonto-Schlüssel abgelehnt (invalid_grant). Der Schlüssel ist widerrufen oder abgelaufen.',
   SHAREPOINT:
@@ -401,17 +401,26 @@ function partialTest(body: TestBody): Response | null {
           objectCountIsLowerBound: false,
           message: fails
             ? index % 4 === 1
-              ? 'Bucket nicht gefunden (NoSuchBucket).'
-              : 'Auflisten verweigert (AccessDenied auf ListObjectsV2).'
+              ? `Der Bucket „${scope.bucket}“ existiert nicht oder ist über diesen Endpoint nicht erreichbar.`
+              : `Der Bucket „${scope.bucket}“ darf mit diesen Zugangsdaten nicht aufgelistet werden (s3:ListBucket fehlt).`
             : null,
         }
       })
-      const failed = scopes.filter((scope) => scope.message).length
+      const failed = scopes.filter((scope) => scope.message)
+      const first = failed[0]
+      const others = failed.length - 1
+      // the backend's summary: the first scope with a finding, the others counted
+      const message = first
+        ? `Bereich „${first.prefix ? `${first.bucket}/${first.prefix}` : first.bucket}“: ${first.message}` +
+          (others === 0
+            ? ''
+            : ` (${others === 1 ? '1 weiterer Bereich' : `${others} weitere Bereiche`} mit Befund, siehe Einzelheiten.)`)
+        : `Alle ${scopes.length} Bereiche sind erreichbar, Auflistung und Lesen sind erlaubt. ${12 * scopes.length} Objekte gefunden.`
       return HttpResponse.json({
-        reachable: failed === 0,
+        reachable: failed.length === 0,
         credentialsVerified: true,
-        documentCount: 12 * (scopes.length - failed),
-        message: `Anmeldung erfolgreich; ${failed} von ${scopes.length} Bereichen nicht lesbar.`,
+        documentCount: failed.length === 0 ? 12 * scopes.length : null,
+        message,
         details: { scopes },
       })
     }

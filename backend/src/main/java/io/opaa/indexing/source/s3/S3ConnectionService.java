@@ -48,16 +48,17 @@ public class S3ConnectionService {
   }
 
   /**
-   * @param credentialsVerified whether the store accepted the key: {@code false} when it refused
-   *     the key or could not be asked at all (blocked, unreachable, TLS), {@code true} once any
-   *     scope got an answer that presupposes a valid signature
+   * @param credentialsVerified {@code false} when the store refused the key or none was usable as
+   *     given (missing, malformed); {@code true} once any scope got an answer that presupposes a
+   *     valid signature, also {@code AccessDenied}; {@code null} when no scope got that far
+   *     (blocked, unreachable, TLS, region or addressing style, clock, throttling, server error)
    * @param objectCount the objects the first page of every scope showed, {@code null} unless every
    *     scope passed
    */
   public record Probe(
       boolean reachable,
       String message,
-      boolean credentialsVerified,
+      Boolean credentialsVerified,
       List<S3ScopeCheck> scopes,
       Long objectCount) {}
 
@@ -101,7 +102,12 @@ public class S3ConnectionService {
       }
       return summarize(findings);
     } catch (S3AccessException e) {
-      return new Probe(false, e.getMessage(), false, List.of(), null);
+      return new Probe(
+          false,
+          e.getMessage(),
+          e instanceof S3AccessException.Authentication ? Boolean.FALSE : null,
+          List.of(),
+          null);
     }
   }
 
@@ -157,8 +163,7 @@ public class S3ConnectionService {
       return passed()
           || failure instanceof S3AccessException.BucketNotFound
           || failure instanceof S3AccessException.ListForbidden
-          || failure instanceof S3AccessException.ReadForbidden
-          || failure instanceof S3AccessException.WrongRegionOrStyle;
+          || failure instanceof S3AccessException.ReadForbidden;
     }
 
     S3ScopeCheck toCheck() {
@@ -209,7 +214,7 @@ public class S3ConnectionService {
                   : " ("
                       + (others == 1 ? "1 weiterer Bereich" : others + " weitere Bereiche")
                       + " mit Befund, siehe Einzelheiten.)");
-      return new Probe(false, message, keyAccepted, checks, null);
+      return new Probe(false, message, keyAccepted ? Boolean.TRUE : null, checks, null);
     }
     long objects = checks.stream().mapToLong(S3ScopeCheck::objectCount).sum();
     boolean lowerBound = checks.stream().anyMatch(S3ScopeCheck::objectCountIsLowerBound);
