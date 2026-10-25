@@ -123,7 +123,8 @@ class AuditLogReaderStructureTest {
             SiemExportProperties.class,
             io.micrometer.core.instrument.MeterRegistry.class,
             org.springframework.beans.factory.ObjectProvider.class,
-            org.springframework.beans.factory.ObjectProvider.class);
+            org.springframework.beans.factory.ObjectProvider.class,
+            java.time.Clock.class);
     var condition =
         factory.getAnnotation(
             org.springframework.boot.autoconfigure.condition.ConditionalOnProperty.class);
