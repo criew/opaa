@@ -198,9 +198,15 @@ wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken/README.md), Absc
 
 ## 9. Konfiguration
 
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `opaa.connection.expired-connections.warning-threshold` | 10 | ab wie vielen abgelaufenen verbundenen Konten auf einem Zugang die Übersicht „Viele Konten abgelaufen" zeigt; mindestens 1 |
+Die Schwellen und Fristen der Verbindungen und die Aufbewahrungsfrist des Verbindungsprotokolls
+stellt die Systemverwaltung unter **Administration → Anbindungen → Einstellungen** ein, Abschnitt
+„Schwellen und Fristen der Verbindungen“. Ohne eigenen Wert gilt die Werkseinstellung; „Werkseinstellung
+wiederherstellen“ kehrt zu ihr zurück. Eine Änderung gilt ohne Neustart auf allen Instanzen ab der
+nächsten Entscheidung und steht mit altem und neuem Wert im Revisionsprotokoll. Einen Wert außerhalb
+der Grenzen weist die Oberfläche ab, die Datenbank erzwingt sie zusätzlich.
 
-Die Aufbewahrungsfrist des Verbindungsprotokolls stellt die Systemverwaltung unter
-**Administration → Anbindungen → Einstellungen** ein.
+| Einstellung | Werkseinstellung | Grenzen | Wirkung |
+|---|---|---|---|
+| Inaktivitätsschwelle | 90 Tage | 30 bis 365 Tage | Wer sich so lange nicht angemeldet hat, dessen verbundene Konten **ruhen**: OPAA gibt ihr Geheimnis nicht heraus, private Bibliotheken werden nicht aktualisiert, gelöscht wird nichts, und mit der nächsten Anmeldung geht es ohne Neuverbinden weiter. Ebenso ruhen die verbundenen Konten eines lokalen Kontos, das wegen Inaktivität gesperrt ist. Ruhen ist keine Deaktivierung: Erst ein deaktiviertes Konto (von der Verwaltung gesperrt, abgelaufen, Verzeichnissperre, Anbieter gelöscht) beendet die Verbindungen und löscht ihre Geheimnisse — sofort beim Ereignis, spätestens beim täglichen Abgleich und beim Start |
+| Löschfrist privater Bibliotheken | 30 Tage | 1 bis 90 Tage | Ist das Konto ihrer Besitzerin länger deaktiviert, löscht der tägliche Löschlauf ihre privaten Bibliotheken vollständig und hält das im Revisionsprotokoll fest. Die Frist beginnt mit der aktuellen ausdrücklichen Deaktivierung; wird das Konto vorher wieder nutzbar, wird nichts gelöscht. Ruhende Konten und die Sperre lokaler Konten wegen Inaktivität zählen nicht. Eine geänderte Frist gilt auch für schon laufende Fristen ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md), „Lange Abwesenheit oder Versetzung“) |
+| Warnschwelle abgelaufener Konten | 10 | 1 bis 1000 | Ab wie vielen abgelaufenen verbundenen Konten auf einem Zugang die Übersicht „Viele Konten abgelaufen“ zeigt. Die Warnung folgt nur aus den ausgewiesenen, gerundeten Zahlen und heißt „Möglicherweise viele Konten abgelaufen“, wo die Zahl nicht genau ausgewiesen ist; Zugänge, die keine Personen zulassen, warnen nie. Ein Wert unter der Mindestgruppengröße ist erlaubt, warnt dann aber an jedem Zugang für Personen schon bei „weniger als N“; die Oberfläche weist darauf hin |

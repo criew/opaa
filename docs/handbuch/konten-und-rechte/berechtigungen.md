@@ -1079,7 +1079,7 @@ noch nicht fest; wo die Punkte einen Mechanismus nennen, beschreiben sie das bis
 - *Worum es geht:* OPAA hält nur eine Kopie. Eine in der Quelle gelöschte Mail verschwindet mit
   einem späteren Abgleich aus dem Index. Eine private Bibliothek löscht die Besitzerin jederzeit selbst,
   sonst der Löschlauf nach Ablauf der Löschfrist, sobald das Konto deaktiviert ist
-  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Benutzerverwaltung](benutzerverwaltung.md),
+  (Administration → Anbindungen → Einstellungen, [Benutzerverwaltung](benutzerverwaltung.md),
   Abschnitt 12).
 - *Warum es zählt:* Aufbewahrungspflichten erfüllt OPAA nicht; sie müssen in Mailsystem oder Akte
   erfüllt sein. Umgekehrt darf die Kopie nicht länger bestehen, als es die Löschpflichten erlauben.

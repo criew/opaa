@@ -39,6 +39,8 @@ Kern erreicht es über die Ports `SourceConnectionResolver` (`ProfileSourceConne
   Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
 - **MCP-Server** (`ProfileKind.MCP_SERVER`, ohne Quellart): Konnektor-Pfade listen nur `findConnectorsByName`
   (ArchUnit); Token nur über `McpServerTokens`, gebunden an `issued_for`; der Rücksprung prüft `iss` (RFC 9207).
+- **Schwellen und Fristen** nur über `ConnectionLifecycleSettings`, je Aufruf aus der Datenbank, nie gemerkt;
+  ändern nur `ConnectionLifecycleAdministration` (Revisionsereignis, Abschnitt `connectionLifecycle`).
 - **Sperrgründe nur in `SourceBlocks`** (Vorrang: Enum-Reihenfolge), Profilangabe nur über
   `ProfileRequirements`. Eine Sperre blockiert `resolve`, nicht `currentCredentials`.
 

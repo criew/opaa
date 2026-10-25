@@ -658,7 +658,7 @@ dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff bei
 ### Lange Abwesenheit oder Versetzung
 
 - **Abwesenheit** beendet nichts. Nach der Inaktivitätsschwelle ohne Anmeldung
-  (`OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, [Konfiguration](../betrieb/konfiguration.md)) ruhen die Verbindungen
+  (Administration → Anbindungen → Einstellungen, [Zugänge](../arbeitsmittel/zugaenge.md#9-konfiguration)) ruhen die Verbindungen
   einer Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden
   weiter. Das gilt auch für ein lokales Konto, das wegen Inaktivität gesperrt ist (Abschnitt 4):
   Zugangsdaten und Inhalte bleiben, die privaten Bibliotheken ruhen ohne Löschfrist. Nach dem
@@ -666,7 +666,7 @@ dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff bei
 - **Deaktivierung** dagegen beendet alle Verbindungen des Kontos und löscht ihre Zugangsdaten:
   von der Verwaltung gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht. Die
   privaten Bibliotheken der Person ruhen sofort, und eine **Löschfrist**
-  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Konfiguration](../betrieb/konfiguration.md)) beginnt. Der
+  (Administration → Anbindungen → Einstellungen, [Zugänge](../arbeitsmittel/zugaenge.md#9-konfiguration)) beginnt. Der
   Sperrdialog und das Feld „Ablaufdatum“ nennen diese Folge, ohne zu sagen, ob die Person
   überhaupt ein Konto verbunden hat. Die Frist läuft ab der aktuellen Sperre; wird ein Konto
   entsperrt und erneut gesperrt, beginnt sie neu. Der Hinweis an der
