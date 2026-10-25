@@ -164,7 +164,8 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-    await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
+    await adminPage.getByRole('button', { name: 'Aktionen für die Freigabe an Dev User' }).click()
+    await adminPage.getByRole('menuitem', { name: 'Entziehen' }).click()
     // The confirmation is the app's own overlay. Addressed through the id every
     // confirmation carries rather than through role="dialog" alone: its own button says
     // "Entziehen", and the id stays unambiguous should a second overlay ever stand.
@@ -222,8 +223,10 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(cPage)
     await gotoLibraryDetail(cPage, LIBRARY_NAME)
 
-    await expect(cPage.getByText('Sie haben in dieser Bibliothek nur Leserechte.')).toBeVisible()
-    await expect(cPage.getByRole('button', { name: 'Dateien hochladen' })).toHaveCount(0)
+    // the role badge in the head says it; no upload action, no drop zone
+    await expect(cPage.getByText('Leser', { exact: true })).toBeVisible()
+    await expect(cPage.getByRole('button', { name: 'Hochladen' })).toHaveCount(0)
+    await expect(cPage.getByText(/Dateien oder Ordner hierher ziehen/)).toHaveCount(0)
     await expect(cPage.getByLabel('Dateien auswählen')).toHaveCount(0)
   })
 })

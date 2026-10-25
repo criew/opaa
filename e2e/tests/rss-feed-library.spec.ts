@@ -176,7 +176,7 @@ test.describe.serial('RSS-Feed-Quelle: Positivpfad, unveränderter Feed (#471)',
     expect(status.documentsSkipped).toBe(0)
     // Not load-bearing (see the module doc comment on the selector convention) - a minimal spot
     // check that the UI actually surfaces this run's outcome, not just the API.
-    await expect(page.getByText('Letzter Lauf: Abgeschlossen')).toBeVisible()
+    await expect(page.getByText('Aktuell', { exact: true })).toBeVisible()
 
     // The library's aggregate documentCount (2 entries + 1 attachment = 3) and, more importantly,
     // which three documents those are - verified straight from the API, not the UI: no
