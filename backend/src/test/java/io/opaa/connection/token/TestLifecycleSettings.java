@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.instance.RetiredRetentionVariables;
 import java.util.Map;
 import java.util.Optional;
 
@@ -30,6 +31,6 @@ public final class TestLifecycleSettings {
             call ->
                 Optional.ofNullable(
                     set.get(ConnectionLifecycleSetting.valueOf(call.<String>getArgument(0)))));
-    return new ConnectionLifecycleSettings(repository);
+    return new ConnectionLifecycleSettings(repository, mock(RetiredRetentionVariables.class));
   }
 }

@@ -1,6 +1,9 @@
 package io.opaa.connection.token;
 
+import io.opaa.instance.RetiredRetentionVariables;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +17,26 @@ import org.springframework.transaction.annotation.Transactional;
 public class ConnectionLifecycleSettings {
 
   private final ConnectionLifecycleSettingRepository repository;
+  private final RetiredRetentionVariables retired;
 
-  public ConnectionLifecycleSettings(ConnectionLifecycleSettingRepository repository) {
+  public ConnectionLifecycleSettings(
+      ConnectionLifecycleSettingRepository repository, RetiredRetentionVariables retired) {
     this.repository = repository;
+    this.retired = retired;
+  }
+
+  /**
+   * Why the erasure after the deletion period pauses (ADR-0060, Entscheidung 13): while the
+   * administration stored no period, every live instance that still sets the retired variable to a
+   * longer one. A stored value, the factory default included, ends the pause.
+   */
+  public List<Pause> deletionPauses() {
+    ConnectionLifecycleSetting setting = ConnectionLifecycleSetting.PRIVATE_LIBRARY_DELETION_DAYS;
+    if (administrationValue(setting).isPresent()) {
+      return List.of();
+    }
+    return retired.longerThan(
+        RetiredRetentionVariables.PRIVATE_LIBRARY_DELETION, setting.factoryDefault());
   }
 
   /** The value in force for {@code setting}. */

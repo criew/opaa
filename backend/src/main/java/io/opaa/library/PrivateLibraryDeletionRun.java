@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.connection.account.ConnectionLifecycle;
 import io.opaa.connection.token.ConnectionLifecycleSettings;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import io.opaa.knowledge.ErasureCause;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository.PrivateLibraryFigures;
@@ -66,10 +67,22 @@ public class PrivateLibraryDeletionRun {
   }
 
   /**
-   * Continues every marked erasure, then erases the libraries whose deletion period has run out.
+   * Continues every marked erasure, then erases the libraries whose deletion period has run out;
+   * the latter pauses, with an error per run, while {@link
+   * ConnectionLifecycleSettings#deletionPauses} names a retired variable that keeps longer
+   * (ADR-0060, Entscheidung 13).
    */
   public Result runOnce() {
     Result pending = erase(libraries.findIdsByErasureRequested(), null);
+    List<Pause> pauses = period.deletionPauses();
+    if (!pauses.isEmpty()) {
+      pauses.forEach(
+          pause ->
+              log.error(
+                  pause.error(
+                      "Private library deletion", "Administration > Anbindungen > Einstellungen")));
+      return pending;
+    }
     Instant cutoff = clock.instant().minus(period.privateLibraryDeletionPeriod());
     Set<UUID> deactivated = lifecycle.deletionPeriodStartedBefore(cutoff).keySet();
     Result due =

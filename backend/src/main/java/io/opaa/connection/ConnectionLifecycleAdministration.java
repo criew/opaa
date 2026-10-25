@@ -11,6 +11,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.PersonNumbers;
 import io.opaa.connection.token.ConnectionLifecycleSetting;
 import io.opaa.connection.token.ConnectionLifecycleSettings;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
@@ -48,7 +49,11 @@ public class ConnectionLifecycleAdministration {
 
   /** One setting: the value in force, its factory default and bounds, and whether it is set. */
   public record Entry(
-      ConnectionLifecycleSetting setting, int value, boolean overridden, Instant updatedAt) {}
+      ConnectionLifecycleSetting setting,
+      int value,
+      boolean overridden,
+      Instant updatedAt,
+      List<Pause> pausedBy) {}
 
   /**
    * Every setting in the order of {@link ConnectionLifecycleSetting}, and the minimum group size.
@@ -132,8 +137,17 @@ public class ConnectionLifecycleAdministration {
   private Entry current(ConnectionLifecycleSetting setting) {
     return settings
         .stored(setting)
-        .map(row -> new Entry(setting, row.getValue(), true, row.getUpdatedAt()))
-        .orElseGet(() -> new Entry(setting, setting.factoryDefault(), false, null));
+        .map(row -> new Entry(setting, row.getValue(), true, row.getUpdatedAt(), List.of()))
+        .orElseGet(
+            () ->
+                new Entry(
+                    setting,
+                    setting.factoryDefault(),
+                    false,
+                    null,
+                    setting == ConnectionLifecycleSetting.PRIVATE_LIBRARY_DELETION_DAYS
+                        ? settings.deletionPauses()
+                        : List.of()));
   }
 
   private static Map<String, Object> payload(Entry entry) {

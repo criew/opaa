@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import io.opaa.instance.RetiredRetentionVariables;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +59,8 @@ class ConnectionLifecycleSettingTest {
   void aValueOutsideItsBoundsIsNeverStored() {
     ConnectionLifecycleSettingRepository repository =
         mock(ConnectionLifecycleSettingRepository.class);
-    ConnectionLifecycleSettings settings = new ConnectionLifecycleSettings(repository);
+    ConnectionLifecycleSettings settings =
+        new ConnectionLifecycleSettings(repository, mock(RetiredRetentionVariables.class));
 
     assertThatThrownBy(() -> settings.set(ConnectionLifecycleSetting.INACTIVITY_THRESHOLD_DAYS, 29))
         .isInstanceOf(IllegalArgumentException.class);

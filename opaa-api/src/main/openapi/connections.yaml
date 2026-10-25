@@ -2220,7 +2220,7 @@ components:
 
     ConnectionLifecycleSettingResponse:
       type: object
-      required: [setting, value, defaultValue, minValue, maxValue, overridden]
+      required: [setting, value, defaultValue, minValue, maxValue, overridden, pausedBy]
       properties:
         setting:
           $ref: "#/components/schemas/ConnectionLifecycleSettingKey"
@@ -2246,6 +2246,14 @@ components:
           format: date-time
           nullable: true
           description: When the administration last set its own value; null while the default applies.
+        pausedBy:
+          type: array
+          description: >-
+            Only for PRIVATE_LIBRARY_DELETION_DAYS: the retired variables a live instance still sets
+            to a longer period while the administration stored none (ADR-0060, Entscheidung 13);
+            while there is one, the erasure after the deletion period pauses. Empty otherwise.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
 
     ConnectionLifecycleSettingsResponse:
       type: object

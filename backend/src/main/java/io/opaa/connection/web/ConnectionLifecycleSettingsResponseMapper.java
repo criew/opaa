@@ -3,6 +3,7 @@ package io.opaa.connection.web;
 import io.opaa.api.dto.ConnectionLifecycleSettingKey;
 import io.opaa.api.dto.ConnectionLifecycleSettingResponse;
 import io.opaa.api.dto.ConnectionLifecycleSettingsResponse;
+import io.opaa.api.dto.RetentionPause;
 import io.opaa.connection.ConnectionLifecycleAdministration;
 import io.opaa.connection.ConnectionLifecycleAdministration.Entry;
 
@@ -27,7 +28,13 @@ final class ConnectionLifecycleSettingsResponseMapper {
             entry.setting().factoryDefault(),
             entry.setting().min(),
             entry.setting().max(),
-            entry.overridden())
+            entry.overridden(),
+            entry.pausedBy().stream()
+                .map(
+                    pause ->
+                        new RetentionPause(
+                            pause.variable(), pause.retiredValue(), pause.effectiveValue()))
+                .toList())
         .updatedAt(entry.updatedAt());
   }
 }

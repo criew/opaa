@@ -31,11 +31,14 @@ class RetiredRetentionVariablesTest {
   }
 
   @Test
-  void theFiveVariablesNameTheirFormerProperties() {
+  void theVariablesNameTheirFormerProperties() {
     assertThat(RetiredRetentionVariables.PROPERTIES)
         .containsEntry(
             RetiredRetentionVariables.LOCKED_ENABLED, "opaa.chat.locked-account-cleanup.enabled")
-        .hasSize(5);
+        .containsEntry(
+            RetiredRetentionVariables.PRIVATE_LIBRARY_DELETION,
+            "opaa.connection.private-library-deletion-days")
+        .hasSize(6);
   }
 
   /** The switch is read like the former binding; what it could not read pauses. */
