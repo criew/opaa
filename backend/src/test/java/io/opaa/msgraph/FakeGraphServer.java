@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -47,11 +48,14 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code token=latest}, and {@code /content} redirecting to a second, pre-signed {@code https} host
  * on another port. Switches answer the next matching requests with a Graph error body, trickle an
  * answer, or bend the links Graph hands out. Microsoft offers no emulator; this double is what the
- * tests trust about Graph, so its forms follow the reference, not a tenant.
+ * tests trust about Graph, so its forms follow the reference, not a tenant. {@link #shared()}
+ * serves the Spring contexts, {@link #reset} empties it before every test method there.
  */
 public final class FakeGraphServer implements AutoCloseable {
 
   public static final String TOKEN = "eyJ0eXAiOiJKV1QifQ.fake-graph-token";
+
+  private static FakeGraphServer shared;
 
   /** Where {@code /content} redirects to. */
   public enum DownloadHost {
@@ -136,6 +140,8 @@ public final class FakeGraphServer implements AutoCloseable {
   private final Map<String, Site> sites = new ConcurrentHashMap<>();
   private final Map<String, Drive> drives = new ConcurrentHashMap<>();
   private final Map<String, String> ownDrives = new ConcurrentHashMap<>();
+  private final Map<String, String> accountDrives = new ConcurrentHashMap<>();
+  private volatile Function<String, String> accountOfToken = token -> null;
   private final Map<String, Item> items = new ConcurrentHashMap<>();
   private final Map<String, List<String>> changeLogs = new ConcurrentHashMap<>();
   private final Map<String, Pending> pending = new ConcurrentHashMap<>();
@@ -180,6 +186,54 @@ public final class FakeGraphServer implements AutoCloseable {
       server.setExecutor(executor);
       server.start();
     }
+  }
+
+  /** The server the OneDrive connector of the Spring contexts is pointed at; never stopped. */
+  public static synchronized FakeGraphServer shared() {
+    if (shared == null) {
+      shared = new FakeGraphServer();
+    }
+    return shared;
+  }
+
+  /** {@link #reset} of the shared server, if one was started. */
+  public static synchronized void resetShared() {
+    if (shared != null) {
+      shared.reset();
+    }
+  }
+
+  /**
+   * Forgets every site, drive, item, account, switch and observation, as freshly started; page and
+   * delta tokens keep counting, so none handed out before is valid again.
+   */
+  public void reset() {
+    sites.clear();
+    drives.clear();
+    ownDrives.clear();
+    accountDrives.clear();
+    accountOfToken = token -> null;
+    items.clear();
+    changeLogs.clear();
+    pending.clear();
+    failures.clear();
+    requests.clear();
+    downloadAuthorizations.clear();
+    plainDownloadHits.set(0);
+    trickling.clear();
+    trickleDownloads = false;
+    acceptedTokens.clear();
+    acceptedTokens.add(TOKEN);
+    sentTokens.clear();
+    grantedSites = null;
+    deltaTokensExpired = false;
+    pageTokensExpiredThrough = tokenCounter.get();
+    repeatDeltaEntries = false;
+    staleParents.clear();
+    downloadHost = DownloadHost.HTTPS;
+    deltaLinkForm = DeltaLinkForm.QUERY;
+    linkRewrite = UnaryOperator.identity();
+    maxPageSize = Integer.MAX_VALUE;
   }
 
   /** Scheme, host and port of the Graph endpoint. */
@@ -230,6 +284,21 @@ public final class FakeGraphServer implements AutoCloseable {
       acceptedTokens.add(token);
       ownDrives.put(token, driveId);
     }
+  }
+
+  /**
+   * The OneDrive of {@code account}, as {@link #oneDrive}: {@code me/drive} answers it for every
+   * token {@link #accountsOf} names that account for, and each such token is accepted.
+   */
+  public void oneDriveOf(
+      String account, String driveId, String driveType, String ownerEmail, String ownerName) {
+    addDrive(new Drive(driveId, null, "OneDrive", driveType, ownerEmail, ownerName));
+    accountDrives.put(account, driveId);
+  }
+
+  /** From now on a token is the account {@code accountOfToken} names, {@code null} for none. */
+  public void accountsOf(Function<String, String> accountOfToken) {
+    this.accountOfToken = accountOfToken;
   }
 
   private void addDrive(Drive drive) {
@@ -420,7 +489,12 @@ public final class FakeGraphServer implements AutoCloseable {
               ? authorization.substring("Bearer ".length())
               : "";
       sentTokens.add(sent);
-      if (!acceptedTokens.contains(sent)) {
+      String account = accountOfToken.apply(sent);
+      String own = ownDrives.get(sent);
+      if (own == null && account != null) {
+        own = accountDrives.get(account);
+      }
+      if (!acceptedTokens.contains(sent) && own == null) {
         error(exchange, 401, "InvalidAuthenticationToken", null);
         return;
       }
@@ -437,7 +511,6 @@ public final class FakeGraphServer implements AutoCloseable {
         return;
       }
       if (path.equals(VERSION + "me/drive")) {
-        String own = ownDrives.get(sent);
         answer(exchange, own == null ? null : drive(drives.get(own)));
         return;
       }
@@ -1021,6 +1094,9 @@ public final class FakeGraphServer implements AutoCloseable {
 
   @Override
   public void close() {
+    if (this == shared) {
+      return;
+    }
     graph.stop(0);
     download.stop(0);
     plainDownload.stop(0);

@@ -275,6 +275,84 @@ tests:
       - eval_time: 80m
         alertname: OpaaAuditRetentionOverdue
         exp_alerts: []
+  # The oldest unchained entry is seven hours old on every pod: the chain stalled.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '25200x90'
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: '25200x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: OpaaAuditChainStalled
+        exp_alerts: []
+      - eval_time: 61m
+        alertname: OpaaAuditChainStalled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Prüfsummenkette des Revisionsprotokolls steht
+              description: "Der älteste Eintrag des Revisionsprotokolls von r-opaa-backend ohne Kontrollpunkt der Prüfsummenkette ist seit mehr als einer Stunde älter als sechs Stunden, oder das Backend kann den Stand der Kette nicht lesen. Log der Pods, die Sperre audit-chain in der Tabelle shedlock und offene Transaktionen in pg_stat_activity prüfen."
+  # Neither pod can read the chain (NaN): one alert after the hour of "for".
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: 'NaN+0x90'
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: 'NaN+0x90'
+    alert_rule_test:
+      - eval_time: 61m
+        alertname: OpaaAuditChainStalled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Prüfsummenkette des Revisionsprotokolls steht
+              description: "Der älteste Eintrag des Revisionsprotokolls von r-opaa-backend ohne Kontrollpunkt der Prüfsummenkette ist seit mehr als einer Stunde älter als sechs Stunden, oder das Backend kann den Stand der Kette nicht lesen. Log der Pods, die Sperre audit-chain in der Tabelle shedlock und offene Transaktionen in pg_stat_activity prüfen."
+  # One pod cannot read the chain, the other reports a fresh one: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: 'NaN+0x90'
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: '540x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: OpaaAuditChainStalled
+        exp_alerts: []
+  # The backend runs but reports no chain series: one alert after the hour of "for".
+  - interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '1x90'
+    alert_rule_test:
+      - eval_time: 61m
+        alertname: OpaaAuditChainStalled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Prüfsummenkette des Revisionsprotokolls steht
+              description: "Der älteste Eintrag des Revisionsprotokolls von r-opaa-backend ohne Kontrollpunkt der Prüfsummenkette ist seit mehr als einer Stunde älter als sechs Stunden, oder das Backend kann den Stand der Kette nicht lesen. Log der Pods, die Sperre audit-chain in der Tabelle shedlock und offene Transaktionen in pg_stat_activity prüfen."
+  # The backend is stopped on purpose (replicas 0): no chain series and no alert.
+  - interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '0x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: OpaaAuditChainStalled
+        exp_alerts: []
+  # A lag of a few minutes between two runs: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_lag_seconds{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '540x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: OpaaAuditChainStalled
+        exp_alerts: []
   # The counter starts at 0 with the pod; the first dropped key alerts for an hour, then silence
   # without a further drop.
   - interval: 1m
@@ -331,4 +409,33 @@ tests:
         exp_alerts: []
       - eval_time: 80m
         alertname: OpaaAuditPayloadDropped
+        exp_alerts: []
+  # One ended month without a seal for seven hours: the chain does not reach its end, or a seal
+  # was removed; alert after the six hours of "for".
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_unsealed_months{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '1x420'
+      - series: 'opaa_audit_chain_unsealed_months{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: '1x420'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: OpaaAuditChainUnsealed
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: OpaaAuditChainUnsealed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Protokollmonat ohne Siegel
+              description: "Ein abgeschlossener Monat des Revisionsprotokolls von r-opaa-backend trägt seit sechs Stunden kein Siegel. Entweder kommt die Prüfsummenkette nicht bis zum Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag AUDIT_LOG_MONTH_SEALED noch steht. Log der Pods prüfen und den Vormonat über GET /api/v1/audit/chain/{Monat} prüfen."
+  # The month changes and the run seals it twenty minutes later: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_unsealed_months{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '0x60 1x20 0x400'
+    alert_rule_test:
+      - eval_time: 8h
+        alertname: OpaaAuditChainUnsealed
         exp_alerts: []

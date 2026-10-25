@@ -19,7 +19,8 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
   `@ActiveProfiles({"local","dev"})`, die festen Test-Properties der Annotation (Chunking,
   Upload-Grenzen, abgeschaltetes Rate-Limit, OIDC-Allowlist, nie antwortende Adressen für Chat-
   und Embedding-Modell, siehe unten) und die geteilten Ersatz-Beans aus
-  `OpaaTestBeans` (`FakeEmbeddingModel`, `ChatModel`-Mock, `FakeDirectoryClient`) sowie die
+  `OpaaTestBeans` (`FakeEmbeddingModel`, `ChatModel`-Mock, `FakeDirectoryClient`, die Umlenkung
+  von OneDrive auf die Testdoppel, siehe unten) sowie die
   `@MockitoSpyBean`-Spies auf `UserRepository`, `ChatMessageRepository` und
   `DirectorySyncStatusRecorder`.
 - **`@OpaaMockedChatModelIntegrationTest`** — dieselbe Basis, aber `ActiveChatModelResolver` als
@@ -104,6 +105,16 @@ aus der Shell nicht greift. `TestChatModelEndpointTest` prüft das für jede Sig
 `OpaaTestBeanResetListener`. Ohne ihn erbt eine künftige Klasse stillschweigend den Zustand, den die
 vorherige Testmethode hinterlassen hat. `@TestExecutionListeners` gehen nicht in den Cache-Schlüssel
 ein, erzeugen also keinen zusätzlichen Kontext.
+
+**Microsoft Graph und Entra im Kontext.** Die festen Adressen von OneDrive lenkt
+`OneDriveTestSeam` um, ein `BeanPostProcessor` aus `OpaaTestBeans` (ADR-0058, Entscheidung 6). Er
+ersetzt `oneDriveSourceConnector` durch einen Konnektor gegen `FakeGraphServer.shared()` und
+`FakeAuthorizationServer.shared()` und `sharePointGraphConnections` durch Verbindungen mit dem
+HTTP-Client des Fakes. Danach vertrauen **alle** Graph-Verbindungen des Kontexts, auch die von
+SharePoint, nur dem Zertifikat des Fakes, mit 5 s Verbindungs-Timeout; ein künftiger verdrahteter
+SharePoint-Test läuft deshalb gegen denselben Fake. SharePoint behält seine feste Adresse. Den
+geteilten `FakeGraphServer` setzt `OpaaTestBeanResetListener` vor jeder Testmethode zurück
+(`FakeGraphServer.resetShared()`); eine Klasse richtet ihre Laufwerke in `@BeforeEach` ein.
 
 ## Eine Datenbank für die ganze Suite
 

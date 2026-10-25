@@ -28,12 +28,14 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The readers of {@code audit_log} beside the funnel of {@link AuditFunnelStructureTest}, which
- * cannot see raw SQL: {@link AuditLogSelfDisclosureExporter} and {@link SiemExportService} name the
- * table in a query, nothing else. No production class refers to the self-disclosure exporter, and
- * only {@link SelfDisclosureService} - which passes the signed-in person, never a parameter - calls
- * an exporter. The SIEM export exists only while switched on, is driven only by its schedule and
- * never names a pseudonym, reason or payload column (ADR-0055, Entscheidung 3). Any other reader or
- * caller would be the person filter the specification rules out for third parties.
+ * cannot see raw SQL: {@link AuditLogSelfDisclosureExporter}, {@link SiemExportService} and {@link
+ * AuditChainService} name the table in a query, nothing else; the chain reads every column because
+ * it hashes every column, and hands none of them out (ADR-0059, Entscheidung 4). No production
+ * class refers to the self-disclosure exporter, and only {@link SelfDisclosureService} - which
+ * passes the signed-in person, never a parameter - calls an exporter. The SIEM export exists only
+ * while switched on, is driven only by its schedule and never names a pseudonym, reason or payload
+ * column (ADR-0055, Entscheidung 3). Any other reader or caller would be the person filter the
+ * specification rules out for third parties.
  */
 class AuditLogReaderStructureTest {
 
@@ -73,11 +75,12 @@ class AuditLogReaderStructureTest {
           "private static final String AUDIT_LOG_SELF_OBJECT_ID = \"audit_log\";");
 
   @Test
-  void onlyTheSelfDisclosureAndTheSiemExportQueryTheAuditLogInSql() {
+  void onlyTheSelfDisclosureTheSiemExportAndTheChainQueryTheAuditLogInSql() {
     assertThat(sqlReaders(mainSources()))
         .containsExactlyInAnyOrder(
             "io/opaa/audit/AuditLogSelfDisclosureExporter.java",
-            "io/opaa/audit/SiemExportService.java");
+            "io/opaa/audit/SiemExportService.java",
+            "io/opaa/audit/AuditChainService.java");
   }
 
   /** The columns the SIEM export must never read: persons, reasons and payloads. */

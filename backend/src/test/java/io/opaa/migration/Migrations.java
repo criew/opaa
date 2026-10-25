@@ -166,7 +166,9 @@ final class Migrations {
           .defaultSchema(schema)
           .createSchemas(false)
           .outOfOrder(true)
-          .ignoreMigrationPatterns("*:missing")
+          // an applied script the list omits may lie below the highest listed version (missing)
+          // or above it (future), as on an installation that receives a script after a later one
+          .ignoreMigrationPatterns("*:missing", "*:future")
           // a test may create its own tables before the first script; the application never does
           .baselineOnMigrate(baselineOnMigrate)
           .baselineVersion("0")

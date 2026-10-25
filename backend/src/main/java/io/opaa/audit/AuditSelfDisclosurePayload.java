@@ -250,7 +250,11 @@ final class AuditSelfDisclosurePayload {
         DIAGNOSTIC_IMPERSONATION_REVOKED);
     put(keys, Set.of("diagnosticsLocked"), LIBRARY_DIAGNOSTICS_LOCK_CHANGED);
     put(keys, Set.of("profileName", "spaceName"), SEARCH_DIAGNOSIS_PROFILE_RUN);
-    put(keys, Set.of("accessPath", "objectType", "eventType", "from", "to"), AUDIT_LOG_ACCESSED);
+    put(
+        keys,
+        Set.of("accessPath", "objectType", "eventType", "from", "to", "month"),
+        AUDIT_LOG_ACCESSED);
+    put(keys, Set.of("month", "entries", "headHash", "algorithm"), AUDIT_LOG_MONTH_SEALED);
     put(
         keys,
         Set.of(),

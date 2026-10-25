@@ -4,6 +4,7 @@ import io.opaa.FakeEmbeddingModel;
 import io.opaa.auth.UserRepository;
 import io.opaa.directory.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.source.sharepoint.OneDriveTestSeam;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
@@ -13,6 +14,7 @@ import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -67,6 +69,15 @@ class OpaaTestBeans {
   @Bean
   TestAssetType testAssetType() {
     return new TestAssetType();
+  }
+
+  /**
+   * OneDrive at the shared fake Graph and authorization server instead of Microsoft's fixed
+   * addresses; {@code static}, as a post-processor must be created before this configuration.
+   */
+  @Bean
+  static BeanPostProcessor oneDriveAtTheFakes() {
+    return OneDriveTestSeam.redirectingToTheFakes();
   }
 
   @Bean

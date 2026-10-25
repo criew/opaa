@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-10-25
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -23,6 +23,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 |---|---|---|
 | Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/betrieb/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/betrieb/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
 | Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
+| Integrität des Revisionsprotokolls | Prüfsummenkette je Protokollmonat mit Siegel, das an das Sicherheitsmonitoring geht; Prüfweg der Revision je Monat ohne Datenbankzugang | [Prüfsummenkette und Monatssiegel](../../handbuch/betrieb/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel), {{faktenblatt:protokollereignisse#audit-log-month-sealed}} |
 | Software-Stückliste (SBOM) | woraus jedes Image besteht, Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
 | Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
 | Sicherheitsupdates | Patch-Releases je unterstützter Linie, Supportzeiträume, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Security Advisories](https://github.com/criew/opaa/security/advisories) |

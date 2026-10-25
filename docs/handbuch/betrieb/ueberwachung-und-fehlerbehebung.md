@@ -35,6 +35,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_audit_retention_last_run_age_seconds` | Zeit seit dem Monat des letzten Löschlaufs (am 1. jedes Monats um 03:00); über 35 Tage ist der Lauf ausgeblieben. Die Werte des Revisionsprotokolls liest jede Instanz alle fünf Minuten aus der Datenbank; kann sie einen nicht lesen oder antwortet die Datenbank nicht binnen zehn Sekunden, meldet sie `NaN` und warnt im Log |
 | `opaa_audit_log_horizon_seconds` | Zeit bis zum Ende des letzten angelegten Protokollmonats; danach scheitert jedes Schreiben ins Protokoll |
 | `opaa_audit_payload_dropped_total` | Einträge ins Revisionsprotokoll, aus denen OPAA eine Angabe entfernt hat, die der Ereigniskatalog für die Ereignisart (`event_type`) nicht nennt; jede Ereignisart beginnt beim Start eines Pods bei 0. Jeder Anstieg ist ein Programmfehler, das Log nennt die Angaben ohne ihre Werte |
+| `opaa_audit_chain_lag_seconds` | Alter des ältesten Protokolleintrags, den noch kein Kontrollpunkt der Prüfsummenkette abdeckt, `0` ohne offene Einträge, alle fünf Minuten gelesen; der Kettenlauf findet alle zehn Minuten statt, über Stunden wächst der Wert nur, wenn er ausbleibt oder eine offene Transaktion ihn anhält. Beim ersten Start einer großen Installation ist der Wert hoch, bis der Lauf den Bestand mit 50 000 Einträgen je zehn Minuten aufgeholt hat ([Prüfsummenkette](nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)) |
+| `opaa_audit_chain_unsealed_months` | abgeschlossene Protokollmonate ohne Siegel; nach dem Monatswechsel kurz `1`, dauerhaft über `0` heißt, die Kette kommt nicht bis zum Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag `AUDIT_LOG_MONTH_SEALED` noch steht (der Lauf versiegelt ihn nicht neu; `GET /api/v1/audit/chain/{Monat}` nennt ihn `BROKEN`) |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |
@@ -66,7 +68,12 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   anlassbezogene Klärung in OPAA
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
 - **Lesezugriff:** Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
-  nach, sonst nicht. Das ist neben der Revision und der Selbstauskunft der einzige Leser.
+  nach, sonst nicht. Das ist neben der Revision, der Selbstauskunft und der Prüfsummenkette der
+  einzige Leser.
+- **Monatssiegel:** Mit dem Eintrag `AUDIT_LOG_MONTH_SEALED` gehen Monat (`cs5`), Anzahl der
+  verketteten Einträge (`cn2`) und Kopf-Prüfsumme (`cs6`) der
+  [Prüfsummenkette](nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel) hinaus, die einzige
+  Nutzlast der Ausleitung. Das SIEM bewahrt damit das Siegel außerhalb der Datenbank auf.
 - **Format:** Syslog (RFC 5424) mit CEF-Inhalt über TCP, voreingestellt mit TLS und dem
   Vertrauensspeicher der Java-Laufzeit samt Prüfung des Hostnamens. Die Kennung jedes Eintrags steht
   in `externalId`, die Version des Ereigniskatalogs, unter der er geschrieben ist, in `cn1`

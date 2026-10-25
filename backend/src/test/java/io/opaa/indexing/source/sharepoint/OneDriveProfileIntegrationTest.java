@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.msgraph.FakeGraphServer;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -23,8 +24,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /**
  * OneDrive through a profile in the wired application: the type is offered only with one, the
- * profile signs persons in by OAuth with client id, secret and tenant at the fixed Graph address,
- * and a profile owned by a library is refused. Saving contacts neither Entra nor Graph.
+ * profile signs persons in by OAuth with client id, secret and tenant at the fixed Graph address -
+ * in this suite the shared fake's ({@link OneDriveTestSeam}) - and a profile owned by a library is
+ * refused. Saving contacts neither Entra nor Graph.
  */
 @OpaaIntegrationTest
 class OneDriveProfileIntegrationTest {
@@ -68,7 +70,7 @@ class OneDriveProfileIntegrationTest {
                         """
                             .formatted(UUID.randomUUID())))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.serverUrl").value("https://graph.microsoft.com"))
+            .andExpect(jsonPath("$.serverUrl").value(FakeGraphServer.shared().origin().toString()))
             .andExpect(jsonPath("$.ownership").value("PERSON"))
             .andExpect(jsonPath("$.clientSecretSet").value(true))
             .andReturn()

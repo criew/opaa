@@ -40,6 +40,7 @@ class AuditQueryServiceOutcomeTest {
   @Mock private AuditActorPseudonymService pseudonymService;
   @Mock private AuditEventRecorder eventRecorder;
   @Mock private AuditPersonDirectory people;
+  @Mock private AuditChainService chainService;
 
   private AuditQueryService service;
 
@@ -53,7 +54,8 @@ class AuditQueryServiceOutcomeTest {
             incidentScopeService,
             pseudonymService,
             eventRecorder,
-            new AuditAccessGate(people));
+            new AuditAccessGate(people),
+            chainService);
   }
 
   @Test

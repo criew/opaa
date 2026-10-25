@@ -25,6 +25,9 @@ public final class ScheduledRunLocks {
   /** For an hourly cron: a scheduler thread late by minutes still finds the hour's lock held. */
   public static final String AT_LEAST_FOR_HOURLY = "PT5M";
 
+  /** For a cron every ten minutes: half the interval, so a late scheduler thread finds it held. */
+  public static final String AT_LEAST_FOR_TEN_MINUTES = "PT5M";
+
   /**
    * For a daily or monthly cron: covers a scheduler thread held up by the other night runs, whose
    * mail steps alone may take their budget of minutes each.
