@@ -153,16 +153,12 @@ describe('ConnectionLifecycleSection', () => {
     serve([inactivity, deletion, { ...warning, value: 3, overridden: true }], 5)
     renderWithProviders(<ConnectionLifecycleSection />)
 
-    expect(
-      await screen.findByText(/unter der Mindestgruppengröße von 5/),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/unter der Mindestgruppengröße von 5/)).toBeInTheDocument()
   })
 
   it('offers to load again when loading fails', async () => {
     server.use(
-      http.get(PATH, () =>
-        HttpResponse.json({ error: 'Kaputt', status: 500 }, { status: 500 }),
-      ),
+      http.get(PATH, () => HttpResponse.json({ error: 'Kaputt', status: 500 }, { status: 500 })),
     )
     renderWithProviders(<ConnectionLifecycleSection />)
 

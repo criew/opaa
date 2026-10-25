@@ -46,6 +46,7 @@ import { connectionProfileHandlers } from '@/features/connection/mocks/connectio
 import { connectedAccountHandlers } from '@/features/connection/mocks/connectedAccountHandlers'
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
 import { outboundProxyHandlers } from '@/features/connection/mocks/outboundProxyHandlers'
+import { connectionLifecycleHandlers } from '@/features/connection/mocks/connectionLifecycleHandlers'
 // external-access
 import { externalAccessHandlers } from '@/features/external-access/mocks/externalAccessHandlers'
 import { externalAccessTokenHandlers } from '@/features/external-access/mocks/externalAccessTokenHandlers'
@@ -122,6 +123,7 @@ export const handlers = [
   ...connectedAccountHandlers,
   ...connectionLogHandlers,
   ...outboundProxyHandlers,
+  ...connectionLifecycleHandlers,
   // external-access
   ...externalAccessHandlers,
   ...externalAccessTokenHandlers,
