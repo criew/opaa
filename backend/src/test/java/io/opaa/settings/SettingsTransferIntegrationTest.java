@@ -360,6 +360,185 @@ class SettingsTransferIntegrationTest {
     send(PREVIEW, exported).andExpect(status().isTooManyRequests());
   }
 
+  /**
+   * Regression guard: the import checks every bound the administration's request schema sets, in
+   * the write path, and names the field as {@code <section>.<key>}; nothing is stored.
+   */
+  @Test
+  void aValueBeyondABoundOfTheAdministrationIsRefusedWithItsField() throws Exception {
+    String template = MailTemplateKey.TEST_MAIL.key();
+    Map<String, String> refused = new java.util.LinkedHashMap<>();
+    refused.put(
+        "{\"mailTemplates\": {\"" + template + "\": {\"subject\": \"\", \"bodyPlain\": \"Text\"}}}",
+        "mailTemplates." + template + ".subject");
+    refused.put(
+        "{\"mailTemplates\": {\""
+            + template
+            + "\": {\"subject\": \"Betreff\", \"bodyPlain\": \" \"}}}",
+        "mailTemplates." + template + ".bodyPlain");
+    refused.put(
+        "{\"mailTemplates\": {\""
+            + template
+            + "\": {\"subject\": \""
+            + "b".repeat(400)
+            + "\", \"bodyPlain\": \"Text\"}}}",
+        "mailTemplates." + template + ".subject");
+    refused.put(
+        "{\"mailTemplates\": {\""
+            + template
+            + "\": {\"subject\": \"Betreff\", \"bodyPlain\": \""
+            + "t".repeat(20_001)
+            + "\"}}}",
+        "mailTemplates." + template + ".bodyPlain");
+    refused.put("{\"mail\": {\"host\": \"" + "h".repeat(300) + "\"}}", "mail.host");
+    refused.put("{\"mail\": {\"fromName\": \"" + "n".repeat(121) + "\"}}", "mail.fromName");
+    StringBuilder domains = new StringBuilder();
+    for (int i = 0; i < 150; i++) {
+      domains.append(i == 0 ? "" : ",").append("\"d").append(i).append(".stadt.example\"");
+    }
+    refused.put(
+        "{\"localAccounts\": {\"selfRegistrationAllowedDomains\": [" + domains + "]}}",
+        "localAccounts.selfRegistrationAllowedDomains");
+    String before = export();
+
+    for (Map.Entry<String, String> entry : refused.entrySet()) {
+      String body =
+          "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\": "
+              + entry.getKey()
+              + "}";
+      send(IMPORT, body)
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.fieldErrors[0].field").value(entry.getValue()));
+    }
+
+    assertThat(export()).isEqualTo(withoutExportedAt(before));
+    assertThat(auditEventTypes()).isEmpty();
+  }
+
+  /**
+   * Regression guard: a value the write path normalizes ({@code productName} trimmed, the proxy
+   * written as {@code http://host:port}) imported twice writes its entries once.
+   */
+  @Test
+  void aNormalizedValueImportedTwiceIsRecordedOnce() throws Exception {
+    String body =
+        """
+        {"format": "opaa-settings", "formatVersion": 1, "sections": {
+          "branding": {"productName": "  Stadt  "},
+          "outboundProxy": {"proxyUrl": "proxy.stadt.example:3128"},
+          "privateStorageQuota": {"quotaBytes": 1073741824}}}
+        """;
+
+    send(IMPORT, body).andExpect(status().isOk());
+    int afterFirst = auditEntries().size();
+    send(IMPORT, body).andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty());
+
+    assertThat(afterFirst).isEqualTo(4);
+    assertThat(auditEntries()).hasSize(afterFirst);
+  }
+
+  /**
+   * Regression guard: a stored mail password never goes to another server, account or encryption
+   * than it was entered for; changing them without a new password is refused, by import and form.
+   */
+  @Test
+  void theStoredMailPasswordDoesNotFollowANewTarget() throws Exception {
+    jdbc.update("UPDATE mail_settings SET password_ciphertext = 'enc:v1:geheim' WHERE id = 1");
+    try {
+      for (String change :
+          List.of(
+              "\"host\": \"smtp.fremd.example\"",
+              "\"port\": 2526",
+              "\"username\": \"andere\"",
+              "\"encryption\": \"NONE\"")) {
+        String body =
+            "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\":"
+                + " {\"mail\": {"
+                + change
+                + "}}}";
+        send(PREVIEW, body)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors[0].field").value("mail.password"));
+      }
+      mockMvc
+          .perform(
+              org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                      "/api/v1/system/mail-settings")
+                  .with(dev(ADMIN))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(
+                      "{\"enabled\": false, \"host\": \"smtp.fremd.example\","
+                          + " \"encryption\": \"STARTTLS\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.fieldErrors[0].field").value("password"));
+    } finally {
+      jdbc.update("UPDATE mail_settings SET password_ciphertext = NULL WHERE id = 1");
+    }
+  }
+
+  /** The preview marks a change of a security-relevant value and names keys in German. */
+  @Test
+  void thePreviewMarksSecurityRelevantChangesAndNamesThemInGerman() throws Exception {
+    String body =
+        """
+        {"format": "opaa-settings", "formatVersion": 1, "sections": {
+          "linkTargets": {"allowedOrigins": ["https://intranet.stadt.example"]},
+          "selfDisclosure": {"dailyLimit": 7}}}
+        """;
+
+    send(PREVIEW, body)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.changes[0].key").value("allowedOrigins"))
+        .andExpect(jsonPath("$.changes[0].keyLabel").value("Erlaubte Linkziele"))
+        .andExpect(jsonPath("$.changes[0].securityRelevant").value(true))
+        .andExpect(jsonPath("$.changes[1].keyLabel").value("Tagesgrenze"))
+        .andExpect(jsonPath("$.changes[1].securityRelevant").value(false));
+  }
+
+  /** Duplicate keys, unknown fields at any level and {@code null} for a list are refused. */
+  @Test
+  void theDocumentIsReadStrictly() throws Exception {
+    String template = MailTemplateKey.TEST_MAIL.key();
+    for (String body :
+        List.of(
+            "{\"format\": \"opaa-settings\", \"format\": \"opaa-settings\", \"formatVersion\": 1,"
+                + " \"sections\": {}}",
+            "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\": {},"
+                + " \"extra\": 1}",
+            "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\":"
+                + " {\"mailTemplates\": {\""
+                + template
+                + "\": {\"subject\": \"B\", \"bodyPlain\": \"T\", \"locale\": \"en\"}}}}",
+            "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\":"
+                + " {\"linkTargets\": {\"allowedOrigins\": null}}}")) {
+      send(IMPORT, body).andExpect(status().isBadRequest());
+    }
+    assertThat(auditEventTypes()).isEmpty();
+  }
+
+  /** An unknown key is named shortened and without control characters. */
+  @Test
+  void aReflectedUnknownKeyIsShortenedAndCleaned() throws Exception {
+    String key = "x\\u0007\\n" + "y".repeat(200);
+    String body =
+        "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\":"
+            + " {\"linkTargets\": {\""
+            + key
+            + "\": 1}}}";
+
+    String error =
+        send(IMPORT, body)
+            .andExpect(status().isBadRequest())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+
+    assertThat(error)
+        .doesNotContain("\\u0007")
+        .doesNotContain("\\n")
+        .doesNotContain("y".repeat(100));
+  }
+
   private String export() throws Exception {
     String body =
         mockMvc
