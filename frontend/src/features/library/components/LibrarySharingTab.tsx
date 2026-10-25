@@ -4,9 +4,8 @@ import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
-import PageSection from '@/shared/ui/PageSection'
 import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
+import { assetRoleLabel } from '@/shared/utils/labels'
 import PlainRow from '@/shared/ui/PlainRow'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
@@ -86,20 +85,19 @@ export default function LibrarySharingTab({
           </PlainRow>
         )}
 
+        {canEdit && !privateLibrary && externalAccessEnabled && (
+          <LibraryExternalAccessSection libraryId={libraryId} />
+        )}
+
         {!privateLibrary && (
-          <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
+          <AssetAccessDerivationSection
+            roleLabel={assetRoleLabel(library.myRole)}
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={libraryId}
+          />
         )}
 
         <Box sx={{ mt: 4 }}>
-          {privateLibrary && (
-            <Typography
-              sx={{ fontSize: 13.5, color: 'text.secondary' }}
-              data-testid="library-private-note"
-            >
-              Nur Sie sehen diese Bibliothek; sie lässt sich weder freigeben noch übertragen.
-            </Typography>
-          )}
-
           {canEdit && !privateLibrary && (
             <>
               <AssetGrantsSection
@@ -116,12 +114,6 @@ export default function LibrarySharingTab({
                   ) : null
                 }
               />
-
-              {externalAccessEnabled && (
-                <PageSection title="Externer Zugang">
-                  <LibraryExternalAccessSection libraryId={libraryId} />
-                </PageSection>
-              )}
             </>
           )}
         </Box>

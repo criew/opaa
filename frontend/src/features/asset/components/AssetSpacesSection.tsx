@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
 import AssetSpacesList from './AssetSpacesList'
 import UseInSpaceButton from './UseInSpaceButton'
 import type { AssetType } from '@/shared/api/types'
@@ -35,12 +36,15 @@ export default function AssetSpacesSection({
         sx={{
           display: 'flex',
           alignItems: 'baseline',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           gap: 2,
           flexWrap: 'wrap',
           mb: 2,
         }}
       >
+        <Typography component="h2" sx={{ fontSize: 15, fontWeight: 600, color: 'text.primary' }}>
+          Spaces
+        </Typography>
         {mayUseInSpace && (
           <UseInSpaceButton
             textLink

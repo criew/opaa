@@ -2,16 +2,12 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
+import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import LinkOffIcon from '@mui/icons-material/LinkOff'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -48,43 +44,24 @@ function formatDate(value: string): string {
 function provenance(association: AssetSpaceAssociationResponse): string | null {
   const parts = [
     association.createdByDisplayName ? `zugeordnet von ${association.createdByDisplayName}` : null,
-    association.createdAt ? formatDate(association.createdAt) : null,
+    association.createdAt ? `seit ${formatDate(association.createdAt)}` : null,
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
-/** The row's „⋯" with its one entry, „Aus Space lösen". */
+/** „Lösen“ as a text link at the right edge, the same form as „Entziehen“ in Freigaben (P45). */
 function RowActions({ spaceName, onDetach }: { spaceName: string; onDetach: () => void }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
-    <>
-      <IconButton
-        size="small"
-        aria-label={`Aktionen für Space „${spaceName}“`}
-        aria-haspopup="menu"
-        aria-expanded={anchor ? true : undefined}
-        onClick={(event) => setAnchor(event.currentTarget)}
-      >
-        <MoreHorizIcon fontSize="small" />
-      </IconButton>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <MenuItem
-          onClick={() => {
-            setAnchor(null)
-            onDetach()
-          }}
-        >
-          <LinkOffIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-          Aus Space lösen
-        </MenuItem>
-      </Menu>
-    </>
+    <Link
+      component="button"
+      type="button"
+      underline="hover"
+      aria-label={`Lösen: Space „${spaceName}“`}
+      onClick={onDetach}
+      sx={{ fontSize: 13.5, fontWeight: 500, minHeight: 24, flexShrink: 0 }}
+    >
+      Lösen
+    </Link>
   )
 }
 
@@ -200,7 +177,8 @@ export default function AssetSpacesList({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Space"
               slotProps={{ htmlInput: { 'aria-label': 'Spaces durchsuchen' } }}
-              sx={{ width: { xs: '100%', sm: 280 }, mb: 1 }}
+              fullWidth
+              sx={{ mb: 1 }}
             />
           )}
           <Stack component="ul" spacing={0} sx={{ m: 0, p: 0, listStyle: 'none' }}>

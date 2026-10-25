@@ -78,8 +78,9 @@ export default function GroupMembersDisclosure({
       <Link
         component="button"
         type="button"
-        sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-        aria-label={`Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
+        underline="hover"
+        sx={{ alignSelf: 'flex-start', fontSize: 12.5 }}
+        aria-label={`Mitglieder anzeigen: Gruppe „${groupLabel}“`}
         onClick={() => void loadPage(0)}
       >
         Mitglieder anzeigen

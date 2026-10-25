@@ -7,7 +7,6 @@ import { useAuthStore } from '@/shared/session/authStore'
 import PageSection from '@/shared/ui/PageSection'
 import { usePlainSections } from '@/shared/ui/plainSections'
 import PlainRow from '@/shared/ui/PlainRow'
-import Box from '@mui/material/Box'
 import AccessDerivation from './AccessDerivation'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 
@@ -19,9 +18,12 @@ import { assetTypeLabel } from '../../../shared/assetTypes'
 export default function AssetAccessDerivationSection({
   assetType,
   assetId,
+  roleLabel,
 }: {
   assetType: AssetType
   assetId: string
+  /** The caller's own role, shown as the value of the row in a detail tab. */
+  roleLabel?: string
 }) {
   const [shown, setShown] = useState(false)
   const plain = usePlainSections()
@@ -39,11 +41,7 @@ export default function AssetAccessDerivationSection({
     return (
       <PlainRow
         title="Herleitung"
-        value={
-          <Box component="span" sx={{ color: 'text.secondary' }}>
-            Ihr Weg zur wirksamen Rolle
-          </Box>
-        }
+        value={roleLabel ? `Ihre Rolle: ${roleLabel}` : 'Ihre Rolle'}
         action={shown ? 'Schließen' : 'Anzeigen'}
         onAction={() => setShown((value) => !value)}
       >

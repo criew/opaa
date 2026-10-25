@@ -4,7 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
@@ -14,7 +13,6 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import DeleteIcon from '@mui/icons-material/Delete'
 import PageSection from '@/shared/ui/PageSection'
 import { usePlainSections } from '@/shared/ui/plainSections'
 import type {
@@ -138,9 +136,13 @@ export default function AssetGrantsSection({
   const [rolesOpen, setRolesOpen] = useState(false)
   const plain = usePlainSections()
   const normalizedQuery = query.trim().toLowerCase()
+  // in a detail tab the owner has a row of its own; its OWNER grant is not listed again (P50)
+  const listedGrants = plain ? grants.filter((grant) => grant.role !== 'OWNER') : grants
   const shownGrants = normalizedQuery
-    ? grants.filter((grant) => subjectDisplayName(grant).toLowerCase().includes(normalizedQuery))
-    : grants
+    ? listedGrants.filter((grant) =>
+        subjectDisplayName(grant).toLowerCase().includes(normalizedQuery),
+      )
+    : listedGrants
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
   // Entry by identifier stays the fallback when the search yields nothing - for a
   // group it is subject to the same enforcement as the search: a group that is not shared
@@ -450,7 +452,8 @@ export default function AssetGrantsSection({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Name"
               slotProps={{ htmlInput: { 'aria-label': 'Freigaben durchsuchen' } }}
-              sx={{ width: { xs: '100%', sm: 280 }, mb: 1 }}
+              fullWidth
+              sx={{ mb: 1 }}
             />
           )}
           <Box
@@ -468,7 +471,7 @@ export default function AssetGrantsSection({
             <Box sx={{ flex: 1 }}>Empfänger</Box>
             <Box sx={{ width: 144 }}>Rolle</Box>
             <Box sx={{ width: 112 }}>Befristung</Box>
-            <Box sx={{ width: 34 }} />
+            <Box sx={{ width: 64 }} />
           </Box>
           {shownGrants.map((grant) => {
             const expired = isExpired(grant.expiresAt)
@@ -488,7 +491,10 @@ export default function AssetGrantsSection({
                   borderColor: 'divider',
                 }}
               >
-                <Stack spacing={0.25} sx={{ minWidth: 160, flex: '1 1 160px' }}>
+                <Stack
+                  spacing={0.25}
+                  sx={{ minWidth: 0, flex: { xs: '1 1 100%', sm: '1 1 160px' } }}
+                >
                   <Typography noWrap title={subjectName} sx={{ fontSize: 13.5, fontWeight: 600 }}>
                     {subjectName}
                   </Typography>
@@ -499,10 +505,13 @@ export default function AssetGrantsSection({
                     title={`Rolle vergeben von ${grantedByDisplayName(grant)} am ${new Date(grant.updatedAt).toLocaleDateString('de-DE')}`}
                     sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, alignItems: 'baseline' }}
                   >
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {permissionSubjectTypeLabel(grant.subjectType)}
-                      {sizeHint ? ` · ${sizeHint}` : ''}
-                    </Typography>
+                    {/* „Alle Konten“ needs no second line naming its kind again */}
+                    {permissionSubjectTypeLabel(grant.subjectType) !== subjectName && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {permissionSubjectTypeLabel(grant.subjectType)}
+                        {sizeHint ? ` · ${sizeHint}` : ''}
+                      </Typography>
+                    )}
                     {/* ADR-0036 Entscheidung 9: whoever granted a group a right here
                        sees to whom — only on explicit request, never as a by-product of this
                        list. An expired grant holds nothing any more; the service then answers
@@ -549,15 +558,19 @@ export default function AssetGrantsSection({
                     color: expired ? 'warning.main' : 'text.secondary',
                   }}
                 >
-                  {expired ? 'abgelaufen' : formatExpiry(grant.expiresAt)}
+                  {/* the normal case „unbefristet“ is not repeated in every row */}
+                  {expired ? 'abgelaufen' : grant.expiresAt ? formatExpiry(grant.expiresAt) : ''}
                 </Typography>
-                <IconButton
-                  aria-label={`Freigabe für ${subjectName} entziehen`}
-                  size="small"
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  aria-label={`Entziehen: Freigabe für ${subjectName}`}
                   onClick={() => void handleRevoke(grant)}
+                  sx={{ fontSize: 13.5, fontWeight: 500, minHeight: 24, ml: 'auto' }}
                 >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                  Entziehen
+                </Link>
               </Box>
             )
           })}
