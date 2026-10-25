@@ -102,7 +102,7 @@ export function SummaryValue({
           {text ? <SummaryParts text={text} /> : emptyText}
         </Typography>
         {/* the collective mark only where no marked entry is in sight */}
-        {status && !(markedItems && items.slice(0, SHOWN).some(isMarked)) && (
+        {status && !status.entries && !(markedItems && items.slice(0, SHOWN).some(isMarked)) && (
           <StateDot tone={status.tone} label={status.label} />
         )}
         {items.length > 0 && (
@@ -133,6 +133,24 @@ export function SummaryValue({
                 )}
               </Box>
             )}
+          </Box>
+        )}
+        {status?.entries && (
+          <Box component="ul" sx={{ m: 0, mt: 0.25, p: 0, listStyle: 'none' }}>
+            {status.entries.map((entry) => (
+              <Box
+                component="li"
+                key={entry}
+                sx={{ fontSize: 13.5, lineHeight: '22px', display: 'flex' }}
+              >
+                <Box component="span" sx={{ minWidth: 0 }}>
+                  <PathLabel path={entry} />
+                </Box>
+                <Box component="span" sx={{ ml: 1, display: 'inline-flex' }}>
+                  <StateDot tone={status.tone} label={status.label} />
+                </Box>
+              </Box>
+            ))}
           </Box>
         )}
         {expandable && (

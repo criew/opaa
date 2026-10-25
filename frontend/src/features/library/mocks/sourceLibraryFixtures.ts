@@ -102,7 +102,7 @@ export function sourceLibraryDetails(): LibraryResponse[] {
         libraries: [
           {
             driveId: 'b!rathausDokumente',
-            name: 'Rathaus · Dokumente',
+            name: 'Dokumente (Rathaus)',
             folders: [{ id: '01RATSBESCHLUESSE', name: 'Ratsbeschlüsse' }],
           },
         ],

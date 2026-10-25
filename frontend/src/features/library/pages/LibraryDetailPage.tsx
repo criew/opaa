@@ -381,6 +381,8 @@ export default function LibraryDetailPage() {
               {privateStorage && (
                 <HeaderFigure>
                   <span data-testid="private-storage-figure">
+                    {/* the figure is the private storage of all private libraries, not of this one */}
+                    Privater Speicher{' '}
                     {privateStorage.quotaBytes > 0
                       ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)}`
                       : formatFileSize(privateStorage.usedBytes)}

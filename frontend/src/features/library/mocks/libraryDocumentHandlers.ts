@@ -403,6 +403,9 @@ export const libraryDocumentHandlers = [
     const detail = mockLibraryDetails[libraryId]
     if (detail) {
       detail.documentCount = (detail.documentCount ?? 0) + 1
+      // the stored bytes grow with every accepted file, like the quota the backend keeps
+      if (detail.storageQuotaBytes)
+        detail.storageUsedBytes = (detail.storageUsedBytes ?? 0) + file.size
     }
     const listEntry = mockLibraries.find((item) => item.id === libraryId)
     if (listEntry) {

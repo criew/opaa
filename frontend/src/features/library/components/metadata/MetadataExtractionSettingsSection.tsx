@@ -251,7 +251,8 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
                 fontWeight: 600,
                 fontSize: 15,
                 minWidth: 0,
-                overflowWrap: 'anywhere',
+                hyphens: 'auto',
+                overflowWrap: 'break-word',
               }}
             >
               {field.label}

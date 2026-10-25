@@ -514,16 +514,14 @@ function rowMarks(
   return {
     storedStatus,
     // only entries with a name can be marked; without names the run says it (D8)
+    // a directory or web address has no listed entries: its unreadable parts are listed in the
+    // entries' form; elsewhere the listed entry carries the mark
     scopeStatus:
-      names.length > 0
-        ? {
-            tone: 'warning',
-            label:
-              names.length <= 2
-                ? `Nicht lesbar: ${names.join(', ')}`
-                : `${names.length} nicht lesbar`,
-          }
-        : null,
+      names.length === 0
+        ? null
+        : library.sourceType === 'FILESYSTEM' || library.sourceType === 'HTTP_DIRECTORY'
+          ? { tone: 'warning', label: 'nicht lesbar', entries: names }
+          : { tone: 'warning', label: `${names.length} nicht lesbar` },
     scopeMarked: names.length > 0 ? [...keys, ...names] : undefined,
     scheduleStatus:
       library.lastScheduledRunsFailed && scheduleRuns && scheduledFailure && !connectionFailed

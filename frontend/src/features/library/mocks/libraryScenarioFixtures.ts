@@ -501,10 +501,15 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
     case 'empty':
       return { runs: [] }
     case 'failed':
+      // three refused sign-ins after the last run that read the source: it failed on the five
+      // documents the list marks as failed and indexed the rest
       return {
-        runs: generate(3, (i) =>
-          run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' }),
-        ),
+        runs: [
+          ...generate(3, (i) =>
+            run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' }),
+          ),
+          run(4, { status: 'COMPLETED', failed: 5, events: 5 }),
+        ],
       }
     case 'partial':
       return {

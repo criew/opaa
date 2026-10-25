@@ -56,6 +56,8 @@ export interface LibraryDocumentListProps {
   onPageChange: (page: number) => void
   /** Kept for callers that still offer a page size; the toolbar shows filters instead. */
   onPageSizeChange?: (size: number) => void
+  /** An action at the right end of the list's head row, e.g. „Neuer Ordner“ without a toolbar. */
+  headAction?: ReactNode
   /** The toolbar's filters after the search field. */
   filters?: ReactNode
   /** Search and filters only from eight documents on or while filtering (D19, R1-63). */
@@ -150,6 +152,7 @@ export default function LibraryDocumentList({
   onPageChange,
   filters,
   showSearch = true,
+  headAction,
   selectable,
   selectedIds,
   onToggleSelected,
@@ -421,6 +424,7 @@ export default function LibraryDocumentList({
           >
             {selectedIds.length > 0 ? `${selectedIds.length} ausgewählt` : 'Name'}
           </Typography>
+          {headAction && selectedIds.length === 0 && <Box sx={{ ml: 'auto' }}>{headAction}</Box>}
           {selectedIds.length > 0 && (
             <>
               {bulkActions}
@@ -486,15 +490,30 @@ export default function LibraryDocumentList({
                 }}
               >
                 <FolderIcon color="action" />
-                <Typography noWrap title={folder.name} sx={{ fontWeight: 600, fontSize: 14 }}>
-                  {folder.name}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
+                {/* below 600 px the count goes under the name, which keeps the whole width */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'flex-start', sm: 'baseline' },
+                    columnGap: 1.5,
+                    minWidth: 0,
+                  }}
                 >
-                  {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
-                </Typography>
+                  <Typography
+                    noWrap
+                    title={folder.name}
+                    sx={{ fontWeight: 600, fontSize: 14, maxWidth: '100%' }}
+                  >
+                    {folder.name}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
+                  >
+                    {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
+                  </Typography>
+                </Box>
               </Box>
               {renderFolderActions?.(folder)}
             </Box>

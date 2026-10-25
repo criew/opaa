@@ -164,7 +164,7 @@ function stateOf(input: StateInput): LibraryState {
         detail: [
           `${done.toLocaleString('de-DE')} von ${input.documentCount.toLocaleString('de-DE')}`,
           ...(input.failedDocuments > 0
-            ? [`${input.failedDocuments.toLocaleString('de-DE')} fehlgeschlagen`]
+            ? [`${input.failedDocuments.toLocaleString('de-DE')} Fehler`]
             : []),
         ].join(' · '),
         target: { tab: 'dokumente', params: { status: 'PENDING' } },
@@ -174,7 +174,7 @@ function stateOf(input: StateInput): LibraryState {
       return {
         word: 'Teilweise fehlgeschlagen',
         tone: 'warning',
-        detail: `${input.failedDocuments.toLocaleString('de-DE')} fehlgeschlagen`,
+        detail: `${input.failedDocuments.toLocaleString('de-DE')} Fehler`,
         target: { tab: 'dokumente', params: { status: 'FAILED' } },
       }
     }

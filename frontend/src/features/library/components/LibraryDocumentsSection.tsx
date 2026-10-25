@@ -367,9 +367,13 @@ export default function LibraryDocumentsSection({
               )}
               {newFolder}
             </>
-          ) : (
+          ) : documents.length === 0 && folders.length === 0 ? (
             newFolder
-          )
+          ) : undefined
+        }
+        // without a toolbar „Neuer Ordner“ sits in the list's head, never on a line of its own
+        headAction={
+          !searchable && (documents.length > 0 || folders.length > 0) ? newFolder : undefined
         }
         documents={documents}
         folders={folders}

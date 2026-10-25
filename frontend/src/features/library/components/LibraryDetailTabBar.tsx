@@ -29,11 +29,19 @@ export default function LibraryDetailTabBar({
       const start = tabs.find((tab) => end - tab.offsetLeft <= scroller.clientWidth) ?? active
       scroller.scrollLeft = start.offsetLeft
     }
-    // after the bar's own scroll to the selected tab, which runs once its indicator is measured
+    // the bar animates its own scroll to the selected tab once its tabs are measured; for a short
+    // while each such scroll ends on a tab's edge, a scroll by the user later stays as it is
     const frame = requestAnimationFrame(() => requestAnimationFrame(reveal))
+    const scroller = document
+      .getElementById(`library-tab-${activeTab}`)
+      ?.closest<HTMLElement>('.MuiTabs-scroller')
+    scroller?.addEventListener('scrollend', reveal)
+    const settle = window.setTimeout(() => scroller?.removeEventListener('scrollend', reveal), 1500)
     window.addEventListener('resize', reveal)
     return () => {
       cancelAnimationFrame(frame)
+      window.clearTimeout(settle)
+      scroller?.removeEventListener('scrollend', reveal)
       window.removeEventListener('resize', reveal)
     }
   }, [activeTab])

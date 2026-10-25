@@ -65,9 +65,9 @@ export function setup({ out }) {
   const dir = path.join(out, '.upload')
   fs.mkdirSync(dir, { recursive: true })
   uploadFiles = [
-    ['Rundschreiben 2026-14.pdf', '%PDF-1.4 Rundschreiben', 412_000],
-    ['Vermerk Haushaltssperre.docx', 'Vermerk', 86_000],
-    ['Datenbank Altbestand.mdb', 'binary', 2_300_000],
+    ['Rundschreiben 2026-14.pdf', '%PDF-1.4 Rundschreiben', 412 * 1024],
+    ['Vermerk Haushaltssperre.docx', 'Vermerk', 86 * 1024],
+    ['Datenbank Altbestand.mdb', 'binary', Math.round(2.3 * 1024 * 1024)],
   ].map(([name, content, size]) => {
     const file = path.join(dir, name)
     fs.writeFileSync(file, Buffer.concat([Buffer.from(content), Buffer.alloc(size - content.length, 32)]))

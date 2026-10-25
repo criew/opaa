@@ -110,16 +110,19 @@ function UploadRejections({ messages, onClose }: { messages: string[]; onClose: 
   return (
     <Box role="alert" sx={{ mb: 2, display: 'flex', alignItems: 'baseline', gap: 2 }}>
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        {/* one form for every reason: what was not uploaded, the reason below it */}
         {groupByReason(messages).map(({ reason, files }) => (
-          <Typography key={reason} sx={{ fontSize: 13, lineHeight: '22px' }}>
-            <StateDot tone="error" label={reason || 'Nicht hochgeladen'} />
-            {files.length > 0 && (
-              <Box component="span" sx={{ color: 'text.secondary' }}>
-                {reason ? ' · nicht hochgeladen: ' : ': '}
-                {files.join(', ')}
-              </Box>
+          <Box key={reason} sx={{ fontSize: 13, lineHeight: '22px' }}>
+            <StateDot
+              tone="error"
+              label={files.length > 0 ? `Nicht hochgeladen: ${files.join(', ')}` : reason}
+            />
+            {reason && files.length > 0 && (
+              <Typography sx={{ fontSize: 13, lineHeight: '22px', color: 'text.secondary', pl: 2 }}>
+                {reason}
+              </Typography>
             )}
-          </Typography>
+          </Box>
         ))}
       </Box>
       <Box sx={{ flex: 'none' }}>

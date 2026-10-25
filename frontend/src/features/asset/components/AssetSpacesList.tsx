@@ -211,7 +211,7 @@ export default function AssetSpacesList({
                             title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
                           >
                             <Box component="span" tabIndex={0}>
-                              <StateDot tone="warning" label="nicht alle Mitglieder lesen" />
+                              <StateDot tone="warning" label="nicht für alle Mitglieder lesbar" />
                             </Box>
                           </Tooltip>
                         )}
