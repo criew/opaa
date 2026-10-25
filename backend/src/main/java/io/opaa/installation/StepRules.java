@@ -325,6 +325,13 @@ class StepRules {
     requireAtMost(errors, prefix + ".baseUrl", baseUrl, MAX_ADDRESS);
     requireAtMost(errors, prefix + ".model", model, MAX_NAME);
     requireAtMost(errors, prefix + ".apiKey", apiKey, MAX_API_KEY);
+    if (apiKey != null && apiKey.strip().chars().anyMatch(c -> c < 0x20 || c == 0x7f)) {
+      errors.add(
+          error(
+              prefix + ".apiKey",
+              INVALID,
+              "Der Zugangsschlüssel enthält Steuerzeichen wie einen Zeilenumbruch."));
+    }
   }
 
   /** The target address check of a valid address, as a field error under {@code prefix}. */

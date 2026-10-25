@@ -61,7 +61,7 @@ class LegacyEmbeddingConfiguration {
     return new EmbeddingEndpoint(
         baseUrl == null ? DEFAULT_BASE_URL : baseUrl,
         model == null ? DEFAULT_MODEL : model,
-        PLACEHOLDER_API_KEY.equals(apiKey) ? null : apiKey,
+        apiKey == null || PLACEHOLDER_API_KEY.equals(apiKey.strip()) ? null : apiKey.strip(),
         number(EmbeddingEndpoint.DEFAULT_MAX_INPUT_TOKENS, MAX_INPUT_TOKENS));
   }
 

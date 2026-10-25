@@ -53,13 +53,19 @@ class InstalledEmbeddingModelTest {
     when(models.missingAfterInstallation()).thenReturn(true);
     when(models.adoptIfMissing()).thenReturn(false);
 
+    // the takeover of the start has just failed: the first retry waits its interval
+    assertThatThrownBy(() -> model.embed("Text"))
+        .isInstanceOf(EmbeddingModelNotInstalledException.class);
+    verify(models, times(0)).adoptIfMissing();
+    now.addAndGet(InstalledEmbeddingModel.FIRST_RETRY.toNanos());
+
     assertThatThrownBy(() -> model.embed("Text"))
         .isInstanceOf(EmbeddingModelNotInstalledException.class);
     assertThatThrownBy(() -> model.embed("Text"))
         .isInstanceOf(EmbeddingModelNotInstalledException.class);
     verify(models, times(1)).adoptIfMissing();
 
-    now.addAndGet(InstalledEmbeddingModel.FIRST_RETRY.toNanos());
+    now.addAndGet(InstalledEmbeddingModel.FIRST_RETRY.multipliedBy(2).toNanos());
     when(models.adoptIfMissing()).thenReturn(true);
     when(repository.findInstalled())
         .thenReturn(Optional.empty())

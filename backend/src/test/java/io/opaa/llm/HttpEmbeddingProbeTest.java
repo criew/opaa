@@ -114,4 +114,52 @@ class HttpEmbeddingProbeTest {
       out.write(bytes);
     }
   }
+
+  // regression guard: a server that trickles its answer cannot hold the probe beyond its deadline
+  @Test
+  void aTricklingAnswerEndsAtTheDeadline() {
+    server.createContext(
+        "/v1/embeddings",
+        exchange -> {
+          exchange.getRequestBody().readAllBytes();
+          exchange.sendResponseHeaders(200, 0);
+          try (OutputStream out = exchange.getResponseBody()) {
+            for (int i = 0; i < 60; i++) {
+              out.write(' ');
+              out.flush();
+              Thread.sleep(1000);
+            }
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          } catch (IOException e) {
+            // the probe gave up and closed the connection
+          }
+        });
+    long start = System.nanoTime();
+
+    EmbeddingModelService.ProbeOutcome outcome =
+        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048));
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(java.time.Duration.ofNanos(System.nanoTime() - start))
+        .isLessThan(java.time.Duration.ofSeconds(HttpEmbeddingProbe.TIMEOUT_SECONDS + 5));
+  }
+
+  @Test
+  void aKeyWithALineBreakIsRefusedBeforeAnyRequest() {
+    AtomicBoolean contacted = new AtomicBoolean(false);
+    server.createContext(
+        "/v1/embeddings",
+        exchange -> {
+          contacted.set(true);
+          send(exchange, 200, "{}");
+        });
+
+    EmbeddingModelService.ProbeOutcome outcome =
+        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-eins\r\nX-Evil: 1", 2048));
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).contains("unzulässige Zeichen");
+    assertThat(contacted.get()).isFalse();
+  }
 }

@@ -262,9 +262,11 @@ Installation behält Tabelle, Spalten und Abschnitte unverändert (`VectorStoreA
 `MigrationSchema` liest dieses Entfernen als Ausnahme und führt `vector_store` als vorhanden.
 
 Eine bestehende Installation übernimmt beim ersten Start ihr bisher konfiguriertes Embedding-Modell
-einmalig nach `embedding_model`, mit der Dimension ihrer bisherigen Konfiguration
-(`EmbeddingModelService#adoptAtStartup`). Eine später abweichende Dimension passt
-`EmbeddingIndexReconciler` an der bestehenden Tabelle an.
+einmalig nach `embedding_model` (`EmbeddingModelService#adoptIfMissing`, aufgerufen von der
+Startentscheidung der Installation). Mit vorhandener Tabelle nur, wenn die Konfiguration das Modell
+nennt, das `embedding_index` verzeichnet (bei laufender Neueinbettung das Ziel), und mit der
+Dimension der vorhandenen Spalte; ohne Tabelle mit der Dimension einer Probeeinbettung, und die
+Tabelle entsteht dabei.
 
 ## Skript-Stil (ADR-0034)
 

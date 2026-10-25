@@ -9,8 +9,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -21,9 +28,10 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * {@link EmbeddingProbe} as one {@code POST {baseUrl}/embeddings} over the OpenAI-compatible
  * protocol: {@link ModelEndpointAccess#newHttpClient()} follows no redirect, so a probe never
- * reaches an address the target check did not see; the request times out after {@value
- * #TIMEOUT_SECONDS} seconds, is not repeated, and reads at most {@value #MAX_RESPONSE_BYTES} bytes
- * of the answer. The log names status and failure class only, never a body or the key.
+ * reaches an address the target check did not see. The whole exchange - connection, headers and
+ * body - ends after {@value #TIMEOUT_SECONDS} seconds: a server that answers slowly is cut off by
+ * closing the client. The request is not repeated and reads at most {@value #MAX_RESPONSE_BYTES}
+ * bytes of the answer. The log names status and failure class only, never a body or the key.
  */
 @DataFlow("embedding-model")
 @Component
@@ -55,15 +63,51 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
     String body =
         objectMapper.writeValueAsString(
             Map.of("model", endpoint.modelIdentifier(), "input", List.of(PROBE_TEXT)));
-    HttpRequest request =
-        ModelEndpointAccess.authorized(
-                HttpRequest.newBuilder(uri)
-                    .timeout(java.time.Duration.ofSeconds(TIMEOUT_SECONDS))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)),
-                endpoint.apiKey())
-            .build();
-    try (HttpClient client = ModelEndpointAccess.newHttpClient()) {
+    HttpRequest request;
+    try {
+      request =
+          ModelEndpointAccess.authorized(
+                  HttpRequest.newBuilder(uri)
+                      .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                      .header("Content-Type", "application/json")
+                      .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)),
+                  endpoint.apiKey())
+              .build();
+    } catch (IllegalArgumentException e) {
+      return failure("Der Zugangsschlüssel enthält unzulässige Zeichen.");
+    }
+    HttpClient client = ModelEndpointAccess.newHttpClient();
+    ExecutorService exchange = Executors.newVirtualThreadPerTaskExecutor();
+    try {
+      Future<EmbeddingModelService.ProbeOutcome> outcome =
+          exchange.submit(() -> exchange(client, request, endpoint));
+      return outcome.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      log.warn(
+          "Probe embedding at {} took longer than {} s",
+          ModelEndpointUri.withoutSecrets(endpoint.baseUrl()),
+          TIMEOUT_SECONDS);
+      return failure("Die Verbindung ist in ein Zeitlimit gelaufen.");
+    } catch (ExecutionException e) {
+      log.warn(
+          "Probe embedding at {} failed: {}",
+          ModelEndpointUri.withoutSecrets(endpoint.baseUrl()),
+          e.getCause() == null ? "unknown" : e.getCause().getClass().getSimpleName());
+      return failure("Die Adresse ist nicht erreichbar.");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return failure("Die Verbindung wurde unterbrochen.");
+    } finally {
+      // closing the client ends a body still being read; the exchange thread then gives up
+      client.shutdownNow();
+      exchange.shutdownNow();
+    }
+  }
+
+  private EmbeddingModelService.ProbeOutcome exchange(
+      HttpClient client, HttpRequest request, EmbeddingEndpoint endpoint)
+      throws InterruptedException {
+    try {
       HttpResponse<InputStream> response =
           client.send(request, HttpResponse.BodyHandlers.ofInputStream());
       try (InputStream in = response.body()) {
@@ -86,9 +130,6 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
           ModelEndpointUri.withoutSecrets(endpoint.baseUrl()),
           e.getClass().getSimpleName());
       return failure(ModelEndpointAccess.translateConnectionError(e));
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      return failure("Die Verbindung wurde unterbrochen.");
     }
   }
 

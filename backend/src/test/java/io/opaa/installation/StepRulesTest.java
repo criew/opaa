@@ -288,4 +288,21 @@ class StepRulesTest {
                         "embeddingModel.apiKey",
                         "embeddingModel.maxInputTokens"));
   }
+
+  @Test
+  void aKeyWithControlCharactersIsAFieldError() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.EmbeddingModel(
+                        "http://ollama:11434/v1", "bge-m3", "sk-eins\r\nX-Evil: 1", null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .contains("embeddingModel.apiKey"));
+  }
 }

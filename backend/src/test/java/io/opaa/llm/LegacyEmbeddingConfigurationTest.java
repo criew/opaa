@@ -51,4 +51,13 @@ class LegacyEmbeddingConfigurationTest {
 
     assertThat(new LegacyEmbeddingConfiguration(environment).endpoint().apiKey()).isNull();
   }
+
+  @Test
+  void aKeyIsTakenOverWithoutSurroundingWhitespace() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty(LegacyEmbeddingConfiguration.API_KEY, " sk-geheim\n");
+
+    assertThat(new LegacyEmbeddingConfiguration(environment).endpoint().apiKey())
+        .isEqualTo("sk-geheim");
+  }
 }
