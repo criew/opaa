@@ -1,5 +1,5 @@
 import Stack from '@mui/material/Stack'
-import { smbCredentialsOf, type SmbSourceValues } from '../../../utils/smbSource'
+import { sameSmbShare, smbCredentialsOf, type SmbSourceValues } from '../../../utils/smbSource'
 import CredentialFields from '../CredentialFields'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
@@ -28,7 +28,7 @@ export function SmbConnectionFields({
       />
       {fields.asksSecret && (
         <CredentialFields
-          stored={credentialsKept(context, values.sourceUrl)}
+          stored={credentialsKept(context, values.sourceUrl, sameSmbShare)}
           account={{
             id: fieldId('account'),
             label: 'Benutzername',
