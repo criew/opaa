@@ -17,6 +17,8 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ProfileRegistrations;
 import io.opaa.indexing.credentials.ServiceAccountTokens;
 import io.opaa.indexing.filesync.FileSyncHarness;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.registry.TestSourceConnectors;
 import io.opaa.indexing.spi.ConnectorData;
@@ -26,15 +28,20 @@ import io.opaa.indexing.spi.SourceConnectionTestResult;
 import io.opaa.indexing.spi.SourceListing;
 import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.Sleeper;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +57,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Stage 3 against a real Microsoft 365 tenant, read-only (ADR-0047): runs only through {@code
@@ -101,6 +110,8 @@ class SharePointTenantIntegrationTest {
       logger.addAppender(appender);
     }
     token = signInThroughAProfile().mint(PROFILE_ID).value();
+    // every finding below holds only for an app without any tenant-wide right
+    assertThat(roles(token)).as("app roles in the token").containsExactly("Sites.Selected");
   }
 
   @AfterEach
@@ -147,9 +158,9 @@ class SharePointTenantIntegrationTest {
   void withSitesSelectedTheSearchNamesTheMissingPermissionInsteadOfFailing() {
     SourceListing search = browse(Map.of("search", "a"));
 
-    if (!search.complete()) {
-      assertThat(search.message()).contains("Sites.Read.All");
-    }
+    assertThat(search.complete()).as("the search is refused under Sites.Selected").isFalse();
+    assertThat(search.entries()).isEmpty();
+    assertThat(search.message()).contains("Sites.Read.All");
   }
 
   @Test
@@ -176,13 +187,17 @@ class SharePointTenantIntegrationTest {
 
   @Test
   void aFullSyncAndAChangeRunReadTheLibrariesCleanly() throws Exception {
-    FileSyncHarness harness = new FileSyncHarness();
+    FileSyncHarness harness =
+        new FileSyncHarness().maxFileSize(graphs.properties().maxFileSizeBytes());
     SharePointSettings settings = settings();
 
     FileSyncHarness.Run full = harness.fullSync(store(settings));
 
     assertThat(full.failure()).isNull();
     assertThat(full.listingComplete()).isTrue();
+    assertThat(full.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getMessage)
+        .isEmpty();
     assertThat(harness.storedPaths()).isNotEmpty().allMatch(p -> p.startsWith("sharepoint://"));
 
     FileSyncHarness.Run changes = harness.changeRun(store(settings));
@@ -198,7 +213,33 @@ class SharePointTenantIntegrationTest {
         .isTrue();
   }
 
+  @Test
+  void theOriginalOfEveryIndexedFileComesThroughTheDownloadRedirect() throws Exception {
+    FileSyncHarness harness =
+        new FileSyncHarness().maxFileSize(graphs.properties().maxFileSizeBytes());
+    harness.fullSync(store(settings()));
+
+    for (String path : harness.storedPaths()) {
+      Document document = harness.stored(path).orElseThrow();
+      Optional<DocumentContent> original =
+          connector.openOriginal(document, mock(KnowledgeLibrary.class), source());
+      assertThat(original).as(document.getFileName()).isPresent();
+      try (InputStream in = original.get().stream()) {
+        assertThat(in.readAllBytes()).as(document.getFileName()).isNotEmpty();
+      }
+    }
+  }
+
   private static final UUID PROFILE_ID = UUID.randomUUID();
+
+  /** The application roles the access token carries; role names are no secret. */
+  private static List<String> roles(String accessToken) {
+    String payload = accessToken.split("\\.")[1];
+    JsonNode claims = JsonMapper.builder().build().readTree(Base64.getUrlDecoder().decode(payload));
+    List<String> roles = new ArrayList<>();
+    claims.path("roles").forEach(role -> roles.add(role.asString()));
+    return roles;
+  }
 
   private ProfileSignIn signInThroughAProfile() {
     Clock clock = Clock.systemUTC();

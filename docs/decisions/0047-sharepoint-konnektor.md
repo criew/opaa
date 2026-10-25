@@ -29,7 +29,9 @@ Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; am Zugang b
 „Scopes“ leer, ein anderer Wert als `.default` scheitert bei Entra. Keine Anforderungslücke am Typ,
 weil die Registry sie nur für umschaltbare Profilpflicht zulässt. Empfohlen ist `Sites.Selected`
 (Anwendung, Rolle `read` je Site), Alternative `Sites.Read.All`; `Files.Read.All` nennt das Handbuch
-nicht, weil es OneDrives einschließt. Der Typ `SHAREPOINT` liest kein OneDrive: Die
+nicht, weil es OneDrives einschließt. Unter `Sites.Selected` weist Graph jede nicht freigegebene Site
+und die Site-Suche mit `403 accessDenied` ab; die Auflistung nennt dann die fehlende Freigabe bzw.
+`Sites.Read.All`. Der Typ `SHAREPOINT` liest kein OneDrive: Die
 Erreichbarkeitsprüfung liest `driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
 Das OneDrive einer Person ist der eigene Typ `ONEDRIVE` im selben Paket, mit delegierter Anmeldung
 und demselben Store ([ADR-0058](0058-onedrive-konnektor.md)).
@@ -96,17 +98,10 @@ lesen darf, sehen alle Leser der Bibliothek. Grenzwerte in `SharePointProperties
 
 **Schwieriger:** Der reguläre Build prüft nur gegen `FakeGraphServer`. Gegen einen echten Mandanten
 prüft `./gradlew sharePointIntegrationTest`, nur lokal beim Maintainer und nur lesend, ohne CI-Job und
-ohne Secret (README neben `SharePointTenantIntegrationTest`). Ein herausgeschobener Ordner bleibt bis
-zum täglichen Vollabgleich durchsuchbar.
-
-**Belegt am Mandanten (25.10.2026):** Mit einem Token, das nur die Rolle `Sites.Selected` trägt, und
-der Rolle `read` auf einer Site arbeitet der Konnektor ohne mandantenweite Leserechte. Graph antwortet
-für jede nicht freigegebene Site und für die Site-Suche mit `403 accessDenied`. Die Auflistung zeigt
-dafür die Hinweise auf die Freigabe bzw. auf `Sites.Read.All`. Die Auflösung über
-`/sites/{host}:/{pfad}`, die Bibliotheken und Ordner der freigegebenen Site, der Verbindungstest, ein
-Vollabgleich über zwei Bibliotheken (docx, xlsx, pptx, pdf, md, txt), ein anschließender Änderungslauf
-über den Strom und der Originalabruf über die Download-Weiterleitung laufen in einer Instanz von Ende
-zu Ende durch.
+ohne Secret (README neben `SharePointTenantIntegrationTest`): Anmeldung, Auflistung, Verbindungstest,
+Abweisung außerhalb der Freigabe, Vollabgleich, Änderungslauf und Originalabruf mit einem Token, das
+nur `Sites.Selected` trägt. Ein herausgeschobener Ordner bleibt bis zum täglichen Vollabgleich
+durchsuchbar.
 
 **Restrisiken:** Überdauern `nextLink`-Token keine Läufe, beginnt ein Container neu; nach zwei
 Verfällen ist er im Lauf nicht listbar. Nicht am Mandanten belegt: Stabilität von `driveId`/`itemId`

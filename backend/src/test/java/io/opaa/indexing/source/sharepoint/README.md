@@ -41,15 +41,21 @@ Ohne `OPAA_SP_IT_ENV_FILE` überspringt die Task die Suite.
 
 ## Was der Lauf prüft
 
-- Anmeldung über den Zugang mit Client-Credentials am Token-Endpunkt des Mandanten.
+- Anmeldung über den Zugang mit Client-Credentials am Token-Endpunkt des Mandanten. Das Token
+  trägt genau die Rolle `Sites.Selected`; jede weitere Anwendungsberechtigung lässt jeden Test
+  scheitern, weil die übrigen Befunde nur ohne mandantenweite Rechte etwas belegen.
 - Die freigegebene Site wird über ihre Adresse aufgelöst, ihre Dokumentbibliotheken und Ordner
   werden aufgelistet; der Verbindungstest erreicht jede Bibliothek.
 - Die Site-Suche nennt bei `Sites.Selected` die fehlende Berechtigung `Sites.Read.All`, statt zu
   scheitern.
 - Eine nicht freigegebene Site wird mit dem Hinweis auf die Freigabe für `Sites.Selected`
   abgewiesen: `OPAA_SP_FOREIGN_SITE_URL`, ohne Angabe die Stammsite des Mandanten.
-- Ein Vollabgleich aller Bibliotheken der Site und ein anschließender Änderungslauf laufen ohne
-  Fehler durch; danach sind alle Änderungsströme lesbar.
+- Ein Vollabgleich aller Bibliotheken der Site mit der Größengrenze des Konnektors lädt jede Datei
+  ohne Abweisung, ein anschließender Änderungslauf läuft ohne Fehler durch; danach sind alle
+  Änderungsströme lesbar.
+- Das Original jeder aufgenommenen Datei kommt über die Download-Weiterleitung.
+- Die Testsite sollte Office-Dateien und PDFs enthalten und darf nicht die Stammsite des Mandanten
+  sein, wenn `OPAA_SP_FOREIGN_SITE_URL` fehlt.
 
 Client-Geheimnis und Zugriffstoken erscheinen weder in Logs noch in Reports oder Fehlermeldungen.
 Der Test prüft die mitgeschnittenen Logzeilen am Ende jeder Methode.
