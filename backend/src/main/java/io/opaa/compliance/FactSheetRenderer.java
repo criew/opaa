@@ -244,6 +244,7 @@ public final class FactSheetRenderer {
                 List<List<String>> rows = new ArrayList<>();
                 rows.add(List.of("Auslöser", text(entry.trigger())));
                 rows.add(List.of("Einzelheiten", orNone(entry.details())));
+                rows.add(List.of(PAYLOAD_KEYS_LABEL, payloadKeys(entry)));
                 facts.get(entry).stream().filter(row -> !shared.contains(row)).forEach(rows::add);
                 sheet.table(List.of("Angabe", "Inhalt"), rows);
               }
@@ -855,6 +856,14 @@ public final class FactSheetRenderer {
       return NONE;
     }
     return values.stream().map(FactSheetRenderer::text).collect(Collectors.joining("; "));
+  }
+
+  static final String PAYLOAD_KEYS_LABEL = "Erlaubte Angaben in before und after";
+
+  /** The keys of the event catalog the event's {@code before}/{@code after} may hold. */
+  static String payloadKeys(AuditEventEntry entry) {
+    List<String> keys = entry.payloadKeys();
+    return keys == null || keys.isEmpty() ? NONE : codes(keys);
   }
 
   private static String orNone(String value) {

@@ -284,6 +284,23 @@ class ManifestDeltaTest {
       assertThat(change.field()).isEqualTo("recordFields");
       assertProposal(change, Stage.ZUSTIMMUNG, "Z1");
     }
+
+    @Test
+    void aNewPayloadKeyNeedsConsentZ1AndARemovedOneIsANotice() {
+      String before =
+          edit(
+              BASE,
+              "    trigger: Eine Bibliothek wird angelegt\n",
+              "    trigger: Eine Bibliothek wird angelegt\n    payloadKeys: [name]\n");
+      String after = edit(before, "payloadKeys: [name]", "payloadKeys: [name, sourceType]");
+
+      Change added = only(before, after);
+      Change removed = only(after, before);
+
+      assertThat(added.field()).isEqualTo("payloadKeys");
+      assertProposal(added, Stage.ZUSTIMMUNG, "Z1");
+      assertProposal(removed, Stage.ANZEIGE);
+    }
   }
 
   @Nested

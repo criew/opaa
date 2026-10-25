@@ -27,7 +27,8 @@ class CefSyslogFormatterTest {
                 "KNOWLEDGE_LIBRARY",
                 "lib-1",
                 "Dienstanweisungen",
-                "SUCCESS"));
+                "SUCCESS",
+                AuditEventCatalog.SCHEMA_VERSION));
 
     assertThat(message)
         .startsWith(
@@ -40,11 +41,12 @@ class CefSyslogFormatterTest {
         .contains("cs2=KNOWLEDGE_LIBRARY")
         .contains("cs3=lib-1")
         .contains("cs4=Dienstanweisungen")
+        .contains("cn1Label=schemaVersion cn1=" + AuditEventCatalog.SCHEMA_VERSION)
         .doesNotContain("\n");
   }
 
   @Test
-  void anObjectWithoutIdAndLabelLeavesBothOut() {
+  void anObjectWithoutIdAndLabelAndAnEntryWithoutSchemaVersionLeaveThemOut() {
     String message =
         formatter.format(
             new AuditExportEntry(
@@ -55,9 +57,14 @@ class CefSyslogFormatterTest {
                 "USER_ACCOUNT",
                 null,
                 null,
-                "DENIED"));
+                "DENIED",
+                null));
 
-    assertThat(message).contains("|6|").doesNotContain("cs3").doesNotContain("cs4");
+    assertThat(message)
+        .contains("|6|")
+        .doesNotContain("cs3")
+        .doesNotContain("cs4")
+        .doesNotContain("cn1");
     assertThat(message).startsWith("<84>");
   }
 

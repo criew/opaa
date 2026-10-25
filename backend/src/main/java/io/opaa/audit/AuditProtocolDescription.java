@@ -144,6 +144,11 @@ final class AuditProtocolDescription {
             "correlation_ref",
             "Kennung eines technischen Vorgangs",
             "Zusammenhang der Einträge eines Vorgangs",
+            retention),
+        new ProtocolField(
+            "schema_version",
+            "Version des Ereigniskatalogs, unter der der Eintrag geschrieben ist; leer bei älteren",
+            "Lesart von vorher und nachher über die Jahre",
             retention));
   }
 }

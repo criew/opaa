@@ -2,24 +2,32 @@ package io.opaa.audit;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import java.util.function.ToDoubleFunction;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Size and retention state of the audit log as gauges, so that a retention run that stopped
- * happening shows up before the storage grows without bound. Every value comes from the system
- * catalog and the retention settings row - never from a row of the log itself, which keeps this
- * class outside the readers {@code AuditLogReaderStructureTest} allows. Ages are measured against
- * the database clock. Each scrape queries afresh; nothing is held in the process, so every instance
- * reports the same values (ADR-0053).
+ * Size and retention state of the audit log as gauges, read from the system catalog and the
+ * retention settings row - never from a row of the log, which keeps this class outside the readers
+ * of {@code AuditLogReaderStructureTest}. {@link #refresh} reads them on a schedule on every
+ * instance (ADR-0053), so a scrape never waits for the database; a value it could not read, also
+ * within {@value #QUERY_TIMEOUT_SECONDS} seconds, is {@code NaN}.
  */
 @Component
 public class AuditStorageMetrics {
 
   private static final Logger log = LoggerFactory.getLogger(AuditStorageMetrics.class);
+
+  /** Bounds a read blocked by a lock, so it never holds the shared scheduler thread for long. */
+  static final int QUERY_TIMEOUT_SECONDS = 10;
 
   /** The monthly partitions of the log, by their name {@code audit_log_YYYY_MM}. */
   private static final String PARTITIONS =
@@ -49,8 +57,14 @@ public class AuditStorageMetrics {
           + " WHERE id = 1";
 
   private final JdbcTemplate jdbc;
+  private final List<Reading> readings = new ArrayList<>();
 
-  public AuditStorageMetrics(JdbcTemplate jdbc, MeterRegistry meterRegistry) {
+  @Autowired
+  public AuditStorageMetrics(DataSource dataSource, MeterRegistry meterRegistry) {
+    this(reads(dataSource), meterRegistry);
+  }
+
+  AuditStorageMetrics(JdbcTemplate jdbc, MeterRegistry meterRegistry) {
     this.jdbc = jdbc;
     gauge(
         meterRegistry,
@@ -84,23 +98,66 @@ public class AuditStorageMetrics {
         LAST_RUN_AGE_SQL);
   }
 
+  /**
+   * Reads every value anew. Runs on every instance without a lock: it only reads, and each instance
+   * reports its own gauges (ScheduledRunLockStructureTest#RUNS_ON_EVERY_INSTANCE).
+   */
+  @Scheduled(initialDelay = 0, fixedDelayString = "PT5M")
+  public void refresh() {
+    for (Reading reading : readings) {
+      reading.value.set(read(reading));
+    }
+  }
+
+  /** A template of its own: the query timeout would otherwise bound every other reader as well. */
+  static JdbcTemplate reads(DataSource dataSource) {
+    JdbcTemplate reads = new JdbcTemplate(dataSource);
+    reads.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+    return reads;
+  }
+
   private void gauge(
       MeterRegistry meterRegistry, String name, String unit, String description, String sql) {
-    ToDoubleFunction<AuditStorageMetrics> value = metrics -> metrics.query(sql);
-    Gauge.builder(name, this, value)
+    Reading reading = new Reading(name, sql);
+    readings.add(reading);
+    Gauge.builder(name, reading.value, AtomicReference::get)
         .baseUnit(unit)
         .description(description)
         .register(meterRegistry);
   }
 
-  /** The single numeric value of {@code sql}, {@code NaN} when it is null or the query fails. */
-  double query(String sql) {
+  /**
+   * The single numeric value of the reading's query, {@code NaN} when it is null or fails. A
+   * failure warns once until a read succeeds again.
+   */
+  private double read(Reading reading) {
     try {
-      Double result = jdbc.queryForObject(sql, Double.class);
+      Double result = jdbc.queryForObject(reading.sql, Double.class);
+      if (reading.failing.compareAndSet(true, false)) {
+        log.info("Audit storage metric {} is read again", reading.name);
+      }
       return result == null ? Double.NaN : result;
     } catch (RuntimeException e) {
-      log.debug("Audit storage metric query failed: {}", e.getMessage());
+      if (reading.failing.compareAndSet(false, true)) {
+        log.warn(
+            "Audit storage metric {} could not be read and reports NaN: {}",
+            reading.name,
+            e.getMessage());
+      }
       return Double.NaN;
+    }
+  }
+
+  /** One gauge: its query, its last value and whether its last read failed. */
+  private static final class Reading {
+    private final String name;
+    private final String sql;
+    private final AtomicReference<Double> value = new AtomicReference<>(Double.NaN);
+    private final AtomicBoolean failing = new AtomicBoolean();
+
+    private Reading(String name, String sql) {
+      this.name = name;
+      this.sql = sql;
     }
   }
 }

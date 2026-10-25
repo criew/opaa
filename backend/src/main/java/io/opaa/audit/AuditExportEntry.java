@@ -10,6 +10,8 @@ import java.util.UUID;
  *
  * @param objectId {@code null} where the object itself would name a person
  * @param objectLabel {@code null} where the object itself would name a person
+ * @param schemaVersion the version of the event contract the entry was written under ({@link
+ *     AuditEventCatalog#SCHEMA_VERSION}), {@code null} for an entry from before it
  */
 record AuditExportEntry(
     UUID eventId,
@@ -19,4 +21,5 @@ record AuditExportEntry(
     String objectType,
     String objectId,
     String objectLabel,
-    String outcome) {}
+    String outcome,
+    Short schemaVersion) {}
