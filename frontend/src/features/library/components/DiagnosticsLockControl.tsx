@@ -1,9 +1,7 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 
 interface DiagnosticsLockControlProps {
   locked: boolean
@@ -28,38 +26,35 @@ export default function DiagnosticsLockControl({
   onDismissError,
 }: DiagnosticsLockControlProps) {
   return (
-    <Box>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip
-          label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
-          size="small"
-          color={locked ? 'default' : 'warning'}
-          variant="outlined"
-        />
-        {canToggle && (
-          <Button
-            size="small"
-            variant="outlined"
+    <DetailSection
+      title="Diagnosesperre"
+      action={
+        canToggle ? (
+          <TextAction
             onClick={onToggle}
             disabled={saving}
             aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
           >
-            {saving ? 'Wird gespeichert …' : locked ? 'Sperre lösen' : 'Sperre setzen'}
-          </Button>
-        )}
-      </Stack>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
-        Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
-        anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
-        sehen.
-        {!canToggle &&
-          ' Setzen und lösen kann die Sperre nur die für die Bibliothek zuständige Stelle (Eigentümer), nicht die Systemverwaltung als solche.'}
-      </Typography>
+            {locked ? 'Sperre lösen' : 'Sperre setzen'}
+          </TextAction>
+        ) : undefined
+      }
+    >
+      <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1 }}>
+        <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>
+          {locked ? 'gesperrt' : 'freigegeben'}
+        </Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          {locked
+            ? 'erscheint in keiner Suchdiagnose einer anderen Person'
+            : 'kann in der Suchdiagnose einer anderen Person erscheinen'}
+        </Typography>
+      </Box>
       {error && (
         <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
           {error}
         </Alert>
       )}
-    </Box>
+    </DetailSection>
   )
 }

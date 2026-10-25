@@ -4,8 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import PageSection from '@/shared/ui/PageSection'
-import SectionHead from '@/shared/ui/SectionHead'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import { SubjectPicker } from '@/features/principal'
 import {
   confirmExternalSubject,
@@ -103,34 +102,28 @@ export default function AssetOwnerSection({
   }
 
   return (
-    <PageSection
+    <DetailSection
       title="Eigentümer"
-      description={`Die Stelle, die für diese ${noun} geradesteht — sie vergibt Rechte und kann sie löschen.`}
       action={
         canTransfer && !open ? (
-          <Button variant="outlined" size="small" onClick={() => setOpen(true)}>
-            Eigentum übergeben
-          </Button>
+          <TextAction onClick={() => setOpen(true)}>Eigentum übergeben</TextAction>
         ) : undefined
       }
     >
       <Stack spacing={2}>
-        <Box>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+        <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1 }}>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>
             {ownerName ??
               (ownerType === 'GROUP' ? 'Nicht benannte Gruppe' : 'Nicht benannte Person')}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {kindLabel}
-            {ownerType === 'GROUP'
-              ? ' — eine Gruppe als Eigentümerin übersteht einen Personalwechsel.'
-              : ''}
-          </Typography>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{kindLabel}</Typography>
         </Box>
 
         {open && (
           <Stack spacing={2} sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
-            <SectionHead component="h3">Eigentum übergeben</SectionHead>
+            <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
+              Eigentum übergeben
+            </Typography>
             {error && <Alert severity="error">{error}</Alert>}
             <SubjectPicker value={subject} onChange={setSubject} />
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -153,6 +146,6 @@ export default function AssetOwnerSection({
           </Stack>
         )}
       </Stack>
-    </PageSection>
+    </DetailSection>
   )
 }

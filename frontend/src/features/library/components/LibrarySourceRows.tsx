@@ -16,7 +16,10 @@ import {
   withoutFixed,
 } from './sources/sourceConnection'
 import type { SourceFormContext } from './sources/types'
-import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
+import SourceSetupRows, {
+  type SourceSetupHandle,
+  type SourceSetupRowsMarks as SourceSetupRowsProps,
+} from './setup/SourceSetupRows'
 import type { SetupRowId } from './setup/setupTypes'
 
 export interface SourceRowsLibrary {
@@ -59,6 +62,7 @@ export default function LibrarySourceRows({
   library,
   canEdit,
   connectionPrelude,
+  marks,
   ref,
 }: {
   libraryId: string
@@ -66,6 +70,11 @@ export default function LibrarySourceRows({
   canEdit: boolean
   /** Inside „Verbindung“: the Zugang and the source connection with their own actions. */
   connectionPrelude?: ReactNode
+  /** What the runs know of the rows, and the rows after „Zeitplan“. */
+  marks?: Pick<
+    SourceSetupRowsProps,
+    'storedStatus' | 'scopeStatus' | 'scheduleStatus' | 'scopeFallback' | 'extraRows'
+  >
   ref?: Ref<SourceSetupHandle>
 }) {
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
@@ -137,6 +146,7 @@ export default function LibrarySourceRows({
       onScheduleChange={(patch) => setSchedule((prev) => ({ ...prev, ...patch }))}
       rhythm={rhythm}
       connectionPrelude={connectionPrelude}
+      {...marks}
       connectionLead={profile ? `Zugang „${profile.name}“` : null}
       rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope']}
       canEdit={canEdit}

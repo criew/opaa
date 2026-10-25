@@ -1,14 +1,13 @@
-import Alert from '@mui/material/Alert'
+import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
-import PageSection from '@/shared/ui/PageSection'
+import DetailSection from '@/shared/ui/DetailSection'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
-import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 
 interface LibrarySharingTabProps {
   libraryId: string
@@ -61,12 +60,14 @@ export default function LibrarySharingTab({
         />
 
         {privateLibrary && (
-          <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
-            {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
-            freigeben noch übertragen
-            {externalAccessEnabled ? ' noch für externe KI-Werkzeuge öffnen' : ''} — auch nicht
-            durch die Systemverwaltung.
-          </Alert>
+          // what a private library cannot do shows in the missing sections; one line says why
+          <Typography
+            data-testid="library-private-note"
+            sx={{ fontSize: 13, color: 'text.secondary', mt: -2, mb: 4 }}
+          >
+            Privat: nur Sie sehen diese Bibliothek, auch die Systemverwaltung kann sie nicht
+            freigeben.
+          </Typography>
         )}
 
         {canEdit && !privateLibrary && (
@@ -87,34 +88,26 @@ export default function LibrarySharingTab({
             />
 
             {externalAccessEnabled && (
-              <PageSection
-                title="Externer Zugang"
-                description="Ob externe KI-Werkzeuge diese Bibliothek außerhalb der Anmeldung erreichen."
-              >
+              <DetailSection title="Externer Zugang">
                 <LibraryExternalAccessSection libraryId={libraryId} />
-              </PageSection>
+              </DetailSection>
             )}
           </>
         )}
 
         {details && (
-          <PageSection
-            title="Diagnosesperre"
-            description="Ob diese Bibliothek in einer Suchdiagnose im Rechtekontext einer anderen Person auftauchen darf."
-          >
-            <DiagnosticsLockControl
-              locked={details.diagnosticsLocked ?? true}
-              // myRole bypasses to OWNER for a system admin unconditionally
-              // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
-              // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
-              // grant never sees a button that is guaranteed to fail with 403.
-              canToggle={details.diagnosticsLockToggleable ?? false}
-              saving={diagnosticsLockSaving}
-              error={diagnosticsLockError}
-              onToggle={onToggleDiagnosticsLock}
-              onDismissError={onDismissDiagnosticsLockError}
-            />
-          </PageSection>
+          <DiagnosticsLockControl
+            locked={details.diagnosticsLocked ?? true}
+            // myRole bypasses to OWNER for a system admin unconditionally
+            // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+            // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
+            // grant never sees a button that is guaranteed to fail with 403.
+            canToggle={details.diagnosticsLockToggleable ?? false}
+            saving={diagnosticsLockSaving}
+            error={diagnosticsLockError}
+            onToggle={onToggleDiagnosticsLock}
+            onDismissError={onDismissDiagnosticsLockError}
+          />
         )}
 
         {!privateLibrary && (

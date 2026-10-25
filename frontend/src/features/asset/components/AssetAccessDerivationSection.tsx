@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import type { AssetType } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import PageSection from '@/shared/ui/PageSection'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import AccessDerivation from './AccessDerivation'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 
@@ -32,9 +31,15 @@ export default function AssetAccessDerivationSection({
   }, [shown])
 
   return (
-    <PageSection
+    <DetailSection
       title={`Warum sehe ich diese ${assetTypeLabel(assetType)}?`}
-      description="Ihr eigener Weg zur wirksamen Rolle. Ohne Vollmacht, ohne Protokoll."
+      action={
+        shown ? undefined : (
+          <TextAction onClick={() => setShown(true)} aria-label="Herleitung anzeigen">
+            Herleitung anzeigen
+          </TextAction>
+        )
+      }
     >
       {shown ? (
         <Stack spacing={0.5}>
@@ -51,11 +56,7 @@ export default function AssetAccessDerivationSection({
             Schließen
           </Link>
         </Stack>
-      ) : (
-        <Button ref={openButton} size="small" onClick={() => setShown(true)}>
-          Herleitung anzeigen
-        </Button>
-      )}
-    </PageSection>
+      ) : null}
+    </DetailSection>
   )
 }

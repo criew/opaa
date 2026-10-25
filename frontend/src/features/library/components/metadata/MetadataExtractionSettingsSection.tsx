@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import { CORE_METADATA_FIELDS } from './metadataValues'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
@@ -35,6 +36,7 @@ export default function MetadataExtractionSettingsSection({
   const [quality, setQuality] = useState<LibraryMetadataQualityResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [showStats, setShowStats] = useState(false)
 
   const loadQuality = useCallback(() => {
     getLibraryMetadataQuality(libraryId)
@@ -76,121 +78,178 @@ export default function MetadataExtractionSettingsSection({
     }
   }
 
-  const local = settings?.chatModel?.local === true
   const stats = quality?.modelExtraction
+  const model = settings?.chatModel ?? null
 
   return (
-    <Box component="section" aria-label="Modellgestützte Extraktion">
+    <DetailSection title="Extraktion">
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
       {canManage && settings && (
-        <Stack spacing={1.5} sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.modelExtractionEnabled}
-                disabled={saving}
-                onChange={(event) => void save(event.target.checked, settings.keywordsEnabled)}
-                slotProps={{ input: { 'aria-label': 'Modellgestützte Extraktion' } }}
-              />
-            }
+        <Stack sx={{ borderTop: 1, borderColor: 'divider' }}>
+          <SwitchRow
             label="Modellgestützte Extraktion"
+            detail={`ergänzt leere Auswahlfelder ab ${formatShare(settings.confidenceThreshold)} Konfidenz`}
+            checked={settings.modelExtractionEnabled}
+            disabled={saving}
+            onChange={(next) => void save(next, settings.keywordsEnabled)}
           />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Ergänzt nur die unscharfen Felder, die die regelbasierte Extraktion leer gelassen hat
-            (Dokumentart, Auswahlfelder dieser Bibliothek). Ein Wert unterhalb der Konfidenzschwelle
-            von {formatShare(settings.confidenceThreshold)} oder außerhalb der Werteliste bleibt
-            leer.
-          </Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.keywordsEnabled}
-                disabled={saving}
-                onChange={(event) =>
-                  void save(settings.modelExtractionEnabled, event.target.checked)
-                }
-                slotProps={{ input: { 'aria-label': 'Freie Schlagworte' } }}
-              />
-            }
+          <SwitchRow
             label="Freie Schlagworte"
+            detail="höchstens fünf je Dokument, nur für den Volltext"
+            checked={settings.keywordsEnabled}
+            disabled={saving}
+            onChange={(next) => void save(settings.modelExtractionEnabled, next)}
           />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Höchstens fünf Schlagworte je Dokument. Sie verbessern die Auffindbarkeit im Volltext,
-            sind aber nie filterbar und erscheinen nicht im Beleg.
-          </Typography>
-          <Alert severity={local ? 'info' : 'warning'} aria-label="Datenschutzhinweis">
-            {settings.chatModel ? (
-              <>
-                {local ? (
-                  <>
-                    Das aktive Chat-Modell wird lokal betrieben ({settings.chatModel.baseUrl},
-                    Modell {settings.chatModel.modelIdentifier}). Die Extraktion läuft ohne
-                    ausgehende Verbindung; es verlassen keine Dokumentinhalte das Haus.
-                  </>
-                ) : (
-                  <>
-                    <strong>
-                      Mit eingeschalteter Extraktion verlässt der Inhalt jedes aufgenommenen
-                      Dokuments dauerhaft das Haus
-                    </strong>{' '}
-                    — anders als im Chat ohne dass eine Person den Vorgang auslöst. Übertragen wird
-                    an das aktive Chat-Modell: {settings.chatModel.baseUrl}, Modell{' '}
-                    {settings.chatModel.modelIdentifier}. Für Bibliotheken mit schutzbedürftigen
-                    Unterlagen ist das die datenschutzrechtlich relevante Entscheidung an diesem
-                    Schalter.
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                Zurzeit ist kein Chat-Modell aktiv. Ohne aktives Modell bleibt die Extraktion
-                wirkungslos; die Felder bleiben leer.
-              </>
-            )}
-          </Alert>
-          <Divider />
         </Stack>
       )}
-
-      <Typography variant="subtitle2" component="h4" sx={{ mb: 0.5 }}>
-        Extraktionsgüte
-      </Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-        Herkunft der Werte über {quality?.totalDocuments ?? 0} aufgenommene Dokumente dieser
-        Bibliothek.
-      </Typography>
-      <Stack spacing={0.75}>
-        {(quality?.fields ?? []).map((field) => (
-          <Stack
-            key={field.fieldKey}
-            direction="row"
-            spacing={1.5}
-            sx={{ alignItems: 'center', flexWrap: 'wrap' }}
-          >
-            <Typography variant="body2" sx={{ minWidth: 120, color: 'text.secondary' }}>
-              {field.label}
-            </Typography>
-            <Typography variant="body2">
-              regelbasiert {field.deterministicDocuments} · modellbefüllt {field.derivedDocuments} ·
-              von Hand {field.manualDocuments} · kein Wert ermittelbar{' '}
-              {field.notDeterminableDocuments} · leer {field.emptyDocuments} (
-              {formatShare(field.emptyShare)})
-            </Typography>
-          </Stack>
-        ))}
-      </Stack>
-      {stats && (
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1.5 }}>
-          Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen (Konfidenz):{' '}
-          {stats.rejectedBelowThreshold} · verworfen (Werteliste): {stats.rejectedOutsideVocabulary}{' '}
-          · Fehler/Zeitüberschreitungen: {stats.failures} · nicht angefragt (ausgelastet):{' '}
-          {stats.rejectedPoolFull} · Schlagworte: {stats.keywordsAssigned}
+      {canManage && settings && model && !model.local && (
+        // the one sentence that matters at these switches: where the documents go
+        <Typography
+          aria-label="Datenschutzhinweis"
+          sx={{ mt: 1.5, pl: 1.5, borderLeft: 3, borderColor: 'warning.main', fontSize: 13 }}
+        >
+          Eingeschaltet gehen die Inhalte jedes neuen Dokuments an {model.baseUrl} (
+          {model.modelIdentifier}).
         </Typography>
       )}
+      {canManage && settings && !model && (
+        <Typography sx={{ mt: 1.5, fontSize: 13, color: 'text.secondary' }}>
+          Kein Chat-Modell aktiv: Die Extraktion bleibt wirkungslos.
+        </Typography>
+      )}
+      {stats && (
+        <Box sx={{ mt: 1 }}>
+          <TextAction onClick={() => setShowStats((v) => !v)} aria-expanded={showStats}>
+            Technische Angaben
+          </TextAction>
+          {showStats && (
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+              Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
+              (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
+              {stats.rejectedOutsideVocabulary} · Fehler {stats.failures} · nicht angefragt{' '}
+              {stats.rejectedPoolFull} · Schlagworte {stats.keywordsAssigned}
+            </Typography>
+          )}
+        </Box>
+      )}
+    </DetailSection>
+  )
+}
+
+/** One switch as a list row: name and a short line on what it does, the switch at the edge. */
+function SwitchRow({
+  label,
+  detail,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string
+  detail: string
+  checked: boolean
+  disabled: boolean
+  onChange: (next: boolean) => void
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        py: 1,
+        borderBottom: 1,
+        borderColor: 'divider',
+      }}
+    >
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{label}</Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{detail}</Typography>
+      </Box>
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        slotProps={{ input: { 'aria-label': label } }}
+      />
     </Box>
+  )
+}
+
+/**
+ * How full the fields of the library are - the one place for it (D22): per field the empty
+ * documents and a jump into the documents filtered to them; where the values come from stands in
+ * the row's tooltip.
+ */
+export function MetadataFillSection({ libraryId }: { libraryId: string }) {
+  const [quality, setQuality] = useState<LibraryMetadataQualityResponse | null>(null)
+  const [, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    let cancelled = false
+    getLibraryMetadataQuality(libraryId)
+      .then((response) => {
+        if (!cancelled) setQuality(response)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [libraryId])
+  if (!quality || quality.totalDocuments === 0) return null
+  const coreKeys = new Set(CORE_METADATA_FIELDS.map((field) => field.key))
+  return (
+    <DetailSection title="Füllgrad">
+      <Box
+        component="ul"
+        sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
+      >
+        {quality.fields.map((field) => (
+          <Box
+            component="li"
+            key={field.fieldKey}
+            title={`regelbasiert ${field.deterministicDocuments} · modellbefüllt ${field.derivedDocuments} · von Hand ${field.manualDocuments} · nicht ermittelbar ${field.notDeterminableDocuments}`}
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr auto', sm: '160px 1fr auto' },
+              columnGap: 2,
+              alignItems: 'baseline',
+              py: 0.75,
+              borderBottom: 1,
+              borderColor: 'divider',
+              fontSize: 13.5,
+            }}
+          >
+            <Box component="span" sx={{ fontWeight: 500 }}>
+              {field.label}
+            </Box>
+            <Box
+              component="span"
+              sx={{
+                color: 'text.secondary',
+                gridRow: { xs: 2, sm: 1 },
+                gridColumn: { xs: 1, sm: 2 },
+              }}
+            >
+              {field.emptyDocuments === 0
+                ? 'bei allen Dokumenten gesetzt'
+                : `${field.emptyDocuments.toLocaleString('de-DE')} ohne Wert (${formatShare(field.emptyShare)})`}
+            </Box>
+            {field.emptyDocuments > 0 && coreKeys.has(field.fieldKey) ? (
+              <TextAction
+                onClick={() => setSearchParams({ missingField: field.fieldKey }, { replace: true })}
+                aria-label={`Dokumente ohne ${field.label} anzeigen`}
+              >
+                Anzeigen
+              </TextAction>
+            ) : (
+              <span />
+            )}
+          </Box>
+        ))}
+      </Box>
+    </DetailSection>
   )
 }

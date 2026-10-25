@@ -1,6 +1,7 @@
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
+import { TextAction } from '@/shared/ui/DetailSection'
 import Typography from '@mui/material/Typography'
 import type { LibraryFolderListItem } from '@/shared/api/types'
 import { useDocumentStore } from '../stores/documentStore'
@@ -35,15 +36,7 @@ export default function LibraryDocumentsNotices({
   return (
     <>
       {uploadErrors.length > 0 && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadErrors}>
-          <Stack spacing={0.5}>
-            {uploadErrors.map((message) => (
-              <Typography key={message} variant="body2">
-                {message}
-              </Typography>
-            ))}
-          </Stack>
-        </Alert>
+        <UploadRejections messages={uploadErrors} onClose={clearUploadErrors} />
       )}
       {deleteError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearDeleteError}>
@@ -83,5 +76,48 @@ export default function LibraryDocumentsNotices({
         </Alert>
       )}
     </>
+  )
+}
+
+/** „<reason> (Datei: <name>)“ as the store collects it, grouped by reason. */
+function groupByReason(messages: string[]): Array<{ reason: string; files: string[] }> {
+  const groups = new Map<string, string[]>()
+  for (const message of messages) {
+    const match = /^(.*) \(Datei: (.*)\)$/.exec(message)
+    const reason = (match ? match[1] : message).replace(/\.$/, '')
+    groups.set(reason, [...(groups.get(reason) ?? []), ...(match ? [match[2]] : [])])
+  }
+  return [...groups].map(([reason, files]) => ({ reason, files }))
+}
+
+/**
+ * Files an upload turned away before a document existed: each reason once, the files after it.
+ * It stays until it is closed or the next upload starts; one edge in the signal colour, no tint.
+ */
+function UploadRejections({ messages, onClose }: { messages: string[]; onClose: () => void }) {
+  return (
+    <Box
+      role="alert"
+      sx={{ mb: 2, pl: 1.5, borderLeft: 3, borderColor: 'error.main', display: 'flex', gap: 2 }}
+    >
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        {groupByReason(messages).map(({ reason, files }) => (
+          <Typography key={reason} sx={{ fontSize: 13, lineHeight: '22px' }}>
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              {reason}
+            </Box>
+            {files.length > 0 && (
+              <Box component="span" sx={{ color: 'text.secondary' }}>
+                {' '}
+                · nicht hochgeladen: {files.join(', ')}
+              </Box>
+            )}
+          </Typography>
+        ))}
+      </Box>
+      <Box sx={{ flex: 'none' }}>
+        <TextAction onClick={onClose}>Schließen</TextAction>
+      </Box>
+    </Box>
   )
 }

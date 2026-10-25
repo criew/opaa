@@ -86,6 +86,8 @@ interface SummaryRowProps {
   /** Absent for a reader: the row then only shows what is set. */
   onOpen?: () => void
   headingLevel?: 'h2' | 'h3'
+  /** The word of the link that opens the row; „Ändern“ unless the row has nothing set yet. */
+  actionLabel?: string
   children?: ReactNode
 }
 
@@ -103,6 +105,7 @@ export default function SummaryRow({
   open,
   onOpen,
   headingLevel = 'h3',
+  actionLabel = 'Ändern',
   children,
 }: SummaryRowProps) {
   const bodyId = `${id}-body`
@@ -152,7 +155,7 @@ export default function SummaryRow({
               justifySelf: 'end',
             }}
           >
-            Ändern
+            {actionLabel}
             <Box component="span" sx={visuallyHidden}>
               {` ${title}`}
             </Box>

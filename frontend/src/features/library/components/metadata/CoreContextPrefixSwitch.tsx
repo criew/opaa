@@ -40,6 +40,7 @@ export default function CoreContextPrefixSwitch({
           />
         }
         label={label}
+        slotProps={{ typography: { sx: { fontSize: 13.5 } } }}
       />
       <Dialog open={pending != null} onClose={() => setPending(null)} fullWidth maxWidth="sm">
         <DialogTitle>{`${label} im Kontextpräfix ${pending ? 'einschalten' : 'ausschalten'}`}</DialogTitle>

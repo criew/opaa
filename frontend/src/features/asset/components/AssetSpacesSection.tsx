@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import AssetSpacesList from './AssetSpacesList'
-import UseInSpaceButton from './UseInSpaceButton'
+import { UseInSpaceDialog } from './UseInSpaceButton'
 import type { AssetType } from '@/shared/api/types'
 
 /**
- * The content of the tab „Zuordnungen": „In Space verwenden" above the spaces the asset
- * stands in. Without a heading of its own - the tab already names it.
+ * The content of the tab „Zuordnungen": the spaces the asset stands in, „In Space verwenden" at
+ * the section's right edge like every adding action of the page.
  */
 export default function AssetSpacesSection({
   assetType,
@@ -30,34 +29,29 @@ export default function AssetSpacesSection({
 }) {
   // A new association reloads the list, so it shows up without a page reload.
   const [version, setVersion] = useState(0)
+  const [dialogOpen, setDialogOpen] = useState(false)
   return (
-    <Box component="section" aria-label="Zuordnungen">
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
-        }}
-      >
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', maxWidth: '80ch' }}>
-          Die Spaces, in denen dieses Objekt als Datenquelle bereitsteht.
-        </Typography>
-        {mayUseInSpace && (
-          <UseInSpaceButton
-            assetType={assetType}
-            assetId={assetId}
-            name={name}
-            size="small"
-            onAssociated={() => {
-              setVersion((v) => v + 1)
-              onChanged?.()
-            }}
-          />
-        )}
-      </Box>
+    <DetailSection
+      title="Spaces"
+      action={
+        mayUseInSpace ? (
+          <TextAction onClick={() => setDialogOpen(true)}>In Space verwenden</TextAction>
+        ) : undefined
+      }
+    >
+      {mayUseInSpace && (
+        <UseInSpaceDialog
+          assetType={assetType}
+          assetId={assetId}
+          name={name}
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onAssociated={() => {
+            setVersion((v) => v + 1)
+            onChanged?.()
+          }}
+        />
+      )}
       <AssetSpacesList
         key={`${assetType}-${assetId}-${refreshToken}-${version}`}
         assetType={assetType}
@@ -65,6 +59,6 @@ export default function AssetSpacesSection({
         canManage={canManage}
         onChanged={onChanged}
       />
-    </Box>
+    </DetailSection>
   )
 }

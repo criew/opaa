@@ -39,6 +39,12 @@ export interface SourceSetupHandle {
   openRow: (row: SetupRowId) => void
 }
 
+/** The marks the Reiter „Quelle“ lays on the rows. */
+export type SourceSetupRowsMarks = Pick<
+  SourceSetupRowsProps<unknown>,
+  'storedStatus' | 'scopeStatus' | 'scheduleStatus' | 'scopeFallback' | 'extraRows'
+>
+
 interface SourceSetupRowsProps<V> {
   mode: 'create' | 'edit'
   spec: SourceSetupSpec<V>
@@ -69,6 +75,16 @@ interface SourceSetupRowsProps<V> {
   onDiscard?: (row: SetupRowId) => void
   /** Edit mode: whether the row differs from what is stored. */
   isDirty?: (row: SetupRowId) => boolean
+  /** Edit mode: the connection's last known state, shown while the row has not been tested. */
+  storedStatus?: RowStatus | null
+  /** Edit mode: a mark on „Umfang“, e.g. the parts the last run could not read. */
+  scopeStatus?: RowStatus | null
+  /** Edit mode: a mark on „Zeitplan“, e.g. that the last planned runs failed. */
+  scheduleStatus?: RowStatus | null
+  /** The value of „Umfang“ for a source without a choice of its own („Ganzes Verzeichnis“). */
+  scopeFallback?: string
+  /** Rows after „Zeitplan“ with the same grid, e.g. the live update. */
+  extraRows?: ReactNode
   ref?: Ref<SourceSetupHandle>
 }
 
@@ -98,6 +114,11 @@ export default function SourceSetupRows<V>({
   onSave,
   onDiscard,
   isDirty,
+  storedStatus,
+  scopeStatus,
+  scheduleStatus,
+  scopeFallback,
+  extraRows,
   ref,
 }: SourceSetupRowsProps<V>) {
   const [openRow, setOpenRow] = useState<SetupRowId | null>(initialRow)
@@ -301,7 +322,11 @@ export default function SourceSetupRows<V>({
   }
 
   function statusOf(row: SetupRowId): RowStatus | null {
-    if (row !== 'connection' || !request) return null
+    if (row === 'scope') return scopeStatus ?? null
+    if (row === 'schedule') return scheduleStatus ?? null
+    // what the last run knows of the connection, until the row is tested anew
+    if (storedStatus !== undefined && (!request || check.state === 'unchecked')) return storedStatus
+    if (!request) return null
     switch (check.state) {
       case 'passed':
         return { tone: 'success', label: 'verbunden' }
@@ -359,6 +384,19 @@ export default function SourceSetupRows<V>({
       <ErrorSummary entries={entries} ref={summaryRef} />
       {rows.map((row) => {
         const section = row === 'schedule' ? null : spec.sections.find((s) => s.id === row)
+        if (row === 'scope' && !section && scopeFallback) {
+          return (
+            <SummaryRow
+              key={row}
+              id={`${context.idPrefix}-row-${row}`}
+              title={ROW_TITLES[row]}
+              summary={scopeFallback}
+              status={statusOf(row)}
+              open={false}
+              headingLevel={headingLevel}
+            />
+          )
+        }
         if (row !== 'schedule' && !section && !(row === 'connection' && connectionPrelude))
           return null
         const Fields = section?.Fields
@@ -427,6 +465,7 @@ export default function SourceSetupRows<V>({
           </SummaryRow>
         )
       })}
+      {extraRows}
     </Box>
   )
 }
