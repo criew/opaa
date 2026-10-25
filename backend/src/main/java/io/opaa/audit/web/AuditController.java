@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * generic "search" endpoint and no {@code actor}/{@code sort} request parameter anywhere below -
  * see {@link AuditQueryService}'s own Javadoc for why.
  *
- * <p>None of the five read endpoints below declares {@code @PreAuthorize} - both the AUDITOR role
+ * <p>None of the six read endpoints below declares {@code @PreAuthorize} - both the AUDITOR role
  * and the mandatory {@code reason} are enforced inside {@link AuditQueryService} itself, the only
  * place a rejected attempt can also be logged (see that class's Javadoc). {@code reason} is bound
  * {@code required = false} here even though the OpenAPI spec documents it as required - the same

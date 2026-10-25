@@ -93,11 +93,16 @@ position)` ist die Marke gegen einen zweiten Lauf. Ist ein Monat zu Ende und bis
 versiegelt ihn der Lauf: eine Zeile in `audit_chain_seals` und in derselben Transaktion der Eintrag
 `AUDIT_LOG_MONTH_SEALED` (`SYSTEM_PROCESS`, Objekt `AUDIT_LOG`, Monat als Kennung) mit Monat,
 Anzahl und Kopf-Prüfsumme in `after`. Dieser Eintrag liegt in einem späteren Monat und wird dort
-selbst verkettet, sodass die Monate ineinandergreifen; die Ausleitung sendet ihn mit der Prüfsumme als
+selbst verkettet, sodass die Monate ineinandergreifen: Ein Monat, zu dem ein Eintrag
+`AUDIT_LOG_MONTH_SEALED` existiert, wird nie neu versiegelt, auch wenn seine Siegelzeile und
+Kontrollpunkte fehlen; der Lauf lässt ihn liegen und meldet das im Log, die Prüfung meldet ihn als
+`BROKEN`. Die Ausleitung sendet den Eintrag mit der Prüfsumme als
 eigenes Feld (ADR-0055, Entscheidung 2). Beide Tabellen gehören `opaa_audit_owner`, das
 Anwendungskonto fügt an und liest; `opaa_audit_delete_expired_partitions()` entfernt mit einer
-Partition deren Kontrollpunkte und Siegel; ein Monat ohne Partition meldet `NOT_RETAINED`. Die
-Grenze bleibt ausgesprochen: Wer die Datenbank
+Partition deren Kontrollpunkte und Siegel, der Siegel-Eintrag im späteren Monat bleibt. Ein Monat
+ohne Partition, von dessen Kette nichts mehr da ist, meldet `NOT_RETAINED`; fehlt die Partition,
+während Kontrollpunkte oder Siegel noch stehen, hat jemand sie außerhalb der Aufbewahrung
+gelöscht, und die Prüfung meldet `BROKEN`. Die Grenze bleibt ausgesprochen: Wer die Datenbank
 beherrscht, kann Einträge ändern und die Kette neu rechnen. Erkennbar wird das an dem Siegel, das
 die Datenbank verlassen hat, im Sicherheitsmonitoring oder in einem anderen System, das die
 Siegel-Einträge aufbewahrt.
@@ -105,12 +110,16 @@ Siegel-Einträge aufbewahrt.
 ### 5. Der Prüfweg der Revision
 
 `GET /api/v1/audit/chain/{JJJJ-MM}` rechnet die Kette eines Monats in einer Transaktion mit
-`REPEATABLE READ` nach und vergleicht sie mit jedem Kontrollpunkt und dem Siegel
-(`AuditChainService#verify`). Die Antwort nennt `INTACT`, `BROKEN`, `UNCHAINED`, `NOT_RETAINED` oder
-`UNVERIFIABLE`, Anzahl der verketteten und der noch unverketteten
-Einträge, Kopf-Prüfsumme und Siegel-Eintrag und bei einem Bruch die erste Abweichung: Position, ob
+`REPEATABLE READ` nach und vergleicht sie mit jedem Kontrollpunkt, dem Siegel und dem Eintrag
+`AUDIT_LOG_MONTH_SEALED`, den das Siegel nennt: Kopf-Prüfsumme und Anzahl in dessen `after` müssen
+der Siegelzeile gleichen; fehlt der Eintrag zur Zeile oder die Zeile zum Eintrag, ist der Monat
+`BROKEN` (`AuditChainService#verify`). Die Antwort nennt `INTACT`, `BROKEN`, `UNCHAINED`,
+`NOT_RETAINED` oder `UNVERIFIABLE`, Anzahl der verketteten und der noch unverketteten
+Einträge, Kopf-Prüfsumme (bei einem versiegelten Monat ohne Einträge die des Siegels) und
+Siegel-Eintrag und bei einem Bruch die erste Abweichung: Position, ob
 ein Eintrag geändert (`CHANGED`) oder eingefügt beziehungsweise entfernt (`INSERTED_OR_REMOVED`)
-wurde, und das Zeitsegment zwischen den Kontrollpunkten, in dem sie liegt. Kein Inhalt eines
+wurde, und das Zeitsegment zwischen den Kontrollpunkten, in dem sie liegt; bei einer gelöschten
+Partition oder einem Siegel ohne Gegenstück ist das Segment der ganze Monat. Kein Inhalt eines
 Eintrags verlässt dabei das Protokoll. Der Weg läuft durch `AuditQueryService` wie jeder andere:
 Rolle AUDITOR, Anlass als Pflichtfeld, ein Eintrag `AUDIT_LOG_ACCESSED` mit `accessPath:
 chain-verification` und dem Monat je Aufruf, auch beim abgewiesenen. Weil die Kette das Protokoll
@@ -119,7 +128,9 @@ Standardorganisation offen. Die Prüferin belegt die Vollständigkeit
 eines Monats mit dieser Antwort und der Kopf-Prüfsumme aus dem Sicherheitsmonitoring, ohne
 Datenbankzugang. Die Metriken `opaa.audit.chain.lag` und `opaa.audit.chain.unsealed.months`
 zeigen, wie weit die Kette hinterherläuft, je Instanz alle fünf Minuten gelesen; der Alarm
-`OpaaAuditChainStalled` meldet einen Stillstand, auch wenn kein Wert lesbar ist.
+`OpaaAuditChainStalled` meldet einen Stillstand, auch wenn kein Wert lesbar ist, und
+`OpaaAuditChainUnsealed` einen abgeschlossenen Monat, der seit Stunden ohne Siegel ist, auch den,
+dessen Siegelzeile fehlt.
 
 ## Konsequenzen
 

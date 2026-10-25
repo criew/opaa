@@ -149,17 +149,20 @@ paths:
       operationId: verifyAuditChain
       tags: [audit]
       summary: >
-        Verifies the checksum chain of one month of the audit log (AUDITOR role required,
-        ADR-0059 Entscheidung 4).
+        Verifies the checksum chain of one month of the audit log (AUDITOR role of the default
+        organization required, ADR-0059 Entscheidung 5).
       description: >
         Recomputes the chain of the month from the stored entries and compares it with every
         checkpoint the chain run has written and, for a closed month, with the seal. A changed,
         inserted or removed entry below the chain head breaks the comparison; the answer names the
         first checkpoint that no longer matches and the time window it covers, never an entry.
-        Entries above the chain head are counted as not yet chained. The chain runs over the whole
-        installation, not per organization; the answer carries no content of the log. A mandatory
-        reason, as on every other audit access path; every call writes an AUDIT_LOG_ACCESSED entry,
-        the rejected attempt included.
+        Entries above the chain head are counted as not yet chained. The seal must match its
+        AUDIT_LOG_MONTH_SEALED entry, and a month whose partition is gone while checkpoints or seal
+        remain is broken too. The chain runs over the whole installation, not per organization, and
+        the answer names the counts of every organization, so only an AUDITOR of the default
+        organization may call it (403 otherwise); the answer carries no content of the log. A
+        mandatory reason, as on every other audit access path; every call writes an
+        AUDIT_LOG_ACCESSED entry, the rejected attempt included.
       parameters:
         - $ref: "#/components/parameters/AuditReason"
       responses:
@@ -749,9 +752,13 @@ components:
     AuditChainStatus:
       type: string
       description: >
-        INTACT: every checkpoint of the month and, if present, its seal match the recomputed chain.
-        BROKEN: a checkpoint or the seal does not match; deviation names where. UNCHAINED: the
-        month has no checkpoint yet, nothing to compare against.
+        INTACT: every checkpoint of the month and, if present, its seal and its seal entry match
+        the recomputed chain. BROKEN: a checkpoint, the seal or the seal entry does not match, or
+        the partition of the month is gone while checkpoints or seal remain; deviation names where.
+        UNCHAINED: the month has no checkpoint yet, nothing to compare against. NOT_RETAINED: no
+        partition holds the month and nothing of its chain remains - the retention removed it, or
+        it never existed. UNVERIFIABLE: the month was chained under a procedure this version does
+        not know; nothing is recomputed.
       enum: [INTACT, BROKEN, UNCHAINED, NOT_RETAINED, UNVERIFIABLE]
       example: INTACT
 
@@ -813,7 +820,9 @@ components:
         headHash:
           type: string
           nullable: true
-          description: The chain head as the last checkpoint stored it, hex, SHA-256.
+          description: >
+            The chain head as the last checkpoint stored it, hex, SHA-256; for a sealed month
+            without a checkpoint (no entries) the hash of the seal.
         sealEventId:
           type: string
           format: uuid

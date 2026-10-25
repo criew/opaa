@@ -91,14 +91,16 @@ selbst protokolliert (`AUDIT_LOG_ACCESSED`, Abfrageweg `chain-verification`). Di
 
 | Feld | Bedeutung |
 |---|---|
-| `status` | `INTACT`: Kette passt zu jedem Kontrollpunkt und zum Siegel; `BROKEN`: eine Abweichung; `UNCHAINED`: noch kein Kontrollpunkt, etwa für einen künftigen Monat; `NOT_RETAINED`: kein Protokollmonat mehr, die Aufbewahrungsfrist hat ihn gelöscht oder es gab ihn nie; `UNVERIFIABLE`: der Monat wurde mit einem Verfahren verkettet, das diese Version nicht kennt |
+| `status` | `INTACT`: Kette passt zu jedem Kontrollpunkt, zum Siegel und zu dessen Eintrag `AUDIT_LOG_MONTH_SEALED`; `BROKEN`: eine Abweichung, auch wenn der Protokollmonat fehlt, obwohl Kontrollpunkte oder Siegel noch da sind, oder wenn Siegel und Siegel-Eintrag nicht zueinander passen oder eines von beiden fehlt; `UNCHAINED`: noch kein Kontrollpunkt, etwa für einen künftigen Monat; `NOT_RETAINED`: kein Protokollmonat mehr und nichts von seiner Kette, die Aufbewahrungsfrist hat ihn gelöscht oder es gab ihn nie; `UNVERIFIABLE`: der Monat wurde mit einem Verfahren verkettet, das diese Version nicht kennt |
 | `sealed`, `sealEventId` | ob der Monat versiegelt ist, und der Eintrag `AUDIT_LOG_MONTH_SEALED` dazu |
 | `chainedEntries`, `unchainedEntries` | Einträge bis zum Kettenkopf und Einträge darüber, die der nächste Lauf verkettet |
-| `headHash`, `algorithm` | Kopf-Prüfsumme (SHA-256, hexadezimal) und Verfahren der Kette |
+| `headHash`, `algorithm` | Kopf-Prüfsumme (SHA-256, hexadezimal; bei einem versiegelten Monat ohne Einträge die des Siegels) und Verfahren der Kette |
 | `deviation` | bei `BROKEN` die erste Abweichung: `position` des Kontrollpunkts, `kind` `CHANGED` (ein Eintrag wurde geändert) oder `INSERTED_OR_REMOVED` (ein Eintrag fehlt oder kam hinzu) und das Zeitsegment `segmentFrom`/`segmentTo` zwischen den Kontrollpunkten |
 
 Ein Monat gilt als `BROKEN`, sobald ein Eintrag nachträglich in ihn geschrieben wurde, auch durch
-eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Die Grenzen eines Monats
+eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Ein Monat, zu dem ein
+Eintrag `AUDIT_LOG_MONTH_SEALED` existiert, wird nie ein zweites Mal versiegelt: Fehlt seine
+Siegelzeile, lässt der Lauf ihn liegen, meldet das im Log, und die Prüfung nennt ihn `BROKEN`. Die Grenzen eines Monats
 sind die seiner Partition in der Datenbank, nicht die der Zeitzone des Servers; ein Wechsel der
 Zeitzone ändert die Kette nicht. Kein Inhalt eines Eintrags
 verlässt dabei das Protokoll; wer gehandelt hat, klärt nur die Revision über ihre Abfragewege. Wie

@@ -410,3 +410,32 @@ tests:
       - eval_time: 80m
         alertname: OpaaAuditPayloadDropped
         exp_alerts: []
+  # One ended month without a seal for seven hours: the chain does not reach its end, or a seal
+  # was removed; alert after the six hours of "for".
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_unsealed_months{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '1x420'
+      - series: 'opaa_audit_chain_unsealed_months{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b"}'
+        values: '1x420'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: OpaaAuditChainUnsealed
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: OpaaAuditChainUnsealed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Protokollmonat ohne Siegel
+              description: "Ein abgeschlossener Monat des Revisionsprotokolls von r-opaa-backend trägt seit sechs Stunden kein Siegel. Entweder kommt die Prüfsummenkette nicht bis zum Monatsende, oder die Siegelzeile eines Monats wurde entfernt, dessen Eintrag AUDIT_LOG_MONTH_SEALED noch steht. Log der Pods prüfen und den Vormonat über GET /api/v1/audit/chain/{Monat} prüfen."
+  # The month changes and the run seals it twenty minutes later: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_chain_unsealed_months{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a"}'
+        values: '0x60 1x20 0x400'
+    alert_rule_test:
+      - eval_time: 8h
+        alertname: OpaaAuditChainUnsealed
+        exp_alerts: []

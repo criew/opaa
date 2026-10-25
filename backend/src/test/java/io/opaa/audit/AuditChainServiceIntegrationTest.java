@@ -49,7 +49,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * the fact, in whichever segment; the chain follows the partition bounds, not the session time
  * zone, and covers every column the table has. The month under test lies two months back, inside
  * the partitions the baseline creates, and is cleared of checkpoints and seal before every test
- * because the scheduler of the shared context may have sealed it meanwhile.
+ * because the scheduler of the shared context may have sealed it meanwhile; during a test that
+ * scheduler finds the lock {@code audit-chain} taken and skips its tick.
  */
 @OpaaIntegrationTest
 class AuditChainServiceIntegrationTest {
@@ -69,6 +70,11 @@ class AuditChainServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
+    jdbcTemplate.update(
+        "INSERT INTO shedlock (name, lock_until, locked_at, locked_by)"
+            + " VALUES ('audit-chain', now() + interval '1 hour', now(), 'chain-test')"
+            + " ON CONFLICT (name) DO UPDATE SET lock_until = EXCLUDED.lock_until,"
+            + " locked_at = EXCLUDED.locked_at, locked_by = EXCLUDED.locked_by");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Chain Test Org")).getId();
     clearChainOf(month);
@@ -76,6 +82,7 @@ class AuditChainServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    jdbcTemplate.update("UPDATE shedlock SET lock_until = locked_at WHERE name = 'audit-chain'");
     clearChainOf(month);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
@@ -463,7 +470,89 @@ class AuditChainServiceIntegrationTest {
             UUID.class,
             organizationId);
     assertThat(order).containsExactly(lateId[0], younger.getEventId());
-    assertThat(chainService.verify(current).status()).isIn(Status.INTACT, Status.UNCHAINED);
+  }
+
+  /**
+   * A partition that is gone while its seal remains was not removed by the retention, which takes
+   * checkpoints and seal with it: the month is broken over its whole length, not merely gone.
+   */
+  @Test
+  void aDroppedPartitionWhoseSealRemainsIsBroken() {
+    YearMonth old = YearMonth.now(ZoneOffset.UTC).minusMonths(40);
+    createOwnedPartition(old);
+    try {
+      writeEntry("lib-old", old.atDay(10).atStartOfDay().toInstant(ZoneOffset.UTC));
+      assertThat(chainService.run().sealedMonths()).contains(old);
+
+      jdbcTemplate.execute("DROP TABLE " + partitionName(old));
+
+      AuditChainReport report = chainService.verify(old);
+      assertThat(report.status()).isEqualTo(Status.BROKEN);
+      assertThat(report.sealed()).isTrue();
+      assertThat(report.deviation().kind()).isEqualTo(DeviationKind.INSERTED_OR_REMOVED);
+      assertThat(report.deviation().segmentFrom())
+          .isEqualTo(old.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+      assertThat(report.deviation().segmentTo())
+          .isEqualTo(old.plusMonths(1).atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+    } finally {
+      jdbcTemplate.execute("DROP TABLE IF EXISTS " + partitionName(old));
+      clearChainOf(old);
+    }
+  }
+
+  /**
+   * Whoever changes an entry and removes seal and checkpoints gets no second seal: the {@code
+   * AUDIT_LOG_MONTH_SEALED} entry of the month stands, the run leaves the month alone and the
+   * verification reports it broken.
+   */
+  @Test
+  void aMonthWithASealEntryButNoSealIsNeitherSealedAgainNorIntact() {
+    UUID only = writeEntry("lib-1", midMonth);
+    chainService.run();
+    jdbcTemplate.update("UPDATE audit_log SET outcome = 'FAILURE' WHERE event_id = ?", only);
+    jdbcTemplate.update(
+        "DELETE FROM audit_chain_checkpoints WHERE month = ?", Date.valueOf(month.atDay(1)));
+    jdbcTemplate.update(
+        "DELETE FROM audit_chain_seals WHERE month = ?", Date.valueOf(month.atDay(1)));
+
+    AuditChainService.Run second = chainService.run();
+
+    assertThat(second.sealedMonths()).doesNotContain(month);
+    assertThat(checkpointPositions()).isEmpty();
+    assertThat(sealEventsOfTheMonth()).isEqualTo(1);
+    AuditChainReport report = chainService.verify(month);
+    assertThat(report.status()).isEqualTo(Status.BROKEN);
+    assertThat(report.sealed()).isFalse();
+    assertThat(report.sealEventId()).isNotNull();
+    assertThat(report.deviation().kind()).isEqualTo(DeviationKind.INSERTED_OR_REMOVED);
+  }
+
+  /** The seal entry must name the seal's hash and count; a changed or missing entry is a break. */
+  @Test
+  void aSealEntryThatNoLongerMatchesTheSealBreaksTheChain() {
+    writeEntry("lib-1", midMonth);
+    chainService.run();
+    UUID sealEvent =
+        jdbcTemplate.queryForObject(
+            "SELECT seal_event_id FROM audit_chain_seals WHERE month = ?",
+            UUID.class,
+            Date.valueOf(month.atDay(1)));
+    assertThat(chainService.verify(month).status()).isEqualTo(Status.INTACT);
+
+    jdbcTemplate.update(
+        "UPDATE audit_log SET after = replace(after, 'headHash\":\"', 'headHash\":\"00')"
+            + " WHERE event_id = ?",
+        sealEvent);
+    AuditChainReport changed = chainService.verify(month);
+    assertThat(changed.status()).isEqualTo(Status.BROKEN);
+    assertThat(changed.deviation().kind()).isEqualTo(DeviationKind.CHANGED);
+    assertThat(changed.deviation().position()).isEqualTo(1);
+
+    jdbcTemplate.update("DELETE FROM audit_log WHERE event_id = ?", sealEvent);
+    AuditChainReport removed = chainService.verify(month);
+    assertThat(removed.status()).isEqualTo(Status.BROKEN);
+    assertThat(removed.sealed()).isTrue();
+    assertThat(removed.deviation().kind()).isEqualTo(DeviationKind.INSERTED_OR_REMOVED);
   }
 
   /**

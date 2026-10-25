@@ -142,6 +142,23 @@ spec:
               der Prüfsummenkette ist seit mehr als einer Stunde älter als sechs Stunden, oder das
               Backend kann den Stand der Kette nicht lesen. Log der Pods, die Sperre audit-chain in
               der Tabelle shedlock und offene Transaktionen in pg_stat_activity prüfen.
+        - alert: OpaaAuditChainUnsealed
+          # After a month ends, the run seals it within minutes; a month without a seal for hours
+          # means the chain does not reach its end, or the seal row of a month was removed while its
+          # AUDIT_LOG_MONTH_SEALED entry remains - which the run never seals again. Same database
+          # value on every pod; NaN is OpaaAuditChainStalled's case.
+          expr: >-
+            max(opaa_audit_chain_unsealed_months{ {{- $scrape }}}) > 0
+          for: 6h
+          labels:
+            severity: warning
+          annotations:
+            summary: Protokollmonat ohne Siegel
+            description: >-
+              Ein abgeschlossener Monat des Revisionsprotokolls von {{ $deployment }} trägt seit sechs
+              Stunden kein Siegel. Entweder kommt die Prüfsummenkette nicht bis zum Monatsende, oder
+              die Siegelzeile eines Monats wurde entfernt, dessen Eintrag AUDIT_LOG_MONTH_SEALED noch
+              steht. Log der Pods prüfen und den Vormonat über GET /api/v1/audit/chain/{Monat} prüfen.
         - alert: OpaaHeapUsageHigh
           # Per pod: the heap of one pod fills up regardless of the others.
           expr: >-

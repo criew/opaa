@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +44,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -156,6 +158,13 @@ class AuditChainService {
         continue;
       }
       YearMonth month = partition.month();
+      if (!sealEvents(jdbc, month).isEmpty()) {
+        log.error(
+            "Audit chain of {} has an AUDIT_LOG_MONTH_SEALED entry but no seal; the month is not"
+                + " sealed again - verify it",
+            month);
+        continue;
+      }
       Head head = head(jdbc, partition.first()).orElseGet(() -> Head.start(month));
       Optional<AuditChainHasher> hasher = AuditChainHasher.forAlgorithm(head.algorithm());
       if (hasher.isEmpty()) {
@@ -202,7 +211,10 @@ class AuditChainService {
 
   /**
    * Recomputes the chain of {@code month} in one repeatable-read snapshot and compares it with
-   * every checkpoint and the seal; see {@link AuditChainReport}.
+   * every checkpoint, the seal and the seal's {@code AUDIT_LOG_MONTH_SEALED} entry; see {@link
+   * AuditChainReport}. A month whose partition is gone while checkpoints or seal remain, whose seal
+   * row is gone while its seal entry remains, or whose seal entry no longer names the seal's hash
+   * is {@link Status#BROKEN}.
    */
   AuditChainReport verify(YearMonth month) {
     LocalDate first = month.atDay(1);
@@ -210,6 +222,7 @@ class AuditChainService {
         status -> {
           List<Checkpoint> checkpoints = checkpoints(first);
           Seal seal = seal(first).orElse(null);
+          List<SealEvent> sealEvents = sealEvents(jdbc, month);
           String algorithm =
               seal != null
                   ? seal.algorithm()
@@ -224,40 +237,126 @@ class AuditChainService {
               checkpoints.isEmpty()
                   ? seal == null ? null : AuditChainHasher.hex(seal.headHash())
                   : AuditChainHasher.hex(checkpoints.getLast().headHash());
-          UUID sealEventId = seal == null ? null : seal.sealEventId();
+          UUID sealEventId =
+              seal != null
+                  ? seal.sealEventId()
+                  : sealEvents.isEmpty() ? null : sealEvents.getFirst().eventId();
           Optional<Partition> partition = partition(jdbc, month);
           Optional<AuditChainHasher> hasher = AuditChainHasher.forAlgorithm(algorithm);
-          if (partition.isEmpty() || hasher.isEmpty()) {
-            return new AuditChainReport(
+          Instant monthStart =
+              partition
+                  .map(Partition::start)
+                  .orElseGet(() -> first.atStartOfDay().toInstant(ZoneOffset.UTC));
+          Instant monthEnd =
+              partition
+                  .map(Partition::end)
+                  .orElseGet(() -> first.plusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+          Deviation deviation = null;
+          long count = chainedEntries;
+          if (partition.isEmpty()) {
+            if (seal == null && checkpoints.isEmpty()) {
+              return report(
+                  month,
+                  Status.NOT_RETAINED,
+                  seal,
+                  0,
+                  0,
+                  checkpoints,
+                  headHash,
+                  null,
+                  algorithm,
+                  null);
+            }
+            // the partition is gone, but the retention would have taken checkpoints and seal with
+            // it
+            deviation =
+                new Deviation(
+                    chainedEntries, DeviationKind.INSERTED_OR_REMOVED, monthStart, monthEnd);
+          } else if (hasher.isEmpty()) {
+            return report(
                 month,
-                partition.isEmpty() ? Status.NOT_RETAINED : Status.UNVERIFIABLE,
-                seal != null,
+                Status.UNVERIFIABLE,
+                seal,
                 chainedEntries,
                 0,
-                checkpoints.size(),
+                checkpoints,
                 headHash,
                 sealEventId,
                 algorithm,
                 null);
+          } else {
+            Recomputation recomputed =
+                recompute(hasher.get(), month, partition.get(), checkpoints, seal);
+            count = recomputed.count();
+            deviation = recomputed.deviation();
           }
-          Recomputation recomputed =
-              recompute(hasher.get(), month, partition.get(), checkpoints, seal);
+          if (deviation == null) {
+            deviation = sealEventDeviation(seal, sealEvents, chainedEntries, monthStart, monthEnd);
+          }
           Status verdict =
-              recomputed.deviation() != null
+              deviation != null
                   ? Status.BROKEN
                   : checkpoints.isEmpty() && seal == null ? Status.UNCHAINED : Status.INTACT;
-          return new AuditChainReport(
+          return report(
               month,
               verdict,
-              seal != null,
+              seal,
               chainedEntries,
-              Math.max(0, recomputed.count() - chainedEntries),
-              checkpoints.size(),
+              Math.max(0, count - chainedEntries),
+              checkpoints,
               headHash,
               sealEventId,
               algorithm,
-              recomputed.deviation());
+              deviation);
         });
+  }
+
+  private static AuditChainReport report(
+      YearMonth month,
+      Status status,
+      Seal seal,
+      long chainedEntries,
+      long unchainedEntries,
+      List<Checkpoint> checkpoints,
+      String headHash,
+      UUID sealEventId,
+      String algorithm,
+      Deviation deviation) {
+    return new AuditChainReport(
+        month,
+        status,
+        seal != null,
+        chainedEntries,
+        unchainedEntries,
+        checkpoints.size(),
+        headHash,
+        sealEventId,
+        algorithm,
+        deviation);
+  }
+
+  /**
+   * The seal and its {@code AUDIT_LOG_MONTH_SEALED} entry must name each other: a seal entry
+   * without a seal row, a seal row without its entry, or an entry with another hash or count is a
+   * deviation over the whole month.
+   */
+  private Deviation sealEventDeviation(
+      Seal seal, List<SealEvent> sealEvents, long chainedEntries, Instant from, Instant to) {
+    if (seal == null) {
+      return sealEvents.isEmpty()
+          ? null
+          : new Deviation(chainedEntries, DeviationKind.INSERTED_OR_REMOVED, from, to);
+    }
+    Optional<SealEvent> own =
+        sealEvents.stream().filter(e -> e.eventId().equals(seal.sealEventId())).findFirst();
+    if (own.isEmpty()) {
+      return new Deviation(seal.entryCount(), DeviationKind.INSERTED_OR_REMOVED, from, to);
+    }
+    JsonNode after = jsonMapper.readTree(own.get().after() == null ? "{}" : own.get().after());
+    boolean matches =
+        AuditChainHasher.hex(seal.headHash()).equals(after.path("headHash").asString(null))
+            && after.path("entries").asLong(-1) == seal.entryCount();
+    return matches ? null : new Deviation(seal.entryCount(), DeviationKind.CHANGED, from, to);
   }
 
   private Recomputation recompute(
@@ -483,6 +582,18 @@ class AuditChainService {
     return partitions(jdbc).stream().filter(p -> p.month().equals(month)).findFirst();
   }
 
+  /** The {@code AUDIT_LOG_MONTH_SEALED} entries written for {@code month}, oldest first. */
+  private static List<SealEvent> sealEvents(JdbcTemplate jdbc, YearMonth month) {
+    return jdbc.query(
+        "SELECT event_id, after FROM audit_log WHERE organization_id = ? AND object_type = ?"
+            + " AND object_id = ? AND event_type = ? ORDER BY recorded_at, event_id",
+        (rs, row) -> new SealEvent(rs.getObject("event_id", UUID.class), rs.getString("after")),
+        Organization.DEFAULT_ID,
+        AuditObjectType.AUDIT_LOG.name(),
+        month.toString(),
+        AuditEventType.AUDIT_LOG_MONTH_SEALED.name());
+  }
+
   private static Set<LocalDate> sealedMonths(JdbcTemplate jdbc) {
     return new HashSet<>(jdbc.queryForList("SELECT month FROM audit_chain_seals", LocalDate.class));
   }
@@ -637,6 +748,8 @@ class AuditChainService {
       long position, Instant lastRecordedAt, UUID lastEventId, byte[] headHash, String algorithm) {}
 
   private record Seal(long entryCount, byte[] headHash, String algorithm, UUID sealEventId) {}
+
+  private record SealEvent(UUID eventId, String after) {}
 
   private record Recomputation(long count, Deviation deviation) {}
 }

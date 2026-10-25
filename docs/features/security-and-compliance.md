@@ -468,6 +468,7 @@ Absicht.
 | **nach Zeitraum** | „alle Rechteänderungen zwischen dem 1. und dem 31. März" | beantwortet die Prüferfrage entlang der Zeitachse, ohne Personeneinstieg |
 | **nach Ereignisart** | „alle Änderungen an Systemeinstellungen im letzten Quartal" | prüft eine Kategorie von Verwaltungshandeln, nicht eine Person |
 | **nach Vorgang** | „alle Einträge des Verzeichnislaufs vom 16. Februar" | über `correlation_ref`; hält einen technischen Vorgang zusammen |
+| **Kettenprüfung** | „ist der März 2027 seit seinem Abschluss unverändert?" | liefert keine Einträge und keinen Personenbezug, nur Status, Zahlen und Prüfsumme der [Prüfsummenkette](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen) eines Monats; weil die Kette alle Organisationen umfasst, nur für die Revision der Standardorganisation |
 
 Jede dieser Abfragen verlangt einen **Zeitraum** und ist in ihrer Ergebnismenge begrenzt. Eine Abfrage
 ohne Zeitgrenze ist ein Vollabzug und damit ein Auswertungspfad mit anderem Namen. Konkret (#393,
