@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastructure.md)
 
 ## Kontext
@@ -52,7 +52,8 @@ lokale Benutzerverwaltung (ADR-0033). Drei Arten von Konfiguration:
 | Startwerte, einmal beim ersten Start in die Datenbank übernommen | erster Identitätsanbieter (`OPAA_OIDC_*`), erstes Chat-Modell, Erstadmin (`OPAA_INITIAL_ADMIN_*`) | Werte unter `bootstrap`, nur für die Erstinstallation; Werte und `NOTES.txt` sagen das ausdrücklich |
 | Verwaltungseinstellungen, nur in der Datenbank | Mailserver, Verzeichnis-Konnektoren, Fremdzugänge | keine Werte |
 
-Für Startwerte gibt es keinen dauerhaften Schalter und keinen Rückgriff wie
+Die Startwerte unter `bootstrap` gehen in der Antwortdatei des Einrichtungs-Assistenten auf
+(ADR-0060, Entscheidung 7). Für Startwerte gibt es keinen dauerhaften Schalter und keinen Rückgriff wie
 `OPAA_OIDC_BOOTSTRAP=force`: Er bliebe in GitOps-Werkzeugen stehen und wirkte bei jedem Neustart.
 Dasselbe gilt für `OPAA_LOCAL_ADMIN_RESET=force`, das einmalig per `kubectl set env` oder befristetem
 `extraEnv` gesetzt und danach entfernt wird. **Einzige Ausnahme** ist eine Erprobungsdatenbank
