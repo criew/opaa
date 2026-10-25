@@ -36,6 +36,7 @@ import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.registry.SourceChangeGate;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.Secret;
 import io.opaa.indexing.spi.SecretKind;
 import io.opaa.indexing.spi.SourceBlock;
@@ -134,6 +135,7 @@ public class KnowledgeLibraryService {
   private final ConnectorReleaseService connectorRelease;
   private final EffectiveSourceSettings drafts;
   private final OwnerOnlyRule ownerOnlyRule;
+  private final FullSyncRhythm fullSyncRhythm;
   private final PrivateLibraryConnections privateConnections;
   private final SourceChangeGate changeGate;
 
@@ -161,8 +163,10 @@ public class KnowledgeLibraryService {
       ConnectorReleaseService connectorRelease,
       EffectiveSourceSettings drafts,
       OwnerOnlyRule ownerOnlyRule,
+      FullSyncRhythm fullSyncRhythm,
       PrivateLibraryConnections privateConnections) {
     this.ownerOnlyRule = ownerOnlyRule;
+    this.fullSyncRhythm = fullSyncRhythm;
     this.privateConnections = privateConnections;
     this.successionSource = successionSource;
     this.connectorRelease = connectorRelease;
@@ -1443,11 +1447,10 @@ public class KnowledgeLibraryService {
         connectionResolver.holdsCredentials(library),
         pushSecretSet,
         connector.settingsView(library, connectionResolver.effectiveSettings(library), true),
-        // The instance-wide rhythm in whole days, so the schedule dialog can name the default
+        // The installation-wide rhythm in whole days, so the schedule dialog can name the default
         // instead of hard-coding it; a sub-day interval still reads as one day.
-        descriptor.fullSyncInterval() == null
-            ? null
-            : (int) Math.max(1, descriptor.fullSyncInterval().toDays()),
+        FullSyncRhythm.wholeDays(
+            fullSyncRhythm.installationDefault(descriptor.type(), descriptor.fullSyncInterval())),
         schedule,
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(),

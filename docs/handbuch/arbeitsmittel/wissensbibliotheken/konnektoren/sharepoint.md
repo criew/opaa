@@ -127,7 +127,7 @@ Lauf einen neuen Abgleich.
 | Freigabe der Site entzogen, auch während eines Laufs | keine Löschung; der Bestand bleibt, und das Protokoll nennt die Dokumentbibliothek |
 
 Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der Vollabgleich-Rhythmus
-`full-sync-interval` begrenzt es und ist ab Werk bewusst kurz, weil eine Auflistung wenig kostet.
+([Konnektoren](README.md#14-vollabgleich-rhythmus)) begrenzt es und ist ab Werk bewusst kurz, weil eine Auflistung wenig kostet.
 
 ## 6. Ordner
 
@@ -217,7 +217,6 @@ Alle Schlüssel unter `opaa.indexing.sharepoint.*`. Sie gelten ebenso für den K
 | `request-budget-per-run` | `OPAA_INDEXING_SHAREPOINT_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf |
 | `max-files-per-run` | `OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
 | `download-concurrency` | `OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
-| `full-sync-interval` | `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | 1d | Rhythmus des Vollabgleichs und damit das längste Fenster für Ordneränderungen; je Bibliothek überschreibbar |
 
 Die Obergrenzen von fünfzig Dokumentbibliotheken und fünfzig Ordnern je Dokumentbibliothek sind fest.
 

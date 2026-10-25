@@ -16,10 +16,12 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
+import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.ConfluenceSourceSettings;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.FakeConfluenceServer;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -64,6 +66,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private FullSyncRhythm fullSyncRhythm;
 
   private UUID organizationId;
   private final List<UUID> userIds = new ArrayList<>();
@@ -425,6 +428,31 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                     rss, libraryUpdate("Feed").confluenceFullSyncIntervalDays(14).build(), caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("ist nicht vorgesehen");
+  }
+
+  /**
+   * Without a rhythm of its own a library follows the installation-wide value of its source type,
+   * the one the administration set or else the factory default.
+   */
+  @Test
+  void aLibraryWithoutItsOwnRhythmNamesTheInstallationWideValue() {
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+    fullSyncRhythm.setDays(ConfluenceSourceConnector.TYPE, 3);
+    LibraryDetail created =
+        libraryService.createLibrary(
+            confluence("Wiki", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl()).build(),
+            caller);
+
+    assertThat(created.managementDetail().fullSyncIntervalDefaultDays()).isEqualTo(3);
+
+    fullSyncRhythm.setDays(ConfluenceSourceConnector.TYPE, null);
+    assertThat(
+            libraryService
+                .getLibrary(created.library().getId(), caller)
+                .managementDetail()
+                .fullSyncIntervalDefaultDays())
+        .isEqualTo(7);
   }
 
   @Test

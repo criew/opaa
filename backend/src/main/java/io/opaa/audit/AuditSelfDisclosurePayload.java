@@ -189,6 +189,7 @@ final class AuditSelfDisclosurePayload {
         CONNECTION_LOG_RETENTION_CHANGED);
     put(keys, Set.of("allAccountsGrantAllowed"), CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED);
     put(keys, Set.of("quotaBytes", "overridden"), PRIVATE_STORAGE_QUOTA_CHANGED);
+    put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);
     put(keys, Set.of("capability", "scope", "subjectType"), CAPABILITY_GRANTED, CAPABILITY_REVOKED);
     put(
         keys,

@@ -126,6 +126,10 @@ class FactSheetRendererTest {
         .isEqualTo("36 Monate");
     assertThat(DurationReading.of("90", "opaa.connection.inactivity-threshold-days"))
         .isEqualTo("90 Tage");
+    assertThat(DurationReading.of("7", "full_sync_rhythm_settings.interval_days[CONFLUENCE]"))
+        .isEqualTo("7 Tage");
+    assertThat(DurationReading.of("1", "full_sync_rhythm_settings.interval_days[SHAREPOINT]"))
+        .isEqualTo("1 Tag");
     assertThat(DurationReading.of("90", "opaa.limits.max-items")).isNull();
     assertThat(DurationReading.of("true", "x")).isNull();
   }
@@ -135,7 +139,8 @@ class FactSheetRendererTest {
     Map<FactSheet, String> sheets = FactSheetRenderer.render(SHIPPED, PROVENANCE);
 
     assertThat(sheets.get(FactSheet.FRISTEN)).contains("`P7D` = 7 Tage", "`36` = 36 Monate");
-    assertThat(sheets.get(FactSheet.VOREINSTELLUNGEN)).contains("`15m` = 15 Minuten");
+    assertThat(sheets.get(FactSheet.VOREINSTELLUNGEN))
+        .contains("`15m` = 15 Minuten", "`7` = 7 Tage");
     assertThat(sheets.get(FactSheet.DATENKATALOG))
         .contains(
             "[`io.opaa.account.LocalTokenCleanupService#RETENTION`]"

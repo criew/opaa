@@ -4,7 +4,6 @@ import static io.opaa.common.PropertyDefaults.notNegativeOr;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 import static io.opaa.common.PropertyDefaults.requireNotNegative;
 
-import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
 import java.time.Duration;
@@ -36,9 +35,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     OPAA_INDEXING_CRAWL_MAX_ENTRIES}). Abandoning is a visible failure, never a silent cut, so a
  *     full sync that hits it cannot pass an incomplete listing off as complete. Default 500 (50 000
  *     entries at the default page size).
- * @param fullSyncInterval how long after a completed full sync the next run is a full one again
- *     (ADR-0023, Entscheidung 4): only the full run reaches deletions Confluence never reports, so
- *     the interval is lengthened, never switched off; weekly by default
  * @param incrementalOverlap how far before the last anchor an incremental run searches, absorbing
  *     clock skew between OPAA and the instance, CQL's minute granularity and edits made during the
  *     previous run; a re-found unchanged page costs a listing entry, no body fetch; ten minutes by
@@ -62,7 +58,6 @@ public record ConfluenceProperties(
     long maxResponseBytes,
     long maxAttachmentSizeBytes,
     int maxListingPages,
-    @DataImpact Duration fullSyncInterval,
     @NoDataImpact("search window overlap; a full sync still removes what is gone")
         Duration incrementalOverlap,
     int requestBudgetPerRun) {
@@ -88,7 +83,6 @@ public record ConfluenceProperties(
     maxResponseBytes = positiveOr(maxResponseBytes, 10_485_760L);
     maxAttachmentSizeBytes = positiveOr(maxAttachmentSizeBytes, 20_971_520L);
     maxListingPages = notNegativeOr("maxListingPages", maxListingPages, 500);
-    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(7));
     incrementalOverlap = positiveOr(incrementalOverlap, Duration.ofMinutes(10));
     requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
   }
@@ -101,6 +95,6 @@ public record ConfluenceProperties(
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static ConfluenceProperties defaults() {
     return new ConfluenceProperties(
-        0, null, null, 0, null, 0, 0, 0, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN);
+        0, null, null, 0, null, 0, 0, 0, null, DEFAULT_REQUEST_BUDGET_PER_RUN);
   }
 }

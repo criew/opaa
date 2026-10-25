@@ -27,7 +27,7 @@ export async function getPrivateStorageQuota(): Promise<PrivateStorageQuotaRespo
   }
 }
 
-/** Sets the limit in bytes; `0` is unlimited, `null` returns to the configured default. */
+/** Sets the limit in bytes; `0` is unlimited, `null` returns to the factory default. */
 export async function updatePrivateStorageQuota(
   quotaBytes: number | null,
 ): Promise<PrivateStorageQuotaResponse> {

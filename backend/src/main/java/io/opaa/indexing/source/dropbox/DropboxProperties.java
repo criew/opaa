@@ -36,7 +36,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxFilesPerRun files one full sync may list before it fails asking for narrower folders;
  *     default 1 000 000
  * @param downloadConcurrency downloads in flight per run; default 2
- * @param fullSyncInterval the instance-wide rhythm of the full sync; default 7 days
  */
 @PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
@@ -55,8 +54,7 @@ public record DropboxProperties(
     @NoDataImpact("pacing of retries") Duration maxRetryWait,
     int requestBudgetPerRun,
     int maxFilesPerRun,
-    int downloadConcurrency,
-    @DataImpact Duration fullSyncInterval) {
+    int downloadConcurrency) {
 
   public static final String API_BASE = "https://api.dropboxapi.com";
   public static final String CONTENT_BASE = "https://content.dropboxapi.com";
@@ -82,12 +80,11 @@ public record DropboxProperties(
     requestBudgetPerRun = positiveOr(requestBudgetPerRun, 20_000);
     maxFilesPerRun = positiveOr(maxFilesPerRun, 1_000_000);
     downloadConcurrency = positiveOr(downloadConcurrency, 2);
-    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(7));
   }
 
   public static DropboxProperties defaults() {
     return new DropboxProperties(
-        null, null, null, null, null, 0, 0, null, null, null, null, 0, 0, 0, null);
+        null, null, null, null, null, 0, 0, null, null, null, null, 0, 0, 0);
   }
 
   /** The defaults with every Dropbox address on {@code base}, as a stand-in serves them. */
@@ -107,8 +104,7 @@ public record DropboxProperties(
         null,
         0,
         0,
-        0,
-        null);
+        0);
   }
 
   private static URI withoutTrailingSlash(URI uri) {

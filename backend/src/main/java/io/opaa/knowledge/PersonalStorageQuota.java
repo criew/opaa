@@ -6,24 +6,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The storage quota across all private libraries of one person: one house-wide limit, set by the
- * system administration or else the configured default, and each person's own use against it. A
- * person's use is read only by the person herself and by the enforcement ({@code
- * ModularArchitecture#personalUsageIsReadOnlyByItsOwner}); the administration sees sums.
+ * system administration or else the factory default {@link #DEFAULT_QUOTA_BYTES}, and each person's
+ * own use against it. A person's use is read only by the person herself and by the enforcement
+ * ({@code ModularArchitecture#personalUsageIsReadOnlyByItsOwner}); the administration sees sums.
  */
 @Service
 public class PersonalStorageQuota {
 
+  /** The factory default, 10 GiB per person, while the administration has set no value. */
+  public static final long DEFAULT_QUOTA_BYTES = 10L * 1024 * 1024 * 1024;
+
   private final DocumentRepository documentRepository;
   private final PrivateStorageQuotaSettingRepository settingRepository;
-  private final long configuredDefault;
 
   public PersonalStorageQuota(
       DocumentRepository documentRepository,
-      PrivateStorageQuotaSettingRepository settingRepository,
-      LibraryProperties libraryProperties) {
+      PrivateStorageQuotaSettingRepository settingRepository) {
     this.documentRepository = documentRepository;
     this.settingRepository = settingRepository;
-    this.configuredDefault = libraryProperties.privateStorageQuotaBytes();
   }
 
   /**
@@ -42,9 +42,9 @@ public class PersonalStorageQuota {
         .orElseGet(this::defaultQuotaBytes);
   }
 
-  /** The configured default; a value {@code <= 0} means unlimited and reads as {@code 0}. */
+  /** The factory default {@link #DEFAULT_QUOTA_BYTES}. */
   public long defaultQuotaBytes() {
-    return Math.max(0, configuredDefault);
+    return DEFAULT_QUOTA_BYTES;
   }
 
   /** Whether the administration set its own value. */
@@ -53,7 +53,7 @@ public class PersonalStorageQuota {
   }
 
   /**
-   * Sets the house-wide limit; {@code null} returns to the configured default, {@code 0} means
+   * Sets the house-wide limit; {@code null} returns to the factory default, {@code 0} means
    * unlimited.
    *
    * @throws IllegalArgumentException for a negative value

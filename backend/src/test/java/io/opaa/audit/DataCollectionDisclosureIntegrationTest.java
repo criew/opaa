@@ -224,8 +224,9 @@ class DataCollectionDisclosureIntegrationTest {
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
-   * with value and time of change, and only the flows that happen on an action of a person stay
-   * open.
+   * with a value and the time of its change; only a key naming its row in brackets may lack the
+   * time while its factory default applies, and only the flows that happen on an action of a person
+   * stay open.
    */
   @Test
   void everyStoredSettingAndEverySwitchedFlowIsAnsweredByItsModule() throws Exception {
@@ -240,7 +241,11 @@ class DataCollectionDisclosureIntegrationTest {
     for (String key : databaseKeys) {
       JsonNode setting = setting(export, key);
       assertThat(setting.path("effectiveValue").isNull()).as(key + " has a value").isFalse();
-      assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
+      // A key naming a row in brackets has no row while its factory default applies.
+      boolean rowOptional = key.endsWith("]");
+      if (!rowOptional || setting.path("deviates").asBoolean()) {
+        assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
+      }
     }
     Set<String> open = new HashSet<>();
     for (JsonNode flow : export.path("instance").path("dataFlows")) {

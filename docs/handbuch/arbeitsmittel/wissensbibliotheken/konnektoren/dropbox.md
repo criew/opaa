@@ -163,7 +163,6 @@ Alle Schlüssel unter `opaa.indexing.dropbox.*`.
 | `request-budget-per-run` | `OPAA_INDEXING_DROPBOX_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf |
 | `max-files-per-run` | `OPAA_INDEXING_DROPBOX_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
 | `download-concurrency` | `OPAA_INDEXING_DROPBOX_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
-| `full-sync-interval` | `OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL` | 7d | Rhythmus des Vollabgleichs; je Bibliothek überschreibbar |
 | `api-base`, `content-base`, `authorization-endpoint`, `token-endpoint`, `revocation-endpoint` | `OPAA_INDEXING_DROPBOX_API_BASE` usw. | die Adressen von Dropbox | nur für einen Ersatzserver in Tests |
 
 Die Obergrenze von fünfzig Ordnern je Bibliothek ist fest.
