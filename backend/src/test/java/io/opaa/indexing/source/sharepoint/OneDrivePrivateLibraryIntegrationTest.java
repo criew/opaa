@@ -212,9 +212,11 @@ class OneDrivePrivateLibraryIntegrationTest {
     mockMvc
         .perform(as(OTHER, get("/api/v1/documents/" + plan + "/content")))
         .andExpect(status().isNotFound());
-    assertThat(searchStatus(OTHER, List.of(library)))
+    assertThat(searchHits(OTHER, List.of(library))).isEmpty();
+    assertThat(searchAnswer(OTHER, List.of(library)))
         .as("searching her library answers as an unknown one does")
-        .isEqualTo(searchStatus(OTHER, List.of(unknown)));
+        .isEqualTo(searchAnswer(OTHER, List.of(unknown)));
+    assertThat(searchHits(OWNER, List.of())).contains(plan.toString());
     assertThat(searchHits(OTHER, List.of())).doesNotContain(plan.toString());
     assertNothingLeaked();
   }
@@ -404,12 +406,14 @@ class OneDrivePrivateLibraryIntegrationTest {
     return JsonPath.read(answer, "$.hits[*].documentId");
   }
 
-  private int searchStatus(String user, List<UUID> libraryIds) throws Exception {
-    return mockMvc
-        .perform(as(user, post("/api/v1/search")).content(searchRequest(libraryIds)))
-        .andReturn()
-        .getResponse()
-        .getStatus();
+  /** Status and body of the answer {@code user} gets for {@link #QUESTION}. */
+  private String searchAnswer(String user, List<UUID> libraryIds) throws Exception {
+    var response =
+        mockMvc
+            .perform(as(user, post("/api/v1/search")).content(searchRequest(libraryIds)))
+            .andReturn()
+            .getResponse();
+    return response.getStatus() + " " + response.getContentAsString(StandardCharsets.UTF_8);
   }
 
   private static String searchRequest(List<UUID> libraryIds) {

@@ -19,7 +19,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
  */
 public final class OneDriveTestSeam {
 
-  /** The tenant the token endpoint carries in its path, {@code /token/<tenant>}. */
+  /** Path prefix of the token endpoint; the tenant follows it. */
   public static final String TOKEN_PATH = "/token/";
 
   private OneDriveTestSeam() {}
