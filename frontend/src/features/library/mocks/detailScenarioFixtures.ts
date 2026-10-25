@@ -198,11 +198,17 @@ export function scenarioDocuments(
       uploadedByUserId: upload ? 'mock-user-id' : null,
       errorMessage: failed ? DOCUMENT_ERRORS[i % DOCUMENT_ERRORS.length] : null,
       // an upload library files every fourth document into one of its folders
-      // a small set files its last document, so no folder stands empty
+      // a small set files one document into each folder, so no folder stands empty
       folderId:
-        upload && folderCount > 0 && (i % 4 === 0 || (plan.count < 8 && i === plan.count))
-          ? `${library.id}-folder-${(i % folderCount) + 1}`
-          : null,
+        !upload || folderCount === 0
+          ? null
+          : plan.count < 8
+            ? i <= folderCount
+              ? `${library.id}-folder-${i}`
+              : null
+            : i % 4 === 0
+              ? `${library.id}-folder-${(i % folderCount) + 1}`
+              : null,
       ...hierarchyOf(library, i),
     }
   })
