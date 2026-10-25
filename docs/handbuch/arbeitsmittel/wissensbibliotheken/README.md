@@ -115,7 +115,7 @@ der nächste Lauf brächte sie zurück.
 „Läuft · 40 %", „Teilweise fehlgeschlagen", „Anmeldung abgelehnt", „Nicht erreichbar",
 „Zustimmung abgelaufen", „Noch nie indiziert" oder bei einem Upload „Hochgeladen" und „Kontingent
 voll". Wird die Quelle nicht mehr erreicht, nennt das Wort den Grund wie die Kachel im Katalog,
-etwa „Gesperrt", „Zugang entfernt" oder „Adresse außerhalb des Zugangs". Wer verwaltet, kommt mit
+etwa „Gesperrt", „Zugang entfernt", „Verbindung getrennt" oder „Anmeldung abgelaufen". Wer verwaltet, kommt mit
 einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum neuesten Lauf im Reiter
 „Quelle". Wer nur liest oder bearbeitet, sieht das Wort ohne Verweis; den Verlauf der Läufe sehen
 erst Verwaltende, der Zustand kommt dann aus dem letzten Lauf.

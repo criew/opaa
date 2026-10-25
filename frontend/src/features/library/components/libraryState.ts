@@ -5,6 +5,7 @@ import type {
   SuccessionStateResponse,
 } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
+import { sourceBlockWord } from '@/features/asset'
 import type { LibraryDetailTab } from './libraryDetailAccess'
 
 /** Where the cause of a state lives: a tab and, inside it, the anchor of its row. */
@@ -208,8 +209,8 @@ function stateOf(input: StateInput): LibraryState {
 }
 
 /**
- * A source that is not updated any more names why, in the words of the catalog tile's note
- * (assetTileData.ts), and leads to the row „Verbindung“, where the notice offers the remedy.
+ * A source that is not updated any more names why with the catalog tile's words
+ * (`sourceBlockWord`) and leads to the row „Verbindung“, where the notice offers the remedy.
  */
 function blockState(
   block: SourceBlock | null | undefined,
@@ -221,29 +222,9 @@ function blockState(
     detail: null,
     target: VERBINDUNG,
   })
-  if (profileRemoved) return at('Zugang entfernt')
+  if (profileRemoved) return at(sourceBlockWord('ACCESS_REMOVED'))
   if (!block) return null
-  switch (block.reason) {
-    case 'TYPE_LOCKED':
-    case 'PROFILE_LOCKED':
-    case 'PROFILE_REQUIRED':
-      return at('Gesperrt')
-    case 'ACCESS_REMOVED':
-      return at('Zugang entfernt')
-    case 'TARGET_OUTSIDE_PROFILE':
-      return at('Adresse außerhalb des Zugangs')
-    case 'EXPIRED':
-    case 'NOT_CONNECTED':
-      return at('Zustimmung abgelaufen')
-    case 'DORMANT':
-      return at('Ruhend', 'warning')
-    case 'OWNER_DEACTIVATED':
-      return at('Konto deaktiviert')
-    default: {
-      const unknown: never = block.reason
-      throw new Error(`Unknown source block reason ${String(unknown)}`)
-    }
-  }
+  return at(sourceBlockWord(block.reason), block.reason === 'DORMANT' ? 'warning' : 'error')
 }
 
 /** The search of the page that leads to a state's cause. */

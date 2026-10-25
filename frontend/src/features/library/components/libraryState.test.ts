@@ -100,8 +100,8 @@ describe('libraryState', () => {
     ['PROFILE_REQUIRED', 'Gesperrt'],
     ['ACCESS_REMOVED', 'Zugang entfernt'],
     ['TARGET_OUTSIDE_PROFILE', 'Adresse außerhalb des Zugangs'],
-    ['EXPIRED', 'Zustimmung abgelaufen'],
-    ['NOT_CONNECTED', 'Zustimmung abgelaufen'],
+    ['EXPIRED', 'Anmeldung abgelaufen'],
+    ['NOT_CONNECTED', 'Verbindung getrennt'],
     ['OWNER_DEACTIVATED', 'Konto deaktiviert'],
   ] as const)(
     'names a source blocked with %s as „%s“ and leads to the connection',
