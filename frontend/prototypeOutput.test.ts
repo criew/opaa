@@ -6,7 +6,7 @@ const evaluate = (code: string): unknown => new Function(`return ${code}`)()
 
 describe('escapeNonAsciiJs', () => {
   it.each([
-    ['a string', `'Grundstücksverkehrsgenehmigungsakte – „Ä“ �'`],
+    ['a string', `'Grundstücksverkehrsgenehmigungsakte – „Ä“ \uFFFD'`],
     ['a template', '`Größe ${1 + 1} €`'],
     ['an astral character', `'Ablage 📁'`],
     ['an identity escape', `'\\ä'`],

@@ -5,7 +5,7 @@ export const PROTOTYPE_TITLE = 'OPAA-Prototyp'
 /**
  * Rewrites every non-ASCII UTF-16 code unit in JavaScript source as a `\uXXXX` escape, which
  * means the same inside strings, templates, regular expressions and comments. A backslash that
- * escaped the character itself (`\ä`, an identity escape) is dropped, as `ä` already is one.
+ * escaped the character itself (an identity escape) is dropped; the `\uXXXX` escape replaces it.
  */
 export function escapeNonAsciiJs(code: string): string {
   return code.replace(/(\\*)([\u0080-\uffff])/g, (_, slashes: string, char: string) => {
