@@ -193,7 +193,7 @@ class DropboxSourceConnectorTest {
 
     assertThat(result.reachable()).isFalse();
     assertThat(result.credentialsVerified()).isNull();
-    assertThat(result.message()).isNotBlank();
+    assertThat(result.message()).contains("gesperrten Adressbereich");
     assertThat(server.requests()).isEmpty();
   }
 

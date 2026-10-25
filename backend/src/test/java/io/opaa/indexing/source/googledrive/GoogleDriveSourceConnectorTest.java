@@ -207,10 +207,10 @@ class GoogleDriveSourceConnectorTest {
 
     assertThat(refusedTarget.reachable()).isFalse();
     assertThat(refusedTarget.credentialsVerified()).isNull();
-    assertThat(refusedTarget.message()).isNotBlank();
+    assertThat(refusedTarget.message()).contains("gesperrten Adressbereich");
     assertThat(dailyLimit.reachable()).isFalse();
     assertThat(dailyLimit.credentialsVerified()).isNull();
-    assertThat(dailyLimit.message()).isNotBlank();
+    assertThat(dailyLimit.message()).contains("Tageskontingent");
   }
 
   @Test
