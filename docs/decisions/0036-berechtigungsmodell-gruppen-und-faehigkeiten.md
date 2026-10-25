@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
@@ -107,6 +107,12 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
   (`ABORTED_EMPTY_RESULT`); ein neuer Lauf ersetzt den ausstehenden Plan; bestätigt wird gegen einen
   frischen Schnappschuss (`DirectorySyncPlanFingerprint`); das Alter eines offenen Plans steht in
   Statuszeile und Verwaltungsübersicht.
+- **Die Plausibilitätsschwelle gilt für die ganze Installation**, nicht je Anbieter: Sie schützt vor
+  einem fehlkonfigurierten Verzeichnis, gleich welchem, und ein Wert je Anbieter hätte eine zweite
+  Stelle ergeben, an der sich die Bremse lockern lässt, ohne in die Übertragung der Einstellungen zu
+  gelangen, die die Anbieter nicht trägt. Die Systemverwaltung setzt sie in Prozent (1 bis 100,
+  Werkseinstellung 30), jede Änderung ist ein Governance-Ereignis und in der Vorschau eines Imports
+  als sicherheitsrelevant markiert (ADR-0060, Entscheidung 1).
 - **Kontosperren aus dem Abgleich** unterliegen derselben Schwelle und demselben Bestätigungsweg, sind
   rückholbar, werden historisiert (`AccountStateHistory`, Entscheidung 8); die Person erhält bei der
   nächsten Anmeldung Grund und Ansprechstelle.
@@ -211,8 +217,9 @@ Vorgänge unterliegen der Aufbewahrungsfrist des Protokolls, nicht der Rechtehis
   sonst Systemverwaltung — eine Zuständigkeitsangabe, keine Zugangsbeschränkung), **Freigaben ohne
   Empfänger** (wirksame, nicht handlungsfähige Gruppen mit Wirkung) und **Gruppen ohne Wirkung**
   (interne Gruppen ohne Grant, Space-Mitgliedschaft, Eigentum und aktives Mitglied). Keine Frist, keine
-  Mail, keine Eskalation; Einträge älter als `opaa.succession.aging-threshold-months` (Vorgabe 12)
-  werden hervorgehoben, sonst nichts; einen Sichtungsvermerk gibt es nicht.
+  Mail, keine Eskalation; Einträge älter als die Alterungsschwelle (Werkseinstellung 12 Monate, eine
+  Verwaltungseinstellung neben der Liste) werden hervorgehoben, sonst nichts; einen Sichtungsvermerk
+  gibt es nicht.
 - **Am Objekt** sehen Leseberechtigte Zustand und Adressat, ohne Datum, früheren Eigentümer und Grund;
   Suchtreffer und Quellenverweise tragen keine Kennzeichnung.
 - **Objektbezogen in beide Richtungen:** keine Abfrage „was gehörte Person X" und keine Auswertungsachse
@@ -474,9 +481,9 @@ zwischen „Freigabe zurücknehmen" (Rechte bleiben wirksam) und „übertragen 
 | Größe | Wert | Ort |
 | --- | --- | --- |
 | Mindestgruppengröße (Rechteprofile, „Sicht als", Subjekt-Auswahl) | erzwungene Untergrenze **5**, Voreinstellung 5, nur nach oben änderbar | `GroupSizeProperties.ENFORCED_MINIMUM`, `OPAA_MINIMUM_GROUP_SIZE` |
-| Alterungsschwelle der Nachfolgeliste | **12 Monate**, konfigurierbar (orientiert an `DiagnosticImpersonationGrant.MAX_VALIDITY_MONTHS`) | `opaa.succession.aging-threshold-months` |
+| Alterungsschwelle der Nachfolgeliste | Werkseinstellung **12 Monate**, 1 bis 120 Monate (orientiert an `DiagnosticImpersonationGrant.MAX_VALIDITY_MONTHS`) | `SuccessionAgingThreshold`, `succession_settings` |
 | Feststellungslauf | stündlich | `opaa.succession.detection-cron` |
-| Plausibilitätsschwelle des Abgleichs | **30 %** | `opaa.directory-sync.change-threshold-fraction` |
+| Plausibilitätsschwelle des Abgleichs | Werkseinstellung **30 %**, 1 bis 100 %, installationsweit | `DirectorySyncChangeThreshold`, `directory_sync_settings` |
 | Abgleichintervall | Vorgabe **6 Stunden**, je Anbieter 5 Minuten bis 7 Tage | `OidcProviderService.DEFAULT_SYNC_INTERVAL_MINUTES`, `oidc_providers.directory_sync_interval_minutes` |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **12–120 Monate**, ausgeliefert **36** | `PermissionHistoryRetentionSettings` |
 

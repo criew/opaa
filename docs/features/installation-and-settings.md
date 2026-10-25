@@ -665,12 +665,12 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD` | `opaa.connection.expired-connections.warning-threshold` | Anbindungen → Einstellungen |
 | `OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS` | `opaa.connection.inactivity-threshold-days` | Anbindungen → Einstellungen |
 | `OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS` | `opaa.connection.private-library-deletion-days` | Anbindungen → Einstellungen |
-| `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `opaa.directory-sync.change-threshold-fraction` | Verzeichnisabgleich, je Anbieter neben dem Intervall |
-| `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `opaa.external-access.reminder-lead-days` | Einstellungen der externen KI-Werkzeuge |
+| `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `opaa.directory-sync.change-threshold-fraction` | Vorgabe im Code; Verzeichnisabgleich, installationsweit in Prozent (`directory_sync_settings`), nicht je Anbieter: die Anbieter gehen nicht in die Übertragung der Einstellungen |
+| `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `opaa.external-access.reminder-lead-days` | Vorgabe im Code; Einstellungen der externen KI-Werkzeuge (`external_access_settings`), höchstens einen Tag unter der längsten Befristung |
 | `OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` | `opaa.indexing.confluence.full-sync-interval` | Vorgabe der Installation in der Datenbank; je Bibliothek wie bisher |
 | `OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL` | `opaa.indexing.dropbox.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL` | `opaa.indexing.google-drive.full-sync-interval` | wie Confluence |
-| `OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL` | `opaa.indexing.nextcloud.full-descent-interval` | wie Confluence |
+| `OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL` | `opaa.indexing.nextcloud.full-descent-interval` | Vollabgleich-Rhythmus der Quellart Nextcloud (`full_sync_rhythm_settings`), in ganzen Tagen; ohne Rhythmus je Bibliothek |
 | `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `opaa.indexing.sharepoint.full-sync-interval` | wie Confluence; OneDrive, das die Variable mitnutzte, bekommt einen eigenen Wert der Quellart |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `opaa.auth.initial-admin-email` | Startwert entfällt; erstes Konto im Assistenten |
 | `OPAA_INITIAL_ADMIN_PASSWORD` | `opaa.auth.local.initial-admin-password` | Startwert entfällt; erstes Konto im Assistenten |
@@ -698,7 +698,7 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_RERANK_BASE_URL` | `opaa.rerank.base-url` | Rerank-Modell in der Modellverwaltung |
 | `OPAA_RERANK_ENABLED` | `opaa.rerank.enabled` | Rerank-Modell in der Modellverwaltung |
 | `OPAA_RERANK_MODEL` | `opaa.rerank.model` | Rerank-Modell in der Modellverwaltung |
-| `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | `opaa.succession.aging-threshold-months` | Ohne Zuständigkeit |
+| `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | `opaa.succession.aging-threshold-months` | Vorgabe im Code; Ohne Zuständigkeit (`succession_settings`) |
 | `OPAA_TRANSCRIPTION_API_KEY` | `opaa.transcription.api-key` | Transkriptionsmodell in der Modellverwaltung |
 | `OPAA_TRANSCRIPTION_BASE_URL` | `opaa.transcription.base-url` | Transkriptionsmodell in der Modellverwaltung |
 | `OPAA_TRANSCRIPTION_ENABLED` | `opaa.transcription.enabled` | Transkriptionsmodell in der Modellverwaltung (der Funktionsschalter `OPAA_FEATURES_SPEECH_INPUT_ENABLED` bleibt) |

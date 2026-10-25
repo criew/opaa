@@ -279,9 +279,12 @@ Ergebnis „fehlgeschlagen", ohne Ursache.
   bestätigbaren Plan — „die Quelle hat nicht geantwortet, wie sie soll" darf niemand wegklicken.
 - **Unerreichbares Verzeichnis:** Der letzte bekannte Stand bleibt in Kraft. Ohne hinterlegten
   Verzeichniszugang gilt jedes Verzeichnis als unerreichbar — die sichere Richtung.
-- **Plausibilitätsschwelle** (`OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION`): Ein Lauf, der mehr
-  Mitgliedschaften entziehen, Gruppen auflösen oder Konten sperren würde, schreibt nichts und legt
-  seinen Plan zur Bestätigung vor.
+- **Plausibilitätsschwelle**: Ein Lauf, der mehr Mitgliedschaften entziehen, Gruppen auflösen oder
+  Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor. Die Schwelle in
+  Prozent gilt für alle Anbieter; die Systemverwaltung setzt sie unten auf der Seite
+  Verzeichnisabgleich, ohne eigenen Wert gilt die Werkseinstellung. Wer sie anhebt, lässt größere
+  Entzüge ohne Bestätigung durch; deshalb fragt die Seite dabei mit Warnung nach, und jede Änderung
+  steht im Nachweisprotokoll.
 
 **Der Bestätigungsweg.** Ein wartender Plan steht mit seinem **Alter** in der Übersicht. Ein neuer
 Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen. **Bestätigt wird gegen einen frischen

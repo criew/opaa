@@ -740,6 +740,7 @@ der Einleitungstext nur als Prüfsumme und Länge, nie im Wortlaut.
 | Zugangstokens höchstens gültig | 90 Tage | 1–365 |
 | Anfragen je Token und Stunde | 60 Anfragen/Stunde | 1–10.000 |
 | Abflussalarm ab | 600 Abrufe/Stunde | 1–1.000.000 |
+| Erinnerung vor Ablauf einer Freigabe | 14 Tage (Werkseinstellung) | 0 bis einen Tag unter `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS`; `0` schaltet die Erinnerung ab, die Freigabe erlischt trotzdem, nur unangekündigt |
 | Netzbereiche | `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `::1/128`, `fc00::/7` | höchstens 50 Einträge, nur CIDR-Notation |
 | Einleitungstext für fremde Werkzeuge | Vorgabetext | höchstens 4.000 Zeichen |
 
@@ -752,8 +753,7 @@ Namensauflösung findet dabei nicht statt.
 | Variable | Standard | Wirkung |
 |---|---|---|
 | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet den Zugriff externer KI-Werkzeuge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Externe KI-Werkzeuge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
-| `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert |
-| `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an die Person, die die Freigabe zuletzt gesetzt hat (Abschnitt 4). `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
+| `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert. Begrenzt auch die Erinnerung vor Ablauf: Ein höherer gespeicherter Vorlauf wirkt als ein Tag unter diesem Wert |
 | `OPAA_MCP_DEFAULT_MAX_HITS` | `5` | Dokumente, die eine `search` über MCP ohne eigenes `maxHits` liefert. Bewusst niedriger als die Vorgabe des REST-Suchwegs: Hier ist ein Treffer eine Station auf dem Weg zum Abruf, nicht die Antwort |
 | `OPAA_MCP_EXCERPT_CHARACTERS` | `500` | Länge des Auszugs um die Fundstelle je MCP-Treffer. Der vollständige Abschnitt ist einen Abruf entfernt |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` | leer | Nicht auf diesen Kanal beschränkt, für ihn aber ausschlaggebend: Ohne Eintrag prüft die Netzbeschränkung hinter einem Reverse Proxy dessen Adresse (Abschnitt 3) |

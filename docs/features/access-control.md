@@ -1636,9 +1636,9 @@ Objekt einer Person geht über die Übergabe von Person zu Person an eine Nachfo
 Gruppe eines Anbieters bewegt nur eine Übertragung mit dieser Gruppe als Quelle (Entscheidung 10), die
 auch eine aufgelöste Gruppe zulässt — eine Übergabe zwischen zwei Konten fände kein Konto, das es hält.
 
-**Alterungsschwelle ohne Zwang.** Einträge älter als
-`OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` (Vorgabe 12 Monate, orientiert an der Höchstfrist der
-Vollmacht) werden als „lange offen“ hervorgehoben. Keine Frist, keine Eskalation, keine Mail. Einen
+**Alterungsschwelle ohne Zwang.** Einträge älter als die Alterungsschwelle (Werkseinstellung 12
+Monate, orientiert an der Höchstfrist der Vollmacht; die Systemverwaltung setzt sie auf der Seite
+„Ohne Zuständigkeit“) werden als „lange offen“ hervorgehoben. Keine Frist, keine Eskalation, keine Mail. Einen
 Vermerk, mit dem sich ein Eintrag als „geprüft, weiterhin offen“ zurückstellen ließe, gibt es nicht
 (ADR-0036, Entscheidung 6).
 
