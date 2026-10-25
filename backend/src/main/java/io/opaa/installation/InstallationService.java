@@ -230,7 +230,7 @@ public class InstallationService {
         steps.findForUpdate(input.step()).orElseGet(() -> new InstallationStepRecord(input.step()));
     Map<String, Object> before =
         record.getPayload() == null ? null : auditSummary(record.getStep(), record);
-    StepRules.Stored stored = rules.toStored(input, record.getSecret());
+    StepRules.Stored stored = rules.toStored(input, record.getPayload(), record.getSecret());
     record.replaceValues(stored.payload(), stored.secret(), clock.instant());
     steps.save(record);
     record(AuditEventType.INSTALLATION_STEP_SAVED, before, auditSummary(input.step(), record));

@@ -152,7 +152,12 @@ class InstanceStartTest extends AbstractMigrationTest {
                   + "\"http://127.0.0.1:"
                   + chat.getAddress().getPort()
                   + "/v1\",\"model\":\"qwen2.5:7b\"}}");
-      Map<String, String> environment = Map.of("OPAA_INSTALLATION_ANSWER_FILE", answers.toString());
+      Map<String, String> environment =
+          Map.of(
+              "OPAA_INSTALLATION_ANSWER_FILE",
+              answers.toString(),
+              "OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST",
+              "127.0.0.1");
       Instance first = start("first", environment, false);
       Instance second = start("second", environment, false);
 

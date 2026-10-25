@@ -13,7 +13,9 @@ import io.opaa.common.ValidationException;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
+import io.opaa.security.TargetAddressValidator;
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import tools.jackson.databind.json.JsonMapper;
@@ -37,12 +39,13 @@ class StepRulesTest {
           encoder,
           encryptor,
           addressPolicy,
-          JsonMapper.builder().build());
+          JsonMapper.builder().build(),
+          new TargetAddressValidator(true, List.of("ollama", "ollama.example.org")));
 
   @Test
   void theFirstAccountIsStoredWithItsPasswordHashOnly() {
     StepRules.Stored stored =
-        rules.toStored(new StepInput.FirstAdmin(" it@stadt.example ", "IT", PASSWORD), null);
+        rules.toStored(new StepInput.FirstAdmin(" it@stadt.example ", "IT", PASSWORD), null, null);
 
     assertThat(stored.payload()).contains("it@stadt.example").doesNotContain(PASSWORD);
     assertThat(encoder.matches(PASSWORD, stored.secret())).isTrue();
@@ -51,7 +54,9 @@ class StepRulesTest {
   @Test
   void theShippedDefaultAddressAWeakPasswordAndAMissingNameAreFieldErrors() {
     assertThatThrownBy(
-            () -> rules.toStored(new StepInput.FirstAdmin("admin@opaa.local", "", "kurz"), null))
+            () ->
+                rules.toStored(
+                    new StepInput.FirstAdmin("admin@opaa.local", "", "kurz"), null, null))
         .isInstanceOfSatisfying(
             FieldValidationException.class,
             e ->
@@ -65,6 +70,7 @@ class StepRulesTest {
     StepRules.Stored first =
         rules.toStored(
             new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "sk-geheim", null, null),
+            null,
             null);
     assertThat(first.secret()).doesNotContain("sk-geheim");
     assertThat(encryptor.decrypt(first.secret())).isEqualTo("sk-geheim");
@@ -72,13 +78,15 @@ class StepRulesTest {
 
     StepRules.Stored kept =
         rules.toStored(
-            new StepInput.ChatModel("http://ollama:11434/v1", "qwen", null, null, null),
+            new StepInput.ChatModel("http://ollama:11434/v1/", "qwen", null, null, null),
+            first.payload(),
             first.secret());
     assertThat(kept.secret()).isEqualTo(first.secret());
 
     StepRules.Stored removed =
         rules.toStored(
             new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null),
+            first.payload(),
             first.secret());
     assertThat(removed.secret()).isNull();
   }
@@ -90,6 +98,7 @@ class StepRulesTest {
                 rules.toStored(
                     new StepInput.ChatModel(
                         "https://nutzer:pass@llm.example/v1", "qwen", null, new BigDecimal("3"), 0),
+                    null,
                     null))
         .isInstanceOfSatisfying(
             FieldValidationException.class,
@@ -107,6 +116,7 @@ class StepRulesTest {
                     new StepInput.SignIn(
                         StepInput.SignInMode.LOCAL_AND_OIDC,
                         new StepInput.Oidc("", "", null, null)),
+                    null,
                     null))
         .isInstanceOf(FieldValidationException.class);
     doThrow(new ValidationException("Issuer-URI zeigt in ein gesperrtes Netz."))
@@ -118,6 +128,7 @@ class StepRulesTest {
                     new StepInput.SignIn(
                         StepInput.SignInMode.LOCAL_AND_OIDC,
                         new StepInput.Oidc("http://169.254.169.254/realms/x", "opaa", null, null)),
+                    null,
                     null))
         .isInstanceOf(ValidationException.class);
 
@@ -126,8 +137,65 @@ class StepRulesTest {
             new StepInput.SignIn(
                 StepInput.SignInMode.LOCAL_AND_OIDC,
                 new StepInput.Oidc("https://login.stadt.example/realms/opaa", "opaa", null, null)),
+            null,
             null);
     assertThat(rules.signInPayload(stored.payload()).oidc().displayName())
         .isEqualTo(StepRules.DEFAULT_PROVIDER_NAME);
+  }
+
+  // regression guard: a saved key must never follow a changed model address
+  @Test
+  void aSavedKeyDoesNotFollowAChangedAddress() {
+    StepRules.Stored first =
+        rules.toStored(
+            new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "sk-geheim", null, null),
+            null,
+            null);
+
+    for (String moved :
+        List.of(
+            "https://ollama:11434/v1",
+            "http://ollama:11435/v1",
+            "http://ollama:11434/v2",
+            "http://ollama.example.org:11434/v1")) {
+      assertThatThrownBy(
+              () ->
+                  rules.toStored(
+                      new StepInput.ChatModel(moved, "qwen", null, null, null),
+                      first.payload(),
+                      first.secret()))
+          .as(moved)
+          .isInstanceOfSatisfying(
+              FieldValidationException.class,
+              e ->
+                  assertThat(e.fieldErrors())
+                      .extracting(FieldValidationException.FieldError::field)
+                      .containsExactly("chatModel.apiKey"));
+    }
+    StepRules.Stored withNewKey =
+        rules.toStored(
+            new StepInput.ChatModel("https://ollama:11434/v1", "qwen", "sk-neu", null, null),
+            first.payload(),
+            first.secret());
+    assertThat(encryptor.decrypt(withNewKey.secret())).isEqualTo("sk-neu");
+  }
+
+  // regression guard: the model address of the installation passes the target address check
+  @Test
+  void aModelAddressInABlockedRangeIsAFieldError() {
+    for (String blocked :
+        List.of("http://169.254.169.254/v1", "http://127.0.0.1:11434/v1", "http://10.0.0.5/v1")) {
+      assertThatThrownBy(
+              () ->
+                  rules.toStored(
+                      new StepInput.ChatModel(blocked, "qwen", null, null, null), null, null))
+          .as(blocked)
+          .isInstanceOfSatisfying(
+              FieldValidationException.class,
+              e ->
+                  assertThat(e.fieldErrors())
+                      .extracting(FieldValidationException.FieldError::field)
+                      .containsExactly("chatModel.baseUrl"));
+    }
   }
 }

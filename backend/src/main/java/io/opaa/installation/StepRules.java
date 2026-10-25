@@ -9,9 +9,14 @@ import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.ModelEndpointUri;
 import io.opaa.security.SettingsEncryptor;
+import io.opaa.security.TargetAddressValidator;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
@@ -46,32 +51,36 @@ class StepRules {
   private final SettingsEncryptor settingsEncryptor;
   private final OidcAddressPolicy addressPolicy;
   private final JsonMapper json;
+  private final TargetAddressValidator modelAddresses;
 
   StepRules(
       PasswordPolicy passwordPolicy,
       PasswordEncoder passwordEncoder,
       SettingsEncryptor settingsEncryptor,
       OidcAddressPolicy addressPolicy,
-      JsonMapper json) {
+      JsonMapper json,
+      TargetAddressValidator modelAddresses) {
     this.passwordPolicy = passwordPolicy;
     this.passwordEncoder = passwordEncoder;
     this.settingsEncryptor = settingsEncryptor;
     this.addressPolicy = addressPolicy;
     this.json = json;
+    this.modelAddresses = modelAddresses;
   }
 
   /**
-   * Validates {@code input} and returns what is stored; {@code previousSecret} is the secret saved
-   * before, kept by a chat model step without a new key.
+   * Validates {@code input} and returns what is stored; {@code previousPayload} and {@code
+   * previousSecret} are what was saved before. A chat model step without a new key keeps the saved
+   * one only for an unchanged endpoint.
    *
    * @throws FieldValidationException naming every violated field
    * @throws ValidationException for an address the address check refuses
    */
-  Stored toStored(StepInput input, String previousSecret) {
+  Stored toStored(StepInput input, String previousPayload, String previousSecret) {
     return switch (input) {
       case StepInput.FirstAdmin admin -> firstAdmin(admin);
       case StepInput.SignIn signIn -> signIn(signIn);
-      case StepInput.ChatModel model -> chatModel(model, previousSecret);
+      case StepInput.ChatModel model -> chatModel(model, previousPayload, previousSecret);
     };
   }
 
@@ -177,7 +186,8 @@ class StepRules {
     return new Stored(json.writeValueAsString(new SignInPayload(input.mode(), stored)), null);
   }
 
-  private Stored chatModel(StepInput.ChatModel input, String previousSecret) {
+  private Stored chatModel(
+      StepInput.ChatModel input, String previousPayload, String previousSecret) {
     List<FieldError> errors = new ArrayList<>();
     String baseUrl = trimmed(input.baseUrl());
     String model = trimmed(input.model());
@@ -208,9 +218,23 @@ class StepRules {
         && (temperature.signum() < 0 || temperature.compareTo(MAX_TEMPERATURE) > 0)) {
       errors.add(error("chatModel.temperature", INVALID, "Die Temperatur liegt zwischen 0 und 2."));
     }
+    if (errors.isEmpty()) {
+      String blocked = blockedModelAddress(modelAddresses, baseUrl);
+      if (blocked != null) {
+        errors.add(error("chatModel.baseUrl", "BLOCKED", blocked));
+      }
+    }
     requireNoErrors(errors);
     String secret;
     if (input.apiKey() == null) {
+      if (previousSecret != null
+          && !sameEndpoint(chatModelPayload(previousPayload).baseUrl(), baseUrl)) {
+        throw FieldValidationException.of(
+            "chatModel.apiKey",
+            REQUIRED,
+            "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben oder"
+                + " das Feld leeren, um ihn zu entfernen.");
+      }
       secret = previousSecret;
     } else if (input.apiKey().isBlank()) {
       secret = null;
@@ -221,6 +245,45 @@ class StepRules {
         json.writeValueAsString(
             new ChatModelPayload(baseUrl, model, temperature, input.maxTokens())),
         secret);
+  }
+
+  /**
+   * Why the target address check refuses {@code baseUrl}, or {@code null}: the installation runs
+   * before any account exists, so its probes must not reach internal ranges unless the operator
+   * released the host ({@link TargetAddressValidator#ALLOWLIST_HINT}).
+   */
+  static String blockedModelAddress(TargetAddressValidator validator, String baseUrl) {
+    try {
+      validator.validate(new URI(baseUrl.strip()));
+      return null;
+    } catch (URISyntaxException e) {
+      return "Die Basis-Adresse ist keine gültige URL.";
+    } catch (IOException e) {
+      return e.getMessage() + " " + TargetAddressValidator.ALLOWLIST_HINT;
+    }
+  }
+
+  /**
+   * Whether a saved key may stay with {@code next}: scheme, host, port and path unchanged, so a key
+   * never follows the address to another endpoint.
+   */
+  static boolean sameEndpoint(String previous, String next) {
+    try {
+      return endpointKey(previous).equals(endpointKey(next));
+    } catch (URISyntaxException | NullPointerException e) {
+      return false;
+    }
+  }
+
+  private static String endpointKey(String baseUrl) throws URISyntaxException {
+    URI uri = new URI(baseUrl.strip());
+    String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+    int port = uri.getPort() != -1 ? uri.getPort() : "https".equals(scheme) ? 443 : 80;
+    String path = uri.getPath() == null ? "" : uri.getPath();
+    while (path.endsWith("/")) {
+      path = path.substring(0, path.length() - 1);
+    }
+    return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port + path;
   }
 
   private String encrypt(String apiKey) {

@@ -66,6 +66,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // allowlist short-circuits the sign-in's address check before it would resolve it, so no
       // class of this family makes a DNS lookup for a fixture. The check itself stays on.
       "opaa.auth.oidc.target-validation.allowlist=" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST,
+      // The chat endpoint the installation classes run on loopback; the target address check of
+      // the installation's model step stays on for every other address.
+      "opaa.indexing.target-validation.allowlist=127.0.0.1",
       // Same model addresses as the canonical signature: never a reachable model. This family
       // has no FakeEmbeddingModel, so the real embedding client points there too.
       "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,

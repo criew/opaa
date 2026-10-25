@@ -83,7 +83,16 @@ curl -X POST -H "Authorization: Bearer $TOKEN" https://opaa.example.org/api/v1/i
 ```
 
 Das Passwort speichert OPAA nur als Hash, den Zugangsschlüssel verschlüsselt mit
-`OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie gesetzt sind.
+`OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie gesetzt sind. Ein gespeicherter
+Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich bleibt (Schema, Host, Port,
+Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt ihn.
+
+**Zielprüfung der Modelladresse.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
+Adresse des Chat-Modells beim Speichern und unmittelbar vor dem Verbindungstest wie die Quellen
+der Wissensbibliotheken: Adressen in internen, Loopback- oder Link-Local-Bereichen werden
+abgelehnt, ohne dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im
+Compose-Stapel, gibt der Betrieb mit seinem Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
+frei.
 
 **Der Abschluss** gelingt, wenn jeder Schritt erfolgreich geprüft ist, und genau einmal, auch wenn
 zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
@@ -140,6 +149,8 @@ Prüfungen, alles oder nichts.
 |---|---|---|
 | `503`, Code `INSTALLATION_PENDING` | Die Instanz ist nicht eingerichtet | Installation abschließen |
 | `401` „Das Installations-Token fehlt oder ist ungültig." | Token fehlt oder falsch | Token aus dem Log oder `OPAA_INSTALLATION_TOKEN` nehmen |
+| `400` am Feld Basis-Adresse mit Hinweis auf `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | die Modelladresse liegt in einem gesperrten Bereich | Host in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` freigeben |
+| `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse | `Retry-After` abwarten |
 | `409` beim Abschluss | ein Schritt ist nicht gespeichert oder nicht erfolgreich geprüft | offene Schritte prüfen; die Meldung nennt sie |

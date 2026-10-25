@@ -143,6 +143,9 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
 - Jede Operation verlangt das Token im Header `Authorization: Bearer <Token>`.
 - Je Netzadresse und Instanz gelten 300 Anfragen und 10 abgelehnte Tokens in 15 Minuten; danach
   `429`, auch mit dem richtigen Token.
+- Die Adresse des Chat-Modells durchläuft beim Speichern und vor dem Verbindungstest die
+  Zieladressprüfung (`OPAA_INDEXING_TARGET_VALIDATION_*`); ein gespeicherter Schlüssel bleibt nur
+  bei unveränderter Adresse (Schema, Host, Port, Pfad).
 - Fehler kommen deutsch je Feld wie in der übrigen Verwaltung.
 - Nach dem Abschluss antwortet jede Operation `404`.
 
