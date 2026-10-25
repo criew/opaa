@@ -88,6 +88,8 @@ export function useDocumentsUrlState(libraryId: string, onLeaveList: () => void)
     missingFieldParam,
     setMissingFieldFilter,
     statusParam,
+    // a ?status= that names no filtered state, e.g. from a mistyped link
+    invalidStatusParam: rawStatus !== null && statusParam === null,
     setStatusFilter,
     navigateToFolder,
   }

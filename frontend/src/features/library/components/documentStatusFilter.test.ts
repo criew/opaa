@@ -16,6 +16,14 @@ describe('statusFilterOptions', () => {
     expect(statusFilterOptions({ FAILED: 5, PENDING: 0, INDEXED: 0 }, null)).toEqual([])
     expect(statusFilterOptions({ FAILED: 0, PENDING: 0, INDEXED: 9 }, null)).toEqual([])
     expect(statusFilterOptions(undefined, null)).toEqual([])
+    expect(statusFilterOptions(null, null)).toEqual([])
+  })
+
+  it('offers nothing below five rows in the whole library (guidelines 5.3)', () => {
+    expect(statusFilterOptions({ FAILED: 1, PENDING: 0, INDEXED: 3 }, null)).toEqual([])
+    expect(statusFilterOptions({ FAILED: 1, PENDING: 0, INDEXED: 4 }, null)).toEqual([
+      ['FAILED', 'Fehlgeschlagen (1)'],
+    ])
   })
 
   it('keeps the active state, so the select can show and clear it', () => {

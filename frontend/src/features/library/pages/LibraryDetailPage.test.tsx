@@ -1,7 +1,8 @@
 import { AxiosError } from 'axios'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
+import { useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
@@ -991,6 +992,110 @@ describe('LibraryDetailPage', () => {
       expect(await screen.findByRole('combobox', { name: 'Status' })).toHaveTextContent(
         'Fehlgeschlagen (2)',
       )
+    })
+
+    it('drops search and selection when the head leads into the failed documents', async () => {
+      answerCounts({ FAILED: 2, PENDING: 0, INDEXED: 6 })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf(
+          Array.from({ length: 8 }, (_, index) => ({
+            id: `doc-${index}`,
+            fileName: `vermerk-${index}.pdf`,
+            status: index < 2 ? ('FAILED' as const) : ('INDEXED' as const),
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          })),
+        ),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const search = await screen.findByRole('textbox', { name: 'Dokumente durchsuchen' })
+      await user.type(search, 'vermerk')
+      await user.click(screen.getByRole('checkbox', { name: 'Dokument vermerk-3.pdf auswählen' }))
+      expect(
+        screen.getByRole('checkbox', { name: 'Dokument vermerk-3.pdf auswählen' }),
+      ).toBeChecked()
+
+      const state = screen.getByTestId('library-state')
+      await waitFor(() => expect(state).toHaveTextContent('2 Fehler'))
+      await user.click(within(state).getByRole('link'))
+
+      // a Sammelaktion must never act on rows of the list the person left
+      await waitFor(() => expect(search).toHaveValue(''))
+      expect(
+        screen.getByRole('checkbox', { name: 'Dokument vermerk-3.pdf auswählen' }),
+      ).not.toBeChecked()
+    })
+
+    it('shows no „Hochgeladen“ while the failed rows are still being counted', async () => {
+      server.use(
+        http.get('/api/v1/libraries/:libraryId/documents', async () => {
+          await delay('infinite')
+          return HttpResponse.json(pageOf([]))
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'vermerk.pdf',
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          },
+        ]),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('vermerk.pdf')).toBeInTheDocument()
+      expect(screen.queryByTestId('library-state')).toBeNull()
+    })
+
+    it('offers the status filter by the counts of the library, also in a short folder', async () => {
+      answerCounts({ FAILED: 2, PENDING: 0, INDEXED: 6 })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'vermerk.pdf',
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          },
+        ]),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByRole('combobox', { name: 'Status' })).toBeInTheDocument()
+      // no search below eight entries of the open list
+      expect(screen.queryByRole('textbox', { name: 'Dokumente durchsuchen' })).toBeNull()
+    })
+
+    it('lists unfiltered and drops a status from the address that names no filter', async () => {
+      answerCounts({ FAILED: 0, PENDING: 0, INDEXED: 3 })
+      function Address() {
+        return <span data-testid="address">{useLocation().search}</span>
+      }
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(
+        <>
+          <LibraryDetailPage />
+          <Address />
+        </>,
+        { withRouter: true, initialRoute: '/?status=BROKEN' },
+      )
+
+      await waitFor(() =>
+        expect(mockGetLibraryDocuments).toHaveBeenCalledWith(
+          managerLibrary.id,
+          expect.objectContaining({ status: null }),
+        ),
+      )
+      await waitFor(() => expect(screen.getByTestId('address')).toHaveTextContent(/^$/))
     })
 
     it('stays „Hochgeladen“ without a failed row and offers no status filter', async () => {

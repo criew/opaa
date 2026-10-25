@@ -79,8 +79,9 @@ interface DocumentState {
   foldersByLibrary: Record<string, LibraryFolderListItem[]>
   breadcrumbByLibrary: Record<string, LibraryFolderBreadcrumbItem[]>
   // Refreshed by loadStatusCounts, after every change to the documents and whenever a polled
-  // document leaves PENDING - not on paging or searching, which change no state.
-  statusCountsByLibrary: Record<string, DocumentStatusCounts>
+  // document leaves PENDING - not on paging or searching, which change no state. Absent while
+  // the first count runs, null when it failed.
+  statusCountsByLibrary: Record<string, DocumentStatusCounts | null>
   isLoading: boolean
   error: string | null
   // Set instead of `error` when a requested folderId turned out to be unknown/foreign (404) -
@@ -201,7 +202,12 @@ async function refreshStatusCounts(
     ) as DocumentStatusCounts
     set({ statusCountsByLibrary: { ...get().statusCountsByLibrary, [libraryId]: counts } })
   } catch {
-    // the counts only add to the list, which reports its own failures
+    // the counts only add to the list, which reports its own failures; earlier counts stay, a
+    // first failed count is known as such
+    if (isStaleSessionEpoch(sessionEpoch) || latestCountByLibrary[libraryId] !== sequence) return
+    if (get().statusCountsByLibrary[libraryId] === undefined) {
+      set({ statusCountsByLibrary: { ...get().statusCountsByLibrary, [libraryId]: null } })
+    }
   }
 }
 

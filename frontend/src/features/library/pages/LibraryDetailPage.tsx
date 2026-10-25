@@ -196,10 +196,11 @@ export default function LibraryDetailPage() {
     s.uploadErrors.some((message) => /kontingent/i.test(message)),
   )
   // the failed rows, counted by the documents area - the list is readable from VIEWER on, so
-  // every role may see the number
-  const failedDocuments = useDocumentStore((s) =>
-    libraryId ? (s.statusCountsByLibrary[libraryId]?.FAILED ?? null) : null,
+  // every role may see the number; undefined while the first count runs
+  const statusCounts = useDocumentStore((s) =>
+    libraryId ? s.statusCountsByLibrary[libraryId] : undefined,
   )
+  const failedDocuments = statusCounts?.FAILED ?? null
   const upload = useDocumentUpload(libraryId ?? '', mayManageDocuments, () => {
     if (libraryId) void loadLibraryDetails(libraryId)
   })
@@ -417,13 +418,17 @@ export default function LibraryDetailPage() {
           })}
           responsibleHref={tabSearch('freigaben')}
           status={
-            <LibraryStateLink
-              state={state}
-              focusRef={erasureNoticeRef}
-              onRetry={
-                isRunning && run.statusUnknown ? () => retryStatusPolling(libraryId) : undefined
-              }
-            />
+            // an uncounted upload library is not yet known to be fine: no „Hochgeladen“ that
+            // turns into „Teilweise fehlgeschlagen“ a moment later
+            isUploadLibrary && statusCounts === undefined && state.word === 'Hochgeladen' ? null : (
+              <LibraryStateLink
+                state={state}
+                focusRef={erasureNoticeRef}
+                onRetry={
+                  isRunning && run.statusUnknown ? () => retryStatusPolling(libraryId) : undefined
+                }
+              />
+            )
           }
           // the runs with their own „Vollabgleich starten“ are the managers'; whoever else may
           // start a run finds the full reconciliation here

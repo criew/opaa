@@ -516,6 +516,14 @@ describe('documentStore', () => {
       expect(useDocumentStore.getState().error).toBeNull()
     })
 
+    it('knows a first failed count as unknown', async () => {
+      mockCountLibraryDocuments.mockRejectedValue(new Error('offline'))
+
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+
+      expect(useDocumentStore.getState().statusCountsByLibrary['library-1']).toBeNull()
+    })
+
     it('passes the status through and keeps it on a poll tick', async () => {
       vi.useFakeTimers()
       mockGetLibraryDocuments.mockResolvedValue(page([pendingDocument]))
