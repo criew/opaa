@@ -104,8 +104,8 @@ class TransactionCallbacksTest {
 
   private static void commit() {
     var synchronizations = TransactionSynchronizationManager.getSynchronizations();
-    TransactionSynchronizationManager.clearSynchronization();
     TransactionSynchronizationUtils.invokeAfterCommit(synchronizations);
+    TransactionSynchronizationManager.clearSynchronization();
     TransactionSynchronizationUtils.invokeAfterCompletion(
         synchronizations, TransactionSynchronization.STATUS_COMMITTED);
   }
