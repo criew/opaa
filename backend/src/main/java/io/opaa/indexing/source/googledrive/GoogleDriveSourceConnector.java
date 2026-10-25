@@ -36,6 +36,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,6 +60,12 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
 
   /** The type key this connector serves. */
   public static final SourceType TYPE = SourceType.of("GOOGLE_DRIVE");
+
+  /**
+   * The factory default of the full-sync rhythm. The administration may set another for the
+   * installation, a library its own ({@code FullSyncRhythm}).
+   */
+  public static final Duration FULL_SYNC_INTERVAL = Duration.ofDays(7);
 
   /** The fixed address of the Drive API, the only target of the access token. */
   public static final URI API_BASE = URI.create("https://www.googleapis.com");
@@ -93,7 +100,7 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Google Drive")
             .withDataFlow("source-google-drive")
-            .withFullSyncInterval(apis.properties().fullSyncInterval())
+            .withFullSyncInterval(FULL_SYNC_INTERVAL)
             .withProfiles(
                 ProfileDeclaration.of(
                         ConnectionProfileSupport.OPTIONAL,

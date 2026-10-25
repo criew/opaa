@@ -8,6 +8,8 @@ import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.RunSecretContract;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSettings;
@@ -92,17 +94,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
 
   private static ConfluenceProperties properties() {
     return new ConfluenceProperties(
-        2,
-        null,
-        null,
-        3,
-        Duration.ofSeconds(2),
-        0,
-        0,
-        0,
-        Duration.ofDays(7),
-        Duration.ofMinutes(10),
-        0);
+        2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, Duration.ofMinutes(10), 0);
   }
 
   @Override
@@ -153,17 +145,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
     when(syncState.save(any())).thenAnswer(call -> call.getArgument(0));
     ConfluenceProperties properties =
         new ConfluenceProperties(
-            2,
-            null,
-            null,
-            3,
-            Duration.ofSeconds(2),
-            0,
-            0,
-            0,
-            Duration.ofDays(7),
-            Duration.ofMinutes(10),
-            0);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, Duration.ofMinutes(10), 0);
     new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(properties, TargetAddressValidator.disabled(), wait -> {}),
             properties,
@@ -176,6 +158,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             new ScanJournal(syncState),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             Clock.fixed(NOW, java.time.ZoneOffset.UTC),
             template)
         .execute(jobId, library, runMode());

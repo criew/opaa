@@ -23,6 +23,7 @@ import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,13 @@ public class ConfluenceSourceConnector
   /** The type key this connector serves. */
   public static final SourceType TYPE = SourceType.of("CONFLUENCE");
 
+  /**
+   * The factory default of the full-sync rhythm (ADR-0023, Entscheidung 4): only the full run
+   * reaches deletions Confluence never reports. The administration may set another for the
+   * installation, a library its own ({@code FullSyncRhythm}).
+   */
+  public static final Duration FULL_SYNC_INTERVAL = Duration.ofDays(7);
+
   private static final Logger log = LoggerFactory.getLogger(ConfluenceSourceConnector.class);
 
   /** Upper bound of a space selection. */
@@ -64,7 +72,6 @@ public class ConfluenceSourceConnector
 
   public ConfluenceSourceConnector(
       ConfluenceConnectionService connectionService,
-      ConfluenceProperties properties,
       SourceSyncStateRepository syncStateRepository,
       ConfluencePushReceiver webhookService) {
     this.connectionService = connectionService;
@@ -74,7 +81,7 @@ public class ConfluenceSourceConnector
         SourceConnectorDescriptor.remoteRun(TYPE, "Confluence")
             .withDataFlow("source-confluence")
             .withPushIntake(new PushIntake("confluenceWebhookSecret"))
-            .withFullSyncInterval(properties.fullSyncInterval())
+            .withFullSyncInterval(FULL_SYNC_INTERVAL)
             .withProfiles(
                 ProfileDeclaration.of(
                         ConnectionProfileSupport.OPTIONAL,

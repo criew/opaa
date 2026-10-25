@@ -100,6 +100,7 @@ protokollereignisse#embedding-reindex-cancelled
 protokollereignisse#embedding-reindex-completed
 protokollereignisse#embedding-reindex-started
 protokollereignisse#external-access-settings-changed
+protokollereignisse#full-sync-rhythm-changed
 protokollereignisse#gemeinsame-angaben
 protokollereignisse#governance-settings-changed
 protokollereignisse#group-changed
@@ -253,6 +254,11 @@ voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
 voreinstellungen#einstellungen
 voreinstellungen#external-access-settings-token-max-lifetime-days
+voreinstellungen#full-sync-rhythm-settings-interval-days-confluence
+voreinstellungen#full-sync-rhythm-settings-interval-days-dropbox
+voreinstellungen#full-sync-rhythm-settings-interval-days-google-drive
+voreinstellungen#full-sync-rhythm-settings-interval-days-onedrive
+voreinstellungen#full-sync-rhythm-settings-interval-days-sharepoint
 voreinstellungen#io-opaa-account-localtokencleanupservice-retention
 voreinstellungen#io-opaa-audit-auditincidentscopegrant-usable-window
 voreinstellungen#io-opaa-externalaccess-externalaccessalertretention-retention
@@ -291,17 +297,13 @@ voreinstellungen#opaa-features-external-access-enabled
 voreinstellungen#opaa-features-metadata-enabled
 voreinstellungen#opaa-features-prompt-libraries-enabled
 voreinstellungen#opaa-features-speech-input-enabled
-voreinstellungen#opaa-indexing-confluence-full-sync-interval
 voreinstellungen#opaa-indexing-dropbox-api-base
 voreinstellungen#opaa-indexing-dropbox-authorization-endpoint
 voreinstellungen#opaa-indexing-dropbox-content-base
-voreinstellungen#opaa-indexing-dropbox-full-sync-interval
 voreinstellungen#opaa-indexing-dropbox-revocation-endpoint
 voreinstellungen#opaa-indexing-dropbox-token-endpoint
 voreinstellungen#opaa-indexing-filesystem-allowlist
-voreinstellungen#opaa-indexing-google-drive-full-sync-interval
 voreinstellungen#opaa-indexing-nextcloud-full-descent-interval
-voreinstellungen#opaa-indexing-sharepoint-full-sync-interval
 voreinstellungen#opaa-malware-scan-enabled
 voreinstellungen#opaa-malware-scan-host
 voreinstellungen#opaa-permission-minimum-group-size

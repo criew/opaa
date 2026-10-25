@@ -23,6 +23,8 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
@@ -109,6 +111,7 @@ class GoogleDriveServiceAccountRejectionTest {
             documentRepository,
             mock(LibraryFolderService.class),
             new ScanJournal(syncState),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())

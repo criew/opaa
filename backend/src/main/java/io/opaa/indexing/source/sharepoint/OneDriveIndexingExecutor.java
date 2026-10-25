@@ -6,6 +6,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.ScanJournal;
@@ -32,6 +33,7 @@ public class OneDriveIndexingExecutor implements SourceIndexingExecutor {
 
   private final GraphConnections graphs;
   private final ScanJournal journal;
+  private final FullSyncRhythm rhythm;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final DriveRun driveRun;
@@ -42,11 +44,13 @@ public class OneDriveIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       ScanJournal journal,
+      FullSyncRhythm rhythm,
       Clock clock,
       IndexingRunTemplate runTemplate,
       SupportedDocumentFormats supportedFormats) {
     this.graphs = graphs;
     this.journal = journal;
+    this.rhythm = rhythm;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.driveRun =
@@ -86,9 +90,10 @@ public class OneDriveIndexingExecutor implements SourceIndexingExecutor {
       return IndexingRunMode.FULL;
     }
     Duration interval =
-        oneDrive.fullSyncIntervalDays() != null
-            ? Duration.ofDays(oneDrive.fullSyncIntervalDays())
-            : graphs.properties().fullSyncInterval();
+        rhythm.interval(
+            OneDriveSourceConnector.TYPE,
+            OneDriveSourceConnector.FULL_SYNC_INTERVAL,
+            oneDrive.fullSyncIntervalDays());
     return journal
         .find(library.getId())
         .filter(

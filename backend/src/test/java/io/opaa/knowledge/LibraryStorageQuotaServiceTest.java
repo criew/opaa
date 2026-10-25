@@ -27,7 +27,7 @@ class LibraryStorageQuotaServiceTest {
   private final UUID libraryId = UUID.randomUUID();
 
   private LibraryStorageQuotaService service(long quotaBytes) {
-    LibraryProperties properties = new LibraryProperties(quotaBytes, 0);
+    LibraryProperties properties = new LibraryProperties(quotaBytes);
     return new LibraryStorageQuotaService(
         documentRepository, properties, personalQuota, transactionManager);
   }

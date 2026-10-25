@@ -35,8 +35,9 @@ import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.registry.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -112,8 +113,6 @@ class KnowledgeLibraryServiceShareCapTest {
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
     eventPublisher = mock(ApplicationEventPublisher.class);
 
-    ConfluenceProperties confluenceProperties =
-        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
             mock(AssetSuccessionSource.class),
@@ -148,13 +147,13 @@ class KnowledgeLibraryServiceShareCapTest {
                 .sourceSyncStateRepository(
                     mock(io.opaa.indexing.spi.SourceSyncStateRepository.class))
                 .confluenceConnectionService(mock(ConfluenceConnectionService.class))
-                .confluenceProperties(confluenceProperties)
                 .registry(),
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             mock(ConnectorReleaseService.class),
             OwnAddressDrafts.over(TestSourceConnectors.connectors().registry(), libraryRepository),
             mock(io.opaa.asset.OwnerOnlyRule.class),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             mock(io.opaa.connection.PrivateLibraryConnections.class));
 
     organizationId = UUID.randomUUID();

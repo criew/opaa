@@ -87,8 +87,8 @@ An der einen Aufnahmestelle liefert `LibraryStorageQuotaService#verdictFor` `Quo
 (`WITHIN`, `LIBRARY_EXHAUSTED`, `PERSON_EXHAUSTED`); das Kontingent je Bibliothek prüft zuerst, für
 eine Nur-Besitzerin-Bibliothek zählt danach die Summe über alle privaten Bibliotheken derselben
 Besitzerin (`PersonalStorageQuota#usageOf`). Grenze: ein hausweiter Wert in
-`private_storage_quota_settings` (`0` = unbegrenzt), ohne Zeile die Start-Property
-`opaa.library.private-storage-quota-bytes`; setzen darf nur die Systemverwaltung
+`private_storage_quota_settings` (`0` = unbegrenzt), ohne Zeile die Werkseinstellung
+`PersonalStorageQuota#DEFAULT_QUOTA_BYTES` (10 GiB, ADR-0060 Entscheidung 1); setzen darf nur die Systemverwaltung
 (`PRIVATE_STORAGE_QUOTA_CHANGED`). Prüfung und Speichern laufen unter
 `LibraryStorageQuotaService#holdIntake`, einer Advisory-Sperre je Besitzerin in der Transaktion, die
 prüft und schreibt (ADR-0053 Entscheidung 10); gezählt

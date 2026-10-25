@@ -19,7 +19,6 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
@@ -76,7 +75,6 @@ class LibraryResponseMapperTest {
   private final ConfluenceSourceConnector confluenceConnector =
       new ConfluenceSourceConnector(
           mock(ConfluenceConnectionService.class),
-          new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
           mock(SourceSyncStateRepository.class),
           mock(ConfluenceWebhookService.class));
 

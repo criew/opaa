@@ -17,6 +17,8 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.RunSecretContract;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSettings;
@@ -138,6 +140,7 @@ class OneDriveRunSecretContractTest extends RunSecretContract {
             documentRepository,
             mock(LibraryFolderService.class),
             new ScanJournal(syncState),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             Clock.systemUTC(),
             template,
             ProductionDocumentFormats.supportedFormats())

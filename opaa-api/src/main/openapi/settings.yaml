@@ -157,7 +157,8 @@ components:
             shortens what it keeps as evidence: where mail goes, the mail templates (their links
             reach invited persons), the outbound proxy, self-registration, password length and link
             lifetimes, the external access channel with its networks, lifetime and quota, the
-            allowed link targets, and every retention period. The preview marks such a change.
+            allowed link targets, every retention period, and the full-sync rhythm (how long what
+            a source deleted stays findable). The preview marks such a change.
         before:
           nullable: true
           description: >-

@@ -8,8 +8,8 @@ import java.time.Instant;
 
 /**
  * The house-wide storage quota across all private libraries of a person as the system
- * administration set it; without the row the configured default applies. Written only through
- * {@link PrivateStorageQuotaSettingRepository#upsert}.
+ * administration set it; without the row the factory default applies. Written only through {@link
+ * PrivateStorageQuotaSettingRepository#upsert}.
  */
 @Entity
 @Table(name = "private_storage_quota_settings")

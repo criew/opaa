@@ -65,7 +65,7 @@ zu sieben direkt als Kästchen, sonst über „Spaces auswählen …" im Auswahl
 nur, was das Token lesen darf. „Alle Spaces" gibt es nicht, die Spaces werden immer einzeln
 gewählt.
 
-Den Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer die Vorgabe der Installation). Edition und
+Den Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer gilt der Rhythmus der Quellart, [Konnektoren](README.md#14-vollabgleich-rhythmus)). Edition und
 Spaces sieht jede Leseberechtigung; Adresse, Webhook-Zustand und Laufprotokoll nur Verwaltende.
 
 **Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Gibt der Zugang die
@@ -257,7 +257,6 @@ Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen `OPAA_IND
 | `max-response-bytes` | 10485760 (10 MiB) | Obergrenze je JSON-Antwort |
 | `max-attachment-size-bytes` | 20971520 (20 MiB) | Obergrenze je Anhang |
 | `max-listing-pages` | 500 | Seiten je Auflistung, bevor sie abgebrochen wird |
-| `full-sync-interval` | 7d | Vorgabe für den Vollabgleich-Rhythmus; je Bibliothek überschreibbar |
 | `incremental-overlap` | 10m | Überlappung des Änderungsfensters nach hinten |
 | `request-budget-per-run` | 50000 | Anfragen je Lauf; `0` schaltet das Budget ab |
 
