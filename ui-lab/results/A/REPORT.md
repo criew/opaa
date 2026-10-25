@@ -6,7 +6,7 @@ Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-bas
 
 - **Eine Spalte, 720 px:** Kopf, Reiterleiste und alle Reiter haben die Breite von Assistent und Bearbeiten (`CONTENT_WIDTH`).
 - **Ein Kopf für alle Arten, feste Höhe:**
-  - Chips (Art · Quellart in Kurzform · Rolle) · Titel (1280 px eine Zeile, 320 px zwei, Rest im Tooltip) · Beschreibung (eine Zeile) · Kennzahlzeile.
+  - Chips (Art · Quellart in Kurzform · Rolle) · Titel (1280 px eine Zeile, Rest im Tooltip; 320 px 14 px Schrift, drei Zeilen reserviert, nichts gekürzt, Stift rechts in der Aktionszeile) · Beschreibung (eine Zeile) · Kennzahlzeile.
   - Hauptaktion rechts oben: „Jetzt indizieren“, bei Upload „Hochladen“ an derselben Stelle.
   - Die Reiterleiste liegt in jedem Bild der Matrix auf derselben Höhe.
 - **Ein Zustandswort** als letztes Element der Kennzahlzeile, bei 320 px als erste Zeile.
@@ -178,7 +178,7 @@ Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-bas
 
 ## Nachcheck 1 – Runde 3
 
-Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt; R1-22 bleibt offene Frage an den Maintainer.
+Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt, dazu die beiden Maintainer-Entscheidungen vom 25.10. (privat in Spaces erlaubt; Titel bei 320 px kleiner und ungekürzt).
 
 | Punkt | Umsetzung | Beleg |
 |---|---|---|
@@ -202,13 +202,14 @@ Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt; R1-22 bleibt 
 | R1-78 | Hochgeladene Dateien 412 KB / 86 KB / 2,3 MB; Upload `failed`: Kontingent 100 MB, 12 Scans zu ≈ 8 MB | `upload__upload__small__light__1280`, `dokumente__upload__failed__light__1280` |
 | R1-79 | Google Drive: gleicher Umfang in allen Szenarien (Overlay `small` entfernt). S3: Berechtigung „Admin · Verwalter“ passt zum Rollenchip (angemeldetes Konto bekommt eine Zeile mit seiner Rolle, wenn es nicht Eigentümer ist). privat „2,4 GB von 10 GB“ bleibt: Der Wert ist die Summe über alle privaten Bibliotheken | `quelle__gdrive__small__light__1280`, `freigaben__s3__small__light__1280` |
 | Randnotiz SharePoint | „Vollabgleich“ um 12:51 bleibt: SharePoint ist auf täglichen Vollabgleich gestellt, jeder Lauf ist einer | `quelle__sharepoint__failed__light__1280` |
-| R1-22 | **offene Frage an den Maintainer:** Dürfen private Bibliotheken in Spaces verwendet werden? Die Variante zeigt den Reiter Zuordnungen bei privat unverändert | `zuordnungen__privat__scale__light__1280` |
+| R1-22 | geklärt durch Maintainer: private Bibliotheken dürfen in Spaces verwendet werden. „in n Spaces“ und der Reiter Zuordnungen bei privat bleiben, die Fixtures zeigen 1/3/34 Spaces je Szenario | `zuordnungen__privat__scale__light__1280`, `dokumente__privat__small__light__1280` |
+| Maintainer P43 | Titel bei 320 px: 14/19 px, drei Zeilen fest reserviert, kein Abschneiden. Der Stift steht bei 320 px rechts in der Aktionszeile, der Name hat die volle Breite. Reiterleiste bei Namen bis drei Zeilen konstant bei 331 px; der 120-Zeichen-Stresstitel (`scale`) braucht vier Zeilen und schiebt sie auf 350 px – beide ≤ 360 | `dokumente__filesystem__scale__light__320`, `dokumente__upload__small__light__320` |
 
 ## Schwächen
 
 1. Status-Filter, Fehler- und Verarbeitungszahl im Upload-Kopf brauchen einen Parameter `status` an `GET /libraries/{id}/documents` (Spec und Backend); im Prototyp nur im Mock.
 2. Rollen-Legende, „vergeben von“ und Dokumentherkunft nur im Tooltip; Seitengröße entfällt.
-3. Titel bei 1280 px auf eine Zeile gekürzt (Tooltip) – zugunsten von D1; P43 („ohne Abschneiden“) gilt damit nur bei 320 px über zwei Zeilen.
+3. Titel bei 1280 px auf eine Zeile gekürzt (Tooltip) – zugunsten von D1; bei 320 px nie gekürzt, dafür hält D1 dort nur für Namen bis drei Zeilen (≈ 110 Zeichen).
 4. Umfang nutzt weiter `PathLabel` des Assistenten (Pfadform je Art, R1-11/R1-36 dort offen).
 5. `sourceBlock`-Hinweis und „Zugang entfernt“ stehen weiter als getönte Alerts im Reiter Quelle (in keinem Szenario sichtbar).
 6. Messartefakt `clippedText` in `quelle`: der visuell versteckte Zusatz von „Ändern Verbindung“ (wie in F).
