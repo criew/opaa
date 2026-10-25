@@ -29,19 +29,17 @@ Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, vor dem Halt beim Maintainer und 
   - Live-Aktualisierung ist die 4. Zeile bei Confluence und S3.
 - **Übrige Reiter:** gemeinsamer Baustein `shared/ui/TabSection` mit einer Breite (720 px), einem Überschriftenstil und der Aktion oben rechts an der Kante.
 
-## Kennzahlen (Matrix 2, aus `metrics.jsonl`, `metrics-extra.jsonl`)
+## Kennzahlen (Matrix 3, aus `metrics.jsonl`, `metrics-extra.jsonl`)
 
 | Messung | Wert | Budget |
 |---|---|---|
 | `tabsTop` 1280, alle 11 Arten, privat und Leser | 249 in jedem Szenario, 255 in `scale` (± 0 je Szenario) | ≤ 260 ✓ |
-| `tabsTop` 320, alle Arten, privat und Leser | 401, in `scale` 427 (± 0 je Szenario) | ≤ 360 ✗ (Abwägung, Schwäche 1) |
-| `uiWords` small (Dokumente · Quelle · Verlauf · Metadaten · Freigaben · Zuordnungen) | 67–119 · 24–59 · 29–40 · 23–52 · 32–45 · 24–38 | ≤ 150 ✓ |
-| `laeufe__*__scale__light__1280` (ganze Seite mit aufgeklapptem Lauf) | 1 453 px; aufgeklappter Lauf < 900 px | ≤ 900 ✓ |
+| `tabsTop` 320 | 344 in small, failed, partial und slow ✓; 365 in `empty` (Kennzahlzeile zweizeilig, über alle Arten gleich) und für privat (Speicherangabe); 391 in `scale` (dreizeiliger Titel) | ≤ 360, teils ✗ |
+| `uiWords` small (Dokumente · Quelle · Verlauf · Metadaten · Freigaben · Zuordnungen) | 67–89 · 27–57 · 29–39 · 23–51 · 32–45 · 24–37 | ≤ 150 ✓ |
+| aufgeklappter Lauf `scale` | < 900 px | ≤ 900 ✓ |
 | Kontrast (axe, hell und dunkel) | 0 | 0 ✓ |
 | `overflowX` | 0 | 0 ✓ |
-| axe übrig | `label-content-name-mismatch` 158 (Rollen-Select in Freigaben, Auswahl-Checkbox in Dokumente), `target-size` 2 | ✗ |
-
-Gegen Runde 1 behoben: `definition-list` (Fortschrittsleiste im Band entfernt), `heading-order` (Gruppenköpfe im Verlauf h2), `scrollable-region-focusable` (Füllgrad als Liste).
+| axe übrig | `label-content-name-mismatch` 158 (Rollen-Select in Freigaben, Auswahl-Checkboxen), `target-size` 3 | ✗ |
 
 ## Status je D-Punkt
 
@@ -87,7 +85,13 @@ Gegen Runde 1 behoben: `definition-list` (Fortschrittsleiste im Band entfernt), 
 
 ## Schwächen und bewusste Abweichungen
 
-1. **320 px über dem Höhenbudget** (401 statt ≤ 360). Grund: R1-38 und R1-54 verlangen, dass Zustandswort, Datum und Kennzahlen nicht abgeschnitten werden; dafür hat das Feld Stand dort zwei Zeilen und die Kennzahlzeile zwei reservierte Zeilen. Die Höhe bleibt dafür über alle Arten gleich (D1).
+1. **320 px teils über dem Höhenbudget.** In den meisten Szenarien 344 px (≤ 360), nachdem Hauptaktion und Favorit unter 600 px ins ⋯-Menü gewandert sind.
+   - Über dem Budget:
+     - `empty` 365 px: „0 Dokumente · in keinem Space · Erika Muster“ ist zweizeilig.
+     - privat 365 px: wegen der Speicherangabe.
+     - `scale` 391 px: Titel dreizeilig, Kennzahlzeile zweizeilig.
+   - Ein weiteres Kürzen ginge nur auf Kosten von Zustand, Titel oder Kennzahlen, die das Review ungekürzt verlangt (R1-38, R1-54). Diese Abwägung entscheidet der Maintainer.
+   - Die Kennzahlzeile ist nicht mehr reserviert, sondern bricht nur bei Bedarf um. Innerhalb eines Szenarios bleibt die Höhe über alle 11 Arten gleich, außer privat.
 2. **Titel begrenzt**: höchstens 2 Zeilen ab 600 px, 3 darunter, voller Name im Tooltip. Sonst springt der Kopf je nach Namenslänge.
 3. **Band ohne Rahmen** (Abweichung von der Skizze): Haarlinie oben und Trenner, kein Kasten. Gründe: Projektregel „kein ruhender Inhalt in einer Karte“ (`PageSection.test.tsx`) und P4.
 4. **Umfang zweimal** (Band und Reiter Quelle): gewollte Doppelung der Richtung B, im Band nur Kurzform mit Link; auf dem Reiter Quelle selbst fehlt der Link.
@@ -101,26 +105,35 @@ Gegen Runde 1 behoben: `definition-list` (Fortschrittsleiste im Band entfernt), 
 
 ## Gebrochene Unit-Tests
 
-Die Basis ist schon rot: 107 Fehlschläge, vor allem im Assistenten und in den Quellformularen. Variante B (Runde 2): 207, also **100 zusätzliche**. Je Datei (Variante / Basis):
+Die Basis ist schon rot: 107 Fehlschläge, vor allem im Assistenten und in den Quellformularen. Variante B (Runde 3): 226, also **119 zusätzliche**. Je Datei (Variante / Basis):
 
 | Datei | Variante | Basis |
 |---|---|---|
 | `LibraryDetailPage.test.tsx` | 77 | 19 |
+| `AssetGrantsSection.test.tsx` | 26 | 0 |
 | `LibrarySourceSection.test.tsx` | 22 | 18 |
-| `AssetGrantsSection.test.tsx` | 10 | 0 |
-| `LibraryMetadataFieldsSection.test.tsx` | 9 | 0 |
-| `LibraryDocumentList.test.tsx` | 5 | 0 |
+| `LibraryMetadataFieldsSection.test.tsx` | 11 | 0 |
+| `LibraryDocumentList.test.tsx` | 6 | 0 |
 | `LibraryDetailPage.privateLibrary.test.tsx` | 5 | 0 |
 | `MetadataExtractionSettingsSection.test.tsx` | 4 | 0 |
 | `AssetSpacesList.test.tsx` | 2 | 0 |
 | `AssetDetailHeader.test.tsx`, `AssetOwnerSection.test.tsx`, `LibraryExternalAccessSection.test.tsx` | je 1 | 0 |
 
-Unverändert gegen die Basis: `LibraryCreatePage*` (51), `LibrarySourceSection.sourceConnection` (5), `ConnectionProfileSelect` (4), Quellformulare und Utils (9). Ursachen: entfernte und geänderte Texte, Läufe im neuen Reiter, Eigentümerin nicht mehr in der Liste, ⋯-Menüs statt Knöpfen. `lint`, `tsc` und `build` bestehen.
+Unverändert gegen die Basis sind `LibraryCreatePage*` (51), `LibrarySourceSection.sourceConnection` (5), `ConnectionProfileSelect` (4) sowie Quellformulare und Utils (9).
+
+Ursachen:
+- entfernte und geänderte Texte
+- Läufe im neuen Reiter
+- die Eigentümerin steht nicht mehr in der Liste
+- ⋯-Menüs statt Knöpfen
+- bei 0 Freigaben der Leerzustand statt des offenen Formulars
+
+`lint`, `tsc` und `build` bestehen.
 
 ## `git diff --stat` (Code gegen die Basis, ohne Ergebnisbilder)
 
 ```
- 48 files changed, 3685 insertions(+), 1696 deletions(-)
+ 49 files changed, 3993 insertions(+), 1734 deletions(-)
  neu: LibraryStatusBand.tsx, LibraryRunHistory.tsx, libraryState.ts, scopeFacts.ts,
       shared/ui/TabSection.tsx (mit ListSearchField)
  groß: LibraryDetailPage.tsx, LibrarySourceSection.tsx, AssetGrantsSection.tsx,

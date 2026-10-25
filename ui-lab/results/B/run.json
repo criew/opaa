@@ -1,7 +1,7 @@
 {
   "args": {
     "base": "http://localhost:5190",
-    "out": "/tmp/claude-0/-home-user-opaa/5d7cb538-e92f-5f09-b056-dbf0e964e131/scratchpad/r3-main",
+    "out": "/tmp/claude-0/-home-user-opaa/5d7cb538-e92f-5f09-b056-dbf0e964e131/scratchpad/r4-main",
     "flow": "library-detail",
     "concurrency": 3,
     "chromium": "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome",
@@ -31,7 +31,7 @@
       "upload"
     ]
   },
-  "shots": 1550,
-  "seconds": 4806,
-  "finishedAt": "2026-10-25T03:45:43.740Z"
+  "shots": 1556,
+  "seconds": 4952,
+  "finishedAt": "2026-10-25T05:54:09.505Z"
 }
