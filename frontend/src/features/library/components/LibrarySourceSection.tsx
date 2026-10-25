@@ -78,7 +78,7 @@ export default function LibrarySourceSection({
   library,
   canEditSource,
   erasing = false,
-  connectionStatus = null,
+  connectionStatus,
   unreadable = [],
 }: LibrarySourceSectionProps) {
   const [liveOpen, setLiveOpen] = useState(false)

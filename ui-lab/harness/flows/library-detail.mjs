@@ -127,6 +127,22 @@ async function openHistory(page) {
   return true
 }
 
+/**
+ * The row „Verbindung“ shows its last known state only once the run list has arrived; until then
+ * it says nothing. Waits for that state (or gives up after 6 s for a source without runs).
+ */
+async function connectionSettled(page) {
+  const row = page.locator('[data-row$="row-connection"]').first()
+  if (!(await row.count())) return
+  await page
+    .waitForFunction(
+      (el) => /zuletzt|abgelehnt|abgelaufen|nicht erreichbar|nicht geprüft/.test(el?.textContent ?? ''),
+      await row.elementHandle(),
+      { timeout: 6000 },
+    )
+    .catch(() => {})
+}
+
 /** Expands the newest run, waits for its details and scrolls the „Läufe“ heading to the top. */
 async function openRuns(page) {
   const heading = await firstVisible(page.getByRole('heading', { name: /^Läufe$/ }).or(page.getByText(/^Läufe$/)))
@@ -189,6 +205,7 @@ export async function run(page, job, ctx) {
         ctx.notFound(area, 'no runs section (reader)')
         continue
       }
+      if (area === 'quelle') await connectionSettled(page)
       await rest(page)
       await ctx.shoot(area)
     } catch (e) {

@@ -126,7 +126,11 @@ function PlaceLabel({ place, mark }: { place: string; mark?: ReactNode }) {
           {head}
         </Box>
       )}
-      <Box component="span" sx={{ ...cut, flex: '0 1 auto', minWidth: 0 }}>
+      {/* the file name never gives way while a leading level can */}
+      <Box
+        component="span"
+        sx={{ ...cut, flex: head ? '0 0 auto' : '0 1 auto', minWidth: 0, maxWidth: '100%' }}
+      >
         {tail}
       </Box>
       {mark}
@@ -462,13 +466,13 @@ function RunRow({
                 whiteSpace: 'nowrap',
               }}
             >
-              {formatDateTime(run.startedAt).slice(0, 6)}
+              {formatDateTime(run.startedAt).slice(0, 6)} · {triggerLabel(run, showMode)}
             </Typography>
           </Box>
           <Typography
             sx={{ display: { xs: 'block', md: 'none' }, fontSize: 13, color: 'text.secondary' }}
           >
-            {resultLabel(run, live)} · {triggerLabel(run, showMode)}
+            {resultLabel(run, live)}
           </Typography>
         </Box>
         <Typography sx={{ ...cell, display: { xs: 'none', md: 'block' } }}>

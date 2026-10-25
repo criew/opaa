@@ -35,7 +35,13 @@ export default function PathLabel({ path }: { path: string }) {
         )}
         <Box
           component="span"
-          sx={{ ...ellipsis, flex: head ? '0 1 auto' : '1 1 auto', minWidth: 0 }}
+          // the last segment never gives way while a leading one can; alone, it is cut at its end
+          sx={{
+            ...ellipsis,
+            flex: head ? '0 0 auto' : '1 1 auto',
+            minWidth: 0,
+            maxWidth: '100%',
+          }}
         >
           {tail}
         </Box>

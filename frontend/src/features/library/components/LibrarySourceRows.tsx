@@ -59,7 +59,7 @@ export default function LibrarySourceRows({
   library,
   canEdit,
   connectionPrelude,
-  connectionStatus = null,
+  connectionStatus,
   fixedScope = null,
   unreadable = [],
   ref,

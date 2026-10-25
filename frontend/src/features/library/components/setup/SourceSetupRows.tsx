@@ -69,7 +69,10 @@ interface SourceSetupRowsProps<V> {
   onDiscard?: (row: SetupRowId) => void
   /** Edit mode: whether the row differs from what is stored. */
   isDirty?: (row: SetupRowId) => boolean
-  /** Edit mode: the connection's last known state, shown while no check has run here. */
+  /**
+   * Edit mode: the connection's last known state, shown while no check has run here; `undefined`
+   * while it is still loading, so the row says nothing rather than something false.
+   */
   knownConnectionStatus?: RowStatus | null
   /** A line under a closed row's summary, e.g. the scope entries the last run could not read. */
   rowNotes?: Partial<Record<SetupRowId, ReactNode>>
@@ -106,7 +109,7 @@ export default function SourceSetupRows<V>({
   onSave,
   onDiscard,
   isDirty,
-  knownConnectionStatus = null,
+  knownConnectionStatus,
   rowNotes,
   fixedScope = null,
   unreadable = [],
@@ -324,6 +327,7 @@ export default function SourceSetupRows<V>({
       case 'checking':
         return { tone: 'neutral', label: 'wird geprüft' }
       default:
+        if (knownConnectionStatus === undefined) return null
         return knownConnectionStatus ?? { tone: 'neutral', label: 'nicht geprüft' }
     }
   }

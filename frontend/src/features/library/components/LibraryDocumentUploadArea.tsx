@@ -2,7 +2,9 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
+import { EmptyLine, TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import type { Theme } from '@mui/material/styles'
 import { ACCEPTED_FILE_EXTENSIONS } from '../hooks/useDocumentUpload'
 import type { DocumentUpload } from '../hooks/useDocumentUpload'
 import { directoryPathFromWebkitRelativePath, filterAcceptedFiles } from '../utils/directoryEntries'
@@ -11,7 +13,7 @@ interface LibraryDocumentUploadAreaProps {
   upload: DocumentUpload
   canManageFolders: boolean
   onNewFolder: () => void
-  /** The library holds nothing yet: the drop zone with its buttons is the whole tab. */
+  /** The library holds nothing yet: one sentence with „Dateien hochladen“ is the whole tab. */
   empty: boolean
 }
 
@@ -24,12 +26,23 @@ export function UploadToolbarActions({
   canManageFolders,
   onNewFolder,
 }: Omit<LibraryDocumentUploadAreaProps, 'empty'>) {
+  // below 600 px the head's main action sits in „⋯“: the toolbar shows it as its first button
+  const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   return (
     <Stack
       direction="row"
       spacing={2}
       sx={{ alignItems: 'center', flexWrap: 'wrap', '& .MuiButton-text': { px: 0, minWidth: 0 } }}
     >
+      {compact && (
+        <Button
+          size="small"
+          onClick={() => upload.fileInputRef.current?.click()}
+          disabled={upload.isUploading}
+        >
+          Dateien hochladen
+        </Button>
+      )}
       <Button
         size="small"
         onClick={() => upload.folderInputRef.current?.click()}
@@ -47,16 +60,14 @@ export function UploadToolbarActions({
 }
 
 /**
- * The upload affordances of an UPLOAD library: the hidden file and folder pickers always, the drop
- * zone only while the library is empty - afterwards the list itself takes the drop. Files are
- * picked from the head's „Dateien hochladen“; folders from here and the toolbar.
+ * The upload affordances of an UPLOAD library: the hidden file and folder pickers always, the
+ * empty state while nothing is there - afterwards the list itself takes the drop. Folders are
+ * picked from the toolbar or, while the library is empty, from the head's „⋯“.
  */
 export default function LibraryDocumentUploadArea({
   upload,
-  canManageFolders,
-  onNewFolder,
   empty,
-}: LibraryDocumentUploadAreaProps) {
+}: Pick<LibraryDocumentUploadAreaProps, 'upload' | 'empty'>) {
   const {
     isUploading,
     isDragActive,
@@ -71,18 +82,10 @@ export default function LibraryDocumentUploadArea({
 
   return (
     <Stack spacing={1.5} sx={{ mb: empty || isUploading ? 3 : 0 }}>
+      {/* empty: one sentence with the one action, the same pattern as every tab; files can still
+          be dropped on it, but nothing asks for a drag a touch screen cannot do */}
       {empty && (
         <Box
-          role="button"
-          tabIndex={0}
-          aria-label="Dateien oder Ordner hierher ziehen zum Hochladen"
-          onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              fileInputRef.current?.click()
-            }
-          }}
           onDragOver={(e) => {
             e.preventDefault()
             setIsDragActive(true)
@@ -91,17 +94,18 @@ export default function LibraryDocumentUploadArea({
           onDrop={handleDrop}
           sx={{
             maxWidth: TAB_CONTENT_WIDTH,
-            border: '2px dashed',
-            borderColor: isDragActive ? 'primary.main' : 'divider',
-            borderRadius: 1,
-            p: 3,
-            textAlign: 'center',
-            cursor: 'pointer',
-            color: 'text.secondary',
-            bgcolor: isDragActive ? 'action.hover' : 'transparent',
+            outline: isDragActive ? '2px dashed' : 'none',
+            outlineColor: 'primary.main',
           }}
         >
-          <Typography>Noch keine Dokumente. Dateien hierher ziehen</Typography>
+          <EmptyLine
+            text="Noch keine Dokumente."
+            action={
+              <Button size="small" onClick={() => fileInputRef.current?.click()}>
+                Dateien hochladen
+              </Button>
+            }
+          />
         </Box>
       )}
       <input
@@ -147,31 +151,6 @@ export default function LibraryDocumentUploadArea({
           e.target.value = ''
         }}
       />
-      {/* „Dateien hochladen“ is the head's main action; here only the other two ways in */}
-      {empty && (
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            '& .MuiButton-text': { px: 0, minWidth: 0 },
-          }}
-        >
-          <Button
-            size="small"
-            onClick={() => folderInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            Ordner hochladen
-          </Button>
-          {canManageFolders && (
-            <Button size="small" onClick={onNewFolder}>
-              Neuer Ordner
-            </Button>
-          )}
-        </Stack>
-      )}
       {/* a running upload is text in fg-2, no bar across the width (G 5.5); the band says „Läuft“ */}
       {isUploading && (
         <Typography role="status" sx={{ fontSize: 13, color: 'text.secondary' }}>

@@ -44,7 +44,7 @@ export interface LibraryDocumentsSectionProps {
   /** A connector library's first run; offered in the empty state only when given. */
   onIndexNow?: () => void
   /** Opens the file picker of an upload library - the head's main action uses it. */
-  uploadPickerRef?: Ref<{ open: () => void }>
+  uploadPickerRef?: Ref<{ open: () => void; openFolder: () => void }>
 }
 
 /**
@@ -179,6 +179,7 @@ export default function LibraryDocumentsSection({
   const upload = useDocumentUpload(libraryId, canManage, onDocumentsChanged)
   useImperativeHandle(uploadPickerRef, () => ({
     open: () => upload.fileInputRef.current?.click(),
+    openFolder: () => upload.folderInputRef.current?.click(),
   }))
 
   // Leaving the shown list (into a folder or the anchor's worklist) drops its search and selection.
@@ -248,12 +249,7 @@ export default function LibraryDocumentsSection({
     !missingFieldParam &&
     !folderIdParam
   const uploadArea = isUploadLibrary && canManage && (
-    <LibraryDocumentUploadArea
-      upload={upload}
-      canManageFolders={canManageFolders}
-      onNewFolder={() => setNewFolderDialogOpen(true)}
-      empty={libraryEmpty}
-    />
+    <LibraryDocumentUploadArea upload={upload} empty={libraryEmpty} />
   )
 
   if (libraryEmpty) {

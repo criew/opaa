@@ -194,13 +194,17 @@ export default function LibraryDetailPage() {
     libraryId ? (s.runHistoryByLibrary[libraryId] ?? NO_RUNS) : NO_RUNS,
   )
   const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
+  // whether the run history has arrived: until then the connection row claims nothing
+  const runsLoaded = useIndexingStore((s) =>
+    libraryId ? s.runHistoryByLibrary[libraryId] !== undefined : false,
+  )
   const uploadErrors = useDocumentStore((s) => s.uploadErrors)
   const isUploading = useDocumentStore((s) => s.isUploading)
   const loadedDocuments = useDocumentStore((s) =>
     libraryId ? s.documentsByLibrary[libraryId] : undefined,
   )
   const newestRun = runs[0] ?? null
-  const uploadPickerRef = useRef<{ open: () => void }>(null)
+  const uploadPickerRef = useRef<{ open: () => void; openFolder: () => void }>(null)
 
   // The head, the run table and the run detail read one history (D3).
   useEffect(() => {
@@ -543,6 +547,12 @@ export default function LibraryDetailPage() {
         deleteDisabled={eraseBusy}
         // one main action at the same place for every library: run the source, or upload; a
         // running run shows its progress in the band, not on the button (D7)
+        // folders go in from „⋯“ as well, so an empty upload library offers them too
+        menuItems={
+          isUpload && mayManageDocuments
+            ? [{ label: 'Ordner hochladen', onClick: () => uploadPickerRef.current?.openFolder() }]
+            : undefined
+        }
         primaryAction={
           connectorSourceType && mayManageDocuments
             ? {
@@ -676,10 +686,11 @@ export default function LibraryDetailPage() {
               library={details}
               canEditSource={canEdit}
               erasing={erasing}
-              connectionStatus={connectionStatusOf(
-                runs,
-                connectorConfiguration?.setup?.signsIn ?? true,
-              )}
+              connectionStatus={
+                runsLoaded
+                  ? connectionStatusOf(runs, connectorConfiguration?.setup?.signsIn ?? true)
+                  : undefined
+              }
               unreadable={unreadable}
             />
           ) : (

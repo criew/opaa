@@ -325,13 +325,8 @@ export default function AssetDetailHeader({
           direction="row"
           spacing={{ xs: 0.5, sm: 1 }}
           useFlexGap
-          // one line below 600 px as well: type, source and role fit; a fourth chip is cut, not wrapped
-          sx={{
-            alignItems: 'center',
-            flexWrap: { xs: 'nowrap', sm: 'wrap' },
-            overflow: { xs: 'hidden', sm: 'visible' },
-            minWidth: 0,
-          }}
+          // chips wrap rather than being cut; „⋯“ keeps its place at the end of the first line
+          sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
         >
           {definition && <TypeBadge definition={definition} />}
           {isPublic && <PublicMark />}
@@ -402,7 +397,10 @@ export default function AssetDetailHeader({
         {figures}
         {spaceCount != null && (
           <HeaderFigure>
-            <FigureLink to={spacesTo}>{spreadLabel(spaceCount)}</FigureLink>
+            {/* „kein Space“ rather than „in keinem Space“: short enough for one line at 320 px */}
+            <FigureLink to={spacesTo}>
+              {spaceCount === 0 ? 'kein Space' : spreadLabel(spaceCount)}
+            </FigureLink>
           </HeaderFigure>
         )}
         <HeaderFigure>
