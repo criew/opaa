@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
+import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
@@ -173,6 +174,34 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
             Speichern
           </BusyButton>
         </Box>
+        {entry.pausedBy.length > 0 && (
+          <Alert
+            severity="warning"
+            sx={{ mt: 1, maxWidth: 520 }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                disabled={busy}
+                onClick={() => void save(entry.value)}
+              >
+                Angezeigten Wert festlegen
+              </Button>
+            }
+          >
+            <AlertTitle>Löschen pausiert</AlertTitle>
+            {entry.pausedBy.map((pause) => (
+              <div key={`${pause.variable}-${pause.retiredValue}`}>
+                Die Variable <code>{pause.variable}</code> ist auf einer laufenden Instanz noch auf{' '}
+                {pause.retiredValue} gesetzt und wird nicht gelesen; hier gilt{' '}
+                {pause.effectiveValue}.
+              </div>
+            ))}
+            Private Bibliotheken nach Ablauf der Frist werden erst wieder gelöscht, wenn hier ein
+            Wert gespeichert ist, auch der angezeigte, oder die Variable entfernt ist. Ausdrücklich
+            angestoßene Löschungen laufen weiter.
+          </Alert>
+        )}
         {belowGroupSize && (
           <Alert severity="warning" sx={{ mt: 1, maxWidth: 420 }}>
             {`Der Wert liegt unter der Mindestgruppengröße von ${minimumGroupSize}: Jeder Zugang für Personen zeigt dann schon bei „weniger als ${minimumGroupSize}“ die Warnung, auch ein leerer.`}
