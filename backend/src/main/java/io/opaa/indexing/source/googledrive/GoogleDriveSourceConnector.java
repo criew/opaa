@@ -92,6 +92,7 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     this.syncStateRepository = syncStateRepository;
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Google Drive")
+            .withDataFlow("source-google-drive")
             .withFullSyncInterval(apis.properties().fullSyncInterval())
             .withProfiles(
                 ProfileDeclaration.of(

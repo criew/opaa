@@ -64,6 +64,7 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "Webverzeichnis")
+          .withDataFlow("source-web")
           .withProfiles(
               ProfileDeclaration.of(
                   ConnectionProfileSupport.OPTIONAL,

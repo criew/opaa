@@ -13,8 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Keeps the connector data flows of the disclosure complete: every connector the installation
- * registers that reaches outside has its data flow, and every such flow is one of the manifest.
+ * Keeps the connector data flows of the disclosure complete: every connector the product delivers
+ * that reaches outside names its data flow in its descriptor, and every such flow is one of the
+ * manifest.
  */
 @OpaaIntegrationTest
 class ConnectorDataFlowsIntegrationTest {
@@ -25,17 +26,19 @@ class ConnectorDataFlowsIntegrationTest {
   @Autowired private SourceConnectorRegistry registry;
 
   @Test
-  void everyRegisteredConnectorThatReachesOutHasItsDataFlow() {
-    Set<String> types =
+  void everyDeliveredConnectorThatReachesOutNamesItsDataFlow() {
+    Set<SourceConnectorDescriptor> delivered =
         registry.descriptors().stream()
-            .map(SourceConnectorDescriptor::type)
-            .filter(type -> isDelivered(registry.connector(type).getClass()))
-            .map(SourceType::key)
-            .filter(type -> !LOCAL_CONNECTORS.contains(type))
+            .filter(descriptor -> isDelivered(registry.connector(descriptor.type()).getClass()))
             .collect(Collectors.toSet());
 
-    assertThat(types).isNotEmpty();
-    assertThat(ConnectorDataFlows.BY_TYPE).containsOnlyKeys(types);
+    assertThat(delivered).isNotEmpty();
+    for (SourceConnectorDescriptor descriptor : delivered) {
+      boolean local = LOCAL_CONNECTORS.contains(descriptor.type().key());
+      assertThat(descriptor.dataFlow())
+          .as("data flow of %s", descriptor.type())
+          .matches(flow -> (flow == null) == local, local ? "none" : "named");
+    }
   }
 
   /** A connector of the product, not a probe the test context registers from the test classes. */
@@ -44,7 +47,7 @@ class ConnectorDataFlowsIntegrationTest {
         .getProtectionDomain()
         .getCodeSource()
         .getLocation()
-        .equals(ConnectorDataFlows.class.getProtectionDomain().getCodeSource().getLocation());
+        .equals(SourceConnectorRegistry.class.getProtectionDomain().getCodeSource().getLocation());
   }
 
   @Test
@@ -54,6 +57,6 @@ class ConnectorDataFlowsIntegrationTest {
             .map(DataFlowEntry::id)
             .collect(Collectors.toSet());
 
-    assertThat(flows).containsAll(ConnectorDataFlows.BY_TYPE.values());
+    assertThat(flows).containsAll(registry.byType().values());
   }
 }

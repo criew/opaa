@@ -72,6 +72,7 @@ public class ConfluenceSourceConnector
     this.webhookService = webhookService;
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Confluence")
+            .withDataFlow("source-confluence")
             .withPushIntake(new PushIntake("confluenceWebhookSecret"))
             .withFullSyncInterval(properties.fullSyncInterval())
             .withProfiles(

@@ -67,6 +67,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "Nextcloud")
+          .withDataFlow("source-nextcloud")
           .withProfiles(
               ProfileDeclaration.of(
                   ConnectionProfileSupport.OPTIONAL,

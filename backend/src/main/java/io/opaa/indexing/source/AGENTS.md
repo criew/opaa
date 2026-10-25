@@ -17,6 +17,9 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
   (`SourceBrowser`, `OriginalAccess`, `PushIntakeHandler`); laufbasiert zusätzlich ein `SourceIndexingExecutor`.
 - **Typ, Einstellungen, Geheimnisse** nach ADR-0038, Entscheidungen 1–3: offener Typ-Schlüssel (`A-Z0-9_`, bis 20
   Zeichen), Konnektoreigenes als Record in `source_settings` (`ConnectorData`), Geheimnisse nie dort; Antwort Ja/Nein.
+- **Datenfluss:** Ein Konnektor, der nach außen geht, nennt die Kennung seines Eintrags unter `dataFlows` im
+  Fakten-Manifest selbst im Descriptor (`withDataFlow("source-…")`); die Auskunft liest sie über
+  `SourceConnectorRegistry` (Port `knowledge.ConnectorDataFlows`), `ConnectorDataFlowsIntegrationTest` prüft sie.
 - **Was ein neuer Konnektor überschreibt:** `descriptor`, `validate`, `testConnection`, mit Einstellungen
   `readSettings` und `settingsKeys`. `validateChange` prüft per Default über `validate`/`readSettings`;
   `configureNew`/`applyChange` speichern vorhandene Einstellungen; überschreiben nur bei eigener Regel (S3,

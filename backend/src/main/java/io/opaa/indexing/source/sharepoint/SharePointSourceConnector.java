@@ -104,6 +104,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     this.syncStateRepository = syncStateRepository;
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "SharePoint")
+            .withDataFlow("source-sharepoint")
             .withoutDeepLink()
             .withFullSyncInterval(graphs.properties().fullSyncInterval())
             .withProfiles(

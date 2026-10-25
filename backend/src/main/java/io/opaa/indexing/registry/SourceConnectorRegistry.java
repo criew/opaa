@@ -9,6 +9,7 @@ import io.opaa.indexing.spi.PushIntakeHandler;
 import io.opaa.indexing.spi.SourceBrowser;
 import io.opaa.indexing.spi.SourceConnector;
 import io.opaa.indexing.spi.SourceConnectorDescriptor;
+import io.opaa.knowledge.ConnectorDataFlows;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.SourceType;
 import java.util.Comparator;
@@ -26,7 +27,7 @@ import java.util.Optional;
  * intake without handling one or the other way round, or when its profile declaration breaks the
  * rules of ADR-0038.
  */
-public class SourceConnectorRegistry {
+public class SourceConnectorRegistry implements ConnectorDataFlows {
 
   private final Map<SourceType, SourceConnector> connectors = new HashMap<>();
 
@@ -115,6 +116,19 @@ public class SourceConnectorRegistry {
         .map(SourceConnector::descriptor)
         .sorted(Comparator.comparing(SourceConnectorDescriptor::type))
         .toList();
+  }
+
+  /** The data flow each connector names in its descriptor, for the types that name one. */
+  @Override
+  public Map<SourceType, String> byType() {
+    Map<SourceType, String> flows = new HashMap<>();
+    for (SourceConnector connector : connectors.values()) {
+      SourceConnectorDescriptor descriptor = connector.descriptor();
+      if (descriptor.dataFlow() != null) {
+        flows.put(descriptor.type(), descriptor.dataFlow());
+      }
+    }
+    return Map.copyOf(flows);
   }
 
   /** The handler behind the push intake of {@code type}, empty when that type offers none. */

@@ -90,6 +90,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
     this.apiBase = properties.apiBase().toString();
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Dropbox")
+            .withDataFlow("source-dropbox")
             .withoutDeepLink()
             .withFullSyncInterval(properties.fullSyncInterval())
             .withProfiles(

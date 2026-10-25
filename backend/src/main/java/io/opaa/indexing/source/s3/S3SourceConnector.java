@@ -79,6 +79,7 @@ public class S3SourceConnector
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "S3-Objektspeicher")
+          .withDataFlow("source-s3")
           .withoutDeepLink()
           .withPushIntake(new PushIntake("s3EventsToken"))
           .withProfiles(

@@ -100,6 +100,7 @@ public class OneDriveSourceConnector implements SourceConnector, SourceBrowser, 
     this.syncStateRepository = syncStateRepository;
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "OneDrive")
+            .withDataFlow("source-onedrive")
             .withoutDeepLink()
             .withFullSyncInterval(graphs.properties().fullSyncInterval())
             .withProfiles(
