@@ -783,7 +783,7 @@ opaa:
     incident-scope-retention-years: ${OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS:1}
     payload:
       # A before/after key the event catalog (AuditEventCatalog) does not list is dropped and
-      # logged; the dev profile refuses the write instead.
+      # logged; the dev profile and every test refuse the write instead.
       reject-unlisted: false
   succession:
     # Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird (ADR-0036, Entscheidung 6).

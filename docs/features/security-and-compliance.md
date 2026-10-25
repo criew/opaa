@@ -178,9 +178,11 @@ geschrieben wird. Die Positivliste der Selbstauskunft wiederholt nur Schlüssel 
 **Geprüft wird beim Schreiben**, in `AuditLogService#record` und damit auf jedem Schreibweg. Ein
 Schlüssel, den der Katalog für die Ereignisart nicht nennt, und eine Nutzlast, die kein JSON-Objekt
 ist, werden im Betrieb verworfen: Geschrieben werden nur die gelisteten Schlüssel, das Log meldet
-die verworfenen Schlüsselnamen (nie ihre Werte) als Fehler. Unter
-`opaa.audit.payload.reject-unlisted=true`, gesetzt im Profil `dev` und damit in jedem Test,
-verweigert OPAA stattdessen das Schreiben, und die Transaktion des Vorgangs bricht ab. Im Betrieb
+die verworfenen Schlüsselnamen (nie ihre Werte) als Fehler, und der Zähler
+`opaa.audit.payload.dropped` (Tag `event_type`) steigt; die Warnregel `OpaaAuditPayloadDropped` des
+Helm-Charts meldet das. Unter `opaa.audit.payload.reject-unlisted=true`, gesetzt im Profil `dev`
+und für jeden Spring-Kontext der Testsuite in `backend/src/test/resources/config/application.yml`,
+gleich welche Profile ein Test aktiviert, verweigert OPAA stattdessen das Schreiben, und die Transaktion des Vorgangs bricht ab. Im Betrieb
 wäre das Verweigern die schlechtere Wahl: Es rollte den Vorgang zurück, den der Eintrag belegen
 soll, wegen eines Programmierfehlers, den der Test schon hätte finden sollen; gespeichert wird die
 unzulässige Angabe in keinem der beiden Fälle. Geprüft werden die Schlüssel, nicht die Werte.
@@ -189,7 +191,11 @@ unzulässige Angabe in keinem der beiden Fälle. Geprüft werden die Schlüssel,
 jedem neuen Eintrag und geht mit in die [SIEM-Ausleitung](#anbindung-an-ein-zentrales-sicherheitsmonitoring).
 Einträge von vor dem Katalog tragen keine. Erhöht wird sie, wenn ein gelisteter Schlüssel seine
 Bedeutung ändert oder entfällt; ein neuer Schlüssel oder eine neue Ereignisart lässt ältere
-Einträge lesbar und erhöht sie nicht. Bestehende Einträge bleiben, wie sie geschrieben wurden: Das
+Einträge lesbar und erhöht sie nicht. Ein Schnappschuss je Version
+(`backend/src/test/resources/audit/event-catalog/v<N>.json`, die abgeleiteten Schlüssel in `v<N>-derived.json`) hält das fest: Entfällt ein
+Schlüssel der laufenden Version oder wird er umbenannt, scheitert der Build, bis die Version steigt
+und ihr eigener Schnappschuss dazukommt; ein neuer Schlüssel wird im Schnappschuss der laufenden
+Version nachgetragen. Bestehende Einträge bleiben, wie sie geschrieben wurden: Das
 Protokoll ist nur anfügend, der Katalog wirkt nur auf neue Einträge.
 
 ### Die Ereignisse der ersten Stufe
@@ -702,7 +708,8 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
 
 **Er enthält:**
 
-- die vollständige Liste der Ereignisarten mit Zweck je Art
+- die vollständige Liste der Ereignisarten mit Zweck je Art und den Angaben, die `before` und `after`
+  laut Ereigniskatalog tragen dürfen
 - die vollständige Feldliste des Protokollsatzes, je Feld mit Granularität, Zweck und Frist
 - die geltenden Aufbewahrungsfristen und den Zeitpunkt ihrer letzten Änderung
 - die Liste der vorhandenen Abfragewege **und** die Liste der ausdrücklich nicht vorhandenen, jeweils mit
@@ -1225,7 +1232,7 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `account-state-history` | #2990 | Zeiträume, in denen das Konto nicht nutzbar war, mit Ursache | — |
 | `settings-editors` | #2990 | Bereich und Zeitpunkt der Einstellungen, die die Person zuletzt geändert hat | Werte der Einstellungen (keine Daten über die Person; Absender und Zugangsname der Mail-Einstellungen gehören dem Dienstkonto) |
 | `notifications` | #2990 | Art, Objektart, Titel, Text, Eingang, gelesen | — (Texte erzeugt OPAA und nennen Objekte, keine Personen; nennt ein Typ künftig eine andere Person, geht er ohne Text heraus) |
-| `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`) oder Kontoobjekt ist: Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
+| `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`) oder Kontoobjekt ist: Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, Version des Ereigniskatalogs (`schemaVersion`), ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
 | `chats` | #2992 | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; je Nachricht eine Zeile mit Kennzeichnung als KI-erzeugt (`generatedByAi`); an Antworten die Fundstellen nur mit Dokumenttitel (Dateiname), heutigem Namen der Bibliothek und Seite (bzw. Folie, Zeile, Nachricht oder Teil), zitiert oder nicht | Textausschnitte der Fundstellen (Dokumentinhalt); Überschriftenpfade, Blattnamen und Folientitel des Fundorts (Text aus dem Dokument); Dokument- und Chunkkennungen, Quellverweise und Metadaten der Fundstelle; `content_tsv` (abgeleiteter Suchindex) |
 | `chat-cleanup-holds` | #2992 | ob und seit wann die Löschung der eigenen Chats nach einer Sperre angehalten ist; angehalten von „andere Person“ (nur die Verwaltung hält an) | — (eine Begründung wird nicht gespeichert; das Fortsetzen löscht die Zeile und steht im Protokoll) |
 | `connected-accounts` | #2991 | eigene verbundene Konten (Bezeichnung beim Anbieter, Zeitpunkte), von der Person verbundene Bibliotheken und Bibliotheken, für deren Einwilligung die Person verantwortlich ist (eine andere verantwortliche Person als „andere Person“) | `connection_tokens`, `connection_authorizations`, `connection_grant_revocations` (Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus oder Widerrufs, kurzlebig) |

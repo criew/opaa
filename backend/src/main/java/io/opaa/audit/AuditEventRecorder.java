@@ -244,10 +244,10 @@ public class AuditEventRecorder {
    *
    * <p>This is the one method in this class carrying its own {@code @Transactional}. {@code
    * Propagation.NOT_SUPPORTED} suspends whatever transaction is active on the calling thread for
-   * the duration of this method, so {@link AuditLogService#record} always runs with no ambient
-   * transaction to join. A {@code @Transactional} service embedding {@link
-   * AuditQueryService#loggedAccess} can therefore roll back everything else it did without losing
-   * this entry.
+   * the duration of this method, so {@link AuditLogService#record} always finds no ambient
+   * transaction to join and commits in one of its own. A {@code @Transactional} service embedding
+   * {@link AuditQueryService#loggedAccess} can therefore roll back everything else it did without
+   * losing this entry.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void recordAuditLogAccess(

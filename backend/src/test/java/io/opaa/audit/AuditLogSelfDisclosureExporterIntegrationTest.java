@@ -145,6 +145,7 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
         .containsEntry("subject", SelfDisclosureLabels.OTHER_PERSON)
         .containsEntry("objectLabel", "Raum Alpha")
         .containsEntry("after", "{\"role\":\"MEMBER\"}")
+        .containsEntry("schemaVersion", 1)
         .containsEntry("reasonGiven", true);
     assertThat(records.get(1))
         .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
@@ -301,8 +302,8 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
   private static final String INSERT =
       "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
           + " event_type, object_type, object_id, object_label, subject_kind, subject_ref, before,"
-          + " after, outcome, reason, correlation_ref)"
-          + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+          + " after, outcome, reason, correlation_ref, schema_version)"
+          + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
 
   private void entry(
       Instant at,

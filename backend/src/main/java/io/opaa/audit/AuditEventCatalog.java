@@ -24,7 +24,9 @@ public final class AuditEventCatalog {
 
   /**
    * The version of the event contract, stored with every new entry and sent to the SIEM. Raised
-   * when a listed key changes its meaning or goes away, not when a key or a type is added.
+   * when a listed key changes its meaning or goes away, not when a key or a type is added; the
+   * snapshots {@code audit/event-catalog/v<N>.json} and {@code v<N>-derived.json} of the test
+   * resources hold the current version to its keys.
    */
   public static final short SCHEMA_VERSION = 1;
 

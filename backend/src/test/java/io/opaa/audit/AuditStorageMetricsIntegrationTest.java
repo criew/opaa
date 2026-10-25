@@ -52,13 +52,16 @@ class AuditStorageMetricsIntegrationTest {
     assertThat(gauge("opaa.audit.retention.period")).isEqualTo(configured.doubleValue());
   }
 
+  /**
+   * That a scrape between two reads shows the earlier value is {@code AuditStorageMetricsTest}'s
+   * part; here the scheduled read of the context may run at any moment.
+   */
   @Test
-  void aScrapeReadsTheLastValueWithoutQueryingTheDatabase() {
+  void aRefreshReadsAChangedValue() {
     double read = gauge("opaa.audit.retention.period");
     jdbcTemplate.update(
         "UPDATE audit_retention_settings SET retention_months = retention_months + 1 WHERE id = 1");
     try {
-      assertThat(gauge("opaa.audit.retention.period")).isEqualTo(read);
       metrics.refresh();
       assertThat(gauge("opaa.audit.retention.period")).isEqualTo(read + 1);
     } finally {

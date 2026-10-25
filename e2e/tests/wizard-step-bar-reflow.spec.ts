@@ -54,7 +54,7 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
   })
 
   test('Wissens-Assistent mit Konnektor und mit Upload', async ({ authenticatedPage: page }) => {
-    const connectorSteps = ['Quellart', 'Quelle einrichten', 'Name & Beschreibung', 'Freigaben']
+    const connectorSteps = ['Quellart', 'Quelle', 'Name', 'Freigaben', 'Prüfen']
 
     await page.goto('/libraries/new')
     await expect(
@@ -65,20 +65,27 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
 
     await nextStep(page)
     await expect(page.getByRole('heading', { level: 2, name: 'Quelle einrichten' })).toBeVisible()
-    await expectStepBarFits(page, connectorSteps, 'Quelle einrichten')
+    await expectStepBarFits(page, connectorSteps, 'Quelle')
 
-    // Four steps with the longest name active: the widest state of the compact bar. Nothing is
-    // created - the library only comes into being on "Bibliothek anlegen" in the last step.
-    await page.getByLabel('Adresse (URL)').fill(DIRECTORY_URL)
+    // Five steps, each active once; the longest name, „Freigaben“, is the widest state of the
+    // compact bar. Nothing is created - the library only comes into being on "Bibliothek
+    // anlegen" in the last step.
+    await page.getByLabel('Adresse', { exact: true }).fill(DIRECTORY_URL)
     await nextStep(page)
     await expect(
       page.getByRole('heading', { level: 2, name: 'Name & Beschreibung' }),
     ).toBeVisible()
-    await expectStepBarFits(page, connectorSteps, 'Name & Beschreibung')
+    await expectStepBarFits(page, connectorSteps, 'Name')
+    await nextStep(page)
+    await expect(page.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeVisible()
+    await expectStepBarFits(page, connectorSteps, 'Freigaben')
+    await nextStep(page)
+    await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeVisible()
+    await expectStepBarFits(page, connectorSteps, 'Prüfen')
 
     await page.goto('/libraries/new')
     await page.getByRole('radio', { name: /^Upload/ }).click()
-    await expectStepBarFits(page, ['Quellart', 'Name & Beschreibung', 'Freigaben'], 'Quellart')
+    await expectStepBarFits(page, ['Quellart', 'Name', 'Freigaben', 'Prüfen'], 'Quellart')
   })
 
   test('Space-Assistent', async ({ authenticatedPage: page }) => {
