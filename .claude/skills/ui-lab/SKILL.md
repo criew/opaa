@@ -81,8 +81,8 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
 7. **Messung vor Meinung, Messlauf statt Bild-Review.** Ein Urteil nennt Prüflistennummer und
    Beleg (Zeile aus `metrics.jsonl`, Screenshot-Datei, Videozeitpunkt). Der **Messlauf** ist
    `capture.mjs` über die Szenarien des Bereichs, hell bei 1280 und 320 px, dunkel als Stichprobe
-   (ein Szenario); gelesen werden axe, Kontrast, `overflowX` und `budgetViolations` aus
-   `metrics-summary.md` (`compare.py`), nicht die Bilder. Vor dem ersten Lauf
+   (ein Szenario), je Variante mit `--variant <id>`; gelesen werden axe, Kontrast, `overflowX` und
+   `budgetViolations` aus `metrics-summary.md` (`compare.py`), nicht die Bilder. Vor dem ersten Lauf
    `cd e2e && node ui-lab/calibrate.mjs` ausführen; schlägt sie fehl, wird nichts verglichen.
 8. **Der Ist-Stand ist immer eine Variante.** „Ist“ ist `main` nur mit Mock-Szenarien, ohne
    Korrekturen, gemessen mit demselben Messlauf wie die Entwürfe. Jeder
@@ -90,9 +90,8 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
    ist das `?variant=none`.
 9. **Screenshots, wenn welche entstehen, in voller Auflösung.** Kein Herunterskalieren, keine
    verlustreiche Kompression, auch nicht auf Vergleichsseite und Querbögen: Ein verkleinertes Bild
-   ist für die Abnahme wertlos. Bis #3171 umgesetzt ist, skalieren `compare.py`,
-   `contact_sheets.py` und `build_site.py` noch: Bögen und Sprites dienen nur der Übersicht,
-   beurteilt wird am PNG aus `capture.mjs` (README der Werkzeuge, „Grenzen“).
+   ist für die Abnahme wertlos. `compare.py`, `contact_sheets.py` und `build_site.py` schreiben
+   deshalb PNG ohne Skalierung.
 
 ## Branches und Ablage
 
@@ -247,8 +246,8 @@ als Artifact: `index.html` als Seite, die Pakete aus `files.json` nacheinander a
 Ergebnisordnern und füllt die Texte: je Entwurf Idee, Stärken, Schwächen und Bewertung der
 Juroren; „Gelernt und umgesetzt“ mit dem, was in M eingeflossen ist, was für die Guidelines
 entschieden wurde und was am Vorgehen besser wurde. Darunter wählt der Maintainer Variante →
-Bereich → Fall → Breite und sieht Videos und alle Bildschirme als Übersicht (Grundregel 9), auf
-Wunsch mit dem Ist-Stand daneben. Videos gehen als Assets ins Artifact, die Bildschirme als
+Bereich → Fall → Breite und sieht Videos und alle Bildschirme in voller Auflösung (Grundregel 9),
+auf Wunsch mit dem Ist-Stand daneben. Videos gehen als Assets ins Artifact, die Bildschirme als
 ein Sprite je Auswahl. Prototyp-Link, Kennzahlen aus `metrics-summary.md` und die offenen Fragen
 (Grundregel 6) gehören in den Bericht neben der Seite. **Halt: Der Maintainer
 entscheidet.** Danach: Umsetzungs-Issue mit der gewählten Variante als Spezifikation, eigenes

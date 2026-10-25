@@ -5,7 +5,7 @@
  *   node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
  *        [--flows flows/library-videos.mjs] [--types a,b] [--kinds ok,viele,fehler]
  *        [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
- *        [--chromium <path>]
+ *        [--chromium <path>] [--variant <id>]
  *
  * The video matrix: a flows module exports `TYPES` (the areas, e.g. connectors), `KINDS` (kind ->
  * mock scenario, by default ok -> small, viele -> scale, fehler -> failed) and one
@@ -16,13 +16,14 @@
  * caption) moves the pointer to an element
  * before every click, pauses between steps and never throws on a missing element; a missing
  * element is logged and the step skipped. ffmpeg (PATH or FFMPEG) turns the WebM into H.264 MP4;
+ * --variant appends ?variant=<id> to every URL the flow opens.
  * <out>/manifest.json lists every video with name, type, scenario and scheme.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { launch, schemeContext, sleep } from './lib/browser.mjs'
+import { launch, pinVariant, schemeContext, sleep } from './lib/browser.mjs'
 import { firstVisible, settle } from './lib/ui.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -60,6 +61,7 @@ function parseArgs(argv) {
     else if (a === '--pause') args.pause = count(a, next())
     else if (a === '--keep-webm') args.keepWebm = true
     else if (a === '--chromium') args.chromium = next()
+    else if (a === '--variant') args.variant = next()
     else if (a === '--help' || a === '-h') {
       console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0])
       process.exit(0)
@@ -211,6 +213,7 @@ for (const video of chosen) {
   })
   await context.addInitScript(overlayScript)
   const page = await context.newPage()
+  await pinVariant(page, ARGS.variant)
   await page.setViewportSize({ width: ARGS.width, height: ARGS.height })
   const h = helpers(page, ARGS, log)
   try {
