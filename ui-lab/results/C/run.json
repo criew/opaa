@@ -1,8 +1,11 @@
 {
   "args": {
     "base": "http://localhost:5193",
-    "out": "/tmp/claude-0/-home-user-opaa/904c8349-343f-5e74-a4a6-51b4dbb51a7c/scratchpad/c3-main",
+    "out": "/tmp/claude-0/-home-user-opaa/904c8349-343f-5e74-a4a6-51b4dbb51a7c/scratchpad/c4-main",
     "flow": "library-detail",
+    "schemes": [
+      "light"
+    ],
     "concurrency": 3,
     "scenarios": [
       "small",
@@ -11,10 +14,6 @@
       "empty",
       "partial",
       "slow"
-    ],
-    "schemes": [
-      "light",
-      "dark"
     ],
     "widths": [
       1280,
@@ -31,7 +30,7 @@
       "abschluss"
     ]
   },
-  "shots": 1816,
-  "seconds": 4425,
-  "finishedAt": "2026-10-25T03:38:51.039Z"
+  "shots": 904,
+  "seconds": 2559,
+  "finishedAt": "2026-10-25T04:36:56.295Z"
 }

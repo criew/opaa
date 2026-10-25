@@ -138,6 +138,63 @@ Basis (`feature/3084_ui-lab-detail-base`) hat bereits 108 rote Tests in 13 Datei
 | `library/pages/LibraryDetailPage.test.tsx` | 68 / 19 | Kopf ohne Kennzahlen, Steckbrief, Kontingent und Lauf nicht mehr im Kopf |
 | `library/pages/LibraryDetailPage.privateLibrary.test.tsx` | 2 / 0 | Privat-Hinweis entfernt, Speicher im Steckbrief |
 
-## Kennzahlen
+## Kennzahlen (Runde 2)
 
-Siehe `metrics.jsonl` (Runde 2). Runde 1: `overflowX` 0, Kontrast 0, Budgets 0; axe `target-size` (Steckbrief) und `label-content-name-mismatch` sind in Runde 2 behoben (Zahlen unten nach der Neuaufnahme).
+2106 Aufnahmen `ok`, 42 `not-found` (erwartet: Leser ohne Läufe und Upload-Feld, Upload ohne Reiter Quelle).
+
+| Kennzahl | Wert |
+|---|---|
+| `tabsTop` 1280 | 134 px in allen Arten und Szenarien |
+| `tabsTop` 320 | 242 px in allen Arten; `scale` 392 px (langer Titel umbricht vollständig, P43) |
+| `overflowX` | 0 |
+| Kontrast (hell und dunkel) | 0 |
+| `budgetViolations` | 0 |
+| axe (hell) | 2 × `target-size` (Runde 1: ≈ 2200 `target-size`, 465 `label-content-name-mismatch`) |
+| `uiWords` small, max je Bereich | Dokumente 97 · Quelle 72 · Läufe 72 · Metadaten 78 · Freigaben 87 · Zuordnungen 56 · Upload 113 · Abschluss 97 |
+
+Aufnahme: dunkles Schema aus dem vollen Lauf nach den Review-Korrekturen, helles Schema danach neu (Tooltip- und Ordner-Fix ändern nur die Messung); 5 Timeouts einzeln nachgeholt.
+
+## git diff --stat (gegen `feature/3084_ui-lab-detail-base`, ohne Ergebnisse)
+
+```
+ .../components/AssetAccessDerivationSection.tsx    |  21 +
+ .../asset/components/AssetDetailHeader.tsx         |  87 ++-
+ .../asset/components/AssetGrantsSection.tsx        | 322 ++++++-----
+ .../asset/components/AssetHeadlineEditor.tsx       |  76 +++
+ .../asset/components/AssetOwnerSection.tsx         |  47 ++
+ .../features/asset/components/AssetSpacesList.tsx  | 186 +++----
+ .../asset/components/AssetSpacesSection.tsx        |   7 +-
+ .../features/asset/components/UseInSpaceButton.tsx |  35 +-
+ .../library/components/LibraryDetailTabBar.tsx     |  17 +-
+ .../library/components/LibraryDocumentList.tsx     | 444 ++++++++++-----
+ .../components/LibraryDocumentUploadArea.tsx       | 157 ++++--
+ .../library/components/LibraryDocumentsNotices.tsx |  15 -
+ .../library/components/LibraryDocumentsSection.tsx | 109 ++--
+ .../components/LibraryExternalAccessSection.tsx    | 122 ++--
+ .../library/components/LibraryMetadataTab.tsx      |  17 +-
+ .../features/library/components/LibraryRunList.tsx | 502 +++++++++++++++++
+ .../library/components/LibrarySharingTab.tsx       | 109 ++--
+ .../library/components/LibrarySourceRows.tsx       |  36 +-
+ .../library/components/LibrarySourceSection.tsx    | 415 +++++---------
+ .../library/components/metadata/FieldValues.tsx    |  49 ++
+ .../metadata/LibraryMetadataFieldsSection.tsx      | 379 +++++++------
+ .../metadata/MetadataExtractionSettingsSection.tsx | 251 +++++----
+ .../library/components/setup/SourceSetupRows.tsx   |  34 +-
+ .../library/components/setup/SummaryRow.tsx        |  37 +-
+ .../library/components/setup/scheduleSummary.ts    |   8 +-
+ .../components/steckbrief/LibrarySteckbrief.tsx    | 508 +++++++++++++++++
+ .../library/components/steckbrief/libraryState.ts  | 179 ++++++
+ .../library/components/steckbrief/nextSteps.ts     | 130 +++++
+ .../library/components/steckbrief/sourceSummary.ts | 143 +++++
+ .../library/mocks/detailScenarioFixtures.ts        |  20 +-
+ .../library/mocks/libraryScenarioFixtures.ts       |  53 +-
+ .../features/library/pages/LibraryDetailPage.tsx   | 615 +++++++++++----------
+ .../components/GroupMembersDisclosure.tsx          |   5 +-
+ frontend/src/shared/mocks/mockScenario.ts          |   9 +
+ frontend/src/shared/ui/PageSection.tsx             |  43 +-
+ frontend/src/shared/ui/PlainRow.tsx                |  85 +++
+ frontend/src/shared/ui/plainSections.ts            |   9 +
+ ui-lab/harness/flows/library-detail.mjs            |  30 +-
+ ui-lab/harness/lib/measure.mjs                     |   8 +-
+ 39 files changed, 3818 insertions(+), 1501 deletions(-)
+```
