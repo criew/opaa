@@ -127,10 +127,10 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
     await openNewLibraryWizard(page);
     await page.getByRole("radio", { name: /Webverzeichnis/ }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
-    await page.getByLabel("Adresse (URL)").fill(`http://${PROBE_HOST}/`);
+    await page.getByLabel("Adresse", { exact: true }).fill(`http://${PROBE_HOST}/`);
     await page.getByRole("button", { name: "Verbindung testen" }).click();
     await expect(
-      page.getByRole("alert").filter({ hasText: "Der Host konnte nicht gefunden werden" }),
+      page.getByRole("status").filter({ hasText: "Der Host konnte nicht gefunden werden" }),
     ).toBeVisible({ timeout: 30_000 });
 
     const seen = await eventually(
