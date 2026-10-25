@@ -81,8 +81,8 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
 7. **Messung vor Meinung, Messlauf statt Bild-Review.** Ein Urteil nennt Prüflistennummer und
    Beleg (Zeile aus `metrics.jsonl`, Screenshot-Datei, Videozeitpunkt). Der **Messlauf** ist
    `capture.mjs` über die Szenarien des Bereichs, hell bei 1280 und 320 px, dunkel als Stichprobe
-   (ein Szenario), je Variante mit `--variant <id>`; gelesen werden axe, Kontrast, `overflowX` und `budgetViolations` aus
-   `metrics-summary.md` (`compare.py`), nicht die Bilder. Vor dem ersten Lauf
+   (ein Szenario), je Variante mit `--variant <id>`; gelesen werden axe, Kontrast, `overflowX` und
+   `budgetViolations` aus `metrics-summary.md` (`compare.py`), nicht die Bilder. Vor dem ersten Lauf
    `cd e2e && node ui-lab/calibrate.mjs` ausführen; schlägt sie fehl, wird nichts verglichen.
 8. **Der Ist-Stand ist immer eine Variante.** „Ist“ ist `main` nur mit Mock-Szenarien, ohne
    Korrekturen, gemessen mit demselben Messlauf wie die Entwürfe. Jeder

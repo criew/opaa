@@ -245,6 +245,10 @@ Die Arbeitsflächen folgen zusätzlich dem **Feinraster aus Mockup 1a** (#658): 
 Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
 bleiben das Vokabular für Markenmomente.
 
+**Titel einer Detailseite** (Asset, Space, Lauf), abweichend vom Seitentitel (27 px): 20 px / 28 px
+ab 600 px Breite, darunter 17 px / 22 px. Er steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine
+Leerzeilen. Bei 320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
+
 ### 3.3 Gewichte, Zeilenhöhen, Laufweiten
 
 - **Gewichte:** 400 (Regular, Fließtext) · 500 (Medium, Betonung, Schaltflächen,
@@ -363,6 +367,10 @@ bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
 (Muster: Mockup 1d, Issue #595).
 
+**Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
+Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit
+Fehlern (n)" fehlt, wenn alle oder keiner der Einträge Fehler haben.
+
 ### 5.4 Karten
 
 `bg-1` oder `bg-2` mit `border`, Radius md–lg, Innenabstand 16–24 px, kein Schatten. Klickbare
@@ -415,6 +423,13 @@ Hover `bg-2`, zerstörende Einträge in Gefahr-Text am Ende, durch Trennlinie ab
 Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 gegen `bg-2` und
 4,64:1 gegen `bg-3`, im dunklen Schema 6,86:1 / 6,18:1 / 5,68:1 (#2150).
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
+
+**Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
+Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
+`aria-label` „Schließen" und Tooltip (5.1). Formulardialoge mit „Abbrechen" bekommen kein
+zusätzliches ✕: eine Abbruchstelle genügt. Bestätigungen folgen 5.10. Escape und ein Klick daneben
+schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
+`frontend/src/shared/ui/`, nie ein Nachbau je Dialog.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
 
@@ -621,6 +636,10 @@ Panel bereits. Eine Überschrift im Panel steht nur dort, wo sie etwas Eigenes g
 eines Panels ist eine h2 unter der h1 der Seite (siehe
 [Barrierefreiheits-Richtlinie](./accessibility.md), 2.3). Ein Panel braucht keine Überschrift, wenn
 es nichts weiter zu gliedern gibt.
+
+**Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
+„Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
+eigener Überschrift. Die Textaktion steht als Textlink an der rechten Kante (Prüfliste P45, P48).
 
 ---
 
