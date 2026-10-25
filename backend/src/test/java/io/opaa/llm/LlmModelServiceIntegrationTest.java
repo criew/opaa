@@ -8,6 +8,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
+import io.opaa.installation.InstallationService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LlmModelCatalogFixtures;
@@ -31,13 +32,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the right, distinct type.
  *
  * <p>{@code @BeforeEach}/{@code @AfterEach} take the catalogue over and hand it back unchanged
- * ({@link io.opaa.test.LlmModelCatalogFixtures}) rather than assuming it starts empty: {@link
- * LlmModelSeeder} (triggered once by {@link LlmModelSeedRunner}) seeds one row from the {@code dev}
- * profile's Ollama configuration on every fresh application context, including the one this test
- * shares with its siblings on the canonical {@link io.opaa.test.OpaaIntegrationTest} signature
- * (AGENTS.md, "Spring-Testkontexte"). Emptying it for the duration of a method doubles as the exact
- * reproduction scenario {@link #seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted()}
- * needs: a Systemverwaltung deleting every managed model, followed by a restart.
+ * ({@link io.opaa.test.LlmModelCatalogFixtures}) rather than assuming it starts empty: the test
+ * database installed itself with one chat model, the way the {@code dev} mode does (ADR-0060).
+ * Emptying it for the duration of a method doubles as the reproduction scenario {@link
+ * #aCompletedInstallationNeverReinstallsAChatModelEvenAfterEveryModelIsDeleted()} needs: a
+ * Systemverwaltung deleting every managed model, followed by a restart.
  */
 @OpaaIntegrationTest
 class LlmModelServiceIntegrationTest {
@@ -47,7 +46,7 @@ class LlmModelServiceIntegrationTest {
       "https://" + SECRET_IN_BASE_URL + "@modellserver.example.internal/v1";
 
   @Autowired private LlmModelService llmModelService;
-  @Autowired private LlmModelSeeder llmModelSeeder;
+  @Autowired private InstallationService installation;
   @Autowired private ActiveChatModelResolver resolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -73,7 +72,7 @@ class LlmModelServiceIntegrationTest {
   @AfterEach
   void tearDown() {
     // First statement of the cleanup: anything that throws before it would leave the catalogue
-    // emptied for every following class, and the seeder never refills it (its marker is set).
+    // emptied for every following class, and a completed installation never refills it.
     llmModelCatalogFixtures.restoreCatalog(foreignModels);
     // The restore bypasses LlmModelService, so no ActiveChatModelChangedEvent fires - without this,
     // the resolver would keep the client it built for a model this method has just deleted.
@@ -84,17 +83,14 @@ class LlmModelServiceIntegrationTest {
   }
 
   @Test
-  void seedingNeverResumesOnceAttemptedEvenAfterEveryModelIsDeleted() {
+  void aCompletedInstallationNeverReinstallsAChatModelEvenAfterEveryModelIsDeleted() {
     // llm_models is empty here (cleared in @BeforeEach) - simulating a Systemverwaltung that
-    // deleted every managed model. The very first application startup in this shared context
-    // already attempted the takeover and wrote the permanent llm_model_seed_marker row (migration
-    // 060); re-running it explicitly - twice, to prove it is not merely "the second time is a
-    // coincidence" - must not resurrect a model from the environment configuration (PR #763
-    // review: the original, count()-based check would have re-seeded exactly this case).
-    llmModelSeeder.seedIfNeeded();
+    // deleted every managed model. The installation is completed, so a start of the dev mode -
+    // run twice here - must not resurrect a model.
+    assertThat(installation.completeAtStartupIfDue(true).completed()).isTrue();
     assertThat(llmModelService.listModels()).isEmpty();
 
-    llmModelSeeder.seedIfNeeded();
+    assertThat(installation.completeAtStartupIfDue(true).completed()).isTrue();
     assertThat(llmModelService.listModels()).isEmpty();
   }
 

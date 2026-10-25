@@ -27,7 +27,7 @@ public interface InstallationStateRepository extends JpaRepository<InstallationS
 
   /**
    * Holds the start-up lock until the transaction ends, after the row lock: the completion runs one
-   * at a time with every start-up seed. Namespace {@code 211}, shared by every start-up seed.
+   * at a time with the emergency reset. Namespace {@code 211}, shared with it.
    */
   @Query(
       value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(211, 0)) acquired",

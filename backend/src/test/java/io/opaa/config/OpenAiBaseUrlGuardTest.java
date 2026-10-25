@@ -34,7 +34,7 @@ class OpenAiBaseUrlGuardTest {
         .withPropertyValues(
             "spring.ai.model.chat=openai",
             "spring.ai.model.embedding=openai",
-            "spring.ai.openai.chat.base-url=http://localhost:11434/v1",
+            "spring.ai.openai.base-url=http://localhost:11434/v1",
             "spring.ai.openai.embedding.base-url=http://localhost:11434/v1")
         .run(context -> assertThat(context).hasNotFailed());
   }
@@ -71,7 +71,7 @@ class OpenAiBaseUrlGuardTest {
         .withPropertyValues(
             "spring.ai.model.chat=openai",
             "spring.ai.model.embedding=none",
-            "spring.ai.openai.chat.base-url=https://benutzer:geheim@modellserver.example.internal/v1")
+            "spring.ai.openai.base-url=https://benutzer:geheim@modellserver.example.internal/v1")
         .run(
             context ->
                 assertThat(context)
@@ -79,7 +79,7 @@ class OpenAiBaseUrlGuardTest {
                     .getFailure()
                     .rootCause()
                     .hasMessageContaining("carries credentials")
-                    .hasMessageContaining("OPAA_OPENAI_CHAT_API_KEY")
+                    .hasMessageContaining("OPAA_OPENAI_API_KEY")
                     .hasMessageNotContaining("geheim"));
   }
 
@@ -94,8 +94,7 @@ class OpenAiBaseUrlGuardTest {
                     .getFailure()
                     .rootCause()
                     .hasMessageContaining("No base URL is configured for the chat function")
-                    .hasMessageContaining("OPAA_OPENAI_BASE_URL")
-                    .hasMessageContaining("OPAA_OPENAI_CHAT_BASE_URL"));
+                    .hasMessageContaining("OPAA_OPENAI_BASE_URL"));
   }
 
   @Test
@@ -115,7 +114,7 @@ class OpenAiBaseUrlGuardTest {
   @Test
   void refusesToStartWhenTheBaseUrlIsBlank() {
     contextRunner
-        .withPropertyValues("spring.ai.model.chat=openai", "spring.ai.openai.chat.base-url=   ")
+        .withPropertyValues("spring.ai.model.chat=openai", "spring.ai.openai.base-url=   ")
         .run(context -> assertThat(context).hasFailed());
   }
 
@@ -125,7 +124,7 @@ class OpenAiBaseUrlGuardTest {
         .withPropertyValues(
             "spring.ai.model.chat=openai",
             "spring.ai.model.embedding=openai",
-            "spring.ai.openai.chat.base-url=http://model-server.internal:8000/v1",
+            "spring.ai.openai.base-url=http://model-server.internal:8000/v1",
             "spring.ai.openai.embedding.base-url=http://model-server.internal:8000/v1")
         .run(context -> assertThat(context).hasNotFailed());
   }

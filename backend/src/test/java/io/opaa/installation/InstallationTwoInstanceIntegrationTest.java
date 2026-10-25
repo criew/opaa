@@ -136,16 +136,12 @@ class InstallationTwoInstanceIntegrationTest {
     assertThat(installation.ensureToken(null)).isNull();
   }
 
-  // regression guard: a database with accounts counts as in use even without the seed markers
+  // regression guard: a database with accounts counts as in use
   @Test
-  void aDatabaseWithAccountsButWithoutSeedMarkersCountsAsExisting() {
+  void aDatabaseWithAccountsCountsAsExisting() {
     accounts.activeUser("bestand-" + java.util.UUID.randomUUID() + "@stadt.example");
-    jdbc.update("DELETE FROM local_admin_seed_marker");
-    jdbc.update("DELETE FROM oidc_provider_seed_marker");
-    jdbc.update("DELETE FROM llm_model_seed_marker");
 
-    InstallationService.StartupDecision decision =
-        installation.completeAtStartupIfDue(false, false);
+    InstallationService.StartupDecision decision = installation.completeAtStartupIfDue(false);
 
     assertThat(decision.completed()).isTrue();
     assertThat(decision.source()).isEqualTo(InstallationState.CompletionSource.EXISTING);

@@ -15,10 +15,10 @@ import org.springframework.util.StringUtils;
  * openai}, not a choice anymore. {@code application.yml} therefore does carry a default base URL
  * (the local Ollama endpoint): the default itself already stays inside the organisation, so
  * inheriting it is safe. This guard protects against a narrower failure mode: an operator who sets
- * {@code OPAA_OPENAI_BASE_URL} (or one of the per-function variables) to an explicitly blank value
- * overrides that default with an empty string - {@code ${VAR:default}} only falls back to {@code
- * default} when {@code VAR} is entirely unset, not when it is set and empty - and a blank base URL
- * would otherwise fail deep inside the OpenAI client with a far less obvious error.
+ * {@code OPAA_OPENAI_BASE_URL} (or {@code OPAA_OPENAI_EMBEDDING_BASE_URL}) to an explicitly blank
+ * value overrides that default with an empty string - {@code ${VAR:default}} only falls back to
+ * {@code default} when {@code VAR} is entirely unset, not when it is set and empty - and a blank
+ * base URL would otherwise fail deep inside the OpenAI client with a far less obvious error.
  */
 @Configuration
 public class OpenAiBaseUrlGuard {
@@ -33,10 +33,13 @@ public class OpenAiBaseUrlGuard {
 
   @PostConstruct
   void rejectMissingBaseUrl() {
-    check("chat", "spring.ai.openai.chat.base-url", "OPAA_OPENAI_CHAT_BASE_URL");
+    // The chat models live in the model administration; the shared address still feeds the
+    // auto-configured client and the chat model the dev mode installs itself.
+    check("chat", "spring.ai.openai.base-url", null);
     check("embedding", "spring.ai.openai.embedding.base-url", "OPAA_OPENAI_EMBEDDING_BASE_URL");
   }
 
+  /** {@code specificVariable} {@code null}: the function reads the shared address only. */
   private void check(String function, String baseUrlProperty, String specificVariable) {
     String provider = environment.getProperty("spring.ai.model." + function);
     if (!OPENAI_PROVIDER.equalsIgnoreCase(provider)) {
@@ -51,10 +54,14 @@ public class OpenAiBaseUrlGuard {
           """
           The base URL configured for the %s function carries credentials \
           (https://user:secret@host/v1). Configure the address without them and supply the access \
-          key via OPAA_OPENAI_API_KEY or %s instead - a base URL is written to log files and \
-          status output and is not treated as a secret anywhere. \
-          See docs/handbuch/betrieb/modelle.md."""
-              .formatted(function, specificVariable.replace("_BASE_URL", "_API_KEY")));
+          key via %s instead - a base URL is written to log files and status output and is not \
+          treated as a secret anywhere. See docs/handbuch/betrieb/modelle.md."""
+              .formatted(
+                  function,
+                  specificVariable == null
+                      ? "OPAA_OPENAI_API_KEY"
+                      : "OPAA_OPENAI_API_KEY or "
+                          + specificVariable.replace("_BASE_URL", "_API_KEY")));
     }
     if (StringUtils.hasText(baseUrl)) {
       return;
@@ -64,8 +71,13 @@ public class OpenAiBaseUrlGuard {
         No base URL is configured for the %s function. "openai" is the name of the API protocol, \
         not of a target: locally operated model servers speak it too, and application.yml's own \
         default already points at one (Ollama). This means the configured value is explicitly \
-        blank rather than missing - check OPAA_OPENAI_BASE_URL (applies to chat and embedding) and \
-        %s (applies to %s only) for an empty override. See docs/handbuch/betrieb/modelle.md."""
-            .formatted(function, specificVariable, function));
+        blank rather than missing - check %s for an empty override. See \
+        docs/handbuch/betrieb/modelle.md."""
+            .formatted(
+                function,
+                specificVariable == null
+                    ? "OPAA_OPENAI_BASE_URL"
+                    : "OPAA_OPENAI_BASE_URL (shared) and %s (applies to %s only)"
+                        .formatted(specificVariable, function)));
   }
 }

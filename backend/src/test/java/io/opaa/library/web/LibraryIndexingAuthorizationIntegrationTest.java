@@ -92,7 +92,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
   void setUp() throws Exception {
     removeForeignOwner();
 
-    // Provisions "dev-admin" as SYSTEM_ADMIN (opaa.auth.initial-admin-email matches its seeded
+    // Provisions "dev-admin" as SYSTEM_ADMIN (opaa.auth.dev.system-admin-email matches its seeded
     // email, application.yml) via the real UserProvisioningFilter - triggered by any authenticated
     // request, not a hand-inserted row. GET .../indexing/status on a fresh, random id 404s but
     // still runs the filter chain.
@@ -194,7 +194,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     // devAdmin (devUser(null) defaults to the configured default user, which is SYSTEM_ADMIN) - it
     // only proves the missing grant on that one library, not that a genuinely non-privileged caller
     // can trigger a run at all. "dev-user" (application.yml) does not match
-    // opaa.auth.initial-admin-email, so UserProvisioningFilter provisions it as a plain USER.
+    // opaa.auth.dev.system-admin-email, so UserProvisioningFilter provisions it as a plain USER.
     User regularUser = provisionDevUser();
 
     KnowledgeLibrary library = createForeignLibraryWithNoGrantForDevAdmin();

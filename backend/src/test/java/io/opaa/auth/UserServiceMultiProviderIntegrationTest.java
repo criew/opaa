@@ -76,7 +76,7 @@ class UserServiceMultiProviderIntegrationTest {
 
   @Test
   void theInitialAdminAddressGrantsSystemAdminOnlyThroughTheTrustedIssuer() {
-    String adminEmail = authProperties.initialAdminEmail();
+    String adminEmail = authProperties.dev().systemAdminEmail();
     assertThat(adminEmail).isNotBlank();
 
     User throughDevIssuer =
@@ -95,7 +95,7 @@ class UserServiceMultiProviderIntegrationTest {
    */
   @Test
   void inTheOidcModeNotEvenTheDefaultProviderRowMintsAnAdministrator() {
-    String adminEmail = authProperties.initialAdminEmail();
+    String adminEmail = authProperties.dev().systemAdminEmail();
     String defaultIssuer = "https://idp.example/realms/" + UUID.randomUUID() + "/";
     OidcProvider standard =
         new OidcProvider(
@@ -110,7 +110,7 @@ class UserServiceMultiProviderIntegrationTest {
     }
     providerRepository.save(standard);
     try {
-      AuthProperties oidc = new AuthProperties("oidc", null, null, adminEmail);
+      AuthProperties oidc = new AuthProperties("oidc", null, null);
       InitialAdminPolicy policy = new InitialAdminPolicy(oidc);
       String trusted = providerRepository.findByDefaultProviderTrue().orElseThrow().getIssuerUri();
 

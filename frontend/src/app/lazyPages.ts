@@ -33,9 +33,6 @@ export const SetPasswordPage = auth('SetPasswordPage')
 export const SystemLoginPage = auth('SystemLoginPage')
 export const VerifyEmailPage = auth('VerifyEmailPage')
 
-const installation = themePages(() => import('@/features/installation/routes'))
-export const InstallationPage = installation('InstallationPage')
-
 const chat = themePages(() => import('@/features/chat/routes'))
 export const ChatPage = chat('ChatPage')
 export const ChatRedirect = chat('ChatRedirect')

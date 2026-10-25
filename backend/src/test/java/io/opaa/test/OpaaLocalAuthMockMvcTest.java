@@ -23,16 +23,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * that is the hard technical reason this fifth signature exists next to the four of #1481.
  *
  * <p>Every class carrying this exact signature shares one Spring context and one Postgres (Issue
- * #843); no {@code OPAA_OIDC_*} bootstrap is set, so {@code OidcProviderSeeder} seeds nothing and
- * the LOCAL provider row is created by the test itself ({@link LocalAccountFixtures}).
+ * #843). {@link TestInstallation} completes a pending installation before the start-up decides, so
+ * no class meets the installation mode; the LOCAL provider row is created by the test itself
+ * ({@link LocalAccountFixtures}).
  *
  * <p>Three variants are meta-annotated over this one and add only the properties that are
  * themselves the subject under test, the way {@link OpaaPropertyVariantIntegrationTest} does for
  * the canonical signature: {@link OpaaLocalAuthLinkTest} (a public base URL - classes on the base
- * signature prove the link flows are off <em>without</em> one), {@link OpaaLocalAuthSeedTest} (a
- * deliverable initial administrator address of its own and the network restriction of local
- * administrators) and {@link OpaaLocalAuthRateLimitTest} (the production rate limits - the base
- * raises them, see below). Each is listed in {@code SpringContextSignatureTest}.
+ * signature prove the link flows are off <em>without</em> one), {@link
+ * OpaaLocalAdminRestrictionTest} (the network restriction of local administrators) and {@link
+ * OpaaLocalAuthRateLimitTest} (the production rate limits - the base raises them, see below). Each
+ * is listed in {@code SpringContextSignatureTest}.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -43,9 +44,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(
     properties = {
       "opaa.auth.local.jwt-secret=" + OpaaLocalAuthMockMvcTest.JWT_SECRET,
-      // A deliverable address: on a fresh test database the start values complete the
-      // installation (ADR-0060), so no class of this family meets the installation mode.
-      "opaa.auth.initial-admin-email=" + OpaaLocalAuthMockMvcTest.INITIAL_ADMIN_EMAIL,
       "opaa.rate-limit.local-auth.login.max-requests=100000",
       "opaa.rate-limit.local-auth.login.global-max-requests=100000",
       "opaa.rate-limit.local-auth.refresh.max-requests=100000",
@@ -71,12 +69,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "opaa.indexing.target-validation.allowlist=127.0.0.1",
       // Same model addresses as the canonical signature: never a reachable model. This family
       // has no FakeEmbeddingModel, so the real embedding client points there too.
-      "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
-      "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL,
-      "OPAA_AI_CHAT_PROVIDER="
+      "spring.ai.openai.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
+      "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL
     })
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, TestInstallation.class})
 @ActiveProfiles("oidc")
 @Testcontainers(disabledWithoutDocker = true)
 // The same guards as OpaaIntegrationTest (without its bean reset, these contexts carry no
@@ -88,9 +85,6 @@ public @interface OpaaLocalAuthMockMvcTest {
 
   /** A public, deliberately non-production secret that passes {@code @ValidSecret}. */
   String JWT_SECRET = "mockmvc-local-auth-integration-test-key-0123456789-abcdefghij";
-
-  /** The start value of the emergency account of this family's database. */
-  String INITIAL_ADMIN_EMAIL = "notanker@opaa.test.example";
 
   /** The host every OIDC provider fixture of this family uses; see the allowlist above. */
   String PROVIDER_HOST = "idp.test.example";

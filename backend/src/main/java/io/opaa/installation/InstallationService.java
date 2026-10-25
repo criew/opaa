@@ -1,15 +1,12 @@
 package io.opaa.installation;
 
 import io.opaa.account.InitialAdministrator;
-import io.opaa.account.LocalAdminSeedMarkerRepository;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcClaimMapping;
-import io.opaa.auth.OidcProviderSeedMarker;
-import io.opaa.auth.OidcProviderSeedMarkerRepository;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -18,7 +15,6 @@ import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.installation.InstallationState.TokenSource;
-import io.opaa.llm.LlmModelSeedMarkerRepository;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
 import io.opaa.organization.Organization;
@@ -34,13 +30,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The installation of a fresh instance (ADR-0060). Every write takes the row lock of {@code
  * installation_state}, then the start-up lock {@code 211}, in that order everywhere, so steps,
- * checks, completion and start-up seeds of all instances run one after another. The completion
+ * checks, completion and the emergency reset of all instances run one after another. The completion
  * succeeds once; every later call answers {@link NotFoundException}.
  */
 @Service
@@ -54,6 +51,17 @@ public class InstallationService {
   static final String OBJECT_LABEL = "Installation";
   static final String CHAT_MODEL_DISPLAY_NAME = "Chat-Modell aus der Installation";
 
+  /**
+   * The chat model the {@code dev} mode installs itself with (ADR-0060): the model address of the
+   * profile, a fixed model, no key and no target address check. Only the {@code dev} mode reaches
+   * it, and {@code io.opaa.auth.AuthProfileGuard} keeps that mode to development and tests.
+   */
+  static final String DEVELOPMENT_CHAT_MODEL_DISPLAY_NAME = "Chat-Modell der Entwicklung";
+
+  static final String DEVELOPMENT_CHAT_MODEL = "phi3:mini";
+  static final int DEVELOPMENT_CHAT_MAX_TOKENS = 8000;
+  static final String DEVELOPMENT_CHAT_BASE_URL_PROPERTY = "spring.ai.openai.base-url";
+
   private static final Logger log = LoggerFactory.getLogger(InstallationService.class);
 
   private final InstallationStateRepository states;
@@ -63,13 +71,11 @@ public class InstallationService {
   private final InitialAdministrator initialAdministrator;
   private final OidcProviderService oidcProviders;
   private final LlmModelService llmModels;
-  private final LocalAdminSeedMarkerRepository localAdminMarker;
-  private final OidcProviderSeedMarkerRepository oidcMarker;
-  private final LlmModelSeedMarkerRepository llmMarker;
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
   private final Clock clock;
+  private final Environment environment;
 
   InstallationService(
       InstallationStateRepository states,
@@ -79,13 +85,11 @@ public class InstallationService {
       InitialAdministrator initialAdministrator,
       OidcProviderService oidcProviders,
       LlmModelService llmModels,
-      LocalAdminSeedMarkerRepository localAdminMarker,
-      OidcProviderSeedMarkerRepository oidcMarker,
-      LlmModelSeedMarkerRepository llmMarker,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
-      Clock clock) {
+      Clock clock,
+      Environment environment) {
     this.states = states;
     this.steps = steps;
     this.rules = rules;
@@ -93,13 +97,11 @@ public class InstallationService {
     this.initialAdministrator = initialAdministrator;
     this.oidcProviders = oidcProviders;
     this.llmModels = llmModels;
-    this.localAdminMarker = localAdminMarker;
-    this.oidcMarker = oidcMarker;
-    this.llmMarker = llmMarker;
     this.audit = audit;
     this.users = users;
     this.status = status;
     this.clock = clock;
+    this.environment = environment;
   }
 
   /** Whether {@code presented} is the token of the pending installation, in constant time. */
@@ -177,12 +179,11 @@ public class InstallationService {
   public record StartupDecision(boolean completed, CompletionSource source) {}
 
   /**
-   * Completes a pending installation that needs no step: a database in use (a start-up seed ran or
-   * an account exists), the {@code dev} mode or the start values of the transition.
+   * Completes a pending installation that needs no step: a database in use (an account or a chat
+   * model exists), or the {@code dev} mode, which installs its chat model itself.
    */
   @Transactional
-  public StartupDecision completeAtStartupIfDue(
-      boolean developmentMode, boolean legacyStartValues) {
+  public StartupDecision completeAtStartupIfDue(boolean developmentMode) {
     InstallationState state = lockState();
     if (state.isCompleted()) {
       return new StartupDecision(true, null);
@@ -192,8 +193,7 @@ public class InstallationService {
       source = CompletionSource.EXISTING;
     } else if (developmentMode) {
       source = CompletionSource.DEVELOPMENT;
-    } else if (legacyStartValues) {
-      source = CompletionSource.LEGACY_START_VALUES;
+      installDevelopmentChatModel();
     }
     if (source == null) {
       return new StartupDecision(false, null);
@@ -310,9 +310,6 @@ public class InstallationService {
               oidc.jwkSetUri(),
               OidcClaimMapping.keycloakDefaults()));
     }
-    if (!oidcMarker.seedAlreadyAttempted()) {
-      oidcMarker.save(new OidcProviderSeedMarker(clock.instant()));
-    }
     InstallationStepRecord modelStep = saved.get(InstallationStep.CHAT_MODEL);
     StepRules.ChatModelPayload model = rules.chatModelPayload(modelStep.getPayload());
     llmModels.installActiveModel(
@@ -355,12 +352,21 @@ public class InstallationService {
     return state;
   }
 
-  /** A database OPAA already ran on: a start-up seed ran, or an account exists. */
+  /** A database OPAA already ran on: an account or a chat model exists. */
   private boolean databaseInUse() {
-    return localAdminMarker.seedAlreadyAttempted()
-        || oidcMarker.seedAlreadyAttempted()
-        || llmMarker.seedAlreadyAttempted()
-        || users.count() > 0;
+    return users.count() > 0 || llmModels.anyModelExists();
+  }
+
+  private void installDevelopmentChatModel() {
+    llmModels.installActiveModel(
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        DEVELOPMENT_CHAT_MODEL_DISPLAY_NAME,
+        environment.getRequiredProperty(DEVELOPMENT_CHAT_BASE_URL_PROPERTY).trim(),
+        DEVELOPMENT_CHAT_MODEL,
+        null,
+        DEVELOPMENT_CHAT_MAX_TOKENS,
+        null);
   }
 
   private InstallationOverview overviewOfSavedSteps() {

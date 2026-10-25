@@ -61,7 +61,7 @@ class QueryControllerLlmErrorMappingIntegrationTest {
     foreignModels = llmModelCatalogFixtures.takeOverCatalog();
     resolver.resetForTest();
 
-    // Provisions "dev-admin" (opaa.auth.initial-admin-email, application.yml) via the real
+    // Provisions "dev-admin" (opaa.auth.dev.system-admin-email, application.yml) via the real
     // UserProvisioningFilter - same technique as LibraryIndexingAuthorizationIntegrationTest.
     mockMvc.perform(get("/api/v1/me").with(devUser(null)));
     devAdmin =

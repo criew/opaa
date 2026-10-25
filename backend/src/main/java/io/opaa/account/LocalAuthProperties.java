@@ -31,10 +31,6 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     hours)
  * @param cookieSecure whether the refresh cookie carries {@code Secure} (default true; {@code
  *     false} only for local HTTP)
- * @param initialAdminPassword {@code OPAA_INITIAL_ADMIN_PASSWORD}: the bootstrap administrator's
- *     password for automated deployments (CI, E2E) - used byte for byte, never trimmed (a password
- *     may begin or end with a space), without a forced change; empty means "generate one and print
- *     it once" (ADR-0033, Entscheidung 5)
  * @param adminReset {@code OPAA_LOCAL_ADMIN_RESET}: {@code force} restores the bootstrap
  *     administrator once at start-up (Entscheidung 5); the operator removes it afterwards
  * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
@@ -43,8 +39,8 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     used is renewed once more instead of being treated as a replay - the reload that discarded
  *     the rotation's answer (default 20 seconds, at most 60; zero switches it off, Entscheidung 7)
  */
-@PerInstance("session limits and seed values of this process")
-@NoDataImpact("signing secret, cookie and bootstrap of local accounts")
+@PerInstance("session limits and reset of this process")
+@NoDataImpact("signing secret, cookie and emergency reset of local accounts")
 @ConfigurationProperties(prefix = "opaa.auth.local")
 public record LocalAuthProperties(
     @InstallationWide(secret = true) @ValidSecret String jwtSecret,
@@ -54,7 +50,6 @@ public record LocalAuthProperties(
     @DataImpact Duration adminRefreshTokenTtl,
     @DataImpact Duration adminSessionMaxLifetime,
     Boolean cookieSecure,
-    String initialAdminPassword,
     String adminReset,
     @InstallationWide List<String> adminAllowedCidrs,
     @InstallationWide @NoDataImpact("tolerance of the replay detection, keeps no data longer")
@@ -65,7 +60,6 @@ public record LocalAuthProperties(
   public static final Duration DEFAULT_REFRESH_GRACE_PERIOD = Duration.ofSeconds(20);
   public static final Duration MAX_REFRESH_GRACE_PERIOD = Duration.ofSeconds(60);
   public static final String ADMIN_RESET_FORCE = "force";
-  public static final String INITIAL_ADMIN_PASSWORD_VARIABLE = "OPAA_INITIAL_ADMIN_PASSWORD";
   public static final String ADMIN_RESET_VARIABLE = "OPAA_LOCAL_ADMIN_RESET";
   public static final String ADMIN_ALLOWED_CIDRS_VARIABLE = "OPAA_LOCAL_ADMIN_ALLOWED_CIDRS";
 
@@ -73,7 +67,6 @@ public record LocalAuthProperties(
 
   public LocalAuthProperties {
     jwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
-    initialAdminPassword = initialAdminPassword == null ? "" : initialAdminPassword;
     adminReset = adminReset == null ? "" : adminReset.trim();
     adminAllowedCidrs = normalizeCidrs(adminAllowedCidrs);
     accessTokenTtl = accessTokenTtl != null ? accessTokenTtl : Duration.ofMinutes(15);
@@ -128,10 +121,6 @@ public record LocalAuthProperties(
         Setting.ACCESS_TOKEN_TTL,
         adminRefreshTokenTtl,
         Setting.ADMIN_REFRESH_TOKEN_TTL);
-  }
-
-  public boolean hasInitialAdminPassword() {
-    return !initialAdminPassword.isEmpty();
   }
 
   public boolean isAdminResetForced() {

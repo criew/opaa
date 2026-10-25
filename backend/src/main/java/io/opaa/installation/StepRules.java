@@ -1,6 +1,6 @@
 package io.opaa.installation;
 
-import io.opaa.account.LocalAdminSeeder;
+import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
@@ -132,7 +132,7 @@ class StepRules {
       errors.add(error("firstAdmin.email", REQUIRED, "Die E-Mail-Adresse fehlt."));
     } else if (!looksLikeAnAddress(email) || email.length() > 320) {
       errors.add(error("firstAdmin.email", INVALID, "Das ist keine gültige E-Mail-Adresse."));
-    } else if (LocalAdminSeeder.REJECTED_DEFAULT_EMAIL.equalsIgnoreCase(email)) {
+    } else if (InitialAdministrator.REJECTED_DEFAULT_EMAIL.equalsIgnoreCase(email)) {
       errors.add(
           error(
               "firstAdmin.email",

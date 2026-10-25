@@ -29,16 +29,21 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Creates the local emergency account of the system administration (ADR-0033, Entscheidung 5) from
  * the installation (ADR-0060, Entscheidung 8): live, with the password hash the installation took,
- * no forced change, and the LOCAL provider row it signs in through. The seed marker is written with
- * it, so no start-up value is taken over afterwards. Runs inside the caller's transaction only.
+ * no forced change, and the LOCAL provider row it signs in through. Runs inside the caller's
+ * transaction only.
  */
 @Component
 public class InitialAdministrator {
 
+  public static final String LOCAL_PROVIDER_DISPLAY_NAME = "Lokale Konten";
+  public static final String CREATED_REASON = "Notanker-Konto der Systemverwaltung";
+
+  /** The address of {@code dev-admin}: a development value, never a mailbox. */
+  public static final String REJECTED_DEFAULT_EMAIL = "admin@opaa.local";
+
   private final UserRepository users;
   private final LocalCredentialsRepository credentials;
   private final OidcProviderRepository providers;
-  private final LocalAdminSeedMarkerRepository marker;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
   private final Clock clock;
@@ -47,14 +52,12 @@ public class InitialAdministrator {
       UserRepository users,
       LocalCredentialsRepository credentials,
       OidcProviderRepository providers,
-      LocalAdminSeedMarkerRepository marker,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
     this.providers = providers;
-    this.marker = marker;
     this.audit = audit;
     this.events = events;
     this.clock = clock;
@@ -76,16 +79,12 @@ public class InitialAdministrator {
     Instant now = clock.instant();
     ensureLocalProviderRow();
     User admin = createBootstrapUser(email, displayName);
-    LocalCredentials row =
-        new LocalCredentials(admin.getId(), LocalAdminSeeder.CREATED_REASON, now);
+    LocalCredentials row = new LocalCredentials(admin.getId(), CREATED_REASON, now);
     row.markBootstrap();
     row.markEmailVerified(now);
     row.setPasswordHash(passwordHash, now);
     row.clearPasswordChangeRequirement(now);
     credentials.save(row);
-    if (!marker.seedAlreadyAttempted()) {
-      marker.save(new LocalAdminSeedMarker(now));
-    }
     UUID pseudonym = audit.pseudonymFor(admin.getId(), admin.getOrganizationId());
     audit.recordSystemProcessAction(
         AuditEvent.builder()
@@ -104,7 +103,7 @@ public class InitialAdministrator {
   /** The LOCAL provider row the local accounts sign in through, created switched off. */
   private void ensureLocalProviderRow() {
     if (providers.findLocalRow().isEmpty()) {
-      providers.save(OidcProvider.localProvider(LocalAdminSeeder.LOCAL_PROVIDER_DISPLAY_NAME));
+      providers.save(OidcProvider.localProvider(LOCAL_PROVIDER_DISPLAY_NAME));
     }
   }
 

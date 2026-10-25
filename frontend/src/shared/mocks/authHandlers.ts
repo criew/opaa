@@ -1,13 +1,9 @@
 import { http, HttpResponse } from 'msw'
 import { mockAuthConfig, mockLocalAccount, mockLocalTokenResponse, mockUser } from './authFixtures'
-import { isMockInstallationPending } from '@/features/installation/mocks/installationFixtures'
 
 export const authHandlers = [
   http.get('/api/v1/auth/config', () => {
-    return HttpResponse.json({
-      ...mockAuthConfig,
-      installationPending: isMockInstallationPending(),
-    })
+    return HttpResponse.json(mockAuthConfig)
   }),
 
   // ADR-0033: the local sign-in of the mocks knows exactly one account. Every refusal is the same

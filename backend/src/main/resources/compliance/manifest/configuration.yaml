@@ -7,30 +7,21 @@ settings:
   - key: spring.ai.openai.base-url
     defaultValue: http://localhost:11434/v1
     effect: >-
-      Gemeinsame Adresse von Chat- und Embedding-Modell, solange keine eigene gesetzt ist; die
-      Voreinstellung zeigt auf einen Modellserver auf demselben Rechner
+      Adresse des Embedding-Modells, solange keine eigene gesetzt ist, und im Modus dev die des
+      Chat-Modells, mit dem sich die Instanz selbst einrichtet; im Betrieb kommt das Chat-Modell aus
+      der Installation. Die Voreinstellung zeigt auf einen Modellserver auf demselben Rechner
     bearings: [DATA_FLOW]
     notes:
       - "Profil docker: http://ollama:11434/v1"
-  - key: spring.ai.openai.chat.base-url
-    defaultValue: http://localhost:11434/v1
-    effect: Adresse des Chat-Modells, an das Fragen, Gesprächsverlauf und Fundstellen gehen
+  - key: llm_models.model_identifier
+    source: DATABASE
+    defaultValue: ""
+    effect: >-
+      Aktives Chat-Modell, das Antworten, Titel, Gesprächsnotizen und Teilfragen erzeugt; kommt aus
+      der Installation und wird in der Modellverwaltung geändert
     bearings: [DATA_FLOW]
     notes:
-      - "Profil docker: http://ollama:11434/v1"
-      - >-
-        Wird nur im Modus dev und im Übergang mit OPAA_INITIAL_ADMIN_EMAIL als aktives Chat-Modell
-        übernommen; sonst kommt es aus der Installation (Antwortdatei bzw. Helm-Wert
-        bootstrap.chatModel), danach führt die Modellverwaltung der Systemverwaltung
-  - key: spring.ai.openai.chat.model
-    defaultValue: phi3:mini
-    effect: Standard-Chatmodell, das Antworten, Titel, Gesprächsnotizen und Teilfragen erzeugt
-    bearings: [DATA_FLOW]
-    notes:
-      - >-
-        Wird nur im Modus dev und im Übergang mit OPAA_INITIAL_ADMIN_EMAIL als aktives Chat-Modell
-        übernommen; sonst kommt es aus der Installation (Antwortdatei bzw. Helm-Wert
-        bootstrap.chatModel), danach führt die Modellverwaltung der Systemverwaltung
+      - Im Modus dev richtet sich die Instanz mit phi3:mini unter spring.ai.openai.base-url ein
   - key: spring.ai.openai.embedding.base-url
     defaultValue: http://localhost:11434/v1
     effect: Adresse des Embedding-Modells, an das Dokumentabschnitte und Suchanfragen gehen

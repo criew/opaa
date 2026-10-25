@@ -4,7 +4,6 @@ import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'r
 // app
 import ErrorBoundary from './ErrorBoundary'
 import ProtectedRoute from './ProtectedRoute'
-import InstallationRedirect from './InstallationRedirect'
 import { createAppTheme } from '@/shared/theme/theme'
 import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './shell/GlobalAreaLayout'
@@ -26,7 +25,6 @@ import {
   EXTERNAL_TOOLS_TOKENS_ROUTE,
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
-  INSTALLATION_ROUTE,
   REGISTER_ROUTE,
   RIGHTS_HISTORY_ROUTE,
   SET_PASSWORD_ROUTE,
@@ -54,7 +52,6 @@ import {
   ForgotPasswordPage,
   GroupManagementPage,
   HandoverPage,
-  InstallationPage,
   LibraryCreatePage,
   LibraryDetailPage,
   LlmModelManagementPage,
@@ -173,11 +170,8 @@ export default function App() {
       <CssBaseline />
       <ErrorBoundary>
         <Router>
-          <InstallationRedirect />
           <Suspense fallback={<PageLoading />}>
             <Routes>
-              {/* ADR-0060: the set-up assistant, outside the shell and before any session. */}
-              <Route path={INSTALLATION_ROUTE} element={<InstallationPage />} />
               <Route path="/login" element={<LoginPage />} />
               {/* ADR-0033, Entscheidung 4/5: reachable at all times - the way back into an
                 installation whose last identity provider is misconfigured. */}

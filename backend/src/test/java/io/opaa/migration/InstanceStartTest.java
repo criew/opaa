@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -108,10 +109,19 @@ class InstanceStartTest extends AbstractMigrationTest {
   @Test
   void twoInstancesColdStartingTogetherOnAnEmptyDatabaseBothStartAndResetTheAccountOnce()
       throws Exception {
-    Map<String, String> forced = Map.of("OPAA_LOCAL_ADMIN_RESET", "force");
-    Instance first = start("first", forced);
-    Instance second = start("second", forced);
+    HttpServer chat = chatEndpoint();
+    try {
+      Map<String, String> forced = new HashMap<>(answerFileEnvironment(chat));
+      forced.put("OPAA_LOCAL_ADMIN_RESET", "force");
+      Instance first = start("first", forced);
+      Instance second = start("second", forced);
+      assertTheAccountIsResetOnce(first, second);
+    } finally {
+      chat.stop(0);
+    }
+  }
 
+  private void assertTheAccountIsResetOnce(Instance first, Instance second) throws Exception {
     assertThat(first.started().get(START_SECONDS, TimeUnit.SECONDS)).as(first.log()).isTrue();
     assertThat(second.started().get(START_SECONDS, TimeUnit.SECONDS)).as(second.log()).isTrue();
 
@@ -138,28 +148,9 @@ class InstanceStartTest extends AbstractMigrationTest {
   void twoInstancesColdStartingWithAnAnswerFileCompleteTheInstallationOnce() throws Exception {
     HttpServer chat = chatEndpoint();
     try {
-      Path directory = Files.createTempDirectory("opaa-installation");
-      Path password =
-          Files.writeString(directory.resolve("password"), "Kennwort-der-Installation-2026\n");
-      Path answers =
-          Files.writeString(
-              directory.resolve("installation.json"),
-              "{\"firstAdmin\":{\"email\":\""
-                  + ADMIN_EMAIL
-                  + "\",\"displayName\":\"IT\",\"passwordFile\":\""
-                  + password
-                  + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},\"chatModel\":{\"baseUrl\":"
-                  + "\"http://127.0.0.1:"
-                  + chat.getAddress().getPort()
-                  + "/v1\",\"model\":\"qwen2.5:7b\"}}");
-      Map<String, String> environment =
-          Map.of(
-              "OPAA_INSTALLATION_ANSWER_FILE",
-              answers.toString(),
-              "OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST",
-              "127.0.0.1");
-      Instance first = start("first", environment, false);
-      Instance second = start("second", environment, false);
+      Map<String, String> environment = answerFileEnvironment(chat);
+      Instance first = start("first", environment);
+      Instance second = start("second", environment);
 
       assertThat(first.started().get(START_SECONDS, TimeUnit.SECONDS)).as(first.log()).isTrue();
       assertThat(second.started().get(START_SECONDS, TimeUnit.SECONDS)).as(second.log()).isTrue();
@@ -184,8 +175,8 @@ class InstanceStartTest extends AbstractMigrationTest {
   @Test
   void twoInstancesColdStartingWithoutStartValuesWaitForTheInstallationWithOneToken()
       throws Exception {
-    Instance first = start("first", Map.of(), false);
-    Instance second = start("second", Map.of(), false);
+    Instance first = start("first", Map.of());
+    Instance second = start("second", Map.of());
 
     assertThat(first.started().get(START_SECONDS, TimeUnit.SECONDS)).as(first.log()).isTrue();
     assertThat(second.started().get(START_SECONDS, TimeUnit.SECONDS)).as(second.log()).isTrue();
@@ -228,12 +219,30 @@ class InstanceStartTest extends AbstractMigrationTest {
     return server;
   }
 
-  private Instance start(String name, Map<String, String> environment) throws IOException {
-    return start(name, environment, true);
+  /** The answer file of the installation, its password file and the loopback chat endpoint. */
+  private static Map<String, String> answerFileEnvironment(HttpServer chat) throws IOException {
+    Path directory = Files.createTempDirectory("opaa-installation");
+    Path password =
+        Files.writeString(directory.resolve("password"), "Kennwort-der-Installation-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\""
+                + ADMIN_EMAIL
+                + "\",\"displayName\":\"IT\",\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},\"chatModel\":{\"baseUrl\":"
+                + "\"http://127.0.0.1:"
+                + chat.getAddress().getPort()
+                + "/v1\",\"model\":\"qwen2.5:7b\"}}");
+    return Map.of(
+        "OPAA_INSTALLATION_ANSWER_FILE",
+        answers.toString(),
+        "OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST",
+        "127.0.0.1");
   }
 
-  private Instance start(String name, Map<String, String> environment, boolean startValues)
-      throws IOException {
+  private Instance start(String name, Map<String, String> environment) throws IOException {
     // One original store for every instance: the store path is installation-wide, so an instance
     // with another path refuses to start (instance register, ADR-0053).
     if (uploads == null) {
@@ -254,10 +263,9 @@ class InstanceStartTest extends AbstractMigrationTest {
                 "--spring.profiles.active=oidc",
                 "--server.port=0",
                 "--opaa.auth.local.jwt-secret=instance-start-test-secret-0123456789-abcdefghij",
-                "--opaa.auth.initial-admin-email=" + (startValues ? ADMIN_EMAIL : ""),
                 "--opaa.directory-sync.schedule-enabled=false",
                 "--opaa.upload.storage-path=" + uploads,
-                "--spring.ai.openai.chat.base-url=http://chat-model.invalid/v1",
+                "--spring.ai.openai.base-url=http://chat-model.invalid/v1",
                 "--spring.ai.openai.embedding.base-url=http://embedding-model.invalid/v1",
                 "--spring.main.banner-mode=off"));
     ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);

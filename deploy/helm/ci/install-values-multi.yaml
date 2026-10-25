@@ -61,7 +61,7 @@ backend:
   # outlasts the rolling update.
   extraEnv:
     # Start values for a previous version without the installation mode (phase "rolling"); the
-    # current version installs from the answer file and ignores them.
+    # current version installs from the answer file and no longer reads them.
     - { name: OPAA_INITIAL_ADMIN_EMAIL, value: systemverwaltung@opaa.example }
     - { name: OPAA_INITIAL_ADMIN_PASSWORD, value: "E2eMehrinstanzKonto!2026" }
     - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }

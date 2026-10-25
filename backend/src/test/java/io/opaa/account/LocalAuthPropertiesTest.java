@@ -17,7 +17,7 @@ class LocalAuthPropertiesTest {
   @Test
   void fillsInTheAdrDefaults() {
     LocalAuthProperties properties =
-        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null, null);
+        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null);
 
     assertThat(properties.jwtSecret()).isEmpty();
     assertThat(properties.accessTokenTtl()).isEqualTo(Duration.ofMinutes(15));
@@ -26,15 +26,13 @@ class LocalAuthPropertiesTest {
     assertThat(properties.adminRefreshTokenTtl()).isEqualTo(Duration.ofHours(4));
     assertThat(properties.adminSessionMaxLifetime()).isEqualTo(Duration.ofHours(12));
     assertThat(properties.cookieSecure()).isTrue();
-    assertThat(properties.initialAdminPassword()).isEmpty();
-    assertThat(properties.hasInitialAdminPassword()).isFalse();
     assertThat(properties.isAdminResetForced()).isFalse();
     assertThat(properties.adminAllowedCidrs()).isEmpty();
     assertThat(properties.refreshGracePeriod()).isEqualTo(Duration.ofSeconds(20));
   }
 
   @Test
-  void readsTheBootstrapSettingsOfTheLocalAdministrator() {
+  void readsTheResetAndNetworkSettingsOfTheLocalAdministrator() {
     LocalAuthProperties properties =
         new LocalAuthProperties(
             null,
@@ -44,14 +42,10 @@ class LocalAuthPropertiesTest {
             null,
             null,
             null,
-            "  ci-passwort  ",
             " Force ",
             List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"),
             null);
 
-    // never trimmed: a password may begin or end with a space
-    assertThat(properties.initialAdminPassword()).isEqualTo("  ci-passwort  ");
-    assertThat(properties.hasInitialAdminPassword()).isTrue();
     assertThat(properties.isAdminResetForced()).isTrue();
     assertThat(properties.adminAllowedCidrs()).containsExactly("10.0.0.0/8", "2001:db8::/32");
   }
@@ -61,34 +55,14 @@ class LocalAuthPropertiesTest {
     assertThatThrownBy(
             () ->
                 new LocalAuthProperties(
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    List.of("10.0.0.0/33"),
-                    null))
+                    null, null, null, null, null, null, null, null, List.of("10.0.0.0/33"), null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS")
         .hasMessageContaining("10.0.0.0/33");
     assertThatThrownBy(
             () ->
                 new LocalAuthProperties(
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    List.of("kein-netz"),
-                    null))
+                    null, null, null, null, null, null, null, null, List.of("kein-netz"), null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS");
   }
@@ -176,7 +150,7 @@ class LocalAuthPropertiesTest {
 
   private static LocalAuthProperties gracePeriod(Duration gracePeriod) {
     return new LocalAuthProperties(
-        null, null, null, null, null, null, null, null, null, null, gracePeriod);
+        null, null, null, null, null, null, null, null, null, gracePeriod);
   }
 
   private static LocalAuthProperties properties(
@@ -187,6 +161,6 @@ class LocalAuthPropertiesTest {
       Duration adminRefresh,
       Duration adminSession) {
     return new LocalAuthProperties(
-        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null, null);
+        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null);
   }
 }

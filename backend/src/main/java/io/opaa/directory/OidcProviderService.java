@@ -1,7 +1,7 @@
 package io.opaa.directory;
 
+import io.opaa.account.InitialAdministrator;
 import io.opaa.account.LocalAccountsSwitch;
-import io.opaa.account.LocalAdminSeeder;
 import io.opaa.account.LocalRefreshTokenRepository;
 import io.opaa.account.LocalTokenRevocationService;
 import io.opaa.account.RevocationReason;
@@ -630,7 +630,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
             .orElseGet(
                 () ->
                     repository.save(
-                        OidcProvider.localProvider(LocalAdminSeeder.LOCAL_PROVIDER_DISPLAY_NAME)));
+                        OidcProvider.localProvider(
+                            InitialAdministrator.LOCAL_PROVIDER_DISPLAY_NAME)));
     if (local.isEnabled() == enabled) {
       return new LocalAccountsSwitch.Result(local, 0);
     }

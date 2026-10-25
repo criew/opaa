@@ -61,7 +61,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
     activeProviderId: null,
     localAccounts: LOCAL_ACCOUNTS_DISABLED,
     features: {},
-    installationPending: false,
     sessionKind: null,
     passwordChangeRequired: false,
     passwordChangeReason: null,

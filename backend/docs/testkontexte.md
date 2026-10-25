@@ -47,8 +47,8 @@ lokale Sitzung ist dort nicht fahrbar (ADR-0033, #1543):
   kommen.
 - **`@OpaaLocalAuthLinkTest`** — plus `opaa.public-base-url` und Einstellungs-Schlüssel; ohne
   Basis-URL sind die Link-Flüsse abgeschaltet, und Klassen auf der Basis prüfen genau das.
-- **`@OpaaLocalAuthSeedTest`** — plus zustellbare Erstadministrator-Adresse und Netzbeschränkung;
-  die Basis trägt den ausgelieferten Vorgabewert, den der Seed ablehnt, und eine Klasse prüft das.
+- **`@OpaaLocalAdminRestrictionTest`** — plus Netzbeschränkung lokaler Systemverwalter, die alle
+  übrigen Klassen der Familie aussperren würde.
   Mit fährt das abgeschaltete Feature-Flag `EXTERNAL_ACCESS`: was ein Tokenwert unter `oidc` ohne
   die Filterkette des Kanals trifft.
 - **`@OpaaLocalAuthRateLimitTest`** — mit den **echten** Grenzen, die hier Prüfgegenstand sind.
@@ -88,13 +88,13 @@ einen eigenen Kontext und einen eigenen Container. Deshalb:
 
 ## Kein Test erreicht ein echtes Modell
 
-**Kein Test erreicht ein echtes Modell.** Das aktive Chat-Modell der Testdatenbank übernimmt
-`LlmModelSeeder` beim ersten Start aus `spring.ai.openai.chat.base-url`; der Vorgabewert aus
-`application.yml` wäre ein lokal laufendes Ollama, das die Suche (Zerlegung in Teilfragen) dann
-wirklich aufruft. Deshalb setzen `@OpaaIntegrationTest` und `@OpaaLocalAuthMockMvcTest` die Chat-
-und die Embedding-Adresse auf Hosts unter `.invalid` (`OpaaIntegrationTest.CHAT_BASE_URL`,
-`EMBEDDING_BASE_URL`) und leeren `OPAA_AI_CHAT_PROVIDER`, damit der Altpfad über `OPAA_OLLAMA_*`
-aus der Shell nicht greift. `TestChatModelEndpointTest` prüft das für jede Signatur ohne Docker,
+**Kein Test erreicht ein echtes Modell.** Die Testdatenbank richtet sich beim ersten Start ein wie
+der Modus `dev` (ADR-0060): mit dem Chat-Modell unter `spring.ai.openai.base-url`; die
+`oidc`-Familie bekommt dafür die Test-Hilfe `TestInstallation`, die vor der Startentscheidung
+abschließt. Der Vorgabewert aus `application.yml` wäre ein lokal laufendes Ollama, das die Suche
+(Zerlegung in Teilfragen) dann wirklich aufruft. Deshalb setzen `@OpaaIntegrationTest` und
+`@OpaaLocalAuthMockMvcTest` die gemeinsame und die Embedding-Adresse auf Hosts unter `.invalid`
+(`OpaaIntegrationTest.CHAT_BASE_URL`, `EMBEDDING_BASE_URL`). `TestChatModelEndpointTest` prüft das für jede Signatur ohne Docker,
 `ModelBaseUrlDefaultsTest` die Vorgabewerte aus `application.yml`. Eine neue Basis-Signatur
 übernimmt die Properties (#2600).
 

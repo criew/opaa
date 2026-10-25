@@ -52,7 +52,7 @@ class SpringContextSignatureTest {
           // variant states in its own Javadoc why its properties cannot be the family's base.
           OpaaLocalAuthMockMvcTest.class,
           OpaaLocalAuthLinkTest.class,
-          OpaaLocalAuthSeedTest.class,
+          OpaaLocalAdminRestrictionTest.class,
           OpaaLocalAuthRateLimitTest.class,
           OpaaLocalAuthProviderTest.class);
 

@@ -46,8 +46,6 @@ import { resetSelfDisclosureMockState } from '@/features/compliance/mocks/selfDi
 // auth
 import { resetMockAuthConfig } from '@/shared/mocks/authFixtures'
 import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'
-// installation
-import { resetMockInstallation } from '@/features/installation/mocks/installationFixtures'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
@@ -89,7 +87,6 @@ afterEach(() => {
   // A self-service link is single-use in the mock, as it is in the backend - a link one test
   // redeemed would read as invalid in the next.
   resetMockSelfServiceTokens()
-  resetMockInstallation()
   // The same reasoning for external access: switch and token inventory are
   // mutable, so that a save, a creation or a revocation is visible in the next GET.
   resetMockExternalAccessSettings()

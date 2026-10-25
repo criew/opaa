@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
+import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import io.opaa.compliance.InstanceStateSource;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,17 @@ class LlmInstanceState implements InstanceStateSource {
     this.embedding = embedding;
     this.rerank = rerank;
     this.transcription = transcription;
+  }
+
+  /** The active chat model; "keines" while the installation has not set one. */
+  @Override
+  public Map<String, StoredValue> storedSettings() {
+    StoredValue active =
+        models.findAllByActiveTrue().stream()
+            .findFirst()
+            .map(model -> new StoredValue(model.getModelIdentifier(), model.getUpdatedAt()))
+            .orElseGet(() -> new StoredValue("keines", null));
+    return Map.of("llm_models.model_identifier", active);
   }
 
   @Override
