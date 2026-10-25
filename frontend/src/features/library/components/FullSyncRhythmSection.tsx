@@ -59,9 +59,10 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
         'success',
       )
     } catch (err: unknown) {
-      setSaveError(
-        err instanceof Error ? err.message : 'Der Rhythmus konnte nicht gespeichert werden.',
-      )
+      const message =
+        err instanceof Error ? err.message : 'Der Rhythmus konnte nicht gespeichert werden.'
+      setSaveError(message)
+      notify(`Rhythmus von ${name} nicht gespeichert: ${message}`, 'error')
     } finally {
       setBusy(false)
     }

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 import { server } from '@/test/server'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import type { FullSyncRhythmResponse } from '@/shared/api/types'
@@ -165,6 +166,13 @@ describe('FullSyncRhythmSection', () => {
       ),
     ).toBeInTheDocument()
     expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(useNotificationStore.getState().queue).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message:
+          'Rhythmus von Confluence nicht gespeichert: Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen',
+      }),
+    )
   })
 
   it('offers a retry when the rhythms cannot be loaded', async () => {
