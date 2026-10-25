@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -98,6 +98,10 @@ passieren darf. Der Login antwortet mit derselben Einheitsantwort wie bei falsch
 die Sitzungen regulärer Konten zusätzlich eifrig (`ADMIN`, je Konto ein Audit-Ereignis).
 
 ### 5. Erstadministrator: lokales Notanker-Konto beim ersten Start, Einmalpasswort ins Log, Wiederanlauf per Variable
+
+Die Anlage des Kontos aus `OPAA_INITIAL_ADMIN_*` und das erzeugte Einmalpasswort werden durch den
+Einrichtungs-Assistenten abgelöst (ADR-0060, Entscheidung 8); Notanker-Rolle und Wiederanlauf
+bleiben. Bis zur Umsetzung gilt der folgende Absatz.
 
 `LocalAdminSeeder` (Markierung `LocalAdminSeedMarker`, nur im `oidc`-Profil) legt immer die `LOCAL`-Anbieterzeile an und ein lokales `SYSTEM_ADMIN`-Konto aus
 `OPAA_INITIAL_ADMIN_EMAIL` (Anzeigename „Systemverwaltung", `is_bootstrap = true`,
