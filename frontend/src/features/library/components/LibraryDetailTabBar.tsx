@@ -29,20 +29,30 @@ export default function LibraryDetailTabBar({
       const start = tabs.find((tab) => end - tab.offsetLeft <= scroller.clientWidth) ?? active
       scroller.scrollLeft = start.offsetLeft
     }
-    // the bar animates its own scroll to the selected tab once its tabs are measured; for a short
-    // while each such scroll ends on a tab's edge, a scroll by the user later stays as it is
-    const frame = requestAnimationFrame(() => requestAnimationFrame(reveal))
+    // the bar animates its own scroll to the selected tab whenever its tabs are measured anew
+    // (first layout, web fonts, resize); for a short while after each, a scroll that ends is
+    // brought to a tab's edge - a scroll by the user later stays as it is
     const scroller = document
       .getElementById(`library-tab-${activeTab}`)
       ?.closest<HTMLElement>('.MuiTabs-scroller')
-    scroller?.addEventListener('scrollend', reveal)
-    const settle = window.setTimeout(() => scroller?.removeEventListener('scrollend', reveal), 1500)
-    window.addEventListener('resize', reveal)
+    let settle = 0
+    const arm = () => {
+      reveal()
+      scroller?.addEventListener('scrollend', reveal)
+      window.clearTimeout(settle)
+      settle = window.setTimeout(() => scroller?.removeEventListener('scrollend', reveal), 1500)
+    }
+    const frame = requestAnimationFrame(() => requestAnimationFrame(arm))
+    const list = scroller?.querySelector('[role="tablist"]')
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => arm())
+    if (list) observer?.observe(list)
+    window.addEventListener('resize', arm)
     return () => {
       cancelAnimationFrame(frame)
       window.clearTimeout(settle)
+      observer?.disconnect()
       scroller?.removeEventListener('scrollend', reveal)
-      window.removeEventListener('resize', reveal)
+      window.removeEventListener('resize', arm)
     }
   }, [activeTab])
   return (

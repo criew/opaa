@@ -424,7 +424,11 @@ export default function LibraryDocumentList({
           >
             {selectedIds.length > 0 ? `${selectedIds.length} ausgewählt` : 'Name'}
           </Typography>
-          {headAction && selectedIds.length === 0 && <Box sx={{ ml: 'auto' }}>{headAction}</Box>}
+          {headAction && selectedIds.length === 0 && (
+            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              {headAction}
+            </Box>
+          )}
           {selectedIds.length > 0 && (
             <>
               {bulkActions}

@@ -380,12 +380,14 @@ export default function LibraryDetailPage() {
               )}
               {privateStorage && (
                 <HeaderFigure>
-                  <span data-testid="private-storage-figure">
-                    {/* the figure is the private storage of all private libraries, not of this one */}
-                    Privater Speicher{' '}
+                  {/* the private storage of all private libraries, not of this one */}
+                  <span
+                    data-testid="private-storage-figure"
+                    title="Belegter Speicher aller privaten Bibliotheken"
+                  >
                     {privateStorage.quotaBytes > 0
-                      ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)}`
-                      : formatFileSize(privateStorage.usedBytes)}
+                      ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} privat`
+                      : `${formatFileSize(privateStorage.usedBytes)} privat`}
                   </span>
                 </HeaderFigure>
               )}
