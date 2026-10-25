@@ -1,6 +1,5 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
@@ -173,7 +172,12 @@ export default function LibraryDocumentUploadArea({
           )}
         </Stack>
       )}
-      {isUploading && <LinearProgress aria-label="Hochladen läuft" />}
+      {/* a running upload is text in fg-2, no bar across the width (G 5.5); the band says „Läuft“ */}
+      {isUploading && (
+        <Typography role="status" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          Wird hochgeladen …
+        </Typography>
+      )}
     </Stack>
   )
 }

@@ -82,7 +82,10 @@ function nextRunLabel(
   rhythm: ConfluenceFullSyncRhythm | undefined,
 ): string {
   if (!schedule || schedule.frequency === 'DISABLED') return 'kein Zeitplan'
-  const base = scheduleSummary(scheduleValuesFrom(schedule, rhythm)).replace(/ · Vollabgleich.*$/, '')
+  const base = scheduleSummary(scheduleValuesFrom(schedule, rhythm)).replace(
+    / · Vollabgleich.*$/,
+    '',
+  )
   const next = formatShortDate(schedule.nextRunAt)
   return next ? `${base} · ${next}` : base
 }
@@ -192,6 +195,7 @@ export default function LibraryDetailPage() {
   )
   const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
   const uploadErrors = useDocumentStore((s) => s.uploadErrors)
+  const isUploading = useDocumentStore((s) => s.isUploading)
   const loadedDocuments = useDocumentStore((s) =>
     libraryId ? s.documentsByLibrary[libraryId] : undefined,
   )
@@ -354,7 +358,7 @@ export default function LibraryDetailPage() {
         successionOpen,
         quotaFull,
         // the loaded page of the list: the backend reports no count per status yet
-        processing: documentsOnPage.some((d) => d.status === 'PENDING'),
+        processing: isUploading || documentsOnPage.some((d) => d.status === 'PENDING'),
         failed: documentsOnPage.some((d) => d.status === 'FAILED'),
         documentCount: library.documentCount ?? 0,
         lastUpload,
@@ -432,7 +436,10 @@ export default function LibraryDetailPage() {
               unreadable.length > 0
                 ? `${unreadable.length} nicht lesbar · ${scopeText}`
                 : scopeText,
-            title: unreadable.length > 0 ? `${unreadable.length} nicht lesbar · ${scopeText}` : scopeText,
+            title:
+              unreadable.length > 0
+                ? `${unreadable.length} nicht lesbar · ${scopeText}`
+                : scopeText,
             link: hasScopeChoice(details) ? linkTo('quelle', 'Quelle ›') : null,
           },
           {

@@ -60,7 +60,9 @@ export function SummaryValue({
   // unreadable entries first, so they are among the five shown
   const listed = summary && typeof summary !== 'string' ? summary.items : []
   const items = [...listed.filter(isMarked), ...listed.filter((item) => !isMarked(item))]
-  const unlisted = marked.filter((name) => !listed.some((item) => entryKey(item) === entryKey(name)))
+  const unlisted = marked.filter(
+    (name) => !listed.some((item) => entryKey(item) === entryKey(name)),
+  )
   return (
     <Box sx={{ minWidth: 0 }}>
       {/* target and state side by side, the state after a gap instead of a dot, so a wrapped

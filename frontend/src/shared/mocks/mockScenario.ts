@@ -122,7 +122,10 @@ export function scenarioName(base: string, i: number, long = true): string {
     // cut at a word, never inside one: „…Nord, Süd und“ rather than „…Süd und Öst“
     return name.length <= 120
       ? name
-      : name.slice(0, name.lastIndexOf(' ', 120)).replace(/[,–]$/, '').trimEnd()
+      : name
+          .slice(0, name.lastIndexOf(' ', 120))
+          .replace(/(,|–| und| der)$/, '')
+          .trimEnd()
   }
   if (long && i === 7) return `${base} ${number} ${LONG_COMPOUND}`
   return `${base} ${number}`
