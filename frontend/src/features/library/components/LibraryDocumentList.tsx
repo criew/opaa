@@ -594,7 +594,7 @@ export default function LibraryDocumentList({
               <Box
                 role="button"
                 tabIndex={0}
-                aria-label={`Ordner ${folder.name} öffnen`}
+                aria-label={`${folder.name} – Ordner öffnen`}
                 onClick={() => onOpenFolder(folder.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {

@@ -271,7 +271,12 @@ export default function AssetDetailHeader({
           direction="row"
           spacing={1}
           useFlexGap
-          sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            minWidth: 0,
+            ...(compact && { columnGap: { xs: 0.5, sm: 1 } }),
+          }}
         >
           {definition &&
             (compact ? (
@@ -294,7 +299,10 @@ export default function AssetDetailHeader({
             alignItems: 'center',
             flexWrap: 'wrap',
             flexShrink: 0,
-            ...(compact && { '& .MuiIconButton-root': { p: { xs: 0.75, sm: 1 } } }),
+            ...(compact && {
+              columnGap: { xs: 0, sm: 1 },
+              '& .MuiIconButton-root': { p: { xs: 0.5, sm: 1 } },
+            }),
           }}
         >
           {actions}
