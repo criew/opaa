@@ -40,6 +40,8 @@ import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.run.SyncStateBasis;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.RunFailureCategory;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
@@ -88,7 +90,6 @@ class ConfluenceIndexingExecutorTest {
    */
   private static final Instant SEEDED_AT = NOW.minus(Duration.ofDays(3));
 
-  private static final Duration FULL_SYNC_INTERVAL = Duration.ofDays(7);
   private static final Duration OVERLAP = Duration.ofMinutes(10);
   private static final String EMAIL = "dienst@behoerde.example";
   private static final String TOKEN = "geheimes-token";
@@ -101,6 +102,7 @@ class ConfluenceIndexingExecutorTest {
   private LibraryStorageQuotaService storageQuotaService;
   private StaleDocumentCleanupService cleanupService;
   private SourceSyncStateRepository syncStateRepository;
+  private FullSyncRhythmSettingRepository rhythmSettings;
   private VectorChunkStore vectorChunkStore;
   private final List<Duration> sleeps = new ArrayList<>();
 
@@ -161,6 +163,7 @@ class ConfluenceIndexingExecutorTest {
                 mock(AssetRepository.class),
                 Clock.systemUTC()));
     syncStateRepository = mock(SourceSyncStateRepository.class);
+    rhythmSettings = mock(FullSyncRhythmSettingRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(documentIngestService.ingest(DocumentIngests.anyText(), any()))
@@ -259,7 +262,6 @@ class ConfluenceIndexingExecutorTest {
             0,
             0,
             0,
-            FULL_SYNC_INTERVAL,
             OVERLAP,
             requestBudget);
     ConfluenceClientFactory factory =
@@ -272,6 +274,7 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             new ScanJournal(syncStateRepository),
+            new FullSyncRhythm(rhythmSettings),
             testClock(),
             runTemplate());
   }
@@ -1002,7 +1005,6 @@ class ConfluenceIndexingExecutorTest {
             0,
             0,
             0,
-            FULL_SYNC_INTERVAL,
             Duration.ofMinutes(1),
             0);
     executor =
@@ -1014,6 +1016,7 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             new ScanJournal(syncStateRepository),
+            new FullSyncRhythm(rhythmSettings),
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
@@ -1186,7 +1189,7 @@ class ConfluenceIndexingExecutorTest {
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
     ConfluenceProperties unbounded =
         new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
@@ -1195,6 +1198,7 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             new ScanJournal(syncStateRepository),
+            new FullSyncRhythm(rhythmSettings),
             testClock(),
             runTemplate());
     UUID second = UUID.randomUUID();
@@ -1267,6 +1271,37 @@ class ConfluenceIndexingExecutorTest {
     assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
         .as("2 days old, own rhythm 1 day")
         .isEqualTo(IndexingRunMode.FULL);
+  }
+
+  /**
+   * Without a rhythm of its own the library follows the installation-wide value the administration
+   * set for Confluence, which replaces the factory default of seven days.
+   */
+  @ParameterizedTest
+  @MethodSource("editions")
+  void withoutItsOwnRhythmTheLibraryFollowsTheInstallationWideValue(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG");
+    SourceSyncState old = writtenUnderCurrentSettings();
+    old.beginFullSync(UUID.randomUUID());
+    old.completeFullSync(NOW.minus(Duration.ofDays(8)), NOW.minus(Duration.ofDays(8)));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(old));
+
+    when(rhythmSettings.findDays("CONFLUENCE")).thenReturn(Optional.of(10));
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("8 days old, installation-wide rhythm 10 days")
+        .isEqualTo(IndexingRunMode.INCREMENTAL);
+
+    completedFullSync(NOW.minus(Duration.ofDays(2)));
+    when(rhythmSettings.findDays("CONFLUENCE")).thenReturn(Optional.of(1));
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("2 days old, installation-wide rhythm 1 day")
+        .isEqualTo(IndexingRunMode.FULL);
+
+    ConfluenceTestSettings.fullSyncIntervalDays(library, 30);
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("own rhythm 30 days wins over the installation-wide one")
+        .isEqualTo(IndexingRunMode.INCREMENTAL);
   }
 
   @ParameterizedTest
@@ -1444,7 +1479,7 @@ class ConfluenceIndexingExecutorTest {
     sleeps.clear();
     ConfluenceProperties unbounded =
         new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
@@ -1453,6 +1488,7 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             new ScanJournal(syncStateRepository),
+            new FullSyncRhythm(rhythmSettings),
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     UUID second = UUID.randomUUID();

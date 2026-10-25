@@ -55,6 +55,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
               Map.entry("permission_history_retention_settings", Ownership.WHOLE_TABLE),
               Map.entry("connection_log_retention_settings", Ownership.WHOLE_TABLE),
               Map.entry("private_storage_quota_settings", Ownership.WHOLE_TABLE),
+              Map.entry("full_sync_rhythm_settings", Ownership.WHOLE_TABLE),
               Map.entry("embedding_index", Ownership.WHOLE_TABLE),
               Map.entry("outbound_proxy_settings", Ownership.WHOLE_TABLE),
               Map.entry("capability_grants", Ownership.BY_ID),

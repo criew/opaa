@@ -11,26 +11,26 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-/** The house-wide value: the administration's own, else the configured default; 0 is unlimited. */
+/** The house-wide value: the administration's own, else the factory default; 0 is unlimited. */
 class PersonalStorageQuotaTest {
 
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final PrivateStorageQuotaSettingRepository settings =
       mock(PrivateStorageQuotaSettingRepository.class);
 
-  private PersonalStorageQuota quota(long configuredDefault) {
-    return new PersonalStorageQuota(
-        documentRepository, settings, new LibraryProperties(0, configuredDefault));
+  private static final long TEN_GIB = 10L * 1024 * 1024 * 1024;
+
+  private PersonalStorageQuota quota() {
+    return new PersonalStorageQuota(documentRepository, settings);
   }
 
   @Test
-  void withoutAValueOfTheAdministrationTheConfiguredDefaultApplies() {
+  void withoutAValueOfTheAdministrationTheFactoryDefaultOfTenGibApplies() {
     when(settings.findSingleton()).thenReturn(Optional.empty());
 
-    assertThat(quota(4096).quotaBytes()).isEqualTo(4096);
-    assertThat(quota(4096).isOverridden()).isFalse();
-    assertThat(quota(-1).quotaBytes()).isZero();
-    assertThat(quota(-1).defaultQuotaBytes()).isZero();
+    assertThat(quota().quotaBytes()).isEqualTo(TEN_GIB);
+    assertThat(quota().defaultQuotaBytes()).isEqualTo(TEN_GIB);
+    assertThat(quota().isOverridden()).isFalse();
   }
 
   @Test
@@ -39,14 +39,14 @@ class PersonalStorageQuotaTest {
     when(setting.getQuotaBytes()).thenReturn(0L);
     when(settings.findSingleton()).thenReturn(Optional.of(setting));
 
-    assertThat(quota(4096).quotaBytes()).isZero();
-    assertThat(quota(4096).isOverridden()).isTrue();
-    assertThat(quota(4096).defaultQuotaBytes()).isEqualTo(4096);
+    assertThat(quota().quotaBytes()).isZero();
+    assertThat(quota().isOverridden()).isTrue();
+    assertThat(quota().defaultQuotaBytes()).isEqualTo(TEN_GIB);
   }
 
   @Test
   void nullReturnsToTheDefaultAndANegativeValueIsRefused() {
-    PersonalStorageQuota quota = quota(4096);
+    PersonalStorageQuota quota = quota();
 
     quota.setQuotaBytes(null);
     verify(settings).clear();
