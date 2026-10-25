@@ -109,7 +109,10 @@ Probeeinbettung wie die Quellen
 der Wissensbibliotheken: Adressen in internen, Loopback- oder Link-Local-Bereichen werden
 abgelehnt, ohne dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im
 Compose-Stapel, gibt der Betrieb mit seinem Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-frei.
+frei. Die Probeeinbettung folgt keiner Weiterleitung, wartet höchstens zehn Sekunden, wiederholt
+sich nicht und liest nur eine begrenzte Antwort. Zwischen Prüfung und Anfrage löst OPAA den
+Hostnamen erneut auf; wer den Namensdienst des Modells kontrolliert, könnte die Anfrage in diesem
+Moment noch umlenken. Einen festen Endpunkt im eigenen Netz trifft das nicht.
 
 **Der Abschluss** gelingt, wenn jeder Schritt erfolgreich geprüft ist, und genau einmal, auch wenn
 zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als

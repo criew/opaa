@@ -276,8 +276,10 @@ nicht mit der eingestellten Grenze.
 > Nacht neu einbetten. Konten, Rechte, Spaces und Chats bleiben, und der Chat beantwortet Fragen auch
 > während der Umstellung — nur ohne die Vektorsuche.
 
-Die Oberfläche bietet keinen Wechsel des Embedding-Modells an; ein geführter Wechsel ist noch nicht
-gebaut. Bis dahin ist er ein Eingriff des Betriebs in die Datenbank.
+Die Oberfläche bietet keinen Wechsel des Embedding-Modells an. Der Wechsel ist ein Eingriff des
+Betriebs in die Datenbank, und er taugt nur für einen Endpunkt mit demselben Zugangsschlüssel oder
+ohne Schlüssel: Der Schlüssel liegt verschlüsselt im Eintrag und lässt sich so nicht ändern. Ein
+geführter Wechsel mit Probeeinbettung ist nicht gebaut.
 
 1. **Alle Instanzen anhalten und das Modell eintragen.** In der Datenbank im Eintrag des
    Embedding-Modells Modellname, Adresse und Dimension gemeinsam ändern, etwa
