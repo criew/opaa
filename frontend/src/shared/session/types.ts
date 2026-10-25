@@ -63,6 +63,8 @@ export interface AuthConfig {
 export interface ResolvedAuthConfig extends Omit<AuthConfig, 'localAccounts' | 'features'> {
   localAccounts: LocalAccountsConfig
   features: FeatureFlags
+  /** The installation waits for its set-up (ADR-0060); `false` unless the backend says `true`. */
+  installationPending: boolean
 }
 
 export type SystemRole = components['schemas']['SystemRole']

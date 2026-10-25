@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import {
   STEP_REQUEST_KEY,
   type InstallationStatusResponse,
@@ -63,20 +62,4 @@ export async function checkInstallationStep(
 /** Completes the installation; the API answers 404 on every instance afterwards. */
 export async function completeInstallation(token: string): Promise<void> {
   await installationClient.post('/complete', undefined, bearer(token))
-}
-
-/**
- * Whether this installation still waits for its set-up, asked without a token: an installed
- * instance answers 404, one in installation mode refuses the missing token (401) or the client's
- * network (403). Anything else - network failure, a proxy error - counts as installed, so the
- * regular sign-in stays reachable.
- */
-export async function probeInstallationPending(): Promise<boolean> {
-  try {
-    await installationClient.get('')
-    return true
-  } catch (err) {
-    const status = apiErrorStatus(err)
-    return status === 401 || status === 403
-  }
 }

@@ -1,2 +1,1 @@
-// Public interface of the installation theme: the probe the application frame asks on start.
-export { probeInstallationPending } from './api/installationApi'
+// Public interface of the installation theme; no other theme depends on it.

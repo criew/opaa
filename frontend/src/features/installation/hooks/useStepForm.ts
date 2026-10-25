@@ -15,7 +15,9 @@ export function useStepForm(initialFailure?: string | null) {
 
   function focusFirstInvalid() {
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>('form [aria-invalid="true"]')?.focus()
+      document
+        .querySelector<HTMLElement>('form [aria-invalid="true"], form [data-invalid="true"]')
+        ?.focus()
     })
   }
 

@@ -1,4 +1,7 @@
 import { useId, useState } from 'react'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
 import type { InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
@@ -42,6 +45,8 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
   const [baseUrl, setBaseUrl] = useState(stored?.baseUrl ?? '')
   const [model, setModel] = useState(stored?.model ?? '')
   const [apiKey, setApiKey] = useState('')
+  const [removeKey, setRemoveKey] = useState(false)
+  const keyStored = Boolean(stored?.apiKeySet)
   const [temperature, setTemperature] = useState(
     stored?.temperature == null ? '' : String(stored.temperature),
   )
@@ -61,7 +66,8 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
       submit({
         baseUrl: baseUrl.trim(),
         model: model.trim(),
-        ...(apiKey !== '' ? { apiKey } : {}),
+        // Omitted keeps the stored key, an empty one removes it (InstallationChatModel).
+        ...(apiKey !== '' ? { apiKey } : removeKey ? { apiKey: '' } : {}),
         temperature: isBlank(temperature) ? null : Number(temperature.replace(',', '.')),
         maxTokens: isBlank(maxTokens) ? null : Number(maxTokens),
       }),
@@ -105,10 +111,29 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
         autoComplete="off"
         value={apiKey}
         onChange={setApiKey}
-        stored={Boolean(stored?.apiKeySet)}
+        stored={keyStored && !removeKey}
         error={form.errors.apiKey}
         hint="Leer lassen, wenn der Dienst keinen Schlüssel verlangt."
       />
+      {keyStored && (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: -1 }}>
+          {removeKey && (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              Der gespeicherte Schlüssel wird beim Speichern entfernt.
+            </Typography>
+          )}
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => {
+              setRemoveKey((remove) => !remove)
+              setApiKey('')
+            }}
+          >
+            {removeKey ? 'Schlüssel behalten' : 'Gespeicherten Schlüssel entfernen'}
+          </Button>
+        </Box>
+      )}
       <FormField
         id={`${id}-temperature`}
         label="Temperatur"

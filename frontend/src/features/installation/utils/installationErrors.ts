@@ -23,7 +23,7 @@ const TOKEN_REJECTED =
 const NETWORK_REFUSED =
   'Die Einrichtung ist von diesem Netz aus nicht freigegeben. Der Betrieb legt die zugelassenen Netzbereiche in OPAA_INSTALLATION_ALLOWED_CIDRS fest.'
 const TOO_MANY_ATTEMPTS =
-  'Zu viele Fehlversuche von dieser Adresse. Warten Sie einige Minuten und versuchen Sie es dann erneut.'
+  'Zu viele Anfragen oder Fehlversuche von dieser Adresse. Warten Sie einige Minuten und versuchen Sie es dann erneut.'
 const INSTALLED = 'Die Installation ist bereits abgeschlossen.'
 const UNREACHABLE =
   'Der Server ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.'

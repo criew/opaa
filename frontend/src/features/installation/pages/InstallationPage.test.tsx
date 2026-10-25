@@ -287,9 +287,41 @@ describe('InstallationPage', () => {
     await stepHeading('Erstes Konto')
     await user.type(field('Anzeigename'), ' Betrieb')
     await submitStep(user)
+    const replace = screen.getByRole('button', { name: 'Passwort ersetzen' })
+    expect(replace).toHaveAccessibleDescription(
+      'Zum Ändern des Kontos bitte das Passwort erneut eingeben.',
+    )
+    await waitFor(() => expect(replace).toHaveFocus())
+  })
+
+  it('removes a stored API key only on request', async () => {
+    updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
+    updateMockStep('SIGN_IN', { saved: true, checked: true })
+    updateMockStep('CHAT_MODEL', {
+      saved: true,
+      checked: false,
+      chatModel: {
+        baseUrl: 'http://ollama:11434/v1',
+        model: 'qwen2.5:7b',
+        apiKeySet: true,
+        maxTokens: 8000,
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await stepHeading('Installations-Token')
+    await enterToken(user)
+    await stepHeading('Chat-Modell')
+
+    await user.click(screen.getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }))
     expect(
-      screen.getByText('Zum Ändern des Kontos bitte das Passwort erneut eingeben.'),
+      screen.getByText('Der gespeicherte Schlüssel wird beim Speichern entfernt.'),
     ).toBeInTheDocument()
+    await submitStep(user)
+
+    await stepHeading('Abschluss')
+    const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
+    expect(chatModel?.chatModel?.apiKeySet).toBe(false)
   })
 
   it('returns to the token when the backend no longer accepts it', async () => {

@@ -39,10 +39,15 @@ export async function getAuthConfig(): Promise<ResolvedAuthConfig> {
   // A backend without local accounts omits the block entirely; "absent" means "switched off",
   // never "unknown", so every caller can read the flags without a null check.
   // Feature flags work the other way round: an absent flag counts as on (ADR-0044).
+  // Interim until #3189 adds installationPending to AuthConfigResponse: read without the
+  // generated type. Only an explicit `true` counts, so an older backend never redirects.
+  const installationPending =
+    (data as AuthConfig & { installationPending?: unknown }).installationPending === true
   return {
     ...data,
     localAccounts: data.localAccounts ?? LOCAL_ACCOUNTS_DISABLED,
     features: data.features ?? {},
+    installationPending,
   }
 }
 

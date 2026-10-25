@@ -1,26 +1,16 @@
-import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router'
-import { probeInstallationPending } from '@/features/installation'
+import { useAuthStore } from '@/shared/session/authStore'
 import { INSTALLATION_ROUTE } from '@/shared/routes'
 
 /**
- * While the installation is pending, the assistant is the only page (ADR-0060): every other
- * route leads there. Asked once per page load beside the routes, so an installed instance - the
- * regular case - waits for nothing.
+ * While the public configuration reports a pending installation (ADR-0060), the assistant is
+ * the only page: every other route leads there. It reads the configuration the auth store loads
+ * anyway and never asks the installation API itself - a request without token counts as a refused
+ * token there. Unknown or unreadable, the installation counts as done.
  */
 export default function InstallationRedirect() {
-  const [pending, setPending] = useState(false)
+  const pending = useAuthStore((s) => s.installationPending)
   const { pathname } = useLocation()
-
-  useEffect(() => {
-    let active = true
-    void probeInstallationPending().then((result) => {
-      if (active) setPending(result)
-    })
-    return () => {
-      active = false
-    }
-  }, [])
 
   return pending && pathname !== INSTALLATION_ROUTE ? (
     <Navigate to={INSTALLATION_ROUTE} replace />

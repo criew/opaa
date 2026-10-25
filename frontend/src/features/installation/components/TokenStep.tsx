@@ -60,7 +60,7 @@ export default function TokenStep({ submit, notice }: TokenStepProps) {
       <SecretInput
         id={`${id}-token`}
         label="Token"
-        autoComplete="off"
+        autoComplete="one-time-code"
         inputRef={inputRef}
         value={token}
         onChange={setToken}

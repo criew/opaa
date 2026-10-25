@@ -1,13 +1,12 @@
 # Einrichtungs-Assistent
 
-> **Entwurf.** Die Oberfläche des Assistenten ist gebaut; den Installationsmodus, in dem das
-> Backend sie anbietet, noch nicht (siehe [Was nicht gebaut ist](#was-nicht-gebaut-ist)).
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
-Eine neue Installation fragt ihre ersten Einstellungen im Browser ab, statt sie aus Startvariablen zu
-übernehmen: das erste Konto, das Anmeldeverfahren und das Chat-Modell. Solange die Einrichtung nicht
-abgeschlossen ist, zeigt die Oberfläche unter jeder Adresse nur den Assistenten, etwa
-`https://opaa.stadt.example/installation`. Den Rahmen beschreibt die
-[Betriebsübersicht](README.md).
+Eine Instanz im Installationsmodus lässt sich im Browser einrichten statt über die
+Installations-API von Hand: Solange die Installation aussteht, führt jede Adresse der Oberfläche
+zum Assistenten unter `/installation`, etwa `https://opaa.stadt.example/installation`. Dieses Kapitel
+beschreibt nur die Oberfläche; Installationsmodus, Installations-Token, zugelassene Netzbereiche und
+die Prüfungen der Schritte beschreibt das Kapitel „Installation“ der Betriebsübersicht.
 
 ## Ablauf
 
@@ -19,42 +18,33 @@ flowchart LR
     A --> L[Anmeldung]
 ```
 
-1. **Token eingeben.** Die Einrichtung ist durch ein einmaliges Installations-Token geschützt. Der
-   erste Start schreibt es als markierten Block ins Log des Backends; gibt der Betrieb es über
-   `OPAA_INSTALLATION_TOKEN` vor, gilt dieses. Ohne gültiges Token zeigt der Assistent keinen
-   Schritt und keinen gespeicherten Wert.
-2. **Pflichtschritte.** Erstes Konto, Anmeldeverfahren und Chat-Modell. „Prüfen und weiter“
-   speichert die Angaben und prüft sie sofort, beim Chat-Modell etwa mit einem Verbindungstest.
-3. **Optionale Schritte.** Meldet das Backend welche, stehen sie in der Schrittliste in einer eigenen
-   Gruppe und lassen sich mit „Überspringen“ auslassen; die Zeile nennt, wo der Wert nach dem
-   Abschluss in der Verwaltung zu finden ist. Heute sind alle Schritte Pflicht.
+1. **Token eingeben.** Ohne gültiges Installations-Token zeigt der Assistent keinen Schritt und
+   keinen gespeicherten Wert.
+2. **Pflichtschritte:** „Erstes Konto“, „Anmeldeverfahren“, „Chat-Modell“. „Prüfen und weiter“
+   speichert die Angaben eines Schritts und prüft sie sofort, beim Chat-Modell etwa mit einem
+   Verbindungstest. Die Oberfläche prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer
+   Adresse mit `http://` oder `https://`; alles Weitere prüft das Backend.
+3. **Optionale Schritte** stehen in der Schrittliste in einer eigenen Gruppe, lassen sich mit
+   „Überspringen“ auslassen und nennen, wo der Wert nach dem Abschluss in der Verwaltung zu finden
+   ist. Heute sind alle Schritte Pflicht.
 4. **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
-   sind; bis dahin nennt die Seite die offenen Schritte. Danach ist der Assistent auf jeder Instanz
-   verschwunden, das Token verliert seine Gültigkeit, und die Anmeldung erfolgt mit dem ersten Konto.
-
-| Schritt | Pflicht | Prüfung | Später änderbar unter |
-|---|---|---|---|
-| Erstes Konto | ja | Adresse vollständig und zustellbar, nicht `admin@opaa.local`; Passwortregel | Benutzer |
-| Anmeldeverfahren | ja | mit Identitätsanbieter: Discovery und JWK-Set erreichbar | Identitätsanbieter |
-| Chat-Modell | ja | Verbindungstest | Modelle |
-
-Welche Schritte erscheinen und welche davon Pflicht sind, bestimmt das Backend; die Schrittliste
-zeigt genau diese.
+   sind; bis dahin nennt die Seite die offenen Schritte. Danach führt „Zur Anmeldung“ zur
+   Anmeldeseite, an der sich die Person mit dem ersten Konto anmeldet.
 
 ## Zustand der Schritte
 
 Jeder Schritt steht in der Liste mit seinem Zustand:
 
 - **Geprüft** — gespeichert, und die Prüfung ist gelungen.
-- **Prüfung fehlgeschlagen** — die Angaben sind gespeichert, die Prüfung ist gescheitert. Die
-  Meldung über dem Formular nennt den Grund, auch nach erneutem Öffnen des Schritts.
-- **Gespeichert, Prüfung offen** — die Angaben sind gespeichert, geprüft wurden sie noch nicht.
+- **Prüfung fehlgeschlagen** — gespeichert, die Prüfung ist gescheitert. Die Meldung über dem
+  Formular nennt den Grund, auch nach erneutem Öffnen des Schritts.
+- **Gespeichert, Prüfung offen** — gespeichert, aber noch nicht geprüft.
 - **Offen** — noch nichts gespeichert.
 
-Ändert sich ein gespeicherter Wert, verfällt seine Prüfung. Geheimnisse wie Passwort oder
-API-Schlüssel zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit der Aktion „Ersetzen“. Wer das
-erste Konto nachträglich ändert, gibt dessen Passwort dabei erneut ein; unverändert wird es nur noch
-einmal geprüft.
+Gespeicherte Geheimnisse zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit der Aktion
+„Ersetzen“; einen gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“. Wer das
+erste Konto nachträglich ändert, gibt dessen Passwort dabei erneut ein; unverändert wird es nur
+noch einmal geprüft.
 
 ## Unterbrechen und fortsetzen
 
@@ -67,18 +57,16 @@ behält der Browser nur, solange die Seite offen ist.
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
-| „Das Installations-Token stimmt nicht.“ | falsches oder inzwischen ersetztes Token | Token aus dem Log bzw. `OPAA_INSTALLATION_TOKEN` übernehmen |
-| „Zu viele Fehlversuche von dieser Adresse.“ | Fehlversuche sind je Netzadresse begrenzt | einige Minuten warten |
-| „Die Einrichtung ist von diesem Netz aus nicht freigegeben.“ | `OPAA_INSTALLATION_ALLOWED_CIDRS` schließt das Netz aus | aus einem zugelassenen Netz einrichten |
+| „Das Installations-Token stimmt nicht.“ | falsches oder inzwischen ersetztes Token | Token neu eingeben |
+| „Zu viele Anfragen oder Fehlversuche von dieser Adresse.“ | die Begrenzung je Netzadresse greift | einige Minuten warten |
+| „Die Einrichtung ist von diesem Netz aus nicht freigegeben.“ | die zugelassenen Netzbereiche schließen den Rechner aus | aus einem zugelassenen Netz einrichten |
 | „Bereits eingerichtet“ | die Installation wurde inzwischen abgeschlossen, etwa über eine Antwortdatei oder in einem zweiten Fenster | anmelden |
 
 ## Was nicht gebaut ist
 
-- Installationsmodus, Token, Installations-API und Antwortdatei im Backend (#3189). Bis dahin
-  richtet sich eine Installation wie bisher über die Startvariablen ein, beschrieben unter
-  [Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto).
-- Die Schritte Embedding-Modell, Ausgangsproxy, E-Mail-Versand und Branding; die übrigen
-  Einstellungen folgen nach dem Abschluss in der Verwaltung.
+- Der Schritt Embedding-Modell im Assistenten (#3191).
+- Ausgangsproxy, E-Mail-Versand und Branding als optionale Schritte; sie folgen nach dem Abschluss in
+  der Verwaltung.
 
 ## Weiterführende Kapitel
 

@@ -20,7 +20,7 @@ interface SecretInputProps {
   error?: string
   hint?: string
   optional?: boolean
-  autoComplete: 'new-password' | 'off'
+  autoComplete: 'new-password' | 'one-time-code' | 'off'
   inputRef?: React.Ref<HTMLInputElement>
 }
 
@@ -51,10 +51,15 @@ export default function SecretInput({
         <FieldLabel id={`${id}-label`}>{label}</FieldLabel>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 40 }}>
           <Typography sx={{ fontSize: 13.5 }}>Gesetzt</Typography>
+          {/* The stored state's one control carries the field's id and error, so the error is
+              announced with it and the form's focus on the first invalid entry lands here. */}
           <Button
+            id={id}
             size="small"
             variant="outlined"
             aria-label={`${label} ersetzen`}
+            aria-describedby={error ? `${id}-error` : undefined}
+            data-invalid={error ? 'true' : undefined}
             onClick={() => {
               setReplacing(true)
               // The button gives way to the field; the focus follows it.
@@ -65,7 +70,7 @@ export default function SecretInput({
           </Button>
         </Box>
         {error && (
-          <Typography role="alert" sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
+          <Typography id={`${id}-error`} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>
             {error}
           </Typography>
         )}
