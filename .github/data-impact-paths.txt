@@ -22,6 +22,8 @@ opaa-api/src/main/java/io/opaa/api/types/Capability.java
 opaa-api/src/main/java/io/opaa/api/types/CatalogVisibility.java
 backend/src/main/java/io/opaa/audit/**/*.java
 backend/src/main/java/io/opaa/permission/**/*.java
+# Which objects count as personal: the log names them neutrally, the SIEM export without id or name
+backend/src/main/java/**/*AuditObjects.java
 
 # API surface: new fields, endpoints and exports
 opaa-api/src/main/openapi/**
@@ -30,6 +32,8 @@ opaa-api/src/main/openapi/**
 backend/src/main/java/io/opaa/selfdisclosure/**/*.java
 backend/src/main/java/io/opaa/compliance/SelfDisclosure*.java
 backend/src/main/java/**/*SelfDisclosureExporter.java
+# Instance state feeding the disclosure of the data collection and the instance match
+backend/src/main/java/**/*InstanceState.java
 
 # Configuration keys and defaults
 backend/src/main/resources/application*.yml
