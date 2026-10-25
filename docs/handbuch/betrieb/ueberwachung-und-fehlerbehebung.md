@@ -32,8 +32,9 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_siem_export_lag_seconds` | Alter des ältesten Eintrags, der noch nicht ausgeleitet ist, `0` ohne offene Einträge; wächst der Wert stetig, hält eine offene Transaktion oder der Empfänger die Ausleitung an |
 | `opaa_audit_log_size_bytes` | Größe des Revisionsprotokolls samt Indizes; wächst bis zur Aufbewahrungsfrist und bleibt dann ungefähr gleich |
 | `opaa_audit_log_oldest_partition_age_seconds`, `opaa_audit_retention_period_months` | Alter des ältesten Protokollmonats und eingestellte Frist; liegt das Alter mehr als zwei Monate über der Frist, löscht die automatische Löschung nicht |
-| `opaa_audit_retention_last_run_age_seconds` | Zeit seit dem Monat des letzten Löschlaufs (am 1. jedes Monats um 03:00); über 35 Tage ist der Lauf ausgeblieben |
+| `opaa_audit_retention_last_run_age_seconds` | Zeit seit dem Monat des letzten Löschlaufs (am 1. jedes Monats um 03:00); über 35 Tage ist der Lauf ausgeblieben. Die Werte des Revisionsprotokolls liest jede Instanz alle fünf Minuten aus der Datenbank; kann sie einen nicht lesen oder antwortet die Datenbank nicht binnen zehn Sekunden, meldet sie `NaN` und warnt im Log |
 | `opaa_audit_log_horizon_seconds` | Zeit bis zum Ende des letzten angelegten Protokollmonats; danach scheitert jedes Schreiben ins Protokoll |
+| `opaa_audit_payload_dropped_total` | Einträge ins Revisionsprotokoll, aus denen OPAA eine Angabe entfernt hat, die der Ereigniskatalog für die Ereignisart (`event_type`) nicht nennt; jede Ereignisart beginnt beim Start eines Pods bei 0. Jeder Anstieg ist ein Programmfehler, das Log nennt die Angaben ohne ihre Werte |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |
@@ -57,7 +58,7 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
 > aber ohne die Person, die sie erteilt hat.
 
 - **Was hinausgeht:** je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis,
-  Organisation sowie Art und Kennung des betroffenen Objekts. Nie gehen Pseudonyme handelnder oder
+  Organisation sowie Art und Kennung des betroffenen Objekts und die Version des Ereigniskatalogs. Nie gehen Pseudonyme handelnder oder
   betroffener Personen, Begründungen oder Inhalte hinaus. Den Namen des Objekts (etwa eines Space
   oder einer Gruppe) sendet OPAA nur mit `OPAA_SIEM_EXPORT_INCLUDE_LABELS`, weil Namen oft Personen
   nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
@@ -68,7 +69,9 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   nach, sonst nicht. Das ist neben der Revision und der Selbstauskunft der einzige Leser.
 - **Format:** Syslog (RFC 5424) mit CEF-Inhalt über TCP, voreingestellt mit TLS und dem
   Vertrauensspeicher der Java-Laufzeit samt Prüfung des Hostnamens. Die Kennung jedes Eintrags steht
-  in `externalId`. Die Verbindung geht direkt, nie über den Ausgangsproxy.
+  in `externalId`, die Version des Ereigniskatalogs, unter der er geschrieben ist, in `cn1`
+  (`cn1Label=schemaVersion`); Einträge von vor dem Katalog tragen keine. Die Verbindung geht direkt,
+  nie über den Ausgangsproxy.
 - **Ab dem Einschalten:** Gesendet wird, was nach dem ersten Lauf ins Protokoll kommt; der ältere
   Bestand nicht. Nach dem Abschalten beginnt die Ausleitung beim Wiedereinschalten neu; die Pause
   meldet sie als Lücke.

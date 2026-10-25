@@ -44,6 +44,7 @@ defaults:
       - outcome
       - reason
       - correlation_ref
+      - schema_version
     readers:
       - AUDITOR (Revision) zur Prüfung von Rechte- und Verwaltungshandeln
     notes:
@@ -51,6 +52,10 @@ defaults:
         Das Protokoll enthält Handlungen von Beschäftigten (Pseudonym); Hinweis: Mitbestimmung bei
         technischen Einrichtungen zur Verhaltens- und Leistungskontrolle prüfen (§ 80 Abs. 1
         Nr. 21 BPersVG bzw. Landesrecht)
+      - >-
+        Was before und after tragen, legt der Ereigniskatalog je Ereignisart fest; eine Angabe, die
+        er nicht nennt, wird nicht gespeichert. schema_version nennt die Version des Katalogs, unter
+        der ein Eintrag geschrieben ist; Einträge von vor dem Katalog tragen keine
       - >-
         Objekte, die genau einer Person gehören, stehen nur mit Kennung und neutraler Bezeichnung
         im Protokoll, nie mit ihrem Namen, auch nicht in den Angaben des Eintrags: private
@@ -75,6 +80,7 @@ data:
           - subject_kind
           - outcome
           - correlation_ref
+          - schema_version
         person:
           columns: [actor_ref, subject_ref, object_id]
           excludedColumns:
@@ -269,12 +275,15 @@ auditEvents:
   - id: ASSET_GRANT_GRANTED
     trigger: Ein Recht an einem Asset wird vergeben, auch als Mitfreigabe aus der Freigabekette
     details: Subjekt ist die berechtigte Person oder Gruppe; after trägt Rolle und Befristung
+    payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_CHANGED
     trigger: Rolle oder Befristung eines Rechts an einem Asset wird geändert
     details: before und after tragen Rolle und Befristung
+    payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_REVOKED
     trigger: Ein Recht an einem Asset wird entzogen, auch durch eine gesenkte Freigabe-Obergrenze
     details: before trägt Rolle und Befristung
+    payloadKeys: [expiresAt, role, subjectType]
   - id: ASSET_GRANT_EXPIRED
     trigger: Eine Befristung eines Rechts wird wirksam (noch nicht verdrahtet)
   - id: ASSET_VISIBILITY_CHANGED
@@ -284,25 +293,34 @@ auditEvents:
   - id: ASSET_EXTERNAL_ACCESS_CHANGED
     trigger: Die Freigabe einer Bibliothek für externe KI-Werkzeuge wird gesetzt oder zurückgenommen
     details: Richtung und Ablaufdatum, nie ein Name von Token-Inhabern
+    payloadKeys: [expiresAt, externalAccess]
   - id: ASSET_EXTERNAL_ACCESS_EXPIRED
     trigger: Die Freigabe einer Bibliothek für externe KI-Werkzeuge erlischt durch Fristablauf (Systemvorgang)
+    payloadKeys: [cause, expiresAt, externalAccess]
   - id: SPACE_CREATED
     trigger: Ein Space wird angelegt
+    payloadKeys: [chatAutoCleanup, name, ownerId]
   - id: SPACE_CHANGED
     trigger: >-
       Name, Beschreibung, Anweisung oder der Schalter der automatischen Chat-Bereinigung eines
       Space ändert sich
     details: before und after der geänderten Felder
+    payloadKeys: [changedFields, chatAutoCleanup]
   - id: SPACE_DELETED
     trigger: Ein Space wird gelöscht
+    payloadKeys: [chatAutoCleanup, name, ownerId]
   - id: SPACE_ARCHIVED
     trigger: Ein Space wird stillgelegt statt gelöscht, weil er Chats anderer Personen enthält
+    payloadKeys: [chatAutoCleanup, name, ownerId]
   - id: LIBRARY_CREATED
     trigger: Eine Wissensbibliothek wird angelegt
+    payloadKeys: [name, sourceType]
   - id: LIBRARY_CHANGED
     trigger: Name oder Beschreibung einer Wissensbibliothek ändert sich
+    payloadKeys: [changedFields]
   - id: LIBRARY_DELETED
     trigger: Eine Wissensbibliothek wird gelöscht
+    payloadKeys: [documentsRemoved, name, sourceType]
   - id: LOCKED_ACCOUNT_CHATS_DELETED
     trigger: >-
       Der nächtliche Lauf löscht Chats eines lokalen Kontos, dessen Frist nach der Sperre durch
@@ -316,6 +334,7 @@ auditEvents:
     evaluations: >-
       Wie jedes Ereignis nur nach Objekt, Zeitraum, Ereignisart oder Vorgang, ohne Zählung je
       Person; die Zahl der gelöschten Chats steht nur als Gesamtzahl im Anwendungslog
+    payloadKeys: [lockReason, periodStart]
   - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HELD
     trigger: Die Systemverwaltung hält die Löschung der Chats eines Kontos nach der Sperre an
     details: Keine Begründung
@@ -324,82 +343,124 @@ auditEvents:
   - id: PRIVATE_LIBRARY_ERASED
     trigger: Eine private Bibliothek wird mit ihrem Inhalt gelöscht
     details: Zeitpunkt des Antrags, Anlass und Zahlen des Entfernten, nie Name, Pfad oder Inhalt
+    payloadKeys:
+      - cause
+      - chunksRemoved
+      - documentsRemoved
+      - erasedCompletely
+      - foldersRemoved
+      - originalsRemoved
+      - requestedAt
+      - runsRemoved
+      - sourceType
+      - spaceAssociationsRemoved
   - id: PROMPT_LIBRARY_CREATED
     trigger: Eine Prompt-Bibliothek wird angelegt
+    payloadKeys: [name]
   - id: PROMPT_LIBRARY_CHANGED
     trigger: Name oder Beschreibung einer Prompt-Bibliothek ändert sich
+    payloadKeys: [changedFields]
   - id: PROMPT_LIBRARY_DELETED
     trigger: Eine Prompt-Bibliothek wird mit ihren Prompts gelöscht
+    payloadKeys: [name, promptsRemoved]
   - id: PROMPT_CREATED
     trigger: Ein Prompt wird einer Bibliothek hinzugefügt
-    details: Nur die Bibliothek, nie Titel oder Text
+    details: Bibliothek und Kurzname des Prompts, nie Titel oder Text
+    payloadKeys: [name, promptLibraryId]
   - id: PROMPT_CHANGED
     trigger: Ein Prompt wird geändert
     details: Nur die Namen der geänderten Felder
+    payloadKeys: [changedFields, promptLibraryId]
   - id: PROMPT_DELETED
     trigger: Ein Prompt wird entfernt
+    details: Bibliothek und Kurzname des Prompts, nie Titel oder Text
+    payloadKeys: [name, promptLibraryId]
   - id: LIBRARY_SOURCE_UPDATED
     trigger: Die Quellkonfiguration einer Bibliothek ändert sich
     details: Nur welche Felder sich änderten, nie Werte oder Zugangsdaten
+    payloadKeys: [changedFields, serviceAccountConfirmed]
   - id: GROUP_CREATED
     trigger: Eine Gruppe wird angelegt
+    payloadKeys: [externalId, provider]
   - id: GROUP_CHANGED
     trigger: Name oder Beschreibung einer Gruppe ändert sich
+    payloadKeys: [changedFields]
   - id: GROUP_DELETED
     trigger: Eine Gruppe wird gelöscht oder aufgelöst
+    payloadKeys: [memberCount, name]
   - id: SPACE_MEMBER_ADDED
     trigger: Eine Person oder Gruppe wird in einen Space aufgenommen
     details: Bei externen Personen zusätzlich die ausdrückliche Bestätigung
+    payloadKeys: [role]
   - id: SPACE_MEMBER_ROLE_CHANGED
     trigger: Die Rolle eines Space-Mitglieds ändert sich
+    payloadKeys: [role]
   - id: SPACE_MEMBER_REMOVED
     trigger: Ein Mitglied wird aus einem Space entfernt
+    payloadKeys: [role]
   - id: GROUP_MEMBER_ADDED
     trigger: Eine Person wird in eine Gruppe aufgenommen
+    payloadKeys: [member, provider]
   - id: GROUP_MEMBER_REMOVED
     trigger: Eine Person wird aus einer Gruppe entfernt
+    payloadKeys: [member]
   - id: GROUP_STEWARD_APPOINTED
     trigger: Eine Person wird für eine interne Gruppe verantwortlich benannt
+    payloadKeys: [transferId]
   - id: GROUP_STEWARD_DISMISSED
     trigger: Eine verantwortliche Person wird entlassen oder gibt die Verantwortung ab
+    payloadKeys: [transferId]
   - id: GROUP_RELEASE_CHANGED
     trigger: Eine interne Gruppe wird zur Verwendung freigegeben oder die Freigabe zurückgenommen
+    payloadKeys: [releasedForUse]
   - id: GROUP_PROTECTION_CHANGED
     trigger: Das Schutzkennzeichen einer Gruppe wird gesetzt oder gelöst
+    payloadKeys: [protected]
   - id: GROUP_DEACTIVATED
     trigger: Eine interne Gruppe wird vorübergehend deaktiviert
     details: Gezählte Folgen, nie Namen von Mitgliedern
+    payloadKeys: [assetGrants, capabilities, deactivated, memberCount, spaceMemberships]
   - id: GROUP_REACTIVATED
     trigger: Eine deaktivierte Gruppe wird wieder aktiviert
+    payloadKeys: [assetGrants, capabilities, deactivated, memberCount, spaceMemberships]
   - id: GROUP_MEMBERS_READ
     trigger: Die Systemverwaltung ruft die Mitgliederliste einer Gruppe ab, die sie nicht verantwortet
     details: Zahl der Mitglieder
+    payloadKeys: [memberCount]
   - id: ASSET_SHARED_TO_SPACE
     trigger: Ein Asset wird in einem Space bereitgestellt
+    payloadKeys: [spaceId]
   - id: ASSET_DETACHED_FROM_SPACE
     trigger: Ein Asset wird aus einem Space gelöst
+    payloadKeys: [spaceId]
   - id: LIBRARY_SHARED_TO_SPACE
     trigger: Nicht mehr geschrieben; frühere Fassung von ASSET_SHARED_TO_SPACE
   - id: LIBRARY_DETACHED_FROM_SPACE
     trigger: Nicht mehr geschrieben; frühere Fassung von ASSET_DETACHED_FROM_SPACE
   - id: ASSET_OWNER_CHANGED
     trigger: Die Eigentümerschaft eines Assets geht über
+    payloadKeys: [ownerId, transferId]
   - id: ASSET_OWNERSHIP_CLAIMED
     trigger: Ein Asset ohne Zuständigkeit wird übernommen (noch nicht verdrahtet)
   - id: ASSET_SUCCESSION_OPENED
     trigger: Ein Asset geht in „Nachfolge offen“ über (noch nicht verdrahtet)
   - id: SYSTEM_ADMIN_ROLE_GRANTED
     trigger: Die Rolle SYSTEM_ADMIN wird erteilt
+    payloadKeys: [provider, role]
   - id: SYSTEM_ADMIN_ROLE_REVOKED
     trigger: Die Rolle SYSTEM_ADMIN wird entzogen
+    payloadKeys: [provider, role]
   - id: AUDITOR_ROLE_GRANTED
     trigger: Die Rolle AUDITOR wird erteilt
+    payloadKeys: [provider, role]
   - id: AUDITOR_ROLE_REVOKED
     trigger: Die Rolle AUDITOR wird entzogen
+    payloadKeys: [provider, role]
   - id: SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED
     trigger: >-
       Der Entzug von SYSTEM_ADMIN für die letzte Systemverwaltung durch den Identitätsanbieter wird
       abgewiesen
+    payloadKeys: [role, tokenRole]
   - id: ACCOUNT_DEACTIVATED
     trigger: Ein Konto wird deaktiviert (noch nicht verdrahtet)
   - id: ACCOUNT_REAUTHENTICATION_FORCED
@@ -407,68 +468,122 @@ auditEvents:
   - id: API_TOKEN_ISSUED
     trigger: Ein persönliches Zugangstoken für externe KI-Werkzeuge wird ausgestellt
     details: Bibliotheksauswahl und Ablauf; Token-Kennung statt Tokenname
+    payloadKeys: [expiresAt, libraryIds]
   - id: API_TOKEN_REVOKED
     trigger: Ein Zugangstoken wird von der Person oder der Systemverwaltung widerrufen
     details: Anlass und wer widerrufen hat
+    payloadKeys: [by, reason]
   - id: API_TOKEN_EXPIRED
     trigger: Ein Zugangstoken erlischt durch Ablauf oder Kontenlebenszyklus
     details: after.reason nennt EXPIRED oder ACCOUNT_LIFECYCLE
+    payloadKeys: [reason]
   - id: DIRECTORY_SYNC_CHANGE_APPLIED
     trigger: Ein Verzeichnisabgleich bewirkt eine einzelne Rechteänderung
     details: Je Änderung ein Eintrag, verbunden über correlation_ref
+    payloadKeys: [created, dissolved, member, memberCount, name]
   - id: DIRECTORY_SYNC_RUN_COMPLETED
     trigger: Ein Verzeichnislauf endet (Kopfeintrag mit Ergebnis), auch wenn er mit einem Fehler abbricht
     details: >-
       Oberhalb der Schwelle mit bestätigender Person und Anlass in reason; ein nicht erreichbares
       Verzeichnis und ein abgebrochener Lauf mit Ergebnis FAILURE und fester Meldung, ohne die
       Fehlerursache
+    payloadKeys: [membershipsAdded, membershipsRemoved, outcome, providerId]
   - id: DIRECTORY_SYNC_PLAN_DISCARDED
     trigger: Ein vorgelegter Abgleichsplan oberhalb der Schwelle wird verworfen
+    payloadKeys: [changedFraction, membershipsRemoved, providerId]
   - id: DIRECTORY_SYNC_REPORT_READ
     trigger: Die Systemverwaltung erhält einen Abgleichsbericht mit Namen
     details: Anbieter, Weg und Zahl der genannten Gruppen und Personen, nie Namen
+    payloadKeys: [channel, groupCount, personCount, planId, providerId]
   - id: DIRECTORY_ACCOUNT_LOCKED
     trigger: Ein Konto verliert den Zugang, weil das Verzeichnis es deaktiviert oder nicht mehr führt
+    payloadKeys: [directoryLocked, providerId]
   - id: DIRECTORY_ACCOUNT_UNLOCKED
     trigger: Das Verzeichnis meldet ein gesperrtes Konto wieder als aktiv
+    payloadKeys: [directoryLocked, providerId]
   - id: GOVERNANCE_SETTINGS_CHANGED
     trigger: Governance-Einstellungen ändern sich (noch nicht verdrahtet)
   - id: AUDIT_LOG_CONFIGURATION_CHANGED
     trigger: Die Protokollkonfiguration ändert sich, einschließlich der Aufbewahrungsfrist
     details: before und after der Frist
+    payloadKeys: [retentionMonths]
   - id: PERMISSION_HISTORY_RETENTION_CHANGED
     trigger: Die Aufbewahrungshöchstdauer der Rechtehistorie ändert sich
     details: before und after der Monatszahl
+    payloadKeys: [retentionMonths]
   - id: MODEL_POLICY_CHANGED
     trigger: Modellvorgaben oder die Freigabe externer Modelle ändern sich (noch nicht verdrahtet)
   - id: CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED
     trigger: Die Freigabe-Obergrenze einer konnektor-gespeisten Bibliothek wird gesetzt oder geändert
+    payloadKeys: [allAccountsGrantAllowed]
   - id: PRIVATE_STORAGE_QUOTA_CHANGED
     trigger: Das hausweite Speicherkontingent privater Bibliotheken ändert sich
+    payloadKeys: [overridden, quotaBytes]
   - id: CAPABILITY_GRANTED
     trigger: Ein Anlegerecht wird einem Konto, einer Gruppe oder allen Konten erteilt
+    payloadKeys: [capability, scope, subjectType]
   - id: CAPABILITY_REVOKED
     trigger: Ein Anlegerecht wird entzogen
+    payloadKeys: [capability, scope, subjectType]
   - id: PERMISSION_TRANSFER_PREVIEWED
     trigger: Die Vorschau einer Rechteübertragung wird abgerufen, auch ohne Ausführung
+    payloadKeys:
+      - assetGrants
+      - capabilities
+      - ownedAssets
+      - rows
+      - scope
+      - spaceMemberships
+      - stewardships
+      - targetId
+      - targetType
   - id: PERMISSION_TRANSFER_EXECUTED
     trigger: Die Rechte eines Subjekts werden auf ein anderes übertragen
     details: Quelle, Ziel, Umfang und Zahl der Zeilen
+    payloadKeys:
+      - assetGrants
+      - capabilities
+      - ownedAssets
+      - rows
+      - scope
+      - spaceMemberships
+      - stewardships
+      - targetId
+      - targetType
   - id: INDEXING_PIPELINE_REINDEX_TRIGGERED
     trigger: Eine Neuindexierung nach Pipeline-Version wird ausgelöst
+    payloadKeys:
+      - batchSize
+      - belowVersion
+      - markedForNextRun
+      - pipelineId
+      - reindexedDocuments
+      - removedOrphanChunkSets
+      - skippedDocuments
   - id: INDEXING_METADATA_BACKFILL_TRIGGERED
     trigger: Ein Metadaten-Bestandslauf über eine Bibliothek wird ausgelöst
+    payloadKeys:
+      - batchSize
+      - extractionVersion
+      - markedForNextRun
+      - processedDocuments
+      - skippedDocuments
   - id: INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED
     trigger: Ein Nachlauf mit neuem Kontextpräfix wird ausgelöst
+    payloadKeys: [batchSize, processedDocuments, skippedDocuments]
   - id: EMBEDDING_REINDEX_STARTED
     trigger: Eine Neueinbettung des Vektorindex wird gestartet
+    payloadKeys: [dimensions, embeddedChunks, model, privateLibrariesCounted, totalChunks]
   - id: EMBEDDING_REINDEX_CANCELLED
     trigger: Eine laufende Neueinbettung wird abgebrochen
+    payloadKeys: [dimensions, embeddedChunks, model, privateLibrariesCounted, totalChunks]
   - id: EMBEDDING_REINDEX_COMPLETED
     trigger: Eine Neueinbettung endet mit Umschaltung oder Fehler (Systemvorgang)
+    payloadKeys: [status]
   - id: UPLOAD_ORPHAN_ORIGINALS_DELETED
     trigger: Verwaiste Originale werden aus der Originalablage entfernt
     details: Die entfernten Ablageorte
+    payloadKeys: [deleted, deletedCount, requestedCount, skippedCount]
   - id: MALWARE_DETECTED
     trigger: >-
       Die Virenprüfung meldet in einer Datei, die in eine Bibliothek aufgenommen werden soll, ein
@@ -478,75 +593,185 @@ auditEvents:
       statt der Bibliothek die Virenprüfung selbst als Objekt und nur die Art der Quelle; weder
       Dateiname noch die Person, die die Datei hochgeladen hat. Dieselbe unveränderte Datei erzeugt
       keinen weiteren Eintrag
+    payloadKeys: [signature, sourceType]
   - id: DOCUMENT_METADATA_CHANGED
     trigger: Eine Person setzt, ändert oder entfernt einen Kernmetadatenwert von Hand
     details: Dokument, Feld, alter und neuer Wert; Sammelzuweisungen über correlation_ref
+    payloadKeys:
+      - confidence
+      - datePrecision
+      - displayValue
+      - documentId
+      - extractionVersion
+      - fieldKey
+      - fileName
+      - modelId
+      - origin
+      - state
+      - value
   - id: BRANDING_SETTINGS_CHANGED
     trigger: Das Erscheinungsbild (Name, Claim, Logo, Farben) ändert sich
+    payloadKeys:
+      - aiNotice
+      - claim
+      - defaultColorScheme
+      - loginBackgroundContentType
+      - loginBackgroundVersion
+      - loginLogoContentType
+      - loginLogoVersion
+      - logoContentType
+      - logoVersion
+      - primaryColor
+      - productName
   - id: OIDC_PROVIDER_CREATED
     trigger: Ein Identitätsanbieter wird angelegt
+    payloadKeys:
+      - auditorRole
+      - clientId
+      - displayName
+      - displayNameClaim
+      - emailClaim
+      - enabled
+      - groupsClaim
+      - isDefault
+      - isExternal
+      - issuerUri
+      - jwkSetUri
+      - providerType
+      - rolesClaim
+      - sortOrder
+      - systemAdminRole
   - id: OIDC_PROVIDER_CHANGED
     trigger: Ein Identitätsanbieter wird geändert
+    payloadKeys:
+      - auditorRole
+      - baseUrl
+      - clientId
+      - connectorType
+      - directorySyncEnabled
+      - directorySyncIntervalMinutes
+      - displayName
+      - displayNameClaim
+      - emailClaim
+      - enabled
+      - groupsClaim
+      - isDefault
+      - isExternal
+      - issuerUri
+      - jwkSetUri
+      - providerType
+      - rolesClaim
+      - sortOrder
+      - systemAdminRole
   - id: OIDC_PROVIDER_DELETED
     trigger: Ein Identitätsanbieter wird gelöscht
+    payloadKeys:
+      - auditorRole
+      - clientId
+      - displayName
+      - displayNameClaim
+      - emailClaim
+      - enabled
+      - groupsClaim
+      - isDefault
+      - isExternal
+      - issuerUri
+      - jwkSetUri
+      - providerType
+      - rolesClaim
+      - sortOrder
+      - systemAdminRole
   - id: OIDC_PROVIDER_ENABLED
     trigger: Ein Identitätsanbieter wird eingeschaltet
+    payloadKeys: [enabled]
   - id: OIDC_PROVIDER_DISABLED
     trigger: Ein Identitätsanbieter wird ausgeschaltet
+    payloadKeys: [enabled]
   - id: LLM_MODEL_CREATED
     trigger: Ein Chatmodell wird in der Modellverwaltung angelegt
+    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
   - id: LLM_MODEL_CHANGED
     trigger: Ein Chatmodell wird geändert
     details: Der Zugangsschlüssel nur als „gesetzt ja/nein“
+    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
   - id: LLM_MODEL_DELETED
     trigger: Ein Chatmodell wird gelöscht
+    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
   - id: LLM_MODEL_ACTIVATED
     trigger: Ein Chatmodell wird zum systemweit aktiven Modell
+    payloadKeys: [active]
   - id: LLM_MODEL_DEACTIVATED
     trigger: Ein Chatmodell ist nicht mehr aktiv, weil ein anderes aktiviert wurde
+    payloadKeys: [active]
   - id: DIAGNOSTIC_IMPERSONATION_GRANTED
     trigger: Die Befugnis „Sicht als“ wird einer Person erteilt
+    payloadKeys: [revoked, scopeGroupId, validFrom, validUntil]
   - id: DIAGNOSTIC_IMPERSONATION_REVOKED
     trigger: Die Befugnis „Sicht als“ wird vor Ablauf widerrufen
+    payloadKeys: [revoked, scopeGroupId, validFrom, validUntil]
   - id: DIAGNOSTIC_CONTEXT_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Diagnoseprotokolls ändert sich
+    payloadKeys: [retentionMonths]
   - id: LIBRARY_DIAGNOSTICS_LOCK_CHANGED
     trigger: Die Diagnosesperre einer Bibliothek wird gesetzt oder aufgehoben
+    payloadKeys: [diagnosticsLocked]
   - id: SEARCH_DIAGNOSIS_PROFILE_RUN
     trigger: Eine Suchdiagnose läuft im Rechtekontext einer Gruppe und eines Space
+    payloadKeys: [profileGroupId, profileName, spaceName]
   - id: AUDIT_LOG_ACCESSED
     trigger: Protokolldaten werden gelesen, ausgewertet oder exportiert, auch abgewiesen
     details: Abfrageweg, Zeitraum, Anlass und Umfang
+    payloadKeys:
+      - accessPath
+      - correlationRef
+      - eventId
+      - eventType
+      - from
+      - objectId
+      - objectType
+      - scopeId
+      - to
   - id: PERMISSION_HISTORY_ACCESSED
     trigger: Eine Stichtagsauskunft aus der Rechtehistorie wird abgerufen, auch abgewiesen
+    payloadKeys: [accessPath, from, objectId, objectType, to]
   - id: CONNECTION_LOG_ACCESSED
     trigger: Das Verbindungsprotokoll wird gelesen, auch abgewiesen
     details: Zeitraum und Filter
+    payloadKeys: [accessPath, eventType, from, profileId, to]
   - id: CONNECTION_LOG_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
+    payloadKeys: [retentionMonths]
   - id: OUTBOUND_PROXY_CHANGED
     trigger: Der hausweite Ausgangsproxy oder seine Ausnahmeliste ändert sich
+    payloadKeys: [noProxy, proxyUrl]
   - id: LOCAL_SESSION_REVOKED
     trigger: Sitzungen eines lokalen Kontos werden fremdveranlasst beendet
     details: Grund in after; die eigene Abmeldung erzeugt keinen Eintrag
+    payloadKeys: [reason]
   - id: LOCAL_PASSWORD_CHANGED
     trigger: Eine Person ändert ihr Passwort
   - id: LOCAL_ADMIN_SEEDED
     trigger: Das Notanker-Konto der Systemverwaltung wird beim ersten Start angelegt
+    payloadKeys: [passwordSource, state]
   - id: LOCAL_ADMIN_RESET
     trigger: Das Notanker-Konto wird per Startschalter wiederhergestellt
+    payloadKeys: [passwordSource, recreated]
   - id: LOCAL_BOOTSTRAP_ACCOUNT_LOGIN
     trigger: Erfolgreiche Anmeldung mit dem Notanker-Konto
   - id: LOCAL_ACCOUNTS_ENABLED
     trigger: Die lokale Kontenverwaltung wird eingeschaltet
+    payloadKeys: [enabled]
   - id: LOCAL_ACCOUNTS_DISABLED
     trigger: Die lokale Kontenverwaltung wird ausgeschaltet
+    payloadKeys: [enabled, revokedSessions]
   - id: LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS
     trigger: Ein lokales Konto wird nach zu vielen Fehlversuchen gesperrt
     details: Kein Zähler, kein einzelner Fehlversuch
+    payloadKeys: [lockedReason, lockoutUntil]
   - id: MAIL_SETTINGS_CHANGED
     trigger: Die SMTP-Einstellungen ändern sich
     details: Das Passwort nur als „gesetzt ja/nein“
+    payloadKeys: [enabled, encryption, fromAddress, fromName, host, passwordSet, port, username]
   - id: MAIL_TEMPLATE_CHANGED
     trigger: Eine Mail-Vorlage wird überschrieben
   - id: MAIL_TEMPLATE_RESET
@@ -556,58 +781,149 @@ auditEvents:
   - id: LOCAL_USER_CREATED
     trigger: Die Systemverwaltung legt ein lokales Konto an
     details: Modus und Ablauf; nie Adresse, Name oder Anlagegrund
+    payloadKeys: [expiresAt, mode]
   - id: LOCAL_USER_INVITED
     trigger: Ein Einladungslink wird ausgestellt
     details: Zustellweg (MAIL_SENT, MAIL_FAILED, LINK_DISPLAYED)
+    payloadKeys: [deliveryPath]
   - id: LOCAL_USER_CHANGED
     trigger: Die Systemverwaltung ändert ein lokales Konto
     details: Vorher/Nachher nur für das Ablaufdatum, sonst nur Feldnamen
+    payloadKeys: [changedFields, expiresAt]
   - id: LOCAL_USER_LOCKED
     trigger: Ein lokales Konto wird durch die Verwaltung oder wegen Inaktivität gesperrt
     details: after.reason ADMIN oder INACTIVITY
+    payloadKeys: [reason]
   - id: LOCAL_USER_UNLOCKED
     trigger: Ein lokales Konto wird entsperrt
+    payloadKeys: [lockedReason]
   - id: LOCAL_USER_PASSWORD_RESET_REQUESTED
     trigger: Die Systemverwaltung stellt einen Rücksetzlink aus
+    payloadKeys: [deliveryPath]
   - id: LOCAL_USER_PASSWORD_GENERATED
     trigger: Die Systemverwaltung setzt ein erzeugtes Passwort
   - id: LOCAL_USER_DELETED
     trigger: Ein lokales Konto, auf das nichts verweist, wird gelöscht
+    payloadKeys: [state, systemRole]
   - id: LOCAL_ACCOUNTS_SETTINGS_CHANGED
     trigger: Die Einstellungen der lokalen Kontenverwaltung ändern sich
+    payloadKeys:
+      - defaultExpiryDays
+      - inactiveDays
+      - invitationTokenTtlHours
+      - passwordMinLength
+      - passwordResetEnabled
+      - resetTokenTtlMinutes
+      - selfRegistrationAllowedDomains
+      - selfRegistrationEnabled
   - id: LOCAL_PASSWORD_SET
     trigger: Eine Person setzt ihr Passwort über einen Einladungs- oder Rücksetzlink
+    payloadKeys: [purpose]
   - id: LOCAL_USER_REGISTERED
     trigger: Ein lokales Konto entsteht durch Selbstregistrierung
+    payloadKeys: [expiresAt]
   - id: LOCAL_USER_HANDOVER_REQUESTED
     trigger: Die Übergabe eines lokalen Kontos an eine Anbieteridentität wird angestoßen
     details: Anbieter-Kennung und Zustellweg, nie das Subject
+    payloadKeys: [deliveryPath, providerId]
   - id: LOCAL_USER_HANDED_OVER
     trigger: Die Person schließt die Übergabe an die Anbieteridentität ab
+    payloadKeys:
+      - groupMemberships
+      - personalSpace
+      - providerId
+      - revokedSessions
+      - spaceMemberships
+      - systemRole
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
     trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
     details: Vorher/Nachher der geänderten Schlüssel; der Einleitungstext erzeugt keinen Eintrag
+    payloadKeys:
+      - allowedCidrs
+      - enabled
+      - massRetrievalAlertThreshold
+      - tokenMaxLifetimeDays
+      - tokenRateLimitPerHour
   - id: CONNECTION_PROFILE_CREATED
     trigger: Ein Verbindungsprofil wird angelegt
+    payloadKeys:
+      - authMethod
+      - authorizationEndpoint
+      - clientIdSet
+      - clientSecretSet
+      - connectorSettingsSet
+      - issuer
+      - kind
+      - name
+      - ownership
+      - responsibleGroupId
+      - revocationEndpoint
+      - scopesSet
+      - serverUrl
+      - sourceType
+      - tenantSet
+      - tokenEndpoint
   - id: CONNECTION_PROFILE_CHANGED
     trigger: Ein Verbindungsprofil wird geändert
     details: Zahl der Verbindungen, die ihr Geheimnis verloren
+    payloadKeys:
+      - authMethod
+      - authorizationEndpoint
+      - clientIdSet
+      - clientSecretSet
+      - connectionsDiscarded
+      - connectorSettingsSet
+      - issuer
+      - kind
+      - name
+      - ownership
+      - responsibleGroupId
+      - revocationEndpoint
+      - scopesSet
+      - serverUrl
+      - sourceType
+      - tenantSet
+      - tokenEndpoint
   - id: CONNECTION_PROFILE_DELETED
     trigger: Ein Verbindungsprofil wird gelöscht
+    payloadKeys:
+      - authMethod
+      - authorizationEndpoint
+      - clientIdSet
+      - clientSecretSet
+      - connectionsRemoved
+      - connectorSettingsSet
+      - issuer
+      - kind
+      - name
+      - ownership
+      - responsibleGroupId
+      - revocationEndpoint
+      - scopesSet
+      - serverUrl
+      - sourceType
+      - tenantSet
+      - tokenEndpoint
   - id: CONNECTION_PROFILE_DISCONNECTED
     trigger: Die Notabschaltung „Alle Verbindungen trennen“ verwirft alle Geheimnisse eines Profils
+    payloadKeys: [clientSecretDeleted, connectionsDisconnected]
   - id: CONNECTOR_LOCKED
     trigger: Ein Konnektortyp oder Verbindungsprofil wird gesperrt
+    payloadKeys: [kind, profile, sourceType]
   - id: CONNECTOR_UNLOCKED
     trigger: Eine Konnektorsperre wird aufgehoben
+    payloadKeys: [kind, profile, sourceType]
   - id: CONNECTOR_PROFILE_REQUIRED
     trigger: Ein Konnektortyp ist nur noch über Zugänge nutzbar
+    payloadKeys: [ownAddressStock, profileRequired, sourceType]
   - id: CONNECTOR_PROFILE_OPTIONAL
     trigger: Ein Konnektortyp ist wieder mit eigener Adresse nutzbar
+    payloadKeys: [ownAddressStock, profileRequired, sourceType]
   - id: CONNECTION_PROFILE_REQUEST_RESOLVED
     trigger: Nicht mehr geschrieben; frühere Erledigung einer Profilanfrage
   - id: CONNECTION_PROFILE_SIGN_IN_TESTED
     trigger: Die Systemverwaltung testet die Anmeldung eines Profils
+    payloadKeys: [success]
   - id: DATA_COLLECTION_DISCLOSURE_EXPORTED
     trigger: >-
       Die Auskunft über die Datenerhebung samt Konfigurationsexport der Installation wird
@@ -615,6 +931,7 @@ auditEvents:
     details: >-
       Das Format (JSON oder Markdown) und der Berichtszeitraum (erster und letzter Tag); nie der
       Inhalt der Auskunft
+    payloadKeys: [format, periodFrom, periodTo]
   - id: SELF_DISCLOSURE_EXPORT_STARTED
     trigger: Eine Person beginnt den Export ihrer Selbstauskunft (Einlösen des Einmal-Tickets)
     details: >-
@@ -629,6 +946,7 @@ auditEvents:
       - AUDITOR über die Wege nach Zeitraum, Ereignisart und Vorgang, nicht nach Objekt
       - AUDITOR in der freigegebenen anlassbezogenen Klärung über die Person
       - die Person selbst in ihrer nächsten Selbstauskunft
+    payloadKeys: [categories]
   - id: SELF_DISCLOSURE_EXPORT_FINISHED
     trigger: Der Export einer Selbstauskunft endet, vollständig ausgeliefert oder abgebrochen
     details: >-
@@ -642,9 +960,12 @@ auditEvents:
       - AUDITOR über die Wege nach Zeitraum, Ereignisart und Vorgang, nicht nach Objekt
       - AUDITOR in der freigegebenen anlassbezogenen Klärung über die Person
       - die Person selbst in ihrer nächsten Selbstauskunft
+    payloadKeys: [abortCause, bytes, categories, result, sha256]
   - id: SELF_DISCLOSURE_SETTINGS_CHANGED
     trigger: Die Systemverwaltung schaltet die Selbstauskunft um oder ändert ihre Tagesgrenze
     details: Vorher/Nachher der geänderten Schlüssel (enabled, dailyLimit)
+    payloadKeys: [dailyLimit, enabled]
   - id: LINK_TARGETS_CHANGED
     trigger: Die Systemverwaltung ändert die erlaubten Linkziele in Antworten
     details: Vorher/Nachher der ganzen Liste (allowedOrigins)
+    payloadKeys: [allowedOrigins]

@@ -34,8 +34,8 @@ class ScheduledRunLockStructureTest {
 
   /**
    * The runs that deliberately take no lock, keyed {@code class#method}, each with its reason. A
-   * run listed here claims each unit of its work under a row lock, so every instance may run it at
-   * once.
+   * run listed here claims each unit of its work under a row lock or only reads what its own
+   * instance reports, so every instance may run it at once.
    */
   static final Map<String, String> RUNS_ON_EVERY_INSTANCE =
       Map.of(
@@ -44,7 +44,9 @@ class ScheduledRunLockStructureTest {
           "io.opaa.connection.token.GrantRevocations#poll",
           "every instance revokes; FOR UPDATE SKIP LOCKED claims each revocation (ADR-0053, E10)",
           "io.opaa.indexing.run.SourceEventIntake#drainDue",
-          "each instance drains the batches it has a target for, one claim at a time (ADR-0053, E10)");
+          "each instance drains the batches it has a target for, one claim at a time (ADR-0053, E10)",
+          "io.opaa.audit.AuditStorageMetrics#refresh",
+          "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)");
 
   /** Above the clock skew of hosts synchronised by NTP; the database clock compares the locks. */
   static final Duration MINIMUM_AT_LEAST_FOR = Duration.ofSeconds(2);

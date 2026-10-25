@@ -620,6 +620,7 @@ public final class ManifestDeltaRenderer {
     labels.put("recordFields", "Felder des Protokollsatzes");
     labels.put("readers", "Leser und Zweck");
     labels.put("details", "Inhalt des Protokollsatzes");
+    labels.put("payloadKeys", "Erlaubte Angaben in before und after");
     labels.put("seesAboutOthers", "Sieht über andere Personen");
     labels.put("source", "Quelle");
     labels.put("defaultValue", "Standardwert");

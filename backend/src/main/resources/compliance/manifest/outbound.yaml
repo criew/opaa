@@ -244,8 +244,9 @@ dataFlows:
     viaOutboundProxy: false
     target: Das zentrale Sicherheitsmonitoring (SIEM) der Behörde, ein Syslog-Empfänger
     data: >-
-      Je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis, Organisation sowie Art
-      und Kennung des betroffenen Objekts, seinen Namen nur auf eigenen Schalter; keine Pseudonyme
+      Je Eintrag des Revisionsprotokolls Ereignisart, Zeitpunkt, Ergebnis, Organisation, Art und
+      Kennung des betroffenen Objekts und die Version des Ereigniskatalogs, den Namen des Objekts
+      nur auf eigenen Schalter; keine Pseudonyme
       handelnder oder betroffener Personen, keine Begründung und keine Inhalte. Bei einem Konto,
       einem Zugangstoken, dem persönlichen Bereich, einer privaten Bibliothek und einem privaten
       Prompt weder Kennung noch Name. Dazu ein Hinweis auf jede Lücke durch Abschalten oder die

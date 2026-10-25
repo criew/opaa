@@ -92,8 +92,8 @@ final class AuditSelfDisclosurePayload {
         Set.of("subjectType", "role", "expiresAt"),
         ASSET_GRANT_GRANTED,
         ASSET_GRANT_CHANGED,
-        ASSET_GRANT_REVOKED,
-        ASSET_GRANT_EXPIRED);
+        ASSET_GRANT_REVOKED);
+    put(keys, Set.of(), ASSET_GRANT_EXPIRED);
     put(keys, Set.of(), ASSET_VISIBILITY_CHANGED);
     put(
         keys,
@@ -107,12 +107,10 @@ final class AuditSelfDisclosurePayload {
         SPACE_DELETED,
         SPACE_ARCHIVED);
     put(keys, Set.of("changedFields", "chatAutoCleanup"), SPACE_CHANGED);
-    put(keys, Set.of("name", "sourceType", "documentsRemoved"), LIBRARY_CREATED, LIBRARY_DELETED);
-    put(
-        keys,
-        Set.of("changedFields", "serviceAccountConfirmed"),
-        LIBRARY_CHANGED,
-        LIBRARY_SOURCE_UPDATED);
+    put(keys, Set.of("name", "sourceType"), LIBRARY_CREATED);
+    put(keys, Set.of("name", "sourceType", "documentsRemoved"), LIBRARY_DELETED);
+    put(keys, Set.of("changedFields"), LIBRARY_CHANGED);
+    put(keys, Set.of("changedFields", "serviceAccountConfirmed"), LIBRARY_SOURCE_UPDATED);
     put(
         keys,
         Set.of(
@@ -126,19 +124,16 @@ final class AuditSelfDisclosurePayload {
             "runsRemoved",
             "originalsRemoved"),
         PRIVATE_LIBRARY_ERASED);
-    put(
-        keys,
-        Set.of("name", "promptsRemoved"),
-        PROMPT_LIBRARY_CREATED,
-        PROMPT_LIBRARY_DELETED,
-        PROMPT_CREATED,
-        PROMPT_DELETED);
+    put(keys, Set.of("name"), PROMPT_LIBRARY_CREATED);
+    put(keys, Set.of("name", "promptsRemoved"), PROMPT_LIBRARY_DELETED);
+    put(keys, Set.of("name"), PROMPT_CREATED, PROMPT_DELETED);
     put(keys, Set.of("changedFields"), PROMPT_LIBRARY_CHANGED, PROMPT_CHANGED);
     put(keys, Set.of("provider"), GROUP_CREATED);
-    put(keys, Set.of("changedFields", "name", "dissolved"), GROUP_CHANGED);
-    put(keys, Set.of("name", "memberCount", "dissolved"), GROUP_DELETED);
+    put(keys, Set.of("changedFields"), GROUP_CHANGED);
+    put(keys, Set.of("name", "memberCount"), GROUP_DELETED);
     put(keys, Set.of("role"), SPACE_MEMBER_ADDED, SPACE_MEMBER_ROLE_CHANGED, SPACE_MEMBER_REMOVED);
-    put(keys, Set.of("member", "provider"), GROUP_MEMBER_ADDED, GROUP_MEMBER_REMOVED);
+    put(keys, Set.of("member", "provider"), GROUP_MEMBER_ADDED);
+    put(keys, Set.of("member"), GROUP_MEMBER_REMOVED);
     put(keys, Set.of(), GROUP_STEWARD_APPOINTED, GROUP_STEWARD_DISMISSED);
     put(keys, Set.of("releasedForUse"), GROUP_RELEASE_CHANGED);
     put(keys, Set.of("protected"), GROUP_PROTECTION_CHANGED);
@@ -155,23 +150,20 @@ final class AuditSelfDisclosurePayload {
         ASSET_DETACHED_FROM_SPACE,
         LIBRARY_SHARED_TO_SPACE,
         LIBRARY_DETACHED_FROM_SPACE);
+    put(keys, Set.of("ownerId"), ASSET_OWNER_CHANGED);
+    put(keys, Set.of(), ASSET_OWNERSHIP_CLAIMED, ASSET_SUCCESSION_OPENED);
     put(
         keys,
-        Set.of("ownerId"),
-        ASSET_OWNER_CHANGED,
-        ASSET_OWNERSHIP_CLAIMED,
-        ASSET_SUCCESSION_OPENED);
-    put(
-        keys,
-        Set.of("role", "tokenRole", "provider"),
+        Set.of("role", "provider"),
         SYSTEM_ADMIN_ROLE_GRANTED,
         SYSTEM_ADMIN_ROLE_REVOKED,
         AUDITOR_ROLE_GRANTED,
-        AUDITOR_ROLE_REVOKED,
-        SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED);
+        AUDITOR_ROLE_REVOKED);
+    put(keys, Set.of("role", "tokenRole"), SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED);
     put(keys, Set.of(), ACCOUNT_DEACTIVATED, ACCOUNT_REAUTHENTICATION_FORCED);
     put(keys, Set.of("expiresAt"), API_TOKEN_ISSUED);
-    put(keys, Set.of("reason", "by"), API_TOKEN_REVOKED, API_TOKEN_EXPIRED);
+    put(keys, Set.of("reason", "by"), API_TOKEN_REVOKED);
+    put(keys, Set.of("reason"), API_TOKEN_EXPIRED);
     put(
         keys,
         Set.of("member", "name", "created", "memberCount", "dissolved"),
@@ -215,17 +207,17 @@ final class AuditSelfDisclosurePayload {
         INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
         UPLOAD_ORPHAN_ORIGINALS_DELETED,
         MALWARE_DETECTED);
-    put(
-        keys,
-        Set.of("status"),
-        EMBEDDING_REINDEX_STARTED,
-        EMBEDDING_REINDEX_CANCELLED,
-        EMBEDDING_REINDEX_COMPLETED);
+    put(keys, Set.of(), EMBEDDING_REINDEX_STARTED, EMBEDDING_REINDEX_CANCELLED);
+    put(keys, Set.of("status"), EMBEDDING_REINDEX_COMPLETED);
     put(keys, Set.of("fieldKey", "state", "origin"), DOCUMENT_METADATA_CHANGED);
     put(
         keys,
         Set.of("productName", "claim", "primaryColor", "defaultColorScheme"),
         BRANDING_SETTINGS_CHANGED);
+    put(
+        keys,
+        Set.of("displayName", "enabled", "isDefault", "isExternal", "sortOrder", "providerType"),
+        OIDC_PROVIDER_CREATED);
     put(
         keys,
         Set.of(
@@ -238,19 +230,19 @@ final class AuditSelfDisclosurePayload {
             "directorySyncEnabled",
             "directorySyncIntervalMinutes",
             "connectorType"),
-        OIDC_PROVIDER_CREATED,
-        OIDC_PROVIDER_CHANGED,
-        OIDC_PROVIDER_DELETED,
-        OIDC_PROVIDER_ENABLED,
-        OIDC_PROVIDER_DISABLED);
+        OIDC_PROVIDER_CHANGED);
+    put(
+        keys,
+        Set.of("displayName", "enabled", "isDefault", "isExternal", "sortOrder", "providerType"),
+        OIDC_PROVIDER_DELETED);
+    put(keys, Set.of("enabled"), OIDC_PROVIDER_ENABLED, OIDC_PROVIDER_DISABLED);
     put(
         keys,
         Set.of("displayName", "modelIdentifier", "temperature", "maxTokens", "apiKeySet", "active"),
         LLM_MODEL_CREATED,
         LLM_MODEL_CHANGED,
-        LLM_MODEL_DELETED,
-        LLM_MODEL_ACTIVATED,
-        LLM_MODEL_DEACTIVATED);
+        LLM_MODEL_DELETED);
+    put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
         keys,
         Set.of("validFrom", "validUntil", "revoked"),
@@ -268,12 +260,10 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("reason"), LOCAL_SESSION_REVOKED);
     put(keys, Set.of(), LOCAL_PASSWORD_CHANGED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN);
     put(keys, Set.of("purpose"), LOCAL_PASSWORD_SET);
-    put(keys, Set.of("recreated", "passwordSource"), LOCAL_ADMIN_SEEDED, LOCAL_ADMIN_RESET);
-    put(
-        keys,
-        Set.of("enabled", "revokedSessions"),
-        LOCAL_ACCOUNTS_ENABLED,
-        LOCAL_ACCOUNTS_DISABLED);
+    put(keys, Set.of("passwordSource"), LOCAL_ADMIN_SEEDED);
+    put(keys, Set.of("recreated", "passwordSource"), LOCAL_ADMIN_RESET);
+    put(keys, Set.of("enabled"), LOCAL_ACCOUNTS_ENABLED);
+    put(keys, Set.of("enabled", "revokedSessions"), LOCAL_ACCOUNTS_DISABLED);
     put(keys, Set.of("lockedReason", "lockoutUntil"), LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS);
     put(
         keys,
@@ -335,17 +325,43 @@ final class AuditSelfDisclosurePayload {
             "clientSecretSet",
             "tenantSet",
             "scopesSet",
+            "connectorSettingsSet"),
+        CONNECTION_PROFILE_CREATED);
+    put(
+        keys,
+        Set.of(
+            "name",
+            "kind",
+            "sourceType",
+            "authMethod",
+            "ownership",
+            "clientIdSet",
+            "clientSecretSet",
+            "tenantSet",
+            "scopesSet",
             "connectorSettingsSet",
-            "connectionsDiscarded",
-            "connectionsDisconnected",
-            "clientSecretDeleted",
-            "connectionsRemoved",
-            "success"),
-        CONNECTION_PROFILE_CREATED,
-        CONNECTION_PROFILE_CHANGED,
-        CONNECTION_PROFILE_DELETED,
-        CONNECTION_PROFILE_DISCONNECTED,
-        CONNECTION_PROFILE_SIGN_IN_TESTED);
+            "connectionsDiscarded"),
+        CONNECTION_PROFILE_CHANGED);
+    put(
+        keys,
+        Set.of(
+            "name",
+            "kind",
+            "sourceType",
+            "authMethod",
+            "ownership",
+            "clientIdSet",
+            "clientSecretSet",
+            "tenantSet",
+            "scopesSet",
+            "connectorSettingsSet",
+            "connectionsRemoved"),
+        CONNECTION_PROFILE_DELETED);
+    put(
+        keys,
+        Set.of("connectionsDisconnected", "clientSecretDeleted"),
+        CONNECTION_PROFILE_DISCONNECTED);
+    put(keys, Set.of("success"), CONNECTION_PROFILE_SIGN_IN_TESTED);
     put(keys, Set.of("sourceType", "profile", "kind"), CONNECTOR_LOCKED, CONNECTOR_UNLOCKED);
     put(
         keys,
