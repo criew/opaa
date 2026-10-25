@@ -9,9 +9,11 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.MutableClock;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -86,6 +88,10 @@ class SiemExportServiceIntegrationTest {
   }
 
   private SiemExportService service(boolean includeLabels) {
+    return service(includeLabels, Clock.systemUTC());
+  }
+
+  private SiemExportService service(boolean includeLabels, Clock clock) {
     return new SiemExportService(
         jdbcTemplate,
         new SiemExportProperties(
@@ -93,7 +99,8 @@ class SiemExportServiceIntegrationTest {
         sender,
         new CefSyslogFormatter("test-host", "0.0.0-dev"),
         personalObjects,
-        new SimpleMeterRegistry());
+        new SimpleMeterRegistry(),
+        clock);
   }
 
   private SiemExportService service() {
@@ -386,6 +393,26 @@ class SiemExportServiceIntegrationTest {
 
     afterBackoff.run();
     assertThat(ours()).hasSize(1);
+  }
+
+  /** The first failure holds the next attempt back for 60 seconds of the injected clock. */
+  @Test
+  void afterAFailureTheNextAttemptWaitsForTheBackoffOfTheClock() {
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-25T09:00:00Z"));
+    SiemExportService service = service(false, clock);
+    service.cursor();
+    AuditLogEntry entry = record(AuditObjectType.SPACE, "space-backoff", "Backoff");
+    sender.failing = true;
+    service.run();
+    sender.failing = false;
+
+    clock.advance(Duration.ofSeconds(59));
+    service.run();
+    assertThat(ours()).as("still inside the backoff").isEmpty();
+
+    clock.advance(Duration.ofSeconds(1));
+    service.run();
+    assertThat(ours()).hasSize(1).first().asString().contains("externalId=" + entry.getEventId());
   }
 
   @Test
