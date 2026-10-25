@@ -108,6 +108,31 @@ dahin melden Verbindungstest und Lauf „Das Zertifikat des Servers wird nicht a
 einer unbekannten Zertifizierungsstelle oder passt nicht zur Adresse. …". Dieselbe Meldung erscheint,
 wenn das Zertifikat auf einen anderen Namen ausgestellt ist als die Adresse der Quelle.
 
+### 1.4 Vollabgleich-Rhythmus
+
+Wo ein Konnektor zwischen zwei Vollabgleichen nur Änderungen liest — Confluence, Google Drive,
+SharePoint, OneDrive und Dropbox —, entscheidet der **Vollabgleich-Rhythmus**, nach wie vielen Tagen
+ein Lauf ohne ausdrücklich gewählte Betriebsart wieder vollständig abgleicht. Erst der Vollabgleich
+entfernt, was die Quelle nicht einzeln als gelöscht meldet; ein kürzerer Rhythmus entfernt es früher
+und stellt mehr Anfragen an die Quelle. Der Rhythmus kommt aus genau einer Stelle:
+
+1. aus der Bibliothek, wenn ihr Zeitplan „Vollabgleich alle … Tage" setzt,
+2. sonst aus dem Wert der Quellart, den die Systemverwaltung unter **Administration → Anbindungen →
+   Einstellungen**, Abschnitt „Vollabgleich-Rhythmus", festlegt,
+3. sonst aus der Werkseinstellung der Quellart.
+
+| Quellart | Werkseinstellung |
+|---|---|
+| Confluence | 7 Tage |
+| Google Drive | 7 Tage |
+| SharePoint | 1 Tag |
+| OneDrive | 1 Tag |
+| Dropbox | 7 Tage |
+
+Jeder Wert liegt zwischen 1 und 365 Tagen. „Werkseinstellung wiederherstellen" führt eine Quellart
+zur Werkseinstellung zurück. Eine Änderung gilt ab dem nächsten Lauf auf jeder Instanz und steht im
+Revisionsprotokoll (`FULL_SYNC_RHYTHM_CHANGED`). Eine Umgebungsvariable dafür gibt es nicht.
+
 ## 2. Dateiablagen
 
 S3, Google Drive, SharePoint, OneDrive, Nextcloud, Dropbox und die Windows-Dateifreigabe (SMB) gleichen ihre

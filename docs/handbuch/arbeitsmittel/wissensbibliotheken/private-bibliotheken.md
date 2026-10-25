@@ -97,12 +97,16 @@ zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sons
 Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
 Anbindungen → Einstellungen**, Abschnitt „Speicher privater Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
 und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Abschnitt nennt, ob die
-Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
-Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
-`OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` zurück (Variablentabelle im Kapitel
-[Konfiguration](../../betrieb/konfiguration.md)). `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
+Werkseinstellung oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
+Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“;
+„Werkseinstellung wiederherstellen“ führt zur Werkseinstellung zurück. Der Wert lebt nur in der
+Verwaltung, eine Umgebungsvariable dafür gibt es nicht. `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
 Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht im
 Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
+
+| Einstellung | Werkseinstellung | Wo sie sich ändern lässt |
+|---|---|---|
+| Speicherkontingent je Person über alle privaten Bibliotheken | 10 GiB | Administration → Anbindungen → Einstellungen |
 
 Darunter steht die **Übersicht der Verwaltung** (`GET /api/v1/admin/private-libraries/summary`). Sie
 zeigt für die eigene Organisation nur Summen: die Zahl der Besitzerinnen, den belegten Speicher
