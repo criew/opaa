@@ -17,7 +17,11 @@ import {
 } from './libraryFixtures'
 import { mockLibraryGrants } from '@/features/asset/mocks/assetFixtures'
 import {
+  FIXTURE_SCHEDULE,
+  berlin,
+  entryBase,
   runningStatus,
+  unlistedKeysOf,
   detailLabLibraries,
   scenarioDocuments,
   scenarioFolders,
@@ -27,7 +31,7 @@ import { SOURCE_LIBRARY_IDS, SOURCE_LIBRARY_LAST_INDEXED } from './sourceLibrary
 
 /**
  * The connected-library fixtures under the fixture scenarios: `scale` widens every selection to
- * dozens or hundreds of entries with long names, `small` narrows it to one, `empty` leaves the
+ * dozens or hundreds of entries with long names, every other scenario keeps one scope, `empty` leaves the
  * libraries without documents and runs, `failed` and `partial` change their run history.
  */
 
@@ -114,7 +118,11 @@ const SCALE: Record<string, Overlay> = {
   }),
 }
 
-const SMALL: Record<string, Overlay> = {
+/**
+ * The scope every scenario but `scale` keeps, so a library does not change its Umfang from one
+ * scenario to the next: two entries wherever the source selects (one can then fail in `partial`).
+ */
+const BASE: Record<string, Overlay> = {
   [SOURCE_LIBRARY_IDS.SHAREPOINT]: (library) => ({
     sourceSettings: {
       ...library.sourceSettings,
@@ -125,44 +133,52 @@ const SMALL: Record<string, Overlay> = {
           siteId: 'gen-site-1',
           siteName: 'Rathaus',
         },
+        {
+          driveId: 'gen-drive-1-2',
+          name: 'Ratsbeschlüsse (Rathaus)',
+          siteId: 'gen-site-1',
+          siteName: 'Rathaus',
+        },
       ],
     },
   }),
-  [SOURCE_LIBRARY_IDS.CONFLUENCE]: (library) => ({
-    sourceSettings: {
-      ...library.sourceSettings,
-      spaces: scenarioSpaces(1).map((space) => ({ key: space.key, name: space.name ?? null })),
-    },
-  }),
-  [SOURCE_LIBRARY_IDS.NEXTCLOUD]: () => ({ sourceSettings: { folders: ['/'] } }),
-  [SOURCE_LIBRARY_IDS.SMB]: () => ({ sourceSettings: { folders: ['/'] } }),
-  [SOURCE_LIBRARY_IDS.DROPBOX]: () => ({ sourceSettings: { folders: ['/'], teamSpace: false } }),
   [SOURCE_LIBRARY_IDS.GOOGLE_DRIVE]: (library) => ({
     sourceSettings: {
       ...library.sourceSettings,
-      scopes: [{ drive: '0AMockDrive', name: 'Projektablage' }],
+      scopes: [
+        { drive: '0AMockDrive', name: 'Ablage Projektteam' },
+        { folder: '1MockFolder', name: 'Freigegebene Akten' },
+      ],
     },
-  }),
-  [SOURCE_LIBRARY_IDS.S3]: (library) => ({
-    sourceSettings: { ...library.sourceSettings, scopes: [{ bucket: 'protokolle', prefix: null }] },
   }),
 }
 
 function overlayFor(scenario: MockScenario, id: string): Overlay | null {
+  if (scenario === 'default') return null
+  const base = (library: LibraryResponse) => ({
+    ...library,
+    ...BASE[id]?.(library),
+    ...(library.schedule ? { schedule: { ...library.schedule, ...FIXTURE_SCHEDULE } } : {}),
+  })
   switch (scenario) {
     case 'scale':
-      return (library) => ({
-        ...SCALE[id]?.(library),
-        name: `${library.name} ${LONG_LIBRARY_SUFFIX}`.slice(0, 120),
-      })
-    case 'small':
-      return SMALL[id] ?? null
+      return (library) => {
+        const based = base(library)
+        return {
+          ...based,
+          ...SCALE[id]?.(based),
+          name: `${library.name} ${LONG_LIBRARY_SUFFIX}`.slice(0, 120),
+        }
+      }
     case 'empty':
-      return () => ({ documentCount: 0 })
+      return (library) => ({ ...base(library), documentCount: 0 })
     case 'failed':
-      return () => ({ lastScheduledRunsFailed: true })
+      return (library) => ({
+        ...base(library),
+        lastScheduledRunsFailed: Boolean(library.schedule),
+      })
     default:
-      return null
+      return base
   }
 }
 
@@ -229,6 +245,16 @@ export function applyLibraryScenario(): void {
     if (documents) {
       mockLibraryDocuments[id] = documents
       next.documentCount = documents.length
+      // an upload library's storage is what its documents take; `failed` has hit the quota
+      if (next.storageQuotaBytes != null) {
+        next.storageUsedBytes =
+          scenario === 'failed'
+            ? next.storageQuotaBytes
+            : Math.min(
+                documents.reduce((sum, document) => sum + (document.fileSize ?? 0), 0),
+                Math.round(next.storageQuotaBytes * 0.9),
+              )
+      }
     }
     const folders = scenarioFolders(next, scenario)
     if (folders) mockLibraryFolders[id] = folders
@@ -249,34 +275,39 @@ export function applyLibraryScenario(): void {
   applied = key
 }
 
-const EVENT_KINDS: Array<{
-  category: IndexingRunListResponse['runs'][number]['events'][number]['category']
-  message: string
-}> = [
-  { category: 'REJECTED', message: 'Vom Quellserver abgewiesen (HTTP 403)' },
+/** Failures of a single document; only these count as „fehlgeschlagen“. */
+const ERROR_KINDS: Array<{ category: EventCategory; message: string }> = [
   {
     category: 'UNSUPPORTED_FORMAT',
     message: 'Dateiformat wird nicht unterstützt (application/x-msaccess)',
   },
+  { category: 'REJECTED', message: 'Vom Quellserver abgewiesen (HTTP 403)' },
   { category: 'ERROR', message: 'Datei ist größer als 200 MB und wurde übersprungen' },
-  { category: 'UNREACHABLE', message: 'Zeitüberschreitung beim Abruf (30 Sekunden)' },
+]
+
+/** Notes about a run: removals and throttling, never failures. */
+const NOTE_KINDS: Array<{ category: EventCategory; message: string }> = [
   { category: 'REMOVED', message: 'In der Quelle gelöscht, aus dem Bestand entfernt' },
   { category: 'RATE_LIMITED', message: 'Die Quelle hat gedrosselt, Abruf wiederholt' },
 ]
 
+type Run = IndexingRunListResponse['runs'][number]
+type EventCategory = Run['events'][number]['category']
+
 /** The backend keeps at most this many events per run (IndexingRunEventRecorder). */
 const EVENT_CAP = 500
 
-type Run = IndexingRunListResponse['runs'][number]
-
 interface RunSpec {
   status: 'COMPLETED' | 'FAILED' | 'RUNNING'
+  /** Documents that failed - exactly as many error events. */
   failed?: number
-  events?: number
+  /** Notes (removed, throttled) besides the failures. */
+  notes?: number
   message?: string
-  failureCategory?: string
+  failureCategory?: string | null
   incomplete?: boolean
-  unreadableScopeCount?: number
+  /** Areas of the scope the run could not read (see `unreadableShape`). */
+  unreadable?: number
   minutes?: number
 }
 
@@ -286,78 +317,135 @@ interface RunContext {
   library?: LibraryResponse
 }
 
-/** Where an event points, in the form the source names its entries. */
-function eventReference(library: LibraryResponse | undefined, e: number): string {
-  const name = scenarioName('Vorgang', e)
+/** Libraries whose run reports unreadable areas as a count plus one UNREACHABLE event each. */
+const COUNTED_AREAS = new Set(['FILESYSTEM', 'HTTP_DIRECTORY', 'RSS_FEED'])
+
+/** Where an event points, built from the library's own scope. */
+export function eventReference(library: LibraryResponse | undefined, e: number): string {
+  const settings = (library?.sourceSettings ?? {}) as Record<string, unknown>
+  const pick = <T>(key: string): T | undefined => {
+    const list = (settings[key] as T[] | undefined) ?? []
+    return list.length ? list[e % list.length] : undefined
+  }
+  const name = scenarioName('Vorgang', e, false)
+  const slug = name.replace(/ /g, '-').toLowerCase()
   switch (library?.sourceType) {
     case 'HTTP_DIRECTORY':
     case 'RSS_FEED':
-      return `${library.sourceUrl ?? 'https://example.org/'}eintrag-${e}.html`
-    case 'CONFLUENCE':
-      return `Space BAU › ${name} › Anhang-${e}.pdf`
-    case 'S3':
-      return `protokolle/2025/${name.replace(/ /g, '-').toLowerCase()}.pdf`
-    case 'SHAREPOINT':
-      return `Rathaus › Dokumente › ${name}/Anlage-${e}.pdf`
-    default:
-      return `/Projekte/${name}/Anlage-${e}.pdf`
+      return `${entryBase(library)}${library.sourceType === 'RSS_FEED' ? 'meldung' : 'richtlinie'}-${e}.html`
+    case 'CONFLUENCE': {
+      const space = pick<{ key: string; name?: string | null }>('spaces')
+      return `${space?.name ?? space?.key ?? 'Bauamt'} › ${name} › Anhang-${e}.pdf`
+    }
+    case 'S3': {
+      const scope = pick<{ bucket: string; prefix?: string | null }>('scopes')
+      return `${scope?.bucket ?? 'protokolle'}/${scope?.prefix ?? ''}${slug}.pdf`
+    }
+    case 'SHAREPOINT': {
+      const entry = pick<{ name: string }>('libraries')
+      return `${entry?.name ?? 'Dokumente'} › ${name}/Anlage-${e}.pdf`
+    }
+    case 'GOOGLE_DRIVE': {
+      const scope = pick<{ name?: string | null }>('scopes')
+      return `${scope?.name ?? 'Ablage Projektteam'} › ${name}/Anlage-${e}.pdf`
+    }
+    case 'FILESYSTEM':
+      return `${library.sourcePath ?? '/srv/opaa'}/${name}/Anlage-${e}.pdf`
+    default: {
+      const folder = pick<string>('folders') ?? '/'
+      return `${folder === '/' ? '' : folder}/${name}/Anlage-${e}.pdf`
+    }
   }
 }
 
+/** The place of an unreadable area for sources that only count them (directory, URL). */
+function unreadableAreaReference(library: LibraryResponse | undefined, n: number): string {
+  const area = ['Archiv-2019', 'Personalakten'][n % 2]
+  if (library?.sourceType === 'FILESYSTEM') return `${library.sourcePath ?? '/srv/opaa'}/${area}`
+  return `${library ? entryBase(library) : 'https://example.org/'}${area.toLowerCase()}/`
+}
+
 function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Run {
-  // runs start at the schedule's hour; without a schedule every run was started by hand
-  const hour = library?.schedule?.hour ?? 6
   const scheduled = Boolean(library?.schedule && library.schedule.frequency !== 'DISABLED')
-  const started = new Date(Date.UTC(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0))
-  const minutes = spec.minutes ?? 7
-  const completed = new Date(started.getTime() + minutes * 60_000)
+  const byHand = !scheduled || i % 3 === 0 || i === 0
+  const day = i === 0 ? 24 : 25 - i
+  const started = i === 0 ? berlin(24, 11, 5) : byHand ? berlin(day, 10, 14) : berlin(day, 6, 0)
   const failed = spec.failed ?? 0
   const ended = spec.status === 'FAILED'
   const running = spec.status === 'RUNNING'
-  const events = ended ? 0 : (spec.events ?? 0)
-  const shown = Math.min(events, EVENT_CAP)
-  const live =
-    running && library ? runningStatus(library.id, library.sourceType === 'RSS_FEED') : null
-  const total = live ? live.totalDocuments : ended ? 0 : documents + failed + 3
-  const processed = live ? live.documentCount : ended ? 0 : total - failed - 3
+  const seconds = ended
+    ? 4
+    : 60 * (spec.minutes ?? Math.max(3, Math.round(documents / 300)) + (i % 4))
+  const completed = new Date(started.getTime() + seconds * 1000)
+  const counted = library ? COUNTED_AREAS.has(library.sourceType) : false
+  const unreadable = spec.unreadable ?? 0
+  const errorEvents = ended ? 0 : failed
+  const scopeEvents = ended || !counted ? 0 : unreadable
+  const noteEvents = ended ? 0 : (spec.notes ?? 0)
+  const total = errorEvents + scopeEvents + noteEvents
+  const live = running && library ? runningStatus(library.id, documents) : null
+  const read = live ? live.totalDocuments : ended ? 0 : documents + failed + 3
+  const processed = live ? live.documentCount : ended ? 0 : read - failed - 3
+  const events: Run['events'] = []
+  for (let e = 1; e <= Math.min(total, EVENT_CAP); e++) {
+    if (e <= errorEvents) {
+      events.push({ ...ERROR_KINDS[e % ERROR_KINDS.length], reference: eventReference(library, e) })
+    } else if (e <= errorEvents + scopeEvents) {
+      const n = e - errorEvents - 1
+      events.push({
+        category: 'UNREACHABLE',
+        message: 'Bereich nicht lesbar (Zugriff verweigert)',
+        reference: unreadableAreaReference(library, n),
+      })
+    } else {
+      events.push({ ...NOTE_KINDS[e % NOTE_KINDS.length], reference: eventReference(library, e) })
+    }
+  }
   return {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     status: spec.status,
-    triggeredBy: !scheduled || i % 3 === 0 ? 'MANUAL' : 'SCHEDULED',
-    runMode: i % 7 === 0 ? 'FULL' : 'INCREMENTAL',
+    triggeredBy: byHand ? 'MANUAL' : 'SCHEDULED',
+    runMode: i % 7 === 0 && i > 0 ? 'FULL' : 'INCREMENTAL',
     documentCount: processed,
-    totalDocuments: total,
+    totalDocuments: read,
     documentsSkipped: live ? live.documentsSkipped : ended ? 0 : 3,
-    documentsFailed: failed,
+    documentsFailed: ended ? 0 : failed,
     documentsIndexedTotal: processed,
     message: spec.message ?? (running ? 'Indizierung läuft' : 'Indizierung abgeschlossen'),
     failureCategory: spec.failureCategory ?? null,
     incomplete: spec.incomplete ?? null,
-    unreadableScopeCount: spec.unreadableScopeCount ?? null,
+    unreadableScopeCount: counted && unreadable > 0 ? unreadable : null,
+    unlistedScopeKeys:
+      !counted && unreadable > 0 && library ? unlistedKeysOf(library).slice(0, unreadable) : null,
     startedAt: started.toISOString(),
     completedAt: running ? null : completed.toISOString(),
     // a run refused at the sign-in sent nothing worth counting
     metrics: ended
       ? undefined
       : {
-          requestsSent: total * 2 + i,
+          requestsSent: read * 2 + i,
           throttleCount: i % 4 === 0 ? 3 : 0,
           throttleWaitSeconds: i % 4 === 0 ? 45 : 0,
-          attachmentsProcessed: Math.round(total / 10),
+          attachmentsProcessed: Math.round(read / 10),
           attachmentsSkipped: 1,
-          attachmentsFailed: failed > 0 ? 2 : 0,
-          bytesDownloaded: total * 512 * 1024,
+          attachmentsFailed: 0,
+          bytesDownloaded: read * 512 * 1024,
         },
-    events: generate(shown, (e) => {
-      // a run without failures records only removals and throttling
-      const kinds = failed > 0 ? EVENT_KINDS : EVENT_KINDS.slice(4)
-      return { ...kinds[e % kinds.length], reference: eventReference(library, e) }
-    }),
-    eventsTruncatedCount: events - shown,
+    events,
+    eventsTruncatedCount: Math.max(0, total - EVENT_CAP),
   }
 }
 
 const REFUSED = 'Lauf abgebrochen: Die Quelle hat die Anmeldung abgelehnt (HTTP 401).'
+const UNREACHABLE = 'Lauf abgebrochen: Die Quelle ist nicht erreichbar (HTTP 502).'
+
+/** How a failed run of the library ends: a refused sign-in, or - without one - no answer. */
+function failedRun(library: LibraryResponse | undefined): RunSpec {
+  const signsIn = library?.sourceType !== 'HTTP_DIRECTORY' && library?.sourceType !== 'RSS_FEED'
+  return signsIn
+    ? { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' }
+    : { status: 'FAILED', message: UNREACHABLE, failureCategory: null }
+}
 
 /** The run history of a library under the active scenario; an upload library has none. */
 export function scenarioIndexingRuns(libraryId?: string): IndexingRunListResponse {
@@ -375,56 +463,33 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
   const run = (i: number, spec: RunSpec) => runOf(i, spec, { documents, library })
   switch (scenario) {
     case 'small':
-      return { runs: [run(1, { status: 'COMPLETED' }), run(2, { status: 'COMPLETED', events: 1 })] }
+      return {
+        runs: [run(1, { status: 'COMPLETED' }), run(2, { status: 'COMPLETED', notes: 1 })],
+      }
     case 'scale':
-      // the full retention: ten runs, one at the event cap, mixed outcomes
+      // the full retention: ten runs, one beyond the event cap, mixed outcomes
       return {
         runs: generate(10, (i) => {
-          if (i === 1)
-            return run(i, { status: 'COMPLETED', failed: 38, events: 1740, minutes: 192 })
-          if (i === 4)
-            return run(i, {
-              status: 'FAILED',
-              message: REFUSED,
-              failureCategory: 'CREDENTIALS_REJECTED',
-            })
-          if (i === 6) {
-            return run(i, {
-              status: 'COMPLETED',
-              incomplete: true,
-              unreadableScopeCount: 4,
-              events: 26,
-            })
-          }
-          return run(i, { status: 'COMPLETED', failed: i % 2 ? 12 : 0, events: i % 2 ? 140 : 3 })
+          if (i === 1) return run(i, { status: 'COMPLETED', failed: 38, notes: 1702, minutes: 192 })
+          if (i === 4) return run(i, failedRun(library))
+          if (i === 6) return run(i, { status: 'COMPLETED', incomplete: true, notes: 26 })
+          return run(i, { status: 'COMPLETED', failed: i % 2 ? 12 : 0, notes: i % 2 ? 128 : 3 })
         }),
       }
     case 'empty':
       return { runs: [] }
     case 'failed':
-      return {
-        runs: generate(3, (i) =>
-          run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' }),
-        ),
-      }
+      return { runs: generate(3, (i) => run(i, failedRun(library))) }
     case 'partial':
       return {
         runs: [
-          run(1, {
-            status: 'COMPLETED',
-            failed: 17,
-            events: 17,
-            unreadableScopeCount: 2,
-          }),
+          run(1, { status: 'COMPLETED', failed: 17, notes: 4, unreadable: 1 }),
           run(2, { status: 'COMPLETED' }),
         ],
       }
     case 'slow':
       return {
-        runs: [
-          run(0, { status: 'RUNNING', events: 4 }),
-          run(1, { status: 'COMPLETED', events: 2 }),
-        ],
+        runs: [run(0, { status: 'RUNNING', notes: 2 }), run(1, { status: 'COMPLETED', notes: 2 })],
       }
     default:
       return mockIndexingRuns

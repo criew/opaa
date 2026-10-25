@@ -297,6 +297,8 @@ export const libraryDocumentHandlers = [
     }
     const formData = await request.formData()
     const file = formData.get('file')
+    // the `slow` scenario keeps an upload in flight long enough to be seen
+    if (currentMockScenario() === 'slow') await new Promise((done) => setTimeout(done, 30_000))
     // the `failed` scenario turns every upload away at the library's storage quota
     if (currentMockScenario() === 'failed') {
       return HttpResponse.json(

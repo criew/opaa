@@ -118,7 +118,11 @@ export function scenarioName(base: string, i: number, long = true): string {
   const number = String(i).padStart(3, '0')
   if (long && i % 3 === 0) {
     const suffix = LONG_SUFFIXES[(i / 3) % LONG_SUFFIXES.length]
-    return `${base} ${number} – ${suffix}`.slice(0, 120)
+    const name = `${base} ${number} – ${suffix}`
+    // cut at a word, never inside one: „…Nord, Süd und“ rather than „…Süd und Öst“
+    return name.length <= 120
+      ? name
+      : name.slice(0, name.lastIndexOf(' ', 120)).replace(/[,–]$/, '').trimEnd()
   }
   if (long && i === 7) return `${base} ${number} ${LONG_COMPOUND}`
   return `${base} ${number}`

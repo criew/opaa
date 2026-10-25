@@ -65,7 +65,7 @@ function readableEntries(): CatalogEntryResponse[] {
       sourceBlock: library.sourceBlock ?? null,
     },
     itemCount: library.documentCount,
-    spaceCount: scenarioSpaces(currentMockScenario())?.length ?? 0,
+    spaceCount: scenarioSpaces(currentMockScenario(), Boolean(library.privateLibrary))?.length ?? 0,
     favorite: mockFavoriteAssets.has(favoriteKey('KNOWLEDGE_LIBRARY', library.id)),
     succession: library.succession ?? null,
   }))

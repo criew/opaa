@@ -26,6 +26,33 @@ export const DETAIL_LAB_LIBRARY_IDS = {
 
 const CREATED = '2026-09-10T08:00:00Z'
 
+/** 24.10.2026 is the fixture's today; the page renders Europe/Berlin (summer time until 25.10.). */
+export function berlin(day: number, hour: number, minute: number): Date {
+  const offset = day >= 25 ? 1 : 2
+  return new Date(Date.UTC(2026, 9, day, hour - offset, minute))
+}
+
+/** The fixture schedule: daily at 06:00 Berlin time, next run tomorrow. */
+export const FIXTURE_SCHEDULE = {
+  frequency: 'DAILY' as const,
+  hour: 6,
+  minute: 0,
+  nextRunAt: berlin(25, 6, 0).toISOString(),
+}
+
+/** When the newest scheduled run indexed its documents (24.10.2026, 06:02 Berlin). */
+export const FIXTURE_INDEXED_AT = berlin(24, 6, 2).toISOString()
+
+/** The directory a web library's or feed's entries live under, always ending in a slash. */
+export function entryBase(library: Pick<LibraryResponse, 'sourceUrl'>): string {
+  const url = library.sourceUrl ?? 'https://example.org/'
+  try {
+    return new URL('./', url).toString()
+  } catch {
+    return url.endsWith('/') ? url : `${url}/`
+  }
+}
+
 function labLibrary(
   id: string,
   name: string,
@@ -54,19 +81,18 @@ function labLibrary(
 
 /** The lab libraries; registered only once a scenario is active (`applyLibraryScenario`). */
 export function detailLabLibraries(): LibraryResponse[] {
-  const daily = {
-    frequency: 'DAILY' as const,
-    hour: 6,
-    minute: 0,
-    nextRunAt: '2026-10-25T06:00:00Z',
-  }
+  const daily = FIXTURE_SCHEDULE
   return [
     labLibrary(
       DETAIL_LAB_LIBRARY_IDS.UPLOAD,
       'Rundschreiben',
       'Hochgeladene Rundschreiben und Vermerke',
       'UPLOAD',
-      { storageQuotaBytes: 2 * 1024 ** 3, storageUsedBytes: 734 * 1024 ** 2 },
+      {
+        storageQuotaBytes: 2 * 1024 ** 3,
+        storageUsedBytes: 734 * 1024 ** 2,
+        updatedAt: UPLOADED_AT,
+      },
     ),
     labLibrary(
       DETAIL_LAB_LIBRARY_IDS.HTTP_DIRECTORY,
@@ -101,29 +127,43 @@ const EXTENSIONS = [
   ['html', 'text/html'],
 ] as const
 
+/** When the upload library last took in files: the day before the fixture's today. */
+const UPLOADED_AT = berlin(23, 14, 32).toISOString()
+
 interface DocumentPlan {
   count: number
   failed: number
   pending: number
 }
 
+/**
+ * A refused run (`failed`) leaves the documents as they were; the failed and pending ones are
+ * spread over the list, so its first page is mixed, never all failed or all pending.
+ */
 function planFor(scenario: MockScenario): DocumentPlan | null {
   switch (scenario) {
     case 'small':
       return { count: 3, failed: 0, pending: 0 }
     case 'scale':
-      return { count: 1250, failed: 9, pending: 14 }
+      return { count: 1250, failed: 38, pending: 14 }
     case 'empty':
       return { count: 0, failed: 0, pending: 0 }
     case 'failed':
-      return { count: 12, failed: 5, pending: 0 }
+      return { count: 12, failed: 0, pending: 0 }
     case 'partial':
-      return { count: 214, failed: 17, pending: 4 }
+      return { count: 214, failed: 17, pending: 0 }
     case 'slow':
       return { count: 26, failed: 0, pending: 9 }
     default:
       return null
   }
+}
+
+/** Whether the `i`-th document is the `n`-th of `share` spread evenly from `offset` on. */
+function spread(i: number, share: number, count: number, offset: number): boolean {
+  if (share === 0) return false
+  const step = Math.max(2, Math.floor(count / share))
+  return i >= offset && (i - offset) % step === 0 && (i - offset) / step < share
 }
 
 /** Where a connector document sits in its source, as the list shows it under the name. */
@@ -140,7 +180,9 @@ function hierarchyOf(library: LibraryResponse, i: number): Partial<LibraryDocume
     }
     case 'HTTP_DIRECTORY':
     case 'RSS_FEED':
-      return { sourceUrl: `${library.sourceUrl ?? 'https://example.org/'}eintrag-${i}.html` }
+      return {
+        sourceUrl: `${entryBase(library)}${library.sourceType === 'RSS_FEED' ? 'meldung' : 'richtlinie'}-${i}.html`,
+      }
     case 'UPLOAD':
       return {}
     default:
@@ -167,8 +209,8 @@ export function scenarioDocuments(
   const folderCount = upload ? folderPlan(scenario) : 0
   return generate(plan.count, (i) => {
     const [extension, contentType] = EXTENSIONS[i % EXTENSIONS.length]
-    const failed = i <= plan.failed
-    const pending = !failed && i <= plan.failed + plan.pending
+    const failed = spread(i, plan.failed, plan.count, 3)
+    const pending = !failed && spread(i, plan.pending, plan.count, 2)
     const base = scenarioName(upload ? 'Rundschreiben' : 'Dokument', i).replace(/\//g, '-')
     return {
       id: `${library.id}-doc-${i}`,
@@ -178,13 +220,13 @@ export function scenarioDocuments(
       status: failed ? 'FAILED' : pending ? 'PENDING' : 'INDEXED',
       sourceType: library.sourceType,
       chunkCount: failed || pending ? 0 : (i % 40) + 1,
-      indexedAt: failed || pending ? null : '2026-10-24T04:02:00Z',
+      indexedAt: failed || pending ? null : upload ? UPLOADED_AT : FIXTURE_INDEXED_AT,
       uploadedByUserId: upload ? 'mock-user-id' : null,
       errorMessage: failed ? DOCUMENT_ERRORS[i % DOCUMENT_ERRORS.length] : null,
       // an upload library files every fourth document into one of its folders
       folderId:
         upload && folderCount > 0 && i % 4 === 0
-          ? `${library.id}-folder-${(i % folderCount) + 1}`
+          ? `${library.id}-folder-${((i / 4 - 1) % folderCount) + 1}`
           : null,
       ...hierarchyOf(library, i),
     }
@@ -290,9 +332,13 @@ export function scenarioGrants(scenario: MockScenario): AssetGrantResponse[] | n
   }
 }
 
-/** The spaces a fixture library is associated with under a scenario; null keeps the fixtures. */
+/**
+ * The spaces a fixture library is associated with under a scenario; null keeps the fixtures. A
+ * private library serves only its owner's own space, if any.
+ */
 export function scenarioSpaces(
   scenario: MockScenario,
+  privateLibrary = false,
 ): Array<{ spaceId: string; spaceName: string }> | null {
   const count =
     scenario === 'small'
@@ -305,7 +351,7 @@ export function scenarioSpaces(
             ? 3
             : null
   if (count === null) return null
-  return generate(count, (i) => ({
+  return generate(privateLibrary ? Math.min(count, 1) : count, (i) => ({
     spaceId: `scenario-space-${i}`,
     spaceName: scenarioName('Space', i),
   }))
@@ -357,20 +403,24 @@ export function scenarioMetadataFields(
   }
 }
 
-/** The status of the run the `slow` scenario keeps going: 62 % after a while, never done. */
-export function runningStatus(libraryId: string, rssFeed: boolean): IndexingStatusResponse {
-  const total = rssFeed ? 80 : 1340
+/**
+ * The status of the run the `slow` scenario keeps going: 62 % of the library's own documents,
+ * started by hand at 11:05 on the fixture's today, never done.
+ */
+export function runningStatus(libraryId: string, documents: number): IndexingStatusResponse {
+  const total = Math.max(1, documents)
   const done = Math.round(total * 0.62)
+  const skipped = Math.min(3, done)
   return {
     libraryId,
     status: 'RUNNING',
-    documentCount: done - 12,
+    documentCount: done - skipped,
     totalDocuments: total,
-    documentsSkipped: 12,
+    documentsSkipped: skipped,
     documentsFailed: 0,
-    documentsIndexedTotal: done - 12,
+    documentsIndexedTotal: done - skipped,
     message: 'Indexing in progress',
-    timestamp: '2026-10-24T09:12:00Z',
+    timestamp: berlin(24, 11, 12).toISOString(),
   }
 }
 

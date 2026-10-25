@@ -137,7 +137,10 @@ export const assetHandlers = [
     // a fixture scenario answers with its own spaces for a library (detailScenarioFixtures)
     const seeded =
       String(params.assetType) === 'KNOWLEDGE_LIBRARY'
-        ? scenarioSpaces(currentMockScenario())
+        ? scenarioSpaces(
+            currentMockScenario(),
+            Boolean(mockLibraryDetails[assetId]?.privateLibrary),
+          )
         : null
     if (seeded) {
       const items = seeded.map((space) => ({

@@ -182,6 +182,34 @@ export async function runAxe(page, { contrastOnly = false } = {}) {
   }
 }
 
+/**
+ * Waits until the page has taken the viewport's width and its layout holds still: no focus left
+ * (the skip link shows only while focused), the window at `width`, and the tab bar (or main) at
+ * the same place in two consecutive checks. Gives up after three seconds.
+ */
+export async function steady(page, width) {
+  await page.evaluate(() => {
+    const active = document.activeElement
+    if (active && active !== document.body) active.blur?.()
+  })
+  const deadline = Date.now() + 3000
+  let last = null
+  while (Date.now() < deadline) {
+    const signature = await page.evaluate(async (w) => {
+      if (window.innerWidth !== w) return null
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      const el = document.querySelector('[role=tablist]') ?? document.querySelector('main') ?? document.body
+      const r = el.getBoundingClientRect()
+      return [document.documentElement.clientWidth, r.left, r.top, r.width, document.querySelector('header')?.getBoundingClientRect().height ?? 0]
+        .map(Math.round)
+        .join(':')
+    }, width).catch(() => null)
+    if (signature && signature === last) return
+    last = signature
+    await sleep(150)
+  }
+}
+
 /** Grows the viewport so inner scroll containers (AppShell main, dialogs) fit, for __full. */
 async function growForFull(page, width) {
   for (let i = 0; i < 4; i++) {
@@ -320,12 +348,14 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
     for (const width of widths) {
       await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
       await sleep(250)
+      await steady(page, width)
       const name = `${area}__${type}__${scenario}__${scheme}__${width}`
       await page.screenshot({ path: path.join(out, `${name}.png`) }).catch((e) => log('  screenshot failed', e.message))
       const metrics = await pageMetrics(page)
       const axe = noAxe ? null : await runAxe(page, { contrastOnly: scheme !== 'light' })
       if (!noFull) {
         await growForFull(page, width)
+        await steady(page, width)
         await fullScreenshot(page, path.join(out, `${name}__full.png`))
         await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
         await sleep(150)

@@ -6,8 +6,9 @@ import { firstVisible, settle } from '../lib/ui.mjs'
 /**
  * Detail page of a knowledge library (/libraries/:id) with every tab. Per (type, scenario) the
  * fixture library of the type is loaded once per tab with `?tab=`; areas are the tabs, `laeufe`
- * (tab „Quelle“ scrolled to the runs, newest run expanded) and `upload` (upload library: three
- * files dropped on the upload field). A type ending in `-leser` loads the same library with
+ * (tab „Verlauf“ where a variant has one, else „Quelle“ scrolled to the runs, newest run expanded)
+ * and `upload` (upload library: two documents dropped on the upload field, plus an unsupported
+ * file in `partial` and `failed`; `slow` is shot while the upload is still under way). A type ending in `-leser` loads the same library with
  * `?mockRole=viewer`; `privat` is the private Nextcloud fixture.
  */
 
@@ -149,8 +150,11 @@ export async function run(page, job, ctx) {
           ctx.notFound(area, 'no file input (reader or no upload field)')
           continue
         }
-        await input.setInputFiles(uploadFiles).catch((e) => ctx.log('  upload', String(e).split('\n')[0]))
-        await settle(page, 1200)
+        // the unsupported file only where a partial failure belongs; `slow` is shot mid-upload
+        const files = ['partial', 'failed'].includes(job.scenario) ? uploadFiles : uploadFiles.slice(0, 2)
+        await input.setInputFiles(files).catch((e) => ctx.log('  upload', String(e).split('\n')[0]))
+        if (job.scenario === 'slow') await sleep(1200)
+        else await settle(page, 1200)
         await rest(page)
         await ctx.shoot(area)
         continue

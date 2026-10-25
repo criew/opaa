@@ -151,8 +151,19 @@ export const libraryMetadataHandlers = [
       keywordsEnabled: settings.keywordsEnabled,
       confidenceThreshold: settings.confidenceThreshold,
       fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
-        const values = documents.map((doc) =>
-          (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey),
+        // under a scenario an indexed document without stored values carries what the rules
+        // derive from its file: a title nearly always, a type and a date for most
+        const scenarioValue = (doc: (typeof documents)[number], index: number) => {
+          if (currentMockScenario() === 'default' || doc.status !== 'INDEXED') return undefined
+          const share = fieldKey === 'title' ? 19 : fieldKey === 'document_type' ? 13 : 11
+          return (index * 7) % 20 < share
+            ? { fieldKey, state: 'SET' as const, origin: 'DETERMINISTIC' as const }
+            : undefined
+        }
+        const values = documents.map(
+          (doc, index) =>
+            (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey) ??
+            scenarioValue(doc, index),
         )
         const countOf = (origin: string) =>
           values.filter((value) => value?.state === 'SET' && value.origin === origin).length
@@ -181,16 +192,29 @@ export const libraryMetadataHandlers = [
           emptyShare: totalDocuments === 0 ? 0 : emptyDocuments / totalDocuments,
         }
       }),
-      modelExtraction: {
-        calls: 12,
-        acceptedValues: 8,
-        rejectedBelowThreshold: 2,
-        rejectedOutsideVocabulary: 1,
-        failures: 1,
-        rejectedPoolFull: 0,
-        keywordsAssigned: 20,
-        lastCallAt: '2026-09-01T06:05:00Z',
-      },
+      // a switched-off extraction made no model calls under a scenario
+      modelExtraction:
+        currentMockScenario() !== 'default' && !settings.modelExtractionEnabled
+          ? {
+              calls: 0,
+              acceptedValues: 0,
+              rejectedBelowThreshold: 0,
+              rejectedOutsideVocabulary: 0,
+              failures: 0,
+              rejectedPoolFull: 0,
+              keywordsAssigned: 0,
+              lastCallAt: null,
+            }
+          : {
+              calls: 12,
+              acceptedValues: 8,
+              rejectedBelowThreshold: 2,
+              rejectedOutsideVocabulary: 1,
+              failures: 1,
+              rejectedPoolFull: 0,
+              keywordsAssigned: 20,
+              lastCallAt: '2026-09-01T06:05:00Z',
+            },
     })
   }),
 
