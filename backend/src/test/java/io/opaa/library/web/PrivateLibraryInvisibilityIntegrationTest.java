@@ -252,6 +252,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getBrandingLogo",
             "listCatalog",
             "getChat",
+            "exportChatPdf",
             "listConnectionProfileOptions",
             "getDocumentContent",
             "listEligibleExternalAccessLibraries",

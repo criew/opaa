@@ -784,6 +784,48 @@ class ChatServiceIntegrationTest {
   }
 
   @Test
+  void getChatForExportReturnsTheAuthorsChatWithItsMessages() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, "T", true, Set.of()));
+    chatService.appendTurn(chat, "Frage 1", "Antwort 1", List.of());
+
+    ChatConversation exported = chatService.getChatForExport(chat.getId(), author);
+
+    assertThat(exported.getId()).isEqualTo(chat.getId());
+    assertThat(exported.getMessages())
+        .extracting(ChatTurn::getContent)
+        .containsExactly("Frage 1", "Antwort 1");
+  }
+
+  @Test
+  void getChatForExportOfAForeignChatIsNotFound() {
+    UUID author = createUser();
+    UUID otherMember = createUser();
+    Space space = new Space("Fachbereich", null, false, author, organizationA);
+    space.addMembership(SpaceMembership.ofUser(author, SpaceRole.MEMBER, organizationA));
+    space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
+    UUID spaceId = spaceRepository.save(space).getId();
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+
+    assertThatThrownBy(() -> chatService.getChatForExport(chat.getId(), otherMember))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void getChatForExportIsDeniedToAnAuthorNoLongerInTheSpace() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    spaceMembershipRepository.deleteAll(spaceMembershipRepository.findBySpaceId(spaceId));
+
+    assertThatThrownBy(() -> chatService.getChatForExport(chat.getId(), author))
+        .isInstanceOf(AccessDeniedException.class);
+    // Reading stays open to the author after leaving; only the export needs the membership.
+    assertThatCode(() -> chatService.getChat(chat.getId(), author)).doesNotThrowAnyException();
+  }
+
+  @Test
   void requireStillSpaceMemberAllowsAnAuthorStillInTheSpace() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
