@@ -71,7 +71,12 @@ export function detailLabLibraries(): LibraryResponse[] {
       'Rundschreiben',
       'Hochgeladene Rundschreiben und Vermerke',
       'UPLOAD',
-      { storageQuotaBytes: 2 * 1024 ** 3, storageUsedBytes: 734 * 1024 ** 2 },
+      {
+        storageQuotaBytes: 2 * 1024 ** 3,
+        storageUsedBytes: 734 * 1024 ** 2,
+        // the last upload, on the day the connected libraries last ran
+        updatedAt: '2026-10-24T08:15:00Z',
+      },
     ),
     labLibrary(
       DETAIL_LAB_LIBRARY_IDS.HTTP_DIRECTORY,
@@ -145,7 +150,9 @@ function hierarchyOf(library: LibraryResponse, i: number): Partial<LibraryDocume
     }
     case 'HTTP_DIRECTORY':
     case 'RSS_FEED':
-      return { sourceUrl: `${library.sourceUrl ?? 'https://example.org/'}eintrag-${i}.html` }
+      return {
+        sourceUrl: new URL(`eintrag-${i}.html`, library.sourceUrl ?? 'https://example.org/').href,
+      }
     case 'UPLOAD':
       return {}
     default:

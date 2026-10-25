@@ -17,6 +17,7 @@ import {
 } from './libraryFixtures'
 import { mockLibraryGrants } from '@/features/asset/mocks/assetFixtures'
 import {
+  unlistedKeysOf,
   runningStatus,
   detailLabLibraries,
   scenarioDocuments,
@@ -229,6 +230,19 @@ export function applyLibraryScenario(): void {
     }
     // the backend always names the owner; the fixtures leave it out
     if (scenario !== 'default') next.ownerName ??= 'Erika Muster'
+    // the next planned run at the plan's own hour in local time, as the runs below
+    if (scenario !== 'default' && next.schedule?.nextRunAt) {
+      next.schedule = {
+        ...next.schedule,
+        nextRunAt: new Date(
+          2026,
+          9,
+          25,
+          next.schedule.hour ?? 6,
+          next.schedule.minute ?? 0,
+        ).toISOString(),
+      }
+    }
     const documents = scenarioDocuments(next, scenario)
     if (documents) {
       mockLibraryDocuments[id] = documents
@@ -293,10 +307,22 @@ interface RunContext {
 /** Where an event points, in the form the source names its entries. */
 function eventReference(library: LibraryResponse | undefined, e: number): string {
   const name = scenarioName('Vorgang', e)
+  const settings = (library?.sourceSettings ?? {}) as Record<string, unknown>
+  const firstFolder = ((settings.folders as string[] | undefined) ?? ['/Projekte'])[0]
   switch (library?.sourceType) {
     case 'HTTP_DIRECTORY':
     case 'RSS_FEED':
-      return `${library.sourceUrl ?? 'https://example.org/'}eintrag-${e}.html`
+      return new URL(`eintrag-${e}.html`, library.sourceUrl ?? 'https://example.org/').href
+    case 'FILESYSTEM':
+      return `${library.sourcePath ?? '/srv'}/${name}/Anlage-${e}.pdf`
+    case 'GOOGLE_DRIVE': {
+      const scope = ((settings.scopes as Array<{ name?: string }> | undefined) ?? [])[0]
+      return `${scope?.name ?? 'Ablage'} › ${name} › Anlage-${e}.pdf`
+    }
+    case 'NEXTCLOUD':
+    case 'SMB':
+    case 'DROPBOX':
+      return `${firstFolder}/${name}/Anlage-${e}.pdf`
     case 'CONFLUENCE':
       return `Space BAU › ${name} › Anhang-${e}.pdf`
     case 'S3':
@@ -312,11 +338,13 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
   // runs start at the schedule's hour; without a schedule every run was started by hand
   const hour = library?.schedule?.hour ?? 6
   const scheduled = Boolean(library?.schedule && library.schedule.frequency !== 'DISABLED')
-  const started = new Date(Date.UTC(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0))
-  const minutes = spec.minutes ?? 7
-  const completed = new Date(started.getTime() + minutes * 60_000)
+  // local time at the plan's hour; the newest finished run is the one of 24.10.
+  const started = new Date(2026, 9, i === 0 ? 24 : 25 - i, hour, library?.schedule?.minute ?? 0)
   const failed = spec.failed ?? 0
   const ended = spec.status === 'FAILED'
+  // a refused sign-in ends within seconds
+  const seconds = ended ? 4 : (spec.minutes ?? 7) * 60
+  const completed = new Date(started.getTime() + seconds * 1000)
   const running = spec.status === 'RUNNING'
   const events = ended ? 0 : (spec.events ?? 0)
   const shown = Math.min(events, EVENT_CAP)
@@ -337,7 +365,11 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
     message: spec.message ?? (running ? 'Indizierung läuft' : 'Indizierung abgeschlossen'),
     failureCategory: spec.failureCategory ?? null,
     incomplete: spec.incomplete ?? null,
-    unreadableScopeCount: spec.unreadableScopeCount ?? null,
+    // only a source with chosen scope entries can miss some of them, as many as the status names
+    unreadableScopeCount:
+      spec.unreadableScopeCount && library && unlistedKeysOf(library).length > 0
+        ? unlistedKeysOf(library).length
+        : null,
     startedAt: started.toISOString(),
     completedAt: running ? null : completed.toISOString(),
     // a run refused at the sign-in sent nothing worth counting
@@ -352,9 +384,10 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
           attachmentsFailed: failed > 0 ? 2 : 0,
           bytesDownloaded: total * 512 * 1024,
         },
+    // one error event per failed document, the rest are notes (removals, throttling): the row's
+    // „n fehlgeschlagen“ and the error groups count the same
     events: generate(shown, (e) => {
-      // a run without failures records only removals and throttling
-      const kinds = failed > 0 ? EVENT_KINDS : EVENT_KINDS.slice(4)
+      const kinds = e <= failed ? EVENT_KINDS.slice(0, 4) : EVENT_KINDS.slice(4)
       return { ...kinds[e % kinds.length], reference: eventReference(library, e) }
     }),
     eventsTruncatedCount: events - shown,
