@@ -321,18 +321,6 @@ opaa:
     excerpt-max-characters: ${OPAA_SEARCH_EXCERPT_MAX_CHARACTERS:1500}
     fetch-max-characters: ${OPAA_SEARCH_FETCH_MAX_CHARACTERS:200000}
     context-passages: ${OPAA_SEARCH_CONTEXT_PASSAGES:1}
-  # The embedding model is the row of embedding_model (ADR-0060, Entscheidung 10). These values are
-  # read only while that row is missing, to take over the model an installation from before
-  # ADR-0060 was configured with (io.opaa.llm.LegacyEmbeddingConfiguration); afterwards they have
-  # no effect. Empty means the former default (bge-m3, the shared OPAA_OPENAI_BASE_URL, 2048 input
-  # tokens, 1024 dimensions).
-  embedding:
-    takeover:
-      base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:}
-      model: ${OPAA_OPENAI_EMBEDDING_MODEL:}
-      api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:}
-      max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:}
-      dimensions: ${OPAA_PGVECTOR_DIMENSIONS:}
   # The rerank model role - on the same level as the chat and embedding roles. The switch is
   # deliberately separate from the endpoint fields: reranking being off must be an operator's
   # statement, not an indistinguishable consequence of a missing configuration line

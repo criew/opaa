@@ -58,8 +58,9 @@ public class InstallationService {
 
   /**
    * The chat model the {@code dev} mode installs itself with (ADR-0060): the model address of the
-   * profile, a fixed model, no key and no target address check. Only the {@code dev} mode reaches
-   * it, and {@code io.opaa.auth.AuthProfileGuard} keeps that mode to development and tests.
+   * profile, a fixed model, no key and no target address check. Only the profile {@code dev}
+   * reaches it, which a start chooses explicitly ({@code io.opaa.auth.AuthProfileGuard} refuses a
+   * start without a mode) and the Helm chart refuses (ADR-0005).
    */
   static final String DEVELOPMENT_CHAT_MODEL_DISPLAY_NAME = "Chat-Modell der Entwicklung";
 

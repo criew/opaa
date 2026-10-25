@@ -855,15 +855,19 @@
       "properties": {
         "baseUrl": {
           "type": "string",
-          "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+          "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$"
         },
         "model": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "dimensions": {
-          "type": "integer",
-          "minimum": 1
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Without effect, still accepted so that existing value files keep rendering.",
+          "deprecated": true
         },
         "timeout": {
           "type": "string",
@@ -876,14 +880,13 @@
             "null"
           ],
           "minimum": 1,
-          "description": "Input limit of the embedding endpoint in tokens; null keeps the application default"
+          "description": "Input limit of the embedding endpoint in tokens, part of the answer file; null keeps the default"
+        },
+        "apiKeyInSecret": {
+          "type": "boolean",
+          "description": "The answer file reads the embedding model's key from the secret key installation-embedding-api-key"
         }
-      },
-      "required": [
-        "baseUrl",
-        "model",
-        "dimensions"
-      ]
+      }
     },
     "bootstrap": {
       "type": "object",
@@ -905,6 +908,10 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 200
+            },
+            "requirePasswordChange": {
+              "type": "boolean",
+              "description": "The first sign-in of the account from the answer file asks for a new password"
             }
           }
         },
@@ -913,7 +920,9 @@
           "additionalProperties": false,
           "properties": {
             "issuerUri": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$",
+              "description": "http(s) address without user information"
             },
             "clientId": {
               "type": "string"
@@ -924,7 +933,9 @@
               "deprecated": true
             },
             "jwkSetUri": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$",
+              "description": "http(s) address without user information"
             },
             "displayName": {
               "type": "string",
@@ -938,7 +949,7 @@
           "properties": {
             "baseUrl": {
               "type": "string",
-              "pattern": "^$|^https?://[^\\s/]+(/[^\\s]*)?$"
+              "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$"
             },
             "model": {
               "type": "string"

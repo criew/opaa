@@ -90,11 +90,20 @@ class InstanceStartTest extends AbstractMigrationTest {
         .as("the migration leaves the vector table to the embedding model")
         .isZero();
 
-    Instance instance = start("instance", Map.of("SPRING_FLYWAY_ENABLED", "false"));
+    HttpServer chat = chatEndpoint();
+    try {
+      Map<String, String> environment = new HashMap<>(answerFileEnvironment(chat));
+      environment.put("SPRING_FLYWAY_ENABLED", "false");
+      Instance instance = start("instance", environment);
 
-    assertThat(instance.started().get(START_SECONDS, TimeUnit.SECONDS)).as(instance.log()).isTrue();
-    assertThat(count("SELECT count(*) FROM flyway_schema_history")).isEqualTo(applied);
-    assertThat(vectorDimensions()).as(instance.log()).isEqualTo(PROBE_DIMENSIONS);
+      assertThat(instance.started().get(START_SECONDS, TimeUnit.SECONDS))
+          .as(instance.log())
+          .isTrue();
+      assertThat(count("SELECT count(*) FROM flyway_schema_history")).isEqualTo(applied);
+      assertThat(vectorDimensions()).as(instance.log()).isEqualTo(PROBE_DIMENSIONS);
+    } finally {
+      chat.stop(0);
+    }
   }
 
   @Test

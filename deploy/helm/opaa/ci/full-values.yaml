@@ -13,10 +13,12 @@ embedding:
   dimensions: 1536
   timeout: 180s
   maxInputTokens: 8191
+  apiKeyInSecret: true
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org
     displayName: IT-Betrieb
+    requirePasswordChange: false
   oidc:
     issuerUri: https://login.example.org/realms/opaa
     clientId: opaa

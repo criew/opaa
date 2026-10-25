@@ -32,16 +32,25 @@ Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit
 
 {{ if .Release.IsUpgrade -}}
 Eine eingerichtete Installation übergeht bootstrap; Mailserver, Identitätsanbieter und Modelle
-werden in der Oberfläche geändert.
+werden in der Oberfläche geändert. Das Passwort des ersten Kontos braucht sie nicht mehr:
+secrets.initialAdminPassword bzw. den Schlüssel installation-admin-password entfernen.
 {{- else if include "opaa.installation.answerFileEnabled" . -}}
 INSTALLATION AUS DER ANTWORTDATEI
-  Der erste Start richtet OPAA aus bootstrap ein: erstes Konto {{ .Values.bootstrap.initialAdmin.email }},
-  Anmeldeverfahren und Chat-Modell, das Passwort aus dem Secret. Scheitert eine Prüfung, bleibt
-  OPAA im Installationsmodus, und das Protokoll nennt Schritt und Grund:
+  Der erste Start richtet OPAA aus bootstrap und embedding ein: erstes Konto {{ .Values.bootstrap.initialAdmin.email }},
+  Anmeldeverfahren, Chat- und Embedding-Modell, das Passwort aus dem Secret. Scheitert eine
+  Prüfung, bleibt OPAA im Installationsmodus, und das Protokoll nennt Schritt und Grund:
     kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep "answer file"
+{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.initialAdminPassword) }}
+  secrets.initialAdminPassword fehlt: Ohne Passwortdatei bleibt OPAA im Installationsmodus. Für eine
+  schon eingerichtete Installation bootstrap.initialAdmin.email entfernen.
+{{- end }}
+{{- if ne .Values.bootstrap.initialAdmin.requirePasswordChange false }}
+  Die erste Anmeldung verlangt ein neues Passwort; danach gilt das aus dem Secret nicht mehr.
+{{- end }}
   Nach dem Abschluss übergeht OPAA die Antwortdatei; eine geänderte values.yaml ändert an einer
-  laufenden Installation nichts. Mailserver, weitere Identitätsanbieter und Modelle werden in der
-  Oberfläche eingerichtet.
+  laufenden Installation nichts. Danach secrets.initialAdminPassword (bzw. den Schlüssel
+  installation-admin-password) entfernen. Mailserver, weitere Identitätsanbieter und Modelle werden
+  in der Oberfläche eingerichtet.
 {{- else -}}
 INSTALLATIONSMODUS
   Ohne bootstrap.initialAdmin.email bietet OPAA nach dem ersten Start nur die Installation an:
@@ -53,6 +62,13 @@ INSTALLATIONSMODUS
   ersten Starts:
 {{- end }}
     kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep -A3 "INSTALLATION TOKEN"
+{{- if not (or .Values.secrets.existingSecret .Values.secrets.installationToken) }}
+  Leitet der Cluster Protokolle weiter, steht das erzeugte Token auch dort: dann
+  secrets.installationToken setzen.
+{{- end }}
+{{- if or .Values.secrets.initialAdminPassword .Values.secrets.chatApiKey }}
+  secrets.initialAdminPassword und secrets.chatApiKey wirken nur mit bootstrap.initialAdmin.email.
+{{- end }}
 {{- end }}
 
 {{- if include "opaa.backend.rolling" . }}
@@ -124,6 +140,14 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- end }}
 {{- if not .Values.networkPolicy.backendIngress.enabled }}
   Die Eingangs-Policy des Backends ist aus: Jeder Pod im Cluster erreicht das Backend direkt.
+{{- end }}
+{{- if and (not .Values.trustedProxyCidrs) (or .Values.installationAllowedCidrs .Values.localAdminAllowedCidrs) }}
+
+NETZPRÜFUNG OHNE CLIENT-ADRESSE
+  installationAllowedCidrs bzw. localAdminAllowedCidrs ist gesetzt, trustedProxyCidrs aber leer: Das
+  Backend prüft dann die Adresse des Frontend-Pods, nicht die der Person. trustedProxyCidrs auf das
+  Pod-Netz des Controllers setzen, oder die Installation direkt am Backend vornehmen:
+    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "opaa.backend.fullname" . }} 8080:{{ .Values.backend.service.port }}
 {{- end }}
 {{- with .Values.bootstrap.oidc.issuerUri }}
 {{- $origin := include "opaa.origin" . }}

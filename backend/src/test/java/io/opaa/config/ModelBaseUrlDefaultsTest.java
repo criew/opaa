@@ -29,7 +29,7 @@ class ModelBaseUrlDefaultsTest {
     assertThat(defaults.getProperty("spring.ai.openai.base-url")).isEqualTo(LOCAL_OLLAMA);
     assertThat(defaults.getProperty("spring.ai.openai.chat.base-url")).isNull();
     assertThat(defaults.getProperty("spring.ai.openai.embedding.base-url")).isNull();
-    assertThat(defaults.getProperty("opaa.embedding.takeover.base-url")).isEmpty();
+    assertThat(defaults.getProperty("opaa.embedding.takeover.base-url")).isNull();
   }
 
   /** The first document of {@code application.yml}, placeholders resolved to their defaults. */

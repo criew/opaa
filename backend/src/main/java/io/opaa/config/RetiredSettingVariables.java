@@ -92,11 +92,20 @@ public class RetiredSettingVariables {
             "OPAA_OLLAMA_CHAT_MODEL")) {
       retired.put(variable, chatModel);
     }
-    retired.put(
-        "OPAA_OLLAMA_BASE_URL",
-        "OPAA_OPENAI_EMBEDDING_BASE_URL for the embedding (with /v1 at the end) and " + chatModel);
-    retired.put("OPAA_OLLAMA_EMBEDDING_MODEL", "OPAA_OPENAI_EMBEDDING_MODEL");
-    retired.put("OPAA_AI_EMBEDDING_PROVIDER", "nothing; the embedding speaks the OpenAI protocol");
+    String embeddingModel =
+        "the embedding model in the installation, fixed afterwards by its vector size";
+    for (String variable :
+        List.of(
+            "OPAA_OPENAI_EMBEDDING_BASE_URL",
+            "OPAA_OPENAI_EMBEDDING_API_KEY",
+            "OPAA_OPENAI_EMBEDDING_MODEL",
+            "OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS",
+            "OPAA_PGVECTOR_DIMENSIONS",
+            "OPAA_OLLAMA_EMBEDDING_MODEL",
+            "OPAA_AI_EMBEDDING_PROVIDER")) {
+      retired.put(variable, embeddingModel);
+    }
+    retired.put("OPAA_OLLAMA_BASE_URL", embeddingModel + ", and " + chatModel);
     return Collections.unmodifiableMap(retired);
   }
 }

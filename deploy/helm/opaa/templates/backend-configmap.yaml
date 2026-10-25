@@ -40,14 +40,8 @@ data:
   OPAA_INDEXING_FILESYSTEM_ALLOWLIST: {{ include "opaa.filesystemAllowlist" . | quote }}
   OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.indexingAllowlist | quote }}
   OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: {{ include "opaa.identityProviderAllowlist" . | quote }}
-  OPAA_OPENAI_EMBEDDING_BASE_URL: {{ .Values.embedding.baseUrl | quote }}
-  OPAA_OPENAI_EMBEDDING_MODEL: {{ .Values.embedding.model | quote }}
-  OPAA_PGVECTOR_DIMENSIONS: {{ .Values.embedding.dimensions | quote }}
   {{- with .Values.embedding.timeout }}
   OPAA_OPENAI_EMBEDDING_TIMEOUT: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.embedding.maxInputTokens }}
-  OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS: {{ . | quote }}
   {{- end }}
   OPAA_RERANK_ENABLED: {{ .Values.rerank.enabled | quote }}
   {{- with .Values.rerank.baseUrl }}

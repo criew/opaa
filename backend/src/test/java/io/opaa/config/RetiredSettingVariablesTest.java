@@ -77,6 +77,11 @@ class RetiredSettingVariablesTest {
             "OPAA_OLLAMA_CHAT_MODEL",
             "OPAA_OLLAMA_BASE_URL",
             "OPAA_OLLAMA_EMBEDDING_MODEL",
-            "OPAA_AI_EMBEDDING_PROVIDER");
+            "OPAA_AI_EMBEDDING_PROVIDER",
+            "OPAA_OPENAI_EMBEDDING_BASE_URL",
+            "OPAA_OPENAI_EMBEDDING_API_KEY",
+            "OPAA_OPENAI_EMBEDDING_MODEL",
+            "OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS",
+            "OPAA_PGVECTOR_DIMENSIONS");
   }
 }

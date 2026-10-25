@@ -101,12 +101,16 @@ expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ht
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=data: blob:"
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ftp://files.example.org"
 expect_refusal "cspConnectSrcExtra" --set-string 'frontend.cspConnectSrcExtra=https://$host'
-# The answer file (ADR-0060, Entscheidung 7) needs the password file and a complete chat model.
+# The answer file (ADR-0060, Entscheidung 7) needs complete chat and embedding models; a missing
+# password refuses nothing, since an installed release keeps its values (upgrade, below).
 answers=(--set bootstrap.initialAdmin.email=it-postfach@example.org)
 chat=(--set bootstrap.chatModel.baseUrl=http://models.example.org/v1 --set bootstrap.chatModel.model=m)
-expect_refusal "secrets.initialAdminPassword is required" "${answers[@]}" "${chat[@]}"
 expect_refusal "bootstrap.chatModel.baseUrl is required" "${answers[@]}" \
   --set secrets.initialAdminPassword=ci-only-Notanker-2026
+expect_refusal "embedding.model is required" "${answers[@]}" "${chat[@]}" \
+  --set secrets.initialAdminPassword=ci-only-Notanker-2026 --set embedding.model=
+expect_refusal "issuerUri" --set bootstrap.oidc.issuerUri=https://nutzer:geheim@login.example.org/realms/opaa \
+  --set bootstrap.oidc.clientId=opaa
 expect_refusal "bootstrap.oidc.clientId is required" "${answers[@]}" "${chat[@]}" \
   --set secrets.initialAdminPassword=ci-only-Notanker-2026 \
   --set bootstrap.oidc.issuerUri=https://login.example.org/realms/opaa
@@ -120,7 +124,8 @@ echo "--- installation"
 for set_name in "${value_sets[@]}"; do
   set_name="$(basename "$set_name" -values.yaml)"
   for removed in OPAA_INITIAL_ADMIN_ OPAA_OPENAI_CHAT_ OPAA_OIDC_ISSUER_URI OPAA_OIDC_CLIENT_ID \
-    OPAA_OIDC_JWK_SET_URI OPAA_OIDC_AUTHORITY; do
+    OPAA_OIDC_JWK_SET_URI OPAA_OIDC_AUTHORITY OPAA_OPENAI_EMBEDDING_BASE_URL OPAA_OPENAI_EMBEDDING_MODEL \
+    OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS OPAA_PGVECTOR_DIMENSIONS OPAA_OPENAI_EMBEDDING_API_KEY; do
     if grep -qF "$removed" "$work_dir/$set_name.yaml"; then
       echo "Value set $set_name renders $removed, which the answer file replaces." >&2
       exit 1
@@ -135,7 +140,10 @@ answer_file() {
   sed -n '/installation.json: |/,/^---/p' "$work_dir/$1.yaml"
 }
 for expectation in 'features-off:"mode": "LOCAL_ONLY"' 'features-off:/etc/opaa/installation-secrets/admin-password' \
+  'features-off:"requirePasswordChange": true' 'features-off:"embeddingModel"' \
   'full:"mode": "LOCAL_AND_OIDC"' 'full:/etc/opaa/installation-secrets/chat-api-key' \
+  'full:/etc/opaa/installation-secrets/embedding-api-key' 'full:"requirePasswordChange": false' \
+  'full:"model": "text-embedding-3-small"' 'full:"maxInputTokens": 8191' \
   'full:"jwkSetUri": "https://keys.example.org/realms/opaa/certs"'; do
   set_name="${expectation%%:*}"
   if [[ "$(answer_file "$set_name")" != *"${expectation#*:}"* ]]; then
@@ -153,10 +161,34 @@ expect_rendered_set() {
     exit 1
   fi
 }
-expect_rendered_set full 'OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: "login2.example.org,login.example.org,keys.example.org"'
+expect_rendered_set full 'OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: "login2.example.org,login.example.org:443,keys.example.org:443"'
 expect_rendered_set features-off "value: /etc/opaa/installation/installation.json"
+expect_rendered_set features-off "optional: true"
 expect_rendered_set minimal "key: OPAA_INSTALLATION_TOKEN"
 echo "answer file, installation mode and removed variables as expected"
+
+# helm upgrade from v0.1.0-rc.4 with its own value files (ADR-0060): they render, an answer file
+# without password refuses nothing, the secret files are optional, and the answer file carries the
+# embedding model of embedding.*, the database being set up anew (docs/upgrade-notes).
+echo "--- upgrade from v0.1.0-rc.4"
+for rc4 in deploy/helm/ci/upgrade-from-rc4/*-values.yaml; do
+  name="rc4-$(basename "$rc4" -values.yaml)"
+  if ! helm template opaa "$CHART_DIR" --namespace opaa --values "$rc4" >"$work_dir/$name.yaml"; then
+    echo "The value file $rc4 of v0.1.0-rc.4 no longer renders (message above)." >&2
+    exit 1
+  fi
+  expect_rendered_set "$name" "optional: true"
+  expect_rendered_set "$name" '"embeddingModel": {'
+  if grep -qF "OPAA_PGVECTOR_DIMENSIONS" "$work_dir/$name.yaml"; then
+    echo "The rc.4 value file $rc4 renders OPAA_PGVECTOR_DIMENSIONS, which nothing reads." >&2
+    exit 1
+  fi
+done
+if grep -qF "installation-admin-password:" "$work_dir/rc4-minimal.yaml"; then
+  echo "The rc.4 minimal value set renders a password it does not have." >&2
+  exit 1
+fi
+echo "value files of v0.1.0-rc.4 render as an upgrade as expected"
 
 # One backend pod renders as before, without migration job, budget or preStop pause; several pods
 # render pod by pod with all three (ADR-0053, Entscheidung 15).
@@ -457,6 +489,13 @@ notes_case "the installation mode" "INSTALLATIONSMODUS" "INSTALLATION AUS DER AN
 notes_case "an answer file" "INSTALLATION AUS DER ANTWORTDATEI" "INSTALLATIONSMODUS" \
   "${answers[@]}" "${chat[@]}" --set secrets.initialAdminPassword=ci-only-Notanker-2026
 notes_case "an upgrade after the installation" "übergeht bootstrap" "INSTALLATIONSMODUS" --is-upgrade
+notes_case "an answer file without password" "secrets.initialAdminPassword fehlt" "INSTALLATIONSMODUS" \
+  "${answers[@]}" "${chat[@]}"
+notes_case "a generated token" "secrets.installationToken setzen" "INSTALLATION AUS DER ANTWORTDATEI"
+notes_case "networks without proxies" "NETZPRÜFUNG OHNE CLIENT-ADRESSE" "INSTALLATION AUS DER ANTWORTDATEI" \
+  --set 'installationAllowedCidrs[0]=10.0.0.0/8'
+notes_case "secrets without the answer file" "wirken nur mit bootstrap.initialAdmin.email" \
+  "INSTALLATION AUS DER ANTWORTDATEI" --set secrets.initialAdminPassword=ci-only-Notanker-2026
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.

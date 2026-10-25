@@ -125,7 +125,7 @@ spec:
                   name: {{ $secretName }}
                   key: {{ . }}
             {{- end }}
-            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_RERANK_API_KEY" "OPAA_TRANSCRIPTION_API_KEY" "OPAA_INSTALLATION_TOKEN" }}
+            {{- range list "OPAA_RERANK_API_KEY" "OPAA_TRANSCRIPTION_API_KEY" "OPAA_INSTALLATION_TOKEN" }}
             - name: {{ . }}
               valueFrom:
                 secretKeyRef:
@@ -217,16 +217,22 @@ spec:
         - name: installation
           configMap:
             name: {{ printf "%s-installation" (include "opaa.backend.fullname" .) }}
-        # A missing key keeps the pod from starting, like a missing required environment key.
+        # Optional: an installed release reads none of the files, and a missing key must not keep
+        # its pod from starting; a pending installation names the missing file in its log.
         - name: installation-secrets
           secret:
             secretName: {{ $secretName }}
+            optional: true
             items:
               - key: installation-admin-password
                 path: admin-password
               {{- if include "opaa.installation.chatApiKey" . }}
               - key: installation-chat-api-key
                 path: chat-api-key
+              {{- end }}
+              {{- if include "opaa.installation.embeddingApiKey" . }}
+              - key: installation-embedding-api-key
+                path: embedding-api-key
               {{- end }}
         {{- end }}
         {{- range .Values.filesystemSources }}

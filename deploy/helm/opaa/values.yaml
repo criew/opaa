@@ -83,17 +83,22 @@ evaluationDatabase:
     limits:
       memory: 1Gi
 
-# Embedding endpoint (OpenAI-compatible API) for the transition: read only while the installation
-# has no embedding model, and taken over once (ADR-0060); afterwards these values have no effect.
-# The key, if the endpoint needs one, comes from the secret (key OPAA_OPENAI_EMBEDDING_API_KEY). A model server inside the cluster
-# is addressed by its service, e.g. Ollama: http://ollama.ai.svc.cluster.local:11434/v1
+# The embedding model (OpenAI-compatible API) of the installation (ADR-0060, Entscheidung 10). A
+# model server inside the cluster is addressed by its service, e.g. Ollama:
+# http://ollama.ai.svc.cluster.local:11434/v1
 embedding:
+  # With bootstrap.initialAdmin.email the answer file installs this model, fixed by a probe
+  # embedding; without it the installation in the browser asks for it. Afterwards the values change
+  # nothing; another model means a re-embedding. Its key, if needed, comes from the secret as a file
+  # (key installation-embedding-api-key): set secrets.embeddingApiKey, or apiKeyInSecret with
+  # secrets.existingSecret. An internal host of the model needs
+  # targetValidation.indexingAllowlist.
   baseUrl: ""
   # e.g. bge-m3, recommended for German texts
   model: ""
-  # Dimensions of the embedding model, e.g. 1024 for bge-m3, 768 for nomic-embed-text, 1536 for
-  # text-embedding-3-small. Used only by the takeover of an existing vector table; a new table gets
-  # the size of the probe embedding. Changing the values later changes nothing.
+  apiKeyInSecret: false
+  # Without effect, still accepted so that value files up to v0.1.0-rc.4 keep rendering: the
+  # vector size comes from the probe embedding.
   dimensions: null
   # Budget of one embedding call; empty keeps the application default (180s, enough for bge-m3 on
   # CPU).
@@ -264,6 +269,8 @@ bootstrap:
     # comes from the secret (key installation-admin-password, value secrets.initialAdminPassword).
     email: ""
     displayName: Systemverwaltung
+    # The first sign-in asks for a new password, so the one in the secret stops working once used.
+    requirePasswordChange: true
   # An OIDC identity provider besides the local accounts, the default provider after the
   # installation. Leave issuerUri empty to start with local user management only (ADR-0033);
   # further providers are added in the user interface. Its hosts pass the address check.
@@ -294,11 +301,13 @@ secrets:
   #   required: OPAA_AUTH_JWT_SECRET, OPAA_DB_PASSWORD, OPAA_CREDENTIALS_ENCRYPTION_KEY,
   #             OPAA_SETTINGS_ENCRYPTION_KEY
   #   required with uploads.store s3: OPAA_UPLOAD_S3_ACCESS_KEY, OPAA_UPLOAD_S3_SECRET_KEY
-  #   required with bootstrap.initialAdmin.email: installation-admin-password (a file of the
-  #             answer file, not an environment variable)
-  #   required with bootstrap.chatModel.apiKeyInSecret: installation-chat-api-key (a file as well)
-  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY,
-  #             OPAA_INSTALLATION_TOKEN
+  #   for the installation with bootstrap.initialAdmin.email: installation-admin-password (a file
+  #             of the answer file, not an environment variable; remove it once installed)
+  #   with bootstrap.chatModel.apiKeyInSecret: installation-chat-api-key (a file as well)
+  #   with embedding.apiKeyInSecret: installation-embedding-api-key (a file as well)
+  #   no longer read: OPAA_INITIAL_ADMIN_PASSWORD, OPAA_OPENAI_EMBEDDING_API_KEY (up to
+  #             v0.1.0-rc.4)
+  #   optional: OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY, OPAA_INSTALLATION_TOKEN
   existingSecret: ""
   # Values for a secret created by the chart. The chart never generates a key: a generated key is
   # lost with helm template, in GitOps tools or on reinstallation (ADR-0042, Entscheidung 5).
@@ -311,6 +320,7 @@ secrets:
   settingsEncryptionKey: ""
   s3AccessKey: ""
   s3SecretKey: ""
+  # Key of the embedding model in the answer file (installation-embedding-api-key).
   embeddingApiKey: ""
   # Key of the chat model in the answer file (installation-chat-api-key).
   chatApiKey: ""
