@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -27,12 +27,16 @@ import type { DocumentPageState } from '../stores/documentStore'
 import { documentStatusLabel } from './indexingLabels'
 import { formatFileSize } from '@/shared/utils/labels'
 import StateDot from '@/shared/ui/StateDot'
+import { TextAction } from '@/shared/ui/DetailSection'
 import { sourceRegistration } from './sources/registry'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
   if (!indexedAt) return '—'
   return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
+
+/** Folders a level shows before „alle n Ordner anzeigen“. */
+const FOLDERS_SHOWN = 8
 
 export interface LibraryDocumentListProps {
   documents: LibraryDocumentResponse[]
@@ -159,6 +163,9 @@ export default function LibraryDocumentList({
   onToggleAttachmentGroup,
 }: LibraryDocumentListProps) {
   const isSearchActive = Boolean(pageState?.q)
+  // folders are not paged by the backend: from eight on the list shows the first ones (D19)
+  const [allFolders, setAllFolders] = useState(false)
+  const shownFolders = allFolders ? folders : folders.slice(0, FOLDERS_SHOWN)
   const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
@@ -408,7 +415,7 @@ export default function LibraryDocumentList({
         <Stack spacing={1}>
           {/* Folders are rows ahead of the documents, mirroring a plain file browser - a
               folder's documentCount already counts its own subtree recursively. */}
-          {folders.map((folder) => (
+          {shownFolders.map((folder) => (
             <Box
               key={folder.id}
               sx={{
@@ -448,16 +455,26 @@ export default function LibraryDocumentList({
                 }}
               >
                 <FolderIcon color="action" />
-                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                <Typography noWrap title={folder.name} sx={{ fontWeight: 600, fontSize: 14 }}>
                   {folder.name}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
+                >
                   {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
                 </Typography>
               </Box>
               {renderFolderActions?.(folder)}
             </Box>
           ))}
+          {folders.length > shownFolders.length && (
+            <Box sx={{ py: 1, pl: { xs: 4, sm: 6.5 }, borderBottom: 1, borderColor: 'divider' }}>
+              <TextAction onClick={() => setAllFolders(true)}>
+                alle {folders.length} Ordner anzeigen
+              </TextAction>
+            </Box>
+          )}
           {/* A top-level document with its attachments is one group - the attachments hang
               indented on a guide line below it, a divider closes the group against the next. */}
           {documentGroups.map(({ parent, attachments }) => (

@@ -158,7 +158,11 @@ function overlayFor(scenario: MockScenario, id: string): Overlay | null {
     case 'small':
       return SMALL[id] ?? null
     case 'empty':
-      return () => ({ documentCount: 0 })
+      // an empty upload library holds no bytes either
+      return (library) => ({
+        documentCount: 0,
+        ...(library.storageQuotaBytes ? { storageUsedBytes: 0 } : {}),
+      })
     case 'failed':
       // an upload library under `failed` has used up its quota
       return (library) => ({
@@ -229,6 +233,14 @@ export function applyLibraryScenario(): void {
     }
     // the backend always names the owner; the fixtures leave it out
     if (scenario !== 'default') next.ownerName ??= 'Erika Muster'
+    // the next planned run at the schedule's own hour, in the time zone the page shows
+    if (scenario !== 'default' && next.schedule?.nextRunAt) {
+      const { hour = 6, minute = 0 } = next.schedule
+      next.schedule = {
+        ...next.schedule,
+        nextRunAt: new Date(2026, 9, 25, hour ?? 6, minute ?? 0).toISOString(),
+      }
+    }
     const documents = scenarioDocuments(next, scenario)
     if (documents) {
       mockLibraryDocuments[id] = documents
@@ -312,7 +324,8 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
   // runs start at the schedule's hour; without a schedule every run was started by hand
   const hour = library?.schedule?.hour ?? 6
   const scheduled = Boolean(library?.schedule && library.schedule.frequency !== 'DISABLED')
-  const started = new Date(Date.UTC(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0))
+  // local time, like the schedule's hour and its next run
+  const started = new Date(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0)
   const minutes = spec.minutes ?? 7
   const completed = new Date(started.getTime() + minutes * 60_000)
   const failed = spec.failed ?? 0
