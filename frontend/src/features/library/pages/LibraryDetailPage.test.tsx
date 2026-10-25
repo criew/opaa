@@ -958,6 +958,65 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByText(/quellkonfiguration/i)).not.toBeInTheDocument()
   })
 
+  describe('failed documents (#3165)', () => {
+    // the counts reach the endpoint itself: size 1 and one status per request
+    function answerCounts(counts: Record<string, number>) {
+      server.use(
+        http.get('/api/v1/libraries/:libraryId/documents', ({ request }) => {
+          const status = new URL(request.url).searchParams.get('status') ?? ''
+          return HttpResponse.json(pageOf([], { size: 1, totalElements: counts[status] ?? 0 }))
+        }),
+      )
+    }
+
+    it('names the failed rows in the head and leads a reader to them, filtered', async () => {
+      answerCounts({ FAILED: 2, PENDING: 0, INDEXED: 85 })
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const state = await screen.findByTestId('library-state')
+      await waitFor(() => expect(state).toHaveTextContent('Teilweise fehlgeschlagen· 2 Fehler'))
+      // the number stands on its own, never against the document count
+      expect(state).not.toHaveTextContent(/von/)
+
+      mockGetLibraryDocuments.mockClear()
+      await userEvent.setup().click(within(state).getByRole('link'))
+
+      await waitFor(() =>
+        expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith(
+          viewerLibrary.id,
+          expect.objectContaining({ status: 'FAILED', folderId: null }),
+        ),
+      )
+      expect(await screen.findByRole('combobox', { name: 'Status' })).toHaveTextContent(
+        'Fehlgeschlagen (2)',
+      )
+    })
+
+    it('stays „Hochgeladen“ without a failed row and offers no status filter', async () => {
+      answerCounts({ FAILED: 0, PENDING: 0, INDEXED: 431 })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf(
+          Array.from({ length: 8 }, (_, index) => ({
+            id: `doc-${index}`,
+            fileName: `vermerk-${index}.pdf`,
+            status: 'INDEXED' as const,
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          })),
+        ),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('vermerk-0.pdf')).toBeInTheDocument()
+      expect(screen.getByTestId('library-state')).toHaveTextContent('Hochgeladen')
+      // the toolbar is there, but a status that holds no row or every row does not shorten it
+      expect(screen.getByRole('textbox', { name: 'Dokumente durchsuchen' })).toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: 'Status' })).toBeNull()
+    })
+  })
+
   it('shows the errorMessage of a FAILED document as a tooltip on its status chip', async () => {
     // A FAILED row's asynchronous processing failure is only visible to
     // the user via this German errorMessage - the status chip text alone only says something went
@@ -3206,6 +3265,7 @@ describe('LibraryDetailPage', () => {
           q: 'sozial',
           folderId: null,
           missingMetadataField: null,
+          status: null,
         })
       },
       { timeout: 2000 },
@@ -3272,6 +3332,7 @@ describe('LibraryDetailPage', () => {
         q: '',
         folderId: 'folder-protokolle',
         missingMetadataField: null,
+        status: null,
       })
     })
 
@@ -3297,6 +3358,7 @@ describe('LibraryDetailPage', () => {
         q: '',
         folderId: 'folder-protokolle',
         missingMetadataField: null,
+        status: null,
       })
     })
 
@@ -3971,6 +4033,7 @@ describe('LibraryDetailPage', () => {
           q: '',
           folderId: 'folder-protokolle',
           missingMetadataField: null,
+          status: null,
         })
       })
       expect(screen.queryByText('protokoll-2026-01.pdf')).not.toBeInTheDocument()
@@ -4160,6 +4223,7 @@ describe('LibraryDetailPage', () => {
         q: '',
         folderId: null,
         missingMetadataField: 'document_type',
+        status: null,
       }),
     )
     // the documents open with the filter set, so it can be taken back where it shows

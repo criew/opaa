@@ -215,6 +215,14 @@ export async function getLibraryDocuments(
   }
 }
 
+/** The number of a library's document rows in `status`, attachments counted on their own. */
+export async function countLibraryDocuments(
+  libraryId: string,
+  status: DocumentStatus,
+): Promise<number> {
+  return (await getLibraryDocuments(libraryId, { size: 1, status })).totalElements
+}
+
 export async function uploadDocument(
   libraryId: string,
   file: File,

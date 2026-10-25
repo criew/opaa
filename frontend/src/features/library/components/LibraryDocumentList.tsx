@@ -173,7 +173,8 @@ export default function LibraryDocumentList({
   // folders are not paged by the backend: from eight on the list shows the first ones
   const [allFolders, setAllFolders] = useState(false)
   const shownFolders = allFolders ? folders : folders.slice(0, FOLDERS_SHOWN)
-  const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
+  // both filters list document rows bibliotheksweit: an attachment is a row of its own
+  const isFlatList = Boolean(pageState?.missingMetadataField || pageState?.status)
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
   const documentsById = new Map(documents.map((doc) => [doc.id, doc]))
@@ -186,7 +187,7 @@ export default function LibraryDocumentList({
   }[] = []
   for (const doc of documents) {
     const lastGroup = documentGroups[documentGroups.length - 1]
-    if (!isMissingFilterActive && doc.parentDocumentId && lastGroup) {
+    if (!isFlatList && doc.parentDocumentId && lastGroup) {
       lastGroup.attachments.push(doc)
     } else {
       documentGroups.push({ parent: doc, attachments: [] })
@@ -537,7 +538,11 @@ export default function LibraryDocumentList({
                 '&:last-of-type': { borderBottom: 0 },
               }}
             >
-              {renderDocumentRow(parent, { attachments })}
+              {renderDocumentRow(parent, {
+                attachments,
+                // a flat list shows an attachment without its parent: the row names it
+                viaFileName: isFlatList ? parent.parentFileName : null,
+              })}
               {isGroupExpanded(parent.id) && attachments.length > 0 && (
                 <Box
                   sx={{
@@ -574,7 +579,7 @@ export default function LibraryDocumentList({
       )}
 
       {/* the head names the documents; the foot counts only a page or a filtered list */}
-      {!isLoading && pageState && (pageCount > 1 || isSearchActive || isMissingFilterActive) && (
+      {!isLoading && pageState && (pageCount > 1 || isSearchActive || isFlatList) && (
         <Stack
           direction="row"
           sx={{
@@ -590,7 +595,7 @@ export default function LibraryDocumentList({
             {[
               isSearchActive
                 ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
-                : isMissingFilterActive
+                : isFlatList
                   ? `${pageState.totalElements.toLocaleString('de-DE')} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
                   : null,
               pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,

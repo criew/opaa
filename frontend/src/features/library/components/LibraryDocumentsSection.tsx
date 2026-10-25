@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import RowMenu from '@/shared/ui/RowMenu'
-import type { SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
+import type { DocumentStatus, SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -23,6 +23,7 @@ import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import BulkMetadataDialog from './metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
+import { statusFilterOptions } from './documentStatusFilter'
 import { listLibraryMetadataFields } from '../api/libraryMetadataApi'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
 import LibraryDocumentList from './LibraryDocumentList'
@@ -70,6 +71,8 @@ export default function LibraryDocumentsSection({
   const removeDocument = useDocumentStore((s) => s.removeDocument)
   const stopPolling = useDocumentStore((s) => s.stopPolling)
   const reset = useDocumentStore((s) => s.reset)
+  const loadStatusCounts = useDocumentStore((s) => s.loadStatusCounts)
+  const statusCounts = useDocumentStore((s) => s.statusCountsByLibrary[libraryId])
 
   const documents = documentsByLibrary[libraryId] ?? []
   const pageState = pageStateByLibrary[libraryId]
@@ -93,6 +96,8 @@ export default function LibraryDocumentsSection({
     metadataEnabled,
     missingFieldParam,
     setMissingFieldFilter,
+    statusParam,
+    setStatusFilter,
     navigateToFolder,
   } = useDocumentsUrlState(libraryId, leaveList)
   const folderActions = useLibraryFolderActions(libraryId, folderIdParam, onDocumentsChanged)
@@ -139,6 +144,12 @@ export default function LibraryDocumentsSection({
     }
   }, [libraryId, stopPolling, reset])
 
+  // after the reset above: the rows per state, for the toolbar's filter and the page's head -
+  // counted anew when a run finished; changes and settled uploads count anew in the store
+  useEffect(() => {
+    void loadStatusCounts(libraryId)
+  }, [libraryId, refreshToken, loadStatusCounts])
+
   useEffect(() => {
     // Reacts to the URL's folder param too - a breadcrumb click or a folder row navigates by
     // changing the URL, and this is what turns that into a fresh load for the requested folder.
@@ -148,8 +159,9 @@ export default function LibraryDocumentsSection({
       q: '',
       folderId: folderIdParam,
       missingMetadataField: missingFieldParam,
+      status: statusParam,
     })
-  }, [libraryId, folderIdParam, missingFieldParam, loadDocuments])
+  }, [libraryId, folderIdParam, missingFieldParam, statusParam, loadDocuments])
 
   // the „ohne …“ filter offers the library's own fields after the core fields
   const [ownFields, setOwnFields] = useState<Array<[string, string]>>([])
@@ -243,7 +255,7 @@ export default function LibraryDocumentsSection({
   }
 
   // a library without a single document: only the empty state and its one action
-  const filtered = Boolean(pageState?.q || missingFieldParam || folderIdParam)
+  const filtered = Boolean(pageState?.q || missingFieldParam || statusParam || folderIdParam)
   const libraryEmpty =
     !isLoading &&
     pageState !== undefined &&
@@ -289,6 +301,7 @@ export default function LibraryDocumentsSection({
 
   // search and filters from eight documents on, or while a filter or search is active
   const searchable = (pageState?.totalElements ?? 0) >= 8 || filtered
+  const statusOptions = statusFilterOptions(statusCounts, statusParam)
   // a folder can be created at the root and inside any open folder
   const newFolder = canManageFolders ? (
     <Box sx={{ ml: 'auto' }}>
@@ -332,6 +345,14 @@ export default function LibraryDocumentsSection({
         filters={
           searchable ? (
             <>
+              {statusOptions.length > 0 && (
+                <FilterSelect
+                  label="Status"
+                  value={statusParam ?? ''}
+                  onChange={(value) => setStatusFilter((value || null) as DocumentStatus | null)}
+                  options={[['', 'Status'], ...statusOptions]}
+                />
+              )}
               {metadataEnabled && (
                 <FilterSelect
                   label="Metadaten"

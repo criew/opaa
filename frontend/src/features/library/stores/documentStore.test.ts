@@ -26,7 +26,9 @@ const {
   mockCreateLibraryFolder,
   mockRenameLibraryFolder,
   mockDeleteLibraryFolder,
+  mockCountLibraryDocuments,
 } = vi.hoisted(() => ({
+  mockCountLibraryDocuments: vi.fn(),
   mockGetLibraryDocuments: vi.fn(),
   mockUploadDocument: vi.fn(),
   mockDeleteLibraryDocument: vi.fn(),
@@ -36,6 +38,7 @@ const {
 }))
 
 vi.mock('../api/libraryApi', () => ({
+  countLibraryDocuments: mockCountLibraryDocuments,
   getLibraryDocuments: mockGetLibraryDocuments,
   uploadDocument: mockUploadDocument,
   deleteLibraryDocument: mockDeleteLibraryDocument,
@@ -96,6 +99,7 @@ function deferred<T>(): {
 describe('documentStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCountLibraryDocuments.mockResolvedValue(0)
     useDocumentStore.getState().reset()
   })
 
@@ -117,6 +121,7 @@ describe('documentStore', () => {
       totalElements: 1,
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().isLoading).toBe(false)
     expect(useDocumentStore.getState().error).toBeNull()
@@ -135,6 +140,7 @@ describe('documentStore', () => {
       q: 'dienst',
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
       page: 2,
@@ -143,6 +149,7 @@ describe('documentStore', () => {
       totalElements: 42,
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
   })
 
@@ -157,6 +164,7 @@ describe('documentStore', () => {
       q: '',
       folderId: 'folder-1',
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBe('folder-1')
   })
@@ -173,6 +181,7 @@ describe('documentStore', () => {
       q: '',
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBeNull()
     expect(useDocumentStore.getState().folderNotFoundMessage).not.toBeNull()
@@ -225,6 +234,7 @@ describe('documentStore', () => {
           totalElements: 6,
           folderId: null,
           missingMetadataField: null,
+          status: null,
         },
       },
     })
@@ -244,6 +254,7 @@ describe('documentStore', () => {
       q: 'dienst',
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
       indexedDocument,
@@ -263,6 +274,7 @@ describe('documentStore', () => {
           totalElements: 0,
           folderId: 'folder-bestand',
           missingMetadataField: null,
+          status: null,
         },
       },
     })
@@ -378,6 +390,7 @@ describe('documentStore', () => {
           totalElements: 2,
           folderId: null,
           missingMetadataField: null,
+          status: null,
         },
       },
     })
@@ -392,6 +405,7 @@ describe('documentStore', () => {
       q: '',
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([])
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].totalElements).toBe(1)
@@ -409,6 +423,7 @@ describe('documentStore', () => {
           totalElements: 21,
           folderId: null,
           missingMetadataField: null,
+          status: null,
         },
       },
     })
@@ -429,6 +444,7 @@ describe('documentStore', () => {
       q: '',
       folderId: null,
       missingMetadataField: null,
+      status: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
       previousPageDocument,
@@ -471,6 +487,75 @@ describe('documentStore', () => {
     await vi.advanceTimersByTimeAsync(3000)
 
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([indexedDocument])
+  })
+
+  describe('status filter and counts (#3165)', () => {
+    const counts = { FAILED: 2, PENDING: 1, INDEXED: 30 }
+
+    it('counts the rows per state', async () => {
+      mockCountLibraryDocuments.mockImplementation(
+        async (_libraryId: string, status: keyof typeof counts) => counts[status],
+      )
+
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+
+      expect(useDocumentStore.getState().statusCountsByLibrary['library-1']).toEqual(counts)
+      expect(mockCountLibraryDocuments).toHaveBeenCalledTimes(3)
+    })
+
+    it('keeps the last counts when counting fails', async () => {
+      mockCountLibraryDocuments.mockImplementation(
+        async (_libraryId: string, status: keyof typeof counts) => counts[status],
+      )
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+
+      mockCountLibraryDocuments.mockRejectedValue(new Error('offline'))
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+
+      expect(useDocumentStore.getState().statusCountsByLibrary['library-1']).toEqual(counts)
+      expect(useDocumentStore.getState().error).toBeNull()
+    })
+
+    it('passes the status through and keeps it on a poll tick', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValue(page([pendingDocument]))
+
+      await useDocumentStore.getState().loadDocuments('library-1', { status: 'PENDING' })
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(mockGetLibraryDocuments).toHaveBeenCalledTimes(2)
+      expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith(
+        'library-1',
+        expect.objectContaining({ status: 'PENDING' }),
+      )
+      expect(useDocumentStore.getState().pageStateByLibrary['library-1'].status).toBe('PENDING')
+    })
+
+    it('counts anew when a polled document settles, not on a plain page change', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1')
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument], { page: 1 }))
+      await useDocumentStore.getState().loadDocuments('library-1', { page: 1 })
+      expect(mockCountLibraryDocuments).not.toHaveBeenCalled()
+
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        page([{ ...pendingDocument, status: 'FAILED' }], { page: 1 }),
+      )
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(mockCountLibraryDocuments).toHaveBeenCalledTimes(3)
+    })
+
+    it('counts anew after a deletion', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(page([indexedDocument]))
+      mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
+      await useDocumentStore.getState().loadDocuments('library-1')
+
+      await useDocumentStore.getState().removeDocument('library-1', 'document-1')
+
+      expect(mockCountLibraryDocuments).toHaveBeenCalledTimes(3)
+    })
   })
 
   it('stops every running poll interval on reset, not just the last-loaded library', async () => {
@@ -538,6 +623,7 @@ describe('documentStore', () => {
         q: '',
         folderId: null,
         missingMetadataField: 'author',
+        status: null,
       })
       expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toMatchObject({
         missingMetadataField: 'author',
@@ -651,6 +737,7 @@ describe('documentStore', () => {
         q: 'dienst',
         folderId: null,
         missingMetadataField: null,
+        status: null,
       })
 
       search.resolve(page([pendingDocument], { totalElements: 30 }))
@@ -708,6 +795,7 @@ describe('documentStore', () => {
             totalElements: 0,
             folderId: 'folder-parent',
             missingMetadataField: null,
+            status: null,
           },
         },
       })
@@ -733,6 +821,7 @@ describe('documentStore', () => {
         q: '',
         folderId: 'folder-parent',
         missingMetadataField: null,
+        status: null,
       })
       expect(useDocumentStore.getState().folderError).toBeNull()
     })

@@ -2,12 +2,14 @@ import { AxiosError } from 'axios'
 import { create } from 'zustand'
 import type {
   BulkDocumentDeleteResponse,
+  DocumentStatus,
   LibraryDocumentResponse,
   LibraryFolderBreadcrumbItem,
   LibraryFolderListItem,
 } from '@/shared/api/types'
 import {
   bulkDeleteLibraryDocuments,
+  countLibraryDocuments,
   createLibraryFolder,
   deleteLibraryDocument,
   deleteLibraryFolder,
@@ -48,7 +50,14 @@ export interface DocumentPageState {
   // The Pflege-Anker's filter - a core field key whose empty documents are listed, or null
   // for the unfiltered list. Like q, it makes the list bibliotheksweit.
   missingMetadataField: string | null
+  // The status filter - like the Pflege-Anker's, a bibliotheksweit list of document rows.
+  status: DocumentStatus | null
 }
+
+/** How many document rows of a library are in each state, attachments counted on their own. */
+export type DocumentStatusCounts = Record<DocumentStatus, number>
+
+const COUNTED_STATUSES: DocumentStatus[] = ['FAILED', 'PENDING', 'INDEXED']
 
 const defaultPageState: DocumentPageState = {
   page: 0,
@@ -57,6 +66,7 @@ const defaultPageState: DocumentPageState = {
   totalElements: 0,
   folderId: null,
   missingMetadataField: null,
+  status: null,
 }
 
 interface DocumentState {
@@ -68,6 +78,9 @@ interface DocumentState {
   // Entscheidung 4).
   foldersByLibrary: Record<string, LibraryFolderListItem[]>
   breadcrumbByLibrary: Record<string, LibraryFolderBreadcrumbItem[]>
+  // Refreshed by loadStatusCounts, after every change to the documents and whenever a polled
+  // document leaves PENDING - not on paging or searching, which change no state.
+  statusCountsByLibrary: Record<string, DocumentStatusCounts>
   isLoading: boolean
   error: string | null
   // Set instead of `error` when a requested folderId turned out to be unknown/foreign (404) -
@@ -96,8 +109,11 @@ interface DocumentState {
       q?: string
       folderId?: string | null
       missingMetadataField?: string | null
+      status?: DocumentStatus | null
     },
   ) => Promise<void>
+  /** Counts the library's document rows per state; a failure leaves the last counts. */
+  loadStatusCounts: (libraryId: string) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   /**
@@ -130,6 +146,7 @@ type LoadOptions = {
   q?: string
   folderId?: string | null
   missingMetadataField?: string | null
+  status?: DocumentStatus | null
 }
 
 type RequestedPageState = Omit<DocumentPageState, 'totalElements'>
@@ -153,11 +170,47 @@ function hasPendingDocument(documents: LibraryDocumentResponse[] | undefined): b
   return (documents ?? []).some((doc) => doc.status === 'PENDING')
 }
 
+/** Whether a document that was PENDING before is now settled (or gone) - the counts moved. */
+function pendingSettled(
+  before: LibraryDocumentResponse[] | undefined,
+  after: LibraryDocumentResponse[],
+): boolean {
+  const stillPending = new Set(after.filter((doc) => doc.status === 'PENDING').map((doc) => doc.id))
+  return (before ?? []).some((doc) => doc.status === 'PENDING' && !stillPending.has(doc.id))
+}
+
+// The newest count request per library; an older one never overwrites a newer answer.
+let countSequence = 0
+const latestCountByLibrary: Record<string, number> = {}
+
+async function refreshStatusCounts(
+  libraryId: string,
+  set: (partial: Partial<DocumentState>) => void,
+  get: () => DocumentState,
+) {
+  const sessionEpoch = currentSessionEpoch()
+  const sequence = ++countSequence
+  latestCountByLibrary[libraryId] = sequence
+  try {
+    const numbers = await Promise.all(
+      COUNTED_STATUSES.map((status) => countLibraryDocuments(libraryId, status)),
+    )
+    if (isStaleSessionEpoch(sessionEpoch) || latestCountByLibrary[libraryId] !== sequence) return
+    const counts = Object.fromEntries(
+      COUNTED_STATUSES.map((status, index) => [status, numbers[index]]),
+    ) as DocumentStatusCounts
+    set({ statusCountsByLibrary: { ...get().statusCountsByLibrary, [libraryId]: counts } })
+  } catch {
+    // the counts only add to the list, which reports its own failures
+  }
+}
+
 export const useDocumentStore = create<DocumentState>((set, get) => ({
   documentsByLibrary: {},
   pageStateByLibrary: {},
   foldersByLibrary: {},
   breadcrumbByLibrary: {},
+  statusCountsByLibrary: {},
   isLoading: false,
   error: null,
   folderNotFoundMessage: null,
@@ -177,6 +230,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       pageStateByLibrary: {},
       foldersByLibrary: {},
       breadcrumbByLibrary: {},
+      statusCountsByLibrary: {},
       isLoading: false,
       error: null,
       folderNotFoundMessage: null,
@@ -190,6 +244,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   loadDocuments: async (libraryId, options) => {
     await runLoadDocuments(libraryId, options, set, get, { isFolderFallbackRetry: false })
+  },
+
+  loadStatusCounts: async (libraryId) => {
+    await refreshStatusCounts(libraryId, set, get)
   },
 
   uploadNewDocument: async (libraryId: string, file: File, folderPath?: string) => {
@@ -389,11 +447,15 @@ async function runLoadDocuments(
     options && Object.prototype.hasOwnProperty.call(options, 'missingMetadataField')
       ? (options.missingMetadataField ?? null)
       : previous.missingMetadataField
+  const status =
+    options && Object.prototype.hasOwnProperty.call(options, 'status')
+      ? (options.status ?? null)
+      : previous.status
 
   const sequence = ++loadSequence
   latestRequestByLibrary[libraryId] = {
     sequence,
-    params: { page, size, q, folderId, missingMetadataField },
+    params: { page, size, q, folderId, missingMetadataField, status },
   }
   if (!mode.background) set({ isLoading: true, error: null })
   try {
@@ -403,9 +465,11 @@ async function runLoadDocuments(
       q,
       folderId,
       missingMetadataField,
+      status,
     })
     if (isStaleSessionEpoch(sessionEpoch) || !isLatestRequest(libraryId, sequence)) return
     settleRequest(libraryId, sequence)
+    const settled = pendingSettled(get().documentsByLibrary[libraryId], response.items)
     set({
       documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
       pageStateByLibrary: {
@@ -417,6 +481,7 @@ async function runLoadDocuments(
           totalElements: response.totalElements,
           folderId,
           missingMetadataField,
+          status,
         },
       },
       foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },
@@ -429,6 +494,7 @@ async function runLoadDocuments(
       // would erase it before it was ever shown.
       ...(mode.isFolderFallbackRetry || mode.background ? {} : { folderNotFoundMessage: null }),
     })
+    if (settled) void refreshStatusCounts(libraryId, set, get)
     if (hasPendingDocument(response.items)) {
       startPolling(libraryId, set, get)
     } else {
@@ -466,9 +532,9 @@ async function runLoadDocuments(
 // uploadNewDocument/removeDocument so a mutation is always followed by server truth instead of a
 // local array splice/unshift that can drift from totalElements or the active search filter.
 // Omitted options resolve to the newest requested view, so a reload never reverts a page or
-// search change that is still in flight.
+// search change that is still in flight. A mutation may move the status counts too.
 async function reloadCurrentPage(libraryId: string, get: () => DocumentState) {
-  await get().loadDocuments(libraryId, {})
+  await Promise.all([get().loadDocuments(libraryId, {}), get().loadStatusCounts(libraryId)])
 }
 
 function startPolling(

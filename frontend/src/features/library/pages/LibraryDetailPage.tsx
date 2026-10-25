@@ -195,6 +195,11 @@ export default function LibraryDetailPage() {
   const uploadQuotaRejected = useDocumentStore((s) =>
     s.uploadErrors.some((message) => /kontingent/i.test(message)),
   )
+  // the failed rows, counted by the documents area - the list is readable from VIEWER on, so
+  // every role may see the number
+  const failedDocuments = useDocumentStore((s) =>
+    libraryId ? (s.statusCountsByLibrary[libraryId]?.FAILED ?? null) : null,
+  )
   const upload = useDocumentUpload(libraryId ?? '', mayManageDocuments, () => {
     if (libraryId) void loadLibraryDetails(libraryId)
   })
@@ -328,6 +333,7 @@ export default function LibraryDetailPage() {
     runningPercent: running ? running.percent : null,
     runningUnknown: Boolean(connectorSourceType && isRunning && run.statusUnknown),
     uploadQuotaRejected,
+    failedDocuments,
     signsIn: connectorConfiguration?.setup?.signsIn ?? true,
     canSeeSource: canEdit,
   })
