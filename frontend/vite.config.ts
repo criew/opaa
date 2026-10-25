@@ -3,14 +3,16 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolveOpaaVersion } from './opaaVersion.ts'
+import { prototypeOutput } from './prototypeOutput.ts'
 
 // TODO: Split MUI out of the entry chunk to bring it below 500 kB
 // https://vite.dev/config/
 // `vite build --mode prototype` builds the static UI-lab prototype (e2e/ui-lab/README.md): mocks
-// answered in the page, hash routing, relative asset paths so it runs from any sub-path.
+// answered in the page, hash routing, relative asset paths so it runs from any sub-path, ASCII-only
+// scripts and its own page title.
 export default defineConfig(({ mode }) => ({
   base: mode === 'prototype' ? './' : '/',
-  plugins: [react()],
+  plugins: [react(), mode === 'prototype' && prototypeOutput()],
   // @/ points at src/, mirroring "paths" in tsconfig.app.json; Vitest inherits it.
   resolve: {
     alias: [{ find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) }],
