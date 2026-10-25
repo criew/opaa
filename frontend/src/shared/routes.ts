@@ -11,6 +11,8 @@ export const VERIFY_EMAIL_ROUTE = '/verify-email'
 export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'
+/** The set-up assistant; while the installation is pending, the only page the frame shows. */
+export const INSTALLATION_ROUTE = '/installation'
 export const SETTINGS_ROUTE = '/settings'
 /** The person's own access tokens for external AI tools, a tab of the settings. */
 export const OWN_TOKENS_ROUTE = '/settings/tokens'

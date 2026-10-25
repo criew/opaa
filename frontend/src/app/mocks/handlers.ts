@@ -58,6 +58,8 @@ import { selfDisclosureHandlers } from '@/features/compliance/mocks/selfDisclosu
 // auth
 import { authHandlers } from '@/shared/mocks/authHandlers'
 import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
+// installation
+import { installationHandlers } from '@/features/installation/mocks/installationHandlers'
 // app
 import { healthHandlers } from '@/shared/mocks/healthHandlers'
 
@@ -129,6 +131,8 @@ export const handlers = [
   // auth
   ...authHandlers,
   ...localAuthHandlers,
+  // installation
+  ...installationHandlers,
   // app
   ...healthHandlers,
 ]
