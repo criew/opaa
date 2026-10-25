@@ -149,3 +149,15 @@ def test_a_class_built_by_a_lite_bean_method_in_a_component_counts(repo: Path) -
     assert result.returncode == 1
     assert "::error::4 calls" in result.stdout
     assert f"1 {ROOT}ProbePlain.java" in result.stdout
+
+
+def test_a_bean_annotation_only_in_a_comment_makes_no_source(repo: Path) -> None:
+    write(
+        repo,
+        "ProbeFactory.java",
+        "package io.opaa.probe;\n\n/**\n * @Bean\n */\nclass ProbeFactory {\n"
+        "  // @Configuration\n  Object plain() { return new ProbePlain(); }\n}\n",
+    )
+    result = run(repo, 3)
+    assert result.returncode == 0, result.stdout
+    assert "ProbePlain" not in result.stdout

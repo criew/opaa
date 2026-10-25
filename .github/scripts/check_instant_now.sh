@@ -33,8 +33,9 @@ while IFS= read -r name; do
   [ -z "$name" ] || built["$name"]=1
 done < <(
   for file in "${files[@]}"; do
-    grep -qP "$SOURCE" "$file" || continue
-    grep -P "$CODE" "$file" | grep -oP '\bnew\s+\K[A-Z]\w*' || true
+    code="$(grep -P "$CODE" "$file" || true)"
+    grep -qP "$SOURCE" <<<"$code" || continue
+    grep -oP '\bnew\s+\K[A-Z]\w*' <<<"$code" || true
   done
 )
 
