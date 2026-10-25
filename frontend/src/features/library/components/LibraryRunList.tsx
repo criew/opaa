@@ -151,11 +151,15 @@ function technicalLines(run: IndexingRunResponse, showMode: boolean): string[] {
   ]
   const metrics = run.metrics
   if (metrics) {
-    const source = [`${count(metrics.requestsSent)} Anfragen an die Quelle`]
+    // requests are only counted by sources that report them (Confluence)
+    const source =
+      metrics.requestsSent > 0 || metrics.throttleCount > 0
+        ? [`${count(metrics.requestsSent)} Anfragen an die Quelle`]
+        : []
     if (metrics.throttleCount > 0)
       source.push(`${metrics.throttleCount}-mal gedrosselt (${metrics.throttleWaitSeconds} s)`)
     if (metrics.bytesDownloaded) source.push(`${formatFileSize(metrics.bytesDownloaded)} geladen`)
-    lines.push(source.join(' · '))
+    if (source.length > 0) lines.push(source.join(' · '))
     lines.push(
       `Anhänge: ${metrics.attachmentsProcessed} indiziert · ${metrics.attachmentsSkipped} übersprungen · ${metrics.attachmentsFailed} fehlgeschlagen`,
     )

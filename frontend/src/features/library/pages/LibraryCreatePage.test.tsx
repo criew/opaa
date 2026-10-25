@@ -451,7 +451,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await create(user)
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'))
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'),
+    )
     expect(mockCreateNewLibrary).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(/nicht gespeichert werden: Alice/)).toBeInTheDocument()
   }, 15000)
@@ -668,7 +670,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           }),
         ),
       )
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'))
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'),
+      )
       // switched off: no first run, the detail page's "Jetzt indizieren" or the schedule starts it
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 25000)
@@ -874,7 +878,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await nameItAndContinue(user, 'Wiki Bauamt')
       await create(user)
 
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'))
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'),
+      )
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 25000)
 

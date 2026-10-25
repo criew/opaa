@@ -577,7 +577,13 @@ export default function LibraryDetailPage() {
             aria-labelledby="library-tab-metadaten"
             hidden={activeTab !== 'metadaten'}
           >
-            <LibraryMetadataTab libraryId={libraryId} mayChange={mayChange} canEdit={canEdit} />
+            <LibraryMetadataTab
+              // the fill counts change with every correction in „Dokumente“: counted anew per visit
+              key={activeTab === 'metadaten' ? 'metadata-shown' : 'metadata-hidden'}
+              libraryId={libraryId}
+              mayChange={mayChange}
+              canEdit={canEdit}
+            />
           </Box>
         )}
 

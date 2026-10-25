@@ -102,7 +102,9 @@ export default function LibrarySourceSection({
   useEffect(() => {
     const target = ANCHORS[location.hash.slice(1)]
     if (!target) return
-    requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: 'start' }))
+    requestAnimationFrame(() =>
+      document.getElementById(target)?.scrollIntoView?.({ block: 'start' }),
+    )
   }, [location.hash])
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)

@@ -278,7 +278,9 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() =>
-      expect(screen.getByTestId('address')).toHaveTextContent(/^\/libraries\/lib-neu\?justCreated=1$/),
+      expect(screen.getByTestId('address')).toHaveTextContent(
+        /^\/libraries\/lib-neu\?justCreated=1$/,
+      ),
     )
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({

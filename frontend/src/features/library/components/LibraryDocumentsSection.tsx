@@ -107,15 +107,11 @@ export default function LibraryDocumentsSection({
   )
   const [metadataOpenById, setMetadataOpenById] = useState<Record<string, boolean>>({})
   const [metadataRefreshToken, setMetadataRefreshToken] = useState(0)
-  // Bumped after every metadata change so the anchor recounts; separate from
-  // metadataRefreshToken, which reloads the open per-document panels.
-  const [, setAnchorRefreshToken] = useState(0)
   const bulk = useBulkDocumentActions({
     libraryId,
     selectedDocumentIds,
     setSelectedDocumentIds,
     setMetadataRefreshToken,
-    setAnchorRefreshToken,
     onDocumentsChanged,
   })
   const { bulkDialogOpen, setBulkDialogOpen, bulkResult, setBulkResult, handleBulkDone } = bulk
@@ -211,9 +207,8 @@ export default function LibraryDocumentsSection({
     setMetadataOpenById((previous) => ({ ...previous, [documentId]: !previous[documentId] }))
   }
 
-  // A corrected document leaves the anchor - and, while its worklist is open, the list too.
+  // While the „ohne …“ list is open, a corrected document leaves it.
   function handleMetadataValueChanged() {
-    setAnchorRefreshToken((previous) => previous + 1)
     if (missingFieldParam) {
       void loadDocuments(libraryId, {})
     }
