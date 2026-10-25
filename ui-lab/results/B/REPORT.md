@@ -137,6 +137,84 @@ Ursachen: entfernte Texte (Rollenhinweise, Bestand-Alert, Pflege-Anker), Läufe 
  Harness: flows/library-detail.mjs (Reiter „Verlauf“), lib/measure.mjs (tabsTop)
 ```
 
-## Review-Befunde
+## Review-Befunde (REVIEW-1)
 
-– (REVIEW-1 steht aus)
+**A · Doppelungen**
+- R1-1 erledigt: Eigentümerin nicht mehr in der Berechtigungsliste; privat ohne „Nur Sie sehen …“.
+- R1-2 erledigt: über dem Verlauf nur „Vollabgleich starten“ (wo es ihn gibt).
+- R1-3 erledigt: bei abgelehnter Anmeldung nur „Verbindung ändern ›“; andere Fehler behalten den Grund der Quelle.
+- R1-4 erledigt: Zeile Zeitplan ohne „nächster Lauf“; kein Band-Link auf den offenen Reiter.
+- R1-5 erledigt: Web/RSS ohne Band-Link (keine Umfangswahl).
+- R1-6 erledigt: „n nicht lesbar“ in Grundfarbe, zuerst; in Quelle Warnfarbe nur im Punkt.
+- R1-7, R1-20 erledigt: Leerzustände „Noch keine …“ mit der einen Handlung.
+- R1-8 erledigt: Listenfuß nur beim Blättern oder Suchen.
+- R1-9 erledigt: Filter nur, wenn er die Liste kürzt.
+- R1-10 erledigt: Dauer eines laufenden Laufs „–“.
+- R1-11 erledigt: Abschnitt „Extraktion“, Schalter „Leere Felder ergänzen“; „Muster“ einmal.
+- R1-12 erledigt: Frist nur, wenn es eine gibt.
+
+**B · Inkonsistenzen**
+- R1-13 erledigt: eine Kante bei 880 px für Kopf, Band, Reiterleiste, Verlauf und alle Abschnitte; nur die Dokumentliste ist breiter.
+- R1-14, R1-19 erledigt: Zeilenaktionen im ⋯-Menü an der Kante, „Ändern“ durchgängig. Teilweise: In der Dokumentzeile bleiben ⓘ und ↗ als Knöpfe; sie sind Ansichten, keine Verwaltungsaktionen.
+- R1-15 erledigt: eine Form „Eintrag · ● nicht lesbar“, nicht lesbare Einträge zuerst; keine Sammelzeile. Ganze Verzeichnisse (filesystem, web, rss) listen den Pfad als Eintrag.
+- R1-16 erledigt: kein Personen-Icon; Spaces und Zuständige als Links mit „›“ wie im Band.
+- R1-17, R1-45 erledigt: Band und Zeile Umfang aus derselben Funktion (Zeile „Umfang“ des Setups); „Cloud“ steht nur noch an der Verbindung.
+- R1-18 teilweise: Fundorte aus dem Umfang je Konnektor (Mock), Pfade mittig gekürzt. Bewusst nicht: eine gemeinsame Pfadfunktion für Dokumentzeile, Quelle und Verlauf; dafür gehört die Darstellung der Pfade in einen Baustein des Umsetzungs-Issues.
+- R1-21 erledigt: Reiter mit einem Abschnitt ohne Titel (Zuordnungen, Verlauf); mehrere Abschnitte mit Titel links und Aktion rechts.
+- R1-22 erledigt: Ergebnis „n Dokumente · n fehlgeschlagen · n nicht lesbar“.
+- R1-23 erledigt: Zeitplan überall „Rhythmus · Termin“, „kein Zeitplan“. Bewusst nicht: Vollabgleich-Rhythmus bei Dropbox, das Fixture setzt keinen.
+- R1-24 erledigt: Aktionszeile mit fester Höhe, unter 600 px immer eigene Zeile.
+- R1-25 teilweise: Kernfelder lesend als Text, Diagnosesperre für Leser ausgeblendet. Bewusst nicht: Verbindung und Zeitplan für Leser – das Backend liefert sie Lesern nicht.
+- R1-26 erledigt: „Technische Angaben“ überall als Textlink mit `aria-expanded`.
+- R1-27 erledigt: Links nur bei Hover unterstrichen; Ausnahme „Mitglieder ausblenden“ aus `principal`.
+- R1-28 erledigt: Label unabhängig vom Link (feste Zeilen), ganzes Feld als Link unter 600 px mit zugänglichem Namen; „Noch nie indiziert“ führt in den Verlauf.
+- R1-29 erledigt: TT.MM.JJJJ und Tausenderpunkt.
+- R1-30 erledigt: Verlauf-Aktion immer rechts.
+- R1-31 erledigt: „Zustand · zuletzt Datum“ in jedem Fall, Ziel einzeilig mit Tooltip, kein Trenner am Zeilenende.
+- R1-32 erledigt: siehe R1-5.
+- R1-33 erledigt: privat als „Wissen · privat“ im ersten Chip; „Wird gelöscht“ nur im Stand.
+- R1-34 erledigt: Titelspalte der Zeilen 152 px (gilt auch für Assistent und Prüfen).
+- R1-35 erledigt: Upload-Stand mit Datum des letzten Uploads; drittes Feld „Neuestes“ (Dateiname) statt Datum.
+- R1-36 erledigt: „Dateien hochladen“ als Hauptaktion im Kopf; leer heißt der Stand „Noch leer“.
+- R1-37 erledigt: eine Kante, eine Checkbox, ein Suchfeld (`ListSearchField`).
+
+**C · Kaputtes und Irreführendes**
+- R1-38 erledigt: Stand bei 320 px zweizeilig (Wort / Datum); „n nicht lesbar“ vor der Kurzform.
+- R1-39 erledigt: Reiterleiste mit Pfeilen unter 600 px, aktiver Reiter wird ins Bild geholt.
+- R1-40 erledigt: „Erfolgreich“ am Lauf, „Aktuell“ nur im Stand.
+- R1-41 erledigt: Upload „Läuft“, solange hochgeladen wird oder Dokumente verarbeitet werden; Ablehnungen als Popup mit Liste.
+- R1-42 erledigt: Fixture (Kontingent in `failed` wirklich voll).
+- R1-43 erledigt: keine Zahlen aus der geladenen Seite mehr im Stand.
+- R1-44 erledigt: Verbindung aus dem letzten abgeschlossenen Lauf, auch während eines Laufs.
+- R1-46 erledigt: Laufzeile nennt „nicht lesbar“; Gruppe „Nicht lesbar“ statt „Nicht erreichbar“.
+- R1-47 erledigt: Leser bekommen keinen Link „Verbindung ›“; nicht lesbare Einträge stehen auch für Leser im Umfang.
+- R1-48 erledigt: Web/RSS in `failed` „Fehlgeschlagen“, Verbindung „nicht erreichbar · Datum“.
+- R1-49 erledigt: siehe R1-1.
+- R1-50, R1-51 erledigt: Freigabe zweizeilig, Select fester Breite + ⋯ in einer Zeile auch bei 320 px.
+- R1-52 erledigt: Metadaten unter 600 px mit ⋯, Füllgrad als Liste statt Tabelle.
+- R1-53 erledigt: Laufzeile bei 320 px zweizeilig (Zustand / Datum · Ergebnis · Auslöser), Fundorte mittig gekürzt.
+- R1-54 erledigt: Kennzahlzeile umbricht unter 600 px auf 2 reservierte Zeilen; Chipzeile mit drei Chips passt.
+- R1-55 teilweise: Namen 1–2 Zeilen mit Tooltip, URLs einzeilig. Bewusst nicht: Trennstrich im Titel-Kompositum – `hyphens: auto` greift im Headless-Chromium mangels Wörterbuch nicht; der Umbruch bleibt ohne Strich.
+- R1-56 erledigt: Fortschrittsleiste entfernt, auch beim Upload.
+- R1-57 erledigt: leerer Abschnitt „Externer Zugang“ ausgeblendet.
+- R1-58 erledigt: keine Extraktionsgüte bei 0 Dokumenten.
+
+**D · Hilfetexte**
+- R1-59 erledigt: Beispiel statt Regex, keine Schlüssel in Chips.
+- R1-60 erledigt: ein Satz „Eingeschaltet gehen Inhalte an OpenAI (…)“, Warnpunkt nur bei eingeschalteter Funktion.
+- R1-61 erledigt: Erklärung in die Bestätigungsfrage, Abschnitt nur mit Zustand und Aktion.
+- R1-62 erledigt: Zahl unter „Technische Angaben“.
+- R1-63 erledigt: „seit TT.MM.JJJJ · von X“.
+
+**E · KI-Look**
+- R1-64 bewusst nicht: Guidelines 5.5 verlangen die Asset-Art „stets mit dem Icon der Art“; bei Widerspruch gilt die Guideline.
+- R1-65 erledigt: „Löschen“ im ⋯-Menü, Rot erst im Bestätigungsdialog.
+- R1-66 erledigt: kein getöntes Banner, Popup mit Liste. Teilweise: kein Filter „Fehlgeschlagen“, die Dokumenten-API kennt keinen Statusfilter.
+- R1-67 erledigt: Signalfarbe nur noch im Punkt (R1-6).
+
+**F · Mock und Aufnahme** (Fixture- und Werkzeugänderungen; sollten auf die Basis)
+- R1-68 beim Orchestrator.
+- R1-69, R1-70, R1-71 erledigt: `steady()` in `lib/measure.mjs` wartet auf stabile Breite und Reiterleiste und nimmt den Fokus weg.
+- R1-72 erledigt: `__full` in Originalbreite (höchstens 1280 px), dunkle `__full` weiter weggelassen.
+- R1-73 bis R1-82 erledigt: Fehlerzahl = Fehlerereignisse, eine Uhr (Europe/Berlin), `slow` plausibel, Ablehnungen in Sekunden, `partial` mit genau einem nicht lesbaren Eintrag, gemischte erste Seite, Fundorte aus dem Umfang, fester Umfang je Bibliothek, gültige RSS-Adressen, privat in höchstens einem Space.
+- R1-83 teilweise: Speicher, Datum, Ordner, Namen, `slow`-Upload und Banner je Szenario stimmen. Offen: Fuß „938“ (Wurzelebene) gegen Kopf „1.250“ (ganze Bibliothek) – echtes Verhalten, mit Fixtures nicht zu lösen.
