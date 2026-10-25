@@ -74,7 +74,9 @@ class SourceConnectorProfileContractTest {
    * what a requirement leaves open. Google Drive signs in with the profile's service account key,
    * the imitated account set by the profile alone. SharePoint signs in only through a profile, with
    * its client credentials at the tenant's token endpoint. Dropbox signs in only through a profile,
-   * by the library's own OAuth consent with a refresh token. Upload and file system admit none.
+   * by the library's own OAuth consent with a refresh token. OneDrive signs in only through a
+   * profile, by a person's own OAuth consent at her tenant, with no revocation at the provider.
+   * Upload and file system admit none.
    */
   private static final Set<String> PERSONS = Set.of("NEXTCLOUD");
 
@@ -178,6 +180,30 @@ class SourceConnectorProfileContractTest {
         .as("DROPBOX")
         .isEqualTo("https://api.dropboxapi.com");
     softly.assertThat(dropbox.defaults().keys()).as("DROPBOX").isEmpty();
+    ProfileDeclaration oneDrive = declared.get("ONEDRIVE");
+    softly.assertThat(oneDrive.support()).as("ONEDRIVE").isEqualTo(REQUIRED);
+    softly
+        .assertThat(oneDrive.signIns())
+        .as("ONEDRIVE")
+        .singleElement()
+        .satisfies(
+            signIn -> {
+              assertThat(signIn.method()).isEqualTo(ConnectionAuthMethod.OAUTH);
+              assertThat(signIn.owners()).containsExactly(ConnectionOwnership.PERSON);
+              assertThat(signIn.details())
+                  .isInstanceOfSatisfying(
+                      OAuthAuth.class,
+                      auth -> {
+                        assertThat(auth.authorization().needsTenant()).isTrue();
+                        assertThat(auth.token().needsTenant()).isTrue();
+                        assertThat(auth.revocation()).isInstanceOf(Revocation.None.class);
+                      });
+            });
+    softly
+        .assertThat(oneDrive.address().fixed())
+        .as("ONEDRIVE")
+        .isEqualTo("https://graph.microsoft.com");
+    softly.assertThat(oneDrive.defaults().keys()).as("ONEDRIVE").isEmpty();
     for (String type : List.of("UPLOAD", "FILESYSTEM")) {
       softly.assertThat(declared.get(type).support()).as(type).isEqualTo(FORBIDDEN);
     }

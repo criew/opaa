@@ -3,13 +3,16 @@ package io.opaa.indexing.source.sharepoint;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.filesync.FileSync;
 import io.opaa.indexing.filesync.FileSyncSettings;
 import io.opaa.indexing.filesync.FileSyncWording;
 import io.opaa.indexing.run.IndexingRun;
+import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceCredentialsRejectedException;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
@@ -51,13 +54,31 @@ final class DriveRun {
     this.supportedFormats = supportedFormats;
   }
 
-  /** Syncs {@code drives} of {@code run}, each of the kind {@code rule} admits. */
+  /** What a run asks Graph before its first request that names one of its drives. */
+  @FunctionalInterface
+  interface Admission {
+
+    /** Admits every drive. */
+    Admission ANY = graph -> {};
+
+    /**
+     * Refuses the whole run: a rejected token as {@link FileAccessException.CredentialsRejected},
+     * anything else with the German reason as its message.
+     */
+    void require(GraphClient graph) throws FileAccessException, InterruptedException;
+  }
+
+  /**
+   * Syncs {@code drives} of {@code run}, each of the kind {@code rule} admits, once {@code
+   * admission} let the run through; a refused run fails without touching its documents.
+   */
   ListingOutcome sync(
       IndexingRun run,
       IndexingRunMode runMode,
       DriveRule rule,
       List<SharePointLibrary> drives,
-      FileSyncWording wording)
+      FileSyncWording wording,
+      Admission admission)
       throws InterruptedException {
     SharePointProperties properties = graphs.properties();
     RequestBudget budget =
@@ -67,6 +88,13 @@ final class DriveRun {
             properties.maxThrottleWaitPerRun());
     GraphClient graph = graphs.open(run.settings(), run.credentials(), budget);
     run.recordRequestCost(budget.meter());
+    try {
+      admission.require(graph);
+    } catch (FileAccessException.CredentialsRejected e) {
+      throw new SourceCredentialsRejectedException(e.getMessage(), e);
+    } catch (FileAccessException e) {
+      throw new IndexingRunFailedException(e.getMessage(), e);
+    }
     UUID libraryId = run.library().getId();
     SourceSyncState state = journal.load(libraryId);
     try (DriveFileStore store =

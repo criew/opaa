@@ -112,7 +112,12 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
       throw new IndexingRunFailedException("Die Bibliothek hat keine SharePoint-Bibliotheken.");
     }
     return driveRun.sync(
-        run, runMode, DriveRule.SHAREPOINT, settings.libraries(), new SharePointWording());
+        run,
+        runMode,
+        DriveRule.SHAREPOINT,
+        settings.libraries(),
+        new SharePointWording(),
+        DriveRun.Admission.ANY);
   }
 
   private Duration interval(SharePointSettings settings) {

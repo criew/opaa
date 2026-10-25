@@ -224,6 +224,7 @@ datenfluesse#source-confluence
 datenfluesse#source-dropbox
 datenfluesse#source-google-drive
 datenfluesse#source-nextcloud
+datenfluesse#source-onedrive
 datenfluesse#source-original
 datenfluesse#source-rss
 datenfluesse#source-s3

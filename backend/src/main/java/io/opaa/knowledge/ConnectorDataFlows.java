@@ -19,6 +19,7 @@ public final class ConnectorDataFlows {
           "GOOGLE_DRIVE", "source-google-drive",
           "NEXTCLOUD", "source-nextcloud",
           "SHAREPOINT", "source-sharepoint",
+          "ONEDRIVE", "source-onedrive",
           "S3", "source-s3",
           "SMB", "source-smb");
 

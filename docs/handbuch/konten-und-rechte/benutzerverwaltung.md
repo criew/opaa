@@ -543,8 +543,9 @@ einem Identitätsanbieter. OPAA nutzt ein verbundenes Konto nur für die private
 Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang, auf dem Personen
 Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
 Person“ an und gibt ihn frei ([Zugänge](../arbeitsmittel/zugaenge.md)). Von den mitgelieferten
-Konnektoren lässt **Nextcloud** die Besitzart „Person“ zu; die Person verbindet dort ein eigenes
-App-Passwort ([Konnektor Nextcloud](../arbeitsmittel/wissensbibliotheken/konnektoren/nextcloud.md), „Verbundenes Konto“).
+Konnektoren lassen **Nextcloud** und **OneDrive** die Besitzart „Person“ zu; bei Nextcloud verbindet die
+Person ein eigenes App-Passwort ([Konnektor Nextcloud](../arbeitsmittel/wissensbibliotheken/konnektoren/nextcloud.md), „Verbundenes Konto“),
+bei OneDrive meldet sie sich bei Microsoft an ([Konnektor OneDrive](../arbeitsmittel/wissensbibliotheken/konnektoren/onedrive.md)).
 
 **Das Verbinden ist freiwillig.** Niemand muss ein Konto verbinden, und ein Verzicht hat keine
 Nachteile: Nichts in OPAA setzt ein verbundenes Konto voraus oder fordert dazu auf. Auch diese Seite
@@ -629,7 +630,8 @@ wieder verbindet. Nutzt keine Bibliothek die Verbindung, verschwindet sie aus de
 Zugang nicht mehr freigegeben, sagt die Rückfrage, dass danach kein neues Verbinden möglich ist.
 
 Bei einer Anmeldung beim Anbieter (OAuth) zieht OPAA die Zustimmung anschließend auch beim Anbieter
-zurück, im Hintergrund: Trennen und Notabschaltung warten nicht auf den Anbieter. Gelingt das
+zurück, sofern er dafür einen Weg anbietet; Microsoft bietet bei OneDrive keinen, dort entzieht man
+sie selbst ([Konnektor OneDrive](../arbeitsmittel/wissensbibliotheken/konnektoren/onedrive.md#3-quellkonfiguration)). Der Rückzug läuft im Hintergrund: Trennen und Notabschaltung warten nicht auf den Anbieter. Gelingt das
 nicht, etwa weil der Anbieter nicht erreichbar ist oder OPAA gerade neu startet, bleibt die
 Zustimmung dort gültig, bis der Anbieter sie beendet, bei manchen Anbietern unbegrenzt. OPAA selbst
 hat sie dann schon gelöscht und nutzt sie nicht mehr; wer sicher gehen will, entzieht sie zusätzlich

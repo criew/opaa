@@ -1474,7 +1474,10 @@ components:
             matching a term, needs Sites.Read.All) or siteUrl (the site at that address) gives
             site:<id> entries, site gives the document libraries of a site as drive:<id>, drive
             with an optional folder gives the folders below as folder:<id>. A refusal by Microsoft
-            Graph answers complete false with the German reason in message. DROPBOX takes path
+            Graph answers complete false with the German reason in message. ONEDRIVE without
+            parameters gives the one entry drive:<id>, the OneDrive for Business of the connected
+            account; drive with an optional folder gives the folders below as folder:<id>, only
+            for that account's own OneDrive. DROPBOX takes path
             (default /) and teamSpace and lists the folders directly below the path, keyed by
             their path.
           nullable: true
@@ -2186,7 +2189,7 @@ components:
       description: >
         The open key of a source type (ADR-0038) - which keys exist GET /api/v1/source-types
         says. Delivered today: UPLOAD, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED, CONFLUENCE, S3,
-        NEXTCLOUD, GOOGLE_DRIVE, SHAREPOINT, SMB, DROPBOX.
+        NEXTCLOUD, GOOGLE_DRIVE, SHAREPOINT, ONEDRIVE, SMB, DROPBOX.
       example: FILESYSTEM
 
     LibraryDocumentResponse:

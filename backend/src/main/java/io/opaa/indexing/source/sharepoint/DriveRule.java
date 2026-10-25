@@ -46,6 +46,21 @@ record DriveRule(
               + " Ordnerauswahl anpassen.",
           "Dokumentbibliothek „%s“");
 
+  /** The OneDrive for Business of the person whose account a private library runs on (ADR-0058). */
+  static final DriveRule ONEDRIVE =
+      new DriveRule(
+          "onedrive",
+          "OneDrive",
+          Set.of("business"),
+          "Das Laufwerk ist kein OneDrive for Business; Dokumentbibliotheken und private"
+              + " OneDrives werden hier nicht gelesen.",
+          "Das OneDrive ist für das verbundene Konto nicht sichtbar.",
+          "Die Datei liegt nicht mehr im OneDrive.",
+          "Das OneDrive war beim Beginn des letzten Vollabgleichs nicht erreichbar.",
+          "Der gewählte Ordner „%s“ ist im OneDrive nicht mehr vorhanden; bitte die Ordnerauswahl"
+              + " anpassen.",
+          "OneDrive „%s“");
+
   DriveRule {
     Objects.requireNonNull(scheme, "scheme");
     Objects.requireNonNull(label, "label");

@@ -76,7 +76,7 @@ record SharePointSettings(List<SharePointLibrary> libraries, Integer fullSyncInt
   }
 
   /** {@code 0} returns to the instance's rhythm, like an absent value. */
-  private static Integer interval(Object value) {
+  static Integer interval(Object value) {
     if (value == null || (value instanceof Number zero && zero.doubleValue() == 0)) {
       return null;
     }

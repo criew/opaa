@@ -21,8 +21,10 @@ flowchart LR
 - **Konnektor-eigen:** die Anwendungsberechtigung **`Sites.Selected`**, mit der die App nur Sites
   liest, die ihr **einzeln freigegeben** sind.
 - **Liest:** Dateien in unterstützten Formaten, Office-Dateien so, wie sie liegen. **Nicht** gelesen
-  werden OneDrive und andere Laufwerke, die keine Dokumentbibliothek sind, OneNote-Notizbücher und
-  Dateien, die Microsoft als Schadsoftware kennzeichnet.
+  werden OneDrive und andere Laufwerke, die keine Dokumentbibliothek sind, Verknüpfungen auf Dateien
+  und Ordner anderer Laufwerke, OneNote-Notizbücher und Dateien, die Microsoft als Schadsoftware
+  kennzeichnet. Das OneDrive einer Person liest der
+  Konnektor [OneDrive](onedrive.md) in ihre private Bibliothek.
 - **Dokument:** Laufwerk und Datei-Kennung sind die Identität. Umbenennen und Verschieben innerhalb
   einer Dokumentbibliothek behalten das Dokument; eine Datei in einer anderen Dokumentbibliothek ist
   dort ein neues. Einen Link in die SharePoint-Oberfläche gibt es nicht; **„Original öffnen"** lädt
@@ -185,10 +187,10 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch, bei erteilter Administratorzustimmung; der Bestand bleibt | Site freigeben (Abschnitt 2) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …" | Adresse falsch oder Site gelöscht | Adresse prüfen |
 | „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …" | Adresse in falscher Form | Adresse aus dem Browser übernehmen |
-| „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann …" / „… keine SharePoint-Dokumentbibliothek …" | nur OneDrive oder andere Laufwerke | nichts |
+| „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann …" / „… keine SharePoint-Dokumentbibliothek …" | nur OneDrive oder andere Laufwerke | nichts; ein OneDrive liest der Konnektor [OneDrive](onedrive.md) |
 | „Die Suche nach Sites braucht die Berechtigung Sites.Read.All …" | Suche unter `Sites.Selected` | Adresse eingeben |
 | „Der gewählte Ordner … ist in der Dokumentbibliothek nicht mehr vorhanden …" | Ordner gelöscht oder verschoben; der Bestand bleibt | Ordnerauswahl anpassen |
-| „… OneNote-Notizbücher und ihre Abschnitte übersprungen" / „Microsoft meldet in dieser Datei Schadsoftware …" | übersprungen | nichts |
+| „… OneNote-Notizbücher und ihre Abschnitte übersprungen" / „… Verknüpfungen auf Inhalte anderer Laufwerke übersprungen …" / „Microsoft meldet in dieser Datei Schadsoftware …" | übersprungen | nichts |
 | „Der Downloadserver von Microsoft Graph hat mit HTTP 4xx geantwortet. Die Datei wird übersprungen …" | dauerhaft verweigert; ein späterer Vollabgleich versucht es erneut | nichts |
 | „Microsoft Graph drosselt die Anfragen weiterhin" / „Die Übertragung von Microsoft Graph dauerte länger als …" | vorübergehend fehlgeschlagen; der Strom wird erneut gelesen | Zeitplan entzerren bzw. `download-timeout` anheben |
 | „Microsoft Graph nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an" / „Die Dokumentbibliothek war beim Beginn des letzten Vollabgleichs nicht erreichbar" | nächster Lauf ist ein Vollabgleich | nichts |
@@ -197,7 +199,8 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 
 ## 10. Konfiguration
 
-Alle Schlüssel unter `opaa.indexing.sharepoint.*`.
+Alle Schlüssel unter `opaa.indexing.sharepoint.*`. Sie gelten ebenso für den Konnektor
+[OneDrive](onedrive.md).
 
 | Schlüssel | Umgebungsvariable | Standard | Wirkung |
 |---|---|---|---|
@@ -217,7 +220,8 @@ Die Obergrenzen von fünfzig Dokumentbibliotheken und fünfzig Ordnern je Dokume
 
 ## 11. Nicht gebaut
 
-- OneDrive und Anmeldung im Namen einer Person
+- Anmeldung im Namen einer Person für Dokumentbibliotheken; das eigene OneDrive liest der Konnektor
+  [OneDrive](onedrive.md)
 - Freigabe je Dokumentbibliothek über `Lists.SelectedOperations.Selected`
 - Nationale Clouds; die Adresse ist fest
 - Übernahme von Rechten aus SharePoint

@@ -47,12 +47,15 @@ import tools.jackson.databind.JsonNode;
  * once per run. A folder filter keeps only files below one of its folders. The identity is {@link
  * DriveRule#filePath}.
  */
-@DataFlow("source-sharepoint")
+@DataFlow({"source-sharepoint", "source-onedrive"})
 final class DriveFileStore implements FileStore, ChangeFeed {
 
   private static final Logger log = LoggerFactory.getLogger(DriveFileStore.class);
 
   static final String ONENOTE_NOTE = " OneNote-Notizbücher und ihre Abschnitte übersprungen";
+  static final String SHORTCUT_NOTE =
+      " Verknüpfungen auf Inhalte anderer Laufwerke übersprungen, etwa geteilte Ordner unter"
+          + " „Meine Dateien“";
   static final String OUTSIDE_FOLDERS_NOTE = " Dateien außerhalb der gewählten Ordner übersprungen";
   static final String MALWARE =
       "Microsoft meldet in dieser Datei Schadsoftware; sie wird übersprungen.";
@@ -481,7 +484,10 @@ final class DriveFileStore implements FileStore, ChangeFeed {
     String name = item.name() == null || item.name().isBlank() ? item.id() : item.name();
     String marker = null;
     if (exclusion == null) {
-      if (item.packageType() != null || chain.inPackage()) {
+      if (item.remoteItem()) {
+        // a shortcut's content lies in another drive: never fetched through this one
+        exclusion = new Exclusion.NotADocument(SHORTCUT_NOTE);
+      } else if (item.packageType() != null || chain.inPackage()) {
         exclusion = new Exclusion.NotADocument(ONENOTE_NOTE);
       } else {
         marker = marker(item);
