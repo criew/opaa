@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -34,10 +35,22 @@ export default function LibraryDocumentsNotices({
   const clearFolderError = useDocumentStore((s) => s.clearFolderError)
   const clearFolderNotFoundMessage = useDocumentStore((s) => s.clearFolderNotFoundMessage)
 
+  // „Schließen“ folds the message into one fixed line; the files stay listed until the next upload
+  const [foldedFor, setFoldedFor] = useState<string[] | null>(null)
+  const folded = foldedFor === uploadErrors
+
   return (
     <>
-      {uploadErrors.length > 0 && (
-        <UploadRejections messages={uploadErrors} onClose={clearUploadErrors} />
+      {uploadErrors.length > 0 && !folded && (
+        <UploadRejections messages={uploadErrors} onClose={() => setFoldedFor(uploadErrors)} />
+      )}
+      {uploadErrors.length > 0 && folded && (
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <TextAction onClick={() => setFoldedFor(null)}>
+            Abgelehnte Dateien anzeigen ({rejectedCount(uploadErrors)})
+          </TextAction>
+          <TextAction onClick={clearUploadErrors}>Verwerfen</TextAction>
+        </Box>
       )}
       {deleteError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearDeleteError}>
@@ -78,6 +91,11 @@ export default function LibraryDocumentsNotices({
       )}
     </>
   )
+}
+
+/** The number of files the messages name; a message without a file counts once. */
+function rejectedCount(messages: string[]): number {
+  return groupByReason(messages).reduce((sum, group) => sum + Math.max(1, group.files.length), 0)
 }
 
 /** „<reason> (Datei: <name>)“ as the store collects it, grouped by reason. */
