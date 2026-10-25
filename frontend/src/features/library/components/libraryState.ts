@@ -183,9 +183,11 @@ export function uploadState(input: {
   const date = formatShortDate(input.lastUpload)
   if (input.quotaFull) return { ...state('Kontingent voll', 'warning', date), target: 'dokumente' }
   if (input.documentCount === 0) return state('Noch leer', 'neutral', null)
-  if (input.processing) return { ...state('Läuft', 'neutral', date), target: null }
+  // a failure outweighs a running upload: it needs action, the upload ends by itself
   if (input.failed) {
     return { ...state('Teilweise fehlgeschlagen', 'warning', date), target: 'dokumente' }
   }
+  // no counter of the upload's progress exists, so „Läuft“ carries no addition
+  if (input.processing) return { ...state('Läuft', 'neutral', null), target: null }
   return { ...state('Aktuell', 'success', date), target: null }
 }
