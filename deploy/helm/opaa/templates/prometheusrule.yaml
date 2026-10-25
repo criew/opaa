@@ -105,6 +105,25 @@ spec:
               als 35 Tagen nicht gelaufen, oder das Backend kann ihren Stand nicht lesen.
               Abgelaufene Monate bleiben dann womöglich stehen und das Protokoll wächst über die
               Aufbewahrungsfrist hinaus. Log des Pods prüfen, vor allem am 1. des Monats um 03:00.
+        - alert: OpaaAuditPayloadDropped
+          # The counter exists only after its first drop, so a series younger than the window counts
+          # as well as an increase of an older one.
+          expr: >-
+            sum by (event_type) (increase(opaa_audit_payload_dropped_total{ {{- $scrape }}}[1h])) > 0
+            or
+            count by (event_type) (
+              opaa_audit_payload_dropped_total{ {{- $scrape }}}
+              unless opaa_audit_payload_dropped_total{ {{- $scrape }}} offset 1h
+            )
+          labels:
+            severity: warning
+          annotations:
+            summary: Revisionsprotokoll ohne nicht gelistete Angaben geschrieben
+            description: >-
+              Das Backend {{ $deployment }} hat in der letzten Stunde Einträge der Art
+              {{ "{{" }} $labels.event_type {{ "}}" }} ohne Angaben geschrieben, die der Ereigniskatalog nicht
+              nennt. Der Vorgang selbst ist durchgeführt. Ein Programmfehler: Log des Pods nach
+              „Dropped audit payload keys“ durchsuchen und den Fund melden.
         - alert: OpaaHeapUsageHigh
           # Per pod: the heap of one pod fills up regardless of the others.
           expr: >-

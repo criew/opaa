@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,13 +18,16 @@ import org.springframework.stereotype.Component;
  * Size and retention state of the audit log as gauges, read from the system catalog and the
  * retention settings row - never from a row of the log, which keeps this class outside the readers
  * of {@code AuditLogReaderStructureTest}. {@link #refresh} reads them on a schedule on every
- * instance (ADR-0053), so a scrape never waits for the database; a value it could not read is
- * {@code NaN}.
+ * instance (ADR-0053), so a scrape never waits for the database; a value it could not read, also
+ * within {@value #QUERY_TIMEOUT_SECONDS} seconds, is {@code NaN}.
  */
 @Component
 public class AuditStorageMetrics {
 
   private static final Logger log = LoggerFactory.getLogger(AuditStorageMetrics.class);
+
+  /** Bounds a read blocked by a lock, so it never holds the shared scheduler thread for long. */
+  static final int QUERY_TIMEOUT_SECONDS = 10;
 
   /** The monthly partitions of the log, by their name {@code audit_log_YYYY_MM}. */
   private static final String PARTITIONS =
@@ -54,7 +59,12 @@ public class AuditStorageMetrics {
   private final JdbcTemplate jdbc;
   private final List<Reading> readings = new ArrayList<>();
 
-  public AuditStorageMetrics(JdbcTemplate jdbc, MeterRegistry meterRegistry) {
+  @Autowired
+  public AuditStorageMetrics(DataSource dataSource, MeterRegistry meterRegistry) {
+    this(reads(dataSource), meterRegistry);
+  }
+
+  AuditStorageMetrics(JdbcTemplate jdbc, MeterRegistry meterRegistry) {
     this.jdbc = jdbc;
     gauge(
         meterRegistry,
@@ -97,6 +107,13 @@ public class AuditStorageMetrics {
     for (Reading reading : readings) {
       reading.value.set(read(reading));
     }
+  }
+
+  /** A template of its own: the query timeout would otherwise bound every other reader as well. */
+  static JdbcTemplate reads(DataSource dataSource) {
+    JdbcTemplate reads = new JdbcTemplate(dataSource);
+    reads.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+    return reads;
   }
 
   private void gauge(

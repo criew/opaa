@@ -13,6 +13,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,28 @@ class AuditStorageMetricsTest {
     metrics.refresh();
 
     assertThat(gauge("opaa.audit.retention.period")).isEqualTo(36.0);
+  }
+
+  @Test
+  void aScrapeAfterAReadShowsThatReadUntilTheNextOne() {
+    when(jdbc.queryForObject(AuditStorageMetrics.RETENTION_MONTHS_SQL, Double.class))
+        .thenReturn(36.0)
+        .thenReturn(37.0);
+    AuditStorageMetrics metrics = new AuditStorageMetrics(jdbc, registry);
+
+    metrics.refresh();
+
+    assertThat(gauge("opaa.audit.retention.period")).isEqualTo(36.0);
+    assertThat(gauge("opaa.audit.retention.period")).isEqualTo(36.0);
+    metrics.refresh();
+    assertThat(gauge("opaa.audit.retention.period")).isEqualTo(37.0);
+  }
+
+  @Test
+  void theReadsAreBoundedByAQueryTimeoutOfTheirOwn() {
+    JdbcTemplate reads = AuditStorageMetrics.reads(mock(DataSource.class));
+
+    assertThat(reads.getQueryTimeout()).isEqualTo(AuditStorageMetrics.QUERY_TIMEOUT_SECONDS);
   }
 
   @Test

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.ActorKind;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -29,6 +30,7 @@ class AuditLogServiceTest {
 
   private final AuditLogRepository repository = mock(AuditLogRepository.class);
   private final StaticListableBeanFactory beans = new StaticListableBeanFactory();
+  private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
   private final AuditLogService service = service(false);
 
   private AuditLogService service(boolean rejectUnlisted) {
@@ -37,7 +39,8 @@ class AuditLogServiceTest {
         () -> DATABASE_NOW,
         beans.getBeanProvider(PersonalAuditObjects.class),
         beans.getBeanProvider(AuditPayloadKeys.class),
-        new AuditPayloadProperties(rejectUnlisted));
+        new AuditPayloadProperties(rejectUnlisted),
+        registry);
   }
 
   @Test
@@ -100,6 +103,17 @@ class AuditLogServiceTest {
     assertThat(entry.getBefore()).isEqualTo("{\"role\":\"MEMBER\"}");
     assertThat(entry.getAfter()).isNull();
     verify(repository).save(entry);
+    assertThat(dropped(AuditEventType.SPACE_MEMBER_ROLE_CHANGED)).isEqualTo(1.0);
+  }
+
+  @Test
+  void anEntryWithOnlyListedKeysCountsNothing() {
+    when(repository.save(any(AuditLogEntry.class))).thenAnswer(call -> call.getArgument(0));
+
+    service.record(
+        payloadEntry(AuditEventType.SPACE_MEMBER_ROLE_CHANGED, "{\"role\":\"MEMBER\"}", null));
+
+    assertThat(registry.find(AuditLogService.DROPPED_METRIC).counter()).isNull();
   }
 
   @Test
@@ -127,6 +141,7 @@ class AuditLogServiceTest {
         .hasMessageContaining("SPACE_MEMBER_ROLE_CHANGED")
         .hasMessageNotContaining("Erika");
     verify(repository, never()).save(any());
+    assertThat(registry.find(AuditLogService.DROPPED_METRIC).counter()).isNull();
   }
 
   @Test
@@ -159,6 +174,14 @@ class AuditLogServiceTest {
   @Test
   void anEntryWithoutStampIsRefusedAtPersist() {
     assertThatThrownBy(() -> entry().onCreate()).isInstanceOf(IllegalStateException.class);
+  }
+
+  private double dropped(AuditEventType type) {
+    return registry
+        .get(AuditLogService.DROPPED_METRIC)
+        .tag("event_type", type.name())
+        .counter()
+        .count();
   }
 
   private static AuditLogEntry payloadEntry(AuditEventType type, String before, String after) {

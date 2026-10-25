@@ -275,3 +275,45 @@ tests:
       - eval_time: 80m
         alertname: OpaaAuditRetentionOverdue
         exp_alerts: []
+  # The first dropped key of a pod creates the counter at 1: an alert while the series is younger
+  # than the hour, then silence without a further drop.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_payload_dropped_total{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a",event_type="SPACE_CHANGED"}'
+        values: '_x29 1x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: OpaaAuditPayloadDropped
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: OpaaAuditPayloadDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              event_type: SPACE_CHANGED
+            exp_annotations:
+              summary: Revisionsprotokoll ohne nicht gelistete Angaben geschrieben
+              description: "Das Backend r-opaa-backend hat in der letzten Stunde Einträge der Art SPACE_CHANGED ohne Angaben geschrieben, die der Ereigniskatalog nicht nennt. Der Vorgang selbst ist durchgeführt. Ein Programmfehler: Log des Pods nach „Dropped audit payload keys“ durchsuchen und den Fund melden."
+      - eval_time: 100m
+        alertname: OpaaAuditPayloadDropped
+        exp_alerts: []
+  # A further drop on an older counter: an alert per event type, summed over the pods.
+  - interval: 1m
+    input_series:
+      - series: 'opaa_audit_payload_dropped_total{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-a",event_type="SPACE_CHANGED"}'
+        values: '1x89 2x60'
+      - series: 'opaa_audit_payload_dropped_total{namespace="opaa",service="r-opaa-backend",pod="r-opaa-backend-b",event_type="SPACE_CHANGED"}'
+        values: '3x150'
+    alert_rule_test:
+      - eval_time: 85m
+        alertname: OpaaAuditPayloadDropped
+        exp_alerts: []
+      - eval_time: 95m
+        alertname: OpaaAuditPayloadDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              event_type: SPACE_CHANGED
+            exp_annotations:
+              summary: Revisionsprotokoll ohne nicht gelistete Angaben geschrieben
+              description: "Das Backend r-opaa-backend hat in der letzten Stunde Einträge der Art SPACE_CHANGED ohne Angaben geschrieben, die der Ereigniskatalog nicht nennt. Der Vorgang selbst ist durchgeführt. Ein Programmfehler: Log des Pods nach „Dropped audit payload keys“ durchsuchen und den Fund melden."

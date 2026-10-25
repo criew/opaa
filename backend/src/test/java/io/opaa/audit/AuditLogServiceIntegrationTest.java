@@ -31,8 +31,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * contract's Transaktionen section, and #280/#297/#299 for what a mock misses).
  *
  * <p>Proves the transaction behaviour {@link AuditLogService} documents: {@link
- * AuditLogService#record} is not its own transaction, it joins whatever transaction the caller
- * already has open.
+ * AuditLogService#record} joins whatever transaction the caller already has open, and opens one of
+ * its own only when none is.
  */
 @OpaaIntegrationTest
 class AuditLogServiceIntegrationTest {
@@ -182,6 +182,39 @@ class AuditLogServiceIntegrationTest {
     AuditLogEntry saved = auditLogService.record(minimalEntry());
 
     assertThat(auditLogRepository.findById(saved.getEventId())).isPresent();
+  }
+
+  /**
+   * Without an ambient transaction, {@code recorded_at} still lies at or after the start of the
+   * transaction that inserts it, which the settled limit of the SIEM export relies on: a temporary
+   * trigger compares it with {@code now()} of the inserting transaction.
+   */
+  @Test
+  void withoutAnAmbientTransactionTheTimestampDoesNotPrecedeTheInsertingTransaction() {
+    String guard = "audit_recorded_at_guard_" + organizationId.toString().replace("-", "");
+    jdbcTemplate.execute(
+        "CREATE FUNCTION "
+            + guard
+            + "() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN"
+            + " IF NEW.organization_id = '"
+            + organizationId
+            + "' AND NEW.recorded_at < now() THEN"
+            + " RAISE EXCEPTION 'recorded_at % precedes its inserting transaction, started %',"
+            + " NEW.recorded_at, now(); END IF; RETURN NEW; END $$");
+    jdbcTemplate.execute(
+        "CREATE TRIGGER "
+            + guard
+            + " BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION "
+            + guard
+            + "()");
+    try {
+      AuditLogEntry saved = auditLogService.record(minimalEntry());
+
+      assertThat(auditLogRepository.findById(saved.getEventId())).isPresent();
+    } finally {
+      jdbcTemplate.execute("DROP TRIGGER " + guard + " ON audit_log");
+      jdbcTemplate.execute("DROP FUNCTION " + guard + "()");
+    }
   }
 
   private AuditLogEntry minimalEntry() {
