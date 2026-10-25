@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -101,8 +101,10 @@ Eine Ratsche (engl. ratchet) ist eine CI-Prüfung, die einen Zählwert kennt und
 lässt: Der Wert darf nicht steigen; die Obergrenze steht im Skript und wird nur per PR gesenkt. So
 muss ein Bestand nicht sofort abgebaut werden, aber er wächst garantiert nicht. Skripte liegen unter
 `.github/scripts` (Muster `check_action_pins.sh`, `check_code_comments.sh`). Ratschen:
-`Instant.now()` ohne `Clock` in Spring-Beans (`check_instant_now.sh`), `@Value` außerhalb von
-`*Properties` (`check_value_annotations.sh`). Keine Ratsche für das, was ArchUnit hart prüft.
+`Instant.now()` ohne `Clock` in Spring-Beans (`check_instant_now.sh`; als Bean zählt eine Klasse mit
+Stereotyp-Annotation und jede Klasse, die eine `@Configuration`-Datei mit `new` erzeugt, also auch
+die Rückgabe einer `@Bean`-Methode und die dort eingehängten Filter und Handler; Entities und Records
+zählen nicht), `@Value` außerhalb von `*Properties` (`check_value_annotations.sh`). Keine Ratsche für das, was ArchUnit hart prüft.
 
 ### 7. Prüfroutine
 
