@@ -187,9 +187,18 @@ function EventGroupView({ group, onShowAll }: { group: EventGroup; onShowAll: ()
   )
 }
 
-function AllEventsDialog({ group, onClose }: { group: EventGroup | null; onClose: () => void }) {
+function AllEventsDialog({
+  group,
+  open,
+  onClose,
+}: {
+  group: EventGroup | null
+  open: boolean
+  onClose: () => void
+}) {
+  // the group stays while the dialog fades out, so it never closes as an empty frame
   return (
-    <Dialog open={group !== null} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
       <DialogTitle>
         {group?.label} · {group?.events.length.toLocaleString('de-DE')}
       </DialogTitle>
@@ -241,6 +250,7 @@ function RunDetail({
   connectionAction?: ReactNode
 }) {
   const [allOf, setAllOf] = useState<EventGroup | null>(null)
+  const [allOpen, setAllOpen] = useState(false)
   const [hintsOpen, setHintsOpen] = useState(false)
   const [technicalOpen, setTechnicalOpen] = useState(false)
   const { errors, hints } = groupEvents(run.events)
@@ -269,7 +279,14 @@ function RunDetail({
         </Box>
       )}
       {errors.map((group) => (
-        <EventGroupView key={group.key} group={group} onShowAll={() => setAllOf(group)} />
+        <EventGroupView
+          key={group.key}
+          group={group}
+          onShowAll={() => {
+            setAllOf(group)
+            setAllOpen(true)
+          }}
+        />
       ))}
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mt: errors.length > 0 ? 1.5 : 0 }}>
         {hintCount > 0 && (
@@ -300,7 +317,14 @@ function RunDetail({
       {hintsOpen && (
         <Box sx={{ mt: 1.5 }}>
           {hints.map((group) => (
-            <EventGroupView key={group.key} group={group} onShowAll={() => setAllOf(group)} />
+            <EventGroupView
+              key={group.key}
+              group={group}
+              onShowAll={() => {
+                setAllOf(group)
+                setAllOpen(true)
+              }}
+            />
           ))}
         </Box>
       )}
@@ -313,7 +337,7 @@ function RunDetail({
           ))}
         </Box>
       )}
-      <AllEventsDialog group={allOf} onClose={() => setAllOf(null)} />
+      <AllEventsDialog group={allOf} open={allOpen} onClose={() => setAllOpen(false)} />
     </Box>
   )
 }

@@ -67,6 +67,9 @@ interface IndexingRunState {
   // Polling gave up after MAX_CONSECUTIVE_STATUS_FAILURES failed fetches. The last known status
   // is kept as is - a failed fetch says nothing about the run itself.
   statusUnknown: boolean
+  // The first status request of this page view has answered (or failed); until then the IDLE
+  // default above is only a placeholder.
+  statusLoaded?: boolean
 }
 
 export const IDLE_RUN_STATE: IndexingRunState = {
@@ -83,6 +86,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   unlistedScopeKeys: [],
   failureCategory: null,
   statusUnknown: false,
+  statusLoaded: false,
 }
 
 interface IndexingState {
@@ -253,6 +257,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           sourceType,
           unlistedScopeKeys: response.unlistedScopeKeys ?? [],
           failureCategory: response.failureCategory ?? null,
+          statusLoaded: true,
         },
         set,
         get,
@@ -261,6 +266,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
         startPolling(libraryId, set, get)
       }
     } catch {
+      setRun(libraryId, { statusLoaded: true }, set, get)
       // Leaves the page on its IDLE default for this library rather than surfacing an error for a
       // status check the caller did not explicitly request.
     }

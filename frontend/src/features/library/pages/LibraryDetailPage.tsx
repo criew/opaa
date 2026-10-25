@@ -176,6 +176,9 @@ export default function LibraryDetailPage() {
   }, [libraryId, connectorSourceType, loadStatus, stopPolling])
 
   const isRunning = run.status === 'RUNNING'
+  const statusLoaded = useIndexingStore((s) =>
+    libraryId ? Boolean(s.runsByLibrary[libraryId]?.statusLoaded) : false,
+  )
   // The newest run decides the state word, as the run list shows it (D3); managers load the list.
   const runHistory = useIndexingStore((s) =>
     libraryId ? s.runHistoryByLibrary[libraryId] : undefined,
@@ -502,6 +505,8 @@ export default function LibraryDetailPage() {
       >
         <LibrarySteckbrief
           state={state}
+          // until the first status answer a connector library has no state yet (no flicker, P39)
+          stateLoading={Boolean(connectorSourceType) && !statusLoaded}
           progress={isRunning ? runPercent(run) : null}
           statusUnknown={isRunning && run.statusUnknown}
           onRetryStatus={() => retryStatusPolling(libraryId)}

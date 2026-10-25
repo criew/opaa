@@ -8,6 +8,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
+import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import visuallyHidden from '@mui/utils/visuallyHidden'
@@ -41,6 +42,8 @@ export interface SteckbriefUpload {
 
 export interface LibrarySteckbriefProps {
   state: LibraryState
+  /** The first status answer is still out: a placeholder instead of a word that may flip. */
+  stateLoading?: boolean
   /** The run's progress while it runs, from the same counts as its run row. */
   progress: number | null
   /** Polling of the running run gave up; the run may go on. */
@@ -329,7 +332,11 @@ function SteckbriefBlocks({
     <>
       {!hideState && (
         <Block title="Zustand">
-          <StateLine state={state} targetSearch={targetSearch} linkable={props.causeReachable} />
+          {props.stateLoading ? (
+            <Skeleton variant="text" width={160} height={24} />
+          ) : (
+            <StateLine state={state} targetSearch={targetSearch} linkable={props.causeReachable} />
+          )}
           {props.statusUnknown && (
             <Line>
               Stand unbekannt ·{' '}
@@ -503,7 +510,11 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
               textOverflow: 'ellipsis',
             }}
           >
-            <StateDot tone={props.state.tone} label={props.state.word} />
+            {props.stateLoading ? (
+              <Skeleton variant="text" width={120} sx={{ display: 'inline-block' }} />
+            ) : (
+              <StateDot tone={props.state.tone} label={props.state.word} />
+            )}
           </Box>
           <ExpandMoreIcon
             aria-hidden
