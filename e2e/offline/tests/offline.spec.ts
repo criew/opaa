@@ -7,6 +7,7 @@ import {
   createLibraryWithDocument,
   createLibraryWithDocuments,
   expectCitedSource,
+  indexedDocumentStates,
   openNewLibraryWizard,
   startFreshChat,
 } from "../../fixtures/chat";
@@ -120,7 +121,7 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
     await expect(toggle).toHaveText(/1 Anhang/);
     await toggle.click();
     await expect(page.getByText("formatdokument-anhang.txt", { exact: true })).toBeVisible();
-    await expect(page.getByText("indiziert", { exact: true })).toHaveCount(4, { timeout: 30_000 });
+    await expect(indexedDocumentStates(page)).toHaveCount(4, { timeout: 30_000 });
   });
 
   test("ein Verbindungsversuch nach außen wird erkannt", async () => {
