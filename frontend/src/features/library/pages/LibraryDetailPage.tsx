@@ -422,17 +422,16 @@ export default function LibraryDetailPage() {
                 >
                   Jetzt indizieren
                 </Button>
-                <Tooltip title="Jetzt indizieren">
-                  <span>
+                <Tooltip title="Jetzt indizieren" describeChild>
+                  <Box component="span" sx={{ display: { sm: 'none' } }}>
                     <IconButton
                       aria-label="Jetzt indizieren"
                       onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
                       disabled={isRunning}
-                      sx={{ display: { sm: 'none' } }}
                     >
                       <PlayArrowIcon />
                     </IconButton>
-                  </span>
+                  </Box>
                 </Tooltip>
               </>
             )
