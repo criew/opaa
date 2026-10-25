@@ -289,6 +289,23 @@ class DriveFileStoreTest {
   }
 
   @Test
+  void aShortcutToAnotherDrivesItemIsNoDocumentAndNeverFetchedInAnyRun() {
+    server.file(DRIVE_0, "verknuepft", "Geteilt.txt", "akten", bytes("fremd")).remoteDriveId =
+        "b!fremd";
+
+    FileSyncHarness.Run full = harness.fullSync(all());
+    server.touch("verknuepft");
+    FileSyncHarness.Run changes = harness.changeRun(all());
+
+    assertThat(full.eventsOf(IndexingEventCategory.UNSUPPORTED_FORMAT))
+        .extracting(IndexingRunEvent::getMessage)
+        .containsExactly("1" + DriveFileStore.SHORTCUT_NOTE);
+    assertThat(changes.failure()).isNull();
+    assertThat(harness.storedPaths()).doesNotContain(path("verknuepft"));
+    assertThat(server.requests()).noneMatch(request -> request.contains("verknuepft/content"));
+  }
+
+  @Test
   void aFileFlaggedAsMalwareIsSkippedWithoutADownload() {
     server.file(DRIVE_0, "boese", "Boese.txt", "akten", bytes("x")).malware = true;
 
@@ -407,7 +424,8 @@ class DriveFileStoreTest {
             null,
             "\"c:{F2A3D9BA-ABCD-4F2E-9B1A-1234567890AB},123\"",
             null,
-            null);
+            null,
+            false);
     DriveItem moved =
         new DriveItem(
             "id",
@@ -422,7 +440,8 @@ class DriveFileStoreTest {
             null,
             item.cTag(),
             null,
-            null);
+            null,
+            false);
 
     assertThat(DriveFileStore.marker(item)).startsWith("c:").hasSizeLessThanOrEqualTo(64);
     assertThat(DriveFileStore.marker(moved)).isNotEqualTo(DriveFileStore.marker(item));

@@ -94,7 +94,8 @@ flowchart LR
 ### 3.4 Verbundenes Konto einer Person
 
 Ein Zugang mit der Besitzart „Person" lässt jede freigegebene Person ihr **eigenes Konto**
-verbinden, etwa Nextcloud mit einem App-Passwort, unter **Einstellungen → Verbundene Konten**.
+verbinden, etwa Nextcloud mit einem App-Passwort oder OneDrive mit einer Anmeldung bei Microsoft,
+unter **Einstellungen → Verbundene Konten**.
 Daraus speist sie eine [private Bibliothek](wissensbibliotheken/private-bibliotheken.md): Sie liest, was ihr Konto beim
 Anbieter sieht, und außer ihr liest sie niemand. Lehnt der Anbieter das Konto ab, gilt die
 Verbindung als abgelaufen, und die Person wird benachrichtigt.
@@ -157,7 +158,7 @@ Systemverwaltung selten etwas — meist aus einem dieser Anlässe:
 | Die Quelle zieht auf einen neuen Server um | die Server-Adresse ändern | Sie folgen der neuen Adresse. Ihre Zugangsdaten sind neu einzutragen, weil OPAA Geheimnisse nie an eine neue Adresse schickt |
 | Die App wurde beim Anbieter neu registriert | Client-ID und Secret ändern | Alle Verbindungen müssen neu hergestellt werden |
 | Eine Vorgabe ändert sich, etwa die Confluence-Edition nach einer Migration | die Vorgabe ändern | Sie laufen mit dem neuen Wert weiter |
-| Verdacht, dass Zugangsdaten in falsche Hände geraten sind | **„Alle Verbindungen trennen"** | Alle Zugangsdaten und Zustimmungen werden sofort verworfen, Zustimmungen auch beim Anbieter zurückgezogen. Der Rückzug beim Anbieter wartet verschlüsselt in der Datenbank, bis er gelaufen ist, und übersteht einen Neustart des Backends. Ein Schlüssel oder Secret beim Anbieter selbst widerruft die Verwaltung dort |
+| Verdacht, dass Zugangsdaten in falsche Hände geraten sind | **„Alle Verbindungen trennen"** | Alle Zugangsdaten und Zustimmungen werden sofort verworfen, Zustimmungen auch beim Anbieter zurückgezogen, wo er das anbietet. Der Rückzug beim Anbieter wartet verschlüsselt in der Datenbank, bis er gelaufen ist, und übersteht einen Neustart des Backends. Ein Schlüssel oder Secret beim Anbieter selbst widerruft die Verwaltung dort |
 | Die Quelle wird nicht mehr angebunden | den Zugang löschen | Ihr Bestand bleibt durchsuchbar, mit dem Hinweis „Zugang entfernt" |
 
 Bevor eine Änderung gespeichert wird, die Wissensbibliotheken betrifft, zeigt eine **Vorschau**, wie

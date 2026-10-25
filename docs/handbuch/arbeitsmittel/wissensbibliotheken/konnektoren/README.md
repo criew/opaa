@@ -107,7 +107,7 @@ wenn das Zertifikat auf einen anderen Namen ausgestellt ist als die Adresse der 
 
 ## 2. Dateiablagen
 
-S3, Google Drive, SharePoint, Nextcloud, Dropbox und die Windows-Dateifreigabe (SMB) gleichen ihre
+S3, Google Drive, SharePoint, OneDrive, Nextcloud, Dropbox und die Windows-Dateifreigabe (SMB) gleichen ihre
 Quelle auf demselben Weg ab. Die Eigenheiten jeder Ablage stehen in ihrem Kapitel.
 
 ### 2.1 Vollabgleich und Änderungslauf
@@ -117,7 +117,7 @@ Ordner — und vergleicht sie mit dem Bestand der Bibliothek. Vor jedem Download
 Änderungsmerkmal der Ablage (eine Prüfsumme, eine Version, Änderungszeit und Größe); stimmt es,
 wird die Datei nicht geladen.
 
-Google Drive, SharePoint und Dropbox führen zusätzlich ein **Änderungsprotokoll**. Zwischen zwei
+Google Drive, SharePoint, OneDrive und Dropbox führen zusätzlich ein **Änderungsprotokoll**. Zwischen zwei
 Vollabgleichen liest ein **Änderungslauf** nur dieses Protokoll ab dem zuletzt gemerkten Stand und
 lädt nur, was sich geändert hat. Der Vollabgleich merkt sich diesen Stand **vor** seiner
 Auflistung, damit nichts verloren geht, was sich währenddessen ändert. S3, Nextcloud und SMB kennen
@@ -128,6 +128,7 @@ nur den Vollabgleich; Nextcloud spart sich dabei unveränderte Ordner.
 | S3 | ja | nein; Ereignisse des Speichers lösen einen Ereignislauf aus |
 | Google Drive | ja | ja |
 | SharePoint | ja | ja |
+| OneDrive | ja | ja |
 | Nextcloud | ja, nur in geänderte Ordner | nein |
 | Dropbox | ja | ja |
 | Windows-Dateifreigabe (SMB) | ja | nein |
@@ -138,7 +139,7 @@ Jeder Lauf hat ein **Anfragebudget**. Reicht es nicht für die ganze Auflistung,
 geordnet als „unvollständig, wird fortgesetzt", und der nächste Lauf setzt fort. So wird auch eine
 Ablage, die größer ist als ein Lauf, nach einigen Läufen vollständig abgeglichen. Wo der nächste
 Lauf ansetzt, hängt von der Ablage ab: an der gemerkten Stelle der Auflistung (Nextcloud, SMB,
-SharePoint), bei den noch nicht gelisteten Ordnern (Dropbox) oder mit einer erneuten Auflistung
+SharePoint, OneDrive), bei den noch nicht gelisteten Ordnern (Dropbox) oder mit einer erneuten Auflistung
 aller Bereiche, die nur die schon geladenen Dateien überspringt (S3).
 
 ### 2.3 Wann eine gelöschte Datei als nachgewiesen gilt
@@ -153,7 +154,7 @@ Ablage ab:
 |---|---|---|
 | nur in einem Lauf | S3, Google Drive, Nextcloud | Ein Abgleich über mehrere Läufe entfernt nichts. Er merkt sich aber, was er gesehen hat; der nächste Lauf passt dann meist in ein Budget und entfernt, was fehlt |
 | Ort ist Identität | SMB, Dropbox | Der Pfad ist die Identität des Dokuments. Eine Datei, die an keinem gelisteten Pfad vorkam, gibt es nicht mehr; der Abgleich entfernt, was keiner seiner Läufe gesehen hat |
-| Änderungsprotokoll | SharePoint | Am Ende des Abgleichs liest OPAA das Änderungsprotokoll ab dem Stand, der zu seinem Beginn galt. Nur wenn es vollständig gelesen wurde, entfernt der Abgleich, was weder seine Läufe noch das Protokoll gesehen haben |
+| Änderungsprotokoll | SharePoint, OneDrive | Am Ende des Abgleichs liest OPAA das Änderungsprotokoll ab dem Stand, der zu seinem Beginn galt. Nur wenn es vollständig gelesen wurde, entfernt der Abgleich, was weder seine Läufe noch das Protokoll gesehen haben |
 
 Ein Lauf, der einen Bereich nicht lesen kann oder null Dateien sieht, entfernt dort nichts. Ein
 entzogenes Recht ist kein Löschbefund.
@@ -176,7 +177,7 @@ echten Größe gezählt.
 Wann eine abgelehnte Datei erneut geprüft wird:
 
 - Bei S3, Nextcloud und SMB prüft sie der nächste Vollabgleich.
-- Bei Google Drive, SharePoint und Dropbox prüft eine Datei, die das Änderungsprotokoll meldet,
+- Bei Google Drive, SharePoint, OneDrive und Dropbox prüft eine Datei, die das Änderungsprotokoll meldet,
   schon der nächste Änderungslauf. Eine Datei, die in der Auflistung eines Vollabgleichs abgelehnt
   wurde, meldet das Protokoll danach nicht wieder. Deshalb ist der nächste Lauf nach einem solchen
   Vollabgleich wieder ein Vollabgleich. Solange die Bibliothek voll bleibt, tritt so an die Stelle
@@ -197,6 +198,7 @@ Wann eine abgelehnte Datei erneut geprüft wird:
 | [S3-Objektspeicher](s3.md) | Objekte in Buckets, wahlweise auf Präfixe eingegrenzt | S3-API mit Signature v4 | möglich | Vollabgleich, Ereignislauf | Vollabgleich in einem Lauf; Ereignislauf nur auf Befund des Speichers | ja, aus den Schlüsselpräfixen |
 | [Google Drive](google-drive.md) | geteilte Ablagen, Ordner oder „Meine Ablage" über ein Dienstkonto | Google Drive API v3 | möglich | Vollabgleich, Änderungslauf | Vollabgleich in einem Lauf, Änderungslauf | ja |
 | [SharePoint](sharepoint.md) | Dokumentbibliotheken von SharePoint Online | Microsoft Graph v1.0 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
+| [OneDrive](onedrive.md) | das eigene OneDrive for Business einer Person, für ihre private Bibliothek | Microsoft Graph v1.0 | Pflicht, mit verbundenem Konto | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
 | [Nextcloud](nextcloud.md) | Ordner eines Nextcloud-Nutzers, samt Freigaben und Gruppenordnern | WebDAV | möglich | Vollabgleich | Vollabgleich in einem Lauf | ja |
 | [Dropbox](dropbox.md) | Ordner eines Dropbox-Kontos oder Team-Bereichs | Dropbox API v2 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
 | [Windows-Dateifreigabe (SMB)](smb.md) | Ordner einer Freigabe auf einem Windows- oder Samba-Server | SMB 2 und 3 | möglich | Vollabgleich | Vollabgleich, auch über mehrere Läufe | ja |

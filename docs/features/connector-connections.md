@@ -224,7 +224,7 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 |---|---|---|
 | **verboten** | kein entferntes Ziel | Upload (keine Quelle), Dateisystem (lokale Serverpfade, begrenzt durch die Pfad-Allowlist des Betriebs) |
 | **optional** | Profil oder freie Adresse | Webverzeichnis, RSS, Confluence, S3, Nextcloud, SMB (Server-Adresse `smb://…`), Google Drive |
-| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, Exchange |
+| **Pflicht** | nur mit Profil | Konnektoren mit OAuth oder Client-Credentials, etwa Dropbox, SharePoint, OneDrive, Exchange |
 
 Stand der Umsetzung (#2219): Webverzeichnis, RSS, Confluence, S3, Nextcloud und SMB melden
 „optional“, jeweils mit dem persönlichen Geheimnis der Bibliothek, Webverzeichnis und RSS zusätzlich
@@ -233,7 +233,9 @@ SMB-Profil hat eine `smb://`-Adresse. Die Zertifikatsprüfung lässt sich an kei
 (#2537). Einen eigenen Proxy trägt kein Profil (#2496): Alle Verbindungen gehen
 über den hausweiten Ausgangsproxy. Google Drive meldet „optional“ mit dem Dienstkonto-Schlüssel
 am Profil und dem imitierten Konto als Vorgabe nur des Profils. Nextcloud meldet sein persönliches
-Geheimnis seit #2167 für Bibliothek und Person. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne entferntes Ziel oder
+Geheimnis seit #2167 für Bibliothek und Person. OneDrive meldet seit #2467 „Pflicht“ mit OAuth nur für
+Personen ([ADR-0058](../decisions/0058-onedrive-konnektor.md)); es ist die erste Quellart ohne
+Bibliotheks-Verbindung. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne entferntes Ziel oder
 bei Uploads.
 
 **Google Drive** ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) meldet sich mit einem
@@ -275,7 +277,7 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 | Anmeldeart | Ablauf | Besitz | Typische Konnektoren |
 |---|---|---|---|
 | **Persönliches Geheimnis** | App-Passwort, persönliches Token oder Benutzername und Passwort | Person oder Bibliothek | Nextcloud, Confluence Data Center; Webverzeichnis und RSS (optional, nur Bibliothek) |
-| **OAuth** | Autorisierungscode mit PKCE und `state`; Zustimmung beim Anbieter, Rücksprung in OPAA; Refresh- und Zugriffstoken verschlüsselt | Person oder Bibliothek | Dropbox, Exchange (delegiert) |
+| **OAuth** | Autorisierungscode mit PKCE und `state`; Zustimmung beim Anbieter, Rücksprung in OPAA; Refresh- und Zugriffstoken verschlüsselt | Person oder Bibliothek | Dropbox (Bibliothek), OneDrive (Person, [ADR-0058](../decisions/0058-onedrive-konnektor.md)), Exchange (delegiert) |
 | **Client-Credentials** | Anwendung meldet sich mit Client-ID und Secret des Profils an, ohne Person | Bibliothek | Funktionspostfächer, Microsoft 365 ([#2153](https://github.com/criew/opaa/issues/2153)) |
 | **Dienstkonto-Schlüssel** | OPAA signiert mit dem Schlüssel eine JWT-Assertion (RFC 7523) und erhält ein kurzlebiges Zugriffstoken; kein Refresh-Token, kein Token-Speicher. Signiert wird im Kern, nie im Konnektor | Bibliothek | Google Drive ([ADR-0040](../decisions/0040-google-drive-konnektor.md)) |
 
@@ -409,7 +411,8 @@ Anlage-Assistent: Quellart „Dropbox“ → Zugang „Dropbox Bauamt“
 ## Verbundene Konten
 
 Eine Person verbindet ihr eigenes Konto mit einem Profil der Besitzart „Person“, sofern das Profil
-für sie freigegeben ist. Erster Nutzer ist **Nextcloud mit App-Passwort**.
+für sie freigegeben ist. Erster Nutzer ist **Nextcloud mit App-Passwort**, erster mit OAuth
+**OneDrive for Business** ([ADR-0058](../decisions/0058-onedrive-konnektor.md)).
 
 ```
 Verbundene Konten
@@ -428,7 +431,8 @@ Verbundene Konten
 - **Freiwillig.** Niemand muss ein Konto verbinden; ein Verzicht hat keine Nachteile. Nichts in OPAA
   setzt ein verbundenes Konto voraus oder fordert dazu auf, außer an dieser Seite.
 - Je Person und Profil höchstens ein verbundenes Konto.
-- **Trennen** löscht Token bzw. Geheimnis sofort und widerruft es, wo der Anbieter das anbietet. Private
+- **Trennen** löscht Token bzw. Geheimnis sofort und widerruft es, wo der Anbieter das anbietet
+  (nicht bei OneDrive: Entra kennt keinen Widerruf nach RFC 7009). Private
   Bibliotheken auf der Verbindung ruhen danach mit Hinweis.
 - Die Seite zeigt **alle bestehenden Verbindungen** der Person, auch zu Profilen, die für sie nicht
   mehr freigegeben sind; diese tragen den Hinweis „nicht mehr freigegeben“. Zum **neuen** Verbinden

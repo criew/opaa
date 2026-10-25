@@ -25,10 +25,13 @@ try {
   const results = await page.evaluate(async (list) => {
     // Plain SVG text instead of HTML in foreignObject, so the result also prints and shows in
     // viewers without HTML support; strict keeps scripts and links out of the labels.
+    // Arial and Liberation Sans share their metrics, so text measured on the runner fits the
+    // boxes wherever the page is read.
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
       theme: 'default',
+      themeVariables: { fontFamily: 'Arial, "Liberation Sans", Helvetica, sans-serif' },
       htmlLabels: false,
       flowchart: { htmlLabels: false },
       deterministicIds: true,

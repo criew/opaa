@@ -14,7 +14,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Registers the SharePoint connector with the fixed addresses of Microsoft Graph and Entra. */
+/**
+ * Registers the SharePoint and OneDrive connectors with the fixed addresses of Microsoft Graph and
+ * Entra; both share one {@link GraphConnections} and the bounds of {@link SharePointProperties}.
+ */
 @Configuration
 @EnableConfigurationProperties(SharePointProperties.class)
 public class SharePointConnectorConfiguration {
@@ -48,6 +51,39 @@ public class SharePointConnectorConfiguration {
       SupportedDocumentFormats supportedDocumentFormats,
       Clock clock) {
     return new SharePointIndexingExecutor(
+        sharePointGraphConnections,
+        documentIngestService,
+        documentRepository,
+        libraryFolderService,
+        scanJournal,
+        clock,
+        indexingRunTemplate,
+        supportedDocumentFormats);
+  }
+
+  @Bean
+  OneDriveSourceConnector oneDriveSourceConnector(
+      GraphConnections sharePointGraphConnections,
+      SourceSyncStateRepository sourceSyncStateRepository) {
+    return new OneDriveSourceConnector(
+        SharePointSourceConnector.API_BASE,
+        OneDriveSourceConnector.AUTHORIZATION_TEMPLATE,
+        SharePointSourceConnector.TOKEN_TEMPLATE,
+        sharePointGraphConnections,
+        sourceSyncStateRepository);
+  }
+
+  @Bean
+  OneDriveIndexingExecutor oneDriveIndexingExecutor(
+      GraphConnections sharePointGraphConnections,
+      DocumentIngestService documentIngestService,
+      DocumentRepository documentRepository,
+      LibraryFolderService libraryFolderService,
+      ScanJournal scanJournal,
+      IndexingRunTemplate indexingRunTemplate,
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
+    return new OneDriveIndexingExecutor(
         sharePointGraphConnections,
         documentIngestService,
         documentRepository,

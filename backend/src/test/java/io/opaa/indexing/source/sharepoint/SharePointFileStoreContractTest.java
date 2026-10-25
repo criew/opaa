@@ -36,16 +36,28 @@ class SharePointFileStoreContractTest extends FileStoreChangeFeedContract {
   /**
    * Two document libraries the way the file store contracts spell them: container {@code 0} is
    * {@code DRIVE_0}, container {@code 1} {@code DRIVE_1}; a name's folders are created on the way,
-   * and a file keeps its id when it is moved.
+   * and a file keeps its id when it is moved. Under {@link DriveRule#ONEDRIVE} the two drives are
+   * OneDrives for Business and the store is of that kind.
    */
   static final class SharePointFixture implements Fixture {
 
     private final FakeGraphServer server;
+    private final DriveRule rule;
     private final Map<String, String> ids = new HashMap<>();
 
     SharePointFixture(FakeGraphServer server) {
+      this(server, DriveRule.SHAREPOINT);
+    }
+
+    SharePointFixture(FakeGraphServer server, DriveRule rule) {
       this.server = server;
-      SharePointTestStores.twoLibraries(server);
+      this.rule = rule;
+      if (rule == DriveRule.ONEDRIVE) {
+        server.oneDrive(SharePointTestStores.DRIVE_0, "business", null, "Anna");
+        server.oneDrive(SharePointTestStores.DRIVE_1, "business", null, "Bernd");
+      } else {
+        SharePointTestStores.twoLibraries(server);
+      }
     }
 
     @Override
@@ -126,20 +138,20 @@ class SharePointFileStoreContractTest extends FileStoreChangeFeedContract {
 
     @Override
     public String filePath(int container, String name) {
-      return DriveRule.SHAREPOINT.filePath(
-          SharePointTestStores.drive(container), id(container, name));
+      return rule.filePath(SharePointTestStores.drive(container), id(container, name));
     }
 
     @Override
     public FileStore open(int pageSize) {
       return SharePointTestStores.store(
-          server, SharePointTestStores.bothLibraries(), pageSize, RequestBudget.unbounded());
+          server, rule, SharePointTestStores.bothLibraries(), pageSize, RequestBudget.unbounded());
     }
 
     @Override
     public FileStore open(int pageSize, int budget) {
       return SharePointTestStores.store(
           server,
+          rule,
           SharePointTestStores.bothLibraries(),
           pageSize,
           new RequestBudget(new SourceRequestMeter(), budget, null));

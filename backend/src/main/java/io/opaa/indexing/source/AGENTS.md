@@ -11,7 +11,7 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 
 ## Invarianten und Stolpersteine
 
-- **Selbstregistrierung:** Jede Quellart ist eine `SourceConnector`-Bean im eigenen Unterpaket, registriert durch
+- **Selbstregistrierung:** Jede Quellart ist eine `SourceConnector`-Bean im eigenen Unterpaket (nur ONEDRIVE teilt `sharepoint` mit SHAREPOINT und dessen `DriveFileStore`, [ADR-0058](../../../../../../../../docs/decisions/0058-onedrive-konnektor.md)), registriert durch
   dessen `@Configuration`, aufgelöst über `SourceConnectorRegistry`; der `SourceConnectorDescriptor` beantwortet,
   worauf die Verwaltung sonst verzweigen würde. Optionale Fähigkeiten sind weitere Schnittstellen derselben Bean
   (`SourceBrowser`, `OriginalAccess`, `PushIntakeHandler`); laufbasiert zusätzlich ein `SourceIndexingExecutor`.
@@ -40,7 +40,7 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über
   `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`.
-- **Tests nach [ADR-0057](../../../../../../../../docs/decisions/0057-teststufen-fuer-konnektoren.md):** Pflicht sind ein Testdoppel (`Fake<System>Server`, `FakeS3ObjectStore`) mit `RunSecretContract`, bei Dateiablagen `FileStoreContract`, und `<Typ>LogLeakTest`; dazu ein Container in `test` (`S3TestFixture`, `SambaFixture`) oder nächtlich unter `io.opaa.integration.<system>`. Das Epic eines neuen Konnektors nennt die Stufen.
+- **Tests nach [ADR-0057](../../../../../../../../docs/decisions/0057-teststufen-fuer-konnektoren.md):** Pflicht sind ein Testdoppel (`Fake<System>Server`, `FakeS3ObjectStore`) mit `RunSecretContract`, bei Dateiablagen `FileStoreContract`, und `<Typ>LogLeakTest`; dazu ein Container in `test` (`S3TestFixture`, `SambaFixture`) oder nächtlich unter `io.opaa.integration.<system>`. Das Epic eines neuen Konnektors nennt die Stufen. SharePoint und OneDrive teilen `FakeGraphServer`; `me/drive` nennt dort je Token das OneDrive einer Person.
 
 ## Maßgebliche ADRs
 
@@ -49,7 +49,7 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - [ADR-0038](../../../../../../../../docs/decisions/0038-steckbare-konnektoren.md): steckbare Konnektoren, Einstellungen, Geheimnisse
 - [ADR-0041](../../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 3a): Lauf-SPI ohne eigene Zugangsdaten
 - [ADR-0045](../../../../../../../../docs/decisions/0045-gemeinsamer-datei-abgleich.md): Datei-Abgleich, Laufrahmen, Nextcloud-Store
-- [ADR-0023](../../../../../../../../docs/decisions/0023-confluence-konnektor.md), [ADR-0027](../../../../../../../../docs/decisions/0027-s3-konnektor.md), [ADR-0040](../../../../../../../../docs/decisions/0040-google-drive-konnektor.md), [ADR-0046](../../../../../../../../docs/decisions/0046-smb-konnektor.md), [ADR-0047](../../../../../../../../docs/decisions/0047-sharepoint-konnektor.md): je ein Konnektor (Confluence, S3, Google Drive, SMB, SharePoint)
+- [ADR-0023](../../../../../../../../docs/decisions/0023-confluence-konnektor.md), [ADR-0027](../../../../../../../../docs/decisions/0027-s3-konnektor.md), [ADR-0040](../../../../../../../../docs/decisions/0040-google-drive-konnektor.md), [ADR-0046](../../../../../../../../docs/decisions/0046-smb-konnektor.md), [ADR-0047](../../../../../../../../docs/decisions/0047-sharepoint-konnektor.md), [ADR-0058](../../../../../../../../docs/decisions/0058-onedrive-konnektor.md): je ein Konnektor (Confluence, S3, Google Drive, SMB, SharePoint, OneDrive)
 
 ## Tests bei Änderungen
 

@@ -2,8 +2,9 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
 [ADR-0038](0038-steckbare-konnektoren.md) und [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md)
+· ergänzt durch [ADR-0058](0058-onedrive-konnektor.md)
 
 ## Kontext
 
@@ -28,8 +29,10 @@ Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; am Zugang b
 „Scopes“ leer, ein anderer Wert als `.default` scheitert bei Entra. Keine Anforderungslücke am Typ,
 weil die Registry sie nur für umschaltbare Profilpflicht zulässt. Empfohlen ist `Sites.Selected`
 (Anwendung, Rolle `read` je Site), Alternative `Sites.Read.All`; `Files.Read.All` nennt das Handbuch
-nicht, weil es OneDrives einschließt. OneDrive wird abgewiesen: Die Erreichbarkeitsprüfung liest
-`driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
+nicht, weil es OneDrives einschließt. Der Typ `SHAREPOINT` liest kein OneDrive: Die
+Erreichbarkeitsprüfung liest `driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
+Das OneDrive einer Person ist der eigene Typ `ONEDRIVE` im selben Paket, mit delegierter Anmeldung
+und demselben Store ([ADR-0058](0058-onedrive-konnektor.md)).
 
 ### 2. Quelle, Einstellungen, Auflistung
 
@@ -77,8 +80,9 @@ Ordnerfilter wird vor dem Lauf gelesen; fehlt ein Ordner, ist die Bibliothek nic
 `GET …/items/{id}/content` leitet auf einen vorab signierten Fremdhost weiter; nur dieser Aufruf
 nutzt `RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN` (`GraphClient#download`, nur
 https, Zielprüfung je Sprung), und die Ziel-URL erscheint nie in Log oder Meldung. Größe aus dem
-Listing als Vorfilter, Byte-Deckel beim Kopieren. OneNote-Pakete sind `NotADocument`, Einträge mit
-`malware`-Facette `Unavailable`. `429` und `503` mit `Retry-After` warten über
+Listing als Vorfilter, Byte-Deckel beim Kopieren. OneNote-Pakete und Verknüpfungen in ein anderes
+Laufwerk (`remoteItem`) sind `NotADocument` und werden nie geladen, Einträge mit `malware`-Facette
+`Unavailable`; die Ordnerauswahl bietet keine Verknüpfung an. `429` und `503` mit `Retry-After` warten über
 `RateLimitPolicy#waitFor` mit Deckel und höchstens `max-retries` mal, die Gesamtwartezeit je Lauf
 begrenzt `RequestBudget(maxThrottleWait)`. Download: `404` → `Gone`, `403` → `Unreadable`,
 `GraphException.Kind.TRANSIENT` mit einem 4xx außer `408`/`429` → `Unavailable` (dauerhaft, hält
@@ -114,4 +118,4 @@ Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Date
 
 - Lauf gegen einen echten Tenant für die unsicheren Annahmen.
 - Nationale Clouds (feste Adresse), Freigabe je Bibliothek über `Lists.SelectedOperations.Selected`,
-  delegierter Zugang für OneDrive, Rechte der Quelle.
+  Rechte der Quelle.

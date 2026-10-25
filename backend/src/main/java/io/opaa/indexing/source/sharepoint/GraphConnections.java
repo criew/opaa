@@ -20,7 +20,7 @@ import java.util.function.Supplier;
  * target of the token, certificate validation always on, every attempt and every throttle wait
  * charged to the {@link RequestBudget}.
  */
-@DataFlow("source-sharepoint")
+@DataFlow({"source-sharepoint", "source-onedrive"})
 final class GraphConnections {
 
   /** Builds the HTTP client of one connection. */

@@ -10,10 +10,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * One document library of a SharePoint library configuration: the drive, optionally narrowed to
- * folders with their subfolders. The container key is {@code drive:<driveId>}; the folders are a
- * filter within it, not containers of their own. {@code name} and {@code folderNames} are only
- * shown, never compared.
+ * One Graph drive of a library configuration - a SharePoint document library or a OneDrive -
+ * optionally narrowed to folders with their subfolders. The container key is {@code
+ * drive:<driveId>}; the folders are a filter within it, not containers of their own. {@code name}
+ * and {@code folderNames} are only shown, never compared.
  */
 record SharePointLibrary(
     String driveId, List<String> folders, Map<String, String> folderNames, String name) {
@@ -28,6 +28,19 @@ record SharePointLibrary(
    */
   static final Pattern ID = Pattern.compile("[A-Za-z0-9!_-]{1,200}");
 
+  /**
+   * How a refusal names the settings field and the drive: {@code ofDrive} follows „Die ID“, {@code
+   * perDrive} follows „höchstens 50 Ordner“, {@code eachDrive} opens the expected form.
+   */
+  record Terms(String field, String ofDrive, String perDrive, String eachDrive) {
+
+    static final Terms LIBRARIES =
+        new Terms(
+            "sourceSettings.libraries", "einer Bibliothek", "je Bibliothek", "Jede Bibliothek");
+    static final Terms DRIVE =
+        new Terms("sourceSettings.drive", "des OneDrive", "im OneDrive", "Das OneDrive");
+  }
+
   SharePointLibrary {
     folders = List.copyOf(folders);
     folderNames = Map.copyOf(folderNames);
@@ -39,39 +52,44 @@ record SharePointLibrary(
    * of its entries gives; an entry without a name leaves an earlier name standing.
    */
   static SharePointLibrary fromJson(Object value) {
+    return fromJson(value, Terms.LIBRARIES);
+  }
+
+  /** {@link #fromJson(Object)}, refusing in {@code terms}. */
+  static SharePointLibrary fromJson(Object value, Terms terms) {
     if (!(value instanceof Map<?, ?> map) || !(map.get("driveId") instanceof String driveId)) {
-      throw invalid();
+      throw invalid(terms);
     }
     for (Object key : map.keySet()) {
       if (!Set.of("driveId", "folders", "name").contains(key)) {
-        throw invalid();
+        throw invalid(terms);
       }
     }
-    requireId(driveId);
-    String name = shownName(map.get("name"));
+    requireId(driveId, terms);
+    String name = shownName(map.get("name"), terms);
     Object rawFolders = map.get("folders");
     List<String> folders = new ArrayList<>();
     Map<String, String> folderNames = new LinkedHashMap<>();
     if (rawFolders != null) {
       if (!(rawFolders instanceof List<?> list)) {
-        throw invalid();
+        throw invalid(terms);
       }
       if (list.size() > MAX_FOLDERS) {
         throw new ValidationException(
-            "sourceSettings.libraries: höchstens " + MAX_FOLDERS + " Ordner je Bibliothek");
+            terms.field() + ": höchstens " + MAX_FOLDERS + " Ordner " + terms.perDrive());
       }
       for (Object folder : list) {
         String id;
         String shown = null;
         if (folder instanceof String plain) {
-          id = requireId(plain);
+          id = requireId(plain, terms);
         } else if (folder instanceof Map<?, ?> named
             && named.get("id") instanceof String namedId
             && Set.of("id", "name").containsAll(named.keySet())) {
-          id = requireId(namedId);
-          shown = shownName(named.get("name"));
+          id = requireId(namedId, terms);
+          shown = shownName(named.get("name"), terms);
         } else {
-          throw invalid();
+          throw invalid(terms);
         }
         if (!folders.contains(id)) {
           folders.add(id);
@@ -114,10 +132,16 @@ record SharePointLibrary(
   }
 
   static String requireId(String id) {
+    return requireId(id, Terms.LIBRARIES);
+  }
+
+  static String requireId(String id, Terms terms) {
     if (id == null || !ID.matcher(id).matches()) {
       throw new ValidationException(
-          "sourceSettings.libraries: Die ID einer Bibliothek oder eines Ordners besteht aus"
-              + " Buchstaben, Ziffern, „!“, „-“ und „_“");
+          terms.field()
+              + ": Die ID "
+              + terms.ofDrive()
+              + " oder eines Ordners besteht aus Buchstaben, Ziffern, „!“, „-“ und „_“");
     }
     return id;
   }
@@ -130,19 +154,25 @@ record SharePointLibrary(
   }
 
   /** A shown name: a text up to {@value #MAX_NAME_LENGTH} characters; blank counts as none. */
-  private static String shownName(Object raw) {
+  private static String shownName(Object raw, Terms terms) {
     if (raw != null && (!(raw instanceof String text) || text.length() > MAX_NAME_LENGTH)) {
       throw new ValidationException(
-          "sourceSettings.libraries: Der Name einer Bibliothek oder eines Ordners ist ein Text bis "
+          terms.field()
+              + ": Der Name "
+              + terms.ofDrive()
+              + " oder eines Ordners ist ein Text bis "
               + MAX_NAME_LENGTH
               + " Zeichen");
     }
     return raw == null || ((String) raw).isBlank() ? null : (String) raw;
   }
 
-  private static ValidationException invalid() {
+  private static ValidationException invalid(Terms terms) {
     return new ValidationException(
-        "sourceSettings.libraries: Jede Bibliothek ist {\"driveId\": \"<ID>\"}, optional mit"
-            + " \"folders\": [\"<ID>\" oder {\"id\": \"<ID>\", \"name\": \"…\"}, …] und \"name\"");
+        terms.field()
+            + ": "
+            + terms.eachDrive()
+            + " ist {\"driveId\": \"<ID>\"}, optional mit \"folders\": [\"<ID>\" oder"
+            + " {\"id\": \"<ID>\", \"name\": \"…\"}, …] und \"name\"");
   }
 }
