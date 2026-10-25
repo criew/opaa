@@ -93,6 +93,8 @@ verweisen dürfen. Die Ordner folgen dem Baum.
   - [Authentifizierung](betrieb/authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
     Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
   - [Branding](betrieb/branding.md) — Produktname, Farben und Bilder der Installation
+  - [Einstellungen übertragen](betrieb/einstellungen-uebertragen.md) — Einstellungen der Verwaltung
+    exportieren und importieren, Nachweis jeder Änderung im Revisionsprotokoll
   - [Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md) — was OPAA aus dem Code nachweist:
     Faktenblätter, wo sie liegen, das Update-Paket eines Release, wie man sie erzeugt, die Auskunft
     über die Datenerhebung einer Installation, was bei jeder Änderung geprüft wird

@@ -200,6 +200,32 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Einstellungen ohne Geheimnisse als JSON. Der Import zeigt vorher die Unterschiede zur laufenden
   Installation, prüft jeden Wert und ist ein Revisionsereignis.
 
+### Export und Import (gebaut mit #3193)
+
+- **Ein Register:** Jede Einstellung gehört zu genau einem Abschnitt (`SettingsSection`), einer
+  Bean im Paket des Moduls, dem die Einstellung gehört. Ein Abschnitt liefert seine Werte ohne
+  Geheimnisse und wendet sie über denselben Schreibweg an wie die Oberfläche, mit dessen Prüfung,
+  Grenzen des Betriebs und Revisionsereignis. `SettingsSectionRegistryTest` lässt den Build
+  scheitern, wenn eine Tabelle `*_settings` keinem Abschnitt gehört und nicht begründet
+  ausgenommen ist.
+- **Format:** `{"format": "opaa-settings", "formatVersion": 1, "exportedAt": …, "sections": {…}}`,
+  je Abschnitt ein Objekt mit allen Schlüsseln, `null` für die Werkseinstellung. Die Version steigt,
+  wenn ein Schlüssel seine Bedeutung ändert oder entfällt, nicht für neue Abschnitte und Schlüssel.
+  Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLogRetention`,
+  `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
+  Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates`, `outboundProxy`,
+  `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
+- **Nicht übertragen** werden Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge und die
+  Freigabe der Konnektoren: Sie hängen an Geheimnissen dieser Installation.
+- **Import:** eine Transaktion; ein fehlender Abschnitt bleibt, ein fehlender Schlüssel behält
+  seinen Wert, ein unbekannter Abschnitt oder Schlüssel, eine andere Version oder ein Wert außerhalb
+  der Grenzen lehnt das ganze Dokument ab. Die Vorschau läuft denselben Weg und rollt zurück. Ein
+  Import, der etwas ändert, schreibt `SETTINGS_IMPORTED`; er und jede Einzeländerung tragen dieselbe
+  Vorgangskennung. Ein unveränderter Import schreibt nichts. Grenzen: 256 KiB je Datei, 30 Prüfungen
+  und Importe je Stunde für die Installation.
+- **Geheimnisse im Protokoll:** Ein Ereignis nennt ein Geheimnis nur als `<name>Change` mit `SET`,
+  `CHANGED` oder `REMOVED` (`AuditSecretChange`), nie den Wert.
+
 Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
 
 | Einstellung | Verwaltungsort |
