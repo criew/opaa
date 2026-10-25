@@ -159,11 +159,14 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   Dokumentbibliothek neu; geschieht das wieder, gilt sie in diesem Lauf als nicht listbar.
 - **Lange Downloads.** Eine Datei, die `download-timeout` dauerhaft reißt, hält Strom und Abgleich an;
   dann die Frist erhöhen.
+- **An einem echten Mandanten bestätigt:** Mit `Sites.Selected` und der Rolle `read` auf einer Site
+  arbeitet der Konnektor ohne mandantenweite Leserechte. Eine nicht freigegebene Site und die
+  Site-Suche weist Microsoft Graph ab; die Auswahl zeigt dann die Hinweise auf die Freigabe bzw. auf
+  `Sites.Read.All`. Auflistung, Vollabgleich, Änderungslauf und Originalabruf laufen durch.
 - **Noch nicht an einem echten Mandanten bestätigt** und auf die Dokumentation von Microsoft gestützt:
-  das Fehlerbild einer nicht freigegebenen Site unter `Sites.Selected` und die Site-Suche dort, die
-  Meldungen von Entra bei falschem Secret oder fehlender Zustimmung, die Ziele der
-  Download-Redirects, die Haltbarkeit der Fortsetzungspunkte, ob Graph die Dateien eines
-  gelöschten Ordners einzeln meldet, ausgecheckte Dateien, Entwürfe und Vertraulichkeitsbezeichnungen.
+  die Meldungen von Entra bei falschem Secret oder fehlender Zustimmung, die Haltbarkeit der
+  Fortsetzungspunkte, ob Graph die Dateien eines gelöschten Ordners einzeln meldet, ausgecheckte
+  Dateien, Entwürfe und Vertraulichkeitsbezeichnungen.
 
 ## 9. Protokoll und Fehlerbilder
 

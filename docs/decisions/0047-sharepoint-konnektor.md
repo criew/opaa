@@ -29,7 +29,9 @@ Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; am Zugang b
 „Scopes“ leer, ein anderer Wert als `.default` scheitert bei Entra. Keine Anforderungslücke am Typ,
 weil die Registry sie nur für umschaltbare Profilpflicht zulässt. Empfohlen ist `Sites.Selected`
 (Anwendung, Rolle `read` je Site), Alternative `Sites.Read.All`; `Files.Read.All` nennt das Handbuch
-nicht, weil es OneDrives einschließt. Der Typ `SHAREPOINT` liest kein OneDrive: Die
+nicht, weil es OneDrives einschließt. Unter `Sites.Selected` weist Graph eine nicht freigegebene Site
+und die Site-Suche mit `403 accessDenied` ab; die Auflistung nennt dann die fehlende Freigabe bzw.
+`Sites.Read.All`. Der Typ `SHAREPOINT` liest kein OneDrive: Die
 Erreichbarkeitsprüfung liest `driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
 Das OneDrive einer Person ist der eigene Typ `ONEDRIVE` im selben Paket, mit delegierter Anmeldung
 und demselben Store ([ADR-0058](0058-onedrive-konnektor.md)).
@@ -94,14 +96,17 @@ lesen darf, sehen alle Leser der Bibliothek. Grenzwerte in `SharePointProperties
 
 **Einfacher:** Kein Graph-SDK; Zielprüfung, Proxy, Byte-Grenze und Drosselung gelten zentral.
 
-**Schwieriger:** Alle Aussagen über Graph und Entra stammen aus API-Kenntnis; bis zu einem Lauf gegen
-einen echten Tenant ist `FakeGraphServer` die einzige Wahrheit. Ein herausgeschobener Ordner bleibt bis
-zum täglichen Vollabgleich durchsuchbar.
+**Schwieriger:** Der reguläre Build prüft nur gegen `FakeGraphServer`. Gegen einen echten Mandanten
+prüft `./gradlew sharePointIntegrationTest`, nur lokal beim Maintainer und nur lesend, ohne CI-Job und
+ohne Secret (README neben `SharePointTenantIntegrationTest`): Anmeldung, Auflistung, Verbindungstest,
+Abweisung außerhalb der Freigabe, Vollabgleich, Änderungslauf und Originalabruf mit einem Token, das
+nur `Sites.Selected` trägt. Ein herausgeschobener Ordner bleibt bis zum täglichen Vollabgleich
+durchsuchbar.
 
 **Restrisiken:** Überdauern `nextLink`-Token keine Läufe, beginnt ein Container neu; nach zwei
-Verfällen ist er im Lauf nicht listbar. Unsicher ohne Tenant: Stabilität von `driveId`/`itemId`,
-Fehlerbild von `Sites.Selected`, Entra-Fehlercodes, Zielhosts der Download-Weiterleitung,
-Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Dateiarten, Sonderfälle
+Verfällen ist er im Lauf nicht listbar. Nicht am Mandanten belegt: Stabilität von `driveId`/`itemId`
+über Zeit, Entra-Fehlercodes (falsches oder abgelaufenes Secret, fehlende Zustimmung), Haltbarkeit
+der Token, Delta-Semantik bei verschobenen Ordnern, `quickXorHash` für alle Dateiarten, Sonderfälle
 (ausgecheckte Fassungen, Vertraulichkeitsbezeichnungen, private Kanäle).
 
 ## Verworfene Alternativen
@@ -116,6 +121,5 @@ Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Date
 
 ## Offen
 
-- Lauf gegen einen echten Tenant für die unsicheren Annahmen.
 - Nationale Clouds (feste Adresse), Freigabe je Bibliothek über `Lists.SelectedOperations.Selected`,
   Rechte der Quelle.

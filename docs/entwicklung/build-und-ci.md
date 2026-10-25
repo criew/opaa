@@ -61,6 +61,12 @@ OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIn
                                   # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei
                                   # außerhalb des Repos, kein CI-Job und kein Secret. Einrichtung:
                                   # README.md im Testpaket indexing.source.googledrive (ADR-0040)
+OPAA_SP_IT_ENV_FILE=… ./gradlew sharePointIntegrationTest
+                                  # SharePoint-Konnektor gegen einen echten Microsoft-365-Mandanten
+                                  # mit Sites.Selected, nur lesend; läuft nur lokal beim Maintainer,
+                                  # Zugangsdatei außerhalb des Repos, kein CI-Job und kein Secret.
+                                  # Einrichtung: README.md im Testpaket indexing.source.sharepoint
+                                  # (ADR-0047)
 ```
 
 ## Helm-Chart

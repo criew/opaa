@@ -470,6 +470,7 @@ tasks.named<Test>("test") {
     filter {
         excludeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")
+        excludeTestsMatching("*.SharePointTenantIntegrationTest")
     }
     providers.gradleProperty("testShard").orNull?.let { shard ->
         filter {
@@ -585,6 +586,27 @@ tasks.register<Test>("googleDriveIntegrationTest") {
     }
     testLogging {
         events("passed", "skipped", "failed")
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+// ADR-0047: the SharePoint suite against a real Microsoft 365 tenant, read-only. It runs only on the
+// maintainer's machine with OPAA_SP_IT_ENV_FILE pointing at a credentials file outside the
+// repository and is skipped without it; no CI job, label or secret (README beside the test).
+tasks.register<Test>("sharePointIntegrationTest") {
+    description = "Read-only tests against a real Microsoft 365 tenant " +
+        "(SharePointTenantIntegrationTest). Needs OPAA_SP_IT_ENV_FILE; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("io.opaa.indexing.source.sharepoint.SharePointTenantIntegrationTest")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
