@@ -2,9 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt [ADR-0047](0047-sharepoint-konnektor.md),
-[ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md) und
-[ADR-0049](0049-private-bibliotheken-und-kontingente.md)
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0047](0047-sharepoint-konnektor.md)
 
 ## Kontext
 
@@ -14,9 +12,7 @@ gehört einer Person; lesen soll es nur sie selbst, mit ihrer eigenen Zustimmung
 Der OAuth-Baustein (ADR-0048) und verbundene Konten mit privaten Bibliotheken (ADR-0049) lagen vor,
 belegt nur mit einem Test-Konnektor. Graph-Zugriff, Delta-Store und `FakeGraphServer` aus ADR-0047
 passen auf jedes Laufwerk. Ein eigenes Paket hätte den Store kopieren müssen, weil Konnektoren
-einander nicht kennen; ein Store im Kern hätte Graph in den Kern gezogen. Maintainer-Entscheidungen
-vom 24.10.2026: zwei Typen in einem Paket (M1), vorerst nur OneDrive for Business (M2), kein
-Widerruf beim Anbieter (M3), keine Ablaufwarnung vorab (M4).
+einander nicht kennen; ein Store im Kern hätte Graph in den Kern gezogen.
 
 ## Entscheidung
 
@@ -35,9 +31,9 @@ Profilangabe `REQUIRED`, feste Adresse `https://graph.microsoft.com`, genau eine
 `SignIn.oauth(…, PERSON)`: Code mit PKCE an `login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize`
 und `…/token` (`Endpoint.WithTenant`), Scopes `Files.Read offline_access`, `prompt=select_account`,
 `CLIENT_SECRET_POST`, kein Aussteller (`issuer` leer). Der Zugang trägt Client-ID, Secret und
-Mandant; das Token liegt beim verbundenen Konto der Person (ADR-0049). Widerruf `Revocation.None`
-(M3): Entra bietet keinen Widerruf nach RFC 7009, „Trennen“ vergisst das Token nur. Eine
-Ablaufwarnung gibt es nicht (M4); ein abgelehnter Refresh lässt die Bibliothek ruhen wie jedes
+Mandant; das Token liegt beim verbundenen Konto der Person (ADR-0049). Widerruf `Revocation.None`:
+Entra bietet keinen Widerruf nach RFC 7009, „Trennen“ vergisst das Token nur. Eine
+Ablaufwarnung gibt es nicht; ein abgelehnter Refresh lässt die Bibliothek ruhen wie jedes
 verbundene Konto. Eine Bibliothek kann OneDrive nicht über ein Dienstkonto lesen.
 
 ### 3. Nur das eigene OneDrive for Business
@@ -48,7 +44,7 @@ im Lauf vor dem ersten Store-Zugriff (`DriveRun.Admission`), im Verbindungstest,
 und vor jedem Original. Sonst scheitert der Lauf ohne Abgleich, ohne Anfrage an das Laufwerk und mit
 eigener Meldung („gehört zu einem anderen OneDrive“, „kein OneDrive for Business“, „kein OneDrive
 bereitgestellt“); Auflistung und Test antworten mit derselben Meldung, ein Original gibt es nicht.
-Private Microsoft-Konten (`personal`) werden so abgewiesen (M2, Folge-Issue #3110). Reine
+Private Microsoft-Konten (`personal`) werden so abgewiesen (Folge-Issue #3110). Reine
 `me/drive/…`-Pfade würden nach einem Kontowechsel still ein anderes Laufwerk lesen.
 
 ### 4. Einstellungen, Auflistung, Identität
@@ -56,7 +52,9 @@ Private Microsoft-Konten (`personal`) werden so abgewiesen (M2, Folge-Issue #311
 `source_settings`: `drive` mit `{driveId, folders?, name?}` wie ein Eintrag von ADR-0047,
 Entscheidung 2, und `fullSyncIntervalDays`. Die Auflistung liefert ohne Parameter genau den Eintrag
 `drive:<id>` aus `me/drive`, mit `drive` und optional `folder` die Unterordner als `folder:<id>`.
-`file_path` ist `onedrive://<driveId>/<itemId>`. Merkmal, Ordnerkette, Delta, Strom, Download,
+`file_path` ist `onedrive://<driveId>/<itemId>`. Verknüpfungen auf Elemente anderer Laufwerke
+(`remoteItem`, etwa geteilte Ordner unter „Meine Dateien“) sind keine Dokumente und werden nie
+geladen; die Auswahl bietet sie nicht an. Merkmal, Ordnerkette, Delta, Strom, Download,
 Drosselung und Fehlerbilder folgen ADR-0047, Entscheidungen 3 bis 5.
 
 ### 5. Kontoanzeige ohne weitere Berechtigung
@@ -79,9 +77,12 @@ kostet eine Anfrage mehr (`me/drive`). Die Umgebungsvariablen der Grenzen heiße
 `OPAA_INDEXING_SHAREPOINT_*`.
 
 **Restrisiken:** Nach „Trennen“ bleibt der Refresh-Token bei Microsoft gültig, bis er abläuft oder
-dort widerrufen wird (M3). Unbelegt ohne Mandant: ob `Files.Read` ohne Administratorzustimmung
-reicht, welche Felder `me/drive` mit `Files.Read` liefert, wie lange Entra Refresh-Token hält, das
-Verhalten für Gastkonten.
+dort widerrufen wird. Der Zugang muss den eigenen Mandanten nennen und die App einmandantenfähig
+registriert sein: Mit `common` oder `organizations` ließe sich auch ein Arbeitskonto eines
+fremden Mandanten verbinden und dessen OneDrive einlesen; die Prüfung aus Entscheidung 3 hielte es
+nicht auf. Unbelegt ohne Mandant: ob `Files.Read` ohne Administratorzustimmung reicht, welche
+Felder `me/drive` mit `Files.Read` liefert, wie lange Entra Refresh-Token hält, das Verhalten für
+Gastkonten, in welcher Form `root/delta` Verknüpfungen mit `remoteItem` liefert.
 
 ## Verworfene Alternativen
 
