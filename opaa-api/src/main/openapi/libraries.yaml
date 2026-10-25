@@ -2316,6 +2316,14 @@ components:
             .../documents responses an attachment row always follows its (transitive) top-level
             parent within the same page, so a client can group attachments under their parent
             without a second request.
+        parentFileName:
+          type: string
+          nullable: true
+          description: >
+            The file name of the document parentDocumentId names, set for every attachment row of
+            GET .../documents and null for a top-level document. Lets a flat list (status,
+            missingMetadataField) name an attachment's parent although the parent is not on the
+            page.
 
     LibraryFolderListItem:
       type: object
