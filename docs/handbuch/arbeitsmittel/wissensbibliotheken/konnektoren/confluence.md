@@ -57,7 +57,10 @@ Die Zeile **„Verbindung"** fragt:
    Zugriffstoken", je mit dem Hinweis, wo man es beim Anbieter findet. Beim Bearbeiten bleibt ein
    leeres Feld beim hinterlegten Token; eine Adresse auf einem anderen Server verlangt ein neues.
 
-Beim Wechsel in die Zeile **„Umfang"** testet OPAA die Verbindung. Dort wählt man die Spaces: bis
+Beim Wechsel in die Zeile **„Umfang"** testet OPAA die Verbindung. Lehnt die Instanz die
+Zugangsdaten ab, scheitert der Test an der Stufe „Anmeldung"; antwortet sie mit `403`, sind sie
+angenommen, und er nennt die Stufe „Rechte". Scheitert er vorher an Zieladressprüfung, TLS, Netz,
+Edition oder einem Serverfehler, nennt er die Stufe „Adresse". Dort wählt man die Spaces: bis
 zu sieben direkt als Kästchen, sonst über „Spaces auswählen …" im Auswahldialog. Die Auswahl zeigt
 nur, was das Token lesen darf. „Alle Spaces" gibt es nicht, die Spaces werden immer einzeln
 gewählt.
