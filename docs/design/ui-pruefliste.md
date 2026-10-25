@@ -55,7 +55,8 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 9. **Stepper:** Schrittnamen aus einem Wort, keine Unterzeilen, keine Restzeit- oder
    Prozentangaben. – Sicht
 10. **Filter:** schlichte Chips, gewählt heißt gefüllt. Keine Leisten „Gespeicherte Filter“ oder
-    „Alle zurücksetzen“ ohne Bedarf. Filterzeile für Assets: [guidelines.md](./guidelines.md),
+    „Alle zurücksetzen“ ohne Bedarf. Ein Filter erscheint nur, wenn er kürzt
+    ([guidelines.md](./guidelines.md), 5.3). Filterzeile für Assets: [guidelines.md](./guidelines.md),
     5.11. – Sicht
 11. Hierarchie über Größe und Gewicht: [guidelines.md](./guidelines.md), 1 und 3. Messbar
     begrenzt durch `fontSizes` und `colors` (verschiedene Werte im Hauptbereich), im Vergleich
@@ -156,6 +157,8 @@ zwei Einträgen.
 50. **Dieselbe Information nie zweimal auf einer Fläche** – weder als Kopfzeile und Abschnitt noch
     als Banner, Zeile und Feldfehler noch als Überschrift, die den Reiter wiederholt. – Sicht
     (Konsistenz-Review, Kategorie A)
+51. **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle:** ✕ im Titel oder
+    „Abbrechen“, nicht beides ([guidelines.md](./guidelines.md), 5.6). – Sicht und Tastatur
 
 ## Pflege
 
