@@ -329,7 +329,8 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
 
   /**
    * The folders directly below {@code folder} of {@code drive}, or below its root for {@code null},
-   * keyed {@code folder:<id>}; both ids are checked by the caller.
+   * keyed {@code folder:<id>}; both ids are checked by the caller. A shortcut to a folder of
+   * another drive ({@code remoteItem}) is not offered.
    */
   static SourceListing folders(GraphClient graph, String drive, String folder)
       throws GraphException, InterruptedException {
@@ -340,9 +341,9 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     return collect(
         graph,
         children,
-        Map.of("$select", "id,name,folder"),
+        Map.of("$select", "id,name,folder,remoteItem"),
         item ->
-            item.get("folder") != null
+            item.get("folder") != null && item.get("remoteItem") == null
                 ? new SourceListing.Entry("folder:" + text(item, "id"), text(item, "name"))
                 : null,
         "Ordner",

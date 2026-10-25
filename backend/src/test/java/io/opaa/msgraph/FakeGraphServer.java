@@ -89,6 +89,12 @@ public final class FakeGraphServer implements AutoCloseable {
     /** Whether Microsoft flagged the item as malware ({@code malware} facet). */
     public boolean malware;
 
+    /**
+     * The drive a shortcut points into ({@code remoteItem} facet), {@code null} for a plain item. A
+     * shortcut still reports its target's {@code file} or {@code folder} facet.
+     */
+    public String remoteDriveId;
+
     /** The {@code file.mimeType} a file reports. */
     public String mimeType = "application/octet-stream";
 
@@ -839,6 +845,12 @@ public final class FakeGraphServer implements AutoCloseable {
     }
     if (item.malware) {
       json.put("malware", Map.of("description", "fake malware"));
+    }
+    if (item.remoteDriveId != null) {
+      json.put(
+          "remoteItem",
+          Map.of(
+              "id", "remote-" + item.id, "parentReference", Map.of("driveId", item.remoteDriveId)));
     }
     json.put("cTag", "c:" + digest(item.content) + item.name);
     json.put("lastModifiedDateTime", "2026-10-01T10:00:00Z");
