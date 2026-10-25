@@ -167,6 +167,7 @@ export default function ScopePicker({
           {current?.result && !current.result.complete && (
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
               Liste unvollständig.
+              {current.result.message && ` ${plainMessage(current.result.message)}`}
             </Typography>
           )}
           <Box role="group" aria-label={plural} aria-describedby={error ? errorId : undefined}>
@@ -199,6 +200,7 @@ export default function ScopePicker({
           {current?.result && !current.result.complete && (
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
               Liste unvollständig.
+              {current.result.message && ` ${plainMessage(current.result.message)}`}
             </Typography>
           )}
           {value.length > 0 && (

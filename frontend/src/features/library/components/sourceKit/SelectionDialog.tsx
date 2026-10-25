@@ -314,6 +314,7 @@ function SelectionDialogBody({
       {current?.result && !current.result.complete && (
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
           Liste unvollständig.
+          {current.result.message && ` ${plainMessage(current.result.message)}`}
         </Typography>
       )}
       {loading && showLoading && (
