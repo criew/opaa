@@ -110,9 +110,17 @@ export default function CreateSourceSetupStep({
     ) : undefined
   // without a way of connection or before the consent, the connection fields have nothing to sign in with
   const ready = connectionChoice !== null && !awaitsConsent
+  // the wizard has the type's descriptor: its address rule decides over the connector's own note
+  const described = descriptor
+    ? { ...setup, fixedAddress: Boolean(descriptor.serverAddress.fixed) }
+    : setup
   const shownSetup = ready
-    ? setup
-    : { ...setup, sections: setup.sections.filter((s) => s.id !== 'connection'), probe: undefined }
+    ? described
+    : {
+        ...described,
+        sections: setup.sections.filter((s) => s.id !== 'connection'),
+        probe: undefined,
+      }
   return (
     <Box>
       <SourceSetupRows

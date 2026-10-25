@@ -308,6 +308,20 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
       await user.click(screen.getByRole('radio', { name: /Microsoft 365 Schulamt · privat/ }))
     }
 
+    it('chooses none of several private ways by itself and asks for one on „Weiter“', async () => {
+      const user = userEvent.setup()
+      renderWizard()
+      await chooseOneDrive(user)
+
+      const group = await screen.findByRole('radiogroup', { name: 'Zugang' })
+      const radios = within(group).getAllByRole('radio')
+      expect(radios).toHaveLength(2)
+      for (const radio of radios) expect(radio).not.toBeChecked()
+      await next(user)
+      expect(await screen.findByText('Bitte wählen Sie einen Zugang.')).toBeVisible()
+      expect(tested).toEqual([])
+    }, 20000)
+
     it('takes the OneDrive of the new account and drops the folders of the old one', async () => {
       secondAnswer = () =>
         HttpResponse.json({

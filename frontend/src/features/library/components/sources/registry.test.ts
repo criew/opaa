@@ -81,7 +81,7 @@ describe('the source registry (ADR-0038)', () => {
   })
 
   it.each(registeredSourceTypes.filter((type) => type !== 'UPLOAD'))(
-    'reads the connection test of %s with an address stage exactly where the address is not fixed',
+    'notes a fixed address for %s exactly as the mock descriptors declare',
     (type) => {
       const descriptor = mockSourceTypes.find((d) => d.type === type)
       expect(Boolean(configurationOf(type).setup.fixedAddress)).toBe(

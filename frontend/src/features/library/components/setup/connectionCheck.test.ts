@@ -76,7 +76,7 @@ describe('outcomeOf (#3152)', () => {
       expect(outcome.unreadable).toEqual(['d-1'])
     })
 
-    it('names the sign-in when it was refused or could not be made', () => {
+    it('names the refused sign-in', () => {
       expect(
         stagesOf(
           outcomeOf(
@@ -87,9 +87,18 @@ describe('outcomeOf (#3152)', () => {
           ),
         ),
       ).toEqual(['Anmeldung abgelehnt', 'Rechte nicht geprüft'])
-      expect(
-        stagesOf(outcomeOf('t', { reachable: false, message: 'Kein Konto' }, true, true)),
-      ).toEqual(['Anmeldung nicht möglich', 'Rechte nicht geprüft'])
+    })
+
+    it.each([
+      ['Google Drive without a scope', 'Bitte mindestens einen Bereich wählen.'],
+      ['SharePoint without a document library', 'Bitte mindestens eine Dokumentbibliothek wählen.'],
+      ['OneDrive without an account', 'Bitte zuerst das Microsoft-Konto verbinden.'],
+    ])('blames no stage for a refusal before the sign-in: %s', (_case, message) => {
+      const outcome = outcomeOf('t', { reachable: false, message }, true, true)
+      expect(outcome.state).toBe('failed')
+      expect(outcome.message).toBe(message)
+      expect(outcome.stages.filter((stage) => stage.state === 'failed')).toEqual([])
+      expect(stagesOf(outcome)).toEqual(['Anmeldung nicht geprüft', 'Rechte nicht geprüft'])
     })
 
     it('reads a passed test without an address stage', () => {

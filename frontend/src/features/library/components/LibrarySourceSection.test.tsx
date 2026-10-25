@@ -1059,6 +1059,36 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
     expect(within(row).queryByText(/^Adresse/)).not.toBeInTheDocument()
   })
 
+  it.each([
+    [
+      'a refusal before the sign-in',
+      () =>
+        HttpResponse.json({
+          reachable: false,
+          message: 'Bitte mindestens eine Dokumentbibliothek wählen.',
+        }),
+    ],
+    ['a network error', () => HttpResponse.error()],
+  ])('blames no stage at the fixed Graph address for %s', async (_case, answer) => {
+    server.use(http.post('/api/v1/libraries/source-test', answer))
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
+    const row = screen.getByRole('region', { name: 'Verbindung' })
+    await user.click(within(row).getByRole('button', { name: 'Verbindung testen' }))
+
+    expect(await within(row).findByText('Anmeldung nicht geprüft')).toBeVisible()
+    expect(within(row).getByText('Rechte nicht geprüft')).toBeVisible()
+    expect(within(row).queryByText(/^Adresse|nicht möglich/)).not.toBeInTheDocument()
+    await user.click(within(row).getByRole('button', { name: 'Speichern' }))
+    expect(await screen.findByText('Verbindung: Test')).toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
+  })
+
   it('opens an inline row in place: „Abbrechen“ discards it, „Speichern“ saves it', async () => {
     const user = userEvent.setup()
     renderWithProviders(

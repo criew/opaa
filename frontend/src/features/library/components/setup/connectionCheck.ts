@@ -103,11 +103,13 @@ export function outcomeOf(
     ])
   }
   if (fixedAddress) {
+    // only an accepted sign-in tells the rights apart; a refusal before it (no scope chosen, no
+    // account) names no stage, the message says what is missing
     return outcome(
       'failed',
-      signsIn && result.credentialsVerified !== true
-        ? [{ label: 'Anmeldung', state: 'failed', text: 'nicht möglich' }, rightsOpen]
-        : [signIn, unreadable],
+      result.credentialsVerified === true
+        ? [signIn, unreadable]
+        : [signsIn ? { label: 'Anmeldung', ...NOT_CHECKED } : signIn, rightsOpen],
     )
   }
   return outcome('failed', [
@@ -127,12 +129,13 @@ function failedOutcome(
   return {
     token,
     state: 'failed',
+    // the test itself did not answer: no stage of a fixed address can be blamed
     stages: fixedAddress
       ? [
           signsIn
-            ? { label: 'Anmeldung', state: 'failed', text: 'nicht möglich' }
+            ? { label: 'Anmeldung', ...NOT_CHECKED }
             : { label: 'Anmeldung', state: 'skipped', text: 'entfällt' },
-          signsIn ? rightsOpen : { label: 'Rechte', state: 'failed', text: 'nicht lesbar' },
+          rightsOpen,
         ]
       : [
           { label: 'Adresse', state: 'failed', text: 'nicht erreichbar' },

@@ -68,7 +68,8 @@ export interface SourceSetupSpec<V> {
   signsIn?: boolean
   /**
    * Whether the type's address is fixed (SourceTypeDescriptor.serverAddress.fixed): the check
-   * then has no stage „Adresse“, since the person never entered one.
+   * then has no stage „Adresse“, since the person never entered one. The wizard takes it from the
+   * descriptor; the Reiter „Quelle“, which has none, from here.
    */
   fixedAddress?: boolean
 }
