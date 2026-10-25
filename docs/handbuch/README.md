@@ -69,7 +69,7 @@ verweisen dürfen. Die Ordner folgen dem Baum.
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](betrieb/kubernetes.md) — Betrieb mit dem Helm-Chart
     - [Installation](betrieb/installation.md) — Installationsmodus, Installations-Token, Schritte,
-      Antwortdatei
+      Einrichtungs-Assistent im Browser, Antwortdatei
     - [Images und Laufzeit](betrieb/images-und-laufzeit.md) — Images und Versionen, Laufzeitimages
       von Backend und Frontend, Speicher und Container-Grenzen, Readiness und Liveness, Graceful
       Shutdown

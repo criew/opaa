@@ -34,6 +34,7 @@ export const THEMES = [
   'auth',
   'link-targets',
   'settings',
+  'installation',
 ]
 
 /** Cross-cutting building blocks; may depend on nothing but itself. */
@@ -74,6 +75,7 @@ export const ALLOWED = {
   auth: ['user'],
   'link-targets': [],
   settings: [],
+  installation: [],
 }
 
 /** All files of a theme. */
