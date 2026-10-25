@@ -1319,6 +1319,51 @@ describe('LibraryDetailPage', () => {
     expect(runsAsked).toBe(false)
   })
 
+  // regression guard: below MANAGER the head read only COMPLETED/FAILED and showed a run with
+  // failed documents as „Aktuell“
+  it.each([
+    ['VIEWER', { status: 'COMPLETED', documentsFailed: 2 }, /^Teilweise fehlgeschlagen/],
+    ['EDITOR', { status: 'COMPLETED', incomplete: true }, /^Teilweise fehlgeschlagen/],
+    // a quota ends a run incomplete; the category itself is withheld below MANAGER
+    ['VIEWER', { status: 'COMPLETED', incomplete: true, failureCategory: null }, /^Teilweise/],
+    ['EDITOR', { status: 'FAILED', failureCategory: null }, /^Fehlgeschlagen/],
+    // should the category ever reach such a caller, the word follows it as for a manager
+    [
+      'EDITOR',
+      { status: 'FAILED', failureCategory: 'CREDENTIALS_REJECTED' },
+      /^Anmeldung abgelehnt/,
+    ],
+    [
+      'VIEWER',
+      { status: 'COMPLETED', incomplete: true, failureCategory: 'QUOTA_EXHAUSTED' },
+      /^Kontingent voll/,
+    ],
+  ] as const)(
+    'reads the word of the newest run for an %s from the polled status %j',
+    async (role, outcome, word) => {
+      const library = { ...viewerLibrary, myRole: role, sourceType: 'NEXTCLOUD' as const }
+      setLibraryState(
+        library,
+        detailsOf(library, { sourceType: 'NEXTCLOUD', sourceUrl: 'https://cloud.example' }),
+      )
+      mockGetIndexingStatus.mockResolvedValueOnce({
+        documentCount: 10,
+        totalDocuments: 12,
+        documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 10,
+        message: null,
+        timestamp: '2026-10-22T06:07:00Z',
+        ...outcome,
+      } as IndexingStatusResponse)
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const state = await screen.findByTestId('library-state')
+      await waitFor(() => expect(state).toHaveTextContent(word))
+    },
+  )
+
   it('names a locked source in the head and leads to the row „Verbindung“', async () => {
     setLibraryState(
       managerLibrary,

@@ -322,8 +322,8 @@ export default function LibraryDetailPage() {
     documentCount: library.documentCount ?? 0,
     erasureRequestedAt,
     succession: details?.succession ?? library.succession,
-    newestRun: runs[0] ?? null,
-    lastRun: mayReadRuns ? null : lastRunOf(run.status, run.timestamp, listEntry),
+    newestRun: mayReadRuns ? (runs[0] ?? null) : runFromStatus(run, listEntry?.lastIndexedAt),
+    lastRun: mayReadRuns || run.status !== 'IDLE' ? null : lastRunOf(listEntry),
     connectionProfileRemoved: details?.connectionProfileRemoved,
     runningPercent: running ? running.percent : null,
     runningUnknown: Boolean(connectorSourceType && isRunning && run.statusUnknown),
@@ -654,18 +654,52 @@ export default function LibraryDetailPage() {
 }
 
 /**
- * The newest run for a caller who may not read the history: the polled status says how it ended,
- * the list entry when it last completed.
+ * The newest run as the polled status tells it to a caller who may not read the history: outcome,
+ * failed documents and incompleteness, so the head says the same word as for a manager. The
+ * failure category is withheld below MANAGER, so a refused sign-in or a quota stays
+ * „Fehlgeschlagen“ resp. „Teilweise fehlgeschlagen“.
  */
+function runFromStatus(
+  status: {
+    status: string
+    documentCount: number
+    totalDocuments: number
+    documentsSkipped: number
+    documentsFailed: number
+    documentsIndexedTotal: number
+    failureCategory: string | null
+    incomplete: boolean
+    timestamp: string | null
+  },
+  lastIndexedAt: string | undefined,
+): IndexingRunResponse | null {
+  if (status.status !== 'COMPLETED' && status.status !== 'FAILED') return null
+  const at = (status.status === 'COMPLETED' ? lastIndexedAt : undefined) ?? status.timestamp ?? ''
+  return {
+    id: 'status',
+    status: status.status,
+    triggeredBy: 'MANUAL',
+    runMode: 'FULL',
+    documentCount: status.documentCount,
+    totalDocuments: status.totalDocuments,
+    documentsSkipped: status.documentsSkipped,
+    documentsFailed: status.documentsFailed,
+    documentsIndexedTotal: status.documentsIndexedTotal,
+    failureCategory: status.failureCategory,
+    incomplete: status.incomplete,
+    startedAt: at,
+    events: [],
+    eventsTruncatedCount: 0,
+  }
+}
+
+/** Before the status arrives, the list entry tells how the newest run ended. */
 function lastRunOf(
-  status: string,
-  timestamp: string | null | undefined,
   entry: { lastRunStatus?: string; lastIndexedAt?: string } | undefined,
 ): { status: 'COMPLETED' | 'FAILED'; at: string | null } | null {
-  const outcome = status === 'COMPLETED' || status === 'FAILED' ? status : entry?.lastRunStatus
-  if (outcome === 'COMPLETED') {
-    return { status: 'COMPLETED', at: entry?.lastIndexedAt ?? timestamp ?? null }
+  if (entry?.lastRunStatus === 'COMPLETED') {
+    return { status: 'COMPLETED', at: entry.lastIndexedAt ?? null }
   }
-  if (outcome === 'FAILED') return { status: 'FAILED', at: timestamp ?? null }
+  if (entry?.lastRunStatus === 'FAILED') return { status: 'FAILED', at: null }
   return null
 }

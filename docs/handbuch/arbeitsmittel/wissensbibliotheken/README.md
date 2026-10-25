@@ -118,7 +118,10 @@ voll". Wird die Quelle nicht mehr erreicht, nennt das Wort den Grund wie die Kac
 etwa „Gesperrt", „Zugang entfernt", „Verbindung getrennt" oder „Anmeldung abgelaufen". Wer verwaltet, kommt mit
 einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum neuesten Lauf im Reiter
 „Quelle". Wer nur liest oder bearbeitet, sieht das Wort ohne Verweis; den Verlauf der Läufe sehen
-erst Verwaltende, der Zustand kommt dann aus dem letzten Lauf.
+erst Verwaltende. Das Wort kommt dann aus dem Stand des letzten Laufs, mit fehlgeschlagenen
+Dokumenten und Unvollständigkeit; den Grund eines Abbruchs, etwa eine abgelehnte Anmeldung oder
+ein erschöpftes Kontingent, erfahren erst Verwaltende, darunter heißt er „Fehlgeschlagen“ bzw.
+„Teilweise fehlgeschlagen“.
 
 **Nach dem Anlegen** zeigt die Detailansicht unter den Reitern „Nächste Schritte": „Zugang prüfen",
 „In Space verwenden", bei Confluence und S3 „Live-Abgleich einrichten", „Feld anlegen", beim Upload
