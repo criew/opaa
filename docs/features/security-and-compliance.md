@@ -557,7 +557,8 @@ noch Nachweis und haben eine Löschfrist: Gelöscht wird am Ende des Kalenderjah
 der Nutzbarkeit folgt (Vorbild § 76 Abs. 4 BDSG), freigegebene und nie freigegebene gleich; für die
 Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antragszeitpunkt
 plus die 30 Tage (freigeben lässt er sich unverändert auch danach). Die
-Frist ist einstellbar (`opaa.audit.incident-scope-retention-years`, 1 bis 10 Jahre), damit eine
+Frist stellt die Systemverwaltung unter Administration → Datenschutz ein (1 bis 10 Jahre,
+Werkseinstellung ein Jahr, `INCIDENT_SCOPE_RETENTION_CHANGED` mit Vorher und Nachher), damit eine
 Dienstvereinbarung sie verlängern kann; gelöscht wird in einem täglichen Lauf ohne eigenen
 Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Bericht an die
 Personalvertretung bleibt erhalten:** Jeder Antrag wird bei seiner Stellung, jede Freigabe bei ihrer Erteilung und das Ende

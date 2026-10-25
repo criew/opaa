@@ -8,7 +8,6 @@ import io.opaa.api.types.ChatCleanupAfterLockStatus;
 import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
-import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
@@ -24,19 +23,24 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
+import io.opaa.test.SecondInstance;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The deletion of the chats of local accounts locked by the administration against the real Flyway
@@ -51,17 +55,21 @@ class LockedAccountChatCleanupIntegrationTest {
   @Autowired private LockedAccountChatCleanupService cleanupService;
   @Autowired private LockedAccountChatCleanupStore store;
   @Autowired private LockedAccountChatCleanupDates dates;
+  @Autowired private LockedAccountChatCleanupSettings settings;
+  @Autowired private LockedAccountChatCleanupSettingRepository settingRepository;
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private LocalCredentialsRepository credentialsRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private AuditEventRecorder audit;
   @Autowired private LocalUserService localUserService;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
   private UUID organizationId;
@@ -251,7 +259,7 @@ class LockedAccountChatCleanupIntegrationTest {
     assertThat(service(false).stateOf(organizationId, person).status())
         .isEqualTo(ChatCleanupAfterLockStatus.SWITCHED_OFF);
 
-    cleanupService.runOnce(now);
+    service(true).runOnce(now);
     assertThat(chatCountOf(person)).isOne();
     Instant switchedOn = store.countingSince().orElseThrow();
 
@@ -445,17 +453,42 @@ class LockedAccountChatCleanupIntegrationTest {
   }
 
   @Test
-  void aStartWithTheDeletionSwitchedOffStartsEveryPeriodAnewWithoutANightInBetween() {
+  void switchingOffInTheAdministrationStartsEveryPeriodAnewWithoutANightInBetween() {
     UUID person = localAccount();
     chat(space(person, true), person);
     lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
 
-    service(false).forgetCountingWhenSwitchedOff();
+    settings.change(actor(admin()), false, 365);
     assertThat(store.countingSince()).isEmpty();
+    settings.change(actor(admin()), null, null);
 
     cleanupService.runOnce(now);
     assertThat(chatCountOf(person)).isOne();
     assertThat(store.countingSince()).isPresent();
+  }
+
+  /**
+   * A second instance that still switches the retired deletion off pauses it, whichever instance
+   * runs; before, the start would have switched it on again without a word. Removing the variable
+   * ends the pause.
+   */
+  @Test
+  void aRetiredSwitchOffOnASecondInstancePausesTheDeletionUntilItIsGone() {
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED", "false"))) {
+      cleanupService.runOnce(now);
+      assertThat(chatCountOf(person)).isOne();
+    }
+
+    cleanupService.runOnce(now);
+    assertThat(chatCountOf(person)).isZero();
   }
 
   @Test
@@ -508,11 +541,11 @@ class LockedAccountChatCleanupIntegrationTest {
     return userRepository.save(user).getId();
   }
 
+  /** The service after the switch was set to {@code enabled} with the default period. */
   private LockedAccountChatCleanupService service(boolean enabled) {
-    LockedAccountChatCleanupProperties properties =
-        new LockedAccountChatCleanupProperties(enabled, 365);
-    return new LockedAccountChatCleanupService(
-        store, dates, properties, chatRepository, localUserService, audit, transactionManager);
+    new TransactionTemplate(transactionManager)
+        .executeWithoutResult(status -> settingRepository.upsert(enabled, 365));
+    return cleanupService;
   }
 
   private UUID localAccount() {

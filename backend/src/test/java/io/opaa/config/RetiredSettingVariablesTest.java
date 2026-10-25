@@ -84,4 +84,29 @@ class RetiredSettingVariablesTest {
             "OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS",
             "OPAA_PGVECTOR_DIMENSIONS");
   }
+
+  @Test
+  void aRetiredRetentionPeriodStillSetIsNamedWithThePrivacySettings() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS", "3");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS is no longer read; set the retention of"
+                + " the anlassbezogene Klaerungen under Administration > Datenschutz; it is never"
+                + " taken over, it only brakes: while it keeps longer than the factory default and"
+                + " no value is set there, the deletion it governs pauses, otherwise deletion"
+                + " follows the factory default once its period is reached");
+  }
+
+  @Test
+  void theFiveRetiredRetentionVariablesAreKnown() {
+    assertThat(RetiredSettingVariables.RETIRED_RETENTION)
+        .containsOnlyKeys(
+            "OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS",
+            "OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS",
+            "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED",
+            "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS",
+            "OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS");
+  }
 }

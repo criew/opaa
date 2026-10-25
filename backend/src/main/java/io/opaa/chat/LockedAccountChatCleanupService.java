@@ -13,6 +13,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
 import io.opaa.chat.LockedAccountChatCleanupStore.DueAccount;
+import io.opaa.instance.RetiredRetentionVariables.Pause;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,7 +45,7 @@ public class LockedAccountChatCleanupService {
 
   private final LockedAccountChatCleanupStore store;
   private final LockedAccountChatCleanupDates dates;
-  private final LockedAccountChatCleanupProperties properties;
+  private final LockedAccountChatCleanupSettings settings;
   private final ChatRepository chatRepository;
   private final LocalUserService localUsers;
   private final AuditEventRecorder audit;
@@ -53,38 +54,18 @@ public class LockedAccountChatCleanupService {
   public LockedAccountChatCleanupService(
       LockedAccountChatCleanupStore store,
       LockedAccountChatCleanupDates dates,
-      LockedAccountChatCleanupProperties properties,
+      LockedAccountChatCleanupSettings settings,
       ChatRepository chatRepository,
       LocalUserService localUsers,
       AuditEventRecorder audit,
       PlatformTransactionManager transactionManager) {
     this.store = store;
     this.dates = dates;
-    this.properties = properties;
+    this.settings = settings;
     this.chatRepository = chatRepository;
     this.localUsers = localUsers;
     this.audit = audit;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
-    if (properties.enabled()) {
-      log.info(
-          "Chats of local accounts locked by the administration are deleted {} days after the"
-              + " lock",
-          properties.deleteAfterDays());
-    } else {
-      log.info("Deletion of the chats of locked local accounts is switched off");
-    }
-  }
-
-  /**
-   * A start with the deletion switched off forgets the moment periods count from, so switching on
-   * again starts every period anew even if no nightly run fell into the time switched off. An
-   * idempotent conditional update; any instance may run it (ADR-0053). Called at start by {@link
-   * LockedAccountChatCleanupScheduler#onStart}.
-   */
-  public void forgetCountingWhenSwitchedOff() {
-    if (!properties.enabled()) {
-      store.stopCounting();
-    }
   }
 
   /** One run at {@code now}, the database clock; the caller holds no transaction. */
@@ -93,14 +74,21 @@ public class LockedAccountChatCleanupService {
   }
 
   Result runOnce(Instant now, int maxChats) {
-    if (!properties.enabled()) {
+    LockedAccountChatCleanupSettings.Setting setting = settings.setting();
+    LockedAccountChatCleanupPolicy policy = setting.policy();
+    List<Pause> pauses = settings.pauses(setting);
+    if (!pauses.isEmpty()) {
+      pauses.forEach(pause -> log.error(pause.error("Locked-account chat cleanup")));
+      return Result.NONE;
+    }
+    if (!policy.enabled()) {
       store.stopCounting();
       return Result.NONE;
     }
     if (store.startCountingIfStopped()) {
       return Result.NONE;
     }
-    Instant cutoff = now.minus(properties.period());
+    Instant cutoff = now.minus(policy.period());
     int deleted = 0;
     int accounts = 0;
     int failed = 0;
@@ -215,9 +203,10 @@ public class LockedAccountChatCleanupService {
   }
 
   private LockedAccountChatCleanup stateOf(LocalCredentials credentials) {
-    int days = properties.deleteAfterDays();
+    LockedAccountChatCleanupPolicy policy = settings.current();
+    int days = policy.deleteAfterDays();
     boolean held = store.isHeld(credentials.getUserId());
-    if (!properties.enabled()) {
+    if (!policy.enabled()) {
       return new LockedAccountChatCleanup(
           ChatCleanupAfterLockStatus.SWITCHED_OFF, held, days, null);
     }
@@ -228,7 +217,10 @@ public class LockedAccountChatCleanupService {
       return new LockedAccountChatCleanup(ChatCleanupAfterLockStatus.NOT_LOCKED, false, days, null);
     }
     return new LockedAccountChatCleanup(
-        ChatCleanupAfterLockStatus.SCHEDULED, false, days, dates.dueAt(credentials.getLockedAt()));
+        ChatCleanupAfterLockStatus.SCHEDULED,
+        false,
+        days,
+        dates.dueAt(credentials.getLockedAt(), policy));
   }
 
   private void recordDeletion(DueAccount account) {

@@ -8,6 +8,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SecondInstance;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -15,11 +16,14 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -43,6 +47,10 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ConfigurableEnvironment environment;
+  @Autowired private DataSource dataSource;
+  @Autowired private Clock clock;
+  @Autowired private AuditIncidentScopeRetentionSettings retentionSettings;
 
   private UUID organizationId;
   private UUID requester;
@@ -110,6 +118,49 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
     assertThat(grantRepository.existsById(grant)).isFalse();
   }
 
+  /**
+   * A second instance that still sets the retired period to more years pauses the deletion; the
+   * same period written differently does not, and a period the administration set ends the pause.
+   */
+  @Test
+  void aLongerRetiredPeriodOnASecondInstancePausesTheDeletionUntilAValueIsSet() {
+    UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
+    jdbcTemplate.update("DELETE FROM audit_incident_scope_retention_settings");
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS", "3"))) {
+      runWithoutOwnValueAt("2002-01-01T00:00:00Z");
+      assertThat(grantRepository.existsById(grant)).isTrue();
+
+      runAt("2002-01-01T00:00:00Z", 1);
+      assertThat(grantRepository.existsById(grant)).isFalse();
+    }
+  }
+
+  @Test
+  void theSameRetiredPeriodWrittenDifferentlyDoesNotPause() {
+    UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
+    try (SecondInstance second =
+        SecondInstance.startWith(
+            environment,
+            dataSource,
+            clock,
+            Map.of("opaa.audit.incident-scope-retention-years", "01"))) {
+      runWithoutOwnValueAt("2002-01-01T00:00:00Z");
+      assertThat(grantRepository.existsById(grant)).isFalse();
+    }
+  }
+
+  private void runWithoutOwnValueAt(String instant) {
+    jdbcTemplate.update("DELETE FROM audit_incident_scope_retention_settings");
+    new AuditIncidentScopeRetentionService(
+            grantRepository, retentionSettings, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
+        .runOnce();
+  }
+
   @Test
   void theCaseCountOutlivesTheDeletedGrant() {
     UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
@@ -129,11 +180,15 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
             "SECURITY_INCIDENT:EXPIRED:1");
   }
 
+  /** One run at {@code instant} with {@code retentionYears} set by the administration. */
   private void runAt(String instant, int retentionYears) {
+    jdbcTemplate.update(
+        "INSERT INTO audit_incident_scope_retention_settings (id, retention_years, updated_at)"
+            + " VALUES (1, ?, now()) ON CONFLICT (id) DO UPDATE SET"
+            + " retention_years = EXCLUDED.retention_years",
+        retentionYears);
     new AuditIncidentScopeRetentionService(
-            grantRepository,
-            new AuditIncidentScopeRetention(retentionYears),
-            Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
+            grantRepository, retentionSettings, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
         .runOnce();
   }
 

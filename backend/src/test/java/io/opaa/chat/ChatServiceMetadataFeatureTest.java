@@ -16,7 +16,7 @@ import io.opaa.metadata.LibraryMetadataFieldValueRepository;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.ChatMetrics;
-import io.opaa.space.ChatAutoCleanupProperties;
+import io.opaa.space.ChatAutoCleanupSettings;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -138,7 +138,7 @@ class ChatServiceMetadataFeatureTest {
         mock(ChatPersonalMarkRepository.class),
         mock(ChatFullTextSearch.class),
         mock(ChatMetrics.class),
-        mock(ChatAutoCleanupProperties.class),
+        mock(ChatAutoCleanupSettings.class),
         Clock.systemUTC());
   }
 }

@@ -13,4 +13,4 @@ public record SpaceDetail(
     Space space,
     SpaceRole userRole,
     boolean successionOpen,
-    ChatAutoCleanupProperties chatAutoCleanup) {}
+    ChatAutoCleanupPeriods chatAutoCleanup) {}

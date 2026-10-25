@@ -9,7 +9,8 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.ChatMetrics;
-import io.opaa.space.ChatAutoCleanupProperties;
+import io.opaa.space.ChatAutoCleanupPeriods;
+import io.opaa.space.ChatAutoCleanupSettings;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -83,7 +84,7 @@ public class ChatService {
   private final ChatPersonalMarkRepository chatPersonalMarkRepository;
   private final ChatFullTextSearch chatFullTextSearch;
   private final ChatMetrics chatMetrics;
-  private final ChatAutoCleanupProperties chatAutoCleanup;
+  private final ChatAutoCleanupSettings chatAutoCleanup;
   private final Clock clock;
 
   public ChatService(
@@ -102,7 +103,7 @@ public class ChatService {
       ChatPersonalMarkRepository chatPersonalMarkRepository,
       ChatFullTextSearch chatFullTextSearch,
       ChatMetrics chatMetrics,
-      ChatAutoCleanupProperties chatAutoCleanup,
+      ChatAutoCleanupSettings chatAutoCleanup,
       Clock clock) {
     this.chatAutoCleanup = chatAutoCleanup;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
@@ -194,6 +195,7 @@ public class ChatService {
   @Transactional(readOnly = true)
   public Page<ChatListEntry> listArchivedChats(UUID spaceId, UUID userId, Pageable pageable) {
     Space space = requireMembership(spaceId, userId);
+    ChatAutoCleanupPeriods periods = chatAutoCleanup.current();
     return chatPersonalMarkRepository
         .findArchivedInSpace(spaceId, userId, pageable)
         .map(
@@ -202,7 +204,7 @@ public class ChatService {
                     entry.chat(),
                     entry.pinnedAt(),
                     entry.archivedAt(),
-                    chatAutoCleanup.deletionDueAt(
+                    periods.deletionDueAt(
                         entry.archivedAt(), space.getChatAutoCleanupEnabledAt())));
   }
 
@@ -616,7 +618,10 @@ public class ChatService {
     return spaceRepository
         .findById(chat.getSpaceId())
         .map(
-            space -> chatAutoCleanup.deletionDueAt(archivedAt, space.getChatAutoCleanupEnabledAt()))
+            space ->
+                chatAutoCleanup
+                    .current()
+                    .deletionDueAt(archivedAt, space.getChatAutoCleanupEnabledAt()))
         .orElse(null);
   }
 

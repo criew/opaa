@@ -26,8 +26,13 @@ public class RetiredSettingVariables {
   private static final String CONNECTION_SETTINGS =
       "under Administration > Anbindungen > Einstellungen";
 
+  private static final String PRIVACY_SETTINGS = "under Administration > Datenschutz";
+
   /** Each retired variable with the setting it preset and the place that setting lives now. */
   static final Map<String, String> RETIRED = retired();
+
+  /** The retired retention periods, held on the page of the data protection settings. */
+  static final Map<String, String> RETIRED_RETENTION = retiredRetention();
 
   private final Environment environment;
 
@@ -49,7 +54,36 @@ public class RetiredSettingVariables {
             messages.add(variable + " is no longer read; set " + setting);
           }
         });
+    RETIRED_RETENTION.forEach(
+        (variable, setting) -> {
+          if (environment.containsProperty(variable)) {
+            messages.add(
+                variable
+                    + " is no longer read; set "
+                    + setting
+                    + " "
+                    + PRIVACY_SETTINGS
+                    + "; it is never taken over, it only brakes: while it keeps longer than the"
+                    + " factory default and no value is set there, the deletion it governs pauses,"
+                    + " otherwise deletion follows the factory default once its period is reached");
+          }
+        });
     return messages;
+  }
+
+  private static Map<String, String> retiredRetention() {
+    Map<String, String> retired = new LinkedHashMap<>();
+    retired.put("OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS", "the periods of the chat cleanup");
+    retired.put("OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS", "the periods of the chat cleanup");
+    retired.put(
+        "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED", "the deletion of the chats of locked accounts");
+    retired.put(
+        "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS",
+        "the deletion of the chats of locked accounts");
+    retired.put(
+        "OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS",
+        "the retention of the anlassbezogene Klaerungen");
+    return Collections.unmodifiableMap(retired);
   }
 
   private static Map<String, String> retired() {

@@ -188,7 +188,9 @@ anderes, trägt jeder Eintrag die Zeile in eckigen Klammern im Schlüssel:
     range: 1 bis 365 Tage
 ```
 
-`io.opaa.indexing.registry.FullSyncRhythmInstanceState` ist das Muster.
+`io.opaa.indexing.registry.FullSyncRhythmInstanceState` ist das Muster. Liegt die Einstellung in einer Tabelle mit
+höchstens einer Zeile (`chat_auto_cleanup_settings`), bleibt der Schlüssel ohne Klammern und steht in
+`DataCollectionDisclosureIntegrationTest.FACTORY_DEFAULT_KEYS`; Muster ist `io.opaa.space.ChatAutoCleanupInstanceState`.
 
 ## Auskunft über die Datenerhebung (Instanzwerte)
 
