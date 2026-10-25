@@ -10,7 +10,7 @@ import { alertTexts, clickButton, clickByName, fillByLabel, firstVisible, headin
  */
 
 export const description = 'Wissensbibliotheken: Quellassistent, Prüfschritt, Detail und Bearbeiten je Quellart'
-export const ALL_TYPES = ['filesystem', 'confluence', 'sharepoint', 'nextcloud', 'smb', 's3', 'gdrive', 'dropbox']
+export const ALL_TYPES = ['filesystem', 'confluence', 'sharepoint', 'onedrive', 'nextcloud', 'smb', 's3', 'gdrive', 'dropbox']
 export const DEFAULT_SCENARIOS = ['small', 'scale', 'empty', 'slow', 'failed', 'partial']
 export const QUICK_SCENARIOS = ['small', 'scale']
 export const AREAS = ['wizard', 'review', 'detail', 'edit']
@@ -19,6 +19,8 @@ const TYPES = {
   filesystem: { tile: /^Dateisystem/, library: 'library-filesystem-satzungen' },
   confluence: { tile: /^Confluence/, library: 'library-confluence-wiki' },
   sharepoint: { tile: /^SharePoint/, library: 'library-sharepoint-rathaus', profile: /Microsoft 365 Rheinfurt/ },
+  // only ever a private library: the one way is the profile's private radio
+  onedrive: { tile: /^OneDrive/, library: 'library-onedrive-vorlagen', profile: /Microsoft 365 Rheinfurt · privat/ },
   nextcloud: { tile: /^Nextcloud/, library: 'library-nextcloud-projekte', ownAddress: true },
   smb: { tile: /^Windows-Dateifreigabe|^SMB|Dateifreigabe/, library: 'library-smb-ablage' },
   s3: { tile: /^S3/, library: 'library-s3-protokolle' },
@@ -171,6 +173,10 @@ export async function fillSource(page, type, scenario) {
       break
     case 'dropbox':
       break
+    case 'onedrive':
+      await settle(page, 400)
+      await clickByName(page, ['radio'], /^Nur ausgewählte Ordner$/, { wait: 600 })
+      break
   }
   // listings, then a selection, then the explicit test
   if (type === 'confluence') {
@@ -195,7 +201,7 @@ export async function fillSource(page, type, scenario) {
       await sleep(300)
     }
   }
-  if (type === 'nextcloud' || type === 'smb' || type === 'dropbox') {
+  if (type === 'nextcloud' || type === 'smb' || type === 'dropbox' || type === 'onedrive') {
     for (let i = 0; i < many; i++) {
       if (!(await clickButton(page, /übernehmen$/, { wait: 60 }))) break
     }
