@@ -44,12 +44,17 @@ class SiemExportServiceIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private List<PersonalAuditObjects> personalObjects;
   @Autowired private AuditEventRecorder auditEventRecorder;
+  @Autowired private io.opaa.auth.UserService userService;
+  @Autowired private io.opaa.auth.AuthProperties authProperties;
   @Autowired private io.opaa.knowledge.KnowledgeLibraryRepository libraryRepository;
   @Autowired private io.opaa.space.SpaceRepository spaceRepository;
 
   private final List<UUID> createdLibraries = new ArrayList<>();
   private final List<UUID> createdSpaces = new ArrayList<>();
   private final List<UUID> writtenEvents = new ArrayList<>();
+
+  /** A month no partition of the test database holds, so no chain run competes for its seal. */
+  private static final java.sql.Date SEALED_MONTH = java.sql.Date.valueOf("2000-01-01");
 
   private UUID organizationId;
   private RecordingSender sender;
@@ -74,6 +79,7 @@ class SiemExportServiceIntegrationTest {
     createdLibraries.forEach(libraryRepository::deleteById);
     createdSpaces.forEach(spaceRepository::deleteById);
     jdbcTemplate.update("DELETE FROM siem_export_cursor");
+    jdbcTemplate.update("DELETE FROM audit_chain_seals WHERE month = ?", SEALED_MONTH);
     jdbcTemplate.update("UPDATE audit_retention_settings SET last_cutoff = ?", originalCutoff);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
@@ -136,6 +142,48 @@ class SiemExportServiceIntegrationTest {
         .doesNotContain("geheim");
   }
 
+  /** The one payload the export carries: the seal of a month, read from the seal table. */
+  @Test
+  void theMonthSealGoesOutWithItsHashAndNothingElseOfThePayload() {
+    SiemExportService service = service();
+    service.cursor();
+    AuditLogEntry sealEvent =
+        auditLogService.record(
+            AuditLogEntry.withoutSubject(
+                organizationId,
+                ActorKind.SYSTEM_PROCESS,
+                AuditChainService.ACTOR,
+                AuditEventType.AUDIT_LOG_MONTH_SEALED,
+                AuditObjectType.AUDIT_LOG,
+                "2000-01",
+                null,
+                null,
+                "{\"month\":\"2000-01\",\"entries\":2,\"headHash\":\"secret\","
+                    + "\"algorithm\":\"OPAA-AUDIT-CHAIN-1\"}",
+                AuditOutcome.SUCCESS,
+                null,
+                null));
+    String hash = "ab".repeat(32);
+    jdbcTemplate.update(
+        "INSERT INTO audit_chain_seals (month, entry_count, head_hash, algorithm, sealed_at,"
+            + " seal_event_id) VALUES (?, 2, decode(?, 'hex'), ?, clock_timestamp(), ?)",
+        SEALED_MONTH,
+        hash,
+        AuditChainHasher.ALGORITHM,
+        sealEvent.getEventId());
+
+    service.run();
+
+    assertThat(ours()).hasSize(1);
+    assertThat(ours().getFirst())
+        .contains("|AUDIT_LOG_MONTH_SEALED|")
+        .contains("cs3=2000-01")
+        .contains("cs5=2000-01")
+        .contains("cs6=" + hash)
+        .contains("cn2Label=sealedEntries cn2=2")
+        .doesNotContain("secret");
+  }
+
   @Test
   void theNameGoesOutOnlyWithItsOwnSwitch() {
     SiemExportService service = service(true);
@@ -170,10 +218,15 @@ class SiemExportServiceIntegrationTest {
         .doesNotContain("cs4=");
   }
 
-  /** The person of the dev profile, who owns the personal objects of the next test. */
+  /**
+   * The person of the dev profile, who owns the personal objects of the next test; provisioned here
+   * as the dev filter would, so the test does not depend on an earlier request of another class.
+   */
   private UUID person() {
-    return jdbcTemplate.queryForObject(
-        "SELECT id FROM users WHERE email = ?", UUID.class, "dev-user@opaa.local");
+    return userService
+        .findOrCreateUser(
+            "dev-user", authProperties.dev().issuer(), "dev-user@opaa.local", "Dev User")
+        .getId();
   }
 
   private UUID personalSpaceOf(UUID person) {

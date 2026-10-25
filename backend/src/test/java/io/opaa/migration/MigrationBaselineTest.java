@@ -109,6 +109,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             // identity
             "admin_review_reminders",
             "audit_actor_pseudonyms",
+            "audit_chain_checkpoints",
+            "audit_chain_seals",
             "audit_incident_scope_case_counts",
             "audit_incident_scope_grants",
             "audit_incident_scope_monthly_counts",

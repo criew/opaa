@@ -215,6 +215,9 @@ nonPersonalTables:
     [organization_id, case_month, purpose, transition, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
   siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, disabled_at, updated_at]
+  audit_chain_checkpoints:
+    [month, position, last_recorded_at, last_event_id, head_hash, algorithm, created_at]
+  audit_chain_seals: [month, entry_count, head_hash, algorithm, sealed_at, seal_event_id]
 settings:
   - key: opaa.siem-export.enabled
     source: PROPERTY
@@ -507,6 +510,10 @@ auditEvents:
     trigger: Die Protokollkonfiguration ändert sich, einschließlich der Aufbewahrungsfrist
     details: before und after der Frist
     payloadKeys: [retentionMonths]
+  - id: AUDIT_LOG_MONTH_SEALED
+    trigger: Die Prüfsummenkette eines abgeschlossenen Protokollmonats ist vollständig und wird versiegelt
+    details: Monat, Anzahl der verketteten Einträge, Kopf-Prüfsumme und Verfahren; ausgelöst vom Kettenlauf selbst, nicht von einer Person
+    payloadKeys: [algorithm, entries, headHash, month]
   - id: PERMISSION_HISTORY_RETENTION_CHANGED
     trigger: Die Aufbewahrungshöchstdauer der Rechtehistorie ändert sich
     details: before und after der Monatszahl
@@ -727,6 +734,7 @@ auditEvents:
       - eventId
       - eventType
       - from
+      - month
       - objectId
       - objectType
       - scopeId

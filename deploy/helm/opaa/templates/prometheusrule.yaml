@@ -119,6 +119,46 @@ spec:
               {{ "{{" }} $labels.event_type {{ "}}" }} ohne Angaben geschrieben, die der Ereigniskatalog nicht
               nennt. Der Vorgang selbst ist durchgeführt. Ein Programmfehler: Log des Pods nach
               „Dropped audit payload keys“ durchsuchen und den Fund melden.
+        - alert: OpaaAuditChainStalled
+          # The chain run every ten minutes keeps the value below an hour; six hours means the run
+          # stopped or an open transaction holds it back. Same database value on every pod, so the
+          # maximum is enough. NaN on every pod (x != x) or no series at all means the state cannot
+          # be read, and alerts too; silent while the backend is stopped on purpose (replicas 0).
+          expr: >-
+            max(opaa_audit_chain_lag_seconds{ {{- $scrape }}}) > 6 * 3600
+            or
+            max(opaa_audit_chain_lag_seconds{ {{- $scrape }}})
+            != max(opaa_audit_chain_lag_seconds{ {{- $scrape }}})
+            or
+            (max(absent(opaa_audit_chain_lag_seconds{ {{- $scrape }}}))
+            unless on() ({{ $replicas }} == 0))
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Prüfsummenkette des Revisionsprotokolls steht
+            description: >-
+              Der älteste Eintrag des Revisionsprotokolls von {{ $deployment }} ohne Kontrollpunkt
+              der Prüfsummenkette ist seit mehr als einer Stunde älter als sechs Stunden, oder das
+              Backend kann den Stand der Kette nicht lesen. Log der Pods, die Sperre audit-chain in
+              der Tabelle shedlock und offene Transaktionen in pg_stat_activity prüfen.
+        - alert: OpaaAuditChainUnsealed
+          # After a month ends, the run seals it within minutes; a month without a seal for hours
+          # means the chain does not reach its end, or the seal row of a month was removed while its
+          # AUDIT_LOG_MONTH_SEALED entry remains - which the run never seals again. Same database
+          # value on every pod; NaN is OpaaAuditChainStalled's case.
+          expr: >-
+            max(opaa_audit_chain_unsealed_months{ {{- $scrape }}}) > 0
+          for: 6h
+          labels:
+            severity: warning
+          annotations:
+            summary: Protokollmonat ohne Siegel
+            description: >-
+              Ein abgeschlossener Monat des Revisionsprotokolls von {{ $deployment }} trägt seit sechs
+              Stunden kein Siegel. Entweder kommt die Prüfsummenkette nicht bis zum Monatsende, oder
+              die Siegelzeile eines Monats wurde entfernt, dessen Eintrag AUDIT_LOG_MONTH_SEALED noch
+              steht. Log der Pods prüfen und den Vormonat über GET /api/v1/audit/chain/{Monat} prüfen.
         - alert: OpaaHeapUsageHigh
           # Per pod: the heap of one pod fills up regardless of the others.
           expr: >-

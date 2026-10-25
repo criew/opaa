@@ -206,6 +206,13 @@ public enum AuditEventType {
   /** Includes enabling the network address field, per the specification's explicit requirement. */
   AUDIT_LOG_CONFIGURATION_CHANGED,
   /**
+   * The checksum chain of one month of the audit log is complete and sealed: {@code object_id} is
+   * the month ({@code YYYY-MM}), {@code after} carries the number of chained entries, the head hash
+   * and the chain algorithm. Written by the chain run itself ({@code SYSTEM_PROCESS}), never by a
+   * person; the only entry whose payload the SIEM export sends out (ADR-0055, Entscheidung 2).
+   */
+  AUDIT_LOG_MONTH_SEALED,
+  /**
    * The maximum retention period of the rights history changed (ADR-0036, Entscheidung 8). Its own
    * type rather than a payload of {@link #AUDIT_LOG_CONFIGURATION_CHANGED}: the two periods bound
    * different holdings - the protocol says <em>that</em> something happened, the history says
