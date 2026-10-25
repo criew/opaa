@@ -245,6 +245,21 @@ class AuditIncidentScopeServiceIntegrationTest {
         "{\"ownerId\":\"" + otherRef + "\"}",
         "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
         at);
+    // an older entry names the owner by account id
+    AuditLogEntry formerly =
+        writeAuditEntry(
+            requester,
+            AuditEventType.ASSET_OWNER_CHANGED,
+            "{\"ownerId\":\"" + subject + "\"}",
+            "{\"ownerId\":\"" + otherRef + "\"}",
+            at);
+    // a group as owner never matches the person
+    writeAuditEntry(
+        requester,
+        AuditEventType.ASSET_OWNER_CHANGED,
+        "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
+        "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
+        at);
 
     AuditIncidentScopeGrant grant =
         incidentScopeService.request(
@@ -263,8 +278,43 @@ class AuditIncidentScopeServiceIntegrationTest {
 
     assertThat(result.getContent())
         .extracting(AuditLogEntry::getEventId)
-        .containsExactlyInAnyOrder(handedOn.getEventId(), received.getEventId());
-    assertThat(result.getTotalElements()).isEqualTo(2);
+        .containsExactlyInAnyOrder(
+            handedOn.getEventId(), received.getEventId(), formerly.getEventId());
+    assertThat(result.getTotalElements()).isEqualTo(3);
+  }
+
+  /**
+   * A person who never got a pseudonym is still found by her account id in older owner entries; the
+   * read mints no pseudonym.
+   */
+  @Test
+  void approvedGrantFindsOlderOwnerEntriesOfAPersonWithoutPseudonym() {
+    AuditLogEntry formerly =
+        writeAuditEntry(
+            requester,
+            AuditEventType.SPACE_DELETED,
+            "{\"name\":\"Team\",\"ownerId\":\"" + subject + "\"}",
+            null,
+            scopeStart.plus(1, ChronoUnit.DAYS));
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            "Verdacht auf unbefugten Zugriff auf Personalvorgaenge");
+    incidentScopeService.approve(organizationId, grant.getId(), approver);
+
+    Page<AuditLogEntry> result =
+        queryService.byIncidentScope(
+            organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50);
+
+    assertThat(result.getContent())
+        .extracting(AuditLogEntry::getEventId)
+        .containsExactly(formerly.getEventId());
+    assertThat(pseudonymService.findExistingPseudonym(subject)).isEmpty();
   }
 
   @Test

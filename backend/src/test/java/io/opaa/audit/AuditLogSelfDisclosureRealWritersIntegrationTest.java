@@ -2,6 +2,8 @@ package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AuthProperties;
@@ -19,6 +21,8 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.permission.PermissionTransferOrder;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMemberSeed;
@@ -58,6 +62,7 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
   @Autowired private GroupRepository groups;
   @Autowired private GroupMembershipHistoryRepository membershipHistory;
   @Autowired private SpaceService spaceService;
+  @Autowired private PermissionTransferService transferService;
   @Autowired private SpaceRepository spaces;
   @Autowired private SpaceMembershipHistoryRepository spaceMembershipHistory;
   @Autowired private AssetOwnershipHistoryRepository ownershipHistory;
@@ -79,6 +84,9 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
   @AfterEach
   void tearDown() {
     membershipHistory.deleteByUserIdIn(userIds);
+    jdbc.update(
+        "DELETE FROM permission_transfer_objects WHERE organization_id = ?", organizationId);
+    jdbc.update("DELETE FROM permission_transfers WHERE organization_id = ?", organizationId);
     spaces.deleteAll(
         spaces.findAll().stream()
             .filter(s -> s.getOrganizationId().equals(organizationId))
@@ -215,6 +223,55 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
         .isEqualTo(1);
     String all = ofPrevious + "\n" + ofNext;
     for (User user : List.of(admin, previous, next)) {
+      assertThat(all)
+          .doesNotContain(user.getId().toString())
+          .doesNotContain(pseudonyms.findExistingPseudonym(user.getId()).orElseThrow().toString());
+    }
+  }
+
+  /**
+   * The target of a transfer of rights is named only under {@code targetId}; she finds preview and
+   * execution in her self-disclosure as "Sie".
+   */
+  @Test
+  void theTargetOfATransferOfRightsFindsItInHerSelfDisclosure() throws Exception {
+    User admin = user(ADMIN_NAME, ADMIN_EMAIL);
+    User leaving = user("Berta Bisher", "berta.bisher@sd2990.example");
+    User successor = user("Carla Neu", "carla.neu@sd2990.example");
+    CurrentUser byAdmin =
+        CurrentUser.of(
+            admin.getId(), organizationId, SystemRole.SYSTEM_ADMIN, ADMIN_NAME, ADMIN_EMAIL);
+    spaceService.createSpace(
+        new SpaceCreation("Referat 3146", null, leaving.getId(), List.of(), null), byAdmin);
+    PermissionTransferOrder order =
+        new PermissionTransferOrder(
+            PermissionSubjectType.USER,
+            leaving.getId(),
+            PermissionSubjectType.USER,
+            successor.getId(),
+            java.util.EnumSet.of(PermissionTransferScope.OWNERSHIP));
+
+    transferService.transfer(
+        order, true, transferService.preview(order, byAdmin).previewId(), byAdmin);
+
+    List<Map<String, Object>> ofSuccessor = export(successor.getId());
+    assertThat(ofSuccessor)
+        .filteredOn(r -> r.get("eventType").toString().startsWith("PERMISSION_TRANSFER_"))
+        .extracting(r -> r.get("eventType"))
+        .containsExactlyInAnyOrder("PERMISSION_TRANSFER_PREVIEWED", "PERMISSION_TRANSFER_EXECUTED");
+    assertThat(ofSuccessor)
+        .filteredOn(r -> "PERMISSION_TRANSFER_EXECUTED".equals(r.get("eventType")))
+        .singleElement()
+        .satisfies(
+            r -> {
+              assertThat(r)
+                  .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
+                  .containsEntry("subject", SelfDisclosureLabels.OTHER_PERSON);
+              assertThat(JSON.readTree((String) r.get("after")).get("targetId").stringValue())
+                  .isEqualTo(SelfDisclosureLabels.YOU);
+            });
+    String all = ofSuccessor.toString();
+    for (User user : List.of(admin, leaving, successor)) {
       assertThat(all)
           .doesNotContain(user.getId().toString())
           .doesNotContain(pseudonyms.findExistingPseudonym(user.getId()).orElseThrow().toString());
