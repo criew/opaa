@@ -21,7 +21,7 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from compare import cell, font, shot_width  # noqa: E402  (shared drawing helpers of the variant comparison)
+from compare import cell, font, positive, shot_width  # noqa: E402  (shared drawing helpers of the variant comparison)
 
 from PIL import Image, ImageDraw  # noqa: E402
 
@@ -34,8 +34,8 @@ def parse_args():
     p.add_argument('--schemes', default='light')
     p.add_argument('--widths', default='1280,320')
     p.add_argument('--filter', default='', help='only screens whose key contains this text')
-    p.add_argument('--per-reviewer', type=int, default=2)
-    p.add_argument('--per-sheet', type=int, default=3, help='types per cross sheet; more go to further sheets')
+    p.add_argument('--per-reviewer', type=positive, default=2)
+    p.add_argument('--per-sheet', type=positive, default=3, help='types per cross sheet; more go to further sheets')
     p.add_argument('--max-height', type=int, default=2400)
     return p.parse_args()
 

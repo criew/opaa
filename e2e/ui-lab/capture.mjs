@@ -99,7 +99,7 @@ for (const scheme of ARGS.schemes) {
     for (let job = queue.shift(); job; job = queue.shift()) {
       // a new tab per job: its sessionStorage (scenario, pending consents) starts empty
       const page = await context.newPage()
-      pinVariant(page, ARGS.variant)
+      await pinVariant(page, ARGS.variant)
       page.on('pageerror', (e) => log('  PAGEERROR', e.message.slice(0, 160)))
       const key = { type: job.type, scenario: job.scenario, scheme }
       log(`== ${job.type} / ${job.scenario} / ${scheme}`)

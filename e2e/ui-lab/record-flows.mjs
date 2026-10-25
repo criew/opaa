@@ -213,7 +213,7 @@ for (const video of chosen) {
   })
   await context.addInitScript(overlayScript)
   const page = await context.newPage()
-  pinVariant(page, ARGS.variant)
+  await pinVariant(page, ARGS.variant)
   await page.setViewportSize({ width: ARGS.width, height: ARGS.height })
   const h = helpers(page, ARGS, log)
   try {

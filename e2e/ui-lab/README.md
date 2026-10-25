@@ -230,7 +230,8 @@ e2e/.venv/bin/python -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<di
 ```
 
 Erzeugt `<dir>/sheets/<screen>.png` (Varianten nebeneinander, beschriftet, jedes Bild in voller
-Auflösung; mehr als `--per-sheet` Varianten verteilen sich auf `<screen>__p<n>.png`), `<dir>/index.html` (alle Bögen nach Bereich) und
+Auflösung; mehr als `--per-sheet` Varianten verteilen sich auf `<screen>__p<n>.png`, die Variante
+`Ist` steht auf jedem Teilbogen vorn), `<dir>/index.html` (alle Bögen nach Bereich) und
 `<dir>/metrics-summary.md` (Kennzahlen je Variante, darunter Überschreitungen der Zählbudgets,
 Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; axe-Regeln).
 
@@ -280,11 +281,5 @@ und `shots/` als Dateien.
 - `__full` endet bei 16 000 px (300 Drive-Bereiche als Liste werden abgeschnitten).
 - Hilfetexte erkennt die Messung an `MuiFormHelperText-root`; ein Entwurf mit eigenem
   Hilfetext-Baustein muss diese Klasse tragen, sonst zählt das Budget ihn nicht.
-- `compare.py`, `contact_sheets.py` und `build_site.py` verkleinern die Bilder und speichern sie
-  als JPEG. Für die Abnahme gilt die volle Auflösung (Skill, Grundregel 9): Bögen und Sprites
-  dienen nur der Übersicht, beurteilt wird am PNG aus `capture.mjs`.
-- `capture.mjs` und `record-flows.mjs` setzen kein `?variant=`. Für den Messlauf einer Variante
-  aus `UI_LAB_VARIANTS` macht der Lab-Branch sie für diesen Lauf zur Vorgabe von
-  `currentUiLabVariant()`.
 - Die Kennzahl `uiWords` schließt Daten nur über ihre Struktur aus (Listen, Bäume, Tabellen,
   Beschreibungslisten, Auswahlkästchen). Deshalb gilt das Wortbudget nur in `small` und `default`.

@@ -21,12 +21,19 @@ from collections import Counter, defaultdict
 from PIL import Image, ImageDraw, ImageFont
 
 
+def positive(value):
+    n = int(value)
+    if n < 1:
+        raise argparse.ArgumentTypeError(f'needs a whole number of at least 1, got {value}')
+    return n
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument('--variants', required=True, help='A=dir,B=dir,...')
     p.add_argument('--out', required=True)
     p.add_argument('--full', action='store_true', help='use the __full screenshots')
-    p.add_argument('--per-sheet', type=int, default=3, help='variants per sheet; more go to further sheets')
+    p.add_argument('--per-sheet', type=positive, default=3, help='variants per sheet; more go to further sheets')
     p.add_argument('--max-height', type=int, default=2400)
     p.add_argument('--filter', default='', help='only screen keys containing this text')
     a = p.parse_args()
@@ -85,7 +92,12 @@ def cell(path, max_h, label_font, placeholder_width):
 
 
 def build_sheets(key, variants, args, out_dir):
-    chunks = [variants[i:i + args.per_sheet] for i in range(0, len(variants), args.per_sheet)]
+    """The variant named `ist` (the current state) opens every partial sheet, so each draft is
+    always shown next to it."""
+    ist = [v for v in variants if v[0].lower() == 'ist']
+    rest = [v for v in variants if v not in ist]
+    size = max(1, args.per_sheet - len(ist))
+    chunks = [ist + rest[i:i + size] for i in range(0, len(rest), size)] or [ist]
     return [build_sheet(key if len(chunks) == 1 else f'{key}__p{n}', key, chunk, args, out_dir)
             for n, chunk in enumerate(chunks, 1)]
 
