@@ -1,7 +1,7 @@
 package io.opaa.installation;
 
-import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import io.opaa.security.SecretValidator;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -19,7 +19,9 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param answerFile {@code OPAA_INSTALLATION_ANSWER_FILE}: path of the answer file a start applies
  *     while the installation is pending; empty means none
  */
-@InstallationWide
+@PerInstance(
+    "read only while the installation is pending; set, changed or removed after the completion it"
+        + " must not block a rolling update")
 @NoDataImpact("protection and input of the one-time installation")
 @ConfigurationProperties(prefix = "opaa.installation")
 public record InstallationProperties(String token, List<String> allowedCidrs, String answerFile) {

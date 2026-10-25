@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -5,9 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/test/server'
 import { mockSourceTypes } from '../mocks/libraryFixtures'
 import { useLibraryStore } from '../stores/libraryStore'
-import { answerConfirm, renderWithProviders } from '@/test/test-utils'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import type { ConnectionProfileOption, SourceConnectionTestRequest } from '@/shared/api/types'
 import LibrarySourceSection from './LibrarySourceSection'
+
+/** The section reads the anchor and the run to open from the address, so it needs a router. */
+function renderSection(ui: ReactElement) {
+  return renderWithProviders(ui, { withRouter: true })
+}
 
 /** The Zugang and its actions live in the row „Verbindung“, behind its „Ändern“. */
 async function openConnection(user: ReturnType<typeof userEvent.setup>) {
@@ -23,7 +29,7 @@ const library = {
 describe('LibrarySourceSection - Zugang (#2160)', () => {
   it('names the connection profile of the library', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...library, connectionProfile: { id: 'p-1', name: 'Zugang Wiki intern' } }}
@@ -32,14 +38,16 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
     )
 
     const row = screen.getByRole('region', { name: 'Verbindung' })
-    expect(row).toHaveTextContent('Zugang „Zugang Wiki intern“')
+    // a profile named „Zugang …“ is not prefixed with a second „Zugang“
+    expect(row).toHaveTextContent('Zugang Wiki intern')
+    expect(row).not.toHaveTextContent('Zugang „')
     await openConnection(user)
     expect(screen.getByTestId('connection-profile')).toHaveTextContent('Zugang: Zugang Wiki intern')
     expect(screen.queryByTestId('connection-profile-removed')).not.toBeInTheDocument()
   })
 
   it('tells every reader that the profile was removed, who acts and what happens to the content', () => {
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...library, connectionProfileRemoved: true }}
@@ -55,7 +63,7 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
   it('shows the lock notice of a locked source to every reader', () => {
     const notice =
       'Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Systemverwaltung hat den Zugang „Wiki“ gesperrt; der vorhandene Inhalt bleibt durchsuchbar. Zuständig ist die Systemverwaltung.'
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -67,6 +75,22 @@ describe('LibrarySourceSection - Zugang (#2160)', () => {
     )
 
     expect(screen.getByTestId('source-lock-notice')).toHaveTextContent(notice)
+  })
+})
+
+describe('LibrarySourceSection - Live-Abgleich', () => {
+  it('sets up the webhook only inside the row „Live-Abgleich“, once', async () => {
+    const user = userEvent.setup()
+    renderSection(<LibrarySourceSection libraryId="library-1" library={library} canEditSource />)
+
+    const row = screen.getByRole('region', { name: 'Live-Abgleich' })
+    expect(row).toHaveTextContent('aus')
+    expect(screen.queryByTestId('confluence-webhook-section')).not.toBeInTheDocument()
+
+    await user.click(within(row).getByRole('button', { name: /^Einrichten/ }))
+
+    expect(screen.getAllByTestId('confluence-webhook-section')).toHaveLength(1)
+    expect(within(row).getByTestId('confluence-webhook-section')).toBeInTheDocument()
   })
 })
 
@@ -124,7 +148,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
   it('offers „Zugang zuordnen“ on the lock of the own address and connects through the chosen profile', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -175,7 +199,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
   }, 15000)
 
   it('offers no assignment on a lock that a profile does not lift, nor to a reader', () => {
-    const { unmount } = renderWithProviders(
+    const { unmount } = renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -194,7 +218,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     ).not.toBeInTheDocument()
     unmount()
 
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfileRemoved: true }}
@@ -208,7 +232,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
   it('offers the way back after „Zugang entfernt“', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfileRemoved: true }}
@@ -223,7 +247,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
   it('switches a connected library to another profile, never offering the current one', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfile: internRef }}
@@ -267,7 +291,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       }),
     )
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfile: internRef }}
@@ -310,7 +334,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfile: internRef }}
@@ -345,7 +369,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
       }),
     )
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfile: internRef }}
@@ -371,7 +395,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     // a locked profile is no option anymore - the library still names it and its lock
     server.use(http.get('/api/v1/connection-profiles', () => HttpResponse.json([neu])))
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -393,7 +417,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
   it('releases a library from its profile after a confirmation', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfile: internRef }}
@@ -424,7 +448,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         ),
       ),
     )
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfile: { id: intern.id, name: intern.name } }}
@@ -439,9 +463,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
   it('offers „Zugang zuordnen“ for a library with its own address of a type with profiles', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <LibrarySourceSection libraryId="library-1" library={nextcloud} canEditSource />,
-    )
+    renderSection(<LibrarySourceSection libraryId="library-1" library={nextcloud} canEditSource />)
 
     await openConnection(user)
     expect(await screen.findByRole('button', { name: 'Zugang zuordnen' })).toBeVisible()
@@ -452,7 +474,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
   it('names a deleted profile as removed, not as an own address', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{ ...nextcloud, connectionProfileRemoved: true }}
@@ -491,7 +513,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     it('offers no release from the profile', async () => {
       const user = userEvent.setup()
-      renderWithProviders(
+      renderSection(
         <LibrarySourceSection
           libraryId="library-1"
           library={{ ...nextcloud, connectionProfile: internRef, privateLibrary: true }}
@@ -506,7 +528,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     it('offers only the profiles the owner has a connected account on, one for persons only included', async () => {
       const user = userEvent.setup()
-      renderWithProviders(
+      renderSection(
         <LibrarySourceSection
           libraryId="library-1"
           library={{ ...nextcloud, connectionProfile: internRef, privateLibrary: true }}
@@ -527,7 +549,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     it('never offers a profile for persons only to a shared library', async () => {
       const user = userEvent.setup()
-      renderWithProviders(
+      renderSection(
         <LibrarySourceSection
           libraryId="library-1"
           library={{ ...nextcloud, connectionProfile: internRef }}
@@ -550,13 +572,12 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         http.get('/api/v1/connection-profiles', () => HttpResponse.json([intern, neu, third])),
       )
       const user = userEvent.setup()
-      renderWithProviders(
+      renderSection(
         <LibrarySourceSection
           libraryId="library-1"
           library={{ ...nextcloud, connectionProfile: internRef, privateLibrary: true }}
           canEditSource
         />,
-        { withRouter: true },
       )
 
       await openConnection(user)
@@ -574,7 +595,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
   it('says when a switch to another server discarded the secret and offers to edit the source', async () => {
     connect.mockResolvedValue({ sourceCredentialsSet: false })
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -606,7 +627,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
     'Abgelaufen: Die Anmeldung beim Zugang „Zugang Nextcloud intern“ ist abgelaufen oder wurde vom Anbieter abgelehnt. Die Besitzerin verbindet ihr Konto auf der Seite „Verbundene Konten“ neu.'
 
   it('leads the owner of a private library to "Verbundene Konten" when her account expired', () => {
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -621,7 +642,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     const notice = screen.getByTestId('source-lock-notice')
@@ -640,7 +660,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         return HttpResponse.json({})
       }),
     )
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -655,7 +675,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     const notice = screen.getByTestId('source-lock-notice')
@@ -667,7 +686,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
   })
 
   it('asks the owner to connect anew where her account reaches another target', () => {
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -682,7 +701,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     const notice = screen.getByTestId('source-lock-notice')
@@ -691,7 +709,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
 
   it('opens the source configuration where the managers enter the secret anew', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -705,7 +723,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     const notice = screen.getByTestId('source-lock-notice')
@@ -717,7 +734,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
   })
 
   it('offers a reader no action, whatever the block names', () => {
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -731,7 +748,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         }}
         canEditSource={false}
       />,
-      { withRouter: true },
     )
 
     const notice = screen.getByTestId('source-lock-notice')
@@ -742,7 +758,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
   it.each(['OWNER_DEACTIVATED', 'DORMANT'] as const)(
     'shows the notice of %s without an action',
     (reason) => {
-      renderWithProviders(
+      renderSection(
         <LibrarySourceSection
           libraryId="library-1"
           library={{
@@ -751,7 +767,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
           }}
           canEditSource
         />,
-        { withRouter: true },
       )
 
       const notice = screen.getByTestId('source-lock-notice')
@@ -761,7 +776,7 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
   )
 
   it('names the day the content of a deactivated owner is erased from', () => {
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-1"
         library={{
@@ -776,7 +791,6 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     expect(screen.getByTestId('source-lock-notice')).toHaveTextContent('Löschung ab dem 03.11.2026')
@@ -813,25 +827,30 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
     }
   }
 
+  /** The run's row: a button with its word, the detail opens below it. */
+  async function openRun(user: ReturnType<typeof userEvent.setup>, word: string) {
+    const row = screen.getByRole('button', { name: new RegExp(`^${word}`) })
+    await user.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    return document.getElementById(row.getAttribute('aria-controls') ?? '')!
+  }
+
   it('marks a run of a private library ended at a quota and names both quotas and their remedies', async () => {
-    server.use(
-      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
-        HttpResponse.json({ runs: [quotaRun('run-quota')] }),
-      ),
-    )
-    renderWithProviders(
-      <LibrarySourceSection libraryId="library-quota" library={nextcloud} canEditSource />,
-      { withRouter: true },
+    const user = userEvent.setup()
+    renderSection(
+      <LibrarySourceSection
+        libraryId="library-quota"
+        library={nextcloud}
+        canEditSource
+        runs={[quotaRun('run-quota')]}
+      />,
     )
 
-    const chip = await screen.findByTestId('run-incomplete-run-quota')
-    // the run may have hit the library's own quota first: the chip names neither
-    expect(chip).toHaveTextContent(
-      'unvollständig: Speicherkontingent erschöpft, Dateien übersprungen',
-    )
-    expect(chip).not.toHaveTextContent('privaten')
-    expect(chip).not.toHaveTextContent('wird fortgesetzt')
-    const remedy = screen.getByTestId('run-quota-remedy-run-quota')
+    // the run may have hit the library's own quota first: the row names neither
+    const row = screen.getByRole('button', { name: /^Kontingent voll/ })
+    expect(row).toHaveTextContent('12 Dokumente · unvollständig')
+    expect(row).not.toHaveTextContent('privaten')
+    const remedy = await openRun(user, 'Kontingent voll')
     expect(remedy).toHaveTextContent(/Kontingent dieser Bibliothek/)
     expect(remedy).toHaveTextContent(/gemeinsame Kontingent Ihrer privaten Bibliotheken/)
     expect(remedy).toHaveTextContent(/Laufprotokoll/)
@@ -841,51 +860,77 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
   })
 
   it('names the quota of a shared library without speaking of private libraries', async () => {
-    server.use(
-      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
-        HttpResponse.json({ runs: [quotaRun('run-library-quota')] }),
-      ),
-    )
-    renderWithProviders(
+    const user = userEvent.setup()
+    renderSection(
       <LibrarySourceSection
         libraryId="library-shared-quota"
         library={{ ...nextcloud, privateLibrary: false }}
         canEditSource
+        runs={[quotaRun('run-library-quota')]}
       />,
-      { withRouter: true },
     )
 
-    const chip = await screen.findByTestId('run-incomplete-run-library-quota')
-    expect(chip).toHaveTextContent(
-      'unvollständig: Speicherkontingent erschöpft, Dateien übersprungen',
-    )
-    expect(chip).not.toHaveTextContent('privaten')
-    const remedy = screen.getByTestId('run-quota-remedy-run-library-quota')
+    const row = screen.getByRole('button', { name: /^Kontingent voll/ })
+    expect(row).toHaveTextContent('12 Dokumente · unvollständig')
+    expect(row).not.toHaveTextContent('privaten')
+    const remedy = await openRun(user, 'Kontingent voll')
     expect(remedy).toHaveTextContent(/in der Quelle löschen/)
     expect(remedy).not.toHaveTextContent(/private Bibliothek/)
   })
 
-  it('keeps the budget wording for any other incomplete run', async () => {
-    server.use(
-      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
-        HttpResponse.json({
-          runs: [{ ...quotaRun('run-budget'), failureCategory: null }],
-        }),
-      ),
-    )
-    renderWithProviders(
-      <LibrarySourceSection libraryId="library-budget" library={nextcloud} canEditSource />,
-      { withRouter: true },
+  it('names any other incomplete run without the quota wording', async () => {
+    const user = userEvent.setup()
+    renderSection(
+      <LibrarySourceSection
+        libraryId="library-budget"
+        library={nextcloud}
+        canEditSource
+        runs={[{ ...quotaRun('run-budget'), failureCategory: null }]}
+      />,
     )
 
-    expect(await screen.findByTestId('run-incomplete-run-budget')).toHaveTextContent(
-      'unvollständig, wird fortgesetzt',
+    const row = screen.getByRole('button', { name: /^Teilweise fehlgeschlagen/ })
+    expect(row).toHaveTextContent('12 Dokumente · unvollständig')
+    const detail = await openRun(user, 'Teilweise fehlgeschlagen')
+    expect(detail).not.toHaveTextContent(/Kontingent/)
+  })
+
+  it('lists every Fundort of a reason in a dialog that closes through „Schließen“', async () => {
+    const user = userEvent.setup()
+    const events = Array.from({ length: 7 }, (_, index) => ({
+      category: 'REJECTED' as const,
+      reference: `Ablage/Akte ${index + 1}.pdf`,
+      message: 'Datei konnte nicht gelesen werden',
+    }))
+    renderSection(
+      <LibrarySourceSection
+        libraryId="library-events"
+        library={nextcloud}
+        canEditSource
+        runs={[
+          {
+            ...quotaRun('run-events'),
+            failureCategory: null,
+            incomplete: false,
+            message: null,
+            documentsFailed: 7,
+            events,
+          },
+        ]}
+      />,
     )
-    expect(screen.queryByTestId('run-quota-remedy-run-budget')).not.toBeInTheDocument()
+
+    const detail = await openRun(user, 'Teilweise fehlgeschlagen')
+    await user.click(within(detail).getByRole('button', { name: 'alle 7 anzeigen' }))
+    const dialog = await screen.findByRole('dialog', { name: /· 7$/ })
+    expect(within(dialog).getByText('Ablage/Akte 7.pdf')).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+    await waitForDialogClosed()
   })
 
   it('offers no change of source, profile or schedule while the library is being erased', async () => {
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-erasing"
         library={{
@@ -900,7 +945,6 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
         canEditSource
         erasing
       />,
-      { withRouter: true },
     )
 
     expect(await screen.findByRole('heading', { name: 'Läufe' })).toBeInTheDocument()
@@ -953,9 +997,8 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
 
   it('opens the selection dialog of a dialog source at once and saves on „Übernehmen“', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
@@ -986,9 +1029,8 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
 
   it('saves nothing when the dialog of a dialog source is cancelled, and closes the row', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
@@ -1018,9 +1060,8 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
@@ -1045,9 +1086,8 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
@@ -1072,9 +1112,8 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
   ])('blames no stage at the fixed Graph address for %s', async (_case, answer) => {
     server.use(http.post('/api/v1/libraries/source-test', answer))
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
@@ -1091,7 +1130,7 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
 
   it('opens an inline row in place: „Abbrechen“ discards it, „Speichern“ saves it', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-fs"
         library={{
@@ -1102,7 +1141,6 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     const row = () => screen.getByRole('region', { name: 'Zeitplan' })
@@ -1138,7 +1176,7 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
       .mockRejectedValueOnce(new Error('HTTP 502: Request failed with status code 502'))
       .mockRejectedValueOnce(new Error('Der Zeitplan ist ungültig (HTTP 400).'))
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-fs"
         library={{
@@ -1149,7 +1187,6 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     const row = () => screen.getByRole('region', { name: 'Zeitplan' })
@@ -1166,7 +1203,7 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
 
   it('keeps a choice of an inline scope as a draft until „Speichern“', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-wiki"
         library={{
@@ -1178,7 +1215,6 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
@@ -1241,10 +1277,7 @@ describe('LibrarySourceSection - Zugangsdaten beim Bearbeiten (#3140, #1868)', (
   }
 
   function renderSmb() {
-    renderWithProviders(
-      <LibrarySourceSection libraryId="library-smb" library={smb} canEditSource />,
-      { withRouter: true },
-    )
+    renderSection(<LibrarySourceSection libraryId="library-smb" library={smb} canEditSource />)
   }
 
   it('keeps the stored credentials while the fields stay empty and the share stays', async () => {
@@ -1335,7 +1368,7 @@ describe('LibrarySourceSection - SharePoint-Kennungen (#3140)', () => {
 
   it('rejects a document library whose id the connector does not accept, at the field', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
+    renderSection(
       <LibrarySourceSection
         libraryId="library-sp"
         library={{
@@ -1352,7 +1385,6 @@ describe('LibrarySourceSection - SharePoint-Kennungen (#3140)', () => {
         }}
         canEditSource
       />,
-      { withRouter: true },
     )
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))

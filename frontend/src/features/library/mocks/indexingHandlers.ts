@@ -171,7 +171,15 @@ export const indexingHandlers = [
     return HttpResponse.json({ ...getRunningStatus(indexingPollCount), libraryId })
   }),
 
-  http.get('/api/v1/libraries/:libraryId/indexing/runs', () => {
+  // like IndexingController: the run log answers from MANAGER on only
+  http.get('/api/v1/libraries/:libraryId/indexing/runs', ({ params }) => {
+    const role = mockLibraryDetails[params.libraryId as string]?.myRole
+    if (role === 'VIEWER' || role === 'EDITOR') {
+      return HttpResponse.json(
+        { error: 'Für diese Bibliothek fehlt die Berechtigung' },
+        { status: 403 },
+      )
+    }
     return HttpResponse.json(scenarioIndexingRuns())
   }),
 

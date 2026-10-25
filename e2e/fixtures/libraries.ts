@@ -14,7 +14,7 @@ export const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 
 /** Reads the library id LibraryCreatePage navigated to after a successful "Bibliothek anlegen". */
 export function libraryIdFromCurrentUrl(page: Page): string {
-  const match = page.url().match(/\/libraries\/([^/]+)$/)
+  const match = page.url().match(/\/libraries\/([^/?#]+)(?:[?#].*)?$/)
   if (!match) {
     throw new Error(`Unexpected library detail URL after creation: ${page.url()}`)
   }

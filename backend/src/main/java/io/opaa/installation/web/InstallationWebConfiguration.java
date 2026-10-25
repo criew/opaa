@@ -17,10 +17,10 @@ import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The web side of the installation in every profile: the gate ahead of every other filter, the rate
- * limiter included, and a security chain of its own for {@code /api/v1/installation}, ordered
- * before the {@code oidc} and {@code dev} chains. That chain carries no resource server, no session
- * and no CSRF - the installation token is no JWT, and checking it is {@link
+ * The web side of the installation in every profile: the gate ahead of every other filter, the
+ * access filter right behind it, and a security chain of its own for {@code /api/v1/installation},
+ * ordered before the {@code oidc} and {@code dev} chains. That chain carries no resource server, no
+ * session and no CSRF - the installation token is no JWT, and checking it is {@link
  * InstallationAccessGuard}'s job; no account exists to sign in with.
  */
 @Configuration
@@ -33,6 +33,16 @@ class InstallationWebConfiguration {
         new FilterRegistrationBean<>(new InstallationGateFilter(status, jsonMapper, clock));
     registration.addUrlPatterns("/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+    return registration;
+  }
+
+  @Bean
+  FilterRegistrationBean<InstallationAccessFilter> installationAccessFilterRegistration(
+      InstallationAccessGuard guard, JsonMapper jsonMapper, Clock clock) {
+    var registration =
+        new FilterRegistrationBean<>(new InstallationAccessFilter(guard, jsonMapper, clock));
+    registration.addUrlPatterns("/api/*");
+    registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
     return registration;
   }
 

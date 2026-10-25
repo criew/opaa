@@ -10,61 +10,83 @@ import {
  * (`【source: <documentId>#<chunk> | <fileName>】`); none of the formats may let them through raw.
  */
 
-/** A marker together with the whitespace before it - the mark attaches to the word it follows. */
-function markerWithLeadingSpace(): RegExp {
-  return new RegExp(`[ \\t]*${CLAIMED_MARKER_RE.source}`, 'g')
+/**
+ * `content` cut at its markers: `texts[i]` is the text before `markers[i]`, without the blanks
+ * directly in front of the marker - the mark attaches to the word it follows - and the last text
+ * follows the last marker. Each character is looked at most twice, so the cost is linear.
+ */
+function splitAtMarkers(content: string): { texts: string[]; markers: string[] } {
+  const pattern = new RegExp(CLAIMED_MARKER_RE.source, 'g')
+  const texts: string[] = []
+  const markers: string[] = []
+  let lastEnd = 0
+  for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
+    let start = match.index
+    while (start > lastEnd && (content[start - 1] === ' ' || content[start - 1] === '\t')) start--
+    texts.push(content.slice(lastEnd, start))
+    markers.push(match[0])
+    lastEnd = pattern.lastIndex
+  }
+  texts.push(content.slice(lastEnd))
+  return { texts, markers }
 }
 
 /** The answer as Markdown, without footnote markers and without a source list - the default. */
 export function answerAsMarkdown(content: string): string {
-  return unwrapBracketedMarkers(content).replace(markerWithLeadingSpace(), '').trim()
+  return splitAtMarkers(unwrapBracketedMarkers(content)).texts.join('').trim()
 }
 
 /**
  * The answer as Markdown with its sources: each marker becomes a Markdown footnote (`[^1]`, the
  * same number the chat shows), repeated neighbours collapse, and the cited documents follow as a
- * footnote list with their Fundort where the pipeline knew one.
+ * footnote list with their Fundort where the pipeline knew one. `labelPrefix` goes in front of
+ * every footnote label (`[^2-1]`), for documents that hold several answers; the answer's own text
+ * is never touched.
  */
-export function answerWithSources(answer: string, citations: CitationIndex): string {
-  const content = unwrapBracketedMarkers(answer)
+export function answerWithSources(
+  answer: string,
+  citations: CitationIndex,
+  labelPrefix = '',
+): string {
+  const { texts, markers } = splitAtMarkers(unwrapBracketedMarkers(answer))
   const fileNameByNumber = new Map<number, string>()
-  const pattern = markerWithLeadingSpace()
-  let body = ''
-  let lastEnd = 0
+  const parts: string[] = []
   // The footnote numbers already written directly before this point, with no text in between -
   // a passage cited twice in a row reads as one footnote, not "[^1][^1]".
   let adjacent = new Set<number>()
-  for (let match = pattern.exec(content); match !== null; match = pattern.exec(content)) {
-    const between = content.slice(lastEnd, match.index)
+  markers.forEach((raw, index) => {
+    const between = texts[index]
     if (between.length > 0) adjacent = new Set()
-    body += between
-    lastEnd = pattern.lastIndex
-    const marker = readMarker(match[0])
+    parts.push(between)
+    const marker = readMarker(raw)
     const number = marker && citations.numberByKey.get(marker.key)
-    if (marker === undefined || number === undefined || adjacent.has(number)) continue
-    if (!fileNameByNumber.has(number)) fileNameByNumber.set(number, marker.fileName.trim())
+    if (marker === undefined || number === undefined || adjacent.has(number)) return
+    if (!fileNameByNumber.has(number)) fileNameByNumber.set(number, marker.fileName)
     adjacent.add(number)
-    body += `[^${number}]`
-  }
-  body = (body + content.slice(lastEnd)).trim()
+    parts.push(`[^${labelPrefix}${number}]`)
+  })
+  parts.push(texts[texts.length - 1])
+  const body = parts.join('').trim()
   if (fileNameByNumber.size === 0) return body
   const notes = [...fileNameByNumber.entries()]
     .sort(([a], [b]) => a - b)
     .map(([number, fileName]) => {
       const location = citations.locationByNumber.get(number)
-      return `[^${number}]: ${fileName}${location ? `, ${location}` : ''}`
+      return `[^${labelPrefix}${number}]: ${fileName}${location ? `, ${location}` : ''}`
     })
   return `${body}\n\n${notes.join('\n')}`
 }
 
+// Each rule looks at most 300 characters ahead per position, so a line built to make them
+// backtrack still costs time linear in its length.
 const INLINE_RULES: [RegExp, string][] = [
-  [/!\[([^\]]*)\]\([^)]*\)/g, '$1'], // image -> its alt text
-  [/\[([^\]]+)\]\([^)]*\)/g, '$1'], // link -> its text
+  [/!\[([^\]]{0,300})\]\([^)]{0,300}\)/g, '$1'], // image -> its alt text
+  [/\[([^\]]{1,300})\]\([^)]{0,300}\)/g, '$1'], // link -> its text
   [/`([^`]+)`/g, '$1'],
-  [/(\*\*|__)(.+?)\1/g, '$2'],
-  [/~~(.+?)~~/g, '$1'],
-  [/(^|[^\w*])\*(?!\s)(.+?)(?<!\s)\*(?!\w)/g, '$1$2'],
-  [/(^|[^\w_])_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '$1$2'],
+  [/(\*\*|__)(.{1,300}?)\1/g, '$2'],
+  [/~~(.{1,300}?)~~/g, '$1'],
+  [/(^|[^\w*])\*(?!\s)(.{1,300}?)(?<!\s)\*(?!\w)/g, '$1$2'],
+  [/(^|[^\w_])_(?!\s)(.{1,300}?)(?<!\s)_(?!\w)/g, '$1$2'],
 ]
 
 function plainInline(line: string): string {
@@ -91,7 +113,9 @@ export function answerAsPlainText(content: string): string {
       lines.push(line)
       continue
     }
-    if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line) && line.includes('-')) {
+    // Tested on the trimmed line: blanks at either end would make the pattern ambiguous, and a
+    // long run of them quadratic.
+    if (line.includes('-') && /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$/.test(line.trim())) {
       if (line.includes('|')) continue // table separator row
       lines.push('') // thematic break
       continue

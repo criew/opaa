@@ -58,6 +58,7 @@ final class InstallationFixture implements AutoCloseable {
         });
     chatEndpoint.start();
     accounts.cleanUp();
+    jdbc.update("DELETE FROM audit_log WHERE actor_ref = ?", InstallationService.SYSTEM_ACTOR);
     resetToPending();
   }
 

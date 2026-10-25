@@ -8,7 +8,7 @@ import {
   libraryIdFromCurrentUrl,
 } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
-import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, indexedDocumentStates, openNewLibraryWizard } from '../fixtures/chat'
 
 // Nacharbeiten-Serie aus Epic #458 (siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -169,7 +169,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
     // body needs over the suite's tiny committed fixtures - the document itself stays a
     // single-digit number of chunks (see buildLargePdf), so this is not an embedding-load wait.
     await expect(page.getByText(fileName)).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText('indiziert', { exact: true })).toBeVisible({ timeout: 30_000 })
+    await expect(indexedDocumentStates(page)).toBeVisible({ timeout: 30_000 })
   })
 })
 
@@ -352,8 +352,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     // Kein Lauf ausgelöst - der Dokumentbereich (der vorgewählte Reiter) muss trotzdem erscheinen,
     // mit seinem Leerzustand und ohne Upload-Fläche, weil diese Bibliothek nie eine hatte.
     await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
-    await expect(page.getByText('Es sind noch keine Dokumente vorhanden.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Dateien hochladen' })).toHaveCount(0)
+    await expect(page.getByText('Noch keine Dokumente.', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Hochladen' })).toHaveCount(0)
   })
 })
 

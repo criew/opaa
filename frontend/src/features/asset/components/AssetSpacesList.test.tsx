@@ -58,7 +58,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     expect(screen.getByText('+ 2 weitere Spaces, die Sie nicht sehen dürfen')).toBeInTheDocument()
     await waitFor(() => expect(mockGetSpaces).toHaveBeenCalled())
     expect(screen.queryByRole('button', { name: /aktionen für space/i })).not.toBeInTheDocument()
-    expect(screen.queryByText('nicht alle Mitglieder lesen')).not.toBeInTheDocument()
+    expect(screen.queryByText('nicht für alle Mitglieder lesbar')).not.toBeInTheDocument()
   })
 
   it('names the single hidden space in the singular', async () => {
@@ -92,8 +92,8 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     renderList(<AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage />)
 
     expect(await screen.findByText('Disziplinarverfahren 2026')).toBeInTheDocument()
-    expect(screen.getByText(/zugeordnet von Thomas Klein · 02\.10\.2026/)).toBeInTheDocument()
-    expect(screen.getByText('nicht alle Mitglieder lesen')).toBeInTheDocument()
+    expect(screen.getByText(/^zugeordnet am 02\.10\.2026 von Thomas Klein/)).toBeInTheDocument()
+    expect(screen.getByText('nicht für alle Mitglieder lesbar')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Aktionen für Space „Disziplinarverfahren 2026“' }),
     ).toBeInTheDocument()

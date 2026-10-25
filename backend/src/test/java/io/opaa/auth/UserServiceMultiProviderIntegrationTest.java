@@ -76,7 +76,7 @@ class UserServiceMultiProviderIntegrationTest {
 
   @Test
   void theInitialAdminAddressGrantsSystemAdminOnlyThroughTheTrustedIssuer() {
-    String adminEmail = effectiveInitialAdminEmail();
+    String adminEmail = authProperties.initialAdminEmail();
     assertThat(adminEmail).isNotBlank();
 
     User throughDevIssuer =
@@ -95,7 +95,7 @@ class UserServiceMultiProviderIntegrationTest {
    */
   @Test
   void inTheOidcModeNotEvenTheDefaultProviderRowMintsAnAdministrator() {
-    String adminEmail = effectiveInitialAdminEmail();
+    String adminEmail = authProperties.initialAdminEmail();
     String defaultIssuer = "https://idp.example/realms/" + UUID.randomUUID() + "/";
     OidcProvider standard =
         new OidcProvider(
@@ -121,19 +121,6 @@ class UserServiceMultiProviderIntegrationTest {
     } finally {
       providerRepository.deleteById(standard.getId());
     }
-  }
-
-  /**
-   * The address the {@code dev} mode makes administrator: the configured one, or - left empty, as
-   * the shipped default is - the default dev user's.
-   */
-  private String effectiveInitialAdminEmail() {
-    String configured = authProperties.initialAdminEmail();
-    if (configured != null && !configured.isBlank()) {
-      return configured;
-    }
-    AuthProperties.DevAuth dev = authProperties.dev();
-    return dev.findUser(dev.defaultUser()).orElseThrow().email();
   }
 
   /** The issuer without its trailing slash, to prove the comparison is normalized. */

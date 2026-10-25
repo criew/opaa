@@ -38,10 +38,12 @@ class InstallationTwoInstanceIntegrationTest {
   @Autowired private LocalCredentialsRepository credentials;
 
   private InstallationFixture fixture;
+  private io.opaa.test.LocalAccountFixtures accounts;
 
   @BeforeEach
   void setUp() throws Exception {
-    fixture = new InstallationFixture(jdbc, installation, status, accountsFactory.create());
+    accounts = accountsFactory.create();
+    fixture = new InstallationFixture(jdbc, installation, status, accounts);
   }
 
   @AfterEach
@@ -105,5 +107,47 @@ class InstallationTwoInstanceIntegrationTest {
             InstallationFixture.ADMIN_EMAIL, "IT-Betrieb", InstallationFixture.ADMIN_PASSWORD),
         new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
         new StepInput.ChatModel(fixture.chatBaseUrl(), "qwen2.5:7b", null, null, null));
+  }
+
+  // regression guard: a configured token stops counting once it is no longer configured
+  @Test
+  void aConfiguredTokenThatIsNoLongerConfiguredIsReplaced() {
+    ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> logs =
+        new ch.qos.logback.core.read.ListAppender<>();
+    logs.start();
+    ch.qos.logback.classic.Logger serviceLog =
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger(InstallationService.class);
+    serviceLog.addAppender(logs);
+    String generated;
+    try {
+      generated = installation.ensureToken(null);
+    } finally {
+      serviceLog.detachAppender(logs);
+    }
+
+    assertThat(logs.list)
+        .extracting(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+        .anyMatch(message -> message.contains("on all instances with the same value"));
+
+    assertThat(generated).isNotNull();
+    assertThat(installation.tokenMatches(InstallationFixture.TOKEN)).isFalse();
+    assertThat(installation.tokenMatches(generated)).isTrue();
+    assertThat(installation.ensureToken(null)).isNull();
+  }
+
+  // regression guard: a database with accounts counts as in use even without the seed markers
+  @Test
+  void aDatabaseWithAccountsButWithoutSeedMarkersCountsAsExisting() {
+    accounts.activeUser("bestand-" + java.util.UUID.randomUUID() + "@stadt.example");
+    jdbc.update("DELETE FROM local_admin_seed_marker");
+    jdbc.update("DELETE FROM oidc_provider_seed_marker");
+    jdbc.update("DELETE FROM llm_model_seed_marker");
+
+    InstallationService.StartupDecision decision =
+        installation.completeAtStartupIfDue(false, false);
+
+    assertThat(decision.completed()).isTrue();
+    assertThat(decision.source()).isEqualTo(InstallationState.CompletionSource.EXISTING);
   }
 }

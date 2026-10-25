@@ -77,6 +77,11 @@ export interface AuthState {
    * isFeatureEnabled} or `useFeatureEnabled`, never by indexing this object.
    */
   features: FeatureFlags
+  /**
+   * The installation waits for its set-up (ADR-0060): the frame shows only the assistant. From
+   * the public configuration; `false` while it is unknown or could not be read.
+   */
+  installationPending: boolean
   /** The kind of the active session, or of the sign-in under way; null while signed out. */
   sessionKind: SessionKind | null
   /** The account must set a new password before any route but /account/password answers. */

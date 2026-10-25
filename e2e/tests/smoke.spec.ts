@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/auth'
-import { gotoLibraries, gotoLibraryDetail } from '../fixtures/chat'
+import { gotoLibraries, gotoLibraryDetail, indexedDocumentStates } from '../fixtures/chat'
 
 test.describe('Rauchtest', () => {
   test('Anwendung als Testnutzer öffnen, Startseite lädt', async ({ authenticatedPage }) => {
@@ -27,8 +27,6 @@ test.describe('Rauchtest', () => {
 
     await gotoLibraryDetail(page, 'E2E Wissensbibliothek')
     await expect(page.getByText('e2e-basisdokument.txt', { exact: true })).toBeVisible()
-    // exact: only the document's status chip, not the Pflege-Anker's sentence above the list,
-    // which names the number of indizierte Dokumente.
-    await expect(page.getByText('indiziert', { exact: true })).toBeVisible()
+    await expect(indexedDocumentStates(page)).toBeVisible()
   })
 })

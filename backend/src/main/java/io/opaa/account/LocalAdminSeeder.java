@@ -379,6 +379,17 @@ public class LocalAdminSeeder {
     return false;
   }
 
+  /**
+   * The rules of {@code requireInitialAdminEmail} without the log line: set, an address, not the
+   * default.
+   */
+  public static boolean isDeliverableAddress(String email) {
+    String trimmed = email == null ? "" : email.trim();
+    return !trimmed.isEmpty()
+        && !REJECTED_DEFAULT_EMAIL.equalsIgnoreCase(trimmed)
+        && looksLikeAnAddress(trimmed);
+  }
+
   private static boolean looksLikeAnAddress(String email) {
     int at = email.indexOf('@');
     return at > 0 && at < email.length() - 1 && email.indexOf('@', at + 1) < 0;

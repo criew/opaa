@@ -242,7 +242,7 @@ export async function openLibraryAccessDialog(page: Page, libraryName: string): 
   await gotoLibraries(page)
   await gotoLibraryDetail(page, libraryName)
   await page.getByRole('tab', { name: 'Freigaben' }).click()
-  await expect(page.getByRole('heading', { name: 'Externe KI-Werkzeuge' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Externer Zugang' })).toBeVisible()
 }
 
 /** Der Abschnitt steht auf der Seite; zu schließen gibt es nichts. */

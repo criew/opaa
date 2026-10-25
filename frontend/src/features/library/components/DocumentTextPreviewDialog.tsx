@@ -1,11 +1,8 @@
 import Box from '@mui/material/Box'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import CloseIcon from '@mui/icons-material/Close'
+import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { fontFamily } from '@/shared/theme/tokens'
@@ -54,24 +51,11 @@ export default function DocumentTextPreviewDialog({
       scroll="paper"
       aria-labelledby={TITLE_ID}
     >
-      <DialogTitle
-        id={TITLE_ID}
-        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
-      >
+      <DialogTitleWithClose id={TITLE_ID} onClose={onClose}>
         <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
           {previewDocument?.fileName}
         </Typography>
-        <Tooltip title="Schließen">
-          <IconButton
-            size="small"
-            onClick={onClose}
-            aria-label="Vorschau schließen"
-            sx={{ flex: 'none' }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </DialogTitle>
+      </DialogTitleWithClose>
       <DialogContent dividers>
         {previewDocument?.contentType === 'text/markdown' ? (
           <MarkdownRenderer content={previewDocument.content} preserveCitationMarkers />

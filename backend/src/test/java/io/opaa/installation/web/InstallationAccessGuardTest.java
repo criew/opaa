@@ -11,8 +11,7 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.installation.InstallationProperties;
 import io.opaa.installation.InstallationService;
-import io.opaa.security.ClientIpResolver;
-import jakarta.servlet.http.HttpServletRequest;
+import io.opaa.security.TrustedProxyClientIpResolver;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -26,7 +25,8 @@ class InstallationAccessGuardTest {
   private static final String TOKEN = "richtiges-token";
 
   private final InstallationService installation = mock(InstallationService.class);
-  private final ClientIpResolver addresses = HttpServletRequest::getRemoteAddr;
+  private final TrustedProxyClientIpResolver addresses =
+      new TrustedProxyClientIpResolver(List.of());
 
   InstallationAccessGuardTest() {
     when(installation.tokenMatches(any())).thenAnswer(call -> TOKEN.equals(call.getArgument(0)));

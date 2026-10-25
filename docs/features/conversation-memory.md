@@ -289,9 +289,11 @@ durch die Person.
   fällt unter dieselben Regeln wie Frage und Antwort: nicht protokolliert, nicht auswertbar, kein
   Administrator-Durchgriff ([Was ausdrücklich nicht protokolliert
   wird](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)).
-- **Derselbe Lebenszyklus wie der Chat.** Gelöscht mit dem Chat; sobald Chat-Export und
-  Kontolöschung gebaut sind (Zielbild, #391/#395), schließen sie die Notiz ein. Sie erzeugt keine
-  neue Datenkategorie: Alles darin stand bereits in einer Nachricht desselben Chats.
+- **Derselbe Lebenszyklus wie der Chat.** Gelöscht mit dem Chat. Der Export eines Chats als
+  Markdown oder PDF enthält die Notiz als eigenen Abschnitt ([Chat-Liste](./chat-list.md#export)),
+  die Selbstauskunft führt sie bei den Chats. Ein Konto lässt sich erst löschen, wenn seine Chats
+  gelöscht sind, und mit ihnen geht die Notiz. Sie erzeugt keine neue Datenkategorie: Alles darin
+  stand bereits in einer Nachricht desselben Chats.
 - **Kein Ein-/Ausschalter**, weder je Installation noch je Chat. Die Notiz enthält nur, was die
   Person selbst geschrieben hat, sichtbar und löschbar; ein Schalter hätte keinen Adressaten und
   müsste in der Oberfläche erklären, warum die Notiz in dieser Installation fehlt. Wiederaufnahme
@@ -400,7 +402,8 @@ Person es sehen konnte.
 | Mitlesende eines geteilten Chats (sobald Teilen gebaut ist) | sehen die Notiz, ohne Entfernen-Schaltflächen |
 | Entfernen und Verdichtung gleichzeitig | Entfernen trifft einen Punkt über seine Kennung; die Verdichtung hängt neue Punkte an — beides berührt sich technisch nicht. Für die *eigene* Runde tritt der Fall nicht auf: Ein Punkt wird erst mit der nächsten Antwort sichtbar, kann also nicht entfernt werden, während seine Verdichtung läuft. Die Verdichtung einer *späteren* Runde kann einen entfernten Punkt dagegen erneut erzeugen, weil Dedupe nur die aktuelle Liste prüft — das ist die entschiedene Löschsemantik (kein Sperren), und die Person entfernt ihn erneut |
 | Löschung des Chats | Notiz wird mit gelöscht |
-| Chat-Export, Kontolöschung (Zielbild, #391/#395) | schließen die Notiz ein, sobald gebaut |
+| Chat-Export (Markdown, PDF), Selbstauskunft | enthalten die Notiz; der Export als eigenen Abschnitt, sobald sie einen Punkt hat |
+| Kontolöschung | setzt voraus, dass die Chats gelöscht sind; die Notiz geht mit ihnen |
 
 ---
 
@@ -548,7 +551,7 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
 - **Antwort** ([llm-integration.md](./llm-integration.md), „Übergabe der Passagen"): der Aufruf
   bekommt einen fünften Teil, die Gesprächsnotiz, vor dem Gesprächsverlauf.
 - **Chats** ([spaces-and-assets.md](./spaces-and-assets.md#chats)): Notiz ist Bestandteil des Chats
-  (Löschung, Archivierung, künftiges Teilen; Export und Kontolöschung, sobald gebaut).
+  (Löschung, Archivierung, Export, Selbstauskunft, künftiges Teilen).
 - **Sicherheit und Mitbestimmung** ([security-and-compliance.md](./security-and-compliance.md)):
   Notiz ist Chatinhalt, kein Protokoll, keine Auswertung, kein Profil.
 - **Evaluierung** ([retrieval-benchmark.md](./retrieval-benchmark.md)): Mehrrunden-Fälle, eigene

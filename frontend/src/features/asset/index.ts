@@ -26,7 +26,7 @@ export type { AssetPick, SpaceCreateLocationState } from './components/assetPick
 export { default as AssetRightsFields } from './components/AssetRightsFields'
 export { default as AssetSpacesSection } from './components/AssetSpacesSection'
 export { default as AssetTile } from './components/AssetTile'
-export { responsibleParty } from './components/assetTileData'
+export { responsibleParty, sourceBlockWord } from './components/assetTileData'
 export type { AssetTileData } from './components/assetTileData'
 export { default as AssetTilePicker } from './components/AssetTilePicker'
 export { applyPendingGrantsAfterCreation } from './components/pendingGrants'

@@ -3,9 +3,11 @@ import type { SourceReference } from '@/shared/api/types'
 /**
  * The backend's citation marker (QueryService): `【source: <documentId>#<chunk> | <fileName>】`.
  * `SourceReference.documentId` is the join key between the answer text and the source list;
- * the file name is only a fallback for persisted legacy messages without a documentId.
+ * the file name is only a fallback for persisted legacy messages without a documentId. Group 2
+ * carries the file name with its surrounding blanks (trim it); it stops at the next bracket or
+ * line end, so a match attempt never scans past the next marker.
  */
-export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)\s*】/g
+export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|([^】【\r\n]+)】/g
 
 /**
  * Everything that presents itself as a marker, well-formed or not - a superset of
@@ -20,21 +22,26 @@ const MARKER_LIST = `[ \\t]*${CLAIMED_MARKER_RE.source}(?:[ \\t]*(?:[,;][ \\t]*)
 /** Round or square brackets holding nothing but markers; `[…](` is a Markdown link and stays. */
 const BRACKETED_MARKERS_RE = new RegExp(`\\(${MARKER_LIST}\\)|\\[${MARKER_LIST}\\](?!\\()`, 'g')
 
+/** Bracket levels {@link unwrapBracketedMarkers} removes around markers. */
+const MAX_BRACKET_LEVELS = 8
+
 /**
  * `content` without the brackets the model put around its markers: `(【…】)` becomes `【…】`, so
  * neither the footnote nor a copy without markers shows a bracket of its own. Brackets that also
  * hold other text stay.
  */
 export function unwrapBracketedMarkers(content: string): string {
-  // Each pass drops one bracket level, so "((【…】))" needs two; every pass shortens the text.
+  // Each pass drops one bracket level, so "((【…】))" needs two. A pass scans the whole text, so
+  // the passes are bounded; deeper nesting keeps its outer brackets.
   let result = content
-  for (;;) {
+  for (let pass = 0; pass < MAX_BRACKET_LEVELS; pass++) {
     const next = result.replace(BRACKETED_MARKERS_RE, (group) =>
       (group.match(CLAIMED_MARKER_RE) ?? []).join(''),
     )
     if (next === result) return result
     result = next
   }
+  return result
 }
 
 /**
@@ -73,7 +80,7 @@ const WELL_FORMED_MARKER_RE = new RegExp(`^\\s*${CITATION_MARKER_RE.source}$`)
  *  `marker` is one whole match, optionally with the whitespace before it. */
 export function readMarker(marker: string): { key: string; fileName: string } | undefined {
   const match = WELL_FORMED_MARKER_RE.exec(marker)
-  return match ? { key: match[1], fileName: match[2] } : undefined
+  return match ? { key: match[1], fileName: match[2].trim() } : undefined
 }
 
 export interface CitationDoc {
@@ -184,7 +191,7 @@ export function buildCitationIndex(
   let match: RegExpExecArray | null
   while ((match = regex.exec(content)) !== null) {
     const key = match[1]
-    const fileName = match[2]
+    const fileName = match[2].trim()
     let number = numberByKey.get(key)
     if (number === undefined) {
       number = numberByKey.size + 1
