@@ -23,6 +23,9 @@ import { formatDay, isErrorEvent, runTone, runWord, stateTargetHref } from './li
 import { plainMessage } from './sourceKit/plainMessage'
 import { PATH_SEPARATOR } from './setup/paths'
 
+/** The run list offers „Nur mit Fehlern“ from this many runs on. */
+const FILTER_FROM = 5
+
 /** Fundorte a group names before „alle n anzeigen“. */
 const SHOWN = 5
 
@@ -418,8 +421,8 @@ export default function LibraryRunList({
   const shown = onlyProblems ? problems : runs
   return (
     <Box>
-      {/* the filter only where it shortens the list */}
-      {problems.length > 0 && problems.length < runs.length && (
+      {/* the filter only on a long list, and only where it shortens it */}
+      {runs.length >= FILTER_FROM && problems.length > 0 && problems.length < runs.length && (
         <ToggleButtonGroup
           size="small"
           exclusive
