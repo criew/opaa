@@ -191,7 +191,7 @@ describe('LibraryDocumentList (#1943)', () => {
     })
 
     // a row of its own, not folded under the document before it
-    expect(screen.queryByRole('button', { name: /Anhänge von vermerk\.pdf/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /(Anhang|Anhänge) von vermerk\.pdf/ })).toBeNull()
     expect(screen.getByText('anlage.pdf')).toBeInTheDocument()
     expect(screen.getByText(/Anhang von posteingang\.eml/)).toBeInTheDocument()
     // a filtered list counts its rows in the foot

@@ -2736,7 +2736,8 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByText('foerderbescheid.pdf')).not.toBeInTheDocument()
       expect(screen.queryByText('anlage-berechnung.xlsx')).not.toBeInTheDocument()
 
-      const toggle = screen.getByRole('button', { name: 'Anhänge von posteingang.eml anzeigen' })
+      // regression guard for #3218: the accessible name starts with the visible text (WCAG 2.5.3)
+      const toggle = screen.getByRole('button', { name: '2 Anhänge von posteingang.eml anzeigen' })
       expect(toggle).toHaveAttribute('aria-expanded', 'false')
       expect(toggle).toHaveTextContent('2 Anhänge')
       await user.click(toggle)
@@ -2746,7 +2747,9 @@ describe('LibraryDetailPage', () => {
       // Attachment rows are marked as such.
       expect(screen.getAllByText('Anhang', { exact: true })).toHaveLength(2)
 
-      const collapse = screen.getByRole('button', { name: 'Anhänge von posteingang.eml verbergen' })
+      const collapse = screen.getByRole('button', {
+        name: '2 Anhänge von posteingang.eml verbergen',
+      })
       expect(collapse).toHaveAttribute('aria-expanded', 'true')
       await user.click(collapse)
       expect(screen.queryByText('foerderbescheid.pdf')).not.toBeInTheDocument()
@@ -2770,7 +2773,7 @@ describe('LibraryDetailPage', () => {
       expect(await screen.findByText('foerderbescheid.pdf')).toBeInTheDocument()
       expect(screen.getByText('posteingang.eml')).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'Anhänge von posteingang.eml verbergen' }),
+        screen.getByRole('button', { name: '2 Anhänge von posteingang.eml verbergen' }),
       ).toHaveAttribute('aria-expanded', 'true')
     })
 
@@ -2789,7 +2792,9 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
 
       await screen.findByText('posteingang.eml')
-      await user.click(screen.getByRole('button', { name: 'Anhänge von posteingang.eml anzeigen' }))
+      await user.click(
+        screen.getByRole('button', { name: '2 Anhänge von posteingang.eml anzeigen' }),
+      )
 
       // Both nesting levels sit flat under the one top-level row; the deeper one names its
       // direct parent instead of nesting further.
@@ -2811,7 +2816,9 @@ describe('LibraryDetailPage', () => {
 
       await screen.findByText('posteingang.eml')
       expect(screen.getByText('b-dokument.pdf')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Anhänge von posteingang.eml anzeigen' }))
+      await user.click(
+        screen.getByRole('button', { name: '2 Anhänge von posteingang.eml anzeigen' }),
+      )
       expect(screen.getByText('foerderbescheid.pdf')).toBeInTheDocument()
 
       const pagination = screen.getByRole('navigation', { name: 'Dokumentenliste blättern' })
