@@ -71,7 +71,10 @@ describe('LibrarySourceSection - OneDrive (#2467)', () => {
     await user.click(within(row).getByRole('button', { name: 'Verbindung testen' }))
 
     expect(await within(row).findByText(/gehört zu einem anderen OneDrive/)).toBeVisible()
-    expect(within(row).getByText('Adresse nicht erreichbar')).toBeVisible()
+    // the address of Microsoft Graph is fixed: the failed stage is the rights, never an address
+    expect(within(row).getByText('Rechte nicht lesbar')).toBeVisible()
+    expect(within(row).getByText('Anmeldung angenommen')).toBeVisible()
+    expect(within(row).queryByText(/^Adresse/)).not.toBeInTheDocument()
   })
 
   it('chooses the OneDrive of the connected account anew and drops the folders of the old one', async () => {

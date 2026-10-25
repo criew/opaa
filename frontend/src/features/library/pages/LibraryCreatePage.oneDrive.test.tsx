@@ -57,16 +57,23 @@ async function chooseOneDrive(user: User) {
 }
 
 /**
- * Chooses the private way on the profile: „Verbindung“ has nothing to enter, so „Umfang“ opens,
- * and the row „Verbindung“ names the OneDrive once it is found.
+ * The one private way on the profile is chosen already: „Verbindung“ stays open with it and its
+ * consequence, and names the OneDrive once it is found.
  */
-async function choosePrivate(user: User) {
-  await user.click(await screen.findByRole('radio', { name: /Microsoft 365 Rheinfurt · privat/ }))
-  await screen.findByRole('radio', { name: 'Alle Ordner' })
-  await waitFor(() =>
-    expect(rowOf('Verbindung')).toHaveTextContent(
-      'Zugang „Microsoft 365 Rheinfurt“, eigenes Konto · OneDrive',
+async function awaitPrivate() {
+  expect(
+    await within(rowOf('Verbindung')).findByText(
+      /„OneDrive“ – das OneDrive Ihres verbundenen Microsoft-Kontos/,
     ),
+  ).toBeVisible()
+}
+
+/** Opens „Umfang“; „Verbindung“ then names the Zugang and the OneDrive in its summary. */
+async function openScope(user: User) {
+  await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+  await screen.findByRole('radio', { name: 'Alle Ordner' })
+  expect(rowOf('Verbindung')).toHaveTextContent(
+    'Zugang „Microsoft 365 Rheinfurt“, eigenes Konto · OneDrive',
   )
 }
 
@@ -114,28 +121,35 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     )
   })
 
-  it('offers OneDrive only as a private library, never shared and never with an own address', async () => {
+  it('takes the one private way as a line, not a choice, and says it is private and final', async () => {
     const user = userEvent.setup()
     renderWizard()
     await chooseOneDrive(user)
 
-    const group = await screen.findByRole('radiogroup', { name: 'Zugang' })
-    const radios = within(group).getAllByRole('radio')
-    expect(radios).toHaveLength(1)
-    expect(radios[0]).toHaveAccessibleName(/Microsoft 365 Rheinfurt · privat/)
-    expect(radios[0]).not.toBeChecked()
-    expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
+    // guidelines 5.11: a single option is no choice - a line without a radio button
+    const row = rowOf('Verbindung')
+    expect(await within(row).findByText('Microsoft 365 Rheinfurt · privat')).toBeVisible()
+    expect(within(row).getByText('nur für Sie, später nicht änderbar')).toBeVisible()
+    expect(within(row).getByText('Zugang')).toBeVisible()
+    expect(screen.queryByRole('radiogroup', { name: 'Zugang' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /privat|Eigene Adresse/ })).not.toBeInTheDocument()
+    await awaitPrivate()
 
     await next(user)
-    expect(await screen.findByText('Bitte wählen Sie einen Zugang.')).toBeVisible()
-    expect(browsed).toEqual([])
+    await waitFor(() => expect(tested).toHaveLength(1))
+    expect(screen.queryByText('Bitte wählen Sie einen Zugang.')).not.toBeInTheDocument()
+    expect(tested[0]).toMatchObject({
+      connectionProfileId: 'profile-onedrive',
+      privateLibrary: true,
+    })
+    expect(await screen.findByTestId('library-create-private-note')).toBeVisible()
   }, 20000)
 
   it('finds the OneDrive of the connected account and creates a private library of all of it', async () => {
     const user = userEvent.setup()
     renderWizard()
     await chooseOneDrive(user)
-    await choosePrivate(user)
+    await awaitPrivate()
 
     expect(browsed[0]).toMatchObject({
       connectionProfileId: 'profile-onedrive',
@@ -178,7 +192,8 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     const user = userEvent.setup()
     renderWizard()
     await chooseOneDrive(user)
-    await choosePrivate(user)
+    await awaitPrivate()
+    await openScope(user)
 
     const pair = screen.getByRole('radiogroup', { name: 'Umfang: Ordner' })
     expect(within(pair).getByRole('radio', { name: 'Alle Ordner' })).toBeChecked()
@@ -223,12 +238,8 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     const user = userEvent.setup()
     renderWizard()
     await chooseOneDrive(user)
-    await choosePrivate(user)
+    await awaitPrivate()
 
-    await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
-    expect(rowOf('Verbindung')).toHaveTextContent(
-      /„OneDrive“ – das OneDrive Ihres verbundenen Microsoft-Kontos/,
-    )
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
     expect(await screen.findByText(ONEDRIVE_MESSAGES.reachable)).toBeVisible()
 
@@ -248,11 +259,9 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     const user = userEvent.setup()
     renderWizard()
     await chooseOneDrive(user)
-    await user.click(await screen.findByRole('radio', { name: /Microsoft 365 Rheinfurt · privat/ }))
 
-    // the open row „Umfang“ names the refusal in place of the folders
-    expect(await within(rowOf('Umfang')).findByText(/kein OneDrive for Business/)).toBeVisible()
-    expect(screen.queryByRole('radio', { name: 'Alle Ordner' })).not.toBeInTheDocument()
+    // the open row „Verbindung“ names the refusal in place of the OneDrive
+    expect(await within(rowOf('Verbindung')).findByText(/kein OneDrive for Business/)).toBeVisible()
     await next(user)
     const row = rowOf('Verbindung')
     expect(await within(row).findByText(/kein OneDrive for Business/)).toBeVisible()

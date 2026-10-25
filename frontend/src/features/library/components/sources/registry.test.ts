@@ -80,6 +80,16 @@ describe('the source registry (ADR-0038)', () => {
     })
   })
 
+  it.each(registeredSourceTypes.filter((type) => type !== 'UPLOAD'))(
+    'reads the connection test of %s with an address stage exactly where the address is not fixed',
+    (type) => {
+      const descriptor = mockSourceTypes.find((d) => d.type === type)
+      expect(Boolean(configurationOf(type).setup.fixedAddress)).toBe(
+        Boolean(descriptor?.serverAddress.fixed),
+      )
+    },
+  )
+
   describe('OneDrive (ADR-0058)', () => {
     const library = {
       sourceType: 'ONEDRIVE',
