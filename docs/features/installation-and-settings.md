@@ -700,6 +700,13 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_TRANSCRIPTION_LANGUAGE` | `opaa.transcription.language` | Transkriptionsmodell in der Modellverwaltung |
 | `OPAA_TRANSCRIPTION_MODEL` | `opaa.transcription.model` | Transkriptionsmodell in der Modellverwaltung |
 
+Für die entfallenen Lösch- und Aufbewahrungsvariablen gilt die Übergangsregel aus ADR-0060,
+Entscheidung 13: Sie bremsen nur, nie als Wert. Hält eine noch gesetzte Variable auf einer lebenden
+Instanz länger (oder schaltet sie ab, oder ist sie nicht lesbar) und hat die Verwaltung noch keinen
+Wert gespeichert, pausiert der Löschschritt auf allen Instanzen, gemeldet über
+`backend_instances.retired_settings`; Hinweis unter Administration → Datenschutz, Fehler im Log je
+Lauf.
+
 ### Gruppe F: Experten-Feinabstimmung von Suche und Index (bleibt vorerst, siehe ADR-0060, Entscheidung 3)
 
 | Variable | Property bzw. Ort |

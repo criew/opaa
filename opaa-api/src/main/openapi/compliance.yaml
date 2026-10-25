@@ -773,8 +773,9 @@ components:
         pausedBy:
           type: array
           description: >-
-            The retired variables a live instance still sets to a value other than the one in
-            force; while there is one, the deletion run pauses.
+            The retired variables a live instance still sets to a period longer than the one in
+            force (or switched off, or unreadable) while the administration set no value of its
+            own; while there is one, the deletion run pauses.
           items:
             $ref: "#/components/schemas/RetentionPause"
 
@@ -813,8 +814,9 @@ components:
         pausedBy:
           type: array
           description: >-
-            The retired variables a live instance still sets to a value other than the one in
-            force; while there is one, the deletion run pauses.
+            The retired variables a live instance still sets to a period longer than the one in
+            force (or switched off, or unreadable) while the administration set no value of its
+            own; while there is one, the deletion run pauses.
           items:
             $ref: "#/components/schemas/RetentionPause"
 
@@ -848,8 +850,9 @@ components:
         pausedBy:
           type: array
           description: >-
-            The retired variables a live instance still sets to a value other than the one in
-            force; while there is one, the deletion run pauses.
+            The retired variables a live instance still sets to a period longer than the one in
+            force (or switched off, or unreadable) while the administration set no value of its
+            own; while there is one, the deletion run pauses.
           items:
             $ref: "#/components/schemas/RetentionPause"
 

@@ -4,18 +4,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.core.convert.ConversionException;
 import org.springframework.core.env.Environment;
 
 /**
  * The retired settings that once set a deletion period the administration now holds in the database
- * (ADR-0060, Entscheidung 1). Their value is never taken over, it only brakes: while a live
- * instance still sets one to a period that keeps longer than the factory default in force, the
- * deletion it governs pauses until the administration sets a value of its own. Each instance
- * reports its environment into the register after registering, and every run asks the register
- * across all live instances, so the instance that wins the run lock decides the same (ADR-0053).
+ * (ADR-0060, Entscheidungen 1 und 13). Their value is never taken over, it only brakes: while a
+ * live instance still sets one to a longer period, switches the deletion off or sets what the
+ * former binding could not read, the deletion it governs pauses until the administration sets a
+ * value of its own. Each instance reports its environment into the register after registering, and
+ * every run asks the register across all live instances, so the instance that wins the run lock
+ * decides the same (ADR-0053).
  */
 public class RetiredRetentionVariables implements SmartLifecycle {
 
@@ -76,13 +78,13 @@ public class RetiredRetentionVariables implements SmartLifecycle {
   }
 
   /**
-   * The pauses for {@code variable}: every live report of a period longer than {@code effective}.
+   * The pauses for {@code variable}: every live report of a period longer than {@code effective},
+   * and every report the former binding would not have read.
    */
   public List<Pause> longerThan(String variable, int effective) {
     List<Pause> pauses = new ArrayList<>();
     for (String reported : reported(variable)) {
-      Long value = wholeNumber(reported);
-      if (value != null && value > effective) {
+      if (keepsLonger(reported, effective)) {
         add(pauses, new Pause(variable, reported, Integer.toString(effective)));
       }
     }
@@ -90,13 +92,14 @@ public class RetiredRetentionVariables implements SmartLifecycle {
   }
 
   /**
-   * The pauses for {@code variable}: every live report of {@code false} while the deletion is on.
+   * The pauses for {@code variable}: every live report that switched the deletion off while it is
+   * on, and every report the former binding would not have read.
    */
   public List<Pause> switchedOff(String variable, boolean effective) {
     List<Pause> pauses = new ArrayList<>();
     for (String reported : reported(variable)) {
-      if (effective && "false".equals(reported.toLowerCase(Locale.ROOT))) {
-        add(pauses, new Pause(variable, reported, "true"));
+      if (switchesOff(reported, effective)) {
+        add(pauses, new Pause(variable, reported, Boolean.toString(effective)));
       }
     }
     return pauses;
@@ -119,8 +122,31 @@ public class RetiredRetentionVariables implements SmartLifecycle {
     }
   }
 
-  private static Long wholeNumber(String text) {
-    return text.matches("\\d{1,18}") ? Long.parseLong(text) : null;
+  /**
+   * Whether {@code reported}, read the way the former configuration binding read it ({@code +730},
+   * {@code 0x2DA}), keeps longer than {@code effective}; a value it could not read pauses as well,
+   * the safe side of an irreversible deletion.
+   */
+  static boolean keepsLonger(String reported, int effective) {
+    Integer value = converted(reported, Integer.class);
+    return value == null || value > effective;
+  }
+
+  /**
+   * Whether {@code reported}, read like the former binding ({@code false}, {@code off}, {@code no},
+   * {@code 0}), switches off a deletion that is on; a value it could not read pauses as well.
+   */
+  static boolean switchesOff(String reported, boolean effective) {
+    Boolean value = converted(reported, Boolean.class);
+    return value == null || (effective && !value);
+  }
+
+  private static <T> T converted(String text, Class<T> type) {
+    try {
+      return ApplicationConversionService.getSharedInstance().convert(text, type);
+    } catch (ConversionException e) {
+      return null;
+    }
   }
 
   private static Map<String, String> properties() {

@@ -516,7 +516,10 @@ Instanz meldet das beim Start ins Instanzregister. Der Lauf schreibt dann jede N
 Log, Administration → Datenschutz zeigt den Hinweis „Löschen pausiert“. Die Pause endet mit einem
 gespeicherten Wert, auch der Werkseinstellung („Angezeigte Werte festlegen“), oder wenn keine
 laufende Instanz die Variable mehr setzt. Bei der Chat-Bereinigung in Spaces pausiert nur das
-Löschen, das Archivieren läuft weiter. Zeigte
+Löschen, das Archivieren läuft weiter. Gelesen wird die Variable wie früher (`off`, `no` und `0`
+schalten ab, `+730` gilt als 730); einen Wert, den OPAA nicht lesen kann, behandelt es ebenfalls als
+Pause. Eine Instanz, die das Instanzregister als tot führt, weil ihr Heartbeat ausblieb, die aber noch
+läuft, hält die Pause nicht mehr. Zeigte
 `OPAA_OPENAI_BASE_URL` bisher auf einen Anbieter außerhalb des Hauses und die Einbettung lief über
 Ollama, gehört die Ollama-Adresse ausdrücklich nach `OPAA_OPENAI_EMBEDDING_BASE_URL` — sonst erbt die
 Einbettung die Adresse des Chats, und Dokumentinhalt ginge an einen dafür nie vorgesehenen Anbieter.

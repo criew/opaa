@@ -37,4 +37,32 @@ class RetiredRetentionVariablesTest {
             RetiredRetentionVariables.LOCKED_ENABLED, "opaa.chat.locked-account-cleanup.enabled")
         .hasSize(5);
   }
+
+  /** The switch is read like the former binding; what it could not read pauses. */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {"false", "off", "no", "0", "FALSE", "aus"})
+  void everyWayTheFormerBindingSwitchedOffPausesAndSoDoesNonsense(String reported) {
+    assertThat(RetiredRetentionVariables.switchesOff(reported, true)).isTrue();
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"true", "on", "yes", "1"})
+  void aSwitchLeftOnDoesNotPause(String reported) {
+    assertThat(RetiredRetentionVariables.switchesOff(reported, true)).isFalse();
+  }
+
+  /** A period is read like the former binding; what it could not read pauses. */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {"730", "+730", "0x2DA", "#2DA", "Unsinn", "1.5"})
+  void aLongerOrUnreadablePeriodPauses(String reported) {
+    assertThat(RetiredRetentionVariables.keepsLonger(reported, 365)).isTrue();
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"365", "+365", "0365", "100"})
+  void anEqualOrShorterPeriodDoesNotPause(String reported) {
+    assertThat(RetiredRetentionVariables.keepsLonger(reported, 365)).isFalse();
+  }
 }
