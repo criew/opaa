@@ -15,7 +15,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -446,7 +448,8 @@ class S3UploadedOriginalStoreTest {
             1,
             java.time.Duration.ofMillis(1),
             S3UploadedOriginalStore.LIST_PAGE_SIZE,
-            new WorkingDirectoryOwner(() -> live, live::equals));
+            new WorkingDirectoryOwner(() -> live, live::equals),
+            Clock.systemUTC());
     try {
       Path ofTheLive =
           Files.writeString(
@@ -565,9 +568,22 @@ class S3UploadedOriginalStoreTest {
   }
 
   @Test
-  void anObjectWithoutALastModifiedIsDatedAsOfTheListing() throws IOException {
+  void anObjectWithoutALastModifiedIsDatedAsOfTheListingOnTheClock() throws IOException {
     // Unknown age must not read as "ancient": the value has to keep such an object inside every
     // grace period, and it must not be a NullPointerException either.
+    Instant listedAt = Instant.parse("2031-01-01T00:00:00Z");
+    UploadS3Properties properties = properties("");
+    store.close();
+    store =
+        new S3UploadedOriginalStore(
+            properties,
+            UploadS3TargetPolicy.of(properties),
+            java.time.Duration.ofSeconds(5),
+            1,
+            java.time.Duration.ofMillis(1),
+            S3UploadedOriginalStore.LIST_PAGE_SIZE,
+            WorkingDirectoryOwner.standalone(),
+            Clock.fixed(listedAt, ZoneOffset.UTC));
     storedOriginal("ohne Zeitstempel");
     server.omitLastModified();
 
@@ -575,8 +591,7 @@ class S3UploadedOriginalStoreTest {
     store.forEachStoredOriginal(organizationId, libraryId, visited::add);
 
     assertThat(visited).hasSize(1);
-    assertThat(visited.get(0).lastModified())
-        .isBetween(Instant.now().minusSeconds(60), Instant.now().plusSeconds(5));
+    assertThat(visited.get(0).lastModified()).isEqualTo(listedAt);
   }
 
   @Test

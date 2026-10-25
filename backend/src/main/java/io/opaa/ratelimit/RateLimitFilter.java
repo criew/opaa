@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -193,13 +194,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private final List<CompiledRule> rules;
   private final ClientIpResolver clientIpResolver;
   private final RateLimitMetrics metrics;
+  private final Clock clock;
   private final JsonMapper jsonMapper;
 
   public RateLimitFilter(
       List<Rule> rules,
       ClientIpResolver clientIpResolver,
       RateLimitMetrics metrics,
-      JsonMapper jsonMapper) {
+      JsonMapper jsonMapper,
+      Clock clock) {
+    this.clock = clock;
     this.rules =
         rules.stream()
             .map(
@@ -459,7 +463,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         Map.of(
             "error", RATE_LIMIT_MESSAGE,
             "status", HttpStatus.TOO_MANY_REQUESTS.value(),
-            "timestamp", Instant.now().toString());
+            "timestamp", Instant.now(clock).toString());
     jsonMapper.writeValue(response.getOutputStream(), body);
   }
 }

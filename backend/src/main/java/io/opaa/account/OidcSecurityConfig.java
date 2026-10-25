@@ -4,6 +4,7 @@ import io.opaa.auth.SelfDisclosureDownloadFraming;
 import io.opaa.auth.UserProvisioningFilter;
 import io.opaa.auth.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Clock;
 import java.util.function.Predicate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -95,7 +96,8 @@ public class OidcSecurityConfig {
 
   @Bean
   SecurityFilterChain securityFilterChain(
-      HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+      HttpSecurity http, CorsConfigurationSource corsConfigurationSource, Clock clock)
+      throws Exception {
     http.csrf(
             csrf ->
                 csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -105,7 +107,8 @@ public class OidcSecurityConfig {
         // a refused double submit answers with its own code, so the SPA tells it apart from the
         // 403 of the pcr filter; every other access denial keeps GlobalExceptionHandler's wording
         .exceptionHandling(
-            handling -> handling.accessDeniedHandler(new LocalAuthAccessDeniedHandler(jsonMapper)))
+            handling ->
+                handling.accessDeniedHandler(new LocalAuthAccessDeniedHandler(jsonMapper, clock)))
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .headers(SelfDisclosureDownloadFraming.frameHeaders())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

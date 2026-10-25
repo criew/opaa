@@ -102,7 +102,13 @@ lässt: Der Wert darf nicht steigen; die Obergrenze steht im Skript und wird nur
 muss ein Bestand nicht sofort abgebaut werden, aber er wächst garantiert nicht. Skripte liegen unter
 `.github/scripts` (Muster `check_action_pins.sh`, `check_code_comments.sh`). Ratschen:
 `Instant.now()` ohne `Clock` in Spring-Beans (`check_instant_now.sh`), `@Value` außerhalb von
-`*Properties` (`check_value_annotations.sh`). Keine Ratsche für das, was ArchUnit hart prüft.
+`*Properties` (`check_value_annotations.sh`). Als Bean zählt für `check_instant_now.sh` eine Klasse
+mit Stereotyp-Annotation und jede Klasse, die eine Datei mit `@Configuration` oder einer
+`@Bean`-Methode (auch im Lite-Modus einer `@Component`) in einer Codezeile mit `new` erzeugt, also
+die Rückgabe einer `@Bean`-Methode und die dort eingehängten Filter und Handler. Nicht erfasst sind
+Objekte aus Fabrikmethoden, Buildern und `Foo::new`, ebenso Entities und Records. Der Abgleich läuft
+über den einfachen Klassennamen.
+Keine Ratsche für das, was ArchUnit hart prüft.
 
 ### 7. Prüfroutine
 

@@ -6,6 +6,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import jakarta.servlet.FilterChain;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,9 @@ class DevAuthFilterTest {
               new AuthProperties.DevUser("dev-admin", "admin@opaa.local", "Dev Admin"),
               new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User")));
 
+  private static final Instant NOW = Instant.parse("2026-10-25T09:00:00Z");
+  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+
   @Mock private FilterChain filterChain;
 
   @AfterEach
@@ -40,7 +47,8 @@ class DevAuthFilterTest {
   void authenticatesAsDefaultUserWithoutHeader() throws Exception {
     MockHttpServletResponse response = new MockHttpServletResponse();
 
-    new DevAuthFilter(DEV_AUTH).doFilter(new MockHttpServletRequest(), response, filterChain);
+    new DevAuthFilter(DEV_AUTH, CLOCK)
+        .doFilter(new MockHttpServletRequest(), response, filterChain);
 
     Jwt jwt = principal();
     assertThat(jwt.getSubject()).isEqualTo("dev-admin");
@@ -52,14 +60,14 @@ class DevAuthFilterTest {
 
   /** The dev mode has no sign-in to repeat: every request counts as a recent one. */
   @Test
-  void everyRequestCarriesTheCurrentTimeAsItsSignIn() throws Exception {
-    long before = java.time.Instant.now().getEpochSecond();
-
-    new DevAuthFilter(DEV_AUTH)
+  void everyRequestCarriesTheCurrentTimeOfTheClockAsItsSignIn() throws Exception {
+    new DevAuthFilter(DEV_AUTH, CLOCK)
         .doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), filterChain);
 
-    assertThat(RecentLoginPolicy.authTimeOf(principal()).getEpochSecond())
-        .isBetween(before, java.time.Instant.now().getEpochSecond());
+    Jwt jwt = principal();
+    assertThat(RecentLoginPolicy.authTimeOf(jwt)).isEqualTo(NOW);
+    assertThat(jwt.getIssuedAt()).isEqualTo(NOW);
+    assertThat(jwt.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofHours(1)));
   }
 
   @Test
@@ -67,7 +75,8 @@ class DevAuthFilterTest {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(DevAuthFilter.DEV_USER_HEADER, "dev-user");
 
-    new DevAuthFilter(DEV_AUTH).doFilter(request, new MockHttpServletResponse(), filterChain);
+    new DevAuthFilter(DEV_AUTH, CLOCK)
+        .doFilter(request, new MockHttpServletResponse(), filterChain);
 
     assertThat(principal().getSubject()).isEqualTo("dev-user");
     assertThat(principal().getClaimAsString("email")).isEqualTo("dev-user@opaa.local");
@@ -79,7 +88,7 @@ class DevAuthFilterTest {
     request.addHeader(DevAuthFilter.DEV_USER_HEADER, "does-not-exist");
     MockHttpServletResponse response = new MockHttpServletResponse();
 
-    new DevAuthFilter(DEV_AUTH).doFilter(request, response, filterChain);
+    new DevAuthFilter(DEV_AUTH, CLOCK).doFilter(request, response, filterChain);
 
     assertThat(response.getStatus()).isEqualTo(401);
     assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();

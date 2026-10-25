@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.api.types.AuditObjectType;
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -69,6 +70,7 @@ class SiemExportService {
   private final Counter sent;
   private final Counter failed;
   private final Counter gaps;
+  private final Clock clock;
 
   /**
    * Age in seconds of the oldest entry not yet sent, {@code 0} with nothing due, as this instance
@@ -88,8 +90,10 @@ class SiemExportService {
       SyslogSender sender,
       CefSyslogFormatter formatter,
       List<PersonalAuditObjects> personalObjects,
-      MeterRegistry meterRegistry) {
+      MeterRegistry meterRegistry,
+      Clock clock) {
     this.jdbc = jdbc;
+    this.clock = clock;
     this.properties = properties;
     this.settledLimit = new AuditSettledLimit(jdbc, properties.settleDelay());
     this.sender = sender;
@@ -107,7 +111,7 @@ class SiemExportService {
   /** One run: as many batches as are due, up to {@link #MAX_BATCHES_PER_RUN}. */
   void run() {
     Cursor cursor = cursor();
-    if (Instant.now().isBefore(nextAttempt)) {
+    if (Instant.now(clock).isBefore(nextAttempt)) {
       return;
     }
     for (int batch = 0; batch < MAX_BATCHES_PER_RUN && cursor != null; batch++) {
@@ -351,7 +355,7 @@ class SiemExportService {
     failed.increment();
     consecutiveFailures++;
     long seconds = Math.min(MAX_BACKOFF.toSeconds(), 30L << Math.min(consecutiveFailures, 10));
-    nextAttempt = Instant.now().plusSeconds(seconds);
+    nextAttempt = Instant.now(clock).plusSeconds(seconds);
     if (consecutiveFailures == 1 || seconds == MAX_BACKOFF.toSeconds()) {
       log.warn(
           "SIEM export to {}:{} failed ({} times in a row), {} entries stay due, next attempt in"

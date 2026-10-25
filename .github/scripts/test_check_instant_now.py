@@ -1,6 +1,7 @@
 """Self-check for check_instant_now.sh: a count above the limit fails with the file list, the count
 at the limit passes, a count below it passes with the lower limit; Instant.now(clock), comment
-lines, entities, records and classes without a bean annotation are not counted."""
+lines, entities, records and classes that are neither annotated as a bean nor built with `new` in a
+file with @Configuration or a @Bean method are not counted."""
 
 import os
 import shutil
@@ -102,3 +103,61 @@ def test_every_bean_annotation_counts(repo: Path, annotation: str) -> None:
     result = run(repo, 3)
     assert result.returncode == 1
     assert f"1 {ROOT}ProbeBean.java" in result.stdout
+
+
+def test_a_class_built_in_a_configuration_counts(repo: Path) -> None:
+    write(
+        repo,
+        "ProbeConfiguration.java",
+        "package io.opaa.probe;\n\n@Configuration\nclass ProbeConfiguration {\n"
+        "  @Bean\n  Object plain() { return new ProbePlain(); }\n}\n",
+    )
+    result = run(repo, 3)
+    assert result.returncode == 1
+    assert "::error::4 calls" in result.stdout
+    assert f"1 {ROOT}ProbePlain.java" in result.stdout
+
+
+def test_a_class_built_outside_a_configuration_or_in_a_comment_does_not_count(
+    repo: Path,
+) -> None:
+    write(
+        repo,
+        "ProbeFactory.java",
+        "package io.opaa.probe;\n\nclass ProbeFactory {\n"
+        "  Object plain() { return new ProbePlain(); }\n}\n",
+    )
+    write(
+        repo,
+        "ProbeConfiguration.java",
+        "package io.opaa.probe;\n\n@Configuration\nclass ProbeConfiguration {\n"
+        "  // new ProbePlain() would be built here\n}\n",
+    )
+    result = run(repo, 3)
+    assert result.returncode == 0, result.stdout
+    assert "ProbePlain" not in result.stdout
+
+
+def test_a_class_built_by_a_lite_bean_method_in_a_component_counts(repo: Path) -> None:
+    write(
+        repo,
+        "ProbeSchedule.java",
+        "package io.opaa.probe;\n\n@Component\nclass ProbeSchedule {\n"
+        "  @Bean\n  Object plain() { return new ProbePlain(); }\n}\n",
+    )
+    result = run(repo, 3)
+    assert result.returncode == 1
+    assert "::error::4 calls" in result.stdout
+    assert f"1 {ROOT}ProbePlain.java" in result.stdout
+
+
+def test_a_bean_annotation_only_in_a_comment_makes_no_source(repo: Path) -> None:
+    write(
+        repo,
+        "ProbeFactory.java",
+        "package io.opaa.probe;\n\n/**\n * @Bean\n */\nclass ProbeFactory {\n"
+        "  // @Configuration\n  Object plain() { return new ProbePlain(); }\n}\n",
+    )
+    result = run(repo, 3)
+    assert result.returncode == 0, result.stdout
+    assert "ProbePlain" not in result.stdout

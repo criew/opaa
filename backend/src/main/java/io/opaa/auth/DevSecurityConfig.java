@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import jakarta.annotation.PostConstruct;
+import java.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -56,8 +57,9 @@ public class DevSecurityConfig {
 
   @Bean
   SecurityFilterChain securityFilterChain(
-      HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
-    DevAuthFilter devAuthFilter = new DevAuthFilter(authProperties.dev());
+      HttpSecurity http, CorsConfigurationSource corsConfigurationSource, Clock clock)
+      throws Exception {
+    DevAuthFilter devAuthFilter = new DevAuthFilter(authProperties.dev(), clock);
     return http.csrf(AbstractHttpConfigurer::disable)
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .headers(SelfDisclosureDownloadFraming.frameHeaders())

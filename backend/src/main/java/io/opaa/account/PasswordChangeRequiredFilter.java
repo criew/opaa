@@ -10,6 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -43,11 +44,13 @@ public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
 
   private final LocalCredentialsRepository credentials;
   private final JsonMapper jsonMapper;
+  private final Clock clock;
 
   public PasswordChangeRequiredFilter(
-      LocalCredentialsRepository credentials, JsonMapper jsonMapper) {
+      LocalCredentialsRepository credentials, JsonMapper jsonMapper, Clock clock) {
     this.credentials = credentials;
     this.jsonMapper = jsonMapper;
+    this.clock = clock;
   }
 
   @Override
@@ -70,7 +73,8 @@ public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
   }
 
   private void refuse(HttpServletResponse response, Jwt jwt) throws IOException {
-    ErrorResponse body = new ErrorResponse(MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now());
+    ErrorResponse body =
+        new ErrorResponse(MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
     body.setCode(CODE);
     reasonOf(jwt).ifPresent(reason -> body.setReason(reason.name()));
     response.setStatus(HttpStatus.FORBIDDEN.value());

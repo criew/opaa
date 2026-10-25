@@ -374,7 +374,8 @@ class RateLimitAccountBudgetTest {
             new RateLimitMetrics(meterRegistry),
             JsonMapper.builder().build(),
             noSelfService(),
-            new InMemoryInstallationCounters())
+            new InMemoryInstallationCounters(),
+            java.time.Clock.systemUTC())
         .getFilter();
   }
 

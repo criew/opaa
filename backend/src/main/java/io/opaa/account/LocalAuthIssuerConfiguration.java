@@ -3,6 +3,7 @@ package io.opaa.account;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProviderRegistry;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -47,7 +48,7 @@ public class LocalAuthIssuerConfiguration {
   @Bean
   @Profile("oidc")
   PasswordChangeRequiredFilter passwordChangeRequiredFilter(
-      LocalCredentialsRepository credentials, JsonMapper jsonMapper) {
-    return new PasswordChangeRequiredFilter(credentials, jsonMapper);
+      LocalCredentialsRepository credentials, JsonMapper jsonMapper, Clock clock) {
+    return new PasswordChangeRequiredFilter(credentials, jsonMapper, clock);
   }
 }

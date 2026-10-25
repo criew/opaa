@@ -32,6 +32,7 @@ class RateLimitFilterTest {
 
   private static final Decision ALLOWED = Decision.allow();
   private static final Decision REJECTED = Decision.reject(17);
+  private static final java.time.Instant NOW = java.time.Instant.parse("2026-10-25T09:00:00Z");
 
   private static final String QUERY = "^/api/v1/query";
   private static final String INDEXING = "^/api/v1/libraries/([^/]+)/indexing$";
@@ -98,7 +99,8 @@ class RateLimitFilterTest {
         rules,
         new TrustedProxyClientIpResolver(trustedProxies),
         new RateLimitMetrics(meterRegistry),
-        jsonMapper);
+        jsonMapper,
+        java.time.Clock.fixed(NOW, java.time.ZoneOffset.UTC));
   }
 
   private double rejected(String limit, String scope) {
@@ -137,7 +139,8 @@ class RateLimitFilterTest {
     assertThat(response.getHeader(HttpHeaders.RETRY_AFTER)).isEqualTo("17");
     assertThat(response.getContentAsString())
         .contains(RateLimitFilter.RATE_LIMIT_MESSAGE)
-        .contains("\"status\":429");
+        .contains("\"status\":429")
+        .contains("\"timestamp\":\"" + NOW + "\"");
     assertThat(chain.getRequest()).isNull();
     assertThat(rejected("query", "client")).isEqualTo(1.0);
     assertThat(rejected("query", "global")).isZero();
