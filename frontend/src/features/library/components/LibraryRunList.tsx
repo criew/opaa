@@ -161,8 +161,10 @@ function EventGroup({
           <Typography
             component="li"
             key={`${event.reference ?? ''}-${index}`}
-            title={plainMessage(event.message)}
-            sx={{ ...LINE, color: 'text.secondary', overflowWrap: 'anywhere' }}
+            // one line per Fundort; the whole path and the message stand in the tooltip
+            title={`${event.reference ?? ''}\n${plainMessage(event.message)}`.trim()}
+            noWrap
+            sx={{ ...LINE, color: 'text.secondary' }}
           >
             {event.reference ?? plainMessage(event.message)}
           </Typography>
