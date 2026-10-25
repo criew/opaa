@@ -103,13 +103,12 @@ In der eigenen `.env.docker` zusätzlich setzen:
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json
-OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost,keycloak
+OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost:8180,keycloak:8180
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore,ollama
 OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 OPAA_DEMO_MODE=true
-OPAA_PGVECTOR_DIMENSIONS=1024
 OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30
 OPAA_UPLOAD_STORE=s3
 OPAA_UPLOAD_S3_ENDPOINT=http://objectstore:9000
@@ -126,9 +125,13 @@ Herkunft und Zwang jeder einzelnen Variable:
   ([ADR-0060](../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md)): das
   **lokale Notanker-Konto der Systemverwaltung** `admin@stadt-rheinfurt.example` mit dem Passwort aus
   `installation/admin-password` ([ADR-0033](../docs/decisions/0033-lokale-benutzerverwaltung.md),
-  #1534), den gebündelten Keycloak als Anbieter „Verzeichnisdienst" und das Chat-Modell. Issuer und
-  JWK-Set des Keycloak liegen auf internen Adressen, deshalb `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`;
-  das Chat-Modell auf `ollama` ebenso, deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`. Seit diesem Stand
+  #1534), den gebündelten Keycloak als Anbieter „Verzeichnisdienst", das Chat-Modell `phi3:mini` und
+  das Embedding-Modell `bge-m3`, beide auf dem `ollama` des Stapels. Issuer und JWK-Set des Keycloak
+  liegen auf internen Adressen, deshalb `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` mit Host und Port;
+  die Modelle auf `ollama` ebenso, deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`.
+  Dieser Eintrag gibt `ollama` zugleich als Ziel der Konnektoren frei. `requirePasswordChange` ist
+  `false`, weil der Seed sich mit dem Passwort der Datei anmeldet; nach dem Seed das Passwort in der
+  Oberfläche ändern und `installation/admin-password` löschen. Seit diesem Stand
   wird der Keycloak-Nutzer `demo-admin` **nicht mehr von selbst** `SYSTEM_ADMIN`; Schritt 1 des Seeds
   (siehe unten) meldet sich als Notanker-Konto an und vergibt ihm die Rolle über die reguläre
   Rollen-API. Dafür muss das Passwort dem Seed als
@@ -171,14 +174,10 @@ Herkunft und Zwang jeder einzelnen Variable:
   bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
   Nicht-Demo-Installation, siehe [`../docs/handbuch/betrieb/konfiguration.md`](../docs/handbuch/betrieb/konfiguration.md#alle-umgebungsvariablen),
   Variablentabelle.
-- `OPAA_PGVECTOR_DIMENSIONS=1024` steht so in `.env.docker.example` und ist auch der
-  Anwendungs-Default — die Zeile oben ist deshalb kein Abweichen von der Vorlage, sondern nur zur
-  Klarheit wiederholt: Voreingestellt bleiben lokal betriebene Modelle über die openai-kompatible
-  Schicht, mit dem Embedding-Modell `bge-m3`, das 1024 Dimensionen liefert
-  (siehe [`../docs/handbuch/betrieb/konfiguration.md`, „Alle Umgebungsvariablen"](../docs/handbuch/betrieb/konfiguration.md#alle-umgebungsvariablen)
-  für dieselbe Kopplung). Der Wert muss zum jeweils verwendeten Embedding-Modell passen; eine
-  nachträgliche Änderung an einer bereits laufenden Instanz erkennt OPAA beim Start und stellt sie
-  über die Neueinbettung in der Administration um, ohne Neuindizierung (siehe
+- Das Embedding-Modell und seine Dimension legt die Antwortdatei fest; die Dimension ermittelt die
+  Probeeinbettung bei der Installation (`bge-m3`: 1024). Ein anderes Embedding-Modell gehört vor dem
+  ersten Start in die Antwortdatei; an einer laufenden Instanz ist ein Wechsel eine Neueinbettung in
+  der Administration (siehe
   [`../docs/handbuch/betrieb/modelle.md`, „Modell wechseln"](../docs/handbuch/betrieb/modelle.md#modell-wechseln)).
 - `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30` hebt die Standard-Warteschlange von
   `uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 27 Dokumente der
@@ -226,9 +225,9 @@ docker compose --profile demo --profile ollama up
 Das startet zusätzlich einen lokal betriebenen `ollama`-Service samt Init-Schritt, der
 `bge-m3` und `phi3:mini` zieht und `bge-m3` mit einer Eingabegrenze von 8.192 Tokens neu anlegt — die
 Demo läuft damit vollständig ohne externe Dienste, auf Kosten eines mehrere Gigabyte großen Downloads
-beim allerersten Start. Nur in diesem Fall `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192` in
-`.env.docker` einkommentieren. Mit einem Ollama auf dem Host die Zeile auskommentiert lassen oder
-`bge-m3` dort per Modelfile mit derselben Grenze anlegen (siehe
+beim allerersten Start. Nur in diesem Fall in `installation/installation.json` beim
+`embeddingModel` `"maxInputTokens": 8192` ergänzen. Mit einem Ollama auf dem Host die Angabe
+weglassen oder `bge-m3` dort per Modelfile mit derselben Grenze anlegen (siehe
 [`../docs/handbuch/betrieb/modelle.md`, „Eingabegrenze des Embedding-Modells"](../docs/handbuch/betrieb/modelle.md#eingabegrenze-des-embedding-modells)).
 
 Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
@@ -1090,8 +1089,23 @@ ausdrücklich benannt wird:
 
 | | Anbieter | Modell | Anmerkung |
 |---|---|---|---|
-| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — der einzige Anbindungsweg für beide Funktionen (siehe [„LLM-Anbieter"](../docs/handbuch/betrieb/modelle.md#llm-anbieter)). `OPAA_OPENAI_CHAT_BASE_URL=https://api.anthropic.com/v1`, ein eigener `OPAA_OPENAI_CHAT_API_KEY` und `OPAA_OPENAI_CHAT_MODEL=claude-haiku-4-5` zeigen auf Anthropic; das gemeinsame `OPAA_OPENAI_BASE_URL` ist auf dieser Instanz **nicht** gesetzt. |
-| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg, aber **nicht** über den Anwendungs-Default: `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama`) und `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` sind explizit gesetzt. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768`. |
+| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — der einzige Anbindungsweg für beide Funktionen (siehe [„LLM-Anbieter"](../docs/handbuch/betrieb/modelle.md#llm-anbieter)). Kommt aus der Installation: `demo/installation.testinstanz.json` nennt `https://api.anthropic.com/v1` und `claude-haiku-4-5`, den Schlüssel liest sie aus `installation/chat-api-key` (`apiKeyFile`); danach führt ihn die Modellverwaltung. |
+| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg. Kommt ebenfalls aus der Antwortdatei: `http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama`) und `nomic-embed-text`; die Probeeinbettung legt 768 Dimensionen fest. `host.docker.internal` steht deshalb in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`. |
+
+**Neu aufsetzen der Testinstanz** (`down -v`, danach der Seed) wie oben unter „Installation mit
+einem Befehl", mit dieser Antwortdatei statt `demo/installation.demo.json`:
+
+```bash
+cp demo/installation.testinstanz.json installation/installation.json
+printf '%s' '<Passwort des Notanker-Kontos>' > installation/admin-password
+printf '%s' '<Schlüssel der Anthropic-API>' > installation/chat-api-key
+sudo chown 65532:65532 installation/admin-password installation/chat-api-key
+sudo chmod 0400 installation/admin-password installation/chat-api-key
+```
+
+In `.env.docker` zusätzlich `host.docker.internal` an `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
+anhängen. Nach dem Seed das Passwort des Notanker-Kontos in der Oberfläche ändern und beide Dateien
+löschen; OPAA liest sie nach der Installation nicht mehr.
 
 Zwei Punkte dazu:
 
@@ -1250,9 +1264,8 @@ eine zweite, rechtelose Zeile. Dieser eine Lauf braucht deshalb den zurücksetze
 (`down -v`) und anschließend einen vollständigen Seed; ab dann bleiben die Konten über jeden
 Neustart hinweg dieselben.
 
-Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander
-gekoppelt: Wer das Embedding-Modell wechselt, ändert beide Werte gemeinsam und startet die
-Neueinbettung in der Administration. Die Eingabegrenze bleibt dabei auf der Anwendungsvorgabe von
+Auf der Testinstanz ist `nomic-embed-text` mit seinen 768 Dimensionen in der Datenbank festgelegt:
+Wer das Embedding-Modell wechselt, startet die Neueinbettung in der Administration. Die Eingabegrenze bleibt dabei auf der Anwendungsvorgabe von
 2.048 Tokens, solange das Modell auf dem Host unverändert gezogen ist. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung
 sind auf der Instanz ohnehin getrennte Anbieter.
 

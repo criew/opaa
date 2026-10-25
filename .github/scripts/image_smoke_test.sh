@@ -91,9 +91,6 @@ backend_environment=(
   -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop
   -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
   -e OPAA_SETTINGS_ENCRYPTION_KEY=CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
-  -e OPAA_OPENAI_EMBEDDING_BASE_URL=http://models.invalid/v1
-  -e OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text
-  -e OPAA_PGVECTOR_DIMENSIONS=768
 )
 hardening=(--read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700
   --cap-drop ALL --security-opt no-new-privileges)

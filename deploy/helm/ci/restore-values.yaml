@@ -1,14 +1,18 @@
 # Additions for the restore test on kind (restore-test.sh), layered over install-values.yaml. The
-# source installs from the answer file, its chat model the stand-in ai-stub the script runs in the
+# source installs from the answer file, its chat and embedding model the stand-in ai-stub the script runs in the
 # source namespace; the known password of the first account lets the test sign in through the API.
 # Access tokens outlive the whole run, so a 401 for a token issued before the backup (P10) can only
 # come from the replaced signing secret, never from expiry.
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org
+    requirePasswordChange: false
   chatModel:
     baseUrl: http://ai-stub:8089
     model: qwen2.5:3b
+embedding:
+  baseUrl: http://ai-stub:8089
+  model: bge-m3
 # ai-stub is a cluster address, which the installation's target address check refuses unlisted.
 targetValidation:
   indexingAllowlist:

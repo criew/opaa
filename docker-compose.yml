@@ -409,14 +409,14 @@ services:
     profiles:
       - ollama
 
-  # One-shot init step: pulls both models this stack's own defaults need on first start -
-  # bge-m3 (OPAA_OPENAI_EMBEDDING_MODEL default) and phi3:mini (the chat model of the "dev" mode and
-  # of installation/installation.example.json). Without both pulled, the first chat/indexing request
-  # fails even though the "ollama" service itself is running and healthy.
+  # One-shot init step: pulls both models this stack's own defaults need on first start - bge-m3
+  # and phi3:mini, the embedding and chat model of the "dev" mode and of
+  # installation/installation.example.json. Without both pulled, the installation's checks and the
+  # first chat/indexing request fail even though the "ollama" service itself is running and healthy.
   #
   # bge-m3 is then created anew under its own name with num_ctx and num_batch 8192: Ollama's
   # OpenAI-compatible route cuts an embedding input at num_batch (2048 when pulled unchanged). With
-  # OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192 uncommented in .env.docker for this profile, every
+  # "maxInputTokens": 8192 in the embeddingModel of the answer file for this profile, every
   # chunk up to the 8,000-character ceiling fits; left at its default of 2048, OPAA splits longer
   # chunks instead. A later pull restores the pulled parameters, which is why this step runs the
   # create after every pull. Idempotent: `ollama pull` skips layers already stored in

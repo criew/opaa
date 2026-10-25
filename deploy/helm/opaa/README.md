@@ -56,7 +56,8 @@ Alternativ legt der Chart das Secret aus den Werten an. Pflicht sind:
 | `secrets.settingsEncryptionKey` | `OPAA_SETTINGS_ENCRYPTION_KEY` | erzeugt mit `openssl rand -base64 32` |
 | `secrets.s3AccessKey` | `OPAA_UPLOAD_S3_ACCESS_KEY` | bei `uploads.store: s3`: Zugangsschlüssel des Objektspeichers |
 | `secrets.s3SecretKey` | `OPAA_UPLOAD_S3_SECRET_KEY` | bei `uploads.store: s3`: Geheimschlüssel des Objektspeichers |
-| `secrets.initialAdminPassword` | `installation-admin-password` | bei `bootstrap.initialAdmin.email`: Passwort des ersten Kontos, als Datei der Antwortdatei eingehängt |
+| `secrets.initialAdminPassword` | `installation-admin-password` | für die Installation mit `bootstrap.initialAdmin.email`: Passwort des ersten Kontos, als Datei der Antwortdatei eingehängt; nach der Installation entfernen |
+| `secrets.chatApiKey`, `secrets.embeddingApiKey` | `installation-chat-api-key`, `installation-embedding-api-key` | Schlüssel der Modelle der Antwortdatei, als Datei eingehängt |
 
 Die Schlüssel erzeugt der Betreiber selbst; der Chart erzeugt keine. Optionale Schlüssel, etwa für
 die Modell-Endpunkte, stehen in [`values.yaml`](values.yaml).

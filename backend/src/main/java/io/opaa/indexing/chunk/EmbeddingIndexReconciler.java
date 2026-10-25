@@ -36,8 +36,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Going back to the model of the index drops the target column.
  *
  * <p>Without an installed embedding model there is no vector table and nothing to compare. It runs
- * one phase after the start-up of the installation, which takes over the model of an older
- * installation, and again after the commit of every later installation on this instance.
+ * one phase after the start-up of the installation, which installs the model of the {@code dev}
+ * mode, and again after the commit of every later installation on this instance.
  */
 @Component
 public class EmbeddingIndexReconciler implements SmartLifecycle {

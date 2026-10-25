@@ -17,6 +17,8 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests",
+  // Needs a stack in installation mode: the target "installation" runs it with its own config.
+  testIgnore: ["**/installation-assistant.spec.ts"],
   timeout: 30_000,
   expect: {
     timeout: 10_000,

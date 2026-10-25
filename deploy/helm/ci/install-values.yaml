@@ -10,10 +10,6 @@ evaluationDatabase:
 networkPolicy:
   egress:
     enabled: true
-embedding:
-  baseUrl: http://models.invalid/v1
-  model: bge-m3
-  dimensions: 1024
 # kind ships a default StorageClass (local-path); fsGroup makes the volume writable for the backend.
 uploads:
   store: persistentVolumeClaim

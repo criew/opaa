@@ -22,8 +22,8 @@ import tools.jackson.databind.json.JsonMapper;
  * The start-up of the installation (ADR-0060; ADR-0053: "Sperre"): after the instance is admitted
  * to the register and before the web server starts, it completes a due installation, applies the
  * answer file or stores the token, printing a generated one once. The {@code dev} mode installs
- * itself. Only a completed installation runs {@code OPAA_LOCAL_ADMIN_RESET} and takes over the
- * embedding model of an older installation, before the index reconciliation of the next phase.
+ * itself, its embedding model included, before the index reconciliation of the next phase. Only a
+ * completed installation runs {@code OPAA_LOCAL_ADMIN_RESET}.
  */
 @Component
 class InstallationStartup implements SmartLifecycle {

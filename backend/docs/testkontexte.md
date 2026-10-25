@@ -89,9 +89,10 @@ einen eigenen Kontext und einen eigenen Container. Deshalb:
 ## Kein Test erreicht ein echtes Modell
 
 **Kein Test erreicht ein echtes Modell.** Die Testdatenbank richtet sich beim ersten Start ein wie
-der Modus `dev` (ADR-0060): mit dem Chat-Modell unter `spring.ai.openai.base-url`; die
-`oidc`-Familie bekommt dafür die Test-Hilfe `TestInstallation`, die vor der Startentscheidung
-abschließt. Der Vorgabewert aus `application.yml` wäre ein lokal laufendes Ollama, das die Suche
+der Modus `dev` (ADR-0060): mit dem Chat-Modell unter `spring.ai.openai.base-url` und dem
+Embedding-Modell unter `spring.ai.openai.embedding.base-url`; die `oidc`-Familie bekommt dafür die
+Test-Hilfe `TestInstallation`, die vor der Startentscheidung abschließt und das Embedding-Modell
+einrichtet, weil nur der Modus `dev` sich selbst einrichtet. Der Vorgabewert aus `application.yml` wäre ein lokal laufendes Ollama, das die Suche
 (Zerlegung in Teilfragen) dann wirklich aufruft. Deshalb setzen `@OpaaIntegrationTest` und
 `@OpaaLocalAuthMockMvcTest` die gemeinsame und die Embedding-Adresse auf Hosts unter `.invalid`
 (`OpaaIntegrationTest.CHAT_BASE_URL`, `EMBEDDING_BASE_URL`). `TestChatModelEndpointTest` prüft das für jede Signatur ohne Docker,

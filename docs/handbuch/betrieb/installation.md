@@ -162,7 +162,8 @@ Prüfungen, alles oder nichts.
   "firstAdmin": {
     "email": "it-betrieb@stadt.example",
     "displayName": "Systemverwaltung",
-    "passwordFile": "/run/secrets/opaa-admin-password"
+    "passwordFile": "/run/secrets/opaa-admin-password",
+    "requirePasswordChange": true
   },
   "signIn": {
     "mode": "LOCAL_AND_OIDC",
@@ -192,13 +193,18 @@ Prüfungen, alles oder nichts.
   sondern als Pfad einer Datei (`passwordFile`, `apiKeyFile`), etwa aus einem Secret; `password`
   oder `apiKey` in der Datei lehnt der Start ab. Scheitert eine Prüfung, bleibt der
   Installationsmodus, und das Log nennt Schritt und Grund. Nach dem Abschluss wird die Datei
-  übergangen.
+  übergangen; Passwort- und Schlüsseldateien gehören dann gelöscht.
+- **Passwortwechsel:** Das erste Konto aus der Datei muss sein Passwort bei der ersten Anmeldung
+  wechseln. So gilt das Passwort, das in einer Datei oder einem Secret liegen bleibt, danach nicht
+  mehr. `"requirePasswordChange": false` schaltet das ab, etwa für eine CI, die sich mit dem Passwort
+  anmeldet; fehlt die Angabe, gilt `true`.
 - **Compose und Helm-Chart** hängen die Datei ein: Compose das Verzeichnis `installation/`
   ([Installation im Compose-Stapel](docker-compose.md#installation-im-compose-stapel)), der Chart
   rendert sie aus `bootstrap` und hängt das Passwort aus dem Secret ein
   ([Kubernetes](kubernetes.md#7-installation-und-erste-anmeldung)).
 - **Über die API:** `POST /api/v1/installation/answer-file` nimmt dieselben Angaben mit Token an,
-  Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten.
+  Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten;
+  das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
 - Angaben späterer Schritte (`outboundProxy`, `mail`, `branding`) wertet diese Version nicht aus.
 - Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens

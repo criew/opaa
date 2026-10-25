@@ -142,9 +142,6 @@ jobs:
             cp test-results/local-auth-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
           fi
 
-      # Fails when a target or an expected spec file delivered no record or a target no Playwright
-      # report, e.g. a stack or a seed that never came up; the release then publishes nothing.
-      # Rendering here as well shows the report in the run.
       # Same images as the local sign-in (Compose project opaa-local-auth): a stack in installation
       # mode without answer file, against which the assistant's scenario completes the installation.
       - name: axe-Szenarien des Einrichtungs-Assistenten
@@ -164,6 +161,9 @@ jobs:
             cp test-results/installation-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
           fi
 
+      # Fails when a target or an expected spec file delivered no record or a target no Playwright
+      # report, e.g. a stack or a seed that never came up; the release then publishes nothing.
+      # Rendering here as well shows the report in the run.
       - name: Bericht probeweise erzeugen
         run: python3 .github/scripts/accessibility_report.py "$RUNNER_TEMP/accessibility-results"
 

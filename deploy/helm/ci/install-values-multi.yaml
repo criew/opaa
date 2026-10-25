@@ -14,10 +14,10 @@ evaluationDatabase:
 embedding:
   baseUrl: http://ai-stub.multi-test.svc.cluster.local:8089
   model: bge-m3
-  dimensions: 1024
 bootstrap:
   initialAdmin:
     email: systemverwaltung@opaa.example
+    requirePasswordChange: false
   chatModel:
     baseUrl: http://ai-stub.multi-test.svc.cluster.local:8089
     model: qwen2.5:3b
@@ -29,10 +29,11 @@ uploads:
 targetValidation:
   indexingAllowlist:
     - objectstore.multi-test.svc.cluster.local
-    # The chat model of the answer file; the installation checks its address like a source.
+    # The chat and embedding model of the answer file; the installation checks their address like
+    # a source.
     - ai-stub.multi-test.svc.cluster.local
   identityProviderAllowlist:
-    - ai-stub.multi-test.svc.cluster.local
+    - ai-stub.multi-test.svc.cluster.local:8089
 secrets:
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
@@ -60,10 +61,6 @@ backend:
   # The scenarios sign in over plain HTTP, all from the same client address, and one access token
   # outlasts the rolling update.
   extraEnv:
-    # Start values for a previous version without the installation mode (phase "rolling"); the
-    # current version installs from the answer file and no longer reads them.
-    - { name: OPAA_INITIAL_ADMIN_EMAIL, value: systemverwaltung@opaa.example }
-    - { name: OPAA_INITIAL_ADMIN_PASSWORD, value: "E2eMehrinstanzKonto!2026" }
     - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }
     - { name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL, value: 30m }
     - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS, value: "1000" }

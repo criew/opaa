@@ -12,12 +12,15 @@ evaluationDatabase:
 
 embedding:
   baseUrl: http://ollama.opaa-trial-services.svc.cluster.local:11434/v1
-  dimensions: 768
   # nomic-embed-text as pulled: Ollama cuts an embedding input at 2048 tokens (num_batch), which is
   # also the application default.
   maxInputTokens: 2048
 
 bootstrap:
+  initialAdmin:
+    # The mail setup job (jobs/opaa-mail-setup.yaml) signs in with the first password; the trial
+    # prints it, a production installation keeps the forced change.
+    requirePasswordChange: false
   oidc:
     clientId: opaa
     # The issuer is the browser's address (keycloak.localhost), which does not resolve inside the
@@ -26,10 +29,11 @@ bootstrap:
   chatModel:
     baseUrl: http://ollama.opaa-trial-services.svc.cluster.local:11434/v1
 
-# The installation checks the chat model's address like a source; Ollama is a cluster address.
+# The installation checks the addresses of chat and embedding model like a source; Ollama is a
+# cluster address. Listed here, it is also a permitted target of the connectors.
 targetValidation:
   indexingAllowlist:
-    - ollama.opaa-trial-services.svc.cluster.local
+    - ollama.opaa-trial-services.svc.cluster.local:11434
 
 # Created by trial.sh with generated keys; never part of this file.
 secrets:

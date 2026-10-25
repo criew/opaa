@@ -28,10 +28,11 @@ import org.springframework.stereotype.Component;
  * call that finds it; the absence is never cached. The {@link io.opaa.instance.InvalidationBus}
  * drops the client when the row changes on any instance (ADR-0053, Entscheidung 5).
  *
- * <p>A completed installation without a model - the takeover at the start found the endpoint
- * unreachable - tries the takeover again on use, at most once per backoff interval of this
- * instance, doubling from {@link #FIRST_RETRY} to {@link #MAX_RETRY} (ADR-0053: "je Instanz"; the
- * takeover itself runs under the schema lock).
+ * <p>A completed installation of the {@code dev} mode without a model - its self-installation at
+ * the start found the endpoint unreachable - tries it again on use, at most once per backoff
+ * interval of this instance, doubling from {@link #FIRST_RETRY} to {@link #MAX_RETRY} (ADR-0053:
+ * "je Instanz"; the installation itself runs under the schema lock). Every other mode installs
+ * nothing here.
  */
 @DataFlow("embedding-model")
 @Component

@@ -206,8 +206,9 @@ cd ..
 Jede Datei wird ein Schlüssel des Secrets, ihr Name ist der Schlüsselname. `tr -d '\n'` und
 `printf '%s'` verhindern einen Zeilenumbruch am Ende des Werts. Die beiden Dateien des Objektspeichers
 entfallen, wenn die Originale auf einem Volume liegen; `installation-admin-password` entfällt bei der
-Installation im Browser. Optionale Schlüssel, etwa ein API-Schlüssel der Modelle, kommen als weitere
-Datei dazu.
+Installation im Browser und wird nach der Installation wieder entfernt. Die Schlüssel der Modelle
+kommen als `installation-chat-api-key` und `installation-embedding-api-key` dazu, wenn die Endpunkte
+einen verlangen.
 
 `wc -c *` zeigt vor dem Anlegen die Länge jedes Werts. Keine Datei darf leer sein; ging beim Kopieren
 der Befehle ein `openssl` verloren, steht dort `0`. Die beiden Verschlüsselungsschlüssel haben
@@ -234,7 +235,6 @@ database:
 embedding:
   baseUrl: https://modelle.example.org/v1
   model: bge-m3
-  dimensions: 1024
 
 bootstrap:
   initialAdmin:
@@ -272,16 +272,21 @@ ingress:
         - opaa.example.org
 ```
 
-- **Pflicht** sind `publicBaseUrl`, `database.host` (ohne Erprobungsdatenbank),
-  `embedding.baseUrl`, `embedding.model`, `embedding.dimensions`, dazu die Geheimnisse und beim
-  Objektspeicher `uploads.s3.endpoint` und `uploads.s3.bucket`. Fehlt einer, lehnt der Chart die
-  Installation mit einer Meldung ab, die den Wert nennt.
+- **Pflicht** sind `publicBaseUrl`, `database.host` (ohne Erprobungsdatenbank), dazu die
+  Geheimnisse und beim Objektspeicher `uploads.s3.endpoint` und `uploads.s3.bucket`; mit Antwortdatei
+  zusätzlich `bootstrap.chatModel.*` und `embedding.baseUrl` und `embedding.model`. Fehlt einer, lehnt
+  der Chart die Installation mit einer Meldung ab, die den Wert nennt.
 - `publicBaseUrl` ist die Adresse, unter der Personen OPAA aufrufen: mit Schema, ohne Pfad und ohne
   Schrägstrich am Ende. OPAA läuft immer an der Wurzel seines Hostnamens; ein Unterpfad ist mit dem
   Chart nicht möglich.
-- `embedding.dimensions` muss zum Einbettungsmodell passen. Ein späterer Wechsel von Modell oder
-  Dimension verlangt eine Neueinbettung aus der Administration, keine Neuindizierung
-  ([Modell wechseln](modelle.md#modell-wechseln)).
+- Die Dimension des Embedding-Modells ermittelt die Probeeinbettung der Installation; einstellen
+  muss sie niemand. `embedding.dimensions` ist ohne Wirkung und wird nur noch angenommen, damit
+  ältere Werte-Dateien weiter rendern. Ein späterer Wechsel des Modells verlangt eine Neueinbettung
+  aus der Administration ([Modell wechseln](modelle.md#modell-wechseln)).
+- **Interne Modell-Hosts** gehören mit Port in `targetValidation.indexingAllowlist`, etwa
+  `ollama.ai.svc.cluster.local:11434`, weil die Installation die Adressen der Modelle wie Quellen
+  prüft. Ein Eintrag dort ist zugleich ein erlaubtes Ziel der Konnektoren
+  ([Modelle](modelle.md#chat-modelle-in-der-oberfläche-anlegen)).
 - `bootstrap.*` ist die **Antwortdatei** der [Installation](installation.md): Mit
   `bootstrap.initialAdmin.email` rendert der Chart sie, und der erste Start richtet OPAA daraus ein
   (siehe [7. Installation und erste Anmeldung](#7-installation-und-erste-anmeldung)). Ohne die
@@ -376,10 +381,13 @@ dabei `UP`. Zwei Wege führen hinaus:
 - **Antwortdatei aus den Werten.** Mit `bootstrap.initialAdmin.email` rendert der Chart die
   Antwortdatei als ConfigMap `<Release>-backend-installation` und hängt das Passwort des ersten Kontos
   aus dem Secret (Schlüssel `installation-admin-password`) als Datei ein, nie als Variable. Der erste
-  Start prüft wie der Assistent und schließt ab. Die Adresse des Chat-Modells prüft er wie eine
-  Quelle: Ein Modell im Cluster, etwa Ollama, braucht seinen Host in
-  `targetValidation.indexingAllowlist`. Scheitert eine Prüfung, nennt das Protokoll Schritt
-  und Grund:
+  Start prüft wie der Assistent und schließt ab. Die Adressen von Chat- und Embedding-Modell prüft er
+  wie Quellen: Ein Modell im Cluster, etwa Ollama, braucht seinen Host in
+  `targetValidation.indexingAllowlist`. Die erste Anmeldung verlangt ein neues Passwort, damit das im
+  Secret danach nicht mehr gilt (`bootstrap.initialAdmin.requirePasswordChange`, Vorgabe `true`).
+  Fehlt das Passwort im Secret, startet der Pod trotzdem; OPAA bleibt dann im Installationsmodus, und
+  das Protokoll nennt die fehlende Datei. Scheitert eine Prüfung, nennt das Protokoll Schritt und
+  Grund:
 
   ```bash
   kubectl -n opaa logs -l app.kubernetes.io/component=backend --tail=-1 | grep "answer file"
@@ -393,13 +401,29 @@ dabei `UP`. Zwei Wege führen hinaus:
   kubectl -n opaa logs -l app.kubernetes.io/component=backend --tail=-1 | grep -A3 "INSTALLATION TOKEN"
   ```
 
-  `installationAllowedCidrs` beschränkt die Installations-API zusätzlich auf Netzbereiche.
+  Leitet der Cluster Protokolle an ein zentrales System weiter, steht ein erzeugtes Token auch dort;
+  dann das Token vorher selbst in das Secret legen.
+
+  `installationAllowedCidrs` beschränkt die Installations-API zusätzlich auf Netzbereiche. Geprüft
+  wird die Client-Adresse, die das Backend sieht: ohne `trustedProxyCidrs` die des Frontend-Pods, nicht
+  die der Person ([Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)). Ohne
+  Proxy-Kette lässt sich die Installation direkt am Backend vornehmen, dessen Port auf den eigenen
+  Rechner weitergeleitet wird; die Prüfung sieht dann die Adresse von `kubectl`:
+
+  ```bash
+  kubectl -n opaa port-forward svc/opaa-backend 8080:8080
+  ```
+
+  Die Hinweise nach `helm install` warnen, wenn die Netzbereiche ohne `trustedProxyCidrs` gesetzt
+  sind; dasselbe gilt für `localAdminAllowedCidrs`.
 
 Die Anmeldung läuft danach über `<publicBaseUrl>/login/system` mit dem ersten Konto. Was dann zu tun
 ist (persönliche Verwalterkonten anlegen, Notanker versiegeln), steht unter
 [Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto). Nach
-dem Abschluss lassen sich `bootstrap.initialAdmin.email` und das Passwort aus dem Secret entfernen;
-die Antwortdatei wird ohnehin übergangen.
+dem Abschluss gehören das Passwort (`secrets.initialAdminPassword` bzw. der Schlüssel
+`installation-admin-password`) und die Modellschlüssel der Antwortdatei aus dem Secret entfernt;
+`bootstrap.initialAdmin.email` darf stehen bleiben, die Antwortdatei wird übergangen, und der Pod
+startet auch ohne die Dateien.
 
 ### 8. Nach der Ersteinrichtung
 
@@ -426,7 +450,6 @@ evaluationDatabase:
 embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
   model: nomic-embed-text
-  dimensions: 768
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org
@@ -545,11 +568,11 @@ Wegen:
 | `OPAA_SETTINGS_ENCRYPTION_KEY` | `settingsEncryptionKey` | ja | wie oben; verschlüsselt Modellschlüssel, das Passwort des Mailservers und wartende E-Mails |
 | `OPAA_UPLOAD_S3_ACCESS_KEY` | `s3AccessKey` | bei `uploads.store: s3` | Zugangsschlüssel des Objektspeichers |
 | `OPAA_UPLOAD_S3_SECRET_KEY` | `s3SecretKey` | bei `uploads.store: s3` | Geheimschlüssel des Objektspeichers |
-| `OPAA_OPENAI_EMBEDDING_API_KEY` | `embeddingApiKey` | nein | Schlüssel des Einbettungs-Endpunkts |
 | `installation-chat-api-key` | `chatApiKey` | mit `bootstrap.chatModel.apiKeyInSecret` | Schlüssel des Chat-Modells der Antwortdatei, als Datei eingehängt |
+| `installation-embedding-api-key` | `embeddingApiKey` | mit `embedding.apiKeyInSecret` | Schlüssel des Embedding-Modells der Antwortdatei, als Datei eingehängt |
 | `OPAA_RERANK_API_KEY` | `rerankApiKey` | nein | Schlüssel des Rerank-Endpunkts |
 | `OPAA_TRANSCRIPTION_API_KEY` | `transcriptionApiKey` | nein | Schlüssel des Transkriptionsdienstes |
-| `installation-admin-password` | `initialAdminPassword` | mit `bootstrap.initialAdmin.email` | Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entbehrlich |
+| `installation-admin-password` | `initialAdminPassword` | für die Installation mit `bootstrap.initialAdmin.email` | Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entfernen. Fehlt es, startet der Pod, und die Installation wartet |
 | `OPAA_INSTALLATION_TOKEN` | `installationToken` | nein | Installations-Token, mindestens 32 Zeichen; ohne es schreibt der erste Start ein erzeugtes ins Protokoll |
 
 Die Verschlüsselungsschlüssel sind im Chart Pflicht, auch wenn noch nichts verschlüsselt gespeichert
@@ -558,7 +581,10 @@ ist. Ein fehlender Schlüssel fiele sonst erst auf, wenn die erste Quelle ihre Z
 **Wo ein fehlender Schlüssel auffällt.** Bei Geheimnissen aus den Werten lehnt der Chart die
 Installation ab. Bei einem vorhandenen Secret sieht der Chart nur den Namen; fehlt ein
 Pflichtschlüssel, startet der Pod nicht (`CreateContainerConfigError`), und `kubectl describe pod`
-nennt den Schlüssel. Ein optionaler Schlüssel darf fehlen.
+nennt den Schlüssel. Ein optionaler Schlüssel darf fehlen, ebenso die Dateien der Antwortdatei
+(`installation-*`), die der Pod nur einhängt, wenn es sie gibt. `OPAA_INITIAL_ADMIN_PASSWORD` und
+`OPAA_OPENAI_EMBEDDING_API_KEY` aus einem Secret bis `v0.1.0-rc.4` liest OPAA nicht mehr; sie gehören
+entfernt.
 
 **Der Chart erzeugt keine Schlüssel.** Ein bei der Installation zufällig erzeugter Schlüssel ginge mit
 `helm template`, in GitOps-Werkzeugen oder bei einer Neuinstallation verloren. Geht einer der beiden
@@ -618,11 +644,12 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
-| `embedding.baseUrl` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_BASE_URL` | OpenAI-kompatibler Einbettungs-Endpunkt; der Schlüssel kommt aus dem Secret. Der erste Start übernimmt ihn einmalig als Embedding-Modell der Installation, danach wirkt der Wert nicht mehr ([Embedding](modelle.md#embedding)) |
-| `embedding.model` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_MODEL` | Einbettungsmodell; einmalig übernommen wie `embedding.baseUrl` |
-| `embedding.dimensions` | leer, Pflicht | `OPAA_PGVECTOR_DIMENSIONS` | Vektorbreite des Modells; nur für eine bestehende Vektorablage übernommen, sonst ermittelt die Probeeinbettung sie |
+| `embedding.baseUrl` | leer, Pflicht mit Antwortdatei | `embeddingModel.baseUrl` der Antwortdatei | OpenAI-kompatibler Einbettungs-Endpunkt; die Installation prüft ihn mit einer Probeeinbettung, danach ändert der Wert nichts mehr |
+| `embedding.model` | leer, Pflicht mit Antwortdatei | `embeddingModel.model` | Einbettungsmodell; die Probeeinbettung ergibt seine Dimension |
+| `embedding.dimensions` | leer | — | ohne Wirkung; nur noch angenommen, damit Werte-Dateien bis `v0.1.0-rc.4` weiter rendern |
 | `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modelle.md#modell-wechseln)) |
-| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` | Eingabegrenze des Endpunkts in Tokens, einmalig übernommen wie `embedding.baseUrl` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
+| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `embeddingModel.maxInputTokens` | Eingabegrenze des Endpunkts in Tokens ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
+| `embedding.apiKeyInSecret` | `false` | `embeddingModel.apiKeyFile` | Schlüssel des Embedding-Modells aus dem Secret (Schlüssel `installation-embedding-api-key`) |
 | `rerank.enabled` | `false` | `OPAA_RERANK_ENABLED` | schaltet Reranking ein; verlangt dann `baseUrl` und `model` |
 | `rerank.baseUrl`, `rerank.model` | leer | `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` | Rerank-Endpunkt ohne den Pfad `/rerank`, Modell |
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |
@@ -631,8 +658,8 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `transcription.baseUrl`, `transcription.model` | leer | `OPAA_TRANSCRIPTION_BASE_URL`, `OPAA_TRANSCRIPTION_MODEL` | Transkriptionsdienst ohne den Pfad `/audio/transcriptions`, Modell |
 | `transcription.language`, `.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_LANGUAGE`, `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | Sprache, größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei |
 | `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
-| `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hostnamen interner Quellen, die die Adressprüfung passieren dürfen |
-| `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Hostnamen weiterer interner Identitätsanbieter; die Hosts aus `bootstrap.oidc` ergänzt der Chart selbst |
+| `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Quellen und Modelle, die die Adressprüfung passieren dürfen, am besten als `host:port`; ein Modell-Host ist damit auch ein erlaubtes Ziel der Konnektoren |
+| `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Weitere interne Identitätsanbieter als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.oidc` ergänzt der Chart selbst |
 
 ### Funktionen
 
@@ -669,6 +696,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 |---|---|---|---|
 | `bootstrap.initialAdmin.email` | leer | Antwortdatei, `firstAdmin.email` | Adresse des ersten Kontos, des lokalen Notanker-Kontos; gesetzt, rendert der Chart die Antwortdatei. `admin@opaa.local` wird abgelehnt |
 | `bootstrap.initialAdmin.displayName` | `Systemverwaltung` | `firstAdmin.displayName` | Anzeigename des ersten Kontos |
+| `bootstrap.initialAdmin.requirePasswordChange` | `true` | `firstAdmin.requirePasswordChange` | Die erste Anmeldung verlangt ein neues Passwort, sodass das im Secret danach nicht mehr gilt |
 | `bootstrap.oidc.issuerUri` | leer | `signIn.oidc.issuerUri` | Issuer eines Identitätsanbieters neben den lokalen Konten; leer heißt nur lokale Konten |
 | `bootstrap.oidc.clientId` | leer, Pflicht mit Issuer | `signIn.oidc.clientId` | Client-ID dieses Anbieters |
 | `bootstrap.oidc.jwkSetUri` | leer | `signIn.oidc.jwkSetUri` | Adresse der Signaturschlüssel, falls das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser |
@@ -947,13 +975,13 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 | Mailserver, weitere Anbieter, Verzeichnisabgleich, Zugriff externer KI-Werkzeuge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
 
 **Eine geänderte Werte-Datei ändert an der Antwortdatei nichts mehr.** Nach dem Abschluss der
-Installation führt die Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht nachführen. Der
-Einbettungs-Endpunkt ist dagegen ein Bereitstellungswert: Nach einem Wechsel des Modells oder von
-`embedding.dimensions` bettet die Systemverwaltung den Bestand neu ein (siehe
-[Modell wechseln](modelle.md#modell-wechseln)).
+Installation führt die Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht
+nachführen. Das gilt auch für das Embedding-Modell: Ein Wechsel ist eine Neueinbettung des Bestands
+aus der Administration (siehe [Modell wechseln](modelle.md#modell-wechseln)).
 
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
-Start einen anmeldefähigen lokalen Systemverwalter her (siehe
+Start einen anmeldefähigen lokalen Systemverwalter her; hat die Installation kein Notanker-Konto,
+legt er es mit `OPAA_LOCAL_ADMIN_RESET_EMAIL` an (siehe
 [Notfallprozedur: wieder hereinkommen](authentifizierung.md#notfallprozedur-wieder-hereinkommen)). Die
 Variable wirkt einmal je Setzen: Genau ein Start setzt zurück, weitere Starts mit ihr lassen das Konto
 unverändert, bis ein Start ohne sie einen neuen Reset freigibt. Sie gehört deshalb nicht in die
@@ -983,12 +1011,18 @@ keinen Modellserver mit.
 embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
   model: bge-m3
-  dimensions: 1024
 bootstrap:
   chatModel:
     baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
     model: qwen2.5:7b
+targetValidation:
+  indexingAllowlist:
+    - ollama.ai.svc.cluster.local:11434
 ```
+
+Die Installation prüft die Adressen der Modelle wie Quellen; der Eintrag in
+`targetValidation.indexingAllowlist` gibt den Modellserver frei, mit Port, weil er ihn zugleich als
+Ziel der Konnektoren freigibt ([Modelle](modelle.md#chat-modelle-in-der-oberfläche-anlegen)).
 
 Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe von
 `embedding.maxInputTokens`. Wer `bge-m3` per Modelfile mit 8.192 Tokens anlegt, setzt
@@ -1223,6 +1257,16 @@ Sie nennt die Version des Releases, etwa `Starting OpaaApplication v<neue Versio
 
 Hinweise zum Aufruf:
 
+- **Werte-Datei aus `v0.1.0-rc.4`.** Sie rendert unverändert: `bootstrap.*` und `embedding.*` werden
+  zur Antwortdatei, ein fehlendes `secrets.initialAdminPassword` bricht nichts ab, und die Dateien der
+  Antwortdatei hängt der Pod nur ein, wenn das Secret sie hat. Weil das Update von `v0.1.0-rc.4` die
+  Datenbank neu aufsetzt (Release-Notizen), installiert der erste Start danach neu: mit
+  `bootstrap.initialAdmin.email` aus der Antwortdatei, dafür gehören das Passwort als
+  `installation-admin-password` und gegebenenfalls die Modellschlüssel als `installation-*-api-key`
+  ins Secret; ohne die Adresse im Browser. `embedding.dimensions` und die Schlüssel
+  `OPAA_INITIAL_ADMIN_PASSWORD` und `OPAA_OPENAI_EMBEDDING_API_KEY` liest OPAA nicht mehr. Interne
+  Identitätsanbieter brauchen ihren Host mit Port in der Allowlist der Adressprüfung; den Anbieter aus
+  `bootstrap.oidc` trägt der Chart selbst ein.
 - **Werte-Datei statt `--reuse-values`.** `--reuse-values` übernimmt die Werte der alten Fassung und
   übergeht neue Vorgaben des Charts. Die Werte-Datei gehört in eine Versionsverwaltung.
 - **Kein Image-Tag in der Werte-Datei**, solange aus einem Release installiert wird. Ein gesetztes

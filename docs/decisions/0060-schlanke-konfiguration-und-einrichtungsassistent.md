@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053
+Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053
 
 ## Kontext
 
@@ -87,10 +87,13 @@ zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit d
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort, Modellschlüssel) nie im Klartext,
 sondern als Verweis auf eine Datei, damit sie aus Secrets kommen; über die API kommen sie im Rumpf
-der Anfrage wie in den einzelnen Schritten. Helm-Chart, Compose, e2e-Stack und Erprobungsaufbauten
-installieren über die Antwortdatei. Das Profil `dev` richtet sich selbst ein, mit einem Chat-Modell
-aus festen Vorgaben der Entwicklung; es hat keine lokale Anmeldung, und Ausnahmen für es im
-Prüfcode der Installation wären eine Hintertür. Begründung: GitOps und CI klicken keinen
+der Anfrage wie in den einzelnen Schritten. Das erste Konto aus der Antwortdatei muss sein Passwort
+bei der ersten Anmeldung wechseln, solange die Datei nicht `requirePasswordChange: false` sagt; so
+gilt das Passwort, das in einem Secret des Clusters liegen bleibt, nach der ersten Anmeldung nicht
+mehr. Helm-Chart, Compose, e2e-Stack und Erprobungsaufbauten installieren über die Antwortdatei. Das
+Profil `dev` richtet sich selbst ein, mit Chat- und Embedding-Modell aus festen Vorgaben der
+Entwicklung; es hat keine lokale Anmeldung, und Ausnahmen für es im Prüfcode der Installation wären
+eine Hintertür. Begründung: GitOps und CI klicken keinen
 Assistenten; ein einziger Prüfweg verhindert, dass Browser- und Dateiinstallation auseinanderlaufen.
 Ein Dateiverweis über die API ließe jeden Inhaber des Tokens Dateien des Backends lesen und an eine
 Modelladresse seiner Wahl senden.
@@ -99,8 +102,14 @@ Modelladresse seiner Wahl senden.
 
 Das im Assistenten angelegte Konto ist das lokale Notanker-Konto aus ADR-0033, Entscheidung 5
 (`is_bootstrap`, lokaler Anbieter), mit der dort eingegebenen Adresse und dem dort gesetzten Passwort.
-`OPAA_INITIAL_ADMIN_EMAIL` und `OPAA_INITIAL_ADMIN_PASSWORD` entfallen, ebenso das erzeugte
-Einmalpasswort. `OPAA_LOCAL_ADMIN_RESET=force` bleibt der Wiederanlauf des Betriebs.
+`OPAA_INITIAL_ADMIN_EMAIL` und `OPAA_INITIAL_ADMIN_PASSWORD` entfallen. `OPAA_LOCAL_ADMIN_RESET=force`
+bleibt der Wiederanlauf des Betriebs: Er setzt das Notanker-Konto zurück, und eine eingerichtete
+Installation ohne ein solches Konto bekommt es damit angelegt, unter der Adresse aus
+`OPAA_LOCAL_ADMIN_RESET_EMAIL` (dieselben Regeln wie im Assistenten), mit einem einmalig ins Log
+geschriebenen Passwort und erzwungenem Wechsel. Ein zweites Notanker-Konto entsteht nie; der Start
+einer eingerichteten Installation ohne eines warnt und nennt diesen Weg. Begründung: Eine Installation,
+deren Notanker-Konto gelöscht wurde, hätte sonst keinen Weg zurück, wenn ihr Identitätsanbieter
+ausfällt.
 
 ### 9. Anmeldeverfahren aus dem Assistenten
 
@@ -108,7 +117,10 @@ Der Assistent legt das Anmeldeverfahren fest: nur lokale Konten, oder zusätzlic
 OIDC-Identitätsanbieter mit Verbindungstest als Standardanbieter. `OPAA_OIDC_ISSUER_URI`,
 `OPAA_OIDC_CLIENT_ID`, `OPAA_OIDC_JWK_SET_URI`, `OPAA_OIDC_AUTHORITY` und `OPAA_OIDC_BOOTSTRAP`
 entfallen, ebenso die Erlaubnis ihrer Hosts in der Adressprüfung; deren Allowlist ist allein
-`OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`.
+`OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`. Ein Eintrag `host:port` gibt nur diesen Port frei, ein
+Eintrag ohne Port jeden; das Helm-Chart trägt Host und Port des Anbieters aus der Antwortdatei ein,
+damit ein interner Host wie `localhost` nicht mit allen Ports, etwa dem der Verwaltungsschnittstelle,
+erreichbar wird.
 
 ### 10. Modelle in der Datenbank, Vektortabelle nach der Wahl des Embedding-Modells
 
@@ -119,8 +131,9 @@ unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die die Probee
 gewählten Modells liefert. `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-Baseline legt
 `vector_store` weiterhin an, weil ein ausgeführtes Skript unverändert bleibt; eine spätere Migration
 entfernt die leere Tabelle auf einer Datenbank, auf der noch keine Instanz gestartet ist. Eine
-Installation von davor behält ihre Tabelle und übernimmt beim ersten Start einmalig das Modell, mit
-dem sie lief, samt Dimension ihrer bisherigen Konfiguration. Nach dem Abschluss lässt sich das
+Übernahme des Embedding-Modells aus der Umgebung gibt es nicht: Das Update von `v0.1.0-rc.4` setzt die
+Datenbank ohnehin neu auf (ADR-0056), jede Installation danach wählt ihr Modell in der Installation.
+Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). Nach dem Abschluss lässt sich das
 Embedding-Modell nicht über die Oberfläche wechseln; ein Wechsel verlangt eine Neuindexierung und
 ist ein eigenes Thema (Offen).
 

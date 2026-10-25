@@ -83,7 +83,7 @@ docker compose --profile oidc up --build
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
-OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost,keycloak
+OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost:8180,keycloak:8180
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 ```
 
@@ -97,7 +97,8 @@ legt die Anbieterverwaltung an.
   JWK-Set-Adresse (`http://keycloak:8180/realms/opaa/protocol/openid-connect/certs`) nennt den Weg des
   Backends zu den Signaturschlüsseln, im Compose-Netz über den Namen `keycloak` statt `localhost`.
 - **Beide Hosts sind intern** und brauchen deshalb die Allowlist der Adressprüfung (siehe
-  [Adressprüfung](#adressprüfung-und-tokenprüfung)).
+  [Adressprüfung](#adressprüfung-und-tokenprüfung)), mit Port: Ein Eintrag `localhost` allein gäbe
+  jeden Port frei, auch den der Verwaltungsschnittstelle des Backends.
 - **Ohne `OPAA_CSP_CONNECT_SRC_EXTRA`** blockiert der Browser den Aufruf gegen Keycloak (nächster
   Abschnitt). Mehrere Origins werden durch Leerzeichen getrennt; eine Änderung wirkt nach einem
   Neustart des Frontend-Containers.
@@ -388,7 +389,9 @@ Verwaltungsrealms reichlich bemessen; wer sie erreicht, hebt sie bewusst an.
 private Netzbereiche wie die Quellen ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), mit
 eigenen Schaltern `OPAA_OIDC_TARGET_VALIDATION_ENABLED` und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`.
 Ein hausinterner Anbieter gehört in die Allowlist, auch der aus der Installation; keine Adresse ist
-ohne Eintrag erlaubt.
+ohne Eintrag erlaubt. Ein Eintrag `host:port` (IPv6 als `[adresse]:port`) gibt nur diesen Port frei,
+ohne Port gilt er für jeden Port des Hosts; für interne Anbieter immer den Port nennen. Das Helm-Chart
+trägt den Anbieter der Antwortdatei mit Host und Port selbst ein.
 Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Redirects zu folgen.
 
 **Tokenprüfung.** Ein Token wird nur angenommen, wenn sein `azp`-Claim die Client-ID der Anbieterzeile
@@ -474,7 +477,10 @@ Die bloße Verlängerung einer Sitzung im Hintergrund zählt nicht als erneute A
 Identitätsanbieter konfiguriert ist. Das ist der Weg hinein, bevor etwas eingerichtet ist, und der
 Weg zurück, wenn ein Anbieter falsch konfiguriert wurde. Es ist ein Schritt der
 [Installation](installation.md), im Assistenten oder in der Antwortdatei, mit dem dort gewählten
-Passwort und ohne erzwungenen Wechsel; eine Antwortdatei nennt das Passwort nur als Pfad einer Datei.
+Passwort. Aus dem Assistenten gilt es ohne erzwungenen Wechsel. Eine Antwortdatei nennt das Passwort
+nur als Pfad einer Datei, und die erste Anmeldung verlangt ein neues, solange die Datei nicht
+`requirePasswordChange: false` sagt; so gilt das Passwort, das in einem Secret oder einer Datei
+liegen bleibt, danach nicht mehr.
 Die Adresse muss ein zustellbares Postfach sein, am besten ein Funktionspostfach der IT;
 `admin@opaa.local` lehnt die Installation ab, weil unter ihr kein Rücksetzlink ein Postfach erreicht.
 
@@ -569,7 +575,7 @@ Wiederverwendung und beendet alle Sitzungen.
 ## Notfallprozedur: wieder hereinkommen
 
 Für den Fall, dass sich **niemand** mehr anmelden kann — der letzte Anbieter ist falsch konfiguriert,
-das Notanker-Konto gesperrt, abgelaufen oder sein Passwort verloren:
+das Notanker-Konto gesperrt, abgelaufen, sein Passwort verloren oder das Konto nicht vorhanden:
 
 ```env
 OPAA_LOCAL_ADMIN_RESET=force
@@ -587,7 +593,7 @@ markierter Block im Protokoll, der Wechsel wird bei der ersten Anmeldung erzwung
 ```text
 =====================================================================
   NOTANKER-KONTO DER SYSTEMVERWALTUNG - EINMALIGE AUSGABE
-  Anmeldung:  mit der Adresse des ersten Kontos der Installation
+  Anmeldung:  mit der Adresse des Notanker-Kontos
   Passwort:   <hier steht das erzeugte Passwort>
   Der Wechsel des Passworts wird bei der ersten Anmeldung erzwungen.
   Diese Ausgabe erscheint einmalig und wird nicht wiederholt.
@@ -596,9 +602,21 @@ markierter Block im Protokoll, der Wechsel wird bei der ersten Anmeldung erzwung
 
 Zu lesen mit `docker compose logs backend | grep -A5 NOTANKER` bzw. `kubectl logs`. **Eine
 Log-Weiterleitung sieht diesen Block** — bewusst in Kauf genommen: Das Passwort gilt nur bis zur
-ersten Anmeldung. Gibt es kein Notanker-Konto, setzt der Start nichts zurück und nennt das im
-Protokoll; das Konto entsteht nur mit der Installation. Der Vorgang steht laut im Protokoll und im
-Nachweisprotokoll.
+ersten Anmeldung. Der Vorgang steht laut im Protokoll und im Nachweisprotokoll.
+
+**Kein Notanker-Konto vorhanden**, etwa nach einem Eingriff in die Datenbank: Dann legt derselbe
+Start es an, sobald zusätzlich die Adresse gesetzt ist:
+
+```env
+OPAA_LOCAL_ADMIN_RESET=force
+OPAA_LOCAL_ADMIN_RESET_EMAIL=it-betrieb@stadt.example
+```
+
+Die Adresse folgt denselben Regeln wie im Assistenten (zustellbares Postfach, nicht
+`admin@opaa.local`) und darf noch keinem lokalen Konto gehören; das Passwort steht wie oben
+einmalig im Protokoll. Fehlt die Adresse oder ist sie nicht verwendbar, legt der Start nichts an und
+nennt den Grund. Ein zweites Notanker-Konto entsteht nie. Beide Variablen danach wieder entfernen.
+Eine eingerichtete Installation ohne Notanker-Konto meldet das bei jedem Start als Warnung.
 
 Danach läuft die Reparatur über die Oberfläche: als lokaler Systemverwalter anmelden und in der
 Anbieterverwaltung den falschen Anbieter korrigieren oder einen neuen anlegen. Ein Eingriff in die
@@ -674,8 +692,9 @@ In dieser Reihenfolge prüfen:
 - **Die Installation lief über Assistent oder Antwortdatei.** Dann gibt es kein Einmalpasswort;
   das Passwort ist das dort gewählte. Ein Einmalpasswort erzeugt nur die
   [Notfallprozedur](#notfallprozedur-wieder-hereinkommen).
-- **Die Notfallprozedur fand kein Notanker-Konto** oder hatte seit dem Setzen von
-  `OPAA_LOCAL_ADMIN_RESET` schon zurückgesetzt; beides steht im Protokoll.
+- **Die Notfallprozedur fand kein Notanker-Konto und keine Adresse in
+  `OPAA_LOCAL_ADMIN_RESET_EMAIL`**, oder sie hatte seit dem Setzen von `OPAA_LOCAL_ADMIN_RESET` schon
+  zurückgesetzt; beides steht im Protokoll.
 - **Unter Kubernetes** ist der Pod seither mehrmals neu gestartet und das Protokoll weg.
 
 ### Die Anmeldung antwortet `429` mit `Retry-After`

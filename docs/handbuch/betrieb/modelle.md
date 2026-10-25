@@ -69,6 +69,15 @@ verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
 **Im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` unter `OPAA_OPENAI_BASE_URL`
 als erstem Chat-Modell, ohne Zugangsschlüssel.
 
+**Ein Modell im eigenen Netz** — Ollama im Compose-Stapel, ein Dienst im Cluster — liegt meist in
+einem internen Adressbereich, den die Zielprüfung ablehnt. Freigegeben wird es über
+`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, dieselbe Liste wie für die Quellen der
+Wissensbibliotheken. **Ein dort eingetragener Modell-Host ist damit auch ein erlaubtes Ziel der
+Konnektoren:** Wer Bibliotheken anbinden darf, könnte ihn als Quelle eintragen und Antworten des
+Modellservers einlesen. Deshalb den Host mit seinem Port eintragen (`ollama:11434`), nicht einen
+ganzen Namens- oder Adressbereich, und den Modellserver selbst nur die Modell-Schnittstelle anbieten
+lassen.
+
 Das Formular führt in drei Abschnitten:
 
 1. **Endpunkt.** Das Feld „Basis-Adresse" schlägt Vorlagen vor; jede andere openai-kompatible Adresse
@@ -163,13 +172,11 @@ sie niemand. Vor dem Abschluss gibt es keine Vektorablage, und Indexierung und S
 dem Hinweis, dass das Embedding-Modell noch nicht eingerichtet ist. Die Oberfläche zeigt die
 Einbettung danach nur an.
 
-Eine Installation aus der Zeit vor dem Installationsmodus übernimmt beim ersten Start einmalig das
-Modell, mit dem sie bisher lief: aus `OPAA_OPENAI_EMBEDDING_MODEL`, `OPAA_OPENAI_EMBEDDING_BASE_URL`
-oder `OPAA_OPENAI_BASE_URL`, dem Schlüssel entsprechend, `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` und
-`OPAA_PGVECTOR_DIMENSIONS`, jeweils mit ihrer früheren Vorgabe. Vektorablage und Abschnitte bleiben
-unverändert. Danach wirken diese Variablen nicht mehr; das Log nennt die Übernahme. Ein
-Zugangsschlüssel wird dabei mit `OPAA_SETTINGS_ENCRYPTION_KEY` verschlüsselt; fehlt der Schlüssel,
-nennt das Log die Variable, und Indexierung und Suche bleiben bis zum nächsten Start abgewiesen.
+`OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
+übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
+auf ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)). Den Zugangsschlüssel
+verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
+mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne Zugangsschlüssel.
 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
 und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.

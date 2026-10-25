@@ -23,7 +23,6 @@ services:
         # container is not enough, mailpit binds its SMTP listener a moment later.
         condition: service_healthy
     environment:
-      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
       # This stack uses its own host ports (see run-e2e.mjs) so it can run alongside a developer's
       # own stack and alongside the other two E2E targets; both values depend on the frontend's
       # actual port and therefore cannot live in e2e/local-auth.env.

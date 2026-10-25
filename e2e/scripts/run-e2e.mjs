@@ -522,8 +522,7 @@ async function main() {
   }
   if (isInstallation) {
     // Its own config, without retries: completing the installation ends the installation mode.
-    // No tests are a pass while the assistant's spec is not on this branch yet.
-    playwrightArgs.push('--config', 'installation-assistant/playwright.config.ts', '--pass-with-no-tests')
+    playwrightArgs.push('--config', 'installation-assistant/playwright.config.ts')
   }
   playwrightArgs.push(...extraTestArgs)
   const testStatus = run('pnpm', playwrightArgs, {
