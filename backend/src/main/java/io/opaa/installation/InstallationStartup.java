@@ -89,8 +89,9 @@ class InstallationStartup implements SmartLifecycle {
   }
 
   void run() {
-    boolean completed = decide();
+    boolean decided = decide();
     status.reload();
+    boolean completed = decided || !status.isPending();
     if (completed) {
       identitySeeds.runStartupSeeds();
       chatModelSeed.runStartupSeed();
@@ -172,18 +173,24 @@ class InstallationStartup implements SmartLifecycle {
       return true;
     } catch (FieldValidationException e) {
       log.error(
-          "The answer file {} was not applied, the installation stays pending: {}",
+          "The answer file {} was not applied{}: {}",
           file,
+          pendingNote(),
           e.fieldErrors().stream()
               .map(error -> error.field() + ": " + error.message())
               .collect(Collectors.joining("; ")));
     } catch (ValidationException | ConflictException e) {
-      log.error(
-          "The answer file {} was not applied, the installation stays pending: {}",
-          file,
-          e.getMessage());
+      log.error("The answer file {} was not applied{}: {}", file, pendingNote(), e.getMessage());
     }
     return false;
+  }
+
+  /**
+   * Says the installation stays pending only when it does; another instance may have completed it.
+   */
+  private String pendingNote() {
+    status.reload();
+    return status.isPending() ? ", the installation stays pending" : "";
   }
 
   /**

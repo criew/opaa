@@ -7,7 +7,7 @@ import io.opaa.common.UnauthorizedException;
 import io.opaa.installation.InstallationProperties;
 import io.opaa.installation.InstallationService;
 import io.opaa.ratelimit.RateLimitService;
-import io.opaa.security.ClientIpResolver;
+import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,7 +40,7 @@ class InstallationAccessGuard {
   private final AtomicBoolean untrustedProxyReported = new AtomicBoolean();
 
   private final InstallationService installation;
-  private final ClientIpResolver clientIpResolver;
+  private final TrustedProxyClientIpResolver clientIpResolver;
   private final List<IpAddressMatcher> allowedNetworks;
   private final RateLimitService requests = new RateLimitService(MAX_REQUESTS, WINDOW_SECONDS);
   private final RateLimitService refusals =
@@ -48,7 +48,7 @@ class InstallationAccessGuard {
 
   InstallationAccessGuard(
       InstallationService installation,
-      ClientIpResolver clientIpResolver,
+      TrustedProxyClientIpResolver clientIpResolver,
       InstallationProperties properties) {
     this.installation = installation;
     this.clientIpResolver = clientIpResolver;
@@ -84,14 +84,16 @@ class InstallationAccessGuard {
   }
 
   /**
-   * Warns once when the network restriction meets {@code X-Forwarded-For} from a proxy that is not
-   * trusted: the restriction and the budgets then see the proxy's address for every client.
+   * Warns once when the network restriction meets {@code X-Forwarded-For} from a connection that is
+   * no trusted proxy: the restriction and the budgets then see the proxy's address for every
+   * client. Read beneath the request wrappers, as the header arrived, before Spring rewrites it.
    */
   private void warnAboutAnUntrustedProxy(HttpServletRequest request, String address) {
+    String connection = clientIpResolver.remoteAddress(request);
     if (allowedNetworks.isEmpty()
-        || request.getHeader(FORWARDED_FOR) == null
-        || address == null
-        || !address.equals(request.getRemoteAddr())
+        || clientIpResolver.forwardedFor(request) == null
+        || connection == null
+        || clientIpResolver.isTrustedProxy(connection)
         || !untrustedProxyReported.compareAndSet(false, true)) {
       return;
     }
@@ -100,7 +102,7 @@ class InstallationAccessGuard {
             + " is no trusted proxy: set OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS, or every client has"
             + " the proxy's address",
         FORWARDED_FOR,
-        address);
+        connection);
   }
 
   /** Fails closed: while restricted, an address that is no numeric literal is refused. */

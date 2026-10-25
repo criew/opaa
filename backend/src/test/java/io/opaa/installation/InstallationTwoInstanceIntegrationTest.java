@@ -112,7 +112,23 @@ class InstallationTwoInstanceIntegrationTest {
   // regression guard: a configured token stops counting once it is no longer configured
   @Test
   void aConfiguredTokenThatIsNoLongerConfiguredIsReplaced() {
-    String generated = installation.ensureToken(null);
+    ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> logs =
+        new ch.qos.logback.core.read.ListAppender<>();
+    logs.start();
+    ch.qos.logback.classic.Logger serviceLog =
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger(InstallationService.class);
+    serviceLog.addAppender(logs);
+    String generated;
+    try {
+      generated = installation.ensureToken(null);
+    } finally {
+      serviceLog.detachAppender(logs);
+    }
+
+    assertThat(logs.list)
+        .extracting(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+        .anyMatch(message -> message.contains("on all instances with the same value"));
 
     assertThat(generated).isNotNull();
     assertThat(installation.tokenMatches(InstallationFixture.TOKEN)).isFalse();

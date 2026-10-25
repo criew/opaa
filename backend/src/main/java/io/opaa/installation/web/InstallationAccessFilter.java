@@ -11,11 +11,17 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.UrlPathHelper;
 import tools.jackson.databind.json.JsonMapper;
@@ -23,8 +29,9 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The door of every path below {@code /api/v1/installation}, behind {@link InstallationGateFilter}
  * and before anything reads the body: network, budget and token through {@link
- * InstallationAccessGuard}, then a body of at most {@value #MAX_BODY_BYTES} bytes - a larger one is
- * unreadable ({@code 400}). A new operation below the path is covered without doing anything.
+ * InstallationAccessGuard}, then a body of at most {@value #MAX_BODY_BYTES} bytes, read here - a
+ * larger one, with or without length header, is {@code 400}. CORS preflights pass untouched. A new
+ * operation below the path is covered without doing anything.
  */
 public class InstallationAccessFilter extends OncePerRequestFilter {
 
@@ -54,6 +61,10 @@ public class InstallationAccessFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
+    if (CorsUtils.isPreFlightRequest(request)) {
+      chain.doFilter(request, response);
+      return;
+    }
     try {
       guard.requireAccess(request);
     } catch (AccessDeniedException e) {
@@ -73,7 +84,12 @@ public class InstallationAccessFilter extends OncePerRequestFilter {
       write(response, HttpStatus.BAD_REQUEST, TOO_LARGE_MESSAGE);
       return;
     }
-    chain.doFilter(new BoundedBodyRequest(request), response);
+    byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
+    if (body.length > MAX_BODY_BYTES) {
+      write(response, HttpStatus.BAD_REQUEST, TOO_LARGE_MESSAGE);
+      return;
+    }
+    chain.doFilter(new ReadBodyRequest(request, body), response);
   }
 
   private void write(HttpServletResponse response, HttpStatus status, String message)
@@ -85,52 +101,67 @@ public class InstallationAccessFilter extends OncePerRequestFilter {
     jsonMapper.writeValue(response.getOutputStream(), body);
   }
 
-  /** A body without a length header ends with an error past {@link #MAX_BODY_BYTES}. */
-  private static final class BoundedBodyRequest extends HttpServletRequestWrapper {
+  /**
+   * The request with its body already read, at most {@link #MAX_BODY_BYTES} bytes, so a body
+   * without a length header is refused with the same message as one with it.
+   */
+  private static final class ReadBodyRequest extends HttpServletRequestWrapper {
 
-    BoundedBodyRequest(HttpServletRequest request) {
+    private final byte[] body;
+
+    ReadBodyRequest(HttpServletRequest request, byte[] body) {
       super(request);
+      this.body = body;
     }
 
     @Override
-    public ServletInputStream getInputStream() throws IOException {
-      ServletInputStream in = super.getInputStream();
+    public ServletInputStream getInputStream() {
+      ByteArrayInputStream in = new ByteArrayInputStream(body);
       return new ServletInputStream() {
-        private long read;
-
         @Override
-        public int read() throws IOException {
-          int next = in.read();
-          if (next >= 0 && ++read > MAX_BODY_BYTES) {
-            throw new IOException(TOO_LARGE_MESSAGE);
-          }
-          return next;
+        public int read() {
+          return in.read();
         }
 
         @Override
-        public int read(byte[] buffer, int offset, int length) throws IOException {
-          int count = in.read(buffer, offset, length);
-          if (count > 0 && (read += count) > MAX_BODY_BYTES) {
-            throw new IOException(TOO_LARGE_MESSAGE);
-          }
-          return count;
+        public int read(byte[] buffer, int offset, int length) {
+          return in.read(buffer, offset, length);
         }
 
         @Override
         public boolean isFinished() {
-          return in.isFinished();
+          return in.available() == 0;
         }
 
         @Override
         public boolean isReady() {
-          return in.isReady();
+          return true;
         }
 
         @Override
         public void setReadListener(ReadListener listener) {
-          in.setReadListener(listener);
+          throw new UnsupportedOperationException("the body is already read");
         }
       };
+    }
+
+    @Override
+    public BufferedReader getReader() {
+      Charset charset =
+          getCharacterEncoding() == null
+              ? StandardCharsets.UTF_8
+              : Charset.forName(getCharacterEncoding());
+      return new BufferedReader(new InputStreamReader(new ByteArrayInputStream(body), charset));
+    }
+
+    @Override
+    public int getContentLength() {
+      return body.length;
+    }
+
+    @Override
+    public long getContentLengthLong() {
+      return body.length;
     }
   }
 }

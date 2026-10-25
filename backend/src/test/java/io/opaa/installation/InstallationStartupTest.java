@@ -51,6 +51,7 @@ class InstallationStartupTest {
 
   @BeforeEach
   void captureLogs() {
+    when(status.isPending()).thenReturn(true);
     when(installation.completeAtStartupIfDue(anyBoolean(), anyBoolean()))
         .thenReturn(new InstallationService.StartupDecision(false, null));
     logs = new ListAppender<>();
@@ -245,5 +246,20 @@ class InstallationStartupTest {
 
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .anyMatch(message -> message.contains("OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS"));
+  }
+
+  // regression guard: the losing instance does not report a pending installation another completed
+  @Test
+  void anInstallationAnotherInstanceCompletedIsNotReportedAsPending() throws Exception {
+    Path answers = Files.writeString(directory.resolve("installation.json"), "{}");
+    when(status.isPending()).thenReturn(false);
+    InstallationStartup startup = startup("oidc", "", null, answers.toString());
+
+    startup.start();
+
+    verify(identitySeeds).runStartupSeeds();
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .noneMatch(
+            message -> message.contains("stays pending") || message.contains("installation mode"));
   }
 }

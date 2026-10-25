@@ -237,6 +237,11 @@ public class InstallationService {
     if (state.getTokenHash() != null && state.getTokenSource() == TokenSource.GENERATED) {
       return null;
     }
+    if (state.getTokenSource() == TokenSource.CONFIGURED) {
+      log.warn(
+          "The configured installation token is replaced: this instance starts without"
+              + " OPAA_INSTALLATION_TOKEN. Set it on all instances with the same value, or on none");
+    }
     String token = InstallationTokens.generate();
     state.storeToken(InstallationTokens.hash(token), TokenSource.GENERATED, now);
     states.save(state);
