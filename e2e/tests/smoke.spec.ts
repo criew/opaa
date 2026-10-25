@@ -29,6 +29,6 @@ test.describe('Rauchtest', () => {
     await expect(page.getByText('e2e-basisdokument.txt', { exact: true })).toBeVisible()
     // exact: only the document's status chip, not the Pflege-Anker's sentence above the list,
     // which names the number of indizierte Dokumente.
-    await expect(page.getByText('Indiziert', { exact: true })).toBeVisible()
+    await expect(page.getByText('Indiziert', { exact: true }).filter({ visible: true })).toBeVisible()
   })
 })

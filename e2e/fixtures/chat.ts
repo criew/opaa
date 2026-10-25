@@ -326,7 +326,7 @@ export async function createLibraryWithDocuments(
   // would still satisfy. exact: the Pflege-Anker above the list says "... indizierte
   // Dokumente dieser Bibliothek" and loads a moment later, so a substring match counts a chip that
   // is none - and only sometimes.
-  await expect(page.getByText('Indiziert', { exact: true })).toHaveCount(expectedIndexedCount, {
+  await expect(page.getByText('Indiziert', { exact: true }).filter({ visible: true })).toHaveCount(expectedIndexedCount, {
     timeout: 30_000,
   })
 }
