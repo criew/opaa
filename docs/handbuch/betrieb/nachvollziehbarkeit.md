@@ -76,8 +76,9 @@ gilt:
 - **Feste Angaben je Ereignisart:** Was ein Eintrag über den Stand vorher und nachher festhält,
   legt ein Ereigniskatalog je Ereignisart fest, etwa bei einer geänderten Rolle in einem Space nur
   die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt OPAA nicht ins Protokoll und meldet
-  sie im Log als Fehler. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist;
-  Einträge von vor dem Katalog tragen keine.
+  sie im Log als Fehler. Welche Angaben je Ereignisart erlaubt sind, steht im Auszug für die
+  Personalvertretung. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist,
+  und die Revision sieht sie bei jedem Eintrag; Einträge von vor dem Katalog tragen keine.
 - **Keine Suche nach Personen:** Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
   Vorgang ab, jeweils für einen begrenzten Zeitraum
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
@@ -231,7 +232,7 @@ Die Auskunft enthält:
 | Ausgehende Datenflüsse | jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
-| Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
+| Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
 | Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest

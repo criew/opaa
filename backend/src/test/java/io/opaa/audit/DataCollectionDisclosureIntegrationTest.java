@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
@@ -68,6 +69,7 @@ class DataCollectionDisclosureIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private Environment environment;
   @Autowired private Clock clock;
+  @Autowired private List<AuditPayloadKeys> derivedPayloadKeys;
 
   private final UUID libraryId = UUID.randomUUID();
   private final UUID libraryOwnerId = UUID.randomUUID();
@@ -246,6 +248,29 @@ class DataCollectionDisclosureIntegrationTest {
       }
     }
     assertThat(open).containsExactlyInAnyOrder("model-endpoint", "mcp-discovery");
+  }
+
+  /**
+   * The keys the manifest names per event type, and with it the fact sheet and the excerpt for the
+   * staff council, are exactly those of the event catalog, derived keys included.
+   */
+  @Test
+  void theManifestNamesExactlyTheKeysOfTheEventCatalog() throws Exception {
+    Map<String, Set<String>> named =
+        ComplianceManifestLoader.load().auditEvents().stream()
+            .collect(
+                Collectors.toMap(
+                    event -> event.id(),
+                    event ->
+                        event.payloadKeys() == null ? Set.of() : Set.copyOf(event.payloadKeys())));
+    Map<String, Set<String>> listed = new TreeMap<>();
+    for (AuditEventType type : AuditEventType.values()) {
+      listed.put(type.name(), AuditEventCatalog.listedKeys(type, derivedPayloadKeys));
+    }
+
+    assertThat(new TreeMap<>(named)).isEqualTo(listed);
+    assertThat(exportAsAdmin().path("manifest").path("auditEvents").toString())
+        .contains("\"payloadKeys\"");
   }
 
   /** The field list of the protocol description names exactly the columns of the audit log. */

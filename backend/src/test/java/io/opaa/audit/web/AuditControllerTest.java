@@ -17,6 +17,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
 import io.opaa.architecture.MainClasses;
+import io.opaa.audit.AuditEventCatalog;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
@@ -181,7 +182,9 @@ class AuditControllerTest {
                 .param("reason", REASON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.events[0].actorRef").value("pseud-1"))
-        .andExpect(jsonPath("$.events[0].objectId").value("lib-1"));
+        .andExpect(jsonPath("$.events[0].objectId").value("lib-1"))
+        .andExpect(
+            jsonPath("$.events[0].schemaVersion").value((int) AuditEventCatalog.SCHEMA_VERSION));
   }
 
   /**

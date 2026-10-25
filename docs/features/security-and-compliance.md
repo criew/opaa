@@ -178,9 +178,11 @@ geschrieben wird. Die Positivliste der Selbstauskunft wiederholt nur Schlüssel 
 **Geprüft wird beim Schreiben**, in `AuditLogService#record` und damit auf jedem Schreibweg. Ein
 Schlüssel, den der Katalog für die Ereignisart nicht nennt, und eine Nutzlast, die kein JSON-Objekt
 ist, werden im Betrieb verworfen: Geschrieben werden nur die gelisteten Schlüssel, das Log meldet
-die verworfenen Schlüsselnamen (nie ihre Werte) als Fehler. Unter
-`opaa.audit.payload.reject-unlisted=true`, gesetzt im Profil `dev` und damit in jedem Test,
-verweigert OPAA stattdessen das Schreiben, und die Transaktion des Vorgangs bricht ab. Im Betrieb
+die verworfenen Schlüsselnamen (nie ihre Werte) als Fehler, und der Zähler
+`opaa.audit.payload.dropped` (Tag `event_type`) steigt; die Warnregel `OpaaAuditPayloadDropped` des
+Helm-Charts meldet das. Unter `opaa.audit.payload.reject-unlisted=true`, gesetzt im Profil `dev`
+und für jeden Spring-Kontext der Testsuite in `backend/src/test/resources/config/application.yml`,
+gleich welche Profile ein Test aktiviert, verweigert OPAA stattdessen das Schreiben, und die Transaktion des Vorgangs bricht ab. Im Betrieb
 wäre das Verweigern die schlechtere Wahl: Es rollte den Vorgang zurück, den der Eintrag belegen
 soll, wegen eines Programmierfehlers, den der Test schon hätte finden sollen; gespeichert wird die
 unzulässige Angabe in keinem der beiden Fälle. Geprüft werden die Schlüssel, nicht die Werte.
@@ -189,7 +191,11 @@ unzulässige Angabe in keinem der beiden Fälle. Geprüft werden die Schlüssel,
 jedem neuen Eintrag und geht mit in die [SIEM-Ausleitung](#anbindung-an-ein-zentrales-sicherheitsmonitoring).
 Einträge von vor dem Katalog tragen keine. Erhöht wird sie, wenn ein gelisteter Schlüssel seine
 Bedeutung ändert oder entfällt; ein neuer Schlüssel oder eine neue Ereignisart lässt ältere
-Einträge lesbar und erhöht sie nicht. Bestehende Einträge bleiben, wie sie geschrieben wurden: Das
+Einträge lesbar und erhöht sie nicht. Ein Schnappschuss je Version
+(`backend/src/test/resources/audit/event-catalog/v<N>.json`) hält das fest: Entfällt ein
+Schlüssel der laufenden Version oder wird er umbenannt, scheitert der Build, bis die Version steigt
+und ihr eigener Schnappschuss dazukommt; ein neuer Schlüssel wird im Schnappschuss der laufenden
+Version nachgetragen. Bestehende Einträge bleiben, wie sie geschrieben wurden: Das
 Protokoll ist nur anfügend, der Katalog wirkt nur auf neue Einträge.
 
 ### Die Ereignisse der ersten Stufe
@@ -691,7 +697,8 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
 
 **Er enthält:**
 
-- die vollständige Liste der Ereignisarten mit Zweck je Art
+- die vollständige Liste der Ereignisarten mit Zweck je Art und den Angaben, die `before` und `after`
+  laut Ereigniskatalog tragen dürfen
 - die vollständige Feldliste des Protokollsatzes, je Feld mit Granularität, Zweck und Frist
 - die geltenden Aufbewahrungsfristen und den Zeitpunkt ihrer letzten Änderung
 - die Liste der vorhandenen Abfragewege **und** die Liste der ausdrücklich nicht vorhandenen, jeweils mit
