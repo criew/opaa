@@ -17,6 +17,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import java.time.Clock;
 import java.time.Duration;
@@ -35,8 +36,6 @@ import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Moves every effect one subject has onto another in a single, recorded operation (ADR-0036
@@ -800,17 +799,7 @@ public class PermissionTransferService {
             assetIds.forEach(
                 assetId ->
                     evictions.add(() -> assetAccessService.invalidateAsset(assetType, assetId))));
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      evictions.forEach(Runnable::run);
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            evictions.forEach(Runnable::run);
-          }
-        });
+    TransactionCallbacks.afterCompletionOrNow(() -> evictions.forEach(Runnable::run));
   }
 
   /** What a preview was shown for - the execution must name exactly the same. */

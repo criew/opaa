@@ -461,6 +461,25 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * A group class declares an anonymous synchronization and a space class registers one; the
+   * helper's own anonymous class and a call of the helper pass.
+   */
+  @Test
+  void aTransactionSynchronizationOutsideTheHelperIsReported() {
+    Scenario scenario = new Scenario("transactioncallback");
+
+    assertThat(scenario.violations(ModularArchitecture::transactionCallbacksGoThroughTheHelper))
+        .hasSize(2)
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("group.Eviction$1", "TransactionSynchronization"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("space.Registration", "registerSynchronization"))
+        .noneSatisfy(violation -> assertThat(violation).contains("common.TransactionCallbacks"));
+  }
+
+  /**
    * A sweep deletes documents, also by method reference and through a modifying query that deletes
    * under another name; the document service may, and a modifying update is no deletion.
    */

@@ -20,6 +20,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.notification.NotificationService;
 import io.opaa.permission.AssetGrantRepository;
@@ -44,8 +45,6 @@ import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Manages groups as permission subjects. The right to maintain one is decided <b>per group</b>
@@ -920,17 +919,7 @@ public class GroupService {
    * test), so the invalidation is never silently dropped.
    */
   static void invalidateAfterCommit(Runnable invalidation) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      invalidation.run();
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            invalidation.run();
-          }
-        });
+    TransactionCallbacks.afterCompletionOrNow(invalidation);
   }
 
   /** Only {@link GroupKind#AD_HOC} groups are managed here; the other kinds have their source. */

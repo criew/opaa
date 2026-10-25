@@ -231,6 +231,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void transactionCallbacksGoThroughTheHelper() {
+    ARCHITECTURE.transactionCallbacksGoThroughTheHelper().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }

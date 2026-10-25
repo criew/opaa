@@ -13,6 +13,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetGrant;
@@ -38,8 +39,6 @@ import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Manages {@link AssetGrant}s on an asset of any type - the "who has which {@link AssetRole}" side
@@ -627,17 +626,8 @@ public class AssetGrantService {
    * immediately when no transaction is active.
    */
   void invalidateAfterCommit(AssetType assetType, UUID assetId) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      accessService.invalidateAsset(assetType, assetId);
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            accessService.invalidateAsset(assetType, assetId);
-          }
-        });
+    TransactionCallbacks.afterCompletionOrNow(
+        () -> accessService.invalidateAsset(assetType, assetId));
   }
 
   /**

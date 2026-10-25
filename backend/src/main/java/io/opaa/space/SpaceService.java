@@ -20,6 +20,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
@@ -48,8 +49,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
@@ -962,13 +961,7 @@ public class SpaceService {
   public void ensureDefaultSpaceInCurrentTransaction(UUID userId, UUID organizationId) {
     spaceRepository.insertDefaultSpaceIfAbsent(
         UUID.randomUUID(), UUID.randomUUID(), PERSONAL_SPACE_NAME, userId, organizationId);
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            personalSpaceProvisioned.put(userId, Boolean.TRUE);
-          }
-        });
+    TransactionCallbacks.afterCommit(() -> personalSpaceProvisioned.put(userId, Boolean.TRUE));
   }
 
   private void insertDefaultSpace(UUID userId, UUID organizationId) {
