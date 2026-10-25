@@ -168,11 +168,16 @@ export const libraryDocumentHandlers = [
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
     const allDocuments = mockLibraryDocuments[libraryId] ?? []
+    const url = new URL(request.url)
+    // repeated ?status=FAILED&status=PENDING; a bare "status=" restricts nothing
+    const statuses = url.searchParams.getAll('status').filter(Boolean)
+    // a count (status filter, one row) only reads totalElements and must not count as a poll
+    const countOnly = statuses.length > 0 && url.searchParams.get('size') === '1'
     // Simulates the indexing pipeline resolving a freshly uploaded document after a couple of
     // polls, mirroring the INDEXING_POLL_STEPS pattern of the indexing handlers - lets tests exercise the "PENDING
     // until the list refresh settles" acceptance criterion without staying PENDING forever.
     allDocuments.forEach((doc) => {
-      if (doc.status !== 'PENDING') return
+      if (countOnly || doc.status !== 'PENDING') return
       const pollCount = (documentPollCounts.get(doc.id) ?? 0) + 1
       documentPollCounts.set(doc.id, pollCount)
       if (pollCount >= 2) {
@@ -190,14 +195,11 @@ export const libraryDocumentHandlers = [
     // Mirrors LibraryController#listDocuments / KnowledgeLibraryService#listDocuments: page/
     // size/q query params, a case-insensitive substring match on fileName, and the paged response
     // envelope { items, page, size, totalElements }.
-    const url = new URL(request.url)
     const q = url.searchParams.get('q')
     const page = Number(url.searchParams.get('page') ?? '0')
     const size = Number(url.searchParams.get('size') ?? '20')
     const folderIdParam = url.searchParams.get('folderId')
     const missingMetadataField = url.searchParams.get('missingMetadataField')
-    // repeated ?status=FAILED&status=PENDING; a bare "status=" restricts nothing
-    const statuses = url.searchParams.getAll('status').filter(Boolean)
     if (statuses.some((status) => !DOCUMENT_STATUSES.includes(status as DocumentStatus))) {
       return HttpResponse.json({ error: 'Ungültiger Wert für Parameter: status' }, { status: 400 })
     }
@@ -205,9 +207,18 @@ export const libraryDocumentHandlers = [
       statuses.length === 0 || statuses.includes(doc.status)
     const matchesQ = (doc: LibraryDocumentResponse) =>
       !q || doc.fileName.toLowerCase().includes(q.toLowerCase())
+    // an attachment on a flat page names its parent, which is usually not on it
+    const withParentName = (doc: LibraryDocumentResponse): LibraryDocumentResponse =>
+      doc.parentDocumentId
+        ? {
+            ...doc,
+            parentFileName:
+              allDocuments.find((parent) => parent.id === doc.parentDocumentId)?.fileName ?? null,
+          }
+        : doc
     const rowPage = (matching: LibraryDocumentResponse[]) =>
       HttpResponse.json({
-        items: matching.slice(page * size, page * size + size),
+        items: matching.slice(page * size, page * size + size).map(withParentName),
         page,
         size,
         totalElements: matching.length,
@@ -247,8 +258,12 @@ export const libraryDocumentHandlers = [
         ((mockDocumentMetadata[doc.id] ?? []).find(
           (field) => field.fieldKey === missingMetadataField,
         )?.state ?? 'EMPTY') === 'EMPTY'
+      // the anchor only counts indexed rows, so a status filter without INDEXED leaves nothing
       return rowPage(
-        allDocuments.filter((doc) => matchesQ(doc) && isEmptyFor(doc) && matchesStatus(doc)),
+        allDocuments.filter(
+          (doc) =>
+            matchesQ(doc) && isEmptyFor(doc) && matchesStatus(doc) && doc.status === 'INDEXED',
+        ),
       )
     } else if (statuses.length > 0) {
       // the status filter - bibliotheksweit over document rows like the anchor's list, so
@@ -275,6 +290,7 @@ export const libraryDocumentHandlers = [
     const items = filtered
       .slice(page * size, page * size + size)
       .flatMap((doc) => [doc, ...descendantsOf(doc.id)])
+      .map(withParentName)
 
     return HttpResponse.json({
       items,

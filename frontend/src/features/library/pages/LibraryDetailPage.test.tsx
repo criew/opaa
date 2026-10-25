@@ -1,7 +1,8 @@
 import { AxiosError } from 'axios'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
+import { useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
@@ -956,6 +957,169 @@ describe('LibraryDetailPage', () => {
     expect(await screen.findByRole('menuitem', { name: 'Dateien auswählen …' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Ordner auswählen …' })).toBeInTheDocument()
     expect(screen.queryByText(/quellkonfiguration/i)).not.toBeInTheDocument()
+  })
+
+  describe('failed documents (#3165)', () => {
+    // the counts reach the endpoint itself: size 1 and one status per request
+    function answerCounts(counts: Record<string, number>) {
+      server.use(
+        http.get('/api/v1/libraries/:libraryId/documents', ({ request }) => {
+          const status = new URL(request.url).searchParams.get('status') ?? ''
+          return HttpResponse.json(pageOf([], { size: 1, totalElements: counts[status] ?? 0 }))
+        }),
+      )
+    }
+
+    it('names the failed rows in the head and leads a reader to them, filtered', async () => {
+      answerCounts({ FAILED: 2, PENDING: 0, INDEXED: 85 })
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const state = await screen.findByTestId('library-state')
+      await waitFor(() => expect(state).toHaveTextContent('Teilweise fehlgeschlagen· 2 Fehler'))
+      // the number stands on its own, never against the document count
+      expect(state).not.toHaveTextContent(/von/)
+
+      mockGetLibraryDocuments.mockClear()
+      await userEvent.setup().click(within(state).getByRole('link'))
+
+      await waitFor(() =>
+        expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith(
+          viewerLibrary.id,
+          expect.objectContaining({ status: 'FAILED', folderId: null }),
+        ),
+      )
+      expect(await screen.findByRole('combobox', { name: 'Status' })).toHaveTextContent(
+        'Fehlgeschlagen (2)',
+      )
+    })
+
+    it('drops search and selection when the head leads into the failed documents', async () => {
+      answerCounts({ FAILED: 2, PENDING: 0, INDEXED: 6 })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf(
+          Array.from({ length: 8 }, (_, index) => ({
+            id: `doc-${index}`,
+            fileName: `vermerk-${index}.pdf`,
+            status: index < 2 ? ('FAILED' as const) : ('INDEXED' as const),
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          })),
+        ),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const search = await screen.findByRole('textbox', { name: 'Dokumente durchsuchen' })
+      await user.type(search, 'vermerk')
+      await user.click(screen.getByRole('checkbox', { name: 'Dokument vermerk-3.pdf auswählen' }))
+      expect(
+        screen.getByRole('checkbox', { name: 'Dokument vermerk-3.pdf auswählen' }),
+      ).toBeChecked()
+
+      const state = screen.getByTestId('library-state')
+      await waitFor(() => expect(state).toHaveTextContent('2 Fehler'))
+      await user.click(within(state).getByRole('link'))
+
+      // a Sammelaktion must never act on rows of the list the person left
+      await waitFor(() => expect(search).toHaveValue(''))
+      expect(
+        screen.getByRole('checkbox', { name: 'Dokument vermerk-3.pdf auswählen' }),
+      ).not.toBeChecked()
+    })
+
+    it('shows no „Hochgeladen“ while the failed rows are still being counted', async () => {
+      server.use(
+        http.get('/api/v1/libraries/:libraryId/documents', async () => {
+          await delay('infinite')
+          return HttpResponse.json(pageOf([]))
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'vermerk.pdf',
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          },
+        ]),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('vermerk.pdf')).toBeInTheDocument()
+      expect(screen.queryByTestId('library-state')).toBeNull()
+    })
+
+    it('offers the status filter by the counts of the library, also in a short folder', async () => {
+      answerCounts({ FAILED: 2, PENDING: 0, INDEXED: 6 })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'vermerk.pdf',
+            status: 'INDEXED',
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          },
+        ]),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByRole('combobox', { name: 'Status' })).toBeInTheDocument()
+      // no search below eight entries of the open list
+      expect(screen.queryByRole('textbox', { name: 'Dokumente durchsuchen' })).toBeNull()
+    })
+
+    it('lists unfiltered and drops a status from the address that names no filter', async () => {
+      answerCounts({ FAILED: 0, PENDING: 0, INDEXED: 3 })
+      function Address() {
+        return <span data-testid="address">{useLocation().search}</span>
+      }
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(
+        <>
+          <LibraryDetailPage />
+          <Address />
+        </>,
+        { withRouter: true, initialRoute: '/?status=BROKEN' },
+      )
+
+      await waitFor(() =>
+        expect(mockGetLibraryDocuments).toHaveBeenCalledWith(
+          managerLibrary.id,
+          expect.objectContaining({ status: null }),
+        ),
+      )
+      await waitFor(() => expect(screen.getByTestId('address')).toHaveTextContent(/^$/))
+    })
+
+    it('stays „Hochgeladen“ without a failed row and offers no status filter', async () => {
+      answerCounts({ FAILED: 0, PENDING: 0, INDEXED: 431 })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf(
+          Array.from({ length: 8 }, (_, index) => ({
+            id: `doc-${index}`,
+            fileName: `vermerk-${index}.pdf`,
+            status: 'INDEXED' as const,
+            sourceType: 'UPLOAD',
+            chunkCount: 1,
+          })),
+        ),
+      )
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('vermerk-0.pdf')).toBeInTheDocument()
+      expect(screen.getByTestId('library-state')).toHaveTextContent('Hochgeladen')
+      // the toolbar is there, but a status that holds no row or every row does not shorten it
+      expect(screen.getByRole('textbox', { name: 'Dokumente durchsuchen' })).toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: 'Status' })).toBeNull()
+    })
   })
 
   it('shows the errorMessage of a FAILED document as a tooltip on its status chip', async () => {
@@ -3206,6 +3370,7 @@ describe('LibraryDetailPage', () => {
           q: 'sozial',
           folderId: null,
           missingMetadataField: null,
+          status: null,
         })
       },
       { timeout: 2000 },
@@ -3272,6 +3437,7 @@ describe('LibraryDetailPage', () => {
         q: '',
         folderId: 'folder-protokolle',
         missingMetadataField: null,
+        status: null,
       })
     })
 
@@ -3297,6 +3463,7 @@ describe('LibraryDetailPage', () => {
         q: '',
         folderId: 'folder-protokolle',
         missingMetadataField: null,
+        status: null,
       })
     })
 
@@ -3971,6 +4138,7 @@ describe('LibraryDetailPage', () => {
           q: '',
           folderId: 'folder-protokolle',
           missingMetadataField: null,
+          status: null,
         })
       })
       expect(screen.queryByText('protokoll-2026-01.pdf')).not.toBeInTheDocument()
@@ -4160,6 +4328,7 @@ describe('LibraryDetailPage', () => {
         q: '',
         folderId: null,
         missingMetadataField: 'document_type',
+        status: null,
       }),
     )
     // the documents open with the filter set, so it can be taken back where it shows

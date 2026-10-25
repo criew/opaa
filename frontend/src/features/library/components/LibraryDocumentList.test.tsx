@@ -33,6 +33,7 @@ function renderList(overrides: Partial<LibraryDocumentListProps> = {}) {
       totalElements: 1,
       folderId: null,
       missingMetadataField: null,
+      status: null,
     },
     isLoading: false,
     emptyMessage: 'Es sind noch keine Dokumente vorhanden.',
@@ -165,5 +166,35 @@ describe('LibraryDocumentList (#1943)', () => {
         expect(onOpenOriginal).toHaveBeenCalledWith(doc)
       },
     )
+  })
+  it('lists an attachment on its own under a status filter and names its parent', () => {
+    const failedAttachment: LibraryDocumentResponse = {
+      ...document,
+      id: 'doc-2',
+      fileName: 'anlage.pdf',
+      status: 'FAILED',
+      parentDocumentId: 'mail-1',
+      parentFileName: 'posteingang.eml',
+    }
+    renderList({
+      documents: [{ ...document, status: 'FAILED' }, failedAttachment],
+      folders: [],
+      pageState: {
+        page: 0,
+        size: 20,
+        q: '',
+        totalElements: 2,
+        folderId: null,
+        missingMetadataField: null,
+        status: 'FAILED',
+      },
+    })
+
+    // a row of its own, not folded under the document before it
+    expect(screen.queryByRole('button', { name: /Anhänge von vermerk\.pdf/ })).toBeNull()
+    expect(screen.getByText('anlage.pdf')).toBeInTheDocument()
+    expect(screen.getByText(/Anhang von posteingang\.eml/)).toBeInTheDocument()
+    // a filtered list counts its rows in the foot
+    expect(screen.getByText('2 Dokumente')).toBeInTheDocument()
   })
 })

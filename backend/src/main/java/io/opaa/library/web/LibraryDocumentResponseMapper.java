@@ -28,15 +28,16 @@ final class LibraryDocumentResponseMapper {
    * #toResponse(LibraryDocumentEntry)} is the folder-aware counterpart.
    */
   static LibraryDocumentResponse toResponse(Document document) {
-    return toResponse(document, null, null);
+    return toResponse(document, null, null, null);
   }
 
   static LibraryDocumentResponse toResponse(LibraryDocumentEntry entry) {
-    return toResponse(entry.document(), entry.folderPath(), entry.sourceUrl());
+    return toResponse(
+        entry.document(), entry.folderPath(), entry.sourceUrl(), entry.parentFileName());
   }
 
   private static LibraryDocumentResponse toResponse(
-      Document document, String folderPath, String sourceUrl) {
+      Document document, String folderPath, String sourceUrl, String parentFileName) {
     return new LibraryDocumentResponse(
             document.getId(),
             document.getFileName(),
@@ -54,7 +55,8 @@ final class LibraryDocumentResponseMapper {
         .errorMessage(document.getErrorMessage())
         .folderId(document.getFolderId())
         .folderPath(folderPath)
-        .parentDocumentId(document.getParentDocumentId());
+        .parentDocumentId(document.getParentDocumentId())
+        .parentFileName(parentFileName);
   }
 
   static LibraryDocumentPageResponse toPageResponse(LibraryDocumentPage page) {
