@@ -37,7 +37,9 @@ diagram that does not render fails the run. Links of the delta point into --repo
 results of the release run (--accessibility, one directory per run, accessibility_report.py) become
 barrierefreiheit/; without them the report says the version was not checked. Dates and file
 metadata come from the commit, so the same commit yields the same files, except the date and
-results of the accessibility run.
+results of the accessibility run and the diagram SVGs, whose measured sizes follow the Chrome
+version and fonts of the run (render.mjs fixes the font to the metric-compatible Arial or Liberation
+Sans).
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
@@ -51,7 +53,8 @@ would hold them, without fact sheets, and prints every link that would fail `bui
 every pull request.
 
 `diagrams` renders every Mermaid diagram of docs/behoerden/ and docs/handbuch/ as `build` does and
-prints every one that would fail it; CI runs it on every pull request.
+prints every one that would fail it, as well as every id that repeats on a page; CI runs it on every
+pull request that touches them.
 
 Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build`, `links` and
 `diagrams`, which need markdown-it-py for the HTML version (.github/requirements-release.txt).
@@ -1161,6 +1164,17 @@ def documents(templates: Path, handbook: Path, repository: str, ref: str,
     return files
 
 
+def drawn(files: dict[str, bytes]) -> list[str]:
+    """The Mermaid sources of templates, update note and handbook in the package `files`, the
+    diagrams the package shows as SVG and CI renders; elsewhere, such as in upgrade notes, a
+    diagram stays code."""
+    from package_html import mermaid_sources
+
+    return mermaid_sources({path: content for path, content in files.items()
+                            if path.startswith((TEMPLATE_DIR, HANDBOOK_DIR))
+                            or path == "update-vermerk.md"})
+
+
 def render_diagrams(sources: list[str]) -> dict[str, str]:
     """The SVG of every Mermaid source, by source, drawn by render.mjs; a diagram that does not
     render fails the run."""
@@ -1219,7 +1233,7 @@ def assemble(
     says the version was not checked. `diagrams` turns a list of Mermaid sources into their SVGs by
     source (as render_diagrams does); without it diagrams stay code."""
     import accessibility_report
-    from package_html import broken_links, mermaid_sources, render
+    from package_html import broken_links, mermaid_sources, render, repeated_ids
 
     name = PREFIX + release.version
     files: dict[str, bytes] = {"LIESMICH.md": readme(release).encode()}
@@ -1268,11 +1282,14 @@ def assemble(
     site = render(files, f"Update-Paket OPAA {release.version}",
                   f"Probelauf: kein veröffentlichtes Release, Commit {release.commit}" if release.trial else None,
                   pending=("SHA256SUMS",),
-                  diagrams=diagrams(mermaid_sources(files)) if diagrams else None)
+                  diagrams=diagrams(drawn(files)) if diagrams else None)
     files.update(site)
     broken = broken_links({**files, "SHA256SUMS": b""})
     if broken:
         raise PackageError("links of the HTML version lead nowhere: " + "; ".join(broken))
+    repeated = repeated_ids(site)
+    if repeated:
+        raise PackageError("ids repeat on a page of the HTML version: " + "; ".join(repeated))
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(content).hexdigest()}  {path}\n" for path, content in sorted(files.items())
     ).encode()
@@ -1507,11 +1524,16 @@ def main(argv: list[str]) -> int:
             print(f"links of {TEMPLATES.relative_to(ROOT).as_posix()} and"
                   f" {HANDBOOK.relative_to(ROOT).as_posix()} resolve in the package")
         elif args.command == "diagrams":
-            from package_html import mermaid_sources
+            from package_html import render, repeated_ids
 
-            sources = mermaid_sources(documents(TEMPLATES, HANDBOOK, DEFAULT_REPOSITORY, "HEAD", None))
-            render_diagrams(sources)
-            print(f"{len(sources)} Mermaid diagrams render")
+            files = documents(TEMPLATES, HANDBOOK, DEFAULT_REPOSITORY, "HEAD", None)
+            sources = drawn(files)
+            repeated = repeated_ids(render(files, "Diagrammprüfung", diagrams=render_diagrams(sources)))
+            for problem in repeated:
+                print(f"repeated id {problem}")
+            if repeated:
+                return 1
+            print(f"{len(sources)} Mermaid diagrams render, no id repeats on a page")
         elif args.command == "operations":
             repo = Path(git(Path.cwd(), "rev-parse", "--show-toplevel"))
             sides = []

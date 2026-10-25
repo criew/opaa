@@ -42,9 +42,19 @@ export function counted(count: number, [one, many]: [string, string]): string {
   return `${count} ${count === 1 ? one : many}`
 }
 
-/** Whether stored credentials still serve the values: edit mode, same server. */
-export function credentialsKept(context: SourceFormContext, sourceUrl: string): boolean {
-  return context.credentialsStored && sameLibrarySourceOrigin(context.originalSourceUrl, sourceUrl)
+/**
+ * Whether stored credentials still serve the values: edit mode and `sameBinding` holds - by
+ * default the same server; a connector that binds them closer passes its own rule.
+ */
+export function credentialsKept(
+  context: SourceFormContext,
+  sourceUrl: string,
+  sameBinding: (
+    previousUrl: string | null | undefined,
+    nextUrl: string,
+  ) => boolean = sameLibrarySourceOrigin,
+): boolean {
+  return context.credentialsStored && sameBinding(context.originalSourceUrl, sourceUrl)
 }
 
 /** The account-and-secret rules of every connector that signs in with both. */

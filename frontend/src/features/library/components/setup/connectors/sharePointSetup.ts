@@ -1,6 +1,9 @@
 import type { SourceConnectionTestRequest } from '@/shared/api/types'
 import {
+  MAX_SHAREPOINT_FOLDERS,
+  MAX_SHAREPOINT_LIBRARIES,
   SHAREPOINT_API,
+  sharePointIdsValid,
   sharePointFolderLabel,
   sharePointLibraryLabel,
   sharePointSettingsOf,
@@ -10,9 +13,6 @@ import type { SourceSetupSpec } from '../setupTypes'
 import { counted, issueList } from './common'
 import { displayPath } from '../paths'
 import { SharePointConnectionFields, SharePointScopeFields } from './SharePointSetupFields'
-
-const MAX_LIBRARIES = 50
-const MAX_FOLDERS = 50
 
 export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
   sections: [
@@ -53,13 +53,18 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
     at('libraries', 'Dokumentbibliotheken fehlen', values.libraries.length === 0)
     at(
       'libraries',
-      `Höchstens ${MAX_LIBRARIES} Dokumentbibliotheken`,
-      values.libraries.length > MAX_LIBRARIES,
+      `Höchstens ${MAX_SHAREPOINT_LIBRARIES} Dokumentbibliotheken`,
+      values.libraries.length > MAX_SHAREPOINT_LIBRARIES,
     )
     at(
       'libraries',
-      `Höchstens ${MAX_FOLDERS} Ordner je Dokumentbibliothek`,
-      values.libraries.some((library) => library.folders.length > MAX_FOLDERS),
+      `Höchstens ${MAX_SHAREPOINT_FOLDERS} Ordner je Dokumentbibliothek`,
+      values.libraries.some((library) => library.folders.length > MAX_SHAREPOINT_FOLDERS),
+    )
+    at(
+      'libraries',
+      'Eine Dokumentbibliothek oder ein Ordner hat keine gültige Kennung; bitte neu aus der Auflistung wählen.',
+      values.libraries.some((library) => !sharePointIdsValid(library)),
     )
     return list
   },
