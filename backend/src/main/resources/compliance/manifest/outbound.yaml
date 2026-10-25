@@ -116,6 +116,20 @@ dataFlows:
     trigger: Indizierungslauf, Ordnerauswahl, Verbindungstest, Original öffnen
     switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
     settings: [connection_profiles.tenant, knowledge_libraries.schedule_enabled]
+  - id: source-onedrive
+    group: CONNECTOR
+    viaOutboundProxy: true
+    target: >-
+      Microsoft Graph (graph.microsoft.com) und die Anmeldung der Person bei
+      login.microsoftonline.com
+    data: >-
+      API-Anfragen mit dem Token des verbundenen Kontos der Person, das nur ihr eigenes OneDrive
+      liest; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Ordnerauswahl, Verbindungstest, Konto verbinden, Original öffnen
+    switchOff: >-
+      Je private Bibliothek, durch Ausschalten des Zeitplans, Trennen des Kontos oder Löschen der
+      Bibliothek
+    settings: [connection_profiles.tenant, knowledge_libraries.schedule_enabled]
   - id: source-s3
     group: CONNECTOR
     viaOutboundProxy: true

@@ -85,6 +85,28 @@ class DriveRuleTest {
   }
 
   @Test
+  void oneDriveIdentitiesAndSentencesNameTheOneDriveForBusinessOnly() {
+    String path = DriveRule.ONEDRIVE.filePath("b!drive-0", "item_1");
+
+    assertThat(path).isEqualTo("onedrive://b!drive-0/item_1");
+    assertThat(DriveRule.SHAREPOINT.address(path)).isEmpty();
+    assertThat(DriveRule.ONEDRIVE.address(DriveRule.SHAREPOINT.filePath("b!drive-0", "i")))
+        .isEmpty();
+    assertThat(DriveRule.ONEDRIVE.admits("business")).isTrue();
+    assertThat(DriveRule.ONEDRIVE.admits("personal")).isFalse();
+    assertThat(DriveRule.ONEDRIVE.admits("documentLibrary")).isFalse();
+    assertThat(DriveRule.ONEDRIVE.fileGone())
+        .isEqualTo("Die Datei existiert in OneDrive nicht mehr.");
+    assertThat(DriveRule.ONEDRIVE.fileOutsideDrive())
+        .isEqualTo("Die Datei liegt nicht mehr im OneDrive.");
+    assertThat(DriveRule.ONEDRIVE.folderMissing("Akten"))
+        .isEqualTo(
+            "Der gewählte Ordner „Akten“ ist im OneDrive nicht mehr vorhanden; bitte die"
+                + " Ordnerauswahl anpassen.");
+    assertThat(DriveRule.ONEDRIVE.driveNamed("OneDrive")).isEqualTo("OneDrive „OneDrive“");
+  }
+
+  @Test
   void aSchemeThatWouldBreakIdentitiesIsRefused() {
     assertThatThrownBy(() -> withScheme("Share/Point"))
         .isInstanceOf(IllegalArgumentException.class);

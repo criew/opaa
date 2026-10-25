@@ -8,6 +8,8 @@ import tools.jackson.databind.JsonNode;
  * removal, {@code root}, {@code folder}, {@code package} (a OneNote notebook) or {@code file}.
  *
  * @param size in bytes, {@code -1} when the answer names none
+ * @param remoteItem whether the item is a shortcut to an item of another drive ({@code remoteItem}
+ *     facet), whose content is never this drive's
  */
 record DriveItem(
     String id,
@@ -22,12 +24,13 @@ record DriveItem(
     String quickXorHash,
     String cTag,
     String lastModified,
-    String mimeType) {
+    String mimeType,
+    boolean remoteItem) {
 
   /** The properties a listing or a single read asks for ({@code $select}). */
   static final String SELECT =
       "id,name,parentReference,file,folder,package,root,deleted,malware,size,cTag,"
-          + "lastModifiedDateTime";
+          + "lastModifiedDateTime,remoteItem";
 
   static DriveItem of(JsonNode node) {
     JsonNode parent = node.get("parentReference");
@@ -47,7 +50,8 @@ record DriveItem(
         text(hashes, "quickXorHash"),
         text(node, "cTag"),
         text(node, "lastModifiedDateTime"),
-        text(file, "mimeType"));
+        text(file, "mimeType"),
+        present(node, "remoteItem"));
   }
 
   /** Whether the item is a folder or the library's root, never itself a document. */
