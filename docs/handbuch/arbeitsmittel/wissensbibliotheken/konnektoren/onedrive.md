@@ -90,8 +90,8 @@ Eine OneDrive-Bibliothek legt fest:
   Ebene;
 - **einen eigenen Vollabgleich-Rhythmus** in Tagen (optional).
 
-Der Assistent „Neue Wissensbibliothek" bietet die Quellart „OneDrive" nur an, wer auf einem
-OneDrive-Zugang ein verbundenes Konto hat. Unter „Zugang" steht dieser als „`<Zugang>` · privat"
+Der Assistent „Neue Wissensbibliothek" bietet die Quellart „OneDrive" nur Personen an, die auf
+einem OneDrive-Zugang ein verbundenes Konto haben. Unter „Zugang" steht dieser als „`<Zugang>` · privat"
 mit dem Hinweis „nur für Sie, später nicht änderbar"; eine geteilte Bibliothek und „Eigene Adresse"
 gibt es nicht, und der Schritt „Freigaben" entfällt. Den Zugang wählt man ausdrücklich, auch wenn es
 nur einen gibt.

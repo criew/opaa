@@ -10,7 +10,7 @@ import type {
   ConnectedAccountConnectRequest,
   ConnectedAccountsOverview,
 } from '@/shared/api/types'
-import { mockSourceTypes } from '../../library/mocks/libraryFixtures'
+import { mockSourceTypes } from '@/features/library/mocks/libraryFixtures'
 import ConnectedAccountsSection from './ConnectedAccountsSection'
 
 vi.mock('@/shared/api/leaveApp', () => ({ leaveFor: vi.fn() }))
