@@ -92,9 +92,10 @@ class TransportStatusCodeSpecificationTest {
    * Budgets that are not keyed by request path, so {@link RateLimitFilter} cannot reveal them: the
    * three external-access read paths are bounded per access token by {@code ExternalAccessQuota},
    * the password change and the confirmation of a sign-in per authenticated account by {@code
-   * LocalAuthRateLimiter}, and the ticket and the download of the self-disclosure by the daily
-   * limit and the starts per person in {@code self_disclosure_usage}, and the installation API per
-   * client address by {@code InstallationAccessGuard}.
+   * LocalAuthRateLimiter}, the ticket and the download of the self-disclosure by the daily limit
+   * and the starts per person in {@code self_disclosure_usage}, the installation API per client
+   * address by {@code InstallationAccessGuard}, and preview and import of the settings by the
+   * installation-wide counter of {@code SettingsTransferService}.
    */
   private static final Set<String> LIMITED_WITHOUT_A_PATH_RULE =
       Set.of(
@@ -110,7 +111,9 @@ class TransportStatusCodeSpecificationTest {
           "saveInstallationStep",
           "checkInstallationStep",
           "applyInstallationAnswerFile",
-          "completeInstallation");
+          "completeInstallation",
+          "previewSettingsImport",
+          "importSettings");
 
   private static final Set<String> HTTP_METHODS =
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");
@@ -119,12 +122,13 @@ class TransportStatusCodeSpecificationTest {
    * The raw-body bounds, matched at their call sites: qualified from any other class, unqualified
    * inside the one that declares it. Each owner reads an intake that must not go through multipart:
    * the push notification (signature over the exact bytes) and the dictation recording (never
-   * buffered to disk).
+   * buffered to disk) and the settings document (parsed only once its size is known).
    */
   private static final String SHARED_BOUND = "readBounded(";
 
   private static final List<String> BOUND_OWNERS =
-      List.of("PushIntakeController", "TranscriptionController");
+      List.of(
+          "PushIntakeController", "TranscriptionController", "SystemSettingsTransferController");
 
   private static final List<String> MAPPING_ANNOTATIONS =
       List.of(
@@ -155,7 +159,11 @@ class TransportStatusCodeSpecificationTest {
 
   /** The routes bounded today; the scan may only ever find more of them, never fewer. */
   private static final List<String> KNOWN_INTAKES =
-      List.of("post /api/v1/libraries/{libraryId}/push", "post /api/v1/transcriptions");
+      List.of(
+          "post /api/v1/libraries/{libraryId}/push",
+          "post /api/v1/transcriptions",
+          "post /api/v1/system/settings/import/preview",
+          "post /api/v1/system/settings/import");
 
   private static final String CLIENT = "203.0.113.9";
   private static final String PATH_VARIABLE = "11111111-1111-1111-1111-111111111111";

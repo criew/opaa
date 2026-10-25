@@ -956,9 +956,27 @@ public class KnowledgeLibraryService {
       Page<Document> page, UUID libraryId, Pageable pageable) {
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
+    // an attachment's parent is usually not on a flat page: one lookup names all of them
+    Set<UUID> parentIds =
+        page.getContent().stream()
+            .map(Document::getParentDocumentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Map<UUID, String> parentNames =
+        parentIds.isEmpty()
+            ? Map.of()
+            : documentRepository.findAllById(parentIds).stream()
+                .collect(Collectors.toMap(Document::getId, Document::getFileName));
     return new LibraryDocumentPage(
         page.getContent().stream()
-            .map(document -> toLibraryDocumentEntry(document, foldersById))
+            .map(
+                document ->
+                    toLibraryDocumentEntry(
+                        document,
+                        foldersById,
+                        document.getParentDocumentId() == null
+                            ? null
+                            : parentNames.get(document.getParentDocumentId())))
             .toList(),
         pageable.getPageNumber(),
         pageable.getPageSize(),
@@ -994,19 +1012,20 @@ public class KnowledgeLibraryService {
     }
     List<LibraryDocumentEntry> entries = new ArrayList<>();
     for (Document parent : parents) {
-      appendSubtree(parent, childrenByParent, foldersById, entries);
+      appendSubtree(parent, null, childrenByParent, foldersById, entries);
     }
     return entries;
   }
 
   private void appendSubtree(
       Document document,
+      String parentFileName,
       Map<UUID, List<Document>> childrenByParent,
       Map<UUID, LibraryFolder> foldersById,
       List<LibraryDocumentEntry> entries) {
-    entries.add(toLibraryDocumentEntry(document, foldersById));
+    entries.add(toLibraryDocumentEntry(document, foldersById, parentFileName));
     for (Document child : childrenByParent.getOrDefault(document.getId(), List.of())) {
-      appendSubtree(child, childrenByParent, foldersById, entries);
+      appendSubtree(child, document.getFileName(), childrenByParent, foldersById, entries);
     }
   }
 
@@ -1445,10 +1464,11 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(
-      Document document, Map<UUID, LibraryFolder> foldersById) {
+      Document document, Map<UUID, LibraryFolder> foldersById, String parentFileName) {
     return new LibraryDocumentEntry(
         document,
         LibraryFolderPaths.pathOf(document.getFolderId(), foldersById),
-        connectors.deepLink(document));
+        connectors.deepLink(document),
+        parentFileName);
   }
 }

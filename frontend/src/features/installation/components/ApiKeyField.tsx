@@ -1,0 +1,65 @@
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
+import SecretInput from './SecretInput'
+
+interface ApiKeyFieldProps {
+  id: string
+  /** A key is stored for this model. */
+  keyStored: boolean
+  value: string
+  onChange: (value: string) => void
+  /** The stored key is to be removed with the next save. */
+  remove: boolean
+  onRemoveChange: (remove: boolean) => void
+  error?: string
+}
+
+/**
+ * The API key of a model step: „Gesetzt · Ersetzen" for a stored key, and the explicit way to
+ * remove it. The save sends what `apiKeyPart` returns: omitted keeps the key, empty removes it.
+ */
+export default function ApiKeyField({
+  id,
+  keyStored,
+  value,
+  onChange,
+  remove,
+  onRemoveChange,
+  error,
+}: ApiKeyFieldProps) {
+  return (
+    <>
+      <SecretInput
+        id={id}
+        label="API-Schlüssel"
+        optional
+        autoComplete="off"
+        value={value}
+        onChange={onChange}
+        stored={keyStored && !remove}
+        error={error}
+        hint="Leer lassen, wenn der Dienst keinen Schlüssel verlangt."
+      />
+      {keyStored && (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: -1 }}>
+          {remove && (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              Der gespeicherte Schlüssel wird beim Speichern entfernt.
+            </Typography>
+          )}
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => {
+              onRemoveChange(!remove)
+              onChange('')
+            }}
+          >
+            {remove ? 'Schlüssel behalten' : 'Gespeicherten Schlüssel entfernen'}
+          </Button>
+        </Box>
+      )}
+    </>
+  )
+}

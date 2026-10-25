@@ -8,10 +8,12 @@ import type { StatusTone } from '@/shared/ui/StatusLine'
 import { sourceBlockWord } from '@/features/asset'
 import type { LibraryDetailTab } from './libraryDetailAccess'
 
-/** Where the cause of a state lives: a tab and, inside it, the anchor of its row. */
+/** Where the cause of a state lives: a tab and, inside it, the anchor of its row or a filter. */
 export interface StateTarget {
   tab: LibraryDetailTab
   anchor?: 'verbindung' | 'umfang' | 'zeitplan' | 'laeufe' | 'live'
+  /** The Reiter „Dokumente" filtered to these documents. */
+  status?: 'FAILED'
 }
 
 /**
@@ -129,6 +131,11 @@ interface StateInput {
   canSeeSource: boolean
   /** Upload: the last upload was turned away at the quota. */
   uploadQuotaRejected: boolean
+  /**
+   * Upload: document rows, attachments included, whose processing failed; null while unknown.
+   * Counted on other terms than documentCount, so the head never sets one against the other.
+   */
+  failedDocuments?: number | null
 }
 
 const VERBINDUNG: StateTarget = { tab: 'quelle', anchor: 'verbindung' }
@@ -166,6 +173,15 @@ function stateOf(input: StateInput): LibraryState {
       input.uploadQuotaRejected ||
       (quota != null && quota > 0 && (library.storageUsedBytes ?? 0) >= quota)
     if (full) return { word: 'Kontingent voll', tone: 'error', detail: null, target: null }
+    const failed = input.failedDocuments ?? 0
+    if (failed > 0) {
+      return {
+        word: 'Teilweise fehlgeschlagen',
+        tone: 'warning',
+        detail: `${failed.toLocaleString('de-DE')} Fehler`,
+        target: { tab: 'dokumente', status: 'FAILED' },
+      }
+    }
     if (input.documentCount === 0) {
       return { word: 'Noch kein Inhalt', tone: 'neutral', detail: null, target: null }
     }
@@ -232,6 +248,7 @@ export function stateTargetHref(target: StateTarget): string {
   const params = new URLSearchParams()
   if (target.tab !== 'dokumente') params.set('tab', target.tab)
   if (target.anchor === 'laeufe') params.set('lauf', 'neu')
+  if (target.status) params.set('status', target.status)
   const query = params.toString()
   return `${query ? `?${query}` : ''}${target.anchor ? `#${target.anchor}` : ''}`
 }

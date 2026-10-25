@@ -111,18 +111,22 @@ löscht sie. **Wer verwaltet**, ändert darüber hinaus Verbindung, Umfang und Z
 und vergibt Rechte. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht löschen;
 der nächste Lauf brächte sie zurück.
 
-**Der Zustand im Kopf** ist ein einziges Wort mit Datum oder Fortschritt, etwa „Aktuell · 23.10.2026",
-„Läuft · 40 %", „Teilweise fehlgeschlagen", „Anmeldung abgelehnt", „Nicht erreichbar",
+**Der Zustand im Kopf** ist ein einziges Wort mit Datum oder Fortschritt, etwa „Aktuell ·
+23.10.2026", „Läuft · 40 %", „Teilweise fehlgeschlagen", „Anmeldung abgelehnt", „Nicht erreichbar",
 „Zustimmung abgelaufen", „Noch nie indiziert" oder bei einem Upload „Hochgeladen" und „Kontingent
-voll". Wird die Quelle nicht mehr erreicht, nennt das Wort den Grund wie die Kachel im Katalog,
-etwa „Gesperrt", „Zugang entfernt", „Verbindung getrennt" oder „Anmeldung abgelaufen". Wer verwaltet, kommt mit
-einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum neuesten Lauf im Reiter
-„Quelle". Wer nur liest oder bearbeitet, sieht das Wort ohne Verweis; den Verlauf der Läufe sehen
-erst Verwaltende. Das Wort kommt dann aus dem Stand des letzten Laufs, mit fehlgeschlagenen
-Dokumenten und Unvollständigkeit; den Grund eines Abbruchs, etwa eine abgelehnte Anmeldung oder
-ein erschöpftes Kontingent, erfahren erst Verwaltende, darunter heißt er „Fehlgeschlagen“ bzw.
-„Teilweise fehlgeschlagen“. Bei einer Quelle ohne Anmeldung (Verzeichnis, Web, Feed) heißt ein
-abgebrochener Lauf für alle Rollen „Nicht erreichbar“.
+voll". Ist bei einem Upload die Verarbeitung von Dateien gescheitert, steht dort „Teilweise
+fehlgeschlagen · 3 Fehler"; ein Klick darauf öffnet für jede Rolle den Reiter „Dokumente" mit genau
+diesen Dateien. Die Zahl zählt jede Datei einzeln, Anhänge eingeschlossen, und steht deshalb nicht
+neben der Zahl der Dokumente im Kopf, die Anhänge zu ihrer Mail zählt. Wird die Quelle nicht mehr
+erreicht, nennt das Wort den Grund wie die Kachel im Katalog, etwa „Gesperrt", „Zugang entfernt",
+„Verbindung getrennt" oder „Anmeldung abgelaufen". Wer verwaltet, kommt mit einem Klick auf das Wort
+zur Ursache: zur Zeile „Verbindung" oder zum neuesten Lauf im Reiter „Quelle". Wer nur liest oder
+bearbeitet, sieht das Wort ohne Verweis; den Verlauf der Läufe sehen erst Verwaltende. Das Wort
+kommt dann aus dem Stand des letzten Laufs, mit fehlgeschlagenen Dokumenten und Unvollständigkeit;
+den Grund eines Abbruchs, etwa eine abgelehnte Anmeldung oder ein erschöpftes Kontingent, erfahren
+erst Verwaltende, darunter heißt er „Fehlgeschlagen“ bzw. „Teilweise fehlgeschlagen“. Bei einer
+Quelle ohne Anmeldung (Verzeichnis, Web, Feed) heißt ein abgebrochener Lauf für alle Rollen „Nicht
+erreichbar“.
 
 **Nach dem Anlegen** zeigt die Detailansicht unter den Reitern „Nächste Schritte": „Zugang prüfen",
 „In Space verwenden", bei Confluence und S3 „Live-Abgleich einrichten", „Feld anlegen", beim Upload
@@ -131,9 +135,12 @@ einem Lauf, der die Quelle gelesen hat. „Ausblenden" blendet den Block dauerha
 Schritte erledigt, verschwindet er von selbst.
 
 Im Reiter „Dokumente" sucht „Dateiname enthält …" in der ganzen Bibliothek, der Filter „Metadaten"
-zeigt die Dokumente ohne Wert in einem Feld. Die Aktionen einer Zeile, etwa „Löschen", stehen in
-ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine Meldung sie; „Schließen" faltet sie zu
-„Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
+zeigt die Dokumente ohne Wert in einem Feld. Der Filter „Status" zeigt alle Dateien der Bibliothek,
+die „Fehlgeschlagen" sind oder noch „Wird verarbeitet", mit ihrer Zahl; er erscheint ab fünf Dateien
+in der Bibliothek und nur, wenn er die Liste kürzt. Beide Filter listen Anhänge als eigene Zeilen
+und nennen dazu das Dokument, an dem sie hängen, etwa „Anhang von posteingang.eml". Die Aktionen
+einer Zeile, etwa „Löschen", stehen in ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine
+Meldung sie; „Schließen" faltet sie zu „Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
 
 Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ändern" klappt sie auf,
 „Speichern" übernimmt die Änderung, „Abbrechen" verwirft sie. Wo der Umfang nur im Auswahldialog

@@ -193,6 +193,23 @@ class LibraryDocumentResponseMapperTest {
   }
 
   @Test
+  void toResponseFromADocumentEntryCarriesTheParentsFileNameThrough() {
+    Document attachment =
+        new Document("anlage.pdf", "/mail/0/anlage.pdf", "application/pdf", 64L, SourceType.UPLOAD);
+    attachment.setParentDocumentId(UUID.randomUUID());
+
+    LibraryDocumentResponse response =
+        LibraryDocumentResponseMapper.toResponse(
+            new LibraryDocumentEntry(attachment, null, null, "posteingang.eml"));
+
+    assertThat(response.getParentFileName()).isEqualTo("posteingang.eml");
+    assertThat(
+            LibraryDocumentResponseMapper.toResponse(new LibraryDocumentEntry(attachment, null))
+                .getParentFileName())
+        .isNull();
+  }
+
+  @Test
   void toResponseFromADocumentEntryLeavesFolderPathNullForTheLibrarysRoot() {
     Document document =
         new Document("wurzel.pdf", "/data/wurzel.pdf", "application/pdf", 512L, SourceType.UPLOAD);

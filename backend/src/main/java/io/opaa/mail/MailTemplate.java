@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -78,6 +79,14 @@ public class MailTemplate {
 
   public UUID getUpdatedBy() {
     return updatedBy;
+  }
+
+  /** Whether {@link #replaceContent} with these values would leave the content as it is. */
+  boolean hasContent(String subject, String bodyPlain, String bodyHtml) {
+    String html = bodyHtml == null || bodyHtml.isBlank() ? null : bodyHtml;
+    return Objects.equals(this.subject, subject)
+        && Objects.equals(this.bodyPlain, bodyPlain)
+        && Objects.equals(this.bodyHtml, html);
   }
 
   /** Replaces the stored content; a blank HTML body is stored as {@code null} ("use the frame"). */

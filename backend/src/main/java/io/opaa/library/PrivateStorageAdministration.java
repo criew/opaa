@@ -90,7 +90,10 @@ public class PrivateStorageAdministration {
     return current();
   }
 
-  /** Sets the house-wide value; {@code null} returns to the default, {@code 0} is unlimited. */
+  /**
+   * Sets the house-wide value; {@code null} returns to the default, {@code 0} is unlimited. The
+   * value already in force writes nothing and records nothing.
+   */
   @Transactional
   public QuotaSetting change(CurrentUser actor, Long quotaBytes) {
     actor.requireSystemAdmin(ADMIN_ONLY);
@@ -98,6 +101,13 @@ public class PrivateStorageAdministration {
       throw new ValidationException("Das Speicherkontingent darf nicht negativ sein");
     }
     QuotaSetting before = current();
+    boolean unchanged =
+        quotaBytes == null
+            ? !before.overridden()
+            : before.overridden() && before.quotaBytes() == quotaBytes;
+    if (unchanged) {
+      return before;
+    }
     quota.setQuotaBytes(quotaBytes);
     QuotaSetting after = current();
     auditEventRecorder.recordUserAction(

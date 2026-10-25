@@ -301,6 +301,7 @@ public final class AuditEventCatalog {
             "auditorRole",
             "baseUrl",
             "clientId",
+            "clientSecretChange",
             "connectorType",
             "directorySyncEnabled",
             "directorySyncIntervalMinutes",
@@ -323,6 +324,7 @@ public final class AuditEventCatalog {
         keys,
         Set.of(
             "active",
+            "apiKeyChange",
             "apiKeySet",
             "baseUrl",
             "displayName",
@@ -330,7 +332,17 @@ public final class AuditEventCatalog {
             "modelIdentifier",
             "temperature"),
         LLM_MODEL_CREATED,
-        LLM_MODEL_CHANGED,
+        LLM_MODEL_CHANGED);
+    put(
+        keys,
+        Set.of(
+            "active",
+            "apiKeySet",
+            "baseUrl",
+            "displayName",
+            "maxTokens",
+            "modelIdentifier",
+            "temperature"),
         LLM_MODEL_DELETED);
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
@@ -386,11 +398,24 @@ public final class AuditEventCatalog {
             "fromAddress",
             "fromName",
             "host",
+            "passwordChange",
             "passwordSet",
             "port",
             "username"),
         MAIL_SETTINGS_CHANGED);
-    put(keys, Set.of(), MAIL_TEMPLATE_CHANGED, MAIL_TEMPLATE_RESET, MAIL_TEST_SENT);
+    put(
+        keys,
+        Set.of(
+            "bodyHtmlLength",
+            "bodyHtmlSha256",
+            "bodyPlainLength",
+            "bodyPlainSha256",
+            "overridden",
+            "subjectLength",
+            "subjectSha256"),
+        MAIL_TEMPLATE_CHANGED,
+        MAIL_TEMPLATE_RESET);
+    put(keys, Set.of(), MAIL_TEST_SENT);
     put(keys, Set.of("expiresAt", "mode"), LOCAL_USER_CREATED);
     put(keys, Set.of("deliveryPath"), LOCAL_USER_INVITED, LOCAL_USER_PASSWORD_RESET_REQUESTED);
     put(keys, Set.of("changedFields", "expiresAt"), LOCAL_USER_CHANGED);
@@ -431,6 +456,8 @@ public final class AuditEventCatalog {
             "allowedCidrs",
             "enabled",
             "massRetrievalAlertThreshold",
+            "serverInstructionsLength",
+            "serverInstructionsSha256",
             "tokenMaxLifetimeDays",
             "tokenRateLimitPerHour"),
         EXTERNAL_ACCESS_SETTINGS_CHANGED);
@@ -440,6 +467,7 @@ public final class AuditEventCatalog {
             "authMethod",
             "authorizationEndpoint",
             "clientIdSet",
+            "clientSecretChange",
             "clientSecretSet",
             "connectorSettingsSet",
             "issuer",
@@ -460,6 +488,7 @@ public final class AuditEventCatalog {
             "authMethod",
             "authorizationEndpoint",
             "clientIdSet",
+            "clientSecretChange",
             "clientSecretSet",
             "connectionsDiscarded",
             "connectorSettingsSet",
@@ -516,6 +545,7 @@ public final class AuditEventCatalog {
         SELF_DISCLOSURE_EXPORT_FINISHED);
     put(keys, Set.of("dailyLimit", "enabled"), SELF_DISCLOSURE_SETTINGS_CHANGED);
     put(keys, Set.of("allowedOrigins"), LINK_TARGETS_CHANGED);
+    put(keys, Set.of("formatVersion", "sections"), SETTINGS_IMPORTED);
     return Map.copyOf(keys);
   }
 

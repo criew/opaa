@@ -121,8 +121,13 @@ ist ein eigenes Thema (Offen).
 ### 11. Jede Änderung einer Einstellung ist nachweisbar
 
 Jede Änderung einer fachlichen Einstellung über Oberfläche, REST-API oder Installation erzeugt einen
-Eintrag im Revisionsprotokoll mit vorherigem und neuem Wert; Geheimnisse erscheinen nur als
-„geändert“. Der Abschluss der Installation ist ein eigenes Ereignis.
+Eintrag im Revisionsprotokoll mit vorherigem und neuem Wert; eine Änderung auf denselben Wert
+erzeugt keinen. Geheimnisse erscheinen nur als „gesetzt“, „geändert“ oder „entfernt“. Freitexte der
+Verwaltung — Betreff und Text der Mail-Vorlagen, der Einleitungstext für externe KI-Werkzeuge —
+erscheinen nur als SHA-256 und Länge vorher und nachher, nie im Wortlaut: Belegt ist, ob und wann
+sich ein Text änderte und ob er zu einer früheren Fassung zurückkehrte, ohne dass das Protokoll
+Freitexte für die Dauer seiner Frist aufbewahrt. Der Abschluss der Installation ist ein eigenes
+Ereignis.
 
 ### 12. Export und Import der Einstellungen
 

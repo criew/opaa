@@ -4,6 +4,7 @@ import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'r
 // app
 import ErrorBoundary from './ErrorBoundary'
 import ProtectedRoute from './ProtectedRoute'
+import InstallationRedirect from './InstallationRedirect'
 import { createAppTheme } from '@/shared/theme/theme'
 import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './shell/GlobalAreaLayout'
@@ -25,6 +26,7 @@ import {
   EXTERNAL_TOOLS_TOKENS_ROUTE,
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
+  INSTALLATION_ROUTE,
   REGISTER_ROUTE,
   RIGHTS_HISTORY_ROUTE,
   SET_PASSWORD_ROUTE,
@@ -52,6 +54,7 @@ import {
   ForgotPasswordPage,
   GroupManagementPage,
   HandoverPage,
+  InstallationPage,
   LibraryCreatePage,
   LibraryDetailPage,
   LlmModelManagementPage,
@@ -67,6 +70,7 @@ import {
   SearchIndexingAdminPage,
   SetPasswordPage,
   SettingsPage,
+  SettingsTransferPage,
   SpaceCreatePage,
   SpacePage,
   SpaceSettingsPage,
@@ -79,6 +83,7 @@ import {
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
+  { label: 'Einstellungen übertragen', to: '/admin/settings-transfer' },
   // „Benutzer & Gruppen" as two entries instead of tabs on one page: the
   // secondary column *is* the area navigation, and a pair of tabs above it would be a second
   // navigation for the same decision. Every target thus stays directly linkable.
@@ -170,8 +175,11 @@ export default function App() {
       <CssBaseline />
       <ErrorBoundary>
         <Router>
+          <InstallationRedirect />
           <Suspense fallback={<PageLoading />}>
             <Routes>
+              {/* ADR-0060: the set-up assistant, outside the shell and before any session. */}
+              <Route path={INSTALLATION_ROUTE} element={<InstallationPage />} />
               <Route path="/login" element={<LoginPage />} />
               {/* ADR-0033, Entscheidung 4/5: reachable at all times - the way back into an
                 installation whose last identity provider is misconfigured. */}
@@ -269,6 +277,7 @@ export default function App() {
                   <Route path="admin/users/:tab" element={<UserManagementPage />} />
                   <Route path="admin/groups" element={<GroupManagementPage />} />
                   <Route path="admin/branding" element={<BrandingSettingsPage />} />
+                  <Route path="admin/settings-transfer" element={<SettingsTransferPage />} />
                   <Route
                     path="admin/models"
                     element={<Navigate to="/admin/models/chat" replace />}

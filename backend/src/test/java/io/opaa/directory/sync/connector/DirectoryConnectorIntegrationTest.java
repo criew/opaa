@@ -85,6 +85,10 @@ class DirectoryConnectorIntegrationTest {
     }
     createdProviderIds.forEach(
         providerId ->
+            jdbcTemplate.update(
+                "DELETE FROM audit_log WHERE object_id = ?", providerId.toString()));
+    createdProviderIds.forEach(
+        providerId ->
             connectorRepository
                 .findByProviderId(providerId)
                 .ifPresent(connectorRepository::delete));
@@ -164,6 +168,31 @@ class DirectoryConnectorIntegrationTest {
     assertThat(connectorRepository.findByOrganizationId(ORGANIZATION_ID))
         .filteredOn(connector -> connector.getProviderId().equals(provider.getId()))
         .hasSize(1);
+  }
+
+  /**
+   * Regression guard: storing and rotating the secret of the service account are audited as {@code
+   * clientSecretChange}, never with the secret (ADR-0060, Entscheidung 11).
+   */
+  @Test
+  void storingAndRotatingTheSecretAreAuditedWithoutTheSecret() {
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
+    save(provider, null, "opaa-directory", "alt");
+    save(provider, null, "opaa-directory", "neu");
+    save(provider, null, "opaa-directory", "neu");
+
+    List<String> after =
+        jdbcTemplate.queryForList(
+            "SELECT after FROM audit_log WHERE event_type = 'OIDC_PROVIDER_CHANGED'"
+                + " AND object_id = ? ORDER BY recorded_at",
+            String.class,
+            provider.getId().toString());
+
+    assertThat(after).hasSize(3);
+    assertThat(after.get(0)).contains("\"clientSecretChange\":\"SET\"");
+    assertThat(after.get(1)).contains("\"clientSecretChange\":\"CHANGED\"");
+    assertThat(after.get(2)).doesNotContain("clientSecretChange");
+    assertThat(String.join("", after)).doesNotContain("alt").doesNotContain("neu\"");
   }
 
   @Test

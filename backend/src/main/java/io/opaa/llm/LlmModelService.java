@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditSecretChange;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -99,13 +100,9 @@ public class LlmModelService {
             maxTokens,
             settingsEncryptor.encrypt(apiKey));
     repository.save(model);
-    recordChange(
-        organizationId,
-        actorUserId,
-        AuditEventType.LLM_MODEL_CREATED,
-        model,
-        null,
-        auditState(model));
+    Map<String, Object> after = auditState(model);
+    AuditSecretChange.put(after, "apiKey", null, model.getApiKeyCiphertext());
+    recordChange(organizationId, actorUserId, AuditEventType.LLM_MODEL_CREATED, model, null, after);
     return model;
   }
 
@@ -135,18 +132,16 @@ public class LlmModelService {
     requireBaseUrlWithoutCredentials(baseUrl);
     LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
     Map<String, Object> before = auditState(model);
+    String previousApiKeyCiphertext = model.getApiKeyCiphertext();
     String apiKeyCiphertext =
-        apiKey == null ? model.getApiKeyCiphertext() : settingsEncryptor.encrypt(apiKey);
+        apiKey == null ? previousApiKeyCiphertext : settingsEncryptor.encrypt(apiKey);
     model.replaceDetails(
         displayName, baseUrl, modelIdentifier, temperature, maxTokens, apiKeyCiphertext);
     repository.save(model);
+    Map<String, Object> after = auditState(model);
+    AuditSecretChange.put(after, "apiKey", previousApiKeyCiphertext, apiKeyCiphertext);
     recordChange(
-        organizationId,
-        actorUserId,
-        AuditEventType.LLM_MODEL_CHANGED,
-        model,
-        before,
-        auditState(model));
+        organizationId, actorUserId, AuditEventType.LLM_MODEL_CHANGED, model, before, after);
     if (model.isActive()) {
       eventPublisher.publishEvent(new ActiveChatModelChangedEvent());
     }

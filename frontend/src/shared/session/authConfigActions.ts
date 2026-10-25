@@ -36,8 +36,8 @@ export function createAuthConfigActions(
         return
       }
       const providers = config.providers ?? []
-      const { localAccounts, features } = config
-      set({ mode: config.mode, providers, localAccounts, features })
+      const { localAccounts, features, installationPending } = config
+      set({ mode: config.mode, providers, localAccounts, features, installationPending })
 
       if (config.mode === 'dev') {
         // No login and no token: the backend authenticates every request as the selected dev
@@ -156,6 +156,7 @@ export function createAuthConfigActions(
           providers: config.providers ?? [],
           localAccounts: config.localAccounts,
           features: config.features,
+          installationPending: config.installationPending,
         })
       } catch {
         // The last known state is better than none: an unreachable configuration
