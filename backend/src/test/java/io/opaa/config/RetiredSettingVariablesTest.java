@@ -34,13 +34,28 @@ class RetiredSettingVariablesTest {
   }
 
   @Test
-  void theFiveRetiredVariablesAreKnown() {
+  void theRetiredVariablesAreKnown() {
     assertThat(RetiredSettingVariables.RETIRED)
         .containsOnlyKeys(
             "OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL",
             "OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL",
             "OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL",
             "OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL",
-            "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES");
+            "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES",
+            "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS",
+            "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
+            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD");
+  }
+
+  @Test
+  void aRetiredThresholdOfTheConnectionsIsNamedWithItsNewPlace() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", "60");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS is no longer read; set the deletion"
+                + " period of private libraries under Administration > Anbindungen >"
+                + " Einstellungen");
   }
 }
