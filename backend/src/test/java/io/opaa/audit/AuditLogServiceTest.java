@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ActorKind;
@@ -12,13 +14,14 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 /**
  * The order of the audit log is the order of the database clock, one for every instance of the
- * installation (ADR-0053, Entscheidung 9).
+ * installation (ADR-0053, Entscheidung 9); its payload holds only the keys of the event catalog.
  */
 class AuditLogServiceTest {
 
@@ -26,9 +29,16 @@ class AuditLogServiceTest {
 
   private final AuditLogRepository repository = mock(AuditLogRepository.class);
   private final StaticListableBeanFactory beans = new StaticListableBeanFactory();
-  private final AuditLogService service =
-      new AuditLogService(
-          repository, () -> DATABASE_NOW, beans.getBeanProvider(PersonalAuditObjects.class));
+  private final AuditLogService service = service(false);
+
+  private AuditLogService service(boolean rejectUnlisted) {
+    return new AuditLogService(
+        repository,
+        () -> DATABASE_NOW,
+        beans.getBeanProvider(PersonalAuditObjects.class),
+        beans.getBeanProvider(AuditPayloadKeys.class),
+        new AuditPayloadProperties(rejectUnlisted));
+  }
 
   @Test
   void stampsTheEntryWithTheDatabaseClock() {
@@ -72,8 +82,99 @@ class AuditLogServiceTest {
   }
 
   @Test
+  void everyNewEntryCarriesTheSchemaVersion() {
+    assertThat(entry().getSchemaVersion()).isEqualTo(AuditEventCatalog.SCHEMA_VERSION);
+  }
+
+  @Test
+  void anUnlistedKeyIsDroppedAndTheListedOnesAreWritten() {
+    when(repository.save(any(AuditLogEntry.class))).thenAnswer(call -> call.getArgument(0));
+    AuditLogEntry entry =
+        payloadEntry(
+            AuditEventType.SPACE_MEMBER_ROLE_CHANGED,
+            "{\"role\":\"MEMBER\",\"memberName\":\"Erika Muster\"}",
+            "{\"memberName\":\"Erika Muster\"}");
+
+    service.record(entry);
+
+    assertThat(entry.getBefore()).isEqualTo("{\"role\":\"MEMBER\"}");
+    assertThat(entry.getAfter()).isNull();
+    verify(repository).save(entry);
+  }
+
+  @Test
+  void aPayloadThatIsNoJsonObjectIsDropped() {
+    when(repository.save(any(AuditLogEntry.class))).thenAnswer(call -> call.getArgument(0));
+    AuditLogEntry entry =
+        payloadEntry(AuditEventType.SPACE_MEMBER_ROLE_CHANGED, "[\"Erika Muster\"]", null);
+
+    service.record(entry);
+
+    assertThat(entry.getBefore()).isNull();
+  }
+
+  @Test
+  void anUnlistedKeyRefusesTheWriteWhenRejectionIsOn() {
+    AuditLogEntry entry =
+        payloadEntry(
+            AuditEventType.SPACE_MEMBER_ROLE_CHANGED,
+            null,
+            "{\"role\":\"OWNER\",\"memberName\":\"Erika Muster\"}");
+
+    assertThatThrownBy(() -> service(true).record(entry))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("memberName")
+        .hasMessageContaining("SPACE_MEMBER_ROLE_CHANGED")
+        .hasMessageNotContaining("Erika");
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void aKeyADerivedSourceNamesIsListed() {
+    when(repository.save(any(AuditLogEntry.class))).thenAnswer(call -> call.getArgument(0));
+    beans.addBean(
+        "derived",
+        new AuditPayloadKeys() {
+          @Override
+          public AuditEventType eventType() {
+            return AuditEventType.PRIVATE_LIBRARY_ERASED;
+          }
+
+          @Override
+          public Set<String> keys() {
+            return Set.of("chatSourcesRedacted");
+          }
+        });
+    AuditLogEntry entry =
+        payloadEntry(
+            AuditEventType.PRIVATE_LIBRARY_ERASED,
+            "{\"cause\":\"OWNER\",\"chatSourcesRedacted\":\"NONE\"}",
+            null);
+
+    service(true).record(entry);
+
+    assertThat(entry.getBefore()).contains("chatSourcesRedacted");
+  }
+
+  @Test
   void anEntryWithoutStampIsRefusedAtPersist() {
     assertThatThrownBy(() -> entry().onCreate()).isInstanceOf(IllegalStateException.class);
+  }
+
+  private static AuditLogEntry payloadEntry(AuditEventType type, String before, String after) {
+    return AuditLogEntry.withoutSubject(
+        UUID.randomUUID(),
+        ActorKind.USER,
+        "system",
+        type,
+        AuditObjectType.SPACE,
+        "object",
+        "Objekt",
+        before,
+        after,
+        AuditOutcome.SUCCESS,
+        null,
+        null);
   }
 
   private static AuditLogEntry entry() {

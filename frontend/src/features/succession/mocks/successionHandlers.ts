@@ -4,6 +4,13 @@ import { mockSuccessionEntries } from './successionFixtures'
 
 /** The endpoints of the operations list. */
 export const successionHandlers = [
+  http.get('/api/v1/admin/succession/counts', () =>
+    HttpResponse.json({
+      openSuccession: mockSuccessionEntries.OPEN_SUCCESSION.length,
+      grantsWithoutRecipient: mockSuccessionEntries.GRANTS_WITHOUT_RECIPIENT.length,
+      groupWithoutEffect: mockSuccessionEntries.GROUP_WITHOUT_EFFECT.length,
+    }),
+  ),
   http.get('/api/v1/admin/succession', ({ request }) => {
     const params = new URL(request.url).searchParams
     const kind = (params.get('kind') ?? 'OPEN_SUCCESSION') as SuccessionKind

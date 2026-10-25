@@ -27,7 +27,7 @@ import org.junit.jupiter.params.provider.CsvSource;
  * filter, renamed and moved files and folders, a chain that no longer reaches the library, OneNote
  * and malware, repeated delta entries, and durable against passing download failures.
  */
-class SharePointFileStoreTest {
+class DriveFileStoreTest {
 
   private static final String ROOT_0 = FakeGraphServer.rootId(DRIVE_0);
 
@@ -85,7 +85,7 @@ class SharePointFileStoreTest {
     assertThat(run.unlistedContainerKeys()).containsExactly("drive:b!onedrive");
     assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
         .extracting(IndexingRunEvent::getMessage)
-        .anySatisfy(message -> assertThat(message).contains(SharePointFileStore.NOT_A_LIBRARY));
+        .anySatisfy(message -> assertThat(message).contains(DriveRule.NOT_A_LIBRARY));
     assertThat(run.ingested()).isEmpty();
     assertThat(server.requests()).noneMatch(request -> request.contains("/content"));
   }
@@ -284,7 +284,7 @@ class SharePointFileStoreTest {
 
     assertThat(run.eventsOf(IndexingEventCategory.UNSUPPORTED_FORMAT))
         .extracting(IndexingRunEvent::getMessage)
-        .containsExactly("2" + SharePointFileStore.ONENOTE_NOTE);
+        .containsExactly("2" + DriveFileStore.ONENOTE_NOTE);
     assertThat(server.requests()).noneMatch(request -> request.contains("abschnitt/content"));
   }
 
@@ -297,7 +297,7 @@ class SharePointFileStoreTest {
     assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
         .extracting(IndexingRunEvent::getMessage, IndexingRunEvent::getReference)
         .containsExactly(
-            org.assertj.core.groups.Tuple.tuple(SharePointFileStore.MALWARE, path("boese")));
+            org.assertj.core.groups.Tuple.tuple(DriveFileStore.MALWARE, path("boese")));
     assertThat(server.requests()).noneMatch(request -> request.contains("boese/content"));
     assertThat(run.listingComplete()).isTrue();
   }
@@ -424,8 +424,8 @@ class SharePointFileStoreTest {
             null,
             null);
 
-    assertThat(SharePointFileStore.marker(item)).startsWith("c:").hasSizeLessThanOrEqualTo(64);
-    assertThat(SharePointFileStore.marker(moved)).isNotEqualTo(SharePointFileStore.marker(item));
+    assertThat(DriveFileStore.marker(item)).startsWith("c:").hasSizeLessThanOrEqualTo(64);
+    assertThat(DriveFileStore.marker(moved)).isNotEqualTo(DriveFileStore.marker(item));
   }
 
   private SharePointSettings settings() {
@@ -462,7 +462,7 @@ class SharePointFileStoreTest {
   }
 
   private static String path(String drive, String id) {
-    return SharePointFileStore.filePath(drive, id);
+    return DriveRule.SHAREPOINT.filePath(drive, id);
   }
 
   private static byte[] bytes(String text) {

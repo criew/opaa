@@ -44,6 +44,7 @@ defaults:
       - outcome
       - reason
       - correlation_ref
+      - schema_version
     readers:
       - AUDITOR (Revision) zur Prüfung von Rechte- und Verwaltungshandeln
     notes:
@@ -51,6 +52,10 @@ defaults:
         Das Protokoll enthält Handlungen von Beschäftigten (Pseudonym); Hinweis: Mitbestimmung bei
         technischen Einrichtungen zur Verhaltens- und Leistungskontrolle prüfen (§ 80 Abs. 1
         Nr. 21 BPersVG bzw. Landesrecht)
+      - >-
+        Was before und after tragen, legt der Ereigniskatalog je Ereignisart fest; eine Angabe, die
+        er nicht nennt, wird nicht gespeichert. schema_version nennt die Version des Katalogs, unter
+        der ein Eintrag geschrieben ist; Einträge von vor dem Katalog tragen keine
       - >-
         Objekte, die genau einer Person gehören, stehen nur mit Kennung und neutraler Bezeichnung
         im Protokoll, nie mit ihrem Namen, auch nicht in den Angaben des Eintrags: private
@@ -75,6 +80,7 @@ data:
           - subject_kind
           - outcome
           - correlation_ref
+          - schema_version
         person:
           columns: [actor_ref, subject_ref, object_id]
           excludedColumns:

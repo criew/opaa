@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ActorKind;
 import io.opaa.api.types.AuditEventType;
@@ -106,6 +107,41 @@ class AuditLogServiceIntegrationTest {
     assertThat(read.getReason()).isEqualTo("anlassbezogene Klaerung");
     assertThat(read.getCorrelationRef()).isEqualTo("sync-2026-02-16-06");
     assertThat(read.getRecordedAt()).isNotNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT schema_version FROM audit_log WHERE event_id = ?",
+                Short.class,
+                saved.getEventId()))
+        .isEqualTo(AuditEventCatalog.SCHEMA_VERSION);
+  }
+
+  @Test
+  void aKeyTheCatalogDoesNotListRefusesTheWriteUnderTheTestProfile() {
+    AuditLogEntry entry =
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.USER,
+            "pseud-actor-1",
+            AuditEventType.SPACE_CHANGED,
+            AuditObjectType.SPACE,
+            "space-1",
+            "Bauamt",
+            null,
+            "{\"changedFields\":[\"name\"],\"memberNames\":[\"Erika Muster\"]}",
+            AuditOutcome.SUCCESS,
+            null,
+            null);
+
+    assertThatThrownBy(() -> auditLogService.record(entry))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("memberNames")
+        .hasMessageNotContaining("Erika");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ?",
+                Integer.class,
+                organizationId))
+        .isZero();
   }
 
   @Test

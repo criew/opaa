@@ -14,8 +14,9 @@ public interface PushIntakeHandler {
   String UNAUTHORIZED_MESSAGE = "Benachrichtigung nicht autorisiert";
 
   /**
-   * Authenticates and queues one notification; returns normally - also for a body that names
-   * nothing to look at - once the request proves knowledge of the library's secret.
+   * Authenticates and parses one notification; returns what it asks to be looked at - {@link
+   * PushNotification#none()} for a body that names nothing, never {@code null} - once the request
+   * proves knowledge of the library's secret. Queueing is the core's, for {@code library}.
    *
    * @param library the addressed library, already loaded and of this handler's source type
    * @param settings the connector settings stored on {@code library}, {@code null} for none
@@ -24,7 +25,7 @@ public interface PushIntakeHandler {
    * @throws io.opaa.common.UnauthorizedException (401) for every request that does not - no secret
    *     or a wrong one alike
    */
-  void acceptNotification(
+  PushNotification acceptNotification(
       KnowledgeLibrary library, ConnectorData settings, byte[] body, UnaryOperator<String> header);
 
   /**

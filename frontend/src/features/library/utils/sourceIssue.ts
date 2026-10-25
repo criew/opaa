@@ -19,8 +19,3 @@ export function formIssue(message: string): SourceIssue {
 export function messageOf(issue: SourceIssue | null): string | null {
   return issue?.message ?? null
 }
-
-/** A validation message without a field of its own as an issue of the whole form. */
-export function formIssueOf(message: string | null): SourceIssue | null {
-  return message === null ? null : formIssue(message)
-}

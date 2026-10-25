@@ -6,15 +6,18 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.ColorScheme;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditPayloadKeys;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
@@ -42,10 +45,11 @@ import org.springframework.transaction.annotation.Transactional;
  * </em> values, not the raw stored ones: what an auditor needs to reconstruct is what the
  * operator's users saw change, and "productName: OPAA → Landesamt-Assistent" says that where "null
  * → Landesamt-Assistent" would not. An image appears in them by presence, type and version only -
- * never its bytes.
+ * never its bytes. The two keys of each image kind it names for the event catalog itself ({@link
+ * AuditPayloadKeys}).
  */
 @Service
-public class BrandingSettingsService {
+public class BrandingSettingsService implements AuditPayloadKeys {
 
   /**
    * Six-digit hex triplet with a leading '#'. Deliberately no three-digit short form and no named
@@ -406,6 +410,22 @@ public class BrandingSettingsService {
           image.map(EffectiveBranding.ImageMetadata::version).orElse("-"));
     }
     return Map.copyOf(state);
+  }
+
+  @Override
+  public AuditEventType eventType() {
+    return AuditEventType.BRANDING_SETTINGS_CHANGED;
+  }
+
+  /** Content type and version of every {@link BrandingImageKind}, as {@link #auditState} writes. */
+  @Override
+  public Set<String> keys() {
+    Set<String> keys = new LinkedHashSet<>();
+    for (BrandingImageKind kind : BrandingImageKind.values()) {
+      keys.add(auditKey(kind, "ContentType"));
+      keys.add(auditKey(kind, "Version"));
+    }
+    return keys;
   }
 
   /**

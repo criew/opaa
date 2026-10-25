@@ -4,13 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.test.OpaaIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * {@link AuditStorageMetrics} against the baseline's real partitions and retention row: the
- * baseline creates partitions from three months back through 16 years forward and seeds 36 months
- * with a last run in the month of the migration.
+ * baseline creates partitions from three months back through 16 years forward and a last run in the
+ * month of the migration. Each test reads the values anew before it looks at a gauge.
  */
 @OpaaIntegrationTest
 class AuditStorageMetricsIntegrationTest {
@@ -18,6 +20,13 @@ class AuditStorageMetricsIntegrationTest {
   private static final double DAY = 86_400;
 
   @Autowired private MeterRegistry meterRegistry;
+  @Autowired private AuditStorageMetrics metrics;
+  @Autowired private JdbcTemplate jdbcTemplate;
+
+  @BeforeEach
+  void readAnew() {
+    metrics.refresh();
+  }
 
   @Test
   void theSizeCoversThePartitionsAndIndexes() {
@@ -36,7 +45,27 @@ class AuditStorageMetricsIntegrationTest {
 
   @Test
   void theRetentionPeriodIsTheConfiguredOne() {
-    assertThat(gauge("opaa.audit.retention.period")).isEqualTo(36);
+    Integer configured =
+        jdbcTemplate.queryForObject(
+            "SELECT retention_months FROM audit_retention_settings WHERE id = 1", Integer.class);
+
+    assertThat(gauge("opaa.audit.retention.period")).isEqualTo(configured.doubleValue());
+  }
+
+  @Test
+  void aScrapeReadsTheLastValueWithoutQueryingTheDatabase() {
+    double read = gauge("opaa.audit.retention.period");
+    jdbcTemplate.update(
+        "UPDATE audit_retention_settings SET retention_months = retention_months + 1 WHERE id = 1");
+    try {
+      assertThat(gauge("opaa.audit.retention.period")).isEqualTo(read);
+      metrics.refresh();
+      assertThat(gauge("opaa.audit.retention.period")).isEqualTo(read + 1);
+    } finally {
+      jdbcTemplate.update(
+          "UPDATE audit_retention_settings SET retention_months = retention_months - 1"
+              + " WHERE id = 1");
+    }
   }
 
   @Test

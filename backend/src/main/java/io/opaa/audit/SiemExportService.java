@@ -214,9 +214,9 @@ class SiemExportService {
             + " CASE WHEN ? AND NOT "
             + PERSONAL_OBJECT
             + " THEN l.object_label END AS object_name,"
-            + " l.outcome, to_char(s.month, 'YYYY-MM') AS seal_month, s.entry_count AS seal_entries,"
-            + " encode(s.head_hash, 'hex') AS seal_hash FROM audit_log l"
-            + " LEFT JOIN audit_chain_seals s ON s.seal_event_id = l.event_id"
+            + " l.outcome, l.schema_version, to_char(s.month, 'YYYY-MM') AS seal_month,"
+            + " s.entry_count AS seal_entries, encode(s.head_hash, 'hex') AS seal_hash"
+            + " FROM audit_log l LEFT JOIN audit_chain_seals s ON s.seal_event_id = l.event_id"
             + " WHERE l.recorded_at >= ? AND l.recorded_at < ?"
             + " AND (l.recorded_at, l.event_id) > (?, ?)"
             + " ORDER BY l.recorded_at, l.event_id LIMIT ?",
@@ -230,6 +230,7 @@ class SiemExportService {
                 rs.getString("object_ref"),
                 rs.getString("object_name"),
                 rs.getString("outcome"),
+                rs.getObject("schema_version", Short.class),
                 rs.getString("seal_month") == null
                     ? null
                     : new AuditExportEntry.Seal(
@@ -289,6 +290,7 @@ class SiemExportService {
                   null,
                   null,
                   entry.outcome(),
+                  entry.schemaVersion(),
                   entry.seal())
               : entry);
     }

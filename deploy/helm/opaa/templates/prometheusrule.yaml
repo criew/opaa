@@ -84,9 +84,17 @@ spec:
               Bibliothek und Erreichbarkeit von Quelle und Embedding-Modell prüfen.
         - alert: OpaaAuditRetentionOverdue
           # The run on the 1st of every month brings the value back to a few hours; above 35 days a
-          # run was missed. Every pod reports the same database value, so the maximum is enough.
+          # run was missed. Every pod reports the same database value, so the maximum is enough. NaN
+          # on every pod (x != x) or no series at all means the state cannot be read, and alerts too;
+          # silent while the backend is stopped on purpose (replicas 0).
           expr: >-
             max(opaa_audit_retention_last_run_age_seconds{ {{- $scrape }}}) > 35 * 86400
+            or
+            max(opaa_audit_retention_last_run_age_seconds{ {{- $scrape }}})
+            != max(opaa_audit_retention_last_run_age_seconds{ {{- $scrape }}})
+            or
+            (max(absent(opaa_audit_retention_last_run_age_seconds{ {{- $scrape }}}))
+            unless on() ({{ $replicas }} == 0))
           for: 1h
           labels:
             severity: warning
@@ -94,9 +102,9 @@ spec:
             summary: Löschlauf des Revisionsprotokolls ausgeblieben
             description: >-
               Die automatische Löschung des Revisionsprotokolls von {{ $deployment }} ist seit mehr
-              als 35 Tagen nicht gelaufen. Abgelaufene Monate bleiben stehen und das Protokoll
-              wächst über die Aufbewahrungsfrist hinaus. Log des Pods am 1. des Monats um 03:00
-              und die Sperre audit-retention in der Tabelle shedlock prüfen.
+              als 35 Tagen nicht gelaufen, oder das Backend kann ihren Stand nicht lesen.
+              Abgelaufene Monate bleiben dann womöglich stehen und das Protokoll wächst über die
+              Aufbewahrungsfrist hinaus. Log des Pods prüfen, vor allem am 1. des Monats um 03:00.
         - alert: OpaaAuditChainStalled
           # The chain run every ten minutes keeps the value below an hour; six hours means the run
           # stopped or an open transaction holds it back. Same database value on every pod.

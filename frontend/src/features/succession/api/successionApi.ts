@@ -1,4 +1,8 @@
-import type { SuccessionKind, SuccessionListResponse } from '@/shared/api/types'
+import type {
+  SuccessionCountsResponse,
+  SuccessionKind,
+  SuccessionListResponse,
+} from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
@@ -15,6 +19,16 @@ export async function getSuccessionEntries(
     const { data } = await apiClient.get<SuccessionListResponse>('/v1/admin/succession', {
       params: { kind, page, size },
     })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** How many entries each tab holds - per kind of entry only, never per person. */
+export async function getSuccessionCounts(): Promise<SuccessionCountsResponse> {
+  try {
+    const { data } = await apiClient.get<SuccessionCountsResponse>('/v1/admin/succession/counts')
     return data
   } catch (err) {
     normalizeError(err)

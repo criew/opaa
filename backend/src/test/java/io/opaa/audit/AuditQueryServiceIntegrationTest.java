@@ -188,31 +188,23 @@ class AuditQueryServiceIntegrationTest {
 
   /**
    * Space payloads no longer carry a visibility; entries written before keep it and are returned
-   * verbatim.
+   * verbatim. Such an entry predates the event catalog and is written past it, as it stands in the
+   * log.
    */
   @Test
   void aSpaceEntryWithTheFormerVisibilityInItsPayloadStaysReadable() {
     String before = "{\"changedFields\": [\"visibility\"], \"visibility\": \"PRIVATE\"}";
     String after = "{\"changedFields\": [\"visibility\"], \"visibility\": \"OPEN\"}";
-    AuditLogEntry entry =
-        auditLogService.record(
-            AuditLogEntry.withoutSubject(
-                organizationId,
-                ActorKind.USER,
-                "pseud-actor-space",
-                AuditEventType.SPACE_CHANGED,
-                AuditObjectType.SPACE,
-                "space-1",
-                "Team",
-                before,
-                after,
-                AuditOutcome.SUCCESS,
-                null,
-                null));
     jdbcTemplate.update(
-        "UPDATE audit_log SET recorded_at = ? WHERE event_id = ?",
+        "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
+            + " event_type, object_type, object_id, object_label, before, after, outcome)"
+            + " VALUES (?, ?, ?, 'USER', 'pseud-actor-space', 'SPACE_CHANGED', 'SPACE', 'space-1',"
+            + " 'Team', ?, ?, 'SUCCESS')",
+        UUID.randomUUID(),
         Timestamp.from(base),
-        entry.getEventId());
+        organizationId,
+        before,
+        after);
 
     Page<AuditLogEntry> result =
         queryService.byObject(

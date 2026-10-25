@@ -781,6 +781,10 @@ opaa:
     # Grants of the anlassbezogene Klaerung are deleted at the end of the calendar year that lies
     # this many years after the end of their usability (1 to 10).
     incident-scope-retention-years: ${OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS:1}
+    payload:
+      # A before/after key the event catalog (AuditEventCatalog) does not list is dropped and
+      # logged; the dev profile refuses the write instead.
+      reject-unlisted: false
   succession:
     # Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird (ADR-0036, Entscheidung 6).
     # Hebt hervor, loest nie etwas aus.
@@ -936,6 +940,9 @@ spring:
       on-profile: dev
 
 opaa:
+  audit:
+    payload:
+      reject-unlisted: true
   auth:
     mode: dev
     local:

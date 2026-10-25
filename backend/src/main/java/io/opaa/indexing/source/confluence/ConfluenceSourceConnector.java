@@ -12,6 +12,7 @@ import io.opaa.indexing.spi.DefaultKey;
 import io.opaa.indexing.spi.ProfileDeclaration;
 import io.opaa.indexing.spi.PushIntake;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SignIn;
 import io.opaa.indexing.spi.SourceBrowser;
 import io.opaa.indexing.spi.SourceConnectionTestResult;
@@ -92,9 +93,9 @@ public class ConfluenceSourceConnector
   }
 
   @Override
-  public void acceptNotification(
+  public PushNotification acceptNotification(
       KnowledgeLibrary library, ConnectorData settings, byte[] body, UnaryOperator<String> header) {
-    webhookService.accept(
+    return webhookService.accept(
         library.getId(),
         library,
         body,

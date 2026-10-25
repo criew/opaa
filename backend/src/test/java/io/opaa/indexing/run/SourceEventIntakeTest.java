@@ -1,6 +1,7 @@
 package io.opaa.indexing.run;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -22,6 +23,7 @@ import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -94,7 +96,7 @@ class SourceEventIntakeTest {
             "https://wiki.example.org",
             "token");
     library.setWebhookSecret("geheim");
-    libraryId = UUID.randomUUID();
+    libraryId = library.getId();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     when(indexingJobService.startJob(any(), any(), any(), any()))
         .thenAnswer(inv -> new IndexingJob(JobStatus.RUNNING));
@@ -122,7 +124,7 @@ class SourceEventIntakeTest {
   }
 
   private void enqueue(String... keys) {
-    intake.enqueue(target, libraryId, Set.of(keys), 0);
+    intake.enqueue(library, new PushNotification(Set.of(keys), 0));
   }
 
   /** The debounce of the library's open batch has elapsed. */
@@ -151,10 +153,27 @@ class SourceEventIntakeTest {
   }
 
   @Test
+  void aSecondTargetForTheSameSourceTypeIsRefusedAndTheFirstStays() {
+    SourceEventTarget second = mock(SourceEventTarget.class);
+    when(second.sourceType()).thenReturn(PUSHED);
+
+    intake.register(target);
+    assertThatThrownBy(() -> intake.register(second))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(PUSHED.toString());
+
+    enqueue("102");
+    elapse();
+    intake.drainDue();
+    verify(target).refresh(any(), eq(library), eq(Set.of("102")), eq(0));
+    verify(second, never()).refresh(any(), any(), any(), anyInt());
+  }
+
+  @Test
   void collectsNotificationsForTheDebounceAndStartsOneTargetedRun() {
     enqueue("102");
     enqueue("103", "102");
-    intake.enqueue(target, libraryId, Set.of("104"), 2);
+    intake.enqueue(library, new PushNotification(Set.of("104"), 2));
 
     intake.drainDue();
     verifyNoInteractions(indexingJobService);
@@ -176,8 +195,8 @@ class SourceEventIntakeTest {
 
   @Test
   void aBatchBeyondTheBoundRunsTheExecutorsOrdinaryRunInItsDefaultMode() {
-    intake.enqueue(target, libraryId, Set.of("1", "2"), 1);
-    intake.enqueue(target, libraryId, Set.of("3", "4"), 1);
+    intake.enqueue(library, new PushNotification(Set.of("1", "2"), 1));
+    intake.enqueue(library, new PushNotification(Set.of("3", "4"), 1));
     elapse();
     intake.drainDue();
 
@@ -222,7 +241,11 @@ class SourceEventIntakeTest {
   void aLibraryOfAnotherSourceTypeIsDroppedAtDrainTime() {
     when(target.sourceType()).thenReturn(OTHER);
     intake.register(target);
-    enqueue("102");
+    // queued while the library still carried OTHER; it carries PUSHED by drain time
+    KnowledgeLibrary before = mock(KnowledgeLibrary.class);
+    when(before.getId()).thenReturn(libraryId);
+    when(before.getSourceType()).thenReturn(OTHER);
+    intake.enqueue(before, new PushNotification(Set.of("102"), 0));
     elapse();
 
     intake.drainDue();
@@ -266,7 +289,7 @@ class SourceEventIntakeTest {
     enqueue("102");
     elapse();
     intake.drainDue(); // deferral 1
-    intake.enqueue(target, libraryId, Set.of("103"), 1); // joins the waiting batch
+    intake.enqueue(library, new PushNotification(Set.of("103"), 1)); // joins the waiting batch
     elapse();
     intake.drainDue(); // deferral 2 (the maximum)
     enqueue("104");
@@ -279,14 +302,14 @@ class SourceEventIntakeTest {
 
   @Test
   void aBatchThatJoinedDuringADrainKeepsItsKeysAndDroppedCount() {
-    intake.enqueue(target, libraryId, Set.of("102"), 1);
+    intake.enqueue(library, new PushNotification(Set.of("102"), 1));
     elapse();
     // the second notification arrives after the first batch was claimed but before it was
     // deferred: the deferral folds the older batch into the newer one, losing nothing
     when(indexingJobService.isJobRunning(library.getId(), library.getOrganizationId()))
         .thenAnswer(
             inv -> {
-              intake.enqueue(target, libraryId, Set.of("103"), 2);
+              intake.enqueue(library, new PushNotification(Set.of("103"), 2));
               return true;
             });
     intake.drainDue();
@@ -365,7 +388,7 @@ class SourceEventIntakeTest {
 
   @Test
   void aFailedLookupAtDrainTimePutsTheBatchBackAsADeferral() {
-    intake.enqueue(target, libraryId, Set.of("102", "103"), 1);
+    intake.enqueue(library, new PushNotification(Set.of("102", "103"), 1));
     when(libraryRepository.findById(libraryId))
         .thenThrow(new DataAccessResourceFailureException("Datenbank nicht erreichbar"))
         .thenReturn(Optional.of(library));
@@ -417,9 +440,10 @@ class SourceEventIntakeTest {
     SourceEventIntake instanceB =
         instance(new LibrarySourceConnectionResolver(), SourceEventIntake.LEASE);
     CompletableFuture.allOf(
-            CompletableFuture.runAsync(() -> intake.enqueue(target, libraryId, Set.of("101"), 0)),
             CompletableFuture.runAsync(
-                () -> instanceB.enqueue(target, libraryId, Set.of("102"), 1)))
+                () -> intake.enqueue(library, new PushNotification(Set.of("101"), 0))),
+            CompletableFuture.runAsync(
+                () -> instanceB.enqueue(library, new PushNotification(Set.of("102"), 1))))
         .get();
     assertThat(batchRows()).as("one debounce window, one batch").isEqualTo(1);
     elapse();

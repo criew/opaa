@@ -11,6 +11,8 @@ import java.util.UUID;
  *
  * @param objectId {@code null} where the object itself would name a person
  * @param objectLabel {@code null} where the object itself would name a person
+ * @param schemaVersion the version of the event contract the entry was written under ({@link
+ *     AuditEventCatalog#SCHEMA_VERSION}), {@code null} for an entry from before it
  * @param seal the month seal this entry carries, {@code null} for every other entry
  */
 record AuditExportEntry(
@@ -22,28 +24,8 @@ record AuditExportEntry(
     String objectId,
     String objectLabel,
     String outcome,
+    Short schemaVersion,
     Seal seal) {
-
-  AuditExportEntry(
-      UUID eventId,
-      Instant recordedAt,
-      UUID organizationId,
-      String eventType,
-      String objectType,
-      String objectId,
-      String objectLabel,
-      String outcome) {
-    this(
-        eventId,
-        recordedAt,
-        organizationId,
-        eventType,
-        objectType,
-        objectId,
-        objectLabel,
-        outcome,
-        null);
-  }
 
   /** The seal of one month: the month, the number of chained entries and the head hash, hex. */
   record Seal(String month, long entryCount, String headHash) {}

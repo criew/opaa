@@ -3,9 +3,12 @@ package io.opaa.library;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.indexing.run.SourceEventIntake;
 import io.opaa.indexing.spi.PushIntakeHandler;
+import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.springframework.stereotype.Service;
@@ -15,7 +18,9 @@ import org.springframework.stereotype.Service;
  * without a session: an unknown library and one whose connector has no push intake are answered
  * with the same 401 as a wrong secret, and every request costs every registered intake's check once
  * - the library's own for real, the others against a stand-in - so neither the answer nor its time
- * tells a stranger whether the library exists or which connector it has.
+ * tells a stranger whether the library exists or which connector it has. What an authenticated
+ * notification names is queued here, for the library loaded here: a connector cannot start a run
+ * for another library.
  */
 @Service
 public class PushIntakeService {
@@ -23,14 +28,17 @@ public class PushIntakeService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final SourceConnectorRegistry connectors;
   private final SourceConnectionResolver connectionResolver;
+  private final SourceEventIntake intake;
 
   public PushIntakeService(
       KnowledgeLibraryRepository libraryRepository,
       SourceConnectorRegistry connectors,
-      SourceConnectionResolver connectionResolver) {
+      SourceConnectionResolver connectionResolver,
+      SourceEventIntake intake) {
     this.libraryRepository = libraryRepository;
     this.connectors = connectors;
     this.connectionResolver = connectionResolver;
+    this.intake = intake;
   }
 
   /**
@@ -50,6 +58,11 @@ public class PushIntakeService {
     if (own == null) {
       throw new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
     }
-    own.acceptNotification(library, connectionResolver.effectiveSettings(library), body, header);
+    PushNotification notification =
+        Objects.requireNonNull(
+            own.acceptNotification(
+                library, connectionResolver.effectiveSettings(library), body, header),
+            () -> own.getClass().getName() + " returned null");
+    intake.enqueue(library, notification);
   }
 }

@@ -134,7 +134,8 @@ Ein Eintrag beantwortet fünf Fragen: **wer, wann, was, an welchem Objekt, mit w
   "after": null,
   "outcome": "SUCCESS",
   "reason": null,
-  "correlation_ref": "sync-2026-02-16-06"
+  "correlation_ref": "sync-2026-02-16-06",
+  "schema_version": 1
 }
 ```
 
@@ -153,6 +154,7 @@ Ein Eintrag beantwortet fünf Fragen: **wer, wann, was, an welchem Objekt, mit w
 | `outcome` | erfolgreich, abgelehnt oder fehlgeschlagen; die **abgelehnte** Verwaltungsaktion ist für eine Prüfung oft die interessantere |
 | `reason` | Anlass, verpflichtend dort, wo ein Anlass verlangt ist — Zugriff auf Protokolldaten, anlassbezogene Klärung, bestätigter Verzeichnislauf |
 | `correlation_ref` | verbindet die Einträge **eines** Vorgangs, etwa die 412 Einzeländerungen eines Verzeichnislaufs; ersetzt den Sammeleintrag, den eine Prüfung nicht gebrauchen kann |
+| `schema_version` | Version des [Ereigniskatalogs](#der-ereignisvertrag-katalog-und-schemaversion), unter der der Eintrag geschrieben ist; sagt einer Prüfung nach Jahren, wie `before`/`after` zu lesen sind |
 
 **Die Netzadresse ist nicht Teil des Standardsatzes.** Sie unterscheidet Dienststelle von Heimarbeit und
 ist damit ein Anwesenheitsmerkmal — sie beantwortet keine Frage nach dem Recht, sondern eine nach dem
@@ -160,6 +162,35 @@ Aufenthalt. Dieselbe Begründung schließt **Geräte- und Browserkennung** sowie
 Die Netzadresse kann für Sicherheitszwecke ausdrücklich eingeschaltet werden; dann ist die Einschaltung
 zu begründen, und das Feld bleibt aus Berichten und Exporten ausgeschlossen. Ob eine C5-Prüfung das Feld
 zwingend verlangt, ist offen; sollte das so sein, ist es schriftlich zu begründen.
+
+### Der Ereignisvertrag: Katalog und Schemaversion
+
+„Eng begrenzt auf das rechtlich Erhebliche“ ist für `before`/`after` keine Konvention, sondern ein
+geprüfter Vertrag. **Der Ereigniskatalog** (`AuditEventCatalog`) nennt für jede Ereignisart die
+Schlüssel, die `before` und `after` tragen dürfen (oberste Ebene, beide Seiten zusammen); wo ein
+Ereignis keine Nutzlast trägt, ist der Eintrag leer, ebenso für die Ereignisarten, die heute kein
+Schreiber erzeugt. Ein Typ ohne Eintrag lässt den Build scheitern. Schlüssel, die ein Schreiber aus
+seinem eigenen Code ableitet, nennt er dem Katalog aus derselben Quelle (`AuditPayloadKeys`): das
+Branding je Bildart Typ und Version, der Löschnachweis einer privaten Bibliothek je Halter von
+Verweisen, der im Nachweis steht. Ein neuer Enum-Wert oder Halter ist damit gelistet, sobald er
+geschrieben wird. Die Positivliste der Selbstauskunft wiederholt nur Schlüssel des Katalogs.
+
+**Geprüft wird beim Schreiben**, in `AuditLogService#record` und damit auf jedem Schreibweg. Ein
+Schlüssel, den der Katalog für die Ereignisart nicht nennt, und eine Nutzlast, die kein JSON-Objekt
+ist, werden im Betrieb verworfen: Geschrieben werden nur die gelisteten Schlüssel, das Log meldet
+die verworfenen Schlüsselnamen (nie ihre Werte) als Fehler. Unter
+`opaa.audit.payload.reject-unlisted=true`, gesetzt im Profil `dev` und damit in jedem Test,
+verweigert OPAA stattdessen das Schreiben, und die Transaktion des Vorgangs bricht ab. Im Betrieb
+wäre das Verweigern die schlechtere Wahl: Es rollte den Vorgang zurück, den der Eintrag belegen
+soll, wegen eines Programmierfehlers, den der Test schon hätte finden sollen; gespeichert wird die
+unzulässige Angabe in keinem der beiden Fälle. Geprüft werden die Schlüssel, nicht die Werte.
+
+**Die Schemaversion** (`schema_version`, `AuditEventCatalog.SCHEMA_VERSION`, derzeit 1) steht in
+jedem neuen Eintrag und geht mit in die [SIEM-Ausleitung](#anbindung-an-ein-zentrales-sicherheitsmonitoring).
+Einträge von vor dem Katalog tragen keine. Erhöht wird sie, wenn ein gelisteter Schlüssel seine
+Bedeutung ändert oder entfällt; ein neuer Schlüssel oder eine neue Ereignisart lässt ältere
+Einträge lesbar und erhöht sie nicht. Bestehende Einträge bleiben, wie sie geschrieben wurden: Das
+Protokoll ist nur anfügend, der Katalog wirkt nur auf neue Einträge.
 
 ### Die Ereignisse der ersten Stufe
 
@@ -726,11 +757,12 @@ nach Person gruppiert, liefert es auch nicht so aus. Welche Ereignisklassen ausg
 der dokumentierten Zweckbindung und damit Gegenstand der Dienstvereinbarung.
 
 Gebaut ist die Ausleitung des Revisionsprotokolls als Syslog mit CEF, ohne Pseudonyme und als
-Vorgabe ohne Objektnamen, ab dem Einschalten und ohne stillen Verlust
-([ADR-0055](../decisions/0055-ausleitung-an-ein-sicherheitsmonitoring.md)). Die eine Nutzlast, die
-hinausgeht, ist das Monatssiegel der [Prüfsummenkette](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen):
-Monat, Anzahl und Kopf-Prüfsumme als eigene Felder der Meldung `AUDIT_LOG_MONTH_SEALED`, damit das
-Siegel außerhalb der Datenbank liegt.
+Vorgabe ohne Objektnamen, ab dem Einschalten und ohne stillen Verlust, mit der Schemaversion jedes
+Eintrags ([ADR-0055](../decisions/0055-ausleitung-an-ein-sicherheitsmonitoring.md)). Die eine
+Nutzlast, die hinausgeht, ist das Monatssiegel der
+[Prüfsummenkette](#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen): Monat, Anzahl und
+Kopf-Prüfsumme als eigene Felder der Meldung `AUDIT_LOG_MONTH_SEALED`, damit das Siegel außerhalb
+der Datenbank liegt.
 Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche bleiben im Anwendungslog und
 erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde.
 
