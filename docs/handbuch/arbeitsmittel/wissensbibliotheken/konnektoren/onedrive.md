@@ -30,9 +30,10 @@ flowchart LR
   weiter, wenn es das der Bibliothek ist.
 - **Liest:** Dateien in unterstützten Formaten im ganzen OneDrive oder in bis zu fünfzig gewählten
   Ordnern samt Unterordnern, Office-Dateien so, wie sie liegen. **Nicht** gelesen werden Dateien,
-  die andere mit der Person teilen und die in deren Laufwerk liegen, Dokumentbibliotheken von
-  SharePoint, OneNote-Notizbücher, Dateien, die Microsoft als Schadsoftware kennzeichnet, und
-  **private Microsoft-Konten** (OneDrive ohne Arbeits- oder Schulkonto).
+  die andere mit der Person teilen und die in deren Laufwerk liegen, auch nicht als Verknüpfung
+  unter „Meine Dateien", Dokumentbibliotheken von SharePoint, OneNote-Notizbücher, Dateien, die
+  Microsoft als Schadsoftware kennzeichnet, und **private Microsoft-Konten** (OneDrive ohne
+  Arbeits- oder Schulkonto).
 - **Dokument:** OneDrive und Datei-Kennung sind die Identität. Umbenennen und Verschieben innerhalb
   des OneDrive behalten das Dokument. Einen Link in die OneDrive-Oberfläche gibt es nicht;
   **„Original öffnen"** lädt die Datei durch OPAA, nur aus dem OneDrive, das die Bibliothek gewählt
@@ -64,9 +65,10 @@ danach ihr eigenes Konto.
 5. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
    ([Berechtigungen](../../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
 
-Als „Mandant" gehört der eigene Mandant eingetragen, nicht `common` oder `organizations`: Sonst
-können sich auch Konten anderer Mandanten anmelden. Ein privates Microsoft-Konto weist OPAA in jedem
-Fall ab.
+Als „Mandant" gehört der eigene Mandant eingetragen, nicht `common` oder `organizations`, und die
+App-Registrierung bleibt auf Konten dieses Verzeichnisses beschränkt: Sonst kann sich auch ein
+Arbeitskonto eines fremden Mandanten verbinden und sein OneDrive einlesen; die Prüfung des eigenen
+OneDrive hält es nicht auf. Ein privates Microsoft-Konto weist OPAA in jedem Fall ab.
 
 Client-ID und Secret gehen nur an den Token-Endpunkt des Mandanten, das Zugriffstoken nur an
 `https://graph.microsoft.com`. Downloads leitet Graph auf eine kurzlebige Adresse um; OPAA folgt
@@ -157,6 +159,9 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 - **Nur das eigene OneDrive.** Die Bibliothek merkt sich die Kennung ihres OneDrive. Weicht das
   OneDrive des verbundenen Kontos davon ab, ist es kein OneDrive for Business oder hat das Konto
   keines, liest OPAA nichts: kein Lauf, keine Auflistung, kein Original.
+- **Verknüpfungen.** Was eine Person mit „Zu ‚Meine Dateien‘ hinzufügen" in ihr OneDrive holt, liegt
+  im Laufwerk einer anderen Person oder einer Site. OPAA führt solche Einträge als übersprungen und
+  lädt sie nie; die Ordnerauswahl bietet sie nicht an.
 - **Drosselung**, **Kosten eines Laufs**, **zu langes Änderungsprotokoll**, **Fortsetzungspunkte**
   und **lange Downloads** wie bei [SharePoint](sharepoint.md#8-grenzen-und-schutzmechanismen), mit
   denselben Parametern. Ein Lauf kostet eine Anfrage mehr für die Prüfung des OneDrive.
@@ -167,7 +172,8 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   Graph mit `Files.Read` über den Besitzer des OneDrive liefert, wie lange Entra eine Zustimmung hält
   und mit welcher Meldung es eine widerrufene ablehnt, die Wege zum Widerruf bei Microsoft, das
   Verhalten für Gastkonten und Konten ohne bereitgestelltes OneDrive, die Inhaltsprüfsumme für alle
-  Dateiarten und das Änderungsprotokoll bei verschobenen Ordnern.
+  Dateiarten, das Änderungsprotokoll bei verschobenen Ordnern und die Form, in der Graph
+  Verknüpfungen im Änderungsprotokoll meldet.
 
 ## 9. Protokoll und Fehlerbilder
 
@@ -189,7 +195,8 @@ verbinden".
 | „Der gewählte Ordner „…" ist im OneDrive nicht mehr vorhanden; bitte die Ordnerauswahl anpassen." | Ordner gelöscht oder verschoben; der Bestand bleibt | Ordnerauswahl anpassen |
 | „Das OneDrive listet mehr als … Dateien; so viele verarbeitet ein Lauf nicht. Bitte Ordner wählen." | über `max-files-per-run` | Ordner wählen oder Grenze anheben |
 | „Der Lauf hat keine Datei neu aufgenommen. Budget anheben oder weniger Ordner wählen." | die Kette kommt nicht voran | `request-budget-per-run` anheben |
-| „… OneNote-Notizbücher und ihre Abschnitte übersprungen" / „Microsoft meldet in dieser Datei Schadsoftware; sie wird übersprungen." | übersprungen | nichts |
+| „… OneNote-Notizbücher und ihre Abschnitte übersprungen" / „… Verknüpfungen auf Inhalte anderer Laufwerke übersprungen …" / „Microsoft meldet in dieser Datei Schadsoftware; sie wird übersprungen." | übersprungen | nichts |
+| „Der Ordner ist im OneDrive nicht mehr vorhanden." | die Auswahl fragt einen gelöschten oder verschobenen Ordner an | Auswahl neu öffnen |
 | „Der Downloadserver von Microsoft Graph hat mit HTTP 4xx geantwortet. Die Datei wird übersprungen …" | dauerhaft verweigert; ein späterer Vollabgleich versucht es erneut | nichts |
 | „Microsoft Graph drosselt die Anfragen weiterhin" / „Die Übertragung von Microsoft Graph dauerte länger als …" | vorübergehend fehlgeschlagen; der Strom wird erneut gelesen | Zeitplan entzerren bzw. `download-timeout` anheben |
 | „Microsoft Graph nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an" / „Das OneDrive war beim Beginn des letzten Vollabgleichs nicht erreichbar." | nächster Lauf ist ein Vollabgleich | nichts |
