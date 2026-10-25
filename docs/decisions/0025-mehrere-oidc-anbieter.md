@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -62,6 +62,10 @@ Vertrauensanker (es bestimmt, welche Schlüssel Token beglaubigen): nur für `SY
 änderbar, jede Änderung ein Audit-Ereignis.
 
 ### 3. Konfiguration in der Datenbank, Bootstrap aus der Umgebung, Adressprüfung mit eigener Allowlist
+
+Die Übernahme des ersten Anbieters aus der Umgebung und `OPAA_OIDC_BOOTSTRAP` werden durch den
+Einrichtungs-Assistenten abgelöst (ADR-0060, Entscheidung 9); bis zu dessen Umsetzung gilt der
+folgende Absatz.
 
 Anbieter werden über die Admin-API (`identity-providers.yaml`, nur `SYSTEM_ADMIN`) gepflegt, wirken
 ohne Neustart und sind Audit-Ereignisse `OIDC_PROVIDER_*` (`AuditObjectType.SYSTEM_SETTING`).

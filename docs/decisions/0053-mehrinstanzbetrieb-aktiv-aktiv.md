@@ -2,8 +2,8 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
-ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
+Akzeptiert · zuletzt geändert 2026-10-25 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060
 
 ## Kontext
 
@@ -357,7 +357,8 @@ wird erst freigegeben, wenn sie mindestens ein Release gegolten hat.
 
 Das Backend-Image hat einen Startmodus, der nur Flyway ausführt und endet (ADR-0056). Bei mehr als
 einer Instanz migriert nur dieser Schritt, die Anwendungsinstanzen laufen mit
-`SPRING_FLYWAY_ENABLED=false`. `vector_store` legt die Migration an, `initialize-schema` von pgvector
+`SPRING_FLYWAY_ENABLED=false`. `vector_store` legt die Migration an (künftig der Abschluss der
+Installation, ADR-0060, Entscheidung 10), `initialize-schema` von pgvector
 ist aus. Eine einzelne Instanz darf weiter beim Start migrieren (ADR-0042 Entscheidung 2). Einmalige
 Startaktionen (Seeds, `OPAA_LOCAL_ADMIN_RESET`) laufen unter einem Advisory-Lock genau einmal je
 Anforderung, ein Passwort erscheint erst nach dem Commit im Log. Ein zweiter Startmodus
