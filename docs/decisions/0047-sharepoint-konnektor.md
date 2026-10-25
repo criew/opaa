@@ -29,7 +29,7 @@ Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; am Zugang b
 „Scopes“ leer, ein anderer Wert als `.default` scheitert bei Entra. Keine Anforderungslücke am Typ,
 weil die Registry sie nur für umschaltbare Profilpflicht zulässt. Empfohlen ist `Sites.Selected`
 (Anwendung, Rolle `read` je Site), Alternative `Sites.Read.All`; `Files.Read.All` nennt das Handbuch
-nicht, weil es OneDrives einschließt. Unter `Sites.Selected` weist Graph jede nicht freigegebene Site
+nicht, weil es OneDrives einschließt. Unter `Sites.Selected` weist Graph eine nicht freigegebene Site
 und die Site-Suche mit `403 accessDenied` ab; die Auflistung nennt dann die fehlende Freigabe bzw.
 `Sites.Read.All`. Der Typ `SHAREPOINT` liest kein OneDrive: Die
 Erreichbarkeitsprüfung liest `driveType`, alles außer `documentLibrary` ist `ContainerUnlistable`.
