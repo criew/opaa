@@ -1,4 +1,4 @@
-# Variante C · „Steckbrief mit Abschluss“ – Bericht (Runde 2)
+# Variante C · „Steckbrief mit Abschluss“ – Bericht (Runde 3)
 
 Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + privat/3 Leser × 3 Szenarien, hell/dunkel, 1280/320, Bereich `abschluss` = `?justCreated=1`. Belege ohne `.jpg`.
 
@@ -17,7 +17,7 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 
 | Nr | Status | Beleg |
 |---|---|---|
-| D1 | erfüllt bei 1280 (Kopf überall gleich, `tabsTop` je Szenario in `metrics.jsonl`); bei 320 gleich außer privat (Chip „Privat“ bricht um) und langen Titeln in `scale` (Titel ungekürzt, P43 vor D1) | `dokumente__*__small__light__1280`, `dokumente__smb__small__light__320` |
+| D1 | erfüllt: `tabsTop` 134 px bei 1280 und 264 px bei 320 in allen Arten, Rollen und Szenarien; bei 320 Titel in kleinerer Stufe auf zwei feste Zeilen (Tooltip mit dem ganzen Namen), privat ohne Quellart-Chip | `dokumente__*__small__light__1280`, `dokumente__smb__scale__light__320`, `dokumente__privat__small__light__320` |
 | D2 | erfüllt in der Steckbrief-Spalte statt im Kopf (Richtung C); Wort aus der Liste + Datum/Prozent, Link zur Ursache mit „›“ | `dokumente__confluence__failed__light__1280`, `dokumente__s3__slow__light__1280` |
 | D3 | erfüllt: Zustand, Laufzeile und Gruppen aus einer Zählung (Fixtures angeglichen) | `laeufe__smb__partial__light__1280__full` |
 | D4 | erfüllt: Zustand auf jedem Reiter (Spalte bzw. 320-Zeile) | `freigaben__nextcloud__failed__light__1280`, `…__320` |
@@ -39,7 +39,7 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 | D20 | erfüllt: kein Dauerhinweis | `dokumente__sharepoint__small__light__1280` |
 | D21 | erfüllt: leer nur ein Satz (Konnektor) bzw. Ablagefläche (Upload); Aktion im Kopf | `dokumente__rss__empty__light__1280`, `dokumente__upload__empty__light__1280` |
 | D22 | erfüllt: Füllgrad nur im Reiter Metadaten, im Reiter Dokumente Filter „ohne …“ | `dokumente__smb__small__light__1280`, `metadaten__smb__small__light__1280` |
-| D23 | teilweise: gleicher Kopf und Steckbrief, Zustand „Kontingent voll“/„Teilweise fehlgeschlagen“/„Läuft“; ohne Fehlerzahl (API liefert keine) | `dokumente__upload__failed__light__1280` |
+| D23 | erfüllt mit Einschränkung: gleicher Kopf und Steckbrief; Zustand „Kontingent voll · 5 fehlgeschlagen“, „Teilweise fehlgeschlagen · mind. n fehlgeschlagen“, „Läuft“; die Zahl stammt aus der geladenen Seite („mind.“, solange nicht alles geladen ist), weil die API keine Zählung liefert | `dokumente__upload__failed__light__1280`, `dokumente__upload__partial__light__1280` |
 | D24 | erfüllt, siehe Liste unten | – |
 
 **D24 (Inventur Kap. 8):** Webhook und S3-Ereignisse → Quelle › Live-Aktualisierung · „letzte geplante Läufe fehlgeschlagen“ → Zustand und Zeile Zeitplan · Vollabgleich → an der Laufliste · Neu verbinden/Zugang → Quelle › Verbindung (unverändert) · Obergrenze „an Alle“ → Freigaben · Diagnosesperre → Zeile Suchdiagnose · Externer Zugang → Zeile Extern · Herleitung → Zeile · Felder, Extraktion → Metadaten · Eigentum → Zeile · In Space verwenden → ⋯, Zuordnungen, Nächste Schritte · Upload/Ordner → Kopf „Hochladen“ (Dateien, Ordner, Neuer Ordner) · Feld setzen → Sammelaktion · Name/Beschreibung → Stift · Status unbekannt → Steckbrief „Erneut abrufen“.
@@ -115,6 +115,29 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 | 68–69 | Werkzeug des Orchestrators |
 | Fehlt | REPORT.md (hier), `tabsTop` in `measure.mjs` ergänzt |
 
+## Nachcheck 1 (Runde 3)
+
+| Punkt | Ergebnis |
+|---|---|
+| R1-33/34 Upload-Zustand | Zahl aus der geladenen Seite: „Kontingent voll · 5 fehlgeschlagen“, „Teilweise fehlgeschlagen · mind. n fehlgeschlagen“; Fehlgeschlagene vor Wartenden |
+| R1-28 Abschluss | „Quelle verbunden ✓“ als erster Schritt, ○ für offene; bei 320 stehen die Schritte offen unter der Steckbrief-Zeile |
+| D1/R1-27 Kopf 320 | Titel 18 px auf zwei feste Zeilen: `tabsTop` 264 überall (vorher 242–407); privat ohne Quellart-Chip; `tabsTop` jetzt Budget in `budgetViolations` |
+| R1-19 Füllgrad 320 | bei 320 nur Feld und Leer |
+| R1-25 Upload-Raster | Ordnerzeile mit Abständen der Dokumentzeile, ohne Ordner-Icon, zweite Zeile „Ordner · n Dokumente“: Namen an einer Kante, nicht mehr gekürzt |
+| R1-4 Upload leer | nur die Ablagefläche, Handlung im Kopf |
+| R1-49 | Laufliste „Nicht erreichbar“ für Quellen ohne Anmeldung |
+| R1-43 | Ergebnis bricht bei 1280 um statt abzuschneiden; Spalten enger; Fundorte des Dateisystems relativ |
+| R1-45 | Zuordnung einzeilig, Name kürzt, „· seit …“ bleibt |
+| R1-46/47 | Dokumentzeile bei 320: Größe · Status in Zeile 2; Freigabe bei 320 ohne leere Befristung, Aktion in der Zeile; „· —“ entfällt |
+| R1-42 | Steckbrief-Zeile mit Ellipse; die abgeschnittenen Bilder waren Aufnahmefehler (Recorder) |
+| Regression 4/9 | Steckbrief „Zeitplan aus“; „Noch keine Freigaben.“ ohne Suche; Zeilentitel mit Silbentrennung („Aufbewahrungs-frist“) |
+| Regression 5 | Abstand unter der Reiterleiste bei 320 (verdeckte Gesamtauswahl) entfällt (`useFlexGap`) |
+| R1-64 | partial: einer von zwei Bereichen nicht lesbar; Läufe von Hand 09:12 statt 06:00 (keine zwei gleichzeitigen Läufe); Wartende über die Liste verteilt |
+| R1-67 | teilweise: Upload-Speicher = Summe der Dokumentgrößen; Spaces und Füllgrad unverändert (Fixtures geteilt mit anderen Tests) |
+| F Aufnahme | Recorder wartet nach jedem Resize auf `innerWidth` und zwei Frames, wiederholt weiße Bilder und meldet sie als `blank` statt `ok` |
+| R1-25 Begründung | zurückgenommen, umgesetzt (siehe oben) |
+| R1-26 Pfadtrenner | bewusst nicht: die Zusammenfassungen kommen aus dem geteilten Assistenten-Raster |
+
 ## Schwächen
 
 - **Zwei Spalten:** Unter 1100 px bleibt eine zusätzliche Zeile über den Reitern (Steckbrief-Zeile, 40 px); aufgeklappt wird sie wieder zum Zwischenbereich.
@@ -138,7 +161,7 @@ Basis (`feature/3084_ui-lab-detail-base`) hat bereits 108 rote Tests in 13 Datei
 | `library/pages/LibraryDetailPage.test.tsx` | 68 / 19 | Kopf ohne Kennzahlen, Steckbrief, Kontingent und Lauf nicht mehr im Kopf |
 | `library/pages/LibraryDetailPage.privateLibrary.test.tsx` | 2 / 0 | Privat-Hinweis entfernt, Speicher im Steckbrief |
 
-## Kennzahlen (Runde 2)
+## Kennzahlen (Runde 2, Runde 3 folgt unten)
 
 2106 Aufnahmen `ok`, 42 `not-found` (erwartet: Leser ohne Läufe und Upload-Feld, Upload ohne Reiter Quelle).
 
