@@ -148,6 +148,26 @@ export const mailHandlers = [
     // The three-way password rule of MailSettingsService: mask keeps, empty clears, anything
     // else replaces. Whatever the outcome, only the mask is answered.
     const keepsPassword = body.password == null || body.password === MAIL_PASSWORD_MASK
+    // A kept password never follows a new server, port, account or encryption (PASSWORD_REQUIRED).
+    const newTarget =
+      (body.host ?? null) !== mockMailSettings.host ||
+      (body.port ?? null) !== mockMailSettings.port ||
+      (body.username ?? null) !== mockMailSettings.username ||
+      body.encryption !== mockMailSettings.encryption
+    if (keepsPassword && mockMailSettings.passwordSet && newTarget) {
+      const message =
+        'Server, Port, Zugangsname oder Verschlüsselung ändern sich: Das gespeicherte Passwort geht' +
+        ' nicht an ein neues Ziel. Bitte das Passwort neu eingeben oder leeren.'
+      return HttpResponse.json(
+        {
+          error: message,
+          status: 400,
+          timestamp: new Date().toISOString(),
+          fieldErrors: [{ field: 'password', code: 'PASSWORD_REQUIRED', message }],
+        },
+        { status: 400 },
+      )
+    }
     const passwordSet = keepsPassword
       ? mockMailSettings.passwordSet
       : (body.password ?? '').length > 0

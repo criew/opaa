@@ -19,6 +19,7 @@ import type {
 } from '@/shared/api/types'
 import { useMailStore } from '../stores/mailStore'
 import { notify } from '@/shared/stores/notificationStore'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import PageSection from '@/shared/ui/PageSection'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
@@ -87,6 +88,7 @@ export default function MailServerSection() {
   const [clearPassword, setClearPassword] = useState(false)
   const [testResult, setTestResult] = useState<MailSendResultResponse | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
 
   useEffect(() => {
     void loadSettings()
@@ -122,6 +124,14 @@ export default function MailServerSection() {
   const isPortValid =
     portNumber === null || (Number.isInteger(portNumber) && portNumber > 0 && portNumber <= 65535)
   const canEnable = form.host.trim() !== '' && portNumber !== null && form.fromAddress.trim() !== ''
+  // A stored password goes only to the server, port, account and encryption it was entered for.
+  const connectionChanged =
+    (form.host.trim() || null) !== (settings.host ?? null) ||
+    portNumber !== (settings.port ?? null) ||
+    (form.username.trim() || null) !== (settings.username ?? null) ||
+    form.encryption !== settings.encryption
+  const passwordNeeded =
+    settings.passwordSet && connectionChanged && !clearPassword && form.password === ''
 
   function passwordForRequest(): string {
     if (clearPassword) return ''
@@ -140,13 +150,17 @@ export default function MailServerSection() {
       fromAddress: currentForm.fromAddress.trim() || null,
       fromName: currentForm.fromName.trim() || null,
     }
+    setPasswordError(null)
     try {
       await saveSettings(request)
       setForm((current) => (current ? { ...current, password: '' } : current))
       setClearPassword(false)
       notify('Die E-Mail-Einstellungen wurden gespeichert.', 'success')
-    } catch {
-      // the store holds the message; the alert above renders it
+    } catch (err) {
+      // the store holds the message for the alert above; a refusal of the password goes to its field
+      setPasswordError(
+        apiFieldErrors(err).find((fieldError) => fieldError.field === 'password')?.message ?? null,
+      )
     }
   }
 
@@ -254,16 +268,21 @@ export default function MailServerSection() {
               value={form.password}
               onChange={(e) => {
                 setClearPassword(false)
+                setPasswordError(null)
                 update({ password: e.target.value })
               }}
               disabled={clearPassword}
               autoComplete="new-password"
+              error={passwordError !== null || passwordNeeded}
               helperText={
-                clearPassword
+                passwordError ??
+                (clearPassword
                   ? 'Das gespeicherte Passwort wird beim Speichern gelöscht.'
-                  : settings.passwordSet
-                    ? 'Ein Passwort ist hinterlegt. Leer lassen lässt es unverändert.'
-                    : 'Es ist kein Passwort hinterlegt.'
+                  : passwordNeeded
+                    ? 'Server, Port, Benutzername oder Verschlüsselung ändern sich: Bitte das Passwort neu eingeben oder löschen.'
+                    : settings.passwordSet
+                      ? 'Ein Passwort ist hinterlegt. Leer lassen lässt es unverändert, solange Server, Port, Benutzername und Verschlüsselung gleich bleiben.'
+                      : 'Es ist kein Passwort hinterlegt.')
               }
               sx={{ flexGrow: 1 }}
             />

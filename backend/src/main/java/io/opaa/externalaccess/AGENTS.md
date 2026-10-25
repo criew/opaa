@@ -11,8 +11,8 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
 ## Invarianten und Stolpersteine
 
 - **`ExternalAccessSettingsService` ist der einzige Einstieg** in die Kanaleinstellungen. Er
-  validiert, protokolliert jede Änderung außer dem Anleitungstext und beantwortet die Abfragen je
-  Aufruf. Ob eine Clientadresse zum Kanal gehört, entscheidet allein
+  validiert, protokolliert jede Änderung, auch die des Anleitungstexts, und beantwortet die Abfragen
+  je Aufruf. Ob eine Clientadresse zum Kanal gehört, entscheidet allein
   `ExternalAccessNetworkPolicy`.
 - **Über dem Schalter steht das Feature-Flag `EXTERNAL_ACCESS`** (ADR-0044). Aus, gibt es
   Filterkette, Routen, MCP-Server (`McpServerSwitch` hält den Starter heraus), Erinnerungsmail und

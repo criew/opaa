@@ -247,6 +247,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getCurrentUser",
             "getBranding",
             "getLinkTargets",
+            "exportSettings",
             "getBrandingLoginBackground",
             "getBrandingLoginLogo",
             "getBrandingLogo",

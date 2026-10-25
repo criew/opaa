@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -97,6 +98,15 @@ public class BrandingSettingsService implements AuditPayloadKeys {
   }
 
   /**
+   * The stored values without image bytes: {@code null} in a text field means the OPAA default
+   * applies.
+   */
+  @Transactional(readOnly = true)
+  public BrandingSettingsView storedSettings() {
+    return repository.findSettingsWithoutImages().orElseThrow(BrandingSettingsService::missingRow);
+  }
+
+  /**
    * One configured image's bytes, or empty while none is configured for that kind. Loads that one
    * image's {@code bytea} column and no other - the serving endpoint is reachable without a session
    * and without a rate limit, so pulling all three per request would hand anyone a three-megabyte
@@ -112,7 +122,7 @@ public class BrandingSettingsService implements AuditPayloadKeys {
    * default" rather than "leave unchanged" - {@code PUT}'s own semantics, and the only way an
    * operator can undo a customisation without a dedicated reset endpoint. Blank strings are treated
    * as {@code null} for the same reason: a cleared form field means "default", not "a name
-   * consisting of spaces".
+   * consisting of spaces". Values equal to the stored ones write nothing and record nothing.
    */
   @Transactional
   public EffectiveBranding updateBranding(
@@ -133,6 +143,13 @@ public class BrandingSettingsService implements AuditPayloadKeys {
 
     BrandingSettings settings =
         repository.findSingleton().orElseThrow(BrandingSettingsService::missingRow);
+    if (Objects.equals(settings.getProductName(), validatedProductName)
+        && Objects.equals(settings.getClaim(), validatedClaim)
+        && Objects.equals(settings.getAiNotice(), validatedAiNotice)
+        && Objects.equals(settings.getPrimaryColor(), validatedColor)
+        && settings.getDefaultColorScheme() == defaultColorScheme) {
+      return resolve(settings);
+    }
     Map<String, Object> before = auditState(resolve(settings));
     settings.replaceSettings(
         validatedProductName,

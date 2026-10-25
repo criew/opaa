@@ -146,6 +146,46 @@ class ConnectionProfileSecretLeakIntegrationTest {
             });
   }
 
+  /**
+   * Regression guard: {@code clientSecretSet} stays {@code true} when the secret is replaced, so
+   * the replacement shows only as {@code clientSecretChange} (ADR-0060, Entscheidung 11).
+   */
+  @Test
+  void aReplacedClientSecretIsAuditedAsAChangeWithoutTheSecret() throws Exception {
+    String name = "Zugang Wechsel " + UUID.randomUUID();
+    String created =
+        call(
+            post(ADMIN),
+            """
+            {"name": "%s", "sourceType": "PROFILE_OAUTH_PROBE", "serverUrl":
+             "https://probe.example.org", "authMethod": "OAUTH", "ownership": "LIBRARY", "clientId": "opaa",
+             "clientSecret": "%s"}
+            """
+                .formatted(name, SECRET));
+    profile = UUID.fromString(JsonPath.read(created, "$.id"));
+    String update =
+        """
+        {"name": "%s", "serverUrl": "https://probe.example.org", "authMethod": "OAUTH",
+         "ownership": "LIBRARY", "clientId": "opaa"%s}
+        """;
+    call(
+        put(ADMIN + "/" + profile),
+        update.formatted(name, ", \"clientSecret\": \"" + NEW_SECRET + "\""));
+    call(put(ADMIN + "/" + profile), update.formatted(name, ""));
+
+    List<String> after =
+        jdbc.queryForList(
+            "SELECT after FROM audit_log WHERE object_id = ? ORDER BY recorded_at",
+            String.class,
+            profile.toString());
+
+    assertThat(after).hasSize(3);
+    assertThat(after.get(0)).contains("\"clientSecretChange\":\"SET\"");
+    assertThat(after.get(1)).contains("\"clientSecretChange\":\"CHANGED\"");
+    assertThat(after.get(2)).doesNotContain("clientSecretChange");
+    assertThat(String.join("", after)).doesNotContain(SECRET, NEW_SECRET);
+  }
+
   private String call(MockHttpServletRequestBuilder request, String body) throws Exception {
     request.header(DevAuthFilter.DEV_USER_HEADER, "dev-admin");
     if (body != null) {

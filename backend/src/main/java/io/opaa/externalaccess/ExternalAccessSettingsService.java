@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditTextDigest;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <em>every</em> call, which is why it stays a single row lookup without a cache: a cache here
  * would only buy an invalidation question and could let an emergency stop lag behind.
  *
- * <p>Every change except {@code serverInstructions} is audited as {@link
- * AuditEventType#EXTERNAL_ACCESS_SETTINGS_CHANGED} with before/after of the changed keys. The
- * instructions text is deliberately outside the closed event list of
- * docs/features/security-and-compliance.md - it changes no reach, only the wording of a request to
- * a foreign model.
+ * <p>Every change is audited as {@link AuditEventType#EXTERNAL_ACCESS_SETTINGS_CHANGED} with
+ * before/after of the changed keys, the instructions text included as hash and length (ADR-0060,
+ * Entscheidung 11).
  */
 @Service
 public class ExternalAccessSettingsService {
@@ -45,14 +45,18 @@ public class ExternalAccessSettingsService {
   static final String TOO_MANY = "TOO_MANY";
   static final String TOO_LONG = "TOO_LONG";
 
-  /** The audited keys - the instructions text is not among them, by decision. */
+  /** Audited as hash and length only, never in their wording ({@link AuditTextDigest}). */
+  static final Set<String> FREE_TEXT_KEYS = Set.of("serverInstructions");
+
+  /** The audited keys: every value of the settings. */
   static final List<String> AUDITED_KEYS =
       List.of(
           "enabled",
           "tokenMaxLifetimeDays",
           "tokenRateLimitPerHour",
           "allowedCidrs",
-          "massRetrievalAlertThreshold");
+          "massRetrievalAlertThreshold",
+          "serverInstructions");
 
   private static final String SETTINGS_OBJECT_ID = "external_access_settings";
   private static final String SETTINGS_OBJECT_LABEL = "Externe KI-Werkzeuge";
@@ -219,17 +223,20 @@ public class ExternalAccessSettingsService {
     }
   }
 
-  /**
-   * Before/after of the changed keys only, and only of the keys that decide reach: a change that
-   * touches nothing but the instructions text writes no entry at all.
-   */
+  /** Before/after of the changed keys only; an unchanged value is in neither. */
   private void recordChange(CurrentUser actor, Values before, Values after) {
     Map<String, Object> allBefore = asAuditedMap(before);
     Map<String, Object> allAfter = asAuditedMap(after);
     Map<String, Object> beforeChanged = new LinkedHashMap<>();
     Map<String, Object> afterChanged = new LinkedHashMap<>();
     for (String key : AUDITED_KEYS) {
-      if (!Objects.equals(allBefore.get(key), allAfter.get(key))) {
+      if (Objects.equals(allBefore.get(key), allAfter.get(key))) {
+        continue;
+      }
+      if (FREE_TEXT_KEYS.contains(key)) {
+        AuditTextDigest.put(beforeChanged, key, (String) allBefore.get(key));
+        AuditTextDigest.put(afterChanged, key, (String) allAfter.get(key));
+      } else {
         beforeChanged.put(key, allBefore.get(key));
         afterChanged.put(key, allAfter.get(key));
       }
@@ -259,6 +266,7 @@ public class ExternalAccessSettingsService {
     map.put("tokenRateLimitPerHour", values.tokenRateLimitPerHour());
     map.put("allowedCidrs", values.allowedCidrs());
     map.put("massRetrievalAlertThreshold", values.massRetrievalAlertThreshold());
+    map.put("serverInstructions", values.serverInstructions());
     return map;
   }
 }

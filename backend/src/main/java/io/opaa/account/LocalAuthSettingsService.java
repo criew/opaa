@@ -39,6 +39,11 @@ public class LocalAuthSettingsService {
 
   static final String OUT_OF_RANGE = "OUT_OF_RANGE";
   static final String REQUIRED = "REQUIRED";
+  static final String TOO_MANY = "TOO_MANY";
+  static final String TOO_LONG = "TOO_LONG";
+  static final int MAX_ALLOWED_DOMAINS = 100;
+  static final int MAX_DOMAIN_LENGTH = 253;
+  static final int MAX_DOMAINS_STORED_LENGTH = 2000;
   private static final String SETTINGS_OBJECT_ID = "local_auth_settings";
   private static final String SETTINGS_OBJECT_LABEL = "Lokale Benutzerverwaltung";
 
@@ -163,6 +168,7 @@ public class LocalAuthSettingsService {
         LocalAuthSettings.MIN_INACTIVE_DAYS,
         Integer.MAX_VALUE);
     List<String> domains = DomainListConverter.normalize(update.selfRegistrationAllowedDomains());
+    requireDomainBounds(errors, domains);
     if (update.selfRegistrationEnabled() && domains.isEmpty()) {
       errors.add(
           new FieldError(
@@ -185,6 +191,33 @@ public class LocalAuthSettingsService {
         update.resetTokenTtlMinutes(),
         update.defaultExpiryDays(),
         update.inactiveDays());
+  }
+
+  /** The bounds of the request schema and of the column the joined list is stored in. */
+  private static void requireDomainBounds(List<FieldError> errors, List<String> domains) {
+    String field = "selfRegistrationAllowedDomains";
+    if (domains.size() > MAX_ALLOWED_DOMAINS) {
+      errors.add(
+          new FieldError(
+              field,
+              TOO_MANY,
+              "Es sind höchstens " + MAX_ALLOWED_DOMAINS + " Adressdomänen zulässig."));
+    } else if (domains.stream().anyMatch(domain -> domain.length() > MAX_DOMAIN_LENGTH)) {
+      errors.add(
+          new FieldError(
+              field,
+              TOO_LONG,
+              "Eine Adressdomäne darf höchstens " + MAX_DOMAIN_LENGTH + " Zeichen lang sein."));
+    } else if (String.join(DomainListConverter.SEPARATOR, domains).length()
+        > MAX_DOMAINS_STORED_LENGTH) {
+      errors.add(
+          new FieldError(
+              field,
+              TOO_LONG,
+              "Die Adressdomänen sind zusammen länger als "
+                  + MAX_DOMAINS_STORED_LENGTH
+                  + " Zeichen."));
+    }
   }
 
   private static void requireBetween(

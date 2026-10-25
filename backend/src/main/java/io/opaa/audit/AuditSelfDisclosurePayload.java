@@ -245,7 +245,8 @@ final class AuditSelfDisclosurePayload {
             "providerType",
             "directorySyncEnabled",
             "directorySyncIntervalMinutes",
-            "connectorType"),
+            "connectorType",
+            "clientSecretChange"),
         OIDC_PROVIDER_CHANGED);
     put(
         keys,
@@ -254,9 +255,19 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("enabled"), OIDC_PROVIDER_ENABLED, OIDC_PROVIDER_DISABLED);
     put(
         keys,
-        Set.of("displayName", "modelIdentifier", "temperature", "maxTokens", "apiKeySet", "active"),
+        Set.of(
+            "displayName",
+            "modelIdentifier",
+            "temperature",
+            "maxTokens",
+            "apiKeySet",
+            "apiKeyChange",
+            "active"),
         LLM_MODEL_CREATED,
-        LLM_MODEL_CHANGED,
+        LLM_MODEL_CHANGED);
+    put(
+        keys,
+        Set.of("displayName", "modelIdentifier", "temperature", "maxTokens", "apiKeySet", "active"),
         LLM_MODEL_DELETED);
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
@@ -288,9 +299,10 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("lockedReason", "lockoutUntil"), LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS);
     put(
         keys,
-        Set.of("enabled", "host", "port", "passwordSet", "encryption"),
+        Set.of("enabled", "host", "port", "passwordSet", "passwordChange", "encryption"),
         MAIL_SETTINGS_CHANGED);
-    put(keys, Set.of(), MAIL_TEMPLATE_CHANGED, MAIL_TEMPLATE_RESET, MAIL_TEST_SENT);
+    put(keys, Set.of("overridden"), MAIL_TEMPLATE_CHANGED, MAIL_TEMPLATE_RESET);
+    put(keys, Set.of(), MAIL_TEST_SENT);
     put(keys, Set.of("mode", "expiresAt"), LOCAL_USER_CREATED);
     put(
         keys,
@@ -344,6 +356,7 @@ final class AuditSelfDisclosurePayload {
             "ownership",
             "clientIdSet",
             "clientSecretSet",
+            "clientSecretChange",
             "tenantSet",
             "scopesSet",
             "connectorSettingsSet"),
@@ -358,6 +371,7 @@ final class AuditSelfDisclosurePayload {
             "ownership",
             "clientIdSet",
             "clientSecretSet",
+            "clientSecretChange",
             "tenantSet",
             "scopesSet",
             "connectorSettingsSet",
@@ -398,6 +412,7 @@ final class AuditSelfDisclosurePayload {
         SELF_DISCLOSURE_EXPORT_FINISHED);
     put(keys, Set.of("enabled", "dailyLimit"), SELF_DISCLOSURE_SETTINGS_CHANGED);
     put(keys, Set.of("allowedOrigins"), LINK_TARGETS_CHANGED);
+    put(keys, Set.of("formatVersion", "sections"), SETTINGS_IMPORTED);
     put(keys, Set.of("periodStart", "lockReason"), LOCKED_ACCOUNT_CHATS_DELETED);
     put(keys, Set.of(), LOCKED_ACCOUNT_CHAT_CLEANUP_HELD, LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED);
     return Map.copyOf(keys);
