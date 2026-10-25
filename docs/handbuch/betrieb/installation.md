@@ -3,8 +3,9 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung, Anmeldeverfahren, Chat-Modell, Embedding-Modell. Bis dahin steht sie im **Installationsmodus**
-und bietet nur die Installation an. Eingerichtet wird über die Installations-API, entweder Schritt
+der Systemverwaltung, Anmeldeverfahren, Chat-Modell, Embedding-Modell. Bis dahin steht sie im
+**Installationsmodus** und bietet nur die Installation an. Eingerichtet wird im Browser mit dem
+[Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
 selbst beschreiben [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md).
 
@@ -124,6 +125,34 @@ Abschluss gibt es keine Vektorablage; das Embedding-Modell lässt sich danach ni
 Oberfläche wechseln ([Modelle](modelle.md#embedding)). Danach meldet
 sich die Person mit dem ersten Konto an. Startwerte aus der Umgebung übernimmt eine so eingerichtete
 Instanz nie mehr. Jeder Schritt, jede Prüfung und der Abschluss stehen im Revisionsprotokoll.
+
+## Einrichtungs-Assistent im Browser
+
+Solange die Installation aussteht, führt jede Adresse der Oberfläche zum Assistenten unter
+`/installation`, etwa `https://opaa.stadt.example/installation`. Er führt durch dieselben Schritte
+wie die API und braucht dasselbe [Installations-Token](#installations-token); ohne gültiges Token
+zeigt er keinen Schritt und keinen gespeicherten Wert.
+
+- **Schrittliste.** Links stehen die Schritte mit ihrem Zustand: „Geprüft“, „Prüfung fehlgeschlagen“
+  (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
+  „Offen“. Pflichtschritte und optionale Schritte stehen in getrennten Gruppen; optionale lassen
+  sich mit „Überspringen“ auslassen. Heute sind alle Schritte Pflicht.
+- **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
+  prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
+  `https://`; alles Weitere prüft OPAA wie oben beschrieben.
+- **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
+  der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
+  ändert, prüft erneut.
+- **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
+  gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“. Wer das erste Konto
+  nachträglich ändert, gibt das Passwort erneut ein; unverändert wird es nur noch einmal geprüft.
+- **Unterbrechen und fortsetzen.** Der Browser behält das Token nur, solange die Seite offen ist.
+  Nach Neuladen oder an einem anderen Rechner gibt man es erneut ein und landet beim ersten
+  Pflichtschritt, der noch nicht geprüft ist, sonst beim Abschluss.
+- **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
+  sind; bis dahin nennt die Seite die offenen. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
+  inzwischen jemand anders abgeschlossen, etwa über eine Antwortdatei, zeigt der Assistent
+  „Bereits eingerichtet“.
 
 ## Antwortdatei
 
