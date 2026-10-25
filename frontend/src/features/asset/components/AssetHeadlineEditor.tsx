@@ -112,8 +112,22 @@ export default function AssetHeadlineEditor({
   }
 
   const headingRow = (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
-      {draft ? <PageHeading title={name} visuallyHidden /> : <PageHeading title={name} />}
+    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5, minHeight: 34 }}>
+      {draft ? (
+        <PageHeading title={name} visuallyHidden />
+      ) : (
+        // a long compound breaks with a hyphen instead of running out at 320 px
+        <PageHeading
+          title={name}
+          sx={{
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            hyphens: 'auto',
+            fontSize: { xs: 17, sm: undefined },
+            lineHeight: { xs: '22px', sm: undefined },
+          }}
+        />
+      )}
       {badges}
       {canEdit && !draft && (
         <Tooltip title={editLabel}>
@@ -129,11 +143,14 @@ export default function AssetHeadlineEditor({
     return (
       <Box sx={{ minWidth: 0 }}>
         {headingRow}
-        {description && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>
-            {description}
-          </Typography>
-        )}
+        {/* one line, kept even when empty: the figures below never move */}
+        <Typography
+          noWrap
+          title={description ?? undefined}
+          sx={{ fontSize: 13.5, lineHeight: '20px', minHeight: 20, color: 'text.secondary' }}
+        >
+          {description}
+        </Typography>
       </Box>
     )
   }

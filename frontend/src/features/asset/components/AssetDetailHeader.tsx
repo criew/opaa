@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
+import type { SxProps, Theme } from '@mui/material/styles'
 import Divider from '@mui/material/Divider'
+import Link from '@mui/material/Link'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
@@ -8,13 +10,13 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
+import { Link as RouterLink } from 'react-router'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
-import { FavoriteToggle, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
+import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { UseInSpaceDialog } from './UseInSpaceButton'
@@ -33,12 +35,18 @@ export interface AssetDetailHeaderProps {
   headline: Omit<AssetHeadlineEditorProps, 'name' | 'description' | 'badges'>
   /** What the asset holds, in the words of its type ("12 Prompts"). */
   extent: string
-  /** Figures only this type has, after the extent - e.g. storage and last run. */
+  /** Figures only this type has, after the extent - e.g. storage. */
   figures?: ReactNode
   /** The spread from the catalog; omitted while unknown. */
   spaceCount?: number | null
+  /** Where the spread links to - the tab of the associations. */
+  spaceHref?: string
   responsible: { label: string; group: boolean }
+  /** Where the responsible party links to - the tab of the permissions. */
+  responsibleHref?: string
   updatedAt?: string | null
+  /** The type's one state, the last element of the figure line; replaces „Aktualisiert am". */
+  status?: ReactNode
   /** The caller's own mark; without it, or without `onFavoriteChange`, no star. */
   favorite?: boolean
   onFavoriteChange?: (favorite: boolean) => Promise<void>
@@ -70,30 +78,38 @@ function formatDate(value: string): string {
 }
 
 /**
- * One figure of the head's band: a flat statement („87 Dokumente") with a pictogram that
- * carries no text of its own, set off from the next one by a hairline.
+ * One figure of the head's single line („87 Dokumente"): plain text that keeps together, set off
+ * from the next one by a middle dot. A figure that sums up a tab links into it.
  */
-export function HeaderFigure({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+export function HeaderFigure({
+  to,
+  children,
+  sx,
+}: {
+  to?: string
+  children: ReactNode
+  sx?: SxProps<Theme>
+}) {
   return (
     <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        // spacing only: a separator line would hang at the end of a wrapped row
-      }}
+      component="span"
+      sx={[
+        { whiteSpace: 'nowrap', '&:not(:first-of-type)::before': SEPARATOR },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
     >
-      {icon && (
-        <Box aria-hidden sx={{ display: 'flex', color: 'text.disabled' }}>
-          {icon}
-        </Box>
+      {to ? (
+        <Link component={RouterLink} to={to} replace underline="hover" color="inherit">
+          {children}
+        </Link>
+      ) : (
+        children
       )}
-      <Typography component="div" sx={{ fontSize: 13, color: 'text.secondary' }}>
-        {children}
-      </Typography>
     </Box>
   )
 }
+
+const SEPARATOR = { content: '"·"', mx: 1, color: 'text.disabled' } as const
 
 /** „⋯": „In Space verwenden" for whoever may use it, „Löschen" apart and only with the right. */
 function MoreActions({
@@ -217,8 +233,11 @@ export default function AssetDetailHeader({
   extent,
   figures,
   spaceCount,
+  spaceHref,
   responsible,
+  responsibleHref,
   updatedAt,
+  status,
   favorite,
   onFavoriteChange,
   mayUseInSpace,
@@ -232,15 +251,14 @@ export default function AssetDetailHeader({
   children,
 }: AssetDetailHeaderProps) {
   const definition = assetTypeDefinition(assetType)
-  const ExtentIcon = definition?.Icon
   return (
     <Box
       component="header"
       sx={{
         position: 'relative',
         // no line of its own: the tab bar below draws the one separator
-        pb: { xs: 2.5, md: 3 },
-        mb: 3,
+        pb: { xs: 1.5, md: 3 },
+        mb: { xs: 1.5, md: 3 },
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'none' },
@@ -254,7 +272,8 @@ export default function AssetDetailHeader({
         sx={{
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: 1.5,
+          columnGap: 1.5,
+          rowGap: 0.75,
           flexWrap: 'wrap',
           mb: 1,
           position: 'relative',
@@ -306,30 +325,45 @@ export default function AssetDetailHeader({
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
 
-      <Stack
-        direction="row"
-        spacing={2.25}
-        useFlexGap
-        sx={{ flexWrap: 'wrap', rowGap: 1, mt: 2.5, position: 'relative' }}
+      <Typography
+        component="div"
+        sx={{
+          mt: { xs: 0.75, sm: 1.5 },
+          fontSize: 13,
+          lineHeight: '22px',
+          '& > span': { height: 22 },
+          color: 'text.secondary',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          position: 'relative',
+        }}
       >
-        <HeaderFigure icon={ExtentIcon ? <ExtentIcon sx={{ fontSize: 16 }} /> : undefined}>
-          {extent}
-        </HeaderFigure>
+        <HeaderFigure>{extent}</HeaderFigure>
         {figures}
+        {/* below 600 px spread and responsible party stay in their tabs and the state takes a
+            line of its own, so the figures never run to a third row */}
         {spaceCount != null && (
-          <HeaderFigure icon={<WorkspacesOutlinedIcon sx={{ fontSize: 16 }} />}>
+          <HeaderFigure to={spaceHref} sx={{ display: { xs: 'none', sm: 'inline' } }}>
             {spreadLabel(spaceCount)}
           </HeaderFigure>
         )}
-        <HeaderFigure>
-          <ResponsibleLine responsible={responsible} fontSize={13} />
+        <HeaderFigure to={responsibleHref} sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          {responsible.label}
         </HeaderFigure>
-        {updatedAt && (
-          <HeaderFigure icon={<EventOutlinedIcon sx={{ fontSize: 16 }} />}>
-            Aktualisiert am {formatDate(updatedAt)}
+        {status ? (
+          <HeaderFigure
+            sx={{
+              flexBasis: { xs: '100%', sm: 'auto' },
+              '&:not(:first-of-type)::before': { display: { xs: 'none', sm: 'inline' } },
+            }}
+          >
+            {status}
           </HeaderFigure>
+        ) : (
+          updatedAt && <HeaderFigure>Aktualisiert am {formatDate(updatedAt)}</HeaderFigure>
         )}
-      </Stack>
+      </Typography>
 
       {children}
     </Box>
