@@ -5,7 +5,7 @@ import java.time.YearMonth;
 import java.util.UUID;
 
 /**
- * The result of verifying the checksum chain of one month (ADR-0058, Entscheidung 4): whether the
+ * The result of verifying the checksum chain of one month (ADR-0058, Entscheidung 5): whether the
  * recomputed chain matches every checkpoint and the seal, how many entries the chain head covers
  * and how many lie above it, and, on a mismatch, the first segment that no longer fits. Carries no
  * content of the log.
@@ -32,7 +32,11 @@ public record AuditChainReport(
     /** A checkpoint or the seal does not match; {@link #deviation} names the segment. */
     BROKEN,
     /** No checkpoint yet; nothing to compare against. */
-    UNCHAINED
+    UNCHAINED,
+    /** No partition holds this month: the retention removed it, or it was never created. */
+    NOT_RETAINED,
+    /** The month was chained under a procedure this version does not know. */
+    UNVERIFIABLE
   }
 
   public enum DeviationKind {

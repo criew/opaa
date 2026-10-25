@@ -423,8 +423,8 @@ Griff in einen einzelnen Vorgang.
 Kette von Prüfsummen über alle seine Sätze in der Reihenfolge ihres Eintrags, nachgezogen alle zehn
 Minuten von einem Lauf außerhalb des Schreibwegs, mit Kontrollpunkten je Stapel. Ist ein Monat zu
 Ende und vollständig verkettet, wird er **versiegelt**: Die Kopf-Prüfsumme steht mit der Anzahl der
-Sätze als eigener Protokolleintrag `AUDIT_LOG_MONTH_SEALED` im Folgemonat, wo sie selbst verkettet
-wird, und geht über die [Ausleitung](#anbindung-an-ein-zentrales-sicherheitsmonitoring) mit der
+Sätze als eigener Protokolleintrag `AUDIT_LOG_MONTH_SEALED` in einem späteren Monat, wo sie selbst
+verkettet wird, und geht über die [Ausleitung](#anbindung-an-ein-zentrales-sicherheitsmonitoring) mit der
 Prüfsumme als eigenem Feld an das Sicherheitsmonitoring. Kontrollpunkte und Siegel liegen in
 Tabellen, die wie die Ablage selbst dem Wartungskonto gehören und von der Anwendung nur angefügt
 und gelesen werden. Die Revision prüft einen Monat über einen eigenen Abfrageweg (`GET

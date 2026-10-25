@@ -20,6 +20,7 @@ class AuditChainHasherTest {
   private static final UUID EVENT = UUID.fromString("11111111-2222-3333-4444-555555555555");
   private static final UUID ORGANIZATION = UUID.fromString("00000000-0000-0000-0000-000000000001");
   private static final Instant RECORDED = Instant.parse("2026-09-14T10:15:30.123456Z");
+  private static final AuditChainHasher HASHER = AuditChainHasher.CURRENT;
 
   @Test
   void theCanonicalFormMarksNullAndLengthPrefixesEveryValue() {
@@ -50,32 +51,32 @@ class AuditChainHasherTest {
 
   @Test
   void everyColumnEntersTheHash() {
-    byte[] start = AuditChainHasher.start(YearMonth.of(2026, 9));
+    byte[] start = HASHER.start(YearMonth.of(2026, 9));
 
-    assertThat(AuditChainHasher.next(start, entry("SUCCESS", "x")))
-        .isNotEqualTo(AuditChainHasher.next(start, entry("FAILURE", "x")))
-        .isNotEqualTo(AuditChainHasher.next(start, entry("SUCCESS", "y")));
+    assertThat(HASHER.next(start, entry("SUCCESS", "x")))
+        .isNotEqualTo(HASHER.next(start, entry("FAILURE", "x")))
+        .isNotEqualTo(HASHER.next(start, entry("SUCCESS", "y")));
   }
 
   @Test
   void theOrderOfTheEntriesMatters() {
-    byte[] start = AuditChainHasher.start(YearMonth.of(2026, 9));
+    byte[] start = HASHER.start(YearMonth.of(2026, 9));
     ChainedEntry a = entry("SUCCESS", "a");
     ChainedEntry b = entry("SUCCESS", "b");
 
-    byte[] ab = AuditChainHasher.next(AuditChainHasher.next(start, a), b);
-    byte[] ba = AuditChainHasher.next(AuditChainHasher.next(start, b), a);
+    byte[] ab = HASHER.next(HASHER.next(start, a), b);
+    byte[] ba = HASHER.next(HASHER.next(start, b), a);
 
     assertThat(ab).isNotEqualTo(ba);
-    assertThat(AuditChainHasher.next(AuditChainHasher.next(start, a), b)).isEqualTo(ab);
+    assertThat(HASHER.next(HASHER.next(start, a), b)).isEqualTo(ab);
   }
 
   @Test
   void theStartDependsOnTheMonthAndTheAlgorithm() {
-    assertThat(AuditChainHasher.start(YearMonth.of(2026, 9)))
+    assertThat(HASHER.start(YearMonth.of(2026, 9)))
         .hasSize(32)
-        .isNotEqualTo(AuditChainHasher.start(YearMonth.of(2026, 10)));
-    assertThat(AuditChainHasher.hex(AuditChainHasher.start(YearMonth.of(2026, 9))))
+        .isNotEqualTo(HASHER.start(YearMonth.of(2026, 10)));
+    assertThat(AuditChainHasher.hex(HASHER.start(YearMonth.of(2026, 9))))
         .hasSize(64)
         .matches("[0-9a-f]{64}");
     assertThat(AuditChainHasher.ALGORITHM.getBytes(StandardCharsets.US_ASCII))
@@ -83,12 +84,43 @@ class AuditChainHasherTest {
   }
 
   @Test
+  void theSchemaVersionEntersTheHashAsTwoBytes() {
+    byte[] versioned = AuditChainHasher.canonical(entry("SUCCESS", null));
+    byte[] unversioned = AuditChainHasher.canonical(entry("SUCCESS", null, null));
+
+    assertThat(versioned).isNotEqualTo(unversioned);
+    // the last field: present, length 2, big-endian value
+    int n = versioned.length;
+    assertThat(versioned[n - 7]).isEqualTo((byte) 1);
+    assertThat(versioned[n - 3]).isEqualTo((byte) 2);
+    assertThat(ByteBuffer.wrap(versioned, n - 2, 2).getShort())
+        .isEqualTo(AuditEventCatalog.SCHEMA_VERSION);
+    assertThat(unversioned[unversioned.length - 1]).isEqualTo((byte) 0);
+  }
+
+  @Test
   void theSelectListNamesEveryColumnOfTheLogOnce() {
-    assertThat(AuditChainHasher.COLUMNS).hasSize(16).doesNotHaveDuplicates();
-    assertThat(AuditChainHasher.SELECT_COLUMNS).startsWith("event_id, recorded_at");
+    assertThat(AuditChainHasher.COLUMNS).hasSize(17).doesNotHaveDuplicates();
+    assertThat(AuditChainHasher.SELECT_COLUMNS)
+        .startsWith("event_id, recorded_at")
+        .endsWith(", schema_version");
+  }
+
+  @Test
+  void aProcedureIsFoundByItsNameAndAnUnknownOneIsNotAnError() {
+    assertThat(AuditChainHasher.forAlgorithm(AuditChainHasher.ALGORITHM))
+        .contains(HASHER)
+        .map(AuditChainHasher::name)
+        .contains("OPAA-AUDIT-CHAIN-1");
+    assertThat(AuditChainHasher.forAlgorithm("OPAA-AUDIT-CHAIN-9")).isEmpty();
+    assertThat(AuditChainHasher.forAlgorithm(null)).isEmpty();
   }
 
   private static ChainedEntry entry(String outcome, String reason) {
+    return entry(outcome, reason, AuditEventCatalog.SCHEMA_VERSION);
+  }
+
+  private static ChainedEntry entry(String outcome, String reason, Short schemaVersion) {
     return new ChainedEntry(
         EVENT,
         RECORDED,
@@ -105,6 +137,7 @@ class AuditChainHasherTest {
         "{\"name\":\"x\"}",
         outcome,
         reason,
-        null);
+        null,
+        schemaVersion);
   }
 }

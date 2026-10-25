@@ -6,13 +6,11 @@ import java.time.temporal.ChronoUnit;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The limit below which every entry of {@code audit_log} is settled: the start of the oldest open
- * transaction of another client session of this database, at most now minus a small delay against
- * clock jumps (ADR-0055, Entscheidung 5). {@code recorded_at} is stamped inside the transaction of
- * its entry, so an entry not yet visible never lies below the start of its transaction; read in a
- * statement of its own before the entries, everything below the limit is visible to their read and
- * nothing committing later can slip in underneath. Shared by the SIEM export and the checksum
- * chain, which both must never overtake a late entry. Requires the primary, not a replica.
+ * The limit below which every entry of {@code audit_log} is settled (ADR-0055, Entscheidung 5): the
+ * start of the oldest open transaction of another client session, at most now minus a small delay.
+ * {@code recorded_at} is stamped in the transaction that inserts the entry, so nothing committing
+ * later lies below the limit read before the entries. Shared by the SIEM export and the checksum
+ * chain; requires the primary, not a replica.
  */
 final class AuditSettledLimit {
 

@@ -72,7 +72,7 @@ direkten Datenbankrechten fiele allein dadurch nicht auf. Dafür trägt jeder Pr
 **Prüfsummenkette**: Ein Lauf alle zehn Minuten verkettet die Einträge in ihrer Reihenfolge und
 schreibt je Stapel einen Kontrollpunkt. Ist ein Monat zu Ende und vollständig verkettet, wird er
 **versiegelt**: Die Kopf-Prüfsumme steht mit der Anzahl der Einträge als Protokolleintrag
-`AUDIT_LOG_MONTH_SEALED` im Folgemonat und geht, wenn die [Ausleitung an ein
+`AUDIT_LOG_MONTH_SEALED` in dem Monat, in dem der Lauf siegelt, und geht, wenn die [Ausleitung an ein
 Sicherheitsmonitoring](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)
 eingeschaltet ist, mit der Prüfsumme als eigenem Feld dorthin. So liegt das Siegel außerhalb der
 Datenbank. Kontrollpunkte und Siegel liegen in Tabellen, die wie das Protokoll dem Wartungskonto
@@ -85,20 +85,22 @@ Siegel mit.
 > Meldung `AUDIT_LOG_MONTH_SEALED` vom April 2027 im Sicherheitsmonitoring. Beides zusammen belegt,
 > dass der Monat seit seinem Abschluss unverändert ist, ohne dass jemand an die Datenbank muss.
 
-Die Prüfung läuft über die Rolle AUDITOR mit Anlass als Pflichtfeld und wird wie jeder Zugriff auf
-Protokolldaten selbst protokolliert (`AUDIT_LOG_ACCESSED`, Abfrageweg `chain-verification`). Die
-Antwort nennt:
+Die Prüfung läuft über die Rolle AUDITOR der Standardorganisation mit Anlass als Pflichtfeld, weil
+die Kette das Protokoll aller Organisationen umfasst, und wird wie jeder Zugriff auf Protokolldaten
+selbst protokolliert (`AUDIT_LOG_ACCESSED`, Abfrageweg `chain-verification`). Die Antwort nennt:
 
 | Feld | Bedeutung |
 |---|---|
-| `status` | `INTACT`: Kette passt zu jedem Kontrollpunkt und zum Siegel; `BROKEN`: eine Abweichung; `UNCHAINED`: noch kein Kontrollpunkt, etwa für einen künftigen Monat |
+| `status` | `INTACT`: Kette passt zu jedem Kontrollpunkt und zum Siegel; `BROKEN`: eine Abweichung; `UNCHAINED`: noch kein Kontrollpunkt, etwa für einen künftigen Monat; `NOT_RETAINED`: kein Protokollmonat mehr, die Aufbewahrungsfrist hat ihn gelöscht oder es gab ihn nie; `UNVERIFIABLE`: der Monat wurde mit einem Verfahren verkettet, das diese Version nicht kennt |
 | `sealed`, `sealEventId` | ob der Monat versiegelt ist, und der Eintrag `AUDIT_LOG_MONTH_SEALED` dazu |
 | `chainedEntries`, `unchainedEntries` | Einträge bis zum Kettenkopf und Einträge darüber, die der nächste Lauf verkettet |
 | `headHash`, `algorithm` | Kopf-Prüfsumme (SHA-256, hexadezimal) und Verfahren der Kette |
 | `deviation` | bei `BROKEN` die erste Abweichung: `position` des Kontrollpunkts, `kind` `CHANGED` (ein Eintrag wurde geändert) oder `INSERTED_OR_REMOVED` (ein Eintrag fehlt oder kam hinzu) und das Zeitsegment `segmentFrom`/`segmentTo` zwischen den Kontrollpunkten |
 
 Ein Monat gilt als `BROKEN`, sobald ein Eintrag nachträglich in ihn geschrieben wurde, auch durch
-eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Kein Inhalt eines Eintrags
+eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Die Grenzen eines Monats
+sind die seiner Partition in der Datenbank, nicht die der Zeitzone des Servers; ein Wechsel der
+Zeitzone ändert die Kette nicht. Kein Inhalt eines Eintrags
 verlässt dabei das Protokoll; wer gehandelt hat, klärt nur die Revision über ihre Abfragewege. Wie
 weit die Kette hinterherläuft, zeigen die Metriken `opaa_audit_chain_lag_seconds` und
 `opaa_audit_chain_unsealed_months` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).

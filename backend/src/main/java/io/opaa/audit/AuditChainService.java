@@ -23,38 +23,35 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import java.util.function.ToDoubleFunction;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The checksum chain of the audit log, one chain per monthly partition (ADR-0058, Entscheidung 4).
- * {@link #run()} chains, in the order {@code (recorded_at, event_id)}, every entry below the
- * settled limit of {@link AuditSettledLimit} that no checkpoint covers yet, writes a checkpoint per
- * batch and seals a month once it has ended and is chained to its end: the seal row and the {@code
- * AUDIT_LOG_MONTH_SEALED} entry that carries the head hash out of the database are written in one
- * transaction. The run is guarded by the scheduler lock of {@link AuditChainScheduler}; the primary
- * keys of checkpoint and seal are the markers that keep a second run from writing a position or a
- * seal twice (ADR-0053, Entscheidung 7). {@link #verify} recomputes the chain of one month and
- * compares it with every checkpoint and the seal.
- *
- * <p>A reader of {@code audit_log} beside the revision's access paths, the self-disclosure and the
- * SIEM export: it reads every column, because every column is chained, and gives none of it out - a
- * report names counts, hashes and a time segment, never an entry. The gauges report the age of the
- * oldest entry no checkpoint covers and the number of ended months without a seal; both come from
- * the database at every scrape, so every instance reports the same value (ADR-0053).
+ * The checksum chain of the audit log, one chain per monthly partition (ADR-0058, Entscheidung 4):
+ * {@link #run()} chains settled entries in the order {@code (recorded_at, event_id)} with a
+ * checkpoint per batch and seals an ended month together with its {@code AUDIT_LOG_MONTH_SEALED}
+ * entry; {@link #verify} recomputes a month against checkpoints and seal. A reader of every column
+ * of {@code audit_log} that hands none of them out; the primary keys of checkpoint and seal are the
+ * markers against a second run (ADR-0053, Entscheidung 7).
  */
 @Component
 class AuditChainService {
@@ -73,24 +70,21 @@ class AuditChainService {
   /** {@code actor_ref} of the seal entry: a process, never a person. */
   static final String ACTOR = "audit-chain";
 
-  /** The monthly partitions of the log, as the first day of their month. */
-  private static final String PARTITION_MONTHS =
-      "SELECT to_date(right(c.relname, 7), 'YYYY_MM') AS month"
+  /** Seconds a gauge read may take before it reports {@code NaN} instead. */
+  static final int METRICS_QUERY_TIMEOUT_SECONDS = 30;
+
+  /**
+   * The monthly partitions of the log with the bounds the database holds for them, cast back from
+   * the bound expression with their offset, so a session time zone cannot shift them.
+   */
+  static final String PARTITIONS =
+      "SELECT to_date(right(c.relname, 7), 'YYYY_MM') AS month, (b.m[1])::timestamptz AS month_start,"
+          + " (b.m[2])::timestamptz AS month_end"
           + " FROM pg_catalog.pg_inherits i JOIN pg_catalog.pg_class c ON c.oid = i.inhrelid"
+          + " CROSS JOIN LATERAL (SELECT regexp_match(pg_catalog.pg_get_expr(c.relpartbound, c.oid),"
+          + " 'FROM \\(''([^'']*)''\\) TO \\(''([^'']*)''\\)') AS m) b"
           + " WHERE i.inhparent = to_regclass('audit_log')"
-          + " AND c.relname ~ '^audit_log_[0-9]{4}_[0-9]{2}$'";
-
-  private static final String UNSEALED_MONTHS_BELOW =
-      "SELECT month FROM ("
-          + PARTITION_MONTHS
-          + ") p WHERE p.month::timestamptz < ? AND NOT EXISTS"
-          + " (SELECT 1 FROM audit_chain_seals s WHERE s.month = p.month) ORDER BY month";
-
-  private static final String ENDED_UNSEALED_MONTHS =
-      "SELECT count(*) FROM ("
-          + PARTITION_MONTHS
-          + ") p WHERE (p.month + interval '1 month')::timestamptz <= now() AND NOT EXISTS"
-          + " (SELECT 1 FROM audit_chain_seals s WHERE s.month = p.month)";
+          + " AND c.relname ~ '^audit_log_[0-9]{4}_[0-9]{2}$' ORDER BY month";
 
   private static final String ENTRIES_FROM =
       "FROM audit_log WHERE recorded_at >= ? AND recorded_at < ?";
@@ -98,71 +92,91 @@ class AuditChainService {
   private static final String AFTER_KEY = " AND (recorded_at, event_id) > (?, ?)";
 
   private final JdbcTemplate jdbc;
+  private final JdbcTemplate metricsJdbc;
   private final AuditLogService auditLogService;
   private final AuditSettledLimit settledLimit;
   private final TransactionTemplate transaction;
-  private final TransactionTemplate readOnly;
+  private final TransactionTemplate repeatableRead;
   private final JsonMapper jsonMapper = JsonMapper.builder().build();
+  private final int batchSize;
+  private final AtomicReference<Double> lagSeconds = new AtomicReference<>(Double.NaN);
+  private final AtomicReference<Double> unsealedMonths = new AtomicReference<>(Double.NaN);
 
+  @Autowired
   AuditChainService(
       JdbcTemplate jdbc,
       AuditLogService auditLogService,
       PlatformTransactionManager transactionManager,
       MeterRegistry meterRegistry) {
+    this(jdbc, auditLogService, transactionManager, meterRegistry, BATCH_SIZE, SETTLE_DELAY);
+  }
+
+  AuditChainService(
+      JdbcTemplate jdbc,
+      AuditLogService auditLogService,
+      PlatformTransactionManager transactionManager,
+      MeterRegistry meterRegistry,
+      int batchSize,
+      Duration settleDelay) {
     this.jdbc = jdbc;
+    this.metricsJdbc = new JdbcTemplate(Objects.requireNonNull(jdbc.getDataSource()));
+    this.metricsJdbc.setQueryTimeout(METRICS_QUERY_TIMEOUT_SECONDS);
     this.auditLogService = auditLogService;
-    this.settledLimit = new AuditSettledLimit(jdbc, SETTLE_DELAY);
+    this.settledLimit = new AuditSettledLimit(jdbc, settleDelay);
     this.transaction = new TransactionTemplate(transactionManager);
-    this.readOnly = new TransactionTemplate(transactionManager);
-    this.readOnly.setReadOnly(true);
-    gauge(
-        meterRegistry,
-        "opaa.audit.chain.lag",
-        "seconds",
-        "Age of the oldest audit log entry no chain checkpoint covers yet",
-        AuditChainService::lagSeconds);
-    gauge(
-        meterRegistry,
-        "opaa.audit.chain.unsealed.months",
-        "months",
-        "Ended months of the audit log without a seal",
-        AuditChainService::endedUnsealedMonths);
+    this.repeatableRead = new TransactionTemplate(transactionManager);
+    this.repeatableRead.setReadOnly(true);
+    this.repeatableRead.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    this.batchSize = batchSize;
+    Gauge.builder("opaa.audit.chain.lag", lagSeconds, AtomicReference::get)
+        .baseUnit("seconds")
+        .description("Age of the oldest audit log entry no chain checkpoint covers yet")
+        .register(meterRegistry);
+    Gauge.builder("opaa.audit.chain.unsealed.months", unsealedMonths, AtomicReference::get)
+        .baseUnit("months")
+        .description("Ended months of the audit log without a seal")
+        .register(meterRegistry);
   }
 
   /**
-   * One run: every unsealed month whose start lies below the settled limit, oldest first, chained
-   * up to the limit or {@link #MAX_ENTRIES_PER_RUN}, and sealed once ended and complete.
+   * One run: every unsealed month whose partition starts below the settled limit, oldest first,
+   * chained up to the limit or {@link #MAX_ENTRIES_PER_RUN}, and sealed once ended and complete.
    *
    * @return what the run did, for the log and the tests
    */
   Run run() {
     AuditSettledLimit.Limit limit = settledLimit.read();
+    Set<LocalDate> sealedMonths = sealedMonths(jdbc);
     int budget = MAX_ENTRIES_PER_RUN;
     long chained = 0;
     List<YearMonth> sealed = new ArrayList<>();
-    for (LocalDate first : unsealedMonthsBelow(limit.settled())) {
-      YearMonth month = YearMonth.from(first);
-      Bounds bounds = bounds(first);
-      Head head = head(first).orElseGet(() -> Head.start(month));
-      if (!AuditChainHasher.ALGORITHM.equals(head.algorithm())) {
+    for (Partition partition : partitions(jdbc)) {
+      if (!partition.start().isBefore(limit.settled())
+          || sealedMonths.contains(partition.first())) {
+        continue;
+      }
+      YearMonth month = partition.month();
+      Head head = head(jdbc, partition.first()).orElseGet(() -> Head.start(month));
+      Optional<AuditChainHasher> hasher = AuditChainHasher.forAlgorithm(head.algorithm());
+      if (hasher.isEmpty()) {
         log.warn(
-            "Audit chain of {} was started with algorithm {}, which this version does not"
-                + " continue; the month stays as it is",
+            "Audit chain of {} uses the procedure {}, which this version does not know; the month"
+                + " stays as it is",
             month,
             head.algorithm());
         continue;
       }
-      Instant upper = bounds.end().isBefore(limit.settled()) ? bounds.end() : limit.settled();
+      Instant upper = partition.end().isBefore(limit.settled()) ? partition.end() : limit.settled();
       boolean exhausted = false;
       while (budget > 0) {
-        int batch = Math.min(BATCH_SIZE, budget);
-        List<ChainedEntry> entries = entriesAfter(head, bounds.start(), upper, batch);
+        int batch = Math.min(batchSize, budget);
+        List<ChainedEntry> entries = entriesAfter(head, partition.start(), upper, batch);
         if (entries.isEmpty()) {
           exhausted = true;
           break;
         }
-        head = head.extend(entries);
-        if (!insertCheckpoint(first, head)) {
+        head = head.extend(hasher.get(), entries);
+        if (!insertCheckpoint(partition.first(), head)) {
           log.warn("Audit chain of {} moved meanwhile; this run stops", month);
           return new Run(chained, sealed);
         }
@@ -173,7 +187,7 @@ class AuditChainService {
           break;
         }
       }
-      if (exhausted && !bounds.end().isAfter(limit.settled()) && seal(month, first, head)) {
+      if (exhausted && !partition.end().isAfter(limit.settled()) && seal(partition, head)) {
         sealed.add(month);
       }
       if (budget <= 0) {
@@ -187,14 +201,13 @@ class AuditChainService {
   }
 
   /**
-   * Recomputes the chain of {@code month} in one read-only snapshot and compares it with every
-   * checkpoint and the seal; see {@link AuditChainReport}.
+   * Recomputes the chain of {@code month} in one repeatable-read snapshot and compares it with
+   * every checkpoint and the seal; see {@link AuditChainReport}.
    */
   AuditChainReport verify(YearMonth month) {
     LocalDate first = month.atDay(1);
-    return readOnly.execute(
+    return repeatableRead.execute(
         status -> {
-          Bounds bounds = bounds(first);
           List<Checkpoint> checkpoints = checkpoints(first);
           Seal seal = seal(first).orElse(null);
           String algorithm =
@@ -203,15 +216,32 @@ class AuditChainService {
                   : checkpoints.isEmpty()
                       ? AuditChainHasher.ALGORITHM
                       : checkpoints.getLast().algorithm();
-          if (!AuditChainHasher.ALGORITHM.equals(algorithm)) {
-            throw new IllegalStateException(
-                "audit chain of " + month + " uses the unknown algorithm " + algorithm);
-          }
-          Recomputation recomputed = recompute(month, bounds, checkpoints, seal);
           long chainedEntries =
               seal != null
                   ? seal.entryCount()
                   : checkpoints.isEmpty() ? 0 : checkpoints.getLast().position();
+          String headHash =
+              checkpoints.isEmpty()
+                  ? seal == null ? null : AuditChainHasher.hex(seal.headHash())
+                  : AuditChainHasher.hex(checkpoints.getLast().headHash());
+          UUID sealEventId = seal == null ? null : seal.sealEventId();
+          Optional<Partition> partition = partition(jdbc, month);
+          Optional<AuditChainHasher> hasher = AuditChainHasher.forAlgorithm(algorithm);
+          if (partition.isEmpty() || hasher.isEmpty()) {
+            return new AuditChainReport(
+                month,
+                partition.isEmpty() ? Status.NOT_RETAINED : Status.UNVERIFIABLE,
+                seal != null,
+                chainedEntries,
+                0,
+                checkpoints.size(),
+                headHash,
+                sealEventId,
+                algorithm,
+                null);
+          }
+          Recomputation recomputed =
+              recompute(hasher.get(), month, partition.get(), checkpoints, seal);
           Status verdict =
               recomputed.deviation() != null
                   ? Status.BROKEN
@@ -223,18 +253,20 @@ class AuditChainService {
               chainedEntries,
               Math.max(0, recomputed.count() - chainedEntries),
               checkpoints.size(),
-              checkpoints.isEmpty()
-                  ? seal == null ? null : AuditChainHasher.hex(seal.headHash())
-                  : AuditChainHasher.hex(checkpoints.getLast().headHash()),
-              seal == null ? null : seal.sealEventId(),
+              headHash,
+              sealEventId,
               algorithm,
               recomputed.deviation());
         });
   }
 
   private Recomputation recompute(
-      YearMonth month, Bounds bounds, List<Checkpoint> checkpoints, Seal seal) {
-    Walk walk = new Walk(AuditChainHasher.start(month), checkpoints, bounds.start());
+      AuditChainHasher hasher,
+      YearMonth month,
+      Partition partition,
+      List<Checkpoint> checkpoints,
+      Seal seal) {
+    Walk walk = new Walk(hasher, hasher.start(month), checkpoints, partition.start());
     jdbc.query(
         connection -> {
           PreparedStatement statement =
@@ -245,8 +277,8 @@ class AuditChainService {
                       + ENTRIES_FROM
                       + " ORDER BY recorded_at, event_id");
           statement.setFetchSize(BATCH_SIZE);
-          statement.setTimestamp(1, Timestamp.from(bounds.start()));
-          statement.setTimestamp(2, Timestamp.from(bounds.end()));
+          statement.setTimestamp(1, Timestamp.from(partition.start()));
+          statement.setTimestamp(2, Timestamp.from(partition.end()));
           return statement;
         },
         (RowCallbackHandler) rs -> walk.accept(AuditChainHasher.read(rs)));
@@ -270,13 +302,14 @@ class AuditChainService {
                   ? DeviationKind.CHANGED
                   : DeviationKind.INSERTED_OR_REMOVED,
               walk.segmentFrom(),
-              bounds.end());
+              partition.end());
     }
     return new Recomputation(walk.count(), deviation);
   }
 
   /** The recomputed chain, compared against the checkpoints as the entries stream past. */
   private static final class Walk {
+    private final AuditChainHasher hasher;
     private final List<Checkpoint> checkpoints;
     private byte[] hash;
     private long count;
@@ -284,7 +317,8 @@ class AuditChainService {
     private Instant segmentFrom;
     private Deviation deviation;
 
-    Walk(byte[] start, List<Checkpoint> checkpoints, Instant monthStart) {
+    Walk(AuditChainHasher hasher, byte[] start, List<Checkpoint> checkpoints, Instant monthStart) {
+      this.hasher = hasher;
       this.hash = start;
       this.checkpoints = checkpoints;
       this.segmentFrom = monthStart;
@@ -292,7 +326,7 @@ class AuditChainService {
 
     void accept(ChainedEntry entry) {
       count++;
-      hash = AuditChainHasher.next(hash, entry);
+      hash = hasher.next(hash, entry);
       while (next < checkpoints.size() && checkpoints.get(next).position() == count) {
         Checkpoint checkpoint = checkpoints.get(next);
         boolean sameKey =
@@ -335,26 +369,6 @@ class AuditChainService {
   // ---------------------------------------------------------------------------------------------
   // Chaining
   // ---------------------------------------------------------------------------------------------
-
-  private List<LocalDate> unsealedMonthsBelow(Instant settled) {
-    return jdbc.query(
-        UNSEALED_MONTHS_BELOW,
-        (rs, row) -> rs.getObject("month", LocalDate.class),
-        Timestamp.from(settled));
-  }
-
-  /** The bounds of the partition of {@code first}, in the time zone of the database session. */
-  private Bounds bounds(LocalDate first) {
-    return jdbc.queryForObject(
-        "SELECT ?::date::timestamptz AS month_start,"
-            + " (?::date + interval '1 month')::timestamptz AS month_end",
-        (rs, row) ->
-            new Bounds(
-                rs.getTimestamp("month_start").toInstant(),
-                rs.getTimestamp("month_end").toInstant()),
-        Date.valueOf(first),
-        Date.valueOf(first));
-  }
 
   private List<ChainedEntry> entriesAfter(Head head, Instant monthStart, Instant upper, int limit) {
     if (head.position() == 0) {
@@ -404,10 +418,11 @@ class AuditChainService {
   }
 
   /**
-   * Seals {@code month} with {@code head} and records the {@code AUDIT_LOG_MONTH_SEALED} entry in
-   * the same transaction; {@code false} when the month is sealed already.
+   * Seals the month of {@code partition} with {@code head} and records the {@code
+   * AUDIT_LOG_MONTH_SEALED} entry in the same transaction; {@code false} when sealed already.
    */
-  private boolean seal(YearMonth month, LocalDate first, Head head) {
+  private boolean seal(Partition partition, Head head) {
+    YearMonth month = partition.month();
     Boolean sealed =
         transaction.execute(
             status -> {
@@ -435,7 +450,7 @@ class AuditChainService {
                       "INSERT INTO audit_chain_seals (month, entry_count, head_hash, algorithm,"
                           + " sealed_at, seal_event_id) VALUES (?, ?, ?, ?, clock_timestamp(), ?)"
                           + " ON CONFLICT (month) DO NOTHING",
-                      Date.valueOf(first),
+                      Date.valueOf(partition.first()),
                       head.position(),
                       head.hash(),
                       head.algorithm(),
@@ -451,10 +466,28 @@ class AuditChainService {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Checkpoints and seals
+  // Partitions, checkpoints and seals
   // ---------------------------------------------------------------------------------------------
 
-  private java.util.Optional<Head> head(LocalDate first) {
+  private static List<Partition> partitions(JdbcTemplate jdbc) {
+    return jdbc.query(
+        PARTITIONS,
+        (rs, row) ->
+            new Partition(
+                YearMonth.from(rs.getObject("month", LocalDate.class)),
+                rs.getTimestamp("month_start").toInstant(),
+                rs.getTimestamp("month_end").toInstant()));
+  }
+
+  private static Optional<Partition> partition(JdbcTemplate jdbc, YearMonth month) {
+    return partitions(jdbc).stream().filter(p -> p.month().equals(month)).findFirst();
+  }
+
+  private static Set<LocalDate> sealedMonths(JdbcTemplate jdbc) {
+    return new HashSet<>(jdbc.queryForList("SELECT month FROM audit_chain_seals", LocalDate.class));
+  }
+
+  private static Optional<Head> head(JdbcTemplate jdbc, LocalDate first) {
     return jdbc
         .query(
             "SELECT position, last_recorded_at, last_event_id, head_hash, algorithm"
@@ -473,7 +506,7 @@ class AuditChainService {
         Date.valueOf(first));
   }
 
-  private java.util.Optional<Seal> seal(LocalDate first) {
+  private Optional<Seal> seal(LocalDate first) {
     return jdbc
         .query(
             "SELECT entry_count, head_hash, algorithm, seal_event_id FROM audit_chain_seals"
@@ -513,59 +546,57 @@ class AuditChainService {
   // Gauges
   // ---------------------------------------------------------------------------------------------
 
-  /** Seconds since the oldest entry above any chain head was recorded, {@code 0} for none. */
-  double lagSeconds() {
+  /**
+   * Reads both gauges anew. Runs on every instance without a lock: it only reads, and each instance
+   * reports its own gauges (ScheduledRunLockStructureTest#RUNS_ON_EVERY_INSTANCE); a read that
+   * fails or exceeds {@link #METRICS_QUERY_TIMEOUT_SECONDS} reports {@code NaN}.
+   */
+  @Scheduled(initialDelay = 0, fixedDelayString = "PT5M")
+  public void refreshMetrics() {
     try {
-      Instant now = jdbc.queryForObject("SELECT clock_timestamp()", Timestamp.class).toInstant();
+      Instant now =
+          metricsJdbc.queryForObject("SELECT clock_timestamp()", Timestamp.class).toInstant();
+      Set<LocalDate> sealedMonths = sealedMonths(metricsJdbc);
       Instant oldest = null;
-      for (LocalDate first : unsealedMonthsBelow(now)) {
-        Bounds bounds = bounds(first);
-        Head head = head(first).orElseGet(() -> Head.start(YearMonth.from(first)));
-        Timestamp candidate =
-            head.position() == 0
-                ? jdbc.queryForObject(
-                    "SELECT min(recorded_at) " + ENTRIES_FROM,
-                    Timestamp.class,
-                    Timestamp.from(bounds.start()),
-                    Timestamp.from(bounds.end()))
-                : jdbc.queryForObject(
-                    "SELECT min(recorded_at) " + ENTRIES_FROM + AFTER_KEY,
-                    Timestamp.class,
-                    Timestamp.from(head.lastRecordedAt()),
-                    Timestamp.from(bounds.end()),
-                    Timestamp.from(head.lastRecordedAt()),
-                    head.lastEventId());
+      long ended = 0;
+      for (Partition partition : partitions(metricsJdbc)) {
+        if (sealedMonths.contains(partition.first()) || !partition.start().isBefore(now)) {
+          continue;
+        }
+        if (!partition.end().isAfter(now)) {
+          ended++;
+        }
+        Timestamp candidate = oldestUnchained(partition);
         if (candidate != null && (oldest == null || candidate.toInstant().isBefore(oldest))) {
           oldest = candidate.toInstant();
         }
       }
-      return oldest == null ? 0 : Math.max(0, Duration.between(oldest, now).toSeconds());
+      lagSeconds.set(
+          oldest == null ? 0.0 : (double) Math.max(0, Duration.between(oldest, now).toSeconds()));
+      unsealedMonths.set((double) ended);
     } catch (RuntimeException e) {
-      log.debug("Audit chain lag query failed: {}", e.getMessage());
-      return Double.NaN;
+      log.warn("Audit chain metrics could not be read and report NaN: {}", e.getMessage());
+      lagSeconds.set(Double.NaN);
+      unsealedMonths.set(Double.NaN);
     }
   }
 
-  double endedUnsealedMonths() {
-    try {
-      Long count = jdbc.queryForObject(ENDED_UNSEALED_MONTHS, Long.class);
-      return count == null ? Double.NaN : count;
-    } catch (RuntimeException e) {
-      log.debug("Audit chain seal query failed: {}", e.getMessage());
-      return Double.NaN;
+  private Timestamp oldestUnchained(Partition partition) {
+    Head head = head(metricsJdbc, partition.first()).orElse(null);
+    if (head == null) {
+      return metricsJdbc.queryForObject(
+          "SELECT min(recorded_at) " + ENTRIES_FROM,
+          Timestamp.class,
+          Timestamp.from(partition.start()),
+          Timestamp.from(partition.end()));
     }
-  }
-
-  private void gauge(
-      MeterRegistry meterRegistry,
-      String name,
-      String unit,
-      String description,
-      ToDoubleFunction<AuditChainService> value) {
-    Gauge.builder(name, this, value)
-        .baseUnit(unit)
-        .description(description)
-        .register(meterRegistry);
+    return metricsJdbc.queryForObject(
+        "SELECT min(recorded_at) " + ENTRIES_FROM + AFTER_KEY,
+        Timestamp.class,
+        Timestamp.from(head.lastRecordedAt()),
+        Timestamp.from(partition.end()),
+        Timestamp.from(head.lastRecordedAt()),
+        head.lastEventId());
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -575,21 +606,26 @@ class AuditChainService {
   /** What one run did. */
   record Run(long chainedEntries, List<YearMonth> sealedMonths) {}
 
-  /** The start and end of a monthly partition as instants. */
-  private record Bounds(Instant start, Instant end) {}
+  /** A monthly partition with the bounds the database holds for it. */
+  record Partition(YearMonth month, Instant start, Instant end) {
+    LocalDate first() {
+      return month.atDay(1);
+    }
+  }
 
   /** The chain head of a month: the position and key of the last chained entry and its hash. */
   private record Head(
       long position, Instant lastRecordedAt, UUID lastEventId, byte[] hash, String algorithm) {
 
     static Head start(YearMonth month) {
-      return new Head(0, null, null, AuditChainHasher.start(month), AuditChainHasher.ALGORITHM);
+      return new Head(
+          0, null, null, AuditChainHasher.CURRENT.start(month), AuditChainHasher.ALGORITHM);
     }
 
-    Head extend(List<ChainedEntry> entries) {
+    Head extend(AuditChainHasher hasher, List<ChainedEntry> entries) {
       byte[] next = hash;
       for (ChainedEntry entry : entries) {
-        next = AuditChainHasher.next(next, entry);
+        next = hasher.next(next, entry);
       }
       ChainedEntry last = entries.getLast();
       return new Head(

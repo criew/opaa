@@ -46,7 +46,9 @@ class ScheduledRunLockStructureTest {
           "io.opaa.indexing.run.SourceEventIntake#drainDue",
           "each instance drains the batches it has a target for, one claim at a time (ADR-0053, E10)",
           "io.opaa.audit.AuditStorageMetrics#refresh",
-          "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)");
+          "each instance reads the gauges it reports itself; it only reads (ADR-0053, E12)",
+          "io.opaa.audit.AuditChainService#refreshMetrics",
+          "each instance reads the chain gauges it reports itself; it only reads (ADR-0053, E12)");
 
   /** Above the clock skew of hosts synchronised by NTP; the database clock compares the locks. */
   static final Duration MINIMUM_AT_LEAST_FOR = Duration.ofSeconds(2);

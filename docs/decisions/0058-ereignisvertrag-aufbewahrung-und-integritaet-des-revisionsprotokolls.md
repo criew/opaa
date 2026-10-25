@@ -21,7 +21,7 @@ in ihrer Größe beherrschbar? Und wie belegt eine Prüferin, dass ein Zeitraum 
 vollständig und unverändert ist, ohne selbst an die Datenbank zu gehen? Die Grenze der ersten Stufe
 war ausgesprochen: Wer mit Datenbankrechten an der Anwendung vorbei schreibt, fiel nicht auf.
 
-Die Spezifikation führt 144 Ereignisarten in `AuditEventType`, gewachsen über viele Vorhaben; ob
+Die Spezifikation führt 145 Ereignisarten in `AuditEventType`, gewachsen über viele Vorhaben; ob
 jede den Maßstab trifft, war nicht geprüft. Eine Aufbewahrung je Ereignisart wurde gefordert, die
 Ablage ist aber nur nach Zeit unterteilt. Eine Prüfsummenverkettung stand als nächste Stufe offen.
 
@@ -34,11 +34,13 @@ Mitgliedschaften, Konten, Zugangsmittel) oder Verwaltungshandeln ist (Einstellun
 Arbeitsmittel, Zugriffe auf Protokolldaten). Nutzung, Lesen von Inhalten und Fehlversuche stehen
 nicht darin. Die geschlossene Liste ist `AuditEventType`; jede Art ist im Register der
 persistierten Aufzählungen als lesbar geführt, trägt im Fakten-Manifest (`audit-log.yaml`) Anlass
-und Felder und ihre Schlüssel in `after`/`before` in `AuditSelfDisclosurePayload`, sonst scheitert
-der Build. Jeder Satz trägt die Felder des Protokollsatzes der Spezifikation; `event_id` und
-`recorded_at` entstehen in der Transaktion des Eintrags auf der Datenbankuhr.
+und Felder, im Katalog `AuditEventCatalog` die erlaubten Schlüssel von `before`/`after` und in
+`AuditSelfDisclosurePayload` die Schlüssel der Selbstauskunft, sonst scheitert der Build. Jeder Satz
+trägt die Felder des Protokollsatzes der Spezifikation und die Version des Katalogs
+(`schema_version`); `event_id` vergibt der Schreiber beim Anlegen des Satzes, `recorded_at`
+stammt von der Datenbankuhr und wird in der Transaktion gestempelt, die den Satz einfügt.
 
-Alle 144 Arten wurden gegen den Maßstab geprüft und bleiben. Die Grenzfälle und ihr Grund:
+Alle 145 Arten wurden gegen den Maßstab geprüft und bleiben. Die Grenzfälle und ihr Grund:
 `BRANDING_SETTINGS_CHANGED` belegt den Hinweis nach Art. 50 KI-Verordnung als Verwaltungshandeln;
 `EMBEDDING_REINDEX_COMPLETED` ist der Moment, in dem die Suche auf ein anderes Modell umschaltet, und
 damit eine Änderung dessen, was Personen sehen; `DOCUMENT_METADATA_CHANGED` ist der Abgleich nach
@@ -73,42 +75,51 @@ Jeder Protokollmonat trägt eine Kette von Prüfsummen, nachgezogen von `AuditCh
 Minuten unter der Sperre `audit-chain` (ADR-0053, Entscheidung 7), nicht im Schreibweg des
 Protokolls. Verkettet wird in der Reihenfolge `(recorded_at, event_id)` und nur, was unter der
 Grenze liegt, unter der jede Transaktion abgeschlossen ist (`AuditSettledLimit`, dieselbe Grenze wie
-in ADR-0055, Entscheidung 5). Der Anfang ist `h0 = SHA-256("OPAA-AUDIT-CHAIN-1" LF "JJJJ-MM")`, jedes
-Glied `h_i = SHA-256(h_(i-1) || kanonische Form des Eintrags)`; die kanonische Form nimmt jede der
-16 Spalten von `audit_log` in fester Reihenfolge, NULL als ein Byte `0x00`, sonst `0x01`, die Länge
-als 32 Bit und den Wert (uuid als 16 Bytes, `recorded_at` als Mikrosekunden seit 1970 in 8 Bytes,
-alles andere als UTF-8), umgesetzt in `AuditChainHasher`. Das Verfahren steht als Name in jeder
-Zeile der Kette; eine neue Spalte des Protokolls ist ein neues Verfahren, kein geändertes, damit
-versiegelte Monate prüfbar bleiben.
+in ADR-0055, Entscheidung 5). Die Grenzen eines Monats sind die seiner Partition, gelesen aus dem
+Systemkatalog mit ihrem Zeitversatz, nie aus der Zeitzone der Sitzung. Der Anfang ist `h0 =
+SHA-256("OPAA-AUDIT-CHAIN-1" LF "JJJJ-MM")`, jedes Glied `h_i = SHA-256(h_(i-1) || kanonische Form
+des Eintrags)`; die kanonische Form nimmt jede der 17 Spalten von `audit_log` in fester
+Reihenfolge, NULL als ein Byte `0x00`, sonst `0x01`, die Länge als 32 Bit und den Wert (uuid als 16
+Bytes, `recorded_at` als Mikrosekunden seit 1970 in 8 Bytes, `schema_version` als 2 Bytes, alles
+andere als UTF-8), umgesetzt in `AuditChainHasher`. Das Verfahren steht als Name in jeder Zeile der
+Kette, und `AuditChainHasher` wählt den Rechner nach diesem Namen: Eine neue Spalte des Protokolls
+ist ein neues Verfahren, das ab dem nächsten Monat gilt; ein begonnener Monat läuft unter seinem
+Verfahren zu Ende, ein versiegelter bleibt mit seinem prüfbar, und ein Verfahren, das eine Version
+nicht kennt, meldet sie als `UNVERIFIABLE`, ohne andere Monate aufzuhalten.
 
 Je Stapel von höchstens 2000 Einträgen entsteht ein Kontrollpunkt in `audit_chain_checkpoints`
 (Monat, Position, Schlüssel des letzten Eintrags, Kopf-Prüfsumme); der Primärschlüssel `(month,
 position)` ist die Marke gegen einen zweiten Lauf. Ist ein Monat zu Ende und bis zum Ende verkettet,
 versiegelt ihn der Lauf: eine Zeile in `audit_chain_seals` und in derselben Transaktion der Eintrag
 `AUDIT_LOG_MONTH_SEALED` (`SYSTEM_PROCESS`, Objekt `AUDIT_LOG`, Monat als Kennung) mit Monat,
-Anzahl und Kopf-Prüfsumme in `after`. Dieser Eintrag liegt im Folgemonat und wird dort selbst
-verkettet, sodass die Monate ineinandergreifen; die Ausleitung sendet ihn mit der Prüfsumme als
+Anzahl und Kopf-Prüfsumme in `after`. Dieser Eintrag liegt in einem späteren Monat und wird dort
+selbst verkettet, sodass die Monate ineinandergreifen; die Ausleitung sendet ihn mit der Prüfsumme als
 eigenes Feld (ADR-0055, Entscheidung 2). Beide Tabellen gehören `opaa_audit_owner`, das
 Anwendungskonto fügt an und liest; `opaa_audit_delete_expired_partitions()` entfernt mit einer
-Partition deren Kontrollpunkte und Siegel. Die Grenze bleibt ausgesprochen: Wer die Datenbank
+Partition deren Kontrollpunkte und Siegel; ein Monat ohne Partition meldet `NOT_RETAINED`. Die
+Grenze bleibt ausgesprochen: Wer die Datenbank
 beherrscht, kann Einträge ändern und die Kette neu rechnen. Erkennbar wird das an dem Siegel, das
 die Datenbank verlassen hat, im Sicherheitsmonitoring oder in einem anderen System, das die
 Siegel-Einträge aufbewahrt.
 
 ### 5. Der Prüfweg der Revision
 
-`GET /api/v1/audit/chain/{JJJJ-MM}` rechnet die Kette eines Monats in einem Lesesnapshot nach und
-vergleicht sie mit jedem Kontrollpunkt und dem Siegel (`AuditChainService#verify`). Die Antwort
-nennt `INTACT`, `BROKEN` oder `UNCHAINED`, Anzahl der verketteten und der noch unverketteten
+`GET /api/v1/audit/chain/{JJJJ-MM}` rechnet die Kette eines Monats in einer Transaktion mit
+`REPEATABLE READ` nach und vergleicht sie mit jedem Kontrollpunkt und dem Siegel
+(`AuditChainService#verify`). Die Antwort nennt `INTACT`, `BROKEN`, `UNCHAINED`, `NOT_RETAINED` oder
+`UNVERIFIABLE`, Anzahl der verketteten und der noch unverketteten
 Einträge, Kopf-Prüfsumme und Siegel-Eintrag und bei einem Bruch die erste Abweichung: Position, ob
 ein Eintrag geändert (`CHANGED`) oder eingefügt beziehungsweise entfernt (`INSERTED_OR_REMOVED`)
 wurde, und das Zeitsegment zwischen den Kontrollpunkten, in dem sie liegt. Kein Inhalt eines
 Eintrags verlässt dabei das Protokoll. Der Weg läuft durch `AuditQueryService` wie jeder andere:
 Rolle AUDITOR, Anlass als Pflichtfeld, ein Eintrag `AUDIT_LOG_ACCESSED` mit `accessPath:
-chain-verification` je Aufruf, auch beim abgewiesenen. Die Prüferin belegt die Vollständigkeit
+chain-verification` und dem Monat je Aufruf, auch beim abgewiesenen. Weil die Kette das Protokoll
+aller Organisationen umfasst und ihre Zahlen nennt, steht der Weg nur der Revision der
+Standardorganisation offen. Die Prüferin belegt die Vollständigkeit
 eines Monats mit dieser Antwort und der Kopf-Prüfsumme aus dem Sicherheitsmonitoring, ohne
 Datenbankzugang. Die Metriken `opaa.audit.chain.lag` und `opaa.audit.chain.unsealed.months`
-zeigen, wie weit die Kette hinterherläuft; der Alarm `OpaaAuditChainStalled` meldet einen Stillstand.
+zeigen, wie weit die Kette hinterherläuft, je Instanz alle fünf Minuten gelesen; der Alarm
+`OpaaAuditChainStalled` meldet einen Stillstand, auch wenn kein Wert lesbar ist.
 
 ## Konsequenzen
 
@@ -116,7 +127,7 @@ zeigen, wie weit die Kette hinterherläuft; der Alarm `OpaaAuditChainStalled` me
   mit Maßstab, die eine Frist, den Prüfweg je Monat. Eine Änderung mit Datenbankrechten fällt auf,
   sobald das Siegel die Datenbank verlassen hat.
 - Schwieriger: Eine neue Spalte von `audit_log` ist ein neues Verfahren der Kette und braucht
-  Verketter und Prüfer für beide. Ein Monat, in den nachträglich ein Eintrag geschrieben wird
+  einen zweiten Rechner in `AuditChainHasher`, solange Monate des alten Verfahrens aufbewahrt sind. Ein Monat, in den nachträglich ein Eintrag geschrieben wird
   (etwa ein Test, der `recorded_at` zurücksetzt), ist danach gebrochen; das ist gewollt.
 - Restrisiken: Zwischen Eintrag und Kontrollpunkt liegen bis zu zehn Minuten, in denen eine
   Änderung unbemerkt bleibt; ein Siegel, das kein System außerhalb der Datenbank aufbewahrt, ist nur
@@ -140,9 +151,6 @@ zeigen, wie weit die Kette hinterherläuft; der Alarm `OpaaAuditChainStalled` me
 
 ## Offen
 
-- Der Ereigniskatalog mit `schema_version` je Satz ([#3118](https://github.com/criew/opaa/issues/3118))
-  ergänzt Entscheidung 1 um die Version des Protokollsatzes; mit ihm wird `schema_version` Teil
-  eines neuen Verfahrens der Kette.
 - Eine Ansicht des Prüfergebnisses in der Oberfläche; bis dahin der Weg über die Schnittstelle.
 - Ein zweiter Ort für die Siegel außerhalb des Sicherheitsmonitorings, etwa eine Ablage der Behörde,
   die den Eintrag `AUDIT_LOG_MONTH_SEALED` aufbewahrt.

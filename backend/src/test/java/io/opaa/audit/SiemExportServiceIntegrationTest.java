@@ -156,7 +156,8 @@ class SiemExportServiceIntegrationTest {
                 "2000-01",
                 null,
                 null,
-                "{\"month\":\"2000-01\",\"entries\":2,\"headHash\":\"secret\"}",
+                "{\"month\":\"2000-01\",\"entries\":2,\"headHash\":\"secret\","
+                    + "\"algorithm\":\"OPAA-AUDIT-CHAIN-1\"}",
                 AuditOutcome.SUCCESS,
                 null,
                 null));
@@ -177,7 +178,7 @@ class SiemExportServiceIntegrationTest {
         .contains("cs3=2000-01")
         .contains("cs5=2000-01")
         .contains("cs6=" + hash)
-        .contains("cn1=2")
+        .contains("cn2Label=sealedEntries cn2=2")
         .doesNotContain("secret");
   }
 

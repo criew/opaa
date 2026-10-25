@@ -746,7 +746,7 @@ components:
         INTACT: every checkpoint of the month and, if present, its seal match the recomputed chain.
         BROKEN: a checkpoint or the seal does not match; deviation names where. UNCHAINED: the
         month has no checkpoint yet, nothing to compare against.
-      enum: [INTACT, BROKEN, UNCHAINED]
+      enum: [INTACT, BROKEN, UNCHAINED, NOT_RETAINED, UNVERIFIABLE]
       example: INTACT
 
     AuditChainDeviationKind:

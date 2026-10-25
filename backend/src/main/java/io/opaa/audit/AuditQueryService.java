@@ -2,7 +2,9 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.organization.Organization;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -272,9 +274,10 @@ public class AuditQueryService {
   /**
    * Access path "Kettenprüfung" (ADR-0058, Entscheidung 5): recomputes the checksum chain of one
    * month and compares it with its checkpoints and seal. Returns no entry of the log, only the
-   * result; it is nevertheless an access to the log and is logged like every other one. {@code
-   * month} is taken as text so that a malformed value is rejected - and that rejection logged -
-   * here rather than by the argument binding.
+   * result; it is nevertheless an access to the log and is logged like every other one. The chain
+   * spans the log of every organization, so only an auditor of the default organization may ask;
+   * {@code month} is taken as text so that a malformed value is rejected - and that rejection
+   * logged - here rather than by the argument binding.
    */
   public AuditChainReport verifyChain(
       UUID organizationId, UUID callerId, String reason, String month) {
@@ -287,6 +290,10 @@ public class AuditQueryService {
         reason,
         scope,
         () -> {
+          if (!Organization.DEFAULT_ID.equals(organizationId)) {
+            throw new AccessDeniedException(
+                "Die Kettenprüfung steht nur der Revision der Standardorganisation offen");
+          }
           YearMonth parsed;
           try {
             parsed = YearMonth.parse(month);

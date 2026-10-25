@@ -40,7 +40,7 @@ Module über den Port `PersonalAuditObjects` melden. Dieser Port setzt schon bei
 Die eine Nutzlast, die hinausgeht, ist das Monatssiegel der Prüfsummenkette
 ([ADR-0058](0058-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md),
 Entscheidung 4): Mit dem Eintrag `AUDIT_LOG_MONTH_SEALED` gehen Monat, Anzahl der verketteten
-Einträge und Kopf-Prüfsumme als eigene CEF-Felder (`cs5`, `cn1`, `cs6`) hinaus, gelesen aus
+Einträge und Kopf-Prüfsumme als eigene CEF-Felder (`cs5`, `cn2`, `cs6`) hinaus, gelesen aus
 `audit_chain_seals` über die Kennung des Eintrags, nicht aus `after`. So liegt das Siegel außerhalb
 der Datenbank, ohne dass die Ausleitung eine Nutzlastspalte liest.
 

@@ -12,23 +12,28 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The checksum chain of the audit log, algorithm {@link #ALGORITHM} (ADR-0058, Entscheidung 4):
- * {@code h0 = SHA-256(ALGORITHM || LF || "YYYY-MM")} starts the chain of a month, {@code h_i =
- * SHA-256(h_(i-1) || canonical(entry_i))} links the entries in the order {@code (recorded_at,
- * event_id)}. The canonical form of an entry is every column of {@code audit_log} in the order of
- * {@link #COLUMNS}, each as one byte {@code 0x00} for NULL or {@code 0x01} followed by the
- * big-endian 32-bit length and the value: a uuid as its 16 bytes, {@code recorded_at} as 8 bytes of
- * epoch microseconds, every other column as UTF-8. A column added to the table is a new algorithm,
- * never a change to this one, so sealed months stay verifiable.
+ * One procedure of the checksum chain (ADR-0058, Entscheidung 4), chosen by its name: {@code h0 =
+ * SHA-256(name || LF || "YYYY-MM")}, {@code h_i = SHA-256(h_(i-1) || canonical(entry_i))} over
+ * every column of {@code audit_log} in the order of {@link #COLUMNS}. A procedure never changes
+ * once a month was sealed under it; a new column is a new procedure, chained from the next month
+ * on.
  */
 final class AuditChainHasher {
 
+  /** The procedure new months start with. */
   static final String ALGORITHM = "OPAA-AUDIT-CHAIN-1";
 
-  /** The columns of {@code audit_log} in the order they enter the canonical form. */
+  /**
+   * The columns of {@code audit_log} in the order they enter the canonical form: NULL as one byte
+   * {@code 0x00}, otherwise {@code 0x01}, the big-endian 32-bit length and the value - a uuid as 16
+   * bytes, {@code recorded_at} as 8 bytes of epoch microseconds, {@code schema_version} as 2 bytes,
+   * every other column as UTF-8.
+   */
   static final List<String> COLUMNS =
       List.of(
           "event_id",
@@ -46,20 +51,39 @@ final class AuditChainHasher {
           "after",
           "outcome",
           "reason",
-          "correlation_ref");
+          "correlation_ref",
+          "schema_version");
 
   /** The select list reading exactly {@link #COLUMNS} in their order. */
   static final String SELECT_COLUMNS = String.join(", ", COLUMNS);
 
+  static final AuditChainHasher CURRENT = new AuditChainHasher(ALGORITHM);
+
+  /** Every procedure this version can continue and verify, by name. */
+  private static final Map<String, AuditChainHasher> ALGORITHMS = Map.of(ALGORITHM, CURRENT);
+
   private static final HexFormat HEX = HexFormat.of();
 
-  private AuditChainHasher() {}
+  private final String name;
 
-  static byte[] start(YearMonth month) {
-    return digest((ALGORITHM + "\n" + month).getBytes(StandardCharsets.UTF_8));
+  private AuditChainHasher(String name) {
+    this.name = name;
   }
 
-  static byte[] next(byte[] previous, ChainedEntry entry) {
+  /** The procedure named {@code algorithm}, empty for one this version does not know. */
+  static Optional<AuditChainHasher> forAlgorithm(String algorithm) {
+    return algorithm == null ? Optional.empty() : Optional.ofNullable(ALGORITHMS.get(algorithm));
+  }
+
+  String name() {
+    return name;
+  }
+
+  byte[] start(YearMonth month) {
+    return digest((name + "\n" + month).getBytes(StandardCharsets.UTF_8));
+  }
+
+  byte[] next(byte[] previous, ChainedEntry entry) {
     byte[] canonical = canonical(entry);
     ByteBuffer input = ByteBuffer.allocate(previous.length + canonical.length);
     input.put(previous).put(canonical);
@@ -88,7 +112,8 @@ final class AuditChainHasher {
         rs.getString("after"),
         rs.getString("outcome"),
         rs.getString("reason"),
-        rs.getString("correlation_ref"));
+        rs.getString("correlation_ref"),
+        rs.getObject("schema_version", Short.class));
   }
 
   static byte[] canonical(ChainedEntry entry) {
@@ -109,6 +134,7 @@ final class AuditChainHasher {
     field(out, utf8(entry.outcome()));
     field(out, utf8(entry.reason()));
     field(out, utf8(entry.correlationRef()));
+    field(out, shortValue(entry.schemaVersion()));
     return out.toByteArray();
   }
 
@@ -142,6 +168,10 @@ final class AuditChainHasher {
     return ByteBuffer.allocate(8).putLong(micros).array();
   }
 
+  private static byte[] shortValue(Short value) {
+    return value == null ? null : ByteBuffer.allocate(2).putShort(value).array();
+  }
+
   private static byte[] utf8(String value) {
     return value == null ? null : value.getBytes(StandardCharsets.UTF_8);
   }
@@ -171,5 +201,6 @@ final class AuditChainHasher {
       String after,
       String outcome,
       String reason,
-      String correlationRef) {}
+      String correlationRef,
+      Short schemaVersion) {}
 }

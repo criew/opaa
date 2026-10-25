@@ -34,7 +34,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_audit_log_oldest_partition_age_seconds`, `opaa_audit_retention_period_months` | Alter des ältesten Protokollmonats und eingestellte Frist; liegt das Alter mehr als zwei Monate über der Frist, löscht die automatische Löschung nicht |
 | `opaa_audit_retention_last_run_age_seconds` | Zeit seit dem Monat des letzten Löschlaufs (am 1. jedes Monats um 03:00); über 35 Tage ist der Lauf ausgeblieben. Die Werte des Revisionsprotokolls liest jede Instanz alle fünf Minuten aus der Datenbank; kann sie einen nicht lesen, meldet sie `NaN` und warnt im Log |
 | `opaa_audit_log_horizon_seconds` | Zeit bis zum Ende des letzten angelegten Protokollmonats; danach scheitert jedes Schreiben ins Protokoll |
-| `opaa_audit_chain_lag_seconds` | Alter des ältesten Protokolleintrags, den noch kein Kontrollpunkt der Prüfsummenkette abdeckt, `0` ohne offene Einträge; der Lauf findet alle zehn Minuten statt, über Stunden wächst der Wert nur, wenn er ausbleibt oder eine offene Transaktion ihn anhält ([Prüfsummenkette](nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)) |
+| `opaa_audit_chain_lag_seconds` | Alter des ältesten Protokolleintrags, den noch kein Kontrollpunkt der Prüfsummenkette abdeckt, `0` ohne offene Einträge, alle fünf Minuten gelesen; der Kettenlauf findet alle zehn Minuten statt, über Stunden wächst der Wert nur, wenn er ausbleibt oder eine offene Transaktion ihn anhält. Beim ersten Start einer großen Installation ist der Wert hoch, bis der Lauf den Bestand mit 50 000 Einträgen je zehn Minuten aufgeholt hat ([Prüfsummenkette](nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)) |
 | `opaa_audit_chain_unsealed_months` | abgeschlossene Protokollmonate ohne Siegel; nach dem Monatswechsel kurz `1`, dauerhaft über `0` heißt, die Kette kommt nicht bis zum Monatsende |
 | `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
@@ -70,7 +70,7 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   nach, sonst nicht. Das ist neben der Revision, der Selbstauskunft und der Prüfsummenkette der
   einzige Leser.
 - **Monatssiegel:** Mit dem Eintrag `AUDIT_LOG_MONTH_SEALED` gehen Monat (`cs5`), Anzahl der
-  verketteten Einträge (`cn1`) und Kopf-Prüfsumme (`cs6`) der
+  verketteten Einträge (`cn2`) und Kopf-Prüfsumme (`cs6`) der
   [Prüfsummenkette](nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel) hinaus, die einzige
   Nutzlast der Ausleitung. Das SIEM bewahrt damit das Siegel außerhalb der Datenbank auf.
 - **Format:** Syslog (RFC 5424) mit CEF-Inhalt über TCP, voreingestellt mit TLS und dem

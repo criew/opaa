@@ -346,11 +346,13 @@ public final class AuditEventCatalog {
             "eventId",
             "eventType",
             "from",
+            "month",
             "objectId",
             "objectType",
             "scopeId",
             "to"),
         AUDIT_LOG_ACCESSED);
+    put(keys, Set.of("algorithm", "entries", "headHash", "month"), AUDIT_LOG_MONTH_SEALED);
     put(
         keys,
         Set.of("accessPath", "from", "objectId", "objectType", "to"),
