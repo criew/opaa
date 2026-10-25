@@ -66,8 +66,15 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
 
     const consent = page.getByTestId('source-consent')
     await expect(consent).toContainText('Quelle verbinden')
-    // The connection test waits for the consent.
+    // Folder choice and connection test wait for the consent: no test, and „Umfang“ lists no
+    // folder but names the missing connection.
     await expect(page.getByRole('button', { name: 'Verbindung testen' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Ändern Umfang' }).click()
+    await page.getByRole('radio', { name: 'Nur ausgewählte Ordner' }).check()
+    const scope = page.getByRole('region', { name: 'Umfang' })
+    await expect(scope).toContainText('Für die Ordnerauswahl muss die Quelle verbunden sein')
+    await expect(scope.getByRole('checkbox')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
 
     const visitsBefore = await authorizeVisits()
     const startRequests: string[] = []

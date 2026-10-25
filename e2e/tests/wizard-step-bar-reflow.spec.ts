@@ -67,8 +67,9 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Quelle einrichten' })).toBeVisible()
     await expectStepBarFits(page, connectorSteps, 'Quelle')
 
-    // Five steps, through to the last: the widest state of the compact bar. Nothing is created -
-    // the library only comes into being on "Bibliothek anlegen" in the last step.
+    // Five steps, each active once; the longest name, „Freigaben“, is the widest state of the
+    // compact bar. Nothing is created - the library only comes into being on "Bibliothek
+    // anlegen" in the last step.
     await page.getByLabel('Adresse', { exact: true }).fill(DIRECTORY_URL)
     await nextStep(page)
     await expect(
@@ -77,6 +78,7 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
     await expectStepBarFits(page, connectorSteps, 'Name')
     await nextStep(page)
     await expect(page.getByRole('heading', { level: 2, name: 'Freigaben' })).toBeVisible()
+    await expectStepBarFits(page, connectorSteps, 'Freigaben')
     await nextStep(page)
     await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeVisible()
     await expectStepBarFits(page, connectorSteps, 'Prüfen')

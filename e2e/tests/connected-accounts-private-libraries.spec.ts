@@ -198,6 +198,10 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
     await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
     await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    // Der Schritt „Name“ sagt, wer die Bibliothek sieht.
+    await expect(page.getByTestId('library-create-private-note')).toContainText(
+      'Nur Sie sehen diese Bibliothek.',
+    )
     await page.getByLabel('Name', { exact: true }).fill(LIBRARY_NAME)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     // Der Schritt „Freigaben“ entfällt: Eine private Bibliothek wird nicht geteilt; nach dem Namen
