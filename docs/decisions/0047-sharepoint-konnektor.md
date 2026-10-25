@@ -94,14 +94,24 @@ lesen darf, sehen alle Leser der Bibliothek. Grenzwerte in `SharePointProperties
 
 **Einfacher:** Kein Graph-SDK; Zielprüfung, Proxy, Byte-Grenze und Drosselung gelten zentral.
 
-**Schwieriger:** Alle Aussagen über Graph und Entra stammen aus API-Kenntnis; bis zu einem Lauf gegen
-einen echten Tenant ist `FakeGraphServer` die einzige Wahrheit. Ein herausgeschobener Ordner bleibt bis
+**Schwieriger:** Der reguläre Build prüft nur gegen `FakeGraphServer`. Gegen einen echten Mandanten
+prüft `./gradlew sharePointIntegrationTest`, nur lokal beim Maintainer und nur lesend, ohne CI-Job und
+ohne Secret (README neben `SharePointTenantIntegrationTest`). Ein herausgeschobener Ordner bleibt bis
 zum täglichen Vollabgleich durchsuchbar.
 
+**Belegt am Mandanten (25.10.2026):** Mit einem Token, das nur die Rolle `Sites.Selected` trägt, und
+der Rolle `read` auf einer Site arbeitet der Konnektor ohne mandantenweite Leserechte. Graph antwortet
+für jede nicht freigegebene Site und für die Site-Suche mit `403 accessDenied`. Die Auflistung zeigt
+dafür die Hinweise auf die Freigabe bzw. auf `Sites.Read.All`. Die Auflösung über
+`/sites/{host}:/{pfad}`, die Bibliotheken und Ordner der freigegebenen Site, der Verbindungstest, ein
+Vollabgleich über zwei Bibliotheken (docx, xlsx, pptx, pdf, md, txt), ein anschließender Änderungslauf
+über den Strom und der Originalabruf über die Download-Weiterleitung laufen in einer Instanz von Ende
+zu Ende durch.
+
 **Restrisiken:** Überdauern `nextLink`-Token keine Läufe, beginnt ein Container neu; nach zwei
-Verfällen ist er im Lauf nicht listbar. Unsicher ohne Tenant: Stabilität von `driveId`/`itemId`,
-Fehlerbild von `Sites.Selected`, Entra-Fehlercodes, Zielhosts der Download-Weiterleitung,
-Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Dateiarten, Sonderfälle
+Verfällen ist er im Lauf nicht listbar. Nicht am Mandanten belegt: Stabilität von `driveId`/`itemId`
+über Zeit, Entra-Fehlercodes (falsches oder abgelaufenes Secret, fehlende Zustimmung), Haltbarkeit
+der Token, Delta-Semantik bei verschobenen Ordnern, `quickXorHash` für alle Dateiarten, Sonderfälle
 (ausgecheckte Fassungen, Vertraulichkeitsbezeichnungen, private Kanäle).
 
 ## Verworfene Alternativen
@@ -116,6 +126,5 @@ Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Date
 
 ## Offen
 
-- Lauf gegen einen echten Tenant für die unsicheren Annahmen.
 - Nationale Clouds (feste Adresse), Freigabe je Bibliothek über `Lists.SelectedOperations.Selected`,
   Rechte der Quelle.
