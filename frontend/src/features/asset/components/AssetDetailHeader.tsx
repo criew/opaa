@@ -99,10 +99,10 @@ export function HeaderFigure({
       ]}
     >
       {to ? (
-        // a figure that leads into a tab reads as a link: its chevron says where it goes
-        <Link component={RouterLink} to={to} replace underline="hover" color="inherit">
+        // a figure that leads into a tab reads as a link: link colour, its chevron says where it goes
+        <Link component={RouterLink} to={to} replace underline="hover" color="primary">
           {children}
-          <Box component="span" aria-hidden sx={{ ml: 0.5, color: 'primary.main' }}>
+          <Box component="span" aria-hidden sx={{ ml: 0.5 }}>
             ›
           </Box>
         </Link>
