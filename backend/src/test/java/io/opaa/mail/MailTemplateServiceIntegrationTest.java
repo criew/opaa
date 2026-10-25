@@ -107,6 +107,97 @@ class MailTemplateServiceIntegrationTest {
     assertThat(rendered.bodyPlain()).isEqualTo("Hallo Erika, Grund: Zu viele Fehlversuche");
   }
 
+  /**
+   * Regression guard: an override and its reset carry the text in force before and after as hash
+   * and length, never in its wording, and an override that changes nothing writes nothing
+   * (ADR-0060, Entscheidung 11).
+   */
+  @Test
+  void anOverrideAndItsResetAreAuditedWithHashAndLengthOfTheTextOnly() throws Exception {
+    templateService.update(
+        organizationId,
+        userId,
+        MailTemplateKey.TEST_MAIL,
+        MailTemplateService.DEFAULT_LOCALE,
+        "Eigener Betreff",
+        "Eigener Text",
+        null);
+    templateService.update(
+        organizationId,
+        userId,
+        MailTemplateKey.TEST_MAIL,
+        MailTemplateService.DEFAULT_LOCALE,
+        "Eigener Betreff",
+        "Eigener Text",
+        null);
+    templateService.reset(
+        organizationId, userId, MailTemplateKey.TEST_MAIL, MailTemplateService.DEFAULT_LOCALE);
+
+    List<Map<String, Object>> entries =
+        jdbcTemplate.queryForList(
+            "SELECT event_type, before, after FROM audit_log WHERE organization_id = ?"
+                + " AND event_type LIKE 'MAIL_TEMPLATE_%' ORDER BY recorded_at",
+            organizationId);
+
+    assertThat(entries).hasSize(2);
+    assertThat(String.valueOf(entries.get(0).get("before")))
+        .contains("\"overridden\":false")
+        .contains(
+            "\"subjectSha256\":\"" + sha256(MailTemplateKey.TEST_MAIL.defaultSubject()) + "\"");
+    assertThat(String.valueOf(entries.get(0).get("after")))
+        .contains("\"overridden\":true")
+        .contains("\"subjectSha256\":\"" + sha256("Eigener Betreff") + "\"")
+        .contains("\"subjectLength\":15")
+        .contains("\"bodyPlainLength\":12");
+    assertThat(String.valueOf(entries.get(1).get("after"))).contains("\"overridden\":false");
+    String all = String.valueOf(entries);
+    assertThat(all)
+        .as("the wording reaches no entry")
+        .doesNotContain("Eigener Betreff")
+        .doesNotContain("Eigener Text")
+        .doesNotContain(MailTemplateKey.TEST_MAIL.defaultSubject());
+  }
+
+  @Test
+  void anOverrideOutsideTheDeliveredLocaleOrItsBoundsIsRefusedOnItsField() {
+    assertThatThrownBy(
+            () ->
+                templateService.update(
+                    organizationId,
+                    userId,
+                    MailTemplateKey.TEST_MAIL,
+                    "en",
+                    "Subject",
+                    "Text",
+                    null))
+        .isInstanceOfSatisfying(
+            io.opaa.common.FieldValidationException.class,
+            refused -> assertThat(refused.fieldErrors().getFirst().field()).isEqualTo("locale"));
+    assertThatThrownBy(
+            () ->
+                templateService.update(
+                    organizationId,
+                    userId,
+                    MailTemplateKey.TEST_MAIL,
+                    MailTemplateService.DEFAULT_LOCALE,
+                    " ",
+                    "t".repeat(MailTemplateService.MAX_BODY_PLAIN_LENGTH + 1),
+                    null))
+        .isInstanceOfSatisfying(
+            io.opaa.common.FieldValidationException.class,
+            refused ->
+                assertThat(refused.fieldErrors())
+                    .extracting(io.opaa.common.FieldValidationException.FieldError::field)
+                    .containsExactly("subject", "bodyPlain"));
+  }
+
+  private static String sha256(String text) throws Exception {
+    return java.util.HexFormat.of()
+        .formatHex(
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+  }
+
   @Test
   void resettingRemovesTheOverrideAndIsAuditedOnlyWhenSomethingWasThere() {
     templateService.update(

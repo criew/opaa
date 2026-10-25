@@ -680,6 +680,7 @@ components:
           SELF_DISCLOSURE_EXPORT_FINISHED,
           SELF_DISCLOSURE_SETTINGS_CHANGED,
           LINK_TARGETS_CHANGED,
+          SETTINGS_IMPORTED,
         ]
       example: ASSET_GRANT_REVOKED
 

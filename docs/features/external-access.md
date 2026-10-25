@@ -178,13 +178,15 @@ Dokument, Fundstelle). Nichts erfinden, was die Treffer nicht hergeben.
 
 **Protokollpflichtig ist das Schalten selbst** — in beide Richtungen — sowie jede Änderung der
 Ablauf-Obergrenze, des Kontingents, der Netzbereiche und der Alarmschwelle. Eine Installation, in der
-niemand nachweisen kann, seit wann der Kanal offen stand, hat den Kanal nicht im Griff. **Nicht**
-protokollpflichtig ist die Änderung des Einleitungstextes: Sie ändert keine Reichweite, sondern die
-Formulierung einer Aufforderung an ein fremdes Modell. Die geschlossene Liste aus
+niemand nachweisen kann, seit wann der Kanal offen stand, hat den Kanal nicht im Griff. Auch die
+Änderung des Einleitungstextes steht im Protokoll, weil jede Änderung einer Einstellung nachweisbar
+ist ([ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md), Entscheidung
+11) — aber nur als Prüfsumme (SHA-256) und Länge vorher und nachher, nie im Wortlaut: Der Text ändert
+keine Reichweite, sondern die Formulierung einer Aufforderung an ein fremdes Modell, und das
+Protokoll soll keine Freitexte der Verwaltung aufbewahren. Die geschlossene Liste aus
 [security-and-compliance.md](./security-and-compliance.md#die-ereignisse-der-ersten-stufe) zählt
-Systemeinstellungen einzeln auf, statt „alle Einstellungen" zu sagen; der Schalter samt Grenzwerten
-ist dort als eigener Punkt **ergänzt** — neben der Freigabe-Obergrenze, die aus demselben Grund einen
-eigenen hat —, der Einleitungstext ausdrücklich nicht.
+Systemeinstellungen einzeln auf; der Schalter samt Grenzwerten ist dort als eigener Punkt
+**ergänzt** — neben der Freigabe-Obergrenze, die aus demselben Grund einen eigenen hat.
 
 **Das Einschalten ist ein Verwaltungsakt, kein Konfigurationsschritt.** Der Zugriff externer KI-Werkzeuge ist eine
 technische Einrichtung, die zur Überwachung von Verhalten und Leistung geeignet sein kann — ob und in

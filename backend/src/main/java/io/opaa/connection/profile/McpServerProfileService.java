@@ -115,7 +115,7 @@ public class McpServerProfileService {
               AuditEventType.CONNECTION_PROFILE_CREATED,
               profile,
               null,
-              ConnectionProfileService.auditState(profile));
+              ConnectionProfileService.auditStateAfter(profile, null));
           return profile;
         });
   }
@@ -176,6 +176,7 @@ public class McpServerProfileService {
                 ConnectionProfileService.CONFIRMATION_REQUIRED);
           }
           Map<String, Object> before = ConnectionProfileService.auditState(profile);
+          String previousSecret = profile.getClientSecretCiphertext();
           ConnectionEndCause cause =
               addressChanged
                   ? ConnectionEndCause.ADDRESS_CHANGED
@@ -198,7 +199,7 @@ public class McpServerProfileService {
               AuditEventType.CONNECTION_PROFILE_CHANGED,
               profile,
               before,
-              ConnectionProfileService.auditState(profile));
+              ConnectionProfileService.auditStateAfter(profile, previousSecret));
           return profile;
         });
   }

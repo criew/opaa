@@ -33,6 +33,7 @@ export const THEMES = [
   'compliance',
   'auth',
   'link-targets',
+  'settings',
   'installation',
 ]
 
@@ -73,6 +74,7 @@ export const ALLOWED = {
   compliance: [],
   auth: ['user'],
   'link-targets': [],
+  settings: [],
   installation: [],
 }
 

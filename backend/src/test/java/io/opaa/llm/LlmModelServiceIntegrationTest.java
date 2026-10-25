@@ -208,6 +208,44 @@ class LlmModelServiceIntegrationTest {
     assertThat(auditEntries(AuditEventType.LLM_MODEL_CHANGED)).hasSize(1);
   }
 
+  /**
+   * Regression guard: a replaced key is visible in the audit only as {@code apiKeyChange}, since
+   * {@code apiKeySet} stays {@code true} on both sides (ADR-0060, Entscheidung 11).
+   */
+  @Test
+  void replacingTheApiKeyIsAuditedAsAChangeWithoutTheKey() {
+    LlmModel model =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Anbieter X",
+            "https://modellserver.example.internal/v1",
+            "gpt-4o",
+            new BigDecimal("0.70"),
+            2000,
+            "sk-super-secret-key");
+
+    llmModelService.updateModel(
+        organizationId,
+        userId,
+        model.getId(),
+        "Anbieter X",
+        "https://modellserver.example.internal/v1",
+        "gpt-4o",
+        new BigDecimal("0.70"),
+        2000,
+        "sk-another-secret-key");
+
+    List<Map<String, Object>> changed = auditEntries(AuditEventType.LLM_MODEL_CHANGED);
+    assertThat(changed).hasSize(1);
+    assertThat(String.valueOf(changed.getFirst().get("after")))
+        .contains("\"apiKeyChange\":\"CHANGED\"")
+        .doesNotContain("sk-another-secret-key");
+    assertThat(
+            String.valueOf(auditEntries(AuditEventType.LLM_MODEL_CREATED).getFirst().get("after")))
+        .contains("\"apiKeyChange\":\"SET\"");
+  }
+
   @Test
   void updatingAModelWithABlankApiKeyClearsIt() {
     LlmModel model =

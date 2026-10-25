@@ -605,7 +605,8 @@ Ebenfalls nicht:
   eines Vorgangs rekonstruieren muss, führt ihn im fremden Werkzeug — **es** protokolliert, was es
   geladen hat.
 - **Kein Token-Präfix im Anwendungslog** (Abschnitt 7).
-- **Keine Änderung des Einleitungstextes** — sie ändert keine Reichweite.
+- **Den Wortlaut des Einleitungstextes nicht.** Seine Änderung steht im Protokoll, aber nur als
+  Prüfsumme und Länge vorher und nachher.
 
 Was die Prüfbarkeit trägt, ist nicht die Abfrage, sondern die **Rechtelage**: Rechtehistorie,
 historisierte Freigabe und die Ereignisse oben beantworten „wer konnte wann worauf zugreifen?".
@@ -730,8 +731,8 @@ wirkt sofort für alle Tokens und vernichtet keines.
 ## 15. Konfiguration
 
 **Systemeinstellungen** unter *Administration → Anbindungen → Externe KI-Werkzeuge → Einstellungen*. Sie gelten
-installationsweit, werden je Aufruf gelesen und wirken ohne Neustart; jede Änderung außer der des
-Einleitungstextes wird protokolliert.
+installationsweit, werden je Aufruf gelesen und wirken ohne Neustart; jede Änderung wird protokolliert,
+der Einleitungstext nur als Prüfsumme und Länge, nie im Wortlaut.
 
 | Einstellung | Auslieferung | Grenzen |
 |---|---|---|

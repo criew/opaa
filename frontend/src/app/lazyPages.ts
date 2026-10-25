@@ -100,6 +100,10 @@ export const PrivacySettingsPage = themePages(() => import('@/features/complianc
   'PrivacySettingsPage',
 )
 
+export const SettingsTransferPage = themePages(() => import('@/features/settings/routes'))(
+  'SettingsTransferPage',
+)
+
 export const SettingsPage = lazy(() => loadOrWait(() => import('./areas/SettingsPage')))
 export const ConnectionsAdminPage = lazy(() =>
   loadOrWait(() => import('./areas/ConnectionsAdminPage')),

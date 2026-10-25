@@ -290,11 +290,21 @@ ersten Stufe nicht geschrieben.
   Ein- und Ausschalten des Kanals, Ablauf-Obergrenze für Zugangstokens, Kontingent je Token,
   Netzbereiche des Kanals und die Schwelle des Abflussalarms. Sie stehen aus demselben Grund hier
   wie die Freigabe-Obergrenze: Sie entscheiden über die Reichweite eines Bestands, nicht über
-  Darstellung. **Nicht** dabei: der Einleitungstext für fremde Werkzeuge — er ändert keine
-  Reichweite, sondern die Formulierung einer Aufforderung an ein fremdes Modell
+  Darstellung. Ebenso der Einleitungstext für fremde Werkzeuge, als Prüfsumme und Länge, nie im
+  Wortlaut: Er ist eine Einstellung der Verwaltung, und jede Änderung einer Einstellung steht im
+  Protokoll
+  ([ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md), Entscheidung 11)
 - **Mail-Einstellungen** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Änderung der
-  SMTP-Einstellungen (ohne den Passwortwert), Änderung und Zurücksetzen einer Mail-Vorlage, ein
-  ausgelöster Testversand
+  SMTP-Einstellungen, auch wenn sich nur das Passwort ändert (nie mit dem Wert, nur „gesetzt“,
+  „geändert“ oder „entfernt“), Änderung und Zurücksetzen einer Mail-Vorlage mit Prüfsumme (SHA-256) und
+  Länge von Betreff und Text vorher und nachher, nie im Wortlaut, ein ausgelöster Testversand
+- **Geheimnisse einer Einstellung** — Modellschlüssel, Passwort des Mailservers, Geheimnis eines
+  Verzeichniszugangs oder eines Zugangs — erscheinen in jedem Ereignis nur als „gesetzt“,
+  „geändert“ oder „entfernt“, nie mit ihrem Wert
+- **Der Import einer Einstellungsdatei**
+  ([installation-and-settings.md](./installation-and-settings.md#fachliche-einstellungen-in-der-datenbank)):
+  ein Eintrag mit den geänderten Bereichen, unter derselben Vorgangskennung wie jede einzelne
+  Änderung des Imports; ein Import ohne Änderung schreibt nichts
 - **Die Einstellungen der Selbstauskunft** (Notabschaltung, Tagesgrenze), mit Vorher/Nachher der
   geänderten Schlüssel ([Selbstauskunft](#grenzen-und-betrieb))
 
@@ -347,8 +357,8 @@ Anbieter-Kennung und Zustellweg, `LOCAL_USER_HANDED_OVER` mit Anbieter-Kennung u
 dessen, was mitgegangen ist — nie mit dem Subject der Anbieteridentität; das Widerrufsereignis der
 Sitzungen trägt den Grund `HANDED_OVER`) und — seit #1717 — die Einstellungen für
 externe KI-Werkzeuge (`EXTERNAL_ACCESS_SETTINGS_CHANGED` mit Vorher/Nachher nur der geänderten Schlüssel:
-Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle — der Einleitungstext für
-fremde Werkzeuge erzeugt bewusst keinen Eintrag) und — seit #1718 — die persönlichen Zugangstokens
+Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle und, seit #3193, der
+Einleitungstext für fremde Werkzeuge als Prüfsumme und Länge) und — seit #1718 — die persönlichen Zugangstokens
 desselben Kanals (`API_TOKEN_ISSUED` mit Bibliotheksauswahl und Ablauf, `API_TOKEN_REVOKED` mit
 Anlass und der Angabe, ob die Person selbst oder die Systemverwaltung widerrufen hat, und
 `API_TOKEN_EXPIRED` beim Außerkrafttreten, mit dem Anlass `EXPIRED` aus dem täglichen Lauf oder
