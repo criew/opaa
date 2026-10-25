@@ -59,8 +59,10 @@ class RetiredSettingVariablesTest {
     assertThat(RetiredSettingVariables.foundIn(environment))
         .containsExactly(
             "opaa.connection.inactivity-threshold-days is no longer read; set the inactivity"
-                + " threshold of the connections under Administration > Anbindungen >"
-                + " Einstellungen");
+                + " threshold of the connections (the factory default of 90 days applies now: a"
+                + " lower value set before let connections rest earlier, so the secrets of absent"
+                + " persons stay usable longer now; a higher one let them rest later) under"
+                + " Administration > Anbindungen > Einstellungen");
   }
 
   @Test
@@ -71,7 +73,8 @@ class RetiredSettingVariablesTest {
     assertThat(RetiredSettingVariables.foundIn(environment))
         .containsExactly(
             "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS is no longer read; set the deletion"
-                + " period of private libraries under Administration > Anbindungen >"
-                + " Einstellungen");
+                + " period of private libraries (the factory default of 30 days applies now: a"
+                + " longer period set before erases the private libraries of deactivated persons"
+                + " earlier now) under Administration > Anbindungen > Einstellungen");
   }
 }

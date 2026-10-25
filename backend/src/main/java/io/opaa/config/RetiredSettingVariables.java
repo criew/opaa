@@ -25,6 +25,19 @@ public class RetiredSettingVariables {
   private static final String CONNECTION_SETTINGS =
       "under Administration > Anbindungen > Einstellungen";
 
+  private static final String INACTIVITY =
+      "the inactivity threshold of the connections (the factory default of 90 days applies now: a"
+          + " lower value set before let connections rest earlier, so the secrets of absent persons"
+          + " stay usable longer now; a higher one let them rest later)";
+
+  private static final String DELETION =
+      "the deletion period of private libraries (the factory default of 30 days applies now: a"
+          + " longer period set before erases the private libraries of deactivated persons earlier"
+          + " now)";
+
+  private static final String WARNING =
+      "the warning threshold of expired connected accounts (the factory default of 10 applies now)";
+
   /** Each retired variable with the setting it preset. */
   static final Map<String, String> RETIRED = retired();
 
@@ -62,22 +75,12 @@ public class RetiredSettingVariables {
     retired.put("OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL", "the full-sync rhythm");
     retired.put(
         "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES", "the storage quota of private libraries");
-    retired.put(
-        "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS", "the inactivity threshold of the connections");
-    retired.put(
-        "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
-        "the deletion period of private libraries");
-    retired.put(
-        "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
-        "the warning threshold of expired connected accounts");
-    retired.put(
-        "opaa.connection.inactivity-threshold-days", "the inactivity threshold of the connections");
-    retired.put(
-        "opaa.connection.private-library-deletion-days",
-        "the deletion period of private libraries");
-    retired.put(
-        "opaa.connection.expired-connections.warning-threshold",
-        "the warning threshold of expired connected accounts");
+    retired.put("OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS", INACTIVITY);
+    retired.put("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", DELETION);
+    retired.put("OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD", WARNING);
+    retired.put("opaa.connection.inactivity-threshold-days", INACTIVITY);
+    retired.put("opaa.connection.private-library-deletion-days", DELETION);
+    retired.put("opaa.connection.expired-connections.warning-threshold", WARNING);
     return Collections.unmodifiableMap(retired);
   }
 }
