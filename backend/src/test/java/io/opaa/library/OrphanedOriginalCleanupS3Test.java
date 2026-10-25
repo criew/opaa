@@ -73,7 +73,9 @@ class OrphanedOriginalCleanupS3Test {
                 fixture.rootCredentials().accessKey(),
                 fixture.rootCredentials().secretKey(),
                 tempDir,
-                new UploadS3Properties.TargetValidation(true, List.of())));
+                new UploadS3Properties.TargetValidation(true, List.of())),
+            io.opaa.knowledge.WorkingDirectoryOwner.standalone(),
+            java.time.Clock.systemUTC());
   }
 
   @AfterAll

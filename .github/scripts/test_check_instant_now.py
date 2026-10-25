@@ -1,7 +1,7 @@
 """Self-check for check_instant_now.sh: a count above the limit fails with the file list, the count
 at the limit passes, a count below it passes with the lower limit; Instant.now(clock), comment
 lines, entities, records and classes that are neither annotated as a bean nor built with `new` in a
-@Configuration file are not counted."""
+file with @Configuration or a @Bean method are not counted."""
 
 import os
 import shutil
@@ -136,3 +136,16 @@ def test_a_class_built_outside_a_configuration_or_in_a_comment_does_not_count(
     result = run(repo, 3)
     assert result.returncode == 0, result.stdout
     assert "ProbePlain" not in result.stdout
+
+
+def test_a_class_built_by_a_lite_bean_method_in_a_component_counts(repo: Path) -> None:
+    write(
+        repo,
+        "ProbeSchedule.java",
+        "package io.opaa.probe;\n\n@Component\nclass ProbeSchedule {\n"
+        "  @Bean\n  Object plain() { return new ProbePlain(); }\n}\n",
+    )
+    result = run(repo, 3)
+    assert result.returncode == 1
+    assert "::error::4 calls" in result.stdout
+    assert f"1 {ROOT}ProbePlain.java" in result.stdout

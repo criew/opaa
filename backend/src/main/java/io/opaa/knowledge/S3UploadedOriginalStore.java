@@ -101,7 +101,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   private final Clock clock;
 
   /** A standalone store on the system clock. */
-  public S3UploadedOriginalStore(UploadS3Properties properties) {
+  S3UploadedOriginalStore(UploadS3Properties properties) {
     this(properties, WorkingDirectoryOwner.standalone(), Clock.systemUTC());
   }
 
