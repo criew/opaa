@@ -1,6 +1,6 @@
 # Variante A „Alles an seinen Ort“ – Bericht (Runde 3, 25.10.2026)
 
-Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-base`. Matrix: alle 11 Arten × `small scale failed empty partial slow` × hell/dunkel × 1280/320, dazu `privat`, `upload-leser`, `confluence-leser`, `nextcloud-leser` in `small scale failed`. Bilder `<bereich>__<art>__<szenario>__<schema>__<breite>[__full].jpg` (JPEG q70; `__full` nur hell, halbe Breite). Kennzahlen stehen in `metrics.jsonl` und `metrics-extra.jsonl`. Die Befunde aus `REVIEW-1.md` sind unten einzeln abgehakt.
+Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-base`. Matrix Runde 3: alle 11 Arten × `small scale failed empty partial slow` × 1280 (hell und dunkel) und 320 (nur hell, Maintainer: dunkles Schema tritt zurück), dazu `privat`, `upload-leser`, `confluence-leser`, `nextcloud-leser` in `small scale failed`. Bilder `<bereich>__<art>__<szenario>__<schema>__<breite>[__full].jpg` (JPEG q70; `__full` nur hell, halbe Breite). Kennzahlen stehen in `metrics.jsonl` und `metrics-extra.jsonl`. Die Befunde aus `REVIEW-1.md` sind unten einzeln abgehakt.
 
 ## Konzept
 
@@ -25,7 +25,7 @@ Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-bas
 
 | Nr | Status | Beleg |
 |---|---|---|
-| D1 Ein Kopf, Reiter auf gleicher Höhe | erfüllt | `tabsTop` in **allen** 1 800 Bildern (alle Arten, Szenarien, Reiter, Rollen): 1280 px 212, 320 px 292 (Budget ≤ 260 / ≤ 360) |
+| D1 Ein Kopf, Reiter auf gleicher Höhe | erfüllt | `tabsTop` über alle Arten, Szenarien, Reiter, Rollen: 1280 px immer 212; 320 px 331, nur der 120-Zeichen-Titel in `scale` (vier Zeilen, ungekürzt nach Maintainer-Vorgabe) 350 (Budget ≤ 260 / ≤ 360) |
 | D2 Ein Zustandsfeld | erfüllt (Wortliste ergänzt) | `dokumente__gdrive__failed__light__1280` „Anmeldung abgelehnt · 23.10.2026“, `dokumente__filesystem__failed__…` „Nicht erreichbar“, `dokumente__s3__slow__…` „Läuft · 62 %“, `dokumente__upload__slow__…` „Läuft · 17 von 26“ |
 | D3 Zustand ist wahr | erfüllt | Kopf, erste Laufzeile und Detail mit demselben Wort und Datum; „fehlgeschlagen“ zählt `documentsFailed`, fehlende Fundorte stehen als „n weitere fehlgeschlagen, ohne gespeicherten Fundort“ (`laeufe__*__scale`) |
 | D4 Ernstfall von jedem Reiter | erfüllt | `freigaben__smb__failed__light__1280`, `quelle__smb__failed__light__1280` (Verbindung „Anmeldung abgelehnt am …“ · Ändern) |
@@ -46,27 +46,27 @@ Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-bas
 | D19 Suche ab 8 | erfüllt | Freigaben, Spaces, Werte, Dokumente (Werkzeugleiste erst ab 8), Ordner, Umfang („alle n anzeigen“) |
 | D20 Kein Dauerhinweis | erfüllt | Bestands-, Privat-, Diagnose- und Extraktionshinweis entfallen; Alerts nur noch an Upload-Ablehnungen |
 | D21 Leerzustände | erfüllt | ein Satz ohne zweite Handlung |
-| D22 Füllgrad an einem Ort | erfüllt | Reiter Metadaten › Füllgrad, alle filternden Felder |
-| D23 Upload gleich gebaut | erfüllt | „Kontingent voll“, „Läuft · n von m“, „Teilweise fehlgeschlagen · 17 von 214“; Meldung „Nicht hochgeladen: …“ einmal |
+| D22 Füllgrad an einem Ort | erfüllt | Reiter Metadaten › Füllgrad, alle filternden Felder, „Anzeigen“ auch bei eigenen Feldern |
+| D23 Upload gleich gebaut | erfüllt | „Kontingent voll“, „Läuft · n von m“, „Teilweise fehlgeschlagen · 17 fehlgeschlagen“, während eines Uploads „Läuft · 214 von 216 · 17 fehlgeschlagen“; Meldung „Nicht hochgeladen: …“ einmal |
 | D24 Nichts verlieren | erfüllt mit Abstrichen | Liste unten |
 
 **Vorschlag für die D2-Liste:** „Nicht erreichbar“ (Arten ohne Anmeldung) und für Upload „Hochgeladen“ und „Noch kein Inhalt“ (G 5.5).
 
-**Kennzahlen (Runde 2 gegen Ist):**
+**Kennzahlen (Runde 3 gegen Ist):**
 - Wortbudget (`uiWords`, small, hell, 1280, Maximum über die Arten):
 
   | Reiter | A | Ist |
   |---|---|---|
   | Dokumente | 84 | 218 |
-  | Quelle | 70 | 92 |
-  | Läufe | 70 | 118 |
-  | Metadaten | 41 | 363 |
+  | Quelle | 67 | 92 |
+  | Läufe | 67 | 118 |
+  | Metadaten | 46 | 363 |
   | Freigaben | 50 | 261 |
-  | Zuordnungen | 34 | 52 |
+  | Zuordnungen | 39 | 52 |
   | Upload | 109 | 197 |
 
 - Prüfwerte: Budgetverletzungen 0 · Kontrast 0 · `overflowX` 0.
-- axe: nur noch `target-size` an 4 Bildern (`.MuiIconButton-colorInherit`, Kopfleiste bei 320 px; Ist 1). `label-content-name-mismatch`, `heading-order`, `landmark-unique` und `aria-progressbar-name` sind entfallen.
+- axe: **0 Verstöße** über alle hellen Bilder (Ist: `target-size`, `label-content-name-mismatch`, `heading-order`, `landmark-unique`, `aria-progressbar-name`). Die Kopf-Links bei 320 px stehen auf 24-px-Zeilen, damit ihre Ziele nicht überlappen.
 - Aufgeklappter Lauf `scale`: +745 px (Ist bis 24 492 px Seitenhöhe).
 
 ### D24 – Inventur Kapitel 8 und F
@@ -95,7 +95,7 @@ Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-bas
 | Nr | Stand |
 |---|---|
 | R1-1 | erledigt: Reiterleiste mit Pfeilen bei Überlauf, gewählter Reiter wird beim Laden und bei jeder Breitenänderung in den Blick gescrollt |
-| R1-2 | erledigt: Titel mit fester Höhe (1280 px eine Zeile, 320 px zwei Zeilen, Rest im Tooltip); `tabsTop` über alle Szenarien gleich |
+| R1-2 | erledigt: Titel mit fester Höhe (1280 px eine Zeile, Rest im Tooltip; 320 px seit Runde 3 drei Zeilen reserviert, ungekürzt); `tabsTop` über alle Szenarien gleich bis auf den 120-Zeichen-Titel |
 | R1-3 | erledigt: bei 320 px Zustand in Zeile 1, alle Kennzahlen in Zeile 2 (kürzt mit „…“, voller Text im Tooltip) |
 | R1-4 | erledigt: neues Wort „Nicht erreichbar“ für Arten ohne Anmeldung (Kopf, Verbindung, Lauf); Vorschlag für die D2-Liste |
 | R1-5 | erledigt: Leser bekommen das Zustandswort ohne Link, wenn die Ursache im Reiter Quelle liegt |
@@ -210,21 +210,21 @@ Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt, dazu die beid
 1. Status-Filter, Fehler- und Verarbeitungszahl im Upload-Kopf brauchen einen Parameter `status` an `GET /libraries/{id}/documents` (Spec und Backend); im Prototyp nur im Mock.
 2. Rollen-Legende, „vergeben von“ und Dokumentherkunft nur im Tooltip; Seitengröße entfällt.
 3. Titel bei 1280 px auf eine Zeile gekürzt (Tooltip) – zugunsten von D1; bei 320 px nie gekürzt, dafür hält D1 dort nur für Namen bis drei Zeilen (≈ 110 Zeichen).
-4. Umfang nutzt weiter `PathLabel` des Assistenten (Pfadform je Art, R1-11/R1-36 dort offen).
+4. `PathLabel` und `displayPath` sind mit dem Assistenten geteilt: Die einheitliche Pfadform gilt dort mit.
 5. `sourceBlock`-Hinweis und „Zugang entfernt“ stehen weiter als getönte Alerts im Reiter Quelle (in keinem Szenario sichtbar).
 6. Messartefakt `clippedText` in `quelle`: der visuell versteckte Zusatz von „Ändern Verbindung“ (wie in F).
 7. Werkzeug: Unter Last (Nebenläufigkeit 3) brechen einzelne Aufrufe nach 60 s ab; diese Bilder sind einzeln nachaufgenommen.
 
 ## Gebrochene Unit-Tests
 
-`npx vitest run`: 279 Tests rot, davon **107 schon auf der Basis rot** (Abgleich in einem Worktree der Basis). Nur aufgelistet; erwartet, weil Texte, Rollen, Aufbau und der Parameter `status` sich geändert haben.
+`vitest run` (Runde 3): 228 von 3 979 Tests rot (Runde 2: 279), davon **107 schon auf der Basis rot** (Abgleich in einem Worktree der Basis). Nur aufgelistet; erwartet, weil Texte, Rollen, Aufbau und der Parameter `status` sich geändert haben.
 
 | Datei | Basis | A |
 |---|---|---|
-| `library/pages/LibraryDetailPage.test.tsx` | 19 | 123 |
+| `library/pages/LibraryDetailPage.test.tsx` | 19 | 79 |
 | `library/pages/LibraryCreatePage.test.tsx` | 46 | 46 |
 | `library/components/LibrarySourceSection.test.tsx` | 18 | 24 |
-| `library/pages/LibraryDetailPage.privateLibrary.test.tsx` | 0 | 12 |
+| `library/pages/LibraryDetailPage.privateLibrary.test.tsx` | 0 | 5 |
 | `asset/components/AssetGrantsSection.test.tsx` | 0 | 12 |
 | `library/stores/documentStore.test.ts` | 0 | 10 |
 | `library/components/metadata/LibraryMetadataFieldsSection.test.tsx` | 0 | 9 |
@@ -250,55 +250,58 @@ Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt, dazu die beid
 
 ## `git diff --stat`
 
-Code und Werkzeuge gegenüber der Basis (ohne Bilder):
+Gegen `feature/3084_ui-lab-detail-base`, ohne `ui-lab/results/`:
 
 ```
- .../components/AssetAccessDerivationSection.tsx    |  60 +-
- .../asset/components/AssetDetailHeader.tsx         | 156 +++--
- .../asset/components/AssetGrantsSection.tsx        | 466 ++++++++-------
- .../asset/components/AssetHeadlineEditor.tsx       |  39 +-
- .../asset/components/AssetOwnerSection.tsx         |  27 +-
- .../features/asset/components/AssetSpacesList.tsx  | 203 ++++---
- .../asset/components/AssetSpacesSection.tsx        |  60 +-
- frontend/src/features/asset/mocks/assetHandlers.ts |   8 +-
- frontend/src/features/library/api/libraryApi.ts    |   4 +
- .../library/components/DiagnosticsLockControl.tsx  |  49 +-
- .../library/components/LibraryDetailTabBar.tsx     |  21 +-
- .../library/components/LibraryDocumentList.tsx     | 469 ++++++++-------
- .../components/LibraryDocumentUploadArea.tsx       | 159 +----
- .../library/components/LibraryDocumentsNotices.tsx |  63 +-
- .../library/components/LibraryDocumentsSection.tsx | 239 +++++---
- .../components/LibraryExternalAccessSection.tsx    | 106 ++--
- .../library/components/LibraryLiveUpdateRow.tsx    |  51 ++
- .../library/components/LibraryMetadataTab.tsx      |  31 +-
- .../features/library/components/LibraryRunList.tsx | 509 ++++++++++++++++
- .../library/components/LibrarySharingTab.tsx       |  50 +-
- .../library/components/LibrarySourceRows.tsx       |  28 +-
- .../library/components/LibrarySourceSection.tsx    | 420 +++++--------
- .../library/components/LibraryStateLink.tsx        |  76 +++
- .../library/components/LibraryUploadInputs.tsx     |  59 ++
- .../features/library/components/indexingLabels.ts  |   7 +
- .../features/library/components/libraryState.ts    | 217 +++++++
- .../metadata/CoreContextPrefixSwitch.tsx           |   1 +
- .../components/metadata/EditFieldDialog.tsx        |   8 +
- .../metadata/LibraryMetadataFieldsSection.tsx      | 350 +++++++----
- .../metadata/MetadataExtractionSettingsSection.tsx | 282 ++++++---
- .../src/features/library/components/scopeMarks.ts  |  53 ++
- .../library/components/setup/SourceSetupRows.tsx   |  50 +-
- .../library/components/setup/SummaryRow.tsx        | 141 ++++-
- .../features/library/hooks/useDocumentsUrlState.ts |  16 +
- .../library/mocks/detailScenarioFixtures.ts        |  87 ++-
- .../src/features/library/mocks/indexingHandlers.ts |  10 +-
- .../library/mocks/libraryDocumentHandlers.ts       |  17 +
- .../library/mocks/libraryMetadataHandlers.ts       |  25 +-
- .../library/mocks/libraryScenarioFixtures.ts       | 152 ++++-
- .../library/mocks/sourceLibraryFixtures.ts         |   2 +
- .../features/library/pages/LibraryDetailPage.tsx   | 663 ++++++++++-----------
- .../src/features/library/stores/documentStore.ts   |  14 +-
- frontend/src/shared/ui/DetailSection.tsx           | 105 ++++
- frontend/src/shared/ui/ListSearch.tsx              |  42 ++
- frontend/src/shared/ui/RowMenu.tsx                 |  57 ++
- ui-lab/harness/flows/library-detail.mjs            |  29 +-
- ui-lab/harness/lib/measure.mjs                     |  18 +-
- 47 files changed, 3755 insertions(+), 1944 deletions(-)
+ .../features/asset/components/AssetAccessDerivationSection.tsx  |  60 +--
+ frontend/src/features/asset/components/AssetDetailHeader.tsx    | 171 +++++--
+ frontend/src/features/asset/components/AssetGrantsSection.tsx   | 466 ++++++++++---------
+ frontend/src/features/asset/components/AssetHeadlineEditor.tsx  |  59 ++-
+ frontend/src/features/asset/components/AssetOwnerSection.tsx    |  27 +-
+ frontend/src/features/asset/components/AssetSpacesList.tsx      | 203 +++++----
+ frontend/src/features/asset/components/AssetSpacesSection.tsx   |  60 ++-
+ frontend/src/features/asset/mocks/assetHandlers.ts              |   8 +-
+ frontend/src/features/library/api/libraryApi.ts                 |   4 +
+ .../src/features/library/components/DiagnosticsLockControl.tsx  |  49 +-
+ .../src/features/library/components/LibraryDetailTabBar.tsx     |  35 +-
+ .../src/features/library/components/LibraryDocumentList.tsx     | 469 ++++++++++----------
+ .../features/library/components/LibraryDocumentUploadArea.tsx   | 159 ++-----
+ .../src/features/library/components/LibraryDocumentsNotices.tsx |  63 ++-
+ .../src/features/library/components/LibraryDocumentsSection.tsx | 259 +++++++----
+ .../library/components/LibraryExternalAccessSection.tsx         | 106 +++--
+ .../src/features/library/components/LibraryLiveUpdateRow.tsx    |  51 +++
+ frontend/src/features/library/components/LibraryMetadataTab.tsx |  31 +-
+ frontend/src/features/library/components/LibraryRunList.tsx     | 542 +++++++++++++++++++++++
+ frontend/src/features/library/components/LibrarySharingTab.tsx  |  53 +--
+ frontend/src/features/library/components/LibrarySourceRows.tsx  |  28 +-
+ .../src/features/library/components/LibrarySourceSection.tsx    | 440 +++++++-----------
+ frontend/src/features/library/components/LibraryStateLink.tsx   |  76 ++++
+ .../src/features/library/components/LibraryUploadInputs.tsx     |  59 +++
+ frontend/src/features/library/components/indexingLabels.ts      |   9 +-
+ frontend/src/features/library/components/libraryState.ts        | 222 ++++++++++
+ .../library/components/metadata/CoreContextPrefixSwitch.tsx     |   1 +
+ .../features/library/components/metadata/EditFieldDialog.tsx    |   8 +
+ .../components/metadata/LibraryMetadataFieldsSection.tsx        | 350 +++++++++------
+ .../components/metadata/MetadataExtractionSettingsSection.tsx   | 277 ++++++++----
+ frontend/src/features/library/components/scopeMarks.ts          |  62 +++
+ frontend/src/features/library/components/setup/PathLabel.tsx    |  18 +-
+ .../src/features/library/components/setup/SourceSetupRows.tsx   |  50 ++-
+ frontend/src/features/library/components/setup/SummaryRow.tsx   | 177 +++++++-
+ .../src/features/library/components/setup/connectors/s3Setup.ts |  21 +-
+ frontend/src/features/library/components/setup/paths.ts         |   2 +-
+ frontend/src/features/library/hooks/useDocumentsUrlState.ts     |  16 +
+ frontend/src/features/library/mocks/detailScenarioFixtures.ts   | 111 ++++-
+ frontend/src/features/library/mocks/indexingHandlers.ts         |  10 +-
+ frontend/src/features/library/mocks/libraryDocumentHandlers.ts  |  17 +
+ frontend/src/features/library/mocks/libraryMetadataHandlers.ts  |  25 +-
+ frontend/src/features/library/mocks/libraryScenarioFixtures.ts  | 182 ++++++--
+ frontend/src/features/library/mocks/sourceLibraryFixtures.ts    |   2 +
+ frontend/src/features/library/pages/LibraryDetailPage.tsx       | 663 ++++++++++++++--------------
+ frontend/src/features/library/stores/documentStore.ts           |  14 +-
+ frontend/src/shared/ui/DetailSection.tsx                        | 105 +++++
+ frontend/src/shared/ui/ListSearch.tsx                           |  42 ++
+ frontend/src/shared/ui/RowMenu.tsx                              |  57 +++
+ ui-lab/harness/flows/library-detail.mjs                         |  41 +-
+ ui-lab/harness/lib/measure.mjs                                  |  18 +-
+ 50 files changed, 4000 insertions(+), 1978 deletions(-)
 ```
