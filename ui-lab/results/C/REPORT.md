@@ -150,6 +150,22 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 
 Teilmatrix: 200 Aufnahmen hell (Metadaten 320, Zuordnungen scale, Abschluss alle Arten und Szenarien plus Sonderfälle), axe 0, `overflowX` 0, 2 × `blank` einzeln nachgeholt.
 
+## Videos
+
+`videos/` mit `manifest.json`: 21 MP4 (hell, 1280 × 800), je Ablauf ok (`small`), viele (`scale`) und fehler (`failed`), aus `ui-lab/harness/flows/library-detail-c-videos.mjs`:
+
+| Ablauf | Bibliothek | Inhalt |
+|---|---|---|
+| dokumente | Confluence | Suche, Filter „ohne Titel“, Angaben ⓘ, Zustand im Steckbrief führt zur Ursache |
+| quelle | Confluence | Reiter Quelle (fehler: „Ändern“ an der Verbindung), Läufe, neuester Lauf aufgeklappt, „alle n anzeigen“, Technische Angaben |
+| metadaten | SMB | Wertesuche und „Alle n anzeigen“ (viele), Zeilen Kontextpräfix und Extraktion |
+| freigaben | SharePoint | Suche (viele), „Freigeben“ und Abbrechen, Herleitung |
+| zuordnungen | S3 | Suche (viele), Dialog „In Space verwenden“ |
+| upload | Upload | Menü „Hochladen“, zwei Dateien, abgelehnte Dateien (fehler), Zustand |
+| abschluss | Confluence, `justCreated` | Nächste Schritte (fehler: „Zugang prüfen“), Schritte führen in die Reiter, „Ausblenden“ |
+
+Ein Probelauf fand zwei Fehler, beide vor der Aufnahme behoben: Der Zustand flackerte beim Laden kurz als „Noch nie indiziert“ (jetzt Platzhalter bis zur ersten Statusantwort, P39), und der Ereignisdialog schloss als leerer Rahmen. Bekannt: In `dokumente__viele` findet der Ablauf den Knopf „Seite 2“ nicht. Bei `upload__fehler` bricht „Kontingent voll · mind. 4 fehlgeschlagen“ im Steckbrief auf zwei Zeilen um.
+
 ## Schwächen
 
 - **Abschluss bei 320 über dem Kopf-Budget:** `tabsTop` 234–354 px bei bis zu drei offenen Schritten; mit vier offenen Schritten (`failed`: „Zugang prüfen“ zusätzlich) oder langem Titel (`scale`) bis 412 px (14 Bilder). Gewollt: Die Schritte stehen nur nach dem Anlegen offen und verschwinden mit „Ausblenden“ oder sobald alles erledigt ist.
