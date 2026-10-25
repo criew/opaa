@@ -33,6 +33,51 @@ class RetiredSettingVariablesTest {
                 + " private libraries under Administration > Anbindungen > Einstellungen");
   }
 
+  /** A value set as variable or as property name is named with the place it lives now. */
+  @Test
+  void aRetiredAdministrationValueIsNamedUnderVariableOrPropertyName() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS", "30")
+            .withProperty("opaa.directory-sync.change-threshold-fraction", "0.5");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS is no longer read; set the reminder before a"
+                + " release expires under Administration > Anbindungen > Externe KI-Werkzeuge >"
+                + " Einstellungen",
+            "opaa.directory-sync.change-threshold-fraction is no longer read; set the"
+                + " plausibility threshold in percent under Administration > Verzeichnisabgleich");
+  }
+
+  /** The environment answers a property name for its variable as well: one message, not two. */
+  @Test
+  void aValueSetUnderBothNamesIsNamedOnce() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS", "6")
+            .withProperty("opaa.succession.aging-threshold-months", "6");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS is no longer read; set the aging threshold"
+                + " under Administration > Ohne Zuständigkeit");
+  }
+
+  @Test
+  void theFourRetiredAdministrationValuesAreKnownUnderBothNames() {
+    assertThat(RetiredSettingVariables.RETIRED_ADMINISTRATION_VALUES)
+        .containsOnlyKeys(
+            "OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS",
+            "opaa.external-access.reminder-lead-days",
+            "OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS",
+            "opaa.succession.aging-threshold-months",
+            "OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION",
+            "opaa.directory-sync.change-threshold-fraction",
+            "OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL",
+            "opaa.indexing.nextcloud.full-descent-interval");
+  }
+
   @Test
   void theFiveRetiredVariablesAreKnown() {
     assertThat(RetiredSettingVariables.RETIRED)

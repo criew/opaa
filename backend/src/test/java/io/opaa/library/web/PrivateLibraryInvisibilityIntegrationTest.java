@@ -1156,7 +1156,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             1000,
             values.allowedCidrs(),
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
     UUID shared = UUID.randomUUID();
     jdbc.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"

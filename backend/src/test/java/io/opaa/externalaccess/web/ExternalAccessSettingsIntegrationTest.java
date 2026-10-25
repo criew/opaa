@@ -12,6 +12,7 @@ import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.library.ExternalAccessReminderLead;
 import io.opaa.test.OpaaIntegrationTest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
@@ -49,6 +50,7 @@ class ExternalAccessSettingsIntegrationTest {
   @Autowired private ExternalAccessSettingsRepository settings;
   @Autowired private ExternalAccessSettingsService settingsService;
   @Autowired private ExternalAccessNetworkPolicy networkPolicy;
+  @Autowired private ExternalAccessReminderLead reminderLead;
 
   /** Every audit row from here on belongs to this test method; earlier ones do not. */
   private Instant methodStartedAt;
@@ -85,9 +87,62 @@ class ExternalAccessSettingsIntegrationTest {
         .andExpect(
             jsonPath("$.defaultServerInstructions")
                 .value(ExternalAccessDefaults.SERVER_INSTRUCTIONS))
+        .andExpect(jsonPath("$.releaseReminderLeadDays").value(14))
+        .andExpect(jsonPath("$.releaseReminderLeadDaysOverridden").value(false))
+        .andExpect(jsonPath("$.defaultReleaseReminderLeadDays").value(14))
+        .andExpect(jsonPath("$.maxReleaseReminderLeadDays").value(364))
         .andExpect(jsonPath("$.updatedAt").exists());
 
     assertThat(settingsService.isEnabled()).isFalse();
+    assertThat(reminderLead.days()).isEqualTo(14);
+  }
+
+  /**
+   * The reminder lead of a release: an own value holds for the next reminder run, is audited with
+   * the value before and after, the same value again writes nothing, and the factory default comes
+   * back as {@code null}.
+   */
+  @Test
+  void theReminderLeadIsStoredAuditedReadByTheReminderAndResettable() throws Exception {
+    putLead(30).andExpect(status().isOk());
+
+    assertThat(reminderLead.days()).isEqualTo(30);
+    List<Map<String, Object>> events = settingsEvents();
+    assertThat(events).hasSize(1);
+    assertThat(String.valueOf(events.getFirst().get("before")))
+        .isEqualTo("{\"releaseReminderLeadDays\":14,\"releaseReminderLeadDaysOverridden\":false}");
+    assertThat(String.valueOf(events.getFirst().get("after")))
+        .isEqualTo("{\"releaseReminderLeadDays\":30,\"releaseReminderLeadDaysOverridden\":true}");
+
+    putLead(30)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.releaseReminderLeadDays").value(30))
+        .andExpect(jsonPath("$.releaseReminderLeadDaysOverridden").value(true));
+    assertThat(settingsEvents()).as("an unchanged lead writes no event").hasSize(1);
+
+    putLead(null)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.releaseReminderLeadDays").value(14))
+        .andExpect(jsonPath("$.releaseReminderLeadDaysOverridden").value(false));
+    assertThat(reminderLead.days()).isEqualTo(14);
+    assertThat(settingsEvents()).hasSize(2);
+  }
+
+  /**
+   * The lead ends one day before the longest Befristung; beyond it, or negative, nothing is kept.
+   */
+  @Test
+  void aLeadBeyondTheLongestBefristungIsRefusedAtItsField() throws Exception {
+    putLead(365)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("releaseReminderLeadDays"));
+    putLead(-1)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("releaseReminderLeadDays"));
+    putLead(0).andExpect(status().isOk()).andExpect(jsonPath("$.releaseReminderLeadDays").value(0));
+
+    assertThat(reminderLead.days()).as("0 switches the reminder off").isZero();
+    assertThat(settingsEvents()).hasSize(1);
   }
 
   @Test
@@ -298,6 +353,27 @@ class ExternalAccessSettingsIntegrationTest {
     assertThat(String.valueOf(events.getFirst().get("before"))).isEqualTo("{\"enabled\":true}");
     assertThat(String.valueOf(events.getFirst().get("after"))).isEqualTo("{\"enabled\":false}");
     assertThat(settingsService.isEnabled()).isFalse();
+  }
+
+  private org.springframework.test.web.servlet.ResultActions putLead(Integer days)
+      throws Exception {
+    String body =
+        body(
+            false,
+            ExternalAccessDefaults.TOKEN_MAX_LIFETIME_DAYS,
+            ExternalAccessDefaults.TOKEN_RATE_LIMIT_PER_HOUR,
+            ExternalAccessDefaults.ALLOWED_CIDRS,
+            ExternalAccessDefaults.MASS_RETRIEVAL_ALERT_THRESHOLD,
+            ExternalAccessDefaults.SERVER_INSTRUCTIONS);
+    return mockMvc.perform(
+        put(SETTINGS)
+            .with(devUser("dev-admin"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                body.substring(0, body.length() - 1)
+                    + ",\"releaseReminderLeadDays\":"
+                    + days
+                    + "}"));
   }
 
   private List<Map<String, Object>> settingsEvents() {

@@ -43,7 +43,7 @@ class SuccessionServiceCountsTest {
                 own(SuccessionKind.OPEN_SUCCESSION, 1),
                 shared(SuccessionKind.GROUP_WITHOUT_EFFECT, groups)),
             mock(SuccessionCaseRepository.class),
-            new SuccessionProperties(12, null),
+            mock(SuccessionAgingThreshold.class),
             Clock.systemUTC());
 
     assertThat(service.counts(ORGANIZATION))
@@ -61,7 +61,7 @@ class SuccessionServiceCountsTest {
         new SuccessionService(
             List.of(own(SuccessionKind.OPEN_SUCCESSION, 1)),
             mock(SuccessionCaseRepository.class),
-            new SuccessionProperties(12, null),
+            mock(SuccessionAgingThreshold.class),
             Clock.systemUTC());
 
     assertThat(service.counts(ORGANIZATION))

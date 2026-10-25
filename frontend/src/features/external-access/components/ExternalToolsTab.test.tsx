@@ -43,8 +43,13 @@ const CUSTOM_REQUEST = {
   allowedCidrs: ['10.1.0.0/16'],
   massRetrievalAlertThreshold: 333,
   serverInstructions: 'Eigener Einleitungstext.',
+  releaseReminderLeadDays: 21,
 }
-const CUSTOM_SETTINGS = { ...CUSTOM_REQUEST, updatedBy: 'Dev Admin' }
+const CUSTOM_SETTINGS = {
+  ...CUSTOM_REQUEST,
+  releaseReminderLeadDaysOverridden: true,
+  updatedBy: 'Dev Admin',
+}
 
 const navigateRef: { current: ((to: number | string) => void) | null } = { current: null }
 
@@ -193,6 +198,67 @@ describe('ExternalToolsTab', () => {
     expect(mockExternalAccessSettings.tokenMaxLifetimeDays).toBe(30)
     expect(await screen.findByRole('heading', { name: 'Eingeschaltet' })).toBeVisible()
     expect(screen.getByText(/durch Dev Admin/)).toBeVisible()
+  })
+
+  it('speichert einen eigenen Vorlauf der Erinnerung', async () => {
+    const user = userEvent.setup()
+    render()
+
+    const panel = await openSettings(user)
+    const lead = within(panel).getByLabelText('Erinnerung vor Ablauf (Tage)')
+    expect(lead).toHaveValue(14)
+    expect(within(panel).getByText(/Werkseinstellung: 14 Tage/)).toBeVisible()
+    await user.clear(lead)
+    await user.type(lead, '30')
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    await waitForDialogClosed()
+    expect(mockExternalAccessSettings.releaseReminderLeadDays).toBe(30)
+    expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(true)
+  })
+
+  it('warnt beim Zurücksetzen, wenn die Erinnerung dadurch später kommt', async () => {
+    setMockExternalAccessSettings({ ...mockExternalAccessSettings, ...CUSTOM_SETTINGS })
+    const user = userEvent.setup()
+    render()
+
+    const panel = await openSettings(user)
+    await user.click(
+      within(panel).getByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    )
+    const confirm = await screen.findByRole('dialog', {
+      name: 'Erinnerung auf die Werkseinstellung von 14 Tage zurücksetzen?',
+    })
+    expect(confirm).toHaveTextContent('erst 14 Tage statt 21 Tage vor Ablauf')
+    await answerConfirm(
+      user,
+      'Erinnerung auf die Werkseinstellung von 14 Tage zurücksetzen?',
+      'Werkseinstellung übernehmen',
+    )
+    expect(within(panel).getByLabelText('Erinnerung vor Ablauf (Tage)')).toHaveValue(14)
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    await waitForDialogClosed()
+    expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)
+  })
+
+  it('zeigt einen Vorlauf über der längsten Befristung am Feld und als Meldung', async () => {
+    const user = userEvent.setup()
+    render()
+
+    const panel = await openSettings(user)
+    const lead = within(panel).getByLabelText('Erinnerung vor Ablauf (Tage)')
+    await user.clear(lead)
+    await user.type(lead, '400')
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    expect(await within(panel).findByText('Der Wert muss zwischen 0 und 364 liegen.')).toBeVisible()
+    expect(
+      within(panel)
+        .getAllByRole('alert')
+        .some((alert) => /außerhalb der zulässigen Grenzen/.test(alert.textContent ?? '')),
+    ).toBe(true)
+    expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(false)
   })
 
   it('setzt den Einleitungstext auf den Vorgabetext zurück', async () => {

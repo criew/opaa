@@ -22,7 +22,8 @@ class ExternalAccessSettingsResponseMapperTest {
     Instant changedAt = Instant.parse("2026-09-18T07:30:00Z");
     View view =
         new View(
-            new Values(true, 30, 120, List.of("10.0.0.0/8", "::1/128"), 900, "Zuerst suchen."),
+            new Values(true, 30, 120, List.of("10.0.0.0/8", "::1/128"), 900, "Zuerst suchen.", 30),
+            364,
             changedAt,
             "Frau Vogel");
 
@@ -36,13 +37,31 @@ class ExternalAccessSettingsResponseMapperTest {
     assertThat(response.getServerInstructions()).isEqualTo("Zuerst suchen.");
     assertThat(response.getDefaultServerInstructions())
         .isEqualTo(ExternalAccessDefaults.SERVER_INSTRUCTIONS);
+    assertThat(response.getReleaseReminderLeadDays()).isEqualTo(30);
+    assertThat(response.getReleaseReminderLeadDaysOverridden()).isTrue();
+    assertThat(response.getDefaultReleaseReminderLeadDays()).isEqualTo(14);
+    assertThat(response.getMaxReleaseReminderLeadDays()).isEqualTo(364);
     assertThat(response.getUpdatedAt()).isEqualTo(changedAt);
     assertThat(response.getUpdatedBy()).isEqualTo("Frau Vogel");
   }
 
+  /** Without an own lead the factory default is in force, never more than the bound allows. */
+  @Test
+  void withoutAnOwnLeadTheFactoryDefaultIsInForceWithinTheBound() {
+    View factory = new View(Values.defaults(), 364, Instant.parse("2026-09-18T07:30:00Z"), null);
+    View narrow = new View(Values.defaults(), 9, Instant.parse("2026-09-18T07:30:00Z"), null);
+
+    ExternalAccessSettingsResponse response =
+        ExternalAccessSettingsResponseMapper.toResponse(factory);
+    assertThat(response.getReleaseReminderLeadDays()).isEqualTo(14);
+    assertThat(response.getReleaseReminderLeadDaysOverridden()).isFalse();
+    assertThat(ExternalAccessSettingsResponseMapper.toResponse(narrow).getReleaseReminderLeadDays())
+        .isEqualTo(9);
+  }
+
   @Test
   void aChangeByTheInstallationItselfNamesNobody() {
-    View view = new View(Values.defaults(), Instant.parse("2026-09-18T07:30:00Z"), null);
+    View view = new View(Values.defaults(), 364, Instant.parse("2026-09-18T07:30:00Z"), null);
 
     ExternalAccessSettingsResponse response = ExternalAccessSettingsResponseMapper.toResponse(view);
 

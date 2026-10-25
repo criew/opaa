@@ -223,10 +223,17 @@ class DataCollectionDisclosureIntegrationTest {
   }
 
   /**
+   * Settings with a factory default in the code and a row only once the administration sets its own
+   * value (ADR-0060, Entscheidung 1): while the default applies they have no time of change.
+   */
+  private static final Set<String> FACTORY_DEFAULT_KEYS =
+      Set.of("succession_settings.aging_threshold_months");
+
+  /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
-   * with a value and the time of its change; only a key naming its row in brackets may lack the
-   * time while its factory default applies, and only the flows that happen on an action of a person
-   * stay open.
+   * with a value and the time of its change; only a key naming its row in brackets or one of {@link
+   * #FACTORY_DEFAULT_KEYS} may lack the time while its factory default applies, and only the flows
+   * that happen on an action of a person stay open.
    */
   @Test
   void everyStoredSettingAndEverySwitchedFlowIsAnsweredByItsModule() throws Exception {
@@ -241,8 +248,9 @@ class DataCollectionDisclosureIntegrationTest {
     for (String key : databaseKeys) {
       JsonNode setting = setting(export, key);
       assertThat(setting.path("effectiveValue").isNull()).as(key + " has a value").isFalse();
-      // A key naming a row in brackets has no row while its factory default applies.
-      boolean rowOptional = key.endsWith("]");
+      // A key naming a row in brackets, or of a singleton row, has no row while its default
+      // applies.
+      boolean rowOptional = key.endsWith("]") || FACTORY_DEFAULT_KEYS.contains(key);
       if (!rowOptional || setting.path("deviates").asBoolean()) {
         assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
       }
@@ -254,6 +262,45 @@ class DataCollectionDisclosureIntegrationTest {
       }
     }
     assertThat(open).containsExactlyInAnyOrder("model-endpoint", "mcp-discovery");
+  }
+
+  /**
+   * The administration values of #3210 answer the value the administration set and its time: a
+   * source that ignored its row or column would report the factory default and fail here.
+   */
+  @Test
+  void theAdministrationValuesAnswerWhatTheAdministrationSet() throws Exception {
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
+              + " VALUES (1, 6, now())");
+      jdbcTemplate.update(
+          "INSERT INTO full_sync_rhythm_settings (source_type, interval_days, updated_at)"
+              + " VALUES ('NEXTCLOUD', 3, now())");
+      jdbcTemplate.update(
+          "UPDATE external_access_settings SET release_reminder_lead_days = 30 WHERE id = 1");
+
+      JsonNode export = exportAsAdmin();
+
+      Map<String, String> expected =
+          Map.of(
+              "succession_settings.aging_threshold_months", "6",
+              "full_sync_rhythm_settings.interval_days[NEXTCLOUD]", "3",
+              "external_access_settings.release_reminder_lead_days", "30");
+      assertThat(FACTORY_DEFAULT_KEYS).contains("succession_settings.aging_threshold_months");
+      expected.forEach(
+          (key, value) -> {
+            JsonNode setting = setting(export, key);
+            assertThat(setting.path("effectiveValue").asString()).as(key).isEqualTo(value);
+            assertThat(setting.path("deviates").asBoolean()).as(key).isTrue();
+            assertThat(setting.path("changedAt").isNull()).as(key).isFalse();
+          });
+    } finally {
+      jdbcTemplate.update("DELETE FROM succession_settings");
+      jdbcTemplate.update("DELETE FROM full_sync_rhythm_settings WHERE source_type = 'NEXTCLOUD'");
+      jdbcTemplate.update(
+          "UPDATE external_access_settings SET release_reminder_lead_days = NULL WHERE id = 1");
+    }
   }
 
   /**

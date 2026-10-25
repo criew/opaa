@@ -112,7 +112,9 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "permission_transfers",
                   "permission_transfer_objects",
                   "account_state_history",
-                  "succession_cases")),
+                  "succession_cases",
+                  "succession_settings",
+                  "directory_sync_settings")),
           Map.entry(
               KNOWLEDGE,
               List.of(

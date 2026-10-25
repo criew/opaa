@@ -147,6 +147,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "capability_grants",
             "directory_connectors",
             "directory_sync_pending_plans",
+            "directory_sync_settings",
             "directory_sync_status",
             "group_membership_history",
             "group_memberships",
@@ -156,6 +157,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "permission_transfer_objects",
             "permission_transfers",
             "succession_cases",
+            "succession_settings",
             // knowledge
             "chunk_full_text",
             "document_keywords",

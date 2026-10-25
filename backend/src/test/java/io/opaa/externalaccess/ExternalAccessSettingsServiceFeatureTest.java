@@ -9,6 +9,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
 import io.opaa.common.TestFeatureFlags;
+import io.opaa.library.ExternalAccessProperties;
 import java.time.Clock;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,8 @@ class ExternalAccessSettingsServiceFeatureTest {
         mock(UserRepository.class),
         mock(AuditEventRecorder.class),
         Clock.systemUTC(),
-        flags);
+        flags,
+        new ExternalAccessProperties(365));
   }
 
   private void storedSwitch(boolean enabled) {
