@@ -258,6 +258,20 @@ export async function openNewLibraryWizard(page: Page): Promise<void> {
 }
 
 /**
+ * The last two moves of the creation wizard: „Weiter“ into the step „Prüfen“, then „Bibliothek
+ * anlegen“. Resolves on the new library's detail page - the wizard navigates straight there, and
+ * itself lives at /libraries/new, hence the lookahead.
+ */
+export async function createFromReview(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeAttached()
+  await Promise.all([
+    page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+  ])
+}
+
+/**
  * Creates a fresh UPLOAD library named libraryName for the acting user and uploads documentPath
  * (whose file name is documentName) into it, waiting for indexing to finish.
  */
@@ -290,18 +304,12 @@ export async function createLibraryWithDocuments(
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
   await openNewLibraryWizard(page)
-  // Schrittfolge „Quellart · Name & Beschreibung · Freigaben" - Upload ist
-  // vorausgewählt und hat keinen Schritt „Quelle einrichten".
+  // Schrittfolge „Quellart · Name · Freigaben · Prüfen" - Upload ist vorausgewählt und hat
+  // keinen Schritt „Quelle".
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(libraryName)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  // The create wizard navigates straight to the new library's detail page on success -
-  // there is no separate documents page or picker to visit afterwards. The wizard itself lives at
-  // /libraries/new, hence the lookahead.
-  await Promise.all([
-    page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-  ])
+  await createFromReview(page)
   await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
 
   await page

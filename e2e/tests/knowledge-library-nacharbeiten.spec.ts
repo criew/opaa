@@ -8,7 +8,7 @@ import {
   libraryIdFromCurrentUrl,
 } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
-import { openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
 
 // Nacharbeiten-Serie aus Epic #458 (siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -151,12 +151,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      // Negative lookahead: the wizard itself lives at /libraries/new, which the plain
-      // one-segment pattern would match immediately.
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
@@ -206,10 +201,10 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/webverzeichnis/')
+    await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/webverzeichnis/')
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
 
-    const result = page.getByRole('alert').filter({ hasText: 'Webverzeichnis erreichbar' })
+    const result = page.getByRole('status').filter({ hasText: 'Webverzeichnis erreichbar' })
     await expect(result).toBeVisible({ timeout: 15_000 })
     await expect(result).toContainText(
       'Webverzeichnis erreichbar, 1 unterstütztes Dokument auf oberster Ebene gefunden.',
@@ -228,22 +223,24 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     // "ai-stub" resolves instantly (it is part of this very stack) - nothing listens on port 9,
     // so the backend's HTTP client gets an immediate, DNS-independent connection refusal.
-    await page.getByLabel('Adresse (URL)').fill('http://ai-stub:9/')
+    await page.getByLabel('Adresse', { exact: true }).fill('http://ai-stub:9/')
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
 
-    const result = page.getByRole('alert').filter({ hasText: 'abgelehnt' })
+    const result = page.getByRole('status').filter({ hasText: 'abgelehnt' })
     await expect(result).toBeVisible({ timeout: 15_000 })
     await expect(result).toContainText('Die Verbindung wurde vom Server abgelehnt.')
 
-    // The failed test must not block creation itself (#514 acceptance criteria) - the source
-    // configuration is only probed, never required to succeed.
+    // The failed test must not block creation itself (#514 acceptance criteria): „Weiter“ names
+    // the failed test first, „Trotzdem fortfahren“ then goes on with the source as entered.
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await expect(page.getByRole('alert', { name: 'Fehler: 1 Angabe prüfen' })).toContainText(
+      'Verbindung: Test (Adresse)',
+    )
+    await page.getByRole('button', { name: 'Trotzdem fortfahren' }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
   })
@@ -271,10 +268,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     const libraryId = libraryIdFromCurrentUrl(page)
     createdLibraryIds.push(libraryId)
@@ -342,20 +336,16 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/anlagen/')
     // Der Sofortstart gilt im Assistenten für jeden Konnektortyp und ist
     // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
     // statt des Leerzustands den Bestand des ersten Laufs.
-    await page
-      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
-      .uncheck()
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
@@ -382,10 +372,7 @@ test.describe('Sammelloeschen von Dokumenten (#1943)', () => {
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     const libraryId = libraryIdFromCurrentUrl(page)
     createdLibraryIds.push(libraryId)
@@ -422,59 +409,47 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/anlagen/')
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
-    await page.getByLabel('Anmeldedaten').fill('testuser:testpass')
+    await page.getByLabel('Zugangsdaten (optional)').fill('testuser:testpass')
     // Der vorbelegte Sofortstart würde hier das Anlagen-Fixture in den gemeinsamen Bestand
     // der Suite indizieren, obwohl dieses Szenario nie einen Lauf braucht.
-    await page
-      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
-      .uncheck()
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await Promise.all([
-      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-    ])
+    await createFromReview(page)
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
+    // The row „Verbindung“ of the Reiter „Quelle“ edits the source in place.
     await page.getByRole('tab', { name: 'Quelle' }).click()
-    await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
-    const editDialog = page.getByRole('dialog')
-    await expect(
-      editDialog.getByText(
-        'Diese Änderung wirkt erst mit dem nächsten Indizierungslauf dieser Bibliothek.',
-      ),
-    ).toBeVisible()
-    // Credentials were just set at creation - the edit dialog must already know that, before this
-    // test even touches the field.
-    await expect(
-      editDialog.getByText(
-        'Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben.',
-      ),
-    ).toBeVisible()
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
+    // Credentials were just set at creation - the row must already know that, before this test
+    // even touches the field.
+    const replaceCredentials = page.getByRole('button', { name: 'Zugangsdaten ersetzen' })
+    await expect(replaceCredentials).toBeVisible()
 
     // Same origin ("rss-feed"), different path - proves an edit takes effect without triggering
     // #542's origin-change credential drop, which would otherwise confound this test's own
     // "leer lassen = unveraendert" assertion below.
-    await editDialog.getByLabel('Adresse (URL)').fill('http://rss-feed/seiten/')
-    await editDialog.getByRole('button', { name: 'Speichern' }).click()
-    await expect(editDialog).toHaveCount(0)
-
-    await expect(page.getByText('Adresse (URL):')).toBeVisible()
-    await expect(page.getByText('http://rss-feed/seiten/')).toBeVisible()
-
-    // Reopening confirms the credentials are still considered present - had the blank field wiped
-    // them, this would show the "keine Zugangsdaten hinterlegt" copy instead.
-    await page.getByRole('tab', { name: 'Quelle' }).click()
-    await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
+    await page.getByLabel('Adresse', { exact: true }).fill('http://rss-feed/seiten/')
+    await expect(replaceCredentials).toBeVisible()
+    await page.getByRole('button', { name: 'Speichern' }).click()
+    // The saved change applies from the next run on.
     await expect(
-      page.getByRole('dialog').getByText(
-        'Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben.',
-      ),
-    ).toBeVisible()
+      page.getByText('Verbindung gespeichert. Sie gilt ab dem nächsten Lauf.'),
+    ).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Speichern' })).toHaveCount(0)
+
+    // Reopening shows the stored address, and the credentials are still considered present - had
+    // the blank field wiped them, the row would offer an empty field instead of „Ersetzen“.
+    await page.reload()
+    await page.getByRole('tab', { name: 'Quelle' }).click()
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
+    await expect(page.getByLabel('Adresse', { exact: true })).toHaveValue('http://rss-feed/seiten/')
+    await expect(page.getByRole('button', { name: 'Zugangsdaten ersetzen' })).toBeVisible()
   })
 })
