@@ -17,9 +17,6 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
   (`SourceBrowser`, `OriginalAccess`, `PushIntakeHandler`); laufbasiert zusätzlich ein `SourceIndexingExecutor`.
 - **Typ, Einstellungen, Geheimnisse** nach ADR-0038, Entscheidungen 1–3: offener Typ-Schlüssel (`A-Z0-9_`, bis 20
   Zeichen), Konnektoreigenes als Record in `source_settings` (`ConnectorData`), Geheimnisse nie dort; Antwort Ja/Nein.
-- **Datenfluss:** Ein Konnektor, der nach außen geht, nennt die Kennung seines Eintrags unter `dataFlows` im
-  Fakten-Manifest selbst im Descriptor (`withDataFlow("source-…")`); die Auskunft liest sie über
-  `SourceConnectorRegistry` (Port `knowledge.ConnectorDataFlows`), `ConnectorDataFlowsIntegrationTest` prüft sie.
 - **Was ein neuer Konnektor überschreibt:** `descriptor`, `validate`, `testConnection`, mit Einstellungen
   `readSettings` und `settingsKeys`. `validateChange` prüft per Default über `validate`/`readSettings`;
   `configureNew`/`applyChange` speichern vorhandene Einstellungen; überschreiben nur bei eigener Regel (S3,
@@ -42,7 +39,7 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - **Dateiablagen** implementieren `FileStore`/`ChangeFeed`; Abgleich über Läufe besitzt `FileSync` (ADR-0045).
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über
-  `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`.
+  `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`. Datenfluss im Descriptor: `withDataFlow("source-…")`.
 - **Tests nach [ADR-0057](../../../../../../../../docs/decisions/0057-teststufen-fuer-konnektoren.md):** Pflicht sind ein Testdoppel (`Fake<System>Server`, `FakeS3ObjectStore`) mit `RunSecretContract`, bei Dateiablagen `FileStoreContract`, und `<Typ>LogLeakTest`; dazu ein Container in `test` (`S3TestFixture`, `SambaFixture`) oder nächtlich unter `io.opaa.integration.<system>`. Das Epic eines neuen Konnektors nennt die Stufen. SharePoint und OneDrive teilen `FakeGraphServer`; `me/drive` nennt dort je Token das OneDrive einer Person.
 
 ## Maßgebliche ADRs

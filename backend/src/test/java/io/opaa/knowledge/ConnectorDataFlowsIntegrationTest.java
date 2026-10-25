@@ -20,9 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 @OpaaIntegrationTest
 class ConnectorDataFlowsIntegrationTest {
 
-  /** Source types that read only from the server itself or from uploads and send nothing out. */
-  private static final Set<String> LOCAL_CONNECTORS = Set.of("FILESYSTEM", "UPLOAD");
-
   @Autowired private SourceConnectorRegistry registry;
 
   @Test
@@ -34,10 +31,9 @@ class ConnectorDataFlowsIntegrationTest {
 
     assertThat(delivered).isNotEmpty();
     for (SourceConnectorDescriptor descriptor : delivered) {
-      boolean local = LOCAL_CONNECTORS.contains(descriptor.type().key());
-      assertThat(descriptor.dataFlow())
-          .as("data flow of %s", descriptor.type())
-          .matches(flow -> (flow == null) == local, local ? "none" : "named");
+      assertThat(descriptor.dataFlow() != null)
+          .as("%s names a data flow exactly when it reads a remote source", descriptor.type())
+          .isEqualTo(descriptor.remote());
     }
   }
 

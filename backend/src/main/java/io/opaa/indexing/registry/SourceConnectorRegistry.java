@@ -30,6 +30,7 @@ import java.util.Optional;
 public class SourceConnectorRegistry implements ConnectorDataFlows {
 
   private final Map<SourceType, SourceConnector> connectors = new HashMap<>();
+  private final Map<SourceType, String> dataFlows;
 
   public SourceConnectorRegistry(List<SourceConnector> connectorBeans) {
     for (SourceConnector connector : connectorBeans) {
@@ -51,6 +52,14 @@ public class SourceConnectorRegistry implements ConnectorDataFlows {
     if (!connectors.containsKey(SourceType.UPLOAD)) {
       throw new IllegalStateException("No SourceConnector serves UPLOAD");
     }
+    Map<SourceType, String> flows = new HashMap<>();
+    for (SourceConnector connector : connectors.values()) {
+      SourceConnectorDescriptor descriptor = connector.descriptor();
+      if (descriptor.dataFlow() != null) {
+        flows.put(descriptor.type(), descriptor.dataFlow());
+      }
+    }
+    dataFlows = Map.copyOf(flows);
   }
 
   /**
@@ -121,14 +130,7 @@ public class SourceConnectorRegistry implements ConnectorDataFlows {
   /** The data flow each connector names in its descriptor, for the types that name one. */
   @Override
   public Map<SourceType, String> byType() {
-    Map<SourceType, String> flows = new HashMap<>();
-    for (SourceConnector connector : connectors.values()) {
-      SourceConnectorDescriptor descriptor = connector.descriptor();
-      if (descriptor.dataFlow() != null) {
-        flows.put(descriptor.type(), descriptor.dataFlow());
-      }
-    }
-    return Map.copyOf(flows);
+    return dataFlows;
   }
 
   /** The handler behind the push intake of {@code type}, empty when that type offers none. */
