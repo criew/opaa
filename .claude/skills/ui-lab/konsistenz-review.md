@@ -1,7 +1,7 @@
 # Konsistenz-Review
 
-Gehört zum Skill [ui-lab](./SKILL.md), Abschnitt 4. Läuft in jeder Runde einer Variante nach der
-Screenshot-Matrix, vor dem Halt beim Maintainer und vor den Videos. Die allgemeinen Regeln dahinter
+Gehört zum Skill [ui-lab](./SKILL.md), Abschnitte 4 und 6. Läuft nur für die Gewinnerin nach der
+Teilmatrix, vor dem Halt beim Maintainer und vor den Videos. Die allgemeinen Regeln dahinter
 stehen in der UI-Prüfliste, vor allem P13, P18, P19 und das Layout P45–P50; ein Befund nennt die
 Nummer, wenn er eine verletzt. Die Muster unten stammen aus dem Review der Mischvariante F
 im ersten UI-Lab (28 Befunde an rund 470 Bildern und 26 Querbögen); sie sind Beispiele dafür,
