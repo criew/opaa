@@ -286,6 +286,25 @@ class ConnectedAccountIntegrationTest {
                 .value(library.toString()));
   }
 
+  // regression guard for #3147: a run compares the generation it began with on every renewal
+  @Test
+  void everyReconnectionGivesThePrivateLibraryANewConnectionGeneration() throws Exception {
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    KnowledgeLibrary library =
+        libraryRepository.findById(privateLibraryOnTheProfile()).orElseThrow();
+    String first = resolver.connectionGeneration(library);
+
+    run(library.getId(), "COMPLETED");
+    String afterTheRun = resolver.connectionGeneration(library);
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    String reconnected = resolver.connectionGeneration(library);
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+
+    assertThat(first).isNotNull().isEqualTo(afterTheRun).doesNotContain("avogt");
+    assertThat(reconnected).isNotEqualTo(first);
+    assertThat(resolver.connectionGeneration(library)).isNotEqualTo(reconnected);
+  }
+
   /** Decision 2 of the plan: a disconnected account stays while a private library is on it. */
   @Test
   void aDisconnectedAccountStaysWhileAPrivateLibraryRunsOnItAndConnectsAgain() throws Exception {

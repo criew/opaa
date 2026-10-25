@@ -14,6 +14,7 @@ import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.IndexingRunProgress;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.RunFailureCategory;
+import io.opaa.indexing.spi.Secret;
 import io.opaa.indexing.spi.SourceConnectionBlockedException;
 import io.opaa.indexing.spi.SourceCredentialsRejectedException;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
@@ -59,9 +60,10 @@ import org.springframework.dao.DataIntegrityViolationException;
  * fails the run as interrupted, a {@link SourceConnectionBlockedException} from {@link
  * IndexingRun#credentials} with the block's notice, a {@link SourceCredentialsRejectedException}
  * with its message after telling the port, a {@link LibraryErasureRequestedException} once the
- * library is being erased, a {@link DataIntegrityViolationException} as "library deleted during the
- * run" (the only way a foreign key to the library can break mid-run), any other exception with its
- * own message.
+ * library is being erased, a {@link ConnectionReconnectedException} once the connection was
+ * connected anew since the run began ({@link SourceConnectionResolver#connectionGeneration}), a
+ * {@link DataIntegrityViolationException} as "library deleted during the run" (the only way a
+ * foreign key to the library can break mid-run), any other exception with its own message.
  */
 public class IndexingRunTemplate {
 
@@ -212,10 +214,12 @@ public class IndexingRunTemplate {
     }
     SourceSettings settings;
     String basis;
+    String generation;
     try {
       requireNotErased(library);
       settings = connectionResolver.resolve(library);
       basis = settingsBasis.of(library, settings, connectionResolver.connectedAccount(library));
+      generation = connectionResolver.connectionGeneration(library);
     } catch (LibraryErasureRequestedException e) {
       progress.fail(e.getMessage());
       return;
@@ -243,7 +247,8 @@ public class IndexingRunTemplate {
             settings,
             () -> {
               requireNotErased(library);
-              return connectionResolver.currentSecret(library);
+              return unlessReconnected(
+                  library, generation, connectionResolver.currentSecret(library));
             },
             runMode,
             executor.sourceType(),
@@ -257,7 +262,8 @@ public class IndexingRunTemplate {
                 tokens.discard(rejected);
               }
               requireNotErased(library);
-              return connectionResolver.secretAfterRejection(library, rejected);
+              return unlessReconnected(
+                  library, generation, connectionResolver.secretAfterRejection(library, rejected));
             },
             clock);
     run.bindSettingsBasis(basis, () -> settingsBasis.current(now(library), connectionResolver));
@@ -316,6 +322,11 @@ public class IndexingRunTemplate {
       interrupted = true;
     } catch (LibraryErasureRequestedException e) {
       log.info("Indexing run {} for library {} ended: erasure requested", jobId, library.getId());
+      failed = true;
+      failure = e.getMessage();
+    } catch (ConnectionReconnectedException e) {
+      log.info(
+          "Indexing run {} for library {} ended: connection reconnected", jobId, library.getId());
       failed = true;
       failure = e.getMessage();
     } catch (SourceConnectionBlockedException e) {
@@ -430,6 +441,17 @@ public class IndexingRunTemplate {
     if (libraries != null && libraries.isErasureRequested(library.getId())) {
       throw new LibraryErasureRequestedException();
     }
+  }
+
+  /**
+   * {@code secret}, read before the generation is asked, so a secret of a connection made after the
+   * run began never reaches the run.
+   */
+  private Secret unlessReconnected(KnowledgeLibrary library, String generation, Secret secret) {
+    if (!Objects.equals(generation, connectionResolver.connectionGeneration(library))) {
+      throw new ConnectionReconnectedException();
+    }
+    return secret;
   }
 
   /** A failure to tell the port is logged; it never keeps the run from ending. */

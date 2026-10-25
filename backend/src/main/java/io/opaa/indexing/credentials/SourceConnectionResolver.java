@@ -48,6 +48,15 @@ public interface SourceConnectionResolver {
   }
 
   /**
+   * What changes whenever the connection {@code library} is reached through is connected anew -
+   * perhaps as another account at the provider; {@code null} where the port names none. A run
+   * compares it with the one it began with. Never a secret or an account name.
+   */
+  default String connectionGeneration(KnowledgeLibrary library) {
+    return null;
+  }
+
+  /**
    * The secret {@code library} is reached with now, with its kind, {@code null} for none.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 4, 6 und 9), [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0045](0045-gemeinsamer-datei-abgleich.md) (Entscheidung 9)
 
@@ -37,6 +37,11 @@ Mindestgruppengröße N nur „weniger als N“ (`permission.PersonThreshold`, d
 und ihr Rest je mindestens N Besitzerinnen haben (`PersonThreshold#disclosesPart`). Private Ablagen
 zählen nie in `knownLibraryCount`. `indexing_jobs.failure_category` hält, warum ein Lauf scheiterte,
 ohne Inhaltsbezug.
+
+**Ein Lauf bleibt an die Verbindung gebunden, mit der er begann.** Wird das Konto währenddessen neu
+verbunden (`SourceConnectionResolver#connectionGeneration`), endet der Lauf an seiner nächsten Frage
+nach dem Geheimnis (`ConnectionReconnectedException`, ein `EndsRun`), bevor das neue Geheimnis ihn
+erreicht; eine `404` unter einem anderen Konto entfernt so nichts.
 
 ### 2. Löschung
 
