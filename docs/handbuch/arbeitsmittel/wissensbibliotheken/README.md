@@ -136,8 +136,9 @@ Zusammenfassung und dem Link „Ändern", der die Zeile aufklappt:
 - **Verbindung** — Zugang oder eigene Adresse und die Zugangsdaten, benannt wie beim Anbieter
   (etwa „API-Token", „App-Passwort", „Access Key"). Beim Wechsel in die nächste Zeile testet OPAA
   die Verbindung; die Zusammenfassung nennt Ziel und Ergebnis, etwa „verbunden" oder „Test
-  fehlgeschlagen" mit der Stufe, an der er scheiterte. Nach einem gescheiterten Test geht es mit
-  „Trotzdem fortfahren" weiter.
+  fehlgeschlagen" mit der Stufe, an der er scheiterte: „Adresse", „Anmeldung" oder „Rechte". Bei
+  Quellarten mit fester Adresse, etwa OneDrive oder SharePoint, entfällt die Stufe „Adresse".
+  Nach einem gescheiterten Test geht es mit „Trotzdem fortfahren" weiter.
 - **Umfang** — was die Bibliothek aus der Quelle liest. Bis zu sieben Einträge einer Ebene stehen
   als Kästchen direkt in der Zeile; bei mehr oder bei Unterebenen öffnet der Link
   „`<Objekte>` auswählen …" einen Auswahldialog mit Pfadleiste, Suche ab sieben Einträgen und

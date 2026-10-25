@@ -66,4 +66,9 @@ export interface SourceSetupSpec<V> {
   quietConnection?: boolean
   /** Whether the source signs in at all; without, the check skips the stage „Anmeldung“. */
   signsIn?: boolean
+  /**
+   * Whether the type's address is fixed (SourceTypeDescriptor.serverAddress.fixed): the check
+   * then has no stage „Adresse“, since the person never entered one.
+   */
+  fixedAddress?: boolean
 }

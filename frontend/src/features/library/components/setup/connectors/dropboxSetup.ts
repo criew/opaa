@@ -26,6 +26,7 @@ export const dropboxSetup: SourceSetupSpec<DropboxSourceValues> = {
   },
   labels: { folders: 'Ordner' },
   quietConnection: true,
+  fixedAddress: true,
   rowOf: (field) => (field === 'folders' ? 'scope' : 'connection'),
   probe: (values, fields) =>
     fields.probeRequest({

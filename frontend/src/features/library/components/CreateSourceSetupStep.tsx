@@ -8,6 +8,7 @@ import type {
 } from '@/shared/api/types'
 import type { ConfluenceFullSyncRhythm, LibraryScheduleValues } from '../utils/librarySchedule'
 import ConnectionProfileSelect from './ConnectionProfileSelect'
+import { onlyPersons } from './connectionChoice'
 import SourceConsentPanel from './SourceConsentPanel'
 import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
 import type { SetupRowId, SourceSetupSpec } from './setup/setupTypes'
@@ -129,13 +130,15 @@ export default function CreateSourceSetupStep({
         firstRun={{ value: startFirstRun, onChange: onStartFirstRunChange, hint: firstRunHint }}
         connectionPrelude={prelude}
         connectionLead={connectionLead}
-        // nothing to fill in under „Verbindung“: the first open row is „Umfang“
+        // nothing to fill in under „Verbindung“: the first open row is „Umfang“ - unless the one
+        // way was taken for the person and is private, whose consequence the open row shows
         initialRow={
           initialRow === 'connection' &&
           setup.quietConnection &&
           connectionChoices === 1 &&
           connectionChoice !== null &&
-          !awaitsConsent
+          !awaitsConsent &&
+          !(formContext.privateLibrary && descriptor && onlyPersons(descriptor))
             ? 'scope'
             : initialRow
         }

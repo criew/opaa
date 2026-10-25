@@ -57,12 +57,28 @@ export function selectableConnections(
   ]
 }
 
+/** Whether every sign-in of the type admits only persons: a library of it is always private. */
+export function onlyPersons(descriptor: SourceTypeDescriptor): boolean {
+  return (
+    descriptor.signIns.length > 0 &&
+    descriptor.signIns.every((signIn) =>
+      signIn.ownerships.every((ownership) => ownership === 'PERSON'),
+    )
+  )
+}
+
 /**
  * The choice in effect: `chosen` while it may be chosen, otherwise the first shared way that may -
- * so a choice the answer turned unusable never stays selected, and a private library is only ever
- * chosen explicitly. `null` when no shared way is left.
+ * so a choice the answer turned unusable never stays selected. A private library is chosen
+ * explicitly, unless the type admits only persons and it is the one way (`soleWayPrivate`).
+ * `null` when nothing is left to take.
  */
-export function effectiveConnection(chosen: string | null, selectable: string[]): string | null {
+export function effectiveConnection(
+  chosen: string | null,
+  selectable: string[],
+  soleWayPrivate = false,
+): string | null {
   if (chosen !== null && selectable.includes(chosen)) return chosen
+  if (soleWayPrivate && selectable.length === 1) return selectable[0]
   return selectable.find((key) => privateProfileOf(key) === null) ?? null
 }

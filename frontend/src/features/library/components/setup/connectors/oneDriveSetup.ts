@@ -53,6 +53,7 @@ export const oneDriveSetup: SourceSetupSpec<OneDriveSourceValues> = {
   },
   labels: { drive: 'OneDrive', folders: 'Ordner' },
   quietConnection: true,
+  fixedAddress: true,
   rowOf: (field) => (field === 'folders' ? 'scope' : 'connection'),
   probe: (values, fields) => {
     const settings = oneDriveSettingsOf(values)

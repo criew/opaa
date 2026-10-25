@@ -7,13 +7,15 @@ der die Besitzart „Person“ anbietet; von den mitgelieferten sind das Nextclo
 ([Konnektor Nextcloud](konnektoren/nextcloud.md), „Verbundenes Konto“) und
 [OneDrive](konnektoren/onedrive.md).
 
-**Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
+**Anlegen.** Die Person wählt beim Anlegen „privat“; bei einem Zugang, der Bibliotheken
 und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Im Assistenten steht
 dafür im Schritt „Quelle einrichten“ in der Zeile „Verbindung“ der Zugang mit dem Zusatz
 **„· privat“** und dem Hinweis „nur für Sie, später nicht änderbar“. Diese Zeile erscheint nur für
 Zugänge, auf denen die Person bereits ein verbundenes Konto hat; ohne ein solches Konto gibt es sie
-nicht und auch keinen Hinweis darauf. OPAA wählt sie nie von selbst, auch nicht, wenn sie der
-einzige Weg ist. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: als teilbare
+nicht und auch keinen Hinweis darauf. OPAA wählt sie nicht von selbst, auch nicht, wenn sie der
+einzige Weg ist. Ausgenommen ist eine Quellart, die nur Personen zulässt, etwa OneDrive: Ist dort die
+private Zeile der einzige Weg, ist sie schon gewählt und steht ohne Auswahlknopf da, mit demselben
+Hinweis. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: als teilbare
 Bibliothek und als private. Ein Zugang nur für Personen steht nur als private Zeile; über ihn ist auch die Quellart wählbar, wenn es sonst keinen Weg zu ihr gibt. Für die
 private gibt es kein Feld für Zugangsdaten, und der Schritt „Freigaben“ entfällt. Vorausgesetzt
 sind:
