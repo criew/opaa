@@ -111,11 +111,45 @@ löscht sie. **Wer verwaltet**, ändert darüber hinaus Verbindung, Umfang und Z
 und vergibt Rechte. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht löschen;
 der nächste Lauf brächte sie zurück.
 
+**Der Zustand im Kopf** ist ein einziges Wort mit Datum oder Fortschritt, etwa „Aktuell · 23.10.2026",
+„Läuft · 40 %", „Teilweise fehlgeschlagen", „Anmeldung abgelehnt", „Nicht erreichbar",
+„Zustimmung abgelaufen", „Noch nie indiziert" oder bei einem Upload „Hochgeladen" und „Kontingent
+voll". Wird die Quelle nicht mehr erreicht, nennt das Wort den Grund wie die Kachel im Katalog,
+etwa „Gesperrt", „Zugang entfernt", „Verbindung getrennt" oder „Anmeldung abgelaufen". Wer verwaltet, kommt mit
+einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum neuesten Lauf im Reiter
+„Quelle". Wer nur liest oder bearbeitet, sieht das Wort ohne Verweis; den Verlauf der Läufe sehen
+erst Verwaltende. Das Wort kommt dann aus dem Stand des letzten Laufs, mit fehlgeschlagenen
+Dokumenten und Unvollständigkeit; den Grund eines Abbruchs, etwa eine abgelehnte Anmeldung oder
+ein erschöpftes Kontingent, erfahren erst Verwaltende, darunter heißt er „Fehlgeschlagen“ bzw.
+„Teilweise fehlgeschlagen“. Bei einer Quelle ohne Anmeldung (Verzeichnis, Web, Feed) heißt ein
+abgebrochener Lauf für alle Rollen „Nicht erreichbar“.
+
+**Nach dem Anlegen** zeigt die Detailansicht unter den Reitern „Nächste Schritte": „Zugang prüfen",
+„In Space verwenden", bei Confluence und S3 „Live-Abgleich einrichten", „Feld anlegen", beim Upload
+„Dateien hochladen". Ein Schritt ist abgehakt, sobald er erledigt ist, „Zugang prüfen" erst nach
+einem Lauf, der die Quelle gelesen hat. „Ausblenden" blendet den Block dauerhaft aus; sind alle
+Schritte erledigt, verschwindet er von selbst.
+
+Im Reiter „Dokumente" sucht „Dateiname enthält …" in der ganzen Bibliothek, der Filter „Metadaten"
+zeigt die Dokumente ohne Wert in einem Feld. Die Aktionen einer Zeile, etwa „Löschen", stehen in
+ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine Meldung sie; „Schließen" faltet sie zu
+„Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
+
 Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ändern" klappt sie auf,
 „Speichern" übernimmt die Änderung, „Abbrechen" verwirft sie. Wo der Umfang nur im Auswahldialog
 gewählt wird, wie bei SharePoint, öffnet „Ändern" gleich den Dialog, und „Übernehmen" speichert
-sofort. Bei Quellen wie Confluence, S3 oder Nextcloud steht unter den Zeilen, auch für Lesende,
-dass alles daraus Indizierte für alle Leseberechtigten der Bibliothek sichtbar ist.
+sofort. Jede Zeile trägt, was die Läufe über sie wissen, etwa „Anmeldung ok · zuletzt 23.10.2026"
+an der Verbindung oder „2 nicht lesbar" am Umfang. Bei Confluence und S3 folgt die Zeile
+„Live-Abgleich" mit Webhook bzw. Ereignissen ([Konnektoren](konnektoren/README.md)). Bei Quellen wie
+Confluence, S3 oder Nextcloud steht unter den Zeilen, auch für Lesende, dass alles daraus Indizierte
+für alle Leseberechtigten der Bibliothek sichtbar ist.
+
+Darunter stehen für die Verwaltenden die **Läufe** als Tabelle mit Zustand, Beginn, Dauer, Auslöser
+und Ergebnis. Eine Zeile klappt auf und zeigt die Fundorte je Kategorie des Laufprotokolls
+(Abschnitt 6.2), „alle n anzeigen" öffnet die vollständige Liste, „Technische Angaben" die
+Kennzahlen. Ein an der Verbindung gescheiterter Lauf führt mit „Verbindung ändern ›" zur Zeile
+„Verbindung". Ab fünf Läufen grenzt „Alle · Nur mit Fehlern (n)" die Tabelle ein, sofern das etwas
+weglässt. Bei Quellen mit Vollabgleich steht dort auch „Vollabgleich starten".
 
 ### 3.3 Eine Wissensbibliothek anlegen
 
@@ -174,7 +208,7 @@ Anbieter die Erlaubnis beendet, und kann neu verbinden.
 
 | Auslöser | Beschreibung |
 |---|---|
-| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" im Menü „Weitere Aktionen" |
+| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten": für Verwaltende über den Läufen im Reiter „Quelle", für Bearbeitende im Menü „Weitere Aktionen" |
 | Zeitplan | je Bibliothek einstellbar (Abschnitt 4.2) |
 | Ereignis der Quelle | manche Quellen melden Änderungen selbst, etwa Confluence per Webhook oder ein Objektspeicher per Benachrichtigung; OPAA holt kurz darauf genau die gemeldeten Dokumente. Ersetzt weder Zeitplan noch Vollabgleich |
 | Nachzug | kein regulärer Lauf: Die Systemverwaltung lässt Dokumente neu verarbeiten, die mit einem älteren Verfahren entstanden sind (Abschnitt 7.2) |
@@ -226,8 +260,9 @@ heißt, dass der Lauf als Ganzes nicht zu Ende kam.
 
 Während ein Lauf läuft, fragt die Detailansicht seinen Stand regelmäßig ab. Ein einzelner
 Abruffehler, etwa während eines Updates, ändert die Anzeige nicht. Die Seite fragt danach in
-wachsenden Abständen erneut. Scheitern mehrere Abrufe in Folge, zeigt sie „Status unbekannt" mit
-„Erneut versuchen", nie „Fehlgeschlagen": Der Lauf selbst kann weiterlaufen. Bricht ebenso das
+wachsenden Abständen erneut. Scheitern mehrere Abrufe in Folge, heißt der Zustand im Kopf „Läuft ·
+Stand unbekannt", daneben steht für jede Rolle „Stand erneut abrufen", nie „Fehlgeschlagen": Der
+Lauf selbst kann weiterlaufen. Bricht ebenso das
 automatische Aktualisieren der Dokumentliste ab, zeigt die Liste einen Hinweis mit „Aktualisieren".
 
 Ein Lauf kann abgeschlossen und trotzdem **unvollständig** sein: wenn er sein Anfragebudget

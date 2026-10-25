@@ -8,14 +8,16 @@ import java.util.regex.Pattern;
 /**
  * One citation marker {@code 【source: <documentId>#<chunk> | <fileName>】} as it literally appears
  * in an answer text. {@link #PATTERN} is the one definition of the marker syntax that the answer
- * pipeline and the transcript import share.
+ * pipeline and the transcript import share. The file name ends at the next bracket or line end,
+ * like {@link #CLAIMED_PATTERN}'s body, so a match attempt never scans past the next marker; its
+ * surrounding blanks are trimmed by {@link #parse}.
  *
  * @param chunkIndex {@code -1} when the digits do not fit an {@code int}
  */
 public record CitationMarker(String documentId, int chunkIndex, String fileName) {
 
   public static final Pattern PATTERN =
-      Pattern.compile("【source:\\s*([a-zA-Z0-9\\-]+)#(\\d+)\\s*\\|\\s*(.+?)】");
+      Pattern.compile("【source:\\s*([a-zA-Z0-9\\-]+)#(\\d+)\\s*\\|([^】【\\r\\n]+)】");
 
   /**
    * Everything that presents itself as a marker, well-formed or not - a superset of {@link

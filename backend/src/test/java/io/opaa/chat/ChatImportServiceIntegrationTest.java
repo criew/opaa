@@ -351,24 +351,19 @@ class ChatImportServiceIntegrationTest {
 
   @Test
   void aMarkerTheBelegfensterReadsButTheImportCannotParseIsRefused() {
-    // The Belegfenster's JavaScript \s and . accept characters Java's do not: a no-break space
-    // after "source:" and U+0085 inside the file name. Both markers point at no source of the turn.
+    // The Belegfenster's JavaScript \s accepts a no-break space after "source:", Java's does not.
+    // The marker points at no source of the turn.
     String noBreakSpace =
         "【source: " + UUID.randomUUID() + "#0 | 01_verwaltungsgebuehrensatzung.pdf】";
-    String nextLineInName =
-        "【source: " + UUID.randomUUID() + "#0 | 01_verwaltungs\u0085satzung.pdf】";
+    ChatImport transcript =
+        new ChatImport(
+            "unlesbare-marke",
+            "Unlesbare Marke",
+            List.of(citingTurn("Frage", "Antwort" + noBreakSpace, FIRST_ASKED, satzung)));
 
-    for (String foreignMarker : List.of(noBreakSpace, nextLineInName)) {
-      ChatImport transcript =
-          new ChatImport(
-              "unlesbare-marke",
-              "Unlesbare Marke",
-              List.of(citingTurn("Frage", "Antwort" + foreignMarker, FIRST_ASKED, satzung)));
-
-      assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, transcript))
-          .isInstanceOf(ValidationException.class)
-          .hasMessage(ChatImportService.UNMATCHED_MARKER);
-    }
+    assertThatThrownBy(() -> chatImportService.importChat(spaceId, author, transcript))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(ChatImportService.UNMATCHED_MARKER);
     assertThat(chatCountOf(author)).isZero();
   }
 

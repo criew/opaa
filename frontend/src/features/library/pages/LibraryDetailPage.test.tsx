@@ -77,7 +77,6 @@ const {
   mockGetDocumentMetadata,
   mockBulkSetDocumentMetadata,
   mockGetDocumentTypeVocabulary,
-  mockGetLibraryMetadataMaintenance,
   mockSetDocumentMetadataValue,
   mockBulkDeleteLibraryDocuments,
   mockTestLibrarySource,
@@ -97,39 +96,6 @@ const {
     origin: 'MANUAL',
     actorDisplayName: 'Max Mustermann',
     updatedAt: '2026-09-04T10:00:00Z',
-  })),
-  mockGetLibraryMetadataMaintenance: vi.fn(async (libraryId: string) => ({
-    libraryId,
-    totalDocuments: 4,
-    fields: [
-      {
-        fieldKey: 'title',
-        label: 'Titel',
-        totalDocuments: 4,
-        documentsWithoutValue: 0,
-        missingShare: 0,
-        filledDocuments: 4,
-        notDeterminableDocuments: 0,
-      },
-      {
-        fieldKey: 'document_type',
-        label: 'Dokumentart',
-        totalDocuments: 4,
-        documentsWithoutValue: 3,
-        missingShare: 0.75,
-        filledDocuments: 1,
-        notDeterminableDocuments: 0,
-      },
-      {
-        fieldKey: 'document_date',
-        label: 'Datum/Stand',
-        totalDocuments: 4,
-        documentsWithoutValue: 0,
-        missingShare: 0,
-        filledDocuments: 3,
-        notDeterminableDocuments: 1,
-      },
-    ],
   })),
   mockGetDocumentMetadata: vi.fn(async (_libraryId: string, documentId: string) => ({
     documentId,
@@ -228,7 +194,6 @@ vi.mock('../api/libraryMetadataApi', async () => {
     getDocumentMetadata: mockGetDocumentMetadata,
     bulkSetDocumentMetadata: mockBulkSetDocumentMetadata,
     getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
-    getLibraryMetadataMaintenance: mockGetLibraryMetadataMaintenance,
     setDocumentMetadataValue: mockSetDocumentMetadataValue,
   }
 })
@@ -296,6 +261,42 @@ function detailsOf(
 /** The „Ändern“ link of a row of the Reiter „Quelle“; its hidden part names the row. */
 function changeButton(row: 'Verbindung' | 'Umfang' | 'Zeitplan') {
   return screen.getByRole('button', { name: new RegExp(`^Ändern\\s*${row}$`) })
+}
+
+/** The rows of the run list in the Reiter „Quelle“, newest first. */
+async function runRows(): Promise<HTMLElement[]> {
+  const list = await screen.findByRole('list', { name: 'Läufe' })
+  await waitFor(() => expect(list.querySelector(':scope > li')).not.toBeNull())
+  return Array.from(list.querySelectorAll<HTMLElement>(':scope > li'))
+}
+
+/** Opens a run row; its detail appears inside the same list entry. */
+async function openRun(user: ReturnType<typeof userEvent.setup>, row: HTMLElement) {
+  const toggle = row.querySelector<HTMLElement>('[data-run-row]')
+  expect(toggle).not.toBeNull()
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await user.click(toggle as HTMLElement)
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+}
+
+/** The lines behind „Technische Angaben“ of an opened run. */
+async function technicalDetails(user: ReturnType<typeof userEvent.setup>, row: HTMLElement) {
+  const disclosure = within(row).getByRole('button', { name: 'Technische Angaben' })
+  await user.click(disclosure)
+  return document.getElementById(disclosure.getAttribute('aria-controls') ?? '') as HTMLElement
+}
+
+/** A plain indexed upload: a library with it is not empty, so its list and actions show. */
+const someDocument: LibraryDocumentResponse = {
+  id: 'document-some',
+  fileName: 'vorhanden.pdf',
+  contentType: 'application/pdf',
+  fileSize: 100,
+  status: 'INDEXED',
+  sourceType: 'UPLOAD',
+  chunkCount: 1,
+  indexedAt: '2026-03-01T10:00:00Z',
+  uploadedByUserId: 'u1',
 }
 
 function setLibraryState(library: LibraryListResponse, details: LibraryResponse) {
@@ -395,9 +396,15 @@ describe('LibraryDetailPage', () => {
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(
-        await screen.findByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
-      ).toBeInTheDocument()
+      // the derivation is a row whose „Anzeigen“ opens it on demand
+      expect(await screen.findByRole('heading', { name: 'Herleitung' })).toBeInTheDocument()
+      const show = screen.getByRole('button', { name: /^Anzeigen\s*Herleitung$/ })
+      expect(show).toHaveAttribute('aria-expanded', 'false')
+      await user.click(show)
+      expect(screen.getByRole('button', { name: /^Schließen\s*Herleitung$/ })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
       // The associations have a tab of their own.
       expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
@@ -411,9 +418,9 @@ describe('LibraryDetailPage', () => {
       })
 
       expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Zuordnungen')
-      expect(
-        screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }),
-      ).toBeInTheDocument()
+      const panel = screen.getByRole('tabpanel', { name: 'Zuordnungen' })
+      expect(within(panel).getByRole('heading', { name: 'Spaces' })).toBeInTheDocument()
+      expect(within(panel).getByRole('button', { name: 'In Space verwenden' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
     })
 
@@ -426,9 +433,7 @@ describe('LibraryDetailPage', () => {
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(
-        await screen.findAllByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
-      ).toHaveLength(1)
+      expect(await screen.findAllByRole('heading', { name: 'Herleitung' })).toHaveLength(1)
     })
 
     // ADR-0038: a type the backend has a connector for but this client no form - shown as not
@@ -554,15 +559,15 @@ describe('LibraryDetailPage', () => {
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    expect(
-      await screen.findByText(/3([.,]0)? GB von 10([.,]0)? GB Speicherkontingent belegt/i),
-    ).toBeInTheDocument()
+    // a figure of the head; what it counts stands in its tooltip
+    const figure = await screen.findByText(/^3([.,]0)? GB von 10([.,]0)? GB$/i)
+    expect(figure).toHaveAttribute('title', 'Belegtes Speicherkontingent dieser Bibliothek')
     unmount()
 
     setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByText(/Speicherkontingent belegt/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/ GB von /i)).not.toBeInTheDocument()
   })
 
   it('offers editing but not deleting for a MANAGER', async () => {
@@ -681,21 +686,30 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // The Diagnosesperre state and its control - visible to everyone who can read the
-  // library, but only the "Sperre lösen"/"Sperre setzen" button is scoped to an OWNER.
+  // The Diagnosesperre is the row „Suchdiagnose“ of the Reiter „Freigaben“ - shown to every
+  // reader, but only its „Entsperren“/„Sperren“ is scoped to the responsible body.
   describe('Diagnosesperre (#1257)', () => {
-    it('shows the locked state and an explanation, without a control, for a MANAGER', async () => {
+    async function openSharing(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+      return screen.findByRole('region', { name: 'Suchdiagnose' })
+    }
+
+    it('shows the locked state, without a control, for a MANAGER', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary, { diagnosticsLocked: true }))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await screen.findByText('Diagnose gesperrt')).toBeInTheDocument()
-      expect(
-        screen.getByText(/im rechtekontext einer anderen person ausgeschlossen/i),
-      ).toBeInTheDocument()
-      expect(screen.getByText(/nur die für die bibliothek zuständige stelle/i)).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: /diagnosesperre lösen/i }),
-      ).not.toBeInTheDocument()
+      const row = await openSharing(userEvent.setup())
+      expect(row).toHaveTextContent('Gesperrt für Suchdiagnosen anderer')
+      expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('shows a VIEWER the lock read-only, without a text action', async () => {
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary, { diagnosticsLocked: true }))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const row = await openSharing(userEvent.setup())
+      expect(row).toHaveTextContent('Gesperrt für Suchdiagnosen anderer')
+      expect(within(row).queryByRole('button')).not.toBeInTheDocument()
     })
 
     // A system admin's myRole bypasses to OWNER unconditionally
@@ -713,10 +727,9 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await screen.findByText('Diagnose gesperrt')).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: /diagnosesperre lösen/i }),
-      ).not.toBeInTheDocument()
+      const row = await openSharing(userEvent.setup())
+      expect(row).toHaveTextContent('Gesperrt für Suchdiagnosen anderer')
+      expect(within(row).queryByRole('button')).not.toBeInTheDocument()
     })
 
     it('lets an OWNER lift the lock, updating the shown state', async () => {
@@ -738,12 +751,13 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
+      const row = await openSharing(user)
+      await user.click(within(row).getByRole('button', { name: /^Entsperren\s*Suchdiagnose$/ }))
 
-      expect(await screen.findByText('Diagnose freigegeben')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /diagnosesperre setzen/i })).toBeInTheDocument()
+      await waitFor(() => expect(row).toHaveTextContent('Nicht gesperrt'))
+      expect(
+        within(row).getByRole('button', { name: /^Sperren\s*Suchdiagnose$/ }),
+      ).toBeInTheDocument()
     })
 
     it('shows the backend 403 message in German when the caller is not the responsible body', async () => {
@@ -766,9 +780,8 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
-      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
+      const row = await openSharing(user)
+      await user.click(within(row).getByRole('button', { name: /^Entsperren\s*Suchdiagnose$/ }))
 
       expect(
         await screen.findByText(
@@ -776,7 +789,7 @@ describe('LibraryDetailPage', () => {
         ),
       ).toBeInTheDocument()
       // The optimistic toggle must not have gone through - the state stays locked.
-      expect(screen.getByText('Diagnose gesperrt')).toBeInTheDocument()
+      expect(row).toHaveTextContent('Gesperrt für Suchdiagnosen anderer')
     })
   })
 
@@ -808,7 +821,8 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByText('Privat')).not.toBeInTheDocument()
     })
 
-    it('drops rights, external access and transfer from „Freigaben“ and says why', async () => {
+    // no lasting note in the tab (the head's mark says „Privat“): owner and lock rows only
+    it('drops rights, external access, transfer and derivation from „Freigaben“', async () => {
       setLibraryState(
         privateLibrary,
         detailsOf(privateLibrary, {
@@ -823,12 +837,13 @@ describe('LibraryDetailPage', () => {
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(await screen.findByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
-      expect(screen.getByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Diagnosesperre' })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Private Bibliothek – nur Sie sehen sie')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Suchdiagnose' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Berechtigungen' })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Herleitung' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Übergeben/ })).not.toBeInTheDocument()
       expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
     })
   })
@@ -935,7 +950,11 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     expect(await screen.findByText('dienstanweisung.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /dateien hochladen/i })).toBeInTheDocument()
+    // the head's one action opens the file and folder pickers
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Hochladen' }))
+    expect(await screen.findByRole('menuitem', { name: 'Dateien auswählen …' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Ordner auswählen …' })).toBeInTheDocument()
     expect(screen.queryByText(/quellkonfiguration/i)).not.toBeInTheDocument()
   })
 
@@ -964,8 +983,13 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
 
     await screen.findByText('unlesbar.pdf')
-    const statusChip = screen.getByText('fehlgeschlagen')
-    await user.hover(statusChip)
+    // the state column's mark carries the tooltip and takes the keyboard focus for it
+    const statusMark = screen
+      .getAllByText('Fehlgeschlagen')
+      .map((word) => word.closest('[tabindex="0"]'))
+      .find((mark) => mark !== null)
+    expect(statusMark).toBeDefined()
+    await user.hover(statusMark as HTMLElement)
 
     expect(
       await screen.findByText('Aus der Datei konnte kein Text extrahiert werden'),
@@ -1041,8 +1065,9 @@ describe('LibraryDetailPage', () => {
 
     await screen.findByText('dienstanweisung-2024.pdf')
     await user.click(
-      screen.getByRole('button', { name: /dokument dienstanweisung-2024\.pdf löschen/i }),
+      screen.getByRole('button', { name: 'Aktionen für Dokument dienstanweisung-2024.pdf' }),
     )
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, 'Dokument "dienstanweisung-2024.pdf" löschen?', 'Löschen')
 
     await waitFor(() => {
@@ -1127,7 +1152,8 @@ describe('LibraryDetailPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     // the row „Umfang“ lists the scopes with one path separator and counts the patterns
     const scope = screen.getByRole('region', { name: 'Umfang' })
-    expect(scope).toHaveTextContent('2 Buckets und Präfixe · 1 Muster')
+    expect(scope).toHaveTextContent('2 Buckets und Präfixe')
+    expect(scope).toHaveTextContent('nur **/*.pdf')
     expect(scope).toHaveTextContent('protokolle / 2025')
     expect(scope).toHaveTextContent('satzungen')
     expect(screen.getByRole('region', { name: 'Verbindung' })).toHaveTextContent(
@@ -1172,7 +1198,7 @@ describe('LibraryDetailPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     // the row „Verbindung“ names host and edition, the row „Umfang“ the spaces
     expect(await screen.findByRole('region', { name: 'Verbindung' })).toHaveTextContent(
-      'wiki.behoerde.example · Data Center',
+      /wiki\.behoerde\.example.*Data Center/,
     )
     expect(screen.getByRole('region', { name: 'Umfang' })).toHaveTextContent('1 SpaceBauamt')
 
@@ -1205,9 +1231,13 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    // the full reconciliation sits in the „…“ menu, „Jetzt indizieren“ stays in the head
-    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Vollabgleich starten' }))
+    // the full reconciliation is the action of the section „Läufe“, „Jetzt indizieren“ stays in
+    // the head
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    const runsSection = await screen.findByRole('region', { name: 'Läufe' })
+    await user.click(
+      await within(runsSection).findByRole('button', { name: 'Vollabgleich starten' }),
+    )
     expect(mockTrigger).toHaveBeenCalledWith(ownerLibrary.id, 'CONFLUENCE', 'FULL')
     await user.click(screen.getByRole('button', { name: 'Jetzt indizieren' }))
     expect(mockTrigger).toHaveBeenLastCalledWith(ownerLibrary.id, 'CONFLUENCE')
@@ -1225,12 +1255,136 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     await screen.findByRole('button', { name: 'Jetzt indizieren' })
-    expect(screen.queryByRole('menuitem', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
-    const more = screen.queryByRole('button', { name: 'Weitere Aktionen' })
-    if (more) {
-      await user.click(more)
-      expect(screen.queryByRole('menuitem', { name: 'Vollabgleich starten' })).toBeNull()
-    }
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    await screen.findByRole('region', { name: 'Läufe' })
+    await screen.findByRole('list', { name: 'Läufe' })
+    expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    expect(screen.queryByRole('menuitem', { name: 'Vollabgleich starten' })).toBeNull()
+  }, 15000)
+
+  it('offers a full reconciliation to an EDITOR in „⋯“, who sees no runs', async () => {
+    const mockTrigger = vi.fn().mockResolvedValue(undefined)
+    useIndexingStore.setState({ triggerIndexing: mockTrigger })
+    const editorLibrary = { ...managerLibrary, myRole: 'EDITOR' as const }
+    setLibraryState(
+      editorLibrary,
+      detailsOf(editorLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Vollabgleich starten' }))
+    expect(mockTrigger).toHaveBeenCalledWith(editorLibrary.id, 'CONFLUENCE', 'FULL')
+    await user.click(screen.getByRole('tab', { name: 'Quelle' }))
+    expect(screen.queryByRole('region', { name: 'Läufe' })).not.toBeInTheDocument()
+  })
+
+  // regression guard: the run history answers from MANAGER on only - a reader's head read
+  // „Noch nie indiziert“ from the refused history
+  it('reads the head state of a VIEWER from the polled status, never asking for the runs', async () => {
+    let runsAsked = false
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () => {
+        runsAsked = true
+        return HttpResponse.json({ error: 'verboten' }, { status: 403 })
+      }),
+    )
+    const reader = { ...viewerLibrary, sourceType: 'NEXTCLOUD' as const }
+    setLibraryState(
+      { ...reader, lastRunStatus: 'COMPLETED', lastIndexedAt: '2026-10-22T06:07:00Z' },
+      detailsOf(reader, { sourceType: 'NEXTCLOUD', sourceUrl: 'https://cloud.example' }),
+    )
+    mockGetIndexingStatus.mockResolvedValueOnce({
+      status: 'COMPLETED',
+      documentCount: 3,
+      totalDocuments: 3,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 3,
+      message: null,
+      timestamp: '2026-10-22T06:07:00Z',
+    } as IndexingStatusResponse)
+
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const state = await screen.findByTestId('library-state')
+    await waitFor(() => expect(state).toHaveTextContent(/^Aktuell\s*· 22\.10\.2026$/))
+    expect(within(state).queryByRole('link')).not.toBeInTheDocument()
+    expect(runsAsked).toBe(false)
+  })
+
+  // regression guard: below MANAGER the head read only COMPLETED/FAILED and showed a run with
+  // failed documents as „Aktuell“
+  it.each([
+    ['VIEWER', { status: 'COMPLETED', documentsFailed: 2 }, /^Teilweise fehlgeschlagen/],
+    ['EDITOR', { status: 'COMPLETED', incomplete: true }, /^Teilweise fehlgeschlagen/],
+    // a quota ends a run incomplete; the category itself is withheld below MANAGER
+    ['VIEWER', { status: 'COMPLETED', incomplete: true, failureCategory: null }, /^Teilweise/],
+    ['EDITOR', { status: 'FAILED', failureCategory: null }, /^Fehlgeschlagen/],
+    // should the category ever reach such a caller, the word follows it as for a manager
+    [
+      'EDITOR',
+      { status: 'FAILED', failureCategory: 'CREDENTIALS_REJECTED' },
+      /^Anmeldung abgelehnt/,
+    ],
+    [
+      'VIEWER',
+      { status: 'COMPLETED', incomplete: true, failureCategory: 'QUOTA_EXHAUSTED' },
+      /^Kontingent voll/,
+    ],
+  ] as const)(
+    'reads the word of the newest run for an %s from the polled status %j',
+    async (role, outcome, word) => {
+      const library = { ...viewerLibrary, myRole: role, sourceType: 'NEXTCLOUD' as const }
+      setLibraryState(
+        library,
+        detailsOf(library, { sourceType: 'NEXTCLOUD', sourceUrl: 'https://cloud.example' }),
+      )
+      mockGetIndexingStatus.mockResolvedValueOnce({
+        documentCount: 10,
+        totalDocuments: 12,
+        documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 10,
+        message: null,
+        timestamp: '2026-10-22T06:07:00Z',
+        ...outcome,
+      } as IndexingStatusResponse)
+
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const state = await screen.findByTestId('library-state')
+      await waitFor(() => expect(state).toHaveTextContent(word))
+    },
+  )
+
+  it('names a locked source in the head and leads to the row „Verbindung“', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'NEXTCLOUD',
+        sourceUrl: 'https://cloud.example',
+        sourceBlock: {
+          reason: 'PROFILE_LOCKED',
+          notice: 'Gesperrt – Inhalt wird nicht mehr aktualisiert.',
+          responsible: 'die Systemverwaltung',
+        } as LibraryResponse['sourceBlock'],
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const state = await screen.findByTestId('library-state')
+    await waitFor(() => expect(state).toHaveTextContent(/^Gesperrt$/))
+    expect(within(state).getByRole('link', { name: 'Gesperrt' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/tab=quelle#verbindung$/),
+    )
   })
 
   it('marks an incomplete run and shows its cost figures (#1141)', async () => {
@@ -1285,15 +1439,22 @@ describe('LibraryDetailPage', () => {
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(await screen.findByTestId('run-incomplete-run-budget')).toHaveTextContent(
-      'unvollständig, wird fortgesetzt',
+    // the row: an incomplete run is partly failed, its result says „unvollständig“
+    const [row] = await runRows()
+    expect(row).toHaveTextContent('Teilweise fehlgeschlagen')
+    expect(row).toHaveTextContent('430 Dokumente · unvollständig')
+    expect(row).toHaveTextContent('12 min')
+    await openRun(user, row)
+    expect(within(row).getByText('Anfragebudget erschöpft · 1')).toBeInTheDocument()
+    const technical = await technicalDetails(user, row)
+    expect(technical).toHaveTextContent('Auslöser: per Zeitplan · Vollabgleich')
+    expect(technical).toHaveTextContent(
+      '1.000 Anfragen an die Quelle · 2-mal gedrosselt (45 s) · 700 MB geladen',
     )
-    expect(screen.getByText('per Zeitplan')).toBeInTheDocument()
-    expect(screen.getByTestId('run-metrics-run-budget')).toHaveTextContent(
-      '1000 Anfragen an die Quelle · 2-mal gedrosselt (45 s gewartet) · 700 MB geladen · Anhänge: 30 indiziert, 5 übersprungen, 1 fehlgeschlagen · Dauer 12 min 30 s',
-    )
-    expect(screen.getByText('Anfragebudget erschöpft')).toBeInTheDocument()
+    expect(technical).toHaveTextContent('Anhänge: 30 indiziert · 5 übersprungen · 1 fehlgeschlagen')
   })
 
   it('shows only attachments and duration for a run of a source without a request meter', async () => {
@@ -1336,13 +1497,16 @@ describe('LibraryDetailPage', () => {
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    const line = await screen.findByTestId('run-metrics-run-filesystem')
-    expect(line).toHaveTextContent(
-      'Anhänge: 3 indiziert, 1 übersprungen, 0 fehlgeschlagen · Dauer 0 min 42 s',
-    )
-    expect(line).not.toHaveTextContent('Anfragen an die Quelle')
-    expect(line).not.toHaveTextContent('gedrosselt')
+    const [row] = await runRows()
+    expect(row).toHaveTextContent('42 s')
+    await openRun(user, row)
+    const technical = await technicalDetails(user, row)
+    expect(technical).toHaveTextContent('Anhänge: 3 indiziert · 1 übersprungen · 0 fehlgeschlagen')
+    expect(technical).not.toHaveTextContent('Anfragen an die Quelle')
+    expect(technical).not.toHaveTextContent('gedrosselt')
   })
 
   it('names how many areas a run could not read (#2128)', async () => {
@@ -1375,12 +1539,18 @@ describe('LibraryDetailPage', () => {
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(await screen.findByTestId('run-unreadable-run-two')).toHaveTextContent(
-      '2 Bereiche nicht lesbar',
-    )
-    expect(screen.getByTestId('run-unreadable-run-one')).toHaveTextContent('1 Bereich nicht lesbar')
-    expect(screen.queryByTestId('run-unreadable-run-none')).not.toBeInTheDocument()
+    const [two, one, none] = await runRows()
+    expect(two).toHaveTextContent('12 Dokumente · 2 nicht lesbar')
+    expect(one).toHaveTextContent('12 Dokumente · 1 nicht lesbar')
+    expect(none).not.toHaveTextContent('nicht lesbar')
+    // without names the opened run counts the unreadable areas
+    await openRun(user, two)
+    expect(within(two).getByText('2 Bereiche der Quelle nicht lesbar')).toBeInTheDocument()
+    await openRun(user, one)
+    expect(within(one).getByText('Ein Bereich der Quelle nicht lesbar')).toBeInTheDocument()
   })
 
   it('shows the webhook row to a manager of a Confluence library only (#1140)', async () => {
@@ -1397,6 +1567,10 @@ describe('LibraryDetailPage', () => {
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    // the row „Live-Abgleich“ names the webhook and opens its setup
+    const live = await screen.findByRole('region', { name: 'Live-Abgleich' })
+    expect(live).toHaveTextContent('an, über den Webhook')
+    await user.click(within(live).getByRole('button', { name: /^Ändern\s*Live-Abgleich$/ }))
     expect(await screen.findByTestId('confluence-webhook-section')).toHaveTextContent(
       /Webhook:.*eingerichtet/,
     )
@@ -1440,7 +1614,8 @@ describe('LibraryDetailPage', () => {
       detailsOf(viewerLibrary, { sourceType: 'RSS_FEED', sourceUrl: 'https://example.org/feed' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByText(/nur Leserechte/)
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Quelle' }))
+    await screen.findByText(/sehen nur Verwaltende/)
     expect(screen.queryByTestId('confluence-sharing-consequence')).not.toBeInTheDocument()
   })
 
@@ -1471,11 +1646,12 @@ describe('LibraryDetailPage', () => {
     } as IndexingStatusResponse)
 
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(await screen.findByTestId('confluence-incomplete-listing-warning')).toHaveTextContent(
-      'Der letzte Vollabgleich konnte den Space Sicherheit (SEC) nicht vollständig lesen; sein' +
-        ' Bestand ist möglicherweise veraltet.',
-    )
+    // the row „Umfang“ marks the unreadable space for every reader, and only that one
+    const scope = await screen.findByRole('region', { name: 'Umfang' })
+    await waitFor(() => expect(scope).toHaveTextContent(/Sicherheit\s*nicht lesbar/))
+    expect(scope).not.toHaveTextContent(/Engineering\s*nicht lesbar/)
   })
 
   it('names an S3 scope the last full sync could not list, for every reader (#1378)', async () => {
@@ -1509,11 +1685,11 @@ describe('LibraryDetailPage', () => {
     } as IndexingStatusResponse)
 
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(await screen.findByTestId('s3-incomplete-listing-warning')).toHaveTextContent(
-      'Der letzte Vollabgleich konnte den Geltungsbereich „geheim/intern/“ nicht auflisten; sein' +
-        ' Bestand ist möglicherweise veraltet.',
-    )
+    const scope = await screen.findByRole('region', { name: 'Umfang' })
+    await waitFor(() => expect(scope).toHaveTextContent(/geheim \/ intern\s*nicht lesbar/))
+    expect(scope).not.toHaveTextContent(/dokumente\s*nicht lesbar/)
   })
 
   it('shows no incomplete-listing warning while the assessment is clean (#1191)', async () => {
@@ -1608,12 +1784,15 @@ describe('LibraryDetailPage', () => {
 
     // the next run follows the schedule in its row, in the time zone of the browser
     const nextRun = new Date('2026-03-02T03:30:00Z').toLocaleString('de-DE', {
-      dateStyle: 'short',
-      timeStyle: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     })
-    expect(await screen.findByRole('region', { name: 'Zeitplan' })).toHaveTextContent(
-      `täglich 03:30 · nächster Lauf ${nextRun}`,
-    )
+    const row = await screen.findByRole('region', { name: 'Zeitplan' })
+    expect(row).toHaveTextContent('täglich 03:30')
+    expect(row).toHaveTextContent(`nächster Lauf ${nextRun}`)
   })
 
   it('shows no banner when the last two scheduled runs failed; the runs themselves say so', async () => {
@@ -1777,26 +1956,56 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  /** One completed run of the run history, with the given counts. */
+  function serveCompletedRun(counts: {
+    documentCount: number
+    totalDocuments: number
+    documentsSkipped: number
+    documentsIndexedTotal: number
+  }) {
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            {
+              id: 'run-done',
+              status: 'COMPLETED',
+              triggeredBy: 'MANUAL',
+              runMode: 'FULL',
+              documentsFailed: 0,
+              message: null,
+              startedAt: '2026-03-01T09:00:00Z',
+              completedAt: '2026-03-01T09:01:00Z',
+              events: [],
+              eventsTruncatedCount: 0,
+              ...counts,
+            },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+  }
+
   it('shows the plain document wording for a completed FILESYSTEM run', async () => {
     setLibraryState(
       managerLibrary,
       detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
-    mockGetIndexingStatus.mockResolvedValueOnce({
-      status: 'COMPLETED',
+    serveCompletedRun({
       documentCount: 10,
       totalDocuments: 12,
       documentsSkipped: 2,
-      documentsFailed: 0,
       documentsIndexedTotal: 10,
-      message: null,
-      timestamp: '2026-03-01T10:00:00Z',
-    } as IndexingStatusResponse)
+    })
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(
-      await screen.findByText(/dokumente: 10 verarbeitet \(2 übersprungen\)/i),
-    ).toBeInTheDocument()
+    const [row] = await runRows()
+    expect(row).toHaveTextContent('Abgeschlossen')
+    expect(row).toHaveTextContent('10 Dokumente')
+    await openRun(user, row)
+    expect(await technicalDetails(user, row)).toHaveTextContent('Verarbeitet: 10 · übersprungen: 2')
     expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
   })
 
@@ -1806,7 +2015,9 @@ describe('LibraryDetailPage', () => {
       detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByLabelText('Dokumente durchsuchen')
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    await runRows()
 
     act(() => {
       useIndexingStore.setState({
@@ -1821,26 +2032,29 @@ describe('LibraryDetailPage', () => {
       })
     })
 
-    const notice = await screen.findByText('Status unbekannt')
-    expect(notice.closest('[role="status"]')).not.toBeNull()
-    expect(screen.queryByText(/Letzter Lauf: Fehlgeschlagen/)).not.toBeInTheDocument()
+    // the run still runs: the head says so, without a percent and without a failure
+    const state = screen.getByTestId('library-state')
+    await waitFor(() => expect(state).toHaveTextContent(/^Läuft\s*· Stand unbekannt$/))
+    expect(state).toHaveAttribute('role', 'status')
+    expect(state).not.toHaveTextContent(/Fehlgeschlagen/)
     expect(
       screen.queryByText(/Indizierungsstatus konnte nicht abgerufen werden/),
     ).not.toBeInTheDocument()
     const statusCallsBefore = mockGetIndexingStatus.mock.calls.length
 
-    await userEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    // the retry sits at the state word, the same for every role
+    await user.click(screen.getByRole('button', { name: 'Stand erneut abrufen' }))
 
     await waitFor(() => {
       expect(mockGetIndexingStatus.mock.calls.length).toBeGreaterThan(statusCallsBefore)
     })
-    expect(screen.queryByText('Status unbekannt')).not.toBeInTheDocument()
+    await waitFor(() => expect(state).not.toHaveTextContent('Stand unbekannt'))
   })
 
   it('shows a hint with a reload once the document polling stopped (#2908)', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByLabelText('Dokumente durchsuchen')
+    await waitFor(() => expect(mockGetLibraryDocuments).toHaveBeenCalled())
     const loadsBefore = mockGetLibraryDocuments.mock.calls.length
 
     act(() => {
@@ -1868,7 +2082,7 @@ describe('LibraryDetailPage', () => {
       detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByLabelText('Dokumente durchsuchen')
+    await waitFor(() => expect(mockGetLibraryDocuments).toHaveBeenCalled())
     const initialLoads = mockGetLibraryDocuments.mock.calls.length
 
     // The status polling flips the run to RUNNING and later to COMPLETED - the falling edge is
@@ -1937,23 +2151,22 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     await userEvent.setup().click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(await screen.findByText('Läufe')).toBeInTheDocument()
-    await screen.findByText(/10 verarbeitet, 2 übersprungen/i)
-    // MUI's Accordion keeps its (collapsed) AccordionDetails mounted in the DOM for the
-    // collapse/expand animation - collapsed-ness is exposed through aria-expanded on the summary
-    // button, not through the protocol's absence from the DOM.
-    const runToggle = screen.getByRole('button', { name: /10 verarbeitet, 2 übersprungen/i })
-    expect(runToggle).toHaveAttribute('aria-expanded', 'false')
+    const [row] = await runRows()
+    expect(row).toHaveTextContent('10 Dokumente')
+    // collapsed: the protocol is not rendered until the row is opened
+    expect(within(row).queryByText('bad.csv')).not.toBeInTheDocument()
 
     const user = userEvent.setup()
-    await user.click(runToggle)
+    await openRun(user, row)
 
-    expect(runToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(await screen.findByText('bad.csv')).toBeVisible()
-    expect(screen.getByText('Dateiformat wird nicht unterstützt')).toBeVisible()
-    expect(
-      within(screen.getByText('bad.csv').closest('div')!).getByText(/format nicht/i),
-    ).toBeVisible()
+    // errors grouped by reason, each Fundort on one line with its message in the tooltip
+    expect(within(row).getByText(/format nicht.* · 1$/i)).toBeVisible()
+    const fundort = within(row).getByText('bad.csv')
+    expect(fundort).toBeVisible()
+    expect(fundort.closest('li')).toHaveAttribute(
+      'title',
+      'bad.csv\nDateiformat wird nicht unterstützt',
+    )
   })
 
   // ADR-0023, Entscheidung 4: a Confluence library's runs name their Betriebsart; for
@@ -2002,15 +2215,20 @@ describe('LibraryDetailPage', () => {
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
-    expect(await screen.findByTestId('run-mode-run-voll')).toHaveTextContent('Vollabgleich')
-    // A run that could not read something says so in its header, not only when expanded: its
+    // the column „Auslöser“ names the full reconciliation where the source knows two modes
+    const [row] = await runRows()
+    expect(row).toHaveTextContent('Vollabgleich')
+    // A run that could not read something says so in its row, not only when expanded: its
     // state is „Teilweise fehlgeschlagen“, not a plain „Abgeschlossen“
-    const header = screen.getByRole('button', { name: /4 verarbeitet/ })
-    expect(header).toHaveTextContent('Teilweise fehlgeschlagen')
-    expect(header).not.toHaveTextContent('Abgeschlossen')
-    // expanding the run through its own header (the mode chip sits inside the accordion summary)
-    await user.click(screen.getByTestId('run-mode-run-voll'))
-    expect(await screen.findByText('Ratenbegrenzung')).toBeInTheDocument()
+    expect(row).toHaveTextContent('Teilweise fehlgeschlagen')
+    expect(row).not.toHaveTextContent('Abgeschlossen')
+    await openRun(user, row)
+    expect(within(row).getByText(/abgewiesen.* · 1$|nicht lesbar.* · 1$/i)).toBeInTheDocument()
+    await user.click(within(row).getByRole('button', { name: 'Hinweise · 1' }))
+    expect(within(row).getByText('Ratenbegrenzung · 1')).toBeInTheDocument()
+    expect(await technicalDetails(user, row)).toHaveTextContent(
+      'Auslöser: manuell gestartet · Vollabgleich',
+    )
     unmount()
 
     setLibraryState(
@@ -2018,9 +2236,14 @@ describe('LibraryDetailPage', () => {
       detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByText(/4 verarbeitet/)
-    expect(screen.queryByTestId('run-mode-run-voll')).not.toBeInTheDocument()
-  })
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    const [plain] = await runRows()
+    expect(plain).toHaveTextContent('Manuell')
+    expect(plain).not.toHaveTextContent('Vollabgleich')
+    await openRun(user, plain)
+    expect(await technicalDetails(user, plain)).toHaveTextContent(/^Auslöser: manuell gestartet/)
+    expect(within(plain).queryByText(/Vollabgleich/)).not.toBeInTheDocument()
+  }, 15000)
 
   it('names how many further events a run recorded beyond the protocol cap', async () => {
     setLibraryState(
@@ -2060,15 +2283,16 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     const user = userEvent.setup()
-    await user.click(await screen.findByText(/1 verarbeitet, 599 übersprungen/i))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    const [row] = await runRows()
+    await openRun(user, row)
+    await user.click(within(row).getByRole('button', { name: 'Hinweise · 42' }))
 
-    expect(await screen.findByText(/… und 42 weitere/i)).toBeInTheDocument()
+    expect(within(row).getByText('42 weitere ohne gespeicherten Fundort')).toBeInTheDocument()
   })
 
-  it('shows the feed-entries-plus-document-total wording for a completed RSS_FEED run', async () => {
-    // The wording is decided by sourceType (RSS_FEED here), not by
-    // comparing documentCount/documentsIndexedTotal - both are deliberately equal below to prove
-    // the switch does not derive from that comparison.
+  // one form for every source: a feed's run counts documents like any other, no feed entries
+  it('shows the same document wording for a completed RSS_FEED run', async () => {
     setLibraryState(
       managerLibrary,
       detailsOf(managerLibrary, {
@@ -2076,23 +2300,21 @@ describe('LibraryDetailPage', () => {
         sourceUrl: 'https://example.gov/feed.xml',
       }),
     )
-    mockGetIndexingStatus.mockResolvedValueOnce({
-      status: 'COMPLETED',
+    serveCompletedRun({
       documentCount: 13,
       totalDocuments: 18,
       documentsSkipped: 5,
-      documentsFailed: 0,
       documentsIndexedTotal: 13,
-      message: null,
-      timestamp: '2026-03-01T10:00:00Z',
-    } as IndexingStatusResponse)
+    })
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(
-      await screen.findByText(
-        /18 feed-einträge, 5 übersprungen, 13 indiziert \(13 dokumente insgesamt\)/i,
-      ),
-    ).toBeInTheDocument()
+    const [row] = await runRows()
+    expect(row).toHaveTextContent('13 Dokumente')
+    await openRun(user, row)
+    expect(await technicalDetails(user, row)).toHaveTextContent('Verarbeitet: 13 · übersprungen: 5')
+    expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
   })
 
   it('clears a stale upload error from a previously viewed library after switching', async () => {
@@ -2108,7 +2330,9 @@ describe('LibraryDetailPage', () => {
     const file = new File(['Inhalt'], 'dublette.pdf', { type: 'application/pdf' })
     const input = await screen.findByLabelText(/dateien auswählen/i, { selector: 'input' })
     await user.upload(input, file)
-    expect(await screen.findByText(/bereits vorhanden.*dublette\.pdf/is)).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /Nicht hochgeladen: dublette\.pdf.*bereits vorhanden/s,
+    )
     unmount()
 
     setLibraryState(personalLibrary, detailsOf(personalLibrary))
@@ -2191,19 +2415,22 @@ describe('LibraryDetailPage', () => {
 
   // A VIEWER on a connector library must see both hints - "nur Leserechte" is not limited to
   // upload libraries.
-  it('shows the read-only hint for a VIEWER on a connector library, alongside the connector hint', async () => {
+  it('names the reader role once, without a lasting hint, on a connector library', async () => {
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    // Exactly one hint about the own role, in the page header - the documents area
-    // no longer carries a second one.
+    // no lasting notes: the own role is the head's badge, and the Reiter „Quelle“ names once
+    // what only managers see
+    expect(await screen.findByText('Leser')).toBeInTheDocument()
+    expect(screen.queryByText(/nur Leserechte/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/lassen sich hier nicht löschen/i)).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Quelle' }))
     expect(
-      await screen.findByText('Sie haben in dieser Bibliothek nur Leserechte.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
+      await screen.findAllByText('Verbindung, Zeitplan und Läufe sehen nur Verwaltende.'),
+    ).toHaveLength(1)
   })
 
   // The document list renders for connector libraries too - their indexed bestand is served by
@@ -2234,16 +2461,23 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     expect(await screen.findByText('rundschreiben.pdf')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /dateien hochladen/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hochladen' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Dateien auswählen')).not.toBeInTheDocument()
+    // a connector document leaves only with its source: no row menu, no bulk „Löschen“
     expect(
-      screen.queryByRole('button', { name: /dokument rundschreiben\.pdf löschen/i }),
+      screen.queryByRole('button', { name: 'Aktionen für Dokument rundschreiben.pdf' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
+    await userEvent
+      .setup()
+      .click(screen.getByRole('checkbox', { name: 'Dokument rundschreiben.pdf auswählen' }))
+    const toolbar = screen.getByRole('toolbar', { name: 'Sammelaktionen' })
+    expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeInTheDocument()
+    expect(within(toolbar).queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
   })
 
   // An RSS attachment carries its originating entry via sourceEntryUrl - the
   // detail page must make it visible instead of only storing it.
-  it('shows the source entry URL for an RSS attachment, but not for a document without one', async () => {
+  it('names the source entry URL of an RSS attachment, but not for a document without one', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(
       pageOf([
         {
@@ -2286,15 +2520,13 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText('dienstanweisung-anlage.pdf')).toBeInTheDocument()
-    const link = screen.getByRole('link', {
-      name: 'https://example.gov/aktuelles/dienstanweisung-2024',
-    })
-    expect(link).toHaveAttribute('href', 'https://example.gov/aktuelles/dienstanweisung-2024')
-
-    // Only the attachment carries sourceEntryUrl - no second "Herkunft:" hint for the
-    // FILESYSTEM document without this value.
-    expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
+    // the origin stands in the name's tooltip, as text; only the attachment carries one
+    expect(await screen.findByText('dienstanweisung-anlage.pdf')).toHaveAttribute(
+      'title',
+      'dienstanweisung-anlage.pdf\nhttps://example.gov/aktuelles/dienstanweisung-2024',
+    )
+    expect(screen.getByText('rundschreiben.pdf')).toHaveAttribute('title', 'rundschreiben.pdf')
+    expect(screen.queryByText(/herkunft:/i)).not.toBeInTheDocument()
   })
 
   // ADR-0022, Entscheidung 5: attachments carry parentDocumentId and follow their
@@ -2358,7 +2590,10 @@ describe('LibraryDetailPage', () => {
 
     it('expands groups by default while a search is active, so an attachment hit is visible', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
-      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      // the search appears from eight documents on
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([docOf('document-x', 'x.pdf')], { totalElements: 8 }),
+      )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
@@ -2396,7 +2631,7 @@ describe('LibraryDetailPage', () => {
       // direct parent instead of nesting further.
       expect(screen.getByText('weiterleitung.eml')).toBeInTheDocument()
       expect(screen.getByText('innere-anlage.pdf')).toBeInTheDocument()
-      expect(screen.getByText('Anhang von: weiterleitung.eml')).toBeInTheDocument()
+      expect(screen.getByText(/^Anhang von weiterleitung\.eml · /)).toBeInTheDocument()
     })
 
     it('pages on the parent level: attachments neither count towards totalElements nor paginate', async () => {
@@ -2491,8 +2726,10 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
+      // the toolbar's actions appear with a selection; until then its head names the column
       const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
-      expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeDisabled()
+      expect(within(toolbar).getByRole('status')).toHaveTextContent('Name')
+      expect(within(toolbar).queryByRole('button', { name: 'Feld setzen' })).not.toBeInTheDocument()
       await user.click(
         screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
       )
@@ -2517,12 +2754,12 @@ describe('LibraryDetailPage', () => {
       expect(
         await screen.findByText('Feld gesetzt: 2 Dokumente aktualisiert, 0 unverändert.'),
       ).toBeInTheDocument()
-      expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
+      expect(within(toolbar).getByRole('status')).toHaveTextContent('Name')
     })
 
-    // Working the anchor's list document by document is the normal case - the counted
-    // number and the listed rows must not drift apart while doing it.
-    it('reloads anchor and worklist after a single correction inside the worklist', async () => {
+    // Working the filtered list („ohne Dokumentart“) document by document is the normal case -
+    // a corrected document must leave the list right away.
+    it('reloads the worklist after a single correction inside the worklist', async () => {
       mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
       setLibraryState(
         { ...managerLibrary, myRole: 'EDITOR' },
@@ -2545,12 +2782,15 @@ describe('LibraryDetailPage', () => {
       const dialog = await screen.findByRole('dialog')
       await user.click(within(dialog).getByRole('checkbox', { name: 'Kein Wert ermittelbar' }))
       mockGetLibraryDocuments.mockClear()
-      mockGetLibraryMetadataMaintenance.mockClear()
       await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
       await waitFor(() => expect(mockSetDocumentMetadataValue).toHaveBeenCalled())
-      await waitFor(() => expect(mockGetLibraryMetadataMaintenance).toHaveBeenCalled())
-      await waitFor(() => expect(mockGetLibraryDocuments).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(mockGetLibraryDocuments).toHaveBeenCalledWith(
+          'library-team',
+          expect.objectContaining({ missingMetadataField: 'document_type' }),
+        ),
+      )
     })
 
     it('drops the selection when the list changes by page or search', async () => {
@@ -2569,34 +2809,14 @@ describe('LibraryDetailPage', () => {
 
       const pagination = screen.getByRole('navigation', { name: 'Dokumentenliste blättern' })
       await user.click(within(pagination).getByRole('button', { name: /seite 2/i }))
-      await waitFor(() => expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument())
+      await waitFor(() => expect(within(toolbar).getByRole('status')).toHaveTextContent('Name'))
 
       await user.click(
         screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
       )
       expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
       await user.type(screen.getByLabelText('Dokumente durchsuchen'), 'dienst')
-      expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
-    })
-
-    it('drops the selection when the page size changes, too', async () => {
-      // A smaller page size shows fewer rows - anything selected beyond them would be invisible
-      // to the person, and "Löschen" is irreversible.
-      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments, { totalElements: 45 }))
-      setLibraryState(managerLibrary, detailsOf(managerLibrary))
-      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-      const user = userEvent.setup()
-
-      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
-      await user.click(
-        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
-      )
-      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
-
-      await user.click(screen.getByRole('combobox', { name: 'Dokumente je Seite' }))
-      await user.click(await screen.findByRole('option', { name: '50 je Seite' }))
-
-      await waitFor(() => expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument())
+      expect(within(toolbar).getByRole('status')).toHaveTextContent('Name')
     })
   })
 
@@ -2674,12 +2894,12 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      // The key resolves to the name the library's own selection carries.
-      expect(
-        await screen.findByText(
-          'Space: IT-Betrieb (IT) · Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb',
-        ),
-      ).toBeInTheDocument()
+      // The key resolves to the name the library's own selection carries; the origin stands in
+      // the name's tooltip.
+      expect(await screen.findByText('Abschnitt 1.1 — Firewall-Regeln')).toHaveAttribute(
+        'title',
+        'Abschnitt 1.1 — Firewall-Regeln\nSpace: IT-Betrieb · Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb',
+      )
     })
 
     it("names an S3 document's bucket and key folders in its row, as text (ADR-0027)", async () => {
@@ -2717,7 +2937,11 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      expect(await screen.findByText('Bucket: dokumente · protokolle / q1')).toBeInTheDocument()
+      expect(await screen.findByText('sitzung.pdf')).toHaveAttribute(
+        'title',
+        'sitzung.pdf\nBucket: dokumente · protokolle / q1',
+      )
+      expect(screen.queryByRole('link', { name: /dokumente/ })).not.toBeInTheDocument()
     })
 
     it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {
@@ -2782,14 +3006,11 @@ describe('LibraryDetailPage', () => {
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
 
-      // The source URL stays visible as secondary information (a "Quelle:" link) even
+      // The source URL stays secondary information in the name's tooltip, as text, even
       // though "Original öffnen" does not navigate there directly.
-      const sourceLink = screen.getByRole('link', {
-        name: 'https://example.gov/verzeichnis/dienstanweisung.pdf',
-      })
-      expect(sourceLink).toHaveAttribute(
-        'href',
-        'https://example.gov/verzeichnis/dienstanweisung.pdf',
+      expect(screen.getByText('dienstanweisung.pdf')).toHaveAttribute(
+        'title',
+        'dienstanweisung.pdf\nhttps://example.gov/verzeichnis/dienstanweisung.pdf',
       )
     })
 
@@ -2822,9 +3043,11 @@ describe('LibraryDetailPage', () => {
       await user.click(button)
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'anlage.pdf')
-      expect(
-        screen.getByRole('link', { name: 'https://example.gov/aktuelles/dienstanweisung-2024' }),
-      ).toBeInTheDocument()
+      // the entry's address goes before the file's own in the tooltip
+      expect(screen.getByText('anlage.pdf')).toHaveAttribute(
+        'title',
+        'anlage.pdf\nhttps://example.gov/aktuelles/dienstanweisung-2024',
+      )
     })
 
     it('still offers the action for a remote document with no other source information', async () => {
@@ -2962,12 +3185,13 @@ describe('LibraryDetailPage', () => {
   })
 
   it('searches documents server-side, debounced, resetting to the first page', async () => {
-    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+    // the search appears from eight documents on
+    mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument], { totalElements: 8 }))
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await screen.findByText(/es sind noch keine dokumente vorhanden/i)
+    await screen.findByText('vorhanden.pdf')
     mockGetLibraryDocuments.mockClear()
     mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
 
@@ -3028,10 +3252,8 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      const folderRow = await screen.findByRole('button', {
-        name: /ordner protokolle öffnen/i,
-      })
-      // Scoped to the folder row: the Pflege-Anker above can carry the same wording.
+      // the row is the button; its name starts with the visible folder name
+      const folderRow = await screen.findByRole('button', { name: /^Protokolle\s*3 Dokumente$/ })
       expect(within(folderRow).getByText(/3 dokumente/i)).toBeInTheDocument()
 
       mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -3108,7 +3330,8 @@ describe('LibraryDetailPage', () => {
 
     it('creates a new folder via the dialog and reloads the current view', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument]))
       mockCreateLibraryFolder.mockResolvedValueOnce({
         id: 'folder-new',
         libraryId: 'library-mine',
@@ -3124,12 +3347,13 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      await user.click(await screen.findByRole('button', { name: /neuer ordner/i }))
+      await screen.findByText('vorhanden.pdf')
+      await user.click(screen.getByRole('button', { name: /neuer ordner/i }))
       await user.type(await screen.findByLabelText(/ordnername/i), 'Archiv')
       await user.click(screen.getByRole('button', { name: /^anlegen$/i }))
 
       expect(
-        await screen.findByRole('button', { name: /ordner archiv öffnen/i }),
+        await screen.findByRole('button', { name: /^Archiv\s*0 Dokumente$/ }),
       ).toBeInTheDocument()
       expect(mockCreateLibraryFolder).toHaveBeenCalledWith('library-mine', {
         name: 'Archiv',
@@ -3139,7 +3363,8 @@ describe('LibraryDetailPage', () => {
 
     it('shows a 409 name conflict inside the dialog without closing it', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument]))
       mockCreateLibraryFolder.mockRejectedValueOnce(
         new Error('Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene'),
       )
@@ -3147,7 +3372,8 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      await user.click(await screen.findByRole('button', { name: /neuer ordner/i }))
+      await screen.findByText('vorhanden.pdf')
+      await user.click(screen.getByRole('button', { name: /neuer ordner/i }))
       await user.type(await screen.findByLabelText(/ordnername/i), 'Protokolle')
       await user.click(screen.getByRole('button', { name: /^anlegen$/i }))
 
@@ -3189,7 +3415,7 @@ describe('LibraryDetailPage', () => {
       await user.click(screen.getByRole('button', { name: /^umbenennen$/i }))
 
       expect(
-        await screen.findByRole('button', { name: /ordner protokolle 2026 öffnen/i }),
+        await screen.findByRole('button', { name: /^Protokolle 2026\s*0 Dokumente$/ }),
       ).toBeInTheDocument()
       expect(mockRenameLibraryFolder).toHaveBeenCalledWith('library-mine', 'folder-protokolle', {
         name: 'Protokolle 2026',
@@ -3240,7 +3466,7 @@ describe('LibraryDetailPage', () => {
       })
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: /ordner protokolle öffnen/i }),
+          screen.queryByRole('button', { name: /^Protokolle\s*\d+ Dokumente?$/ }),
         ).not.toBeInTheDocument()
       })
     })
@@ -3419,7 +3645,7 @@ describe('LibraryDetailPage', () => {
         }),
       }
 
-      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      const dropZone = await screen.findByText(/dateien oder ordner hierher ziehen/i)
       fireEvent.drop(dropZone, {
         dataTransfer: {
           items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
@@ -3482,7 +3708,7 @@ describe('LibraryDetailPage', () => {
         }),
       }
 
-      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      const dropZone = await screen.findByText(/dateien oder ordner hierher ziehen/i)
       fireEvent.drop(dropZone, {
         dataTransfer: {
           items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
@@ -3558,7 +3784,7 @@ describe('LibraryDetailPage', () => {
         }),
       }
 
-      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      const dropZone = await screen.findByText(/dateien oder ordner hierher ziehen/i)
       fireEvent.drop(dropZone, {
         dataTransfer: {
           items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
@@ -3626,7 +3852,7 @@ describe('LibraryDetailPage', () => {
         }),
       }
 
-      const dropZone = await screen.findByLabelText(/dateien oder ordner hierher ziehen/i)
+      const dropZone = await screen.findByText(/dateien oder ordner hierher ziehen/i)
       fireEvent.drop(dropZone, {
         dataTransfer: {
           items: [{ kind: 'file', webkitGetAsEntry: () => folderEntry }],
@@ -3647,11 +3873,11 @@ describe('LibraryDetailPage', () => {
 
     it("shows a search hit's folder path and navigates into it on click", async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument], { totalElements: 8 }))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      await screen.findByText(/es sind noch keine dokumente vorhanden/i)
+      await screen.findByText('vorhanden.pdf')
 
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
@@ -3755,7 +3981,8 @@ describe('LibraryDetailPage', () => {
     // would then flash that same message once the dialog was gone.
     it('clears the page-level folderError alert when a dialog with a 409 is cancelled', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument]))
       mockCreateLibraryFolder.mockRejectedValueOnce(
         new Error('Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene'),
       )
@@ -3763,7 +3990,8 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      await user.click(await screen.findByRole('button', { name: /neuer ordner/i }))
+      await screen.findByText('vorhanden.pdf')
+      await user.click(screen.getByRole('button', { name: /neuer ordner/i }))
       await user.type(await screen.findByLabelText(/ordnername/i), 'Protokolle')
       await user.click(screen.getByRole('button', { name: /^anlegen$/i }))
       expect(await screen.findByText(/existiert bereits auf dieser ebene/i)).toBeInTheDocument()
@@ -3805,7 +4033,7 @@ describe('LibraryDetailPage', () => {
 
       await screen.findByText('a.pdf')
       expect(
-        screen.queryByRole('button', { name: /ordner protokolle öffnen/i }),
+        screen.queryByRole('button', { name: /^Protokolle\s*\d+ Dokumente?$/ }),
       ).not.toBeInTheDocument()
     })
 
@@ -3864,19 +4092,65 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // metadata-schema.md, "Der Pflege-Anker"
-  it('shows the Pflege-Anker per field and opens exactly those documents from it', async () => {
+  // metadata-schema.md, "Der Pflege-Anker": the fill of every field has one place, the
+  // „Füllgrad“ of the Reiter „Metadaten“, and leads to exactly the documents without a value
+  it('shows the Füllgrad per field and opens exactly those documents from it', async () => {
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/metadata/quality', ({ params }) =>
+        HttpResponse.json({
+          libraryId: String(params.libraryId),
+          totalDocuments: 4,
+          modelExtractionEnabled: false,
+          keywordsEnabled: false,
+          confidenceThreshold: 0.6,
+          fields: [
+            {
+              fieldKey: 'title',
+              label: 'Titel',
+              totalDocuments: 4,
+              deterministicDocuments: 4,
+              derivedDocuments: 0,
+              manualDocuments: 0,
+              notDeterminableDocuments: 0,
+              emptyDocuments: 0,
+              derivedShare: 0,
+              emptyShare: 0,
+            },
+            {
+              fieldKey: 'document_type',
+              label: 'Dokumentart',
+              totalDocuments: 4,
+              deterministicDocuments: 0,
+              derivedDocuments: 1,
+              manualDocuments: 0,
+              notDeterminableDocuments: 1,
+              emptyDocuments: 3,
+              derivedShare: 0.25,
+              emptyShare: 0.75,
+            },
+          ],
+          modelExtraction: {},
+        }),
+      ),
+    )
     setLibraryState(personalLibrary, detailsOf(personalLibrary))
-    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    renderWithProviders(<LibraryDetailPage />, {
+      withRouter: true,
+      initialRoute: '/libraries/library-mine?tab=metadaten',
+    })
     const user = userEvent.setup()
 
-    const anchor = await screen.findByRole('region', { name: 'Metadaten-Pflege' })
-    expect(within(anchor).getByText('3 Dokumente ohne Wert (75 %)')).toBeInTheDocument()
-    expect(within(anchor).getByText('1 × kein Wert ermittelbar')).toBeInTheDocument()
+    const fill = await screen.findByRole('region', { name: 'Füllgrad' })
+    expect(fill).toHaveTextContent(/Titel\s*alle 4 gefüllt/)
+    expect(fill).toHaveTextContent(/Dokumentart\s*1 von 4 gefüllt \(25 %\)/)
+    // a field without empty documents offers nothing to open
+    expect(
+      within(fill).queryByRole('button', { name: /Dokumente ohne Titel/ }),
+    ).not.toBeInTheDocument()
 
     mockGetLibraryDocuments.mockClear()
     await user.click(
-      within(anchor).getByRole('button', { name: 'Dokumente ohne Wert für Dokumentart anzeigen' }),
+      within(fill).getByRole('button', { name: /^Anzeigen\s*Dokumente ohne Dokumentart$/ }),
     )
 
     await waitFor(() =>
@@ -3888,9 +4162,11 @@ describe('LibraryDetailPage', () => {
         missingMetadataField: 'document_type',
       }),
     )
-    expect(
-      await screen.findByText(/Es werden nur Dokumente ohne Wert für „Dokumentart" angezeigt/),
-    ).toBeInTheDocument()
+    // the documents open with the filter set, so it can be taken back where it shows
+    expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Dokumente')
+    expect(screen.getByRole('combobox', { name: 'Metadaten' })).toHaveTextContent(
+      'ohne Dokumentart',
+    )
   })
 
   // The „Quelle" tab in four sections - scope for every reader, source connection, schedule
@@ -3924,9 +4200,11 @@ describe('LibraryDetailPage', () => {
       const headings = within(panel)
         .getAllByRole('heading', { level: 2 })
         .map((heading) => heading.textContent)
-      // a directory listing is read whole: it has no row „Umfang“
-      expect(headings).toEqual(['Verbindung', 'Zeitplan'])
-      expect(within(panel).getByRole('heading', { level: 3, name: 'Läufe' })).toBeInTheDocument()
+      // a directory listing is read whole: its row „Umfang“ says so and opens nothing
+      expect(headings).toEqual(['Verbindung', 'Umfang', 'Zeitplan', 'Läufe'])
+      const scope = within(panel).getByRole('region', { name: 'Umfang' })
+      expect(scope).toHaveTextContent('Ganzes Verzeichnis')
+      expect(within(scope).queryByRole('button', { name: /^Ändern/ })).not.toBeInTheDocument()
     })
 
     it('shows a VIEWER the Umfang only, in the words of the provider', async () => {
@@ -4030,8 +4308,9 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
 
       const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await screen.findByText('a.pdf')
       await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
-      expect(within(toolbar).getByText('2 ausgewählt')).toBeInTheDocument()
+      expect(within(toolbar).getByRole('status')).toHaveTextContent('2 ausgewählt')
 
       await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
       await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
@@ -4050,6 +4329,27 @@ describe('LibraryDetailPage', () => {
       expect(result.closest('.MuiAlert-root')).toHaveClass('MuiAlert-colorWarning')
     })
 
+    it('keeps the outcome of a deletion that empties the library', async () => {
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf(uploads)).mockResolvedValue(pageOf([]))
+      mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
+        deletedDocumentIds: ['doc-1', 'doc-2'],
+        failures: [],
+      })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await screen.findByText('a.pdf')
+      await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
+      await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
+      await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
+
+      expect(await screen.findByText('2 Dokumente gelöscht.')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('a.pdf')).not.toBeInTheDocument())
+      expect(screen.getByText('2 Dokumente gelöscht.')).toBeInTheDocument()
+    })
+
     it('counts identical reasons instead of repeating them', async () => {
       mockGetLibraryDocuments.mockResolvedValue(pageOf(uploads))
       mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
@@ -4064,6 +4364,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
 
       const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await screen.findByText('a.pdf')
       await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
       await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
       await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
@@ -4075,17 +4376,25 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('offers no Löschen on a connector bestand, and says why exactly once', async () => {
+    // no lasting note on why: the selection simply carries no „Löschen“
+    it('offers no Löschen on a connector bestand', async () => {
       const connector = { ...managerLibrary, sourceType: 'FILESYSTEM' as const }
       mockGetLibraryDocuments.mockResolvedValue(
         pageOf(uploads.map((doc) => ({ ...doc, sourceType: 'FILESYSTEM' as const }))),
       )
       setLibraryState(connector, detailsOf(connector, { sourceType: 'FILESYSTEM' }))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
 
       const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await screen.findByText('a.pdf')
+      await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
+      expect(within(toolbar).getByRole('status')).toHaveTextContent('2 ausgewählt')
+      expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeInTheDocument()
       expect(within(toolbar).queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
-      expect(screen.getAllByText(/lassen sich hier nicht löschen/)).toHaveLength(1)
+      expect(
+        screen.queryByRole('button', { name: 'Aktionen für Dokument a.pdf' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -4135,7 +4444,7 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByText('Metadatenfelder')).not.toBeInTheDocument()
     })
 
-    it('shows the document list without metadata view, Pflege-Anker and Feld setzen', async () => {
+    it('shows the document list without metadata view, metadata filter and Feld setzen', async () => {
       mockGetLibraryDocuments.mockResolvedValue(pageOf([document]))
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       renderWithProviders(<LibraryDetailPage />, {
@@ -4145,14 +4454,16 @@ describe('LibraryDetailPage', () => {
 
       expect(await screen.findByText('dienstanweisung.pdf')).toBeInTheDocument()
       const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await userEvent
+        .setup()
+        .click(screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }))
       expect(within(toolbar).getByRole('button', { name: 'Löschen' })).toBeInTheDocument()
       expect(within(toolbar).queryByRole('button', { name: 'Feld setzen' })).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: /Metadaten von dienstanweisung\.pdf/ }),
       ).not.toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Metadaten-Pflege' })).not.toBeInTheDocument()
-      expect(screen.queryByText(/Es werden nur Dokumente ohne Wert/)).not.toBeInTheDocument()
-      expect(mockGetLibraryMetadataMaintenance).not.toHaveBeenCalled()
+      expect(screen.queryByRole('combobox', { name: 'Metadaten' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Füllgrad' })).not.toBeInTheDocument()
       expect(mockGetLibraryDocuments).toHaveBeenCalledWith(
         'library-team',
         expect.objectContaining({ missingMetadataField: null }),
@@ -4165,8 +4476,18 @@ describe('LibraryDetailPage', () => {
       useAuthStore.setState({ features: {} })
     })
 
+    // below the manager role the backend delivers no release, and the section is left out
+    const releasable = {
+      externalAccess: {
+        libraryId: managerLibrary.id,
+        state: 'NEVER_SET' as const,
+        tokenCount: 0,
+        maxReleaseDays: 365,
+      },
+    }
+
     it('shows the external access among the shares while the feature is on', async () => {
-      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary, releasable))
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
@@ -4177,13 +4498,13 @@ describe('LibraryDetailPage', () => {
 
     it('names no external access in the shares, nor for a private library', async () => {
       useAuthStore.setState({ features: { externalAccess: false } })
-      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary, releasable))
       const user = userEvent.setup()
       const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(await screen.findByRole('heading', { name: 'Diagnosesperre' })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: 'Suchdiagnose' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
       expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
       unmount()
@@ -4202,7 +4523,8 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(await screen.findByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
+      expect(await screen.findByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
       expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
     })
   })
