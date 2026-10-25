@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -59,7 +59,7 @@ Befund gegen die Erweiterungsstelle, nicht gegen die Erweiterung.
 
 | Erweiterung | Dateien außerhalb des eigenen Pakets | Geprüft durch |
 |---|---|---|
-| Neuer Quell-Konnektor | 0; er nutzt nur `indexing.spi`, `indexing.run`, `indexing.filesync`, `indexing.document`, `indexing.job`, `indexing.attachment`, `sourceaccess`, `format`, `knowledge`-Entities, `api.types` (ADR-0038, ADR-0045) | `ModularArchitectureTest` (`CONNECTOR_IMPORTS`; Konnektoren kennen einander nicht) |
+| Neuer Quell-Konnektor | 0; er nutzt nur `indexing.spi`, `indexing.run`, `indexing.filesync`, `indexing.document`, `indexing.job`, `indexing.attachment`, `sourceaccess`, `format`, `knowledge`-Entities, `api.types` (ADR-0038, ADR-0045); seinen Datenfluss für die Auskunft nennt er im eigenen `SourceConnectorDescriptor` (ADR-0052, Entscheidung 11) | `ModularArchitectureTest` (`CONNECTOR_IMPORTS`; Konnektoren kennen einander nicht), `ConnectorDataFlowsIntegrationTest` |
 | Neues Dokumentformat | 1 (Registrierung) | Konvention, am PR nachgemessen |
 | Weiterer OIDC-Anbieter | 0 (ADR-0025) | Konvention |
 | Neue Capability | 0 Switch-Kaskaden (ADR-0036) | Konvention |

@@ -194,7 +194,7 @@ selbst, damit auch der abgewiesene Abruf das Ereignis `DATA_COLLECTION_DISCLOSUR
 |---|---|
 | neuer `DATABASE`-Eintrag unter `settings` | eine `InstanceStateSource` im Modul der Tabelle liefert Wert und Änderungszeitpunkt (`DataCollectionDisclosureIntegrationTest` scheitert sonst) |
 | neuer Datenfluss mit Schalter | eine `InstanceStateSource` meldet ihn; offen bleiben nur Flüsse, die allein auf eine Handlung hin entstehen |
-| neuer Konnektor, der nach außen geht | Typ und Datenfluss in `io.opaa.knowledge.ConnectorDataFlows` (`ConnectorDataFlowsIntegrationTest`) |
+| neuer Konnektor, der nach außen geht | Datenfluss im eigenen Descriptor (`SourceConnectorDescriptor#withDataFlow`), dessen Eintrag unter `dataFlows`; die Registry meldet ihn über `io.opaa.knowledge.ConnectorDataFlows` (`ConnectorDataFlowsIntegrationTest`) |
 | neue Spalte von `audit_log` oder neuer Abfrageweg | `io.opaa.audit.AuditProtocolDescription` |
 
 ## Delta zwischen zwei Versionen
