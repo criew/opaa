@@ -73,6 +73,23 @@ const SCALE: Record<string, Overlay> = {
   [SOURCE_LIBRARY_IDS.DROPBOX]: () => ({
     sourceSettings: { folders: generate(50, (i) => deepPath(i, (i % 8) + 1)), teamSpace: true },
   }),
+  [SOURCE_LIBRARY_IDS.ONEDRIVE]: () => ({
+    sourceSettings: {
+      drive: {
+        driveId: 'b!onedriveMaier',
+        name: 'OneDrive',
+        folders: generate(50, (i) => ({
+          id: `b!onedriveMaier_F${i}-${i}`,
+          name: deepPath(i, (i % 8) + 1)
+            .slice(1)
+            .split('/')
+            .join(' / ')
+            .slice(0, 200),
+        })),
+      },
+      fullSyncIntervalDays: 1,
+    },
+  }),
   [SOURCE_LIBRARY_IDS.GOOGLE_DRIVE]: () => ({
     sourceSettings: {
       scopes: generate(50, (i) =>
@@ -119,6 +136,9 @@ const SMALL: Record<string, Overlay> = {
   [SOURCE_LIBRARY_IDS.NEXTCLOUD]: () => ({ sourceSettings: { folders: ['/'] } }),
   [SOURCE_LIBRARY_IDS.SMB]: () => ({ sourceSettings: { folders: ['/'] } }),
   [SOURCE_LIBRARY_IDS.DROPBOX]: () => ({ sourceSettings: { folders: ['/'], teamSpace: false } }),
+  [SOURCE_LIBRARY_IDS.ONEDRIVE]: () => ({
+    sourceSettings: { drive: { driveId: 'b!onedriveMaier', name: 'OneDrive' } },
+  }),
   [SOURCE_LIBRARY_IDS.GOOGLE_DRIVE]: (library) => ({
     sourceSettings: {
       ...library.sourceSettings,

@@ -40,6 +40,7 @@ describe('oneDriveSource (ADR-0058)', () => {
     expect(oneDriveValuesOf(settings)).toEqual({
       driveId: 'b!a',
       driveName: 'OneDrive',
+      driveFoundWith: null,
       allFolders: false,
       folders: [
         { id: '01X', name: null },
@@ -47,9 +48,7 @@ describe('oneDriveSource (ADR-0058)', () => {
       ],
       fullSyncIntervalDays: 3,
     })
-    expect(oneDriveSettingsFromLibrary({ sourceType: 'SHAREPOINT', sourceSettings: {} })).toBe(
-      null,
-    )
+    expect(oneDriveSettingsFromLibrary({ sourceType: 'SHAREPOINT', sourceSettings: {} })).toBe(null)
   })
 
   it('reads a OneDrive without folders as the whole OneDrive', () => {

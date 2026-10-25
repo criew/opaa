@@ -10,6 +10,7 @@ import type {
   ConnectedAccountConnectRequest,
   ConnectedAccountsOverview,
 } from '@/shared/api/types'
+import { mockSourceTypes } from '../../library/mocks/libraryFixtures'
 import ConnectedAccountsSection from './ConnectedAccountsSection'
 
 vi.mock('@/shared/api/leaveApp', () => ({ leaveFor: vi.fn() }))
@@ -145,11 +146,20 @@ describe('ConnectedAccountsSection', () => {
 
   it('explains connected accounts neutrally when there is none, and answers "Warum fehlt mein Zugang?"', async () => {
     serve({ accounts: [], connectable: [], missingAccess: MISSING })
+    // an installation without a connector for personal accounts, such as one without OneDrive
+    server.use(
+      http.get('/api/v1/source-types', () =>
+        HttpResponse.json(
+          mockSourceTypes.filter((type) =>
+            type.signIns.every((signIn) => !signIn.ownerships.includes('PERSON')),
+          ),
+        ),
+      ),
+    )
     renderSection()
 
     expect(await screen.findByText(/Sie haben kein Konto verbunden/)).toBeInTheDocument()
     expect(screen.getByText(/alles andere in OPAA funktioniert ohne/)).toBeInTheDocument()
-    // no source type of the mock offers personal accounts, as no shipped connector does today
     expect(await screen.findByText(/noch keine Quellart verbundene Konten an/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Warum fehlt mein Zugang?' })).toBeInTheDocument()
     expect(screen.getByText(MISSING.text)).toBeInTheDocument()

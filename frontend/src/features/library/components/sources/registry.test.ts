@@ -132,7 +132,10 @@ describe('the source registry (ADR-0038)', () => {
       expect(configuration.scopeNoteId).toBeUndefined()
       expect(configuration.scopeHero?.summary(library)).toBe('2 Ordner')
       expect(
-        configuration.scopeHero?.summary({ ...library, sourceSettings: { drive: { driveId: 'b!a' } } }),
+        configuration.scopeHero?.summary({
+          ...library,
+          sourceSettings: { drive: { driveId: 'b!a' } },
+        }),
       ).toBe('Alle Ordner')
       expect(configuration.scopeHero?.unlistedWarning(['drive:b!onedriveMaier'], library)).toMatch(
         /^Der letzte Lauf konnte das OneDrive nicht erreichen/,

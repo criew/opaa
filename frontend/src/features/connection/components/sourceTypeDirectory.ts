@@ -1,4 +1,5 @@
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import CloudIcon from '@mui/icons-material/Cloud'
 import CloudQueueIcon from '@mui/icons-material/CloudQueue'
 import FolderIcon from '@mui/icons-material/Folder'
 import FolderSharedIcon from '@mui/icons-material/FolderShared'
@@ -76,6 +77,13 @@ export const SOURCE_TYPE_DIRECTORY: Record<SourceTypeKey, SourceTypeEntry> = {
     description:
       'Dokumentbibliotheken von SharePoint Online werden über einen Zugang mit App-Registrierung eingelesen.',
     Icon: LibraryBooksIcon,
+  },
+  ONEDRIVE: {
+    label: 'OneDrive',
+    shortLabel: 'OneDrive',
+    description:
+      'Das eigene OneDrive for Business wird über das verbundene Microsoft-Konto als private Bibliothek eingelesen.',
+    Icon: CloudIcon,
   },
   NEXTCLOUD: {
     label: 'Nextcloud',

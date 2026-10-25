@@ -11,6 +11,7 @@ import {
   mockProfileRef,
 } from '../../connection/mocks/connectionProfileFixtures'
 import { browseSharePoint, SHAREPOINT_MESSAGES, testSharePoint } from './sharePointSourceMock'
+import { browseOneDrive, testOneDrive } from './oneDriveSourceMock'
 import { scenarioBrowse, scenarioCounts, scenarioTest } from './sourceScenarioMock'
 import { applyLibraryScenario } from './libraryScenarioFixtures'
 import { myGroupsForScenario } from '../../group/mocks/groupFixtures'
@@ -287,6 +288,7 @@ export const libraryHandlers = [
     const fromScenario = scenarioBrowse(sourceType as SourceTypeKey, body.query)
     if (fromScenario) return fromScenario
     if (sourceType === 'SHAREPOINT') return browseSharePoint(body)
+    if (sourceType === 'ONEDRIVE') return browseOneDrive(body)
     if (sourceType === 'CONFLUENCE') {
       if (!body.sourceUrl || !body.query?.edition) {
         return HttpResponse.json(
@@ -419,6 +421,7 @@ export const libraryHandlers = [
     const fromScenario = scenarioTest(body)
     if (fromScenario) return fromScenario
     if (body.sourceType === 'SHAREPOINT') return testSharePoint(body)
+    if (body.sourceType === 'ONEDRIVE') return testOneDrive(body)
     if (body.sourceType === 'DROPBOX') {
       const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
         ?.folders ?? ['/']

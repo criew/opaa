@@ -8,6 +8,8 @@ import {
   type MockScenario,
 } from '@/shared/mocks/mockScenario'
 import { SHAREPOINT_MESSAGES } from './sharePointSourceMock'
+import { ONEDRIVE_MESSAGES } from './oneDriveSourceMock'
+import { mockOwnOneDrive } from './libraryFixtures'
 
 /**
  * Listings and connection tests of the source types under the fixture scenarios of
@@ -90,6 +92,8 @@ const INCOMPLETE_MESSAGES: Partial<Record<SourceTypeKey, string>> = {
   NEXTCLOUD: 'Einige Ordner konnten nicht gelesen werden (HTTP 403); die Liste ist unvollständig.',
   SMB: 'Einige Ordner der Freigabe sind für das Dienstkonto gesperrt (STATUS_ACCESS_DENIED); die Liste ist unvollständig.',
   DROPBOX: 'Dropbox hat die Auflistung nach 2.000 Einträgen beendet; die Liste ist unvollständig.',
+  ONEDRIVE:
+    'Microsoft Graph hat die Auflistung nach 10 Seiten beendet; es werden nur die ersten Einträge angezeigt.',
 }
 
 /** The refused listing of the `failed` scenario: status and the connector's German message. */
@@ -129,6 +133,7 @@ const TEST_FAILURES: Partial<Record<SourceTypeKey, string>> = {
   SMB: 'Die Freigabe hat die Anmeldung abgelehnt (STATUS_LOGON_FAILURE): Benutzername oder Passwort ist falsch.',
   DROPBOX:
     'Dropbox hat die Verbindung abgelehnt (invalid_access_token): Die Zustimmung ist abgelaufen. Bitte die Quelle neu verbinden.',
+  ONEDRIVE: 'Microsoft Graph hat das Zugriffstoken abgewiesen (HTTP 401).',
 }
 
 function listing(entries: Entry[], type: SourceTypeKey, counts: ScenarioCounts) {
@@ -244,6 +249,28 @@ function browseSharePoint(query: Record<string, unknown>, counts: ScenarioCounts
   )
 }
 
+// ---- OneDrive -----------------------------------------------------------------------------------
+
+/** The one OneDrive of the account, then generated folders below it, as the connector lists them. */
+function browseOneDrive(query: Record<string, unknown>, counts: ScenarioCounts): Response {
+  const type = 'ONEDRIVE'
+  if (typeof query.drive !== 'string') {
+    return listing([{ key: `drive:${mockOwnOneDrive.id}`, name: mockOwnOneDrive.name }], type, {
+      ...counts,
+      complete: true,
+    })
+  }
+  if (query.drive !== mockOwnOneDrive.id) {
+    return HttpResponse.json({
+      complete: false,
+      entries: [],
+      message: ONEDRIVE_MESSAGES.otherDrive,
+    } satisfies SourceBrowseResponse)
+  }
+  const folder = typeof query.folder === 'string' ? query.folder : null
+  return listing(sharePointFolders(query.drive, folder, counts), type, counts)
+}
+
 // ---- listings -----------------------------------------------------------------------------------
 
 const SPACE_BASES = ['Bauamt', 'Personal und Organisation', 'IT-Betrieb', 'Kämmerei', 'Rechtsamt']
@@ -285,6 +312,14 @@ export function scenarioBrowse(
   query: Record<string, unknown> | null | undefined,
 ): Response | null {
   const scenario = currentMockScenario()
+  // the connector answers a refusal by Graph as an empty listing with the reason, not as an error
+  if (scenario === 'failed' && type === 'ONEDRIVE') {
+    return HttpResponse.json({
+      complete: false,
+      entries: [],
+      message: ONEDRIVE_MESSAGES.notReadable,
+    } satisfies SourceBrowseResponse)
+  }
   if (scenario === 'failed') {
     const refused = BROWSE_FAILURES[type]
     return refused ? failure(...refused) : null
@@ -295,6 +330,8 @@ export function scenarioBrowse(
   switch (type) {
     case 'SHAREPOINT':
       return browseSharePoint(q, counts)
+    case 'ONEDRIVE':
+      return browseOneDrive(q, counts)
     case 'CONFLUENCE':
       return listing(scenarioSpaces(counts.spaces), type, counts)
     case 'GOOGLE_DRIVE':
@@ -405,6 +442,19 @@ function partialTest(body: TestBody): Response | null {
         credentialsVerified: true,
         message: `${failed} von ${libraries.length} Dokumentbibliotheken ${failed === 1 ? 'ist' : 'sind'} für die Anwendung nicht erreichbar.`,
         details: { libraries },
+      })
+    }
+    case 'ONEDRIVE': {
+      // the connector tests the OneDrive as a whole: the first chosen folder that fails ends it
+      const drive = settings.drive as
+        { folders?: Array<string | { id?: string; name?: string | null }> } | undefined
+      const [first] = drive?.folders ?? []
+      if (first === undefined) return null
+      const shown = typeof first === 'string' ? first : first.name || first.id || ''
+      return HttpResponse.json({
+        reachable: false,
+        credentialsVerified: true,
+        message: ONEDRIVE_MESSAGES.folderMissing(shown),
       })
     }
     case 'NEXTCLOUD':

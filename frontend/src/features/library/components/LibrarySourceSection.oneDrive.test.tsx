@@ -71,7 +71,7 @@ describe('LibrarySourceSection - OneDrive (#2467)', () => {
     await user.click(within(row).getByRole('button', { name: 'Verbindung testen' }))
 
     expect(await within(row).findByText(/gehört zu einem anderen OneDrive/)).toBeVisible()
-    expect(within(row).getByText(/^Test fehlgeschlagen/)).toBeVisible()
+    expect(within(row).getByText('Adresse nicht erreichbar')).toBeVisible()
   })
 
   it('chooses the OneDrive of the connected account anew and drops the folders of the old one', async () => {
@@ -145,6 +145,8 @@ describe('LibrarySourceSection - OneDrive (#2467)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Ordner auswählen' })
     await user.click(await within(dialog).findByRole('button', { name: '„Verschwunden“ öffnen' }))
 
-    expect(await within(dialog).findByText(ONEDRIVE_MESSAGES.folderGone)).toBeVisible()
+    expect(
+      await within(dialog).findByText(/Der Ordner ist im OneDrive nicht mehr vorhanden\./),
+    ).toBeVisible()
   })
 })

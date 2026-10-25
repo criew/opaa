@@ -45,16 +45,29 @@ function rowOf(title: string) {
   return screen.getByRole('region', { name: title })
 }
 
+/** An entry of the step „Prüfen“ by its label. */
+function reviewOf(label: string) {
+  return screen.getByText(label, { selector: 'li > span' }).closest('li')!
+}
+
 /** Chooses OneDrive and goes on to „Quelle einrichten“. */
 async function chooseOneDrive(user: User) {
   await user.click(await screen.findByRole('radio', { name: /^OneDrive/ }))
   await next(user)
 }
 
-/** Chooses the private way on the profile and waits until the OneDrive is found. */
+/**
+ * Chooses the private way on the profile: „Verbindung“ has nothing to enter, so „Umfang“ opens,
+ * and the row „Verbindung“ names the OneDrive once it is found.
+ */
 async function choosePrivate(user: User) {
   await user.click(await screen.findByRole('radio', { name: /Microsoft 365 Rheinfurt · privat/ }))
-  return screen.findByText(/das OneDrive Ihres verbundenen Microsoft-Kontos/)
+  await screen.findByRole('radio', { name: 'Alle Ordner' })
+  await waitFor(() =>
+    expect(rowOf('Verbindung')).toHaveTextContent(
+      'Zugang „Microsoft 365 Rheinfurt“, eigenes Konto · OneDrive',
+    ),
+  )
 }
 
 describe('LibraryCreatePage - OneDrive (#2467)', () => {
@@ -79,9 +92,24 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
         tested.push((await request.clone().json()) as SourceConnectionTestRequest)
         return undefined
       }),
+      // the mock profiles of the tests hold no OneDrive Zugang: the creation answers here
       http.post('/api/v1/libraries', async ({ request }) => {
-        created.push((await request.clone().json()) as LibraryRequest)
-        return undefined
+        created.push((await request.json()) as LibraryRequest)
+        return HttpResponse.json(
+          {
+            id: 'lib-onedrive',
+            name: 'OneDrive',
+            ownerType: 'USER',
+            ownerId: 'mock-user-id',
+            myRole: 'OWNER',
+            documentCount: 0,
+            sourceType: 'ONEDRIVE',
+            privateLibrary: true,
+            createdAt: '2026-10-25T08:00:00Z',
+            updatedAt: '2026-10-25T08:00:00Z',
+          },
+          { status: 201 },
+        )
       }),
     )
   })
@@ -130,8 +158,8 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     expect(name).toHaveValue('OneDrive')
     expect(screen.queryByText(/· Freigaben/)).not.toBeInTheDocument()
     await next(user)
-    expect(rowOf('Verbindung')).toHaveTextContent('OneDrive')
-    expect(rowOf('Umfang')).toHaveTextContent('Alle Ordner')
+    expect(reviewOf('Verbindung')).toHaveTextContent('OneDrive')
+    expect(reviewOf('Umfang')).toHaveTextContent('Alle Ordner')
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() => expect(created).toHaveLength(1))
@@ -152,7 +180,6 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     await chooseOneDrive(user)
     await choosePrivate(user)
 
-    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
     const pair = screen.getByRole('radiogroup', { name: 'Umfang: Ordner' })
     expect(within(pair).getByRole('radio', { name: 'Alle Ordner' })).toBeChecked()
     await user.click(within(pair).getByRole('radio', { name: 'Nur ausgewählte Ordner' }))
@@ -175,8 +202,8 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     expect(await screen.findByLabelText(/^Name/)).toHaveValue('')
     await user.type(screen.getByLabelText(/^Name/), 'Meine Vorlagen')
     await next(user)
-    expect(rowOf('Umfang')).toHaveTextContent('2 Ordner')
-    expect(rowOf('Umfang')).toHaveTextContent('Projekte / 2026')
+    expect(reviewOf('Umfang')).toHaveTextContent('2 Ordner')
+    expect(reviewOf('Umfang')).toHaveTextContent('Projekte / 2026')
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() => expect(created).toHaveLength(1))
@@ -198,11 +225,15 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     await chooseOneDrive(user)
     await choosePrivate(user)
 
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
+    expect(rowOf('Verbindung')).toHaveTextContent(
+      /„OneDrive“ – das OneDrive Ihres verbundenen Microsoft-Kontos/,
+    )
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
-    expect(await within(rowOf('Verbindung')).findByText('verbunden')).toBeVisible()
-    expect(screen.getByText(ONEDRIVE_MESSAGES.reachable)).toBeVisible()
+    expect(await screen.findByText(ONEDRIVE_MESSAGES.reachable)).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    expect(within(rowOf('Verbindung')).getByText('verbunden')).toBeVisible()
     await user.click(screen.getByRole('radio', { name: 'Nur ausgewählte Ordner' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Notizen' }))
     expect(within(rowOf('Verbindung')).getByText('nicht geprüft')).toBeVisible()
@@ -219,11 +250,14 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     await chooseOneDrive(user)
     await user.click(await screen.findByRole('radio', { name: /Microsoft 365 Rheinfurt · privat/ }))
 
+    // the open row „Umfang“ names the refusal in place of the folders
+    expect(await within(rowOf('Umfang')).findByText(/kein OneDrive for Business/)).toBeVisible()
+    expect(screen.queryByRole('radio', { name: 'Alle Ordner' })).not.toBeInTheDocument()
+    await next(user)
     const row = rowOf('Verbindung')
     expect(await within(row).findByText(/kein OneDrive for Business/)).toBeVisible()
     expect(within(row).getByRole('button', { name: 'Erneut ermitteln' })).toBeVisible()
-    await next(user)
-    expect(await screen.findByText('OneDrive fehlt')).toBeVisible()
+    expect(within(row).getAllByText('OneDrive fehlt').length).toBeGreaterThan(0)
     expect(tested).toEqual([])
     expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
   }, 20000)

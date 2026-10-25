@@ -37,6 +37,7 @@ const CONNECTOR_TYPES: MockConnectorType[] = [
   { sourceType: 'GOOGLE_DRIVE', displayName: 'Google Drive', profileSupport: 'OPTIONAL' },
   { sourceType: 'HTTP_DIRECTORY', displayName: 'Webverzeichnis', profileSupport: 'OPTIONAL' },
   { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', profileSupport: 'OPTIONAL' },
+  { sourceType: 'ONEDRIVE', displayName: 'OneDrive', profileSupport: 'REQUIRED' },
   { sourceType: 'RSS_FEED', displayName: 'RSS-Feed', profileSupport: 'OPTIONAL' },
   { sourceType: 'S3', displayName: 'S3-Objektspeicher', profileSupport: 'OPTIONAL' },
   { sourceType: 'SHAREPOINT', displayName: 'SharePoint', profileSupport: 'REQUIRED' },
