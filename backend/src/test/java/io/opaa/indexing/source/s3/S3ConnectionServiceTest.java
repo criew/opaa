@@ -74,7 +74,7 @@ class S3ConnectionServiceTest {
     S3ConnectionService.Probe probe = service.probe("http://10.0.0.5:9000", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isFalse();
-    assertThat(probe.credentialsVerified()).isFalse();
+    assertThat(probe.credentialsVerified()).as("the key was never asked").isNull();
     assertThat(probe.message())
         .contains("10.0.0.5")
         .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
@@ -87,9 +87,56 @@ class S3ConnectionServiceTest {
 
     S3ConnectionService.Probe probe = service.probe("https://minio.intern:9000", "ak:sk", SETTINGS);
 
+    assertThat(probe.credentialsVerified()).isNull();
     assertThat(probe.message())
         .contains("TLS-Verbindung")
         .contains(io.opaa.sourceaccess.UntrustedCertificate.MESSAGE);
+  }
+
+  // regression guard for #3175: a failure before the store judged the signature says nothing
+  // about the key - null, so the setup names the address, never "Anmeldung abgelehnt"
+  @Test
+  void aScopeThatFailsBeforeTheSignatureIsJudgedLeavesTheKeyUnverified() throws Exception {
+    List<java.util.function.Supplier<S3AccessException>> failures =
+        List.of(
+            S3AccessException.Tls::new,
+            () -> new S3AccessException.Tls(true),
+            () -> new S3AccessException.Unreachable("Die Verbindung wurde abgelehnt."),
+            () ->
+                new S3AccessException.TargetBlocked(
+                    "Die Zieladresse 10.0.0.5 ist gesperrt.",
+                    TargetAddressValidator.ALLOWLIST_HINT),
+            S3AccessException.ClockSkew::new,
+            () -> new S3AccessException.RateLimited(1),
+            () -> new S3AccessException("Der Objektspeicher antwortete mit HTTP 500."));
+    for (java.util.function.Supplier<S3AccessException> failure : failures) {
+      when(factory.createForProbe(any(), anyCollection()))
+          .thenReturn(new FakeS3ObjectStore().failBucket("dokumente", failure));
+
+      S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
+
+      assertThat(probe.reachable()).isFalse();
+      assertThat(probe.credentialsVerified()).as(failure.get().getMessage()).isNull();
+      assertThat(probe.message()).contains(failure.get().getMessage());
+    }
+  }
+
+  @Test
+  void oneScopeThatAcceptedTheSignatureVerifiesTheKeyDespiteAnUnreachableOther() throws Exception {
+    S3SourceSettings two =
+        new S3SourceSettings(
+            null, true, List.of(S3Scope.of("dokumente", ""), S3Scope.of("archiv", "")), null, null);
+    when(factory.createForProbe(any(), anyCollection()))
+        .thenReturn(
+            new FakeS3ObjectStore()
+                .bucket("dokumente")
+                .failBucket(
+                    "archiv", () -> new S3AccessException.Unreachable("Zeitüberschreitung")));
+
+    S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", two);
+
+    assertThat(probe.reachable()).isFalse();
+    assertThat(probe.credentialsVerified()).isTrue();
   }
 
   @Test
@@ -190,7 +237,8 @@ class S3ConnectionServiceTest {
     S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isFalse();
-    assertThat(probe.credentialsVerified()).isTrue();
+    // a redirect or a malformed authorization comes before the signature is checked
+    assertThat(probe.credentialsVerified()).isNull();
     assertThat(probe.scopes().get(0).message()).contains("Region oder Adressstil");
     assertThat(probe.message()).contains("Region oder Adressstil");
   }

@@ -1433,10 +1433,11 @@ components:
           type: boolean
           nullable: true
           description: >
-            For sourceType CONFLUENCE: whether the credentials were accepted by the instance.
-            false after a detection-only test (no credentials given) or when the instance rejected
-            them. For sourceType S3: whether the store accepted the key (a refused key, a blocked
-            endpoint or an unreachable store report false). Absent for other source types.
+            What the test says about the secret: false when the source rejected it or none was
+            usable as given (CONFLUENCE also after a detection-only test without credentials);
+            true once the source accepted it, also when a permission, scope or consent is missing
+            (reachable false); null when the test did not get that far (blocked target, TLS,
+            network, clock, server error, CONFLUENCE edition mismatch) or does not tell.
         details:
           description: >
             The connector's own findings (ADR-0038), absent for none. CONFLUENCE reports the

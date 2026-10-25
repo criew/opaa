@@ -178,7 +178,10 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
         smb.connect();
       } catch (SmbAccessException.Authentication e) {
         return new SourceConnectionTestResult(false, e.getMessage(), null, false, null);
-      } catch (SmbAccessException.ShareNotFound | SmbAccessException.AccessDenied e) {
+      } catch (SmbAccessException.ShareNotFound e) {
+        // the share is part of the address; its absence says nothing about the sign-in
+        return new SourceConnectionTestResult(false, e.getMessage(), null, null, null);
+      } catch (SmbAccessException.AccessDenied e) {
         return new SourceConnectionTestResult(
             false, "Angemeldet, aber: " + e.getMessage(), null, true, null);
       }

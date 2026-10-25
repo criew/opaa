@@ -185,7 +185,8 @@ class SmbSourceConnectorTest {
           CONNECTOR.testConnection(settings(samba.url("gibt-es-nicht"), samba.credentials()), null);
 
       assertThat(result.reachable()).isFalse();
-      assertThat(result.credentialsVerified()).isTrue();
+      // the share is part of the address: the setup names the address, not the rights
+      assertThat(result.credentialsVerified()).isNull();
       assertThat(result.message()).contains("Freigabe „gibt-es-nicht“ gibt es");
     }
 
