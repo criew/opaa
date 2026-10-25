@@ -171,7 +171,6 @@ export default function LibraryDocumentUploadArea({
       <Box
         role="button"
         tabIndex={0}
-        aria-label="Dateien oder Ordner hierher ziehen zum Hochladen"
         onClick={() => fileInputRef.current?.click()}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
