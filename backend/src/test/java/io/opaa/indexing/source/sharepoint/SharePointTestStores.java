@@ -38,6 +38,15 @@ final class SharePointTestStores {
         server::httpClient);
   }
 
+  /** Connections whose address validation refuses the fake's loopback address. */
+  static GraphConnections blockedConnections(FakeGraphServer server) {
+    return new GraphConnections(
+        SharePointProperties.defaults(),
+        new TargetAddressValidator(true, List.of()),
+        wait -> {},
+        server::httpClient);
+  }
+
   static SharePointSettings settings(Map<String, Object> json) {
     return SharePointSettings.read(ConnectorData.of(json));
   }

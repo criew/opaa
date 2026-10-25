@@ -25,6 +25,7 @@ import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import io.opaa.msgraph.FakeGraphServer;
+import io.opaa.security.TargetAddressValidator;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -234,6 +235,46 @@ class SharePointSourceConnectorTest {
     assertThat(result.details().toJson())
         .contains(DriveRule.NOT_A_LIBRARY)
         .contains(DriveRule.LIBRARY_NOT_VISIBLE);
+  }
+
+  @Test
+  void onlyARejectedTokenFailsTheSignInOfTheConnectionTest() {
+    server.failNext("drives/" + DRIVE_0, 401, "InvalidAuthenticationToken", null, 1);
+
+    SourceConnectionTestResult result =
+        connector.testConnection(withToken(libraries(DRIVE_0)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isFalse();
+  }
+
+  // regression guard for #3156: a blocked target never reads as a rejected sign-in; the result
+  // names the failure and leaves the sign-in open
+  @Test
+  void aBlockedTargetLeavesTheSignInOpen() {
+    SharePointSourceConnector blocked =
+        new SharePointSourceConnector(
+            server.origin(),
+            "https://login.example.org/{tenant}/oauth2/v2.0/token",
+            SharePointTestStores.blockedConnections(server),
+            syncState);
+
+    SourceConnectionTestResult result = blocked.testConnection(withToken(libraries(DRIVE_0)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isNull();
+    assertThat(result.message()).contains(TargetAddressValidator.ALLOWLIST_HINT);
+  }
+
+  @Test
+  void aRefusedLibraryLeavesTheSignInAccepted() {
+    server.failNext("drives/" + DRIVE_0, 403, "accessDenied", null, 1);
+
+    SourceConnectionTestResult result =
+        connector.testConnection(withToken(libraries(DRIVE_0)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
   }
 
   @Test

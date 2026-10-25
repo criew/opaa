@@ -167,6 +167,49 @@ class DropboxSourceConnectorTest {
   }
 
   @Test
+  void onlyARefusedTokenFailsTheSignInOfTheConnectionTest() {
+    server.rejectToken();
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(folders("/Akten")), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isFalse();
+  }
+
+  // regression guard for #3156: a blocked target never reads as a rejected sign-in; the result
+  // names the failure and leaves the sign-in open
+  @Test
+  void aBlockedTargetLeavesTheSignInOpen() {
+    DropboxSourceConnector blocked =
+        new DropboxSourceConnector(
+            new DropboxApiFactory(
+                DropboxProperties.at(server.base()),
+                new TargetAddressValidator(true, List.of()),
+                wait -> {}),
+            syncState);
+
+    SourceConnectionTestResult result = blocked.testConnection(connected(folders("/Akten")), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isNull();
+    assertThat(result.message()).isNotBlank();
+    assertThat(server.requests()).isEmpty();
+  }
+
+  @Test
+  void aMissingScopeLeavesTheSignInAccepted() {
+    server.missScope();
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(folders("/Akten")), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
+    assertThat(result.message()).contains("Berechtigung");
+  }
+
+  @Test
   void theListingOffersTheFoldersBelowThePathAskedFor() {
     server.folder("/Akten/2026");
 
