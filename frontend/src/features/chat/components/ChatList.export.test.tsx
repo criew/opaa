@@ -37,7 +37,7 @@ describe('ChatList export actions', () => {
 
     await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
     const item = screen.getByRole('menuitem', {
-      name: `Chat „Architektur des Projekts“ als ${label} exportieren`,
+      name: `Exportieren als ${label}: Chat „Architektur des Projekts“`,
     })
     expect(item).toHaveTextContent(`Exportieren als ${label}`)
     await user.click(item)
@@ -48,4 +48,26 @@ describe('ChatList export actions', () => {
     )
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
+
+  // regression guard for #3211: axe label-content-name-mismatch (WCAG 2.5.3 "Label in Name")
+  // requires the visible text of every entry to be part of its accessible name.
+  it('keeps the visible text of every chat menu entry in its accessible name', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+    await screen.findByText('Architektur des Projekts')
+
+    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
+    const items = screen.getAllByRole('menuitem')
+
+    expect(items).toHaveLength(6)
+    for (const item of items) {
+      const visibleText = (item.textContent ?? '').trim()
+      expect(visibleText).not.toBe('')
+      expect(item).toHaveAccessibleName(new RegExp(escapeRegExp(visibleText), 'i'))
+    }
+  })
 })
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
