@@ -10,6 +10,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
@@ -24,8 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Mirrors a provider's groups claim into {@link GroupKind#IDENTITY_PROVIDER} groups (ADR-0025,
@@ -289,16 +288,6 @@ public class TokenGroupSynchronizer {
   }
 
   private void invalidateAfterCommit(UUID userId) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      membershipResolver.invalidateUser(userId);
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            membershipResolver.invalidateUser(userId);
-          }
-        });
+    TransactionCallbacks.afterCommitOrNow(() -> membershipResolver.invalidateUser(userId));
   }
 }

@@ -47,6 +47,8 @@ import java.util.stream.Stream;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * The logical modules of the backend, the layering of its top-level packages and the place of its
@@ -489,6 +491,12 @@ public final class ModularArchitecture {
    * delta, which a build task runs and the application never does.
    */
   static final Set<String> PROCESS_STARTERS = Set.of("compliance.ManifestSnapshot");
+
+  /**
+   * The only main class that registers work for the end of a transaction (ADR-0051, Entscheidung
+   * 2), relative to the root.
+   */
+  static final String TRANSACTION_CALLBACKS = "common.TransactionCallbacks";
 
   static final Set<String> DOCUMENT_DELETERS =
       Set.of(
@@ -1688,6 +1696,33 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Implementations of Spring's {@code TransactionSynchronization}, anonymous ones included, and
+   * calls of {@code TransactionSynchronizationManager#registerSynchronization} outside {@link
+   * #TRANSACTION_CALLBACKS} and the classes nested in it.
+   */
+  ArchRule transactionCallbacksGoThroughTheHelper() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not " + TRANSACTION_CALLBACKS,
+                javaClass -> !TRANSACTION_CALLBACKS.equals(relativeName(topLevel(javaClass)))))
+        .should()
+        .implement(TransactionSynchronization.class)
+        .orShould()
+        .callMethodWhere(
+            DescribedPredicate.describe(
+                "register a transaction synchronization",
+                call ->
+                    call.getName().equals("registerSynchronization")
+                        && call.getTargetOwner()
+                            .isEquivalentTo(TransactionSynchronizationManager.class)))
+        .because(
+            "work deferred to the end of a transaction has two semantics, after commit and after"
+                + " completion, each with its fallback in one helper")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Calls of a {@code delete…} method of {@link #DOCUMENT_REPOSITORY}, or of one whose modifying
    * query deletes, also by method reference, outside {@link #DOCUMENT_DELETERS} and the classes
    * nested in them.
@@ -1969,6 +2004,7 @@ public final class ModularArchitecture {
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
         onlyTheManifestDeltaStartsProcesses(),
+        transactionCallbacksGoThroughTheHelper(),
         onlyTheRunRemovesThroughTheCleanupService(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),

@@ -17,6 +17,7 @@ import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.organization.Organization;
 import io.opaa.security.PasswordGenerator;
 import java.time.Clock;
@@ -32,8 +33,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Creates the bootstrap system administrator and the LOCAL provider row on the first start in the
@@ -326,17 +325,7 @@ public class LocalAdminSeeder {
    * rolls back never prints one that does not work.
    */
   private static void printPasswordBlockAfterCommit(String password) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      printPasswordBlock(password);
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            printPasswordBlock(password);
-          }
-        });
+    TransactionCallbacks.afterCommitOrNow(() -> printPasswordBlock(password));
   }
 
   /** The address exactly as configured (trimmed), or {@code null} with the operator told why. */
