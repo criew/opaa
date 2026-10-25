@@ -208,7 +208,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await groupInput.fill(GROUP_NAME)
     await adminPage.getByRole('option', { name: GROUP_NAME }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
-    await expect(adminPage.getByText(GROUP_NAME)).toBeVisible()
+    await expect(adminPage.getByText(GROUP_NAME, { exact: true })).toBeVisible()
 
     await searchLibraries(cPage, LIBRARY_NAME)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()
