@@ -24,8 +24,14 @@ describe('outcomeOf (#3152)', () => {
     // regression guard for #3175: S3 and Confluence answer a TLS, network or blocked-target
     // failure with credentialsVerified null - the address is to blame, not the sign-in
     it.each([
-      ['S3 over TLS', 'Die TLS-Verbindung zum Objektspeicher ist fehlgeschlagen (Protokollfehler).'],
-      ['S3 unreachable', 'Der Objektspeicher ist nicht erreichbar: Die Verbindung wurde abgelehnt.'],
+      [
+        'S3 over TLS',
+        'Die TLS-Verbindung zum Objektspeicher ist fehlgeschlagen (Protokollfehler).',
+      ],
+      [
+        'S3 unreachable',
+        'Der Objektspeicher ist nicht erreichbar: Die Verbindung wurde abgelehnt.',
+      ],
       ['Confluence over TLS', 'TLS-Verbindung zu wiki.example.org fehlgeschlagen.'],
     ])('names the address when the probe said nothing about the secret: %s', (_case, message) => {
       const outcome = outcomeOf(
