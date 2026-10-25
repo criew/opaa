@@ -115,28 +115,33 @@ export default function AssetHeadlineEditor({
     <Stack
       direction="row"
       spacing={1.5}
-      // below 600 px the name reserves two lines: the pencil stays at the first
-      sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, mb: 0.5, minHeight: 34 }}
+      sx={{
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        mb: 0.5,
+        minHeight: 34,
+        position: 'relative',
+      }}
     >
       {draft ? (
         <PageHeading title={name} visuallyHidden />
       ) : (
         // a long compound breaks with a hyphen instead of running out at 320 px
         <Box title={name} sx={{ minWidth: 0 }}>
-          {/* a fixed height for every name: one line at 1280 px, two below 600 px, the full
-              name in the tooltip - the tabs below never move (D1) */}
+          {/* a fixed height for every name: one line at 1280 px, the full name in the tooltip;
+              below 600 px a smaller type and three reserved lines, nothing cut - the tabs below
+              never move (D1) */}
           <PageHeading
             title={name}
             sx={{
               overflow: 'hidden',
               hyphens: 'manual',
               overflowWrap: 'anywhere',
-              fontSize: { xs: 17, sm: undefined },
-              lineHeight: { xs: '22px', sm: 1.4 },
-              display: '-webkit-box',
+              fontSize: { xs: 14, sm: undefined },
+              lineHeight: { xs: '19px', sm: 1.4 },
+              display: { xs: 'block', sm: '-webkit-box' },
               WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: { xs: 2, sm: 1 },
-              minHeight: { xs: 44, sm: 'auto' },
+              WebkitLineClamp: { xs: 'none', sm: 1 },
+              minHeight: { xs: 57, sm: 'auto' },
             }}
           />
         </Box>
@@ -149,7 +154,9 @@ export default function AssetHeadlineEditor({
             size="small"
             aria-label={editLabel}
             onClick={startEditing}
-            sx={{ mt: { xs: '-6px', sm: 0 } }}
+            // below 600 px the pencil sits at the right end of the action row above, so the name
+            // keeps the full width for its three lines
+            sx={{ position: { xs: 'absolute', sm: 'static' }, top: -45, right: 0 }}
           >
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
