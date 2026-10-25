@@ -71,6 +71,7 @@ public class RssFeedSourceConnector
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "RSS-Feed")
+          .withDataFlow("source-rss")
           .withProfiles(
               ProfileDeclaration.of(
                       ConnectionProfileSupport.OPTIONAL,

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -22,9 +23,12 @@ import org.springframework.stereotype.Component;
 class ConnectionProfileInstanceState implements InstanceStateSource {
 
   private final ConnectionProfileRepository profiles;
+  private final ObjectProvider<ConnectorDataFlows> connectorDataFlows;
 
-  ConnectionProfileInstanceState(ConnectionProfileRepository profiles) {
+  ConnectionProfileInstanceState(
+      ConnectionProfileRepository profiles, ObjectProvider<ConnectorDataFlows> connectorDataFlows) {
     this.profiles = profiles;
+    this.connectorDataFlows = connectorDataFlows;
   }
 
   @Override
@@ -41,10 +45,11 @@ class ConnectionProfileInstanceState implements InstanceStateSource {
   @Override
   public Map<String, Boolean> dataFlows(UUID organizationId) {
     List<ConnectionProfile> connectors = profiles.findConnectorsByName();
+    ConnectorDataFlows connectorFlows = connectorDataFlows.getObject();
     Map<String, Boolean> flows = new HashMap<>();
     for (ConnectionProfile profile : connectors) {
       if (profile.getOwnership() != ConnectionOwnership.LIBRARY) {
-        ConnectorDataFlows.of(profile.getSourceType()).ifPresent(flow -> flows.put(flow, true));
+        connectorFlows.of(profile.getSourceType()).ifPresent(flow -> flows.put(flow, true));
       }
     }
     flows.put(

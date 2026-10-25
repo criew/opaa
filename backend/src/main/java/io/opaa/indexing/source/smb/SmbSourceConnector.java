@@ -66,6 +66,7 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "Windows-Dateifreigabe (SMB)")
+          .withDataFlow("source-smb")
           .withoutDeepLink()
           .withProfiles(
               ProfileDeclaration.of(

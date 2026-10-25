@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,14 +25,17 @@ class KnowledgeInstanceState implements InstanceStateSource {
   private final KnowledgeLibraryRepository libraries;
   private final UploadedOriginalStore originalStore;
   private final MalwareScanService malwareScanService;
+  private final ObjectProvider<ConnectorDataFlows> connectorDataFlows;
 
   KnowledgeInstanceState(
       KnowledgeLibraryRepository libraries,
       UploadedOriginalStore originalStore,
-      MalwareScanService malwareScanService) {
+      MalwareScanService malwareScanService,
+      ObjectProvider<ConnectorDataFlows> connectorDataFlows) {
     this.libraries = libraries;
     this.originalStore = originalStore;
     this.malwareScanService = malwareScanService;
+    this.connectorDataFlows = connectorDataFlows;
   }
 
   @Override
@@ -51,8 +55,12 @@ class KnowledgeInstanceState implements InstanceStateSource {
   public Map<String, Boolean> dataFlows(UUID organizationId) {
     Map<String, Long> counts = sharedLibraryCounts(organizationId);
     Map<String, Boolean> flows = new HashMap<>();
-    ConnectorDataFlows.BY_TYPE.forEach(
-        (type, flow) -> flows.put(flow, counts.getOrDefault(type, 0L) > 0));
+    connectorDataFlows
+        .getObject()
+        .byType()
+        .forEach(
+            (type, flow) ->
+                flows.merge(flow, counts.getOrDefault(type.key(), 0L) > 0, Boolean::logicalOr));
     flows.put("source-original", ORIGINAL_AT_THE_SOURCE.stream().anyMatch(counts::containsKey));
     flows.put("source-attachment", counts.containsKey("RSS_FEED"));
     flows.put("original-store", originalStore instanceof S3UploadedOriginalStore);

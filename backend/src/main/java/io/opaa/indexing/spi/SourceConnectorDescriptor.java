@@ -23,6 +23,9 @@ import java.util.Objects;
  *     library may lengthen; {@code null} for a connector whose every run is a full one
  * @param profileDeclaration how the connector stands to connection profiles ("Profilangabe"),
  *     including the service account key the core signs with for a library's own key
+ * @param dataFlow the id of the {@code dataFlows} entry of the compliance manifest the connector
+ *     reads its source through, for the disclosure; {@code null} for a connector that sends nothing
+ *     out. Only a remote source opens one
  */
 public record SourceConnectorDescriptor(
     SourceType type,
@@ -33,7 +36,8 @@ public record SourceConnectorDescriptor(
     boolean uploads,
     PushIntake pushIntake,
     Duration fullSyncInterval,
-    ProfileDeclaration profileDeclaration) {
+    ProfileDeclaration profileDeclaration,
+    String dataFlow) {
 
   public SourceConnectorDescriptor {
     Objects.requireNonNull(type, "type");
@@ -48,6 +52,9 @@ public record SourceConnectorDescriptor(
     if (profileDeclaration.serviceAccountKey() != null && !remote) {
       throw new IllegalArgumentException(
           "only a remote source signs in with a service account key");
+    }
+    if (dataFlow != null && (dataFlow.isBlank() || !remote)) {
+      throw new IllegalArgumentException("only a remote source opens a data flow, named by its id");
     }
   }
 
@@ -70,7 +77,8 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         fullSyncInterval,
-        ProfileDeclaration.forbidden());
+        ProfileDeclaration.forbidden(),
+        null);
   }
 
   /**
@@ -101,7 +109,8 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         fullSyncInterval,
-        profileDeclaration);
+        profileDeclaration,
+        dataFlow);
   }
 
   public SourceConnectorDescriptor withPushIntake(PushIntake intake) {
@@ -114,7 +123,8 @@ public record SourceConnectorDescriptor(
         uploads,
         intake,
         fullSyncInterval,
-        profileDeclaration);
+        profileDeclaration,
+        dataFlow);
   }
 
   public SourceConnectorDescriptor withFullSyncInterval(Duration interval) {
@@ -127,7 +137,8 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         interval,
-        profileDeclaration);
+        profileDeclaration,
+        dataFlow);
   }
 
   /** The connector stands to connection profiles as {@code declaration} says. */
@@ -141,7 +152,23 @@ public record SourceConnectorDescriptor(
         uploads,
         pushIntake,
         fullSyncInterval,
-        declaration);
+        declaration,
+        dataFlow);
+  }
+
+  /** The connector reads its source through the manifest's data flow {@code flow}. */
+  public SourceConnectorDescriptor withDataFlow(String flow) {
+    return new SourceConnectorDescriptor(
+        type,
+        displayName,
+        indexingRun,
+        remote,
+        deepLink,
+        uploads,
+        pushIntake,
+        fullSyncInterval,
+        profileDeclaration,
+        flow);
   }
 
   /** Whether a library of this connector may be connected through a profile. */
