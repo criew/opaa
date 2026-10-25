@@ -1,16 +1,13 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
-import MenuItem from '@mui/material/MenuItem'
 import Pagination from '@mui/material/Pagination'
-import Select from '@mui/material/Select'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -27,10 +24,10 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { LibraryDocumentResponse, LibraryFolderListItem } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import type { DocumentPageState } from '../stores/documentStore'
-import { DEFAULT_PAGE_SIZE } from '../stores/documentStore'
-import { documentStatusLabel } from './indexingLabels'
 import { formatFileSize } from '@/shared/utils/labels'
-import { safeExternalHref } from '@/shared/utils/safeExternalHref'
+import StateDot from '@/shared/ui/StateDot'
+import { DOCUMENT_STATUS_WORDS } from './indexingLabels'
+import { TextAction } from '@/shared/ui/DetailSection'
 import { sourceRegistration } from './sources/registry'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
@@ -38,13 +35,8 @@ function formatIndexedAt(indexedAt: string | null | undefined): string {
   return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function statusChipColor(
-  status: LibraryDocumentResponse['status'],
-): 'success' | 'warning' | 'error' {
-  if (status === 'INDEXED') return 'success'
-  if (status === 'FAILED') return 'error'
-  return 'warning'
-}
+/** Folders a level shows before „alle n Ordner anzeigen“. */
+const FOLDERS_SHOWN = 8
 
 export interface LibraryDocumentListProps {
   documents: LibraryDocumentResponse[]
@@ -62,7 +54,14 @@ export interface LibraryDocumentListProps {
   onSearchChange: (value: string) => void
   /** 1-based, as the pagination control itself counts. */
   onPageChange: (page: number) => void
-  onPageSizeChange: (size: number) => void
+  /** Kept for callers that still offer a page size; the toolbar shows filters instead. */
+  onPageSizeChange?: (size: number) => void
+  /** An action at the right end of the list's head row, e.g. „Neuer Ordner“ without a toolbar. */
+  headAction?: ReactNode
+  /** The toolbar's filters after the search field. */
+  filters?: ReactNode
+  /** Search and filters only from eight documents on or while filtering (D19, R1-63). */
+  showSearch?: boolean
   /** Whether rows carry a checkbox at all - a reader's list has no selection. */
   selectable: boolean
   selectedIds: string[]
@@ -92,15 +91,42 @@ export interface LibraryDocumentListProps {
   onToggleAttachmentGroup: (parentId: string) => void
 }
 
-/** A source address from the document's metadata: a link for http(s), plain text otherwise. */
-function ExternalAddress({ address }: { address: string }) {
-  const href = safeExternalHref(address)
-  if (!href) return <span>{address}</span>
-  return (
-    <Link href={href} target="_blank" rel="noopener noreferrer">
-      {address}
-    </Link>
+/**
+ * A document's state as dot and word, like a run's: „indiziert“ quiet without a dot, a failure
+ * with its reason one focus away (guidelines 5.5).
+ */
+
+function DocumentStatusMark({ document }: { document: LibraryDocumentResponse }) {
+  const label = DOCUMENT_STATUS_WORDS[document.status]
+  if (document.status === 'INDEXED') {
+    return (
+      <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary', minWidth: 112 }}>
+        {label}
+      </Typography>
+    )
+  }
+  const mark = (
+    <Box component="span" tabIndex={document.errorMessage ? 0 : undefined} sx={{ minWidth: 112 }}>
+      <StateDot tone={document.status === 'FAILED' ? 'error' : 'neutral'} label={label} />
+    </Box>
   )
+  return document.status === 'FAILED' && document.errorMessage ? (
+    <Tooltip title={document.errorMessage}>{mark}</Tooltip>
+  ) : (
+    mark
+  )
+}
+
+/** Where a connector document comes from: its space and page, or its address. */
+function originOf(
+  document: LibraryDocumentResponse,
+  names: Map<string, string | null | undefined>,
+): string | null {
+  if (document.sourceContainerKey) {
+    const noun = sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'
+    return `${noun}: ${names.get(document.sourceContainerKey) ?? document.sourceContainerKey}${document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}`
+  }
+  return document.sourceEntryUrl ?? document.sourceUrl ?? null
 }
 
 /**
@@ -124,7 +150,9 @@ export default function LibraryDocumentList({
   searchInput,
   onSearchChange,
   onPageChange,
-  onPageSizeChange,
+  filters,
+  showSearch = true,
+  headAction,
   selectable,
   selectedIds,
   onToggleSelected,
@@ -142,6 +170,9 @@ export default function LibraryDocumentList({
   onToggleAttachmentGroup,
 }: LibraryDocumentListProps) {
   const isSearchActive = Boolean(pageState?.q)
+  // folders are not paged by the backend: from eight on the list shows the first ones (D19)
+  const [allFolders, setAllFolders] = useState(false)
+  const shownFolders = allFolders ? folders : folders.slice(0, FOLDERS_SHOWN)
   const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
@@ -166,12 +197,6 @@ export default function LibraryDocumentList({
     (confluenceSpaces ?? []).map((space) => [space.key, space.name]),
   )
 
-  /** A container key with the name the library's own selection gives it ("Name (KEY)"). */
-  function containerName(key: string): string {
-    const name = confluenceSpaceNameByKey.get(key)
-    return name ? `${name} (${key})` : key
-  }
-
   const visibleDocumentIds = documents.map((doc) => doc.id)
   const allVisibleSelected =
     visibleDocumentIds.length > 0 && visibleDocumentIds.every((id) => selectedIds.includes(id))
@@ -191,11 +216,12 @@ export default function LibraryDocumentList({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 2,
-            p: 1.5,
-            ...(isAttachment && { py: 1.25 }),
+            gap: { xs: 1, sm: 2 },
+            px: { xs: 0.5, sm: 1.5 },
+            py: isAttachment ? 1 : 1.25,
           }}
         >
+          {!selectable && <Box aria-hidden sx={{ width: 28, flex: 'none' }} />}
           {selectable && (
             <Checkbox
               size="small"
@@ -209,69 +235,54 @@ export default function LibraryDocumentList({
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
               {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
               <Typography
-                sx={{
-                  fontWeight: isAttachment ? 500 : 600,
-                  fontSize: isAttachment ? 13.5 : undefined,
-                  wordBreak: 'break-word',
-                }}
+                noWrap
+                title={[document.fileName, originOf(document, confluenceSpaceNameByKey)]
+                  .filter(Boolean)
+                  .join('\n')}
+                sx={{ fontWeight: isAttachment ? 500 : 600, fontSize: isAttachment ? 13.5 : 14 }}
               >
                 {document.fileName}
               </Typography>
               {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
             </Stack>
+            {/* one line under the name: where it lies (search hits), size, sections, date - its
+                origin in the source stands in the name's tooltip (P6) */}
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
-              {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
-              {formatIndexedAt(document.indexedAt)}
+              {options.viaFileName && `Anhang von ${options.viaFileName} · `}
+              {document.folderPath && (
+                <>
+                  <Link
+                    component="button"
+                    underline="hover"
+                    onClick={() => onOpenFolder(document.folderId ?? null)}
+                  >
+                    {document.folderPath}
+                  </Link>
+                  {' · '}
+                </>
+              )}
+              {formatFileSize(document.fileSize)}
+              {/* sections and date only where the document was indexed - no placeholders */}
+              {document.status === 'INDEXED' && (
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {` · ${document.chunkCount} ${document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} · ${formatIndexedAt(document.indexedAt)}`}
+                </Box>
+              )}
+              {/* below 600 px the state joins this line, with its dot, instead of its own column */}
+              <Box
+                component="span"
+                sx={{ display: { xs: 'inline-flex', sm: 'none' }, ml: 1, verticalAlign: 'top' }}
+              >
+                {document.status === 'INDEXED' ? (
+                  DOCUMENT_STATUS_WORDS.INDEXED
+                ) : (
+                  <StateDot
+                    tone={document.status === 'FAILED' ? 'error' : 'neutral'}
+                    label={DOCUMENT_STATUS_WORDS[document.status]}
+                  />
+                )}
+              </Box>
             </Typography>
-            {/* ADR-0023/ADR-0027: a row names its container under the noun its source
-                registered (a Confluence space, an S3 bucket) and its position below it - as text,
-                since an s3:// path is no link a browser could open. */}
-            {document.sourceContainerKey && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {`${sourceRegistration(document.sourceType)?.containerLabel ?? 'Bereich'}: ${containerName(document.sourceContainerKey)}`}
-                {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
-              </Typography>
-            )}
-            {options.viaFileName && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Anhang von: {options.viaFileName}
-              </Typography>
-            )}
-            {/* Most useful on a search hit (bibliotheksweit, ADR-0020), whose result list has
-                no breadcrumb of its own to place it in the structure. */}
-            {document.folderPath && (
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Ordner:{' '}
-                <Link
-                  component="button"
-                  underline="hover"
-                  onClick={() => onOpenFolder(document.folderId ?? null)}
-                >
-                  {document.folderPath}
-                </Link>
-              </Typography>
-            )}
-            {/* sourceEntryUrl is carried only by an attachment from an RSS feed entry - the link
-               makes visible which entry it comes from. */}
-            {document.sourceEntryUrl && (
-              <Typography
-                variant="caption"
-                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
-              >
-                Herkunft: <ExternalAddress address={document.sourceEntryUrl} />
-              </Typography>
-            )}
-            {/* Only shown when sourceEntryUrl above is absent, so the same remote address
-                never appears twice for an RSS attachment. */}
-            {!document.sourceEntryUrl && document.sourceUrl && (
-              <Typography
-                variant="caption"
-                sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
-              >
-                Quelle: <ExternalAddress address={document.sourceUrl} />
-              </Typography>
-            )}
             {attachments.length > 0 && (
               <Box>
                 <Button
@@ -287,23 +298,13 @@ export default function LibraryDocumentList({
             )}
           </Stack>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
-            {/* A FAILED document's asynchronous processing failure is only visible to the
-                user via this German errorMessage - the status chip alone only says something went
-                wrong, not what. */}
-            <Tooltip
-              title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
-              disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
-            >
-              <Chip
-                label={documentStatusLabel(document.status)}
-                size="small"
-                color={statusChipColor(document.status)}
-                variant="outlined"
-              />
-            </Tooltip>
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <DocumentStatusMark document={document} />
+            </Box>
             {renderMetadataPanel && (
               <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
                 <IconButton
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
                   aria-label={`Metadaten von ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
                   aria-expanded={metadataOpen}
                   size="small"
@@ -335,88 +336,106 @@ export default function LibraryDocumentList({
     <Box>
       {breadcrumb}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          fullWidth
-          value={searchInput}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Dokumente durchsuchen — Dateiname enthält …"
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16 }} />
-                </InputAdornment>
-              ),
-              endAdornment: searchInput ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label="Suche zurücksetzen"
-                    onClick={() => onSearchChange('')}
-                  >
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            },
-            htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
-          }}
-        />
-        <Select
-          size="small"
-          value={pageState?.size ?? DEFAULT_PAGE_SIZE}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          inputProps={{ 'aria-label': 'Dokumente je Seite' }}
-          sx={{ flexShrink: 0, minWidth: 132 }}
+      {(showSearch || filters) && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          // without a search the actions keep to the right edge
+          sx={{ mb: 2, justifyContent: 'flex-end', alignItems: { sm: 'center' } }}
         >
-          {[20, 50, 100].map((size) => (
-            <MenuItem key={size} value={size}>
-              {size} je Seite
-            </MenuItem>
-          ))}
-        </Select>
-      </Stack>
+          {showSearch && (
+            <TextField
+              size="small"
+              fullWidth
+              value={searchInput}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Dateiname enthält …"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 16 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchInput ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        aria-label="Suche zurücksetzen"
+                        onClick={() => onSearchChange('')}
+                      >
+                        <CloseIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+                },
+                htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
+              }}
+            />
+          )}
+          {filters && (
+            <Stack
+              direction="row"
+              useFlexGap
+              spacing={1.5}
+              sx={{ alignItems: 'center', flexShrink: 0, minWidth: 0, flexWrap: 'wrap' }}
+            >
+              {filters}
+            </Stack>
+          )}
+        </Stack>
+      )}
 
-      {/* The selection toolbar also stands on the root level, where a library may show only
-          folders - hiding it there made "Alle auf dieser Seite auswählen" look unavailable rather
-          than simply empty. */}
-      {selectable && (documents.length > 0 || folders.length > 0) && (
+      {/* The list's head for every role: the select-all box (or its space) and the column
+          name; while something is selected, its actions */}
+      {(documents.length > 0 || folders.length > 0) && (
         <Stack
           direction="row"
-          spacing={1.5}
-          sx={{ alignItems: 'center', mb: 1.5, flexWrap: 'wrap' }}
-          role="toolbar"
-          aria-label="Sammelaktionen"
+          spacing={{ xs: 1, sm: 2 }}
+          sx={{
+            alignItems: 'center',
+            minHeight: 40,
+            px: { xs: 0.5, sm: 1.5 },
+            borderBottom: 1,
+            borderColor: 'divider',
+            flexWrap: 'wrap',
+          }}
+          role={selectable ? 'toolbar' : undefined}
+          aria-label={selectable ? 'Sammelaktionen' : undefined}
         >
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={allVisibleSelected}
-                disabled={documents.length === 0}
-                indeterminate={!allVisibleSelected && selectedIds.length > 0}
-                onChange={onToggleAllVisible}
-              />
-            }
-            label="Alle auf dieser Seite auswählen"
-          />
-          {/* accessibility.md 2.8: the count changes without moving the focus, so it is announced
-              politely instead of staying silent for anyone not watching the checkboxes. */}
+          {selectable ? (
+            <Checkbox
+              size="small"
+              checked={allVisibleSelected}
+              disabled={documents.length === 0}
+              indeterminate={!allVisibleSelected && selectedIds.length > 0}
+              onChange={onToggleAllVisible}
+              slotProps={{ input: { 'aria-label': 'Alle auf dieser Seite auswählen' } }}
+              sx={{ p: 0.5 }}
+            />
+          ) : (
+            <Box aria-hidden sx={{ width: 28, flex: 'none' }} />
+          )}
+          {/* accessibility.md 2.8: the count changes without moving the focus */}
           <Typography
-            variant="body2"
             role="status"
             aria-live="polite"
-            sx={{ color: 'text.secondary' }}
+            sx={{ fontSize: 12.5, color: 'text.secondary' }}
           >
-            {selectedIds.length} ausgewählt
+            {selectedIds.length > 0 ? `${selectedIds.length} ausgewählt` : 'Name'}
           </Typography>
-          {bulkActions}
+          {headAction && selectedIds.length === 0 && (
+            <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              {headAction}
+            </Box>
+          )}
           {selectedIds.length > 0 && (
-            <Button size="small" onClick={onClearSelection}>
-              Auswahl aufheben
-            </Button>
+            <>
+              {bulkActions}
+              <Button size="small" onClick={onClearSelection}>
+                Auswahl aufheben
+              </Button>
+            </>
           )}
         </Stack>
       )}
@@ -435,7 +454,7 @@ export default function LibraryDocumentList({
         <Stack spacing={1}>
           {/* Folders are rows ahead of the documents, mirroring a plain file browser - a
               folder's documentCount already counts its own subtree recursively. */}
-          {folders.map((folder) => (
+          {shownFolders.map((folder) => (
             <Box
               key={folder.id}
               sx={{
@@ -444,6 +463,7 @@ export default function LibraryDocumentList({
                 justifyContent: 'space-between',
                 gap: 2,
                 py: 1.25,
+                px: { xs: 0.5, sm: 1.5 },
                 borderBottom: 1,
                 borderColor: 'divider',
                 '&:last-of-type': { borderBottom: 0 },
@@ -452,27 +472,11 @@ export default function LibraryDocumentList({
               {/* A folder is not a document and cannot be selected - said with a disabled
                   checkbox and its reason, rather than by leaving the column blank and making the
                   rows below look misaligned. */}
-              {selectable && (
-                <Tooltip title="Ordner lassen sich nicht auswählen — nur die Dokumente darin">
-                  <Box component="span" sx={{ display: 'inline-flex' }}>
-                    <Checkbox
-                      size="small"
-                      disabled
-                      checked={false}
-                      slotProps={{
-                        input: {
-                          'aria-label': `Ordner ${folder.name} ist nicht auswählbar`,
-                        },
-                      }}
-                      sx={{ p: 0.5 }}
-                    />
-                  </Box>
-                </Tooltip>
-              )}
+              {/* a folder is no document and has no box; the space keeps the names aligned */}
+              <Box aria-hidden sx={{ width: 28, flex: 'none' }} />
               <Box
                 role="button"
                 tabIndex={0}
-                aria-label={`Ordner ${folder.name} öffnen`}
                 onClick={() => onOpenFolder(folder.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -490,16 +494,41 @@ export default function LibraryDocumentList({
                 }}
               >
                 <FolderIcon color="action" />
-                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
-                  {folder.name}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
-                </Typography>
+                {/* below 600 px the count goes under the name, which keeps the whole width */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'flex-start', sm: 'baseline' },
+                    columnGap: 1.5,
+                    minWidth: 0,
+                  }}
+                >
+                  <Typography
+                    noWrap
+                    title={folder.name}
+                    sx={{ fontWeight: 600, fontSize: 14, maxWidth: '100%' }}
+                  >
+                    {folder.name}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
+                  >
+                    {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
+                  </Typography>
+                </Box>
               </Box>
               {renderFolderActions?.(folder)}
             </Box>
           ))}
+          {folders.length > shownFolders.length && (
+            <Box sx={{ py: 1, pl: { xs: 4, sm: 6.5 }, borderBottom: 1, borderColor: 'divider' }}>
+              <TextAction onClick={() => setAllFolders(true)}>
+                alle {folders.length} Ordner anzeigen
+              </TextAction>
+            </Box>
+          )}
           {/* A top-level document with its attachments is one group - the attachments hang
               indented on a guide line below it, a divider closes the group against the next. */}
           {documentGroups.map(({ parent, attachments }) => (
@@ -547,37 +576,48 @@ export default function LibraryDocumentList({
         </Stack>
       )}
 
-      {!isLoading && pageState && (documents.length > 0 || pageCount > 1) && (
-        <Stack
-          direction="row"
-          sx={{
-            mt: 2,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 1,
-          }}
-        >
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {isSearchActive
-              ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
-              : `${pageState.totalElements.toLocaleString('de-DE')} ${
-                  pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'
-                }`}
-            {pageCount > 1 ? ` · Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : ''}
-          </Typography>
-          {pageCount > 1 && (
-            <Pagination
-              count={pageCount}
-              page={(pageState?.page ?? 0) + 1}
-              onChange={(_event, page) => onPageChange(page)}
-              // The app shell's own persistent navigation is also a <nav>; without a
-              // distinguishing name, a test scoping to "the" navigation region would match both.
-              aria-label="Dokumentenliste blättern"
-            />
-          )}
-        </Stack>
-      )}
+      {/* the head names the documents; the foot counts only a page or a filtered list */}
+      {!isLoading &&
+        pageState &&
+        (pageCount > 1 || isSearchActive || isMissingFilterActive) && (
+          <Stack
+            direction="row"
+            sx={{
+              mt: 2,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 1,
+            }}
+          >
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {/* the head counts the library; the foot counts a filtered list only */}
+              {[
+                isSearchActive
+                  ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
+                  : isMissingFilterActive
+                    ? `${pageState.totalElements.toLocaleString('de-DE')} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
+                    : null,
+                pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Typography>
+            {pageCount > 1 && (
+              <Pagination
+                count={pageCount}
+                size="small"
+                siblingCount={0}
+                boundaryCount={1}
+                page={(pageState?.page ?? 0) + 1}
+                onChange={(_event, page) => onPageChange(page)}
+                // The app shell's own persistent navigation is also a <nav>; without a
+                // distinguishing name, a test scoping to "the" navigation region would match both.
+                aria-label="Dokumentenliste blättern"
+              />
+            )}
+          </Stack>
+        )}
     </Box>
   )
 }

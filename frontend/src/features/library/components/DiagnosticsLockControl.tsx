@@ -1,9 +1,6 @@
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
+import { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 
 interface DiagnosticsLockControlProps {
   locked: boolean
@@ -28,38 +25,22 @@ export default function DiagnosticsLockControl({
   onDismissError,
 }: DiagnosticsLockControlProps) {
   return (
-    <Box>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip
-          label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
-          size="small"
-          color={locked ? 'default' : 'warning'}
-          variant="outlined"
-        />
-        {canToggle && (
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={onToggle}
-            disabled={saving}
-            aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
-          >
-            {saving ? 'Wird gespeichert …' : locked ? 'Sperre lösen' : 'Sperre setzen'}
-          </Button>
-        )}
-      </Stack>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
-        Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
-        anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
-        sehen.
-        {!canToggle &&
-          ' Setzen und lösen kann die Sperre nur die für die Bibliothek zuständige Stelle (Eigentümer), nicht die Systemverwaltung als solche.'}
-      </Typography>
+    <ValueRow
+      title="Suchdiagnose"
+      value={locked ? 'Gesperrt für Suchdiagnosen anderer' : 'Nicht gesperrt'}
+      action={
+        canToggle ? (
+          <TextAction onClick={onToggle} disabled={saving} context="Suchdiagnose">
+            {locked ? 'Entsperren' : 'Sperren'}
+          </TextAction>
+        ) : undefined
+      }
+    >
       {error && (
-        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+        <Alert severity="error" onClose={onDismissError}>
           {error}
         </Alert>
       )}
-    </Box>
+    </ValueRow>
   )
 }

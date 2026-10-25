@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import MenuItem from '@mui/material/MenuItem'
+import Select from '@mui/material/Select'
+import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import DeleteIcon from '@mui/icons-material/Delete'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import RowMenu from '@/shared/ui/RowMenu'
 import type { SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
+import { TextAction } from '@/shared/ui/DetailSection'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
@@ -15,13 +17,13 @@ import { useBulkDocumentActions } from '../hooks/useBulkDocumentActions'
 import { useDocumentSearch } from '../hooks/useDocumentSearch'
 import { useDocumentSelection } from '../hooks/useDocumentSelection'
 import { useDocumentsUrlState } from '../hooks/useDocumentsUrlState'
-import { useDocumentUpload } from '../hooks/useDocumentUpload'
+import type { DocumentUpload } from '../hooks/useDocumentUpload'
 import { useLibraryFolderActions } from '../hooks/useLibraryFolderActions'
 import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import BulkMetadataDialog from './metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
-import MetadataMaintenanceAnchor from './metadata/MetadataMaintenanceAnchor'
-import { coreMetadataFieldLabel } from './metadata/metadataValues'
+import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
+import { listLibraryMetadataFields } from '../api/libraryMetadataApi'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
 import LibraryDocumentList from './LibraryDocumentList'
 import LibraryDocumentsNotices from './LibraryDocumentsNotices'
@@ -40,6 +42,8 @@ export interface LibraryDocumentsSectionProps {
   /** The library's selected spaces (CONFLUENCE) - resolves a row's space key to its name. */
   confluenceSpaces?: ConfluenceSpaceRef[] | null
   onDocumentsChanged: () => void
+  /** UPLOAD: the page's upload, whose pickers the head opens as well. */
+  upload: DocumentUpload
 }
 
 /**
@@ -54,6 +58,7 @@ export default function LibraryDocumentsSection({
   refreshToken,
   confluenceSpaces,
   onDocumentsChanged,
+  upload,
 }: LibraryDocumentsSectionProps) {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
   const pageStateByLibrary = useDocumentStore((s) => s.pageStateByLibrary)
@@ -104,7 +109,7 @@ export default function LibraryDocumentsSection({
   const [metadataRefreshToken, setMetadataRefreshToken] = useState(0)
   // Bumped after every metadata change so the anchor recounts; separate from
   // metadataRefreshToken, which reloads the open per-document panels.
-  const [anchorRefreshToken, setAnchorRefreshToken] = useState(0)
+  const [, setAnchorRefreshToken] = useState(0)
   const bulk = useBulkDocumentActions({
     libraryId,
     selectedDocumentIds,
@@ -150,6 +155,22 @@ export default function LibraryDocumentsSection({
     })
   }, [libraryId, folderIdParam, missingFieldParam, loadDocuments])
 
+  // the „ohne …“ filter offers the library's own fields after the core fields
+  const [ownFields, setOwnFields] = useState<Array<[string, string]>>([])
+  useEffect(() => {
+    if (!metadataEnabled) return
+    let cancelled = false
+    listLibraryMetadataFields(libraryId)
+      .then((response) => {
+        if (!cancelled)
+          setOwnFields(response.items.map((field) => [field.documentFieldKey, field.label]))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [libraryId, metadataEnabled])
+
   // A finished indexing run bumps refreshToken: reload the view the user is looking at - same
   // page, search and folder. The ref guard keeps unrelated dependency changes from re-firing it.
   const lastRefreshTokenRef = useRef(refreshToken)
@@ -168,8 +189,6 @@ export default function LibraryDocumentsSection({
       setSearchParams(next, { replace: true })
     }
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
-
-  const upload = useDocumentUpload(libraryId, canManage, onDocumentsChanged)
 
   // Leaving the shown list (into a folder or the anchor's worklist) drops its search and selection.
   function leaveList() {
@@ -228,55 +247,73 @@ export default function LibraryDocumentsSection({
     })
   }
 
-  return (
-    <Box sx={{ mb: 5 }}>
-      {/* One sentence on why a connector bestand has no per-document delete, once - the
-          list below repeats neither the sentence nor the action. */}
-      {!isUploadLibrary && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Dieser Bestand stammt aus der Quelle; einzelne Dokumente lassen sich hier nicht löschen —
-          ein gelöschtes Dokument käme mit dem nächsten Indizierungslauf zurück.
-        </Alert>
-      )}
+  // a library without a single document: only the empty state and its one action (D21)
+  const filtered = Boolean(pageState?.q || missingFieldParam || folderIdParam)
+  const libraryEmpty =
+    !isLoading &&
+    pageState !== undefined &&
+    pageState.totalElements === 0 &&
+    folders.length === 0 &&
+    !filtered
 
-      {isUploadLibrary && canManage && (
-        <LibraryDocumentUploadArea
-          upload={upload}
-          canManageFolders={canManageFolders}
-          onNewFolder={() => setNewFolderDialogOpen(true)}
+  if (libraryEmpty) {
+    return (
+      <Box sx={{ mb: 5 }}>
+        <LibraryDocumentsNotices
+          libraryId={libraryId}
+          newFolderDialogOpen={newFolderDialogOpen}
+          renameFolderTarget={renameFolderTarget}
         />
-      )}
+        {isUploadLibrary && canManage ? (
+          <LibraryDocumentUploadArea upload={upload} />
+        ) : (
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            {/* the one action is the head's main action; the sentence names no second one */}
+            Noch keine Dokumente.
+          </Typography>
+        )}
+        {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
+      </Box>
+    )
+  }
 
+  // search and filters from eight documents on, or while a filter or search is active (D19)
+  const searchable = (pageState?.totalElements ?? 0) >= 8 || filtered
+  const newFolder =
+    canManageFolders && !folderIdParam ? (
+      <Box sx={{ ml: 'auto' }}>
+        <TextAction onClick={() => setNewFolderDialogOpen(true)}>Neuer Ordner</TextAction>
+      </Box>
+    ) : undefined
+
+  const dropTarget =
+    isUploadLibrary && canManage
+      ? {
+          onDragOver: (e: DragEvent<HTMLDivElement>) => {
+            e.preventDefault()
+            upload.setIsDragActive(true)
+          },
+          onDragLeave: () => upload.setIsDragActive(false),
+          onDrop: upload.handleDrop,
+        }
+      : {}
+
+  return (
+    <Box
+      {...dropTarget}
+      sx={{
+        mb: 5,
+        outline: upload.isDragActive ? 2 : 0,
+        outlineColor: 'primary.main',
+        outlineOffset: 4,
+        borderRadius: 1,
+      }}
+    >
       <LibraryDocumentsNotices
         libraryId={libraryId}
         newFolderDialogOpen={newFolderDialogOpen}
         renameFolderTarget={renameFolderTarget}
       />
-
-      {metadataEnabled && (
-        <MetadataMaintenanceAnchor
-          libraryId={libraryId}
-          activeFieldKey={missingFieldParam}
-          onShowMissing={(fieldKey) => setMissingFieldFilter(fieldKey)}
-          onClearFilter={() => setMissingFieldFilter(null)}
-          refreshToken={anchorRefreshToken}
-        />
-      )}
-
-      {missingFieldParam && (
-        <Alert
-          severity="info"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => setMissingFieldFilter(null)}>
-              Filter aufheben
-            </Button>
-          }
-        >
-          Es werden nur Dokumente ohne Wert für „{coreMetadataFieldLabel(missingFieldParam)}"
-          angezeigt — bibliotheksweit, unabhängig vom Ordner.
-        </Alert>
-      )}
 
       {bulkResult && (
         // role="status" (polite) rather than the Alert's own assertive default: the outcome of a
@@ -292,16 +329,43 @@ export default function LibraryDocumentsSection({
       )}
 
       <LibraryDocumentList
+        showSearch={searchable}
+        filters={
+          searchable ? (
+            <>
+              {metadataEnabled && (
+                <FilterSelect
+                  label="Metadaten"
+                  value={missingFieldParam ?? ''}
+                  onChange={(value) => setMissingFieldFilter(value || null)}
+                  options={[
+                    ['', 'Metadaten'],
+                    ...[
+                      ...CORE_METADATA_FIELDS.map((field): [string, string] => [
+                        field.key,
+                        field.label,
+                      ]),
+                      ...ownFields,
+                    ].map(([key, label]): [string, string] => [key, `ohne ${label}`]),
+                  ]}
+                />
+              )}
+              {newFolder}
+            </>
+          ) : documents.length === 0 && folders.length === 0 ? (
+            newFolder
+          ) : undefined
+        }
+        // without a toolbar „Neuer Ordner“ sits in the list's head, never on a line of its own
+        headAction={
+          !searchable && (documents.length > 0 || folders.length > 0) ? newFolder : undefined
+        }
         documents={documents}
         folders={folders}
         pageState={pageState}
         isLoading={isLoading}
         confluenceSpaces={confluenceSpaces}
-        emptyMessage={
-          isUploadLibrary
-            ? 'Es sind noch keine Dokumente vorhanden.'
-            : 'Es sind noch keine Dokumente vorhanden. Der erste Indizierungslauf startet über „Jetzt indizieren“ oben auf der Seite.'
-        }
+        emptyMessage="Kein Dokument entspricht diesem Filter."
         breadcrumb={
           // The Ordnerpfad stands directly above the search field, where the list it
           // describes begins - not above the Pflege-Anker, which is bibliotheksweit.
@@ -315,12 +379,6 @@ export default function LibraryDocumentsSection({
         onPageChange={(page) => {
           setSelectedDocumentIds([])
           void loadDocuments(libraryId, { page: page - 1 })
-        }}
-        onPageSizeChange={(size) => {
-          // Like every other change of the shown list: a smaller page size would otherwise leave
-          // documents selected that nobody can see any more - and "Löschen" is irreversible.
-          setSelectedDocumentIds([])
-          void loadDocuments(libraryId, { page: 0, size })
         }}
         selectable={metadataEnabled ? canEditMetadata : canDelete}
         selectedIds={selectedDocumentIds}
@@ -341,30 +399,24 @@ export default function LibraryDocumentsSection({
         renderFolderActions={
           canManageFolders
             ? (folder) => (
-                <Tooltip title="Ordner umbenennen oder löschen">
-                  <IconButton
-                    aria-label={`Optionen für Ordner ${folder.name}`}
-                    size="small"
-                    onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <IconButton
+                  edge="end"
+                  aria-label={`Optionen für Ordner ${folder.name}`}
+                  size="small"
+                  onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
+                >
+                  <MoreHorizIcon fontSize="small" />
+                </IconButton>
               )
             : undefined
         }
         renderRowActions={
           canDelete
             ? (document) => (
-                <Tooltip title="Dokument löschen">
-                  <IconButton
-                    aria-label={`Dokument ${document.fileName} löschen`}
-                    size="small"
-                    onClick={() => void handleDelete(document)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <RowMenu
+                  label={`Aktionen für Dokument ${document.fileName}`}
+                  items={[{ label: 'Löschen', onClick: () => void handleDelete(document) }]}
+                />
               )
             : undefined
         }
@@ -402,5 +454,35 @@ export default function LibraryDocumentsSection({
 
       {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
     </Box>
+  )
+}
+
+/** A compact filter of the toolbar: a native-looking select with its name as accessible label. */
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: Array<[string, string]>
+}) {
+  return (
+    <Select
+      size="small"
+      value={value}
+      displayEmpty
+      onChange={(e) => onChange(String(e.target.value))}
+      inputProps={{ 'aria-label': label }}
+      sx={{ flex: { xs: '1 1 120px', sm: 'none' }, minWidth: { xs: 0, sm: 150 }, fontSize: 13.5 }}
+    >
+      {options.map(([key, text]) => (
+        <MenuItem key={key} value={key}>
+          {text}
+        </MenuItem>
+      ))}
+    </Select>
   )
 }

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import ListSearch from '@/shared/ui/ListSearch'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
@@ -24,7 +26,7 @@ import type {
   LibraryMetadataFieldResponse,
   LibraryMetadataSchemaChangeResponse,
 } from '@/shared/api/types'
-import { TYPE_LABELS, describeChange, effectChips } from './metadataFieldText'
+import { describeChange, effectChips } from './metadataFieldText'
 import CoreContextPrefixSwitch from './CoreContextPrefixSwitch'
 import AddValueButton from './AddValueButton'
 import CreateFieldDialog from './CreateFieldDialog'
@@ -37,6 +39,8 @@ interface Props {
   /** Only a person with the management right at the library may change the schema. */
   canManageSchema: boolean
   onFieldsChanged?: () => void
+  /** Rows of single values that follow the context prefix under the same line (Extraktion). */
+  trailingRows?: ReactNode
 }
 
 /**
@@ -49,7 +53,9 @@ export default function LibraryMetadataFieldsSection({
   libraryId,
   canManageSchema,
   onFieldsChanged,
+  trailingRows,
 }: Props) {
+  const [prefixOpen, setPrefixOpen] = useState(false)
   const [fields, setFields] = useState<LibraryMetadataFieldResponse[]>([])
   const [coreContextPrefix, setCoreContextPrefix] = useState<CoreContextPrefixResponse | null>(null)
   const [awaitingRerun, setAwaitingRerun] = useState(0)
@@ -70,6 +76,7 @@ export default function LibraryMetadataFieldsSection({
   const [deleteUsage, setDeleteUsage] = useState<number | null>(null)
   const [editField, setEditField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [valueLabel, setValueLabel] = useState('')
+  const [valuesOpen, setValuesOpen] = useState<Record<string, boolean>>({})
 
   const reload = useCallback(async () => {
     try {
@@ -229,224 +236,322 @@ export default function LibraryMetadataFieldsSection({
   }
 
   return (
-    <Box>
-      <Stack direction="row" sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1">Metadatenfelder</Typography>
-        {canManageSchema && (
-          <Button size="small" onClick={() => setCreateOpen(true)}>
-            Feld anlegen
-          </Button>
+    <>
+      <DetailSection
+        title="Felder"
+        action={
+          canManageSchema ? (
+            <TextAction onClick={() => setCreateOpen(true)}>Feld anlegen</TextAction>
+          ) : undefined
+        }
+      >
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
-      </Stack>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-        Eigene Felder dieser Bibliothek, zusätzlich zu Titel, Dokumentart und Datum/Stand. Jedes
-        Feld muss im Filter oder im Kontextpräfix wirken; höchstens fünf Felder je Bibliothek und
-        höchstens zwei davon in der Belegzeile.
-      </Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Wertelisten sind für jede Person sichtbar, die die Bibliothek benutzen darf. Sie dürfen
-        deshalb keine schutzbedürftigen Bezeichnungen tragen.
-      </Alert>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {awaitingRerun > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`} Der
-          Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
-          {/* Directly into the tab that carries the follow-up run - the bare path would land on
-             the overview, and from there one would have to click on once more. */}
-          <Link component={RouterLink} to="/admin/search/index">
-            Suche &amp; Indexierung
-          </Link>{' '}
-          gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
-        </Alert>
-      )}
-      {pendingChanges.length > 0 && (
-        <Alert
-          severity="info"
-          sx={{ mb: 2 }}
-          action={
-            canManageSchema &&
-            (running ? (
-              <Button size="small" onClick={() => (paused.current = true)}>
-                Anhalten
-              </Button>
-            ) : (
-              <Button size="small" onClick={() => void runPendingChanges()}>
-                Fortsetzen
-              </Button>
-            ))
-          }
-        >
-          {pendingChanges.map((change) => (
-            <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
-              {describeChange(change, fields)}
+        {awaitingRerun > 0 && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`}{' '}
+            Der Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
+            <Link component={RouterLink} to="/admin/search/index">
+              Suche &amp; Indexierung
+            </Link>{' '}
+            gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
+          </Alert>
+        )}
+        {pendingChanges.length > 0 && (
+          <Alert
+            severity="info"
+            sx={{ mb: 2 }}
+            action={
+              canManageSchema &&
+              (running ? (
+                <Button size="small" onClick={() => (paused.current = true)}>
+                  Anhalten
+                </Button>
+              ) : (
+                <Button size="small" onClick={() => void runPendingChanges()}>
+                  Fortsetzen
+                </Button>
+              ))
+            }
+          >
+            {pendingChanges.map((change) => (
+              <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
+                {describeChange(change, fields)}
+              </Typography>
+            ))}
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
+              Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
             </Typography>
-          ))}
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
-            Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
-          </Typography>
-        </Alert>
-      )}
-      {coreContextPrefix && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle2">Kernfelder im Kontextpräfix</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Der Titel steht immer im Kontextpräfix. Dokumentart und Datum/Stand sind je Bibliothek
-            eine bewusste Entscheidung — eingeschaltet kostet jede spätere Änderung daran ein
-            Neu-Einbetten.
-          </Typography>
-          <CoreContextPrefixSwitch
-            libraryId={libraryId}
-            label="Dokumentart"
-            fieldKey="document_type"
-            checked={coreContextPrefix.documentType}
-            disabled={!canManageSchema}
-            onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
-          />
-          <CoreContextPrefixSwitch
-            libraryId={libraryId}
-            label="Datum/Stand"
-            fieldKey="document_date"
-            checked={coreContextPrefix.documentDate}
-            disabled={!canManageSchema}
-            onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
-          />
-        </Box>
-      )}
-      {fields.length === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Diese Bibliothek führt keine eigenen Metadatenfelder — der Normalfall.
-        </Typography>
-      ) : (
-        <Stack spacing={2} divider={<Divider flexItem />}>
+          </Alert>
+        )}
+        <Box
+          component="ul"
+          sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
+        >
           {fields.map((field) => (
-            <Box key={field.fieldKey}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <Typography variant="subtitle2">{field.label}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {field.fieldKey} · {TYPE_LABELS[field.type]}
-                </Typography>
-                {effectChips(field).map((chip) => (
-                  <Chip key={chip} size="small" label={chip} />
-                ))}
-                {field.deletionPending && (
-                  <Chip size="small" color="warning" label="wird gelöscht" />
-                )}
-                {canManageSchema && !field.deletionPending && (
-                  <Button
-                    size="small"
-                    onClick={() => setEditField(field)}
-                    aria-label={`Feld ${field.label} bearbeiten`}
-                  >
-                    Bearbeiten
-                  </Button>
-                )}
-                {canManageSchema && !field.deletionPending && (
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => void openDelete(field)}
-                    aria-label={`Feld ${field.label} löschen`}
-                  >
-                    Löschen
-                  </Button>
-                )}
-              </Stack>
-              {field.valuePattern && (
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Muster: {field.valuePattern}
-                </Typography>
-              )}
-              {field.type === 'SELECT' && (
-                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
-                  {field.values.map((value) => (
-                    <Chip
-                      key={value.code}
-                      size="small"
-                      variant="outlined"
-                      color={value.retiring ? 'warning' : 'default'}
-                      label={
-                        value.retiring
-                          ? `${value.label} (${value.code}) — wird abgebildet`
-                          : `${value.label} (${value.code})`
-                      }
-                      clickable={canManageSchema && !value.retiring && !field.deletionPending}
-                      onClick={
-                        canManageSchema && !value.retiring && !field.deletionPending
-                          ? () => void openRemap(field, value.code)
-                          : undefined
-                      }
-                      aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
-                    />
-                  ))}
-                  {canManageSchema && !field.deletionPending && (
+            <FieldRow
+              key={field.fieldKey}
+              label={field.label}
+              detail={
+                <>
+                  {SHORT_TYPE[field.type]}
+                  {field.type === 'SELECT' && (
+                    <>
+                      {' · '}
+                      <TextAction
+                        onClick={() =>
+                          setValuesOpen((prev) => ({
+                            ...prev,
+                            [field.fieldKey]: !prev[field.fieldKey],
+                          }))
+                        }
+                        aria-expanded={Boolean(valuesOpen[field.fieldKey])}
+                        context={`von ${field.label}`}
+                      >
+                        {`${field.values.length} Werte`}
+                      </TextAction>
+                    </>
+                  )}
+                  {effectChips(field).length > 0 && ` · ${effectChips(field).join(', ')}`}
+                  {field.deletionPending && ' · wird gelöscht'}
+                </>
+              }
+              actions={
+                canManageSchema && !field.deletionPending ? (
+                  <TextAction onClick={() => setEditField(field)} context={`Feld ${field.label}`}>
+                    Ändern
+                  </TextAction>
+                ) : undefined
+              }
+            >
+              {field.type === 'SELECT' && valuesOpen[field.fieldKey] && (
+                <ValueList
+                  field={field}
+                  editable={canManageSchema && !field.deletionPending}
+                  onOpen={(code) => void openRemap(field, code)}
+                  addButton={
                     <AddValueButton
                       libraryId={libraryId}
                       fieldKey={field.fieldKey}
                       onAdded={() => void reload()}
                       onError={setError}
                     />
-                  )}
-                </Stack>
+                  }
+                />
               )}
-            </Box>
+            </FieldRow>
           ))}
-        </Stack>
-      )}
+        </Box>
 
-      <CreateFieldDialog
-        open={createOpen}
-        libraryId={libraryId}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => {
-          setCreateOpen(false)
-          void reload()
-          onFieldsChanged?.()
-        }}
-        onError={setError}
-      />
-
-      <RemapValueDialog
-        libraryId={libraryId}
-        remapField={remapField}
-        remapCode={remapCode}
-        remapUsage={remapUsage}
-        remapTarget={remapTarget}
-        valueLabel={valueLabel}
-        onValueLabelChange={setValueLabel}
-        onRemapTargetChange={setRemapTarget}
-        onSaveValueLabel={() => void saveValueLabel()}
-        onConfirm={() => void confirmRemap()}
-        onClose={() => setRemapField(null)}
-      />
-
-      {editField && (
-        <EditFieldDialog
-          key={editField.fieldKey}
+        <CreateFieldDialog
+          open={createOpen}
           libraryId={libraryId}
-          field={editField}
-          onClose={() => setEditField(null)}
-          onSaved={() => {
-            setEditField(null)
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            setCreateOpen(false)
             void reload()
             onFieldsChanged?.()
           }}
           onError={setError}
         />
-      )}
 
-      <DeleteFieldDialog
-        libraryId={libraryId}
-        deleteField={deleteField}
-        deleteUsage={deleteUsage}
-        onConfirm={() => void confirmDelete()}
-        onClose={() => setDeleteField(null)}
-      />
+        <RemapValueDialog
+          libraryId={libraryId}
+          remapField={remapField}
+          remapCode={remapCode}
+          remapUsage={remapUsage}
+          remapTarget={remapTarget}
+          valueLabel={valueLabel}
+          onValueLabelChange={setValueLabel}
+          onRemapTargetChange={setRemapTarget}
+          onSaveValueLabel={() => void saveValueLabel()}
+          onConfirm={() => void confirmRemap()}
+          onClose={() => setRemapField(null)}
+        />
+
+        {editField && (
+          <EditFieldDialog
+            key={editField.fieldKey}
+            libraryId={libraryId}
+            field={editField}
+            onClose={() => setEditField(null)}
+            onSaved={() => {
+              setEditField(null)
+              void reload()
+              onFieldsChanged?.()
+            }}
+            onError={setError}
+            onDelete={() => {
+              const target = editField
+              setEditField(null)
+              void openDelete(target)
+            }}
+          />
+        )}
+
+        <DeleteFieldDialog
+          libraryId={libraryId}
+          deleteField={deleteField}
+          deleteUsage={deleteUsage}
+          onConfirm={() => void confirmDelete()}
+          onClose={() => setDeleteField(null)}
+        />
+      </DetailSection>
+      {/* the single values as rows of the Reiter „Quelle“ under one line */}
+      <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+        {coreContextPrefix && (
+          <ValueRow
+            title="Kontextpräfix"
+            value={[
+              'Titel',
+              coreContextPrefix.documentType && 'Dokumentart',
+              coreContextPrefix.documentDate && 'Datum/Stand',
+            ]
+              .filter(Boolean)
+              .join(', ')}
+            action={
+              canManageSchema ? (
+                <TextAction
+                  onClick={() => setPrefixOpen((v) => !v)}
+                  aria-expanded={prefixOpen}
+                  context="Kontextpräfix"
+                >
+                  {prefixOpen ? 'Schließen' : 'Ändern'}
+                </TextAction>
+              ) : undefined
+            }
+          >
+            {prefixOpen && canManageSchema && (
+              <Box
+                sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, columnGap: 2 }}
+              >
+                <CoreContextPrefixSwitch
+                  libraryId={libraryId}
+                  label="Dokumentart"
+                  fieldKey="document_type"
+                  checked={coreContextPrefix.documentType}
+                  disabled={false}
+                  onSave={(next) =>
+                    void saveCoreContextPrefix(next, coreContextPrefix.documentDate)
+                  }
+                />
+                <CoreContextPrefixSwitch
+                  libraryId={libraryId}
+                  label="Datum/Stand"
+                  fieldKey="document_date"
+                  checked={coreContextPrefix.documentDate}
+                  disabled={false}
+                  onSave={(next) =>
+                    void saveCoreContextPrefix(coreContextPrefix.documentType, next)
+                  }
+                />
+              </Box>
+            )}
+          </ValueRow>
+        )}
+        {trailingRows}
+      </Box>
+    </>
+  )
+}
+
+/** One field as a list row: name, what it is and does, its actions; its values below. */
+function FieldRow({
+  label,
+  detail,
+  actions,
+  children,
+}: {
+  label: string
+  detail: ReactNode
+  actions?: ReactNode
+  children?: ReactNode
+}) {
+  return (
+    <Box component="li" sx={{ py: 1.25, borderBottom: 1, borderColor: 'divider' }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{label}</Typography>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{detail}</Typography>
+        </Box>
+        {actions && (
+          <Stack direction="row" spacing={2} sx={{ flex: 'none' }}>
+            {actions}
+          </Stack>
+        )}
+      </Box>
+      {children && (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
+          {children}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+/** The type of a field in two or three words; the pattern itself stands in „Ändern“. */
+const SHORT_TYPE: Record<LibraryMetadataFieldResponse['type'], string> = {
+  SELECT: 'Auswahl',
+  DATE: 'Jahr oder Datum',
+  PATTERN: 'Kennung nach Muster',
+}
+
+/** From eight values on the list gets a search (D19). */
+const VALUES_SHOWN = 8
+
+/** The value list of a selection field: a few as text, all with a search on request. */
+function ValueList({
+  field,
+  editable,
+  onOpen,
+  addButton,
+}: {
+  field: LibraryMetadataFieldResponse
+  editable: boolean
+  onOpen: (code: string) => void
+  addButton: ReactNode
+}) {
+  const [query, setQuery] = useState('')
+  const values = field.values
+  const needle = query.trim().toLowerCase()
+  const matching = needle
+    ? values.filter((value) => value.label.toLowerCase().includes(needle))
+    : values
+  return (
+    <Box sx={{ width: '100%', mt: 0.5 }}>
+      {values.length >= VALUES_SHOWN && (
+        <Box sx={{ mb: 1, width: 280, maxWidth: '100%' }}>
+          <ListSearch
+            value={query}
+            onChange={setQuery}
+            placeholder="Wert enthält …"
+            label={`Werte von ${field.label} durchsuchen`}
+          />
+        </Box>
+      )}
+      <Stack direction="row" useFlexGap spacing={0.75} sx={{ flexWrap: 'wrap' }}>
+        {matching.map((value) => (
+          <Chip
+            key={value.code}
+            size="small"
+            variant="outlined"
+            label={value.retiring ? `${value.label} · wird abgebildet` : value.label}
+            clickable={editable && !value.retiring}
+            onClick={editable && !value.retiring ? () => onOpen(value.code) : undefined}
+            aria-label={editable ? `Wert ${value.label} bearbeiten` : undefined}
+          />
+        ))}
+        {editable && addButton}
+      </Stack>
+      {editable && (
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
+          Wertelisten sieht jede Person, die die Bibliothek nutzt.
+        </Typography>
+      )}
     </Box>
   )
 }

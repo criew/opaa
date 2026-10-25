@@ -1,14 +1,12 @@
-import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
-import PageSection from '@/shared/ui/PageSection'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
-import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 
 interface LibrarySharingTabProps {
   libraryId: string
@@ -43,33 +41,28 @@ export default function LibrarySharingTab({
   onToggleDiagnosticsLock,
   onDismissDiagnosticsLockError,
 }: LibrarySharingTabProps) {
+  // permissions and external access stand between the rows; without them the rows join
+  const sections = canEdit && !privateLibrary
   return (
     <>
       {/* The order of the target design: owner · permissions · external
            access · diagnostics lock · derivation. Every section saves on its own;
            there is no shared „Speichern" button across sections. */}
       <Stack>
-        <AssetOwnerSection
-          assetType="KNOWLEDGE_LIBRARY"
-          assetId={libraryId}
-          ownerType={library.ownerType}
-          ownerName={library.ownerName}
-          // Only whoever holds the ownership may hand over - myRole carries OWNER for a system
-          // administration anyway, and the endpoint lets exactly that do so.
-          canTransfer={library.myRole === 'OWNER' && !privateLibrary}
-          onTransferred={onTransferred}
-        />
+        <Box sx={{ mb: sections ? 4 : 0 }}>
+          <AssetOwnerSection
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={libraryId}
+            ownerType={library.ownerType}
+            ownerName={library.ownerName}
+            // Only whoever holds the ownership may hand over - myRole carries OWNER for a system
+            // administration anyway, and the endpoint lets exactly that do so.
+            canTransfer={library.myRole === 'OWNER' && !privateLibrary}
+            onTransferred={onTransferred}
+          />
+        </Box>
 
-        {privateLibrary && (
-          <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
-            {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
-            freigeben noch übertragen
-            {externalAccessEnabled ? ' noch für externe KI-Werkzeuge öffnen' : ''} — auch nicht
-            durch die Systemverwaltung.
-          </Alert>
-        )}
-
-        {canEdit && !privateLibrary && (
+        {sections && (
           <>
             <AssetGrantsSection
               assetType="KNOWLEDGE_LIBRARY"
@@ -86,22 +79,14 @@ export default function LibrarySharingTab({
               }
             />
 
-            {externalAccessEnabled && (
-              <PageSection
-                title="Externer Zugang"
-                description="Ob externe KI-Werkzeuge diese Bibliothek außerhalb der Anmeldung erreichen."
-              >
-                <LibraryExternalAccessSection libraryId={libraryId} />
-              </PageSection>
-            )}
+            {externalAccessEnabled && <LibraryExternalAccessSection libraryId={libraryId} />}
           </>
         )}
 
-        {details && (
-          <PageSection
-            title="Diagnosesperre"
-            description="Ob diese Bibliothek in einer Suchdiagnose im Rechtekontext einer anderen Person auftauchen darf."
-          >
+        {/* the single values close the tab as rows of the Reiter „Quelle“ under one line */}
+        <Box sx={{ borderTop: sections ? 1 : 0, borderColor: 'divider' }}>
+          {/* a reader can neither set nor lift the lock: the row is the managers' alone */}
+          {details && (canEdit || details.diagnosticsLockToggleable) && (
             <DiagnosticsLockControl
               locked={details.diagnosticsLocked ?? true}
               // myRole bypasses to OWNER for a system admin unconditionally
@@ -114,12 +99,12 @@ export default function LibrarySharingTab({
               onToggle={onToggleDiagnosticsLock}
               onDismissError={onDismissDiagnosticsLockError}
             />
-          </PageSection>
-        )}
+          )}
 
-        {!privateLibrary && (
-          <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
-        )}
+          {!privateLibrary && (
+            <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
+          )}
+        </Box>
       </Stack>
     </>
   )

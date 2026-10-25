@@ -15,6 +15,8 @@ export type RowSummary = string | { lead: string; items: string[] } | null
 export interface RowStatus {
   tone: StatusTone
   label: string
+  /** Entries the state is about, listed like the row's own entries with the label as their mark. */
+  entries?: string[]
 }
 
 /** Where the connection check stands for the values as they are now. */
