@@ -279,12 +279,12 @@ export default function LibraryDocumentsSection({
 
   // search and filters from eight documents on, or while a filter or search is active (D19)
   const searchable = (pageState?.totalElements ?? 0) >= 8 || filtered
-  const newFolder =
-    canManageFolders && !folderIdParam ? (
-      <Box sx={{ ml: 'auto' }}>
-        <TextAction onClick={() => setNewFolderDialogOpen(true)}>Neuer Ordner</TextAction>
-      </Box>
-    ) : undefined
+  // a folder can be created at the root and inside any open folder
+  const newFolder = canManageFolders ? (
+    <Box sx={{ ml: 'auto' }}>
+      <TextAction onClick={() => setNewFolderDialogOpen(true)}>Neuer Ordner</TextAction>
+    </Box>
+  ) : undefined
 
   const dropTarget =
     isUploadLibrary && canManage

@@ -469,9 +469,6 @@ export default function LibraryDocumentList({
                 '&:last-of-type': { borderBottom: 0 },
               }}
             >
-              {/* A folder is not a document and cannot be selected - said with a disabled
-                  checkbox and its reason, rather than by leaving the column blank and making the
-                  rows below look misaligned. */}
               {/* a folder is no document and has no box; the space keeps the names aligned */}
               <Box aria-hidden sx={{ width: 28, flex: 'none' }} />
               <Box

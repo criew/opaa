@@ -314,13 +314,11 @@ export default function LibraryDetailPage() {
     succession: details?.succession ?? library.succession,
     newestRun: runs[0] ?? null,
     runningPercent: running ? running.percent : null,
+    runningUnknown: Boolean(connectorSourceType && isRunning && run.statusUnknown),
     uploadQuotaRejected,
     signsIn: connectorConfiguration?.setup?.signsIn ?? true,
     canSeeSource: canEdit,
   })
-  if (connectorSourceType && isRunning && run.statusUnknown) {
-    state.detail = 'Stand unbekannt'
-  }
 
   const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
     { value: 'dokumente', label: 'Dokumente' },
@@ -371,8 +369,10 @@ export default function LibraryDetailPage() {
             <>
               {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
                 <HeaderFigure>
-                  {formatFileSize(details.storageUsedBytes)} von{' '}
-                  {formatFileSize(details.storageQuotaBytes)}
+                  <span title="Belegtes Speicherkontingent dieser Bibliothek">
+                    {formatFileSize(details.storageUsedBytes)} von{' '}
+                    {formatFileSize(details.storageQuotaBytes)}
+                  </span>
                 </HeaderFigure>
               )}
               {privateStorage && (

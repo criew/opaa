@@ -59,11 +59,17 @@ export function isErrorEvent(event: IndexingRunResponse['events'][number]): bool
   return ERROR_CATEGORIES.has(event.category)
 }
 
-/** A completed run that still failed on documents or parts of its scope. */
+/**
+ * A completed run that still failed on documents or parts of its scope - including content the
+ * source refused or did not deliver (ADR-0023: such a run must not look like a clean one).
+ */
 export function runPartlyFailed(run: IndexingRunResponse): boolean {
   return (
     run.status === 'COMPLETED' &&
-    (run.documentsFailed > 0 || (run.unreadableScopeCount ?? 0) > 0 || Boolean(run.incomplete))
+    (run.documentsFailed > 0 ||
+      (run.unreadableScopeCount ?? 0) > 0 ||
+      Boolean(run.incomplete) ||
+      run.events.some((event) => event.category === 'REJECTED' || event.category === 'UNREACHABLE'))
   )
 }
 
@@ -106,6 +112,8 @@ interface StateInput {
   newestRun: IndexingRunResponse | null
   /** The polled state of a running run: its percent, null while nothing runs. */
   runningPercent: number | null
+  /** A run runs, but its polled state could not be fetched: still „Läuft“, without a percent. */
+  runningUnknown?: boolean
   /** Whether the source signs in at all (no „Anmeldung“ for a directory, web or feed). */
   signsIn: boolean
   /** Whether the caller sees the source's rows and runs; a reader gets the word without a link. */
@@ -158,6 +166,9 @@ function stateOf(input: StateInput): LibraryState {
       detail: formatDay(library.updatedAt),
       target: null,
     }
+  }
+  if (input.runningUnknown) {
+    return { word: 'Läuft', tone: 'neutral', detail: 'Stand unbekannt', target: LAEUFE }
   }
   if (input.runningPercent !== null) {
     return { word: 'Läuft', tone: 'neutral', detail: `${input.runningPercent} %`, target: LAEUFE }
