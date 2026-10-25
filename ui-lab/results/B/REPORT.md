@@ -1,6 +1,6 @@
-# Variante B „Statusband“ – Bericht Runde 1 (25.10.2026)
+# Variante B „Statusband“ – Bericht Runde 2 (25.10.2026)
 
-Stand: Matrix 1, vor dem Konsistenz-Review. Branch `feature/3084_ui-lab-detail-var-b`.
+Stand: Matrix 2 nach REVIEW-1, vor dem Halt beim Maintainer und vor den Videos. Branch `feature/3084_ui-lab-detail-var-b`.
 
 ## Konzept
 
@@ -29,31 +29,31 @@ Stand: Matrix 1, vor dem Konsistenz-Review. Branch `feature/3084_ui-lab-detail-v
   - Live-Aktualisierung ist die 4. Zeile bei Confluence und S3.
 - **Übrige Reiter:** gemeinsamer Baustein `shared/ui/TabSection` mit einer Breite (720 px), einem Überschriftenstil und der Aktion oben rechts an der Kante.
 
-## Kennzahlen (aus `metrics.jsonl`, `metrics-extra.jsonl`)
+## Kennzahlen (Matrix 2, aus `metrics.jsonl`, `metrics-extra.jsonl`)
 
 | Messung | Wert | Budget |
 |---|---|---|
-| `tabsTop` 1280, alle 11 Arten, jedes Szenario | 248 (± 0) | ≤ 260 ✓ |
-| `tabsTop` 320, alle 11 Arten außer `scale` | 359 (± 0) | ≤ 360 ✓ |
-| `tabsTop` 320 `scale` (Titel 4 Zeilen) | 439 | ✗ |
-| `tabsTop` Leser 1280 / 320 | 238 / 313–409 | ✗ (± 0 verfehlt) |
-| `uiWords` small (Dokumente · Quelle · Verlauf · Metadaten · Freigaben · Zuordnungen) | 69–132 · 22–59 · 29–39 · 20–88 · 43–61 · 22–35 | ≤ 150 ✓ |
-| Laufseite `laeufe__*__scale__light__1280` (ganze Seite, aufgeklappt) | 1 641 px, davon aufgeklappter Lauf ca. 765 px | ≤ 900 ✓ |
-| Kontrast (axe, dunkel und hell) | 0 | 0 ✓ |
+| `tabsTop` 1280, alle 11 Arten, privat und Leser | 249 in jedem Szenario, 255 in `scale` (± 0 je Szenario) | ≤ 260 ✓ |
+| `tabsTop` 320, alle Arten, privat und Leser | 401, in `scale` 427 (± 0 je Szenario) | ≤ 360 ✗ (Abwägung, Schwäche 1) |
+| `uiWords` small (Dokumente · Quelle · Verlauf · Metadaten · Freigaben · Zuordnungen) | 67–119 · 24–59 · 29–40 · 23–52 · 32–45 · 24–38 | ≤ 150 ✓ |
+| `laeufe__*__scale__light__1280` (ganze Seite mit aufgeklapptem Lauf) | 1 453 px; aufgeklappter Lauf < 900 px | ≤ 900 ✓ |
+| Kontrast (axe, hell und dunkel) | 0 | 0 ✓ |
 | `overflowX` | 0 | 0 ✓ |
-| axe übrig | `label-content-name-mismatch` 131 (Freigaben 110), `definition-list` 120 (Band), `scrollable-region-focusable` 69 (Metadaten-Tabelle), `heading-order` 42 (Verlauf, h4 in Gruppen), `target-size` 4 | ✗ |
+| axe übrig | `label-content-name-mismatch` 158 (Rollen-Select in Freigaben, Auswahl-Checkbox in Dokumente), `target-size` 2 | ✗ |
+
+Gegen Runde 1 behoben: `definition-list` (Fortschrittsleiste im Band entfernt), `heading-order` (Gruppenköpfe im Verlauf h2), `scrollable-region-focusable` (Füllgrad als Liste).
 
 ## Status je D-Punkt
 
 | Nr | Status | Beleg |
 |---|---|---|
-| D1 Ein Kopf | erfüllt für die 11 Arten (248/359 px); Leser 10 px niedriger, `scale` 320 höher | `dokumente__*__small__light__1280`, `tabsTop` |
+| D1 Ein Kopf | erfüllt: ± 0 je Szenario über alle Arten, privat und Leser; 320 px über dem Höhenbudget | `tabsTop` in `metrics*.jsonl` |
 | D2 Ein Zustandsfeld | erfüllt: Feld „Stand“, Wort aus der festen Liste, Zusatz Datum oder %, Link zum Ort der Ursache | `dokumente__nextcloud__failed__light__1280` |
 | D3 Zustand wahr | erfüllt: dieselbe Funktion `runState` für Kopf, Zeile und Detail; Teilfehler nie „Aktuell“ | `laeufe__smb__partial__light__1280`, `dokumente__smb__partial__light__1280` |
 | D4 Ernstfall sichtbar | erfüllt: Band auf jedem Reiter; Zeile Verbindung „● Anmeldung abgelehnt · Ändern“ | `quelle__confluence__failed__light__1280` |
 | D5 Kennzahlen ohne Doppelung | erfüllt: kein „Letzter Lauf“, kein „Aktualisiert am“; Spaces und Zuständige als Links in den Reiter | Kopf aller Bilder |
 | D6 Rolle einmal | erfüllt: Rollen-Alerts und „nur Verwaltende“ entfernt, nur Chip | `quelle__confluence-leser__small__light__1280` |
-| D7 Laufender Vorgang einmal | erfüllt: „Läuft · 62 %“ im Feld und dieselbe Zahl in der Laufzeile; Knopf ohne Zusatztext, keine Leiste über die Breite | `dokumente__s3__slow__light__1280`, `laeufe__s3__slow__light__1280` |
+| D7 Laufender Vorgang einmal | erfüllt: „Läuft · 62 %“ im Feld und dieselbe Zahl in der Laufzeile; Knopf ohne Zusatztext, keine Leiste (auch nicht beim Upload) | `dokumente__s3__slow__light__1280`, `laeufe__s3__slow__light__1280` |
 | D8 Nichts zwischen Kopf und Reitern | erfüllt mit Abweichung: Umfang-Kurzform im Band (gewollte Doppelung der Richtung B, Kurzform mit Link); Markierung „· nicht lesbar“ am Eintrag mit Namen, auch bei Drive | `quelle__gdrive__partial__light__1280` |
 | D9 Ein Zeilenraster | erfüllt: Web „Ganzes Verzeichnis“, RSS „Alle Einträge des Feeds“; Live-Aktualisierung bei Confluence und S3 | `quelle__*__small__light__1280` |
 | D10 Verbindung mit Zustand | erfüllt: „Anmeldung ok · zuletzt 23.10.2026“ bzw. „erreichbar · …“ ohne Anmeldung | `quelle__nextcloud__small__light__1280` |
@@ -62,7 +62,7 @@ Stand: Matrix 1, vor dem Konsistenz-Review. Branch `feature/3084_ui-lab-detail-v
 | D13 Ereignisse gruppiert | erfüllt: Gruppe je Grund mit Anzahl, 5 Fundorte, Dialog „Alle n“; Hinweise getrennt | `laeufe__smb__scale__light__1280__full` |
 | D14 Detail ohne Wiederholung | erfüllt: keine Meldung „Indizierung abgeschlossen“, kein „Nichts übersprungen“; Kennzahlen unter „Technische Angaben“ | dito |
 | D15 Läufe als Liste von 10 | erfüllt für Konnektoren; Upload ohne Verlauf (siehe Schwächen) | `laeufe__*__scale` |
-| D16 Eine Inhaltsbreite | erfüllt: 720 px in allen Reitern; Verlaufstabelle und Band 880 px | Querbogen über Reiter |
+| D16 Eine Inhaltsbreite | erfüllt: eine Kante bei 880 px für Kopf, Band, Reiterleiste, Verlauf und Abschnitte; nur die Dokumentliste ist breiter | alle `*__light__1280` |
 | D17 Ein Überschriftenstil | erfüllt: 15/600 Satzschrift, keine Mono-Versalien | `metadaten__*`, `freigaben__*` |
 | D18 Hinzufügen oben rechts | erfüllt: „Freigeben“, „Feld anlegen“, „In Space verwenden“ als Textknopf an der Kante | `freigaben__*__small__light__1280` |
 | D19 Suche ab 8 | erfüllt: Freigaben (45), Zuordnungen (34), Werte; Freigaben ab 50 gruppiert | `freigaben__*__scale__light__1280` |
@@ -87,54 +87,45 @@ Stand: Matrix 1, vor dem Konsistenz-Review. Branch `feature/3084_ui-lab-detail-v
 
 ## Schwächen und bewusste Abweichungen
 
-1. **320 px `scale`:** Der lange Titel umbricht auf 4 Zeilen, `tabsTop` liegt bei 439 statt ≤ 360. Den Titel zu kürzen widerspräche dem Pflichtfall „Titel umbricht“.
-2. **Leser 10 px niedriger** (ohne Knopf „Jetzt indizieren“ in der Chipzeile). Wird in Runde 2 mit einer festen Zeilenhöhe behoben.
-3. **Unter 600 px** sind Chip- und Kennzahlzeile einzeilig und laufen in einer Blende aus. Ein vierter Chip (privat) wird angeschnitten.
-4. **Band ohne Rahmen:** Abweichung von der Skizze (1-px-Rahmen um drei Felder). Gründe: Projektregel „kein ruhender Inhalt in einer Karte“ (`PageSection.test.tsx`) und P4.
-5. **Upload ohne Reiter Verlauf:** gegen die Richtungsbeschreibung, aber nach D15 und E6. Es gibt keine API für Upload-Vorgänge.
-6. **Upload-Zustand aus der geladenen Seite:** „n fehlgeschlagen“ zählt nur die gerade geladenen Dokumente, weil das Backend keine Zählung je Status liefert.
-7. **axe:**
-   - `definition-list` (Fortschrittsleiste als `div` im `dl`)
-   - `heading-order` (h4 in den Laufgruppen)
-   - `label-content-name-mismatch` (Rollen-Select in Freigaben)
-   - `scrollable-region-focusable` (Tabelle der Extraktionsgüte)
-   - offen für Runde 2
-8. **Mock-Widersprüche (Kategorie F):**
-   - Lauf „38 fehlgeschlagen“, aber 334 Fehler-Ereignisse in 4 Gruppen
-   - Zeitplan „06:00“ gegen nächsten Lauf „07:00“ (Zeitzone, Tag der Zeitumstellung)
-   - Mock-Fix in diesem Branch: Anmeldefehler hießen `AUTH`, das Backend sendet `CREDENTIALS_REJECTED`. Sollte auf die Basis.
-9. Ungenutzt, aber nicht gelöscht: `LibraryHeaderNote`, `LibraryScopeHero`, `LibraryRoleNotices`, `MetadataMaintenanceAnchor`.
+1. **320 px über dem Höhenbudget** (401 statt ≤ 360). Grund: R1-38 und R1-54 verlangen, dass Zustandswort, Datum und Kennzahlen nicht abgeschnitten werden; dafür hat das Feld Stand dort zwei Zeilen und die Kennzahlzeile zwei reservierte Zeilen. Die Höhe bleibt dafür über alle Arten gleich (D1).
+2. **Titel begrenzt**: höchstens 2 Zeilen ab 600 px, 3 darunter, voller Name im Tooltip. Sonst springt der Kopf je nach Namenslänge.
+3. **Band ohne Rahmen** (Abweichung von der Skizze): Haarlinie oben und Trenner, kein Kasten. Gründe: Projektregel „kein ruhender Inhalt in einer Karte“ (`PageSection.test.tsx`) und P4.
+4. **Umfang zweimal** (Band und Reiter Quelle): gewollte Doppelung der Richtung B, im Band nur Kurzform mit Link; auf dem Reiter Quelle selbst fehlt der Link.
+5. **Upload ohne Verlauf** (D15, E6; keine API für Upload-Vorgänge). Der Upload-Stand liest die geladene Seite der Dokumentliste, nennt deshalb keine Zahlen; eine Zählung je Status fehlt im Backend.
+6. **Upload drittes Feld „Neuestes“** (Dateiname) statt „Zuletzt hochgeladen“, weil das Datum jetzt im Stand steht (R1-35).
+7. **Wortliste D2 erweitert** um „Noch leer“ (leere Upload-Bibliothek) und am Lauf „Erfolgreich“ (R1-40, R1-36).
+8. **D24 mit Abstrichen**: Text zur vorgemerkten Löschung nur im Tooltip des Stands; bei „Nachfolge offen“ fehlt der Adressat im Kopf.
+9. **axe** `label-content-name-mismatch` an Rollen-Select und Auswahl-Checkboxen ist offen.
+10. **Mock- und Werkzeugänderungen** in diesem Branch (sollten auf die Basis): `CREDENTIALS_REJECTED` statt `AUTH`, R1-73 bis R1-83, `steady()` und `tabsTop` in `lib/measure.mjs`, Bereich `laeufe` über den Reiter „Verlauf“.
+11. Ungenutzt, aber nicht gelöscht: `LibraryHeaderNote`, `LibraryScopeHero`, `LibraryRoleNotices`, `MetadataMaintenanceAnchor`.
 
 ## Gebrochene Unit-Tests
 
-Die Basis `feature/3084_ui-lab-detail-base` ist schon rot: 107 Fehlschläge, vor allem im Assistenten und in den Quellformularen.
+Die Basis ist schon rot: 107 Fehlschläge, vor allem im Assistenten und in den Quellformularen. Variante B (Runde 2): 207, also **100 zusätzliche**. Je Datei (Variante / Basis):
 
-Variante B: 171 Fehlschläge in `library`, `asset`, `prompt` und `shared/ui`, also **64 zusätzliche**. Zusätzliche Fehlschläge je Datei (Variante gegen Basis):
+| Datei | Variante | Basis |
+|---|---|---|
+| `LibraryDetailPage.test.tsx` | 77 | 19 |
+| `LibrarySourceSection.test.tsx` | 22 | 18 |
+| `AssetGrantsSection.test.tsx` | 10 | 0 |
+| `LibraryMetadataFieldsSection.test.tsx` | 9 | 0 |
+| `LibraryDocumentList.test.tsx` | 5 | 0 |
+| `LibraryDetailPage.privateLibrary.test.tsx` | 5 | 0 |
+| `MetadataExtractionSettingsSection.test.tsx` | 4 | 0 |
+| `AssetSpacesList.test.tsx` | 2 | 0 |
+| `AssetDetailHeader.test.tsx`, `AssetOwnerSection.test.tsx`, `LibraryExternalAccessSection.test.tsx` | je 1 | 0 |
 
-| Datei | Zusätzlich | Variante | Basis |
-|---|---|---|---|
-| `LibraryDetailPage.test.tsx` | +41 | 60 | 19 |
-| `LibraryDetailPage.privateLibrary.test.tsx` | +5 | 5 | 0 |
-| `LibraryDocumentList.test.tsx` | +5 | 5 | 0 |
-| `LibrarySourceSection.test.tsx` | +4 | 22 | 18 |
-| `AssetGrantsSection.test.tsx` | +4 | 4 | 0 |
-| `MetadataExtractionSettingsSection.test.tsx` | +2 | 2 | 0 |
-| `LibraryMetadataFieldsSection.test.tsx` | +1 | 1 | 0 |
-| `LibraryExternalAccessSection.test.tsx` | +1 | 1 | 0 |
-| `AssetOwnerSection.test.tsx` | +1 | 1 | 0 |
-| `PageSection.test.tsx` | 0 | 0 | 0 |
-
-Ursachen: entfernte Texte (Rollenhinweise, Bestand-Alert, Pflege-Anker), Läufe im neuen Reiter, Wortlaute. `lint`, `tsc` und `build` bestehen.
+Unverändert gegen die Basis: `LibraryCreatePage*` (51), `LibrarySourceSection.sourceConnection` (5), `ConnectionProfileSelect` (4), Quellformulare und Utils (9). Ursachen: entfernte und geänderte Texte, Läufe im neuen Reiter, Eigentümerin nicht mehr in der Liste, ⋯-Menüs statt Knöpfen. `lint`, `tsc` und `build` bestehen.
 
 ## `git diff --stat` (Code gegen die Basis, ohne Ergebnisbilder)
 
 ```
- 37 files changed, 2749 insertions(+), 1346 deletions(-)
- neu: LibraryStatusBand.tsx (225), LibraryRunHistory.tsx (519), libraryState.ts (180),
-      scopeFacts.ts (41), shared/ui/TabSection.tsx (73)
+ 48 files changed, 3685 insertions(+), 1696 deletions(-)
+ neu: LibraryStatusBand.tsx, LibraryRunHistory.tsx, libraryState.ts, scopeFacts.ts,
+      shared/ui/TabSection.tsx (mit ListSearchField)
  groß: LibraryDetailPage.tsx, LibrarySourceSection.tsx, AssetGrantsSection.tsx,
-       LibraryMetadataFieldsSection.tsx, MetadataExtractionSettingsSection.tsx
- Harness: flows/library-detail.mjs (Reiter „Verlauf“), lib/measure.mjs (tabsTop)
+       LibraryMetadataFieldsSection.tsx, MetadataExtractionSettingsSection.tsx, Mock-Fixtures
+ Harness: flows/library-detail.mjs, lib/measure.mjs (tabsTop, steady)
 ```
 
 ## Review-Befunde (REVIEW-1)
@@ -163,7 +154,7 @@ Ursachen: entfernte Texte (Rollenhinweise, Bestand-Alert, Pflege-Anker), Läufe 
 - R1-21 erledigt: Reiter mit einem Abschnitt ohne Titel (Zuordnungen, Verlauf); mehrere Abschnitte mit Titel links und Aktion rechts.
 - R1-22 erledigt: Ergebnis „n Dokumente · n fehlgeschlagen · n nicht lesbar“.
 - R1-23 erledigt: Zeitplan überall „Rhythmus · Termin“, „kein Zeitplan“. Bewusst nicht: Vollabgleich-Rhythmus bei Dropbox, das Fixture setzt keinen.
-- R1-24 erledigt: Aktionszeile mit fester Höhe, unter 600 px immer eigene Zeile.
+- R1-24 erledigt: Aktionszeile und Titelzeile (mit und ohne Stift) mit fester Höhe; Leser jetzt auf derselben Höhe (`tabsTop` ± 0).
 - R1-25 teilweise: Kernfelder lesend als Text, Diagnosesperre für Leser ausgeblendet. Bewusst nicht: Verbindung und Zeitplan für Leser – das Backend liefert sie Lesern nicht.
 - R1-26 erledigt: „Technische Angaben“ überall als Textlink mit `aria-expanded`.
 - R1-27 erledigt: Links nur bei Hover unterstrichen; Ausnahme „Mitglieder ausblenden“ aus `principal`.
@@ -194,7 +185,7 @@ Ursachen: entfernte Texte (Rollenhinweise, Bestand-Alert, Pflege-Anker), Läufe 
 - R1-52 erledigt: Metadaten unter 600 px mit ⋯, Füllgrad als Liste statt Tabelle.
 - R1-53 erledigt: Laufzeile bei 320 px zweizeilig (Zustand / Datum · Ergebnis · Auslöser), Fundorte mittig gekürzt.
 - R1-54 erledigt: Kennzahlzeile umbricht unter 600 px auf 2 reservierte Zeilen; Chipzeile mit drei Chips passt.
-- R1-55 teilweise: Namen 1–2 Zeilen mit Tooltip, URLs einzeilig. Bewusst nicht: Trennstrich im Titel-Kompositum – `hyphens: auto` greift im Headless-Chromium mangels Wörterbuch nicht; der Umbruch bleibt ohne Strich.
+- R1-55 erledigt: Namen 1–2 Zeilen mit Tooltip, URLs einzeilig, Titel mit Trennstrich („Grund-stücks…“, `dokumente__smb__scale__light__320`).
 - R1-56 erledigt: Fortschrittsleiste entfernt, auch beim Upload.
 - R1-57 erledigt: leerer Abschnitt „Externer Zugang“ ausgeblendet.
 - R1-58 erledigt: keine Extraktionsgüte bei 0 Dokumenten.

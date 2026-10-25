@@ -1,7 +1,7 @@
 {
   "args": {
     "base": "http://localhost:5190",
-    "out": "/tmp/claude-0/-home-user-opaa/5d7cb538-e92f-5f09-b056-dbf0e964e131/scratchpad/raw-extra",
+    "out": "/tmp/claude-0/-home-user-opaa/5d7cb538-e92f-5f09-b056-dbf0e964e131/scratchpad/r3-extra",
     "flow": "library-detail",
     "types": [
       "privat",
@@ -35,6 +35,6 @@
     ]
   },
   "shots": 240,
-  "seconds": 613,
-  "finishedAt": "2026-10-24T23:58:56.698Z"
+  "seconds": 746,
+  "finishedAt": "2026-10-25T03:58:10.761Z"
 }

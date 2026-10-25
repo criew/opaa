@@ -1,7 +1,7 @@
 {
   "args": {
     "base": "http://localhost:5190",
-    "out": "/tmp/claude-0/-home-user-opaa/5d7cb538-e92f-5f09-b056-dbf0e964e131/scratchpad/raw-main",
+    "out": "/tmp/claude-0/-home-user-opaa/5d7cb538-e92f-5f09-b056-dbf0e964e131/scratchpad/r3-main",
     "flow": "library-detail",
     "concurrency": 3,
     "chromium": "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome",
@@ -32,6 +32,6 @@
     ]
   },
   "shots": 1550,
-  "seconds": 3928,
-  "finishedAt": "2026-10-24T23:48:43.304Z"
+  "seconds": 4806,
+  "finishedAt": "2026-10-25T03:45:43.740Z"
 }
