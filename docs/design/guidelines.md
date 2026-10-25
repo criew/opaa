@@ -245,8 +245,8 @@ Die Arbeitsflächen folgen zusätzlich dem **Feinraster aus Mockup 1a** (#658): 
 Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
 bleiben das Vokabular für Markenmomente.
 
-**Titel einer Detailseite** (Asset, Space, Lauf): 20 px / 28 px ab 600 px Breite, darunter
-17 px / 22 px. Er steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine
+**Titel einer Detailseite** (Asset, Space, Lauf), abweichend vom Seitentitel (27 px): 20 px / 28 px
+ab 600 px Breite, darunter 17 px / 22 px. Er steht ungekürzt und trennt lange Wörter (`hyphens: auto`), reserviert aber keine
 Leerzeilen. Bei 320 px beginnt die Reiterleiste spätestens 360 px unter der Oberkante.
 
 ### 3.3 Gewichte, Zeilenhöhen, Laufweiten
@@ -367,9 +367,9 @@ bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
 (Muster: Mockup 1d, Issue #595).
 
-**Filter nur, wenn er kürzt.** Ein Listenfilter wie „Alle · Nur mit Fehlern (n)" erscheint erst ab
-5 Einträgen und nur, wenn er die Liste tatsächlich kürzt; haben alle oder keiner der Einträge
-Fehler, entfällt er.
+**Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
+Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit
+Fehlern (n)" fehlt, wenn alle oder keiner der Einträge Fehler haben.
 
 ### 5.4 Karten
 
@@ -428,7 +428,7 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
 `aria-label` „Schließen" und Tooltip (5.1). Formulardialoge mit „Abbrechen" bekommen kein
 zusätzliches ✕: eine Abbruchstelle genügt. Bestätigungen folgen 5.10. Escape und ein Klick daneben
-schließen jeden Dialog weiterhin. Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
+schließen jeden Dialog weiterhin (bei Änderungen nach Rückfrage, 5.10). Den Titel mit Schließen-Kreuz liefert ein gemeinsamer Baustein in
 `frontend/src/shared/ui/`, nie ein Nachbau je Dialog.
 
 ### 5.7 Leer-, Lade- und Fehlerzustände
