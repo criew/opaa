@@ -67,6 +67,7 @@ import {
   SearchIndexingAdminPage,
   SetPasswordPage,
   SettingsPage,
+  SettingsTransferPage,
   SpaceCreatePage,
   SpacePage,
   SpaceSettingsPage,
@@ -79,6 +80,7 @@ import {
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
+  { label: 'Einstellungen übertragen', to: '/admin/settings-transfer' },
   // „Benutzer & Gruppen" as two entries instead of tabs on one page: the
   // secondary column *is* the area navigation, and a pair of tabs above it would be a second
   // navigation for the same decision. Every target thus stays directly linkable.
@@ -269,6 +271,7 @@ export default function App() {
                   <Route path="admin/users/:tab" element={<UserManagementPage />} />
                   <Route path="admin/groups" element={<GroupManagementPage />} />
                   <Route path="admin/branding" element={<BrandingSettingsPage />} />
+                  <Route path="admin/settings-transfer" element={<SettingsTransferPage />} />
                   <Route
                     path="admin/models"
                     element={<Navigate to="/admin/models/chat" replace />}

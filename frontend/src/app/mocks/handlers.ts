@@ -38,6 +38,8 @@ import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // link-targets
 import { linkTargetHandlers } from '@/features/link-targets/mocks/linkTargetHandlers'
+// settings
+import { settingsHandlers } from '@/features/settings/mocks/settingsHandlers'
 // connection
 import { connectionProfileHandlers } from '@/features/connection/mocks/connectionProfileHandlers'
 import { connectedAccountHandlers } from '@/features/connection/mocks/connectedAccountHandlers'
@@ -109,6 +111,8 @@ export const handlers = [
   ...brandingHandlers,
   // link-targets
   ...linkTargetHandlers,
+  // settings
+  ...settingsHandlers,
   // connection
   ...connectionProfileHandlers,
   ...connectedAccountHandlers,
