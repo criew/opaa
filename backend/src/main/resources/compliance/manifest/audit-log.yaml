@@ -544,6 +544,9 @@ auditEvents:
   - id: PRIVATE_STORAGE_QUOTA_CHANGED
     trigger: Das hausweite Speicherkontingent privater Bibliotheken ändert sich
     payloadKeys: [overridden, quotaBytes]
+  - id: FULL_SYNC_RHYTHM_CHANGED
+    trigger: Der hausweite Vollabgleich-Rhythmus einer Quellart ändert sich
+    payloadKeys: [intervalDays, overridden, sourceType]
   - id: CAPABILITY_GRANTED
     trigger: Ein Anlegerecht wird einem Konto, einer Gruppe oder allen Konten erteilt
     payloadKeys: [capability, scope, subjectType]

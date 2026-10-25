@@ -236,8 +236,9 @@ class DataCollectionDisclosureIntegrationTest {
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
-   * with value and time of change - a factory default without a time only while it applies - and
-   * only the flows that happen on an action of a person stay open.
+   * with a value and the time of its change; only a key naming its row in brackets or one of {@link
+   * #FACTORY_DEFAULT_KEYS} may lack the time while its factory default applies, and only the flows
+   * that happen on an action of a person stay open.
    */
   @Test
   void everyStoredSettingAndEverySwitchedFlowIsAnsweredByItsModule() throws Exception {
@@ -252,7 +253,10 @@ class DataCollectionDisclosureIntegrationTest {
     for (String key : databaseKeys) {
       JsonNode setting = setting(export, key);
       assertThat(setting.path("effectiveValue").isNull()).as(key + " has a value").isFalse();
-      if (!FACTORY_DEFAULT_KEYS.contains(key) || setting.path("deviates").asBoolean()) {
+      // A key naming a row in brackets, or of a singleton row, has no row while its default
+      // applies.
+      boolean rowOptional = key.endsWith("]") || FACTORY_DEFAULT_KEYS.contains(key);
+      if (!rowOptional || setting.path("deviates").asBoolean()) {
         assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
       }
     }

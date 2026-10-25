@@ -30,6 +30,8 @@ import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.RunFailureCategory;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
@@ -75,7 +77,7 @@ class ConfluenceDataCenterFullSyncTest {
   @BeforeAll
   static void start() {
     confluence = ConfluenceDataCenterFixture.get();
-    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, 0, null, null, 0);
+    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, 0, null, 0);
     factory = new ConfluenceClientFactory(properties, TargetAddressValidator.disabled());
   }
 
@@ -108,6 +110,7 @@ class ConfluenceDataCenterFullSyncTest {
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             new ScanJournal(syncStateRepository),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             Clock.systemUTC(),
             new IndexingRunTemplate(
                 indexingJobService,

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The house-wide storage quota of private libraries: the value the administration set, {@code null}
- * while the configured default applies, {@code 0} for unlimited.
+ * while the factory default applies, {@code 0} for unlimited.
  */
 @Component
 class PrivateStorageQuotaSettingsSection implements SettingsSection {

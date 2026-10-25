@@ -30,6 +30,8 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.IndexingRunProgress;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.Secret;
@@ -140,7 +142,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             Clock.systemUTC());
     run = new ConfluenceRun(frame, client);
     ConfluenceProperties properties =
-        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, null, 0);
+        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, 0);
     executor =
         new ConfluenceIndexingExecutor(
             mock(ConfluenceClientFactory.class),
@@ -149,6 +151,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             mock(AttachmentIndexer.class),
             documentRepository,
             new ScanJournal(mock(SourceSyncStateRepository.class)),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             Clock.systemUTC(),
             mock(IndexingRunTemplate.class));
   }

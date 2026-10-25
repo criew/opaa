@@ -168,6 +168,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "documents",
             "embedding_index",
             "embedding_rate_measurements",
+            "full_sync_rhythm_settings",
             "indexing_jobs",
             "indexing_run_events",
             "installation_state",

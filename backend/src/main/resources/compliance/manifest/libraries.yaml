@@ -316,6 +316,7 @@ nonPersonalTables:
     - updated_at
   llm_model_seed_marker: [id, seeded_at]
   private_storage_quota_settings: [id, quota_bytes, updated_at]
+  full_sync_rhythm_settings: [source_type, interval_days, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]
   outbound_proxy_settings: [id, proxy_host, proxy_port, no_proxy, updated_at]
   backend_instances:

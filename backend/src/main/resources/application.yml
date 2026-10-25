@@ -441,7 +441,6 @@ opaa:
       max-response-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_RESPONSE_BYTES:10485760}
       max-attachment-size-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_ATTACHMENT_SIZE_BYTES:20971520}
       max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
-      full-sync-interval: ${OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL:7d}
       incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
       # Requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
       # the budget. Default measured against a real Data Center (see
@@ -498,9 +497,7 @@ opaa:
       request-budget-per-run: ${OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_BUDGET_PER_RUN:20000}
       max-files-per-run: ${OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILES_PER_RUN:1000000}
       download-concurrency: ${OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_CONCURRENCY:2}
-      full-sync-interval: ${OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL:7d}
-    # SharePoint document libraries over Microsoft Graph (see SharePointProperties); the daily full
-    # sync bounds how long a renamed or moved folder keeps its files at the old place.
+    # SharePoint document libraries over Microsoft Graph (see SharePointProperties).
     sharepoint:
       page-size: ${OPAA_INDEXING_SHAREPOINT_PAGE_SIZE:200}
       max-file-size-bytes: ${OPAA_INDEXING_SHAREPOINT_MAX_FILE_SIZE_BYTES:52428800}
@@ -512,7 +509,6 @@ opaa:
       request-budget-per-run: ${OPAA_INDEXING_SHAREPOINT_REQUEST_BUDGET_PER_RUN:20000}
       max-files-per-run: ${OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN:1000000}
       download-concurrency: ${OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY:2}
-      full-sync-interval: ${OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL:1d}
     # Dropbox over its API v2 (see DropboxProperties). The addresses are Dropbox's own; they move
     # only to a stand-in for tests.
     dropbox:
@@ -530,7 +526,6 @@ opaa:
       request-budget-per-run: ${OPAA_INDEXING_DROPBOX_REQUEST_BUDGET_PER_RUN:20000}
       max-files-per-run: ${OPAA_INDEXING_DROPBOX_MAX_FILES_PER_RUN:1000000}
       download-concurrency: ${OPAA_INDEXING_DROPBOX_DOWNLOAD_CONCURRENCY:2}
-      full-sync-interval: ${OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL:7d}
     # The shared event intake behind every push path (Confluence webhooks, S3 event
     # notifications): how long reported keys are collected before one targeted run checks them,
     # how many keys a batch holds before the connector's ordinary run takes over, and how often a
@@ -616,10 +611,6 @@ opaa:
     # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connectors), not only the upload endpoint. Default 10 GiB.
     # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
-    # Default of the storage quota across all private libraries of one person, until the system
-    # administration sets its own value. Default 10 GiB; 0 or negative means unlimited - see
-    # PersonalStorageQuota.
-    private-storage-quota-bytes: ${OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES:10737418240}
   connection:
     # Without a sign-in for this many days a person's connections rest (ADR-0041); 30-365, a value
     # outside fails the start - see ConnectionLifecycleProperties.

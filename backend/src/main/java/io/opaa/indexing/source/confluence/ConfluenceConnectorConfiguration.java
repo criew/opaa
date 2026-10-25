@@ -5,6 +5,7 @@ import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
@@ -50,14 +51,10 @@ public class ConfluenceConnectorConfiguration {
   @Bean
   ConfluenceSourceConnector confluenceSourceConnector(
       ConfluenceConnectionService confluenceConnectionService,
-      ConfluenceProperties confluenceProperties,
       SourceSyncStateRepository sourceSyncStateRepository,
       ConfluencePushReceiver confluenceWebhookService) {
     return new ConfluenceSourceConnector(
-        confluenceConnectionService,
-        confluenceProperties,
-        sourceSyncStateRepository,
-        confluenceWebhookService);
+        confluenceConnectionService, sourceSyncStateRepository, confluenceWebhookService);
   }
 
   /**
@@ -74,6 +71,7 @@ public class ConfluenceConnectorConfiguration {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       ScanJournal scanJournal,
+      FullSyncRhythm fullSyncRhythm,
       IndexingRunTemplate indexingRunTemplate,
       Clock clock) {
     return new ConfluenceIndexingExecutor(
@@ -83,6 +81,7 @@ public class ConfluenceConnectorConfiguration {
         attachmentIndexer,
         documentRepository,
         scanJournal,
+        fullSyncRhythm,
         clock,
         indexingRunTemplate);
   }

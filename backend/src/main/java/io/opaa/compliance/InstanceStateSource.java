@@ -12,9 +12,9 @@ import java.util.UUID;
 /**
  * What a module tells the {@link InstanceDisclosure} about the current state of this instance; a
  * module implements it as a bean for the facts it owns. Every key and id is one of the manifest:
- * {@code table.column} of a {@code DATABASE} setting, the id of a data flow. A value it returns
- * here leaves the installation, so it returns only configuration, never a secret, a name of a
- * person or content.
+ * {@code table.column} of a {@code DATABASE} setting, {@code table.column[ROW]} where one column
+ * holds one setting per row, the id of a data flow. A value it returns here leaves the
+ * installation, so it returns only configuration, never a secret, a name of a person or content.
  */
 public interface InstanceStateSource {
 

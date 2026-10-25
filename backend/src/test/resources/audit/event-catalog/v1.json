@@ -53,6 +53,7 @@
   "EMBEDDING_REINDEX_COMPLETED": ["status"],
   "EMBEDDING_REINDEX_STARTED": ["dimensions", "embeddedChunks", "model", "privateLibrariesCounted", "totalChunks"],
   "EXTERNAL_ACCESS_SETTINGS_CHANGED": ["allowedCidrs", "enabled", "massRetrievalAlertThreshold", "serverInstructionsLength", "serverInstructionsSha256", "tokenMaxLifetimeDays", "tokenRateLimitPerHour"],
+  "FULL_SYNC_RHYTHM_CHANGED": ["intervalDays", "overridden", "sourceType"],
   "GOVERNANCE_SETTINGS_CHANGED": [],
   "GROUP_CHANGED": ["changedFields"],
   "GROUP_CREATED": ["externalId", "provider"],

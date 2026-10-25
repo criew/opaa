@@ -3,7 +3,6 @@ package io.opaa.indexing.registry;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.indexing.source.filesystem.FilesystemSourceConnector;
@@ -47,8 +46,6 @@ public final class TestSourceConnectors {
       mock(SourceSyncStateRepository.class);
   private ConfluenceConnectionService confluenceConnectionService =
       mock(ConfluenceConnectionService.class);
-  private ConfluenceProperties confluenceProperties =
-      new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
   private S3ConnectionService s3ConnectionService = mock(S3ConnectionService.class);
   private UploadedOriginalStore uploadedOriginalStore = mock(UploadedOriginalStore.class);
   private TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
@@ -88,11 +85,6 @@ public final class TestSourceConnectors {
 
   public TestSourceConnectors confluenceConnectionService(ConfluenceConnectionService service) {
     this.confluenceConnectionService = service;
-    return this;
-  }
-
-  public TestSourceConnectors confluenceProperties(ConfluenceProperties properties) {
-    this.confluenceProperties = properties;
     return this;
   }
 
@@ -171,10 +163,7 @@ public final class TestSourceConnectors {
                 rssProperties,
                 remoteOriginals),
             new ConfluenceSourceConnector(
-                confluenceConnectionService,
-                confluenceProperties,
-                sourceSyncStateRepository,
-                confluenceWebhookService),
+                confluenceConnectionService, sourceSyncStateRepository, confluenceWebhookService),
             new S3SourceConnector(
                 s3ConnectionService,
                 s3ClientFactory != null

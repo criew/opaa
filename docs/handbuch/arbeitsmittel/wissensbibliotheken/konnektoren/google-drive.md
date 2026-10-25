@@ -181,7 +181,6 @@ Alle Schlüssel unter `opaa.indexing.google-drive.*`.
 | `request-budget-per-run` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf |
 | `max-files-per-run` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
 | `download-concurrency` | `OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
-| `full-sync-interval` | `OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL` | 7d | Rhythmus des Vollabgleichs; je Bibliothek überschreibbar |
 
 Die Obergrenze von fünfzig Bereichen ist fest.
 

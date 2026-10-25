@@ -17,7 +17,6 @@ import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.run.SourceEventIntake;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.indexing.spi.PushNotification;
@@ -105,7 +104,6 @@ class ConfluenceWebhookPublicAccessTest {
             Optional.of(
                 new ConfluenceSourceConnector(
                     mock(ConfluenceConnectionService.class),
-                    new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
                     mock(SourceSyncStateRepository.class),
                     webhookService)));
   }

@@ -282,6 +282,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getMyPrivateStorage",
             "getPrivateStorageQuota",
             "getPrivateStorageSummary",
+            "listFullSyncRhythms",
             "getChatAutoCleanupRetention",
             "getLockedAccountChatRetention",
             "getIncidentScopeRetention",

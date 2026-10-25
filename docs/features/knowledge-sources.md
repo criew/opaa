@@ -297,8 +297,8 @@ fehlerfreien Lauf auf dessen Startzeit vor; ein Abbruch lässt ihn stehen, sodas
 Änderungsfenster verloren geht. Ohne ausdrückliche Betriebsart entscheidet der
 Zustand der Bibliothek: Der erste Lauf, jeder Lauf nach einer Änderung der Space-Auswahl, nach einem
 unterbrochenen Vollabgleich und jeder Lauf, sobald der letzte Vollabgleich älter als
-`OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` (Standard: eine Woche, instanzweit; je Bibliothek
-einstellbar ist #1200) ist, läuft voll — der Vollabgleich bleibt nötig, weil nur er Löschungen
+der Vollabgleich-Rhythmus ist (je Bibliothek einstellbar, #1200; sonst der Wert der Quellart unter
+Anbindungen → Einstellungen, Werkseinstellung eine Woche, ADR-0060), läuft voll — der Vollabgleich bleibt nötig, weil nur er Löschungen
 nachvollzieht, und ist deshalb verlängerbar, nicht abschaltbar.
 Der manuelle Anstoß bietet für Confluence beide Betriebsarten an („Jetzt indizieren“ folgt dem Zustand,
 „Vollabgleich starten“ erzwingt ihn). **Webhooks (#1140)** verkürzen die Wartezeit auf den nächsten

@@ -28,6 +28,8 @@ import io.opaa.indexing.registry.StoredDocumentSourceAccess;
 import io.opaa.indexing.run.DefaultRunModes;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.run.SyncStateBasis;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.RemoteContentProperties;
 import io.opaa.indexing.spi.RemoteOriginalAccess;
 import io.opaa.indexing.spi.ScanJournal;
@@ -262,6 +264,12 @@ public class IndexingConfiguration {
   @Bean
   ScanJournal scanJournal(SourceSyncStateRepository sourceSyncStateRepository) {
     return new ScanJournal(sourceSyncStateRepository);
+  }
+
+  /** The full-sync rhythm of every connector with an incremental run, read per decision. */
+  @Bean
+  FullSyncRhythm fullSyncRhythm(FullSyncRhythmSettingRepository fullSyncRhythmSettingRepository) {
+    return new FullSyncRhythm(fullSyncRhythmSettingRepository);
   }
 
   /**
