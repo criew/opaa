@@ -248,6 +248,18 @@ export function applyLibraryScenario(): void {
       mockLibraryDocuments[id] = documents
       next.documentCount = documents.length
     }
+    // an upload library holds as much as its documents weigh, unless the quota is the point
+    if (
+      documents &&
+      next.sourceType === 'UPLOAD' &&
+      scenario !== 'failed' &&
+      next.storageQuotaBytes
+    ) {
+      next.storageUsedBytes = Math.min(
+        next.storageQuotaBytes - 1,
+        documents.reduce((sum, document) => sum + (document.fileSize ?? 0), 0),
+      )
+    }
     const folders = scenarioFolders(next, scenario)
     if (folders) mockLibraryFolders[id] = folders
     const grants = scenarioGrants(scenario)
@@ -314,7 +326,8 @@ function eventReference(library: LibraryResponse | undefined, e: number): string
     case 'RSS_FEED':
       return new URL(`eintrag-${e}.html`, library.sourceUrl ?? 'https://example.org/').href
     case 'FILESYSTEM':
-      return `${library.sourcePath ?? '/srv'}/${name}/Anlage-${e}.pdf`
+      // relative to the library's directory, as the rows name their places
+      return `${name}/Anlage-${e}.pdf`
     case 'GOOGLE_DRIVE': {
       const scope = ((settings.scopes as Array<{ name?: string }> | undefined) ?? [])[0]
       return `${scope?.name ?? 'Ablage'} › ${name} › Anlage-${e}.pdf`
@@ -338,8 +351,16 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
   // runs start at the schedule's hour; without a schedule every run was started by hand
   const hour = library?.schedule?.hour ?? 6
   const scheduled = Boolean(library?.schedule && library.schedule.frequency !== 'DISABLED')
-  // local time at the plan's hour; the newest finished run is the one of 24.10.
-  const started = new Date(2026, 9, i === 0 ? 24 : 25 - i, hour, library?.schedule?.minute ?? 0)
+  // local time at the plan's hour, a run by hand later in the morning; the newest finished run
+  // is the one of 24.10.
+  const manual = !scheduled || i % 3 === 0
+  const started = new Date(
+    2026,
+    9,
+    i === 0 ? 24 : 25 - i,
+    manual ? hour + 3 : hour,
+    manual ? 12 : (library?.schedule?.minute ?? 0),
+  )
   const failed = spec.failed ?? 0
   const ended = spec.status === 'FAILED'
   // a refused sign-in ends within seconds
@@ -355,7 +376,7 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
   return {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     status: spec.status,
-    triggeredBy: !scheduled || i % 3 === 0 ? 'MANUAL' : 'SCHEDULED',
+    triggeredBy: manual ? 'MANUAL' : 'SCHEDULED',
     runMode: i % 7 === 0 ? 'FULL' : 'INCREMENTAL',
     documentCount: processed,
     totalDocuments: total,

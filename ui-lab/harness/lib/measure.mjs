@@ -147,6 +147,8 @@ export function budgetViolations(metrics, width, scenario) {
   if (metrics.helpTextsPerForm > BUDGETS.helpTextsPerForm) over.push('helpTextsPerForm')
   if (width >= 1280 && metrics.helpTextMaxLines > BUDGETS.helpTextLines) over.push('helpTextLines')
   if (WORD_BUDGET_SCENARIOS.includes(scenario) && metrics.uiWords > BUDGETS.uiWords) over.push('uiWords')
+  // height up to the tab bar of a detail page (pruefliste-detail, Zählbudgets)
+  if (metrics.tabsTop != null && metrics.tabsTop > (width <= 320 ? 360 : 260)) over.push('tabsTop')
   return over
 }
 
@@ -178,6 +180,32 @@ export async function runAxe(page, { contrastOnly = false } = {}) {
 }
 
 /** Grows the viewport so inner scroll containers (AppShell main, dialogs) fit, for __full. */
+/** After a resize: the page has taken the new width and painted twice (no tiled or stale layout). */
+async function settleLayout(page, width) {
+  await page
+    .waitForFunction((w) => window.innerWidth === w && document.documentElement.clientWidth <= w, width, { timeout: 5000 })
+    .catch(() => {})
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  await sleep(300)
+}
+
+/** A shot that is blank (a white page) or shows no tab bar is taken again; null when it stays so. */
+async function screenshotChecked(page, file) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const ready = await page
+      .evaluate(() => {
+        const main = document.querySelector('main, [role=main]')
+        return Boolean(main && main.innerText.trim().length > 20)
+      })
+      .catch(() => false)
+    const buffer = ready ? await page.screenshot({ path: file }).catch(() => null) : null
+    // a white 1280 × 900 PNG is a few kB; a rendered page is far larger
+    if (buffer && buffer.length > 12000) return true
+    await sleep(1000)
+  }
+  return false
+}
+
 async function growForFull(page, width) {
   for (let i = 0; i < 4; i++) {
     const extra = await page.evaluate(() => {
@@ -314,18 +342,24 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
     if (shown && shown !== scheme) log(`  WARNING ${area} ${type} ${scenario}: requested ${scheme}, page shows ${shown}`)
     for (const width of widths) {
       await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
-      await sleep(250)
+      await settleLayout(page, width)
       // a flow may bring its subject back into view after the resize, e.g. an expanded run
       if (prepare) await prepare(page, width)
       const name = `${area}__${type}__${scenario}__${scheme}__${width}`
-      await page.screenshot({ path: path.join(out, `${name}.png`) }).catch((e) => log('  screenshot failed', e.message))
+      const painted = await screenshotChecked(page, path.join(out, `${name}.png`))
+      if (!painted) {
+        log(`  BLANK ${name}`)
+        record({ shot: `${name}.png`, area, type, scenario, scheme, width, status: 'blank' })
+        continue
+      }
       const metrics = await pageMetrics(page)
       const axe = noAxe ? null : await runAxe(page, { contrastOnly: scheme !== 'light' })
       if (!noFull) {
         await growForFull(page, width)
+        await settleLayout(page, width)
         await fullScreenshot(page, path.join(out, `${name}__full.png`))
         await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
-        await sleep(150)
+        await settleLayout(page, width)
       }
       const trace = scheme === 'light' ? await tabTrace(page).catch(() => null) : null
       record({

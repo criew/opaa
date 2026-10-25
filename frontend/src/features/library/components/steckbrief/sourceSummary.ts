@@ -61,7 +61,9 @@ export function sourceSummaryOf(library: LibraryResponse, libraryId: string): So
         defaultDays: library.fullSyncIntervalDefaultDays ?? null,
       }
     : undefined
-  const schedule = scheduleSummary(scheduleValuesFrom(library.schedule, rhythm), rhythm)
+  const plan = scheduleSummary(scheduleValuesFrom(library.schedule, rhythm), rhythm)
+  // a bare „aus“ says nothing out of its row
+  const schedule = plan === 'aus' ? 'Zeitplan aus' : plan
   const scope =
     lead(section('scope')?.summary(values, context) ?? null) ?? fixedScopeOf(library.sourceType)
   return {

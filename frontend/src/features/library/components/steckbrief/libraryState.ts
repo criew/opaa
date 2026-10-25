@@ -42,7 +42,12 @@ export interface LibraryStateInput {
   /** Upload rejections of this session, as the document store keeps them. */
   uploadErrors: string[]
   /** What the loaded documents of an upload library show: failed or still processed ones. */
-  uploadDocuments?: { failed: boolean; pending: boolean }
+  uploadDocuments?: {
+    failed: number
+    pending: number
+    /** The loaded page holds only part of the library: the counts are lower bounds. */
+    partial: boolean
+  }
   /** Whether the source signs in at all; a path or an open web directory has no sign-in. */
   signsIn?: boolean
 }
@@ -98,20 +103,26 @@ export function libraryStateOf(input: LibraryStateInput): LibraryState {
       library.storageQuotaBytes != null &&
       library.storageUsedBytes != null &&
       library.storageUsedBytes >= library.storageQuotaBytes
+    // the documents tell the state; rejected files never became one and stay out of it. Without
+    // a count from the backend the loaded page gives one, as a lower bound when there is more.
+    const docs = input.uploadDocuments
+    const failedCount =
+      docs && docs.failed > 0
+        ? `${docs.partial ? 'mind. ' : ''}${docs.failed} fehlgeschlagen`
+        : null
     if (quota || uploadErrors.some(isQuotaMessage)) {
-      return { word: 'Kontingent voll', tone: 'error', detail: null, cause: 'documents' }
+      return { word: 'Kontingent voll', tone: 'error', detail: failedCount, cause: 'documents' }
     }
-    // the documents tell the state; rejected files never became one and stay out of it
-    if (input.uploadDocuments?.pending) {
-      return { word: 'Läuft', tone: 'neutral', detail: null, cause: 'documents' }
-    }
-    if (input.uploadDocuments?.failed) {
+    if (failedCount) {
       return {
         word: 'Teilweise fehlgeschlagen',
         tone: 'warning',
-        detail: formatDay(library.updatedAt),
+        detail: failedCount,
         cause: 'documents',
       }
+    }
+    if (docs && docs.pending > 0) {
+      return { word: 'Läuft', tone: 'neutral', detail: null, cause: 'documents' }
     }
     if (!library.documentCount) {
       return { word: 'Noch kein Inhalt', tone: 'neutral', detail: null, cause: 'documents' }

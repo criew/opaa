@@ -310,7 +310,13 @@ export default function LibraryMetadataFieldsSection({
               >
                 <Typography
                   component="h3"
-                  sx={{ fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}
+                  lang="de"
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    hyphens: 'auto',
+                    overflowWrap: 'break-word',
+                  }}
                 >
                   {field.label}
                 </Typography>

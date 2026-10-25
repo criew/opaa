@@ -22,7 +22,6 @@ import AttachFileIcon from '@mui/icons-material/AttachFile'
 import CloseIcon from '@mui/icons-material/Close'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import FolderIcon from '@mui/icons-material/Folder'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import SearchIcon from '@mui/icons-material/Search'
@@ -320,16 +319,23 @@ export default function LibraryDocumentList({
               </Typography>
               {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
             </Stack>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
-              {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
-              {formatIndexedAt(document.indexedAt)}
-              {/* below sm the state joins the second line instead of a column of its own */}
+            <Typography variant="caption" noWrap sx={{ color: 'text.secondary' }}>
+              {formatFileSize(document.fileSize)}
+              {/* below sm only size and state, so the line stays one line (P6) */}
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                {` · ${document.chunkCount} ${document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'}`}
+                {document.indexedAt ? ` · ${formatIndexedAt(document.indexedAt)}` : ''}
+              </Box>
               <Box
                 component="span"
-                sx={{ display: { xs: 'inline-flex', sm: 'none' }, alignItems: 'center', gap: 0.5 }}
+                sx={{
+                  display: { xs: 'inline-flex', sm: 'none' },
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 0.5,
+                }}
               >
-                {' · '}
+                {'· '}
                 <Box
                   component="span"
                   aria-hidden
@@ -457,6 +463,7 @@ export default function LibraryDocumentList({
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
+          useFlexGap
           sx={{ mb: 1.5, alignItems: { sm: 'center' } }}
         >
           {selectable && (
@@ -582,8 +589,9 @@ export default function LibraryDocumentList({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 2,
-                py: 1.25,
+                // the same padding and gap as a document row: names start at one edge (R1-25)
+                gap: { xs: 1, sm: 2 },
+                p: { xs: 1, sm: 1.5 },
                 borderBottom: 1,
                 borderColor: 'divider',
                 '&:last-of-type': { borderBottom: 0 },
@@ -603,19 +611,19 @@ export default function LibraryDocumentList({
                 }}
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
+                  flexDirection: 'column',
+                  gap: 0.25,
                   minWidth: 0,
                   flexGrow: 1,
                   cursor: 'pointer',
                 }}
               >
-                <FolderIcon color="action" />
                 <Typography noWrap title={folder.name} sx={{ fontWeight: 600, minWidth: 0 }}>
                   {folder.name}
                 </Typography>
-                <Typography variant="caption" noWrap sx={{ color: 'text.secondary', flex: 'none' }}>
-                  {folder.documentCount} {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
+                <Typography variant="caption" noWrap sx={{ color: 'text.secondary' }}>
+                  Ordner · {folder.documentCount}{' '}
+                  {folder.documentCount === 1 ? 'Dokument' : 'Dokumente'}
                 </Typography>
               </Box>
               {renderFolderActions?.(folder)}

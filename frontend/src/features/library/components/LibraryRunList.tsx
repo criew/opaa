@@ -36,21 +36,23 @@ const RUN_GRID = {
   display: 'grid',
   gridTemplateColumns: {
     xs: 'minmax(0, 1fr) auto',
-    sm: '176px 112px 64px 150px minmax(0, 1fr)',
+    sm: '176px 96px 80px 136px minmax(0, 1fr)',
   },
-  columnGap: 2,
+  columnGap: 1.5,
   alignItems: 'baseline',
 } as const
 
 // A stable reference: a Zustand selector must not return a fresh array for an unchanged slice.
 const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
 
-function runState(run: IndexingRunResponse): { tone: StatusTone; label: string } {
+function runState(run: IndexingRunResponse, signsIn: boolean): { tone: StatusTone; label: string } {
   if (run.status === 'RUNNING') return { tone: 'neutral', label: 'Läuft' }
   if (run.status === 'FAILED') {
-    return run.failureCategory && REJECTED_SIGN_IN.has(run.failureCategory)
-      ? { tone: 'error', label: 'Anmeldung abgelehnt' }
-      : { tone: 'error', label: 'Fehlgeschlagen' }
+    // a source without a sign-in (path, open web directory) was not reached, not refused
+    if (run.failureCategory && REJECTED_SIGN_IN.has(run.failureCategory)) {
+      return { tone: 'error', label: signsIn ? 'Anmeldung abgelehnt' : 'Nicht erreichbar' }
+    }
+    return { tone: 'error', label: 'Fehlgeschlagen' }
   }
   if (run.failureCategory === 'QUOTA_EXHAUSTED') return { tone: 'error', label: 'Kontingent voll' }
   if (runPartlyFailed(run)) return { tone: 'warning', label: 'Teilweise fehlgeschlagen' }
@@ -338,6 +340,7 @@ export default function LibraryRunList({
   const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
   const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
   const showMode = Boolean(sourceRegistration(sourceType)?.configuration?.fullSyncRhythm)
+  const signsIn = sourceRegistration(sourceType)?.configuration?.setup?.signsIn !== false
   const quotaRemedy = privateLibrary ? QUOTA_EXHAUSTED_REMEDY : LIBRARY_QUOTA_EXHAUSTED_REMEDY
 
   useEffect(() => {
@@ -392,7 +395,7 @@ export default function LibraryRunList({
           </Box>
           <Box role="list" aria-label="Läufe">
             {runs.map((run) => {
-              const state = runState(run)
+              const state = runState(run, signsIn)
               const summaryRow = (
                 <Box sx={{ ...RUN_GRID, width: '100%' }}>
                   <StateDot tone={state.tone} label={state.label} />
@@ -436,9 +439,6 @@ export default function LibraryRunList({
                       color: 'text.primary',
                       gridColumn: { xs: '1 / -1', sm: 'auto' },
                       pr: { sm: 1 },
-                      whiteSpace: { sm: 'nowrap' },
-                      overflow: { sm: 'hidden' },
-                      textOverflow: { sm: 'ellipsis' },
                     }}
                   >
                     <Box component="span" sx={{ display: { sm: 'none' }, color: 'text.secondary' }}>

@@ -553,7 +553,9 @@ export default function AssetGrantsSection({
                 </FormControl>
                 <Typography
                   sx={{
-                    width: 112,
+                    // below sm only a set date takes room, so role and action share one line
+                    width: { xs: grant.expiresAt ? 'auto' : 0, sm: 112 },
+                    overflow: 'hidden',
                     fontSize: 13,
                     color: expired ? 'warning.main' : 'text.secondary',
                   }}
@@ -576,7 +578,9 @@ export default function AssetGrantsSection({
           })}
           {shownGrants.length === 0 && (
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary', py: 1 }}>
-              Keine Freigabe entspricht dieser Suche.
+              {normalizedQuery
+                ? 'Keine Freigabe entspricht dieser Suche.'
+                : 'Noch keine Freigaben.'}
             </Typography>
           )}
         </Box>

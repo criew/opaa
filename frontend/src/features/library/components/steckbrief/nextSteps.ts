@@ -5,7 +5,7 @@ import type { LibraryDetailTab } from '../libraryDetailAccess'
 
 /** One step the wizard cannot take because it needs the created library (inventory, ch. 8). */
 export interface NextStep {
-  key: 'space' | 'upload' | 'live' | 'metadata'
+  key: 'source' | 'space' | 'upload' | 'live' | 'metadata'
   label: string
   done: boolean
   tab: LibraryDetailTab
@@ -96,6 +96,10 @@ export function useNextSteps(input: NextStepsInput): {
       tab: 'zuordnungen',
     },
   ]
+  // the wizard's own step, ticked: the list starts from what is already done
+  if (input.sourceType !== 'UPLOAD') {
+    steps.unshift({ key: 'source', label: 'Quelle verbunden', done: true, tab: 'quelle' })
+  }
   if (input.sourceType === 'UPLOAD') {
     steps.unshift({
       key: 'upload',

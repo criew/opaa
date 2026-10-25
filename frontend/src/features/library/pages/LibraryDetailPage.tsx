@@ -347,8 +347,9 @@ export default function LibraryDetailPage() {
     uploadDocuments:
       knownSourceType === 'UPLOAD'
         ? {
-            failed: loadedDocuments.some((document) => document.status === 'FAILED'),
-            pending: loadedDocuments.some((document) => document.status === 'PENDING'),
+            failed: loadedDocuments.filter((document) => document.status === 'FAILED').length,
+            pending: loadedDocuments.filter((document) => document.status === 'PENDING').length,
+            partial: loadedDocuments.length < (library.documentCount ?? 0),
           }
         : undefined,
     signsIn: sourceRegistration(knownSourceType)?.configuration?.setup?.signsIn !== false,
@@ -375,7 +376,15 @@ export default function LibraryDetailPage() {
           <>
             {privateLibrary && <PrivateMark />}
             {erasing && <ErasingMark />}
-            {details && <MetaBadge>{sourceChipLabel(details.sourceType)}</MetaBadge>}
+            {details && (
+              // a private library carries „Privat“ as well: below sm its source chip gives way (D1)
+              <Box
+                component="span"
+                sx={{ display: privateLibrary ? { xs: 'none', sm: 'inline-flex' } : 'inline-flex' }}
+              >
+                <MetaBadge>{sourceChipLabel(details.sourceType)}</MetaBadge>
+              </Box>
+            )}
             <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
         }

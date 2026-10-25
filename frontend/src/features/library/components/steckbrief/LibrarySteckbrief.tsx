@@ -286,7 +286,7 @@ function NextStepsBlock({
         type="button"
         underline="hover"
         onClick={onDismiss}
-        sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}
+        sx={{ fontSize: 12.5, mt: 0.5, minHeight: 24 }}
       >
         Ausblenden
       </Link>
@@ -300,8 +300,9 @@ function NextStepsBlock({
  */
 function SteckbriefBlocks({
   hideState = false,
+  hideSteps = false,
   ...props
-}: LibrarySteckbriefProps & { hideState?: boolean }) {
+}: LibrarySteckbriefProps & { hideState?: boolean; hideSteps?: boolean }) {
   const { state, source, upload, targetSearch } = props
   const [rejectionsOpen, setRejectionsOpen] = useState(false)
   return (
@@ -400,7 +401,7 @@ function SteckbriefBlocks({
           {`${props.responsible} · zuständig`}
         </TargetLine>
       </Block>
-      {props.steps.length > 0 && (
+      {props.steps.length > 0 && !hideSteps && (
         <NextStepsBlock
           steps={props.steps}
           onDismiss={props.onDismissSteps}
@@ -423,7 +424,6 @@ export const STECKBRIEF_WIDTH = 280
 export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
-  const openSteps = props.steps.filter((step) => !step.done).length
   return (
     <>
       <Box
@@ -484,11 +484,6 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
             }}
           >
             <StateDot tone={props.state.tone} label={props.state.word} />
-            {openSteps > 0 && (
-              <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-                {` · ${openSteps} ${openSteps === 1 ? 'Schritt' : 'Schritte'} offen`}
-              </Typography>
-            )}
           </Box>
           <ExpandMoreIcon
             aria-hidden
@@ -499,8 +494,18 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
             }}
           />
         </ButtonBase>
+        {/* right after creating the library its next steps stand open below the line */}
+        {props.steps.length > 0 && (
+          <Box sx={{ pb: 1.5 }}>
+            <NextStepsBlock
+              steps={props.steps}
+              onDismiss={props.onDismissSteps}
+              targetSearch={props.targetSearch}
+            />
+          </Box>
+        )}
         <Box id={panelId} hidden={!open} sx={{ pb: 2, pt: 1 }}>
-          {open && <SteckbriefBlocks {...props} hideState={!props.statusUnknown} />}
+          {open && <SteckbriefBlocks {...props} hideState={!props.statusUnknown} hideSteps />}
         </Box>
       </Box>
     </>

@@ -152,15 +152,17 @@ export default function AssetHeadlineEditor({
               <PageHeading
                 title={name}
                 sx={{
-                  fontSize: 20,
-                  lineHeight: '30px',
-                  overflowWrap: 'anywhere',
+                  // one line from sm; below it always two lines of a smaller stage, so the head
+                  // keeps one height for every name (D1); the tooltip has the whole name
+                  fontSize: { xs: 18, sm: 20 },
+                  lineHeight: { xs: '26px', sm: '30px' },
+                  height: { xs: 52, sm: 'auto' },
+                  overflowWrap: 'break-word',
                   hyphens: 'auto',
-                  // from sm one line with ellipsis (the tooltip has it all), below it the whole name
-                  display: { xs: 'block', sm: '-webkit-box' },
+                  display: '-webkit-box',
                   WebkitBoxOrient: 'vertical',
-                  WebkitLineClamp: { sm: 1 },
-                  overflow: { sm: 'hidden' },
+                  WebkitLineClamp: { xs: 2, sm: 1 },
+                  overflow: 'hidden',
                 }}
               />
             </Box>

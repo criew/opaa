@@ -8,8 +8,6 @@ import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder'
-import DriveFolderUploadIcon from '@mui/icons-material/DriveFolderUpload'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import { ACCEPTED_FILE_EXTENSIONS } from '../hooks/useDocumentUpload'
 import type { DocumentUpload } from '../hooks/useDocumentUpload'
@@ -199,32 +197,10 @@ export default function LibraryDocumentUploadArea({
         }}
       >
         <UploadFileIcon sx={{ fontSize: 32, mb: 1 }} />
-        <Typography>Dateien oder Ordner hierher ziehen</Typography>
+        <Typography>Dateien oder Ordner hierher ziehen oder auswählen</Typography>
       </Box>
       {inputs}
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Button
-          variant="contained"
-          startIcon={<UploadFileIcon />}
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          Dateien hochladen
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<DriveFolderUploadIcon />}
-          onClick={() => folderInputRef.current?.click()}
-          disabled={isUploading}
-        >
-          Ordner hochladen
-        </Button>
-        {canManageFolders && (
-          <Button variant="outlined" startIcon={<CreateNewFolderIcon />} onClick={onNewFolder}>
-            Neuer Ordner
-          </Button>
-        )}
-      </Stack>
+
       {isUploading && <LinearProgress aria-label="Hochladen läuft" sx={{ height: 2 }} />}
     </Stack>
   )

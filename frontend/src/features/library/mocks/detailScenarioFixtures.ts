@@ -179,8 +179,15 @@ export function scenarioDocuments(
   const folderCount = upload ? folderPlan(scenario) : 0
   return generate(plan.count, (i) => {
     const [extension, contentType] = EXTENSIONS[i % EXTENSIONS.length]
+    // failed documents first (the page a person opens shows them), pending ones spread over the
+    // rest, as a running upload or run leaves them
+    const pendingEvery = plan.pending > 0 ? Math.max(1, Math.floor(plan.count / plan.pending)) : 0
     const failed = i <= plan.failed
-    const pending = !failed && i <= plan.failed + plan.pending
+    const pending =
+      !failed &&
+      pendingEvery > 0 &&
+      (i + 1) % pendingEvery === 0 &&
+      (i + 1) / pendingEvery <= plan.pending
     const base = scenarioName(upload ? 'Rundschreiben' : 'Dokument', i).replace(/\//g, '-')
     return {
       id: `${library.id}-doc-${i}`,
@@ -391,7 +398,11 @@ export function runningStatus(libraryId: string, rssFeed: boolean): IndexingStat
 /** Two scope entries of a library in the form its `unlistedScopeKeys` name them. */
 export function unlistedKeysOf(library: LibraryResponse): string[] {
   const settings = (library.sourceSettings ?? {}) as Record<string, unknown>
-  const list = <T>(key: string) => ((settings[key] as T[] | undefined) ?? []).slice(0, 2)
+  // one of the chosen entries is unreadable (the second, or the only one), the rest is read
+  const list = <T>(key: string) => {
+    const all = (settings[key] as T[] | undefined) ?? []
+    return all.length > 1 ? all.slice(1, 2) : all.slice(0, 1)
+  }
   switch (library.sourceType) {
     case 'CONFLUENCE':
       return list<{ key: string }>('spaces').map((space) => space.key)
