@@ -34,7 +34,7 @@ Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu Teilmatrix Runde 4 (nur hell
 | Messung | Wert | Budget |
 |---|---|---|
 | `tabsTop` 1280, alle 11 Arten, privat und Leser | 249 in jedem Szenario, 255 in `scale` (± 0 je Szenario) | ≤ 260 ✓ |
-| `tabsTop` 320 (Runde 4) | 296 in small, failed, partial, slow, empty; privat 317; `scale` 340 (zweizeiliger Titel) bzw. 357 (dreizeilig) | ≤ 360 ✓ |
+| `tabsTop` 320 (Runde 4) | 296 in small, failed, partial, slow, empty; privat 328 (`scale` 351); `scale` 340 (zweizeiliger Titel) bzw. 357 (dreizeilig) | ≤ 360 ✓ |
 | `uiWords` small (Dokumente · Quelle · Verlauf · Metadaten · Freigaben · Zuordnungen) | 67–89 · 27–57 · 29–39 · 23–51 · 32–45 · 24–37 | ≤ 150 ✓ |
 | aufgeklappter Lauf `scale` | < 900 px | ≤ 900 ✓ |
 | Kontrast (axe, hell und dunkel) | 0 | 0 ✓ |
@@ -85,7 +85,7 @@ Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu Teilmatrix Runde 4 (nur hell
 
 ## Schwächen und bewusste Abweichungen
 
-1. **320 px im Budget, aber nicht ± 0 je Szenario.** 296 px in den meisten Szenarien, privat 317 (Speicherkennzahl bricht um), `scale` 340/357 (Titel 14 px, zwei oder drei Zeilen ungekürzt). Der kleinere Titel macht den Kopf unter 600 px weniger hierarchisch; Stift, Favorit und Hauptaktion sind nur über ⋯ erreichbar.
+1. **320 px im Budget, aber nicht ± 0 je Szenario.** 296 px in den meisten Szenarien, privat 328 (Chip- und Kennzahlzeile brechen um), `scale` 340/357 (Titel 14 px, zwei oder drei Zeilen ungekürzt). Der kleinere Titel macht den Kopf unter 600 px weniger hierarchisch; Stift, Favorit und Hauptaktion sind nur über ⋯ erreichbar.
 2. **Titel begrenzt** ab 600 px auf 2 Zeilen, voller Name im Tooltip; darunter ungekürzt in 14 px.
 3. **Band ohne Rahmen** (Abweichung von der Skizze): Haarlinie oben und Trenner, kein Kasten. Gründe: Projektregel „kein ruhender Inhalt in einer Karte“ (`PageSection.test.tsx`) und P4.
 4. **Umfang zweimal** (Band und Reiter Quelle): gewollte Doppelung der Richtung B, im Band nur Kurzform mit Link; auf dem Reiter Quelle selbst fehlt der Link.
@@ -267,14 +267,15 @@ Ursachen:
   - Unter 600 px steht „Dateien hochladen“ als erster Knopf in der Werkzeugleiste.
   - „Ordner hochladen“ ist auch im ⋯-Menü erreichbar.
 - **`empty` bei 320 px** erledigt per Wortlaut: „kein Space ›“ statt „in keinem Space ›“. Die Kennzahlzeile ist einzeilig, `tabsTop` wie in den anderen Szenarien.
-- **Maintainer-Entscheid Titel bei 320 px** umgesetzt: Unter 600 px ist der Titel 14/17 px ohne Zeilenbegrenzung; Stift (Name ändern), Favorit und Hauptaktion stehen im ⋯-Menü (32 px); privat zeigt ein Schloss neben dem Art-Chip statt „Wissen · privat“; Bandzeilen kompakter. Ergebnis: 296 / privat 317 / `scale` 340–357, alle ≤ 360, kein Abschneiden.
+- **Maintainer-Entscheid Titel bei 320 px** umgesetzt: Unter 600 px ist der Titel 14/17 px ohne Zeilenbegrenzung; Stift (Name ändern), Favorit und Hauptaktion stehen im ⋯-Menü (32 px); privat zeigt einen eigenen Chip „🔒 Privat“ (Schloss mit Wort, wie auf der Kachel) statt „Wissen · privat“; Bandzeilen kompakter. Ergebnis: 296 / privat 328 (`scale` 351) / `scale` 340–357, alle ≤ 360, kein Abschneiden.
+- **Nachcheck Runde 4:** privat bei 1280 neu aufgenommen (alle Szenarien, hell; `metrics-r4b.jsonl`); Fundorte zeigen URLs ohne Schema („intranet… / richtlinien / …“); „Neuer Ordner“ bei 320 px bündig.
 - **Maintainer-Entscheid privat in Spaces:** „in n Spaces“ bleibt bei privat stehen.
 
 ## Für den Maintainer
 
 Bewusste Abweichungen, die diese Variante zur Entscheidung vorlegt:
 
-1. **Kopfhöhe bei 320 px nicht mehr ± 0 je Szenario** (alle ≤ 360, die früheren Ausnahmen entfallen): privat 317 statt 296, weil die Speicherkennzahl die Kennzahlzeile zweizeilig macht; in `scale` 340 oder 357 je nach Titellänge (zwei oder drei Zeilen, ungekürzt).
+1. **Kopfhöhe bei 320 px nicht mehr ± 0 je Szenario** (alle ≤ 360, die früheren Ausnahmen entfallen): privat 328 statt 296, weil Chipzeile und Kennzahlzeile umbrechen; in `scale` 340 oder 357 je nach Titellänge (zwei oder drei Zeilen, ungekürzt).
 2. **Kopfhöhe 1280 px in `scale` 6 px höher** (255 statt 249), weil der Titel zweizeilig ist (auf 2 Zeilen begrenzt). Innerhalb des Szenarios ist sie über alle Arten gleich.
 3. **Unter 600 px stehen Hauptaktion und Favorit im ⋯-Menü** der Chipzeile, damit es keine eigene Aktionszeile gibt (Budget). Für Upload ist „Dateien hochladen“ dort zusätzlich als erster Knopf der Werkzeugleiste sichtbar.
 4. **Reiterleiste unter 600 px zweizeilig** statt scrollbar: alle Reiter ganz sichtbar, der aktive unterstrichen.
