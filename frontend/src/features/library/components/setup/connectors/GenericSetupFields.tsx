@@ -52,6 +52,7 @@ export function UrlConnectionFields({
   values,
   onChange,
   context,
+  fields,
   issueAt,
   fieldId,
 }: SetupFieldsProps<GenericSourceValues>) {
@@ -63,19 +64,22 @@ export function UrlConnectionFields({
         value={values.sourceUrl}
         onChange={(sourceUrl) => onChange({ sourceUrl })}
         error={issueAt('sourceUrl')}
+        hint={fields.addressHint ?? undefined}
         placeholder="https://dateien.rheinfurt.example/dokumente/"
         mono
       />
-      <SecretField
-        id={fieldId('sourceCredentials')}
-        label="Zugangsdaten"
-        optional
-        value={values.sourceCredentials}
-        onChange={(sourceCredentials) => onChange({ sourceCredentials })}
-        stored={credentialsKept(context, values.sourceUrl)}
-        error={issueAt('sourceCredentials')}
-        hint="Als benutzername:passwort."
-      />
+      {fields.asksSecret && (
+        <SecretField
+          id={fieldId('sourceCredentials')}
+          label="Zugangsdaten"
+          optional
+          value={values.sourceCredentials}
+          onChange={(sourceCredentials) => onChange({ sourceCredentials })}
+          stored={credentialsKept(context, values.sourceUrl)}
+          error={issueAt('sourceCredentials')}
+          hint="Als benutzername:passwort."
+        />
+      )}
     </Stack>
   )
 }

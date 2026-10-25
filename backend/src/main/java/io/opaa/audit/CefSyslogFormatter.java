@@ -11,7 +11,8 @@ import java.util.regex.Pattern;
  * Formats the SIEM export as RFC 5424 syslog messages with a CEF body (ADR-0055, Entscheidung 4).
  * One message per audit entry, carrying its event id as {@code externalId} so that a receiver can
  * drop a duplicate after a delivery that was sent but not confirmed; one gap message for entries
- * that were removed before they could be sent.
+ * that were removed before they could be sent. The version of the event contract an entry was
+ * written under goes out as {@code cn1} ({@code schemaVersion}), absent for entries from before it.
  */
 final class CefSyslogFormatter {
 
@@ -46,6 +47,10 @@ final class CefSyslogFormatter {
     if (entry.objectLabel() != null) {
       append(extension, "cs4Label", "objectLabel");
       append(extension, "cs4", entry.objectLabel());
+    }
+    if (entry.schemaVersion() != null) {
+      append(extension, "cn1Label", "schemaVersion");
+      append(extension, "cn1", entry.schemaVersion().toString());
     }
     return message(entry.recordedAt(), success ? 5 : 4, entry.eventType(), success ? 3 : 6)
         + extension;

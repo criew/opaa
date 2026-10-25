@@ -250,6 +250,8 @@ public record ComplianceManifest(
    * @param recordFields the fields of the protocol record the event fills
    * @param readers who reads the event, and for which purpose
    * @param details what {@code before}, {@code after}, subject and reason hold for this event
+   * @param payloadKeys the keys {@code before} and {@code after} may hold, as the event catalog of
+   *     the audit log lists them; none when the entry is missing
    */
   public record AuditEventEntry(
       @NotBlank String area,
@@ -258,6 +260,7 @@ public record ComplianceManifest(
       @NotEmpty List<@NotBlank String> recordFields,
       @NotEmpty List<@NotBlank String> readers,
       String details,
+      List<@NotBlank String> payloadKeys,
       @NotBlank String purpose,
       @NotNull PersonalReference personalReference,
       @NotBlank String storage,

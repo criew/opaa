@@ -699,6 +699,12 @@ components:
         correlationRef:
           type: string
           nullable: true
+        schemaVersion:
+          type: integer
+          nullable: true
+          description: >
+            The version of the event catalog the entry was written under, which fixes the keys
+            before and after may hold; null for an entry written before the catalog.
 
     AccessAsOfObjectType:
       type: string

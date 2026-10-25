@@ -215,7 +215,9 @@ public class AuditController {
         .before(entry.getBefore())
         .after(entry.getAfter())
         .reason(entry.getReason())
-        .correlationRef(entry.getCorrelationRef());
+        .correlationRef(entry.getCorrelationRef())
+        .schemaVersion(
+            entry.getSchemaVersion() == null ? null : entry.getSchemaVersion().intValue());
   }
 
   private AuditIncidentScopeResponse toIncidentScopeResponse(AuditIncidentScopeGrant grant) {

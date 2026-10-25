@@ -72,6 +72,7 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
                       Field.of("after", "Nachher", "audit_log.after"),
                       Field.of("outcome", "Ergebnis", "audit_log.outcome"),
                       Field.of("correlationRef", "Vorgangskennung", "audit_log.correlation_ref"),
+                      Field.of("schemaVersion", "Schemaversion", "audit_log.schema_version"),
                       Field.derived("reasonGiven", "Anlass angegeben", "audit_log.reason")))));
 
   static final int PAGE_SIZE = 500;
@@ -181,7 +182,7 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
     return jdbc.query(
         "SELECT event_id, recorded_at, actor_kind, actor_ref, event_type, object_type, object_id,"
             + " object_label, subject_kind, subject_ref, before, after, outcome, correlation_ref,"
-            + " reason IS NOT NULL AND btrim(reason) <> '' AS reason_given"
+            + " schema_version, reason IS NOT NULL AND btrim(reason) <> '' AS reason_given"
             + " FROM audit_log"
             + " WHERE organization_id = ? AND recorded_at >= ? AND recorded_at < ?"
             + " AND event_id = ANY (?) ORDER BY recorded_at, event_id",
@@ -228,6 +229,7 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
             type, rs.getString("after"), person.pseudonym(), person.accountId()));
     record.put("outcome", rs.getString("outcome"));
     record.put("correlationRef", rs.getString("correlation_ref"));
+    record.put("schemaVersion", rs.getObject("schema_version", Integer.class));
     record.put("reasonGiven", rs.getBoolean("reason_given"));
     return record;
   }

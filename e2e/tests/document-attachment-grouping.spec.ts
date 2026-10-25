@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/auth'
 import type { Page, Response } from '@playwright/test'
-import { openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
 
 // The mail fixture is mounted into the backend container by e2e/docker-compose.e2e.yml
 // (demo/seed/e2e-data/filesystem-library/ -> /data/e2e-mail-bibliothek, on the dev profile's
@@ -24,16 +24,12 @@ async function createFilesystemLibrary(page: Page, name: string): Promise<string
   await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /Dateisystem/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByLabel('Verzeichnispfad').fill(SOURCE_PATH)
+  await page.getByLabel('Verzeichnis', { exact: true }).fill(SOURCE_PATH)
+  // „Weiter“ tests the connection before it leaves the step
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await Promise.all([
-    // /libraries/new is the wizard itself - without the lookahead the wait would resolve
-    // immediately against the current URL.
-    page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
-    page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
-  ])
+  await createFromReview(page)
   await expect(page.getByRole('heading', { name })).toBeVisible()
   const match = page.url().match(/\/libraries\/([^/]+)$/)
   if (!match) {

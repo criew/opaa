@@ -237,7 +237,7 @@ class SiemExportService {
             + " CASE WHEN ? AND NOT "
             + PERSONAL_OBJECT
             + " THEN object_label END AS object_name,"
-            + " outcome FROM audit_log"
+            + " outcome, schema_version FROM audit_log"
             + " WHERE recorded_at >= ? AND recorded_at < ? AND (recorded_at, event_id) > (?, ?)"
             + " ORDER BY recorded_at, event_id LIMIT ?",
         (rs, row) ->
@@ -249,7 +249,8 @@ class SiemExportService {
                 rs.getString("object_type"),
                 rs.getString("object_ref"),
                 rs.getString("object_name"),
-                rs.getString("outcome")),
+                rs.getString("outcome"),
+                rs.getObject("schema_version", Short.class)),
         AuditNeutralLabels.PRIVATE_ASSET,
         AuditNeutralLabels.PERSONAL_SPACE,
         AuditNeutralLabels.PRIVATE_PROMPT,
@@ -302,7 +303,8 @@ class SiemExportService {
                   entry.objectType(),
                   null,
                   null,
-                  entry.outcome())
+                  entry.outcome(),
+                  entry.schemaVersion())
               : entry);
     }
     return masked;

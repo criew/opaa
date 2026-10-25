@@ -173,29 +173,40 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
       page.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
     ).toBeVisible()
 
-    const own = page.getByTestId(/-private$/)
-    await expect(own).toContainText('Über mein verbundenes Konto')
-    await expect(own).toContainText('Nur Sie sehen diese Bibliothek.')
-    await own
+    // Der private Weg steht als eigene Wahl in der Liste der Zugänge, nie vorgewählt.
+    const own = page
+      .getByRole('radiogroup', { name: 'Zugang' })
       .getByRole('radio', { name: new RegExp(`^${escapeRegExp(PROFILE_NAME)} · privat`) })
-      .click()
+    await expect(own).not.toBeChecked()
+    await expect(page.getByRole('radiogroup', { name: 'Zugang' })).toContainText(
+      'nur für Sie, später nicht änderbar',
+    )
+    await own.click()
     // Die Adresse kommt aus dem Zugang, und es gibt kein Feld für Zugangsdaten.
-    await expect(page.getByLabel('Adresse der Nextcloud')).toHaveValue('http://nextcloud')
+    await expect(page.getByLabel('Adresse', { exact: true })).toHaveValue('http://nextcloud')
     await expect(page.getByLabel('App-Passwort')).toHaveCount(0)
 
     // Ordner und Verbindungstest laufen über das verbundene Konto.
-    await page.getByRole('button', { name: 'Ordner laden' }).click()
-    await page.getByRole('button', { name: `Ordner /${FOLDER} übernehmen` }).click()
+    await page.getByRole('button', { name: 'Ändern Umfang' }).click()
+    await page.getByRole('radio', { name: 'Nur ausgewählte Ordner' }).check()
+    await page.getByRole('group', { name: 'Ordner' }).getByRole('checkbox', { name: new RegExp(FOLDER) }).check()
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
     await expect(
-      page.getByRole('alert').filter({ hasText: 'Verbindung hergestellt' }),
+      page.getByRole('status').filter({ hasText: 'Anmeldung angenommen' }),
     ).toBeVisible({ timeout: 15_000 })
-    await page
-      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
-      .uncheck()
+    await page.getByRole('button', { name: 'Ändern Zeitplan' }).click()
+    await page.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen' }).uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    // Der Schritt „Name“ sagt, wer die Bibliothek sieht.
+    await expect(page.getByTestId('library-create-private-note')).toContainText(
+      'Nur Sie sehen diese Bibliothek.',
+    )
     await page.getByLabel('Name', { exact: true }).fill(LIBRARY_NAME)
-    // Der Schritt „Freigaben“ entfällt: Eine private Bibliothek wird nicht geteilt.
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    // Der Schritt „Freigaben“ entfällt: Eine private Bibliothek wird nicht geteilt; nach dem Namen
+    // folgt gleich „Prüfen“.
+    await expect(page.getByRole('heading', { level: 2, name: 'Prüfen' })).toBeAttached()
     await expect(page.getByText('Freigaben', { exact: true })).toHaveCount(0)
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
@@ -207,7 +218,9 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
       page.getByRole('img', { name: 'Private Bibliothek – nur Sie sehen sie' }),
     ).toBeVisible()
     await page.getByRole('tab', { name: 'Quelle' }).click()
-    await expect(page.getByTestId('connection-profile')).toContainText(PROFILE_NAME)
+    await expect(page.getByRole('region', { name: 'Verbindung' })).toContainText(
+      `Zugang „${PROFILE_NAME}“`,
+    )
     const status = await triggerIndexingInUi(page, libraryId)
     expect(status.status).toBe('COMPLETED')
     expect(status.documentCount).toBe(1)

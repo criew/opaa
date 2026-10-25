@@ -128,6 +128,7 @@ class SiemExportServiceIntegrationTest {
     assertThat(ours().getFirst())
         .contains("externalId=" + after.getEventId())
         .contains("cs3=lib-1")
+        .contains("cn1Label=schemaVersion cn1=" + AuditEventCatalog.SCHEMA_VERSION)
         .doesNotContain(before.getEventId().toString())
         .doesNotContain("Dienstanweisungen")
         .doesNotContain("pseudonym-of-the-actor")

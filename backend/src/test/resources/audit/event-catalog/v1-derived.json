@@ -1,0 +1,4 @@
+{
+  "BRANDING_SETTINGS_CHANGED": ["loginBackgroundContentType", "loginBackgroundVersion", "loginLogoContentType", "loginLogoVersion", "logoContentType", "logoVersion"],
+  "PRIVATE_LIBRARY_ERASED": ["spaceAssociationsRemoved"]
+}

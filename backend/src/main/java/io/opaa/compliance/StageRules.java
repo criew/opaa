@@ -262,6 +262,10 @@ public final class StageRules {
           list.added().isEmpty()
               ? anzeige("Entfallene Felder des Protokollsatzes.", true)
               : zustimmung("Z1", "Neue Felder im Protokollsatz.", true, false);
+      case "payloadKeys" ->
+          list.added().isEmpty()
+              ? anzeige("Entfallene Angaben in before und after.", true)
+              : zustimmung("Z1", "Neue Angaben in before und after.", true, false);
       case "visibility", "readers" -> {
         if (list.added().isEmpty()) {
           yield anzeige("Die Sichtbarkeit wird eingeschränkt.", true);
