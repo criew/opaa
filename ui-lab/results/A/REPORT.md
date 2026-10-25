@@ -1,4 +1,4 @@
-# Variante A „Alles an seinen Ort“ – Bericht (Runde 3, 25.10.2026)
+# Variante A „Alles an seinen Ort“ – Bericht (Runde 4, 25.10.2026)
 
 Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-base`. Matrix Runde 3: alle 11 Arten × `small scale failed empty partial slow` × 1280 (hell und dunkel) und 320 (nur hell, Maintainer: dunkles Schema tritt zurück), dazu `privat`, `upload-leser`, `confluence-leser`, `nextcloud-leser` in `small scale failed`. Bilder `<bereich>__<art>__<szenario>__<schema>__<breite>[__full].jpg` (JPEG q70; `__full` nur hell, halbe Breite). Kennzahlen stehen in `metrics.jsonl` und `metrics-extra.jsonl`. Die Befunde aus `REVIEW-1.md` sind unten einzeln abgehakt.
 
@@ -204,6 +204,33 @@ Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt, dazu die beid
 | Randnotiz SharePoint | „Vollabgleich“ um 12:51 bleibt: SharePoint ist auf täglichen Vollabgleich gestellt, jeder Lauf ist einer | `quelle__sharepoint__failed__light__1280` |
 | R1-22 | geklärt durch Maintainer: private Bibliotheken dürfen in Spaces verwendet werden. „in n Spaces“ und der Reiter Zuordnungen bei privat bleiben, die Fixtures zeigen 1/3/34 Spaces je Szenario | `zuordnungen__privat__scale__light__1280`, `dokumente__privat__small__light__1280` |
 | Maintainer P43 | Titel bei 320 px: 14/19 px, drei Zeilen fest reserviert, kein Abschneiden. Der Stift steht bei 320 px rechts in der Aktionszeile, der Name hat die volle Breite. Reiterleiste bei Namen bis drei Zeilen konstant bei 331 px; der 120-Zeichen-Stresstitel (`scale`) braucht vier Zeilen und schiebt sie auf 350 px – beide ≤ 360 | `dokumente__filesystem__scale__light__320`, `dokumente__upload__small__light__320` |
+
+## Nachcheck 2 – Runde 4
+
+Jeder Punkt aus `NACHCHECK-2.md` am Bild der Teilmatrix Runde 4 geprüft (nur hell, betroffene Bildschirme). Die drei Punkte, die in Runde 3 nur teilweise saßen (R1-36, R1-72, R1-78, b6), und a7 stehen hier mit Bild.
+
+| Punkt | Umsetzung | Beleg (am Bild geprüft) |
+|---|---|---|
+| Blocker 1 – Füllgrad-Label | Silbentrennung (`hyphens: auto`, Seite `lang="de"`): „Aufbewahrungs-“ / „frist“ | `metadaten__smb__scale__light__1280` |
+| Blocker 2 – Upload-Meldung | eine Form für jeden Grund: „● Nicht hochgeladen: Datei, …“, der Grund darunter ohne Trenner; Kontingent ohne Grundzeile (der Kopf sagt „Kontingent voll“) | `upload__upload__small__light__320`, `upload__upload__partial__light__1280`, `upload__upload__failed__light__320` |
+| Blocker 3 – `failed` (D3, R1-72) | Der letzte Lauf, der die Quelle gelesen hat, steht in der Liste: 20.10., „Teilweise fehlgeschlagen · 12 Dokumente · 5 fehlgeschlagen“, aufgeklappt die fünf Fundorte. Dokumente tragen sein Ende als Indizierdatum, die fünf fehlgeschlagenen sind seine | `laeufe__gdrive__failed__light__1280`, `dokumente__gdrive__failed__light__1280__full`, `laeufe__confluence__failed__light__1280` |
+| Blocker 4 – a7 | „Neuer Ordner“ ohne Werkzeugleiste rechts in der Kopfzeile der Liste („Name … Neuer Ordner“), nie in einer eigenen Zeile | `upload__upload__small__light__1280`, `dokumente__upload__small__light__320` |
+| Blocker 5 – Ordner, Speicher (R1-78) | Ordnername bei 320 px ganz, die Zahl darunter; jeder Ordner mit Inhalt. Speicher wächst mit jedem angenommenen Upload (99,1 KB → 597,1 KB nach zwei angenommenen Dateien); die Dateien sind 412 KB, 86 KB und 2,3 MB (abgelehnt) wie im Bild | `dokumente__upload__small__light__320`, `upload__upload__small__light__1280` |
+| R1-36 – SharePoint | Fixture-Name ohne eigenen Trenner: „Dokumente (Rathaus) / Ratsbeschlüsse“ | `quelle__sharepoint__failed__light__1280` |
+| Hinweis 2 – „nicht lesbar“ | Dateisystem und Web nennen den Bereich in der Form der Einträge: „Gebührensatzungen ● nicht lesbar“ | `quelle__filesystem__partial__light__1280`, `quelle__web__partial__light__1280` |
+| b6 – Reiter-Bruchstück | Die Leiste rastet auch nach dem eigenen (animierten) Scroll der Bibliothek und nach dem Nachmessen durch Webfonts an einer Reitergrenze ein; kein „‹ le“ mehr | `freigaben__s3__scale__light__320`, `zuordnungen__filesystem__scale__light__320` |
+| Hinweis 5 | „Teilweise fehlgeschlagen · 17 Fehler“, beim laufenden Upload „Läuft · 214 von 216 · 17 Fehler“ | `dokumente__upload__partial__light__1280` |
+| R1-79 – privat | „2,4 GB von 10 GB privat“, Tooltip „Belegter Speicher aller privaten Bibliotheken“; Kopfhöhe unverändert | `dokumente__privat__small__light__1280` |
+| Hinweis 7 | „● nicht für alle Mitglieder lesbar“ | `zuordnungen__privat__scale__light__1280` |
+| Hinweis 8 – Dropbox 003/006 | nicht behandelt (Fixture, ohne Wirkung auf das Muster) | – |
+
+**Messwerte Runde 4:** `tabsTop` 1280 px überall 212; 320 px 331, `scale` 350. axe 0, Kontrast 0, Budget 0, `overflowX` 0.
+
+## Für den Maintainer
+
+- **Leerraum unter kurzen Titeln bei 320 px:** Drei Titelzeilen sind fest reserviert (Vorgabe: Titel ungekürzt, Reiterleiste ≤ 360 px, D1 gleiche Kopfhöhe). Bei „Rundschreiben“ stehen deshalb rund 40 px frei unter dem Titel. Gewollt, kein Fehler; die Alternative wäre eine Reiterleiste, die je Titel springt.
+- **D2-Wortliste:** Vorschläge „Nicht erreichbar“ (Arten ohne Anmeldung), „Hochgeladen“, „Noch kein Inhalt“ und die Zusatzform „· n Fehler“ beim Upload.
+- **Parameter `status`** an `GET /libraries/{id}/documents` fehlt in Spec und Backend (Status-Filter, Fehlerzahl im Upload-Kopf).
 
 ## Schwächen
 
