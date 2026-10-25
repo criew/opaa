@@ -367,7 +367,9 @@ export default function AssetDetailHeader({
           sx={{
             display: 'block',
             overflow: 'hidden',
-            minHeight: { xs: 44, sm: 22 },
+            // 24 px lines below 600 px: two links on adjacent lines keep their 24 px target apart
+            minHeight: { xs: 48, sm: 22 },
+            lineHeight: { xs: '24px', sm: '22px' },
             maxWidth: '100%',
             flexBasis: { xs: '100%', sm: 'auto' },
           }}

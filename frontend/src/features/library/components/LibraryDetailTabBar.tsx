@@ -17,15 +17,25 @@ export default function LibraryDetailTabBar({
   tabs,
   tabSearch,
 }: LibraryDetailTabBarProps) {
-  // the chosen tab stays in sight when the bar gets narrower than its tabs
+  // the chosen tab stays in sight when the bar gets narrower than its tabs; the bar scrolls to a
+  // tab's start, so the first visible tab is whole and never half under the arrow
   useEffect(() => {
-    const reveal = () =>
-      document
-        .getElementById(`library-tab-${activeTab}`)
-        ?.scrollIntoView({ block: 'nearest', inline: 'center' })
-    reveal()
+    const reveal = () => {
+      const active = document.getElementById(`library-tab-${activeTab}`)
+      const scroller = active?.closest<HTMLElement>('.MuiTabs-scroller')
+      if (!active || !scroller) return
+      const tabs = [...scroller.querySelectorAll<HTMLElement>('[role="tab"]')]
+      const end = active.offsetLeft + active.offsetWidth
+      const start = tabs.find((tab) => end - tab.offsetLeft <= scroller.clientWidth) ?? active
+      scroller.scrollLeft = start.offsetLeft
+    }
+    // after the bar's own scroll to the selected tab, which runs once its indicator is measured
+    const frame = requestAnimationFrame(() => requestAnimationFrame(reveal))
     window.addEventListener('resize', reveal)
-    return () => window.removeEventListener('resize', reveal)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', reveal)
+    }
   }, [activeTab])
   return (
     <>
@@ -41,6 +51,12 @@ export default function LibraryDetailTabBar({
         sx={{
           '& .MuiTabs-scrollButtons.Mui-disabled': { opacity: 0.3 },
           '& .MuiTabs-scrollButtons': { width: 28 },
+          // room after the last tab, so the bar can start at any tab's edge below 600 px
+          '& .MuiTabs-list::after': {
+            content: '""',
+            flex: 'none',
+            width: { xs: 120, sm: 0 },
+          },
           borderBottom: 1,
           borderColor: 'divider',
           mb: 4,
