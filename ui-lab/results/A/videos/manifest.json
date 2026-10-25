@@ -1,0 +1,170 @@
+[
+  {
+    "file": "kopf__ok__light.mp4",
+    "name": "kopf__ok",
+    "type": "kopf",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "kopf__viele__light.mp4",
+    "name": "kopf__viele",
+    "type": "kopf",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "kopf__fehler__light.mp4",
+    "name": "kopf__fehler",
+    "type": "kopf",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  },
+  {
+    "file": "dokumente__ok__light.mp4",
+    "name": "dokumente__ok",
+    "type": "dokumente",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "dokumente__viele__light.mp4",
+    "name": "dokumente__viele",
+    "type": "dokumente",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "dokumente__fehler__light.mp4",
+    "name": "dokumente__fehler",
+    "type": "dokumente",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  },
+  {
+    "file": "quelle__ok__light.mp4",
+    "name": "quelle__ok",
+    "type": "quelle",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "quelle__viele__light.mp4",
+    "name": "quelle__viele",
+    "type": "quelle",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "quelle__fehler__light.mp4",
+    "name": "quelle__fehler",
+    "type": "quelle",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  },
+  {
+    "file": "laeufe__ok__light.mp4",
+    "name": "laeufe__ok",
+    "type": "laeufe",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "laeufe__viele__light.mp4",
+    "name": "laeufe__viele",
+    "type": "laeufe",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "laeufe__fehler__light.mp4",
+    "name": "laeufe__fehler",
+    "type": "laeufe",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  },
+  {
+    "file": "metadaten__ok__light.mp4",
+    "name": "metadaten__ok",
+    "type": "metadaten",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "metadaten__viele__light.mp4",
+    "name": "metadaten__viele",
+    "type": "metadaten",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "metadaten__fehler__light.mp4",
+    "name": "metadaten__fehler",
+    "type": "metadaten",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  },
+  {
+    "file": "freigaben__ok__light.mp4",
+    "name": "freigaben__ok",
+    "type": "freigaben",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "freigaben__viele__light.mp4",
+    "name": "freigaben__viele",
+    "type": "freigaben",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "freigaben__fehler__light.mp4",
+    "name": "freigaben__fehler",
+    "type": "freigaben",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  },
+  {
+    "file": "zuordnungen__ok__light.mp4",
+    "name": "zuordnungen__ok",
+    "type": "zuordnungen",
+    "kind": "ok",
+    "scenario": "small",
+    "scheme": "light"
+  },
+  {
+    "file": "zuordnungen__viele__light.mp4",
+    "name": "zuordnungen__viele",
+    "type": "zuordnungen",
+    "kind": "viele",
+    "scenario": "scale",
+    "scheme": "light"
+  },
+  {
+    "file": "zuordnungen__fehler__light.mp4",
+    "name": "zuordnungen__fehler",
+    "type": "zuordnungen",
+    "kind": "fehler",
+    "scenario": "failed",
+    "scheme": "light"
+  }
+]

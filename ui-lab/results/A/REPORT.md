@@ -232,6 +232,10 @@ Jeder Punkt aus `NACHCHECK-2.md` am Bild der Teilmatrix Runde 4 geprüft (nur he
 - **D2-Wortliste:** Vorschläge „Nicht erreichbar“ (Arten ohne Anmeldung), „Hochgeladen“, „Noch kein Inhalt“ und die Zusatzform „· n Fehler“ beim Upload.
 - **Parameter `status`** an `GET /libraries/{id}/documents` fehlt in Spec und Backend (Status-Filter, Fehlerzahl im Upload-Kopf).
 
+## Videos
+
+`videos/<ablauf>__<fall>__light.mp4`, 21 Stück (je 25–45 s, 1280 × 800, nur hell), Liste in `videos/manifest.json`. Abläufe aus `ui-lab/harness/flows/library-detail-videos.mjs` (Vorlage `e2e/ui-lab`, angepasst an die Laufzeilen `[data-run-row]` und das Suchfeld „Dateiname enthält …“): `kopf` (8 Arten nacheinander), `dokumente`, `quelle`, `laeufe`, `metadaten`, `freigaben`, `zuordnungen`, je **ok** (`small`), **viele** (`scale`), **fehler** (`failed`). Aufgenommen auf Stand `06e6d8a`.
+
 ## Schwächen
 
 1. Status-Filter, Fehler- und Verarbeitungszahl im Upload-Kopf brauchen einen Parameter `status` an `GET /libraries/{id}/documents` (Spec und Backend); im Prototyp nur im Mock.
