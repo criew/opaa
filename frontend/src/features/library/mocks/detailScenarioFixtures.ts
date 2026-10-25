@@ -186,7 +186,11 @@ export function scenarioDocuments(
       id: `${library.id}-doc-${i}`,
       fileName: `${base}.${extension}`,
       contentType,
-      fileSize: 18_000 + ((i * 7919) % 4_800_000),
+      // a full upload quota (`failed`) is filled by a dozen large scans
+      fileSize:
+        upload && scenario === 'failed'
+          ? 8_000_000 + i * 40_000
+          : 18_000 + ((i * 7919) % 4_800_000),
       status: failed ? 'FAILED' : pending ? 'PENDING' : 'INDEXED',
       sourceType: library.sourceType,
       chunkCount: failed || pending ? 0 : (i % 40) + 1,
@@ -263,7 +267,17 @@ const OWNER_GRANT = grant(0, 'USER', 'Erika Muster', 'OWNER')
 const ROLES: AssetRole[] = ['VIEWER', 'VIEWER', 'EDITOR', 'VIEWER', 'MANAGER']
 
 /** The grants of a fixture library under a scenario; null keeps the regular fixtures. */
-export function scenarioGrants(scenario: MockScenario): AssetGrantResponse[] | null {
+export function scenarioGrants(
+  scenario: MockScenario,
+  myRole?: AssetRole | null,
+): AssetGrantResponse[] | null {
+  const grants = scenarioGrantsOf(scenario)
+  // the signed-in account holds its role through a grant like everyone else, unless it owns
+  if (!grants || !myRole || myRole === 'OWNER') return grants
+  return [...grants, grant(300, 'USER', 'Admin', myRole)]
+}
+
+function scenarioGrantsOf(scenario: MockScenario): AssetGrantResponse[] | null {
   switch (scenario) {
     case 'small':
     case 'failed':
@@ -295,7 +309,7 @@ export function scenarioGrants(scenario: MockScenario): AssetGrantResponse[] | n
         OWNER_GRANT,
         grant(1, 'GROUP', 'Bauamt', 'VIEWER'),
         grant(2, 'GROUP', 'Rechtsamt', 'EDITOR'),
-        grant(3, 'USER', 'Erika Muster', 'MANAGER', '2026-12-31T23:59:59.999Z'),
+        grant(3, 'USER', 'Jonas Albrecht', 'MANAGER', '2026-12-31T23:59:59.999Z'),
       ]
     default:
       return null
@@ -406,6 +420,10 @@ export function unlistedKeysOf(library: LibraryResponse): string[] {
     case 'SMB':
     case 'DROPBOX':
       return list<string>('folders')
+    case 'FILESYSTEM':
+      return [`${library.sourcePath ?? '/srv/opaa'}/Gebührensatzungen`]
+    case 'HTTP_DIRECTORY':
+      return [`${library.sourceUrl ?? 'https://example.org/'}archiv/`]
     case 'GOOGLE_DRIVE':
       return list<{ drive?: string; folder?: string }>('scopes').map((scope) =>
         scope.drive ? `drive:${scope.drive}` : `folder:${scope.folder ?? ''}`,

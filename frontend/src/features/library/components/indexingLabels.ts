@@ -20,7 +20,7 @@ export function documentStatusLabel(status: DocumentStatus | string | undefined)
 // protocol - matches io.opaa.indexing.job.IndexingEventCategory's own Javadoc one-to-one.
 const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> = {
   REJECTED: 'Abgewiesen',
-  UNREACHABLE: 'Nicht erreichbar',
+  UNREACHABLE: 'Nicht abrufbar',
   UNSUPPORTED_FORMAT: 'Format nicht unterstützt',
   ALLOWLIST: 'Allowlist',
   ERROR: 'Fehler',

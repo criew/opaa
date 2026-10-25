@@ -7,5 +7,5 @@ export function displayPath(path: string): string {
     .split('/')
     .map((s) => s.trim())
     .filter(Boolean)
-  return segments.length > 1 ? segments.join(PATH_SEPARATOR) : path.trim()
+  return segments.length > 0 ? segments.join(PATH_SEPARATOR) : path.trim()
 }

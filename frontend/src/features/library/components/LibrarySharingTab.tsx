@@ -78,7 +78,8 @@ export default function LibrarySharingTab({
           </>
         )}
 
-        {details && (
+        {/* a reader can neither set nor lift the lock: the section is the managers' alone */}
+        {details && (canEdit || details.diagnosticsLockToggleable) && (
           <DiagnosticsLockControl
             locked={details.diagnosticsLocked ?? true}
             // myRole bypasses to OWNER for a system admin unconditionally

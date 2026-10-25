@@ -161,7 +161,12 @@ function stateOf(input: StateInput): LibraryState {
       return {
         word: 'Läuft',
         tone: 'neutral',
-        detail: `${done.toLocaleString('de-DE')} von ${input.documentCount.toLocaleString('de-DE')}`,
+        detail: [
+          `${done.toLocaleString('de-DE')} von ${input.documentCount.toLocaleString('de-DE')}`,
+          ...(input.failedDocuments > 0
+            ? [`${input.failedDocuments.toLocaleString('de-DE')} fehlgeschlagen`]
+            : []),
+        ].join(' · '),
         target: { tab: 'dokumente', params: { status: 'PENDING' } },
       }
     }
@@ -169,7 +174,7 @@ function stateOf(input: StateInput): LibraryState {
       return {
         word: 'Teilweise fehlgeschlagen',
         tone: 'warning',
-        detail: `${input.failedDocuments.toLocaleString('de-DE')} von ${input.documentCount.toLocaleString('de-DE')}`,
+        detail: `${input.failedDocuments.toLocaleString('de-DE')} fehlgeschlagen`,
         target: { tab: 'dokumente', params: { status: 'FAILED' } },
       }
     }

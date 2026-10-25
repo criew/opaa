@@ -22,7 +22,7 @@ export default function LibraryDetailTabBar({
     const reveal = () =>
       document
         .getElementById(`library-tab-${activeTab}`)
-        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        ?.scrollIntoView({ block: 'nearest', inline: 'center' })
     reveal()
     window.addEventListener('resize', reveal)
     return () => window.removeEventListener('resize', reveal)

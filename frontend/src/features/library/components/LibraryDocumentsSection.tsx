@@ -23,6 +23,7 @@ import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import BulkMetadataDialog from './metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
+import { listLibraryMetadataFields } from '../api/libraryMetadataApi'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
 import LibraryDocumentList from './LibraryDocumentList'
 import { DOCUMENT_STATUS_WORDS } from './indexingLabels'
@@ -157,6 +158,22 @@ export default function LibraryDocumentsSection({
       status: statusParam,
     })
   }, [libraryId, folderIdParam, missingFieldParam, statusParam, loadDocuments])
+
+  // the „ohne …“ filter offers the library's own fields after the core fields
+  const [ownFields, setOwnFields] = useState<Array<[string, string]>>([])
+  useEffect(() => {
+    if (!metadataEnabled) return
+    let cancelled = false
+    listLibraryMetadataFields(libraryId)
+      .then((response) => {
+        if (!cancelled)
+          setOwnFields(response.items.map((field) => [field.documentFieldKey, field.label]))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [libraryId, metadataEnabled])
 
   // A finished indexing run bumps refreshToken: reload the view the user is looking at - same
   // page, search and folder. The ref guard keeps unrelated dependency changes from re-firing it.
@@ -338,10 +355,13 @@ export default function LibraryDocumentsSection({
                   onChange={(value) => setMissingFieldFilter(value || null)}
                   options={[
                     ['', 'Metadaten'],
-                    ...CORE_METADATA_FIELDS.map((field): [string, string] => [
-                      field.key,
-                      `ohne ${field.label}`,
-                    ]),
+                    ...[
+                      ...CORE_METADATA_FIELDS.map((field): [string, string] => [
+                        field.key,
+                        field.label,
+                      ]),
+                      ...ownFields,
+                    ].map(([key, label]): [string, string] => [key, `ohne ${label}`]),
                   ]}
                 />
               )}

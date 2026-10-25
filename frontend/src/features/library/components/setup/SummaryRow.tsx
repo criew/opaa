@@ -17,6 +17,42 @@ import type { RowStatus, RowSummary } from './setupTypes'
 const SHOWN = 5
 
 /** A row's value: one line, or a lead line („12 Spaces“) with up to five entries below. */
+const PART_GUTTER = 16
+
+/**
+ * The parts of a summary („täglich um 06:00 · nächster Lauf …“), each kept as a unit: a part
+ * that does not fit starts a new line, and the separator before it sits in a clipped gutter -
+ * no line starts or ends on „·“.
+ */
+function SummaryParts({ text }: { text: string }) {
+  const parts = text.split(' · ')
+  if (parts.length === 1) return text
+  return (
+    <Box component="span" sx={{ display: 'block', overflow: 'hidden' }}>
+      <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', ml: `-${PART_GUTTER}px` }}>
+        {parts.map((part, index) => (
+          <Box
+            component="span"
+            key={index}
+            sx={{
+              minWidth: 0,
+              '&::before': {
+                content: '"·"',
+                display: 'inline-block',
+                width: PART_GUTTER,
+                textAlign: 'center',
+                color: 'text.secondary',
+              },
+            }}
+          >
+            {part}
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  )
+}
+
 export function SummaryValue({
   summary,
   status,
@@ -63,7 +99,7 @@ export function SummaryValue({
             overflowWrap: 'anywhere',
           }}
         >
-          {text ?? emptyText}
+          {text ? <SummaryParts text={text} /> : emptyText}
         </Typography>
         {/* the collective mark only where no marked entry is in sight */}
         {status && !(markedItems && items.slice(0, SHOWN).some(isMarked)) && (

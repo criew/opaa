@@ -94,7 +94,7 @@ export function HeaderFigure({
     <Box
       component="span"
       sx={[
-        { display: 'inline', whiteSpace: 'nowrap', '&:not(:first-of-type)::before': SEPARATOR },
+        { display: 'inline', whiteSpace: 'nowrap', '&::before': FIGURE_SEPARATOR },
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
@@ -114,6 +114,16 @@ export function HeaderFigure({
 }
 
 const SEPARATOR = { content: '"·"', mx: 1, color: 'text.disabled' } as const
+
+/** Leads every figure; the one at the start of a line sits in the clipped gutter of the block. */
+const FIGURE_GUTTER = 20
+const FIGURE_SEPARATOR = {
+  content: '"·"',
+  display: 'inline-block',
+  width: FIGURE_GUTTER,
+  textAlign: 'center',
+  color: 'text.disabled',
+} as const
 
 /** „⋯": „In Space verwenden" for whoever may use it, „Löschen" apart and only with the right. */
 function MoreActions({
@@ -337,8 +347,8 @@ export default function AssetDetailHeader({
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
 
-      {/* one line at 1280 px; below 600 px the state leads and the figures follow on one line
-          that shortens with an ellipsis - two lines at most, every figure kept */}
+      {/* one line at 1280 px; below 600 px the state leads and the figures wrap below it into
+          two reserved lines - every figure kept whole, no line starts or ends on a separator */}
       <Typography
         component="div"
         sx={{
@@ -354,24 +364,27 @@ export default function AssetDetailHeader({
       >
         <Box
           component="span"
-          title={[extent, spaceCount != null ? spreadLabel(spaceCount) : null, responsible.label]
-            .filter(Boolean)
-            .join(' · ')}
           sx={{
             display: 'block',
-            height: 22,
-            whiteSpace: 'nowrap',
-            overflow: { xs: 'hidden', sm: 'visible' },
-            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            minHeight: { xs: 44, sm: 22 },
             maxWidth: '100%',
+            flexBasis: { xs: '100%', sm: 'auto' },
           }}
         >
-          <HeaderFigure>{extent}</HeaderFigure>
-          {figures}
-          {spaceCount != null && (
-            <HeaderFigure to={spaceHref}>{spreadLabel(spaceCount)}</HeaderFigure>
-          )}
-          <HeaderFigure to={responsibleHref}>{responsible.label}</HeaderFigure>
+          <Box
+            component="span"
+            sx={{ display: 'flex', flexWrap: 'wrap', ml: `-${FIGURE_GUTTER}px` }}
+          >
+            <HeaderFigure>{extent}</HeaderFigure>
+            {figures}
+            {spaceCount != null && (
+              <HeaderFigure to={spaceCount > 0 ? spaceHref : undefined}>
+                {spreadLabel(spaceCount)}
+              </HeaderFigure>
+            )}
+            <HeaderFigure to={responsibleHref}>{responsible.label}</HeaderFigure>
+          </Box>
         </Box>
         {status ? (
           <Box

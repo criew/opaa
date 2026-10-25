@@ -438,10 +438,17 @@ export default function LibrarySourceSection({
             fundortPrefix={
               library.sourceType === 'HTTP_DIRECTORY' || library.sourceType === 'RSS_FEED'
                 ? (library.sourceUrl ?? '').replace(/[^/]*$/, '') || null
-                : null
+                : library.sourceType === 'FILESYSTEM' && library.sourcePath
+                  ? `${library.sourcePath.replace(/\/$/, '')}/`
+                  : null
             }
             unreadableNames={unreadableScopeNames(
-              { sourceType: library.sourceType, sourceSettings: library.sourceSettings },
+              {
+                sourceType: library.sourceType,
+                sourceSettings: library.sourceSettings,
+                sourcePath: library.sourcePath,
+                sourceUrl: library.sourceUrl,
+              },
               unlistedScopeKeys,
             )}
             quotaRemedy={
@@ -490,7 +497,12 @@ function rowMarks(
   })()
   const keys = unlistedScopeKeys ?? []
   const names = unreadableScopeNames(
-    { sourceType: library.sourceType, sourceSettings: library.sourceSettings },
+    {
+      sourceType: library.sourceType,
+      sourceSettings: library.sourceSettings,
+      sourcePath: library.sourcePath,
+      sourceUrl: library.sourceUrl,
+    },
     keys,
   )
   // the scheduler's failures only matter where a schedule runs and the connection does not
@@ -503,7 +515,15 @@ function rowMarks(
     storedStatus,
     // only entries with a name can be marked; without names the run says it (D8)
     scopeStatus:
-      names.length > 0 ? { tone: 'warning', label: `${names.length} nicht lesbar` } : null,
+      names.length > 0
+        ? {
+            tone: 'warning',
+            label:
+              names.length <= 2
+                ? `Nicht lesbar: ${names.join(', ')}`
+                : `${names.length} nicht lesbar`,
+          }
+        : null,
     scopeMarked: names.length > 0 ? [...keys, ...names] : undefined,
     scheduleStatus:
       library.lastScheduledRunsFailed && scheduleRuns && scheduledFailure && !connectionFailed

@@ -141,12 +141,6 @@ const SMALL: Record<string, Overlay> = {
   [SOURCE_LIBRARY_IDS.NEXTCLOUD]: () => ({ sourceSettings: { folders: ['/'] } }),
   [SOURCE_LIBRARY_IDS.SMB]: () => ({ sourceSettings: { folders: ['/'] } }),
   [SOURCE_LIBRARY_IDS.DROPBOX]: () => ({ sourceSettings: { folders: ['/'], teamSpace: false } }),
-  [SOURCE_LIBRARY_IDS.GOOGLE_DRIVE]: (library) => ({
-    sourceSettings: {
-      ...library.sourceSettings,
-      scopes: [{ drive: '0AMockDrive', name: 'Projektablage' }],
-    },
-  }),
   [SOURCE_LIBRARY_IDS.S3]: (library) => ({
     sourceSettings: { ...library.sourceSettings, scopes: [{ bucket: 'protokolle', prefix: null }] },
   }),
@@ -171,7 +165,9 @@ function overlayFor(scenario: MockScenario, id: string): Overlay | null {
       // an upload library under `failed` has used up its quota
       return (library) => ({
         lastScheduledRunsFailed: true,
-        ...(library.storageQuotaBytes ? { storageUsedBytes: library.storageQuotaBytes } : {}),
+        ...(library.storageQuotaBytes
+          ? { storageQuotaBytes: 100 * 1024 ** 2, storageUsedBytes: 100 * 1024 ** 2 }
+          : {}),
       })
     default:
       return null
@@ -265,9 +261,18 @@ export function applyLibraryScenario(): void {
     }
     const folders = scenarioFolders(next, scenario)
     if (folders) mockLibraryFolders[id] = folders
-    const grants = scenarioGrants(scenario)
+    const grants = scenarioGrants(scenario, next.myRole)
     if (grants && !next.privateLibrary) mockLibraryGrants[id] = grants
     mockLibraryDetails[id] = next
+    // an indexed document carries the end of the last run that succeeded, an upload its upload
+    const indexed = !documents
+      ? null
+      : next.sourceType === 'UPLOAD'
+        ? next.updatedAt
+        : lastIndexed(id, next)
+    if (documents && indexed) {
+      for (const doc of documents) if (doc.indexedAt) doc.indexedAt = indexed
+    }
     const listed = mockLibraries.find((entry) => entry.id === id)
     if (listed) {
       listed.name = next.name
@@ -275,11 +280,20 @@ export function applyLibraryScenario(): void {
       listed.ownerName = next.ownerName
       listed.documentCount = next.documentCount ?? 0
       if (next.sourceType !== 'UPLOAD') {
-        listed.lastIndexedAt = scenario === 'empty' ? undefined : SOURCE_LIBRARY_LAST_INDEXED
+        listed.lastIndexedAt =
+          scenario === 'empty' ? undefined : (indexed ?? SOURCE_LIBRARY_LAST_INDEXED)
       }
     }
   }
   applied = key
+}
+
+/** The end of the newest successful run; before the refusals of `failed`, the run of 20.10. */
+function lastIndexed(id: string, library: LibraryResponse): string {
+  const done = scenarioIndexingRuns(id).runs.find((run) => run.status === 'COMPLETED')
+  if (done?.completedAt) return done.completedAt
+  const { hour = 6, minute = 0 } = library.schedule ?? {}
+  return new Date(2026, 9, 20, hour ?? 6, (minute ?? 0) + 7).toISOString()
 }
 
 const EVENT_KINDS: Array<{
@@ -499,8 +513,8 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
             status: 'COMPLETED',
             failed: 17,
             events: 17,
-            // one of the selection could not be read (unlistedKeysOf)
-            unreadableScopeCount: 1,
+            // one of the selection could not be read (unlistedKeysOf); a feed has no selection
+            unreadableScopeCount: library?.sourceType === 'RSS_FEED' ? undefined : 1,
           }),
           run(2, { status: 'COMPLETED' }),
         ],

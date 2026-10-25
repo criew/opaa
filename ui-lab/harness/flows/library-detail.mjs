@@ -60,17 +60,17 @@ export function jobs({ types = ALL_TYPES, scenarios }) {
 
 let uploadFiles = []
 
-/** Three small files for the upload field: two documents and one unsupported format. */
+/** Three files for the upload field at realistic sizes: two documents and one unsupported format. */
 export function setup({ out }) {
   const dir = path.join(out, '.upload')
   fs.mkdirSync(dir, { recursive: true })
   uploadFiles = [
-    ['Rundschreiben 2026-14.pdf', '%PDF-1.4 Rundschreiben'],
-    ['Vermerk Haushaltssperre.docx', 'Vermerk'],
-    ['Datenbank Altbestand.mdb', 'binary'],
-  ].map(([name, content]) => {
+    ['Rundschreiben 2026-14.pdf', '%PDF-1.4 Rundschreiben', 412_000],
+    ['Vermerk Haushaltssperre.docx', 'Vermerk', 86_000],
+    ['Datenbank Altbestand.mdb', 'binary', 2_300_000],
+  ].map(([name, content, size]) => {
     const file = path.join(dir, name)
-    fs.writeFileSync(file, content)
+    fs.writeFileSync(file, Buffer.concat([Buffer.from(content), Buffer.alloc(size - content.length, 32)]))
     return file
   })
 }

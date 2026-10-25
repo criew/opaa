@@ -17,6 +17,7 @@ import {
 } from './indexingLabels'
 import { formatDay, isErrorEvent, runTone, runWord } from './libraryState'
 import { plainMessage } from './sourceKit/plainMessage'
+import { PATH_SEPARATOR } from './setup/paths'
 
 /** Fundorte a group names before „alle n anzeigen“. */
 const SHOWN = 5
@@ -109,26 +110,27 @@ function groupByReason(events: RunEvent[]): Array<{ label: string; events: RunEv
 }
 
 /**
- * A Fundort on one line, shortened in the middle: the last segment (the file) always stays, a
- * prefix every Fundort of the library shares (the address of a web directory) is left out.
+ * A Fundort on one line in the one path form of the page („Ordner / Akte / Datei.pdf“), cut in
+ * the head: the last segment always stays. A prefix every Fundort of the library shares (the
+ * address of a web directory, the path of a server directory) is left out.
  */
 function Fundort({ reference, prefix }: { reference: string; prefix: string | null }) {
   const shown = prefix && reference.startsWith(prefix) ? reference.slice(prefix.length) : reference
-  const cut = Math.max(shown.lastIndexOf('/'), shown.lastIndexOf('›'))
-  const head = cut > 0 ? shown.slice(0, cut + 1).trimEnd() : ''
-  const tail = cut > 0 ? shown.slice(cut + 1).trimStart() : shown
-  // „Space › Seite › Anhang.pdf“ keeps its spaces around the separator
-  const gap = cut > 0 && shown[cut] === '›' ? '\u00a0' : ''
+  const segments = shown
+    .split(/[/›]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+  const last = segments.pop() ?? shown
+  // the separator stays with the last segment, so a cut head still reads „…ilfe / Anlage-9.pdf“
+  const head = segments.join(PATH_SEPARATOR)
+  const tail = head ? `${PATH_SEPARATOR}${last}` : last
+  const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre' } as const
   return (
     <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
-      <Box
-        component="span"
-        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
-      >
+      <Box component="span" sx={{ ...ellipsis, minWidth: 0 }}>
         {head}
       </Box>
-      <Box component="span" sx={{ flex: 'none', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-        {gap}
+      <Box component="span" sx={{ ...ellipsis, flex: 'none', maxWidth: '100%' }}>
         {tail}
       </Box>
     </Box>
@@ -251,7 +253,12 @@ function RunDetail({
   return (
     <Box sx={{ pl: { xs: 0, sm: 2.25 }, pt: 1, pb: 2 }}>
       {reason && <Typography sx={{ ...LINE, mb: 1 }}>{reason}</Typography>}
-      {unreadable > 0 && (
+      {unreadable > 0 && unreadableNames.length === 0 && (
+        <Typography sx={{ ...LINE, mb: 1.25 }}>
+          {unreadable === 1 ? 'Ein Bereich' : `${unreadable} Bereiche`} der Quelle nicht lesbar
+        </Typography>
+      )}
+      {unreadable > 0 && unreadableNames.length > 0 && (
         <Box sx={{ mb: 1.25 }}>
           <Typography sx={{ ...LINE, fontWeight: 600 }}>
             Nicht lesbare Bereiche · {unreadable}
@@ -408,74 +415,77 @@ export default function LibraryRunList({
           const progress = run.status === 'RUNNING' ? running : null
           const label = progress ? `${word} · ${progress.percent} %` : word
           const detailId = `run-detail-${run.id}`
-          return (
-            <Box component="li" key={run.id} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <ButtonBase
-                data-run-row
-                aria-expanded={isOpen}
-                aria-controls={detailId}
-                onClick={() => setOpen((prev) => ({ ...prev, [run.id]: !prev[run.id] }))}
-                sx={{
-                  ...COLUMNS,
-                  width: '100%',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                  color: 'text.primary',
-                  py: 1,
-                  ...LINE,
-                  '&:hover': { bgcolor: 'action.hover' },
-                  '&.Mui-focusVisible': { outline: 2, outlineColor: 'primary.main' },
-                }}
-              >
-                <Box sx={{ minWidth: 0 }}>
-                  <StateDot tone={runTone(word)} label={label} />
+          // a run refused at the start has nothing to open: no events, no metrics, no reason
+          const expandable = !(
+            run.status === 'FAILED' &&
+            run.events.length === 0 &&
+            !run.metrics &&
+            run.failureCategory !== 'QUOTA_EXHAUSTED' &&
+            word !== 'Fehlgeschlagen'
+          )
+          const rowSx = {
+            ...COLUMNS,
+            width: '100%',
+            textAlign: 'left',
+            fontFamily: 'inherit',
+            color: 'text.primary',
+            py: 1,
+            ...LINE,
+          } as const
+          const cells = (
+            <>
+              <Box sx={{ minWidth: 0 }}>
+                <StateDot tone={runTone(word)} label={label} />
+                <Box
+                  component="span"
+                  sx={{ display: { xs: 'inline', sm: 'none' }, color: 'text.secondary' }}
+                >
+                  {` · ${formatDay(run.startedAt)}`}
+                </Box>
+                {run.status !== 'FAILED' && (
                   <Box
                     component="span"
-                    sx={{
-                      display: { xs: 'block', sm: 'none' },
-                      color: 'text.secondary',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
+                    sx={{ display: { xs: 'block', sm: 'none' }, color: 'text.secondary' }}
                   >
-                    {formatDay(run.startedAt)} · {result(run, progress)}
+                    {result(run, progress)}
                   </Box>
-                </Box>
-                <Box
-                  component="span"
-                  sx={{
-                    display: { xs: 'none', sm: 'block' },
-                    color: 'text.secondary',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatStart(run.startedAt)}
-                </Box>
-                <Box
-                  component="span"
-                  sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.secondary' }}
-                >
-                  {formatDuration(run)}
-                </Box>
-                <Box
-                  component="span"
-                  sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.secondary' }}
-                >
-                  {trigger(run, showMode)}
-                </Box>
-                <Box
-                  component="span"
-                  sx={{
-                    display: { xs: 'none', sm: 'block' },
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                  title={result(run, progress)}
-                >
-                  {result(run, progress)}
-                </Box>
+                )}
+              </Box>
+              <Box
+                component="span"
+                sx={{
+                  display: { xs: 'none', sm: 'block' },
+                  color: 'text.secondary',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {formatStart(run.startedAt)}
+              </Box>
+              <Box
+                component="span"
+                sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.secondary' }}
+              >
+                {formatDuration(run)}
+              </Box>
+              <Box
+                component="span"
+                sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.secondary' }}
+              >
+                {trigger(run, showMode)}
+              </Box>
+              <Box
+                component="span"
+                sx={{
+                  display: { xs: 'none', sm: 'block' },
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+                title={result(run, progress)}
+              >
+                {result(run, progress)}
+              </Box>
+              {expandable ? (
                 <ExpandMoreIcon
                   aria-hidden
                   sx={{
@@ -485,8 +495,31 @@ export default function LibraryRunList({
                     transform: isOpen ? 'rotate(180deg)' : 'none',
                   }}
                 />
-              </ButtonBase>
-              {isOpen && (
+              ) : (
+                <span />
+              )}
+            </>
+          )
+          return (
+            <Box component="li" key={run.id} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              {expandable ? (
+                <ButtonBase
+                  data-run-row
+                  aria-expanded={isOpen}
+                  aria-controls={detailId}
+                  onClick={() => setOpen((prev) => ({ ...prev, [run.id]: !prev[run.id] }))}
+                  sx={{
+                    ...rowSx,
+                    '&:hover': { bgcolor: 'action.hover' },
+                    '&.Mui-focusVisible': { outline: 2, outlineColor: 'primary.main' },
+                  }}
+                >
+                  {cells}
+                </ButtonBase>
+              ) : (
+                <Box sx={rowSx}>{cells}</Box>
+              )}
+              {expandable && isOpen && (
                 <Box id={detailId}>
                   <RunDetail
                     run={run}

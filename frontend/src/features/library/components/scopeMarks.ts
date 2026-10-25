@@ -1,4 +1,5 @@
 import type { LibraryResponse } from '@/shared/api/types'
+import { displayPath } from './setup/paths'
 
 type Settings = Record<string, unknown>
 
@@ -17,7 +18,8 @@ function folderName(path: string): string {
  * backend reports (`unlistedScopeKeys`) against the library's own selection - never a raw id.
  */
 export function unreadableScopeNames(
-  library: Pick<LibraryResponse, 'sourceType' | 'sourceSettings'>,
+  library: Pick<LibraryResponse, 'sourceType' | 'sourceSettings'> &
+    Partial<Pick<LibraryResponse, 'sourcePath' | 'sourceUrl'>>,
   keys: string[],
 ): string[] {
   const settings = (library.sourceSettings ?? {}) as Settings
@@ -47,6 +49,13 @@ export function unreadableScopeNames(
     case 'SMB':
     case 'DROPBOX':
       return keys.map(folderName)
+    // a directory or web address is one entry: its unreadable parts are named below it
+    case 'FILESYSTEM':
+    case 'HTTP_DIRECTORY': {
+      const root =
+        (library.sourceType === 'FILESYSTEM' ? library.sourcePath : library.sourceUrl) ?? ''
+      return keys.map((key) => displayPath(key.startsWith(root) ? key.slice(root.length) : key))
+    }
     default:
       return keys
   }

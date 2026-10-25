@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
-import { CORE_METADATA_FIELDS } from './metadataValues'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -223,7 +222,6 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
     }
   }, [libraryId])
   if (!quality || quality.totalDocuments === 0) return null
-  const coreKeys = new Set(CORE_METADATA_FIELDS.map((field) => field.key))
   return (
     <DetailSection title="Füllgrad">
       <Box
@@ -249,14 +247,11 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
           >
             <Box
               component="span"
-              title={field.label}
               sx={{
                 fontWeight: 600,
                 fontSize: 15,
                 minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                overflowWrap: 'anywhere',
               }}
             >
               {field.label}
@@ -264,7 +259,7 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
             <Box component="span" sx={{ gridRow: { xs: 2, sm: 1 }, gridColumn: { xs: 1, sm: 2 } }}>
               {fillLabel(field.totalDocuments - field.emptyDocuments, field.totalDocuments)}
             </Box>
-            {field.emptyDocuments > 0 && coreKeys.has(field.fieldKey) ? (
+            {field.emptyDocuments > 0 ? (
               <TextAction
                 onClick={() => setSearchParams({ missingField: field.fieldKey }, { replace: true })}
                 context={`Dokumente ohne ${field.label}`}

@@ -112,7 +112,12 @@ export default function AssetHeadlineEditor({
   }
 
   const headingRow = (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5, minHeight: 34 }}>
+    <Stack
+      direction="row"
+      spacing={1.5}
+      // below 600 px the name reserves two lines: the pencil stays at the first
+      sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, mb: 0.5, minHeight: 34 }}
+    >
       {draft ? (
         <PageHeading title={name} visuallyHidden />
       ) : (
@@ -139,7 +144,13 @@ export default function AssetHeadlineEditor({
       {badges}
       {canEdit && !draft && (
         <Tooltip title={editLabel}>
-          <IconButton ref={acceptPencil} size="small" aria-label={editLabel} onClick={startEditing}>
+          <IconButton
+            ref={acceptPencil}
+            size="small"
+            aria-label={editLabel}
+            onClick={startEditing}
+            sx={{ mt: { xs: '-6px', sm: 0 } }}
+          >
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
