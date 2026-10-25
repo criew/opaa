@@ -28,7 +28,9 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName;
  * The answer's Markdown is reduced to readable text (no syntax characters). Typographic characters
  * outside the fonts' WinAnsi range get a plain stand-in ({@link #SUBSTITUTES}), invisible format
  * characters are dropped, anything else is printed as {@code ?} rather than failing the export.
- * Line breaking measures each glyph once, so its cost grows linearly with the text.
+ * Line breaking measures each glyph once, and every pattern either cannot backtrack (possessive) or
+ * looks at most {@link #SPAN} characters ahead per position, so rendering stays linear in the text
+ * however it is built.
  */
 final class ChatPdfRenderer {
 
@@ -44,23 +46,32 @@ final class ChatPdfRenderer {
   private static final float SMALL_SIZE = 9f;
   private static final float INDENT = 14f;
   private static final float MUTED_GRAY = 0.33f;
+  private static final float HEADING_GAP = 3f;
+
+  /** Longest stretch an inline rule looks at: emphasis, link text, link target. */
+  private static final int SPAN = 300;
 
   /** Width available to a line without indent. */
   static final float TEXT_WIDTH = PAGE_SIZE.getWidth() - 2 * MARGIN;
 
   private static final Pattern TABLE_SEPARATOR =
-      Pattern.compile("^\\s*\\|?\\s*:?-{3,}:?\\s*(\\|\\s*:?-{3,}:?\\s*)*\\|?\\s*$");
-  private static final Pattern THEMATIC_BREAK = Pattern.compile("^\\s*([-*_])(\\s*\\1){2,}\\s*$");
+      Pattern.compile("^\\s*+\\|?\\s*+:?-{3,}+:?\\s*+(?:\\|\\s*+:?-{3,}+:?\\s*+)*+\\|?\\s*+$");
+  private static final Pattern THEMATIC_BREAK =
+      Pattern.compile("^\\s*+([-*_])(?:\\s*+\\1){2,}+\\s*+$");
   private static final Pattern LIST_ITEM =
       Pattern.compile("^\\s*([-*+]|\\d+[.)])\\s+(\\[[ xX]\\]\\s+)?(.*)$");
-  private static final String[][] INLINE_RULES = {
-    {"!\\[([^\\]]*)\\]\\([^)]*\\)", "$1"},
-    {"\\[([^\\]]+)\\]\\(([^)]*)\\)", "$1 ($2)"},
-    {"`([^`]+)`", "$1"},
-    {"(\\*\\*|__)(.+?)\\1", "$2"},
-    {"~~(.+?)~~", "$1"},
-    {"(^|[^\\w*])\\*(?!\\s)(.+?)(?<!\\s)\\*(?!\\w)", "$1$2"},
-    {"(^|[^\\w_])_(?!\\s)(.+?)(?<!\\s)_(?!\\w)", "$1$2"},
+  private static final String TEXT = "{1," + SPAN + "}";
+  private static final Pattern[] INLINE_PATTERNS = {
+    Pattern.compile("!\\[([^\\]]{0," + SPAN + "})\\]\\([^)]{0," + SPAN + "}\\)"),
+    Pattern.compile("\\[([^\\]]" + TEXT + ")\\]\\(([^)]{0," + SPAN + "})\\)"),
+    Pattern.compile("`([^`]+)`"),
+    Pattern.compile("(\\*\\*|__)(." + TEXT + "?)\\1"),
+    Pattern.compile("~~(." + TEXT + "?)~~"),
+    Pattern.compile("(^|[^\\w*])\\*(?!\\s)(." + TEXT + "?)(?<!\\s)\\*(?!\\w)"),
+    Pattern.compile("(^|[^\\w_])_(?!\\s)(." + TEXT + "?)(?<!\\s)_(?!\\w)"),
+  };
+  private static final String[] INLINE_REPLACEMENTS = {
+    "$1", "$1 ($2)", "$1", "$2", "$1", "$1$2", "$1$2"
   };
 
   /** Plain stand-ins for characters the WinAnsi fonts lack but text commonly carries. */
@@ -140,14 +151,24 @@ final class ChatPdfRenderer {
             + format(exportedAt);
     space(2);
     paragraph(meta, regular, SMALL_SIZE, 0, true);
+    if (!transcript.notePoints().isEmpty()) {
+      space(12);
+      keepTogether(LABEL_SIZE * LINE_FACTOR + 3 + BODY_SIZE * LINE_FACTOR);
+      paragraph("Gesprächsnotiz", bold, LABEL_SIZE, 0, false);
+      space(3);
+      for (String point : transcript.notePoints()) {
+        paragraph("• " + point, regular, BODY_SIZE, INDENT, false);
+      }
+    }
     if (transcript.entries().isEmpty()) {
       space(12);
       paragraph("Dieser Chat enthält noch keine Nachrichten.", italic, BODY_SIZE, 0, false);
     }
     for (ChatTranscript.Entry entry : transcript.entries()) {
       space(14);
-      // The label never ends a page on its own: it moves on together with the first text line.
-      keepTogether(LABEL_SIZE * LINE_FACTOR + 3 + BODY_SIZE * LINE_FACTOR);
+      // The label never ends a page on its own: it moves on together with the first text line,
+      // including the gap a heading opening the answer puts before it.
+      keepTogether(LABEL_SIZE * LINE_FACTOR + 3 + HEADING_GAP + BODY_SIZE * LINE_FACTOR);
       String label = entry.role() == ChatRole.USER ? "Frage" : "Antwort";
       paragraph(label + " · " + format(entry.createdAt()), bold, LABEL_SIZE, 0, false);
       space(3);
@@ -193,7 +214,7 @@ final class ChatPdfRenderer {
         continue;
       }
       if (line.matches("^\\s{0,3}#{1,6}\\s+.*")) {
-        space(3);
+        space(HEADING_GAP);
         paragraph(inline(line.replaceFirst("^\\s{0,3}#{1,6}\\s+", "")), bold, BODY_SIZE, 0, false);
         continue;
       }
@@ -222,8 +243,8 @@ final class ChatPdfRenderer {
 
   private static String inline(String text) {
     String result = text;
-    for (String[] rule : INLINE_RULES) {
-      result = result.replaceAll(rule[0], rule[1]);
+    for (int i = 0; i < INLINE_PATTERNS.length; i++) {
+      result = INLINE_PATTERNS[i].matcher(result).replaceAll(INLINE_REPLACEMENTS[i]);
     }
     return result;
   }

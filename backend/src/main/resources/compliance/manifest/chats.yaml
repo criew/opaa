@@ -62,8 +62,8 @@ data:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
       - >-
         Die Person kann einen eigenen Chat als Markdown- oder PDF-Datei herunterladen (Fragen,
-        Antworten, Dokumenttitel und Fundorte der Quellen); der Export wird weder protokolliert
-        noch gespeichert
+        Antworten, Gesprächsnotiz, Dokumenttitel und Fundorte der Quellen); der Export wird weder
+        protokolliert noch gespeichert
   - id: chat-cleanup-holds
     title: Angehaltene Löschung der Chats eines gesperrten Kontos
     purpose: >-

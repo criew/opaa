@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.ColorScheme;
 import io.opaa.branding.BrandingSettingsService;
@@ -175,12 +176,29 @@ class ChatExportServiceTest {
   }
 
   @Test
+  void theGesprächsnotizIsPartOfThePdf() throws IOException {
+    Chat chat = new Chat(UUID.randomUUID(), userId, UUID.randomUUID(), "T", true, Set.of());
+    List<ChatNotePoint> points =
+        List.of(
+            new ChatNotePoint(
+                UUID.randomUUID(), "Arbeitet im Bürgerbüro", ChatNoteItemKind.RAHMEN, NOW));
+    UUID chatId = UUID.randomUUID();
+    when(chatService.getChat(chatId, userId))
+        .thenReturn(new ChatConversation(chat, List.of(), points));
+
+    String text = text(exportService.exportPdf(chatId, userId).content());
+
+    assertThat(text).containsSubsequence("Gesprächsnotiz", "• Arbeitet im Bürgerbüro");
+  }
+
+  @Test
   void theFileNameDropsWhatAFileSystemRejects() {
     assertThat(ChatExportService.fileName("Antrag: 12/4-2026 \"neu\"?"))
         .isEqualTo("Antrag 12 4-2026 neu");
     assertThat(ChatExportService.fileName("..")).isEqualTo("Chat");
     assertThat(ChatExportService.fileName("x".repeat(200))).hasSize(80);
     assertThat(ChatExportService.fileName("Bescheid\u200B\u202E neu")).isEqualTo("Bescheid neu");
+    assertThat(ChatExportService.fileName("Frist\u2003\u00A0 Bauamt")).isEqualTo("Frist Bauamt");
     String emoji = "\uD83D\uDE00";
     String cut = ChatExportService.fileName(emoji.repeat(100));
     assertThat(cut.codePointCount(0, cut.length())).isEqualTo(80);

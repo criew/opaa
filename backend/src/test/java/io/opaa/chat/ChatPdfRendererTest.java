@@ -27,7 +27,10 @@ class ChatPdfRendererTest {
 
   private static ChatTranscript answer(String text) {
     return new ChatTranscript(
-        "Test", AT, List.of(new ChatTranscript.Entry(ChatRole.ASSISTANT, AT, text, List.of())));
+        "Test",
+        AT,
+        List.of(),
+        List.of(new ChatTranscript.Entry(ChatRole.ASSISTANT, AT, text, List.of())));
   }
 
   private String text(ChatTranscript transcript) throws IOException {
@@ -49,6 +52,52 @@ class ChatPdfRendererTest {
         assertTimeout(Duration.ofSeconds(2), () -> renderer.render(answer(word), "Vermerk", AT));
 
     assertThat(pdf).isNotEmpty();
+  }
+
+  @Test
+  void markdownBuiltToMakePatternsBacktrackIsRenderedInLinearTime() {
+    List<String> hostile =
+        List.of(
+            "[".repeat(50_000),
+            "![".repeat(25_000),
+            "[a](".repeat(12_500),
+            " *a".repeat(15_000),
+            " _a".repeat(15_000),
+            "a" + " ".repeat(50_000) + "b",
+            " ".repeat(50_000) + "x",
+            "- ".repeat(25_000) + "x",
+            "| ---".repeat(10_000) + "x");
+
+    for (String text : hostile) {
+      assertTimeout(Duration.ofSeconds(2), () -> renderer.render(answer(text), "Vermerk", AT));
+    }
+  }
+
+  @Test
+  void inlineMarkdownIsReducedToItsText() throws IOException {
+    String text =
+        text(
+            answer(
+                "Die **Frist** gilt *nur* hier, siehe [Merkblatt](https://example.org) und `§ 70`."));
+
+    assertThat(text)
+        .contains("Die Frist gilt nur hier, siehe Merkblatt (https://example.org) und § 70.");
+  }
+
+  @Test
+  void theGesprächsnotizStandsAboveTheFirstQuestion() throws IOException {
+    ChatTranscript transcript =
+        new ChatTranscript(
+            "Test",
+            AT,
+            List.of("Arbeitet im Bürgerbüro", "Möchte kurze Antworten"),
+            List.of(new ChatTranscript.Entry(ChatRole.USER, AT, "Wie lang?", List.of())));
+
+    String text = text(transcript);
+
+    assertThat(text)
+        .containsSubsequence(
+            "Gesprächsnotiz", "• Arbeitet im Bürgerbüro", "• Möchte kurze Antworten", "Frage ·");
   }
 
   @Test

@@ -123,6 +123,44 @@ describe('chatAsMarkdown', () => {
     expect(markdown).not.toContain('Anlage.pdf')
   })
 
+  it('puts the Gesprächsnotiz between the title and the first question', () => {
+    const detail: ChatDetail = {
+      ...chat([message({ content: 'Wie lang?' })]),
+      noteItems: [
+        { id: 'n1', text: 'Arbeitet im Bürgerbüro', kind: 'RAHMEN', createdAt: ASKED },
+        { id: 'n2', text: 'Möchte kurze Antworten', kind: 'ANTWORTFORM', createdAt: ASKED },
+      ],
+    }
+
+    const markdown = chatAsMarkdown(detail, NOTE, EXPORTED)
+
+    expect(markdown).toContain(
+      '## Gesprächsnotiz\n\n- Arbeitet im Bürgerbüro\n- Möchte kurze Antworten\n\n## Frage',
+    )
+  })
+
+  it('has no Gesprächsnotiz section while the note is empty', () => {
+    const markdown = chatAsMarkdown(chat([message({ content: 'Wie lang?' })]), NOTE, EXPORTED)
+
+    expect(markdown).not.toContain('Gesprächsnotiz')
+  })
+
+  it('reads text built to make its patterns backtrack in linear time', () => {
+    const hostile = [
+      '['.repeat(50_000),
+      ' *a'.repeat(15_000),
+      `a${' '.repeat(50_000)}b`,
+      `a${' '.repeat(100_000)}【source:x`,
+      `【source:${BESCHEID}#1|x`.repeat(5_000),
+      `${'('.repeat(25_000)}【source: ${BESCHEID}#3 | Bescheid.pdf】${')'.repeat(25_000)}`,
+    ]
+    for (const text of hostile) {
+      const started = performance.now()
+      chatAsMarkdown(chat([message({ content: text }), answer(text, [])]), NOTE, EXPORTED)
+      expect(performance.now() - started).toBeLessThan(2000)
+    }
+  })
+
   it('ends with the note under a rule', () => {
     const markdown = chatAsMarkdown(chat([message({ content: 'Frage' })]), NOTE, EXPORTED)
 

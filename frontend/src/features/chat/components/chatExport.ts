@@ -20,13 +20,18 @@ export function exportTimestamp(date: Date): string {
  * The chat as one Markdown document: the title as heading, then every question and answer with
  * its timestamp. An answer keeps its Markdown and carries its sources as footnotes, the numbers
  * the chat shows; labels are prefixed per answer (`[^2-1]`), because footnote labels are global
- * in a document. Cited sources without a marker follow as a list. The note closes the document.
+ * in a document. Cited sources without a marker follow as a list. The Gesprächsnotiz, when it has
+ * points, stands between the title and the first question. The note closes the document.
  */
 export function chatAsMarkdown(chat: ChatDetail, note: string, exportedAt: Date): string {
   const parts = [
     `# ${chatTitle(chat)}`,
     `Chat begonnen am ${exportTimestamp(new Date(chat.createdAt))} · exportiert am ${exportTimestamp(exportedAt)}`,
   ]
+  const notePoints = (chat.noteItems ?? []).map((item) => item.text.replace(/\s+/g, ' ').trim())
+  if (notePoints.length > 0) {
+    parts.push('## Gesprächsnotiz', notePoints.map((point) => `- ${point}`).join('\n'))
+  }
   let answerNumber = 0
   for (const message of chat.messages.map(toChatMessage)) {
     const at = exportTimestamp(message.timestamp)

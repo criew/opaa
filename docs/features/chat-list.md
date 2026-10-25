@@ -452,22 +452,29 @@ Ein einzelner Chat lässt sich zur Ablage oder Weitergabe als Datei sichern (#19
 eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exportieren als Markdown" und
 „Exportieren als PDF".
 
-- **Inhalt beider Formate:** der Titel als Überschrift, Beginn des Chats und Exportzeitpunkt, dann jede
-  Frage und Antwort in ihrer Reihenfolge mit Datum und Uhrzeit. Unter jeder Antwort stehen ihre
+- **Inhalt beider Formate:** der Titel als Überschrift, Beginn des Chats und Exportzeitpunkt, dann
+  die [Gesprächsnotiz](./conversation-memory.md) als eigener Abschnitt „Gesprächsnotiz", sobald sie
+  einen Punkt hat (wie in der Oberfläche am Kopf des Chats; im Export auch dann, wenn die Oberfläche
+  sie in den ersten beiden Runden noch nicht zeigt), dann jede Frage und Antwort in ihrer
+  Reihenfolge mit Datum und Uhrzeit. Unter jeder Antwort stehen ihre
   Quellenangaben: Jede Zitiermarke wird zur Fußnote, gezählt je Antwort in der Reihenfolge des ersten
   Auftretens, die Liste nennt Dokument und Fundort; zitierte Quellen ohne Marke im Text folgen ohne
   Nummer. Geprüfte, nicht
   zitierte Quellen gehören nicht dazu. Am Ende steht der Vermerk aus Hinweis zur KI-Nutzung und
   Produktname aus dem Branding, wie beim Kopieren einer Antwort.
-- **Markdown entsteht im Browser** aus dem bereits geladenen Chat und behält die Formatierung der
-  Antworten; die Fußnoten sind Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]`), weil
+- **Markdown entsteht im Browser:** Die Oberfläche lädt den Chat dafür frisch
+  (`GET /api/v1/chats/{chatId}`), damit die Datei den gespeicherten Stand enthält, und behält die
+  Formatierung der Antworten; die Fußnoten sind Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]`), weil
   Fußnotenbezeichner in einem Dokument eindeutig sein müssen.
 - **PDF entsteht im Server** (`GET /api/v1/chats/{chatId}/export/pdf`, mit PDFBox, Standardschriften
   ohne Einbettung), Fußnoten als `[1]`. Die Markdown-Zeichen der Antworten werden zu lesbarem Text.
   Die Standardschriften kennen nur den westeuropäischen Zeichensatz: Format- und Richtungszeichen
   entfallen, Sonderleerzeichen, Bindestrich- und Minusvarianten, Pfeile und Vergleichszeichen erhalten
-  einen einfachen Ersatz (`->`, `<=` …), alles Übrige erscheint als „?". Der Zeilenumbruch misst jede
-  Glyphe einmal, sein Aufwand wächst linear mit dem Text. Die Zeitangaben stehen in der Zeitzone der
+  einen einfachen Ersatz (`->`, `<=` …), alles Übrige erscheint als „?". Die Rechenzeit wächst mit
+  der Textlänge linear, auch bei Text, der darauf angelegt ist, Mustersuchen ausufern zu lassen: Der
+  Zeilenumbruch misst jede Glyphe einmal, und jedes Muster für Markdown und Zitiermarken blickt von
+  einer Stelle aus höchstens eine feste Zeichenzahl voraus (Hervorhebungen und Linktexte bis 300
+  Zeichen; längere bleiben mit ihren Markdown-Zeichen stehen). Die Zeitangaben stehen in der Zeitzone der
   Installation. Solange das PDF entsteht, zeigt die Oberfläche „Export wird erstellt …"; ein zweiter
   Klick auf denselben Export desselben Chats startet keinen weiteren.
 - **Wer exportieren darf:** wer den Chat lesen darf (`GET /api/v1/chats/{chatId}`), also nur seine

@@ -100,7 +100,7 @@ Aufruf des Chat-Modells (Abschnitt 3).
 | Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
 | Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
 | Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
-| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Eine Anzeige im Chat folgt |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Eine Anzeige im Chat folgt. Die Exporte des Chats enthalten sie (Abschnitt 7, „Exportieren") |
 
 Zwei Punkte sind betrieblich wichtig:
 
@@ -921,7 +921,8 @@ bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennz
 eines Chats in der Chatliste und auf der Seite „Chats" bietet „Exportieren als Markdown" und
 „Exportieren als PDF"; solange das PDF entsteht, meldet ein Hinweis „Export wird erstellt …".
 Beide Dateien beginnen mit dem Titel als Überschrift, nennen Beginn des Chats
-und Exportzeitpunkt und enthalten jede Frage und Antwort mit Datum und Uhrzeit. Unter jeder Antwort
+und Exportzeitpunkt, führen die Gesprächsnotiz (Abschnitt 2) als eigenen Abschnitt „Gesprächsnotiz",
+sobald sie einen Punkt hat, und enthalten dann jede Frage und Antwort mit Datum und Uhrzeit. Unter jeder Antwort
 stehen ihre Quellenangaben: Jede Zitiermarke wird zur Fußnote mit Dokument und Fundort, gezählt je
 Antwort in der Reihenfolge des ersten Auftretens; zitierte Dokumente ohne Fußnote im Text folgen ohne
 Nummer, geprüfte, nicht zitierte fehlen. Am Ende steht derselbe Vermerk wie beim Kopieren, mit dem Datum des Exports.
@@ -929,7 +930,7 @@ Die Datei heißt wie der Chat.
 
 | Format | Entsteht | Darstellung |
 |---|---|---|
-| Markdown | im Browser, aus dem gespeicherten Chat | Antworten mit ihrer Formatierung, Fußnoten als Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]` ist die erste Fußnote der zweiten Antwort); Zeiten in der Zeitzone des Browsers |
+| Markdown | im Browser, aus dem gespeicherten Chat, den die Oberfläche dafür frisch lädt | Antworten mit ihrer Formatierung, Fußnoten als Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]` ist die erste Fußnote der zweiten Antwort); Zeiten in der Zeitzone des Browsers |
 | PDF | auf dem Server | A4 mit Seitenzahlen, Fußnoten als `[1]` je Antwort, Markdown-Zeichen zu lesbarem Text aufgelöst; Zeiten in der Zeitzone der Installation. Die Standardschriften kennen nur westeuropäische Zeichen: Unsichtbare Steuerzeichen entfallen, geschützte und schmale Leerzeichen werden zu Leerzeichen, Bindestrich- und Minuszeichen zu „-", Pfeile und Vergleichszeichen zu `->`, `<-`, `<=`, `>=` und Ähnlichem; alle übrigen Zeichen, etwa andere Schriften oder Emojis, erscheinen als „?" |
 
 Exportieren darf, wer den Chat lesen darf, also nur seine Autorin oder sein Autor, auch nach dem

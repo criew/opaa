@@ -2,8 +2,11 @@ package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 
+import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.api.types.ChatRole;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -114,5 +117,59 @@ class ChatTranscriptTest {
         ChatTranscript.of(chat("T", answer(text, marked, citedOnly, checked))).entries().getFirst();
 
     assertThat(entry.sources()).containsExactly("[1] Erlass.pdf", "Vermerk.pdf");
+  }
+
+  @Test
+  void theGesprächsnotizComesAlongOldestFirst() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "T", true, Set.of());
+    List<ChatNotePoint> points =
+        List.of(
+            new ChatNotePoint(
+                UUID.randomUUID(), "Arbeitet im Bürgerbüro", ChatNoteItemKind.RAHMEN, ASKED),
+            new ChatNotePoint(
+                UUID.randomUUID(),
+                "Möchte kurze Antworten",
+                ChatNoteItemKind.ANTWORTFORM,
+                ANSWERED));
+
+    ChatTranscript transcript =
+        ChatTranscript.of(new ChatConversation(chat, List.of(question("Frage")), points));
+
+    assertThat(transcript.notePoints())
+        .containsExactly("Arbeitet im Bürgerbüro", "Möchte kurze Antworten");
+  }
+
+  @Test
+  void textBuiltToMakePatternsBacktrackIsReadInLinearTime() {
+    UUID document = UUID.randomUUID();
+    String marker = marker(document, 1, "Akte.pdf");
+    List<String> hostile =
+        List.of(
+            "[".repeat(50_000),
+            " *a".repeat(15_000),
+            "a" + " ".repeat(50_000) + "b",
+            "a" + " ".repeat(50_000) + "【source:x",
+            "【source:x".repeat(10_000),
+            "(" + marker + " ".repeat(50_000) + "【source:x",
+            "(".repeat(25_000) + marker + ")".repeat(25_000));
+
+    for (String text : hostile) {
+      ChatConversation chat = chat("T", answer(text), question(text));
+      assertTimeout(Duration.ofSeconds(2), () -> ChatTranscript.of(chat));
+    }
+  }
+
+  @Test
+  void theSpacesBeforeAMarkerGoWithItAndTwoMarkersInARowReadAsOneFootnote() {
+    UUID document = UUID.randomUUID();
+    ChatSource source = new ChatSource("Akte.pdf", 0.9, 1, true).documentId(document);
+    String marker = marker(document, 1, "Akte.pdf");
+    String text = "Erstens \t " + marker + "  " + marker + "\nZweitens " + marker + ".";
+
+    ChatTranscript.Entry entry =
+        ChatTranscript.of(chat("T", answer(text, source))).entries().getFirst();
+
+    assertThat(entry.text()).isEqualTo("Erstens[1]\nZweitens[1].");
   }
 }

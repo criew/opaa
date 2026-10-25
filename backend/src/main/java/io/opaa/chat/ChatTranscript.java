@@ -17,15 +17,19 @@ import java.util.regex.Pattern;
  * A chat as an export reads it: title, then every turn in order with its text and, for an answer,
  * the sources it cites. Each well-formed citation marker becomes a footnote {@code [n]} numbered
  * like the chat numbers it (first appearance per {@code documentId#chunk}); malformed markers are
- * dropped, never shown raw. Cited sources without a marker in the text follow without a number.
+ * dropped, never shown raw. Cited sources without a marker in the text follow without a number. The
+ * Gesprächsnotiz comes along as its points' texts, oldest first.
+ *
+ * <p>Every pattern here scans a bounded stretch per match attempt (a marker stops at the next
+ * opening bracket or line end), so preparing a transcript stays linear in the text.
  */
-record ChatTranscript(String title, Instant createdAt, List<Entry> entries) {
+record ChatTranscript(
+    String title, Instant createdAt, List<String> notePoints, List<Entry> entries) {
 
   static final String UNTITLED = "Unbenannter Chat";
 
-  /** A marker with the horizontal whitespace before it - the footnote attaches to the word. */
-  private static final Pattern MARKER_WITH_SPACE =
-      Pattern.compile("[ \\t]*" + CitationMarker.CLAIMED_PATTERN.pattern());
+  /** Bracket levels unwrapped around markers; deeper nesting keeps its outer brackets. */
+  private static final int MAX_BRACKET_LEVELS = 8;
 
   private static final String MARKER_LIST =
       "[ \\t]*(?:"
@@ -39,6 +43,7 @@ record ChatTranscript(String title, Instant createdAt, List<Entry> entries) {
       Pattern.compile("\\(" + MARKER_LIST + "\\)|\\[" + MARKER_LIST + "\\](?!\\()");
 
   ChatTranscript {
+    notePoints = List.copyOf(notePoints);
     entries = List.copyOf(entries);
   }
 
@@ -63,7 +68,9 @@ record ChatTranscript(String title, Instant createdAt, List<Entry> entries) {
               ? answer(turn)
               : new Entry(turn.getRole(), turn.getCreatedAt(), safe(turn.getContent()), List.of()));
     }
-    return new ChatTranscript(title.strip(), chat.getCreatedAt(), entries);
+    List<String> notePoints =
+        chat.getNoteItems().stream().map(point -> safe(point.text()).strip()).toList();
+    return new ChatTranscript(title.strip(), chat.getCreatedAt(), notePoints, entries);
   }
 
   private static Entry answer(ChatTurn turn) {
@@ -75,16 +82,22 @@ record ChatTranscript(String title, Instant createdAt, List<Entry> entries) {
     StringBuilder body = new StringBuilder();
     Set<Integer> adjacent = new HashSet<>();
     int lastEnd = 0;
-    Matcher matcher = MARKER_WITH_SPACE.matcher(content);
+    Matcher matcher = CitationMarker.CLAIMED_PATTERN.matcher(content);
     while (matcher.find()) {
       String between = content.substring(lastEnd, matcher.start());
-      if (!between.isEmpty()) {
+      if (!between.chars().allMatch(c -> c == ' ' || c == '\t')) {
         adjacent = new HashSet<>();
       }
       body.append(between);
+      // The footnote attaches to the word: the spaces before the marker go with it.
+      int end = body.length();
+      while (end > 0 && (body.charAt(end - 1) == ' ' || body.charAt(end - 1) == '\t')) {
+        end--;
+      }
+      body.setLength(end);
       lastEnd = matcher.end();
-      List<CitationMarker> parsed = CitationMarker.parse(matcher.group().strip());
-      if (parsed.size() != 1 || !CitationMarker.isWellFormed(matcher.group().strip())) {
+      List<CitationMarker> parsed = CitationMarker.parse(matcher.group());
+      if (parsed.size() != 1 || !CitationMarker.isWellFormed(matcher.group())) {
         continue;
       }
       CitationMarker marker = parsed.getFirst();
@@ -149,10 +162,14 @@ record ChatTranscript(String title, Instant createdAt, List<Entry> entries) {
         : "file:" + source.getFileName();
   }
 
-  /** {@code (【…】)} becomes {@code 【…】}, so the footnote shows no bracket of its own. */
+  /**
+   * {@code (【…】)} becomes {@code 【…】}, so the footnote shows no bracket of its own. Each pass drops
+   * one level and costs one scan of the text, hence the bound on the passes.
+   */
   private static String unwrapBracketed(String text) {
     String result = text;
     String previous;
+    int passes = 0;
     do {
       previous = result;
       Matcher matcher = BRACKETED_MARKERS.matcher(previous);
@@ -167,7 +184,7 @@ record ChatTranscript(String title, Instant createdAt, List<Entry> entries) {
         matcher.appendReplacement(unwrapped, Matcher.quoteReplacement(markers));
       }
       result = matcher.appendTail(unwrapped).toString();
-    } while (!result.equals(previous));
+    } while (!result.equals(previous) && ++passes < MAX_BRACKET_LEVELS);
     return result;
   }
 

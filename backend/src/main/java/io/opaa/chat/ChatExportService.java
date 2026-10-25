@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
@@ -58,7 +59,7 @@ public class ChatExportService {
         title
             .replaceAll("\\p{Cf}", "")
             .replaceAll(UNSAFE_FILE_NAME_CHARACTERS, " ")
-            .replaceAll("\\s+", " ");
+            .replaceAll("(?U)\\s+", " ");
     cleaned = cleaned.strip().replaceAll("^\\.+", "").strip();
     if (cleaned.codePointCount(0, cleaned.length()) > FILE_NAME_MAX_LENGTH) {
       cleaned = cleaned.substring(0, cleaned.offsetByCodePoints(0, FILE_NAME_MAX_LENGTH)).strip();
@@ -68,6 +69,9 @@ public class ChatExportService {
 
   /** Branding text on one line, so the note never breaks where the operator typed a newline. */
   private static String oneLine(String text) {
-    return text.replaceAll("\\s*\\R\\s*", " ").strip();
+    return text.lines()
+        .map(String::strip)
+        .filter(line -> !line.isEmpty())
+        .collect(Collectors.joining(" "));
   }
 }
