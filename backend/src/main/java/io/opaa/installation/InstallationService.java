@@ -18,6 +18,7 @@ import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.installation.InstallationState.TokenSource;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelSeedMarkerRepository;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
@@ -30,12 +31,16 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The installation of a fresh instance (ADR-0060). Every write takes the row lock of {@code
@@ -63,6 +68,7 @@ public class InstallationService {
   private final InitialAdministrator initialAdministrator;
   private final OidcProviderService oidcProviders;
   private final LlmModelService llmModels;
+  private final EmbeddingModelService embeddingModels;
   private final LocalAdminSeedMarkerRepository localAdminMarker;
   private final OidcProviderSeedMarkerRepository oidcMarker;
   private final LlmModelSeedMarkerRepository llmMarker;
@@ -70,6 +76,7 @@ public class InstallationService {
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
   private final Clock clock;
+  private final TransactionTemplate transactions;
 
   InstallationService(
       InstallationStateRepository states,
@@ -79,13 +86,15 @@ public class InstallationService {
       InitialAdministrator initialAdministrator,
       OidcProviderService oidcProviders,
       LlmModelService llmModels,
+      EmbeddingModelService embeddingModels,
       LocalAdminSeedMarkerRepository localAdminMarker,
       OidcProviderSeedMarkerRepository oidcMarker,
       LlmModelSeedMarkerRepository llmMarker,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
-      Clock clock) {
+      Clock clock,
+      PlatformTransactionManager transactionManager) {
     this.states = states;
     this.steps = steps;
     this.rules = rules;
@@ -93,6 +102,7 @@ public class InstallationService {
     this.initialAdministrator = initialAdministrator;
     this.oidcProviders = oidcProviders;
     this.llmModels = llmModels;
+    this.embeddingModels = embeddingModels;
     this.localAdminMarker = localAdminMarker;
     this.oidcMarker = oidcMarker;
     this.llmMarker = llmMarker;
@@ -100,6 +110,7 @@ public class InstallationService {
     this.users = users;
     this.status = status;
     this.clock = clock;
+    this.transactions = new TransactionTemplate(transactionManager);
   }
 
   /** Whether {@code presented} is the token of the pending installation, in constant time. */
@@ -131,14 +142,36 @@ public class InstallationService {
   }
 
   /**
-   * Runs the check of a saved step and stores its outcome.
+   * Runs the check of a saved step and stores its outcome. The check talks to the network, so it
+   * runs outside every transaction and lock; only its outcome is stored under them, and only for
+   * the values it checked.
    *
-   * @throws ConflictException when the step is not saved
+   * @throws ConflictException when the step is not saved, or was saved anew during the check
    */
-  @Transactional
   public InstallationOverview.StepState check(InstallationStep step) {
-    lockPending();
-    return state(checkLocked(step));
+    Saved saved =
+        transactions.execute(
+            status -> {
+              lockPending();
+              return steps
+                  .findById(step)
+                  .map(record -> new Saved(record.getPayload(), record.getSecret()))
+                  .orElseThrow(() -> notSaved(step));
+            });
+    StepChecks.Outcome outcome = checks.check(step, saved.payload(), saved.secret());
+    return transactions.execute(
+        status -> {
+          lockPending();
+          InstallationStepRecord record =
+              steps.findForUpdate(step).orElseThrow(() -> notSaved(step));
+          if (!saved.matches(record)) {
+            throw new ConflictException(
+                "Der Schritt "
+                    + step.name()
+                    + " wurde während der Prüfung neu gespeichert; bitte erneut prüfen.");
+          }
+          return state(recordOutcome(record, outcome));
+        });
   }
 
   /**
@@ -153,24 +186,19 @@ public class InstallationService {
   }
 
   /**
-   * Saves, checks and completes every step of an answer file, all or nothing.
+   * Saves, checks and completes every step of an answer file, all or nothing. Validation and checks
+   * run before any lock is taken; saving and completing run in one transaction.
    *
    * @throws ConflictException naming the step whose check failed; nothing is saved then
    */
-  @Transactional
   public InstallationOverview applyAnswers(List<StepInput> inputs, CompletionSource source) {
-    InstallationState state = lockPending();
-    for (StepInput input : inputs) {
-      saveLocked(input);
-    }
-    for (StepInput input : inputs) {
-      InstallationStepRecord checked = checkLocked(input.step());
-      if (!checked.isCheckSucceeded()) {
-        throw new ConflictException(
-            "Schritt " + input.step().name() + " der Antwortdatei: " + checked.getCheckMessage());
-      }
-    }
-    return completeLocked(state, source);
+    List<Checked> checked = checkAnswers(inputs);
+    return transactions.execute(
+        status -> {
+          InstallationState state = lockPending();
+          storeAnswers(checked);
+          return completeLocked(state, source);
+        });
   }
 
   /** What a start found: whether the installation is completed, and by which source if just now. */
@@ -206,13 +234,84 @@ public class InstallationService {
    * {@link #applyAnswers} for the start: an installation another instance completed meanwhile is
    * success, not an error. Returns whether this call completed it.
    */
-  @Transactional
   public boolean applyAnswersAtStartup(List<StepInput> inputs) {
-    if (lockState().isCompleted()) {
+    if (Boolean.TRUE.equals(transactions.execute(status -> states.isCompleted()))) {
       return false;
     }
-    applyAnswers(inputs, CompletionSource.ANSWER_FILE_STARTUP);
-    return true;
+    List<Checked> checked = checkAnswers(inputs);
+    return Boolean.TRUE.equals(
+        transactions.execute(
+            status -> {
+              InstallationState state = lockState();
+              if (state.isCompleted()) {
+                return false;
+              }
+              storeAnswers(checked);
+              completeLocked(state, CompletionSource.ANSWER_FILE_STARTUP);
+              return true;
+            }));
+  }
+
+  /** The values of a saved step as a check read them. */
+  private record Saved(String payload, String secret) {
+
+    boolean matches(InstallationStepRecord record) {
+      return Objects.equals(payload, record.getPayload())
+          && Objects.equals(secret, record.getSecret());
+    }
+  }
+
+  /** One answer, validated as it will be stored, with the outcome of its check. */
+  private record Checked(
+      InstallationStep step, StepRules.Stored stored, StepChecks.Outcome outcome) {}
+
+  /**
+   * Validates every answer against what is saved and checks it, without any lock.
+   *
+   * @throws ConflictException naming the first step whose check failed
+   */
+  private List<Checked> checkAnswers(List<StepInput> inputs) {
+    Map<InstallationStep, Saved> previous =
+        transactions.execute(
+            status -> {
+              Map<InstallationStep, Saved> saved = new EnumMap<>(InstallationStep.class);
+              steps
+                  .findAll()
+                  .forEach(
+                      record ->
+                          saved.put(
+                              record.getStep(),
+                              new Saved(record.getPayload(), record.getSecret())));
+              return saved;
+            });
+    List<StepRules.Stored> stored =
+        inputs.stream()
+            .map(
+                input -> {
+                  Saved before =
+                      Optional.ofNullable(previous.get(input.step())).orElse(new Saved(null, null));
+                  return rules.toStored(input, before.payload(), before.secret());
+                })
+            .toList();
+    List<Checked> checked = new java.util.ArrayList<>();
+    for (int i = 0; i < inputs.size(); i++) {
+      InstallationStep step = inputs.get(i).step();
+      StepChecks.Outcome outcome =
+          checks.check(step, stored.get(i).payload(), stored.get(i).secret());
+      if (!outcome.succeeded()) {
+        throw new ConflictException(
+            "Schritt " + step.name() + " der Antwortdatei: " + outcome.message());
+      }
+      checked.add(new Checked(step, stored.get(i), outcome));
+    }
+    return checked;
+  }
+
+  /** Saves the checked answers with their outcomes; the caller holds the locks. */
+  private void storeAnswers(List<Checked> checked) {
+    for (Checked answer : checked) {
+      recordOutcome(storeLocked(answer.step(), answer.stored()), answer.outcome());
+    }
   }
 
   /**
@@ -249,26 +348,37 @@ public class InstallationService {
   }
 
   private InstallationStepRecord saveLocked(StepInput input) {
+    InstallationStepRecord current = steps.findForUpdate(input.step()).orElse(null);
+    StepRules.Stored stored =
+        rules.toStored(
+            input,
+            current == null ? null : current.getPayload(),
+            current == null ? null : current.getSecret());
+    return storeLocked(input.step(), stored);
+  }
+
+  private InstallationStepRecord storeLocked(InstallationStep step, StepRules.Stored stored) {
     InstallationStepRecord record =
-        steps.findForUpdate(input.step()).orElseGet(() -> new InstallationStepRecord(input.step()));
+        steps.findForUpdate(step).orElseGet(() -> new InstallationStepRecord(step));
     Map<String, Object> before =
         record.getPayload() == null ? null : auditSummary(record.getStep(), record);
-    StepRules.Stored stored = rules.toStored(input, record.getPayload(), record.getSecret());
     record.replaceValues(stored.payload(), stored.secret(), clock.instant());
     steps.save(record);
-    record(AuditEventType.INSTALLATION_STEP_SAVED, before, auditSummary(input.step(), record));
+    record(AuditEventType.INSTALLATION_STEP_SAVED, before, auditSummary(step, record));
     return record;
   }
 
-  private InstallationStepRecord checkLocked(InstallationStep step) {
-    InstallationStepRecord record =
-        steps
-            .findForUpdate(step)
-            .orElseThrow(
-                () ->
-                    new ConflictException(
-                        "Der Schritt " + step.name() + " ist nicht gespeichert."));
-    StepChecks.Outcome outcome = checks.check(step, record.getPayload(), record.getSecret());
+  private static ConflictException notSaved(InstallationStep step) {
+    return new ConflictException("Der Schritt " + step.name() + " ist nicht gespeichert.");
+  }
+
+  private InstallationStepRecord recordOutcome(
+      InstallationStepRecord record, StepChecks.Outcome outcome) {
+    InstallationStep step = record.getStep();
+    if (outcome.succeeded() && outcome.dimensions() != null) {
+      record.recordCheckedValues(
+          rules.withProbedDimensions(record.getPayload(), outcome.dimensions()));
+    }
     record.recordCheck(outcome.succeeded(), outcome.message(), clock.instant());
     steps.save(record);
     record(
@@ -324,10 +434,25 @@ public class InstallationService {
         model.temperature(),
         StepRules.maxTokens(model),
         modelStep.getSecret());
+    installEmbeddingModel(saved.get(InstallationStep.EMBEDDING_MODEL));
     steps.deleteAllInBatch();
     markCompleted(
         state, source, Map.of("source", source.name(), "signInMode", signIn.mode().name()));
     return new InstallationOverview(false, true, List.of());
+  }
+
+  /**
+   * The embedding model and {@code vector_store} with the probed vector size, in the completion's
+   * transaction and under its locks, so the table exists exactly once (ADR-0060, Entscheidung 10).
+   */
+  private void installEmbeddingModel(InstallationStepRecord step) {
+    StepRules.EmbeddingModelPayload embedding = rules.embeddingModelPayload(step.getPayload());
+    if (embedding.dimensions() == null) {
+      throw new ConflictException(
+          "Die Probeeinbettung des Embedding-Modells fehlt; bitte den Schritt erneut prüfen.");
+    }
+    embeddingModels.install(
+        rules.embeddingEndpoint(embedding, step.getSecret()), embedding.dimensions());
   }
 
   private void markCompleted(
@@ -411,6 +536,11 @@ public class InstallationService {
         }
       }
       case InstallationOverview.ChatModel model -> {
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        summary.put("model", model.model());
+        summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.EmbeddingModel model -> {
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());

@@ -20,13 +20,15 @@ dataFlows:
   - id: embedding-model
     group: MODEL
     viaOutboundProxy: true
-    target: Der Einbettungs-Endpunkt (OpenAI-kompatibel), den der Betrieb konfiguriert
-    data: Textabschnitte der indizierten Dokumente, Suchanfragen, Prüftexte der Statusanzeige
-    trigger: Indizierung und Neueinbettung, jede Suche und jede Chat-Anfrage, Statusprüfung
-    switchOff: >-
-      Nicht abschaltbar, die Suche braucht Einbettungen. Voreinstellung der Anwendung ist ein
-      lokaler Modellserver; das Helm-Chart hat keine Voreinstellung und verlangt die Adresse
-    settings: [spring.ai.openai.embedding.base-url, spring.ai.openai.embedding.model]
+    target: Der Einbettungs-Endpunkt (OpenAI-kompatibel), den die Installation festlegt
+    data: >-
+      Textabschnitte der indizierten Dokumente, Suchanfragen, Prüftexte der Statusanzeige und die
+      Probeeinbettung der Installation
+    trigger: >-
+      Indizierung und Neueinbettung, jede Suche und jede Chat-Anfrage, Statusprüfung,
+      Probeeinbettung bei der Installation
+    switchOff: Nicht abschaltbar, die Suche braucht Einbettungen; das Ziel legt die Installation fest
+    settings: [embedding_model.base_url, embedding_model.model_identifier]
   - id: rerank-model
     group: MODEL
     viaOutboundProxy: true

@@ -41,6 +41,10 @@ class InvalidationBusBindingTest {
               "io.opaa.indexing.maintenance.EmbeddingReindexService",
               "the state of this instance's own run, not a copy (ADR-0053, Entscheidung 8)"),
           Map.entry(
+              "io.opaa.indexing.chunk.EmbeddingIndexReconciler",
+              "reconciles after an installation on this instance; another instance takes the"
+                  + " recorded index over through EmbeddingIndexStateRefresh"),
+          Map.entry(
               "io.opaa.mail.MailOutboxWorker",
               "a stop flag of this instance's worker; the outbox itself is the table"),
           Map.entry(

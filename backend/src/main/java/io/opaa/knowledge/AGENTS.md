@@ -18,8 +18,8 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und Nachlauf liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest` (Virenprüfung,
   parsen, schneiden, speichern, markieren; ein Upload kommt geprüft an). Die `Document`-Zeile gehört `knowledge`.
-- **Modellwechsel:** Passt der Vektorindex nicht zum Embedding-Modell (`EmbeddingIndexState`), schreibt
-  `VectorStoreWriter` in `embedding_next`; `EmbeddingReindexService` bettet neu ein und schaltet um.
+- **Embedding-Modell:** Zeile `embedding_model`, `vector_store` nur über `VectorTableCreator` (ADR-0060). Ist der Index
+  veraltet (`EmbeddingIndexState`), schreibt `VectorStoreWriter` in `embedding_next`; die Neueinbettung stellt um.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf, Protokoll),
   `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen), `spi` (Konnektor-Vertrag),
   `credentials` (Ziel, Geheimnis, Dienstkonto), `registry` (Konnektor je Typ), `run` (Laufrahmen, Push-Eingang),

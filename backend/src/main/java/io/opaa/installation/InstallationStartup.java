@@ -9,6 +9,7 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.instance.CurrentInstance;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelSeedRunner;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Path;
@@ -24,7 +25,8 @@ import tools.jackson.databind.json.JsonMapper;
  * The start-up of the installation (ADR-0060; ADR-0053: "Sperre"): after the instance is admitted
  * to the register and before the web server starts, it completes a due installation, applies the
  * answer file or stores the token, printing a generated one once. Only a completed installation
- * runs the start-up seeds.
+ * runs the start-up seeds and takes over the embedding model of an older installation, before the
+ * index reconciliation of the next phase.
  */
 @Component
 class InstallationStartup implements SmartLifecycle {
@@ -41,6 +43,7 @@ class InstallationStartup implements SmartLifecycle {
   private final DatabaseInstallationStatus status;
   private final OidcProviderSeedRunner identitySeeds;
   private final LlmModelSeedRunner chatModelSeed;
+  private final EmbeddingModelService embeddingModels;
   private final OidcProviderRegistry providerRegistry;
   private final JsonMapper json;
   private final List<String> trustedProxyCidrs;
@@ -53,6 +56,7 @@ class InstallationStartup implements SmartLifecycle {
       DatabaseInstallationStatus status,
       OidcProviderSeedRunner identitySeeds,
       LlmModelSeedRunner chatModelSeed,
+      EmbeddingModelService embeddingModels,
       OidcProviderRegistry providerRegistry,
       JsonMapper json,
       RateLimitProperties rateLimit) {
@@ -62,6 +66,7 @@ class InstallationStartup implements SmartLifecycle {
     this.status = status;
     this.identitySeeds = identitySeeds;
     this.chatModelSeed = chatModelSeed;
+    this.embeddingModels = embeddingModels;
     this.providerRegistry = providerRegistry;
     this.json = json;
     this.trustedProxyCidrs = rateLimit.trustedProxyCidrs();
@@ -95,6 +100,7 @@ class InstallationStartup implements SmartLifecycle {
     if (completed) {
       identitySeeds.runStartupSeeds();
       chatModelSeed.runStartupSeed();
+      embeddingModels.adoptIfMissing();
     } else {
       providerRegistry.refresh();
       log.warn(

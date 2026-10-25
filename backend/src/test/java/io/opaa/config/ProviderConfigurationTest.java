@@ -8,9 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 
 /**
- * Verifies the single, OpenAI-compatible connection path application.yml wires: both chat and
- * embedding are fixed to {@code openai}, with a default base URL that already points at a locally
- * operated Ollama server - no separate, native provider path exists anymore (see
+ * Verifies the single, OpenAI-compatible connection path application.yml wires: chat is fixed to
+ * {@code openai}, with a default base URL that already points at a locally operated Ollama server,
+ * and the embedding model is the installed one ({@code none} as autoconfiguration) - no separate,
+ * native provider path exists anymore (see
  * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei).
  *
  * <p><b>{@code spring.ai.model.chat} selects no Spring Boot autoconfiguration for the chat {@code
@@ -33,18 +34,18 @@ class ProviderConfigurationTest {
   @Autowired private Environment environment;
 
   @Test
-  void chatAndEmbeddingAreFixedToTheOpenAiCompatibleProtocol() {
+  void chatIsFixedToTheOpenAiCompatibleProtocolAndEmbeddingIsNoAutoconfiguration() {
     assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("openai");
-    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
+    assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("none");
   }
 
   @Test
-  void chatAndEmbeddingModelsHaveIndependentDefaults() {
+  void theChatModelKeepsItsDefaultAndTheEmbeddingModelHasNone() {
     assertThat(environment.getProperty("spring.ai.openai.chat.model")).isEqualTo("phi3:mini");
-    assertThat(environment.getProperty("spring.ai.openai.embedding.model")).isEqualTo("bge-m3");
+    assertThat(environment.getProperty("spring.ai.openai.embedding.model")).isNull();
   }
 
-  /** OPAA_OPENAI_EMBEDDING_TIMEOUT feeds Spring AI's own per-call timeout of the embedding. */
+  /** OPAA_OPENAI_EMBEDDING_TIMEOUT is the per-call timeout of every embedding client. */
   @Test
   void theEmbeddingTimeoutHasItsOwnVariableWithADefaultForBgeM3OnCpu() {
     assertThat(environment.getProperty("spring.ai.openai.embedding.timeout")).isEqualTo("180s");

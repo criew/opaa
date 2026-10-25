@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
@@ -153,6 +154,12 @@ class InstallationApiIntegrationTest {
     check("CHAT_MODEL")
         .andExpect(jsonPath("$.checked").value(true))
         .andExpect(jsonPath("$.checkMessage").exists());
+    saveEmbeddingModel()
+        .andExpect(jsonPath("$.embeddingModel.maxInputTokens").value(2048))
+        .andExpect(jsonPath("$.embeddingModel.dimensions").doesNotExist());
+    check("EMBEDDING_MODEL")
+        .andExpect(jsonPath("$.checked").value(true))
+        .andExpect(jsonPath("$.embeddingModel.dimensions").value(FakeEmbeddingModel.DIMENSIONS));
 
     mockMvc
         .perform(authorized(post(BASE + "/complete")))
@@ -174,6 +181,10 @@ class InstallationApiIntegrationTest {
                 Integer.class,
                 InstallationService.CHAT_MODEL_DISPLAY_NAME))
         .isEqualTo(1);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT model_identifier || '/' || dimensions FROM embedding_model", String.class))
+        .isEqualTo("bge-m3/" + FakeEmbeddingModel.DIMENSIONS);
     assertThat(
             jdbc.queryForObject(
                 "SELECT status || '/' || coalesce(token_hash, 'none') FROM installation_state",
@@ -221,7 +232,9 @@ class InstallationApiIntegrationTest {
                         + firstAdminJson()
                         + ",\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
                         + "\"chatModel\":{\"baseUrl\":\"http://127.0.0.1:1/v1\","
-                        + "\"model\":\"qwen2.5:7b\"}}"))
+                        + "\"model\":\"qwen2.5:7b\"},"
+                        + embeddingModelPart()
+                        + "}"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("CHAT_MODEL")));
 
@@ -242,7 +255,9 @@ class InstallationApiIntegrationTest {
                         + ",\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
                         + "\"chatModel\":{\"baseUrl\":\""
                         + fixture.chatBaseUrl()
-                        + "\",\"model\":\"qwen2.5:7b\"}}"))
+                        + "\",\"model\":\"qwen2.5:7b\"},"
+                        + embeddingModelPart()
+                        + "}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.pending").value(false));
 
@@ -268,6 +283,20 @@ class InstallationApiIntegrationTest {
                 "{\"chatModel\":{\"baseUrl\":\""
                     + fixture.chatBaseUrl()
                     + "\",\"model\":\"qwen2.5:7b\"}}"));
+  }
+
+  private ResultActions saveEmbeddingModel() throws Exception {
+    return mockMvc.perform(
+        authorized(put(BASE + "/steps/EMBEDDING_MODEL"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{" + embeddingModelPart() + "}"));
+  }
+
+  /** The embedding model part of a request; the fake endpoint of the context answers it. */
+  private String embeddingModelPart() {
+    return "\"embeddingModel\":{\"baseUrl\":\""
+        + fixture.chatBaseUrl()
+        + "\",\"model\":\"bge-m3\"}";
   }
 
   private ResultActions check(String step) throws Exception {

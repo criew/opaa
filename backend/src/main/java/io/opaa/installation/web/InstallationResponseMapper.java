@@ -1,6 +1,7 @@
 package io.opaa.installation.web;
 
 import io.opaa.api.dto.InstallationChatModelView;
+import io.opaa.api.dto.InstallationEmbeddingModelView;
 import io.opaa.api.dto.InstallationFirstAdminView;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationSignIn;
@@ -44,6 +45,13 @@ final class InstallationResponseMapper {
                 model.baseUrl(), model.model(), model.apiKeySet(), model.maxTokens());
         view.setTemperature(model.temperature());
         response.setChatModel(view);
+      }
+      case InstallationOverview.EmbeddingModel model -> {
+        InstallationEmbeddingModelView view =
+            new InstallationEmbeddingModelView(
+                model.baseUrl(), model.model(), model.apiKeySet(), model.maxInputTokens());
+        view.setDimensions(model.dimensions());
+        response.setEmbeddingModel(view);
       }
     }
     return response;

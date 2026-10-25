@@ -33,4 +33,9 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
   public record ChatModel(
       String baseUrl, String model, boolean apiKeySet, BigDecimal temperature, int maxTokens)
       implements SavedValues {}
+
+  /** {@code dimensions} is the vector size of the last successful probe embedding, else null. */
+  public record EmbeddingModel(
+      String baseUrl, String model, boolean apiKeySet, int maxInputTokens, Integer dimensions)
+      implements SavedValues {}
 }

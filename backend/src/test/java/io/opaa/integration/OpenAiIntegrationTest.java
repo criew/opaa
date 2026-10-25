@@ -12,6 +12,7 @@ import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
@@ -77,12 +78,18 @@ class OpenAiIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private EmbeddingInfoService embeddingInfo;
 
   private UUID userId;
   private UUID targetLibraryId;
 
   @BeforeEach
   void setUp() throws IOException {
+    // Without a reachable embedding model the start-up probe installs none, so there is no
+    // vector table to index into.
+    assumeTrue(
+        embeddingInfo.getEmbeddingInfo().installed(),
+        "Skipping: no embedding model could be installed; the probe embedding failed.");
     removeOwnFixtures();
     // The trigger endpoint/service reads type and configuration off the library itself, and the
     // seeded system library is SourceType.UPLOAD, which triggerIndexing now rejects

@@ -18,6 +18,7 @@ import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.instance.CurrentInstance;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelSeedRunner;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Files;
@@ -44,6 +45,7 @@ class InstallationStartupTest {
   private final DatabaseInstallationStatus status = mock(DatabaseInstallationStatus.class);
   private final OidcProviderSeedRunner identitySeeds = mock(OidcProviderSeedRunner.class);
   private final LlmModelSeedRunner chatModelSeed = mock(LlmModelSeedRunner.class);
+  private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private ListAppender<ILoggingEvent> logs;
 
@@ -74,11 +76,13 @@ class InstallationStartupTest {
     assertThat(startup.getPhase()).isEqualTo(CurrentInstance.REGISTERED_PHASE);
     startup.start();
 
-    InOrder order = Mockito.inOrder(installation, status, identitySeeds, chatModelSeed);
+    InOrder order =
+        Mockito.inOrder(installation, status, identitySeeds, chatModelSeed, embeddingModels);
     order.verify(installation).completeAtStartupIfDue(true, false);
     order.verify(status).reload();
     order.verify(identitySeeds).runStartupSeeds();
     order.verify(chatModelSeed).runStartupSeed();
+    order.verify(embeddingModels).adoptIfMissing();
     verify(installation, never()).ensureToken(any());
   }
 
@@ -92,6 +96,7 @@ class InstallationStartupTest {
     verify(installation).completeAtStartupIfDue(false, false);
     verify(identitySeeds, never()).runStartupSeeds();
     verify(chatModelSeed, never()).runStartupSeed();
+    verify(embeddingModels, never()).adoptIfMissing();
     verify(registry).refresh();
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .filteredOn(message -> message.contains("ErzeugtesTokenAbc123ErzeugtesToken"))
@@ -142,7 +147,8 @@ class InstallationStartupTest {
                 List.of(
                     new StepInput.FirstAdmin("it@stadt.example", "IT", "Kennwort-aus-Secret-2026"),
                     new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
-                    new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null))));
+                    new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null),
+                    new StepInput.EmbeddingModel(null, "bge-m3", "", null))));
     verify(installation, never()).ensureToken(any());
   }
 
@@ -156,7 +162,7 @@ class InstallationStartupTest {
 
     verify(installation).ensureToken(null);
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
-        .anyMatch(message -> message.contains("firstAdmin, signIn und chatModel"));
+        .anyMatch(message -> message.contains("firstAdmin, signIn, chatModel und"));
   }
 
   @Test
@@ -166,7 +172,8 @@ class InstallationStartupTest {
             directory.resolve("installation.json"),
             "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
                 + "\"password\":\"im-klartext\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
-                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"}}");
+                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"},"
+                + "\"embeddingModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"bge-m3\"}}");
     InstallationStartup startup = startup("oidc", "", null, answers.toString());
 
     assertThat(startup.decide()).isFalse();
@@ -197,6 +204,7 @@ class InstallationStartupTest {
         status,
         identitySeeds,
         chatModelSeed,
+        embeddingModels,
         registry,
         JsonMapper.builder().build(),
         new RateLimitProperties(true, List.of(), null, null, null, null, null, null, null, null));
@@ -237,6 +245,7 @@ class InstallationStartupTest {
             status,
             identitySeeds,
             chatModelSeed,
+            embeddingModels,
             registry,
             JsonMapper.builder().build(),
             new RateLimitProperties(

@@ -315,6 +315,14 @@ nonPersonalTables:
     - created_at
     - updated_at
   llm_model_seed_marker: [id, seeded_at]
+  embedding_model:
+    - id
+    - base_url
+    - model_identifier
+    - api_key_ciphertext
+    - max_input_tokens
+    - dimensions
+    - installed_at
   private_storage_quota_settings: [id, quota_bytes, updated_at]
   full_sync_rhythm_settings: [source_type, interval_days, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]

@@ -6,6 +6,7 @@ import io.opaa.account.OidcProviderSeedRunner;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelSeedRunner;
 import io.opaa.ratelimit.RateLimitProperties;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -43,6 +44,7 @@ class InstallationStartupRaceIntegrationTest {
   @Autowired private AuthProperties authProperties;
   @Autowired private OidcProviderSeedRunner identitySeeds;
   @Autowired private LlmModelSeedRunner chatModelSeed;
+  @Autowired private EmbeddingModelService embeddingModels;
   @Autowired private OidcProviderRegistry registry;
   @Autowired private JsonMapper json;
   @Autowired private RateLimitProperties rateLimit;
@@ -75,7 +77,9 @@ class InstallationStartupRaceIntegrationTest {
                 + password
                 + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},\"chatModel\":{\"baseUrl\":\""
                 + fixture.chatBaseUrl()
-                + "\",\"model\":\"qwen2.5:7b\"}}");
+                + "\",\"model\":\"qwen2.5:7b\"},\"embeddingModel\":{\"baseUrl\":\""
+                + fixture.chatBaseUrl()
+                + "\",\"model\":\"bge-m3\"}}");
     List<Boolean> outcomes = new CopyOnWriteArrayList<>();
     Runnable start = () -> outcomes.add(startup(answers).applyAnswerFile());
 
@@ -100,6 +104,7 @@ class InstallationStartupRaceIntegrationTest {
         status,
         identitySeeds,
         chatModelSeed,
+        embeddingModels,
         registry,
         json,
         rateLimit);

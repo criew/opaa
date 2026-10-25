@@ -1,12 +1,16 @@
 package io.opaa.installation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import io.opaa.account.PasswordPolicy;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderConnectionTester;
+import io.opaa.llm.EmbeddingEndpoint;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
@@ -17,8 +21,9 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The check of the chat model step sends nothing to an address the target address check refuses:
- * the address is checked again right before the probe, since a name may resolve elsewhere by then.
+ * The checks of the model steps send nothing to an address the target address check refuses: the
+ * address is checked again right before the probe, since a name may resolve elsewhere by then. The
+ * probe embedding of the embedding model step reports the vector size it found.
  */
 class StepChecksTest {
 
@@ -36,9 +41,15 @@ class StepChecksTest {
           json,
           strict);
   private final LlmModelConnectionTester chatTester = mock(LlmModelConnectionTester.class);
+  private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final StepChecks checks =
       new StepChecks(
-          rules, mock(OidcProviderConnectionTester.class), chatTester, encryptor, strict);
+          rules,
+          mock(OidcProviderConnectionTester.class),
+          chatTester,
+          encryptor,
+          strict,
+          embeddingModels);
 
   // regression guard: no probe of the installation reaches a blocked address
   @Test
@@ -52,5 +63,41 @@ class StepChecksTest {
     assertThat(outcome.succeeded()).isFalse();
     assertThat(outcome.message()).contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
     verifyNoInteractions(chatTester);
+  }
+
+  @Test
+  void aBlockedEmbeddingAddressFailsTheCheckWithoutAProbe() {
+    String payload =
+        json.writeValueAsString(
+            new StepRules.EmbeddingModelPayload("http://169.254.169.254/v1", "bge-m3", null, null));
+
+    StepChecks.Outcome outcome = checks.check(InstallationStep.EMBEDDING_MODEL, payload, null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.dimensions()).isNull();
+    verifyNoInteractions(embeddingModels);
+  }
+
+  @Test
+  void theProbeEmbeddingOfAnAllowedAddressReportsItsVectorSize() {
+    StepChecks permissive =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            encryptor,
+            new TargetAddressValidator(false, List.of()),
+            embeddingModels);
+    when(embeddingModels.probe(any(EmbeddingEndpoint.class)))
+        .thenReturn(
+            new EmbeddingModelService.ProbeOutcome(true, "Probeeinbettung erfolgreich", 768));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.EmbeddingModelPayload("http://ollama:11434/v1", "bge-m3", null, null));
+
+    StepChecks.Outcome outcome = permissive.check(InstallationStep.EMBEDDING_MODEL, payload, null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.dimensions()).isEqualTo(768);
   }
 }

@@ -291,14 +291,12 @@ Umgebungs-Basis-Adressen. Eine Maskierung auf der Leseseite gibt es bewusst nich
 keine Bestandsinstallationen mit bereits gespeicherten Adressen, und eine zweite Darstellungsschicht
 für einen Fall, den es nicht gibt, wäre Aufwand ohne Nutzen.
 
-Die Einbettungs-Rolle führt **keine Basis-Adresse in Anzeige, Audit oder Schnittstelle**:
-`io.opaa.llm.EmbeddingInfoService` liest nur Anbieter, Modell-Kennung und Dimensionszahl. Eine
-Basis-Adresse hat sie aber sehr wohl — `OPAA_OPENAI_EMBEDDING_BASE_URL` —, und diese verlässt den
-Prozess auch: Ein fehlgeschlagener Einbettungsaufruf trägt die Ziel-Adresse im Meldungstext der
-Spring-Ausnahme und landet mit dem Stacktrace im Log. Sie wird deshalb beim Start geprüft
-(`io.opaa.config.OpenAiBaseUrlGuard`, gemeinsam mit der Chat-Basis-Adresse aus derselben
-Umgebungskonfiguration) — hier ist ein **Startabbruch** richtig, anders als bei der Rerank-Rolle:
-Ohne Einbettungen findet die Suche nichts, es gibt also keinen sinnvoll eingeschränkten Weiterbetrieb.
+Die Einbettungs-Rolle ist seit ADR-0060 (Entscheidung 10) die Zeile `embedding_model`, festgelegt
+in der Installation mit einer Probeeinbettung, die auch die Dimension der Vektortabelle bestimmt.
+Ihre Basis-Adresse verlässt den Prozess: Ein fehlgeschlagener Einbettungsaufruf trägt die
+Ziel-Adresse im Meldungstext der Ausnahme und landet mit dem Stacktrace im Log. Eine Adresse mit
+Anmeldedaten lehnt deshalb schon der Installationsschritt ab, und die einmalige Übernahme einer
+älteren Installation übernimmt eine solche Adresse nicht.
 
 ### Ein Anbindungsweg, nicht zwei
 
