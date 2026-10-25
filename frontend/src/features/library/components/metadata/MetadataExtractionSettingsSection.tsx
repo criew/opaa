@@ -240,7 +240,7 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
             {field.emptyDocuments > 0 && coreKeys.has(field.fieldKey) ? (
               <TextAction
                 onClick={() => setSearchParams({ missingField: field.fieldKey }, { replace: true })}
-                aria-label={`Dokumente ohne ${field.label} anzeigen`}
+                context={`Dokumente ohne ${field.label}`}
               >
                 Anzeigen
               </TextAction>

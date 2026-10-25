@@ -30,11 +30,7 @@ export default function DiagnosticsLockControl({
       title="Diagnosesperre"
       action={
         canToggle ? (
-          <TextAction
-            onClick={onToggle}
-            disabled={saving}
-            aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
-          >
+          <TextAction onClick={onToggle} disabled={saving}>
             {locked ? 'Sperre lösen' : 'Sperre setzen'}
           </TextAction>
         ) : undefined

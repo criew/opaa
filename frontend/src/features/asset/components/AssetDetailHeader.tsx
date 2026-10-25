@@ -290,11 +290,19 @@ export default function AssetDetailHeader({
           {badges}
           {administrative && <MetaBadge>administrativ</MetaBadge>}
         </Stack>
+        {/* below 600 px the actions always take their own line, with or without a main action,
+            so the head has the same height for every role */}
         <Stack
           direction="row"
           spacing={1}
           useFlexGap
-          sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            flexShrink: 0,
+            flexBasis: { xs: '100%', sm: 'auto' },
+            minHeight: 40,
+          }}
         >
           {actions}
           {favorite !== undefined && onFavoriteChange && (

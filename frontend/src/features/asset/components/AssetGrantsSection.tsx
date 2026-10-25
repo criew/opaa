@@ -527,7 +527,7 @@ export default function AssetGrantsSection({
                             onClick={() =>
                               setMembersOpen((prev) => ({ ...prev, [grant.id]: true }))
                             }
-                            aria-label={`Mitglieder der Gruppe „${subjectName}“ anzeigen`}
+                            context={`der Gruppe „${subjectName}“`}
                           >
                             Mitglieder
                           </TextAction>

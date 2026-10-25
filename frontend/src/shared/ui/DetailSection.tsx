@@ -2,6 +2,7 @@ import { useId, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 
 interface DetailSectionProps {
   /** The section's head in running type, weight 600 - the style of the rows of the Reiter „Quelle". */
@@ -59,14 +60,16 @@ export default function DetailSection({
  */
 export function TextAction({
   children,
+  context,
   onClick,
   disabled,
   ...aria
 }: {
   children: ReactNode
+  /** Said after the visible word for assistive technology only („Ändern“ + „ Feld Aktenzeichen“). */
+  context?: string
   onClick: () => void
   disabled?: boolean
-  'aria-label'?: string
   'aria-expanded'?: boolean
   'aria-controls'?: string
 }) {
@@ -87,6 +90,11 @@ export function TextAction({
       }}
     >
       {children}
+      {context && (
+        <Box component="span" sx={visuallyHidden}>
+          {` ${context}`}
+        </Box>
+      )}
     </Link>
   )
 }

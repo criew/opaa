@@ -324,15 +324,12 @@ export default function LibraryMetadataFieldsSection({
             actions={
               canManageSchema && !field.deletionPending ? (
                 <>
-                  <TextAction
-                    onClick={() => setEditField(field)}
-                    aria-label={`Feld ${field.label} bearbeiten`}
-                  >
+                  <TextAction onClick={() => setEditField(field)} context={`Feld ${field.label}`}>
                     Ändern
                   </TextAction>
                   <TextAction
                     onClick={() => void openDelete(field)}
-                    aria-label={`Feld ${field.label} löschen`}
+                    context={`Feld ${field.label}`}
                   >
                     Löschen
                   </TextAction>
