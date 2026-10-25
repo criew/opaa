@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
+import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import TextField from '@mui/material/TextField'
 import { TextAction } from '@/shared/ui/DetailSection'
 import Box from '@mui/material/Box'
@@ -71,6 +71,7 @@ export function SummaryValue({
   expandable?: boolean
 }) {
   const [showAll, setShowAll] = useState(false)
+  const allTitleId = useId()
   const [query, setQuery] = useState('')
   const text = typeof summary === 'string' ? summary : (summary?.lead ?? null)
   const items = summary && typeof summary !== 'string' ? summary.items : []
@@ -153,8 +154,16 @@ export function SummaryValue({
           </Box>
         )}
         {expandable && (
-          <Dialog open={showAll} onClose={() => setShowAll(false)} fullWidth maxWidth="sm">
-            <DialogTitle>{text}</DialogTitle>
+          <Dialog
+            open={showAll}
+            onClose={() => setShowAll(false)}
+            fullWidth
+            maxWidth="sm"
+            aria-labelledby={allTitleId}
+          >
+            <DialogTitleWithClose id={allTitleId} onClose={() => setShowAll(false)}>
+              {text}
+            </DialogTitleWithClose>
             <DialogContent>
               <TextField
                 size="small"

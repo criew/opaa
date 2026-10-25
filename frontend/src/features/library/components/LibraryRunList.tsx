@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
+import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
@@ -350,9 +350,9 @@ function RunDetail({
         maxWidth="sm"
         aria-labelledby={`run-events-title-${run.id}`}
       >
-        <DialogTitle id={`run-events-title-${run.id}`}>
+        <DialogTitleWithClose id={`run-events-title-${run.id}`} onClose={() => setAllOf(null)}>
           {allOf?.label} · {count(allOf?.events.length ?? 0)}
-        </DialogTitle>
+        </DialogTitleWithClose>
         <DialogContent>
           <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
             {allOf?.events.map((event, index) => (

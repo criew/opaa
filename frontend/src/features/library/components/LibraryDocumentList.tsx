@@ -577,47 +577,45 @@ export default function LibraryDocumentList({
       )}
 
       {/* the head names the documents; the foot counts only a page or a filtered list */}
-      {!isLoading &&
-        pageState &&
-        (pageCount > 1 || isSearchActive || isMissingFilterActive) && (
-          <Stack
-            direction="row"
-            sx={{
-              mt: 2,
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 1,
-            }}
-          >
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {/* the head counts the library; the foot counts a filtered list only */}
-              {[
-                isSearchActive
-                  ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
-                  : isMissingFilterActive
-                    ? `${pageState.totalElements.toLocaleString('de-DE')} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
-                    : null,
-                pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </Typography>
-            {pageCount > 1 && (
-              <Pagination
-                count={pageCount}
-                size="small"
-                siblingCount={0}
-                boundaryCount={1}
-                page={(pageState?.page ?? 0) + 1}
-                onChange={(_event, page) => onPageChange(page)}
-                // The app shell's own persistent navigation is also a <nav>; without a
-                // distinguishing name, a test scoping to "the" navigation region would match both.
-                aria-label="Dokumentenliste blättern"
-              />
-            )}
-          </Stack>
-        )}
+      {!isLoading && pageState && (pageCount > 1 || isSearchActive || isMissingFilterActive) && (
+        <Stack
+          direction="row"
+          sx={{
+            mt: 2,
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 1,
+          }}
+        >
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {/* the head counts the library; the foot counts a filtered list only */}
+            {[
+              isSearchActive
+                ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
+                : isMissingFilterActive
+                  ? `${pageState.totalElements.toLocaleString('de-DE')} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
+                  : null,
+              pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Typography>
+          {pageCount > 1 && (
+            <Pagination
+              count={pageCount}
+              size="small"
+              siblingCount={0}
+              boundaryCount={1}
+              page={(pageState?.page ?? 0) + 1}
+              onChange={(_event, page) => onPageChange(page)}
+              // The app shell's own persistent navigation is also a <nav>; without a
+              // distinguishing name, a test scoping to "the" navigation region would match both.
+              aria-label="Dokumentenliste blättern"
+            />
+          )}
+        </Stack>
+      )}
     </Box>
   )
 }
