@@ -322,7 +322,7 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
    * which names the source's holdings for a transfer that may never run.
    */
   @Test
-  void transferEntriesFindTheTargetUnderTargetIdOnlyForTransferEventTypes() throws Exception {
+  void transferEntriesFindTheTargetUnderTargetIdOnlyForAnExecutedTransfer() throws Exception {
     Instant now = Instant.now();
     entry(
         now,
