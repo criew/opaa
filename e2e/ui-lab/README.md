@@ -13,7 +13,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | --- | --- |
 | `capture.mjs` | Screenshots und Kennzahlen je Ablauf, Szenario, Schema und Breite |
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
-| `record-flows.mjs` | Videomatrix je Art (ok, viele, fehler) als MP4 mit sichtbarem Mauszeiger |
+| `record-flows.mjs` | Videos je Art und Szenario (`--kinds`) als MP4 mit sichtbarem Mauszeiger; im UI-Lab je Szenario ein Video über alle Reiter |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
 | `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
 | `build-prototype.mjs` | baut den klickbaren Prototyp nach `out/prototype/` und teilt ihn in Upload-Pakete |
@@ -204,8 +204,8 @@ node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
      [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
 ```
 
-Nimmt die **Videomatrix** auf: je Art drei Videos, **ok** (`small`), **viele** (`scale`) und
-**fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
+Nimmt je Art und Fall ein Video auf, vorgegeben drei Fälle **ok** (`small`), **viele** (`scale`)
+und **fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
 Klickring, optionaler Bildunterschrift und Pause nach jedem Schritt. Ein Ablaufmodul exportiert
 `TYPES` (die Arten), optional `KINDS` (Fall → Szenario, Vorgabe wie oben) und **eine**
 Ablaufdefinition `run(h, { type, kind, scenario })`, die den Weg einer Art in jedem Fall spielt;
@@ -218,7 +218,8 @@ testet und geht weiter bis „Freigaben“; viele dasselbe mit großer Liste, me
 Scrollen; fehler zuerst „Weiter“ auf leerem Formular, dann die abgelehnte Auflistung bzw. den
 abgelehnten Test. Eine Variante mit anderer Struktur bringt ihr eigenes Modul derselben Form mit
 (`--flows`). Im UI-Lab entstehen Videos nur für die Gewinnerin: je Szenario ein Video, das alle
-Reiter mit echten Aktionen durchläuft und keinen Weg wiederholt.
+Reiter mit echten Aktionen durchläuft und keinen Weg wiederholt. Dafür spielt `run` je Fall den
+ganzen Weg über alle Reiter; `--kinds` wählt die Szenarien, `--types` die Hauptart.
 
 ## compare.py
 

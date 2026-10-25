@@ -53,7 +53,7 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
 2. **Die Prüfliste vollständig in der ersten Runde.** Alle bereichsspezifischen Ergänzungen
    kommen auf einmal zur Freigabe, nicht scheibchenweise nach jeder Variante. Was später
    auffällt, wird ein neuer Punkt für das nächste Lab, keine neue Runde für dieses.
-3. **Zweistufig: erst Richtung, dann Breite.** Die Skizzenrunde entscheidet an drei typischen
+3. **Erst Richtung, dann Breite.** Die Skizzenrunde entscheidet an drei typischen
    Fällen über die Richtung. Erst danach werden alle Arten und Szenarien als Prototyp gebaut und
    gemessen; Feinschliff bekommt nur die Gewinnerin.
 4. **Videos nur für die Gewinnerin, nach dem Durchklicken.** Videos zeigen Übergänge, Flackern
@@ -90,8 +90,9 @@ Diese Regeln sind Lehren aus dem ersten UI-Lab. Sie gelten in jedem Schritt.
    ist das `?variant=none`.
 9. **Screenshots, wenn welche entstehen, in voller Auflösung.** Kein Herunterskalieren, keine
    verlustreiche Kompression, auch nicht auf Vergleichsseite und Querbögen: Ein verkleinertes Bild
-   ist für die Abnahme wertlos. Wo ein Werkzeug noch skaliert, verlinkt die Seite das Original
-   (README der Werkzeuge, „Grenzen“).
+   ist für die Abnahme wertlos. Bis #3171 umgesetzt ist, skalieren `compare.py`,
+   `contact_sheets.py` und `build_site.py` noch: Bögen und Sprites dienen nur der Übersicht,
+   beurteilt wird am PNG aus `capture.mjs` (README der Werkzeuge, „Grenzen“).
 
 ## Branches und Ablage
 
@@ -173,7 +174,8 @@ Der Auftrag an jede Session enthält:
   2. Messlauf (Grundregel 7), Verstöße gegen Budgets, axe, Kontrast und `overflowX` beheben.
   3. Prototyp bauen und veröffentlichen (Abschnitt 7), Link an den Orchestrator.
 - `ui-lab/results/<X>/REPORT.md`: Tabelle `Nr | Status | Beleg` über alle Prüflistenpunkte,
-  Kennzahlen aus `compare.py` und bekannte Lücken; Ergebnisse committen und pushen;
+  Kennzahlen aus `compare.py`, bekannte Lücken und, sobald es ein Konsistenz-Review gab (§6), je
+  Review-Befund erledigt oder bewusst nicht, mit Grund; Ergebnisse committen und pushen;
 - Regeln aus `AGENTS.md`, Code-Kommentare und Tests wie in jedem Frontend-PR, aber kein PR.
 
 Zwischen den Halten laufen die Sessions ohne Rückfragen; am Halt warten sie auf die
@@ -204,7 +206,9 @@ Prüfliste allein sehen das nicht. Ablauf und Prüfkategorien:
 
 Drei Subagenten mit frischem Kontext, je einer pro Blickwinkel, ohne zu wissen, wer welche
 Variante gebaut hat. Alle bekommen dieselben Unterlagen: den Prototyp-Link, `metrics-summary.md`
-aus `compare.py --variants A=…,B=…,C=…`, die Berichte und die Prüfliste.
+aus `compare.py --variants A=…,B=…,C=…`, die Berichte und die Prüfliste. Ohne Zugang zum Artifact
+klicken sie den Prototyp lokal durch: statischer Server und Playwright (README der Werkzeuge,
+„Klickbarer Prototyp“, „Lokal prüfen“).
 
 | Juror | Blickwinkel | Belege |
 | --- | --- | --- |
@@ -222,8 +226,9 @@ Variante, einzelne Muster der anderen, jedes mit Herkunft und Prüflistenpunkt. 
 weiteren Session (oder in der Session der Grundvariante) bauen. Nur sie bekommt die volle Runde:
 
 1. Feinschliff, Messlauf; M hält alle Zählbudgets ein und ist axe- und kontrastfrei.
-2. Konsistenz-Review an der Teilmatrix (Abschnitt 4), Befunde aus `REVIEW-<n>.md` beheben,
-   Nachcheck an den Querbögen der betroffenen Bildschirme.
+2. Konsistenz-Review an der Teilmatrix (Abschnitt 4), Befunde aus `REVIEW-<n>.md` beheben und in
+   `REPORT.md` je Befund als erledigt oder bewusst nicht (mit Grund) vermerken, Nachcheck an den
+   Querbögen der betroffenen Bildschirme.
 3. Prototyp neu veröffentlichen. **Halt vor den Videos: Der Maintainer klickt den Prototyp von M
    durch**, nicht die Screenshot-Matrix; die Session baut die Rückmeldung ein.
 4. Videos mit `record-flows.mjs` nach Grundregel 4.
@@ -242,8 +247,8 @@ als Artifact: `index.html` als Seite, die Pakete aus `files.json` nacheinander a
 Ergebnisordnern und füllt die Texte: je Entwurf Idee, Stärken, Schwächen und Bewertung der
 Juroren; „Gelernt und umgesetzt“ mit dem, was in M eingeflossen ist, was für die Guidelines
 entschieden wurde und was am Vorgehen besser wurde. Darunter wählt der Maintainer Variante →
-Bereich → Fall → Breite und sieht Videos und alle Bildschirme in voller Auflösung (Grundregel 9),
-auf Wunsch mit dem Ist-Stand daneben. Videos gehen als Assets ins Artifact, die Bildschirme als
+Bereich → Fall → Breite und sieht Videos und alle Bildschirme als Übersicht (Grundregel 9), auf
+Wunsch mit dem Ist-Stand daneben. Videos gehen als Assets ins Artifact, die Bildschirme als
 ein Sprite je Auswahl. Prototyp-Link, Kennzahlen aus `metrics-summary.md` und die offenen Fragen
 (Grundregel 6) gehören in den Bericht neben der Seite. **Halt: Der Maintainer
 entscheidet.** Danach: Umsetzungs-Issue mit der gewählten Variante als Spezifikation, eigenes
