@@ -9,6 +9,7 @@ import {
 } from '../../utils/googleDriveSource'
 import {
   SHAREPOINT_API,
+  graphShownName,
   sharePointFolderLabel,
   sharePointFolderPath,
   sharePointLibraryLabel,
@@ -288,7 +289,7 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
     const named = site && !drive.name.endsWith(`(${site.name})`)
     const choice = byDrive.get(driveId) ?? {
       driveId,
-      name: named ? sharePointLibraryName(drive.name, site.name) : drive.name,
+      name: named ? sharePointLibraryName(drive.name, site.name) : graphShownName(drive.name),
       folders: [],
       site: site ? { id: site.key.slice('site:'.length), name: site.name } : null,
     }
@@ -296,7 +297,7 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
       const between = item.trail.slice(driveCrumbAt + 1).map((crumb) => crumb.name)
       choice.folders.push({
         id: item.key.slice('folder:'.length),
-        name: between.length ? sharePointFolderPath(between, item.name) : item.name,
+        name: between.length ? sharePointFolderPath(between, item.name) : graphShownName(item.name),
       })
     }
     byDrive.set(driveId, choice)
@@ -378,7 +379,12 @@ export function oneDriveFoldersOfItems(
     const kept = before.find((folder) => folder.id === id)
     if (kept) return [kept]
     const trail = item.trail.map((crumb) => crumb.name)
-    return [{ id, name: trail.length ? sharePointFolderPath(trail, item.name) : item.name }]
+    return [
+      {
+        id,
+        name: trail.length ? sharePointFolderPath(trail, item.name) : graphShownName(item.name),
+      },
+    ]
   })
 }
 

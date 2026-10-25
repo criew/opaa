@@ -7,6 +7,7 @@ import {
   type OneDriveSourceValues,
 } from './oneDriveSource'
 import { oneDriveSetup } from '../components/setup/connectors/oneDriveSetup'
+import { oneDriveFoldersOfItems } from '../components/sourceKit/selectionSources'
 import type { SourceFormContext } from '../components/sources/types'
 
 const context: SourceFormContext = {
@@ -157,5 +158,32 @@ describe('oneDriveSetup', () => {
         context,
       ),
     ).toEqual({ lead: '2 Ordner', items: ['Vorlagen / 2026', 'Ordner 01Y'] })
+  })
+})
+
+describe('oneDriveFoldersOfItems', () => {
+  it('names a folder by its path and cuts every name to what the connector stores', () => {
+    const long = 'Ä'.repeat(250)
+    expect(
+      oneDriveFoldersOfItems(
+        [
+          { key: 'folder:01A', name: long, trail: [] },
+          { key: 'folder:01B', name: '2026', trail: [{ key: 'folder:01P', name: 'Projekte' }] },
+        ],
+        [],
+      ),
+    ).toEqual([
+      { id: '01A', name: 'Ä'.repeat(200) },
+      { id: '01B', name: 'Projekte / 2026' },
+    ])
+  })
+
+  it('keeps the stored entry of a folder chosen before', () => {
+    expect(
+      oneDriveFoldersOfItems(
+        [{ key: 'folder:01A', name: 'Ordner 01A', trail: [] }],
+        [{ id: '01A', name: null }],
+      ),
+    ).toEqual([{ id: '01A', name: null }])
   })
 })
