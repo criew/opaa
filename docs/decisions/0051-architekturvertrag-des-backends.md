@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -48,6 +48,7 @@ funktioniert.
 | Ausgehende Verbindungen | `sourceaccess`; S3 über `io.opaa.s3`, Microsoft Graph über `io.opaa.msgraph`; jeder ausgehende Client ist über `@DataFlow` angemeldet, Hüllklassen ohne eigenes Ziel tragen `@DataFlowCarrier` (ADR-0052, Entscheidung 8) | `SourceAccessDependencyStructureTest`, `ModularArchitectureTest` (`OUTBOUND_CLIENTS`, `OUTBOUND_BEANS`) |
 | Datenbankschema | Flyway-Migrationen je Modul, SQL ohne Schemaqualifizierung (ADR-0034, ADR-0056) | `MigrationLayoutTest`, `MigrationModuleBoundaryTest`, `MigrationOrderTest` |
 | Spring-Testkontexte | die Signaturen in `io.opaa.test` | `SpringContextSignatureTest` |
+| Arbeit am Ende einer Transaktion | `common.TransactionCallbacks`: `afterCommitOrNow` (nur nach Commit) oder `afterCompletionOrNow` (nach Commit und Rollback, für Cache-Invalidierungen), beide ohne aktive Synchronisation sofort; `afterCommit` ohne Sofort-Zweig unter `MANDATORY` | `ModularArchitectureTest` (`transactionCallbacksGoThroughTheHelper`) |
 
 „Konvention“ heißt: Die Regel gilt, aber nur das Review hält sie.
 
@@ -59,7 +60,7 @@ Befund gegen die Erweiterungsstelle, nicht gegen die Erweiterung.
 
 | Erweiterung | Dateien außerhalb des eigenen Pakets | Geprüft durch |
 |---|---|---|
-| Neuer Quell-Konnektor | 0; er nutzt nur `indexing.spi`, `indexing.run`, `indexing.filesync`, `indexing.document`, `indexing.job`, `indexing.attachment`, `sourceaccess`, `format`, `knowledge`-Entities, `api.types` (ADR-0038, ADR-0045) | `ModularArchitectureTest` (`CONNECTOR_IMPORTS`; Konnektoren kennen einander nicht) |
+| Neuer Quell-Konnektor | 0; er nutzt nur `indexing.spi`, `indexing.run`, `indexing.filesync`, `indexing.document`, `indexing.job`, `indexing.attachment`, `sourceaccess`, `format`, `knowledge`-Entities, `api.types` (ADR-0038, ADR-0045); seinen Datenfluss für die Auskunft nennt er im eigenen `SourceConnectorDescriptor` (ADR-0052, Entscheidung 11) | `ModularArchitectureTest` (`CONNECTOR_IMPORTS`; Konnektoren kennen einander nicht), `ConnectorDataFlowsIntegrationTest` |
 | Neues Dokumentformat | 1 (Registrierung) | Konvention, am PR nachgemessen |
 | Weiterer OIDC-Anbieter | 0 (ADR-0025) | Konvention |
 | Neue Capability | 0 Switch-Kaskaden (ADR-0036) | Konvention |
@@ -92,7 +93,6 @@ unter der sie wieder vorgelegt wird; tritt sie ein, wird die Zeile zum Issue und
 | Zwei Tool-Kataloge (`McpToolCatalog` und der Tool-Loop-Spike) beschreiben dieselbe Suche | Der Spike liegt hinter einem Flag; sein Schicksal ist nicht entschieden | über den Spike entschieden ist; dann löschen oder Tool-SPI |
 | Entities stempeln `createdAt`/`updatedAt` mit `Instant.now()` statt über die `Clock` | Entities haben keine Injektion; die Stempel sind keine fachlichen Fristen (`backend/AGENTS.md`, „Zeit“) | ein Test einen deterministischen Entity-Stempel braucht |
 | Flache Wurzelpakete mit vielen Klassen (account, metadata, permission, auth, library, chat, llm) | Kein Sicherheitsproblem; dort gibt es kein zweites Anliegen, das eine Paketgrenze bräuchte | ein großer Umbau in einem dieser Pakete ansteht oder ein zweites Anliegen eine Paketregel braucht (Muster: `indexing.spi`/`run`) |
-| Anonyme `TransactionSynchronization` („nach Commit, sonst sofort“) an zehn Stellen | Zwei Semantiken (afterCommit, afterCompletion); zwei Helfer lohnen erst mit dem nächsten Vorkommen | die nächste Stelle entsteht |
 | `interval(Object)`-Parser in drei Dateiablage-Konnektoren | der nächste Dateiablage-Konnektor nimmt ihn in den Kern | der nächste Dateiablage-Konnektor entsteht |
 
 ### 6. Ratschen für Zählbares
@@ -102,7 +102,13 @@ lässt: Der Wert darf nicht steigen; die Obergrenze steht im Skript und wird nur
 muss ein Bestand nicht sofort abgebaut werden, aber er wächst garantiert nicht. Skripte liegen unter
 `.github/scripts` (Muster `check_action_pins.sh`, `check_code_comments.sh`). Ratschen:
 `Instant.now()` ohne `Clock` in Spring-Beans (`check_instant_now.sh`), `@Value` außerhalb von
-`*Properties` (`check_value_annotations.sh`). Keine Ratsche für das, was ArchUnit hart prüft.
+`*Properties` (`check_value_annotations.sh`). Als Bean zählt für `check_instant_now.sh` eine Klasse
+mit Stereotyp-Annotation und jede Klasse, die eine Datei mit `@Configuration` oder einer
+`@Bean`-Methode (auch im Lite-Modus einer `@Component`) in einer Codezeile mit `new` erzeugt, also
+die Rückgabe einer `@Bean`-Methode und die dort eingehängten Filter und Handler. Nicht erfasst sind
+Objekte aus Fabrikmethoden, Buildern und `Foo::new`, ebenso Entities und Records. Der Abgleich läuft
+über den einfachen Klassennamen.
+Keine Ratsche für das, was ArchUnit hart prüft.
 
 ### 7. Prüfroutine
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -150,6 +150,10 @@ als Markdown). Werte gibt es nur für Schlüssel unter `settings` (Positivliste)
 durch `InstanceDisclosureAssembler#exportable`, Adressen verlieren Zugangsdaten, Abfrageteil und
 Anker. Werte aus der Datenbank, Datenflüsse, Konnektornutzung und Modellanbieter meldet jedes Modul
 über den Port `InstanceStateSource` in `io.opaa.compliance`; private Bibliotheken zählen nicht.
+Welchen Datenfluss ein Konnektortyp öffnet, nennt der Konnektor in seinem
+`SourceConnectorDescriptor`; die Konnektor-Registry reicht die Zuordnung über den Port
+`ConnectorDataFlows` in `knowledge` an Bibliotheken und Zugänge weiter, eine zentrale Liste gibt es
+nicht.
 Abrufen darf nur `SYSTEM_ADMIN`. Jeder Abruf schreibt `DATA_COLLECTION_DISCLOSURE_EXPORTED`, auch
 der abgewiesene (`DENIED`) und der gescheiterte (`FAILURE`); deshalb prüft der Service die Rolle.
 Das Ereignis nennt Format und Berichtszeitraum. Der Berichtszeitraum besteht aus ganzen,

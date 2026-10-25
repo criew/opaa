@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
@@ -24,9 +25,11 @@ class TranscriptionMultipartGuard extends OncePerRequestFilter {
   static final String MESSAGE = "Der Inhaltstyp der Anfrage wird nicht unterstützt";
 
   private final ObjectMapper objectMapper;
+  private final Clock clock;
 
-  TranscriptionMultipartGuard(ObjectMapper objectMapper) {
+  TranscriptionMultipartGuard(ObjectMapper objectMapper, Clock clock) {
     this.objectMapper = objectMapper;
+    this.clock = clock;
   }
 
   @Override
@@ -44,6 +47,6 @@ class TranscriptionMultipartGuard extends OncePerRequestFilter {
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding("UTF-8");
     objectMapper.writeValue(
-        response.getOutputStream(), new ErrorResponse(MESSAGE, status.value(), Instant.now()));
+        response.getOutputStream(), new ErrorResponse(MESSAGE, status.value(), Instant.now(clock)));
   }
 }

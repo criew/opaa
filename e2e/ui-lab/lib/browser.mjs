@@ -36,6 +36,35 @@ export async function schemeContext(browser, scheme, { width = 1280, recordVideo
   return context
 }
 
+/** sessionStorage key of `currentUiLabVariant()` in frontend/src/shared/uiLabVariant.ts. */
+const UI_LAB_VARIANT_KEY = 'opaa.uiLabVariant'
+
+/**
+ * Every `page.goto` of this tab carries `?variant=<id>` (before the hash), and the tab's
+ * sessionStorage holds the id before any script runs, so the frontend shows that UI-lab variant
+ * from the first load and after in-app navigation drops the query; without `variant` the tab stays
+ * untouched.
+ */
+export async function pinVariant(page, variant) {
+  if (!variant) return
+  await page.addInitScript(
+    ([key, id]) => {
+      try {
+        sessionStorage.setItem(key, id)
+      } catch {
+        /* storage blocked: the ?variant= query still selects the variant on every goto */
+      }
+    },
+    [UI_LAB_VARIANT_KEY, variant],
+  )
+  const goto = page.goto.bind(page)
+  page.goto = (url, options) => {
+    const target = new URL(url)
+    target.searchParams.set('variant', variant)
+    return goto(target.toString(), options)
+  }
+}
+
 /**
  * The scheme the page actually shows, from the luminance of the body background the theme sets;
  * falls back to the media query while the body is transparent.

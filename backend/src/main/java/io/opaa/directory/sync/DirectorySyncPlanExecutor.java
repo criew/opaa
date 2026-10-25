@@ -14,6 +14,7 @@ import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserRepository.DirectoryAccountState;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
@@ -37,8 +38,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Computes and, when requested and plausible, applies the diff between the database and an
@@ -1239,17 +1238,7 @@ class DirectorySyncPlanExecutor {
    * membership, for the same reason described there.
    */
   private void invalidateAfterCommit(Runnable invalidation) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      invalidation.run();
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            invalidation.run();
-          }
-        });
+    TransactionCallbacks.afterCompletionOrNow(invalidation);
   }
 
   // ---------------------------------------------------------------------------------------

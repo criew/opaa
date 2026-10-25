@@ -7,6 +7,8 @@ import static io.opaa.indexing.source.sharepoint.OneDriveTestDrives.TOKEN_ANNA;
 import static io.opaa.indexing.source.sharepoint.OneDriveTestDrives.TOKEN_CARLA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,6 +25,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.msgraph.FakeGraphServer;
+import io.opaa.msgraph.GraphClient;
 import io.opaa.test.ProductionDocumentFormats;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -179,6 +182,37 @@ class OneDriveRunSecretContractTest extends RunSecretContract {
 
     verify(jobService).failJob(jobId, OwnDrive.NO_DRIVE);
     assertThat(OneDriveTestDrives.touched(server, DRIVE_ANNA)).isFalse();
+  }
+
+  // regression guard for #3156: a token without any granted permission lacks the consent, not a
+  // valid secret - the run ends with the consent's message, the connection does not expire
+  @Test
+  void aTokenWithoutConsentEndsTheRunWithoutRejectingTheSecret() throws Exception {
+    server.failNextSaying(
+        "me/drive",
+        401,
+        "InvalidAuthenticationToken",
+        "Either scp or roles claim need to be present in the token.",
+        5);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, GraphClient.CONSENT_MISSING);
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
+    assertThat(rejectionsReported()).as("the port heard of no rejection").isZero();
+    assertThat(OneDriveTestDrives.touched(server, DRIVE_ANNA)).isFalse();
+  }
+
+  @Test
+  void aRejectedTokenStillEndsTheRunAsRejected() throws Exception {
+    server.failNext("me/drive", 401, "InvalidAuthenticationToken", null, 5);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(eq(jobId), anyString(), eq("CREDENTIALS_REJECTED"));
+    assertThat(rejectionsReported()).as("the port heard of the rejection once").isEqualTo(1);
   }
 
   @Test

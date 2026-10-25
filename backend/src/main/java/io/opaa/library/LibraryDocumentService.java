@@ -8,6 +8,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.format.SupportedDocumentFormats;
@@ -67,8 +68,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -846,17 +845,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * otherwise still consider live. Runs immediately without an active transaction.
    */
   private void deleteAfterCommit(Runnable cleanup) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      cleanup.run();
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            cleanup.run();
-          }
-        });
+    TransactionCallbacks.afterCommitOrNow(cleanup);
   }
 
   /**

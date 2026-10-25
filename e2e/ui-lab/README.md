@@ -13,7 +13,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | --- | --- |
 | `capture.mjs` | Screenshots und Kennzahlen je Ablauf, Szenario, Schema und Breite |
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
-| `record-flows.mjs` | Videomatrix je Art (ok, viele, fehler) als MP4 mit sichtbarem Mauszeiger |
+| `record-flows.mjs` | Videos je Art und Szenario (`--kinds`) als MP4 mit sichtbarem Mauszeiger; im UI-Lab je Szenario ein Video über alle Reiter |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
 | `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
 | `build-prototype.mjs` | baut den klickbaren Prototyp nach `out/prototype/` und teilt ihn in Upload-Pakete |
@@ -60,7 +60,7 @@ Ein Server je Variante und Agent, eigener Port; nach dem Lauf über die eigene P
 ## Klickbarer Prototyp
 
 Das Frontend im Mock-Modus als statische Dateien, zum selbst Durchklicken statt
-Screenshot-Matrizen ansehen. Läuft aus jedem Unterpfad und in einem Sandbox-iframe
+Screenshot-Matrizen ansehen; im UI-Lab die Entscheidungsgrundlage beider Stufen. Läuft aus jedem Unterpfad und in einem Sandbox-iframe
 (`sandbox="allow-scripts allow-same-origin"`), etwa als claude.ai-Artifact.
 
 ```bash
@@ -96,9 +96,10 @@ Szenario, Breite und Variante stehen als Suchparameter **vor** dem Hash, z. B.
 | Variante | nur sichtbar, wenn `UI_LAB_VARIANTS` in `frontend/src/shared/uiLabVariant.ts` Einträge hat; Komponenten fragen `currentUiLabVariant()` ab (`?variant=<id>`, `none` setzt zurück). Auf `main` leer, ein Lab-Branch trägt seine Varianten dort ein |
 
 **Hochladen.** `ui-lab/out/prototype/files.json` nennt alle Dateien mit Größe und teilt sie
-(ohne `index.html`) in Pakete von höchstens 55 MB und 240 Dateien. Für ein Artifact: `index.html`
-als Seite veröffentlichen, die Pakete nacheinander als `files` an dieselbe URL; die Pfade in
-`files.json` sind die veröffentlichten Pfade.
+(ohne `index.html`) in Pakete von höchstens 55 MB und 240 Dateien, unter der Grenze eines
+Artifact-Publish von 255 Dateien. Für ein Artifact: `index.html` als Seite veröffentlichen, die
+Pakete nacheinander als `files` an dieselbe URL; die Pfade in `files.json` sind die
+veröffentlichten Pfade. Bricht der Build wegen U+FFFD ab, wird nichts hochgeladen.
 
 **Lokal prüfen:** `ui-lab/out/prototype/` mit einem beliebigen statischen Server unter einem
 Unterpfad ausliefern (etwa `python3 -m http.server` im Elternordner, dann
@@ -146,9 +147,11 @@ node ui-lab/capture.mjs --base http://localhost:5191 --out <dir> [--quick]
      [--types filesystem,confluence,sharepoint,nextcloud,smb,s3,gdrive,dropbox]
      [--scenarios small,scale,empty,slow,failed,partial]   # auch: default
      [--schemes light,dark] [--widths 1280,320]
-     [--areas wizard,review,detail,edit] [--concurrency 2] [--no-axe] [--no-full]
+     [--areas wizard,review,detail,edit] [--concurrency 2] [--no-axe] [--no-full] [--variant <id>]
 ```
 
+- `--variant <id>` hängt `?variant=<id>` an jede URL, die der Ablauf öffnet (vor den Hash), und
+  zeigt so eine Variante aus `UI_LAB_VARIANTS`; gleich in `record-flows.mjs`.
 - `--flow libraries` (Vorgabe) fährt den Quellassistenten, den Prüfschritt sowie Detail und
   Bearbeiten der Fixture-Bibliothek je Quellart. `--flow pages` lädt jeden Pfad aus `--pages` je
   Szenario einmal und nimmt ihn auf; das reicht für eine erste Inventur jedes Bereichs.
@@ -200,11 +203,11 @@ Nach einer Änderung an `lib/measure.mjs` oder `lib/browser.mjs` die Kalibrierun
 cd e2e
 node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
      [--flows ui-lab/flows/library-videos.mjs] [--types nextcloud,s3] [--kinds ok,viele,fehler]
-     [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
+     [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm] [--variant <id>]
 ```
 
-Nimmt die **Videomatrix** auf: je Art drei Videos, **ok** (`small`), **viele** (`scale`) und
-**fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
+Nimmt je Art und Fall ein Video auf, vorgegeben drei Fälle **ok** (`small`), **viele** (`scale`)
+und **fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
 Klickring, optionaler Bildunterschrift und Pause nach jedem Schritt. Ein Ablaufmodul exportiert
 `TYPES` (die Arten), optional `KINDS` (Fall → Szenario, Vorgabe wie oben) und **eine**
 Ablaufdefinition `run(h, { type, kind, scenario })`, die den Weg einer Art in jedem Fall spielt;
@@ -216,16 +219,19 @@ Videos mit Art, Fall, Szenario und Schema; `build_site.py` ordnet sie darüber z
 testet und geht weiter bis „Freigaben“; viele dasselbe mit großer Liste, mehr Auswahl und
 Scrollen; fehler zuerst „Weiter“ auf leerem Formular, dann die abgelehnte Auflistung bzw. den
 abgelehnten Test. Eine Variante mit anderer Struktur bringt ihr eigenes Modul derselben Form mit
-(`--flows`).
+(`--flows`). Im UI-Lab entstehen Videos nur für die Gewinnerin: je Szenario ein Video, das alle
+Reiter mit echten Aktionen durchläuft und keinen Weg wiederholt. Dafür spielt `run` je Fall den
+ganzen Weg über alle Reiter; `--kinds` wählt die Szenarien, `--types` die Hauptart.
 
 ## compare.py
 
 ```bash
-e2e/.venv/bin/python -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<dirC> --out <dir> [--full] [--filter scale]
+e2e/.venv/bin/python -I e2e/ui-lab/compare.py --variants A=<dirA>,B=<dirB>,C=<dirC> --out <dir> [--full] [--filter scale] [--per-sheet 3]
 ```
 
-Erzeugt `<dir>/sheets/<screen>.jpg` (Varianten nebeneinander, beschriftet, 560 px Zellbreite;
-320-px-Aufnahmen bleiben in Originalgröße), `<dir>/index.html` (alle Bögen nach Bereich) und
+Erzeugt `<dir>/sheets/<screen>.png` (Varianten nebeneinander, beschriftet, jedes Bild in voller
+Auflösung; mehr als `--per-sheet` Varianten verteilen sich auf `<screen>__p<n>.png`, die Variante
+`Ist` steht auf jedem Teilbogen vorn), `<dir>/index.html` (alle Bögen nach Bereich) und
 `<dir>/metrics-summary.md` (Kennzahlen je Variante, darunter Überschreitungen der Zählbudgets,
 Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; axe-Regeln).
 
@@ -233,12 +239,13 @@ Kontrastbefunde und Schema-Abweichungen; Höhe, Wörter und Alerts je Bereich; a
 
 ```bash
 .venv/bin/python -I ui-lab/contact_sheets.py --dir <matrix> --out <dir> [--full] [--schemes light]
-     [--widths 1280,320] [--filter <text>] [--per-reviewer 2]
+     [--widths 1280,320] [--filter <text>] [--per-reviewer 2] [--per-sheet 3]
 ```
 
 Für das Konsistenz-Review einer Variante (Skill, Abschnitt 4):
-- `<dir>/sheets/<bereich>__<szenario>__<schema>__<breite>.jpg` stellt denselben Bildschirm aller
-  Typen nebeneinander; `<dir>/index.html` listet sie. So fallen Unterschiede zwischen Konnektoren
+- `<dir>/sheets/<bereich>__<szenario>__<schema>__<breite>.png` stellt denselben Bildschirm aller
+  Typen in voller Auflösung nebeneinander, je Bogen höchstens `--per-sheet` Typen (weitere in
+  `…__p<n>.png`); `<dir>/index.html` listet sie. So fallen Unterschiede zwischen Konnektoren
   oder Objekten auf, die je Einzelbild unsichtbar bleiben.
 - `<dir>/reviewers/<n>-<typen>.txt` teilt die Typen in Gruppen von `--per-reviewer` und nennt je
   Prüfer alle hellen Bilder, alle 320er und je Bereich mindestens ein dunkles. Ein `__full`, das
@@ -259,8 +266,9 @@ Vorlage: `site-template/site.example.json`. Die Variante mit der ID `ist` ist de
 Bereiche, Szenarien und Bildschirme ergeben sich aus den Dateinamen; `types`, `scenarios` und
 `areas` in `site.json` geben ihnen Namen und Reihenfolge, für jeden Bereich des Produkts.
 
-Je Auswahl entsteht ein senkrechtes Sprite (`shots/<variante>__<bereich>__<fall>__<breite>.jpg`)
-mit den Offsets in `data.json`; so bleibt die Seite unter der Dateigrenze einer Artifact-Version
+Je Auswahl entsteht ein senkrechtes PNG-Sprite (`shots/<variante>__<bereich>__<fall>__<breite>.png`)
+mit allen Bildschirmen in voller Auflösung, jeder höchstens `--cap` px hoch, und den Offsets in
+`data.json`; so bleibt die Seite unter der Dateigrenze einer Artifact-Version
 (511 Dateien). Videos werden nach `videos/` kopiert. Für ein Artifact die Videos stattdessen als
 Assets hochladen, die Zuordnung Dateiname (`<variante>__<datei>.mp4`) → Asset-URL als JSON
 ablegen und mit `--video-urls` erneut bauen; dann veröffentlicht man `index.html` mit `data.json`

@@ -53,8 +53,14 @@ Drei Punkte dazu, die regelmäßig Rückfragen auslösen:
   als Atmosphäre, nicht als Motiv in voller Leuchtkraft. Wer ein ruhiges, eher dunkles Motiv wählt,
   bekommt das bessere Ergebnis.
 
-Ohne hinterlegtes Hintergrundbild bleibt die Anmeldeseite bei ihrer bisherigen Fläche. Ohne eigenes
-Anmeldelogo greift sie auf das Logo der Anwendung zurück, und ohne beides auf die OPAA-Marke.
+Ohne hinterlegtes Hintergrundbild zeigt die Markenfläche das mitgelieferte OPAA-Motiv: den Lesesaal
+eines Verwaltungsgebäudes, aus dessen Aktenregalen belegte Dokumentkarten aufsteigen, mit einem
+Rathaus im Morgenlicht hinter dem Fenster. Über ihm liegt ein schwächerer Schleier als über
+hochgeladenen Bildern, weil seine Helligkeit bekannt ist und der Kontrastnachweis gegen seine
+tatsächlich hellste Stelle geführt wird (Herkunft und Prompt:
+[docs/design/anmeldeseite-hintergrundbild.md](../../design/anmeldeseite-hintergrundbild.md)). Ein
+hochgeladenes Bild ersetzt es; wird der Upload entfernt, erscheint es wieder. Ohne eigenes
+Anmeldelogo greift die Seite auf das Logo der Anwendung zurück, und ohne beides auf die OPAA-Marke.
 
 ## Über die API
 

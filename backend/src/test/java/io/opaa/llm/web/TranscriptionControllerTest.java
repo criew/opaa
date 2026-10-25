@@ -117,7 +117,9 @@ class TranscriptionControllerTest {
         .setControllerAdvice(
             new GlobalExceptionHandler(
                 new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC()))
-        .addFilters(new TranscriptionMultipartGuard(new ObjectMapper()), new RequestLoggingFilter())
+        .addFilters(
+            new TranscriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC()),
+            new RequestLoggingFilter())
         .build();
   }
 
@@ -316,7 +318,7 @@ class TranscriptionControllerTest {
           throw new AssertionError("the chain was continued");
         };
 
-    new TranscriptionMultipartGuard(new ObjectMapper())
+    new TranscriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC())
         .doFilter(untouchable(request), response, chain);
 
     assertThat(response.getStatus()).isEqualTo(415);
@@ -326,7 +328,7 @@ class TranscriptionControllerTest {
   void theGuardIsFirstInTheFilterChain() {
     assertThat(
             new TranscriptionWebConfiguration()
-                .transcriptionMultipartGuard(new ObjectMapper())
+                .transcriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC())
                 .getOrder())
         .isEqualTo(org.springframework.core.Ordered.HIGHEST_PRECEDENCE);
   }

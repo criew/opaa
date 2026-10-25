@@ -10,9 +10,9 @@ Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokum
 
 ## Invarianten und Stolpersteine
 
-- **`knowledge` liegt unter `indexing` und `library` und nennt keines davon.** Ports nach oben:
-  `FolderDocumentDeleter`; in connections implementiert `SourceConnectionResolver` (Ziel, Geheimnis;
-  nur knowledge, library, connections, `theSecretPortStaysWithTheCore`) und `SourceStateLookup`.
+- **`knowledge` liegt unter `indexing` und `library` und nennt keines davon.** Ports nach oben: `FolderDocumentDeleter`;
+  `ConnectorDataFlows` in `indexing.registry.SourceConnectorRegistry`; in connections `SourceStateLookup` und
+  `SourceConnectionResolver` (Ziel, Geheimnis; nur knowledge, library, connections, `theSecretPortStaysWithTheCore`).
 - **`metadata` liegt zwischen `knowledge` und `indexing`** (Schema, Kernfelder, Vokabular, Extraktion,
   Korrektur, Filter, Kontextpräfix) und kennt keine Pipeline-Klasse; Chunk-Store und Nachlauf erreicht es über
   `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und Nachlauf liegen in `indexing.maintenance`.

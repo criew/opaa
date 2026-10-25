@@ -1,5 +1,6 @@
 package io.opaa.connection.token;
 
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.security.CredentialsEncryptor;
 import jakarta.annotation.PreDestroy;
 import java.sql.ResultSet;
@@ -24,8 +25,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -117,17 +116,7 @@ public class GrantRevocations {
           encryptor.encrypt(grant.order()));
     }
     int runs = Math.min(grants.size(), THREADS);
-    if (TransactionSynchronizationManager.isSynchronizationActive()) {
-      TransactionSynchronizationManager.registerSynchronization(
-          new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-              requestRuns(runs);
-            }
-          });
-    } else {
-      requestRuns(runs);
-    }
+    TransactionCallbacks.afterCommitOrNow(() -> requestRuns(runs));
   }
 
   /**

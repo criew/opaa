@@ -188,6 +188,56 @@ class GoogleDriveSourceConnectorTest {
     assertThat(result.message()).contains("Zugriffstoken");
   }
 
+  // regression guard for #3156: a blocked target or an exhausted daily quota never reads as a
+  // rejected sign-in; the result names the failure and leaves the sign-in open
+  @Test
+  void aBlockedTargetOrTheDailyLimitLeavesTheSignInOpen() {
+    GoogleDriveSourceConnector blocked =
+        new GoogleDriveSourceConnector(
+            server.base(),
+            URI.create("https://oauth2.example.org/token"),
+            new DriveApiFactory(
+                GoogleDriveProperties.defaults(),
+                new TargetAddressValidator(true, List.of()),
+                wait -> {}),
+            mock(SourceSyncStateRepository.class));
+    SourceConnectionTestResult refusedTarget = blocked.testConnection(driveZero(), null);
+    server.failNext("drives/drive0", 403, "dailyLimitExceeded", 1);
+    SourceConnectionTestResult dailyLimit = connector.testConnection(driveZero(), null);
+
+    assertThat(refusedTarget.reachable()).isFalse();
+    assertThat(refusedTarget.credentialsVerified()).isNull();
+    assertThat(refusedTarget.message()).contains("gesperrten Adressbereich");
+    assertThat(dailyLimit.reachable()).isFalse();
+    assertThat(dailyLimit.credentialsVerified()).isNull();
+    assertThat(dailyLimit.message()).contains("Tageskontingent");
+  }
+
+  @Test
+  void aMissingScopeLeavesTheSignInAccepted() {
+    server.failNext("drives/drive0", 403, "insufficientPermissions", 1);
+
+    SourceConnectionTestResult result = connector.testConnection(driveZero(), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
+  }
+
+  @Test
+  void aRefusedScopeLeavesTheSignInAccepted() {
+    server.failNext("drives/drive0", 403, "forbidden", 1);
+
+    SourceConnectionTestResult result = connector.testConnection(driveZero(), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
+  }
+
+  private SourceSettings driveZero() {
+    return new SourceSettings(
+        null, server.base().toString(), FakeDriveServer.TOKEN, scopes(Map.of("drive", "drive0")));
+  }
+
   @Test
   void theListingOffersSharedDrivesAndSharedFolders() {
     SourceListing listing =

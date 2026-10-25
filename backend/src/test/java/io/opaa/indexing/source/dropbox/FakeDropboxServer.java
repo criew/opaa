@@ -82,6 +82,7 @@ final class FakeDropboxServer implements AutoCloseable {
   private volatile String alsoAcceptedToken = TOKEN;
   private volatile boolean cursorsExpired;
   private volatile boolean team;
+  private volatile boolean scopeMissing;
   private volatile int maxPageSize = Integer.MAX_VALUE;
 
   FakeDropboxServer() {
@@ -222,6 +223,11 @@ final class FakeDropboxServer implements AutoCloseable {
     alsoAcceptedToken = "none";
   }
 
+  /** From now on every accepted token lacks the app's scopes ({@code 401 missing_scope}). */
+  void missScope() {
+    scopeMissing = true;
+  }
+
   /** {@code token} is taken besides the usual one. */
   void alsoAccept(String token) {
     alsoAcceptedToken = token;
@@ -286,6 +292,17 @@ final class FakeDropboxServer implements AutoCloseable {
                 "invalid_access_token/...",
                 "error",
                 Map.of(".tag", "invalid_access_token")));
+        return;
+      }
+      if (scopeMissing) {
+        json(
+            exchange,
+            401,
+            Map.of(
+                "error_summary",
+                "missing_scope/...",
+                "error",
+                Map.of(".tag", "missing_scope", "required_scope", "files.metadata.read")));
         return;
       }
       String root = rootOf(exchange);

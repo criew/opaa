@@ -159,11 +159,14 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   Dokumentbibliothek neu; geschieht das wieder, gilt sie in diesem Lauf als nicht listbar.
 - **Lange Downloads.** Eine Datei, die `download-timeout` dauerhaft reißt, hält Strom und Abgleich an;
   dann die Frist erhöhen.
+- **An einem echten Mandanten bestätigt:** Mit `Sites.Selected` und der Rolle `read` auf einer Site
+  arbeitet der Konnektor ohne mandantenweite Leserechte. Eine nicht freigegebene Site und die
+  Site-Suche weist Microsoft Graph ab; die Auswahl zeigt dann die Hinweise auf die Freigabe bzw. auf
+  `Sites.Read.All`. Auflistung, Vollabgleich, Änderungslauf und Originalabruf laufen durch.
 - **Noch nicht an einem echten Mandanten bestätigt** und auf die Dokumentation von Microsoft gestützt:
-  das Fehlerbild einer nicht freigegebenen Site unter `Sites.Selected` und die Site-Suche dort, die
-  Meldungen von Entra bei falschem Secret oder fehlender Zustimmung, die Ziele der
-  Download-Redirects, die Haltbarkeit der Fortsetzungspunkte, ob Graph die Dateien eines
-  gelöschten Ordners einzeln meldet, ausgecheckte Dateien, Entwürfe und Vertraulichkeitsbezeichnungen.
+  die Meldungen von Entra bei falschem Secret oder fehlender Zustimmung, die Haltbarkeit der
+  Fortsetzungspunkte, ob Graph die Dateien eines gelöschten Ordners einzeln meldet, ausgecheckte
+  Dateien, Entwürfe und Vertraulichkeitsbezeichnungen.
 
 ## 9. Protokoll und Fehlerbilder
 
@@ -183,7 +186,7 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Der Scope … des Zugangs wird nicht angenommen …" / „Die Ressource des Scopes ist im Mandanten nicht bekannt …" | „Scopes" am Zugang falsch gefüllt | „Scopes" leer lassen |
 | „Client-ID oder Client-Secret werden nicht angenommen. Häufige Ursachen: …" | Entra nannte keinen bekannten Fehlercode | die genannten Ursachen prüfen, Entra-Code im Log nachschlagen |
 | „Microsoft Graph hat das Zugriffstoken abgewiesen" | Secret, Mandant oder Zustimmung stimmen nicht | Zugang prüfen |
-| „Das Token der App trägt keine Berechtigung: Für die App-Registrierung wurde keine Administratorzustimmung erteilt …" | Entra stellt das Token ohne Rollen aus, weil die Anwendungsberechtigung nicht bestätigt ist; Graph weist es mit 401 oder 403 ab, auch im Verbindungstest | in Entra unter „API-Berechtigungen" „Administratorzustimmung erteilen" (Abschnitt 2) |
+| „Das Token der App trägt keine Berechtigung: Für die App-Registrierung wurde keine Administratorzustimmung erteilt …" | Entra stellt das Token ohne Rollen aus, weil die Anwendungsberechtigung nicht bestätigt ist; Graph weist es mit 401 oder 403 ab, auch im Verbindungstest; der Lauf endet, der Zugang gilt nicht als abgelaufen | in Entra unter „API-Berechtigungen" „Administratorzustimmung erteilen" (Abschnitt 2) |
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch, bei erteilter Administratorzustimmung; der Bestand bleibt | Site freigeben (Abschnitt 2) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …" | Adresse falsch oder Site gelöscht | Adresse prüfen |
 | „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …" | Adresse in falscher Form | Adresse aus dem Browser übernehmen |

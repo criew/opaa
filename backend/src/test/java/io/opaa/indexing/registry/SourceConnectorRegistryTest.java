@@ -327,6 +327,35 @@ class SourceConnectorRegistryTest {
   }
 
   @Test
+  void theDataFlowsAreTheOnesTheDescriptorsName() {
+    SourceConnectorRegistry registry =
+        new SourceConnectorRegistry(
+            replacingRss(
+                plain(
+                    SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")
+                        .withDataFlow("source-rss")
+                        .withProfiles(optionalWithoutSignInDetails()))));
+
+    assertThat(registry.byType()).containsExactly(Map.entry(SourceTypes.RSS_FEED, "source-rss"));
+    assertThat(registry.of(SourceTypes.RSS_FEED)).contains("source-rss");
+    assertThat(registry.of(SourceTypes.FILESYSTEM)).isEmpty();
+  }
+
+  @Test
+  void onlyARemoteSourceOpensADataFlow() {
+    assertThatThrownBy(
+            () ->
+                SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")
+                    .withDataFlow("source-web"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                SourceConnectorDescriptor.remoteRun(SourceTypes.RSS_FEED, "RSS-Feed")
+                    .withDataFlow(" "))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void theOriginalAccessOfATypeIsResolvedAndAMissingAbilityIsEmpty() {
     List<SourceConnector> connectors = complete();
     connectors.removeIf(c -> c.descriptor().type().equals(SourceTypes.FILESYSTEM));

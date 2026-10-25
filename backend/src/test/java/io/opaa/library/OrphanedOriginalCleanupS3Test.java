@@ -14,6 +14,7 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadS3Properties;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
+import io.opaa.knowledge.WorkingDirectoryOwner;
 import io.opaa.s3.S3TestFixture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -73,7 +74,9 @@ class OrphanedOriginalCleanupS3Test {
                 fixture.rootCredentials().accessKey(),
                 fixture.rootCredentials().secretKey(),
                 tempDir,
-                new UploadS3Properties.TargetValidation(true, List.of())));
+                new UploadS3Properties.TargetValidation(true, List.of())),
+            WorkingDirectoryOwner.standalone(),
+            Clock.systemUTC());
   }
 
   @AfterAll

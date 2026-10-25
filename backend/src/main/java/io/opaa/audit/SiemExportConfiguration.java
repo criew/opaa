@@ -3,6 +3,7 @@ package io.opaa.audit;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -32,7 +33,8 @@ public class SiemExportConfiguration {
       SiemExportProperties properties,
       MeterRegistry meterRegistry,
       ObjectProvider<BuildProperties> buildProperties,
-      ObjectProvider<PersonalAuditObjects> personalObjects) {
+      ObjectProvider<PersonalAuditObjects> personalObjects,
+      Clock clock) {
     log.info(
         "SIEM export on: syslog/CEF to {}:{} {}, object names {}",
         properties.host(),
@@ -51,7 +53,8 @@ public class SiemExportConfiguration {
             properties.host(), properties.port(), properties.tls(), properties.timeout()),
         new CefSyslogFormatter(hostname(), version),
         personalObjects.orderedStream().toList(),
-        meterRegistry);
+        meterRegistry,
+        clock);
   }
 
   /**

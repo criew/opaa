@@ -61,6 +61,12 @@ OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIn
                                   # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei
                                   # außerhalb des Repos, kein CI-Job und kein Secret. Einrichtung:
                                   # README.md im Testpaket indexing.source.googledrive (ADR-0040)
+OPAA_SP_IT_ENV_FILE=… ./gradlew sharePointIntegrationTest
+                                  # SharePoint-Konnektor gegen einen echten Microsoft-365-Mandanten
+                                  # mit Sites.Selected, nur lesend; läuft nur lokal beim Maintainer,
+                                  # Zugangsdatei außerhalb des Repos, kein CI-Job und kein Secret.
+                                  # Einrichtung: README.md im Testpaket indexing.source.sharepoint
+                                  # (ADR-0047)
 ```
 
 ## Helm-Chart
@@ -166,8 +172,9 @@ startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisie
    als älteste verträgliche Version nennt — die Version, von der das Release ein Rolling Update
    zusagt;
 3. sonst `main` 24 Stunden vor der Basis (Merge-Base mit `origin/main`: für einen PR das `main`, von
-   dem er abzweigt, auf `main` der eigene Stand), frühestens der Merge von #2964, der erste Stand mit
-   Migrationsmodus und Compose-Variante.
+   dem er abzweigt, auf `main` der eigene Stand), frühestens der Merge von #3095, der erste Stand mit
+   Flyway. Eine mit Liquibase migrierte Installation wird nicht übernommen
+   ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2).
 
 Solange kein Release ein Versionsfenster nennt, prüft die Suite also den Sprung über einen Tag
 Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten Sprung.

@@ -39,7 +39,7 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - **Dateiablagen** implementieren `FileStore`/`ChangeFeed`; Abgleich über Läufe besitzt `FileSync` (ADR-0045).
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über
-  `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`.
+  `io.opaa.msgraph`, SMB nur über `smb.SmbShareClient`. Datenfluss im Descriptor: `withDataFlow("source-…")`.
 - **Tests nach [ADR-0057](../../../../../../../../docs/decisions/0057-teststufen-fuer-konnektoren.md):** Pflicht sind ein Testdoppel (`Fake<System>Server`, `FakeS3ObjectStore`) mit `RunSecretContract`, bei Dateiablagen `FileStoreContract`, und `<Typ>LogLeakTest`; dazu ein Container in `test` (`S3TestFixture`, `SambaFixture`) oder nächtlich unter `io.opaa.integration.<system>`. Das Epic eines neuen Konnektors nennt die Stufen. SharePoint und OneDrive teilen `FakeGraphServer`; `me/drive` nennt dort je Token das OneDrive einer Person.
 
 ## Maßgebliche ADRs
