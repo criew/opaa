@@ -34,6 +34,10 @@ function initialSettings(): ExternalAccessSettingsResponse {
     massRetrievalAlertThreshold: 600,
     serverInstructions: DEFAULT_SERVER_INSTRUCTIONS,
     defaultServerInstructions: DEFAULT_SERVER_INSTRUCTIONS,
+    releaseReminderLeadDays: 14,
+    releaseReminderLeadDaysOverridden: false,
+    defaultReleaseReminderLeadDays: 14,
+    maxReleaseReminderLeadDays: 364,
     updatedAt: '2026-09-18T12:00:00Z',
     updatedBy: null,
   }
@@ -71,6 +75,10 @@ export const externalAccessHandlers = [
     if (body.tokenMaxLifetimeDays < 1 || body.tokenMaxLifetimeDays > 365) {
       return fieldError('tokenMaxLifetimeDays', 'Der Wert muss zwischen 1 und 365 liegen.')
     }
+    const lead = body.releaseReminderLeadDays ?? null
+    if (lead !== null && (!Number.isInteger(lead) || lead < 0 || lead > 364)) {
+      return fieldError('releaseReminderLeadDays', 'Der Wert muss zwischen 0 und 364 liegen.')
+    }
     const invalid = body.allowedCidrs.filter((cidr) => !CIDR.test(cidr))
     if (invalid.length > 0) {
       return fieldError('allowedCidrs', `Keine gültige Netzangabe: ${invalid.join(', ')}.`)
@@ -83,6 +91,8 @@ export const externalAccessHandlers = [
       allowedCidrs: body.allowedCidrs,
       massRetrievalAlertThreshold: body.massRetrievalAlertThreshold,
       serverInstructions: body.serverInstructions,
+      releaseReminderLeadDays: lead ?? 14,
+      releaseReminderLeadDaysOverridden: lead !== null,
       updatedAt: '2026-09-18T12:30:00Z',
       updatedBy: 'Dev Admin',
     }

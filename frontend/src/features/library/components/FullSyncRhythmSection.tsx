@@ -200,7 +200,7 @@ export default function FullSyncRhythmSection() {
   return (
     <PageSection
       title="Vollabgleich-Rhythmus"
-      description="Zwischen zwei Vollabgleichen holt ein Änderungslauf nur, was die Quelle als neu oder geändert meldet; erst ein Vollabgleich listet die ganze Quelle und entfernt, was dort gelöscht wurde. Hier legen Sie je Quellart fest, nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus wieder vollständig abgleicht."
+      description="Zwischen zwei Vollabgleichen holt ein Änderungslauf nur, was die Quelle als neu oder geändert meldet, und Nextcloud überspringt Ordner, die sich nicht geändert haben; erst ein Vollabgleich listet die ganze Quelle und entfernt, was dort gelöscht wurde. Hier legen Sie je Quellart fest, nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus wieder vollständig abgleicht."
     >
       {loadError ? (
         <Alert

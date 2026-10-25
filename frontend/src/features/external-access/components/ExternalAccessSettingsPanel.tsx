@@ -41,6 +41,13 @@ interface Draft {
   allowedCidrs: string
   massRetrievalAlertThreshold: string
   serverInstructions: string
+  /** `null` while the factory default applies. */
+  releaseReminderLeadDays: string | null
+}
+
+/** Days in words: „1 Tag“, „14 Tage“. */
+function daysLabel(days: number): string {
+  return days === 1 ? '1 Tag' : `${days} Tage`
 }
 
 function draftOf(settings: ExternalAccessSettingsResponse): Draft {
@@ -51,6 +58,9 @@ function draftOf(settings: ExternalAccessSettingsResponse): Draft {
     allowedCidrs: settings.allowedCidrs.join('\n'),
     massRetrievalAlertThreshold: String(settings.massRetrievalAlertThreshold),
     serverInstructions: settings.serverInstructions,
+    releaseReminderLeadDays: settings.releaseReminderLeadDaysOverridden
+      ? String(settings.releaseReminderLeadDays)
+      : null,
   }
 }
 
@@ -69,6 +79,8 @@ function requestOf(draft: Draft): ExternalAccessSettingsUpdateRequest {
     allowedCidrs: parseCidrs(draft.allowedCidrs),
     massRetrievalAlertThreshold: Number(draft.massRetrievalAlertThreshold),
     serverInstructions: draft.serverInstructions,
+    releaseReminderLeadDays:
+      draft.releaseReminderLeadDays === null ? null : Number(draft.releaseReminderLeadDays),
   }
 }
 
@@ -197,6 +209,22 @@ function SettingsForm({
 
   function update(change: Partial<Draft>) {
     setDraft((current) => ({ ...current, ...change }))
+  }
+
+  /** The factory default is shorter than the lead in the field: the reminder comes later. */
+  async function resetReminderLead() {
+    const factory = settings.defaultReleaseReminderLeadDays
+    const current = Number(draft.releaseReminderLeadDays ?? factory)
+    const shorter = current === 0 ? false : factory < current
+    const confirmed = await confirmAction({
+      question: `Erinnerung auf die Werkseinstellung von ${daysLabel(factory)} zurücksetzen?`,
+      consequence: shorter
+        ? `Die Erinnerung kommt dann erst ${daysLabel(factory)} statt ${daysLabel(current)} vor Ablauf einer Freigabe. Gilt nach dem Speichern.`
+        : 'Gilt nach dem Speichern.',
+      confirmLabel: 'Werkseinstellung übernehmen',
+      tone: shorter ? 'danger' : 'caution',
+    })
+    if (confirmed) update({ releaseReminderLeadDays: null })
   }
 
   async function save() {
@@ -339,6 +367,37 @@ function SettingsForm({
               fullWidth
             />
           </Stack>
+        </PanelSection>
+
+        <PanelSection
+          id="external-tools-settings-reminder"
+          title="Erinnerung vor Ablauf einer Freigabe"
+        >
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+            So viele Tage vor dem Ende der Befristung erinnert eine E-Mail die Person, die die
+            Freigabe einer Bibliothek zuletzt gesetzt hat. 0 schaltet die Erinnerung ab; die
+            Freigabe erlischt trotzdem, nur unangekündigt.
+          </Typography>
+          <TextField
+            label="Erinnerung vor Ablauf (Tage)"
+            type="number"
+            size="small"
+            value={draft.releaseReminderLeadDays ?? String(settings.defaultReleaseReminderLeadDays)}
+            onChange={(event) => update({ releaseReminderLeadDays: event.target.value })}
+            error={Boolean(fieldMessages.releaseReminderLeadDays)}
+            helperText={
+              fieldMessages.releaseReminderLeadDays ??
+              (draft.releaseReminderLeadDays === null
+                ? `Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}. Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`
+                : `Eigener Wert (Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}). Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`)
+            }
+            sx={{ maxWidth: 340 }}
+          />
+          {draft.releaseReminderLeadDays !== null && (
+            <Button size="small" sx={{ mt: 1 }} onClick={() => void resetReminderLead()}>
+              Werkseinstellung wiederherstellen
+            </Button>
+          )}
         </PanelSection>
 
         <PanelSection
