@@ -29,6 +29,7 @@ describe('the source registry (ADR-0038)', () => {
       'S3',
       'GOOGLE_DRIVE',
       'SHAREPOINT',
+      'ONEDRIVE',
       'NEXTCLOUD',
       'DROPBOX',
       'SMB',
@@ -76,6 +77,66 @@ describe('the source registry (ADR-0038)', () => {
       creatableWithOwnAddress: false,
       serverAddress: { fixed: 'https://graph.microsoft.com' },
       signIns: [{ method: 'CLIENT_CREDENTIALS' }],
+    })
+  })
+
+  describe('OneDrive (ADR-0058)', () => {
+    const library = {
+      sourceType: 'ONEDRIVE',
+      sourceUrl: 'https://graph.microsoft.com',
+      sourceSettings: {
+        drive: {
+          driveId: 'b!onedriveMaier',
+          name: 'OneDrive',
+          folders: ['01X', { id: '01Y', name: 'Vorlagen / 2026' }],
+        },
+        fullSyncIntervalDays: 3,
+      },
+    }
+
+    it('is offered by the mock backend only through the connected account of a person', () => {
+      expect(mockSourceTypes.find((descriptor) => descriptor.type === 'ONEDRIVE')).toMatchObject({
+        profileSupport: 'REQUIRED',
+        profileRequired: true,
+        creatableWithOwnAddress: false,
+        browsable: true,
+        serverAddress: { fixed: 'https://graph.microsoft.com' },
+        signIns: [{ method: 'OAUTH', ownerships: ['PERSON'] }],
+      })
+    })
+
+    it('reads a stored library back unchanged and names it after a single folder', () => {
+      const oneDrive = configurationOf('ONEDRIVE')
+      const values = oneDrive.fromLibrary(library)
+      expect(oneDrive.toPayload(values)).toEqual({
+        sourceUrl: 'https://graph.microsoft.com',
+        sourceSettings: library.sourceSettings,
+      })
+      expect(oneDrive.nameFromSource(values)).toBe('')
+      expect(
+        oneDrive.nameFromSource(
+          oneDrive.fromLibrary({
+            ...library,
+            sourceSettings: {
+              drive: { driveId: 'b!a', folders: [{ id: '01Y', name: 'Vorlagen / 2026' }] },
+            },
+          }),
+        ),
+      ).toBe('2026')
+      expect(oneDrive.nameFromSource(oneDrive.empty)).toBe('')
+    })
+
+    it('runs in two modes and warns about the OneDrive the last run could not list', () => {
+      const configuration = configurationOf('ONEDRIVE')
+      expect(configuration.fullSyncRhythm).toBe(true)
+      expect(configuration.scopeNoteId).toBeUndefined()
+      expect(configuration.scopeHero?.summary(library)).toBe('2 Ordner')
+      expect(
+        configuration.scopeHero?.summary({ ...library, sourceSettings: { drive: { driveId: 'b!a' } } }),
+      ).toBe('Alle Ordner')
+      expect(configuration.scopeHero?.unlistedWarning(['drive:b!onedriveMaier'], library)).toMatch(
+        /^Der letzte Lauf konnte das OneDrive nicht erreichen/,
+      )
     })
   })
 
