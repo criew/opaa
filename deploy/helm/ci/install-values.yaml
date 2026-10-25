@@ -1,6 +1,7 @@
 # Value set of the installation test on kind (install-test.sh): the chart's evaluation database,
-# the images built from the commit and loaded into the cluster, throwaway secrets. The model
-# endpoints do not exist; the backend's readiness does not depend on them.
+# the images built from the commit and loaded into the cluster, throwaway secrets. No answer file:
+# the backend stays in installation mode, whose readiness is UP. The model endpoints do not exist;
+# the backend's readiness does not depend on them.
 publicBaseUrl: https://opaa.example.org
 evaluationDatabase:
   enabled: true
@@ -13,12 +14,6 @@ embedding:
   baseUrl: http://models.invalid/v1
   model: bge-m3
   dimensions: 1024
-bootstrap:
-  initialAdmin:
-    email: it-postfach@example.org
-  chatModel:
-    baseUrl: http://models.invalid/v1
-    model: qwen2.5:3b
 # kind ships a default StorageClass (local-path); fsGroup makes the volume writable for the backend.
 uploads:
   store: persistentVolumeClaim

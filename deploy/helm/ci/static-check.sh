@@ -101,6 +101,62 @@ expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ht
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=data: blob:"
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ftp://files.example.org"
 expect_refusal "cspConnectSrcExtra" --set-string 'frontend.cspConnectSrcExtra=https://$host'
+# The answer file (ADR-0060, Entscheidung 7) needs the password file and a complete chat model.
+answers=(--set bootstrap.initialAdmin.email=it-postfach@example.org)
+chat=(--set bootstrap.chatModel.baseUrl=http://models.example.org/v1 --set bootstrap.chatModel.model=m)
+expect_refusal "secrets.initialAdminPassword is required" "${answers[@]}" "${chat[@]}"
+expect_refusal "bootstrap.chatModel.baseUrl is required" "${answers[@]}" \
+  --set secrets.initialAdminPassword=ci-only-Notanker-2026
+expect_refusal "bootstrap.oidc.clientId is required" "${answers[@]}" "${chat[@]}" \
+  --set secrets.initialAdminPassword=ci-only-Notanker-2026 \
+  --set bootstrap.oidc.issuerUri=https://login.example.org/realms/opaa
+expect_refusal "secrets.chatApiKey is required" "${answers[@]}" "${chat[@]}" \
+  --set secrets.initialAdminPassword=ci-only-Notanker-2026 --set bootstrap.chatModel.apiKeyInSecret=true
+expect_refusal "installationToken" --set secrets.installationToken=short
+
+# Installation over the answer file or, without one, in installation mode; the variables the answer
+# file replaced reach no value set, and no secret reaches the answer file.
+echo "--- installation"
+for set_name in "${value_sets[@]}"; do
+  set_name="$(basename "$set_name" -values.yaml)"
+  for removed in OPAA_INITIAL_ADMIN_ OPAA_OPENAI_CHAT_ OPAA_OIDC_ISSUER_URI OPAA_OIDC_CLIENT_ID \
+    OPAA_OIDC_JWK_SET_URI OPAA_OIDC_AUTHORITY; do
+    if grep -qF "$removed" "$work_dir/$set_name.yaml"; then
+      echo "Value set $set_name renders $removed, which the answer file replaces." >&2
+      exit 1
+    fi
+  done
+done
+if grep -qE "OPAA_INSTALLATION_ANSWER_FILE|-installation$" "$work_dir/minimal.yaml"; then
+  echo "Value set minimal renders an answer file without bootstrap.initialAdmin.email." >&2
+  exit 1
+fi
+answer_file() {
+  sed -n '/installation.json: |/,/^---/p' "$work_dir/$1.yaml"
+}
+for expectation in 'features-off:"mode": "LOCAL_ONLY"' 'features-off:/etc/opaa/installation-secrets/admin-password' \
+  'full:"mode": "LOCAL_AND_OIDC"' 'full:/etc/opaa/installation-secrets/chat-api-key' \
+  'full:"jwkSetUri": "https://keys.example.org/realms/opaa/certs"'; do
+  set_name="${expectation%%:*}"
+  if [[ "$(answer_file "$set_name")" != *"${expectation#*:}"* ]]; then
+    echo "The answer file of value set $set_name does not name '${expectation#*:}'." >&2
+    exit 1
+  fi
+done
+if [[ "$(answer_file features-off)" == *"ci-only-Notanker-2026"* || "$(answer_file features-off)" == *apiKeyFile* ]]; then
+  echo "The answer file of value set features-off carries the password or a key file it has no key for." >&2
+  exit 1
+fi
+expect_rendered_set() {
+  if ! grep -qF -- "$2" "$work_dir/$1.yaml"; then
+    echo "Value set $1 does not render '$2'." >&2
+    exit 1
+  fi
+}
+expect_rendered_set full 'OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: "login2.example.org,login.example.org,keys.example.org"'
+expect_rendered_set features-off "value: /etc/opaa/installation/installation.json"
+expect_rendered_set minimal "key: OPAA_INSTALLATION_TOKEN"
+echo "answer file, installation mode and removed variables as expected"
 
 # One backend pod renders as before, without migration job, budget or preStop pause; several pods
 # render pod by pod with all three (ADR-0053, Entscheidung 15).
@@ -397,6 +453,10 @@ notes_case "two pods" "2 BACKEND-PODS, AKTUALISIERUNG POD FÜR POD" "GENAU EINE 
   --set backend.replicas=2 "${shared[@]}"
 notes_case "an upgrade of two pods" "werden danach ersetzt, die alten antworten bis dahin" \
   "Der Start migriert" --set backend.replicas=2 "${shared[@]}" --is-upgrade
+notes_case "the installation mode" "INSTALLATIONSMODUS" "INSTALLATION AUS DER ANTWORTDATEI"
+notes_case "an answer file" "INSTALLATION AUS DER ANTWORTDATEI" "INSTALLATIONSMODUS" \
+  "${answers[@]}" "${chat[@]}" --set secrets.initialAdminPassword=ci-only-Notanker-2026
+notes_case "an upgrade after the installation" "übergeht bootstrap" "INSTALLATIONSMODUS" --is-upgrade
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.

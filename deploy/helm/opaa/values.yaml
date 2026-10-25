@@ -4,7 +4,7 @@
 #
 # Three kinds of configuration (ADR-0042, Entscheidung 3):
 #   - deployment values, read on every start: everything outside of "bootstrap"
-#   - bootstrap values, taken over into the database on the FIRST start only: "bootstrap"
+#   - the answer file of the installation, applied while the installation is pending: "bootstrap"
 #   - administration settings (mail server, further providers, models): none here, they live in
 #     the user interface
 
@@ -200,8 +200,8 @@ targetValidation:
   # Sources of libraries inside the cluster or the data centre, e.g. an in-house S3 endpoint or
   # Confluence (OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST).
   indexingAllowlist: []
-  # Further identity providers added in the user interface; the bootstrap provider is always
-  # allowed (OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST).
+  # Further identity providers added in the user interface; the hosts of bootstrap.oidc are always
+  # added (OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST).
   identityProviderAllowlist: []
 
 # Where the original documents of uploaded libraries are kept.
@@ -252,27 +252,39 @@ extraCACertificates:
   configMap: ""
   secret: ""
 
-# Bootstrap values: read once, on the very first start, and taken over into the database.
-# Afterwards the user interface leads; changing them here has no effect on a running installation.
+# The answer file of the installation (ADR-0060, Entscheidung 7). With bootstrap.initialAdmin.email
+# set, the chart renders it and the first start installs from it, while the installation is pending;
+# afterwards it is ignored and the user interface leads. Empty: the installation stays pending until
+# it is completed in the browser or over the installation API, with the token from
+# secrets.installationToken or, without one, from the log of the first start.
 bootstrap:
   initialAdmin:
-    # Address of the local emergency system administrator, a deliverable mailbox. Required. Its
-    # initial password comes from the secret (key OPAA_INITIAL_ADMIN_PASSWORD); without one, the
-    # backend generates a password and logs it once.
+    # Address of the local emergency system administrator, a deliverable mailbox. Its password
+    # comes from the secret (key installation-admin-password, value secrets.initialAdminPassword).
     email: ""
-  # The first OIDC identity provider. Leave empty to start with local user management only
-  # (ADR-0033); further providers are added in the user interface.
+    displayName: Systemverwaltung
+  # An OIDC identity provider besides the local accounts, the default provider after the
+  # installation. Leave issuerUri empty to start with local user management only (ADR-0033);
+  # further providers are added in the user interface. Its hosts pass the address check.
   oidc:
     issuerUri: ""
     clientId: ""
-    # Without effect: the issuer is the authority of the sign-in flow as well. Still accepted so that
-    # existing value files keep rendering; the backend only logs a value that differs from issuerUri.
-    authority: ""
+    # Address the backend reads the keys from, if it differs from the discovered one.
     jwkSetUri: ""
-  # The first chat model. Its key, if needed, comes from the secret (key OPAA_OPENAI_CHAT_API_KEY).
+    # Name on the sign-in page; empty: a default name.
+    displayName: ""
+    # Without effect, still accepted so that existing value files keep rendering.
+    authority: ""
+  # The chat model, checked with a connection test before the installation completes. Its key,
+  # if needed, comes from the secret (key installation-chat-api-key): set secrets.chatApiKey, or
+  # apiKeyInSecret with secrets.existingSecret.
   chatModel:
     baseUrl: ""
     model: ""
+    apiKeyInSecret: false
+    # Empty: the defaults of the model administration.
+    temperature: null
+    maxTokens: null
 
 secrets:
   # Name of an existing secret holding the keys below (recommended: External Secrets, Sealed
@@ -281,8 +293,11 @@ secrets:
   #   required: OPAA_AUTH_JWT_SECRET, OPAA_DB_PASSWORD, OPAA_CREDENTIALS_ENCRYPTION_KEY,
   #             OPAA_SETTINGS_ENCRYPTION_KEY
   #   required with uploads.store s3: OPAA_UPLOAD_S3_ACCESS_KEY, OPAA_UPLOAD_S3_SECRET_KEY
-  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY, OPAA_RERANK_API_KEY,
-  #             OPAA_TRANSCRIPTION_API_KEY, OPAA_INITIAL_ADMIN_PASSWORD
+  #   required with bootstrap.initialAdmin.email: installation-admin-password (a file of the
+  #             answer file, not an environment variable)
+  #   required with bootstrap.chatModel.apiKeyInSecret: installation-chat-api-key (a file as well)
+  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY,
+  #             OPAA_INSTALLATION_TOKEN
   existingSecret: ""
   # Values for a secret created by the chart. The chart never generates a key: a generated key is
   # lost with helm template, in GitOps tools or on reinstallation (ADR-0042, Entscheidung 5).
@@ -296,10 +311,18 @@ secrets:
   s3AccessKey: ""
   s3SecretKey: ""
   embeddingApiKey: ""
+  # Key of the chat model in the answer file (installation-chat-api-key).
   chatApiKey: ""
   rerankApiKey: ""
   transcriptionApiKey: ""
+  # Password of the first account in the answer file (installation-admin-password), 12 to 64
+  # characters, not the address. Can be removed once the installation is completed, together
+  # with bootstrap.initialAdmin.email.
   initialAdminPassword: ""
+  # Token of the installation API and the browser assistant (OPAA_INSTALLATION_TOKEN), at least
+  # 32 characters, e.g. openssl rand -base64 48. Empty: the first start generates one and prints
+  # it once into its log.
+  installationToken: ""
 
 backend:
   image:
@@ -571,6 +594,10 @@ trustedProxyCidrs: []
 # Networks local system administrator accounts may sign in from (OPAA_LOCAL_ADMIN_ALLOWED_CIDRS),
 # judged by the client address resolved through trustedProxyCidrs. Empty: no restriction.
 localAdminAllowedCidrs: []
+
+# Networks the installation API answers from while the installation is pending
+# (OPAA_INSTALLATION_ALLOWED_CIDRS), judged like localAdminAllowedCidrs. Empty: no restriction.
+installationAllowedCidrs: []
 
 networkPolicy:
   # Ingress to the backend: only from the frontend pods and the peers below. The pod of helm test

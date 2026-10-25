@@ -18,6 +18,7 @@ uploads:
     endpoint: https://s3.example.org
     bucket: opaa-uploads
 secrets:
+  initialAdminPassword: ci-only-Notanker-2026
   s3AccessKey: ci-only-access-key
   s3SecretKey: ci-only-secret-key
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop

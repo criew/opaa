@@ -22,10 +22,10 @@ API_PORT="${API_PORT:-18080}"
 MANAGEMENT_PORT="${MANAGEMENT_PORT:-18081}"
 # The source's first start migrates the schema, like the first start of install-test.sh.
 ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-15m}"
-ADMIN_EMAIL="$(sed -n 's/^    email: //p' "$CI_DIR/install-values.yaml")"
+ADMIN_EMAIL="$(sed -n 's/^    email: //p' "$CI_DIR/restore-values.yaml")"
 ADMIN_PASSWORD="$(sed -n 's/^  initialAdminPassword: //p' "$CI_DIR/restore-values.yaml")"
 VALUES=(--values "$CI_DIR/install-values.yaml" --values "$CI_DIR/restore-values.yaml")
-# The value set's chat model endpoint; T6 points at the same one, as the drill asks.
+# The chat model endpoint of T6, which the checks never reach.
 MODEL_BASE_URL="http://models.invalid/v1"
 LATE_UPLOAD="probe-nach-der-sicherung.txt"
 
@@ -219,6 +219,71 @@ migrations() {
     LC_ALL=C sort
 }
 
+# The chat model of the answer file: the E2E suite's ai-stub, under the restricted Pod Security
+# Standard of the namespace.
+start_ai_stub() {
+  kubectl -n "$1" create configmap ai-stub --from-file=server.mjs=e2e/ai-stub/server.mjs
+  kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-stub
+  namespace: $1
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ai-stub }
+  template:
+    metadata:
+      labels: { app: ai-stub }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ai-stub
+          image: node:24-alpine
+          command: ["node", "/app/server.mjs"]
+          env:
+            - { name: PORT, value: "8089" }
+            - { name: EMBEDDING_DIMENSIONS, value: "1024" }
+          ports:
+            - containerPort: 8089
+          readinessProbe:
+            httpGet: { path: /health, port: 8089 }
+            periodSeconds: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - { name: app, mountPath: /app }
+          resources:
+            limits: { memory: 256Mi }
+      volumes:
+        - name: app
+          configMap:
+            name: ai-stub
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-stub
+  namespace: $1
+spec:
+  selector: { app: ai-stub }
+  ports:
+    - port: 8089
+      targetPort: 8089
+EOF
+  kubectl -n "$1" rollout status deployment/ai-stub --timeout=5m
+}
+
 # --- API -------------------------------------------------------------------------------------------
 
 login() {
@@ -277,6 +342,7 @@ kubectl delete namespace "$QUELLE" "$ZIEL" --ignore-not-found --timeout=5m
 
 echo "--- source: install"
 create_namespace "$QUELLE"
+start_ai_stub "$QUELLE"
 helm install opaa "$CHART_DIR" -n "$QUELLE" "${VALUES[@]}"
 kubectl -n "$QUELLE" rollout status deploy/opaa-backend --timeout="$ROLLOUT_TIMEOUT"
 connect "$QUELLE"

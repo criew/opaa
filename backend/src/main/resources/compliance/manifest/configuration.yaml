@@ -16,25 +16,21 @@ settings:
     defaultValue: http://localhost:11434/v1
     effect: Adresse des Chat-Modells, an das Fragen, Gesprächsverlauf und Fundstellen gehen
     bearings: [DATA_FLOW]
-    helm:
-      values: bootstrap.chatModel.baseUrl
-      defaultValue: ""
     notes:
       - "Profil docker: http://ollama:11434/v1"
       - >-
-        Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
-        der Systemverwaltung
+        Wird nur im Modus dev und im Übergang mit OPAA_INITIAL_ADMIN_EMAIL als aktives Chat-Modell
+        übernommen; sonst kommt es aus der Installation (Antwortdatei bzw. Helm-Wert
+        bootstrap.chatModel), danach führt die Modellverwaltung der Systemverwaltung
   - key: spring.ai.openai.chat.model
     defaultValue: phi3:mini
     effect: Standard-Chatmodell, das Antworten, Titel, Gesprächsnotizen und Teilfragen erzeugt
     bearings: [DATA_FLOW]
-    helm:
-      values: bootstrap.chatModel.model
-      defaultValue: ""
     notes:
       - >-
-        Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
-        der Systemverwaltung
+        Wird nur im Modus dev und im Übergang mit OPAA_INITIAL_ADMIN_EMAIL als aktives Chat-Modell
+        übernommen; sonst kommt es aus der Installation (Antwortdatei bzw. Helm-Wert
+        bootstrap.chatModel), danach führt die Modellverwaltung der Systemverwaltung
   - key: spring.ai.openai.embedding.base-url
     defaultValue: http://localhost:11434/v1
     effect: Adresse des Embedding-Modells, an das Dokumentabschnitte und Suchanfragen gehen

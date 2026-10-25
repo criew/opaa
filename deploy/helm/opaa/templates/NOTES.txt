@@ -30,17 +30,30 @@ Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit
 {{- end }}
   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "opaa.backend.fullname" . }}
 
-Anmeldung als Systemverwaltung: {{ .Values.bootstrap.initialAdmin.email }}
-{{- if and .Release.IsInstall (not .Values.secrets.existingSecret) (not .Values.secrets.initialAdminPassword) }}
-  Das Einmalpasswort steht einmalig im Protokoll des ersten Starts eines Backend-Pods:
-    kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep -A5 NOTANKER
-{{- end }}
-
-STARTWERTE WIRKEN NUR BEIM ERSTEN START
-  bootstrap.initialAdmin, bootstrap.oidc und bootstrap.chatModel werden beim ersten Start in die
-  Datenbank übernommen. Danach führt die Oberfläche; eine geänderte values.yaml ändert an einer
+{{ if .Release.IsUpgrade -}}
+Eine eingerichtete Installation übergeht bootstrap; Mailserver, Identitätsanbieter und Modelle
+werden in der Oberfläche geändert.
+{{- else if include "opaa.installation.answerFileEnabled" . -}}
+INSTALLATION AUS DER ANTWORTDATEI
+  Der erste Start richtet OPAA aus bootstrap ein: erstes Konto {{ .Values.bootstrap.initialAdmin.email }},
+  Anmeldeverfahren und Chat-Modell, das Passwort aus dem Secret. Scheitert eine Prüfung, bleibt
+  OPAA im Installationsmodus, und das Protokoll nennt Schritt und Grund:
+    kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep "answer file"
+  Nach dem Abschluss übergeht OPAA die Antwortdatei; eine geänderte values.yaml ändert an einer
   laufenden Installation nichts. Mailserver, weitere Identitätsanbieter und Modelle werden in der
   Oberfläche eingerichtet.
+{{- else -}}
+INSTALLATIONSMODUS
+  Ohne bootstrap.initialAdmin.email bietet OPAA nach dem ersten Start nur die Installation an:
+  erstes Konto, Anmeldeverfahren und Chat-Modell, im Browser unter {{ .Values.publicBaseUrl }}
+  oder über die Installations-API, mit dem Installations-Token
+{{- if or .Values.secrets.existingSecret .Values.secrets.installationToken }} aus dem Secret
+  (Schlüssel OPAA_INSTALLATION_TOKEN) oder, ohne ihn, aus dem Protokoll des ersten Starts:
+{{- else }} aus dem Protokoll des
+  ersten Starts:
+{{- end }}
+    kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep -A3 "INSTALLATION TOKEN"
+{{- end }}
 
 {{- if include "opaa.backend.rolling" . }}
 

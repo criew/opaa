@@ -1,7 +1,7 @@
 # Value set of the two-instance test on kind (multi-instance-test.sh, ADR-0053): two backend pods
 # with the migration job, the chart's evaluation database, originals and the corpus in the object
-# store of multi-test, ai-stub as chat and embedding model, the bootstrap administrator with a fixed
-# password. The image tags are set by the script; the secrets are throwaway test values.
+# store of multi-test, ai-stub as chat and embedding model, the answer file with a fixed password of
+# the first account. The image tags are set by the script; the secrets are throwaway test values.
 publicBaseUrl: http://localhost:18180
 evaluationDatabase:
   enabled: true
@@ -29,6 +29,8 @@ uploads:
 targetValidation:
   indexingAllowlist:
     - objectstore.multi-test.svc.cluster.local
+    # The chat model of the answer file; the installation checks its address like a source.
+    - ai-stub.multi-test.svc.cluster.local
   identityProviderAllowlist:
     - ai-stub.multi-test.svc.cluster.local
 secrets:
@@ -58,6 +60,10 @@ backend:
   # The scenarios sign in over plain HTTP, all from the same client address, and one access token
   # outlasts the rolling update.
   extraEnv:
+    # Start values for a previous version without the installation mode (phase "rolling"); the
+    # current version installs from the answer file and ignores them.
+    - { name: OPAA_INITIAL_ADMIN_EMAIL, value: systemverwaltung@opaa.example }
+    - { name: OPAA_INITIAL_ADMIN_PASSWORD, value: "E2eMehrinstanzKonto!2026" }
     - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }
     - { name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL, value: 30m }
     - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS, value: "1000" }
