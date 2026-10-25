@@ -112,7 +112,18 @@ export default function AssetHeadlineEditor({
   }
 
   const headingRow = (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
+    // as high with the pencil as without it: a reader's head ends where an editor's does
+    <Stack
+      direction="row"
+      spacing={1.5}
+      sx={{
+        alignItems: 'center',
+        flexWrap: 'nowrap',
+        mb: 0.5,
+        minHeight: 34,
+        '& > h1': { flex: '0 1 auto', minWidth: 0 },
+      }}
+    >
       {draft ? <PageHeading title={name} visuallyHidden /> : <PageHeading title={name} />}
       {badges}
       {canEdit && !draft && (
@@ -127,8 +138,22 @@ export default function AssetHeadlineEditor({
 
   if (!draft) {
     return (
-      // a long compound breaks instead of running out of the head at 320 px
-      <Box sx={{ minWidth: 0, '& h1': { overflowWrap: 'anywhere', hyphens: 'auto' } }}>
+      // a long compound breaks instead of running out of the head; the title takes at most three
+      // lines below 600 px and two above, the full name stays in the tooltip and for screen readers
+      <Box
+        title={name}
+        sx={{
+          minWidth: 0,
+          '& h1': {
+            overflowWrap: 'anywhere',
+            hyphens: 'auto',
+            display: '-webkit-box',
+            WebkitLineClamp: { xs: 3, sm: 2 },
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          },
+        }}
+      >
         {headingRow}
         {/* one line, reserved even when empty: the head keeps its height for every asset */}
         <Typography
