@@ -275,7 +275,10 @@ export default function AssetDetailHeader({
         >
           {definition &&
             (compact ? (
-              <MetaBadge>{definition.label}</MetaBadge>
+              // below sm the route already names the type; the row keeps its one line (D1)
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                <MetaBadge>{definition.label}</MetaBadge>
+              </Box>
             ) : (
               <TypeBadge definition={definition} />
             ))}
@@ -287,7 +290,12 @@ export default function AssetDetailHeader({
           direction="row"
           spacing={1}
           useFlexGap
-          sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            flexShrink: 0,
+            ...(compact && { '& .MuiIconButton-root': { p: { xs: 0.75, sm: 1 } } }),
+          }}
         >
           {actions}
           {favorite !== undefined && onFavoriteChange && (
