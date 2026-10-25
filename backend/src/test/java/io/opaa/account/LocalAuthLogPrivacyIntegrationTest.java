@@ -17,7 +17,6 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import jakarta.servlet.http.Cookie;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -535,8 +534,8 @@ class LocalAuthLogPrivacyIntegrationTest {
     List<String> secrets = List.of(invitationToken, resetToken, NEW_PASSWORD, secondPassword);
     List<String> personal =
         List.of(invitedEmail, invitedEmail.toUpperCase(), admin.email(), "Erika Eingeladen");
-    assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
-    for (ILoggingEvent event : new ArrayList<>(logs.list)) {
+    assertThat(snapshot()).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+    for (ILoggingEvent event : snapshot()) {
       String line = event.getFormattedMessage() + " " + throwableText(event);
       String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
       for (String secret : secrets) {
