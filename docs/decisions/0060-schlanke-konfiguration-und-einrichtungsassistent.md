@@ -87,8 +87,10 @@ zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit d
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort, Modellschlüssel) nie im Klartext,
 sondern als Verweis auf eine Datei, damit sie aus Secrets kommen; über die API kommen sie im Rumpf
-der Anfrage wie in den einzelnen Schritten. Helm-Chart, Compose, e2e-Stack, Erprobungsaufbauten und
-das Profil `dev` installieren über die Antwortdatei. Begründung: GitOps und CI klicken keinen
+der Anfrage wie in den einzelnen Schritten. Helm-Chart, Compose, e2e-Stack und Erprobungsaufbauten
+installieren über die Antwortdatei. Das Profil `dev` richtet sich selbst ein, mit einem Chat-Modell
+aus festen Vorgaben der Entwicklung; es hat keine lokale Anmeldung, und Ausnahmen für es im
+Prüfcode der Installation wären eine Hintertür. Begründung: GitOps und CI klicken keinen
 Assistenten; ein einziger Prüfweg verhindert, dass Browser- und Dateiinstallation auseinanderlaufen.
 Ein Dateiverweis über die API ließe jeden Inhaber des Tokens Dateien des Backends lesen und an eine
 Modelladresse seiner Wahl senden.

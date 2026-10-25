@@ -652,13 +652,11 @@ Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberflä
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Im Betriebsmodus `oidc` bricht der Start ohne es ab,
    ebenso bei weniger als 32 Zeichen oder einem Platzhalter. Erzeugen mit `openssl rand -base64 48`
    ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
-2. **Startwerte entfernen, Adressen der Anbieter freigeben.** Eine Datenbank, auf der schon eine
-   frühere Version lief, gilt als eingerichtet ([Installation](installation.md)); `OPAA_INITIAL_ADMIN_*`,
-   `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID`, `OPAA_OIDC_JWK_SET_URI`, `OPAA_OIDC_AUTHORITY`,
-   `OPAA_OIDC_BOOTSTRAP` und `OPAA_OPENAI_CHAT_*` braucht sie nicht mehr. Liegt ein Anbieter auf einer
-   internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Hosts in
-   `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`, bevor `OPAA_OIDC_*` wegfällt: Bis dahin gab die Adresse
-   aus `OPAA_OIDC_*` sie frei.
+2. **Adressen der Anbieter freigeben.** Eine Datenbank, auf der schon eine frühere Version lief,
+   gilt als eingerichtet ([Installation](installation.md)); `OPAA_INITIAL_ADMIN_*`, `OPAA_OIDC_*`
+   außer der Zielprüfung und `OPAA_OPENAI_CHAT_*` wirken nicht mehr und können entfallen. Liegt ein
+   Anbieter auf einer internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Hosts in
+   `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`; bisher gab die Adresse aus `OPAA_OIDC_*` sie frei.
 3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen**, sobald ein Proxy vor dem Backend steht — und der
    nginx des Frontend-Containers ist einer. Eingetragen wird seine feste Adresse als `/32`; ohne sie
    gilt die Anmeldegrenze für das ganze Haus ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).

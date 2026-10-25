@@ -87,7 +87,7 @@ Die Adressprüfung (`OidcAddressPolicy`) hat einen eigenen Block `opaa.auth.oidc
 damit das Abschalten der Konnektorprüfung die Anmeldung nicht mitnimmt; sie gilt beim Speichern, beim
 Registry-Aufbau, im Verbindungstest und für die `jwks_uri` der Discovery, ohne Weiterleitungen, und
 jeder Decoder trägt einen Issuer-Validator. Startmeldungen (#2396) und Betrieb:
-[Handbuch](../handbuch/betrieb/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
+[Handbuch](../handbuch/betrieb/authentifizierung.md#adressprüfung-und-tokenprüfung).
 
 ### 4. Claim-Zuordnung, Rollen, Gruppen und Organisation je Anbieter
 

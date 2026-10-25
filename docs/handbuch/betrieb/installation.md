@@ -4,8 +4,7 @@
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
 der Systemverwaltung, Anmeldeverfahren, Chat-Modell. Bis dahin steht sie im **Installationsmodus**
-und bietet nur die Installation an. Eingerichtet wird im Browser mit dem
-[Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
+und bietet nur die Installation an. Eingerichtet wird über die Installations-API, entweder Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
 selbst beschreiben [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md).
 
@@ -26,11 +25,8 @@ Die Readiness bleibt im Installationsmodus `UP`, damit Load Balancer und Ingress
 überhaupt erreichen. Einen Rückweg in den Installationsmodus gibt es nur über einen Eingriff des
 Betriebs in die Datenbank und einen Neustart.
 
-**Übergang.** Steht im Modus `oidc` in `OPAA_INITIAL_ADMIN_EMAIL` eine zustellbare Adresse,
-richtet sich eine leere Instanz aus den Startwerten ein ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto));
-ohne die Variable startet der Installationsmodus, ebenso mit `admin@opaa.local` oder einem Wert ohne
-`@` (das Log nennt den Grund). Im Modus `dev` richtet sich jede Instanz selbst ein. Eine Datenbank,
-auf der OPAA schon lief (Konten oder Startwerte übernommen), gilt als eingerichtet.
+Im Modus `dev` richtet sich jede Instanz selbst ein, mit einem Chat-Modell aus festen Vorgaben für
+die Entwicklung. Eine Datenbank, auf der OPAA schon lief (vorhandene Konten), gilt als eingerichtet.
 
 Die Installation entscheidet eine Instanz erst, wenn das Instanzregister sie zugelassen hat
 ([Mehrere Backend-Instanzen](mehrere-instanzen.md)); eine abgewiesene Instanz schließt nichts ab und
@@ -115,33 +111,7 @@ zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
 [Notanker-Konto](authentifizierung.md#erststart-und-systemverwalter-konto) an, mit dem gewählten
 Passwort und ohne erzwungenen Wechsel, richtet das Anmeldeverfahren ein (ein OIDC-Anbieter wird
 Standardanbieter), aktiviert das Chat-Modell und verwirft Token und Zwischenstand. Danach meldet
-sich die Person mit dem ersten Konto an. Startwerte aus der Umgebung übernimmt eine so eingerichtete
-Instanz nie mehr. Jeder Schritt, jede Prüfung und der Abschluss stehen im Revisionsprotokoll.
-
-## Einrichtungs-Assistent im Browser
-
-Solange die Installation aussteht, führt jede Adresse der Oberfläche zum Assistenten unter
-`/installation`, etwa `https://opaa.stadt.example/installation`. Er führt durch dieselben Schritte
-wie die API und braucht dasselbe [Installations-Token](#installations-token); ohne gültiges Token
-zeigt er keinen Schritt und keinen gespeicherten Wert.
-
-- **Schrittliste.** Links stehen die Schritte mit ihrem Zustand: „Geprüft“, „Prüfung fehlgeschlagen“
-  (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
-  „Offen“. Pflichtschritte und optionale Schritte stehen in getrennten Gruppen; optionale lassen
-  sich mit „Überspringen“ auslassen. Heute sind alle Schritte Pflicht.
-- **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
-  prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
-  `https://`; alles Weitere prüft OPAA wie oben beschrieben.
-- **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
-  gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“. Wer das erste Konto
-  nachträglich ändert, gibt das Passwort erneut ein; unverändert wird es nur noch einmal geprüft.
-- **Unterbrechen und fortsetzen.** Der Browser behält das Token nur, solange die Seite offen ist.
-  Nach Neuladen oder an einem anderen Rechner gibt man es erneut ein und landet beim ersten
-  Pflichtschritt, der noch nicht geprüft ist, sonst beim Abschluss.
-- **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
-  sind; bis dahin nennt die Seite die offenen. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
-  inzwischen jemand anders abgeschlossen, etwa über eine Antwortdatei, zeigt der Assistent
-  „Bereits eingerichtet“.
+sich die Person mit dem ersten Konto an. Jeder Schritt, jede Prüfung und der Abschluss stehen im Revisionsprotokoll.
 
 ## Antwortdatei
 
@@ -178,6 +148,10 @@ Prüfungen, alles oder nichts.
   oder `apiKey` in der Datei lehnt der Start ab. Scheitert eine Prüfung, bleibt der
   Installationsmodus, und das Log nennt Schritt und Grund. Nach dem Abschluss wird die Datei
   übergangen.
+- **Compose und Helm-Chart** hängen die Datei ein: Compose das Verzeichnis `installation/`
+  ([Installation im Compose-Stapel](docker-compose.md#installation-im-compose-stapel)), der Chart
+  rendert sie aus `bootstrap` und hängt das Passwort aus dem Secret ein
+  ([Kubernetes](kubernetes.md#7-installation-und-erste-anmeldung)).
 - **Über die API:** `POST /api/v1/installation/answer-file` nimmt dieselben Angaben mit Token an,
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.

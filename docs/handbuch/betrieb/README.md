@@ -77,7 +77,7 @@ Vorgabe ist eine Backend-Instanz; mehrere gleichrangige Instanzen gegen dieselbe
 | Anlass | Kapitel |
 |---|---|
 | installieren | [Docker Compose](docker-compose.md) oder [Kubernetes](kubernetes.md) |
-| eine neue Instanz einrichten, im Browser oder mit Antwortdatei | [Installation](installation.md) |
+| eine neue Instanz einrichten, Antwortdatei | [Installation](installation.md) |
 | Images, Versionen, Container-Grenzen, Probes, Graceful Shutdown | [Images und Laufzeit](images-und-laufzeit.md) |
 | Reverse-Proxy, Härtung, Zielprüfung, Ausgangsproxy, Betrieb ohne Internet, Virenprüfung, Schlüssel | [Netz und Sicherheit](netz-und-sicherheit.md) |
 | sichern, zurückspielen, Wiederherstellungsprobe | [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) |

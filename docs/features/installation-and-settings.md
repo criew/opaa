@@ -1,9 +1,9 @@
 # Schlanke Konfiguration und Einrichtungs-Assistent
 
-> **Status: in Umsetzung.** Zielbild zu Issue #3160. Gebaut ist Teilschritt 1 (Installationsmodus,
-> Token, Installations-API, Antwortdatei mit erstem Konto, Anmeldeverfahren und Chat-Modell); die
-> Startwerte `OPAA_INITIAL_ADMIN_*` schließen eine ausstehende Installation im Modus `oidc` noch
-> ab, bis Helm, Compose und e2e mit Teilschritt 6 auf die Antwortdatei umgestellt sind.
+> **Status: in Umsetzung.** Zielbild zu Issue #3160. Gebaut sind Teilschritt 1 (Installationsmodus,
+> Token, Installations-API, Antwortdatei mit erstem Konto, Anmeldeverfahren und Chat-Modell; die drei
+> Seeder und die Startwerte sind entfallen) und Teilschritt 6 (Helm, Compose, e2e und
+> Erprobungsaufbau installieren über die Antwortdatei).
 > Entscheidungen: [ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md).
 
 ## Motivation
@@ -195,8 +195,10 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.
 - Nach dem Abschluss wird die Datei ignoriert; das Log sagt das einmal je Start.
-- Helm erzeugt die Datei aus den heutigen `bootstrap`-Werten, Compose bringt eine Beispieldatei
-  mit, und das Profil `dev` sowie die Testkontexte installieren mit einer eingebauten Antwortdatei.
+- Helm erzeugt die Datei aus den `bootstrap`-Werten, Compose bringt eine Beispieldatei mit. Das
+  Profil `dev` richtet sich selbst ein, mit einem Chat-Modell aus festen Vorgaben der Entwicklung
+  (Adresse `spring.ai.openai.base-url`, ohne Zielprüfung); die Testkontexte schließen über eine
+  Test-Hilfe ab.
 
 ---
 

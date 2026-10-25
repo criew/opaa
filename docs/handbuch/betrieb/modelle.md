@@ -66,9 +66,8 @@ Verbindungstest und aktiviert es beim Abschluss ([Installation](installation.md)
 verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
 ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
 
-**Im Modus `dev` und im Übergang** mit `OPAA_INITIAL_ADMIN_EMAIL` legt der erste Start das erste
-Chat-Modell noch einmalig aus `OPAA_OPENAI_CHAT_*`, `OPAA_OPENAI_API_KEY` und `OPAA_OPENAI_BASE_URL` an;
-danach haben diese Variablen für den Chat keine Wirkung mehr.
+**Im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` unter `OPAA_OPENAI_BASE_URL`
+als erstem Chat-Modell, ohne Zugangsschlüssel.
 
 Das Formular führt in drei Abschnitten:
 
