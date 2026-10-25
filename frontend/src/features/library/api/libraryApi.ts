@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
 import type {
+  DocumentStatus,
   LibraryConnectionProfileRequest,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
@@ -180,6 +181,7 @@ export async function getLibraryDocuments(
     q?: string
     folderId?: string | null
     missingMetadataField?: string | null
+    status?: DocumentStatus | null
   },
 ): Promise<LibraryDocumentPageResponse> {
   try {
@@ -200,6 +202,8 @@ export async function getLibraryDocuments(
           folderId: options?.folderId || undefined,
           // the Pflege-Anker's list - dropped when absent, like q above.
           missingMetadataField: options?.missingMetadataField || undefined,
+          // prototype: the status filter needs the parameter in the spec and the backend
+          status: options?.status || undefined,
         },
       },
     )

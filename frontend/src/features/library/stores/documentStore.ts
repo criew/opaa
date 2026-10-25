@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios'
 import { create } from 'zustand'
 import type {
+  DocumentStatus,
   BulkDocumentDeleteResponse,
   LibraryDocumentResponse,
   LibraryFolderBreadcrumbItem,
@@ -48,6 +49,8 @@ export interface DocumentPageState {
   // The Pflege-Anker's filter - a core field key whose empty documents are listed, or null
   // for the unfiltered list. Like q, it makes the list bibliotheksweit.
   missingMetadataField: string | null
+  // The status filter of the toolbar, e.g. only FAILED documents; null lists every status.
+  status?: DocumentStatus | null
 }
 
 const defaultPageState: DocumentPageState = {
@@ -57,6 +60,7 @@ const defaultPageState: DocumentPageState = {
   totalElements: 0,
   folderId: null,
   missingMetadataField: null,
+  status: null,
 }
 
 interface DocumentState {
@@ -96,6 +100,7 @@ interface DocumentState {
       q?: string
       folderId?: string | null
       missingMetadataField?: string | null
+      status?: DocumentStatus | null
     },
   ) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
@@ -130,6 +135,7 @@ type LoadOptions = {
   q?: string
   folderId?: string | null
   missingMetadataField?: string | null
+  status?: DocumentStatus | null
 }
 
 type RequestedPageState = Omit<DocumentPageState, 'totalElements'>
@@ -389,11 +395,15 @@ async function runLoadDocuments(
     options && Object.prototype.hasOwnProperty.call(options, 'missingMetadataField')
       ? (options.missingMetadataField ?? null)
       : previous.missingMetadataField
+  const status =
+    options && Object.prototype.hasOwnProperty.call(options, 'status')
+      ? (options.status ?? null)
+      : (previous.status ?? null)
 
   const sequence = ++loadSequence
   latestRequestByLibrary[libraryId] = {
     sequence,
-    params: { page, size, q, folderId, missingMetadataField },
+    params: { page, size, q, folderId, missingMetadataField, status },
   }
   if (!mode.background) set({ isLoading: true, error: null })
   try {
@@ -403,6 +413,7 @@ async function runLoadDocuments(
       q,
       folderId,
       missingMetadataField,
+      status,
     })
     if (isStaleSessionEpoch(sessionEpoch) || !isLatestRequest(libraryId, sequence)) return
     settleRequest(libraryId, sequence)
@@ -417,6 +428,7 @@ async function runLoadDocuments(
           totalElements: response.totalElements,
           folderId,
           missingMetadataField,
+          status,
         },
       },
       foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },

@@ -111,12 +111,15 @@ async function tabExists(page, tab) {
 async function openRuns(page) {
   const heading = await firstVisible(page.getByRole('heading', { name: /^Läufe$/ }).or(page.getByText(/^Läufe$/)))
   if (!heading) return false
-  const first = page.locator('#library-tabpanel-quelle .MuiAccordionSummary-root').first()
+  // the newest run: an accordion (F) or a row button with aria-expanded (variants)
+  const first = page
+    .locator('#library-tabpanel-quelle [data-run-row], #library-tabpanel-quelle .MuiAccordionSummary-root')
+    .first()
   if (await first.count()) {
     if ((await first.getAttribute('aria-expanded')) !== 'true') await first.click().catch(() => {})
     await page.waitForFunction((el) => el?.getAttribute('aria-expanded') === 'true', await first.elementHandle(), { timeout: 5000 }).catch(() => {})
     // the collapse transition ends before the shot
-    await page.locator('#library-tabpanel-quelle .MuiCollapse-entered').first().waitFor({ timeout: 5000 }).catch(() => {})
+    await page.locator('#library-tabpanel-quelle .MuiCollapse-entered').first().waitFor({ timeout: 1500 }).catch(() => {})
     await sleep(400)
   }
   await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))

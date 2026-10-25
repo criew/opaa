@@ -119,6 +119,14 @@ const PAGE_METRICS = () => {
     overflowX: overflow,
     overflowCulprit: culprit,
     docHeight,
+    // top edge of the tab bar in page coordinates (D1: the same in every type of a scenario)
+    tabsTop: (() => {
+      let el = document.querySelector('main [role=tablist]')
+      if (!el) return null
+      let y = 0
+      for (; el; el = el.offsetParent) y += el.offsetTop
+      return y
+    })(),
     clippedText: clipped,
     disabledSubmits: disabledSubmits.length,
     disabledSubmitLabels: disabledSubmits,

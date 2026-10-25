@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router'
+import type { DocumentStatus } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
 
@@ -18,6 +19,19 @@ export function useDocumentsUrlState(libraryId: string, onLeaveList: () => void)
   // Without metadata (ADR-0044) a Pflege-Anker link in the URL lists the plain documents.
   const metadataEnabled = useFeatureEnabled('metadata')
   const missingFieldParam = metadataEnabled ? searchParams.get('missingField') : null
+  // The toolbar's status filter is URL state too (?status=FAILED); the head's state links to it.
+  const rawStatus = searchParams.get('status')
+  const statusParam: DocumentStatus | null =
+    rawStatus === 'FAILED' || rawStatus === 'PENDING' || rawStatus === 'INDEXED' ? rawStatus : null
+
+  function setStatusFilter(status: DocumentStatus | null) {
+    onLeaveList()
+    const next = new URLSearchParams(searchParams)
+    next.delete('folder')
+    if (status) next.set('status', status)
+    else next.delete('status')
+    setSearchParams(next)
+  }
 
   // Opens (or leaves) the anchor's worklist - the list is bibliotheksweit, so an open
   // folder and a running search are dropped with it, and the selection starts empty.
@@ -62,6 +76,8 @@ export function useDocumentsUrlState(libraryId: string, onLeaveList: () => void)
     metadataEnabled,
     missingFieldParam,
     setMissingFieldFilter,
+    statusParam,
+    setStatusFilter,
     navigateToFolder,
   }
 }

@@ -160,7 +160,11 @@ function overlayFor(scenario: MockScenario, id: string): Overlay | null {
     case 'empty':
       return () => ({ documentCount: 0 })
     case 'failed':
-      return () => ({ lastScheduledRunsFailed: true })
+      // an upload library under `failed` has used up its quota
+      return (library) => ({
+        lastScheduledRunsFailed: true,
+        ...(library.storageQuotaBytes ? { storageUsedBytes: library.storageQuotaBytes } : {}),
+      })
     default:
       return null
   }
@@ -383,7 +387,7 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
           if (i === 1)
             return run(i, { status: 'COMPLETED', failed: 38, events: 1740, minutes: 192 })
           if (i === 4)
-            return run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'AUTH' })
+            return run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' })
           if (i === 6) {
             return run(i, {
               status: 'COMPLETED',
@@ -400,7 +404,7 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
     case 'failed':
       return {
         runs: generate(3, (i) =>
-          run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'AUTH' }),
+          run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' }),
         ),
       }
     case 'partial':

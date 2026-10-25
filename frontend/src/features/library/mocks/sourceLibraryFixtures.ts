@@ -168,6 +168,8 @@ export function sourceLibraryDetails(): LibraryResponse[] {
         expiresAt: null,
       },
       sourceSettings: { folders: ['/Projekte', '/Satzungen'], teamSpace: false },
+      // the instance default the backend reports for every source with a full reconciliation
+      fullSyncIntervalDefaultDays: 7,
     },
   ]
 }

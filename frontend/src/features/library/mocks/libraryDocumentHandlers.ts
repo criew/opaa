@@ -198,6 +198,23 @@ export const libraryDocumentHandlers = [
     const size = Number(url.searchParams.get('size') ?? '20')
     const folderIdParam = url.searchParams.get('folderId')
     const missingMetadataField = url.searchParams.get('missingMetadataField')
+    const status = url.searchParams.get('status')
+    if (status) {
+      // the toolbar's status filter: library-wide like a search, attachments in their own right
+      const matching = allDocuments.filter(
+        (doc) =>
+          doc.status === status && (!q || doc.fileName.toLowerCase().includes(q.toLowerCase())),
+      )
+      return HttpResponse.json({
+        items: matching.slice(page * size, page * size + size),
+        page,
+        size,
+        totalElements: matching.length,
+        folderId: null,
+        folders: [],
+        breadcrumb: [],
+      })
+    }
 
     // folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
     // unknown/foreign-folder 404 (ADR-0020).
