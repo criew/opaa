@@ -16,7 +16,7 @@ Verfügung.
 
 Die Datei ist JSON, mit Formatname, Formatversion, Zeitpunkt des Exports und je Bereich dessen
 wirksame Werte. Ein leerer Wert (`null`) hat je Angabe seine eigene Bedeutung: Beim Branding gilt
-der OPAA-Standard, beim Speicherkontingent die Vorgabe des Betriebs, bei einer E-Mail-Vorlage der
+der OPAA-Standard, beim Speicherkontingent und beim Vollabgleich-Rhythmus die Werkseinstellung, bei einer E-Mail-Vorlage der
 ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 
 | Bereich | Inhalt |
@@ -29,7 +29,8 @@ ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 | Selbstauskunft | Schalter und Tagesgrenze |
 | Erlaubte Linkziele | die ganze Liste |
 | Ausgangsproxy | Proxy-Adresse und Ausnahmeliste |
-| Speicherkontingent privater Bibliotheken | der gesetzte Wert oder `null` für die Vorgabe des Betriebs |
+| Speicherkontingent privater Bibliotheken | der gesetzte Wert oder `null` für die Werkseinstellung |
+| Vollabgleich-Rhythmus | je Quellart die gesetzten Tage oder `null` für die Werkseinstellung |
 | Externe KI-Werkzeuge | Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle, Einleitungstext |
 
 **Nicht in der Datei** stehen Passwörter und Schlüssel, auch nicht, ob einer hinterlegt ist, und
@@ -46,8 +47,9 @@ jede Angabe, die sich ändern würde, mit bisherigem und neuem Wert. Änderungen
 umlenken, was die Installation erreicht oder zulässt, oder Nachweise früher löschen, sind als
 „Sicherheitsrelevant“ markiert: Mailserver und Absender, E-Mail-Vorlagen (ihre Links erreichen
 Eingeladene), Ausgangsproxy, Selbstregistrierung, Passwortlänge und Gültigkeit der Links, externe
-KI-Werkzeuge mit Netzbereichen, Ablauf und Kontingent, erlaubte Linkziele und jede
-Aufbewahrungsfrist. Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
+KI-Werkzeuge mit Netzbereichen, Ablauf und Kontingent, erlaubte Linkziele, jede
+Aufbewahrungsfrist und der Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelöschtes
+noch auffindbar bleibt). Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
   Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des

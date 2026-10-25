@@ -192,6 +192,7 @@ class SettingsTransferIntegrationTest {
     override.putNull("bodyHtml");
     sections.withObject("outboundProxy").putArray("noProxy").add("intranet.stadt.example");
     sections.withObject("privateStorageQuota").put("quotaBytes", 1_073_741_824L);
+    sections.withObject("fullSyncRhythm").put("SHAREPOINT", 3);
     sections.withObject("selfDisclosure").put("dailyLimit", 7);
     assertThat(sections.propertyNames())
         .as("every registered section is changed by this test")
@@ -222,6 +223,70 @@ class SettingsTransferIntegrationTest {
     }
 
     send(IMPORT, changed).andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty());
+  }
+
+  /**
+   * The full-sync rhythm travels per source type: an own value and the factory default ({@code
+   * null}) survive the round trip, each change is marked security-relevant, and the same file
+   * imported again writes nothing.
+   */
+  @Test
+  void theFullSyncRhythmTravelsPerSourceTypeAndAgainChangesNothing() throws Exception {
+    ObjectNode document = (ObjectNode) JSON.readTree(export());
+    ObjectNode rhythm = sections(document).withObject("fullSyncRhythm");
+    assertThat(rhythm.propertyNames())
+        .containsExactlyInAnyOrder(
+            "CONFLUENCE", "DROPBOX", "GOOGLE_DRIVE", "ONEDRIVE", "SHAREPOINT");
+    rhythm.put("ONEDRIVE", 4);
+    rhythm.put("CONFLUENCE", 30);
+    String changed = JSON.writeValueAsString(document);
+
+    send(PREVIEW, changed)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.changes.length()").value(2))
+        .andExpect(
+            jsonPath("$.changes[*].securityRelevant")
+                .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(true))));
+    send(IMPORT, changed).andExpect(status().isOk());
+
+    assertThat(export()).isEqualTo(withoutExportedAt(changed));
+    assertThat(auditEventTypes()).filteredOn("FULL_SYNC_RHYTHM_CHANGED"::equals).hasSize(2);
+    int entries = auditEntries().size();
+
+    send(IMPORT, changed).andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty());
+    assertThat(auditEntries()).hasSize(entries);
+
+    rhythm.putNull("ONEDRIVE");
+    send(IMPORT, JSON.writeValueAsString(document)).andExpect(status().isOk());
+    assertThat(
+            sections((ObjectNode) JSON.readTree(export()))
+                .get("fullSyncRhythm")
+                .get("ONEDRIVE")
+                .isNull())
+        .isTrue();
+  }
+
+  /** A value outside 1 to 365 days or of another type is refused under its field. */
+  @Test
+  void aFullSyncRhythmOutsideItsBoundsIsRefusedUnderItsField() throws Exception {
+    String before = export();
+    Map<String, String> refused = new java.util.LinkedHashMap<>();
+    refused.put("{\"fullSyncRhythm\": {\"CONFLUENCE\": 0}}", "fullSyncRhythm.CONFLUENCE");
+    refused.put("{\"fullSyncRhythm\": {\"DROPBOX\": 366}}", "fullSyncRhythm.DROPBOX");
+    refused.put("{\"fullSyncRhythm\": {\"SHAREPOINT\": 2.5}}", "fullSyncRhythm.SHAREPOINT");
+    refused.put("{\"fullSyncRhythm\": {\"S3\": 3}}", "fullSyncRhythm");
+    for (Map.Entry<String, String> entry : refused.entrySet()) {
+      send(
+              IMPORT,
+              "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\": "
+                  + entry.getKey()
+                  + "}")
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.fieldErrors[0].field").value(entry.getValue()));
+    }
+
+    assertThat(export()).isEqualTo(withoutExportedAt(before));
+    assertThat(auditEventTypes()).isEmpty();
   }
 
   private static void retention(ObjectNode sections, String section, int value, int otherwise) {

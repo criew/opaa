@@ -223,14 +223,14 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   ausgenommen ist.
 - **Format:** `{"format": "opaa-settings", "formatVersion": 1, "exportedAt": …, "sections": {…}}`,
   je Abschnitt ein Objekt mit allen Schlüsseln und ihrem wirksamen Wert; was `null` bedeutet, legt
-  der Schlüssel fest (Branding: OPAA-Standard, Kontingent: Vorgabe des Betriebs, Vorlage:
+  der Schlüssel fest (Branding: OPAA-Standard, Kontingent und Vollabgleich-Rhythmus: Werkseinstellung, Vorlage:
   ausgelieferter Text, Mailserver-Feld: nicht gesetzt). Die Version steigt,
   wenn ein Schlüssel seine Bedeutung ändert oder entfällt, nicht für neue Abschnitte und Schlüssel.
   Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLogRetention`,
   `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
   Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates` (je Vorlage der Sprache
-  `de` ein Schlüssel), `outboundProxy`,
-  `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
+  `de` ein Schlüssel), `fullSyncRhythm` (je Quellart mit Rhythmus ein Schlüssel, Tage oder `null`),
+  `outboundProxy`, `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
 - **Nicht übertragen** werden Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge und die
   Freigabe der Konnektoren: Sie hängen an Geheimnissen dieser Installation.
 - **Import:** eine Transaktion; ein fehlender Abschnitt bleibt, ein fehlender Schlüssel behält
