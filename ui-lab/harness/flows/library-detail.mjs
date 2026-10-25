@@ -85,6 +85,8 @@ async function open(page, ctx, job, tab) {
     await page.goto(`${ctx.base}/libraries/${id}?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
     await page.waitForSelector('main, [role=main]', { timeout: 15000 }).catch(() => {})
     await page.getByRole('tab').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
+    // the head's state once the runs are known (variants with a state field)
+    await page.locator('[data-testid=library-state]').first().waitFor({ timeout: 5000 }).catch(() => {})
     // a running run polls for ever; settle on the rendered state instead of network idle
     await settle(page, job.scenario === 'slow' ? 300 : 700)
     await sleep(job.scenario === 'slow' ? 1200 : 200)
@@ -98,7 +100,8 @@ async function open(page, ctx, job, tab) {
 async function rest(page) {
   await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
   const size = page.viewportSize()
-  if (size) await page.mouse.move(size.width - 2, size.height - 2)
+  // top right: no row, no tooltip under the pointer
+  if (size) await page.mouse.move(size.width - 2, 2)
 }
 
 async function tabExists(page, tab) {
@@ -157,7 +160,20 @@ export async function run(page, job, ctx) {
         continue
       }
       await rest(page)
-      await ctx.shoot(area)
+      await ctx.shoot(
+        area,
+        area === 'laeufe'
+          ? {
+              // every width shows the runs: scroll their heading to the top once more
+              beforeShot: async () => {
+                const heading = page.getByRole('heading', { name: /^Läufe$/ }).first()
+                await heading.evaluate((el) => el.scrollIntoView({ block: 'start' })).catch(() => {})
+                await rest(page)
+                await sleep(200)
+              },
+            }
+          : undefined,
+      )
     } catch (e) {
       ctx.error(area, e)
     }

@@ -313,12 +313,18 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
   const record = (line) => fs.appendFileSync(metricsFile, JSON.stringify(line) + '\n')
   let shots = 0
 
-  async function shoot(page, { area, type, scenario, scheme }, extra = {}) {
+  async function shoot(page, { area, type, scenario, scheme }, { beforeShot, ...extra } = {}) {
     const shown = await appliedScheme(page)
     if (shown && shown !== scheme) log(`  WARNING ${area} ${type} ${scenario}: requested ${scheme}, page shows ${shown}`)
     for (const width of widths) {
       await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
-      await sleep(250)
+      // the tab trace of the previous width leaves the focus somewhere (skip link): at rest again
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur())
+      await page.evaluate(() => window.scrollTo(0, window.scrollY))
+      // layout and transitions after the width change settle before the shot
+      await sleep(450)
+      // a flow may bring its subject into view again after the width changed
+      if (beforeShot) await beforeShot(width)
       const name = `${area}__${type}__${scenario}__${scheme}__${width}`
       await page.screenshot({ path: path.join(out, `${name}.png`) }).catch((e) => log('  screenshot failed', e.message))
       const metrics = await pageMetrics(page)
