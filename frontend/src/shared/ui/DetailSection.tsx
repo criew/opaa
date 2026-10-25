@@ -29,7 +29,12 @@ export default function DetailSection({
 }: DetailSectionProps) {
   const headId = useId()
   return (
-    <Box component="section" id={id} aria-labelledby={headId} sx={{ mb: 4, scrollMarginTop: 16 }}>
+    <Box
+      component="section"
+      id={id}
+      aria-labelledby={headId}
+      sx={{ mb: 4, scrollMarginTop: { xs: 72, sm: 16 } }}
+    >
       <Box
         sx={{
           display: 'flex',

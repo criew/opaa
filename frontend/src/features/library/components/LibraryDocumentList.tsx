@@ -334,7 +334,12 @@ export default function LibraryDocumentList({
       {breadcrumb}
 
       {(showSearch || filters) && (
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          // without a search the actions keep to the right edge
+          sx={{ mb: 2, justifyContent: 'flex-end', alignItems: { sm: 'center' } }}
+        >
           {showSearch && (
             <TextField
               size="small"

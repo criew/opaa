@@ -238,7 +238,8 @@ export default function SummaryRow({
       component="section"
       aria-labelledby={`${id}-title`}
       data-row={id}
-      sx={{ borderBottom: 1, borderColor: 'divider', py: 2 }}
+      // an anchor below the sticky header of the narrow layout
+      sx={{ borderBottom: 1, borderColor: 'divider', py: 2, scrollMarginTop: { xs: 72, sm: 16 } }}
     >
       <Box sx={ROW_GRID}>
         <Typography

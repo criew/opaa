@@ -125,7 +125,7 @@ async function openRuns(page) {
     await page.locator('#library-tabpanel-quelle .MuiCollapse-entered').first().waitFor({ timeout: 1500 }).catch(() => {})
     await sleep(400)
   }
-  await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  await heading.evaluate((el) => (el.closest('section') ?? el).scrollIntoView({ block: 'start' }))
   await sleep(300)
   return true
 }
@@ -167,7 +167,7 @@ export async function run(page, job, ctx) {
               // every width shows the runs: scroll their heading to the top once more
               beforeShot: async () => {
                 const heading = page.getByRole('heading', { name: /^Läufe$/ }).first()
-                await heading.evaluate((el) => el.scrollIntoView({ block: 'start' })).catch(() => {})
+                await heading.evaluate((el) => (el.closest('section') ?? el).scrollIntoView({ block: 'start' })).catch(() => {})
                 await rest(page)
                 await sleep(200)
               },
