@@ -57,6 +57,13 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
   /** The type key this connector serves. */
   public static final SourceType TYPE = SourceType.of("NEXTCLOUD");
 
+  /**
+   * The factory default of how long remembered folder ETags may spare a listing before a run lists
+   * every folder again; the administration may set another for the installation ({@code
+   * FullSyncRhythm}).
+   */
+  public static final Duration FULL_DESCENT_INTERVAL = Duration.ofDays(7);
+
   private static final Logger log = LoggerFactory.getLogger(NextcloudSourceConnector.class);
 
   private static final String FOLDERS_STATE = "nextcloudFolders";
@@ -68,6 +75,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
   private static final SourceConnectorDescriptor DESCRIPTOR =
       SourceConnectorDescriptor.remoteRun(TYPE, "Nextcloud")
           .withDataFlow("source-nextcloud")
+          .withFullSyncInterval(FULL_DESCENT_INTERVAL)
           .withProfiles(
               ProfileDeclaration.of(
                   ConnectionProfileSupport.OPTIONAL,

@@ -79,7 +79,7 @@ class DirectorySyncPlanExecutor {
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
-  private final DirectorySyncProperties properties;
+  private final DirectorySyncChangeThreshold changeThreshold;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncPendingPlanRepository pendingPlanRepository;
@@ -90,7 +90,7 @@ class DirectorySyncPlanExecutor {
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
-      DirectorySyncProperties properties,
+      DirectorySyncChangeThreshold changeThreshold,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       DirectorySyncPendingPlanRepository pendingPlanRepository,
@@ -99,7 +99,7 @@ class DirectorySyncPlanExecutor {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
-    this.properties = properties;
+    this.changeThreshold = changeThreshold;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.pendingPlanRepository = pendingPlanRepository;
@@ -256,9 +256,10 @@ class DirectorySyncPlanExecutor {
             tokenGroups,
             providerAccounts);
 
-    if (mode != Mode.CONFIRM && plan.changedFraction() > properties.changeThresholdFraction()) {
+    double thresholdFraction = changeThreshold.fraction();
+    if (mode != Mode.CONFIRM && plan.changedFraction() > thresholdFraction) {
       String changedPercent = formatPercent(plan.changedFraction());
-      String thresholdPercent = formatPercent(properties.changeThresholdFraction());
+      String thresholdPercent = formatPercent(thresholdFraction);
       String message =
           String.format(
               Locale.ROOT,
@@ -1116,7 +1117,7 @@ class DirectorySyncPlanExecutor {
         plan.membershipsRemoved(),
         plan.unresolvedMemberCount(),
         plan.changedFraction(),
-        properties.changeThresholdFraction(),
+        changeThreshold.fraction(),
         message);
   }
 

@@ -320,6 +320,8 @@ nonPersonalTables:
     - updated_at
   permission_history_retention_settings:
     [id, retention_months, last_cutoff, updated_at, account_state_complete_since]
+  succession_settings: [id, aging_threshold_months, updated_at]
+  directory_sync_settings: [id, change_threshold_percent, updated_at]
   permission_transfer_objects: [id, transfer_id, organization_id, asset_type, asset_id, created_at]
 settings:
   - key: permission_history_retention_settings.retention_months
@@ -328,3 +330,13 @@ settings:
     range: 12 bis 120 Monate
     effect: Aufbewahrungshöchstdauer der Rechtehistorie
     bearings: [DATA, EVALUATION]
+  - key: succession_settings.aging_threshold_months
+    source: DATABASE
+    defaultValue: "12"
+    range: 1 bis 120 Monate
+    effect: Ab welchem Alter ein Eintrag der Nachfolge-Betriebsliste hervorgehoben wird
+    bearings: [VISIBILITY, EVALUATION]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Ohne Zuständigkeit
+        keinen eigenen Wert setzt; hebt hervor, löst nichts aus

@@ -190,6 +190,11 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("allAccountsGrantAllowed"), CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED);
     put(keys, Set.of("quotaBytes", "overridden"), PRIVATE_STORAGE_QUOTA_CHANGED);
     put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);
+    put(keys, Set.of("agingThresholdMonths", "overridden"), SUCCESSION_AGING_THRESHOLD_CHANGED);
+    put(
+        keys,
+        Set.of("changeThresholdPercent", "overridden"),
+        DIRECTORY_SYNC_CHANGE_THRESHOLD_CHANGED);
     put(keys, Set.of("capability", "scope", "subjectType"), CAPABILITY_GRANTED, CAPABILITY_REVOKED);
     put(
         keys,
@@ -345,7 +350,9 @@ final class AuditSelfDisclosurePayload {
             "tokenMaxLifetimeDays",
             "tokenRateLimitPerHour",
             "allowedCidrs",
-            "massRetrievalAlertThreshold"),
+            "massRetrievalAlertThreshold",
+            "releaseReminderLeadDays",
+            "releaseReminderLeadDaysOverridden"),
         EXTERNAL_ACCESS_SETTINGS_CHANGED);
     put(
         keys,

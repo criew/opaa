@@ -33,7 +33,8 @@ public class ExternalAccessSettings {
       int tokenRateLimitPerHour,
       List<String> allowedCidrs,
       int massRetrievalAlertThreshold,
-      String serverInstructions) {
+      String serverInstructions,
+      Integer releaseReminderLeadDays) {
 
     public Values {
       allowedCidrs = CidrList.normalize(allowedCidrs);
@@ -53,6 +54,22 @@ public class ExternalAccessSettings {
           ExternalAccessDefaults.MIN_MASS_RETRIEVAL_ALERT_THRESHOLD,
           ExternalAccessDefaults.MAX_MASS_RETRIEVAL_ALERT_THRESHOLD,
           "massRetrievalAlertThreshold");
+      if (releaseReminderLeadDays != null && releaseReminderLeadDays < 0) {
+        throw new IllegalArgumentException(
+            "releaseReminderLeadDays must not be negative, got " + releaseReminderLeadDays);
+      }
+    }
+
+    /**
+     * The reminder lead in force: the stored days, else the factory default, never more than {@code
+     * maxDays} - a lowered Befristung bounds a lead set before.
+     */
+    public int releaseReminderLeadDaysInForce(int maxDays) {
+      int days =
+          releaseReminderLeadDays == null
+              ? ExternalAccessDefaults.RELEASE_REMINDER_LEAD_DAYS
+              : releaseReminderLeadDays;
+      return Math.max(0, Math.min(days, maxDays));
     }
 
     /** The delivered settings - what the seed row carries. */
@@ -63,7 +80,8 @@ public class ExternalAccessSettings {
           ExternalAccessDefaults.TOKEN_RATE_LIMIT_PER_HOUR,
           ExternalAccessDefaults.ALLOWED_CIDRS,
           ExternalAccessDefaults.MASS_RETRIEVAL_ALERT_THRESHOLD,
-          ExternalAccessDefaults.SERVER_INSTRUCTIONS);
+          ExternalAccessDefaults.SERVER_INSTRUCTIONS,
+          null);
     }
 
     private static void requireBetween(int value, int min, int max, String name) {
@@ -95,6 +113,10 @@ public class ExternalAccessSettings {
   @Column(name = "server_instructions", nullable = false)
   private String serverInstructions = "";
 
+  /** Empty while the factory default applies. */
+  @Column(name = "release_reminder_lead_days")
+  private Integer releaseReminderLeadDays;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -114,7 +136,8 @@ public class ExternalAccessSettings {
         tokenRateLimitPerHour,
         allowedCidrs,
         massRetrievalAlertThreshold,
-        serverInstructions);
+        serverInstructions,
+        releaseReminderLeadDays);
   }
 
   /** Replaces every channel value at once; {@code updatedBy} may be null for a system change. */
@@ -126,6 +149,7 @@ public class ExternalAccessSettings {
     this.allowedCidrs = values.allowedCidrs();
     this.massRetrievalAlertThreshold = values.massRetrievalAlertThreshold();
     this.serverInstructions = values.serverInstructions();
+    this.releaseReminderLeadDays = values.releaseReminderLeadDays();
     this.updatedBy = updatedBy;
     this.updatedAt = Objects.requireNonNull(now, "now");
   }

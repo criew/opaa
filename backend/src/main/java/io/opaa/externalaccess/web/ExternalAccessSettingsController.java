@@ -50,6 +50,7 @@ public class ExternalAccessSettingsController {
                 request.getTokenRateLimitPerHour(),
                 request.getAllowedCidrs(),
                 request.getMassRetrievalAlertThreshold(),
-                request.getServerInstructions())));
+                request.getServerInstructions(),
+                request.getReleaseReminderLeadDays())));
   }
 }

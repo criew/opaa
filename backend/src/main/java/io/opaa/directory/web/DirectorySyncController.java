@@ -3,6 +3,8 @@ package io.opaa.directory.web;
 import io.opaa.api.dto.DirectorySyncPendingPlanResponse;
 import io.opaa.api.dto.DirectorySyncPlanDecisionRequest;
 import io.opaa.api.dto.DirectorySyncReportResponse;
+import io.opaa.api.dto.DirectorySyncSettingsRequest;
+import io.opaa.api.dto.DirectorySyncSettingsResponse;
 import io.opaa.api.dto.DirectorySyncStatusResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -10,6 +12,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.directory.sync.DirectorySyncReportDisclosure;
 import io.opaa.directory.sync.DirectorySyncReportDisclosure.Channel;
 import io.opaa.directory.sync.DirectorySyncService;
+import io.opaa.directory.sync.DirectorySyncSettingsAdministration;
 import io.opaa.directory.sync.PendingPlanView;
 import io.opaa.directory.sync.SyncReport;
 import jakarta.validation.Valid;
@@ -20,6 +23,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,11 +40,29 @@ public class DirectorySyncController {
 
   private final DirectorySyncService directorySyncService;
   private final DirectorySyncReportDisclosure reportDisclosure;
+  private final DirectorySyncSettingsAdministration settings;
 
   public DirectorySyncController(
-      DirectorySyncService directorySyncService, DirectorySyncReportDisclosure reportDisclosure) {
+      DirectorySyncService directorySyncService,
+      DirectorySyncReportDisclosure reportDisclosure,
+      DirectorySyncSettingsAdministration settings) {
     this.directorySyncService = directorySyncService;
     this.reportDisclosure = reportDisclosure;
+    this.settings = settings;
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/api/v1/admin/directory-sync/settings")
+  public DirectorySyncSettingsResponse getDirectorySyncSettings(@Caller CurrentUser caller) {
+    return DirectorySyncResponseMapper.toSettingsResponse(settings.current(caller));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/api/v1/admin/directory-sync/settings")
+  public DirectorySyncSettingsResponse updateDirectorySyncSettings(
+      @RequestBody DirectorySyncSettingsRequest request, @Caller CurrentUser caller) {
+    return DirectorySyncResponseMapper.toSettingsResponse(
+        settings.change(caller, request.getChangeThresholdPercent()));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

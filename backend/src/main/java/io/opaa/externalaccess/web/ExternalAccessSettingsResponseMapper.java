@@ -8,7 +8,7 @@ import io.opaa.externalaccess.ExternalAccessSettingsService.View;
  * Maps the domain's {@link View} onto the generated {@link ExternalAccessSettingsResponse}
  * (ADR-0006: API DTOs are generated from the specification, never hand-written). The delivered
  * default instructions text travels along so the administration can offer "Vorgabetext" without
- * knowing the wording itself.
+ * knowing the wording itself, and so do factory default and bound of the reminder lead.
  */
 final class ExternalAccessSettingsResponseMapper {
 
@@ -24,6 +24,10 @@ final class ExternalAccessSettingsResponseMapper {
             view.values().massRetrievalAlertThreshold(),
             view.values().serverInstructions(),
             ExternalAccessDefaults.SERVER_INSTRUCTIONS,
+            view.releaseReminderLeadDays(),
+            view.values().releaseReminderLeadDays() != null,
+            ExternalAccessDefaults.RELEASE_REMINDER_LEAD_DAYS,
+            view.maxReleaseReminderLeadDays(),
             view.updatedAt());
     response.setUpdatedBy(view.updatedBy());
     return response;

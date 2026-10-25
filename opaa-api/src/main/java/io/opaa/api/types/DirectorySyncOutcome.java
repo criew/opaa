@@ -13,11 +13,11 @@ public enum DirectorySyncOutcome {
   DRY_RUN,
 
   /**
-   * The run would have removed more than the configured fraction of a group's memberships (see
-   * {@code DirectorySyncProperties#changeThresholdFraction} in the backend module). Nothing was
-   * written; the plan is kept and waits for a system administrator to confirm or discard it
-   * (ADR-0036, Entscheidung 3). A legitimate large run - a reorganisation - is applicable this way
-   * instead of being permanently refused.
+   * The run would have removed more than the plausibility threshold of the installation allows (see
+   * {@code DirectorySyncChangeThreshold} in the backend module). Nothing was written; the plan is
+   * kept and waits for a system administrator to confirm or discard it (ADR-0036, Entscheidung 3).
+   * A legitimate large run - a reorganisation - is applicable this way instead of being permanently
+   * refused.
    */
   PENDING_CONFIRMATION,
 

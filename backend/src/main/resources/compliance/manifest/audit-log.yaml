@@ -542,6 +542,14 @@ auditEvents:
   - id: FULL_SYNC_RHYTHM_CHANGED
     trigger: Der hausweite Vollabgleich-Rhythmus einer Quellart ändert sich
     payloadKeys: [intervalDays, overridden, sourceType]
+  - id: SUCCESSION_AGING_THRESHOLD_CHANGED
+    trigger: >-
+      Die Schwelle, ab der ein Eintrag der Liste „Ohne Zuständigkeit“ als lange offen hervorgehoben
+      wird, ändert sich
+    payloadKeys: [agingThresholdMonths, overridden]
+  - id: DIRECTORY_SYNC_CHANGE_THRESHOLD_CHANGED
+    trigger: Die Plausibilitätsschwelle des Verzeichnisabgleichs ändert sich
+    payloadKeys: [changeThresholdPercent, overridden]
   - id: CAPABILITY_GRANTED
     trigger: Ein Anlegerecht wird einem Konto, einer Gruppe oder allen Konten erteilt
     payloadKeys: [capability, scope, subjectType]
@@ -921,6 +929,8 @@ auditEvents:
       - allowedCidrs
       - enabled
       - massRetrievalAlertThreshold
+      - releaseReminderLeadDays
+      - releaseReminderLeadDaysOverridden
       - serverInstructionsLength
       - serverInstructionsSha256
       - tokenMaxLifetimeDays
