@@ -2,8 +2,10 @@ package io.opaa.query.citation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 import io.opaa.query.citation.CitationParser.ParsedCitation;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -89,5 +91,23 @@ class CitationParserTest {
     List<ParsedCitation> citations = parser.extractCitations(answer);
 
     assertThat(citations).containsExactly(new ParsedCitation("id-1", 0, "my document (v2).pdf"));
+  }
+
+  @Test
+  void manyUnclosedOpenersAreReadInLinearTime() {
+    String answer = "【source: abc-123#0 | readme.md".repeat(10_000) + " Ende.";
+
+    List<ParsedCitation> citations =
+        assertTimeout(Duration.ofSeconds(1), () -> parser.extractCitations(answer));
+
+    assertThat(citations).isEmpty();
+  }
+
+  @Test
+  void theFileNameEndsAtTheNextOpenerAndLosesItsSurroundingBlanks() {
+    String answer = "a 【source: id-1#0 | kaputt 【source: id-2#3 |  Leitfaden 2026.pdf 】 b";
+
+    assertThat(parser.extractCitations(answer))
+        .containsExactly(new ParsedCitation("id-2", 3, "Leitfaden 2026.pdf"));
   }
 }
