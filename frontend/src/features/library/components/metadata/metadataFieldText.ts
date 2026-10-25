@@ -47,3 +47,46 @@ export function formatDuration(seconds: number): string {
   const hours = Math.round(minutes / 60)
   return `rund ${hours} Stunde${hours === 1 ? '' : 'n'}`
 }
+
+/**
+ * An example value of a simple pattern („^[0-9]{2}\\.[0-9]{2}-[0-9]{4}$“ → „12.34-5678“), so the
+ * row shows the format instead of the raw expression; null for anything beyond digits, letters,
+ * escaped literals and fixed counts - the pattern itself stays in the dialog „Ändern“.
+ */
+export function patternExample(pattern: string): string | null {
+  const DIGITS = '1234567890'
+  let out = ''
+  let digit = 0
+  let i = pattern.startsWith('^') ? 1 : 0
+  const end = pattern.endsWith('$') ? pattern.length - 1 : pattern.length
+  while (i < end) {
+    let unit: () => string
+    if (pattern.startsWith('[0-9]', i) || pattern.startsWith('\\d', i)) {
+      unit = () => DIGITS[digit++ % 10]
+      i += pattern.startsWith('[0-9]', i) ? 5 : 2
+    } else if (pattern.startsWith('[A-Z]', i)) {
+      unit = () => 'A'
+      i += 5
+    } else if (pattern[i] === '\\' && i + 1 < end && /[.\-/ ]/.test(pattern[i + 1])) {
+      const literal = pattern[i + 1]
+      unit = () => literal
+      i += 2
+    } else if (/[A-Za-z0-9\-/ :_]/.test(pattern[i])) {
+      const literal = pattern[i]
+      unit = () => literal
+      i += 1
+    } else {
+      return null
+    }
+    let count = 1
+    const quantifier = /^\{(\d+)(?:,\d*)?\}/.exec(pattern.slice(i, end))
+    if (quantifier) {
+      count = Number(quantifier[1])
+      i += quantifier[0].length
+    } else if (/[+*?]/.test(pattern[i] ?? '')) {
+      return null
+    }
+    for (let n = 0; n < count; n++) out += unit()
+  }
+  return out || null
+}

@@ -1,14 +1,11 @@
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
-import TabSection from '@/shared/ui/TabSection'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
-import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 
 interface LibrarySharingTabProps {
   libraryId: string
@@ -60,21 +57,12 @@ export default function LibrarySharingTab({
           onTransferred={onTransferred}
         />
 
-        {/* one quiet sentence instead of the missing permissions, no tinted box */}
-        {privateLibrary && (
-          <Typography
-            sx={{ fontSize: 13.5, color: 'text.secondary', mb: 4 }}
-            data-testid="library-private-note"
-          >
-            {PRIVATE_LIBRARY_NOTE} Sie lässt sich weder freigeben noch übertragen.
-          </Typography>
-        )}
-
         {canEdit && !privateLibrary && (
           <>
             <AssetGrantsSection
               assetType="KNOWLEDGE_LIBRARY"
               assetId={library.id}
+              ownerName={library.ownerName}
               capControl={
                 shareCapVisible ? (
                   <ShareCapSwitch
@@ -87,29 +75,25 @@ export default function LibrarySharingTab({
               }
             />
 
-            {externalAccessEnabled && (
-              <TabSection title="Externer Zugang">
-                <LibraryExternalAccessSection libraryId={libraryId} />
-              </TabSection>
-            )}
+            {externalAccessEnabled && <LibraryExternalAccessSection libraryId={libraryId} />}
           </>
         )}
 
-        {details && (
-          <TabSection title="Diagnosesperre">
-            <DiagnosticsLockControl
-              locked={details.diagnosticsLocked ?? true}
-              // myRole bypasses to OWNER for a system admin unconditionally
-              // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
-              // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
-              // grant never sees a button that is guaranteed to fail with 403.
-              canToggle={details.diagnosticsLockToggleable ?? false}
-              saving={diagnosticsLockSaving}
-              error={diagnosticsLockError}
-              onToggle={onToggleDiagnosticsLock}
-              onDismissError={onDismissDiagnosticsLockError}
-            />
-          </TabSection>
+        {/* a reader can do nothing about the lock: the section is left out for them; a private
+            library stays locked and shows only its state */}
+        {details && (canEdit || privateLibrary) && (
+          <DiagnosticsLockControl
+            locked={details.diagnosticsLocked ?? true}
+            // myRole bypasses to OWNER for a system admin unconditionally
+            // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+            // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
+            // grant never sees a button that is guaranteed to fail with 403.
+            canToggle={details.diagnosticsLockToggleable ?? false}
+            saving={diagnosticsLockSaving}
+            error={diagnosticsLockError}
+            onToggle={onToggleDiagnosticsLock}
+            onDismissError={onDismissDiagnosticsLockError}
+          />
         )}
 
         {!privateLibrary && (

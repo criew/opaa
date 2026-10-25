@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
@@ -79,10 +80,11 @@ export default function MetadataExtractionSettingsSection({
 
   const local = settings?.chatModel?.local === true
   const stats = quality?.modelExtraction
-
+  const enabled = Boolean(settings?.modelExtractionEnabled || settings?.keywordsEnabled)
+  const total = quality?.totalDocuments ?? 0
   const qualityFields = quality?.fields ?? []
   return (
-    <TabSection title="Modellgestützte Extraktion">
+    <TabSection title="Extraktion">
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
@@ -90,27 +92,27 @@ export default function MetadataExtractionSettingsSection({
       )}
       {canManage && settings && (
         <Stack spacing={0.5} sx={{ mb: 3 }}>
-          <SwitchLine
-            label="Modellgestützte Extraktion"
-            checked={settings.modelExtractionEnabled}
-            disabled={saving}
-            onChange={(next) => void save(next, settings.keywordsEnabled)}
-            hint={`Füllt leer gebliebene Auswahlfelder ab ${formatShare(settings.confidenceThreshold)} Konfidenz.`}
-          />
-          <SwitchLine
-            label="Freie Schlagworte"
-            checked={settings.keywordsEnabled}
-            disabled={saving}
-            onChange={(next) => void save(settings.modelExtractionEnabled, next)}
-            hint="Höchstens fünf je Dokument, nicht filterbar."
-          />
-          {/* the one consequence of the switch that matters beyond this page: where content goes */}
+          <Stack direction="row" spacing={3} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            <SwitchLine
+              label="Leere Felder ergänzen"
+              checked={settings.modelExtractionEnabled}
+              disabled={saving}
+              onChange={(next) => void save(next, settings.keywordsEnabled)}
+            />
+            <SwitchLine
+              label="Freie Schlagworte"
+              checked={settings.keywordsEnabled}
+              disabled={saving}
+              onChange={(next) => void save(settings.modelExtractionEnabled, next)}
+            />
+          </Stack>
+          {/* the one sentence of the tab: where content goes; the signal only while it does */}
           <Box
             aria-label="Datenschutzhinweis"
             role="note"
-            sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', pt: 0.5 }}
+            sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}
           >
-            {!local && settings.chatModel && (
+            {!local && settings.chatModel && enabled && (
               <Box
                 aria-hidden
                 sx={{
@@ -126,118 +128,120 @@ export default function MetadataExtractionSettingsSection({
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
               {settings.chatModel
                 ? local
-                  ? `Lokales Modell ${settings.chatModel.modelIdentifier}: Es verlassen keine Dokumentinhalte das Haus.`
-                  : `Eingeschaltet gehen alle Inhalte an ${settings.chatModel.baseUrl} (${settings.chatModel.modelIdentifier}).`
+                  ? `Lokales Modell ${settings.chatModel.modelIdentifier}: Inhalte bleiben im Haus.`
+                  : `${enabled ? 'Eingeschaltet: Inhalte gehen' : 'Eingeschaltet gehen Inhalte'} an ${providerName(settings.chatModel.baseUrl)} (${settings.chatModel.modelIdentifier}).`
                 : 'Kein Chat-Modell aktiv: Die Extraktion bleibt wirkungslos.'}
             </Typography>
           </Box>
         </Stack>
       )}
 
-      <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 1 }}>
-        Extraktionsgüte · {plural(quality?.totalDocuments ?? 0, 'Dokument', 'Dokumente')}
-      </Typography>
-      {qualityFields.length > 0 && (
-        <Box sx={{ overflowX: 'auto' }}>
-          <Box
-            component="table"
-            sx={{
-              borderCollapse: 'collapse',
-              width: '100%',
-              fontSize: 13,
-              '& th': {
-                fontSize: 12,
-                fontWeight: 500,
-                color: 'text.secondary',
-                textAlign: 'right',
-                pb: 0.5,
-                borderBottom: 1,
-                borderColor: 'divider',
-              },
-              '& td': {
-                textAlign: 'right',
-                py: 0.75,
-                borderBottom: 1,
-                borderColor: 'divider',
-                fontVariantNumeric: 'tabular-nums',
-              },
-              '& th:first-of-type, & td:first-of-type': { textAlign: 'left' },
-            }}
-          >
-            <thead>
-              <tr>
-                <th scope="col">Feld</th>
-                <th scope="col">regelbasiert</th>
-                <th scope="col">Modell</th>
-                <th scope="col">von Hand</th>
-                <th scope="col">nicht ermittelbar</th>
-                <th scope="col">leer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {qualityFields.map((field) => (
-                <tr key={field.fieldKey}>
-                  <td>{field.label}</td>
-                  <td>{field.deterministicDocuments}</td>
-                  <td>{field.derivedDocuments}</td>
-                  <td>{field.manualDocuments}</td>
-                  <td>{field.notDeterminableDocuments}</td>
-                  <td>
-                    {field.emptyDocuments} ({formatShare(field.emptyShare)})
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Box>
-        </Box>
-      )}
-      {stats && (
-        <Box component="details" sx={{ mt: 1.5, fontSize: 12.5, color: 'text.secondary' }}>
-          <Box component="summary" sx={{ cursor: 'pointer', color: 'text.primary' }}>
-            Technische Angaben
-          </Box>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-            Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen
-            (Konfidenz): {stats.rejectedBelowThreshold} · verworfen (Werteliste):{' '}
-            {stats.rejectedOutsideVocabulary} · Fehler/Zeitüberschreitungen: {stats.failures} ·
-            nicht angefragt (ausgelastet): {stats.rejectedPoolFull} · Schlagworte:{' '}
-            {stats.keywordsAssigned}
+      {/* the fill level of the fields, the one place of it; nothing to say without documents */}
+      {total > 0 && qualityFields.length > 0 && (
+        <>
+          <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 0.5 }}>
+            Füllgrad · {plural(total, 'Dokument', 'Dokumente').replace(/^\d+/, formatCount(total))}
           </Typography>
-        </Box>
+          <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+            {qualityFields.map((field) => (
+              <Box
+                component="li"
+                key={field.fieldKey}
+                sx={{ py: 0.75, borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Typography sx={{ fontSize: 13.5 }}>
+                  {field.label}
+                  <Box component="span" sx={{ color: 'text.secondary' }}>
+                    {` · ${formatCount(field.emptyDocuments)} leer (${formatShare(field.emptyShare)})`}
+                  </Box>
+                </Typography>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  {`regelbasiert ${formatCount(field.deterministicDocuments)} · Modell ${formatCount(field.derivedDocuments)} · von Hand ${formatCount(field.manualDocuments)} · nicht ermittelbar ${formatCount(field.notDeterminableDocuments)}`}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </>
       )}
+      {stats && total > 0 && <TechnicalFigures stats={stats} />}
     </TabSection>
   )
 }
 
-/** A switch with its one-line consequence beside the label. */
+function formatCount(n: number): string {
+  return n.toLocaleString('de-DE')
+}
+
+/** The provider a hosted model belongs to, by its address; the host where none is known. */
+function providerName(baseUrl: string): string {
+  let host = baseUrl
+  try {
+    host = new URL(baseUrl).hostname
+  } catch {
+    // not a URL: shown as given
+  }
+  if (/(^|\.)openai\.com$/.test(host)) return 'OpenAI'
+  if (/(^|\.)anthropic\.com$/.test(host)) return 'Anthropic'
+  if (/(^|\.)azure\.com$/.test(host)) return 'Azure OpenAI'
+  if (/(^|\.)mistral\.ai$/.test(host)) return 'Mistral'
+  return host
+}
+
+/** The counters of the model calls, folded away like the technical figures of a run. */
+function TechnicalFigures({
+  stats,
+}: {
+  stats: NonNullable<LibraryMetadataQualityResponse['modelExtraction']>
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Box sx={{ mt: 1.5 }}>
+      <Link
+        component="button"
+        type="button"
+        underline="hover"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        sx={{ fontSize: 13 }}
+      >
+        Technische Angaben
+      </Link>
+      {open && (
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+          Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen (Konfidenz):{' '}
+          {stats.rejectedBelowThreshold} · verworfen (Werteliste): {stats.rejectedOutsideVocabulary}{' '}
+          · Fehler/Zeitüberschreitungen: {stats.failures} · nicht angefragt (ausgelastet):{' '}
+          {stats.rejectedPoolFull} · Schlagworte: {stats.keywordsAssigned}
+        </Typography>
+      )}
+    </Box>
+  )
+}
+
+/** A switch with its label; what it means is said once, in the sentence below. */
 function SwitchLine({
   label,
   checked,
   disabled,
   onChange,
-  hint,
 }: {
   label: string
   checked: boolean
   disabled: boolean
   onChange: (next: boolean) => void
-  hint: string
 }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 1 }}>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={checked}
-            disabled={disabled}
-            onChange={(event) => onChange(event.target.checked)}
-            slotProps={{ input: { 'aria-label': label } }}
-          />
-        }
-        label={label}
-        sx={{ mr: 0 }}
-      />
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{hint}</Typography>
-    </Box>
+    <FormControlLabel
+      control={
+        <Switch
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.checked)}
+          slotProps={{ input: { 'aria-label': label } }}
+        />
+      }
+      label={label}
+      sx={{ mr: 0 }}
+    />
   )
 }

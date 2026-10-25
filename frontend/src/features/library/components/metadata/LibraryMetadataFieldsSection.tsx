@@ -3,10 +3,13 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import TabSection from '@/shared/ui/TabSection'
+import TabSection, { ListSearchField } from '@/shared/ui/TabSection'
 import { Link as RouterLink } from 'react-router'
 import { plural } from '@/shared/utils/format'
 import Link from '@mui/material/Link'
@@ -25,7 +28,7 @@ import type {
   LibraryMetadataFieldResponse,
   LibraryMetadataSchemaChangeResponse,
 } from '@/shared/api/types'
-import { TYPE_LABELS, describeChange, effectChips } from './metadataFieldText'
+import { TYPE_LABELS, describeChange, effectChips, patternExample } from './metadataFieldText'
 import CoreContextPrefixSwitch from './CoreContextPrefixSwitch'
 import AddValueButton from './AddValueButton'
 import CreateFieldDialog from './CreateFieldDialog'
@@ -231,7 +234,7 @@ export default function LibraryMetadataFieldsSection({
 
   return (
     <TabSection
-      title="Metadatenfelder"
+      title="Eigene Felder"
       action={
         canManageSchema ? (
           <Button size="small" onClick={() => setCreateOpen(true)}>
@@ -291,29 +294,40 @@ export default function LibraryMetadataFieldsSection({
             <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600 }}>
               Kernfelder im Kontextpräfix
             </Typography>
-            <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
-              <CoreContextPrefixSwitch
-                libraryId={libraryId}
-                label="Dokumentart"
-                fieldKey="document_type"
-                checked={coreContextPrefix.documentType}
-                disabled={!canManageSchema}
-                onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
-              />
-              <CoreContextPrefixSwitch
-                libraryId={libraryId}
-                label="Datum/Stand"
-                fieldKey="document_date"
-                checked={coreContextPrefix.documentDate}
-                disabled={!canManageSchema}
-                onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
-              />
-            </Stack>
+            {/* read-only as text, not as switches nobody may move */}
+            {!canManageSchema ? (
+              <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+                {`Dokumentart: ${coreContextPrefix.documentType ? 'an' : 'aus'} · Datum/Stand: ${coreContextPrefix.documentDate ? 'an' : 'aus'}`}
+              </Typography>
+            ) : (
+              <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                <CoreContextPrefixSwitch
+                  libraryId={libraryId}
+                  label="Dokumentart"
+                  fieldKey="document_type"
+                  checked={coreContextPrefix.documentType}
+                  disabled={!canManageSchema}
+                  onSave={(next) =>
+                    void saveCoreContextPrefix(next, coreContextPrefix.documentDate)
+                  }
+                />
+                <CoreContextPrefixSwitch
+                  libraryId={libraryId}
+                  label="Datum/Stand"
+                  fieldKey="document_date"
+                  checked={coreContextPrefix.documentDate}
+                  disabled={!canManageSchema}
+                  onSave={(next) =>
+                    void saveCoreContextPrefix(coreContextPrefix.documentType, next)
+                  }
+                />
+              </Stack>
+            )}
           </Box>
         )}
         {fields.length === 0 ? (
           <Typography component="li" variant="body2" sx={{ color: 'text.secondary', py: 1.5 }}>
-            Keine eigenen Metadatenfelder.
+            Noch keine eigenen Felder.
           </Typography>
         ) : (
           fields.map((field) => (
@@ -430,9 +444,11 @@ function MetadataFieldRow({
   const editable = canManageSchema && !field.deletionPending
   const valuesId = `metadata-values-${field.fieldKey}`
   const effects = effectChips(field)
+  const example = field.valuePattern ? patternExample(field.valuePattern) : null
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   return (
     <Box component="li" sx={FIELD_ROW}>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600 }}>
             {field.label}
@@ -442,55 +458,84 @@ function MetadataFieldRow({
               </Box>
             )}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
             {TYPE_LABELS[field.type]}
-            {field.valuePattern ? ` · Muster: ${field.valuePattern}` : ''}
-            {field.type === 'SELECT' ? ` · ${plural(field.values.length, 'Wert', 'Werte')}` : ''}
+            {example ? ` · z. B. ${example}` : ''}
+            {field.type === 'SELECT' &&
+              (long ? (
+                <>
+                  {' · '}
+                  <Link
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    aria-expanded={open}
+                    aria-controls={valuesId}
+                    onClick={() => setOpen((current) => !current)}
+                    sx={{ fontSize: 'inherit', verticalAlign: 'baseline' }}
+                  >
+                    {plural(field.values.length, 'Wert', 'Werte')} ›
+                  </Link>
+                </>
+              ) : (
+                ` · ${plural(field.values.length, 'Wert', 'Werte')}`
+              ))}
+            {field.deletionPending && (
+              <Box component="span" sx={{ color: 'warning.main' }}>
+                {' · wird gelöscht'}
+              </Box>
+            )}
           </Typography>
-          {field.deletionPending && (
-            <Typography variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
-              wird gelöscht
-            </Typography>
-          )}
         </Box>
-        {field.type === 'SELECT' && long && (
-          <Button
-            size="small"
-            aria-expanded={open}
-            aria-controls={valuesId}
-            onClick={() => setOpen((current) => !current)}
-          >
-            {open ? 'Werte ausblenden' : 'Werte anzeigen'}
-          </Button>
-        )}
         {editable && (
-          <Button size="small" onClick={onEdit} aria-label={`Feld ${field.label} bearbeiten`}>
-            Bearbeiten
-          </Button>
-        )}
-        {editable && (
-          <Button
-            size="small"
-            color="error"
-            onClick={onDelete}
-            aria-label={`Feld ${field.label} löschen`}
-          >
-            Löschen
-          </Button>
+          <>
+            <IconButton
+              size="small"
+              aria-label={`Aktionen für Feld ${field.label}`}
+              aria-haspopup="menu"
+              onClick={(event) => setMenuAnchor(event.currentTarget)}
+              sx={{ mr: -0.75 }}
+            >
+              <MoreHorizIcon fontSize="small" />
+            </IconButton>
+            <Menu
+              anchorEl={menuAnchor}
+              open={menuAnchor !== null}
+              onClose={() => setMenuAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <MenuItem
+                onClick={() => {
+                  setMenuAnchor(null)
+                  onEdit()
+                }}
+              >
+                Ändern
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setMenuAnchor(null)
+                  onDelete()
+                }}
+              >
+                Löschen
+              </MenuItem>
+            </Menu>
+          </>
         )}
       </Box>
       {field.type === 'SELECT' && open && (
         <Box id={valuesId} sx={{ mt: 1 }}>
           {long && (
-            <TextField
-              size="small"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Wert suchen"
-              slotProps={{ htmlInput: { 'aria-label': `Werte von ${field.label} durchsuchen` } }}
-              sx={{ mb: 1, width: '100%', maxWidth: 280 }}
-            />
+            <Box sx={{ mb: 1 }}>
+              <ListSearchField
+                value={query}
+                onChange={setQuery}
+                placeholder="Wert suchen"
+                ariaLabel={`Werte von ${field.label} durchsuchen`}
+              />
+            </Box>
           )}
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
             {values.map((value) => (
@@ -498,14 +543,10 @@ function MetadataFieldRow({
                 key={value.code}
                 size="small"
                 variant="outlined"
-                label={
-                  value.retiring
-                    ? `${value.label} (${value.code}) — wird abgebildet`
-                    : `${value.label} (${value.code})`
-                }
+                label={value.retiring ? `${value.label} — wird abgebildet` : value.label}
                 clickable={editable && !value.retiring}
                 onClick={editable && !value.retiring ? () => onRemap(value.code) : undefined}
-                aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
+                aria-label={canManageSchema ? `Wert ${value.label} ändern` : undefined}
               />
             ))}
             {editable && (

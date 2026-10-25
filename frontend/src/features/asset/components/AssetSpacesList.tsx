@@ -8,9 +8,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import LinkOffIcon from '@mui/icons-material/LinkOff'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import TextField from '@mui/material/TextField'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -21,6 +19,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 import StateDot from '@/shared/ui/StateDot'
+import { ListSearchField } from '@/shared/ui/TabSection'
 import { useSpaceListLoader } from './spaceListContext'
 
 /** From this many associations on, the list gets a search (D19). */
@@ -50,8 +49,8 @@ function formatDate(value: string): string {
 /** Who associated and when - both only ever sent to a caller who manages the asset. */
 function provenance(association: AssetSpaceAssociationResponse): string | null {
   const parts = [
-    association.createdByDisplayName ? `zugeordnet von ${association.createdByDisplayName}` : null,
-    association.createdAt ? formatDate(association.createdAt) : null,
+    association.createdAt ? `seit ${formatDate(association.createdAt)}` : null,
+    association.createdByDisplayName ? `von ${association.createdByDisplayName}` : null,
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : null
 }
@@ -63,6 +62,7 @@ function RowActions({ spaceName, onDetach }: { spaceName: string; onDetach: () =
     <>
       <IconButton
         size="small"
+        sx={{ mr: -0.75 }}
         aria-label={`Aktionen für Space „${spaceName}“`}
         aria-haspopup="menu"
         aria-expanded={anchor ? true : undefined}
@@ -83,7 +83,6 @@ function RowActions({ spaceName, onDetach }: { spaceName: string; onDetach: () =
             onDetach()
           }}
         >
-          <LinkOffIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
           Aus Space lösen
         </MenuItem>
       </Menu>
@@ -192,21 +191,20 @@ export default function AssetSpacesList({
         // association will land.
         <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
       ) : links.items.length === 0 && hiddenCount === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Diese {noun} ist derzeit keinem Space zugeordnet.
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+          Noch keine Zuordnungen.
         </Typography>
       ) : (
         <>
           {searchable && (
-            <TextField
-              size="small"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Space suchen"
-              slotProps={{ htmlInput: { 'aria-label': 'Spaces durchsuchen' } }}
-              sx={{ mb: 1.5, width: '100%', maxWidth: 360 }}
-            />
+            <Box sx={{ mb: 1.5 }}>
+              <ListSearchField
+                value={query}
+                onChange={setQuery}
+                placeholder="Space suchen"
+                ariaLabel="Spaces durchsuchen"
+              />
+            </Box>
           )}
           {searchable && needle && shown.length === 0 && (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -231,7 +229,16 @@ export default function AssetSpacesList({
                   }}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 500, overflowWrap: 'anywhere' }}>
+                    <Typography
+                      title={association.spaceName}
+                      sx={{
+                        fontSize: 14,
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {association.spaceName}
                     </Typography>
                     {(origin || association.narrowerReaderCircle) && (

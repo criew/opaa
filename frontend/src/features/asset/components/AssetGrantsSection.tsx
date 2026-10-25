@@ -7,6 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
+import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
@@ -14,8 +15,8 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import DeleteIcon from '@mui/icons-material/Delete'
-import TabSection, { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import TabSection, { ListSearchField, TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import type {
   AssetGrantResponse,
   AssetGrantSubjectType,
@@ -44,7 +45,6 @@ import {
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from './assetLabels'
-import { assetTypeLabel } from '../../../shared/assetTypes'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -84,11 +84,25 @@ export interface AssetGrantsSectionProps {
   assetId: string
   /** The system administration's upper bound, below the list — only where there is one. */
   capControl?: ReactNode
+  /**
+   * The owner as the section „Eigentümer“ names it: its own grant is not listed again here, it
+   * changes only through „Eigentum übergeben“.
+   */
+  ownerName?: string | null
 }
 
-function formatExpiry(expiresAt: string | null | undefined): string {
-  if (!expiresAt) return 'unbefristet'
-  return `bis ${new Date(expiresAt).toLocaleDateString('de-DE')}`
+function formatDay(value: string): string {
+  return new Date(value).toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+/** A limit only where there is one; an open-ended grant says nothing about it. */
+function formatExpiry(expiresAt: string | null | undefined): string | null {
+  if (!expiresAt) return null
+  return `bis ${formatDay(expiresAt)}`
 }
 
 function isExpired(expiresAt: string | null | undefined): boolean {
@@ -130,9 +144,13 @@ export default function AssetGrantsSection({
   assetType,
   assetId,
   capControl,
+  ownerName,
 }: AssetGrantsSectionProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
-  const grants = useGrantStore((s) => s.grantsByAsset[assetKey(assetType, assetId)]) ?? []
+  const allGrants = useGrantStore((s) => s.grantsByAsset[assetKey(assetType, assetId)]) ?? []
+  const grants = allGrants.filter(
+    (grant) => !(ownerName && grant.role === 'OWNER' && subjectDisplayName(grant) === ownerName),
+  )
   const isLoading = useGrantStore((s) => s.isLoading)
   const loadError = useGrantStore((s) => s.error)
   const loadGrants = useGrantStore((s) => s.loadGrants)
@@ -417,107 +435,15 @@ export default function AssetGrantsSection({
       : [{ title: null, grants: shownGrants }]
 
   function grantRow(grant: AssetGrantResponse) {
-    const expired = isExpired(grant.expiresAt)
-    const subjectName = subjectDisplayName(grant)
-    const sizeHint = grant.subjectType === 'GROUP' ? groupMemberCountLabel(grant) : null
-    // grantedByUserId names whoever conferred the role the grant carries now, so it is paired
-    // with updatedAt (the last role change), never with createdAt.
-    const detail = [
-      permissionSubjectTypeLabel(grant.subjectType),
-      sizeHint,
-      `vergeben von ${grantedByDisplayName(grant)} am ${new Date(grant.updatedAt).toLocaleDateString('de-DE')}`,
-    ]
-      .filter(Boolean)
-      .join(' · ')
     return (
-      <Box
-        component="li"
+      <GrantRow
         key={grant.id}
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: 'minmax(0, 1fr) auto',
-            sm: 'minmax(0, 1fr) 148px 112px 34px',
-          },
-          columnGap: 1.5,
-          rowGap: 0.75,
-          alignItems: 'center',
-          py: 1,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ minWidth: 0, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
-            {subjectName}
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1, alignItems: 'baseline' }}>
-            <Typography
-              variant="caption"
-              title={detail}
-              sx={{
-                color: 'text.secondary',
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {detail}
-            </Typography>
-            {/* ADR-0036 Entscheidung 9: the members only on explicit request; an expired grant
-                holds nothing any more, the service then answers as for an unknown group. */}
-            {grant.subjectType === 'GROUP' && grant.subjectId && !expired && (
-              <GroupMembersDisclosure
-                key={grant.subjectId}
-                groupLabel={grant.subjectDisplayName ?? subjectName}
-                load={(offset, limit) =>
-                  getGrantedGroupMembers(
-                    assetType,
-                    assetId,
-                    grant.subjectId as string,
-                    offset,
-                    limit,
-                  )
-                }
-              />
-            )}
-          </Box>
-        </Box>
-        <Select
-          size="small"
-          value={grant.role}
-          // one column head names the column; each select tells the screen reader its row
-          inputProps={{ 'aria-label': `Rolle für ${subjectName}` }}
-          onChange={(e) => void handleRoleChange(grant, e.target.value as AssetRole)}
-          sx={{ fontSize: 13.5 }}
-        >
-          {rolesFor(grant.subjectType).map((option) => (
-            <MenuItem key={option} value={option}>
-              {assetRoleLabel(option)}
-            </MenuItem>
-          ))}
-        </Select>
-        <Typography
-          sx={{
-            fontSize: 12.5,
-            color: expired ? 'warning.main' : 'text.secondary',
-            gridRow: { xs: 2, sm: 'auto' },
-          }}
-        >
-          {expired
-            ? `abgelaufen (${formatExpiry(grant.expiresAt)})`
-            : formatExpiry(grant.expiresAt)}
-        </Typography>
-        <IconButton
-          aria-label={`Freigabe für ${subjectName} entziehen`}
-          size="small"
-          onClick={() => void handleRevoke(grant)}
-          sx={{ justifySelf: 'end' }}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      </Box>
+        grant={grant}
+        assetType={assetType}
+        assetId={assetId}
+        onRoleChange={(next) => void handleRoleChange(grant, next)}
+        onRevoke={() => void handleRevoke(grant)}
+      />
     )
   }
 
@@ -534,14 +460,11 @@ export default function AssetGrantsSection({
       }
       tools={
         searchable ? (
-          <TextField
-            size="small"
-            type="search"
+          <ListSearchField
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={setQuery}
             placeholder="Person oder Gruppe suchen"
-            slotProps={{ htmlInput: { 'aria-label': 'Freigaben durchsuchen' } }}
-            sx={{ width: '100%', maxWidth: 360 }}
+            ariaLabel="Freigaben durchsuchen"
           />
         ) : undefined
       }
@@ -563,8 +486,8 @@ export default function AssetGrantsSection({
         {isLoading ? (
           <Typography sx={{ color: 'text.secondary' }}>Berechtigungen werden geladen …</Typography>
         ) : grants.length === 0 ? (
-          <Typography sx={{ color: 'text.secondary' }}>
-            Es sind noch keine Freigaben für diese {assetTypeLabel(assetType)} erteilt.
+          <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+            Noch keine Freigaben.
           </Typography>
         ) : shownGrants.length === 0 ? (
           <Typography sx={{ color: 'text.secondary' }}>
@@ -593,5 +516,156 @@ export default function AssetGrantsSection({
         {capControl}
       </Box>
     </TabSection>
+  )
+}
+
+/**
+ * One grant in two text lines - the name, then kind, members, limit and date - with the role
+ * and „⋯“ at the shared right edge; below 600 px both move under the name in one line.
+ */
+function GrantRow({
+  grant,
+  assetType,
+  assetId,
+  onRoleChange,
+  onRevoke,
+}: {
+  grant: AssetGrantResponse
+  assetType: AssetType
+  assetId: string
+  onRoleChange: (role: AssetRole) => void
+  onRevoke: () => void
+}) {
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const expired = isExpired(grant.expiresAt)
+  const subjectName = subjectDisplayName(grant)
+  const members = grant.subjectType === 'GROUP' ? groupMemberCountLabel(grant) : null
+  const expiry = formatExpiry(grant.expiresAt)
+  // grantedByUserId names whoever conferred the role the grant carries now, so it is paired
+  // with updatedAt (the last role change), never with createdAt.
+  const since = `seit ${formatDay(grant.updatedAt)} von ${grantedByDisplayName(grant)}`
+  const canDisclose = grant.subjectType === 'GROUP' && Boolean(grant.subjectId) && !expired
+  const title = [permissionSubjectTypeLabel(grant.subjectType), members, expiry, since]
+    .filter(Boolean)
+    .join(' · ')
+  return (
+    <Box component="li" sx={{ py: 1, borderBottom: 1, borderColor: 'divider' }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr) 148px 34px', sm: 'minmax(0, 1fr) 148px 34px' },
+          gridTemplateAreas: { xs: '"name name name" ". role more"', sm: '"name role more"' },
+          columnGap: 1.5,
+          rowGap: 0.5,
+          alignItems: 'center',
+        }}
+      >
+        <Box sx={{ gridArea: 'name', minWidth: 0 }}>
+          <Typography
+            title={subjectName}
+            sx={{
+              fontSize: 13.5,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {subjectName}
+          </Typography>
+          <Typography
+            component="div"
+            title={title}
+            sx={{
+              fontSize: 12,
+              color: 'text.secondary',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {permissionSubjectTypeLabel(grant.subjectType)}
+            {members &&
+              (canDisclose ? (
+                <>
+                  {' · '}
+                  <Link
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    aria-expanded={membersOpen}
+                    aria-label={`Mitglieder der Gruppe „${subjectName}“ ${membersOpen ? 'verbergen' : 'anzeigen'}`}
+                    onClick={() => setMembersOpen((open) => !open)}
+                    sx={{ fontSize: 'inherit', verticalAlign: 'baseline' }}
+                  >
+                    {members} ›
+                  </Link>
+                </>
+              ) : (
+                ` · ${members}`
+              ))}
+            {expiry && (
+              <Box component="span" sx={{ color: expired ? 'warning.main' : 'inherit' }}>
+                {` · ${expired ? `abgelaufen (${expiry})` : expiry}`}
+              </Box>
+            )}
+            {` · ${since}`}
+          </Typography>
+        </Box>
+        <Select
+          size="small"
+          value={grant.role}
+          // each select tells the screen reader its row
+          inputProps={{ 'aria-label': `Rolle für ${subjectName}` }}
+          onChange={(e) => onRoleChange(e.target.value as AssetRole)}
+          sx={{ gridArea: 'role', fontSize: 13.5, width: 148 }}
+        >
+          {rolesFor(grant.subjectType).map((option) => (
+            <MenuItem key={option} value={option}>
+              {assetRoleLabel(option)}
+            </MenuItem>
+          ))}
+        </Select>
+        <IconButton
+          aria-label={`Weitere Aktionen für ${subjectName}`}
+          aria-haspopup="menu"
+          size="small"
+          onClick={(event) => setMenuAnchor(event.currentTarget)}
+          sx={{ gridArea: 'more', justifySelf: 'end', mr: -0.75 }}
+        >
+          <MoreHorizIcon fontSize="small" />
+        </IconButton>
+        <Menu
+          anchorEl={menuAnchor}
+          open={menuAnchor !== null}
+          onClose={() => setMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem
+            onClick={() => {
+              setMenuAnchor(null)
+              onRevoke()
+            }}
+          >
+            Entfernen
+          </MenuItem>
+        </Menu>
+      </Box>
+      {/* ADR-0036 Entscheidung 9: the members only on explicit request; an expired grant
+          holds nothing any more, the service then answers as for an unknown group. */}
+      {membersOpen && canDisclose && (
+        <GroupMembersDisclosure
+          key={grant.subjectId}
+          requested
+          onHide={() => setMembersOpen(false)}
+          groupLabel={grant.subjectDisplayName ?? subjectName}
+          load={(offset, limit) =>
+            getGrantedGroupMembers(assetType, assetId, grant.subjectId as string, offset, limit)
+          }
+        />
+      )}
+    </Box>
   )
 }

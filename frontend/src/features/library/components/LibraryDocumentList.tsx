@@ -1,28 +1,25 @@
 import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
+import { ListSearchField } from '@/shared/ui/TabSection'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
-import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Pagination from '@mui/material/Pagination'
 import Select from '@mui/material/Select'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import CloseIcon from '@mui/icons-material/Close'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FolderIcon from '@mui/icons-material/Folder'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import SearchIcon from '@mui/icons-material/Search'
 import type { LibraryDocumentResponse, LibraryFolderListItem } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import type { DocumentPageState } from '../stores/documentStore'
@@ -234,11 +231,18 @@ export default function LibraryDocumentList({
           >
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
               {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
+              {/* at most two lines; the whole name in the tooltip */}
               <Typography
+                title={document.fileName}
                 sx={{
                   fontWeight: isAttachment ? 500 : 600,
                   fontSize: isAttachment ? 13.5 : 14,
-                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  hyphens: 'auto',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
                 }}
               >
                 {document.fileName}
@@ -359,33 +363,11 @@ export default function LibraryDocumentList({
         useFlexGap
         sx={{ mb: 2, alignItems: { sm: 'center' }, flexWrap: 'wrap' }}
       >
-        <TextField
-          size="small"
+        <ListSearchField
           value={searchInput}
-          onChange={(e) => onSearchChange(e.target.value)}
+          onChange={onSearchChange}
           placeholder="Dateiname suchen"
-          sx={{ width: { xs: '100%', sm: 280 } }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16 }} />
-                </InputAdornment>
-              ),
-              endAdornment: searchInput ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label="Suche zurücksetzen"
-                    onClick={() => onSearchChange('')}
-                  >
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            },
-            htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
-          }}
+          ariaLabel="Dokumente durchsuchen"
         />
         {filterControl}
         <Select
@@ -464,11 +446,12 @@ export default function LibraryDocumentList({
             <Box
               key={folder.id}
               sx={{
+                // the same edge, gap and checkbox as a document row
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 2,
-                py: 1.25,
+                p: 1.5,
                 borderBottom: 1,
                 borderColor: 'divider',
                 '&:last-of-type': { borderBottom: 0 },
@@ -515,7 +498,17 @@ export default function LibraryDocumentList({
                 }}
               >
                 <FolderIcon color="action" />
-                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word', minWidth: 0 }}>
+                <Typography
+                  title={folder.name}
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: 14,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {folder.name}
                 </Typography>
                 <Typography
@@ -582,7 +575,8 @@ export default function LibraryDocumentList({
         </Stack>
       )}
 
-      {!isLoading && pageState && (documents.length > 0 || pageCount > 1) && (
+      {/* the count stands in the head; the foot speaks only while paging or searching */}
+      {!isLoading && pageState && (pageCount > 1 || isSearchActive) && (
         <Stack
           direction="row"
           sx={{
@@ -594,12 +588,14 @@ export default function LibraryDocumentList({
           }}
         >
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {isSearchActive
-              ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
-              : `${pageState.totalElements.toLocaleString('de-DE')} ${
-                  pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'
-                }`}
-            {pageCount > 1 ? ` · Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : ''}
+            {[
+              isSearchActive
+                ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
+                : null,
+              pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </Typography>
           {pageCount > 1 && (
             <Pagination

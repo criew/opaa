@@ -7,6 +7,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '@/features/succession'
+import TabSection from '@/shared/ui/TabSection'
 import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../api/libraryApi'
 import { updateLibraryExternalAccess } from '@/features/external-access'
@@ -117,55 +118,58 @@ export default function LibraryExternalAccessSection({
     }
   }
 
+  // without a delivered release there is nothing to show, not even the heading
   if (!access) {
     return null
   }
 
   const released = access.state === 'ACTIVE'
   return (
-    <Stack spacing={1}>
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      <FormControlLabel
-        control={
-          <Switch
-            checked={released}
-            disabled={saving}
-            slotProps={{ input: { 'aria-label': 'Für externe KI-Werkzeuge nutzbar' } }}
-            onChange={(event) => void apply(event.target.checked)}
-          />
-        }
-        label="Für externe KI-Werkzeuge nutzbar"
-      />
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <TextField
-          label="Freigabe bis"
-          type="date"
-          value={dateInput}
-          disabled={saving}
-          onChange={(event) => setDateInput(event.target.value)}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
-          }}
-          size="small"
-          sx={{ maxWidth: 220 }}
-        />
-        {released && (
-          <Button size="small" disabled={saving} onClick={() => void apply(true)}>
-            Ablaufdatum übernehmen
-          </Button>
+    <TabSection title="Externer Zugang">
+      <Stack spacing={1}>
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         )}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={released}
+              disabled={saving}
+              slotProps={{ input: { 'aria-label': 'Für externe KI-Werkzeuge nutzbar' } }}
+              onChange={(event) => void apply(event.target.checked)}
+            />
+          }
+          label="Für externe KI-Werkzeuge nutzbar"
+        />
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            label="Freigabe bis"
+            type="date"
+            value={dateInput}
+            disabled={saving}
+            onChange={(event) => setDateInput(event.target.value)}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
+            }}
+            size="small"
+            sx={{ maxWidth: 220 }}
+          />
+          {released && (
+            <Button size="small" disabled={saving} onClick={() => void apply(true)}>
+              Ablaufdatum übernehmen
+            </Button>
+          )}
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            höchstens {access.maxReleaseDays} Tage
+          </Typography>
+        </Stack>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          höchstens {access.maxReleaseDays} Tage
+          {stateLine(access)} Derzeit in {access.tokenCount} Zugangstokens enthalten.
         </Typography>
       </Stack>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        {stateLine(access)} Derzeit in {access.tokenCount} Zugangstokens enthalten.
-      </Typography>
-    </Stack>
+    </TabSection>
   )
 }

@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type DragEvent, type Ref } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import DeleteIcon from '@mui/icons-material/Delete'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type { SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -41,6 +41,10 @@ export interface LibraryDocumentsSectionProps {
   /** The library's selected spaces (CONFLUENCE) - resolves a row's space key to its name. */
   confluenceSpaces?: ConfluenceSpaceRef[] | null
   onDocumentsChanged: () => void
+  /** A connector library's first run; offered in the empty state only when given. */
+  onIndexNow?: () => void
+  /** Opens the file picker of an upload library - the head's main action uses it. */
+  uploadPickerRef?: Ref<{ open: () => void }>
 }
 
 /**
@@ -55,6 +59,8 @@ export default function LibraryDocumentsSection({
   refreshToken,
   confluenceSpaces,
   onDocumentsChanged,
+  onIndexNow,
+  uploadPickerRef,
 }: LibraryDocumentsSectionProps) {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
   const pageStateByLibrary = useDocumentStore((s) => s.pageStateByLibrary)
@@ -171,6 +177,9 @@ export default function LibraryDocumentsSection({
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
 
   const upload = useDocumentUpload(libraryId, canManage, onDocumentsChanged)
+  useImperativeHandle(uploadPickerRef, () => ({
+    open: () => upload.fileInputRef.current?.click(),
+  }))
 
   // Leaving the shown list (into a folder or the anchor's worklist) drops its search and selection.
   function leaveList() {
@@ -256,7 +265,16 @@ export default function LibraryDocumentsSection({
           renameFolderTarget={renameFolderTarget}
         />
         {uploadArea || (
-          <Typography sx={{ color: 'text.secondary' }}>Noch keine Dokumente.</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+              Noch keine Dokumente.
+            </Typography>
+            {onIndexNow && (
+              <Button size="small" onClick={onIndexNow} sx={{ px: 0, minWidth: 0 }}>
+                Jetzt indizieren
+              </Button>
+            )}
+          </Box>
         )}
         {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
       </Box>
@@ -375,30 +393,24 @@ export default function LibraryDocumentsSection({
         renderFolderActions={
           canManageFolders
             ? (folder) => (
-                <Tooltip title="Ordner umbenennen oder löschen">
-                  <IconButton
-                    aria-label={`Optionen für Ordner ${folder.name}`}
-                    size="small"
-                    onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <IconButton
+                  aria-label={`Aktionen für Ordner ${folder.name}`}
+                  aria-haspopup="menu"
+                  size="small"
+                  onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
+                >
+                  <MoreHorizIcon fontSize="small" />
+                </IconButton>
               )
             : undefined
         }
         renderRowActions={
           canDelete
             ? (document) => (
-                <Tooltip title="Dokument löschen">
-                  <IconButton
-                    aria-label={`Dokument ${document.fileName} löschen`}
-                    size="small"
-                    onClick={() => void handleDelete(document)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <DocumentRowMenu
+                  fileName={document.fileName}
+                  onDelete={() => void handleDelete(document)}
+                />
               )
             : undefined
         }
@@ -436,5 +448,38 @@ export default function LibraryDocumentsSection({
 
       {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
     </Box>
+  )
+}
+
+/** A document row's „⋯“ - the one pattern of row actions; red only in the question that follows. */
+function DocumentRowMenu({ fileName, onDelete }: { fileName: string; onDelete: () => void }) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  return (
+    <>
+      <IconButton
+        aria-label={`Aktionen für ${fileName}`}
+        aria-haspopup="menu"
+        size="small"
+        onClick={(event) => setAnchor(event.currentTarget)}
+      >
+        <MoreHorizIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchor}
+        open={anchor !== null}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem
+          onClick={() => {
+            setAnchor(null)
+            onDelete()
+          }}
+        >
+          Löschen
+        </MenuItem>
+      </Menu>
+    </>
   )
 }

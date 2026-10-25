@@ -1,8 +1,8 @@
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import TabSection from '@/shared/ui/TabSection'
 
 interface DiagnosticsLockControlProps {
   locked: boolean
@@ -13,11 +13,10 @@ interface DiagnosticsLockControlProps {
   onDismissError: () => void
 }
 
-// Renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
-// visible to everyone who may read the library (see LibraryResponse#diagnosticsLocked), but only
-// togglable by the responsible body itself. The 403 a caller without that standing gets back from
-// PUT .../diagnostics-lock is shown verbatim (see normalizeError) - it already names, in German,
-// who may act instead.
+// Renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) as one
+// line, with the toggle at the section's edge for the responsible body only. What the lock means
+// is said once, in the question before it changes. The 403 a caller without that standing gets
+// back from PUT .../diagnostics-lock is shown verbatim (see normalizeError).
 export default function DiagnosticsLockControl({
   locked,
   canToggle,
@@ -26,37 +25,49 @@ export default function DiagnosticsLockControl({
   onToggle,
   onDismissError,
 }: DiagnosticsLockControlProps) {
+  async function ask() {
+    const confirmed = await confirmAction(
+      locked
+        ? {
+            question: 'Diagnosesperre lösen?',
+            consequence:
+              'Die Bibliothek kann dann in Suchdiagnosen für andere Personen erscheinen.',
+            confirmLabel: 'Sperre lösen',
+            tone: 'caution',
+          }
+        : {
+            question: 'Diagnosesperre setzen?',
+            consequence:
+              'Gesperrt erscheint die Bibliothek in keiner Suchdiagnose für andere Personen.',
+            confirmLabel: 'Sperre setzen',
+            tone: 'neutral',
+          },
+    )
+    if (confirmed) onToggle()
+  }
+
   return (
-    <Box>
-      <Stack
-        direction="row"
-        spacing={1.5}
-        sx={{ alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
-            {locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
-          </Typography>
-          <Typography variant="caption" component="p" sx={{ color: 'text.secondary' }}>
-            Gesperrt erscheint die Bibliothek in keiner Suchdiagnose für andere Personen.
-          </Typography>
-        </Box>
-        {canToggle && (
+    <TabSection
+      title="Diagnosesperre"
+      action={
+        canToggle ? (
           <Button
             size="small"
-            onClick={onToggle}
+            onClick={() => void ask()}
             disabled={saving}
             aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
           >
             {saving ? 'Wird gespeichert …' : locked ? 'Sperre lösen' : 'Sperre setzen'}
           </Button>
-        )}
-      </Stack>
+        ) : undefined
+      }
+    >
+      <Typography sx={{ fontSize: 13.5 }}>{locked ? 'Gesperrt' : 'Freigegeben'}</Typography>
       {error && (
         <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
           {error}
         </Alert>
       )}
-    </Box>
+    </TabSection>
   )
 }

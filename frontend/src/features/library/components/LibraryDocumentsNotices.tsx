@@ -1,8 +1,7 @@
+import { useEffect, useRef } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
+import { notify } from '@/shared/stores/notificationStore'
 import type { LibraryFolderListItem } from '@/shared/api/types'
 import { useDocumentStore } from '../stores/documentStore'
 
@@ -48,33 +47,27 @@ export default function LibraryDocumentsNotices({
   const folderNotFoundMessage = useDocumentStore((s) => s.folderNotFoundMessage)
   const pollingStoppedMessage = useDocumentStore((s) => s.pollingStoppedMessage)
   const loadDocuments = useDocumentStore((s) => s.loadDocuments)
-  const clearUploadErrors = useDocumentStore((s) => s.clearUploadErrors)
   const clearDeleteError = useDocumentStore((s) => s.clearDeleteError)
   const clearFolderError = useDocumentStore((s) => s.clearFolderError)
   const clearFolderNotFoundMessage = useDocumentStore((s) => s.clearFolderNotFoundMessage)
 
+  // A rejected upload is a reply to one action: a popup with each reason once and its files
+  // (guidelines 5.9), no tinted banner over the list. The messages stay in the store, so the head
+  // can still tell an exhausted quota.
+  const announced = useRef<string[] | null>(null)
+  useEffect(() => {
+    if (uploadErrors.length === 0 || announced.current === uploadErrors) return
+    announced.current = uploadErrors
+    const text = groupUploadErrors(uploadErrors)
+      .map((group) =>
+        group.files.length > 0 ? `${group.reason}: ${group.files.join(', ')}` : group.reason,
+      )
+      .join(' · ')
+    notify(text, 'error')
+  }, [uploadErrors])
+
   return (
     <>
-      {uploadErrors.length > 0 && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadErrors}>
-          <Stack spacing={1}>
-            {groupUploadErrors(uploadErrors).map((group) => (
-              <Box key={group.reason}>
-                <Typography variant="body2">{group.reason}</Typography>
-                {group.files.length > 0 && (
-                  <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-                    {group.files.map((file) => (
-                      <Typography component="li" key={file} variant="body2">
-                        {file}
-                      </Typography>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            ))}
-          </Stack>
-        </Alert>
-      )}
       {deleteError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearDeleteError}>
           {deleteError}
