@@ -368,21 +368,31 @@ export default function AssetDetailHeader({
           position: 'relative',
         }}
       >
+        {/* figures and state in one wrapping row: whatever starts a line has its separator in
+            the clipped gutter; below 600 px the state leads on its own line with the toggle */}
         <Box
           component="span"
-          id={`head-figures-${assetId}`}
           sx={{
-            display: { xs: compact && !figuresOpen ? 'none' : 'block', sm: 'block' },
+            display: 'block',
             overflow: 'hidden',
-            // 24 px lines below 600 px: two links on adjacent lines keep their 24 px target apart
-            lineHeight: { xs: '24px', sm: '22px' },
             maxWidth: '100%',
-            flexBasis: { xs: '100%', sm: 'auto' },
+            flexBasis: status ? '100%' : { xs: '100%', sm: 'auto' },
           }}
         >
           <Box
             component="span"
-            sx={{ display: 'flex', flexWrap: 'wrap', ml: `-${FIGURE_GUTTER}px` }}
+            id={`head-figures-${assetId}`}
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'baseline',
+              ml: `-${FIGURE_GUTTER}px`,
+              // 24 px lines below 600 px: two links on adjacent lines keep their 24 px target apart
+              lineHeight: { xs: '24px', sm: '22px' },
+              '& > :not([data-head-status])': {
+                display: { xs: compact && !figuresOpen ? 'none' : 'inline', sm: 'inline' },
+              },
+            }}
           >
             <HeaderFigure>{extent}</HeaderFigure>
             {figures}
@@ -392,44 +402,48 @@ export default function AssetDetailHeader({
               </HeaderFigure>
             )}
             <HeaderFigure to={responsibleHref}>{responsible.label}</HeaderFigure>
+            {status && (
+              <Box
+                component="span"
+                data-head-status
+                sx={{
+                  minHeight: { xs: 28, sm: 22 },
+                  display: 'flex',
+                  alignItems: 'center',
+                  whiteSpace: 'nowrap',
+                  order: { xs: -1, sm: 0 },
+                  flexBasis: { xs: '100%', sm: 'auto' },
+                  // the gutter stays to the left at every width: no separator before a lead
+                  pl: { xs: `${FIGURE_GUTTER}px`, sm: 0 },
+                  '&::before': { ...FIGURE_SEPARATOR, display: { xs: 'none', sm: 'inline-block' } },
+                }}
+              >
+                {status}
+                <IconButton
+                  size="small"
+                  aria-expanded={figuresOpen}
+                  aria-controls={`head-figures-${assetId}`}
+                  aria-label={figuresOpen ? 'Kennzahlen ausblenden' : 'Kennzahlen anzeigen'}
+                  onClick={() => setFiguresOpen((open) => !open)}
+                  sx={{
+                    display: { xs: 'inline-flex', sm: 'none' },
+                    ml: 'auto',
+                    mr: -0.75,
+                    p: 0.25,
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{ fontSize: 20, transform: figuresOpen ? 'rotate(180deg)' : 'none' }}
+                  />
+                </IconButton>
+              </Box>
+            )}
           </Box>
         </Box>
-        {status ? (
-          <Box
-            component="span"
-            sx={{
-              minHeight: { xs: 28, sm: 22 },
-              display: 'flex',
-              alignItems: 'center',
-              whiteSpace: 'nowrap',
-              order: { xs: -1, sm: 0 },
-              flexBasis: { xs: '100%', sm: 'auto' },
-              '&::before': { ...SEPARATOR, display: { xs: 'none', sm: 'inline' } },
-            }}
-          >
-            {status}
-            <IconButton
-              size="small"
-              aria-expanded={figuresOpen}
-              aria-controls={`head-figures-${assetId}`}
-              aria-label={figuresOpen ? 'Kennzahlen ausblenden' : 'Kennzahlen anzeigen'}
-              onClick={() => setFiguresOpen((open) => !open)}
-              sx={{ display: { xs: 'inline-flex', sm: 'none' }, ml: 'auto', mr: -0.75, p: 0.25 }}
-            >
-              <ExpandMoreIcon
-                sx={{
-                  fontSize: 20,
-                  transform: figuresOpen ? 'rotate(180deg)' : 'none',
-                }}
-              />
-            </IconButton>
+        {!status && updatedAt && (
+          <Box component="span" sx={{ height: 22, '&::before': SEPARATOR }}>
+            Aktualisiert am {formatDate(updatedAt)}
           </Box>
-        ) : (
-          updatedAt && (
-            <Box component="span" sx={{ height: 22, '&::before': SEPARATOR }}>
-              Aktualisiert am {formatDate(updatedAt)}
-            </Box>
-          )
         )}
       </Typography>
 
