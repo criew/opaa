@@ -44,6 +44,8 @@ class SiemExportServiceIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private List<PersonalAuditObjects> personalObjects;
   @Autowired private AuditEventRecorder auditEventRecorder;
+  @Autowired private io.opaa.auth.UserService userService;
+  @Autowired private io.opaa.auth.AuthProperties authProperties;
   @Autowired private io.opaa.knowledge.KnowledgeLibraryRepository libraryRepository;
   @Autowired private io.opaa.space.SpaceRepository spaceRepository;
 
@@ -216,10 +218,15 @@ class SiemExportServiceIntegrationTest {
         .doesNotContain("cs4=");
   }
 
-  /** The person of the dev profile, who owns the personal objects of the next test. */
+  /**
+   * The person of the dev profile, who owns the personal objects of the next test; provisioned here
+   * as the dev filter would, so the test does not depend on an earlier request of another class.
+   */
   private UUID person() {
-    return jdbcTemplate.queryForObject(
-        "SELECT id FROM users WHERE email = ?", UUID.class, "dev-user@opaa.local");
+    return userService
+        .findOrCreateUser(
+            "dev-user", authProperties.dev().issuer(), "dev-user@opaa.local", "Dev User")
+        .getId();
   }
 
   private UUID personalSpaceOf(UUID person) {
