@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import { Link as RouterLink } from 'react-router'
@@ -265,6 +266,10 @@ export default function AssetDetailHeader({
   children,
 }: AssetDetailHeaderProps) {
   const definition = assetTypeDefinition(assetType)
+  // below 600 px a head with a state shows one line - the state and a toggle - and its figures
+  // only on request
+  const [figuresOpen, setFiguresOpen] = useState(false)
+  const compact = Boolean(status)
   return (
     <Box
       component="header"
@@ -347,8 +352,9 @@ export default function AssetDetailHeader({
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
 
-      {/* one line at 1280 px; below 600 px the state leads and the figures wrap below it into
-          two reserved lines - every figure kept whole, no line starts or ends on a separator */}
+      {/* one line at 1280 px; below 600 px the state alone on one line with a toggle, the
+          figures below it on request - every figure kept whole, no line starts or ends on a
+          separator */}
       <Typography
         component="div"
         sx={{
@@ -364,11 +370,11 @@ export default function AssetDetailHeader({
       >
         <Box
           component="span"
+          id={`head-figures-${assetId}`}
           sx={{
-            display: 'block',
+            display: { xs: compact && !figuresOpen ? 'none' : 'block', sm: 'block' },
             overflow: 'hidden',
             // 24 px lines below 600 px: two links on adjacent lines keep their 24 px target apart
-            minHeight: { xs: 48, sm: 22 },
             lineHeight: { xs: '24px', sm: '22px' },
             maxWidth: '100%',
             flexBasis: { xs: '100%', sm: 'auto' },
@@ -392,7 +398,9 @@ export default function AssetDetailHeader({
           <Box
             component="span"
             sx={{
-              height: 22,
+              minHeight: { xs: 28, sm: 22 },
+              display: 'flex',
+              alignItems: 'center',
               whiteSpace: 'nowrap',
               order: { xs: -1, sm: 0 },
               flexBasis: { xs: '100%', sm: 'auto' },
@@ -400,6 +408,21 @@ export default function AssetDetailHeader({
             }}
           >
             {status}
+            <IconButton
+              size="small"
+              aria-expanded={figuresOpen}
+              aria-controls={`head-figures-${assetId}`}
+              aria-label={figuresOpen ? 'Kennzahlen ausblenden' : 'Kennzahlen anzeigen'}
+              onClick={() => setFiguresOpen((open) => !open)}
+              sx={{ display: { xs: 'inline-flex', sm: 'none' }, ml: 'auto', mr: -0.75, p: 0.25 }}
+            >
+              <ExpandMoreIcon
+                sx={{
+                  fontSize: 20,
+                  transform: figuresOpen ? 'rotate(180deg)' : 'none',
+                }}
+              />
+            </IconButton>
           </Box>
         ) : (
           updatedAt && (

@@ -125,23 +125,21 @@ export default function AssetHeadlineEditor({
       {draft ? (
         <PageHeading title={name} visuallyHidden />
       ) : (
-        // a long compound breaks with a hyphen instead of running out at 320 px
+        // a long compound breaks at a syllable instead of running out at 320 px
         <Box title={name} sx={{ minWidth: 0 }}>
-          {/* a fixed height for every name: one line at 1280 px, the full name in the tooltip;
-              below 600 px a smaller type and three reserved lines, nothing cut - the tabs below
-              never move (D1) */}
+          {/* one line at 1280 px with the full name in the tooltip; below 600 px the whole name
+              over as many lines as it needs, in a stage above the running text */}
           <PageHeading
             title={name}
             sx={{
               overflow: 'hidden',
-              hyphens: 'manual',
-              overflowWrap: 'anywhere',
-              fontSize: { xs: 14, sm: undefined },
-              lineHeight: { xs: '19px', sm: 1.4 },
+              hyphens: 'auto',
+              overflowWrap: 'break-word',
+              fontSize: { xs: 17, sm: 20 },
+              lineHeight: { xs: '22px', sm: '28px' },
               display: { xs: 'block', sm: '-webkit-box' },
               WebkitBoxOrient: 'vertical',
               WebkitLineClamp: { xs: 'none', sm: 1 },
-              minHeight: { xs: 57, sm: 'auto' },
             }}
           />
         </Box>
@@ -154,9 +152,7 @@ export default function AssetHeadlineEditor({
             size="small"
             aria-label={editLabel}
             onClick={startEditing}
-            // below 600 px the pencil sits at the right end of the action row above, so the name
-            // keeps the full width for its three lines
-            sx={{ position: { xs: 'absolute', sm: 'static' }, top: -45, right: 0 }}
+            sx={{ mt: { xs: '-6px', sm: 0 } }}
           >
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
