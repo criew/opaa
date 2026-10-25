@@ -555,6 +555,25 @@ paths:
           schema:
             type: string
             example: document_date
+        - name: status
+          in: query
+          required: false
+          description: >
+            Only documents in one of these processing states (repeated parameter,
+            status=FAILED&status=PENDING). Like q, the filter is bibliotheksweit (folders and
+            breadcrumb are empty, folderId does not scope it) and combines with q; like
+            missingMetadataField, it pages over document rows rather than top-level documents: an
+            attachment is an entry of its own, matched on its own state and file name, so
+            totalElements is the number of document rows in these states - status=FAILED&size=1
+            counts a library's failed documents. Combined with missingMetadataField, which only
+            lists INDEXED rows, a set without INDEXED yields an empty page. Absent or empty
+            applies no such restriction; an unknown value is rejected with 400.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/DocumentStatus"
       responses:
         "200":
           description: Page of documents

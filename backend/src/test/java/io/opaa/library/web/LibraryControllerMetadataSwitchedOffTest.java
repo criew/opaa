@@ -26,6 +26,7 @@ import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.succession.SuccessionService;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,8 @@ class LibraryControllerMetadataSwitchedOffTest {
   @Test
   void theMaintenanceFilterIsIgnored() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(libraryService.listDocuments(eq(libraryId), any(), isNull(), isNull(), isNull(), any()))
+    when(libraryService.listDocuments(
+            eq(libraryId), any(), isNull(), isNull(), isNull(), eq(Set.of()), any()))
         .thenReturn(new LibraryDocumentPage(List.of(), 0, 20, 7L, List.of(), List.of(), null));
 
     mockMvc

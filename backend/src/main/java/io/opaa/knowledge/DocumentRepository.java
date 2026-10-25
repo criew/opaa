@@ -248,6 +248,24 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("status") DocumentStatus status,
       Pageable pageable);
 
+  /**
+   * The paged status filter of the document list: every row of the library, top-level and
+   * attachment alike, in one of {@code statuses} and matching {@code escapedQ} (blank matches all),
+   * so {@code totalElements} counts exactly those rows. {@code escapedQ} must be backslash-escaped
+   * by the caller.
+   */
+  @Query(
+      """
+      SELECT d FROM Document d
+      WHERE d.libraryId = :libraryId AND d.status IN :statuses
+        AND LOWER(d.fileName) LIKE LOWER(CONCAT('%', :escapedQ, '%')) ESCAPE '\\'
+      """)
+  Page<Document> searchByStatus(
+      @Param("libraryId") UUID libraryId,
+      @Param("escapedQ") String escapedQ,
+      @Param("statuses") Collection<DocumentStatus> statuses,
+      Pageable pageable);
+
   /** The two ids the attachment-aware search prefilter needs - see the finder above. */
   interface AttachmentParentRef {
     UUID getId();

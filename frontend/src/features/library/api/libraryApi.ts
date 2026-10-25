@@ -17,6 +17,7 @@ import type {
   SourceBrowseResponse,
   SourceTypeKey,
   BulkDocumentDeleteResponse,
+  DocumentStatus,
 } from '@/shared/api/types'
 import { isErrorResponse, type ErrorResponse } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
@@ -180,6 +181,8 @@ export async function getLibraryDocuments(
     q?: string
     folderId?: string | null
     missingMetadataField?: string | null
+    /** Bibliotheksweit over document rows; `size: 1` makes `totalElements` a count. */
+    status?: DocumentStatus | DocumentStatus[] | null
   },
 ): Promise<LibraryDocumentPageResponse> {
   try {
@@ -200,7 +203,10 @@ export async function getLibraryDocuments(
           folderId: options?.folderId || undefined,
           // the Pflege-Anker's list - dropped when absent, like q above.
           missingMetadataField: options?.missingMetadataField || undefined,
+          status: options?.status || undefined,
         },
+        // `status=FAILED&status=PENDING`, as the specification declares the repeated parameter.
+        paramsSerializer: { indexes: null },
       },
     )
     return data
