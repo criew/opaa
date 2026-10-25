@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DirectoryConnectorType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditSecretChange;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
@@ -112,6 +113,7 @@ public class DirectoryConnectorService {
     Optional<DirectoryConnector> existing = repository.findByProviderId(providerId);
     Map<String, Object> before =
         existing.map(DirectoryConnectorService::auditState).orElseGet(HashMap::new);
+    String previousSecret = existing.map(DirectoryConnectorService::storedSecret).orElse(null);
     DirectoryConnector connector =
         existing
             .map(
@@ -130,12 +132,14 @@ public class DirectoryConnectorService {
                         clientSecret,
                         clock.instant()));
     repository.save(connector);
+    Map<String, Object> after = auditState(connector);
+    AuditSecretChange.put(after, "clientSecret", previousSecret, connector.getClientSecret());
     record(
         organizationId,
         actorUserId,
         provider,
         before,
-        auditState(connector),
+        after,
         "Verzeichniszugang gespeichert (Realm „" + address.realm() + "“)");
     return toView(connector, provider);
   }
@@ -233,6 +237,14 @@ public class DirectoryConnectorService {
         address.realm(),
         connector.getClientId(),
         connector.getUpdatedAt());
+  }
+
+  /**
+   * The stored secret to compare a new one with; an undecryptable one ({@code null}, see {@link
+   * DirectoryConnectorSecretConverter}) is still a stored one, so replacing it counts as a change.
+   */
+  private static String storedSecret(DirectoryConnector connector) {
+    return connector.getClientSecret() == null ? "" : connector.getClientSecret();
   }
 
   /** Never the secret - only which account and where, so an entry stays readable in a log. */

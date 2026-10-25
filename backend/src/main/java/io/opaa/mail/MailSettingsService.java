@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditSecretChange;
 import io.opaa.common.ValidationException;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
@@ -149,6 +150,7 @@ public class MailSettingsService implements InvalidationSubscriber {
     requireCompleteWhenEnabled(update.enabled(), host, port, fromAddress);
 
     Map<String, Object> before = auditState(settings);
+    String previousPasswordCiphertext = settings.getPasswordCiphertext();
     settings.replaceSettings(
         update.enabled(),
         host,
@@ -162,6 +164,8 @@ public class MailSettingsService implements InvalidationSubscriber {
     repository.save(settings);
 
     Map<String, Object> after = auditState(settings);
+    AuditSecretChange.put(
+        after, "password", previousPasswordCiphertext, settings.getPasswordCiphertext());
     // Nothing changed: no entry, the same rule reset() follows - an audit trail full of no-ops is
     // an audit trail nobody reads.
     if (!before.equals(after)) {
@@ -331,7 +335,10 @@ public class MailSettingsService implements InvalidationSubscriber {
             .build());
   }
 
-  /** Never the password - only whether one is set, mirroring {@code LlmModelService#auditState}. */
+  /**
+   * Never the password - only whether one is set, mirroring {@code LlmModelService#auditState}; a
+   * replaced or removed one adds {@code passwordChange} ({@link AuditSecretChange}).
+   */
   private static Map<String, Object> auditState(MailSettings settings) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", settings.isEnabled());

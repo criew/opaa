@@ -8,6 +8,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditSecretChange;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -214,7 +215,12 @@ public class ConnectionProfileService {
     ConnectionProfile profile = new ConnectionProfile(sourceType, now);
     profile.replace(validated, encryptor.encrypt(blankToNull(keyed.secret())), now);
     profiles.save(profile);
-    record(caller, AuditEventType.CONNECTION_PROFILE_CREATED, profile, null, auditState(profile));
+    record(
+        caller,
+        AuditEventType.CONNECTION_PROFILE_CREATED,
+        profile,
+        null,
+        auditStateAfter(profile, null));
     return profile;
   }
 
@@ -325,6 +331,7 @@ public class ConnectionProfileService {
     Set<UUID> released = change.released(verdict);
     privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
+    String previousSecret = profile.getClientSecretCiphertext();
     ConnectionEndCause cause =
         change.addressChanged()
             ? ConnectionEndCause.ADDRESS_CHANGED
@@ -379,7 +386,7 @@ public class ConnectionProfileService {
               .filter(library -> !released.contains(library.getId()))
               .toList());
     }
-    Map<String, Object> after = auditState(profile);
+    Map<String, Object> after = auditStateAfter(profile, previousSecret);
     if (affected > 0) {
       after.put("connectionsDiscarded", affected);
     }
@@ -855,6 +862,17 @@ public class ConnectionProfileService {
       state.put("tokenEndpoint", Objects.toString(endpoints.token(), ""));
       state.put("revocationEndpoint", Objects.toString(endpoints.revocation(), ""));
     }
+    return state;
+  }
+
+  /**
+   * {@link #auditState} after a write, plus {@code clientSecretChange} when the stored secret
+   * differs from {@code previousCiphertext} ({@link AuditSecretChange}).
+   */
+  static Map<String, Object> auditStateAfter(ConnectionProfile profile, String previousCiphertext) {
+    Map<String, Object> state = auditState(profile);
+    AuditSecretChange.put(
+        state, "clientSecret", previousCiphertext, profile.getClientSecretCiphertext());
     return state;
   }
 

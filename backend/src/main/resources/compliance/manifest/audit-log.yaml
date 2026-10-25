@@ -669,11 +669,15 @@ auditEvents:
       - sortOrder
       - systemAdminRole
   - id: OIDC_PROVIDER_CHANGED
-    trigger: Ein Identitätsanbieter wird geändert
+    trigger: Ein Identitätsanbieter oder sein Verzeichniszugang wird geändert
+    details: >-
+      Das Geheimnis des Dienstkontos nur als „gesetzt“ oder „geändert“ (clientSecretChange), nie mit
+      dem Wert
     payloadKeys:
       - auditorRole
       - baseUrl
       - clientId
+      - clientSecretChange
       - connectorType
       - directorySyncEnabled
       - directorySyncIntervalMinutes
@@ -716,11 +720,16 @@ auditEvents:
     payloadKeys: [enabled]
   - id: LLM_MODEL_CREATED
     trigger: Ein Chatmodell wird in der Modellverwaltung angelegt
-    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+    details: Der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“ (apiKeyChange)
+    payloadKeys:
+      [active, apiKeyChange, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
   - id: LLM_MODEL_CHANGED
     trigger: Ein Chatmodell wird geändert
-    details: Der Zugangsschlüssel nur als „gesetzt ja/nein“
-    payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
+    details: >-
+      Der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert, als „gesetzt“,
+      „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
+    payloadKeys:
+      [active, apiKeyChange, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
   - id: LLM_MODEL_DELETED
     trigger: Ein Chatmodell wird gelöscht
     payloadKeys: [active, apiKeySet, baseUrl, displayName, maxTokens, modelIdentifier, temperature]
@@ -797,13 +806,22 @@ auditEvents:
     details: Kein Zähler, kein einzelner Fehlversuch
     payloadKeys: [lockedReason, lockoutUntil]
   - id: MAIL_SETTINGS_CHANGED
-    trigger: Die SMTP-Einstellungen ändern sich
-    details: Das Passwort nur als „gesetzt ja/nein“
-    payloadKeys: [enabled, encryption, fromAddress, fromName, host, passwordSet, port, username]
+    trigger: Die SMTP-Einstellungen ändern sich, auch wenn sich nur das Passwort ändert
+    details: >-
+      Das Passwort nur als „gesetzt ja/nein“ und, wenn es sich ändert, als „gesetzt“, „geändert“
+      oder „entfernt“ (passwordChange), nie mit dem Wert
+    payloadKeys:
+      [enabled, encryption, fromAddress, fromName, host, passwordChange, passwordSet, port, username]
   - id: MAIL_TEMPLATE_CHANGED
-    trigger: Eine Mail-Vorlage wird überschrieben
+    trigger: Eine Mail-Vorlage wird überschrieben; eine unveränderte Fassung erzeugt keinen Eintrag
+    details: >-
+      Betreff und Text vorher und nachher, vorher die ausgelieferte Fassung, solange keine eigene
+      gespeichert war (overridden)
+    payloadKeys: [bodyHtml, bodyPlain, overridden, subject]
   - id: MAIL_TEMPLATE_RESET
     trigger: Eine überschriebene Mail-Vorlage wird zurückgesetzt
+    details: Betreff und Text der eigenen Fassung vorher und der ausgelieferten nachher
+    payloadKeys: [bodyHtml, bodyPlain, overridden, subject]
   - id: MAIL_TEST_SENT
     trigger: Die Systemverwaltung löst einen Testversand aus
   - id: LOCAL_USER_CREATED
@@ -865,19 +883,22 @@ auditEvents:
       - systemRole
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
     trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
-    details: Vorher/Nachher der geänderten Schlüssel; der Einleitungstext erzeugt keinen Eintrag
+    details: Vorher/Nachher der geänderten Schlüssel, auch des Einleitungstexts
     payloadKeys:
       - allowedCidrs
       - enabled
       - massRetrievalAlertThreshold
+      - serverInstructions
       - tokenMaxLifetimeDays
       - tokenRateLimitPerHour
   - id: CONNECTION_PROFILE_CREATED
     trigger: Ein Verbindungsprofil wird angelegt
+    details: Das Client-Geheimnis nur als „gesetzt“ (clientSecretChange), nie mit dem Wert
     payloadKeys:
       - authMethod
       - authorizationEndpoint
       - clientIdSet
+      - clientSecretChange
       - clientSecretSet
       - connectorSettingsSet
       - issuer
@@ -893,11 +914,14 @@ auditEvents:
       - tokenEndpoint
   - id: CONNECTION_PROFILE_CHANGED
     trigger: Ein Verbindungsprofil wird geändert
-    details: Zahl der Verbindungen, die ihr Geheimnis verloren
+    details: >-
+      Zahl der Verbindungen, die ihr Geheimnis verloren; das Client-Geheimnis nur als „gesetzt“,
+      „geändert“ oder „entfernt“ (clientSecretChange), nie mit dem Wert
     payloadKeys:
       - authMethod
       - authorizationEndpoint
       - clientIdSet
+      - clientSecretChange
       - clientSecretSet
       - connectionsDiscarded
       - connectorSettingsSet
@@ -997,3 +1021,11 @@ auditEvents:
     trigger: Die Systemverwaltung ändert die erlaubten Linkziele in Antworten
     details: Vorher/Nachher der ganzen Liste (allowedOrigins)
     payloadKeys: [allowedOrigins]
+  - id: SETTINGS_IMPORTED
+    trigger: >-
+      Die Systemverwaltung importiert eine Einstellungsdatei, und der Import ändert etwas; ein Import
+      ohne Änderung erzeugt keinen Eintrag
+    details: >-
+      Version des Dateiformats und die geänderten Abschnitte; jede einzelne Änderung steht als ihr
+      eigenes Ereignis mit Vorher/Nachher daneben, unter derselben Vorgangskennung
+    payloadKeys: [formatVersion, sections]

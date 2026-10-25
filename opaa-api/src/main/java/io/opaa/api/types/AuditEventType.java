@@ -611,5 +611,14 @@ public enum AuditEventType {
    * The system administration changed the allowed link targets of answers; {@code before} and
    * {@code after} carry the whole list of origins.
    */
-  LINK_TARGETS_CHANGED
+  LINK_TARGETS_CHANGED,
+
+  // Export und Import der Einstellungen (ADR-0060, Entscheidung 12)
+  /**
+   * The system administration imported a settings document and it changed something; {@code after}
+   * names the format version and the changed sections. Every change the import made is its usual
+   * event, linked to this one by the same {@code correlation_ref}. An import that changes nothing
+   * writes nothing.
+   */
+  SETTINGS_IMPORTED
 }

@@ -81,6 +81,14 @@ public class MailTemplate {
   }
 
   /** Replaces the stored content; a blank HTML body is stored as {@code null} ("use the frame"). */
+  /** Whether {@link #replaceContent} with these values would leave the content as it is. */
+  boolean hasContent(String subject, String bodyPlain, String bodyHtml) {
+    String html = bodyHtml == null || bodyHtml.isBlank() ? null : bodyHtml;
+    return java.util.Objects.equals(this.subject, subject)
+        && java.util.Objects.equals(this.bodyPlain, bodyPlain)
+        && java.util.Objects.equals(this.bodyHtml, html);
+  }
+
   void replaceContent(String subject, String bodyPlain, String bodyHtml, UUID actorUserId) {
     this.subject = subject;
     this.bodyPlain = bodyPlain;

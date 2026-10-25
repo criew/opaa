@@ -31,11 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <em>every</em> call, which is why it stays a single row lookup without a cache: a cache here
  * would only buy an invalidation question and could let an emergency stop lag behind.
  *
- * <p>Every change except {@code serverInstructions} is audited as {@link
- * AuditEventType#EXTERNAL_ACCESS_SETTINGS_CHANGED} with before/after of the changed keys. The
- * instructions text is deliberately outside the closed event list of
- * docs/features/security-and-compliance.md - it changes no reach, only the wording of a request to
- * a foreign model.
+ * <p>Every change is audited as {@link AuditEventType#EXTERNAL_ACCESS_SETTINGS_CHANGED} with
+ * before/after of the changed keys, the instructions text included (ADR-0060, Entscheidung 11).
  */
 @Service
 public class ExternalAccessSettingsService {
@@ -45,14 +42,15 @@ public class ExternalAccessSettingsService {
   static final String TOO_MANY = "TOO_MANY";
   static final String TOO_LONG = "TOO_LONG";
 
-  /** The audited keys - the instructions text is not among them, by decision. */
+  /** The audited keys: every value of the settings. */
   static final List<String> AUDITED_KEYS =
       List.of(
           "enabled",
           "tokenMaxLifetimeDays",
           "tokenRateLimitPerHour",
           "allowedCidrs",
-          "massRetrievalAlertThreshold");
+          "massRetrievalAlertThreshold",
+          "serverInstructions");
 
   private static final String SETTINGS_OBJECT_ID = "external_access_settings";
   private static final String SETTINGS_OBJECT_LABEL = "Externe KI-Werkzeuge";
@@ -219,10 +217,7 @@ public class ExternalAccessSettingsService {
     }
   }
 
-  /**
-   * Before/after of the changed keys only, and only of the keys that decide reach: a change that
-   * touches nothing but the instructions text writes no entry at all.
-   */
+  /** Before/after of the changed keys only; an unchanged value is in neither. */
   private void recordChange(CurrentUser actor, Values before, Values after) {
     Map<String, Object> allBefore = asAuditedMap(before);
     Map<String, Object> allAfter = asAuditedMap(after);
@@ -259,6 +254,7 @@ public class ExternalAccessSettingsService {
     map.put("tokenRateLimitPerHour", values.tokenRateLimitPerHour());
     map.put("allowedCidrs", values.allowedCidrs());
     map.put("massRetrievalAlertThreshold", values.massRetrievalAlertThreshold());
+    map.put("serverInstructions", values.serverInstructions());
     return map;
   }
 }

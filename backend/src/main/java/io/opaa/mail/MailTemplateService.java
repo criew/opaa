@@ -121,6 +121,12 @@ public class MailTemplateService {
         .toList();
   }
 
+  /** Every stored override of every locale, ordered by key and locale. */
+  @Transactional(readOnly = true)
+  public List<MailTemplate> overrides() {
+    return repository.findAll(org.springframework.data.domain.Sort.by("templateKey", "locale"));
+  }
+
   /** One template's effective state for one locale. */
   @Transactional(readOnly = true)
   public MailTemplateView get(MailTemplateKey key, String locale) {
@@ -147,12 +153,20 @@ public class MailTemplateService {
     requireUsableContent(key, subject, bodyPlain, bodyHtml);
 
     String resolvedLocale = effectiveLocale(locale);
-    MailTemplate row =
-        findRow(key, resolvedLocale).orElseGet(() -> new MailTemplate(key, resolvedLocale));
-    row.replaceContent(subject, bodyPlain, bodyHtml, actorUserId);
-    repository.save(row);
-
-    recordTemplateEvent(organizationId, actorUserId, key, AuditEventType.MAIL_TEMPLATE_CHANGED);
+    Optional<MailTemplate> existing = findRow(key, resolvedLocale);
+    Map<String, Object> before = auditState(key, existing);
+    MailTemplate row = existing.orElseGet(() -> new MailTemplate(key, resolvedLocale));
+    if (existing.isEmpty() || !row.hasContent(subject, bodyPlain, bodyHtml)) {
+      row.replaceContent(subject, bodyPlain, bodyHtml, actorUserId);
+      repository.save(row);
+      recordTemplateEvent(
+          organizationId,
+          actorUserId,
+          key,
+          AuditEventType.MAIL_TEMPLATE_CHANGED,
+          before,
+          auditState(key, Optional.of(row)));
+    }
     return toView(key, resolvedLocale, Optional.of(row), brandingSettingsService.currentBranding());
   }
 
@@ -167,9 +181,15 @@ public class MailTemplateService {
     findRow(key, resolvedLocale)
         .ifPresent(
             row -> {
+              Map<String, Object> before = auditState(key, Optional.of(row));
               repository.delete(row);
               recordTemplateEvent(
-                  organizationId, actorUserId, key, AuditEventType.MAIL_TEMPLATE_RESET);
+                  organizationId,
+                  actorUserId,
+                  key,
+                  AuditEventType.MAIL_TEMPLATE_RESET,
+                  before,
+                  auditState(key, Optional.empty()));
             });
     return toView(key, resolvedLocale, Optional.empty(), brandingSettingsService.currentBranding());
   }
@@ -363,8 +383,26 @@ public class MailTemplateService {
     return null;
   }
 
+  /**
+   * The text in force for the audit: the override with {@code overridden} true, or the delivered
+   * subject and plain text with {@code overridden} false; an absent HTML part is left out.
+   */
+  private static Map<String, Object> auditState(MailTemplateKey key, Optional<MailTemplate> row) {
+    Map<String, Object> state = new LinkedHashMap<>();
+    state.put("overridden", row.isPresent());
+    state.put("subject", row.map(MailTemplate::getSubject).orElseGet(key::defaultSubject));
+    state.put("bodyPlain", row.map(MailTemplate::getBodyPlain).orElseGet(key::defaultBodyPlain));
+    row.map(MailTemplate::getBodyHtml).ifPresent(html -> state.put("bodyHtml", html));
+    return state;
+  }
+
   private void recordTemplateEvent(
-      UUID organizationId, UUID actorUserId, MailTemplateKey key, AuditEventType type) {
+      UUID organizationId,
+      UUID actorUserId,
+      MailTemplateKey key,
+      AuditEventType type,
+      Map<String, Object> before,
+      Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(organizationId)
@@ -375,6 +413,8 @@ public class MailTemplateService {
                 UUID.nameUUIDFromBytes(
                     ("mail-template:" + key.key()).getBytes(StandardCharsets.UTF_8)),
                 OBJECT_LABEL_PREFIX + key.label())
+            .before(before)
+            .after(after)
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
