@@ -33,6 +33,16 @@ class LinkTargetsSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of("allowedOrigins", "Erlaubte Linkziele");
+  }
+
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return Set.of("allowedOrigins");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     Map<String, Object> values = new LinkedHashMap<>();
     values.put("allowedOrigins", service.current().allowedOrigins());

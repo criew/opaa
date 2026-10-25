@@ -34,6 +34,11 @@ class SelfDisclosureSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of("enabled", "Selbstauskunft angeboten", "dailyLimit", "Tagesgrenze");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     SelfDisclosureSettings current = service.current();
     Map<String, Object> values = new LinkedHashMap<>();

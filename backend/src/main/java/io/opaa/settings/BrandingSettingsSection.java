@@ -38,6 +38,21 @@ class BrandingSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of(
+        "productName",
+        "Produktname",
+        "claim",
+        "Claim",
+        "aiNotice",
+        "Hinweis zur KI-Nutzung",
+        "primaryColor",
+        "Akzentfarbe",
+        "defaultColorScheme",
+        "Farbschema-Vorgabe");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     BrandingSettingsView stored = service.storedSettings();
     Map<String, Object> values = new LinkedHashMap<>();

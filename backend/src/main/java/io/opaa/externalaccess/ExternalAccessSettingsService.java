@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditTextDigest;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
  * would only buy an invalidation question and could let an emergency stop lag behind.
  *
  * <p>Every change is audited as {@link AuditEventType#EXTERNAL_ACCESS_SETTINGS_CHANGED} with
- * before/after of the changed keys, the instructions text included (ADR-0060, Entscheidung 11).
+ * before/after of the changed keys, the instructions text included as hash and length (ADR-0060,
+ * Entscheidung 11).
  */
 @Service
 public class ExternalAccessSettingsService {
@@ -41,6 +44,9 @@ public class ExternalAccessSettingsService {
   static final String INVALID = "INVALID";
   static final String TOO_MANY = "TOO_MANY";
   static final String TOO_LONG = "TOO_LONG";
+
+  /** Audited as hash and length only, never in their wording ({@link AuditTextDigest}). */
+  static final Set<String> FREE_TEXT_KEYS = Set.of("serverInstructions");
 
   /** The audited keys: every value of the settings. */
   static final List<String> AUDITED_KEYS =
@@ -224,7 +230,13 @@ public class ExternalAccessSettingsService {
     Map<String, Object> beforeChanged = new LinkedHashMap<>();
     Map<String, Object> afterChanged = new LinkedHashMap<>();
     for (String key : AUDITED_KEYS) {
-      if (!Objects.equals(allBefore.get(key), allAfter.get(key))) {
+      if (Objects.equals(allBefore.get(key), allAfter.get(key))) {
+        continue;
+      }
+      if (FREE_TEXT_KEYS.contains(key)) {
+        AuditTextDigest.put(beforeChanged, key, (String) allBefore.get(key));
+        AuditTextDigest.put(afterChanged, key, (String) allAfter.get(key));
+      } else {
         beforeChanged.put(key, allBefore.get(key));
         afterChanged.put(key, allAfter.get(key));
       }

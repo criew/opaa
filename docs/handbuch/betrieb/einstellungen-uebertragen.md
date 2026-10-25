@@ -15,15 +15,16 @@ Verfügung.
 ## Was die Datei enthält
 
 Die Datei ist JSON, mit Formatname, Formatversion, Zeitpunkt des Exports und je Bereich dessen
-Werte. Ein Wert, den die Verwaltung nie gesetzt hat, steht als `null` darin: Dann gilt die
-Werkseinstellung, in dieser wie in der anderen Installation.
+wirksame Werte. Ein leerer Wert (`null`) hat je Angabe seine eigene Bedeutung: Beim Branding gilt
+der OPAA-Standard, beim Speicherkontingent die Vorgabe des Betriebs, bei einer E-Mail-Vorlage der
+ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 
 | Bereich | Inhalt |
 |---|---|
 | Aufbewahrungsfristen | Protokoll, Rechtehistorie, Diagnoseprotokoll, Verbindungsprotokoll |
 | Branding | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe |
 | E-Mail-Versand | Schalter, Mailserver, Port, Zugangsname, Verschlüsselung, Absender |
-| E-Mail-Vorlagen | alle überschriebenen Vorlagen mit Betreff und Text |
+| E-Mail-Vorlagen | je Vorlage die eigene Fassung mit Betreff und Text oder `null` für den ausgelieferten Text |
 | Lokale Benutzerverwaltung | Selbstregistrierung, Passwortregeln, Fristen der Links und Konten |
 | Selbstauskunft | Schalter und Tagesgrenze |
 | Erlaubte Linkziele | die ganze Liste |
@@ -41,12 +42,18 @@ Brandings.
 ## Importieren
 
 Nach der Auswahl der Datei prüft OPAA sie gegen diese Installation, ohne etwas zu ändern, und zeigt
-jede Angabe, die sich ändern würde, mit bisherigem und neuem Wert. Erst **Übernehmen** ändert die
-Installation, nach einer Rückfrage.
+jede Angabe, die sich ändern würde, mit bisherigem und neuem Wert. Änderungen, die erweitern oder
+umlenken, was die Installation erreicht oder zulässt — Mailserver und Absender, Ausgangsproxy,
+Selbstregistrierung, externe KI-Werkzeuge und ihre Netzbereiche, erlaubte Linkziele —, sind als
+„Sicherheitsrelevant“ markiert. Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
-  Formular, mit denselben Grenzen, auch denen des Betriebs: Ohne `OPAA_PUBLIC_BASE_URL` lässt sich
-  etwa die Selbstregistrierung auch per Import nicht einschalten.
+  Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des
+  Betriebs: Ohne `OPAA_PUBLIC_BASE_URL` lässt sich etwa die Selbstregistrierung auch per Import nicht
+  einschalten. Die Datei wird streng gelesen; eine doppelte oder unbekannte Angabe wird abgelehnt.
+- **Das Passwort des Mailservers folgt keinem neuen Ziel.** Ändern sich Server, Port, Zugangsname
+  oder Verschlüsselung, während ein Passwort hinterlegt ist, lehnt OPAA die Änderung ab, beim Import
+  wie im Formular: Das Passwort ist dann im Formular neu einzugeben oder zu leeren.
 - **Alles oder nichts.** Besteht ein Wert die Prüfung nicht, ändert der Import nichts, auch nicht an
   den Bereichen davor. Die Meldung nennt Bereich und Angabe.
 - **Was die Datei nicht enthält, bleibt.** Ein fehlender Bereich bleibt, wie er ist, eine fehlende
@@ -61,7 +68,10 @@ Installation, nach einer Rückfrage.
 Jede Änderung einer Einstellung steht im Revisionsprotokoll, ob über das Formular, die
 Schnittstelle oder einen Import, mit vorherigem und neuem Wert. Ein Geheimnis erscheint dort nur als
 „gesetzt“, „geändert“ oder „entfernt“, nie mit seinem Wert; das gilt auch für die Geheimnisse von
-Modellen, Verzeichniszugängen und Zugängen. Ein Import, der etwas ändert, schreibt zusätzlich einen
+Modellen, Verzeichniszugängen und Zugängen. Freitexte — Betreff und Text der E-Mail-Vorlagen, der
+Einleitungstext für externe KI-Werkzeuge — stehen dort nur als Prüfsumme (SHA-256) und Länge vorher
+und nachher: Ob und wann sich ein Text geändert hat, ist belegt, sein Wortlaut nicht aufbewahrt. Eine
+Änderung auf denselben Wert schreibt keinen Eintrag. Ein Import, der etwas ändert, schreibt zusätzlich einen
 eigenen Eintrag mit den geänderten Bereichen; er und alle Änderungen des Imports tragen dieselbe
 Vorgangskennung, sodass die Revision sie über den Abfrageweg „nach Vorgang“ zusammen findet.
 

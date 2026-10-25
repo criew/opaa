@@ -22,10 +22,22 @@ public interface SettingsSection {
   /** The tables whose state this section carries. */
   Set<String> tables();
 
+  /** The German name of every key {@link #export} writes, for the preview. */
+  Map<String, String> keyLabels();
+
   /**
-   * The current values: every key of the section, {@code null} where the factory default applies,
-   * only JSON values (numbers, booleans, strings, lists, maps). Never a secret, not even whether
-   * one is stored, and never who changed a value.
+   * The keys whose change widens or redirects what the installation reaches or admits - where mail
+   * goes, which networks and links are allowed, who may register - and is marked in the preview.
+   */
+  default Set<String> securityRelevantKeys() {
+    return Set.of();
+  }
+
+  /**
+   * The values in force: every key of the section with its stored value. Only JSON values (numbers,
+   * booleans, strings, lists, maps); what {@code null} means is the section's own (for branding the
+   * OPAA default, for the quota the configured default, for a mail server field "not set"). Never a
+   * secret, not even whether one is stored, and never who changed a value.
    */
   Map<String, Object> export(CurrentUser actor);
 

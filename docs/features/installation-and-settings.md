@@ -209,22 +209,33 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   scheitern, wenn eine Tabelle `*_settings` keinem Abschnitt gehört und nicht begründet
   ausgenommen ist.
 - **Format:** `{"format": "opaa-settings", "formatVersion": 1, "exportedAt": …, "sections": {…}}`,
-  je Abschnitt ein Objekt mit allen Schlüsseln, `null` für die Werkseinstellung. Die Version steigt,
+  je Abschnitt ein Objekt mit allen Schlüsseln und ihrem wirksamen Wert; was `null` bedeutet, legt
+  der Schlüssel fest (Branding: OPAA-Standard, Kontingent: Vorgabe des Betriebs, Vorlage:
+  ausgelieferter Text, Mailserver-Feld: nicht gesetzt). Die Version steigt,
   wenn ein Schlüssel seine Bedeutung ändert oder entfällt, nicht für neue Abschnitte und Schlüssel.
   Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLogRetention`,
   `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
-  Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates`, `outboundProxy`,
+  Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates` (je Vorlage der Sprache
+  `de` ein Schlüssel), `outboundProxy`,
   `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
 - **Nicht übertragen** werden Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge und die
   Freigabe der Konnektoren: Sie hängen an Geheimnissen dieser Installation.
 - **Import:** eine Transaktion; ein fehlender Abschnitt bleibt, ein fehlender Schlüssel behält
   seinen Wert, ein unbekannter Abschnitt oder Schlüssel, eine andere Version oder ein Wert außerhalb
   der Grenzen lehnt das ganze Dokument ab. Die Vorschau läuft denselben Weg und rollt zurück. Ein
+  Import prüft die Grenzen des Formulars im Schreibweg (Pflicht, Länge, Anzahl), meldet sie als
+  Feldfehler `<abschnitt>.<schlüssel>` und liest die Datei streng (keine doppelten oder unbekannten
+  Angaben). Die Vorschau markiert sicherheitsrelevante Änderungen und nennt jede Angabe deutsch.
+  Ändern sich Server, Port, Zugangsname oder Verschlüsselung des Mailservers, folgt das
+  gespeicherte Passwort nicht, die Änderung wird abgelehnt (wie `requireSecretFollows` der Zugänge).
+  Ein Schreibweg, dessen Eingabe gleich dem Gespeicherten ist, schreibt nichts. Ein
   Import, der etwas ändert, schreibt `SETTINGS_IMPORTED`; er und jede Einzeländerung tragen dieselbe
   Vorgangskennung. Ein unveränderter Import schreibt nichts. Grenzen: 256 KiB je Datei, 30 Prüfungen
   und Importe je Stunde für die Installation.
 - **Geheimnisse im Protokoll:** Ein Ereignis nennt ein Geheimnis nur als `<name>Change` mit `SET`,
-  `CHANGED` oder `REMOVED` (`AuditSecretChange`), nie den Wert.
+  `CHANGED` oder `REMOVED` (`AuditSecretChange`), nie den Wert; Freitexte (Mail-Vorlagen,
+  Einleitungstext externer KI-Werkzeuge) nur als `<name>Sha256` und `<name>Length`
+  (`AuditTextDigest`).
 
 Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
 

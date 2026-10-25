@@ -147,9 +147,9 @@ class ExternalAccessSettingsIntegrationTest {
         .doesNotContain("dev-admin");
   }
 
-  /** ADR-0060, Entscheidung 11: the instructions text is a setting, its change is audited too. */
+  /** ADR-0060, Entscheidung 11: the instructions text is audited, as hash and length only. */
   @Test
-  void changingTheInstructionsTextAloneIsAuditedWithTheTextBeforeAndAfter() throws Exception {
+  void changingTheInstructionsTextAloneIsAuditedAsHashAndLengthOnly() throws Exception {
     mockMvc
         .perform(
             put(SETTINGS)
@@ -168,14 +168,33 @@ class ExternalAccessSettingsIntegrationTest {
             jsonPath("$.serverInstructions")
                 .value("Zuerst „search“ aufrufen und die Herkunft angeben."));
 
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .with(devUser("dev-admin"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    body(
+                        false,
+                        90,
+                        60,
+                        ExternalAccessDefaults.ALLOWED_CIDRS,
+                        600,
+                        "Zuerst „search“ aufrufen und die Herkunft angeben.")))
+        .andExpect(status().isOk());
+
     List<Map<String, Object>> events = settingsEvents();
-    assertThat(events).hasSize(1);
+    assertThat(events).as("the unchanged text the second time writes nothing").hasSize(1);
     assertThat(String.valueOf(events.getFirst().get("before")))
-        .contains("serverInstructions")
+        .contains("serverInstructionsSha256")
+        .contains("serverInstructionsLength")
         .doesNotContain("enabled");
     assertThat(String.valueOf(events.getFirst().get("after")))
-        .contains("Zuerst „search“ aufrufen und die Herkunft angeben.")
+        .contains("\"serverInstructionsLength\":50")
+        .doesNotContain("Zuerst")
         .doesNotContain("tokenMaxLifetimeDays");
+    assertThat(String.valueOf(events.getFirst().get("before")))
+        .doesNotContain(ExternalAccessDefaults.SERVER_INSTRUCTIONS.substring(0, 20));
   }
 
   @Test

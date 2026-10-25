@@ -68,6 +68,22 @@ class SettingsSectionRegistryTest {
     assertThat(claimed).doesNotContainAnyElementsOf(NOT_TRANSFERRED.keySet());
   }
 
+  /** The preview names every key in German and marks only keys the section exports. */
+  @Test
+  void everyExportedKeyHasAGermanLabelAndEveryMarkedKeyIsExported() {
+    io.opaa.auth.CurrentUser admin =
+        io.opaa.auth.CurrentUser.of(
+            java.util.UUID.randomUUID(),
+            io.opaa.organization.Organization.DEFAULT_ID,
+            io.opaa.api.types.SystemRole.SYSTEM_ADMIN,
+            "Systemverwaltung");
+    for (SettingsSection section : transfer.sections()) {
+      Set<String> exported = section.export(admin).keySet();
+      assertThat(section.keyLabels().keySet()).as(section.key()).isEqualTo(exported);
+      assertThat(exported).as(section.key()).containsAll(section.securityRelevantKeys());
+    }
+  }
+
   @Test
   void everySectionHasALowerCamelCaseKeyAndAGermanLabel() {
     assertThat(transfer.sections())

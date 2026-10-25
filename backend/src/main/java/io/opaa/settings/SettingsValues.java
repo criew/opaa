@@ -3,9 +3,9 @@ package io.opaa.settings;
 import io.opaa.common.FieldValidationException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The values of one section as read from a settings document, with typed accessors. A value of the
@@ -15,6 +15,9 @@ import java.util.Map;
 public final class SettingsValues {
 
   static final String INVALID_TYPE = "INVALID_TYPE";
+
+  /** How many characters of a text from the document a message repeats at most. */
+  static final int SHOWN_LENGTH = 40;
 
   private final String path;
   private final Map<String, Object> values;
@@ -83,34 +86,52 @@ public final class SettingsValues {
     return value;
   }
 
-  /** A list of texts; {@code null} reads as the empty list. */
+  /** A list of texts; {@code null} is refused, the empty list is written as {@code []}. */
   public List<String> requireStrings(String key) {
     Object value = values.get(key);
-    if (value == null) {
-      return List.of();
-    }
     if (value instanceof List<?> list && list.stream().allMatch(String.class::isInstance)) {
       return list.stream().map(String.class::cast).toList();
     }
     throw invalid(key, "muss eine Liste von Texten sein");
   }
 
-  /** A list of objects, each read under {@code <section>.<key>[<index>]}. */
-  public List<SettingsValues> requireObjects(String key) {
+  /**
+   * The object under {@code key}, read under {@code <section>.<key>}, or {@code null} for an absent
+   * or {@code null} value; a key it does not know among {@code allowed} is refused.
+   */
+  public SettingsValues optionalObject(String key, Set<String> allowed) {
     Object value = values.get(key);
-    if (!(value instanceof List<?> list)) {
-      throw invalid(key, "muss eine Liste sein");
+    if (value == null) {
+      return null;
     }
-    List<SettingsValues> objects = new ArrayList<>();
-    for (int i = 0; i < list.size(); i++) {
-      if (!(list.get(i) instanceof Map<?, ?> map)) {
-        throw invalid(key + "[" + i + "]", "muss ein Objekt sein");
+    if (!(value instanceof Map<?, ?> map)) {
+      throw invalid(key, "muss ein Objekt sein");
+    }
+    for (Object nested : map.keySet()) {
+      if (!allowed.contains(nested)) {
+        throw invalid(key, "kennt die Angabe " + shown(String.valueOf(nested)) + " nicht");
       }
-      @SuppressWarnings("unchecked")
-      Map<String, Object> entry = (Map<String, Object>) map;
-      objects.add(new SettingsValues(path + "." + key + "[" + i + "]", entry));
     }
-    return objects;
+    @SuppressWarnings("unchecked")
+    Map<String, Object> entry = (Map<String, Object>) map;
+    return new SettingsValues(path + "." + key, entry);
+  }
+
+  /** The path under which this object's fields are named, {@code <section>} or deeper. */
+  public String path() {
+    return path;
+  }
+
+  /**
+   * A text from the document as it may appear in a message: control characters removed, cut to
+   * {@link #SHOWN_LENGTH} characters, in quotes.
+   */
+  public static String shown(String text) {
+    String clean = text.replaceAll("\\p{Cntrl}", "");
+    if (clean.length() > SHOWN_LENGTH) {
+      clean = clean.substring(0, SHOWN_LENGTH) + "…";
+    }
+    return "„" + clean + "“";
   }
 
   /** An enum constant by name, or {@code null} for an absent or {@code null} value. */
@@ -122,7 +143,7 @@ public final class SettingsValues {
     try {
       return Enum.valueOf(type, name);
     } catch (IllegalArgumentException unknown) {
-      throw invalid(key, "hat einen unbekannten Wert: " + name);
+      throw invalid(key, "hat einen unbekannten Wert: " + shown(name));
     }
   }
 

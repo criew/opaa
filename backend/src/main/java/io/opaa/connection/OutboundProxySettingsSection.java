@@ -35,6 +35,16 @@ class OutboundProxySettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of("proxyUrl", "Proxy-Adresse", "noProxy", "Ausnahmeliste");
+  }
+
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return Set.of("proxyUrl", "noProxy");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     OutboundProxy.Settings settings = administration.read(actor);
     Map<String, Object> values = new LinkedHashMap<>();

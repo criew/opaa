@@ -38,6 +38,32 @@ class LocalAccountsSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of(
+        "selfRegistrationEnabled",
+        "Selbstregistrierung",
+        "selfRegistrationAllowedDomains",
+        "Zulässige Adressdomänen der Selbstregistrierung",
+        "passwordResetEnabled",
+        "„Passwort vergessen“",
+        "passwordMinLength",
+        "Mindestlänge des Passworts",
+        "invitationTokenTtlHours",
+        "Gültigkeit des Einladungslinks in Stunden",
+        "resetTokenTtlMinutes",
+        "Gültigkeit des Rücksetzlinks in Minuten",
+        "defaultExpiryDays",
+        "Vorgabe für den Kontoablauf in Tagen",
+        "inactiveDays",
+        "Inaktivität bis zur Sperre in Tagen");
+  }
+
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return Set.of("selfRegistrationEnabled", "selfRegistrationAllowedDomains", "passwordMinLength");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     LocalAuthSettings.Values current = service.current().values();
     Map<String, Object> values = new LinkedHashMap<>();

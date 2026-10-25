@@ -398,7 +398,14 @@ public final class AuditEventCatalog {
         MAIL_SETTINGS_CHANGED);
     put(
         keys,
-        Set.of("bodyHtml", "bodyPlain", "overridden", "subject"),
+        Set.of(
+            "bodyHtmlLength",
+            "bodyHtmlSha256",
+            "bodyPlainLength",
+            "bodyPlainSha256",
+            "overridden",
+            "subjectLength",
+            "subjectSha256"),
         MAIL_TEMPLATE_CHANGED,
         MAIL_TEMPLATE_RESET);
     put(keys, Set.of(), MAIL_TEST_SENT);
@@ -442,7 +449,8 @@ public final class AuditEventCatalog {
             "allowedCidrs",
             "enabled",
             "massRetrievalAlertThreshold",
-            "serverInstructions",
+            "serverInstructionsLength",
+            "serverInstructionsSha256",
             "tokenMaxLifetimeDays",
             "tokenRateLimitPerHour"),
         EXTERNAL_ACCESS_SETTINGS_CHANGED);

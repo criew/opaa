@@ -198,6 +198,35 @@ class MailSettingsServiceIntegrationTest {
     assertThat(after.get(2)).contains("\"passwordChange\":\"REMOVED\"");
   }
 
+  /** A stored password stays only while server, port, account and encryption stay. */
+  @Test
+  void aStoredPasswordDoesNotFollowANewServerUnlessEnteredAgain() {
+    mailSettingsService.updateSettings(organizationId, userId, configured("geheimesKennwort"));
+
+    assertThatThrownBy(
+            () ->
+                mailSettingsService.updateSettings(
+                    organizationId,
+                    userId,
+                    new MailSettingsUpdate(
+                        true,
+                        "smtp.fremd.example",
+                        2525,
+                        "kennung",
+                        MailSettingsService.PASSWORD_MASK,
+                        MailEncryption.NONE,
+                        "opaa@intern.example",
+                        "OPAA")))
+        .isInstanceOfSatisfying(
+            io.opaa.common.FieldValidationException.class,
+            refused -> assertThat(refused.fieldErrors().getFirst().field()).isEqualTo("password"));
+    assertThat(mailSettingsService.currentSettings().getHost()).isEqualTo("smtp.intern.example");
+
+    mailSettingsService.updateSettings(
+        organizationId, userId, configuredWithHost("smtp.neu.example"));
+    assertThat(mailSettingsService.currentSettings().getHost()).isEqualTo("smtp.neu.example");
+  }
+
   @Test
   void refusesToSwitchSendingOnWithoutHostPortOrSenderAddress() {
     assertThatThrownBy(
@@ -405,13 +434,14 @@ class MailSettingsServiceIntegrationTest {
         "OPAA");
   }
 
+  /** A new server takes the password entered again: a stored one never follows a new target. */
   private static MailSettingsUpdate configuredWithHost(String host) {
     return new MailSettingsUpdate(
         true,
         host,
         2525,
         "kennung",
-        MailSettingsService.PASSWORD_MASK,
+        "geheimesKennwort",
         MailEncryption.NONE,
         "opaa@intern.example",
         "OPAA");

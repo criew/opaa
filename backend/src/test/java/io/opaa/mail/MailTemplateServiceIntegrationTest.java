@@ -108,11 +108,12 @@ class MailTemplateServiceIntegrationTest {
   }
 
   /**
-   * Regression guard: an override and its reset carry the text in force before and after, and an
-   * override that changes nothing writes nothing (ADR-0060, Entscheidung 11).
+   * Regression guard: an override and its reset carry the text in force before and after as hash
+   * and length, never in its wording, and an override that changes nothing writes nothing
+   * (ADR-0060, Entscheidung 11).
    */
   @Test
-  void anOverrideAndItsResetAreAuditedWithTheTextBeforeAndAfter() {
+  void anOverrideAndItsResetAreAuditedWithHashAndLengthOfTheTextOnly() throws Exception {
     templateService.update(
         organizationId,
         userId,
@@ -141,17 +142,60 @@ class MailTemplateServiceIntegrationTest {
     assertThat(entries).hasSize(2);
     assertThat(String.valueOf(entries.get(0).get("before")))
         .contains("\"overridden\":false")
-        .contains(jsonText(MailTemplateKey.TEST_MAIL.defaultSubject()));
+        .contains(
+            "\"subjectSha256\":\"" + sha256(MailTemplateKey.TEST_MAIL.defaultSubject()) + "\"");
     assertThat(String.valueOf(entries.get(0).get("after")))
         .contains("\"overridden\":true")
-        .contains("\"subject\":\"Eigener Betreff\"")
-        .contains("\"bodyPlain\":\"Eigener Text\"");
-    assertThat(String.valueOf(entries.get(1).get("before"))).contains("Eigener Betreff");
+        .contains("\"subjectSha256\":\"" + sha256("Eigener Betreff") + "\"")
+        .contains("\"subjectLength\":15")
+        .contains("\"bodyPlainLength\":12");
     assertThat(String.valueOf(entries.get(1).get("after"))).contains("\"overridden\":false");
+    String all = String.valueOf(entries);
+    assertThat(all)
+        .as("the wording reaches no entry")
+        .doesNotContain("Eigener Betreff")
+        .doesNotContain("Eigener Text")
+        .doesNotContain(MailTemplateKey.TEST_MAIL.defaultSubject());
   }
 
-  private static String jsonText(String value) {
-    return tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(value);
+  @Test
+  void anOverrideOutsideTheDeliveredLocaleOrItsBoundsIsRefusedOnItsField() {
+    assertThatThrownBy(
+            () ->
+                templateService.update(
+                    organizationId,
+                    userId,
+                    MailTemplateKey.TEST_MAIL,
+                    "en",
+                    "Subject",
+                    "Text",
+                    null))
+        .isInstanceOfSatisfying(
+            io.opaa.common.FieldValidationException.class,
+            refused -> assertThat(refused.fieldErrors().getFirst().field()).isEqualTo("locale"));
+    assertThatThrownBy(
+            () ->
+                templateService.update(
+                    organizationId,
+                    userId,
+                    MailTemplateKey.TEST_MAIL,
+                    MailTemplateService.DEFAULT_LOCALE,
+                    " ",
+                    "t".repeat(MailTemplateService.MAX_BODY_PLAIN_LENGTH + 1),
+                    null))
+        .isInstanceOfSatisfying(
+            io.opaa.common.FieldValidationException.class,
+            refused ->
+                assertThat(refused.fieldErrors())
+                    .extracting(io.opaa.common.FieldValidationException.FieldError::field)
+                    .containsExactly("subject", "bodyPlain"));
+  }
+
+  private static String sha256(String text) throws Exception {
+    return java.util.HexFormat.of()
+        .formatHex(
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
   }
 
   @Test

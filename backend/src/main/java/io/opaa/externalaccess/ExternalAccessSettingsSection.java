@@ -34,6 +34,28 @@ class ExternalAccessSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of(
+        "enabled",
+        "Kanal eingeschaltet",
+        "tokenMaxLifetimeDays",
+        "Ablauf-Obergrenze der Zugangstokens in Tagen",
+        "tokenRateLimitPerHour",
+        "Kontingent je Token und Stunde",
+        "allowedCidrs",
+        "Netzbereiche",
+        "massRetrievalAlertThreshold",
+        "Schwelle des Abflussalarms",
+        "serverInstructions",
+        "Einleitungstext");
+  }
+
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return Set.of("enabled", "tokenMaxLifetimeDays", "allowedCidrs", "massRetrievalAlertThreshold");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     ExternalAccessSettings.Values current = service.current().values();
     Map<String, Object> values = new LinkedHashMap<>();

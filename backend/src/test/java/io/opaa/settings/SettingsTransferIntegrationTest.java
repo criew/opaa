@@ -185,9 +185,8 @@ class SettingsTransferIntegrationTest {
         .add("https://intranet.stadt.example");
     sections.withObject("localAccounts").put("passwordMinLength", 14);
     sections.withObject("mail").put("fromName", "OPAA der Stadt");
-    ObjectNode override = sections.withObject("mailTemplates").putArray("overrides").addObject();
-    override.put("key", MailTemplateKey.TEST_MAIL.key());
-    override.put("locale", "de");
+    ObjectNode override =
+        sections.withObject("mailTemplates").putObject(MailTemplateKey.TEST_MAIL.key());
     override.put("subject", "Eigener Betreff");
     override.put("bodyPlain", "Eigener Text");
     override.putNull("bodyHtml");

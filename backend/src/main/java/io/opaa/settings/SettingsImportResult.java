@@ -12,7 +12,16 @@ public record SettingsImportResult(boolean applied, List<Change> changes) {
     changes = List.copyOf(changes);
   }
 
-  /** One changed key, both values in the form the export writes ({@code null} allowed). */
+  /**
+   * One changed key with its German names, both values in the form the export writes ({@code null}
+   * allowed), and whether the section counts the key as security-relevant.
+   */
   public record Change(
-      String section, String sectionLabel, String key, Object before, Object after) {}
+      String section,
+      String sectionLabel,
+      String key,
+      String keyLabel,
+      boolean securityRelevant,
+      Object before,
+      Object after) {}
 }

@@ -34,6 +34,11 @@ class DiagnosticContextRetentionSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of("retentionMonths", "Aufbewahrungsfrist in Monaten");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     Map<String, Object> values = new LinkedHashMap<>();
     values.put("retentionMonths", service.read(actor).getRetentionMonths());

@@ -7,14 +7,19 @@ import io.opaa.api.types.MailEncryption;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditSecretChange;
+import io.opaa.common.FieldValidationException;
+import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.security.SettingsEncryptor;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -65,6 +70,14 @@ public class MailSettingsService implements InvalidationSubscriber {
   static final String SETTINGS_OBJECT_ID = "mail-settings";
 
   static final String SETTINGS_OBJECT_LABEL = "E-Mail-Versand";
+
+  static final int MAX_HOST_LENGTH = 255;
+  static final int MAX_USERNAME_LENGTH = 255;
+  static final int MAX_PASSWORD_LENGTH = 255;
+  static final int MAX_FROM_ADDRESS_LENGTH = 320;
+  static final int MAX_FROM_NAME_LENGTH = 120;
+  static final String TOO_LONG = "TOO_LONG";
+  static final String PASSWORD_REQUIRED = "PASSWORD_REQUIRED";
 
   /** Deliberately permissive - the mail server is the authority on what it accepts. */
   private static final Pattern MAIL_ADDRESS = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
@@ -136,6 +149,7 @@ public class MailSettingsService implements InvalidationSubscriber {
   @Transactional
   public MailSettings updateSettings(
       UUID organizationId, UUID actorUserId, MailSettingsUpdate update) {
+    requireWithinBounds(update);
     String host = trimmedOrNull(update.host());
     Integer port = validatedPort(update.port());
     String username = trimmedOrNull(update.username());
@@ -147,6 +161,7 @@ public class MailSettingsService implements InvalidationSubscriber {
     MailSettings settings = requireRow();
     String passwordCiphertext =
         resolvePassword(update.password(), settings.getPasswordCiphertext());
+    requirePasswordFollowsTarget(settings, update.password(), host, port, username, encryption);
     requireCompleteWhenEnabled(update.enabled(), host, port, fromAddress);
 
     Map<String, Object> before = auditState(settings);
@@ -258,6 +273,63 @@ public class MailSettingsService implements InvalidationSubscriber {
    * The three-way password rule from {@link MailSettingsUpdate}: unchanged for {@code null} or the
    * mask, cleared for the empty string, replaced otherwise.
    */
+  /**
+   * A stored password belongs to the server, port, account and encryption it was entered for: if
+   * any of them changes while the password would be kept, the change is refused on {@code password}
+   * - the password is entered again or cleared, never sent to the new target.
+   */
+  private static void requirePasswordFollowsTarget(
+      MailSettings stored,
+      String submitted,
+      String host,
+      Integer port,
+      String username,
+      MailEncryption encryption) {
+    boolean kept = submitted == null || PASSWORD_MASK.equals(submitted);
+    if (!kept || stored.getPasswordCiphertext() == null) {
+      return;
+    }
+    boolean newTarget =
+        !Objects.equals(stored.getHost(), host)
+            || !Objects.equals(stored.getPort(), port)
+            || !Objects.equals(stored.getUsername(), username)
+            || stored.getEncryption() != encryption;
+    if (newTarget) {
+      throw FieldValidationException.of(
+          "password",
+          PASSWORD_REQUIRED,
+          "Server, Port, Zugangsname oder Verschlüsselung ändern sich: Das gespeicherte Passwort"
+              + " geht nicht an ein neues Ziel. Bitte das Passwort neu eingeben oder leeren.");
+    }
+  }
+
+  /** The lengths the columns and the request schema allow, each refused on its own field. */
+  private static void requireWithinBounds(MailSettingsUpdate update) {
+    List<FieldError> errors = new ArrayList<>();
+    requireLength(errors, "host", "Der SMTP-Server", update.host(), MAX_HOST_LENGTH);
+    requireLength(errors, "username", "Der Zugangsname", update.username(), MAX_USERNAME_LENGTH);
+    requireLength(errors, "password", "Das Passwort", update.password(), MAX_PASSWORD_LENGTH);
+    requireLength(
+        errors,
+        "fromAddress",
+        "Die Absenderadresse",
+        update.fromAddress(),
+        MAX_FROM_ADDRESS_LENGTH);
+    requireLength(errors, "fromName", "Der Absendername", update.fromName(), MAX_FROM_NAME_LENGTH);
+    if (!errors.isEmpty()) {
+      throw new FieldValidationException("Eine Angabe des Mailversands ist zu lang.", errors);
+    }
+  }
+
+  private static void requireLength(
+      List<FieldError> errors, String field, String label, String value, int maxLength) {
+    if (value != null && value.trim().length() > maxLength) {
+      errors.add(
+          new FieldError(
+              field, TOO_LONG, label + " darf höchstens " + maxLength + " Zeichen lang sein."));
+    }
+  }
+
   private String resolvePassword(String submitted, String storedCiphertext) {
     if (submitted == null || PASSWORD_MASK.equals(submitted)) {
       return storedCiphertext;

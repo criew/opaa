@@ -20,13 +20,19 @@ describe('settingsFile', () => {
     ).toEqual({ document: { format: 'opaa-settings', formatVersion: 1, sections: {} } })
   })
 
-  it('shows the factory default, switches, empty values and lists readably', () => {
-    expect(formatSettingValue(null)).toBe('Werkseinstellung')
+  it('shows unset values, switches, empty values, lists and templates readably', () => {
+    expect(formatSettingValue(null)).toBe('nicht gesetzt')
+    expect(formatSettingValue(null, 'mailTemplates')).toBe('ausgelieferter Text')
+    expect(formatSettingValue({ subject: 'Betreff', bodyPlain: 'Text', bodyHtml: null })).toBe(
+      'Betreff: Betreff\nText: Text',
+    )
     expect(formatSettingValue(true)).toBe('ein')
     expect(formatSettingValue(false)).toBe('aus')
     expect(formatSettingValue('')).toBe('(leer)')
     expect(formatSettingValue([])).toBe('(keine)')
-    expect(formatSettingValue(['https://a.example'])).toBe('["https://a.example"]')
+    expect(formatSettingValue(['https://a.example', 'https://b.example'])).toBe(
+      'https://a.example, https://b.example',
+    )
     expect(formatSettingValue(36)).toBe('36')
   })
 })

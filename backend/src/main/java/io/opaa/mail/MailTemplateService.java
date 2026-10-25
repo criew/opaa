@@ -7,10 +7,14 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditTextDigest;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
+import io.opaa.common.FieldValidationException;
+import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +48,14 @@ public class MailTemplateService {
 
   /** The one locale this release delivers text for; the column is prepared for more (ADR-0033). */
   public static final String DEFAULT_LOCALE = "de";
+
+  public static final int MAX_SUBJECT_LENGTH = 300;
+  public static final int MAX_BODY_PLAIN_LENGTH = 20_000;
+  public static final int MAX_BODY_HTML_LENGTH = 60_000;
+
+  static final String REQUIRED = "REQUIRED";
+  static final String TOO_LONG = "TOO_LONG";
+  static final String UNSUPPORTED_LOCALE = "UNSUPPORTED_LOCALE";
 
   private static final String PRODUCT_NAME_VARIABLE = "productName";
   private static final String ACTION_URL_VARIABLE = "actionUrl";
@@ -139,7 +151,10 @@ public class MailTemplateService {
 
   /**
    * Stores or replaces the override for {@code key}/{@code locale}. Every placeholder referenced in
-   * any of the three fields must be one the key declares; the rejection names the field.
+   * any of the three fields must be one the key declares; the rejection names the field. Only the
+   * delivered locale takes an override, subject and plain text must not be blank, and the three
+   * fields stay within {@link #MAX_SUBJECT_LENGTH}, {@link #MAX_BODY_PLAIN_LENGTH} and {@link
+   * #MAX_BODY_HTML_LENGTH}.
    */
   @Transactional
   public MailTemplateView update(
@@ -150,6 +165,7 @@ public class MailTemplateService {
       String subject,
       String bodyPlain,
       String bodyHtml) {
+    requireWithinBounds(locale, subject, bodyPlain, bodyHtml);
     requireUsableContent(key, subject, bodyPlain, bodyHtml);
 
     String resolvedLocale = effectiveLocale(locale);
@@ -255,6 +271,45 @@ public class MailTemplateService {
    * error neither check above can see would otherwise turn every later send into a failure, found
    * by the person waiting for their invitation.
    */
+  private static void requireWithinBounds(
+      String locale, String subject, String bodyPlain, String bodyHtml) {
+    List<FieldError> errors = new ArrayList<>();
+    if (!DEFAULT_LOCALE.equals(effectiveLocale(locale))) {
+      errors.add(
+          new FieldError(
+              "locale",
+              UNSUPPORTED_LOCALE,
+              "Vorlagen gibt es nur für die Sprache " + DEFAULT_LOCALE + "."));
+    }
+    requireText(errors, "subject", "Der Betreff", subject, MAX_SUBJECT_LENGTH, true);
+    requireText(errors, "bodyPlain", "Der Text", bodyPlain, MAX_BODY_PLAIN_LENGTH, true);
+    requireText(errors, "bodyHtml", "Der HTML-Text", bodyHtml, MAX_BODY_HTML_LENGTH, false);
+    if (!errors.isEmpty()) {
+      throw new FieldValidationException(
+          "Die E-Mail-Vorlage ist unvollständig oder zu lang.", errors);
+    }
+  }
+
+  private static void requireText(
+      List<FieldError> errors,
+      String field,
+      String label,
+      String text,
+      int maxLength,
+      boolean required) {
+    if (text == null || text.isBlank()) {
+      if (required) {
+        errors.add(new FieldError(field, REQUIRED, label + " darf nicht leer sein."));
+      }
+      return;
+    }
+    if (text.length() > maxLength) {
+      errors.add(
+          new FieldError(
+              field, TOO_LONG, label + " darf höchstens " + maxLength + " Zeichen lang sein."));
+    }
+  }
+
   private void requireUsableContent(
       MailTemplateKey key, String subject, String bodyPlain, String bodyHtml) {
     checkField(key, "subject", subject, plainCompiler);
@@ -384,15 +439,18 @@ public class MailTemplateService {
   }
 
   /**
-   * The text in force for the audit: the override with {@code overridden} true, or the delivered
-   * subject and plain text with {@code overridden} false; an absent HTML part is left out.
+   * The text in force for the audit, as hash and length only ({@link AuditTextDigest}): the
+   * override with {@code overridden} true, or the delivered subject and plain text with {@code
+   * overridden} false; an absent HTML part is left out.
    */
   private static Map<String, Object> auditState(MailTemplateKey key, Optional<MailTemplate> row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("overridden", row.isPresent());
-    state.put("subject", row.map(MailTemplate::getSubject).orElseGet(key::defaultSubject));
-    state.put("bodyPlain", row.map(MailTemplate::getBodyPlain).orElseGet(key::defaultBodyPlain));
-    row.map(MailTemplate::getBodyHtml).ifPresent(html -> state.put("bodyHtml", html));
+    AuditTextDigest.put(
+        state, "subject", row.map(MailTemplate::getSubject).orElseGet(key::defaultSubject));
+    AuditTextDigest.put(
+        state, "bodyPlain", row.map(MailTemplate::getBodyPlain).orElseGet(key::defaultBodyPlain));
+    AuditTextDigest.put(state, "bodyHtml", row.map(MailTemplate::getBodyHtml).orElse(null));
     return state;
   }
 

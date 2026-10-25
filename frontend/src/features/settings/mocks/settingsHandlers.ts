@@ -14,6 +14,13 @@ const LABELS: Record<string, string> = {
   linkTargets: 'Erlaubte Linkziele',
 }
 
+const KEY_LABELS: Record<string, string> = {
+  retentionMonths: 'Aufbewahrungsfrist in Monaten',
+  allowedOrigins: 'Erlaubte Linkziele',
+}
+
+const SECURITY_RELEVANT = new Set(['allowedOrigins'])
+
 function changesOf(document: SettingsDocument): SettingsChange[] | string {
   const changes: SettingsChange[] = []
   for (const [section, values] of Object.entries(document.sections)) {
@@ -22,7 +29,15 @@ function changesOf(document: SettingsDocument): SettingsChange[] | string {
     for (const [key, after] of Object.entries(values)) {
       if (!(key in current)) return `Der Abschnitt „${LABELS[section]}“ kennt ${key} nicht.`
       if (JSON.stringify(current[key]) !== JSON.stringify(after)) {
-        changes.push({ section, sectionLabel: LABELS[section], key, before: current[key], after })
+        changes.push({
+          section,
+          sectionLabel: LABELS[section],
+          key,
+          keyLabel: KEY_LABELS[key] ?? key,
+          securityRelevant: SECURITY_RELEVANT.has(key),
+          before: current[key],
+          after,
+        })
       }
     }
   }

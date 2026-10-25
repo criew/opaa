@@ -37,6 +37,11 @@ class PrivateStorageQuotaSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of("quotaBytes", "Speicherkontingent in Bytes");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     PrivateStorageAdministration.QuotaSetting setting = administration.read(actor);
     Map<String, Object> values = new LinkedHashMap<>();

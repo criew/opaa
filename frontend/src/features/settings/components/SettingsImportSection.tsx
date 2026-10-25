@@ -13,9 +13,11 @@ import Typography from '@mui/material/Typography'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import type { SettingsChange, SettingsDocument } from '@/shared/api/types'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
 import { importSettings, previewSettingsImport } from '../api/settingsApi'
 import {
@@ -33,6 +35,10 @@ interface Checked {
 interface Refusal {
   message: string
   details: string[]
+}
+
+function securityRelevant(changes: SettingsChange[]): number {
+  return changes.filter((change) => change.securityRelevant).length
 }
 
 function refusalOf(err: unknown, fallback: string): Refusal {
@@ -84,7 +90,11 @@ export default function SettingsImportSection() {
       question: 'Einstellungen übernehmen?',
       consequence: `${checked.changes.length} ${
         checked.changes.length === 1 ? 'Angabe ändert sich' : 'Angaben ändern sich'
-      } sofort für die ganze Installation. Jede Änderung steht im Revisionsprotokoll.`,
+      } sofort für die ganze Installation${
+        securityRelevant(checked.changes) > 0
+          ? `, davon ${securityRelevant(checked.changes)} sicherheitsrelevant`
+          : ''
+      }. Jede Änderung steht im Revisionsprotokoll.`,
       confirmLabel: 'Übernehmen',
       tone: 'caution',
     })
@@ -93,6 +103,9 @@ export default function SettingsImportSection() {
     try {
       const result = await importSettings(checked.document)
       setChecked(null)
+      if (result.changes.some((change) => change.section === 'branding')) {
+        void useBrandingStore.getState().loadBranding()
+      }
       notify(
         result.changes.length === 0
           ? 'Die Einstellungen stimmten bereits überein; nichts wurde geändert.'
@@ -158,6 +171,15 @@ export default function SettingsImportSection() {
               „{checked.fileName}“ ändert {checked.changes.length}{' '}
               {checked.changes.length === 1 ? 'Angabe' : 'Angaben'}:
             </Typography>
+            {securityRelevant(checked.changes) > 0 && (
+              <Alert severity="warning" sx={{ maxWidth: 640 }}>
+                {securityRelevant(checked.changes) === 1
+                  ? 'Eine Änderung ist sicherheitsrelevant'
+                  : `${securityRelevant(checked.changes)} Änderungen sind sicherheitsrelevant`}
+                : Sie erweitern oder lenken um, was die Installation erreicht oder zulässt. Bitte
+                vor dem Übernehmen prüfen.
+              </Alert>
+            )}
             <TableContainer>
               <Table size="small" aria-label="Änderungen durch den Import">
                 <TableHead>
@@ -172,12 +194,19 @@ export default function SettingsImportSection() {
                   {checked.changes.map((change) => (
                     <TableRow key={`${change.section}.${change.key}`}>
                       <TableCell>{change.sectionLabel}</TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace' }}>{change.key}</TableCell>
-                      <TableCell sx={{ overflowWrap: 'anywhere' }}>
-                        {formatSettingValue(change.before)}
+                      <TableCell>
+                        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+                          <span>{change.keyLabel}</span>
+                          {change.securityRelevant && (
+                            <MetaBadge accent>Sicherheitsrelevant</MetaBadge>
+                          )}
+                        </Stack>
                       </TableCell>
-                      <TableCell sx={{ overflowWrap: 'anywhere' }}>
-                        {formatSettingValue(change.after)}
+                      <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>
+                        {formatSettingValue(change.before, change.section)}
+                      </TableCell>
+                      <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>
+                        {formatSettingValue(change.after, change.section)}
                       </TableCell>
                     </TableRow>
                   ))}

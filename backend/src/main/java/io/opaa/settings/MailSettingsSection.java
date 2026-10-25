@@ -39,6 +39,30 @@ class MailSettingsSection implements SettingsSection {
   }
 
   @Override
+  public Map<String, String> keyLabels() {
+    return Map.of(
+        "enabled",
+        "Versand eingeschaltet",
+        "host",
+        "SMTP-Server",
+        "port",
+        "Port",
+        "username",
+        "Zugangsname",
+        "encryption",
+        "Verschlüsselung",
+        "fromAddress",
+        "Absenderadresse",
+        "fromName",
+        "Absendername");
+  }
+
+  @Override
+  public Set<String> securityRelevantKeys() {
+    return Set.of("enabled", "host", "port", "username", "encryption", "fromAddress");
+  }
+
+  @Override
   public Map<String, Object> export(CurrentUser actor) {
     MailSettings settings = service.currentSettings();
     Map<String, Object> values = new LinkedHashMap<>();

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -58,7 +59,7 @@ public class OutboundProxyAdministration {
   }
 
   /**
-   * Stores the proxy and the exclusion list.
+   * Stores the proxy and the exclusion list; an unchanged pair writes nothing and records nothing.
    *
    * @param proxyUrl {@code http://host:port} or {@code host:port}; {@code null} or blank for none
    * @param noProxy host names, IP literals and CIDR ranges of IP literals
@@ -76,6 +77,9 @@ public class OutboundProxyAdministration {
           "Die Einstellungen des Ausgangsproxys sind ungültig.", errors);
     }
     OutboundProxy.Settings before = outboundProxy.read();
+    if (Objects.equals(before.proxy(), proxy) && before.noProxy().equals(entries)) {
+      return before;
+    }
     OutboundProxy.Settings after = outboundProxy.change(proxy, entries);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()

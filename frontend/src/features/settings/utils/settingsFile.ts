@@ -56,12 +56,31 @@ export function parseSettingsFile(
   return { document: parsed as SettingsDocument }
 }
 
-/** A value of the preview as text: `null` is the factory default, a list or object its JSON. */
-export function formatSettingValue(value: unknown): string {
-  if (value === null || value === undefined) return 'Werkseinstellung'
+/** German names of the fields of a mail template in the preview. */
+const TEMPLATE_FIELDS: Record<string, string> = {
+  subject: 'Betreff',
+  bodyPlain: 'Text',
+  bodyHtml: 'HTML-Teil',
+}
+
+/**
+ * A value of the preview as text. What `null` means depends on the section: the delivered text
+ * of a mail template, otherwise only that nothing is set; lists are joined, a mail template is
+ * shown field by field.
+ */
+export function formatSettingValue(value: unknown, section?: string): string {
+  if (value === null || value === undefined) {
+    return section === 'mailTemplates' ? 'ausgelieferter Text' : 'nicht gesetzt'
+  }
   if (typeof value === 'boolean') return value ? 'ein' : 'aus'
   if (typeof value === 'string') return value === '' ? '(leer)' : value
   if (typeof value === 'number') return String(value)
-  if (Array.isArray(value) && value.length === 0) return '(keine)'
-  return JSON.stringify(value)
+  if (Array.isArray(value)) return value.length === 0 ? '(keine)' : value.map(String).join(', ')
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, field]) => field !== null && field !== undefined)
+      .map(([key, field]) => `${TEMPLATE_FIELDS[key] ?? key}: ${String(field)}`)
+      .join('\n')
+  }
+  return String(value)
 }

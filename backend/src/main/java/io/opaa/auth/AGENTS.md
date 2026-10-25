@@ -5,22 +5,25 @@ Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
-Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität, Bereitstellung aus
-dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit. `account` sind die lokalen Konten
-(Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung); die Filterkette und der Resolver des Modus `oidc`
-liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand, Benachrichtigungen, Selbstauskunft (Kategorien
-über `SelfDisclosureExporter`) und Export/Import der Einstellungen (`settings`).
+Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität,
+Bereitstellung aus dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit.
+`account` sind die lokalen Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung);
+die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll,
+Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), Einstellungsexport (`settings`).
 
 ## Invarianten und Stolpersteine
 
 - **Ohne Auth-Profil startet das Backend nicht** (`AuthProfileGuard`): ohne Filterkette stünde `/api/**` offen.
-- **`dev` ist ein echter Modus:** `DevAuthFilter` legt für jede Anfrage ein synthetisches `Jwt` in den Kontext, der
-  Nutzer kommt aus einem Header, ein unbekanntes Subject ergibt `401`. Der Code dahinter kennt den aktiven Modus nicht.
-- **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen `LocalIssuer#URN`. Das
-  Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET` (`LocalAuthSecretGuard`).
-- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`, `LocalAccountAccess`,
-  `AccountUsability` (einzige Regel „Konto nutzbar“) und `LocalAdminAvailabilityGuard`. Den Schalter der lokalen Konten
-  erreicht `account` nur über den Port `LocalAccountsSwitch`; die Verwaltung der Anbieter liegt in `io.opaa.directory`.
+- **`dev` ist ein echter Modus:** `DevAuthFilter` legt für jede Anfrage ein synthetisches `Jwt` in
+  den Kontext, der Nutzer kommt aus einem Header, ein unbekanntes Subject ergibt `401`. Der Code
+  dahinter kennt den aktiven Modus nicht.
+- **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen
+  `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
+  (`LocalAuthSecretGuard`).
+- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`,
+  `LocalAccountAccess`, `AccountUsability` (einzige Regel „Konto nutzbar“) und
+  `LocalAdminAvailabilityGuard`. Den Schalter der lokalen Konten erreicht `account` nur über den
+  Port `LocalAccountsSwitch`; die Verwaltung der Anbieter liegt in `io.opaa.directory` (rights).
 - **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben über `AuditLogService#record`/`AuditEventRecorder`, gelesen
   nur über `AuditQueryService`, `AuditLogSelfDisclosureExporter` (Person selbst), eingeschaltet `SiemExportService`
   (ADR-0055) und `AuditChainService` (Prüfsummenkette, ADR-0059). `AuditLogRepository` ist package-private; das
@@ -29,11 +32,9 @@ liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand, Benachric
   zweiten Weg. Ohne Wartenden geht die Mail per `enqueue` in der fachlichen Transaktion in die Outbox (ADR-0053).
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`). Erlaubte Linkziele ändert nur `LinkTargetSettingsService`, gelesen ohne Cache.
-- **Jede Einstellung gehört zu einem `settings.SettingsSection`** im Paket ihres Moduls (`SettingsSectionRegistryTest`),
-  `apply` nutzt den Schreibweg der Verwaltung; ein Geheimnis nie im Export, im Protokoll nur als `AuditSecretChange`.
 - **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
-  `notification.web`, `selfdisclosure.web`, `linktarget.web`, `settings.web`; `audit.web.AuditedAdminCall`
-  protokolliert `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
+  `notification.web`, `selfdisclosure.web`, `linktarget.web`, `settings.web`; `AuditedAdminCall` protokolliert
+  `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
   `/api/v1/audit/access-as-of` in `revision.web`, `/api/v1/me` in `group.web`, Anbieter in `directory.web`.
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`), nie `local,dev`.
 
@@ -45,7 +46,6 @@ liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand, Benachric
 - [ADR-0025](../../../../../../../docs/decisions/0025-mehrere-oidc-anbieter.md): mehrere OIDC-Anbieter, Identität
 - [ADR-0033](../../../../../../../docs/decisions/0033-lokale-benutzerverwaltung.md): lokale Konten, Token, Mail
 - [ADR-0041](../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 4): eine Regel „Konto nutzbar“
-- [ADR-0060](../../../../../../../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md) (Entscheidungen 11, 12): Nachweis, Export und Import der Einstellungen
 
 ## Verweise
 

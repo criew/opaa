@@ -16,12 +16,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Export, preview and import of the installation's settings, system admin only. Both intakes read
  * the body themselves, bounded to {@link #MAX_BODY_BYTES}, so a document cannot grow without limit
- * before it is parsed.
+ * before it is parsed, and parse it strictly: a key twice or an unknown field is refused.
  */
 @RestController
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -36,7 +38,12 @@ public class SystemSettingsTransferController {
 
   public SystemSettingsTransferController(SettingsTransferService transfer, JsonMapper jsonMapper) {
     this.transfer = transfer;
-    this.jsonMapper = jsonMapper;
+    this.jsonMapper =
+        jsonMapper
+            .rebuild()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
   }
 
   @GetMapping("/api/v1/system/settings/export")

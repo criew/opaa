@@ -169,7 +169,7 @@ public class SettingsTransferService {
           "Der Abschnitt „"
               + section.label()
               + "“ kennt diese Angaben nicht: "
-              + String.join(", ", unknown)
+              + shownAll(unknown)
               + ".");
     }
     ObjectNode merged = current.deepCopy();
@@ -177,7 +177,11 @@ public class SettingsTransferService {
     if (merged.equals(current)) {
       return List.of();
     }
-    section.apply(actor, new SettingsValues(section.key(), plainObject(merged)));
+    try {
+      section.apply(actor, new SettingsValues(section.key(), plainObject(merged)));
+    } catch (FieldValidationException refused) {
+      throw underSection(section, refused);
+    }
     ObjectNode after = tree(section.export(actor));
     List<SettingsImportResult.Change> changes = new ArrayList<>();
     for (String key : current.propertyNames()) {
@@ -187,11 +191,36 @@ public class SettingsTransferService {
                 section.key(),
                 section.label(),
                 key,
+                section.keyLabels().getOrDefault(key, key),
+                section.securityRelevantKeys().contains(key),
                 plain(current.get(key)),
                 plain(after.get(key))));
       }
     }
     return changes;
+  }
+
+  /**
+   * {@code refused} with every field named under the section ({@code <section>.<key>}), so a
+   * refusal of a write path says which part of the document it is about.
+   */
+  private static FieldValidationException underSection(
+      SettingsSection section, FieldValidationException refused) {
+    String prefix = section.key() + ".";
+    List<FieldError> errors =
+        refused.fieldErrors().stream()
+            .map(
+                error ->
+                    error.field().startsWith(prefix)
+                        ? error
+                        : new FieldError(prefix + error.field(), error.code(), error.message()))
+            .toList();
+    return new FieldValidationException(refused.getMessage(), errors);
+  }
+
+  private static String shownAll(Set<String> texts) {
+    return String.join(", ", texts.stream().limit(5).map(SettingsValues::shown).toList())
+        + (texts.size() > 5 ? " und weitere" : "");
   }
 
   /** The sections of a readable document; refuses another format, version or unknown sections. */
@@ -224,9 +253,7 @@ public class SettingsTransferService {
             new FieldError(
                 "sections",
                 UNKNOWN,
-                "Diese Installation kennt diese Abschnitte nicht: "
-                    + String.join(", ", unknown)
-                    + "."));
+                "Diese Installation kennt diese Abschnitte nicht: " + shownAll(unknown) + "."));
       }
     }
     if (!errors.isEmpty()) {

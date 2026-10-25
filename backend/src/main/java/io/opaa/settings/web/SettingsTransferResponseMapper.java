@@ -32,7 +32,12 @@ final class SettingsTransferResponseMapper {
     response.setApplied(result.applied());
     for (io.opaa.settings.SettingsImportResult.Change change : result.changes()) {
       SettingsChange item =
-          new SettingsChange(change.section(), change.sectionLabel(), change.key());
+          new SettingsChange(
+              change.section(),
+              change.sectionLabel(),
+              change.key(),
+              change.keyLabel(),
+              change.securityRelevant());
       item.setBefore(change.before());
       item.setAfter(change.after());
       response.addChangesItem(item);

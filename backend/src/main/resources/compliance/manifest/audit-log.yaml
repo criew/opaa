@@ -815,13 +815,29 @@ auditEvents:
   - id: MAIL_TEMPLATE_CHANGED
     trigger: Eine Mail-Vorlage wird überschrieben; eine unveränderte Fassung erzeugt keinen Eintrag
     details: >-
-      Betreff und Text vorher und nachher, vorher die ausgelieferte Fassung, solange keine eigene
-      gespeichert war (overridden)
-    payloadKeys: [bodyHtml, bodyPlain, overridden, subject]
+      Betreff, Text und HTML-Teil vorher und nachher nur als SHA-256 und Länge, nie im Wortlaut;
+      vorher die ausgelieferte Fassung, solange keine eigene gespeichert war (overridden)
+    payloadKeys:
+      - bodyHtmlLength
+      - bodyHtmlSha256
+      - bodyPlainLength
+      - bodyPlainSha256
+      - overridden
+      - subjectLength
+      - subjectSha256
   - id: MAIL_TEMPLATE_RESET
     trigger: Eine überschriebene Mail-Vorlage wird zurückgesetzt
-    details: Betreff und Text der eigenen Fassung vorher und der ausgelieferten nachher
-    payloadKeys: [bodyHtml, bodyPlain, overridden, subject]
+    details: >-
+      Betreff und Text der eigenen Fassung vorher und der ausgelieferten nachher, nur als SHA-256
+      und Länge
+    payloadKeys:
+      - bodyHtmlLength
+      - bodyHtmlSha256
+      - bodyPlainLength
+      - bodyPlainSha256
+      - overridden
+      - subjectLength
+      - subjectSha256
   - id: MAIL_TEST_SENT
     trigger: Die Systemverwaltung löst einen Testversand aus
   - id: LOCAL_USER_CREATED
@@ -883,12 +899,15 @@ auditEvents:
       - systemRole
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
     trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
-    details: Vorher/Nachher der geänderten Schlüssel, auch des Einleitungstexts
+    details: >-
+      Vorher/Nachher der geänderten Schlüssel; der Einleitungstext nur als SHA-256 und Länge, nie im
+      Wortlaut
     payloadKeys:
       - allowedCidrs
       - enabled
       - massRetrievalAlertThreshold
-      - serverInstructions
+      - serverInstructionsLength
+      - serverInstructionsSha256
       - tokenMaxLifetimeDays
       - tokenRateLimitPerHour
   - id: CONNECTION_PROFILE_CREATED

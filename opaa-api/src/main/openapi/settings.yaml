@@ -138,7 +138,7 @@ components:
 
     SettingsChange:
       type: object
-      required: [section, sectionLabel, key]
+      required: [section, sectionLabel, key, keyLabel, securityRelevant]
       properties:
         section:
           type: string
@@ -147,9 +147,21 @@ components:
           description: The German name of the section in the administration.
         key:
           type: string
+        keyLabel:
+          type: string
+          description: The German name of the key.
+        securityRelevant:
+          type: boolean
+          description: >-
+            Whether the change widens or redirects what the installation reaches or admits: where
+            mail goes, the outbound proxy, self-registration, the external access channel and its
+            networks, the allowed link targets. The preview marks such a change.
         before:
           nullable: true
-          description: The value in force on this installation, in the form the export writes.
+          description: >-
+            The value in force on this installation, in the form the export writes; what null
+            means depends on the key (for example the OPAA default, the delivered mail text, not
+            set).
         after:
           nullable: true
           description: The value after the import, in the form the export writes.
