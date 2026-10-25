@@ -5,8 +5,58 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-24T04:53:19Z</updated>
+  <updated>2026-10-25T05:04:19Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 24. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-24.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-24.html</id>
+    <updated>2026-10-25T05:04:19Z</updated>
+    <summary type="text">feat(security): Schutz gegen Prompt-Injection aus aufgenommenen Dokumenten:
+— docs(security): Schutz gegen Prompt-Injection in Handbuch und Grundschutz-Vorlage
+— test(e2e): Linkregel und präparierte Dokumente in Antworten
+— feat(mcp): Treffer des MCP-Servers als Fremdinhalt kennzeichnen
+— feat(indexing): Steuerzeichen beim Aufnehmen bereinigen und Injektionsmuster melden
+feat: Kennzeichnung KI-erzeugter Antworten nach Art. 50 KI-Verordnung:
+— docs(behoerden): Einstufungshilfe KI-VO und Handbuch auf die Kennzeichnung nachziehen
+— test(e2e): KI-Hinweis, Kennzeichen an der Antwort und Kopiervermerk
+— feat(chat): Antwort über den Kopierknopf mit Vermerk aus Hinweistext, Produktname und Datum
+— feat(branding): Hinweistext der Behörde zur KI-Nutzung, änderbar und nicht abschaltbar
+feat: Audit-Trail-Review: Ereignisvertrag, Integrität und extern anbindbarer Datenstrom:
+— feat(audit): Metriken zu Protokollgröße und Löschlauf
+— refactor(audit): Ereignistypen ohne Nachweiswert nicht mehr schreiben
+— feat(audit): Sicherheitsereignisse an ein zentrales Sicherheitsmonitoring ausleiten
+— docs(audit): ADR zu Ereignisvertrag, Aufbewahrung und Integrität des Revisionsprotokolls
+feat: Selbstauskunft — eigene Daten als ZIP aus den Einstellungen exportieren (Stufe 1):
+— feat(auth): Backend sendet für den Download der Selbstauskunft selbst SAMEORIGIN und frame-ancestors &#x27;self&#x27;
+— test(audit): Strukturtest für Leser des Protokolls gegen Kleinschreibung und Methodenreferenzen härten
+— fix(selfdisclosure): Erwartete Abbrüche gestreamter Antworten ohne WARN/ERROR mit Stacktrace
+— test(e2e): Selbstauskunft aus den Einstellungen
+feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug:
+— feat(release): Update-Paket eines LTS-Release mit Delta zur vorigen LTS-Linie
+— ci(release): Automatischer Prüfbericht zur Barrierefreiheit im Update-Paket
+— feat(compliance): Anlassbezogene Klärungen im Berichtszeitraum in der Auskunft über die Datenerhebung
+— feat(compliance): Update-Delta gegen den Konfigurationsexport einer Instanz abgleichen
+feat: Beschaffungs- und Einführungsunterstützung für Behörden — Fakten, Update-Paket und Unterlagen, die mit dem Produkt mitziehen:
+— docs(release): Öffentliche Roadmap über GitHub-Meilensteine entscheiden
+— chore(renovate): Renovate auf den Wartungsbranches der unterstützten Linien
+— ci(security): CVE-Scan aller unterstützten Release-Linien
+— ci(release): Wartungsbranches release/X.Y, Backport-Verfahren und Rulesets
+feat(library): Quelleinrichtung nach UI-Lab-Variante F umsetzen:
+— feat(library): Reiter „Quelle“ und Bearbeiten im Zeilengerüst (Variante F)
+— feat(library): Rückmeldungen, Begriffe und Hilfetexte der Quelleinrichtung (Variante F)
+— feat(library): Gemeinsamer Auswahldialog und Auswahl in der Zeile (Variante F)
+— feat(library): Zeilengerüst der Quelleinrichtung und Prüfschritt (Variante F)
+docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise:
+— docs(behoerden): Übersicht der Landespersonalvertretungsgesetze und Hamburger Muster für die Mitbestimmung
+feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
+— feat(indexing): OneDrive-Konnektor für private Microsoft-Konten (driveType personal)
+Sonstiges:
+— docs(design): §5.11 präzisieren – oberste Ebene hierarchischer Quellen bis 7 Einträge in der Zeile
+— Update-Paket: Mermaid-Diagramme in der HTML-Fassung offline rendern
+— docs(design): Guidelines nach UI-Lab #3084 anpassen – §5.9, §5.11, §6, WCAG 2.2
+— UI-Lab als wiederverwendbarer Ablauf: Mock-Szenarien, Messskript und Skill</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 23. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-23.html"/>
@@ -871,26 +921,5 @@ Sonstiges:
 — Abschlussarbeiten Epic #1065: Handbuch, Versionsstempel, Audit
 — Handausgewertete Stichprobe der Extraktionsgüte dokumentiert
 — Confluence-Konnektor und Metadaten-Kernfelder ins Handbuch</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Freitag, 4. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-04.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-04.html</id>
-    <updated>2026-09-05T04:48:01Z</updated>
-    <summary type="text">feat(indexing): Metadatenschema für Wissensbibliotheken:
-— Kernfelder Titel, Dokumentart, Datum/Stand mit Herkunftsangabe implementiert
-— Deterministischer Bestandslauf über Altbestand umgesetzt
-— Manuelle Metadatenkorrektur und Sammelzuweisung mit Audit-Ereignissen
-— Pflege-Anker je Feld und Zustand kein Wert ermittelbar eingeführt
-feat: Confluence als Datenquelle anbinden (Konnektor für Cloud und Data Center):
-— Confluence-Konnektor für Cloud und Data Center vollständig implementiert
-— Inkrementeller und Vollabgleich mit unterschiedlicher Löschsemantik
-— Push-Aktualisierung über Webhooks als Beschleuniger des Pull-Abgleichs
-— Betriebsgrenzen für große Instanzen mit Anfragebudget und Wiederaufnahme
-Sonstiges:
-— Kernfeld-Filter Dokumentart und Datum/Stand in beiden Suchpfaden
-— Volltext-Nachzug und FullTextBackfill-Infrastruktur entfernt
-— HTTP_DIRECTORY spiegelt Verzeichnisstruktur als schreibgeschützte Ordner
-— Diagnose im Rechtekontext einer benannten Person ermöglicht</summary>
   </entry>
 </feed>
