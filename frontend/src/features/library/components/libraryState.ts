@@ -11,6 +11,7 @@ export type LibraryStateWord =
   | 'Zustimmung abgelaufen'
   | 'Kontingent voll'
   | 'Noch nie indiziert'
+  | 'Noch leer'
   | 'Wird gelöscht'
   | 'Nachfolge offen'
 
@@ -73,6 +74,15 @@ export function runState(run: IndexingRunResponse): { word: LibraryStateWord; to
   return { word: 'Aktuell', tone: 'success' }
 }
 
+/**
+ * The word of a run in the run table: what the run achieved. „Aktuell“ describes the library,
+ * not a past run, so a clean run is „Erfolgreich“ there; every other word is the same.
+ */
+export function runRowState(run: IndexingRunResponse): { word: string; tone: StatusTone } {
+  const state = runState(run)
+  return state.word === 'Aktuell' ? { word: 'Erfolgreich', tone: state.tone } : state
+}
+
 function targetOf(word: LibraryStateWord): StateTarget {
   switch (word) {
     case 'Anmeldung abgelehnt':
@@ -81,7 +91,7 @@ function targetOf(word: LibraryStateWord): StateTarget {
     case 'Nachfolge offen':
       return 'freigaben'
     case 'Wird gelöscht':
-    case 'Noch nie indiziert':
+    case 'Noch leer':
       return null
     default:
       return 'verlauf'
@@ -152,29 +162,30 @@ export function connectorState(input: ConnectorStateInput): LibraryState {
   return state(word, tone, formatShortDate(status.timestamp))
 }
 
-/** The state of an upload library: quota, failed documents, or nothing to say. */
+/**
+ * The state of an upload library from what its documents say: processing, failed documents or
+ * a full quota. Counts are left out - the list reports them per page only - and the date is
+ * the last upload.
+ */
 export function uploadState(input: {
   erasureRequestedAt: string | null
   successionOpen: boolean
   quotaFull: boolean
-  failedDocuments: number
+  processing: boolean
+  failed: boolean
   documentCount: number
+  lastUpload: string | null
 }): LibraryState {
   if (input.erasureRequestedAt) {
     return state('Wird gelöscht', 'error', formatShortDate(input.erasureRequestedAt))
   }
   if (input.successionOpen) return state('Nachfolge offen', 'warning', null)
-  if (input.quotaFull) return { ...state('Kontingent voll', 'warning', null), target: 'dokumente' }
-  if (input.failedDocuments > 0) {
-    return {
-      ...state(
-        'Teilweise fehlgeschlagen',
-        'warning',
-        `${input.failedDocuments} ${input.failedDocuments === 1 ? 'Dokument' : 'Dokumente'}`,
-      ),
-      target: 'dokumente',
-    }
+  const date = formatShortDate(input.lastUpload)
+  if (input.quotaFull) return { ...state('Kontingent voll', 'warning', date), target: 'dokumente' }
+  if (input.documentCount === 0) return state('Noch leer', 'neutral', null)
+  if (input.processing) return { ...state('Läuft', 'neutral', date), target: null }
+  if (input.failed) {
+    return { ...state('Teilweise fehlgeschlagen', 'warning', date), target: 'dokumente' }
   }
-  if (input.documentCount === 0) return state('Noch nie indiziert', 'neutral', null)
-  return { ...state('Aktuell', 'success', null), target: null }
+  return { ...state('Aktuell', 'success', date), target: null }
 }

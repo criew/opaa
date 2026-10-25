@@ -15,7 +15,8 @@ import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
-import { FavoriteToggle, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
+import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
+import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import { spreadLabel } from './assetTileData'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { UseInSpaceDialog } from './UseInSpaceButton'
@@ -66,6 +67,8 @@ export interface AssetDetailHeaderProps {
   responsibleTo?: string
   /** The type's fixed status band under the figures; it then carries the date instead. */
   band?: ReactNode
+  /** A word the type chip carries after the type, e.g. „privat“: one chip, not two. */
+  typeSuffix?: string
 }
 
 function formatDate(value: string): string {
@@ -101,11 +104,12 @@ export function HeaderFigure({ children }: { icon?: ReactNode; children: ReactNo
   )
 }
 
+/** A figure that sums up a tab: a link into it, in the form of the band's links. */
 function FigureLink({ to, children }: { to?: string; children: ReactNode }) {
   if (!to) return <>{children}</>
   return (
-    <Link component={RouterLink} to={to} underline="hover" sx={{ color: 'inherit' }}>
-      {children}
+    <Link component={RouterLink} to={to} underline="hover" sx={{ fontWeight: 500 }}>
+      {children} ›
     </Link>
   )
 }
@@ -248,13 +252,20 @@ export default function AssetDetailHeader({
   spacesTo,
   responsibleTo,
   band,
+  typeSuffix,
 }: AssetDetailHeaderProps) {
-  const definition = assetTypeDefinition(assetType)
+  const baseDefinition = assetTypeDefinition(assetType)
+  const definition =
+    baseDefinition && typeSuffix
+      ? { ...baseDefinition, title: `${baseDefinition.title} · ${typeSuffix}` }
+      : baseDefinition
   return (
     <Box
       component="header"
       sx={{
         position: 'relative',
+        // with a band the head ends at the content edge of the tabs below
+        maxWidth: band ? TAB_CONTENT_WIDTH : 'none',
         // no line of its own: the tab bar below draws the one separator
         pb: band ? { xs: 1, sm: 2 } : { xs: 2.5, md: 3 },
         mb: band ? 0 : 3,
@@ -275,18 +286,18 @@ export default function AssetDetailHeader({
           flexWrap: 'wrap',
           mb: 1,
           position: 'relative',
+          minHeight: 40,
         }}
       >
         <Stack
           direction="row"
           spacing={1}
           useFlexGap
-          // below 600 px one line that fades out, so a fourth chip does not push the head down
+          // one line below 600 px as well: type, source and role fit; a fourth chip is cut, not wrapped
           sx={{
             alignItems: 'center',
             flexWrap: { xs: 'nowrap', sm: 'wrap' },
             overflow: { xs: 'hidden', sm: 'visible' },
-            maskImage: { xs: 'linear-gradient(to right, #000 88%, transparent)', sm: 'none' },
             minWidth: 0,
           }}
         >
@@ -299,7 +310,14 @@ export default function AssetDetailHeader({
           direction="row"
           spacing={1}
           useFlexGap
-          sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}
+          // below 600 px the actions always have their own line, with or without a main action
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            flexShrink: 0,
+            flexBasis: { xs: '100%', sm: 'auto' },
+            minHeight: 40,
+          }}
         >
           {actions}
           {favorite !== undefined && onFavoriteChange && (
@@ -334,17 +352,15 @@ export default function AssetDetailHeader({
       <Box
         sx={{
           display: 'flex',
-          // one line at every width: below 600 px the line ends in a fade instead of wrapping,
-          // so the head keeps its height for every asset
-          flexWrap: { xs: 'nowrap', sm: 'wrap' },
-          overflow: { xs: 'hidden', sm: 'visible' },
-          maskImage: { xs: 'linear-gradient(to right, #000 88%, transparent)', sm: 'none' },
+          // one line from 600 px on; below, two lines are reserved for every asset, so the head
+          // keeps its height and no figure is cut
+          flexWrap: 'wrap',
           alignItems: 'center',
-          rowGap: 0.5,
           columnGap: { xs: 2, sm: 0 },
           mt: band ? 1 : 2.5,
           position: 'relative',
-          minHeight: 22,
+          minHeight: { xs: band ? 44 : 22, sm: 22 },
+          lineHeight: '22px',
         }}
       >
         <HeaderFigure>{extent}</HeaderFigure>
@@ -355,9 +371,7 @@ export default function AssetDetailHeader({
           </HeaderFigure>
         )}
         <HeaderFigure>
-          <FigureLink to={responsibleTo}>
-            <ResponsibleLine responsible={responsible} fontSize={13} />
-          </FigureLink>
+          <FigureLink to={responsibleTo}>{responsible.label}</FigureLink>
         </HeaderFigure>
         {updatedAt && !band && <HeaderFigure>Aktualisiert am {formatDate(updatedAt)}</HeaderFigure>}
       </Box>

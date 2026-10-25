@@ -9,7 +9,7 @@ export function scheduleSummary(
   const base = (() => {
     switch (values.frequency) {
       case 'DISABLED':
-        return 'aus, nur „Jetzt indizieren“'
+        return 'kein Zeitplan'
       case 'HOURLY':
         return 'stündlich'
       case 'DAILY':

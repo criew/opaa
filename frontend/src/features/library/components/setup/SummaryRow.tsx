@@ -11,6 +11,36 @@ import type { RowStatus, RowSummary } from './setupTypes'
 /** Entries a list summary names before „und n weitere“. */
 const SHOWN = 5
 
+/** Compares entries regardless of spacing around separators and a trailing slash. */
+function entryKey(entry: string): string {
+  return entry.toLowerCase().replace(/\s+/g, '').replace(/\/+$/, '')
+}
+
+/** „· nicht lesbar“ after an entry: the state in words, the signal colour only in the dot. */
+export function UnreadableMark() {
+  return (
+    <Box component="span" sx={{ color: 'text.secondary', whiteSpace: 'nowrap', ml: 0.75 }}>
+      {'· '}
+      <Box
+        component="span"
+        aria-hidden
+        sx={{
+          display: 'inline-block',
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          bgcolor: 'warning.main',
+          mr: 0.5,
+          verticalAlign: 'middle',
+          position: 'relative',
+          top: -1,
+        }}
+      />
+      nicht lesbar
+    </Box>
+  )
+}
+
 /** A row's value: one line, or a lead line („12 Spaces“) with up to five entries below. */
 export function SummaryValue({
   summary,
@@ -25,48 +55,71 @@ export function SummaryValue({
   marked?: string[]
 }) {
   const text = typeof summary === 'string' ? summary : (summary?.lead ?? null)
-  const items = summary && typeof summary !== 'string' ? summary.items : []
+  const markedKeys = new Set(marked.map(entryKey))
+  const isMarked = (item: string) => markedKeys.has(entryKey(item))
+  // unreadable entries first, so they are among the five shown
+  const listed = summary && typeof summary !== 'string' ? summary.items : []
+  const items = [...listed.filter(isMarked), ...listed.filter((item) => !isMarked(item))]
+  const unlisted = marked.filter((name) => !listed.some((item) => entryKey(item) === entryKey(name)))
   return (
     <Box sx={{ minWidth: 0 }}>
+      {/* target and state side by side, the state after a gap instead of a dot, so a wrapped
+          line never ends on a separator; a long target is cut with its full text as tooltip */}
       <Box
         sx={{
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          columnGap: 1,
+          columnGap: 1.5,
+          minWidth: 0,
         }}
       >
         <Typography
+          title={text ?? undefined}
           sx={{
             fontSize: 13.5,
             color: text ? 'text.primary' : 'text.secondary',
-            overflowWrap: 'anywhere',
             minWidth: 0,
+            maxWidth: '100%',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {text ?? emptyText}
-          {status && (
-            <Box component="span" aria-hidden sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              {' ·'}
-            </Box>
-          )}
         </Typography>
-        {status && (
-          <Box sx={{ flexBasis: { xs: '100%', sm: 'auto' } }}>
-            <StateDot tone={status.tone} label={status.label} />
-          </Box>
-        )}
+        {status && <StateDot tone={status.tone} label={status.label} />}
       </Box>
-      {items.length > 0 && (
+      {(items.length > 0 || unlisted.length > 0) && (
         <Box component="ul" sx={{ m: 0, mt: 0.25, p: 0, listStyle: 'none' }}>
+          {/* entries the summary does not list itself, such as paths below a whole directory */}
+          {unlisted.slice(0, SHOWN).map((name) => (
+            <Box
+              component="li"
+              key={`unlisted-${name}`}
+              title={name}
+              sx={{
+                fontSize: 13.5,
+                lineHeight: '22px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+              <UnreadableMark />
+            </Box>
+          ))}
           {items.slice(0, SHOWN).map((item) => (
-            <Box component="li" key={item} sx={{ fontSize: 13.5, lineHeight: '22px' }}>
-              <PathLabel path={item} />
-              {marked.includes(item) && (
-                <Box component="span" sx={{ color: 'warning.main' }}>
-                  {' · nicht lesbar'}
-                </Box>
-              )}
+            <Box
+              component="li"
+              key={item}
+              sx={{ fontSize: 13.5, lineHeight: '22px', display: 'flex', alignItems: 'baseline' }}
+            >
+              <Box component="span" sx={{ minWidth: 0, flex: '0 1 auto' }}>
+                <PathLabel path={item} />
+              </Box>
+              {isMarked(item) && <UnreadableMark />}
             </Box>
           ))}
           {items.length > SHOWN && (

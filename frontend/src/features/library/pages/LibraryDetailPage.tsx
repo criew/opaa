@@ -5,7 +5,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import type { IndexingRunResponse } from '@/shared/api/types'
+import UploadIcon from '@mui/icons-material/FileUploadOutlined'
+import type { IndexingRunResponse, LibrarySchedule } from '@/shared/api/types'
+import { scheduleSummary } from '../components/setup/scheduleSummary'
+import { scheduleValuesFrom, type ConfluenceFullSyncRhythm } from '../utils/librarySchedule'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
 import { sourceRegistration } from '../components/sources/registry'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -16,7 +19,6 @@ import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
 import { documentSourceTypeShortLabel } from '../components/sources/sourceLabels'
 import { AssetDetailHeader, HeaderFigure } from '@/features/asset'
 import { responsibleParty } from '@/features/asset'
-import { ErasingMark, PrivateMark } from '@/features/asset'
 import { useMyPrivateStorage } from '../components/useMyPrivateStorage'
 import { useAssetCatalogEntry } from '@/features/asset'
 import { AssetSpacesSection } from '@/features/asset'
@@ -45,7 +47,7 @@ import {
   uploadState,
   type LibraryState,
 } from '../components/libraryState'
-import { scopeShort, unreadableNames } from '../components/scopeFacts'
+import { hasScopeChoice, scopeShort, unreadableNames } from '../components/scopeFacts'
 import type { RowStatus } from '../components/setup/setupTypes'
 import {
   LIBRARY_QUOTA_EXHAUSTED_REMEDY,
@@ -56,39 +58,33 @@ import {
 // A stable empty history, so the store selector never returns a fresh array identity.
 const NO_RUNS: IndexingRunResponse[] = []
 
-/** The connection's last known state, from the newest finished run (D10). */
-function connectionStatusOf(run: IndexingRunResponse | null, signsIn: boolean): RowStatus | null {
-  if (!run || run.status === 'RUNNING') return null
+/**
+ * The connection's last known state, from the newest finished run (D10): „Zustand · zuletzt
+ * Datum“ in every case, also while a newer run is still going.
+ */
+function connectionStatusOf(runs: IndexingRunResponse[], signsIn: boolean): RowStatus | null {
+  const run = runs.find((entry) => entry.status !== 'RUNNING')
+  if (!run) return null
+  const date = formatShortDate(run.completedAt ?? run.startedAt)
   const { word } = runState(run)
   if (word === 'Anmeldung abgelehnt' || word === 'Zustimmung abgelaufen') {
-    return { tone: 'error', label: word }
+    return { tone: 'error', label: `${word} · ${date}` }
   }
-  if (run.status === 'FAILED') return null
-  const date = formatShortDate(run.completedAt ?? run.startedAt)
+  if (run.status === 'FAILED') {
+    return signsIn ? null : { tone: 'error', label: `nicht erreichbar · ${date}` }
+  }
   return { tone: 'success', label: `${signsIn ? 'Anmeldung ok' : 'erreichbar'} · zuletzt ${date}` }
 }
 
-/** „25.10.2026, 06:00 · täglich“ - the next planned run in short form. */
+/** „täglich 06:00 · 25.10.2026“ - rhythm first, then the date of the next planned run. */
 function nextRunLabel(
-  schedule: { frequency?: string; nextRunAt?: string | null } | null | undefined,
+  schedule: LibrarySchedule | null | undefined,
+  rhythm: ConfluenceFullSyncRhythm | undefined,
 ): string {
-  if (!schedule) return 'keine Angabe'
-  if (!schedule.frequency || schedule.frequency === 'DISABLED') return 'kein Zeitplan'
-  const rhythm =
-    schedule.frequency === 'HOURLY'
-      ? 'stündlich'
-      : schedule.frequency === 'WEEKLY'
-        ? 'wöchentlich'
-        : 'täglich'
-  if (!schedule.nextRunAt) return rhythm
-  const at = new Date(schedule.nextRunAt).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return `${at} · ${rhythm}`
+  if (!schedule || schedule.frequency === 'DISABLED') return 'kein Zeitplan'
+  const base = scheduleSummary(scheduleValuesFrom(schedule, rhythm)).replace(/ · Vollabgleich.*$/, '')
+  const next = formatShortDate(schedule.nextRunAt)
+  return next ? `${base} · ${next}` : base
 }
 
 export default function LibraryDetailPage() {
@@ -200,6 +196,7 @@ export default function LibraryDetailPage() {
     libraryId ? s.documentsByLibrary[libraryId] : undefined,
   )
   const newestRun = runs[0] ?? null
+  const uploadPickerRef = useRef<{ open: () => void }>(null)
 
   // The head, the run table and the run detail read one history (D3).
   useEffect(() => {
@@ -336,18 +333,31 @@ export default function LibraryDetailPage() {
   const unreadable =
     details && connectorSourceType ? unreadableNames(details, run.unlistedScopeKeys, newestRun) : []
   const isUpload = (details?.sourceType ?? listEntry?.sourceType) === 'UPLOAD'
+  const documentsOnPage = loadedDocuments ?? []
+  // the newest of the loaded documents, or the library's own last change
+  const newestDocument = [...documentsOnPage].sort((a, b) =>
+    (b.indexedAt ?? '').localeCompare(a.indexedAt ?? ''),
+  )[0]
+  const lastUpload =
+    [library.updatedAt, newestDocument?.indexedAt]
+      .filter((value): value is string => Boolean(value))
+      .sort()
+      .at(-1) ?? null
+  const quotaFull =
+    uploadErrors.some((message) => /kontingent/i.test(message)) ||
+    (details?.storageQuotaBytes != null &&
+      details.storageUsedBytes != null &&
+      details.storageUsedBytes >= details.storageQuotaBytes)
   const libraryState: LibraryState = isUpload
     ? uploadState({
         erasureRequestedAt,
         successionOpen,
-        quotaFull:
-          uploadErrors.some((message) => /kontingent/i.test(message)) ||
-          (details?.storageQuotaBytes != null &&
-            details.storageUsedBytes != null &&
-            details.storageUsedBytes >= details.storageQuotaBytes),
+        quotaFull,
         // the loaded page of the list: the backend reports no count per status yet
-        failedDocuments: (loadedDocuments ?? []).filter((d) => d.status === 'FAILED').length,
+        processing: documentsOnPage.some((d) => d.status === 'PENDING'),
+        failed: documentsOnPage.some((d) => d.status === 'FAILED'),
         documentCount: library.documentCount ?? 0,
+        lastUpload,
       })
     : connectorState({
         erasureRequestedAt,
@@ -364,40 +374,38 @@ export default function LibraryDetailPage() {
         },
         lastScheduledRunsFailed: Boolean(details?.lastScheduledRunsFailed),
       })
+  // a band link never points at the tab that is open: the place is already in view
+  const linkTo = (tab: LibraryDetailTab, label: string) =>
+    activeTab === tab ? null : { label, to: tabSearch(tab) }
   const stateLink = (() => {
     if (isRunning && run.statusUnknown) {
       return { label: 'Erneut versuchen', onClick: () => retryStatusPolling(libraryId) }
     }
     switch (libraryState.target) {
       case 'verlauf':
-        return showRunsTab ? { label: 'Verlauf ›', to: tabSearch('verlauf') } : null
+        return showRunsTab ? linkTo('verlauf', 'Verlauf ›') : null
       case 'verbindung':
-        return showSourceTab ? { label: 'Verbindung ›', to: tabSearch('quelle') } : null
+        // the connection row is a manager's; a reader has no place to go there
+        return showSourceTab && canEdit ? linkTo('quelle', 'Verbindung ›') : null
       case 'freigaben':
-        return { label: 'Freigaben ›', to: tabSearch('freigaben') }
+        return linkTo('freigaben', 'Freigaben ›')
       case 'dokumente':
-        return activeTab === 'dokumente'
-          ? null
-          : { label: 'Dokumente ›', to: tabSearch('dokumente') }
+        return linkTo('dokumente', 'Dokumente ›')
       default:
         return null
     }
   })()
+  const stateDetail = isRunning && run.statusUnknown ? 'Stand unbekannt' : libraryState.extra
   const stateField: BandField = {
     label: 'Stand',
-    value: (
-      <BandState
-        tone={libraryState.tone}
-        word={libraryState.word}
-        extra={isRunning && run.statusUnknown ? 'Stand unbekannt' : libraryState.extra}
-      />
-    ),
+    value: <BandState tone={libraryState.tone} word={libraryState.word} />,
+    detail: stateDetail,
     title: erasing
       ? PRIVATE_LIBRARY_ERASING_NOTE
-      : [libraryState.word, libraryState.extra].filter(Boolean).join(' · '),
+      : [libraryState.word, stateDetail].filter(Boolean).join(' · '),
     link: stateLink,
-    progress: isRunning && !run.statusUnknown && run.totalDocuments > 0 ? runProgressPercent : null,
   }
+  const scopeText = details ? scopeShort(details) : ''
   const bandFields: [BandField, BandField, BandField] =
     isUpload || !details
       ? [
@@ -410,40 +418,37 @@ export default function LibraryDetailPage() {
                 : 'keine Angabe',
           },
           {
-            label: 'Hochgeladen',
-            // the newest of the loaded documents, or the library's own last change
-            value:
-              (library.documentCount ?? 0) > 0
-                ? (formatShortDate(
-                    [library.updatedAt, ...(loadedDocuments ?? []).map((d) => d.indexedAt)]
-                      .filter((value): value is string => Boolean(value))
-                      .sort()
-                      .at(-1),
-                  ) ?? '—')
-                : 'noch nichts',
+            label: 'Neuestes',
+            title: newestDocument?.fileName,
+            value: newestDocument?.fileName ?? 'noch kein Dokument',
           },
         ]
       : [
           stateField,
           {
             label: 'Umfang',
-            title: scopeShort(details),
-            value: (
-              <>
-                {scopeShort(details)}
-                {unreadable.length > 0 && (
-                  <Box component="span" sx={{ color: 'warning.main' }}>
-                    {` · ${unreadable.length} nicht lesbar`}
-                  </Box>
-                )}
-              </>
-            ),
-            link: { label: 'Quelle ›', to: tabSearch('quelle') },
+            // what the last run could not read comes first, so it is never the part cut off
+            value:
+              unreadable.length > 0
+                ? `${unreadable.length} nicht lesbar · ${scopeText}`
+                : scopeText,
+            title: unreadable.length > 0 ? `${unreadable.length} nicht lesbar · ${scopeText}` : scopeText,
+            link: hasScopeChoice(details) ? linkTo('quelle', 'Quelle ›') : null,
           },
           {
             label: 'Nächster Lauf',
-            value: nextRunLabel(details.schedule),
-            link: canEdit ? { label: 'Zeitplan ›', to: tabSearch('quelle') } : null,
+            value: nextRunLabel(
+              details.schedule,
+              connectorConfiguration?.fullSyncRhythm
+                ? {
+                    intervalDays:
+                      (details.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ??
+                      null,
+                    defaultDays: details.fullSyncIntervalDefaultDays ?? null,
+                  }
+                : undefined,
+            ),
+            link: canEdit ? linkTo('quelle', 'Zeitplan ›') : null,
           },
         ]
 
@@ -468,10 +473,10 @@ export default function LibraryDetailPage() {
         name={library.name}
         description={library.description}
         isPublic={library.reach.allAccounts}
+        typeSuffix={privateLibrary ? 'privat' : undefined}
         badges={
           <>
-            {privateLibrary && <PrivateMark />}
-            {erasing && <ErasingMark />}
+            {/* „privat“ rides on the type chip; the erasure is the state in the band */}
             {/* the short form of the catalog tile: one name, no double label (P19) */}
             {details && <MetaBadge>{documentSourceTypeShortLabel(details.sourceType)}</MetaBadge>}
             <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
@@ -530,22 +535,29 @@ export default function LibraryDetailPage() {
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
         actions={
-          connectorSourceType &&
-          mayManageDocuments && (
-            <>
-              <Button
-                // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs;
-                // a running run shows its progress in the band, not on the button (D7)
-                variant="outlined"
-                size="small"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-                disabled={isRunning}
-              >
-                Jetzt indizieren
-              </Button>
-            </>
-          )
+          // one main action at the same place for every library: run the source, or upload
+          connectorSourceType && mayManageDocuments ? (
+            <Button
+              // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs;
+              // a running run shows its progress in the band, not on the button (D7)
+              variant="outlined"
+              size="small"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+              disabled={isRunning}
+            >
+              Jetzt indizieren
+            </Button>
+          ) : isUpload && mayManageDocuments ? (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<UploadIcon />}
+              onClick={() => uploadPickerRef.current?.open()}
+            >
+              Dateien hochladen
+            </Button>
+          ) : undefined
         }
       />
 
@@ -599,6 +611,12 @@ export default function LibraryDetailPage() {
             // itself, not from documentStore - without this it stays on whatever value was loaded
             // on mount even after an upload or delete changes it.
             onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
+            uploadPickerRef={uploadPickerRef}
+            onIndexNow={
+              connectorSourceType && mayManageDocuments && !isRunning
+                ? () => void triggerIndexing(libraryId, connectorSourceType)
+                : undefined
+            }
           />
         )}
       </Box>
@@ -624,26 +642,16 @@ export default function LibraryDetailPage() {
             }
             connectionTo={tabSearch('quelle')}
             quotaRemedy={quotaRemedy}
+            // „Jetzt indizieren“ is the head's main action; the list adds only the full sync
             actions={
-              mayManageDocuments ? (
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button
-                    size="small"
-                    disabled={isRunning}
-                    onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-                  >
-                    Jetzt indizieren
-                  </Button>
-                  {connectorConfiguration?.fullSyncRhythm && (
-                    <Button
-                      size="small"
-                      disabled={isRunning}
-                      onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
-                    >
-                      Vollabgleich starten
-                    </Button>
-                  )}
-                </Box>
+              mayManageDocuments && connectorConfiguration?.fullSyncRhythm ? (
+                <Button
+                  size="small"
+                  disabled={isRunning}
+                  onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
+                >
+                  Vollabgleich starten
+                </Button>
               ) : undefined
             }
           />
@@ -666,7 +674,7 @@ export default function LibraryDetailPage() {
               canEditSource={canEdit}
               erasing={erasing}
               connectionStatus={connectionStatusOf(
-                newestRun,
+                runs,
                 connectorConfiguration?.setup?.signsIn ?? true,
               )}
               unreadable={unreadable}

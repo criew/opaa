@@ -16,7 +16,7 @@ import StateDot from '@/shared/ui/StateDot'
 import TabSection from '@/shared/ui/TabSection'
 import { formatFileSize } from '@/shared/utils/labels'
 import { indexingRunEventCategoryLabel } from './indexingLabels'
-import { formatDateTime, runState, unreadableCount } from './libraryState'
+import { formatDateTime, runRowState, runState, unreadableCount } from './libraryState'
 import { plainMessage } from './sourceKit/plainMessage'
 
 /** Categories that are notes about a run, not failures: they never count as „fehlgeschlagen“. */
@@ -79,25 +79,45 @@ function triggerLabel(run: IndexingRunResponse, showMode: boolean): string {
 }
 
 /** Processed count plus the one problem that matters most; the detail names the rest. */
+/** „n Dokumente“, then every problem the run had, in the words of band and Umfang. */
 function resultLabel(run: IndexingRunResponse, live: LiveProgress | null): string {
   if (run.status === 'RUNNING') {
     return live
       ? `${live.percent} % · ${formatCount(live.processed)} von ${formatCount(live.total)}`
       : 'wird ermittelt'
   }
-  if (run.status === 'FAILED') return 'nichts gelesen'
-  const processed = formatCount(run.documentCount)
-  if (run.documentsFailed > 0)
-    return `${processed} · ${formatCount(run.documentsFailed)} fehlgeschlagen`
+  const documents = `${formatCount(run.documentCount)} ${run.documentCount === 1 ? 'Dokument' : 'Dokumente'}`
   const unreadable = unreadableCount(run)
-  if (unreadable > 0) return `${processed} · ${unreadable} nicht lesbar`
-  if (run.incomplete) return `${processed} · unvollständig`
-  return processed
+  return [
+    documents,
+    run.documentsFailed > 0 && `${formatCount(run.documentsFailed)} fehlgeschlagen`,
+    unreadable > 0 && `${unreadable} nicht lesbar`,
+    run.incomplete && 'unvollständig',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/**
+ * A place cut in the middle: a long path keeps its first segment and its last two, so the file
+ * name stays readable; the full place is in the tooltip.
+ */
+function shortPlace(place: string): string {
+  if (place.length <= 64) return place
+  const separator = place.includes(' › ') ? ' › ' : '/'
+  const parts = place.split(separator)
+  if (parts.length <= 3) return place
+  return [parts[0], '…', ...parts.slice(-2)].join(separator)
 }
 
 function hasProblem(run: IndexingRunResponse): boolean {
   const word = runState(run).word
   return word !== 'Aktuell' && word !== 'Läuft'
+}
+
+/** Unreachable places are what band and Umfang call „nicht lesbar“: one word for one thing. */
+function groupLabel(category: string): string {
+  return category === 'UNREACHABLE' ? 'Nicht lesbar' : indexingRunEventCategoryLabel(category)
 }
 
 interface EventGroup {
@@ -111,7 +131,7 @@ function groupEvents(events: IndexingRunEvent[]): { errors: EventGroup[]; notes:
   for (const event of events) {
     const group = groups.get(event.category) ?? {
       category: event.category,
-      label: indexingRunEventCategoryLabel(event.category),
+      label: groupLabel(event.category),
       events: [],
     }
     group.events.push(event)
@@ -195,7 +215,7 @@ function EventLine({ event }: { event: IndexingRunEvent }) {
             color: 'text.primary',
           }}
         >
-          {event.reference ?? plainMessage(event.message)}
+          {event.reference ? shortPlace(event.reference) : plainMessage(event.message)}
         </Box>
       </Tooltip>
     </Box>
@@ -205,7 +225,7 @@ function EventLine({ event }: { event: IndexingRunEvent }) {
 function GroupBlock({ group, onShowAll }: { group: EventGroup; onShowAll: () => void }) {
   return (
     <Box sx={{ mb: 1.5 }}>
-      <Typography component="h4" sx={{ fontSize: 13.5, fontWeight: 600, m: 0, mb: 0.25 }}>
+      <Typography component="h2" sx={{ fontSize: 13.5, fontWeight: 600, m: 0, mb: 0.25 }}>
         {group.label} · {formatCount(group.events.length)}
       </Typography>
       <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
@@ -230,6 +250,9 @@ function GroupBlock({ group, onShowAll }: { group: EventGroup; onShowAll: () => 
 
 function technicalLabel(run: IndexingRunResponse): string[] {
   const lines: string[] = []
+  if (run.eventsTruncatedCount > 0) {
+    lines.push(`${formatCount(run.eventsTruncatedCount)} weitere Ereignisse nicht einzeln erfasst`)
+  }
   if (run.documentsSkipped > 0)
     lines.push(`${formatCount(run.documentsSkipped)} unverändert übersprungen`)
   const metrics = run.metrics
@@ -267,15 +290,19 @@ function RunDetail({
   const technical = technicalLabel(run)
   return (
     <Box sx={{ pl: { xs: 0, md: 2.5 }, pr: 1, pt: 0.5, pb: 2 }}>
-      {run.status === 'FAILED' && run.message && (
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          {plainMessage(run.message)}{' '}
-          {state.word === 'Anmeldung abgelehnt' && (
-            <Link component={RouterLink} to={connectionTo} underline="hover">
-              Verbindung ändern
-            </Link>
-          )}
-        </Typography>
+      {/* the row names a refused sign-in already: the detail only leads to the remedy; any
+          other failure adds the source's own reason */}
+      {state.word === 'Anmeldung abgelehnt' || state.word === 'Zustimmung abgelaufen' ? (
+        <Box sx={{ mb: 1.5 }}>
+          <Link component={RouterLink} to={connectionTo} underline="hover" sx={{ fontSize: 13.5 }}>
+            Verbindung ändern ›
+          </Link>
+        </Box>
+      ) : (
+        run.status === 'FAILED' &&
+        run.message && (
+          <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>{plainMessage(run.message)}</Typography>
+        )
       )}
       {state.word === 'Kontingent voll' && (
         <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>{quotaRemedy}</Typography>
@@ -283,11 +310,6 @@ function RunDetail({
       {errors.map((group) => (
         <GroupBlock key={group.category} group={group} onShowAll={() => setDialogGroup(group)} />
       ))}
-      {run.eventsTruncatedCount > 0 && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
-          {formatCount(run.eventsTruncatedCount)} weitere Ereignisse sind nicht einzeln erfasst.
-        </Typography>
-      )}
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
         {notes.length > 0 && (
           <Link
@@ -354,7 +376,7 @@ function RunRow({
 }) {
   const [open, setOpen] = useState(false)
   const detailId = useId()
-  const state = runState(run)
+  const state = runRowState(run)
   const cell = {
     fontSize: 13.5,
     color: 'text.secondary',
@@ -387,16 +409,17 @@ function RunRow({
       >
         <Box sx={{ minWidth: 0 }}>
           <StateDot tone={state.tone} label={state.word} />
-          {/* below md the row folds into two lines: state, then start and result */}
+          {/* below md the row folds into two lines: the state, then start, result and trigger */}
           <Typography sx={{ ...cell, display: { xs: 'block', md: 'none' }, fontSize: 13 }}>
-            {formatDateTime(run.startedAt)} · {resultLabel(run, live)}
+            {formatDateTime(run.startedAt).slice(0, 6)} · {resultLabel(run, live)} ·{' '}
+            {triggerLabel(run, showMode)}
           </Typography>
         </Box>
         <Typography sx={{ ...cell, display: { xs: 'none', md: 'block' } }}>
           {formatDateTime(run.startedAt)}
         </Typography>
         <Typography sx={{ ...cell, display: { xs: 'none', md: 'block' } }}>
-          {durationLabel(run)}
+          {run.completedAt ? durationLabel(run) : '–'}
         </Typography>
         <Typography sx={{ ...cell, display: { xs: 'none', md: 'block' } }}>
           {triggerLabel(run, showMode)}
@@ -463,7 +486,8 @@ export default function LibraryRunHistory({
           '& .MuiButton-text': { px: 0, minWidth: 0 },
         }}
       >
-        {runs.length > 0 && problemCount > 0 ? (
+        {/* the filter only where it shortens the list */}
+        {problemCount > 0 && problemCount < runs.length ? (
           <Button
             size="small"
             variant={onlyProblems ? 'contained' : 'outlined'}
@@ -476,7 +500,7 @@ export default function LibraryRunHistory({
         ) : (
           <span />
         )}
-        {actions}
+        <Box sx={{ ml: 'auto' }}>{actions}</Box>
       </Box>
       {runs.length === 0 ? (
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>Noch keine Läufe.</Typography>

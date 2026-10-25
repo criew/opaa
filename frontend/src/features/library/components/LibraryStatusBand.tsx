@@ -3,6 +3,7 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
+import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 
 const DOT_COLOR: Record<StatusTone, string> = {
@@ -19,23 +20,15 @@ export type BandLink =
 export interface BandField {
   label: string
   value: ReactNode
+  /** The one addition (a date): after the value from 600 px on, on its own line below it. */
+  detail?: string | null
   /** Plain text of the value, for the tooltip of a value cut at the field's edge. */
   title?: string
   link?: BandLink | null
-  /** 0–100: a thin bar inside the field, never across the page. */
-  progress?: number | null
 }
 
 /** The state word with its dot; the signal colour stays in the dot, the word in `fg-1`. */
-export function BandState({
-  tone,
-  word,
-  extra,
-}: {
-  tone: StatusTone
-  word: string
-  extra?: string | null
-}) {
+export function BandState({ tone, word }: { tone: StatusTone; word: string }) {
   return (
     <>
       <Box
@@ -56,11 +49,6 @@ export function BandState({
       <Box component="span" sx={{ fontWeight: 600 }}>
         {word}
       </Box>
-      {extra && (
-        <Box component="span" sx={{ color: 'text.secondary' }}>
-          {` · ${extra}`}
-        </Box>
-      )}
     </>
   )
 }
@@ -105,15 +93,15 @@ function FieldLink({ link }: { link: BandLink }) {
   )
 }
 
-/** As wide as the run table below it; three equal fields of about 290 px at 1280 px. */
-const BAND_WIDTH = 880
+/** The one content width of the page: band, run table and every tab end at the same edge. */
+const BAND_WIDTH = TAB_CONTENT_WIDTH
 
 /**
  * The status band under the title: three fields that never move and look the same for every
- * source type - only their text differs. A hairline above and between them, no frame, no
- * tint, no icons. Each field holds
- * its label with the way to the details beside it and one line of value, so the tab bar below
- * sits at the same height in every state. Below 600 px the fields stack as one line each.
+ * source type - only their text differs. A hairline above and between them, no frame, no tint,
+ * no icons. Each field holds its label with the way to the details beside it and one line of
+ * value with its addition. Below 600 px the fields stack as one line each; the first field keeps
+ * a second line for its addition, so the state word and its date are never cut.
  */
 export default function LibraryStatusBand({
   fields,
@@ -144,19 +132,21 @@ export default function LibraryStatusBand({
             position: 'relative',
             minWidth: 0,
             pl: { xs: 0, sm: index > 0 ? 2 : 0 },
-            pr: { xs: 0, sm: 2 },
+            pr: { xs: field.link ? 2 : 0, sm: 2 },
             py: { xs: 0.5, sm: 1 },
             borderStyle: 'solid',
             borderColor: 'divider',
             borderWidth: 0,
             borderLeftWidth: { xs: 0, sm: index > 0 ? 1 : 0 },
             borderTopWidth: { xs: index > 0 ? 1 : 0, sm: 0 },
-            // label and link share the first line, the value has the second; below 600 px
-            // label | value | link in one line
             display: 'grid',
-            gridTemplateColumns: { xs: '88px minmax(0, 1fr) auto', sm: 'minmax(0, 1fr) auto' },
-            gridTemplateAreas: { xs: '"label value link"', sm: '"label link" "value value"' },
-            gridTemplateRows: { xs: '22px', sm: '20px 22px' },
+            // below 600 px the chevron sits on the right edge of the stretched link, outside the grid
+            gridTemplateColumns: { xs: '76px minmax(0, 1fr)', sm: 'minmax(0, 1fr) auto' },
+            gridTemplateAreas: {
+              xs: index === 0 ? '"label value" ". detail"' : '"label value"',
+              sm: '"label link" "value value"',
+            },
+            gridTemplateRows: { xs: index === 0 ? '22px 20px' : '22px', sm: '20px 22px' },
             columnGap: 1.5,
             alignItems: 'baseline',
           }}
@@ -165,7 +155,7 @@ export default function LibraryStatusBand({
             component="dt"
             sx={{
               gridArea: 'label',
-              fontSize: 12,
+              fontSize: { xs: 11.5, sm: 12 },
               fontWeight: 500,
               color: 'text.secondary',
               lineHeight: '20px',
@@ -179,7 +169,7 @@ export default function LibraryStatusBand({
             sx={{
               gridArea: 'value',
               m: 0,
-              fontSize: 13.5,
+              fontSize: { xs: 13, sm: 13.5 },
               lineHeight: '22px',
               color: 'text.primary',
               whiteSpace: 'nowrap',
@@ -188,36 +178,48 @@ export default function LibraryStatusBand({
             }}
           >
             {field.value}
+            {field.detail && (
+              <Box
+                component="span"
+                sx={{
+                  color: 'text.secondary',
+                  display: { xs: index === 0 ? 'none' : 'inline', sm: 'inline' },
+                }}
+              >
+                {` · ${field.detail}`}
+              </Box>
+            )}
           </Typography>
-          <Box component="dd" sx={{ gridArea: 'link', m: 0, lineHeight: '20px' }}>
-            {field.link && <FieldLink link={field.link} />}
-          </Box>
-          {field.progress != null && (
-            <Box
-              role="progressbar"
-              aria-label="Fortschritt des Laufs"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={field.progress}
+          {index === 0 && (
+            <Typography
+              component="dd"
+              aria-hidden
               sx={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 2,
-                bgcolor: 'divider',
+                gridArea: 'detail',
+                display: { xs: 'block', sm: 'none' },
+                m: 0,
+                fontSize: 13,
+                lineHeight: '20px',
+                color: 'text.secondary',
+                whiteSpace: 'nowrap',
               }}
             >
-              <Box
-                sx={{
-                  height: '100%',
-                  width: `${field.progress}%`,
-                  bgcolor: 'text.secondary',
-                  transition: 'width 200ms cubic-bezier(0.22, 1, 0.36, 1)',
-                }}
-              />
-            </Box>
+              {field.detail}
+            </Typography>
           )}
+          <Box
+            component="dd"
+            sx={{
+              gridArea: { sm: 'link' },
+              m: 0,
+              lineHeight: '20px',
+              position: { xs: 'absolute', sm: 'static' },
+              right: 0,
+              top: 4,
+            }}
+          >
+            {field.link && <FieldLink link={field.link} />}
+          </Box>
         </Box>
       ))}
     </Box>

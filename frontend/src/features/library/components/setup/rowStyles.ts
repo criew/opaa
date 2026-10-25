@@ -4,7 +4,7 @@ export const CONTENT_WIDTH = 720
 /** The grid of every summary row, the review step and the detail tab: title | content | link. */
 export const ROW_GRID = {
   display: 'grid',
-  gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', sm: '128px minmax(0, 1fr) auto' },
+  gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', sm: '152px minmax(0, 1fr) auto' },
   columnGap: 2,
   rowGap: 0.5,
   alignItems: 'baseline',

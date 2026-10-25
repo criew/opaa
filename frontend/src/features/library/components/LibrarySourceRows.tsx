@@ -16,7 +16,6 @@ import {
   withoutFixed,
 } from './sources/sourceConnection'
 import type { SourceFormContext } from './sources/types'
-import { formatDateTime } from './libraryState'
 import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
 import type { RowStatus, SetupRowId } from './setup/setupTypes'
 
@@ -127,11 +126,6 @@ export default function LibrarySourceRows({
 
   return (
     <SourceSetupRows
-      scheduleNote={
-        library.schedule?.nextRunAt
-          ? `nächster Lauf ${formatDateTime(library.schedule.nextRunAt)}`
-          : null
-      }
       ref={ref}
       mode="edit"
       spec={setup}

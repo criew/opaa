@@ -1,6 +1,7 @@
 import { Link as RouterLink } from 'react-router'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import type { LibraryDetailTab } from './libraryDetailAccess'
 
 interface LibraryDetailTabBarProps {
@@ -24,14 +25,15 @@ export default function LibraryDetailTabBar({
         value={activeTab}
         aria-label="Bereiche dieser Bibliothek"
         variant="scrollable"
-        scrollButtons={false}
+        // below 600 px arrows show that further tabs lie beyond; the active tab scrolls into view
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{
-          // at the right edge a fade shows that further tabs lie beyond
-          '& .MuiTabs-scroller': {
-            maskImage: { xs: 'linear-gradient(to right, #000 85%, transparent)', sm: 'none' },
-          },
+          '& .MuiTabs-scrollButtons.Mui-disabled': { opacity: 0.3 },
+          '& .MuiTabs-scrollButtons': { width: 28 },
           borderBottom: 1,
           borderColor: 'divider',
+          maxWidth: TAB_CONTENT_WIDTH,
           mb: 4,
           minHeight: 42,
           '& .MuiTab-root': {

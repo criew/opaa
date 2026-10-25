@@ -2,20 +2,35 @@ import type { IndexingRunResponse, SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from './sources/registry'
 import type { StoredLibrarySource } from './sources/types'
 
-/** Every connector has an Umfang; those without a selection read everything their source has. */
+/** Sources without a selection read everything their source has; their Umfang names that. */
 const WHOLE_SOURCE: Partial<Record<SourceTypeKey, string>> = {
-  FILESYSTEM: 'Ganzes Verzeichnis',
   HTTP_DIRECTORY: 'Ganzes Verzeichnis',
   RSS_FEED: 'Alle Einträge des Feeds',
 }
 
-/** The Umfang in its short form, the same words in the status band and the row „Umfang“. */
+/**
+ * The Umfang in its short form: the lead of the row „Umfang“ in the Reiter „Quelle“, from the
+ * same function, so band and row always use the same words and the same count.
+ */
 export function scopeShort(library: StoredLibrarySource): string {
-  const hero = sourceRegistration(library.sourceType)?.configuration?.scopeHero
-  if (hero) return hero.summary(library)
-  const whole = WHOLE_SOURCE[library.sourceType] ?? 'Ganze Quelle'
-  const excluded = (library.sourceSettings?.excludePatterns as unknown[] | undefined)?.length ?? 0
-  return excluded > 0 ? `${whole} · ${excluded} Ausschlüsse` : whole
+  const configuration = sourceRegistration(library.sourceType)?.configuration
+  const section = configuration?.setup?.sections.find((entry) => entry.id === 'scope')
+  if (configuration && section) {
+    const summary = section.summary(configuration.fromLibrary(library), {
+      mode: 'edit',
+      sourceType: library.sourceType,
+      idPrefix: 'band',
+      credentialsStored: Boolean(library.sourceCredentialsSet),
+    })
+    if (typeof summary === 'string') return summary
+    if (summary) return summary.lead
+  }
+  return WHOLE_SOURCE[library.sourceType] ?? 'Ganze Quelle'
+}
+
+/** Whether the Umfang can be chosen at all; a source without a choice has no row to change. */
+export function hasScopeChoice(library: StoredLibrarySource): boolean {
+  return !WHOLE_SOURCE[library.sourceType]
 }
 
 /**
