@@ -91,7 +91,7 @@ export function testOneDrive(
   if (!onAccount(body)) {
     return HttpResponse.json({
       reachable: false,
-      credentialsVerified: false,
+      credentialsVerified: null,
       message: ONEDRIVE_MESSAGES.testNeedsAccount,
     })
   }
@@ -99,7 +99,7 @@ export function testOneDrive(
   if (!drive?.driveId) {
     return HttpResponse.json({
       reachable: false,
-      credentialsVerified: false,
+      credentialsVerified: null,
       message: ONEDRIVE_MESSAGES.testNeedsDrive,
     })
   }

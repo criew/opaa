@@ -55,8 +55,8 @@ public abstract sealed class FileAccessException extends Exception {
 
     /**
      * What this end says about the secret, as {@code
-     * SourceConnectionTestResult#credentialsVerified} reports it: {@code null} here, the source did
-     * not get as far as judging it.
+     * SourceConnectionTestResult#credentialsVerified} reports it: {@code null} here, it says
+     * nothing about the secret.
      */
     public Boolean credentialsVerified() {
       return null;

@@ -7,10 +7,10 @@ package io.opaa.indexing.spi;
  * @param message German, user-facing text, never a raw exception message.
  * @param documentCount {@code null} when {@code reachable} is {@code false} - a failed probe never
  *     reports a count for the source it could not read.
- * @param credentialsVerified {@code false} only when the source rejected the secret (also after a
- *     renewal); {@code true} once it accepted it, also when a permission, scope or consent is
- *     missing then ({@code reachable} {@code false}); {@code null} when the probe did not get that
- *     far (blocked target, TLS, network, clock, server error, quota) or the connector does not tell
+ * @param credentialsVerified {@code false} when the source rejected the secret; {@code true} once
+ *     it accepted it, also with a permission, scope or consent missing; {@code null} when the
+ *     probe did not get that far (blocked target, TLS, network, server error) or does not tell.
+ *     S3 and Confluence still report {@code false} for any unverified secret (#3175).
  * @param details the connector's own findings, {@code null} for none (ADR-0038)
  */
 public record SourceConnectionTestResult(
