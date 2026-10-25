@@ -121,7 +121,8 @@ einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum neuesten
 erst Verwaltende. Das Wort kommt dann aus dem Stand des letzten Laufs, mit fehlgeschlagenen
 Dokumenten und Unvollständigkeit; den Grund eines Abbruchs, etwa eine abgelehnte Anmeldung oder
 ein erschöpftes Kontingent, erfahren erst Verwaltende, darunter heißt er „Fehlgeschlagen“ bzw.
-„Teilweise fehlgeschlagen“.
+„Teilweise fehlgeschlagen“. Bei einer Quelle ohne Anmeldung (Verzeichnis, Web, Feed) heißt ein
+abgebrochener Lauf für alle Rollen „Nicht erreichbar“.
 
 **Nach dem Anlegen** zeigt die Detailansicht unter den Reitern „Nächste Schritte": „Zugang prüfen",
 „In Space verwenden", bei Confluence und S3 „Live-Abgleich einrichten", „Feld anlegen", beim Upload
