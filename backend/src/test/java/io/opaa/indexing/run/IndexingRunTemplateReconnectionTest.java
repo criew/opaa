@@ -27,14 +27,16 @@ import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
  * A connection connected anew while a run goes ends the run at its next ask for the secret - past
- * the item catch of a connector, without reconciling and before the new secret reaches the run; an
- * unchanged connection lets every renewal through.
+ * the item catch of a connector, without reconciling and before the new secret reaches the run,
+ * also on the retry after a rejection and when it happens while the secret is read; an unchanged
+ * connection lets every renewal through.
  */
 class IndexingRunTemplateReconnectionTest {
 
@@ -44,6 +46,7 @@ class IndexingRunTemplateReconnectionTest {
   private final MutableClock clock = new MutableClock(Instant.parse("2026-10-25T12:00:00Z"));
   private final AtomicReference<String> generation = new AtomicReference<>("erstes Konto");
   private final AtomicReference<String> secret = new AtomicReference<>("erstes-token");
+  private final AtomicBoolean reconnectWhileReading = new AtomicBoolean();
   private final IndexingRunTemplate template =
       new IndexingRunTemplate(
           jobService,
@@ -59,6 +62,9 @@ class IndexingRunTemplateReconnectionTest {
 
             @Override
             public Secret currentSecret(KnowledgeLibrary library) {
+              if (reconnectWhileReading.get()) {
+                reconnect();
+              }
               return Secret.personal(secret.get());
             }
           },
@@ -96,8 +102,7 @@ class IndexingRunTemplateReconnectionTest {
         executor,
         run -> {
           assertThat(run.credentials().value()).isEqualTo("erstes-token");
-          generation.set("zweites Konto");
-          secret.set("zweites-token");
+          reconnect();
           clock.advance(RunCredentials.VALIDITY);
           for (int item = 0; item < 3; item++) {
             try {
@@ -114,6 +119,56 @@ class IndexingRunTemplateReconnectionTest {
     verify(jobService).failJob(jobId, ConnectionReconnectedException.MESSAGE);
     verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void aReconnectionBeforeARetryAfterARejectionEndsTheRunWithoutTheNewSecret() {
+    AtomicReference<String> retriedWith = new AtomicReference<>();
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        executor,
+        run -> {
+          assertThat(run.credentials().value()).isEqualTo("erstes-token");
+          reconnect();
+          try {
+            run.credentials().renewedAfterRejection("erstes-token");
+            retriedWith.set(run.credentials().value());
+          } catch (RuntimeException e) {
+            IndexingRun.rethrowRunEnding(e);
+          }
+          return ListingOutcome.complete();
+        });
+
+    assertThat(retriedWith).hasNullValue();
+    verify(jobService).failJob(jobId, ConnectionReconnectedException.MESSAGE);
+  }
+
+  @Test
+  void aReconnectionWhileTheSecretIsReadEndsTheRunWithoutTheNewSecret() {
+    AtomicReference<String> renewed = new AtomicReference<>();
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        executor,
+        run -> {
+          assertThat(run.credentials().value()).isEqualTo("erstes-token");
+          reconnectWhileReading.set(true);
+          clock.advance(RunCredentials.VALIDITY);
+          try {
+            renewed.set(run.credentials().value());
+          } catch (RuntimeException e) {
+            IndexingRun.rethrowRunEnding(e);
+          }
+          return ListingOutcome.complete();
+        });
+
+    assertThat(renewed).hasNullValue();
+    verify(jobService).failJob(jobId, ConnectionReconnectedException.MESSAGE);
   }
 
   @Test
@@ -135,5 +190,11 @@ class IndexingRunTemplateReconnectionTest {
 
     assertThat(renewed).hasValue("erneuertes-token");
     verify(jobService, never()).failJob(any(), any());
+  }
+
+  /** The person connects another account: a new generation and a new secret. */
+  private void reconnect() {
+    generation.set("zweites Konto");
+    secret.set("zweites-token");
   }
 }

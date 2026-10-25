@@ -60,9 +60,10 @@ import org.springframework.dao.DataIntegrityViolationException;
  * fails the run as interrupted, a {@link SourceConnectionBlockedException} from {@link
  * IndexingRun#credentials} with the block's notice, a {@link SourceCredentialsRejectedException}
  * with its message after telling the port, a {@link LibraryErasureRequestedException} once the
- * library is being erased, a {@link DataIntegrityViolationException} as "library deleted during the
- * run" (the only way a foreign key to the library can break mid-run), any other exception with its
- * own message.
+ * library is being erased, a {@link ConnectionReconnectedException} once the connection was
+ * connected anew since the run began ({@link SourceConnectionResolver#connectionGeneration}), a
+ * {@link DataIntegrityViolationException} as "library deleted during the run" (the only way a
+ * foreign key to the library can break mid-run), any other exception with its own message.
  */
 public class IndexingRunTemplate {
 
