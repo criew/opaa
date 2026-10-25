@@ -24,6 +24,7 @@
   "BRANDING_SETTINGS_CHANGED": ["aiNotice", "claim", "defaultColorScheme", "primaryColor", "productName"],
   "CAPABILITY_GRANTED": ["capability", "scope", "subjectType"],
   "CAPABILITY_REVOKED": ["capability", "scope", "subjectType"],
+  "CONNECTION_LIFECYCLE_SETTING_CHANGED": ["overridden", "setting", "settingValue"],
   "CONNECTION_LOG_ACCESSED": ["accessPath", "eventType", "from", "profileId", "to"],
   "CONNECTION_LOG_RETENTION_CHANGED": ["retentionMonths"],
   "CONNECTION_PROFILE_CHANGED": ["authMethod", "authorizationEndpoint", "clientIdSet", "clientSecretChange", "clientSecretSet", "connectionsDiscarded", "connectorSettingsSet", "issuer", "kind", "name", "ownership", "responsibleGroupId", "revocationEndpoint", "scopesSet", "serverUrl", "sourceType", "tenantSet", "tokenEndpoint"],
