@@ -7,9 +7,11 @@ import io.opaa.test.CapturingSelfDisclosureSink;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import io.opaa.test.SelfDisclosureTestData;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -122,11 +124,13 @@ class ChatSelfDisclosureExporterIntegrationTest {
         .doesNotContain("SD-EXCERPT")
         .doesNotContain("SD-HEADING")
         .doesNotContain(document.toString())
-        .doesNotContain("9917")
         .doesNotContain("SD-URL")
         .doesNotContain("SD-ENTRY")
         .doesNotContain("stored-original")
         .doesNotContain("otto");
+    // regression guard for #3139: the chunk index leaves in no value, while the random digits
+    // of the chat id and the microsecond timestamps may form "9917" by chance
+    assertThat(valuesOtherThanIdsAndTimestamps(sink)).noneMatch(value -> value.contains("9917"));
   }
 
   @Test
@@ -218,6 +222,17 @@ class ChatSelfDisclosureExporterIntegrationTest {
         new CapturingSelfDisclosureSink(ChatSelfDisclosureExporter.CATEGORY);
     exporter.export(new SelfDisclosureSubject(person, data.organizationId()), sink);
     return sink;
+  }
+
+  /** Every exported value as text, list elements one by one, without UUIDs and instants. */
+  private static List<String> valuesOtherThanIdsAndTimestamps(CapturingSelfDisclosureSink sink) {
+    return Stream.of("chats", "messages")
+        .flatMap(section -> sink.records(section).stream())
+        .flatMap(record -> record.values().stream())
+        .flatMap(value -> value instanceof List<?> list ? list.stream() : Stream.of(value))
+        .filter(value -> !(value instanceof UUID) && !(value instanceof Instant))
+        .map(String::valueOf)
+        .toList();
   }
 
   private UUID chat(String title, UUID author) {
