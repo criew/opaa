@@ -44,7 +44,7 @@ class ChatExportServiceTest {
             new EffectiveBranding(
                 "Amtsassistent",
                 "Claim",
-                "Antworten werden von einer KI erzeugt.",
+                "Antworten werden\nvon einer KI erzeugt.",
                 "#004b87",
                 ColorScheme.LIGHT,
                 Map.of()));
@@ -186,5 +186,10 @@ class ChatExportServiceTest {
         .isEqualTo("Antrag 12 4-2026 neu");
     assertThat(ChatExportService.fileName("..")).isEqualTo("Chat");
     assertThat(ChatExportService.fileName("x".repeat(200))).hasSize(80);
+    assertThat(ChatExportService.fileName("Bescheid\u200B\u202E neu")).isEqualTo("Bescheid neu");
+    String emoji = "\uD83D\uDE00";
+    String cut = ChatExportService.fileName(emoji.repeat(100));
+    assertThat(cut.codePointCount(0, cut.length())).isEqualTo(80);
+    assertThat(Character.isHighSurrogate(cut.charAt(cut.length() - 1))).isFalse();
   }
 }

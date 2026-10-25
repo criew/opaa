@@ -1,5 +1,5 @@
 import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { notify } from '@/shared/stores/notificationStore'
+import { notify, useNotificationStore } from '@/shared/stores/notificationStore'
 import { exportChatPdf, getChat } from '../api/chatApi'
 import { chatAsMarkdown, exportFileName } from './chatExport'
 import { copyNote } from './copyFormats'
@@ -24,14 +24,22 @@ function download(blob: Blob, fileName: string) {
   }
 }
 
+/** The exports running now, by format and chat, so a second click does not start another. */
+const running = new Set<string>()
+
 /**
  * Saves one chat as a file: Markdown is built here from the chat as the server returns it, the PDF
- * comes from the server. A failure is reported as a notification, never thrown.
+ * comes from the server, announced while it is built. The same export of the same chat runs once
+ * at a time. A failure is reported as a notification, never thrown.
  */
 export async function exportChat(
   chat: { id: string; title?: string | null },
   format: ChatExportFormat,
 ): Promise<void> {
+  const key = `${format}:${chat.id}`
+  if (running.has(key)) return
+  running.add(key)
+  const pending = format === 'pdf' ? notify('Export wird erstellt …', 'info') : null
   try {
     if (format === 'markdown') {
       const detail = await getChat(chat.id)
@@ -49,5 +57,8 @@ export async function exportChat(
   } catch (err) {
     const fallback = 'Der Chat konnte nicht exportiert werden.'
     notify(err instanceof Error && err.message ? err.message : fallback, 'error')
+  } finally {
+    if (pending !== null) useNotificationStore.getState().dismiss(pending)
+    running.delete(key)
   }
 }

@@ -95,4 +95,32 @@ describe('exportChat', () => {
       }),
     ])
   })
+
+  it('announces the PDF while it is built and takes the notice away afterwards', async () => {
+    let finish: (blob: Blob) => void = () => {}
+    exportChatPdf.mockReturnValue(new Promise<Blob>((resolve) => (finish = resolve)))
+
+    const running = exportChat({ id: 'chat-1', title: 'T' }, 'pdf')
+
+    expect(useNotificationStore.getState().queue).toEqual([
+      expect.objectContaining({ message: 'Export wird erstellt …', severity: 'info' }),
+    ])
+    finish(new Blob(['%PDF-1.7'], { type: 'application/pdf' }))
+    await running
+    expect(useNotificationStore.getState().queue).toEqual([])
+    expect(downloads).toHaveLength(1)
+  })
+
+  it('does not start the same export of the same chat twice at once', async () => {
+    let finish: (blob: Blob) => void = () => {}
+    exportChatPdf.mockReturnValue(new Promise<Blob>((resolve) => (finish = resolve)))
+
+    const first = exportChat({ id: 'chat-1', title: 'T' }, 'pdf')
+    await exportChat({ id: 'chat-1', title: 'T' }, 'pdf')
+    finish(new Blob(['%PDF-1.7'], { type: 'application/pdf' }))
+    await first
+
+    expect(exportChatPdf).toHaveBeenCalledTimes(1)
+    expect(downloads).toHaveLength(1)
+  })
 })

@@ -143,5 +143,7 @@ describe('exportFileName', () => {
     expect(exportFileName(null, 'pdf')).toBe('Unbenannter Chat.pdf')
     expect(exportFileName('..', 'pdf')).toBe('Chat.pdf')
     expect(exportFileName('x'.repeat(200), 'md')).toBe(`${'x'.repeat(80)}.md`)
+    expect(exportFileName('Bescheid\u200B\u202E neu', 'pdf')).toBe('Bescheid neu.pdf')
+    expect(exportFileName('\u{1F600}'.repeat(100), 'md')).toBe(`${'\u{1F600}'.repeat(80)}.md`)
   })
 })

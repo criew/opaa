@@ -454,20 +454,45 @@ eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exp
 
 - **Inhalt beider Formate:** der Titel als Überschrift, Beginn des Chats und Exportzeitpunkt, dann jede
   Frage und Antwort in ihrer Reihenfolge mit Datum und Uhrzeit. Unter jeder Antwort stehen ihre
-  Quellenangaben: Jede Zitiermarke wird zur Fußnote mit derselben Nummer wie im Chat, die Liste nennt
-  Dokument und Fundort; zitierte Quellen ohne Marke im Text folgen ohne Nummer. Geprüfte, nicht
+  Quellenangaben: Jede Zitiermarke wird zur Fußnote, gezählt je Antwort in der Reihenfolge des ersten
+  Auftretens, die Liste nennt Dokument und Fundort; zitierte Quellen ohne Marke im Text folgen ohne
+  Nummer. Geprüfte, nicht
   zitierte Quellen gehören nicht dazu. Am Ende steht der Vermerk aus Hinweis zur KI-Nutzung und
   Produktname aus dem Branding, wie beim Kopieren einer Antwort.
 - **Markdown entsteht im Browser** aus dem bereits geladenen Chat und behält die Formatierung der
-  Antworten; die Fußnoten sind Markdown-Fußnoten (`[^1]`).
+  Antworten; die Fußnoten sind Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]`), weil
+  Fußnotenbezeichner in einem Dokument eindeutig sein müssen.
 - **PDF entsteht im Server** (`GET /api/v1/chats/{chatId}/export/pdf`, mit PDFBox, Standardschriften
-  ohne Einbettung). Die Markdown-Zeichen der Antworten werden zu lesbarem Text; Zeichen außerhalb
-  des westeuropäischen Zeichensatzes der Standardschriften erscheinen als „?". Die Zeitangaben stehen in
-  der Zeitzone der Installation.
+  ohne Einbettung), Fußnoten als `[1]`. Die Markdown-Zeichen der Antworten werden zu lesbarem Text.
+  Die Standardschriften kennen nur den westeuropäischen Zeichensatz: Format- und Richtungszeichen
+  entfallen, Sonderleerzeichen, Bindestrich- und Minusvarianten, Pfeile und Vergleichszeichen erhalten
+  einen einfachen Ersatz (`->`, `<=` …), alles Übrige erscheint als „?". Der Zeilenumbruch misst jede
+  Glyphe einmal, sein Aufwand wächst linear mit dem Text. Die Zeitangaben stehen in der Zeitzone der
+  Installation. Solange das PDF entsteht, zeigt die Oberfläche „Export wird erstellt …"; ein zweiter
+  Klick auf denselben Export desselben Chats startet keinen weiteren.
 - **Wer exportieren darf:** wer den Chat lesen darf, also nur seine Autorin, und nur, solange sie
   Mitglied des Space ist. Ein fremder Chat antwortet `404` wie ein unbekannter, ein ehemaliges
   Mitglied `403`. Der Export wird nicht protokolliert und nicht gespeichert.
 - **Außerhalb des Umfangs:** Export mehrerer Chats oder ganzer Spaces, Import.
+
+### Wirkung auf Behördenunterlagen
+
+- [ ] Neue oder geänderte personenbezogene Daten oder Protokollereignisse
+- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar
+- [x] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten — der Export eines
+  eigenen Chats als Markdown- oder PDF-Datei, nur durch die Person selbst (Datum `chats`)
+- [ ] Geänderte Aufbewahrungs- oder Löschfrist
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Voraussichtliche Stufe:** Zustimmung (Z3, neuer Export; er umfasst nur eigene Daten der Person,
+niemand sieht dadurch mehr über andere, Z2 also nicht). Der Export wird weder protokolliert noch
+gespeichert, Z1 entfällt.
+
+**Betroffene Vorlagen in `docs/behoerden/`:** keine über das Fakten-Manifest hinaus; die
+Faktenblätter übernehmen den Eintrag aus dem Datum `chats`.
 
 ---
 

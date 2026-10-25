@@ -206,9 +206,17 @@ async function blobErrorMessage(body: unknown): Promise<string | null> {
 }
 
 /**
- * The chat as a PDF, built by the server. With `responseType: 'blob'` a refusal arrives as a blob
+ * The error a failed PDF export reports. With `responseType: 'blob'` a refusal arrives as a blob
  * too; its German message is read from it, anything unreadable becomes one generic message.
+ * Separate from {@link exportChatPdf} because a blob response body hangs against msw/node in the
+ * jsdom tests, so the mapping is tested with a constructed error instead.
  */
+export async function chatPdfExportError(err: unknown): Promise<Error> {
+  const message = axios.isAxiosError(err) ? await blobErrorMessage(err.response?.data) : null
+  return new Error(message ?? CHAT_PDF_EXPORT_FAILED, { cause: err })
+}
+
+/** The chat as a PDF, built by the server; a refusal as {@link chatPdfExportError}. */
 export async function exportChatPdf(chatId: string): Promise<Blob> {
   try {
     const { data } = await client.get<Blob>(`/v1/chats/${chatId}/export/pdf`, {
@@ -216,7 +224,6 @@ export async function exportChatPdf(chatId: string): Promise<Blob> {
     })
     return data
   } catch (err) {
-    const message = axios.isAxiosError(err) ? await blobErrorMessage(err.response?.data) : null
-    throw new Error(message ?? CHAT_PDF_EXPORT_FAILED, { cause: err })
+    throw await chatPdfExportError(err)
   }
 }

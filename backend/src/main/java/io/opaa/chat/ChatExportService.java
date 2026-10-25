@@ -39,22 +39,34 @@ public class ChatExportService {
     EffectiveBranding branding = brandingSettingsService.currentBranding();
     Instant now = Instant.now(clock);
     String note =
-        branding.aiNotice().strip()
+        oneLine(branding.aiNotice())
             + " – "
-            + branding.productName().strip()
+            + oneLine(branding.productName())
             + ", "
             + DATE.format(now.atZone(clock.getZone()));
     byte[] pdf = new ChatPdfRenderer(clock.getZone()).render(transcript, note, now);
     return new ChatPdf(fileName(transcript.title()) + ".pdf", pdf);
   }
 
-  /** The title without characters a file system rejects, at most {@value #FILE_NAME_MAX_LENGTH}. */
+  /**
+   * The title without characters a file system rejects and without invisible format characters, at
+   * most {@value #FILE_NAME_MAX_LENGTH} code points.
+   */
   static String fileName(String title) {
-    String cleaned = title.replaceAll(UNSAFE_FILE_NAME_CHARACTERS, " ").replaceAll("\\s+", " ");
+    String cleaned =
+        title
+            .replaceAll("\\p{Cf}", "")
+            .replaceAll(UNSAFE_FILE_NAME_CHARACTERS, " ")
+            .replaceAll("\\s+", " ");
     cleaned = cleaned.strip().replaceAll("^\\.+", "").strip();
-    if (cleaned.length() > FILE_NAME_MAX_LENGTH) {
-      cleaned = cleaned.substring(0, FILE_NAME_MAX_LENGTH).strip();
+    if (cleaned.codePointCount(0, cleaned.length()) > FILE_NAME_MAX_LENGTH) {
+      cleaned = cleaned.substring(0, cleaned.offsetByCodePoints(0, FILE_NAME_MAX_LENGTH)).strip();
     }
     return cleaned.isEmpty() ? "Chat" : cleaned;
+  }
+
+  /** Branding text on one line, so the note never breaks where the operator typed a newline. */
+  private static String oneLine(String text) {
+    return text.replaceAll("\\s*\\R\\s*", " ").strip();
   }
 }

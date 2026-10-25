@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
@@ -26,8 +25,10 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName;
 
 /**
  * Lays a {@link ChatTranscript} out as an A4 PDF with the standard fonts, so nothing is embedded.
- * The answer's Markdown is reduced to readable text (no syntax characters); a character outside the
- * fonts' WinAnsi range is printed as {@code ?} rather than failing the export.
+ * The answer's Markdown is reduced to readable text (no syntax characters). Typographic characters
+ * outside the fonts' WinAnsi range get a plain stand-in ({@link #SUBSTITUTES}), invisible format
+ * characters are dropped, anything else is printed as {@code ?} rather than failing the export.
+ * Line breaking measures each glyph once, so its cost grows linearly with the text.
  */
 final class ChatPdfRenderer {
 
@@ -44,6 +45,9 @@ final class ChatPdfRenderer {
   private static final float INDENT = 14f;
   private static final float MUTED_GRAY = 0.33f;
 
+  /** Width available to a line without indent. */
+  static final float TEXT_WIDTH = PAGE_SIZE.getWidth() - 2 * MARGIN;
+
   private static final Pattern TABLE_SEPARATOR =
       Pattern.compile("^\\s*\\|?\\s*:?-{3,}:?\\s*(\\|\\s*:?-{3,}:?\\s*)*\\|?\\s*$");
   private static final Pattern THEMATIC_BREAK = Pattern.compile("^\\s*([-*_])(\\s*\\1){2,}\\s*$");
@@ -59,12 +63,41 @@ final class ChatPdfRenderer {
     {"(^|[^\\w_])_(?!\\s)(.+?)(?<!\\s)_(?!\\w)", "$1$2"},
   };
 
+  /** Plain stand-ins for characters the WinAnsi fonts lack but text commonly carries. */
+  static final Map<Integer, String> SUBSTITUTES = substitutes();
+
+  private static Map<Integer, String> substitutes() {
+    Map<Integer, String> map = new HashMap<>();
+    for (int space : new int[] {0x00A0, 0x2007, 0x202F, 0x205F, 0x3000}) {
+      map.put(space, " ");
+    }
+    for (int space = 0x2000; space <= 0x200A; space++) {
+      map.put(space, " ");
+    }
+    for (int hyphen : new int[] {0x2010, 0x2011, 0x2012, 0x2043, 0x2212}) {
+      map.put(hyphen, "-");
+    }
+    map.put(0x2192, "->");
+    map.put(0x2190, "<-");
+    map.put(0x2194, "<->");
+    map.put(0x21D2, "=>");
+    map.put(0x21D0, "<=");
+    map.put(0x2264, "<=");
+    map.put(0x2265, ">=");
+    map.put(0x2260, "!=");
+    map.put(0x2248, "~");
+    map.put(0x2032, "'");
+    map.put(0x2033, "\"");
+    return Map.copyOf(map);
+  }
+
   private final ZoneId zone;
   private final PDFont regular = new PDType1Font(FontName.HELVETICA);
   private final PDFont bold = new PDType1Font(FontName.HELVETICA_BOLD);
   private final PDFont italic = new PDType1Font(FontName.HELVETICA_OBLIQUE);
-  private final PDFont mono = new PDType1Font(FontName.COURIER);
+  final PDFont mono = new PDType1Font(FontName.COURIER);
   private final Map<Integer, Boolean> encodable = new HashMap<>();
+  private final Map<PDFont, Map<Integer, Float>> glyphWidths = new HashMap<>();
 
   private PDDocument document;
   private PDPageContentStream stream;
@@ -80,8 +113,8 @@ final class ChatPdfRenderer {
   byte[] render(ChatTranscript transcript, String note, Instant exportedAt) {
     try (PDDocument pdf = new PDDocument()) {
       document = pdf;
-      PDDocumentInformation info = pdf.getDocumentInformation();
-      info.setTitle(printable(transcript.title(), regular));
+      pdf.getDocumentInformation().setTitle(transcript.title());
+      pdf.getDocumentCatalog().setLanguage("de-DE");
       newPage();
       writeTranscript(transcript, note, exportedAt);
       stream.close();
@@ -113,6 +146,8 @@ final class ChatPdfRenderer {
     }
     for (ChatTranscript.Entry entry : transcript.entries()) {
       space(14);
+      // The label never ends a page on its own: it moves on together with the first text line.
+      keepTogether(LABEL_SIZE * LINE_FACTOR + 3 + BODY_SIZE * LINE_FACTOR);
       String label = entry.role() == ChatRole.USER ? "Frage" : "Antwort";
       paragraph(label + " · " + format(entry.createdAt()), bold, LABEL_SIZE, 0, false);
       space(3);
@@ -125,6 +160,7 @@ final class ChatPdfRenderer {
       }
       if (!entry.sources().isEmpty()) {
         space(6);
+        keepTogether(2 * SMALL_SIZE * LINE_FACTOR);
         paragraph("Quellen", bold, SMALL_SIZE, 0, true);
         for (String source : entry.sources()) {
           paragraph(source, regular, SMALL_SIZE, INDENT, true);
@@ -199,15 +235,14 @@ final class ChatPdfRenderer {
   /** Writes {@code text} word-wrapped at the page width; an empty text is an empty line. */
   private void paragraph(String text, PDFont font, float size, float indent, boolean muted)
       throws IOException {
-    float width = PAGE_SIZE.getWidth() - 2 * MARGIN - indent;
-    for (String line : wrap(printable(text, font), font, size, width)) {
+    for (String line : wrap(printable(text, font), font, size, TEXT_WIDTH - indent)) {
       float leading = size * LINE_FACTOR;
       if (y - leading < MARGIN) {
         stream.close();
         newPage();
       }
       y -= leading;
-      if (line.isEmpty()) {
+      if (line.isBlank()) {
         continue;
       }
       stream.beginText();
@@ -223,47 +258,101 @@ final class ChatPdfRenderer {
     y -= points;
   }
 
-  private List<String> wrap(String text, PDFont font, float size, float width) throws IOException {
+  /** Starts a new page unless {@code height} still fits on the current one. */
+  private void keepTogether(float height) throws IOException {
+    if (y - height < MARGIN) {
+      stream.close();
+      newPage();
+    }
+  }
+
+  /**
+   * {@code text} broken into lines of at most {@code width}: at spaces where possible, inside an
+   * over-long word between two code points otherwise. Leading spaces of the text stay (indented
+   * code). Each code point is measured once from a cache, so the cost is linear in the text.
+   */
+  List<String> wrap(String text, PDFont font, float size, float width) {
     List<String> lines = new ArrayList<>();
-    StringBuilder current = new StringBuilder();
-    for (String word : text.split(" ", -1)) {
-      String candidate = current.isEmpty() ? word : current + " " + word;
-      if (width(candidate, font, size) <= width) {
-        current.setLength(0);
-        current.append(candidate);
+    int start = 0;
+    while (start < text.length() && text.charAt(start) == ' ') {
+      start++;
+    }
+    StringBuilder current = new StringBuilder(text.substring(0, start));
+    float currentWidth = start * glyphWidth(font, ' ', size);
+    boolean hasWord = false;
+    float space = glyphWidth(font, ' ', size);
+    for (String word : text.substring(start).split(" ", -1)) {
+      float wordWidth = 0;
+      for (int i = 0; i < word.length(); i += Character.charCount(word.codePointAt(i))) {
+        wordWidth += glyphWidth(font, word.codePointAt(i), size);
+      }
+      float separator = hasWord ? space : 0;
+      if (currentWidth + separator + wordWidth <= width) {
+        if (hasWord) {
+          current.append(' ');
+        }
+        current.append(word);
+        currentWidth += separator + wordWidth;
+        hasWord = true;
         continue;
       }
-      if (!current.isEmpty()) {
+      if (hasWord) {
         lines.add(current.toString());
         current.setLength(0);
+        currentWidth = 0;
       }
-      String rest = word;
-      while (width(rest, font, size) > width && rest.length() > 1) {
-        int cut = rest.length() - 1;
-        while (cut > 1 && width(rest.substring(0, cut), font, size) > width) {
-          cut--;
+      hasWord = true;
+      for (int i = 0; i < word.length(); ) {
+        int codePoint = word.codePointAt(i);
+        float glyph = glyphWidth(font, codePoint, size);
+        if (currentWidth + glyph > width && !current.isEmpty()) {
+          lines.add(current.toString());
+          current.setLength(0);
+          currentWidth = 0;
         }
-        lines.add(rest.substring(0, cut));
-        rest = rest.substring(cut);
+        current.appendCodePoint(codePoint);
+        currentWidth += glyph;
+        i += Character.charCount(codePoint);
       }
-      current.append(rest);
     }
     lines.add(current.toString());
     return lines;
   }
 
-  private static float width(String text, PDFont font, float size) throws IOException {
-    return font.getStringWidth(text) / 1000f * size;
+  private float glyphWidth(PDFont font, int codePoint, float size) {
+    float units =
+        glyphWidths
+            .computeIfAbsent(font, unused -> new HashMap<>())
+            .computeIfAbsent(codePoint, unused -> unitWidth(font, codePoint));
+    return units / 1000f * size;
   }
 
-  /** {@code text} with tabs as spaces and every character the font cannot show as {@code ?}. */
-  private String printable(String text, PDFont font) {
+  private static float unitWidth(PDFont font, int codePoint) {
+    try {
+      return font.getStringWidth(new String(Character.toChars(codePoint)));
+    } catch (IllegalArgumentException | IOException e) {
+      return unitWidth(font, '?');
+    }
+  }
+
+  /**
+   * {@code text} as the font can print it: tabs as spaces, control and format characters (zero
+   * width, byte order mark, direction marks) dropped, {@link #SUBSTITUTES} applied, everything else
+   * outside the font as {@code ?}.
+   */
+  String printable(String text, PDFont font) {
     StringBuilder result = new StringBuilder(text.length());
     text.replace("\t", "    ")
         .codePoints()
         .forEach(
             codePoint -> {
-              if (Character.isISOControl(codePoint)) {
+              if (Character.isISOControl(codePoint)
+                  || Character.getType(codePoint) == Character.FORMAT) {
+                return;
+              }
+              String substitute = SUBSTITUTES.get(codePoint);
+              if (substitute != null) {
+                result.append(substitute);
                 return;
               }
               boolean ok =
@@ -301,7 +390,8 @@ final class ChatPdfRenderer {
         footer.beginText();
         footer.setFont(regular, SMALL_SIZE);
         footer.setNonStrokingColor(MUTED_GRAY);
-        float x = PAGE_SIZE.getWidth() - MARGIN - width(label, regular, SMALL_SIZE);
+        float x =
+            PAGE_SIZE.getWidth() - MARGIN - regular.getStringWidth(label) / 1000f * SMALL_SIZE;
         footer.newLineAtOffset(x, MARGIN / 2);
         footer.showText(label);
         footer.endText();
