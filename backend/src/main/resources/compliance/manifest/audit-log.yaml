@@ -786,6 +786,18 @@ auditEvents:
     payloadKeys: [passwordSource, recreated]
   - id: LOCAL_BOOTSTRAP_ACCOUNT_LOGIN
     trigger: Erfolgreiche Anmeldung mit dem Notanker-Konto
+  - id: INSTALLATION_STEP_SAVED
+    trigger: Ein Schritt der Erstinstallation wird gespeichert
+    details: >-
+      Schritt und Werte vorher und nachher, ohne die Adresse des ersten Kontos und ohne Passwort
+      oder Schlüssel, nur ob eines gesetzt ist
+    payloadKeys: [apiKeySet, baseUrl, issuerUri, model, passwordSet, signInMode, step]
+  - id: INSTALLATION_STEP_CHECKED
+    trigger: Die Prüfung eines Schritts der Erstinstallation läuft
+    payloadKeys: [step, succeeded]
+  - id: INSTALLATION_COMPLETED
+    trigger: Die Erstinstallation wird abgeschlossen, genau einmal je Installation
+    payloadKeys: [signInMode, source]
   - id: LOCAL_ACCOUNTS_ENABLED
     trigger: Die lokale Kontenverwaltung wird eingeschaltet
     payloadKeys: [enabled]

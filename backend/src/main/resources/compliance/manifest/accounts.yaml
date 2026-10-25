@@ -88,6 +88,28 @@ data:
       null. Die Sitzungsgeneration zählt, wie oft alle Sitzungen des Kontos beendet wurden
       (Passwortwechsel, Sperre, Rücksetzung, erkannte Wiederverwendung, Ausschalten der lokalen
       Konten); sie wird nicht ausgegeben und nur auf Gleichheit mit dem Zugangstoken geprüft
+  - id: installation-steps
+    title: Zwischenstand der Installation
+    purpose: Fortsetzen einer unterbrochenen Erstinstallation bis zu ihrem Abschluss
+    personalReference: EMPLOYEE
+    tables:
+      - name: installation_steps
+        personalColumns: [payload, secret, checked_at, updated_at]
+        nonPersonalColumns: [step, check_succeeded, check_message]
+        person:
+          excluded: >-
+            Zwischenstand vor dem ersten Konto; Adresse, Anzeigename und Passwort-Hash des ersten
+            Kontos stehen hier nur bis zum Abschluss der Installation und gehen dann in dessen
+            Konto über
+    storage: Anwendungsdatenbank; Passwort nur als Hash, Modellschlüssel verschlüsselt
+    retention:
+      rule: Bis zum Abschluss der Installation; der Abschluss löscht jede Zeile
+      settings: []
+    visibility:
+      - wer das Installations-Token kennt, über die Installations-API (ohne Passwort und Schlüssel)
+    accessPaths: [API, DATABASE]
+    deletion: Mit dem Abschluss der Installation
+    evaluations: keine
   - id: local-sessions-and-links
     title: Sitzungen, Einladungs- und Rücksetzlinks lokaler Konten
     purpose: Sitzungsverlängerung, Widerruf, Einladung, Passwortrücksetzung, Kontoübergabe
@@ -357,6 +379,8 @@ data:
 nonPersonalTables:
   organizations: [id, name, created_at]
   admin_review_reminders: [organization_id, reminded_on]
+  installation_state:
+    [id, status, token_hash, token_source, completion_source, completed_at, updated_at]
   oidc_providers:
     - id
     - display_name

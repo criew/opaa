@@ -29,6 +29,7 @@ datenkatalog#external-access-tokens
 datenkatalog#favorites
 datenkatalog#groups
 datenkatalog#indexing-runs
+datenkatalog#installation-steps
 datenkatalog#library-settings
 datenkatalog#local-credentials
 datenkatalog#local-sessions-and-links
@@ -116,6 +117,9 @@ protokollereignisse#group-steward-dismissed
 protokollereignisse#indexing-context-prefix-rerun-triggered
 protokollereignisse#indexing-metadata-backfill-triggered
 protokollereignisse#indexing-pipeline-reindex-triggered
+protokollereignisse#installation-completed
+protokollereignisse#installation-step-checked
+protokollereignisse#installation-step-saved
 protokollereignisse#library-changed
 protokollereignisse#library-created
 protokollereignisse#library-deleted

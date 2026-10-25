@@ -1,6 +1,5 @@
 package io.opaa.account;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -9,13 +8,11 @@ import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderSeeder;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
-import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * {@link OidcProviderSeedRunner}: seeds, then loads the registry - and does so as a {@link
- * SmartInitializingSingleton}, i.e. before the web server accepts its first request, so the initial
- * administrator cannot sign in before the default provider exists.
+ * {@link OidcProviderSeedRunner}: seeds, then loads the registry. That it runs before the web
+ * server accepts its first request is {@code InstallationStartupTest}'s to show.
  */
 class OidcProviderSeedRunnerTest {
 
@@ -33,9 +30,7 @@ class OidcProviderSeedRunnerTest {
    */
   @Test
   void seedsTheLocalAdministratorThenTheProviderThenLoadsTheRegistryBeforeAnyRequest() {
-    assertThat(runner).isInstanceOf(SmartInitializingSingleton.class);
-
-    runner.afterSingletonsInstantiated();
+    runner.runStartupSeeds();
 
     InOrder order = inOrder(localAdminSeeder, seeder, registry);
     order.verify(localAdminSeeder).seedIfNeeded();
@@ -49,7 +44,7 @@ class OidcProviderSeedRunnerTest {
         .when(localAdminSeeder)
         .seedIfNeeded();
 
-    runner.afterSingletonsInstantiated();
+    runner.runStartupSeeds();
 
     org.mockito.Mockito.verify(seeder).seedIfNeeded();
     org.mockito.Mockito.verify(registry).refresh();
@@ -61,7 +56,7 @@ class OidcProviderSeedRunnerTest {
         .when(seeder)
         .seedIfNeeded();
 
-    runner.afterSingletonsInstantiated();
+    runner.runStartupSeeds();
 
     org.mockito.Mockito.verify(registry).refresh();
   }

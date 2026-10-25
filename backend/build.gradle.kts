@@ -463,6 +463,7 @@ val testShards = mapOf(
     ),
     "indexing" to listOf(
         "io.opaa.indexing.*", "io.opaa.format.*", "io.opaa.metadata.*", "io.opaa.llm.*",
+        "io.opaa.installation.*",
     ),
 )
 

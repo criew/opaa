@@ -31,10 +31,11 @@ namespaces:
     purpose: the push batches of one library
     owners: [java/io/opaa/indexing/run/SourceEventBatches.java]
   - number: 211
-    purpose: the start-up seeds, one instance at a time
+    purpose: the start-up seeds and the installation, one instance at a time
     owners:
       - java/io/opaa/account/LocalAdminSeedMarkerRepository.java
       - java/io/opaa/auth/OidcProviderSeedMarkerRepository.java
+      - java/io/opaa/installation/InstallationStateRepository.java
       - java/io/opaa/llm/LlmModelSeedMarkerRepository.java
   - number: 213
     purpose: reconciling and switching the vector index schema, one instance at a time

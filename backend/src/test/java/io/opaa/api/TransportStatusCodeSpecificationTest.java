@@ -73,18 +73,28 @@ class TransportStatusCodeSpecificationTest {
   /**
    * The only operations that decide a {@code 401} themselves rather than inheriting the resource
    * server's: the sign-in (wrong credentials), the refresh (unknown, expired or replayed cookie),
-   * the handover (an unusable provider token) and the push intake (a wrong signature on a call that
-   * carries no session at all).
+   * the handover (an unusable provider token), the push intake (a wrong signature on a call that
+   * carries no session at all) and the installation API (a missing or wrong installation token).
    */
   private static final Set<String> OWN_401 =
-      Set.of("localLogin", "localRefresh", "localHandoverRedeem", "receivePush");
+      Set.of(
+          "localLogin",
+          "localRefresh",
+          "localHandoverRedeem",
+          "receivePush",
+          "getInstallation",
+          "saveInstallationStep",
+          "checkInstallationStep",
+          "applyInstallationAnswerFile",
+          "completeInstallation");
 
   /**
    * Budgets that are not keyed by request path, so {@link RateLimitFilter} cannot reveal them: the
    * three external-access read paths are bounded per access token by {@code ExternalAccessQuota},
    * the password change and the confirmation of a sign-in per authenticated account by {@code
    * LocalAuthRateLimiter}, and the ticket and the download of the self-disclosure by the daily
-   * limit and the starts per person in {@code self_disclosure_usage}.
+   * limit and the starts per person in {@code self_disclosure_usage}, and the installation API per
+   * client address by {@code InstallationAccessGuard}.
    */
   private static final Set<String> LIMITED_WITHOUT_A_PATH_RULE =
       Set.of(
@@ -95,7 +105,12 @@ class TransportStatusCodeSpecificationTest {
           "localReauthenticate",
           "startConnectionAuthorization",
           "createSelfDisclosureTicket",
-          "downloadSelfDisclosure");
+          "downloadSelfDisclosure",
+          "getInstallation",
+          "saveInstallationStep",
+          "checkInstallationStep",
+          "applyInstallationAnswerFile",
+          "completeInstallation");
 
   private static final Set<String> HTTP_METHODS =
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");
