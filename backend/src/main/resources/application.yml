@@ -166,11 +166,22 @@ opaa:
     # PostgreSQL schema that holds every table of OPAA (ADR-0034). It must exist and belong to the
     # database account before the first start; validated by io.opaa.config.DatabaseSchemaGuard.
     schema: ${OPAA_DB_SCHEMA:public}
+  # Installation of a fresh instance (ADR-0060, io.opaa.installation): the token the installation API
+  # requires (empty: the first start generates one and prints it once), the networks the API answers
+  # from (empty: no restriction) and the answer file a start applies while the installation is
+  # pending (empty: none).
+  installation:
+    token: ${OPAA_INSTALLATION_TOKEN:}
+    allowed-cidrs: ${OPAA_INSTALLATION_ALLOWED_CIDRS:}
+    answer-file: ${OPAA_INSTALLATION_ANSWER_FILE:}
   auth:
     # No default mode on purpose: the active Spring profile ("oidc" or "dev")
     # sets it. Starting without one of those profiles fails fast, see
     # io.opaa.auth.AuthProfileGuard.
-    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
+    # Start value of the transition to the installation mode (ADR-0060): set in the "oidc" mode, a
+    # pending installation is completed from OPAA_INITIAL_ADMIN_*; empty, the installation mode
+    # starts. In the "dev" mode an empty value falls back to the default dev user's address.
+    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:}
     # How old the sign-in behind a token (its auth_time) may be for an operation marked
     # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
     recent-login:
@@ -958,8 +969,8 @@ opaa:
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
       default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}
       users:
-        # Matches the default opaa.auth.initial-admin-email, and is therefore
-        # provisioned as SYSTEM_ADMIN on first request.
+        # The default user: with opaa.auth.initial-admin-email empty, its address is the initial
+        # administrator's, so it is provisioned as SYSTEM_ADMIN on first request.
         - subject: dev-admin
           email: admin@opaa.local
           display-name: Dev Admin

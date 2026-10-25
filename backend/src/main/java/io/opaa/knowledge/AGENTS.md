@@ -1,12 +1,12 @@
 # Modul knowledge
 
-Pakete (`io.opaa.*`): knowledge, llm, metadata, indexing, health; Konnektorvertrag: `indexing/source/AGENTS.md`.
+Pakete (`io.opaa.*`): knowledge, llm, metadata, indexing, health, installation; Konnektor: `indexing/source/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Der Bestand einer Wissensbibliothek — Bibliothek, Ordner, Dokumente, Zugriffsprüfung, Ablage der
-Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokument in den Index
-(`indexing`), die verwalteten Chat-Modelle (`llm`) und die Health-Indikatoren für Modelle und Vektorindex (`health`).
+Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokument in den Index (`indexing`),
+die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Installation (ADR-0060, `installation`).
 
 ## Invarianten und Stolpersteine
 
@@ -31,7 +31,7 @@ Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokum
   `SettingsEncryptor` verschlüsselt, jede Änderung protokolliert. Genau ein Modell ist systemweit aktiv.
 - **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestands- und
   Nachlauf), `metadata.web` (Metadaten, der Filter aller Such- und Chat-Anfragen samt strengem
-  `MetadataFilterDeserializer`). Die Endpunkte der Bibliothek liegen in `library.web`.
+  `MetadataFilterDeserializer`), `installation.web`. Die Endpunkte der Bibliothek liegen in `library.web`.
 
 ## Maßgebliche ADRs
 
@@ -53,7 +53,7 @@ Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokum
 ## Tests bei Änderungen
 
 ```bash
-./gradlew test -PtestShard=indexing      # indexing, format, metadata, llm
+./gradlew test -PtestShard=indexing      # indexing, format, metadata, llm, installation
 ./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.health.*' --tests 'io.opaa.architecture.*'
 ```
 

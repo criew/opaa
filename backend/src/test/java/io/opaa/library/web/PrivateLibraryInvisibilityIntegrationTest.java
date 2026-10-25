@@ -314,7 +314,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listConnectionLogProfiles",
             "listDormantSourceConnections",
             "listMcpServers",
-            "getMcpServer")) {
+            "getMcpServer",
+            "getInstallation")) {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());

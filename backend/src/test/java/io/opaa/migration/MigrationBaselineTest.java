@@ -169,6 +169,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "embedding_rate_measurements",
             "indexing_jobs",
             "indexing_run_events",
+            "installation_state",
+            "installation_steps",
             "knowledge_libraries",
             "library_folders",
             "library_maintenance_skips",

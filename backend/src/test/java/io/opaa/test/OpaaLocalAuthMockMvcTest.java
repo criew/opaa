@@ -43,6 +43,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(
     properties = {
       "opaa.auth.local.jwt-secret=" + OpaaLocalAuthMockMvcTest.JWT_SECRET,
+      // The shipped default before the installation mode (ADR-0060): the start values complete the
+      // installation of a fresh test database, and the seed refuses this address on purpose.
+      "opaa.auth.initial-admin-email=admin@opaa.local",
       "opaa.rate-limit.local-auth.login.max-requests=100000",
       "opaa.rate-limit.local-auth.login.global-max-requests=100000",
       "opaa.rate-limit.local-auth.refresh.max-requests=100000",
