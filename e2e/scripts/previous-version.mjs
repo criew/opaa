@@ -7,7 +7,8 @@
 //      as the oldest compatible version - the version a release promises to roll from;
 //   3. otherwise main as it stood LOOKBACK_HOURS before the base (the merge base with origin/main:
 //      for a pull request the main it branched from, on main its own head), but never older than
-//      FLOOR, the first state whose images carry the migration modes and the Compose variant.
+//      FLOOR, the first state migrating with Flyway - an installation migrated by Liquibase is not
+//      taken over (ADR-0056, Entscheidung 2), so no rolling update crosses that line.
 //
 // Prints the full commit hash. Needs the history of main (fetch-depth 0 in CI).
 import { spawnSync } from 'node:child_process'
@@ -15,8 +16,8 @@ import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-/** Merge of #2964: migration step, await-migration and docker-compose.multi.yml. */
-export const FLOOR = '81153fddfb2f0d545b94f4c1f87725f1a8db02d4'
+/** The switch to Flyway (ADR-0056); it also carries the migration modes and Compose variant. */
+export const FLOOR = 'd642b3af4fc1e6918c156aea9e47998622c9c53a'
 export const LOOKBACK_HOURS = 24
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
