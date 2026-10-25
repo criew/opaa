@@ -756,9 +756,10 @@ components:
         the recomputed chain. BROKEN: a checkpoint, the seal or the seal entry does not match, or
         the partition of the month is gone while checkpoints or seal remain; deviation names where.
         UNCHAINED: the month has no checkpoint yet, nothing to compare against. NOT_RETAINED: no
-        partition holds the month and nothing of its chain remains - the retention removed it, or
-        it never existed. UNVERIFIABLE: the month was chained under a procedure this version does
-        not know; nothing is recomputed.
+        partition holds the month and nothing of its chain remains - the retention removed it
+        (the month lies below its cutoff), or it never existed; a month at or above the cutoff
+        whose seal entry still stands is BROKEN instead. UNVERIFIABLE: the month was chained under
+        a procedure this version does not know; nothing is recomputed.
       enum: [INTACT, BROKEN, UNCHAINED, NOT_RETAINED, UNVERIFIABLE]
       example: INTACT
 

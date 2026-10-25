@@ -70,11 +70,15 @@ class AuditChainServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
+    // ShedLock compares lock_until (timestamp without time zone) in UTC; a tick that holds the
+    // lock right now keeps it
     jdbcTemplate.update(
         "INSERT INTO shedlock (name, lock_until, locked_at, locked_by)"
-            + " VALUES ('audit-chain', now() + interval '1 hour', now(), 'chain-test')"
+            + " VALUES ('audit-chain', timezone('utc', now()) + interval '1 hour',"
+            + " timezone('utc', now()), 'chain-test')"
             + " ON CONFLICT (name) DO UPDATE SET lock_until = EXCLUDED.lock_until,"
-            + " locked_at = EXCLUDED.locked_at, locked_by = EXCLUDED.locked_by");
+            + " locked_at = EXCLUDED.locked_at, locked_by = EXCLUDED.locked_by"
+            + " WHERE shedlock.lock_until <= timezone('utc', now())");
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Chain Test Org")).getId();
     clearChainOf(month);
@@ -82,7 +86,9 @@ class AuditChainServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    jdbcTemplate.update("UPDATE shedlock SET lock_until = locked_at WHERE name = 'audit-chain'");
+    jdbcTemplate.update(
+        "UPDATE shedlock SET lock_until = locked_at WHERE name = 'audit-chain'"
+            + " AND locked_by = 'chain-test'");
     clearChainOf(month);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
@@ -497,6 +503,35 @@ class AuditChainServiceIntegrationTest {
     } finally {
       jdbcTemplate.execute("DROP TABLE IF EXISTS " + partitionName(old));
       clearChainOf(old);
+    }
+  }
+
+  /**
+   * A month above the retention cutoff whose partition, checkpoints and seal are all gone is no
+   * retention case either: its seal entry still stands, so the month is broken, not merely gone.
+   */
+  @Test
+  void aMonthAboveTheRetentionCutoffWithOnlyItsSealEntryLeftIsBroken() {
+    YearMonth recent = YearMonth.now(ZoneOffset.UTC).minusMonths(20);
+    createOwnedPartition(recent);
+    try {
+      writeEntry("lib-recent", recent.atDay(10).atStartOfDay().toInstant(ZoneOffset.UTC));
+      assertThat(chainService.run().sealedMonths()).contains(recent);
+
+      jdbcTemplate.execute("DROP TABLE " + partitionName(recent));
+      jdbcTemplate.update(
+          "DELETE FROM audit_chain_checkpoints WHERE month = ?", Date.valueOf(recent.atDay(1)));
+      jdbcTemplate.update(
+          "DELETE FROM audit_chain_seals WHERE month = ?", Date.valueOf(recent.atDay(1)));
+
+      AuditChainReport report = chainService.verify(recent);
+      assertThat(report.status()).isEqualTo(Status.BROKEN);
+      assertThat(report.sealed()).isFalse();
+      assertThat(report.sealEventId()).isNotNull();
+      assertThat(report.deviation().kind()).isEqualTo(DeviationKind.INSERTED_OR_REMOVED);
+    } finally {
+      jdbcTemplate.execute("DROP TABLE IF EXISTS " + partitionName(recent));
+      clearChainOf(recent);
     }
   }
 

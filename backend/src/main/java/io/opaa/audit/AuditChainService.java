@@ -254,7 +254,8 @@ class AuditChainService {
           Deviation deviation = null;
           long count = chainedEntries;
           if (partition.isEmpty()) {
-            if (seal == null && checkpoints.isEmpty()) {
+            boolean nothingLeft = seal == null && checkpoints.isEmpty();
+            if (nothingLeft && (sealEvents.isEmpty() || !isAfter(monthEnd, lastCutoff()))) {
               return report(
                   month,
                   Status.NOT_RETAINED,
@@ -267,8 +268,8 @@ class AuditChainService {
                   algorithm,
                   null);
             }
-            // the partition is gone, but the retention would have taken checkpoints and seal with
-            // it
+            // the retention takes checkpoints and seal with the partition, and only months below
+            // its cutoff; anything else left behind, or a seal entry above the cutoff, is a break
             deviation =
                 new Deviation(
                     chainedEntries, DeviationKind.INSERTED_OR_REMOVED, monthStart, monthEnd);
@@ -580,6 +581,18 @@ class AuditChainService {
 
   private static Optional<Partition> partition(JdbcTemplate jdbc, YearMonth month) {
     return partitions(jdbc).stream().filter(p -> p.month().equals(month)).findFirst();
+  }
+
+  /** The cutoff below which the retention has removed partitions, {@code null} before any run. */
+  private Instant lastCutoff() {
+    Timestamp cutoff =
+        jdbc.queryForObject(
+            "SELECT last_cutoff FROM audit_retention_settings WHERE id = 1", Timestamp.class);
+    return cutoff == null ? null : cutoff.toInstant();
+  }
+
+  private static boolean isAfter(Instant instant, Instant cutoff) {
+    return cutoff == null || instant.isAfter(cutoff);
   }
 
   /** The {@code AUDIT_LOG_MONTH_SEALED} entries written for {@code month}, oldest first. */

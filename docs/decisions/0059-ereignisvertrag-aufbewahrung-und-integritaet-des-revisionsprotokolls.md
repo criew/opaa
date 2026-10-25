@@ -100,8 +100,10 @@ Kontrollpunkte fehlen; der Lauf lässt ihn liegen und meldet das im Log, die Pr�
 eigenes Feld (ADR-0055, Entscheidung 2). Beide Tabellen gehören `opaa_audit_owner`, das
 Anwendungskonto fügt an und liest; `opaa_audit_delete_expired_partitions()` entfernt mit einer
 Partition deren Kontrollpunkte und Siegel, der Siegel-Eintrag im späteren Monat bleibt. Ein Monat
-ohne Partition, von dessen Kette nichts mehr da ist, meldet `NOT_RETAINED`; fehlt die Partition,
-während Kontrollpunkte oder Siegel noch stehen, hat jemand sie außerhalb der Aufbewahrung
+ohne Partition, von dessen Kette nichts mehr da ist, meldet `NOT_RETAINED`, wenn er vor der
+Löschgrenze `audit_retention_settings.last_cutoff` liegt oder kein Siegel-Eintrag zu ihm existiert;
+fehlt die Partition, während Kontrollpunkte oder Siegel noch stehen, oder liegt der Monat an oder
+nach der Löschgrenze und sein Siegel-Eintrag steht noch, hat jemand sie außerhalb der Aufbewahrung
 gelöscht, und die Prüfung meldet `BROKEN`. Die Grenze bleibt ausgesprochen: Wer die Datenbank
 beherrscht, kann Einträge ändern und die Kette neu rechnen. Erkennbar wird das an dem Siegel, das
 die Datenbank verlassen hat, im Sicherheitsmonitoring oder in einem anderen System, das die

@@ -10,8 +10,10 @@ import java.util.UUID;
  * and how many lie above it, and, on a mismatch, the first segment that no longer fits. Carries no
  * content of the log.
  *
- * @param headHash the chain head as the last checkpoint stored it, hex; {@code null} without one
- * @param sealEventId the {@code AUDIT_LOG_MONTH_SEALED} entry of the seal; {@code null} unsealed
+ * @param headHash the chain head as the last checkpoint stored it, hex, SHA-256; for a sealed month
+ *     without a checkpoint (no entries) the hash of the seal; {@code null} without either
+ * @param sealEventId the {@code AUDIT_LOG_MONTH_SEALED} entry the seal was written with, or the one
+ *     left behind by a removed seal; {@code null} without either
  * @param deviation the first mismatch, {@code null} unless the status is {@link Status#BROKEN}
  */
 public record AuditChainReport(
@@ -27,15 +29,27 @@ public record AuditChainReport(
     Deviation deviation) {
 
   public enum Status {
-    /** Every checkpoint and, if present, the seal match the recomputed chain. */
+    /**
+     * Every checkpoint of the month and, if present, its seal and its seal entry match the
+     * recomputed chain.
+     */
     INTACT,
-    /** A checkpoint or the seal does not match; {@link #deviation} names the segment. */
+    /**
+     * A checkpoint, the seal or the seal entry does not match, or the partition of the month is
+     * gone while checkpoints, seal or a seal entry above the retention cutoff remain; {@link
+     * #deviation} names where.
+     */
     BROKEN,
-    /** No checkpoint yet; nothing to compare against. */
+    /** The month has no checkpoint yet; nothing to compare against. */
     UNCHAINED,
-    /** No partition holds this month: the retention removed it, or it was never created. */
+    /**
+     * No partition holds the month and nothing of its chain remains: the retention removed it, or
+     * it never existed.
+     */
     NOT_RETAINED,
-    /** The month was chained under a procedure this version does not know. */
+    /**
+     * The month was chained under a procedure this version does not know; nothing is recomputed.
+     */
     UNVERIFIABLE
   }
 
