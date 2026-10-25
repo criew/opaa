@@ -21,9 +21,7 @@ final class AuditPayloadPersons {
               AuditEventType.SPACE_CREATED,
               AuditEventType.SPACE_DELETED,
               AuditEventType.SPACE_ARCHIVED,
-              AuditEventType.ASSET_OWNER_CHANGED,
-              AuditEventType.ASSET_OWNERSHIP_CLAIMED,
-              AuditEventType.ASSET_SUCCESSION_OPENED));
+              AuditEventType.ASSET_OWNER_CHANGED));
 
   /** The target of a transfer of rights. */
   private static final PayloadKey TRANSFER_TARGET =

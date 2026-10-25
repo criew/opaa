@@ -66,7 +66,8 @@ nichts. `User.Read` für `GET /me` wird nicht verlangt; eine leere Anzeige ist z
 
 OneDrive nutzt `SharePointProperties` (`opaa.indexing.sharepoint.*`) mit, auch das tägliche
 Vollabgleich-Intervall; ein eigenes Präfix gibt es nicht. Adressen von Graph und Entra sind keine
-Einstellung; ein Test, der sie umlenkt, ersetzt die Konfigurations-Bean.
+Einstellung. Ein Test, der sie umlenkt, ersetzt die erzeugten Beans (`OneDriveTestSeam`);
+die Graph-Verbindungen des Testkontexts vertrauen dann nur dem Testdoppel.
 
 ## Konsequenzen
 

@@ -17,6 +17,8 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
 import io.opaa.architecture.MainClasses;
+import io.opaa.audit.AuditChainReport;
+import io.opaa.audit.AuditEventCatalog;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
@@ -26,6 +28,8 @@ import io.opaa.auth.UserService;
 import io.opaa.common.ValidationException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.time.Instant;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -90,7 +94,8 @@ class AuditControllerTest {
           "listConnectionLog",
           "requestAuditIncidentScope",
           "approveAuditIncidentScope",
-          "listAuditEventsByIncidentScope");
+          "listAuditEventsByIncidentScope",
+          "verifyAuditChain");
 
   private static final String TEST_ISSUER = "test-issuer";
   private static final String TEST_SUBJECT = "test-subject";
@@ -181,7 +186,45 @@ class AuditControllerTest {
                 .param("reason", REASON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.events[0].actorRef").value("pseud-1"))
-        .andExpect(jsonPath("$.events[0].objectId").value("lib-1"));
+        .andExpect(jsonPath("$.events[0].objectId").value("lib-1"))
+        .andExpect(
+            jsonPath("$.events[0].schemaVersion").value((int) AuditEventCatalog.SCHEMA_VERSION));
+  }
+
+  @Test
+  void verifyChainAsAuditorReturnsTheReportWithoutAnyEntry() throws Exception {
+    UUID sealEventId = UUID.randomUUID();
+    when(queryService.verifyChain(any(), any(), any(), any()))
+        .thenReturn(
+            new AuditChainReport(
+                YearMonth.of(2026, 9),
+                AuditChainReport.Status.BROKEN,
+                true,
+                4711,
+                0,
+                3,
+                "ab".repeat(32),
+                sealEventId,
+                "OPAA-AUDIT-CHAIN-1",
+                new AuditChainReport.Deviation(
+                    4000,
+                    AuditChainReport.DeviationKind.CHANGED,
+                    Instant.parse("2026-09-20T00:00:00Z"),
+                    Instant.parse("2026-09-25T00:00:00Z"))));
+
+    mockMvc
+        .perform(get("/api/v1/audit/chain/2026-09").with(asAuditor()).param("reason", REASON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.month").value("2026-09"))
+        .andExpect(jsonPath("$.status").value("BROKEN"))
+        .andExpect(jsonPath("$.sealed").value(true))
+        .andExpect(jsonPath("$.chainedEntries").value(4711))
+        .andExpect(jsonPath("$.checkpoints").value(3))
+        .andExpect(jsonPath("$.headHash").value("ab".repeat(32)))
+        .andExpect(jsonPath("$.sealEventId").value(sealEventId.toString()))
+        .andExpect(jsonPath("$.deviation.position").value(4000))
+        .andExpect(jsonPath("$.deviation.kind").value("CHANGED"))
+        .andExpect(jsonPath("$.deviation.segmentFrom").value("2026-09-20T00:00:00Z"));
   }
 
   /**

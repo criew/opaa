@@ -35,7 +35,7 @@ import org.springframework.data.domain.Persistable;
  * <p>{@code before}/{@code after} deliberately hold pre-serialized JSON text rather than a
  * structured type: the specification requires them "eng begrenzt auf das rechtlich Erhebliche", not
  * a full object dump, and what counts as relevant differs per {@link AuditEventType} - the calling
- * service, not this entity, decides what goes in.
+ * service decides what goes in, within the keys {@link AuditEventCatalog} lists for the type.
  *
  * <p>{@code actorRef} and {@code subjectRef} (when the subject is a {@link AuditSubjectKind#USER})
  * are pseudonym ids from {@link AuditActorPseudonym}, not user ids - the whole point of keeping
@@ -100,6 +100,12 @@ public class AuditLogEntry implements Persistable<UUID> {
   @Column(name = "correlation_ref")
   private String correlationRef;
 
+  /**
+   * {@link AuditEventCatalog#SCHEMA_VERSION} at writing; {@code null} on entries from before it.
+   */
+  @Column(name = "schema_version")
+  private Short schemaVersion;
+
   protected AuditLogEntry() {}
 
   private AuditLogEntry(
@@ -132,6 +138,7 @@ public class AuditLogEntry implements Persistable<UUID> {
     this.outcome = outcome;
     this.reason = reason;
     this.correlationRef = correlationRef;
+    this.schemaVersion = AuditEventCatalog.SCHEMA_VERSION;
   }
 
   /**
@@ -209,6 +216,12 @@ public class AuditLogEntry implements Persistable<UUID> {
    */
   void neutralizeObjectLabel(String neutralLabel) {
     this.objectLabel = neutralLabel;
+  }
+
+  /** Replaces the payload by its keys the event catalog lists, before writing. */
+  void replacePayload(String before, String after) {
+    this.before = before;
+    this.after = after;
   }
 
   /** Sets the moment of recording, once; an entry is never re-stamped. */
@@ -306,5 +319,9 @@ public class AuditLogEntry implements Persistable<UUID> {
 
   public String getCorrelationRef() {
     return correlationRef;
+  }
+
+  public Short getSchemaVersion() {
+    return schemaVersion;
   }
 }

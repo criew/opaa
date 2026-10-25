@@ -65,6 +65,50 @@ die Instanz dabei endete. Abgewiesene Versuche stehen nicht im Protokoll, nur in
 [Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken). Ändert die Systemverwaltung Notabschaltung oder
 Tagesgrenze, entsteht ebenfalls ein Eintrag.
 
+## Prüfsummenkette und Monatssiegel
+
+Das Revisionsprotokoll kann von der Anwendung nur angefügt und gelesen werden; eine Änderung mit
+direkten Datenbankrechten fiele allein dadurch nicht auf. Dafür trägt jeder Protokollmonat eine
+**Prüfsummenkette**: Ein Lauf alle zehn Minuten verkettet die Einträge in ihrer Reihenfolge und
+schreibt je Stapel einen Kontrollpunkt. Ist ein Monat zu Ende und vollständig verkettet, wird er
+**versiegelt**: Die Kopf-Prüfsumme steht mit der Anzahl der Einträge als Protokolleintrag
+`AUDIT_LOG_MONTH_SEALED` in dem Monat, in dem der Lauf siegelt, und geht, wenn die [Ausleitung an ein
+Sicherheitsmonitoring](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)
+eingeschaltet ist, mit der Prüfsumme als eigenem Feld dorthin. So liegt das Siegel außerhalb der
+Datenbank. Kontrollpunkte und Siegel liegen in Tabellen, die wie das Protokoll dem Wartungskonto
+gehören; eine abgelaufene Monatspartition nimmt bei ihrer Löschung ihre Kontrollpunkte und ihr
+Siegel mit.
+
+> **Beispiel.** Der Rechnungshof prüft 2029 eine Vergabe aus dem März 2027. Die Revisorin ruft
+> `GET /api/v1/audit/chain/2027-03?reason=Pruefung%20RH%202029` ab und erhält `INTACT`, die Zahl
+> der verketteten Einträge und die Kopf-Prüfsumme. Dieselbe Prüfsumme findet der Betrieb in der
+> Meldung `AUDIT_LOG_MONTH_SEALED` vom April 2027 im Sicherheitsmonitoring. Beides zusammen belegt,
+> dass der Monat seit seinem Abschluss unverändert ist, ohne dass jemand an die Datenbank muss.
+
+Die Prüfung läuft über die Rolle AUDITOR der Standardorganisation mit Anlass als Pflichtfeld, weil
+die Kette das Protokoll aller Organisationen umfasst, und wird wie jeder Zugriff auf Protokolldaten
+selbst protokolliert (`AUDIT_LOG_ACCESSED`, Abfrageweg `chain-verification`). Die Antwort nennt:
+
+| Feld | Bedeutung |
+|---|---|
+| `status` | `INTACT`: Kette passt zu jedem Kontrollpunkt, zum Siegel und zu dessen Eintrag `AUDIT_LOG_MONTH_SEALED`; `BROKEN`: eine Abweichung, auch wenn der Protokollmonat fehlt, obwohl Kontrollpunkte oder Siegel noch da sind, oder wenn Siegel und Siegel-Eintrag nicht zueinander passen oder eines von beiden fehlt; `UNCHAINED`: noch kein Kontrollpunkt, etwa für einen künftigen Monat; `NOT_RETAINED`: kein Protokollmonat mehr und nichts von seiner Kette, die Aufbewahrungsfrist hat ihn gelöscht (er liegt vor ihrer Löschgrenze) oder es gab ihn nie; ein Monat an oder nach der Löschgrenze, zu dem der Eintrag `AUDIT_LOG_MONTH_SEALED` noch steht, ist dagegen `BROKEN`; `UNVERIFIABLE`: der Monat wurde mit einem Verfahren verkettet, das diese Version nicht kennt |
+| `sealed`, `sealEventId` | ob der Monat versiegelt ist, und der Eintrag `AUDIT_LOG_MONTH_SEALED` dazu |
+| `chainedEntries`, `unchainedEntries` | Einträge bis zum Kettenkopf und Einträge darüber, die der nächste Lauf verkettet |
+| `headHash`, `algorithm` | Kopf-Prüfsumme (SHA-256, hexadezimal; bei einem versiegelten Monat ohne Einträge die des Siegels) und Verfahren der Kette |
+| `deviation` | bei `BROKEN` die erste Abweichung: `position` des Kontrollpunkts, `kind` `CHANGED` (ein Eintrag wurde geändert) oder `INSERTED_OR_REMOVED` (ein Eintrag fehlt oder kam hinzu) und das Zeitsegment `segmentFrom`/`segmentTo` zwischen den Kontrollpunkten |
+
+Ein Monat gilt als `BROKEN`, sobald ein Eintrag nachträglich in ihn geschrieben wurde, auch durch
+eine Wiederherstellung einer älteren Sicherung ohne die Kettentabellen. Ein Monat, zu dem ein
+Eintrag `AUDIT_LOG_MONTH_SEALED` existiert, wird nie ein zweites Mal versiegelt: Fehlt seine
+Siegelzeile, lässt der Lauf ihn liegen, meldet das im Log, und die Prüfung nennt ihn `BROKEN`. Die Grenzen eines Monats
+sind die seiner Partition in der Datenbank, nicht die der Zeitzone des Servers; ein Wechsel der
+Zeitzone ändert die Kette nicht. Kein Inhalt eines Eintrags
+verlässt dabei das Protokoll; wer gehandelt hat, klärt nur die Revision über ihre Abfragewege. Wie
+weit die Kette hinterherläuft, zeigen die Metriken `opaa_audit_chain_lag_seconds` und
+`opaa_audit_chain_unsealed_months` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+Was die Kette nicht leistet: Wer die Datenbank beherrscht, kann Einträge ändern und die Kette neu
+rechnen; erkennbar bleibt das nur an einem Siegel, das die Datenbank verlassen hat.
+
 ## Pseudonymisierung im Protokoll
 
 Das Revisionsprotokoll hält fest, wer was verwaltet hat, etwa Rechte vergeben, Einstellungen
@@ -73,6 +117,12 @@ gilt:
 
 - **Pseudonym ab dem Schreiben:** Im Protokoll steht statt eines Namens eine Kennung. Welche Person
   dazu gehört, liegt getrennt in einer eigenen Tabelle (`datenkatalog`, Eintrag `audit-pseudonyms`).
+- **Feste Angaben je Ereignisart:** Was ein Eintrag über den Stand vorher und nachher festhält,
+  legt ein Ereigniskatalog je Ereignisart fest, etwa bei einer geänderten Rolle in einem Space nur
+  die Rolle. Eine Angabe, die der Katalog nicht kennt, schreibt OPAA nicht ins Protokoll und meldet
+  sie im Log als Fehler. Welche Angaben je Ereignisart erlaubt sind, steht im Auszug für die
+  Personalvertretung. Jeder Eintrag trägt die Version des Katalogs, unter der er geschrieben ist,
+  und die Revision sieht sie bei jedem Eintrag; Einträge von vor dem Katalog tragen keine.
 - **Keine Suche nach Personen:** Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
   Vorgang ab, jeweils für einen begrenzten Zeitraum
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
@@ -226,7 +276,7 @@ Die Auskunft enthält:
 | Ausgehende Datenflüsse | jede Verbindung, die OPAA selbst aufbaut, und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
-| Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
+| Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
 | Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest
@@ -348,6 +398,8 @@ woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
   Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
+- Eine Ansicht des Kettenprüfergebnisses in der Oberfläche der Revision und ein zweiter Ort für die
+  Monatssiegel außer dem Sicherheitsmonitoring; bis dahin der Abruf über die Schnittstelle.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

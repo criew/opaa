@@ -27,7 +27,9 @@ class CefSyslogFormatterTest {
                 "KNOWLEDGE_LIBRARY",
                 "lib-1",
                 "Dienstanweisungen",
-                "SUCCESS"));
+                "SUCCESS",
+                AuditEventCatalog.SCHEMA_VERSION,
+                null));
 
     assertThat(message)
         .startsWith(
@@ -40,11 +42,12 @@ class CefSyslogFormatterTest {
         .contains("cs2=KNOWLEDGE_LIBRARY")
         .contains("cs3=lib-1")
         .contains("cs4=Dienstanweisungen")
+        .contains("cn1Label=schemaVersion cn1=" + AuditEventCatalog.SCHEMA_VERSION)
         .doesNotContain("\n");
   }
 
   @Test
-  void anObjectWithoutIdAndLabelLeavesBothOut() {
+  void anObjectWithoutIdAndLabelAndAnEntryWithoutSchemaVersionLeaveThemOut() {
     String message =
         formatter.format(
             new AuditExportEntry(
@@ -55,10 +58,41 @@ class CefSyslogFormatterTest {
                 "USER_ACCOUNT",
                 null,
                 null,
-                "DENIED"));
+                "DENIED",
+                null,
+                null));
 
-    assertThat(message).contains("|6|").doesNotContain("cs3").doesNotContain("cs4");
+    assertThat(message)
+        .contains("|6|")
+        .doesNotContain("cs3")
+        .doesNotContain("cs4")
+        .doesNotContain("cn1");
     assertThat(message).startsWith("<84>");
+  }
+
+  @Test
+  void theMonthSealTravelsAsItsOwnFields() {
+    String hash = "ab".repeat(32);
+    String message =
+        formatter.format(
+            new AuditExportEntry(
+                eventId,
+                recordedAt,
+                organizationId,
+                "AUDIT_LOG_MONTH_SEALED",
+                "AUDIT_LOG",
+                "2026-09",
+                null,
+                "SUCCESS",
+                AuditEventCatalog.SCHEMA_VERSION,
+                new AuditExportEntry.Seal("2026-09", 4711, hash)));
+
+    assertThat(message)
+        .contains("|AUDIT_LOG_MONTH_SEALED|")
+        .contains("cs5Label=sealMonth cs5=2026-09")
+        .contains("cs6Label=sealHash cs6=" + hash)
+        .contains("cn1Label=schemaVersion cn1=" + AuditEventCatalog.SCHEMA_VERSION)
+        .contains("cn2Label=sealedEntries cn2=4711");
   }
 
   @Test

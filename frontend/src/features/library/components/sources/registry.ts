@@ -5,6 +5,7 @@ import { dropboxSource } from './dropboxSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'
 import { googleDriveSource } from './googleDriveSource'
 import { nextcloudSource } from './nextcloudSource'
+import { oneDriveSource } from './oneDriveSource'
 import { s3Source } from './s3Source'
 import { sharePointSource } from './sharePointSource'
 import { smbSource } from './smbSource'
@@ -30,6 +31,7 @@ const registrations: Record<SourceTypeKey, SourceRegistration> = {
   S3: s3Source,
   GOOGLE_DRIVE: googleDriveSource,
   SHAREPOINT: sharePointSource,
+  ONEDRIVE: oneDriveSource,
   NEXTCLOUD: nextcloudSource,
   DROPBOX: dropboxSource,
   SMB: smbSource,

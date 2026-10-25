@@ -21,6 +21,8 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -188,31 +190,23 @@ class AuditQueryServiceIntegrationTest {
 
   /**
    * Space payloads no longer carry a visibility; entries written before keep it and are returned
-   * verbatim.
+   * verbatim. Such an entry predates the event catalog and is written past it, as it stands in the
+   * log.
    */
   @Test
   void aSpaceEntryWithTheFormerVisibilityInItsPayloadStaysReadable() {
     String before = "{\"changedFields\": [\"visibility\"], \"visibility\": \"PRIVATE\"}";
     String after = "{\"changedFields\": [\"visibility\"], \"visibility\": \"OPEN\"}";
-    AuditLogEntry entry =
-        auditLogService.record(
-            AuditLogEntry.withoutSubject(
-                organizationId,
-                ActorKind.USER,
-                "pseud-actor-space",
-                AuditEventType.SPACE_CHANGED,
-                AuditObjectType.SPACE,
-                "space-1",
-                "Team",
-                before,
-                after,
-                AuditOutcome.SUCCESS,
-                null,
-                null));
     jdbcTemplate.update(
-        "UPDATE audit_log SET recorded_at = ? WHERE event_id = ?",
+        "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
+            + " event_type, object_type, object_id, object_label, before, after, outcome)"
+            + " VALUES (?, ?, ?, 'USER', 'pseud-actor-space', 'SPACE_CHANGED', 'SPACE', 'space-1',"
+            + " 'Team', ?, ?, 'SUCCESS')",
+        UUID.randomUUID(),
         Timestamp.from(base),
-        entry.getEventId());
+        organizationId,
+        before,
+        after);
 
     Page<AuditLogEntry> result =
         queryService.byObject(
@@ -510,8 +504,8 @@ class AuditQueryServiceIntegrationTest {
     // A regression that removed every public method would make the loop below vacuously pass -
     // guard against that the same way AuditControllerTest guards its own method count.
     assertThat(publicMethods)
-        .as("AuditQueryService must still declare its five #393 access paths")
-        .hasSize(5);
+        .as("AuditQueryService must still declare its five #393 access paths and the chain check")
+        .hasSize(6);
 
     for (Method method : publicMethods) {
       for (Parameter parameter : method.getParameters()) {
@@ -905,6 +899,105 @@ class AuditQueryServiceIntegrationTest {
           "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
       userRepository.deleteById(otherAuditorId);
     }
+  }
+
+  /**
+   * The verification of the checksum chain goes through the same funnel as every read: it is open
+   * to the revision of the default organization only (ADR-0059, Entscheidung 5) because its counts
+   * cover every organization, it needs an Anlass, rejects a malformed month, and every attempt
+   * leaves one {@code AUDIT_LOG_ACCESSED} entry with the access path and the month.
+   */
+  @Test
+  void theChainVerificationIsOpenToTheDefaultOrganizationOnlyAndSelfLogsEveryAttempt() {
+    String reason = "Kettenprüfung " + UUID.randomUUID();
+    String month = YearMonth.now(ZoneOffset.UTC).minusMonths(1).toString();
+    Instant start = Instant.now().minusSeconds(1);
+    UUID installationAuditorId = createUserIn(Organization.DEFAULT_ID, SystemRole.AUDITOR);
+    UUID installationUserId = createUserIn(Organization.DEFAULT_ID, SystemRole.USER);
+    try {
+      assertThatThrownBy(() -> queryService.verifyChain(organizationId, auditorId, reason, month))
+          .as("an auditor of another organization")
+          .isInstanceOf(AccessDeniedException.class);
+      assertThatThrownBy(
+              () ->
+                  queryService.verifyChain(
+                      Organization.DEFAULT_ID, installationUserId, reason, month))
+          .as("a user without the role")
+          .isInstanceOf(AccessDeniedException.class);
+      assertThatThrownBy(
+              () ->
+                  queryService.verifyChain(
+                      Organization.DEFAULT_ID, installationAuditorId, " ", month))
+          .as("without an Anlass")
+          .isInstanceOf(ValidationException.class);
+      assertThatThrownBy(
+              () ->
+                  queryService.verifyChain(
+                      Organization.DEFAULT_ID, installationAuditorId, reason, "2026-13"))
+          .as("a malformed month")
+          .isInstanceOf(ValidationException.class);
+
+      AuditChainReport report =
+          queryService.verifyChain(Organization.DEFAULT_ID, installationAuditorId, reason, month);
+      assertThat(report.month()).isEqualTo(YearMonth.parse(month));
+
+      List<AuditLogEntry> ownOrganization = findAuditLogAccessedEntries();
+      assertThat(ownOrganization).hasSize(1);
+      assertThat(ownOrganization.getFirst().getOutcome()).isEqualTo(AuditOutcome.DENIED);
+      assertThat(ownOrganization.getFirst().getAfter())
+          .contains("\"accessPath\":\"chain-verification\"")
+          .contains("\"month\":\"" + month + "\"");
+
+      List<AuditLogEntry> installation = selfLogEntriesWithReason(reason);
+      assertThat(installation)
+          .extracting(AuditLogEntry::getOutcome)
+          .containsExactly(AuditOutcome.DENIED, AuditOutcome.DENIED, AuditOutcome.SUCCESS);
+      assertThat(installation)
+          .allSatisfy(
+              entry ->
+                  assertThat(entry.getAfter()).contains("\"accessPath\":\"chain-verification\""));
+      assertThat(installation.get(1).getAfter()).contains("\"month\":\"2026-13\"");
+      assertThat(chainVerificationEntriesOfTheInstallationSince(start))
+          .as("the attempt without an Anlass is logged too")
+          .hasSize(4)
+          .filteredOn(e -> e.getReason() == null || e.getReason().isBlank())
+          .singleElement()
+          .extracting(AuditLogEntry::getOutcome)
+          .isEqualTo(AuditOutcome.DENIED);
+    } finally {
+      jdbcTemplate.update(
+          "DELETE FROM audit_log WHERE organization_id = ? AND event_type = 'AUDIT_LOG_ACCESSED'"
+              + " AND recorded_at >= ? AND after LIKE '%chain-verification%'",
+          Organization.DEFAULT_ID, Timestamp.from(start));
+      userRepository.deleteById(installationAuditorId);
+      userRepository.deleteById(installationUserId);
+    }
+  }
+
+  private UUID createUserIn(UUID organization, SystemRole role) {
+    User user =
+        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+    user.setOrganizationId(organization);
+    user.setSystemRole(role);
+    return userRepository.save(user).getId();
+  }
+
+  private List<AuditLogEntry> chainVerificationEntriesOfTheInstallationSince(Instant start) {
+    return auditLogRepository.findAll().stream()
+        .filter(e -> e.getOrganizationId().equals(Organization.DEFAULT_ID))
+        .filter(e -> e.getEventType() == AuditEventType.AUDIT_LOG_ACCESSED)
+        .filter(e -> !e.getRecordedAt().isBefore(start))
+        .filter(e -> e.getAfter() != null && e.getAfter().contains("chain-verification"))
+        .toList();
+  }
+
+  private List<AuditLogEntry> selfLogEntriesWithReason(String reason) {
+    return auditLogRepository.findAll().stream()
+        .filter(e -> e.getOrganizationId().equals(Organization.DEFAULT_ID))
+        .filter(e -> e.getEventType() == AuditEventType.AUDIT_LOG_ACCESSED)
+        .filter(e -> reason.equals(e.getReason()))
+        .sorted(Comparator.comparing(AuditLogEntry::getRecordedAt))
+        .toList();
   }
 
   // Sorted by recordedAt (never actor, per #393) since findAll() itself makes no ordering

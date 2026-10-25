@@ -135,6 +135,48 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/audit/chain/{month}:
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: The month of the audit log to verify, as YYYY-MM.
+        schema:
+          type: string
+          pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          example: "2026-09"
+    get:
+      operationId: verifyAuditChain
+      tags: [audit]
+      summary: >
+        Verifies the checksum chain of one month of the audit log (AUDITOR role of the default
+        organization required, ADR-0059 Entscheidung 5).
+      description: >
+        Recomputes the chain of the month from the stored entries and compares it with every
+        checkpoint the chain run has written and, for a closed month, with the seal. A changed,
+        inserted or removed entry below the chain head breaks the comparison; the answer names the
+        first checkpoint that no longer matches and the time window it covers, never an entry.
+        Entries above the chain head are counted as not yet chained. The seal must match its
+        AUDIT_LOG_MONTH_SEALED entry, and a month whose partition is gone while checkpoints or seal
+        remain is broken too. The chain runs over the whole installation, not per organization, and
+        the answer names the counts of every organization, so only an AUDITOR of the default
+        organization may call it (403 otherwise); the answer carries no content of the log. A
+        mandatory reason, as on every other audit access path; every call writes an
+        AUDIT_LOG_ACCESSED entry, the rejected attempt included.
+      parameters:
+        - $ref: "#/components/parameters/AuditReason"
+      responses:
+        "200":
+          description: The result of the verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditChainVerification"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/audit/access-as-of:
     get:
       operationId: listAccessAsOf
@@ -552,6 +594,7 @@ components:
           DIRECTORY_ACCOUNT_UNLOCKED,
           GOVERNANCE_SETTINGS_CHANGED,
           AUDIT_LOG_CONFIGURATION_CHANGED,
+          AUDIT_LOG_MONTH_SEALED,
           PERMISSION_HISTORY_RETENTION_CHANGED,
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
@@ -699,6 +742,101 @@ components:
         correlationRef:
           type: string
           nullable: true
+        schemaVersion:
+          type: integer
+          nullable: true
+          description: >
+            The version of the event catalog the entry was written under, which fixes the keys
+            before and after may hold; null for an entry written before the catalog.
+
+    AuditChainStatus:
+      type: string
+      description: >
+        INTACT: every checkpoint of the month and, if present, its seal and its seal entry match
+        the recomputed chain. BROKEN: a checkpoint, the seal or the seal entry does not match, or
+        the partition of the month is gone while checkpoints or seal remain; deviation names where.
+        UNCHAINED: the month has no checkpoint yet, nothing to compare against. NOT_RETAINED: no
+        partition holds the month and nothing of its chain remains - the retention removed it
+        (the month lies below its cutoff), or it never existed; a month at or above the cutoff
+        whose seal entry still stands is BROKEN instead. UNVERIFIABLE: the month was chained under
+        a procedure this version does not know; nothing is recomputed.
+      enum: [INTACT, BROKEN, UNCHAINED, NOT_RETAINED, UNVERIFIABLE]
+      example: INTACT
+
+    AuditChainDeviationKind:
+      type: string
+      description: >
+        CHANGED: the entry at the checkpoint is the one the checkpoint names, but the hash differs,
+        so an entry of the segment was altered. INSERTED_OR_REMOVED: the entry at the checkpoint's
+        position is another one or missing, so an entry of the segment was inserted or removed.
+      enum: [CHANGED, INSERTED_OR_REMOVED]
+      example: CHANGED
+
+    AuditChainDeviation:
+      type: object
+      description: >
+        The first checkpoint of the month that no longer matches, roughly located: the segment
+        between the previous checkpoint (or the start of the month) and this one.
+      required: [position, kind, segmentFrom, segmentTo]
+      properties:
+        position:
+          type: integer
+          format: int64
+          description: Number of entries the failing checkpoint covers from the start of the month.
+        kind:
+          $ref: "#/components/schemas/AuditChainDeviationKind"
+        segmentFrom:
+          type: string
+          format: date-time
+          description: Start of the segment the deviation lies in.
+        segmentTo:
+          type: string
+          format: date-time
+          description: End of the segment the deviation lies in, as the checkpoint recorded it.
+
+    AuditChainVerification:
+      type: object
+      required: [month, status, sealed, chainedEntries, unchainedEntries, checkpoints, algorithm]
+      properties:
+        month:
+          type: string
+          description: The verified month, YYYY-MM.
+          example: "2026-09"
+        status:
+          $ref: "#/components/schemas/AuditChainStatus"
+        sealed:
+          type: boolean
+          description: Whether the month carries a seal; a sealed month accepts no further entries.
+        chainedEntries:
+          type: integer
+          format: int64
+          description: Entries the chain head covers, as the last checkpoint counted them.
+        unchainedEntries:
+          type: integer
+          format: int64
+          description: Entries of the month above the chain head, not yet covered by a checkpoint.
+        checkpoints:
+          type: integer
+          description: Number of checkpoints the chain run has written for the month.
+        headHash:
+          type: string
+          nullable: true
+          description: >
+            The chain head as the last checkpoint stored it, hex, SHA-256; for a sealed month
+            without a checkpoint (no entries) the hash of the seal.
+        sealEventId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The AUDIT_LOG_MONTH_SEALED entry the seal was written with.
+        algorithm:
+          type: string
+          description: The chain algorithm the checkpoints were computed with.
+          example: OPAA-AUDIT-CHAIN-1
+        deviation:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AuditChainDeviation"
 
     AccessAsOfObjectType:
       type: string

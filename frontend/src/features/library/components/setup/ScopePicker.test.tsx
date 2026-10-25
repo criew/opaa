@@ -121,4 +121,39 @@ describe('ScopePicker', () => {
     expect(await screen.findByText('Keine Spaces vorhanden.')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
+
+  describe('a listing that is not complete', () => {
+    const cut = 'Confluence hat die Auflistung begrenzt.'
+    const refusal = 'Das verbundene Microsoft-Konto darf sein OneDrive nicht lesen.'
+    const partial = (count: number, message: string | null) =>
+      source(async () => ({ entries: spaces(count), complete: false, message }))
+
+    it('says a cut list is incomplete, with the reason, above the checkboxes in the row', async () => {
+      renderWithProviders(<Harness src={partial(3, cut)} />)
+
+      expect(await screen.findByText(`Liste unvollständig. ${cut}`)).toBeInTheDocument()
+      expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+    })
+
+    it('says a cut list is incomplete, with the reason, above the link into the dialog', async () => {
+      renderWithProviders(<Harness src={partial(8, cut)} />)
+
+      expect(await screen.findByText(`Liste unvollständig. ${cut}`)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Spaces auswählen …' })).toBeInTheDocument()
+    })
+
+    it('names only the reason of a refused listing, with the link into the dialog', async () => {
+      renderWithProviders(<Harness src={partial(0, refusal)} />)
+
+      expect(await screen.findByText(refusal)).toBeInTheDocument()
+      expect(screen.queryByText(/Liste unvollständig/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Spaces auswählen …' })).toBeInTheDocument()
+    })
+
+    it('says a listing without entries and reason is incomplete', async () => {
+      renderWithProviders(<Harness src={partial(0, null)} />)
+
+      expect(await screen.findByText('Liste unvollständig.')).toBeInTheDocument()
+    })
+  })
 })

@@ -21,7 +21,7 @@ function initialProfiles(): ConnectionProfileResponse[] {
       createdAt: '2026-10-01T09:00:00Z',
       updatedAt: '2026-10-01T09:00:00Z',
     },
-    // the browser's mock mode also offers the profiles SharePoint and Dropbox libraries need;
+    // the browser's mock mode also offers the profiles SharePoint, OneDrive and Dropbox libraries need;
     // the tests keep the single profile their admin overview counts on
     ...(import.meta.env.MODE === 'test' ? [] : libraryOnlyProfiles()),
   ]
@@ -86,6 +86,26 @@ function libraryOnlyProfiles(): ConnectionProfileResponse[] {
       locked: false,
       createdAt: '2026-10-02T09:00:00Z',
       updatedAt: '2026-10-02T09:00:00Z',
+    },
+    {
+      // for persons only: OneDrive runs solely as the private library of a connected account
+      id: 'connection-profile-onedrive',
+      name: 'Microsoft 365 Rheinfurt',
+      sourceType: 'ONEDRIVE',
+      serverUrl: 'https://graph.microsoft.com',
+      authMethod: 'OAUTH',
+      ownership: 'PERSON',
+      clientSecretSet: true,
+      clientSecretExpiresSoon: false,
+      signInRejected: false,
+      connectorSettings: null,
+      connectionCount: 1,
+      connectedAccountCount: { count: null, fewerThan: 5 },
+      expiredConnectionCount: { count: null, fewerThan: 5 },
+      expiredConnectionWarning: false,
+      locked: false,
+      createdAt: '2026-10-20T09:00:00Z',
+      updatedAt: '2026-10-20T09:00:00Z',
     },
     {
       id: 'connection-profile-dropbox-library',

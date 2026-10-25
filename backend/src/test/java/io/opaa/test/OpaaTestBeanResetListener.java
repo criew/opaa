@@ -3,6 +3,7 @@ package io.opaa.test;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.connection.token.GrantRevocations;
 import io.opaa.instance.PostgresInvalidationBus;
+import io.opaa.msgraph.FakeGraphServer;
 import java.time.Duration;
 import org.awaitility.Awaitility;
 import org.mockito.Mockito;
@@ -13,9 +14,10 @@ import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
 /**
- * Restores the stateful beans of {@link OpaaTestBeans} before every test method, so stubbing and
- * scripted directory responses never leak between the classes sharing one context. Runs before
- * JUnit's own {@code @BeforeEach}, so a class's own setup still applies afterwards.
+ * Restores the stateful beans of {@link OpaaTestBeans} and the shared {@link FakeGraphServer}
+ * before every test method, so stubbing, scripted directory responses and arranged drives never
+ * leak between the classes sharing one context. Runs before JUnit's own {@code @BeforeEach}, so a
+ * class's own setup still applies afterwards.
  *
  * <p>The Mockito spies {@link OpaaIntegrationTest} declares need no entry here - Spring's own
  * {@code MockitoResetTestExecutionListener} resets every {@code @MockitoSpyBean}. Listeners are
@@ -42,6 +44,7 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
         .awaitDelivery(BUS_DELIVERY_TIMEOUT);
     Mockito.reset(testContext.getApplicationContext().getBean(ChatModel.class));
     testContext.getApplicationContext().getBean(FakeDirectoryClient.class).reset();
+    FakeGraphServer.resetShared();
     if (testContext.getApplicationContext().getBean(EmbeddingModel.class)
         instanceof FakeEmbeddingModel embeddingModel) {
       embeddingModel.reset();

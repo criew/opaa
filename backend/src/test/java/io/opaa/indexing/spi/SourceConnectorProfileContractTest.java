@@ -10,6 +10,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
+import io.opaa.msgraph.FakeGraphServer;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
@@ -199,10 +200,12 @@ class SourceConnectorProfileContractTest {
                         assertThat(auth.revocation()).isInstanceOf(Revocation.None.class);
                       });
             });
+    // the suite points OneDrive at the shared fake (OneDriveTestSeam); the shipped address is
+    // guarded by SharePointConnectorConfigurationTest
     softly
         .assertThat(oneDrive.address().fixed())
         .as("ONEDRIVE")
-        .isEqualTo("https://graph.microsoft.com");
+        .isEqualTo(FakeGraphServer.shared().origin().toString());
     softly.assertThat(oneDrive.defaults().keys()).as("ONEDRIVE").isEmpty();
     for (String type : List.of("UPLOAD", "FILESYSTEM")) {
       softly.assertThat(declared.get(type).support()).as(type).isEqualTo(FORBIDDEN);

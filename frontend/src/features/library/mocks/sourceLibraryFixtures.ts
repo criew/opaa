@@ -51,6 +51,7 @@ export const SOURCE_LIBRARY_IDS = {
   S3: 'library-s3-protokolle',
   GOOGLE_DRIVE: 'library-gdrive-projekte',
   DROPBOX: 'library-dropbox-projekte',
+  ONEDRIVE: 'library-onedrive-vorlagen',
 } as const
 
 export function sourceLibraryDetails(): LibraryResponse[] {
@@ -168,6 +169,37 @@ export function sourceLibraryDetails(): LibraryResponse[] {
         expiresAt: null,
       },
       sourceSettings: { folders: ['/Projekte', '/Satzungen'], teamSpace: false },
+    },
+    {
+      // a private library on the caller's connected Microsoft account, the only way OneDrive runs
+      ...base(
+        SOURCE_LIBRARY_IDS.ONEDRIVE,
+        'Meine Vorlagen',
+        'Ordner aus dem eigenen OneDrive',
+        'ONEDRIVE',
+      ),
+      reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+      privateLibrary: true,
+      diagnosticsLocked: true,
+      diagnosticsLockToggleable: false,
+      sourceUrl: 'https://graph.microsoft.com',
+      connectionProfile: {
+        id: 'connection-profile-onedrive',
+        name: 'Microsoft 365 Rheinfurt',
+        serverUrl: 'https://graph.microsoft.com',
+        authMethod: 'OAUTH',
+        connectorDefaults: null,
+      },
+      sourceSettings: {
+        drive: {
+          driveId: 'b!onedriveMaier',
+          name: 'OneDrive',
+          folders: [
+            { id: '01VORLAGEN', name: 'Vorlagen' },
+            { id: '01PROJEKTE2026', name: 'Projekte / 2026' },
+          ],
+        },
+      },
     },
   ]
 }

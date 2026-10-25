@@ -231,11 +231,7 @@ class AuditIncidentScopeServiceIntegrationTest {
         "{\"name\":\"Team\",\"ownerId\":\"" + subjectRef + "\"}",
         at);
     writeAuditEntry(
-        requester,
-        AuditEventType.SPACE_DELETED,
-        "{\"ownerId\":\"" + subject + "\"}",
-        null,
-        at);
+        requester, AuditEventType.SPACE_DELETED, "{\"ownerId\":\"" + subject + "\"}", null, at);
 
     AuditIncidentScopeGrant grant =
         incidentScopeService.request(

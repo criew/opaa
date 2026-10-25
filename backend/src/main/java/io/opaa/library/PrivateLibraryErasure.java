@@ -7,6 +7,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.asset.AssetShellService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditPayloadKeys;
 import io.opaa.auth.CurrentUser;
 import io.opaa.connection.PrivateLibraryConnections;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -31,8 +32,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,10 +53,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * the marker staying for the next call. Repeatable: a library already gone is {@link
  * Outcome#ERASED}. Logs and proof name ids only, never a name or path; the proof tells of each kind
  * of content only whether there was any ({@link #NONE}/{@link #PRESENT}), the checks of what is
- * left stay exact.
+ * left stay exact. The proof's key of each reference holder it names for the event catalog itself
+ * ({@link AuditPayloadKeys}).
  */
 @Service
-public class PrivateLibraryErasure {
+public class PrivateLibraryErasure implements AuditPayloadKeys {
 
   static final String DELETION_RUN_ACTOR = "private-library-deletion";
 
@@ -250,6 +254,20 @@ public class PrivateLibraryErasure {
     requireNothingLeft(erased, jobIds);
     events.publishEvent(new PrivateLibraryErased(organizationId, libraryId, owner));
     return Outcome.ERASED;
+  }
+
+  @Override
+  public AuditEventType eventType() {
+    return AuditEventType.PRIVATE_LIBRARY_ERASED;
+  }
+
+  /** The count key of every reference holder the proof names, as {@link #eraseMarked} writes. */
+  @Override
+  public Set<String> keys() {
+    return references.stream()
+        .filter(ErasedLibraryReferences::inProof)
+        .map(ErasedLibraryReferences::countKey)
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   private void recordProof(KnowledgeLibrary library, UUID actorUserId, Map<String, Object> counts) {

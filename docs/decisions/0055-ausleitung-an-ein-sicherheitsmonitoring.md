@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -27,7 +27,8 @@ Schnitt des Protokolls („Zugriff verändert oder Verwaltungshandeln“) auch f
 ### 2. Ohne Pseudonyme, als Vorgabe ohne Namen
 
 Je Eintrag gehen Ereignisart, Zeitpunkt, Ergebnis, Organisation sowie Art und Kennung des
-betroffenen Objekts hinaus, nie das Pseudonym der handelnden oder betroffenen Person, nie
+betroffenen Objekts hinaus, dazu die Version des Ereigniskatalogs (`schema_version`), unter der er
+geschrieben ist, nie das Pseudonym der handelnden oder betroffenen Person, nie
 Begründung, Nutzlast oder Vorgangskennung. Den Namen des Objekts sendet OPAA nur mit
 `opaa.siem-export.include-labels` (datenwirksam, aus), weil Namen von Spaces und Gruppen oft Personen
 nennen. Gehört das Objekt genau einer Person, fehlen Kennung und Name immer: Konto und Zugangstoken
@@ -35,6 +36,13 @@ an ihrer Art; persönlicher Bereich, private Bibliothek und privater Prompt am E
 Module über den Port `PersonalAuditObjects` melden. Dieser Port setzt schon beim Schreiben
 (`AuditLogService#record`) die neutrale Bezeichnung (`AuditNeutralLabels`), gleich was der Schreiber
 übergibt; die Ausleitung maskiert danach im SQL und fragt den Port für jeden Stapel noch einmal. Fragen zu einer Person klärt die Behörde über die anlassbezogene Klärung in OPAA.
+
+Die eine Nutzlast, die hinausgeht, ist das Monatssiegel der Prüfsummenkette
+([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md),
+Entscheidung 4): Mit dem Eintrag `AUDIT_LOG_MONTH_SEALED` gehen Monat, Anzahl der verketteten
+Einträge und Kopf-Prüfsumme als eigene CEF-Felder (`cs5`, `cn2`, `cs6`) hinaus, gelesen aus
+`audit_chain_seals` über die Kennung des Eintrags, nicht aus `after`. So liegt das Siegel außerhalb
+der Datenbank, ohne dass die Ausleitung eine Nutzlastspalte liest.
 
 Einen Weg zur Person gibt es dennoch: Manche Zeilen des Anwendungslogs nennen die Kennung eines
 Kontos, etwa bei einer Kontosperre; liegen Log und Ausleitung im selben SIEM, lassen sie sich über
@@ -44,9 +52,10 @@ Klärung, Speicherfrist im SIEM).
 ### 3. Vollständiges Lesen nur, wenn eingeschaltet
 
 `SiemExportService` liest `audit_log` der Reihe nach, mit genau den Spalten aus Entscheidung 2. Es ist
-neben den Abfragewegen der Revision und der Selbstauskunft der einzige Leser, existiert nur bei
-`opaa.siem-export.enabled=true`, wird nur vom Zeitplan aufgerufen und nennt in seinem SQL keine
-Spalte mit Personenbezug, Begründung oder Nutzlast (`AuditLogReaderStructureTest`). Gelesen wird über
+neben den Abfragewegen der Revision, der Selbstauskunft und der Prüfsummenkette (ADR-0059,
+Entscheidung 4) der einzige Leser, existiert nur bei `opaa.siem-export.enabled=true`, wird nur vom
+Zeitplan aufgerufen und nennt in seinem SQL keine Spalte mit Personenbezug, Begründung oder Nutzlast
+(`AuditLogReaderStructureTest`). Gelesen wird über
 den Index `(recorded_at, event_id)` und nur ab der Position, sodass ältere Monatspartitionen außen
 vor bleiben. Die
 Zugriffsregel steht im Handbuch, im Faktenblatt `datenfluesse` und in der Vorlage der
@@ -56,7 +65,10 @@ Dienstvereinbarung.
 
 Je Eintrag eine Nachricht nach RFC 5424 mit einem CEF-Körper, über TCP mit Längenpräfix (RFC 6587),
 als Vorgabe mit TLS (RFC 5425), Vertrauensspeicher der JVM und Prüfung des Hostnamens
-(`CefSyslogFormatter`, `SyslogSender`). Die Kennung des Eintrags steht in `externalId`. Nach der letzten
+(`CefSyslogFormatter`, `SyslogSender`). Die Kennung des Eintrags steht in `externalId`, die Version
+des Ereigniskatalogs als Zahlenfeld `cn1` mit `cn1Label=schemaVersion`; ein Eintrag von vor dem
+Katalog trägt keine, das Feld fehlt dann. So liest ein Empfänger Ereignisart und Version als
+Vertrag, auch wenn er keine Nutzlast erhält. Nach der letzten
 Meldung schließt OPAA die Sendeseite und wartet kurz auf das Verbindungsende des Empfängers. Ein
 Empfänger, der die Verbindung schon verloren hat, lässt die Zustellung dort meist scheitern; hat er
 sie gleich nach dem Annehmen geschlossen, kann sie dennoch als gelungen gelten. Eine
@@ -71,9 +83,9 @@ bedingtem `UPDATE`; ein ausgefallener Empfänger bekommt dieselben Einträge sp�
 mit wachsendem Abstand bis zehn Minuten. Ein Lauf alle 30 Sekunden unter der Sperre `siem-export` auf
 einem eigenen Scheduler (ADR-0053, Entscheidung 7). Gesendet wird nur, was vor dem Beginn der ältesten
 noch offenen Transaktion einer Client-Sitzung der Datenbank liegt (`pg_stat_activity.xact_start`,
-`backend_type = 'client backend'`), gelesen in einer eigenen Anweisung vor den Einträgen:
-`recorded_at` entsteht in der Transaktion des Eintrags, ein noch nicht sichtbarer Eintrag liegt also
-nie davor. Die Datenquelle muss der Primär sein, kein Replikat.
+`backend_type = 'client backend'`), gelesen in einer eigenen Anweisung vor den Einträgen
+(`AuditSettledLimit`, dieselbe Grenze nutzt die Prüfsummenkette): `recorded_at` entsteht in der
+Transaktion des Eintrags, ein noch nicht sichtbarer Eintrag liegt also nie davor. Die Datenquelle muss der Primär sein, kein Replikat.
 `opaa.siem-export.settle-delay` ist nur ein kleiner Puffer gegen Sprünge der Uhr. Startet eine Instanz
 mit abgeschalteter Ausleitung, merkt sie das an der Position an (`disabled_at`); wieder eingeschaltet
 beginnt die Ausleitung neu.

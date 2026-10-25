@@ -199,14 +199,17 @@ public final class InstanceDisclosureRenderer {
         "Die Beschreibung des Revisionsprotokolls, nicht sein Inhalt: keine Protokollsätze, keine"
             + " Namen, keine Pseudonymkennungen.\n\n");
     out.append("### Ereignisarten\n\n");
-    out.append("| Ereignisart | Auslöser | Zweck |\n");
-    out.append("|---|---|---|\n");
+    out.append("| Ereignisart | Auslöser | Zweck | ")
+        .append(FactSheetRenderer.PAYLOAD_KEYS_LABEL)
+        .append(" |\n");
+    out.append("|---|---|---|---|\n");
     for (AuditEventEntry event : events) {
       row(
           out,
           FactSheetRenderer.code(event.id()),
           FactSheetRenderer.text(event.trigger()),
-          FactSheetRenderer.text(event.purpose()));
+          FactSheetRenderer.text(event.purpose()),
+          FactSheetRenderer.payloadKeys(event));
     }
     out.append("\n### Felder des Protokollsatzes\n\n");
     out.append("| Feld | Granularität | Zweck | Frist |\n");

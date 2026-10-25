@@ -49,6 +49,8 @@ function initialOverview(): ConnectedAccountsOverview {
         reconnectedAt: '2026-09-01T08:00:00Z',
         usedBy: [],
       },
+      // the browser's mock mode also holds the Microsoft account a OneDrive library runs on
+      ...(import.meta.env.MODE === 'test' ? [] : [oneDriveAccount()]),
     ],
     connectable: [
       {
@@ -70,6 +72,26 @@ function initialOverview(): ConnectedAccountsOverview {
       responsible: 'Systemverwaltung',
       text: 'Zugänge für verbundene Konten legt die Systemverwaltung an und gibt sie frei. Fehlt Ihnen ein Zugang, wenden Sie sich an die Systemverwaltung.',
     },
+  }
+}
+
+/** The connected Microsoft account of the mock caller, owner of the mock OneDrive (ADR-0058). */
+function oneDriveAccount(): ConnectedAccount {
+  return {
+    profileId: 'connection-profile-onedrive',
+    profileName: 'Microsoft 365 Rheinfurt',
+    sourceType: 'ONEDRIVE',
+    authMethod: 'OAUTH',
+    secretForm: null,
+    state: 'CONNECTED',
+    accountLabel: 'anna.maier@rheinfurt.example',
+    released: true,
+    reconnectable: true,
+    notice: null,
+    responsible: null,
+    connectedAt: '2026-10-20T08:00:00Z',
+    reconnectedAt: null,
+    usedBy: [{ id: 'library-onedrive-vorlagen', name: 'Meine Vorlagen' }],
   }
 }
 

@@ -261,6 +261,7 @@ for (const detail of import.meta.env.MODE === 'test' ? [] : sourceLibraryDetails
     reach: detail.reach,
     myRole: detail.myRole,
     sourceType: detail.sourceType,
+    ...(detail.privateLibrary ? { privateLibrary: true } : {}),
     lastIndexedAt: SOURCE_LIBRARY_LAST_INDEXED,
     documentCount: detail.documentCount ?? 0,
     createdAt: detail.createdAt,
@@ -538,6 +539,26 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
+    type: 'ONEDRIVE',
+    displayName: 'OneDrive',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: true,
+    profileSupport: 'REQUIRED',
+    profileRequired: true,
+    // the first type with no sign-in for libraries: only a person's connected account reads it
+    signIns: [
+      { method: 'OAUTH', ownerships: ['PERSON'], defaultScopes: 'Files.Read offline_access' },
+    ],
+    profileDefaults: [],
+    serverAddress: { schemes: [], fixed: 'https://graph.microsoft.com' },
+    creatable: true,
+    creatableWithOwnAddress: false,
+    locked: false,
+    fullSyncIntervalDefaultDays: 1,
+  },
+  {
     type: 'RSS_FEED',
     displayName: 'RSS-Feed',
     indexingRun: true,
@@ -739,3 +760,32 @@ export const mockSharePointSites: MockSharePointSite[] = [
     drives: [{ id: 'b!onedriveMaier', name: 'OneDrive', driveType: 'business', folders: [] }],
   },
 ]
+
+/** A folder of the mock OneDrive, with the folders below it. */
+export interface MockOneDriveFolder {
+  id: string
+  name: string
+  children: MockOneDriveFolder[]
+}
+
+/**
+ * The OneDrive for Business of the mock caller's connected Microsoft account (ADR-0058) - the
+ * one `me/drive` names. A library naming another drive belongs to another account.
+ */
+export const mockOwnOneDrive = {
+  id: 'b!onedriveMaier',
+  name: 'OneDrive',
+  owner: 'anna.maier@rheinfurt.example',
+  folders: [
+    { id: '01VORLAGEN', name: 'Vorlagen', children: [] },
+    {
+      id: '01PROJEKTE',
+      name: 'Projekte',
+      children: [
+        { id: '01PROJEKTE2025', name: '2025', children: [] },
+        { id: '01PROJEKTE2026', name: '2026', children: [] },
+      ],
+    },
+    { id: '01NOTIZEN', name: 'Notizen', children: [] },
+  ] satisfies MockOneDriveFolder[],
+}

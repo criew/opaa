@@ -1,0 +1,7 @@
+# Loaded after classpath:/application.yml for every Spring context of the test suite, whatever
+# profiles a test activates (oidc, test, dev or none).
+opaa:
+  audit:
+    payload:
+      # A payload key the event catalog does not list fails the test instead of being dropped.
+      reject-unlisted: true
