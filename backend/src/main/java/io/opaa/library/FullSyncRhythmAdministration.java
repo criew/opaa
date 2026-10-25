@@ -74,7 +74,8 @@ public class FullSyncRhythmAdministration {
   }
 
   /**
-   * Sets the rhythm of {@code typeKey}; {@code null} returns to the factory default.
+   * Sets the rhythm of {@code typeKey}; {@code null} returns to the factory default. A call that
+   * changes nothing writes neither the setting nor an audit event.
    *
    * @throws NotFoundException for a type that is not registered or has no full-sync rhythm
    * @throws ValidationException for days outside the admissible range
@@ -87,6 +88,9 @@ public class FullSyncRhythmAdministration {
       throw new ValidationException(OUT_OF_RANGE);
     }
     Rhythm before = current(descriptor);
+    if (unchanged(before, days)) {
+      return before;
+    }
     rhythm.setDays(descriptor.type(), days);
     Rhythm after = current(descriptor);
     auditEventRecorder.recordUserAction(
@@ -116,6 +120,15 @@ public class FullSyncRhythmAdministration {
         .map(connector -> connector.descriptor())
         .filter(descriptor -> descriptor.fullSyncInterval() != null)
         .orElseThrow(() -> new NotFoundException(UNKNOWN));
+  }
+
+  /**
+   * Whether setting {@code days} would leave {@code current} as it is; such a call writes nothing.
+   */
+  private static boolean unchanged(Rhythm current, Integer days) {
+    return days == null
+        ? !current.overridden()
+        : current.overridden() && current.intervalDays() == days;
   }
 
   private Rhythm current(SourceConnectorDescriptor descriptor) {

@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.compliance.InstanceDisclosure.StoredValue;
+import io.opaa.compliance.InstanceStateSource;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +39,10 @@ class FullSyncRhythmIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired
+  @Qualifier("fullSyncRhythmInstanceState")
+  private InstanceStateSource instanceState;
 
   @BeforeEach
   void provisionCallers() throws Exception {
@@ -105,6 +112,48 @@ class FullSyncRhythmIntegrationTest {
     assertThat(json(events.get(1), "after"))
         .containsEntry("intervalDays", 1)
         .containsEntry("overridden", false);
+  }
+
+  /** Saving the value in force again, or resetting a type that has none, changes nothing. */
+  @Test
+  void aCallThatChangesNothingWritesNoAuditEvent() throws Exception {
+    mockMvc
+        .perform(put("/api/v1/admin/full-sync-rhythms/DROPBOX").with(devAdmin()).content("{}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.overridden").value(false));
+    assertThat(auditEvents()).isZero();
+
+    for (int i = 0; i < 2; i++) {
+      mockMvc
+          .perform(
+              put("/api/v1/admin/full-sync-rhythms/DROPBOX")
+                  .with(devAdmin())
+                  .content("{\"intervalDays\":7}"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.overridden").value(true));
+    }
+    assertThat(auditEvents()).isEqualTo(1);
+  }
+
+  /** The disclosure answers the value in force per type, with the time of a change of its own. */
+  @Test
+  void theDisclosureNamesTheValueInForce() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/admin/full-sync-rhythms/ONEDRIVE")
+                .with(devAdmin())
+                .content("{\"intervalDays\":5}"))
+        .andExpect(status().isOk());
+
+    Map<String, StoredValue> stored = instanceState.storedSettings();
+    assertThat(stored.get("full_sync_rhythm_settings.interval_days[ONEDRIVE]"))
+        .satisfies(
+            value -> {
+              assertThat(value.value()).isEqualTo("5");
+              assertThat(value.changedAt()).isNotNull();
+            });
+    assertThat(stored.get("full_sync_rhythm_settings.interval_days[SHAREPOINT]"))
+        .isEqualTo(new StoredValue("1", null));
   }
 
   @Test
