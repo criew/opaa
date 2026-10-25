@@ -76,7 +76,7 @@ mime4j = "0.8.15"
 # spring-ai-tika-document-reader's tika-parser-pdf-module; declared explicitly because this module now
 # reads the PDF catalog (bookmarks) and page text directly through org.apache.pdfbox rather than only
 # through Tika's own extraction. Version pinned to what that transitive dependency resolves to today
-# (`./gradlew dependencies`).
+# (`./gradlew dependencies`). Also writes the PDF export of a chat (io.opaa.chat.ChatPdfRenderer).
 pdfbox = "3.0.8"
 # opaa-api's tests are deliberately Spring-free and use plain JUnit Jupiter/AssertJ
 # instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore

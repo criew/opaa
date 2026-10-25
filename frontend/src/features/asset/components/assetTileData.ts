@@ -70,35 +70,51 @@ export function responsibleParty(source: {
   return { label: source.ownerLabel ?? (group ? 'eine Gruppe' : 'eine Person'), group }
 }
 
+/**
+ * Why a source is not reached, in one word group - the catalog tile's note and the state in the
+ * library's head say the same.
+ */
+export function sourceBlockWord(reason: SourceBlock['reason']): string {
+  switch (reason) {
+    case 'TYPE_LOCKED':
+    case 'PROFILE_LOCKED':
+    case 'PROFILE_REQUIRED':
+      return 'Gesperrt'
+    case 'ACCESS_REMOVED':
+      return 'Zugang entfernt'
+    case 'TARGET_OUTSIDE_PROFILE':
+      return 'Adresse außerhalb des Zugangs'
+    case 'NOT_CONNECTED':
+      return 'Verbindung getrennt'
+    case 'EXPIRED':
+      return 'Anmeldung abgelaufen'
+    case 'DORMANT':
+      return 'Ruhend'
+    case 'OWNER_DEACTIVATED':
+      return 'Konto deaktiviert'
+    default: {
+      const unknown: never = reason
+      throw new Error(`Unknown source block reason ${String(unknown)}`)
+    }
+  }
+}
+
 /** The short form of a source block for a tile; the library's source tab carries the whole notice. */
 export function sourceBlockNote(block: SourceBlock): string {
-  const short = (() => {
+  const word = sourceBlockWord(block.reason)
+  const consequence = (() => {
     switch (block.reason) {
-      case 'TYPE_LOCKED':
-      case 'PROFILE_LOCKED':
-      case 'PROFILE_REQUIRED':
-        return 'Gesperrt – Inhalt wird nicht mehr aktualisiert'
-      case 'ACCESS_REMOVED':
-        return 'Zugang entfernt – Inhalt wird nicht mehr aktualisiert'
-      case 'TARGET_OUTSIDE_PROFILE':
-        return 'Adresse außerhalb des Zugangs – Inhalt wird nicht mehr aktualisiert'
-      case 'NOT_CONNECTED':
-        return 'Verbindung getrennt – Inhalt wird nicht mehr aktualisiert'
-      case 'EXPIRED':
-        return 'Anmeldung abgelaufen – Inhalt wird nicht mehr aktualisiert'
       case 'DORMANT':
-        return 'Ruhend – Inhalt wird nicht aktualisiert'
+        return 'Inhalt wird nicht aktualisiert'
       case 'OWNER_DEACTIVATED':
         return block.contentDeletedOn
-          ? `Konto deaktiviert – Inhalt wird ab dem ${formatCalendarDay(block.contentDeletedOn)} gelöscht`
-          : 'Konto deaktiviert – Inhalt wird nach Ablauf der Löschfrist gelöscht'
-      default: {
-        const unknown: never = block.reason
-        throw new Error(`Unknown source block reason ${String(unknown)}`)
-      }
+          ? `Inhalt wird ab dem ${formatCalendarDay(block.contentDeletedOn)} gelöscht`
+          : 'Inhalt wird nach Ablauf der Löschfrist gelöscht'
+      default:
+        return 'Inhalt wird nicht mehr aktualisiert'
     }
   })()
-  return `${short} (zuständig: ${block.responsible})`
+  return `${word} – ${consequence} (zuständig: ${block.responsible})`
 }
 
 /** The tile of a catalog entry - the fullest a tile gets. */

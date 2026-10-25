@@ -9,18 +9,6 @@ export const PRIVATE_LIBRARY_ERASURE_CONSEQUENCE =
   'Beim Anbieter bleiben Ihre Dateien unverändert.\n\n' +
   'Das lässt sich nicht rückgängig machen – auch nicht durch die Systemverwaltung.'
 
-/** The state of a library marked for erasure, on its detail page. */
-export const PRIVATE_LIBRARY_ERASING_NOTE =
-  'Die Bibliothek wird nicht mehr aktualisiert, und ihre Dokumente lassen sich nicht mehr öffnen. ' +
-  'Läuft noch eine Indexierung, endet sie beim nächsten Zugriff auf die Quelle; danach schließt die Löschung von selbst ab.'
-
-/**
- * The run end QUOTA_EXHAUSTED in a few words, as the run list shows it. It names no quota: a private
- * library may have hit its own as well as its owner's, and the run protocol says which per file.
- */
-export const QUOTA_EXHAUSTED_LABEL =
-  'unvollständig: Speicherkontingent erschöpft, Dateien übersprungen'
-
 /**
  * What frees space once a private library's run ended at a quota - either its own or the one its
  * owner's private libraries share. The run skips what does not fit and still reconciles, so

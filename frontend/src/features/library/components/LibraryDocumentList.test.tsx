@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Breadcrumbs from '@mui/material/Breadcrumbs'
 import Typography from '@mui/material/Typography'
@@ -74,13 +75,11 @@ describe('LibraryDocumentList (#1943)', () => {
     expect(container).toBeTruthy()
   })
 
-  it('shows a folder as not selectable rather than hiding the column', () => {
+  it('gives a folder row no checkbox, so only documents are selectable', () => {
     renderList()
 
-    const folderCheckbox = screen.getByRole('checkbox', {
-      name: 'Ordner Protokolle ist nicht auswählbar',
-    })
-    expect(folderCheckbox).toBeDisabled()
+    expect(screen.getByText('Protokolle')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /Protokolle/ })).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Dokument vermerk.pdf auswählen' })).toBeEnabled()
   })
 
@@ -119,39 +118,52 @@ describe('LibraryDocumentList (#1943)', () => {
       confluenceSpaces: [{ key: 'SOZ', name: 'Soziales' }],
     })
 
-    expect(screen.getByText('Space: Soziales (SOZ) · Handbuch / Kapitel 3')).toBeInTheDocument()
+    // the origin stands in the name's tooltip, under the file name
+    expect(screen.getByText('vermerk.pdf')).toHaveAttribute(
+      'title',
+      'vermerk.pdf\nSpace: Soziales · Handbuch / Kapitel 3',
+    )
   })
 
-  // regression guard for #2912: a source address from third-party metadata only becomes a link
-  // target with an http(s) scheme; any other address stays visible as plain text.
+  // regression guard for #2912: a source address from third-party metadata never becomes a link
+  // target unless it has an http(s) scheme; the list shows any address as plain tooltip text.
   describe('source addresses', () => {
     it.each([
-      ['sourceEntryUrl', 'Herkunft:', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='],
-      ['sourceEntryUrl', 'Herkunft:', 'javascript:alert(1)'],
-      ['sourceUrl', 'Quelle:', 'data:text/html,<script>alert(1)</script>'],
-      ['sourceUrl', 'Quelle:', 'JaVaScRiPt:alert(1)'],
-    ] as const)(
-      'shows a %s (%s) with the address %j as text, not as a link',
-      (field, label, url) => {
-        renderList({ documents: [{ ...document, sourceType: 'RSS_FEED', [field]: url }] })
+      ['sourceEntryUrl', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='],
+      ['sourceEntryUrl', 'javascript:alert(1)'],
+      ['sourceUrl', 'data:text/html,<script>alert(1)</script>'],
+      ['sourceUrl', 'JaVaScRiPt:alert(1)'],
+    ] as const)('shows a %s with the address %j as text, not as a link', (field, url) => {
+      const { container } = renderList({
+        documents: [{ ...document, sourceType: 'RSS_FEED', [field]: url }],
+      })
 
-        expect(screen.getByText(url)).toBeInTheDocument()
-        expect(screen.getByText(url).closest('a')).toBeNull()
-        expect(screen.getByText(new RegExp(`^${label}`))).toBeInTheDocument()
-        expect(screen.queryAllByRole('link').filter((a) => a.textContent === url)).toEqual([])
-      },
-    )
+      expect(screen.getByText('vermerk.pdf')).toHaveAttribute('title', `vermerk.pdf\n${url}`)
+      expect(screen.queryAllByRole('link').filter((a) => a.textContent === url)).toEqual([])
+      const hrefs = Array.from(container.querySelectorAll('[href]')).map((el) =>
+        (el.getAttribute('href') ?? '').trim().toLowerCase(),
+      )
+      expect(
+        hrefs.filter((href) => href.startsWith('javascript:') || href.startsWith('data:')),
+      ).toEqual([])
+    })
 
     it.each([
       ['sourceEntryUrl', 'https://example.gov/feed/eintrag-7'],
       ['sourceUrl', 'https://example.gov/verzeichnis/doc.pdf'],
-    ] as const)('keeps a %s with an https address as a link', (field, url) => {
-      renderList({ documents: [{ ...document, sourceType: 'RSS_FEED', [field]: url }] })
+    ] as const)(
+      'names a %s with an https address in the tooltip and opens it via „Original öffnen“',
+      async (field, url) => {
+        const onOpenOriginal = vi.fn()
+        const doc = { ...document, sourceType: 'RSS_FEED' as const, [field]: url }
+        renderList({ documents: [doc], onOpenOriginal })
 
-      const link = screen.getByRole('link', { name: url })
-      expect(link).toHaveAttribute('href', url)
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
-    })
+        expect(screen.getByText('vermerk.pdf')).toHaveAttribute('title', `vermerk.pdf\n${url}`)
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Original von vermerk.pdf öffnen' }),
+        )
+        expect(onOpenOriginal).toHaveBeenCalledWith(doc)
+      },
+    )
   })
 })

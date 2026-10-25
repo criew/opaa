@@ -481,7 +481,8 @@ export default function LibraryCreatePage() {
         await triggerIndexing(libraryId, sourceType)
       }
       forgetConsentIntent()
-      navigate(`/libraries/${libraryId}`)
+      // the detail page shows its next steps after this handover
+      navigate(`/libraries/${libraryId}?justCreated=1`)
     } catch (err) {
       if (apiErrorCode(err) === 'PENDING_CONNECTION_UNUSABLE') {
         // expired or used up: back to „Quelle einrichten“, where the source is connected again

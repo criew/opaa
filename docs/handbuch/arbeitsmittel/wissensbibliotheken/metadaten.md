@@ -67,9 +67,9 @@ machen, und die leistet die Volltextsuche über den Kopfblock im Chunk-Text ohne
 
 Kernfelder und Formatfelder sind fest eingebaut. Darüber hinaus definiert **jede Bibliothek bis zu
 fünf eigene Felder** — „Fassung", „Rechtsebene", „Aktenzeichen" —, verwaltet auf der Detailseite
-der Bibliothek im Reiter **„Metadaten"**, Abschnitt **„Metadatenfelder"**, mit dem
-Verwaltungsrecht (MANAGER). Im selben Reiter steht darunter die **modellgestützte Extraktion**
-(Abschnitt 5).
+der Bibliothek im Reiter **„Metadaten"**, Abschnitt **„Felder"** („Feld anlegen", je Feld
+„Ändern"), mit dem Verwaltungsrecht (MANAGER). Im selben Reiter stehen darunter die Zeilen
+**„Kontextpräfix"** und **„Extraktion"** (Abschnitt 5), jede mit „Ändern".
 
 | Typ | Wert | Filter |
 |---|---|---|
@@ -267,15 +267,17 @@ nachgezogen, ohne neu zu zerlegen oder neu einzubetten. Der Titel steht nur am D
 ### 5.3 Modellgestützte Ermittlung und freie Schlagworte
 
 Zwei Schalter je Bibliothek, **beide voreingestellt aus**, im Reiter **„Metadaten"** der
-Bibliothek unter **„Modellgestützte Extraktion"** (Verwaltungsrecht). Sie sind der einzige Teil
+Bibliothek hinter der Zeile **„Extraktion"** mit „Ändern" (Verwaltungsrecht); die Zeile nennt
+den Stand beider Schalter, etwa „Modellgestützt aus · Freie Schlagworte aus". Sie sind der einzige Teil
 der Ermittlung, der Geld kostet, ausfallen kann und Dokumentinhalte an ein Sprachmodell übergibt.
 
 > **Datenschutz.** Wird die aktive Chat-Rolle extern betrieben, verlässt mit eingeschaltetem
 > Schalter **der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus** — anders als im Chat,
-> ohne dass eine Person den Vorgang auslöst. Der Hinweis am Schalter benennt das und zeigt die
-> Adresse und Modell-Kennung der aktiven Chat-Rolle (nie einen Zugangsschlüssel). Liegt die Rolle
-> auf einem lokal betriebenen Modell, läuft die Ermittlung ohne ausgehende Verbindung; der Hinweis
-> sagt auch das.
+> ohne dass eine Person den Vorgang auslöst. Wer einen Schalter einschaltet, wird deshalb vorher
+> gefragt („Extraktion einschalten?"), mit dem Ziel, an das die Inhalte gehen. Adresse und
+> Modell-Kennung der aktiven Chat-Rolle (nie einen Zugangsschlüssel) nennen die „Technischen
+> Angaben" der Zeile. Liegt die Rolle auf einem lokal betriebenen Modell, läuft die Ermittlung ohne
+> ausgehende Verbindung, und die Frage entfällt.
 
 **Modellgestützte Ermittlung.** Läuft nach der regelbasierten Ermittlung und nur für Felder, die
 diese leer gelassen hat — und nur für die unscharfen: Dokumentart und die Auswahlfelder der
@@ -310,7 +312,7 @@ nächsten Bestandslauf erneut angefasst.
 
 **Zählwerk.** Je Bibliothek werden Aufrufe, übernommene Werte, wegen Konfidenz und wegen Werteliste
 verworfene Werte, Fehler, nicht angefragte Dokumente und vergebene Schlagworte geführt — sichtbar
-im Reiter „Metadaten" der Bibliothek und auf der Seite „Suche & Indexierung". Ohne diese Zahlen ist die einzige Rückmeldung über die
+im Reiter „Metadaten" der Bibliothek unter „Technische Angaben" der Zeile „Extraktion" und auf der Seite „Suche & Indexierung". Ohne diese Zahlen ist die einzige Rückmeldung über die
 Kosten die Rechnung des Modellanbieters. Verworfene Werte werden zusätzlich mit ihrer Konfidenz
 protokolliert (je Bibliothek die 1.000 jüngsten), damit die Schwelle an einem echten Bestand
 bewertbar bleibt.
@@ -328,9 +330,11 @@ unverändert. Was sie nicht tun:
 
 ### 5.4 Extraktionsgüte
 
-Im Reiter „Metadaten" der Bibliothek steht neben den Schaltern die **Extraktionsgüte**: je Feld,
-wie viele der indizierten Dokumente ihren Wert regelbasiert, modellbefüllt oder von Hand tragen, wie viele als
-„kein Wert ermittelbar" gekennzeichnet und wie viele leer sind. Sie beantwortet die Frage, die ein
+Im Reiter „Metadaten" der Bibliothek steht oben der Abschnitt **„Füllgrad"**: je Feld, wie viele
+der indizierten Dokumente einen Wert tragen („2 von 3 gefüllt (67 %)"), und bei Lücken „Anzeigen",
+das genau die Dokumente ohne Wert im Reiter „Dokumente" öffnet (Abschnitt 7.1). Fährt man über die
+Zeile, nennt sie die **Extraktionsgüte**: wie viele Werte regelbasiert, modellbefüllt oder von Hand
+stammen und wie viele als „kein Wert ermittelbar" gekennzeichnet sind. Sie beantwortet die Frage, die ein
 Suchergebnis allein nicht beantwortet: ob ein schwacher Filter am Filter liegt oder an der
 Ermittlung. Die Zahlen werden bei jeder Abfrage gezählt, im Rechtekontext der fragenden Person.
 
@@ -414,9 +418,9 @@ Für Konnektorbibliotheken gilt dasselbe; der Wert hängt am Dokument, nicht an 
 
 ### 7.1 Der Pflege-Anker
 
-Im Reiter **„Dokumente"** einer Bibliothek steht über der Dokumentliste der Abschnitt
-**„Metadaten-Pflege"**: je Feld „N Dokumente ohne Wert (x %)" oder „vollständig gepflegt", mit
-einer Schaltfläche, die genau diese Dokumente in der Liste darunter öffnet. Gezählt werden nur leere
+Der Abschnitt **„Füllgrad"** im Reiter „Metadaten" (Abschnitt 5.4) nennt je Feld, wie viele
+Dokumente einen Wert tragen. „Anzeigen" öffnet im Reiter „Dokumente" genau die Dokumente ohne
+Wert; dieselbe Auswahl bietet dort der Filter „Metadaten" („ohne …"). Gezählt werden nur leere
 Felder; „kein Wert ermittelbar" zählt nicht mit, deshalb kann die Zahl null erreichen. Die Liste
 „ohne Wert für Feld X" führt Anhänge als eigene Zeilen und enthält kein Dokument mit Wert, damit
 „alle auswählen" plus Sammelzuweisung keinen gepflegten Wert überschreibt.
@@ -586,7 +590,7 @@ abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; a
   gespeicherter Filter und ein mitgeschickter Filter (Chat, Suchschnittstelle, MCP, Diagnose) ändern
   das Ergebnis nicht.
 - **Keine Oberfläche, keine Läufe.** Der Bereich „Metadaten" der Bibliothek, Metadatenansicht,
-  „Feld setzen" und Pflege-Anker der Dokumentliste sowie die Metadaten-Spalten der
+  „Feld setzen" und der Filter „Metadaten" der Dokumentliste sowie die Metadaten-Spalten der
   Suchverwaltung entfallen. Bestandslauf, Kontextpräfix-Nachlauf und Schemaänderungen laufen nicht;
   ihre Schnittstellen antworten wie eine unbekannte Adresse.
 - **Nichts wird gelöscht.** Vorhandene Werte, Felder, Schlagworte und gespeicherte Filter bleiben

@@ -136,20 +136,10 @@ describe('the source registry (ADR-0038)', () => {
       expect(oneDrive.nameFromSource(oneDrive.empty)).toBe('')
     })
 
-    it('runs in two modes and warns about the OneDrive the last run could not list', () => {
+    it('runs in two modes and names no scope note', () => {
       const configuration = configurationOf('ONEDRIVE')
       expect(configuration.fullSyncRhythm).toBe(true)
       expect(configuration.scopeNoteId).toBeUndefined()
-      expect(configuration.scopeHero?.summary(library)).toBe('2 Ordner')
-      expect(
-        configuration.scopeHero?.summary({
-          ...library,
-          sourceSettings: { drive: { driveId: 'b!a' } },
-        }),
-      ).toBe('Alle Ordner')
-      expect(configuration.scopeHero?.unlistedWarning(['drive:b!onedriveMaier'], library)).toMatch(
-        /^Der letzte Lauf konnte das OneDrive nicht erreichen/,
-      )
     })
   })
 
@@ -174,14 +164,6 @@ describe('the source registry (ADR-0038)', () => {
         sourceSettings: library.sourceSettings,
       })
       expect(sharePoint.nameFromSource(values)).toBe('')
-    })
-
-    it('names an unreachable document library of the last run by its name', () => {
-      const hero = sourceRegistration('SHAREPOINT')?.configuration?.scopeHero
-      expect(hero?.summary(library)).toBe('2 Dokumentbibliotheken')
-      expect(hero?.unlistedWarning(['drive:b!b', 'drive:b!unbekannt'], library)).toMatch(
-        /^Der letzte Lauf konnte die Dokumentbibliotheken „Satzungen \(Rathaus\)“, „drive:b!unbekannt“ nicht erreichen/,
-      )
     })
   })
 

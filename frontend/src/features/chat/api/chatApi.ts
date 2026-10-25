@@ -191,3 +191,39 @@ export async function deleteChatNoteItem(chatId: string, itemId: string): Promis
     normalizeError(err)
   }
 }
+
+const CHAT_PDF_EXPORT_FAILED = 'Der Chat konnte nicht als PDF exportiert werden.'
+
+/** The German message of an ErrorResponse inside a blob body, `null` for anything else. */
+async function blobErrorMessage(body: unknown): Promise<string | null> {
+  if (!(body instanceof Blob)) return null
+  try {
+    const parsed: unknown = JSON.parse(await body.text())
+    return isErrorResponse(parsed) ? parsed.error : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The error a failed PDF export reports. With `responseType: 'blob'` a refusal arrives as a blob
+ * too; its German message is read from it, anything unreadable becomes one generic message.
+ * Separate from {@link exportChatPdf} because a blob response body hangs against msw/node in the
+ * jsdom tests, so the mapping is tested with a constructed error instead.
+ */
+export async function chatPdfExportError(err: unknown): Promise<Error> {
+  const message = axios.isAxiosError(err) ? await blobErrorMessage(err.response?.data) : null
+  return new Error(message ?? CHAT_PDF_EXPORT_FAILED, { cause: err })
+}
+
+/** The chat as a PDF, built by the server; a refusal as {@link chatPdfExportError}. */
+export async function exportChatPdf(chatId: string): Promise<Blob> {
+  try {
+    const { data } = await client.get<Blob>(`/v1/chats/${chatId}/export/pdf`, {
+      responseType: 'blob',
+    })
+    return data
+  } catch (err) {
+    throw await chatPdfExportError(err)
+  }
+}

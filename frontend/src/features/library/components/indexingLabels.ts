@@ -20,7 +20,7 @@ export function documentStatusLabel(status: DocumentStatus | string | undefined)
 // protocol - matches io.opaa.indexing.job.IndexingEventCategory's own Javadoc one-to-one.
 const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> = {
   REJECTED: 'Abgewiesen',
-  UNREACHABLE: 'Nicht erreichbar',
+  UNREACHABLE: 'Nicht abrufbar',
   UNSUPPORTED_FORMAT: 'Format nicht unterstützt',
   ALLOWLIST: 'Allowlist',
   ERROR: 'Fehler',
@@ -76,4 +76,11 @@ export function indexingRunEventCategoryLabel(
 ): string {
   if (!category) return ''
   return indexingRunEventCategoryLabels[category as IndexingRunEventCategory] ?? category
+}
+
+/** The state words of a document, capitalised like the states of runs and of the library. */
+export const DOCUMENT_STATUS_WORDS: Record<DocumentStatus, string> = {
+  INDEXED: 'Indiziert',
+  PENDING: 'Wird verarbeitet',
+  FAILED: 'Fehlgeschlagen',
 }
