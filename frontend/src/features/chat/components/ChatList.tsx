@@ -592,7 +592,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
             </MenuItem>
             <MenuItem
               aria-label={
-                menuChat ? `Chat „${chatTitle(menuChat)}“ als Markdown exportieren` : undefined
+                menuChat ? `Exportieren als Markdown: Chat „${chatTitle(menuChat)}“` : undefined
               }
               onClick={() => {
                 setMenuAnchor(null)
@@ -606,7 +606,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
             </MenuItem>
             <MenuItem
               aria-label={
-                menuChat ? `Chat „${chatTitle(menuChat)}“ als PDF exportieren` : undefined
+                menuChat ? `Exportieren als PDF: Chat „${chatTitle(menuChat)}“` : undefined
               }
               onClick={() => {
                 setMenuAnchor(null)
