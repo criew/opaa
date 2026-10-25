@@ -28,7 +28,7 @@ export const ALL_TYPES = [
 export const EXTRA_TYPES = ['privat', 'upload-leser', 'confluence-leser', 'nextcloud-leser']
 export const DEFAULT_SCENARIOS = ['small', 'scale', 'failed', 'empty', 'partial', 'slow']
 export const QUICK_SCENARIOS = ['small', 'scale']
-export const AREAS = ['dokumente', 'quelle', 'laeufe', 'metadaten', 'freigaben', 'zuordnungen', 'upload']
+export const AREAS = ['dokumente', 'quelle', 'laeufe', 'metadaten', 'freigaben', 'zuordnungen', 'upload', 'abschluss']
 
 const LIBRARIES = {
   upload: 'library-upload-rundschreiben',
@@ -77,10 +77,12 @@ export function setup({ out }) {
 
 const TABS = { dokumente: null, quelle: 'quelle', laeufe: 'quelle', metadaten: 'metadaten', freigaben: 'freigaben', zuordnungen: 'zuordnungen' }
 
-async function open(page, ctx, job, tab) {
+async function open(page, ctx, job, tab, justCreated = false) {
   const { id, role } = resolve(job.type)
   const query = new URLSearchParams({ mockScenario: job.scenario, mockRole: role })
   if (tab) query.set('tab', tab)
+  // the visit right after the wizard: the next steps (variants that show them)
+  if (justCreated) query.set('justCreated', '1')
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.goto(`${ctx.base}/libraries/${id}?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
     await page.waitForSelector('main, [role=main]', { timeout: 15000 }).catch(() => {})
@@ -145,6 +147,16 @@ export async function run(page, job, ctx) {
         }
         await input.setInputFiles(uploadFiles).catch((e) => ctx.log('  upload', String(e).split('\n')[0]))
         await settle(page, 1200)
+        await rest(page)
+        await ctx.shoot(area)
+        continue
+      }
+      if (area === 'abschluss') {
+        await open(page, ctx, job, null, true)
+        if (!(await page.locator('[data-testid=next-steps]').count())) {
+          ctx.notFound(area, 'no next steps (reader or variant without them)')
+          continue
+        }
         await rest(page)
         await ctx.shoot(area)
         continue
