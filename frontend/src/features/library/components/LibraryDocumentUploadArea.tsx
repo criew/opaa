@@ -32,6 +32,7 @@ export function UploadToolbarActions({
     <Stack
       direction="row"
       spacing={2}
+      useFlexGap
       sx={{ alignItems: 'center', flexWrap: 'wrap', '& .MuiButton-text': { px: 0, minWidth: 0 } }}
     >
       {compact && (

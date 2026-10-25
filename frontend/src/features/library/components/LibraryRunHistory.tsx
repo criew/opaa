@@ -101,12 +101,14 @@ function resultLabel(run: IndexingRunResponse, live: LiveProgress | null): strin
 
 /** A place with one separator between its levels, „ / “, whatever the source wrote. */
 function normalizedPlace(place: string): string {
-  const leading = place.trim().startsWith('/') ? '/' : ''
-  const parts = place
+  // a URL is shown from its host on; the scheme is no level of the place
+  const body = place.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
+  const leading = body.startsWith('/') ? '/' : ''
+  const parts = body
     .split(/\s*›\s*|\s*\/\s*/)
     .map((part) => part.trim())
     .filter(Boolean)
-  return parts.length > 1 ? leading + parts.join(' / ') : place.trim()
+  return parts.length > 1 ? leading + parts.join(' / ') : body
 }
 
 /**

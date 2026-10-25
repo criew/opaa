@@ -18,7 +18,7 @@ import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
-import { FavoriteToggle, PrivateLockMark, PublicMark, TypeBadge } from './assetMarks'
+import { FavoriteToggle, PrivateMark, PublicMark, TypeBadge } from './assetMarks'
 import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import { spreadLabel } from './assetTileData'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
@@ -332,7 +332,7 @@ export default function AssetDetailHeader({
           sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
         >
           {definition && <TypeBadge definition={definition} />}
-          {isPrivate && <PrivateLockMark />}
+          {isPrivate && <PrivateMark />}
           {isPublic && <PublicMark />}
           {badges}
           {administrative && <MetaBadge>administrativ</MetaBadge>}
