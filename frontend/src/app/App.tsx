@@ -135,7 +135,7 @@ function SpaceSettingsRedirect() {
  * The static UI-lab prototype is served as plain files from any path, without a server that
  * answers every route with index.html; the route therefore lives in the hash there.
  */
-const Router = import.meta.env.VITE_UI_LAB_PROTOTYPE ? HashRouter : BrowserRouter
+const Router = import.meta.env.MODE === 'prototype' ? HashRouter : BrowserRouter
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)

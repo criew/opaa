@@ -20,7 +20,7 @@ async function enableMocking(): Promise<boolean> {
   if (!import.meta.env.VITE_ENABLE_MOCKS) {
     return true
   }
-  if (import.meta.env.VITE_UI_LAB_PROTOTYPE) {
+  if (import.meta.env.MODE === 'prototype') {
     const { startPrototype } = await import('./mocks/prototype/startPrototype')
     return startPrototype()
   }

@@ -12,6 +12,10 @@ VITE_ENABLE_MOCKS=true pnpm run dev     # Dev-Server mit MSW-Mocks
 # wechseln mit http://localhost:5173/?devUser=dev-user
 ```
 
+`pnpm run build:prototype` baut dasselbe Frontend mit Mocks als statischen, klickbaren Prototyp
+ohne Service Worker und ohne Server (Hash-Routing, relative Pfade), siehe
+[Klickbarer Prototyp](../../e2e/ui-lab/README.md#klickbarer-prototyp).
+
 **Mock-Szenarien.** `?mockScenario=default|small|scale|empty|slow|failed|partial` an einer
 beliebigen URL wählt den Fixture-Satz, z. B. viele Einträge mit langen Namen (`scale`), leere
 (`empty`), langsame (3 s) oder fehlschlagende Antworten; die Wahl bleibt für den Tab bestehen,

@@ -24,7 +24,6 @@ export default defineConfig(({ mode }) => ({
     __OPAA_VERSION__: JSON.stringify(resolveOpaaVersion(process.env.OPAA_VERSION)),
     ...(mode === 'prototype' && {
       'import.meta.env.VITE_ENABLE_MOCKS': JSON.stringify('true'),
-      'import.meta.env.VITE_UI_LAB_PROTOTYPE': JSON.stringify('true'),
     }),
   },
   build: {

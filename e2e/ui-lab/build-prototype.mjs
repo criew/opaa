@@ -3,6 +3,7 @@
 // ui-lab/out/prototype/ and writes files.json: every file with its size, split into upload
 // batches of at most 55 MB and 240 files for a static host such as a claude.ai artifact.
 // Usage (from e2e/): node ui-lab/build-prototype.mjs [--skip-build] [--out <dir>]
+// --out takes a directory, which is deleted and recreated; default ui-lab/out/prototype/.
 import { execFileSync } from 'node:child_process'
 import {
   cpSync,
@@ -25,6 +26,10 @@ const here = dirname(fileURLToPath(import.meta.url))
 const frontend = resolve(here, '../../frontend')
 const args = process.argv.slice(2)
 const outIndex = args.indexOf('--out')
+if (outIndex >= 0 && !args[outIndex + 1]) {
+  console.error('--out needs a directory')
+  process.exit(1)
+}
 const out = outIndex >= 0 ? resolve(args[outIndex + 1]) : join(here, 'out', 'prototype')
 
 if (!args.includes('--skip-build')) {

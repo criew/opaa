@@ -8,7 +8,7 @@ export const PROTOTYPE_TITLE = 'OPAA-Prototyp'
  * escaped the character itself (`\ä`, an identity escape) is dropped, as `ä` already is one.
  */
 export function escapeNonAsciiJs(code: string): string {
-  return code.replace(/(\\*)([\u0080-￿])/g, (_, slashes: string, char: string) => {
+  return code.replace(/(\\*)([\u0080-\uffff])/g, (_, slashes: string, char: string) => {
     const kept = slashes.length % 2 === 1 ? slashes.slice(1) : slashes
     return `${kept}\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`
   })

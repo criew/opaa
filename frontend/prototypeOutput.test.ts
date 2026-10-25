@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { escapeNonAsciiJs } from './prototypeOutput'
+import { escapeNonAsciiJs, PROTOTYPE_TITLE, prototypeOutput } from './prototypeOutput'
 
 // Evaluates a JavaScript expression the way the browser would read the escaped chunk.
 const evaluate = (code: string): unknown => new Function(`return ${code}`)()
@@ -17,5 +17,15 @@ describe('escapeNonAsciiJs', () => {
     const escaped = escapeNonAsciiJs(source)
     expect(escaped).not.toMatch(/[^\t\n\r\x20-\x7e]/)
     expect(evaluate(escaped)).toEqual(evaluate(source))
+  })
+})
+
+describe('prototypeOutput', () => {
+  it('replaces the page title', () => {
+    const transform = prototypeOutput().transformIndexHtml as (html: string) => string
+    expect(transform('<head><title>OPAA</title></head>')).toBe(
+      `<head><title>${PROTOTYPE_TITLE}</title></head>`,
+    )
+    expect(PROTOTYPE_TITLE).toBe('OPAA-Prototyp')
   })
 })
