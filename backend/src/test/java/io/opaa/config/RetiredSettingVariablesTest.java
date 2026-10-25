@@ -44,7 +44,23 @@ class RetiredSettingVariablesTest {
             "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES",
             "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS",
             "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
-            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD");
+            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
+            "opaa.connection.inactivity-threshold-days",
+            "opaa.connection.private-library-deletion-days",
+            "opaa.connection.expired-connections.warning-threshold");
+  }
+
+  /** A property file or a system property naming the old key is found as well. */
+  @Test
+  void aRetiredPropertyNameIsNamedWithItsNewPlace() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("opaa.connection.inactivity-threshold-days", "120");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "opaa.connection.inactivity-threshold-days is no longer read; set the inactivity"
+                + " threshold of the connections under Administration > Anbindungen >"
+                + " Einstellungen");
   }
 
   @Test

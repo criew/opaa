@@ -284,6 +284,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getPrivateStorageSummary",
             "listFullSyncRhythms",
             "getOutboundProxy",
+            "getConnectionLifecycleSettings",
             "listMyCapabilities",
             "listMyConnectedAccounts",
             "listOwnDiagnosticContextEvents",

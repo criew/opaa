@@ -132,6 +132,53 @@ describe('ConnectionLifecycleSection', () => {
     )
   })
 
+  it('warns that private libraries go earlier than before when the period gets shorter', async () => {
+    serve([inactivity, { ...deletion, value: 60 }, warning])
+    saveCapture()
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionLifecycleSection />)
+
+    const field = await screen.findByLabelText('Löschfrist privater Bibliotheken in Tagen')
+    await user.clear(field)
+    await user.type(field, '7')
+    await user.click(
+      screen.getByRole('button', { name: 'Löschfrist privater Bibliotheken speichern' }),
+    )
+    expect(
+      await screen.findByRole('dialog', { name: 'Löschfrist privater Bibliotheken auf 7 ändern?' }),
+    ).toHaveTextContent(/früher als bisher/)
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Löschfrist privater Bibliotheken auf die Werkseinstellung zurücksetzen',
+      }),
+    )
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Löschfrist privater Bibliotheken auf die Werkseinstellung von 30 zurücksetzen?',
+      }),
+    ).toHaveTextContent(/früher als bisher/)
+  })
+
+  it('does not warn of an earlier erasure when the period gets longer', async () => {
+    serve([inactivity, deletion, warning])
+    saveCapture()
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionLifecycleSection />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Löschfrist privater Bibliotheken auf die Werkseinstellung zurücksetzen',
+      }),
+    )
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Löschfrist privater Bibliotheken auf die Werkseinstellung von 30 zurücksetzen?',
+      }),
+    ).not.toHaveTextContent(/früher als bisher/)
+  })
+
   it('refuses a value outside the bounds before sending', async () => {
     serve([inactivity, deletion, warning])
     const sent = saveCapture()
