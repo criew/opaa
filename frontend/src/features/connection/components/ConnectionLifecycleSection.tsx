@@ -96,14 +96,21 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     }
   }
 
+  /** A shorter deletion period erases private libraries earlier, running periods included. */
+  function earlierErasure(next: number): string {
+    return entry.setting === 'PRIVATE_LIBRARY_DELETION_DAYS' && next < entry.value
+      ? 'Private Bibliotheken deaktivierter Personen werden früher als bisher gelöscht, auch bei schon laufenden Fristen. '
+      : ''
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (busy || !changed || value === null) return
     const confirmed = await confirmAction({
       question: `${text.name} auf ${value} ändern?`,
-      consequence: `${text.effect} Die Änderung gilt sofort auf allen Instanzen und steht im Revisionsprotokoll.`,
+      consequence: `${earlierErasure(value)}${text.effect} Die Änderung gilt sofort auf allen Instanzen und steht im Revisionsprotokoll.`,
       confirmLabel: 'Wert ändern',
-      tone: 'caution',
+      tone: earlierErasure(value) ? 'danger' : 'caution',
     })
     if (!confirmed) return
     await save(value)
@@ -113,9 +120,9 @@ function SettingRow({ entry, minimumGroupSize, onSaved }: SettingRowProps) {
     if (busy) return
     const confirmed = await confirmAction({
       question: `${text.name} auf die Werkseinstellung von ${entry.defaultValue} zurücksetzen?`,
-      consequence: `${text.effect} Die Änderung steht im Revisionsprotokoll.`,
+      consequence: `${earlierErasure(entry.defaultValue)}${text.effect} Die Änderung steht im Revisionsprotokoll.`,
       confirmLabel: 'Werkseinstellung wiederherstellen',
-      tone: 'caution',
+      tone: earlierErasure(entry.defaultValue) ? 'danger' : 'caution',
     })
     if (!confirmed) return
     await save(null)

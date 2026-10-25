@@ -70,6 +70,14 @@ public class RetiredSettingVariables {
     retired.put(
         "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
         "the warning threshold of expired connected accounts");
+    retired.put(
+        "opaa.connection.inactivity-threshold-days", "the inactivity threshold of the connections");
+    retired.put(
+        "opaa.connection.private-library-deletion-days",
+        "the deletion period of private libraries");
+    retired.put(
+        "opaa.connection.expired-connections.warning-threshold",
+        "the warning threshold of expired connected accounts");
     return Collections.unmodifiableMap(retired);
   }
 }
