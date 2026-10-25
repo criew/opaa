@@ -27,7 +27,8 @@ class RetiredSettingVariablesTest {
     assertThat(RetiredSettingVariables.foundIn(environment))
         .containsExactly(
             "OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL is no longer read; set the full-sync"
-                + " rhythm under Administration > Anbindungen > Einstellungen",
+                + " rhythm of SharePoint and of OneDrive, which it also covered, under"
+                + " Administration > Anbindungen > Einstellungen",
             "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES is no longer read; set the storage quota of"
                 + " private libraries under Administration > Anbindungen > Einstellungen");
   }

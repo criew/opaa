@@ -56,7 +56,9 @@ public class RetiredSettingVariables {
     Map<String, String> retired = new LinkedHashMap<>();
     retired.put("OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL", "the full-sync rhythm");
     retired.put("OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL", "the full-sync rhythm");
-    retired.put("OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL", "the full-sync rhythm");
+    retired.put(
+        "OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL",
+        "the full-sync rhythm of SharePoint and of OneDrive, which it also covered,");
     retired.put("OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL", "the full-sync rhythm");
     retired.put(
         "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES", "the storage quota of private libraries");

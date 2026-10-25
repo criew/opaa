@@ -616,7 +616,7 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL` | `opaa.indexing.dropbox.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL` | `opaa.indexing.google-drive.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL` | `opaa.indexing.nextcloud.full-descent-interval` | wie Confluence |
-| `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `opaa.indexing.sharepoint.full-sync-interval` | wie Confluence (gilt auch für OneDrive) |
+| `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `opaa.indexing.sharepoint.full-sync-interval` | wie Confluence; OneDrive, das die Variable mitnutzte, bekommt einen eigenen Wert der Quellart |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `opaa.auth.initial-admin-email` | Startwert entfällt; erstes Konto im Assistenten |
 | `OPAA_INITIAL_ADMIN_PASSWORD` | `opaa.auth.local.initial-admin-password` | Startwert entfällt; erstes Konto im Assistenten |
 | `OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` | `opaa.library.private-storage-quota-bytes` | Vorgabe im Code; `private_storage_quota_settings` |
