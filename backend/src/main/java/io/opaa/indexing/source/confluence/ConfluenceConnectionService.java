@@ -26,12 +26,19 @@ public class ConfluenceConnectionService {
     this.clientFactory = clientFactory;
   }
 
-  /** What the connection test needs to know about one Confluence instance. */
+  /**
+   * What the connection test needs to know about one Confluence instance.
+   *
+   * @param credentialsVerified {@code false} when the instance refused the credentials or none were
+   *     usable as given (missing, malformed); {@code true} once it accepted them, also with a
+   *     {@code 403} on the verification; {@code null} when they were not judged (address, edition,
+   *     TLS, network, server error)
+   */
   public record Probe(
       boolean reachable,
       String message,
       ConfluenceEdition detectedEdition,
-      boolean credentialsVerified,
+      Boolean credentialsVerified,
       Long readableSpaces) {}
 
   /**
@@ -47,7 +54,7 @@ public class ConfluenceConnectionService {
     } catch (ConfluenceConnection.InvalidBaseUrlException e) {
       throw new ValidationException(e.getMessage());
     } catch (ConfluenceAccessException e) {
-      return new Probe(false, e.getMessage(), null, false, null);
+      return new Probe(false, e.getMessage(), null, null, null);
     }
     ConfluenceEdition edition = detected.edition();
     if (expectedEdition != null && expectedEdition != edition) {
@@ -59,7 +66,7 @@ public class ConfluenceConnectionService {
               + label(expectedEdition)
               + ". Die Zugangsdaten müssen zur erkannten Edition passen.",
           edition,
-          false,
+          null,
           null);
     }
     if (credentials == null || credentials.isBlank()) {
@@ -95,8 +102,20 @@ public class ConfluenceConnectionService {
           true,
           null);
     } catch (ConfluenceAccessException e) {
-      return new Probe(false, e.getMessage(), edition, false, null);
+      return new Probe(false, e.getMessage(), edition, credentialsVerdict(e), null);
     }
+  }
+
+  /**
+   * What a failed verification says about the credentials. The edition was detected at this address
+   * just before, so even Cloud's ambiguous {@code 404} reads as a refusal here.
+   */
+  private static Boolean credentialsVerdict(ConfluenceAccessException failure) {
+    return switch (failure) {
+      case ConfluenceAccessException.Authentication ignored -> Boolean.FALSE;
+      case ConfluenceAccessException.Forbidden ignored -> Boolean.TRUE;
+      default -> null;
+    };
   }
 
   /**

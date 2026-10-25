@@ -12,7 +12,7 @@ import {
 } from '../../connection/mocks/connectionProfileFixtures'
 import { browseSharePoint, SHAREPOINT_MESSAGES, testSharePoint } from './sharePointSourceMock'
 import { browseOneDrive, testOneDrive } from './oneDriveSourceMock'
-import { scenarioBrowse, scenarioCounts, scenarioTest } from './sourceScenarioMock'
+import { scenarioBrowse, scenarioTest } from './sourceScenarioMock'
 import { applyLibraryScenario } from './libraryScenarioFixtures'
 import { myGroupsForScenario } from '../../group/mocks/groupFixtures'
 import { scenarioLatency } from '@/shared/mocks/mockScenario'
@@ -553,8 +553,8 @@ export const libraryHandlers = [
         return HttpResponse.json({
           reachable: false,
           details: { edition: detected },
-          credentialsVerified: false,
-          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(requestedEdition)}.`,
+          credentialsVerified: null,
+          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(requestedEdition)}. Die Zugangsdaten müssen zur erkannten Edition passen.`,
         })
       }
       if (!body.sourceCredentials) {
@@ -564,8 +564,8 @@ export const libraryHandlers = [
           credentialsVerified: false,
           message:
             detected === 'CLOUD'
-              ? 'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein.'
-              : 'Confluence Data Center erkannt. Geben Sie das Personal Access Token des Dienstkontos ein.',
+              ? 'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein. Danach werden die Zugangsdaten geprüft und die lesbaren Spaces ermittelt.'
+              : 'Confluence Data Center erkannt. Geben Sie das Personal Access Token des Dienstkontos ein. Danach werden die Zugangsdaten geprüft und die lesbaren Spaces ermittelt.',
         })
       }
       if (detected === 'CLOUD' && !body.sourceCredentials.includes(':')) {
@@ -577,13 +577,12 @@ export const libraryHandlers = [
             'Confluence Cloud erwartet E-Mail-Adresse und API-Token, getrennt durch einen Doppelpunkt (E-Mail:Token).',
         })
       }
-      const readable = scenarioCounts()?.spaces ?? mockConfluenceSpaces.length
       return HttpResponse.json({
         reachable: true,
         details: { edition: detected },
         credentialsVerified: true,
-        documentCount: readable,
-        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${readable} lesbare Spaces.`,
+        documentCount: null,
+        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig. Die lesbaren Spaces stehen zur Auswahl.`,
       })
     }
     if (body.sourceType === 'UPLOAD') {
