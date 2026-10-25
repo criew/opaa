@@ -30,13 +30,12 @@ public final class FingerprintKeys {
   public static final String METADATA = "META-INF/spring-configuration-metadata.json";
 
   /**
-   * Installation-wide values outside {@code opaa.*} that no manifest entry carries: the vector
-   * space of the embeddings. Embedding model and address are manifest settings.
+   * Installation-wide values outside {@code opaa.*} that no manifest entry carries: the distance of
+   * the vector space. Embedding model and vector size are rows of the database, the same for every
+   * instance.
    */
   public static final List<String> EXTERNAL_KEYS =
-      List.of(
-          "spring.ai.vectorstore.pgvector.dimensions",
-          "spring.ai.vectorstore.pgvector.distance-type");
+      List.of("spring.ai.vectorstore.pgvector.distance-type");
 
   private static final List<String> SECRET_SEGMENTS =
       List.of("secret", "password", "key", "token", "credential");

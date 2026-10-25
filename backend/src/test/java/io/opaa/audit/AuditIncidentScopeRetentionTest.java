@@ -49,10 +49,10 @@ class AuditIncidentScopeRetentionTest {
   }
 
   @Test
-  void aPeriodOutsideItsBoundsStopsTheStart() {
+  void aPeriodOutsideItsBoundsIsRejected() {
     assertThatThrownBy(() -> new AuditIncidentScopeRetention(0))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("opaa.audit.incident-scope-retention-years");
+        .hasMessageContaining("incidentScopeRetentionYears");
     assertThatThrownBy(() -> new AuditIncidentScopeRetention(11))
         .isInstanceOf(IllegalArgumentException.class);
     assertThat(new AuditIncidentScopeRetention(10).incidentScopeRetentionYears()).isEqualTo(10);

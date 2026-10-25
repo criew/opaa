@@ -20,7 +20,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.permission.web.GroupMemberDisclosureResponseMapper;
-import io.opaa.space.ChatAutoCleanupProperties;
+import io.opaa.space.ChatAutoCleanupPeriods;
+import io.opaa.space.ChatAutoCleanupSettings;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceAssetSeed;
@@ -54,14 +55,14 @@ public class SpaceController {
   private final SpaceAssetAssociationService associationService;
   private final PermissionTransferService transferService;
   private final SuccessionService successionService;
-  private final ChatAutoCleanupProperties chatAutoCleanup;
+  private final ChatAutoCleanupSettings chatAutoCleanup;
 
   public SpaceController(
       SpaceService spaceService,
       SpaceAssetAssociationService associationService,
       PermissionTransferService transferService,
       SuccessionService successionService,
-      ChatAutoCleanupProperties chatAutoCleanup) {
+      ChatAutoCleanupSettings chatAutoCleanup) {
     this.spaceService = spaceService;
     this.associationService = associationService;
     this.transferService = transferService;
@@ -71,8 +72,9 @@ public class SpaceController {
 
   @GetMapping("/chat-auto-cleanup")
   public ChatAutoCleanupPeriodsResponse getChatAutoCleanupPeriods() {
+    ChatAutoCleanupPeriods periods = chatAutoCleanup.current();
     return new ChatAutoCleanupPeriodsResponse(
-        chatAutoCleanup.archiveAfterDays(), chatAutoCleanup.deleteAfterDays());
+        periods.archiveAfterDays(), periods.deleteAfterDays());
   }
 
   @PostMapping

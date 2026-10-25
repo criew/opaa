@@ -127,12 +127,17 @@ public final class MigrationSchema {
               + "|RENAME)\\b",
           FLAGS);
 
-  /** The partition maintenance of the protocol tables, on names given at run time. */
+  /**
+   * The partition maintenance of the protocol tables, on names given at run time, and the removal
+   * of the baseline's {@code vector_store} on a database no instance started on: the installation
+   * creates that table again (ADR-0060, Entscheidung 10), so it counts as present.
+   */
   private static final Pattern BODY_ALLOWED =
       Pattern.compile(
           "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?%[Is]\\s+PARTITION\\s+OF\\b"
               + "|ALTER\\s+TABLE\\s+(?:ONLY\\s+)?%[Is]\\s+OWNER\\s+TO\\b"
-              + "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?%[Is]\\b",
+              + "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?%[Is]\\b"
+              + "|DROP\\s+TABLE\\s+vector_store\\s*;",
           FLAGS);
 
   /** Words a column pattern must never take for an unquoted column name. */

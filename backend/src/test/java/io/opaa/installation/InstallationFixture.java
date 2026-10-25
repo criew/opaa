@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -15,7 +16,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Puts the shared test database back into a pending installation and tidies up what a completion
  * created there: the emergency account (through {@link LocalAccountFixtures}), the chat model and
  * identity provider of the installation, its audit entries. The active chat model found before is
- * active again afterwards. {@code installation_state} itself comes back through {@code
+ * active again afterwards, and so is the embedding model: a pending installation has none, the
+ * vector table of the context stays. {@code installation_state} itself comes back through {@code
  * SeededRowRestorer}. A local chat endpoint answers every probe with a completion.
  */
 final class InstallationFixture implements AutoCloseable {
@@ -29,6 +31,7 @@ final class InstallationFixture implements AutoCloseable {
   private final DatabaseInstallationStatus status;
   private final LocalAccountFixtures accounts;
   private final List<UUID> activeBefore;
+  private final List<Map<String, Object>> embeddingModelBefore;
   private final HttpServer chatEndpoint;
 
   InstallationFixture(
@@ -42,6 +45,7 @@ final class InstallationFixture implements AutoCloseable {
     this.status = status;
     this.accounts = accounts;
     this.activeBefore = jdbc.queryForList("SELECT id FROM llm_models WHERE active", UUID.class);
+    this.embeddingModelBefore = jdbc.queryForList("SELECT * FROM embedding_model");
     this.chatEndpoint =
         HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
     chatEndpoint.createContext(
@@ -70,6 +74,7 @@ final class InstallationFixture implements AutoCloseable {
   /** A pending installation with {@link #TOKEN}, no saved step, and the status re-read. */
   void resetToPending() {
     jdbc.update("DELETE FROM installation_steps");
+    jdbc.update("DELETE FROM embedding_model");
     jdbc.update(
         "UPDATE installation_state SET status = 'PENDING', completion_source = NULL,"
             + " completed_at = NULL, token_hash = NULL, token_source = NULL WHERE id = 1");
@@ -90,6 +95,19 @@ final class InstallationFixture implements AutoCloseable {
     }
     jdbc.update("DELETE FROM oidc_providers WHERE issuer_uri LIKE 'https://idp.test.example/%'");
     jdbc.update("DELETE FROM audit_log WHERE actor_ref = ?", InstallationService.SYSTEM_ACTOR);
+    jdbc.update("DELETE FROM embedding_model");
+    for (Map<String, Object> row : embeddingModelBefore) {
+      jdbc.update(
+          "INSERT INTO embedding_model (id, base_url, model_identifier, api_key_ciphertext,"
+              + " max_input_tokens, dimensions, installed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          row.get("id"),
+          row.get("base_url"),
+          row.get("model_identifier"),
+          row.get("api_key_ciphertext"),
+          row.get("max_input_tokens"),
+          row.get("dimensions"),
+          row.get("installed_at"));
+    }
     status.reload();
   }
 }

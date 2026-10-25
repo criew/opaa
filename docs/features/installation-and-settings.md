@@ -1,9 +1,12 @@
 # Schlanke Konfiguration und Einrichtungs-Assistent
 
-> **Status: in Umsetzung.** Zielbild zu Issue #3160. Gebaut ist Teilschritt 1 (Installationsmodus,
-> Token, Installations-API, Antwortdatei mit erstem Konto, Anmeldeverfahren und Chat-Modell); die
-> Startwerte `OPAA_INITIAL_ADMIN_*` schließen eine ausstehende Installation im Modus `oidc` noch
-> ab, bis Helm, Compose und e2e mit Teilschritt 6 auf die Antwortdatei umgestellt sind.
+> **Status: in Umsetzung.** Zielbild zu Issue #3160. Gebaut sind Teilschritt 1 (Installationsmodus,
+> Token, Installations-API, Antwortdatei mit erstem Konto, Anmeldeverfahren und Chat-Modell) und
+> Teilschritt 3 im Backend (Embedding-Modell als Schritt und in der Antwortdatei, `vector_store`
+> entsteht beim Abschluss); die Startwerte `OPAA_INITIAL_ADMIN_*` schließen eine ausstehende
+> Installation im Modus `oidc` noch ab, und eine so abgeschlossene oder ältere Installation übernimmt
+> ihr Embedding-Modell einmalig aus `OPAA_OPENAI_EMBEDDING_*`, bis Helm, Compose und e2e mit
+> Teilschritt 6 auf die Antwortdatei umgestellt sind.
 > Entscheidungen: [ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md).
 
 ## Motivation
@@ -189,8 +192,8 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- Angaben späterer Schritte (`embeddingModel`, `outboundProxy`, `mail`, `branding`) wertet diese
-  Version noch nicht aus.
+- Angaben späterer Schritte (`outboundProxy`, `mail`, `branding`) wertet diese Version noch nicht
+  aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.
@@ -258,7 +261,7 @@ Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
 | Rerank- und Transkriptionsmodell | Modelle (neue Reiter) |
 | Vollabgleich-Rhythmus je Konnektor (Vorgabe der Installation) | Anbindungen → Einstellungen |
 | Schwellen und Fristen der Verbindungen | Anbindungen → Einstellungen |
-| Aufbewahrung der Chats und der anlassbezogenen Klärungen | neben den übrigen Aufbewahrungsfristen |
+| Aufbewahrung der Chats und der anlassbezogenen Klärungen | Datenschutz, neben der Selbstauskunft |
 | Vorlauf der Wiedervorlage externer KI-Werkzeuge | Externe KI-Werkzeuge → Einstellungen |
 | Alterung „Ohne Zuständigkeit“ | Ohne Zuständigkeit |
 | Plausibilitätsschwelle des Verzeichnisabgleichs | Verzeichnisabgleich, je Anbieter |
@@ -319,7 +322,9 @@ Je Teilschritt ein Sub-Issue an #3160:
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Wechsel des Embedding-Modells nach der Installation mit geführter Neuindexierung.
+- Wechsel des Embedding-Modells nach der Installation mit geführter Neuindexierung. Bis dahin ist er
+  ein Eingriff des Betriebs in `embedding_model` bei angehaltenen Instanzen; der Startabgleich und
+  die Neueinbettung übernehmen danach wie bisher.
 - Experten-Feinabstimmung (Gruppe F) später mit Messung und Leitplanken in der Verwaltung?
 
 ---
@@ -653,11 +658,11 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | Variable | Heute | Künftig |
 |---|---|---|
 | `OPAA_AI_CHAT_PROVIDER` | `LlmModelSeeder (Altname)` | Altname entfällt |
-| `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | `opaa.audit.incident-scope-retention-years` | Aufbewahrung; Grenzen 1 bis 10 Jahre im Code |
-| `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `opaa.chat.auto-cleanup.archive-after-days` | Aufbewahrung, neben den übrigen Fristen |
-| `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Aufbewahrung |
-| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Aufbewahrung |
-| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED` | `opaa.chat.locked-account-cleanup.enabled` | Aufbewahrung |
+| `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | `opaa.audit.incident-scope-retention-years` | Vorgabe im Code; `audit_incident_scope_retention_settings`, Grenzen 1 bis 10 Jahre im Code |
+| `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `opaa.chat.auto-cleanup.archive-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
+| `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
+| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |
+| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED` | `opaa.chat.locked-account-cleanup.enabled` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |
 | `OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD` | `opaa.connection.expired-connections.warning-threshold` | Anbindungen → Einstellungen; Werkseinstellung 10, Grenzen 1 bis 1000 im Code (`connection_lifecycle_settings`) |
 | `OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS` | `opaa.connection.inactivity-threshold-days` | Anbindungen → Einstellungen; Werkseinstellung 90, Grenzen 30 bis 365 Tage im Code |
 | `OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS` | `opaa.connection.private-library-deletion-days` | Anbindungen → Einstellungen; Werkseinstellung 30, Grenzen 1 bis 90 Tage im Code |
@@ -700,6 +705,13 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_TRANSCRIPTION_ENABLED` | `opaa.transcription.enabled` | Transkriptionsmodell in der Modellverwaltung (der Funktionsschalter `OPAA_FEATURES_SPEECH_INPUT_ENABLED` bleibt) |
 | `OPAA_TRANSCRIPTION_LANGUAGE` | `opaa.transcription.language` | Transkriptionsmodell in der Modellverwaltung |
 | `OPAA_TRANSCRIPTION_MODEL` | `opaa.transcription.model` | Transkriptionsmodell in der Modellverwaltung |
+
+Für die entfallenen Lösch- und Aufbewahrungsvariablen gilt die Übergangsregel aus ADR-0060,
+Entscheidung 13: Sie bremsen nur, nie als Wert. Hält eine noch gesetzte Variable auf einer lebenden
+Instanz länger (oder schaltet sie ab, oder ist sie nicht lesbar) und hat die Verwaltung noch keinen
+Wert gespeichert, pausiert der Löschschritt auf allen Instanzen, gemeldet über
+`backend_instances.retired_settings`; Hinweis unter Administration → Datenschutz, Fehler im Log je
+Lauf.
 
 ### Gruppe F: Experten-Feinabstimmung von Suche und Index (bleibt vorerst, siehe ADR-0060, Entscheidung 3)
 

@@ -87,6 +87,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "audit_incident_scope_grants",
                   "audit_incident_scope_case_counts",
                   "audit_incident_scope_monthly_counts",
+                  "audit_incident_scope_retention_settings",
                   "self_disclosure_settings",
                   "self_disclosure_usage",
                   "link_target_settings")),
@@ -142,6 +143,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "llm_model_seed_marker",
                   "installation_state",
                   "installation_steps",
+                  "embedding_model",
                   "private_storage_quota_settings",
                   "full_sync_rhythm_settings",
                   "vector_store",
@@ -172,7 +174,8 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "space_asset_associations",
                   "diagnostic_impersonation_grants",
                   "diagnostic_context_log",
-                  "diagnostic_context_retention_settings")),
+                  "diagnostic_context_retention_settings",
+                  "chat_auto_cleanup_settings")),
           Map.entry(
               ASSISTANT,
               List.of(
@@ -184,6 +187,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "chat_personal_marks",
                   "chat_cleanup_holds",
                   "chat_locked_account_cleanup_state",
+                  "locked_account_chat_cleanup_settings",
                   "prompt_libraries",
                   "prompts")),
           Map.entry(
@@ -220,6 +224,10 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
           Module.valueOf(Migrations.moduleOf(script).toUpperCase(Locale.ROOT)),
           () -> applyMigrations(connection, script));
     }
+    // vector_store is created by the installation, not a migration (ADR-0060), as knowledge's table
+    check.step(
+        Module.KNOWLEDGE,
+        () -> Migrations.createVectorTable(connection, connection.getSchema(), 1024));
 
     assertThat(check.violations()).isEmpty();
   }

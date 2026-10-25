@@ -187,6 +187,15 @@ final class AuditSelfDisclosurePayload {
         PERMISSION_HISTORY_RETENTION_CHANGED,
         DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
         CONNECTION_LOG_RETENTION_CHANGED);
+    put(
+        keys,
+        Set.of("archiveAfterDays", "deleteAfterDays", "overridden"),
+        CHAT_AUTO_CLEANUP_PERIODS_CHANGED);
+    put(
+        keys,
+        Set.of("deleteAfterDays", "enabled", "overridden"),
+        LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED);
+    put(keys, Set.of("overridden", "retentionYears"), INCIDENT_SCOPE_RETENTION_CHANGED);
     put(keys, Set.of("allAccountsGrantAllowed"), CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED);
     put(keys, Set.of("quotaBytes", "overridden"), PRIVATE_STORAGE_QUOTA_CHANGED);
     put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);

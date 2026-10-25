@@ -6,7 +6,8 @@ tags:
       Data collection disclosure of the installation: the compliance fact manifest of the running
       version joined with the effective values of the installation (ADR-0052, ADR-0053), and the
       self-disclosure of the signed-in person (docs/features/security-and-compliance.md,
-      "Selbstauskunft").
+      "Selbstauskunft"), and the retention periods of chats and of the anlassbezogene Klärung the
+      system administration holds in the database (ADR-0060, Entscheidung 1).
 paths:
   /api/v1/me/self-disclosure:
     get:
@@ -168,6 +169,134 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/retention/chat-auto-cleanup:
+    get:
+      operationId: getChatAutoCleanupRetention
+      tags: [compliance]
+      summary: >-
+        The periods of the automatic chat cleanup a space can switch on (system admin only): the
+        values in force, the factory defaults and whether the administration set its own.
+      responses:
+        "200":
+          description: The periods in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAutoCleanupRetention"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateChatAutoCleanupRetention
+      tags: [compliance]
+      summary: >-
+        Sets both periods of the automatic chat cleanup, or with both absent returns them to the
+        factory defaults (system admin only); one period alone is refused. Acts on every instance
+        from the next nightly run, which pauses while a retired variable still sets another value. A change is the audit event CHAT_AUTO_CLEANUP_PERIODS_CHANGED
+        with before and after; a call that changes nothing writes neither.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatAutoCleanupRetentionUpdate"
+      responses:
+        "200":
+          description: The periods after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAutoCleanupRetention"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/retention/locked-account-chats:
+    get:
+      operationId: getLockedAccountChatRetention
+      tags: [compliance]
+      summary: >-
+        Whether and after how many days the chats of a local account locked by the administration
+        are deleted (system admin only), with the factory defaults and whether the administration
+        set its own.
+      responses:
+        "200":
+          description: The setting in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockedAccountChatRetention"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateLockedAccountChatRetention
+      tags: [compliance]
+      summary: >-
+        Sets switch and period of the deletion of the chats of locked local accounts, or with both
+        absent returns them to the factory defaults (system admin only); one of them alone is
+        refused. Switching off forgets the moment periods count from, so switching on again starts
+        every period anew. A change is the audit event LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED
+        with before and after; a call that changes nothing writes neither.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LockedAccountChatRetentionUpdate"
+      responses:
+        "200":
+          description: The setting after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockedAccountChatRetention"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/retention/incident-scopes:
+    get:
+      operationId: getIncidentScopeRetention
+      tags: [compliance]
+      summary: >-
+        How many calendar years after the end of its usability a grant of the anlassbezogene
+        Klärung is kept (system admin only), with the factory default and whether the
+        administration set its own.
+      responses:
+        "200":
+          description: The period in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentScopeRetention"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateIncidentScopeRetention
+      tags: [compliance]
+      summary: >-
+        Sets the period between 1 and 10 calendar years, or with the value absent returns it to the
+        factory default of one year (system admin only). Acts on every instance from the next daily
+        run. A change is the audit event INCIDENT_SCOPE_RETENTION_CHANGED with before and after; a
+        call that changes nothing writes neither.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncidentScopeRetentionUpdate"
+      responses:
+        "200":
+          description: The period after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentScopeRetention"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/v1/admin/compliance/data-collection-disclosure:
     get:
@@ -617,3 +746,139 @@ components:
           nullable: true
           minimum: 1
           maximum: 10
+
+    ChatAutoCleanupRetention:
+      type: object
+      required:
+        - archiveAfterDays
+        - deleteAfterDays
+        - defaultArchiveAfterDays
+        - defaultDeleteAfterDays
+        - overridden
+        - pausedBy
+      properties:
+        archiveAfterDays:
+          type: integer
+          description: Days without activity after which a chat that is not pinned is archived.
+        deleteAfterDays:
+          type: integer
+          description: Days in the chat archive after which a chat is deleted.
+        defaultArchiveAfterDays:
+          type: integer
+        defaultDeleteAfterDays:
+          type: integer
+        overridden:
+          type: boolean
+          description: Whether the administration set its own periods instead of the factory defaults.
+        pausedBy:
+          type: array
+          description: >-
+            The retired variables a live instance still sets to a period longer than the one in
+            force (or switched off, or unreadable) while the administration set no value of its
+            own; while there is one, the deletion run pauses.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
+
+    ChatAutoCleanupRetentionUpdate:
+      type: object
+      description: Both periods, or neither to return to the factory defaults.
+      properties:
+        archiveAfterDays:
+          type: integer
+          nullable: true
+          minimum: 90
+          maximum: 3650
+        deleteAfterDays:
+          type: integer
+          nullable: true
+          minimum: 30
+          maximum: 3650
+
+    LockedAccountChatRetention:
+      type: object
+      required: [enabled, deleteAfterDays, defaultEnabled, defaultDeleteAfterDays, overridden, pausedBy]
+      properties:
+        enabled:
+          type: boolean
+          description: Whether the nightly run deletes the chats of accounts locked by the administration.
+        deleteAfterDays:
+          type: integer
+          description: Days between the lock by the administration and the deletion.
+        defaultEnabled:
+          type: boolean
+        defaultDeleteAfterDays:
+          type: integer
+        overridden:
+          type: boolean
+          description: Whether the administration set its own values instead of the factory defaults.
+        pausedBy:
+          type: array
+          description: >-
+            The retired variables a live instance still sets to a period longer than the one in
+            force (or switched off, or unreadable) while the administration set no value of its
+            own; while there is one, the deletion run pauses.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
+
+    LockedAccountChatRetentionUpdate:
+      type: object
+      description: Switch and period, or neither to return to the factory defaults.
+      properties:
+        enabled:
+          type: boolean
+          nullable: true
+        deleteAfterDays:
+          type: integer
+          nullable: true
+          minimum: 90
+          maximum: 3650
+
+    IncidentScopeRetention:
+      type: object
+      required: [retentionYears, defaultRetentionYears, overridden, pausedBy]
+      properties:
+        retentionYears:
+          type: integer
+          description: >-
+            Calendar years after the end of a grant's usability until it is deleted at the end of
+            that year.
+        defaultRetentionYears:
+          type: integer
+        overridden:
+          type: boolean
+          description: Whether the administration set its own period instead of the factory default.
+        pausedBy:
+          type: array
+          description: >-
+            The retired variables a live instance still sets to a period longer than the one in
+            force (or switched off, or unreadable) while the administration set no value of its
+            own; while there is one, the deletion run pauses.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
+
+    IncidentScopeRetentionUpdate:
+      type: object
+      description: The period, or none to return to the factory default.
+      properties:
+        retentionYears:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 10
+
+    RetentionPause:
+      type: object
+      required: [variable, retiredValue, effectiveValue]
+      description: >-
+        A retired environment variable that still sets a retention period on a live instance, with
+        its value and the value in force (ADR-0060, Entscheidung 1: never taken over).
+      properties:
+        variable:
+          type: string
+          example: OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS
+        retiredValue:
+          type: string
+          example: "730"
+        effectiveValue:
+          type: string
+          example: "365"

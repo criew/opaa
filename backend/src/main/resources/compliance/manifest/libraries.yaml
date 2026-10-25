@@ -316,6 +316,14 @@ nonPersonalTables:
     - created_at
     - updated_at
   llm_model_seed_marker: [id, seeded_at]
+  embedding_model:
+    - id
+    - base_url
+    - model_identifier
+    - api_key_ciphertext
+    - max_input_tokens
+    - dimensions
+    - installed_at
   private_storage_quota_settings: [id, quota_bytes, updated_at]
   full_sync_rhythm_settings: [source_type, interval_days, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]
@@ -330,6 +338,7 @@ nonPersonalTables:
     - stopped_at
     - fingerprint
     - fingerprint_hash
+    - retired_settings
   backend_instance_fingerprint_key: [id, hmac_key, created_at]
   shedlock: [name, lock_until, locked_at, locked_by]
   installation_counters:

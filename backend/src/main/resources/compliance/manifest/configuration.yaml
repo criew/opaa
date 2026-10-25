@@ -7,8 +7,8 @@ settings:
   - key: spring.ai.openai.base-url
     defaultValue: http://localhost:11434/v1
     effect: >-
-      Gemeinsame Adresse von Chat- und Embedding-Modell, solange keine eigene gesetzt ist; die
-      Voreinstellung zeigt auf einen Modellserver auf demselben Rechner
+      Gemeinsame Adresse des Chat-Modells, solange keine eigene gesetzt ist; die Voreinstellung
+      zeigt auf einen Modellserver auf demselben Rechner
     bearings: [DATA_FLOW]
     notes:
       - "Profil docker: http://ollama:11434/v1"
@@ -35,25 +35,24 @@ settings:
       - >-
         Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
         der Systemverwaltung
-  - key: spring.ai.openai.embedding.base-url
-    defaultValue: http://localhost:11434/v1
+  - key: embedding_model.base_url
+    source: DATABASE
+    defaultValue: keine, Angabe der Installation
     effect: Adresse des Embedding-Modells, an das Dokumentabschnitte und Suchanfragen gehen
     bearings: [DATA_FLOW]
-    helm:
-      values: embedding.baseUrl
-      defaultValue: ""
     notes:
-      - "Profil docker: http://ollama:11434/v1"
-      - Das Helm-Chart verlangt die Angabe und setzt keine eigene Voreinstellung
-  - key: spring.ai.openai.embedding.model
-    defaultValue: bge-m3
-    effect: Standard-Embedding-Modell, das Dokumentabschnitte und Suchanfragen in Vektoren umrechnet
+      - >-
+        Wird bei der Installation festgelegt; eine ältere Installation übernimmt beim ersten Start
+        einmalig ihre bisherige Konfiguration. Nicht über die Oberfläche änderbar
+  - key: embedding_model.model_identifier
+    source: DATABASE
+    defaultValue: keine, Angabe der Installation
+    effect: Embedding-Modell, das Dokumentabschnitte und Suchanfragen in Vektoren umrechnet
     bearings: [DATA_FLOW]
-    helm:
-      values: embedding.model
-      defaultValue: ""
     notes:
-      - Das Helm-Chart verlangt die Angabe und setzt keine eigene Voreinstellung
+      - >-
+        Wird bei der Installation mit einer Probeeinbettung festgelegt, die die Vektordimension
+        bestimmt. Nicht über die Oberfläche änderbar
   - key: opaa.rerank.enabled
     defaultValue: "false"
     effect: Ob die Rerank-Rolle Suchtreffer samt Frage an ein Rerank-Modell sendet

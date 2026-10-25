@@ -12,6 +12,10 @@ import org.springframework.stereotype.Component;
  * identity and the target from {@code embedding_index}, under the same exclusion as a local switch.
  * The configured identity stays this instance's own; the configuration fingerprint keeps it equal
  * on all instances. While the bus does not listen, the row is re-read at every check of the bus.
+ *
+ * <p>Before this instance reconciled - the embedding model was installed on another instance after
+ * this one started - the row is taken as it is: the installing instance just wrote it for the
+ * installed model.
  */
 @Component
 class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
@@ -32,12 +36,8 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
     return Set.of(INVALIDATION_TOPIC);
   }
 
-  /** A no-op until the startup reconciliation has run, which reads the row itself. */
   @Override
   public void invalidateAll() {
-    if (state.snapshot() == null) {
-      return;
-    }
     // read under the exclusion, so a switch of this instance cannot fall between read and replace
     state.exclusively(
         () -> {
@@ -47,8 +47,15 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
               .ifPresent(
                   record ->
                       state.replace(
-                          new Snapshot(record.current(), current.configured(), record.target())));
+                          new Snapshot(
+                              record.current(),
+                              current == null ? configuredOf(record) : current.configured(),
+                              record.target())));
           return null;
         });
+  }
+
+  private static EmbeddingIdentity configuredOf(EmbeddingIndexRecord record) {
+    return record.target() == null ? record.current() : record.target();
   }
 }

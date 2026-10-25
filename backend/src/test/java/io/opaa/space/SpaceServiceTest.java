@@ -82,7 +82,7 @@ class SpaceServiceTest {
             capabilityService,
             successionGuard,
             mock(SpaceSuccessionSource.class),
-            new ChatAutoCleanupProperties(90, 365),
+            mock(ChatAutoCleanupSettings.class),
             transactionManager,
             Clock.systemUTC());
   }

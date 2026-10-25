@@ -198,4 +198,111 @@ class StepRulesTest {
                       .containsExactly("chatModel.baseUrl"));
     }
   }
+
+  @Test
+  void anEmbeddingModelNeedsAddressModelAndAPositiveInputLimit() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.EmbeddingModel("ollama:11434/v1", " ", null, 0), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactlyInAnyOrder(
+                        "embeddingModel.baseUrl",
+                        "embeddingModel.model",
+                        "embeddingModel.maxInputTokens"));
+  }
+
+  @Test
+  void theProbedVectorSizeIsKeptUntilTheNextSave() {
+    StepRules.Stored saved =
+        rules.toStored(
+            new StepInput.EmbeddingModel("http://ollama:11434/v1", "bge-m3", "sk-geheim", null),
+            null,
+            null);
+    String probed = rules.withProbedDimensions(saved.payload(), 1024);
+
+    assertThat(rules.embeddingModelPayload(saved.payload()).dimensions()).isNull();
+    assertThat(rules.embeddingModelPayload(probed).dimensions()).isEqualTo(1024);
+    assertThat(rules.view(InstallationStep.EMBEDDING_MODEL, probed, saved.secret()))
+        .isEqualTo(
+            new InstallationOverview.EmbeddingModel(
+                "http://ollama:11434/v1", "bge-m3", true, 2048, 1024));
+    StepRules.Stored again =
+        rules.toStored(
+            new StepInput.EmbeddingModel("http://ollama:11434/v1", "bge-m3", null, 8192),
+            probed,
+            saved.secret());
+    assertThat(rules.embeddingModelPayload(again.payload()).dimensions()).isNull();
+    assertThat(again.secret()).isEqualTo(saved.secret());
+    assertThat(encryptor.decrypt(again.secret())).isEqualTo("sk-geheim");
+  }
+
+  // regression guard: a saved key must never follow a changed embedding address
+  @Test
+  void aSavedEmbeddingKeyDoesNotFollowAChangedAddress() {
+    StepRules.Stored first =
+        rules.toStored(
+            new StepInput.EmbeddingModel("http://ollama:11434/v1", "bge-m3", "sk-geheim", null),
+            null,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.EmbeddingModel(
+                        "http://ollama.example.org:11434/v1", "bge-m3", null, null),
+                    first.payload(),
+                    first.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("embeddingModel.apiKey"));
+  }
+
+  @Test
+  void theEmbeddingStepKeepsTheLengthLimitsOfTheChatStep() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.EmbeddingModel(
+                        "http://ollama:11434/" + "v".repeat(StepRules.MAX_ADDRESS),
+                        "m".repeat(StepRules.MAX_NAME + 1),
+                        "k".repeat(StepRules.MAX_API_KEY + 1),
+                        StepRules.MAX_INPUT_TOKENS + 1),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .contains(
+                        "embeddingModel.baseUrl",
+                        "embeddingModel.model",
+                        "embeddingModel.apiKey",
+                        "embeddingModel.maxInputTokens"));
+  }
+
+  @Test
+  void aKeyWithControlCharactersIsAFieldError() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.EmbeddingModel(
+                        "http://ollama:11434/v1", "bge-m3", "sk-eins\r\nX-Evil: 1", null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .contains("embeddingModel.apiKey"));
+  }
 }

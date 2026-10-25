@@ -164,8 +164,11 @@ class SchemaPortabilityTest extends AbstractMigrationTest {
         .containsExactly("true");
   }
 
+  /** The installation creates the table once its embedding model is chosen (ADR-0060). */
   @Test
   void createsTheVectorStoreWithItsIndexesInTheTargetSchema() throws Exception {
+    Migrations.createVectorTable(connection, SCHEMA, 1024);
+
     assertThat(
             strings(
                 "SELECT indexname FROM pg_indexes WHERE schemaname = '"

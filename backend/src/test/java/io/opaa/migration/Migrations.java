@@ -1,11 +1,14 @@
 package io.opaa.migration;
 
+import io.opaa.knowledge.VectorTable;
+import io.opaa.knowledge.VectorTableCreator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -14,8 +17,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexType;
+import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 /**
  * The Flyway migrations under {@code db/migration/<module>/}, in the order Flyway applies them on a
@@ -178,6 +186,21 @@ final class Migrations {
     } finally {
       delete(location);
     }
+  }
+
+  /**
+   * Creates {@code vector_store} in {@code schema} the way the installation does once its embedding
+   * model is chosen ({@link VectorTableCreator}), with the delivered index type and distance.
+   */
+  static void createVectorTable(Connection connection, String schema, int dimensions) {
+    PgVectorStoreProperties pgVector = new PgVectorStoreProperties();
+    pgVector.setIndexType(PgIndexType.HNSW);
+    pgVector.setDistanceType(PgDistanceType.COSINE_DISTANCE);
+    new VectorTableCreator(
+            new JdbcTemplate(new SingleConnectionDataSource(connection, true)),
+            new VectorTable(schema, "vector_store"),
+            pgVector)
+        .createIfAbsent(dimensions);
   }
 
   private static Matcher nameOf(String script) {

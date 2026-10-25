@@ -50,6 +50,12 @@ public class InstanceConfiguration {
   }
 
   @Bean
+  RetiredRetentionVariables retiredRetentionVariables(
+      InstanceRegistry registry, CurrentInstance currentInstance, Environment environment) {
+    return new RetiredRetentionVariables(registry, currentInstance, environment);
+  }
+
+  @Bean
   InstanceRegisterState instanceRegisterState(InstanceRegistry registry) {
     return new InstanceRegisterState(registry);
   }

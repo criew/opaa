@@ -1,10 +1,9 @@
 package io.opaa.indexing.chunk;
 
 import io.opaa.compliance.DataFlow;
-import io.opaa.compliance.InstallationWide;
-import io.opaa.compliance.NoDataImpact;
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.llm.InstalledEmbeddingModel;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.function.IntSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.metadata.Usage;
@@ -33,7 +33,7 @@ import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -44,15 +44,13 @@ import org.springframework.stereotype.Component;
  * never one without the other; embedding happens before that transaction opens.
  *
  * <p>No chunk is stored with a vector the endpoint cut short without saying so: an input that could
- * reach {@code opaa.embedding.max-input-tokens} is embedded alone and kept only when the endpoint's
- * token count stays below the limit, see {@link #checkInputs}.
+ * reach the input limit of the installed embedding model is embedded alone and kept only when the
+ * endpoint's token count stays below the limit, see {@link #checkInputs}.
  *
  * <p>The delete methods deliberately do not share a transaction across the two stores: a caller
  * deleting from {@code afterCommit} cannot reliably start a fresh one, and each delete is a single
  * atomic statement, idempotent if only one of the two ever runs.
  */
-@InstallationWide
-@NoDataImpact("input limit of the embedding endpoint")
 @DataFlow("embedding-model")
 @Component
 public class VectorChunkStore implements ChunkMetadataStore {
@@ -78,8 +76,10 @@ public class VectorChunkStore implements ChunkMetadataStore {
   private final VectorStoreWriter vectorStoreWriter;
   private final FullTextChunkStore fullTextChunkStore;
   private final EmbeddingRateEstimator embeddingRateEstimator;
-  private final int maxInputTokens;
+  private final IntSupplier maxInputTokens;
 
+  /** With the input limit of the installed embedding model ({@code embedding_model}). */
+  @Autowired
   public VectorChunkStore(
       VectorStore vectorStore,
       EmbeddingModel embeddingModel,
@@ -87,11 +87,44 @@ public class VectorChunkStore implements ChunkMetadataStore {
       VectorStoreWriter vectorStoreWriter,
       FullTextChunkStore fullTextChunkStore,
       EmbeddingRateEstimator embeddingRateEstimator,
-      @Value("${opaa.embedding.max-input-tokens}") int maxInputTokens) {
-    if (maxInputTokens <= 0) {
-      throw new IllegalArgumentException(
-          "opaa.embedding.max-input-tokens must be positive, got " + maxInputTokens);
-    }
+      InstalledEmbeddingModel installedModel) {
+    this(
+        vectorStore,
+        embeddingModel,
+        batchingStrategy,
+        vectorStoreWriter,
+        fullTextChunkStore,
+        embeddingRateEstimator,
+        (IntSupplier) installedModel::maxInputTokens);
+  }
+
+  /** With a fixed input limit. */
+  public VectorChunkStore(
+      VectorStore vectorStore,
+      EmbeddingModel embeddingModel,
+      BatchingStrategy batchingStrategy,
+      VectorStoreWriter vectorStoreWriter,
+      FullTextChunkStore fullTextChunkStore,
+      EmbeddingRateEstimator embeddingRateEstimator,
+      int maxInputTokens) {
+    this(
+        vectorStore,
+        embeddingModel,
+        batchingStrategy,
+        vectorStoreWriter,
+        fullTextChunkStore,
+        embeddingRateEstimator,
+        positive(maxInputTokens));
+  }
+
+  private VectorChunkStore(
+      VectorStore vectorStore,
+      EmbeddingModel embeddingModel,
+      BatchingStrategy batchingStrategy,
+      VectorStoreWriter vectorStoreWriter,
+      FullTextChunkStore fullTextChunkStore,
+      EmbeddingRateEstimator embeddingRateEstimator,
+      IntSupplier maxInputTokens) {
     this.vectorStore = vectorStore;
     this.embeddingModel = embeddingModel;
     this.batchingStrategy = batchingStrategy;
@@ -101,9 +134,16 @@ public class VectorChunkStore implements ChunkMetadataStore {
     this.maxInputTokens = maxInputTokens;
   }
 
-  /** The configured input limit of the embedding endpoint, in tokens. */
+  /** The input limit of the embedding endpoint, in tokens. */
   public int maxInputTokens() {
-    return maxInputTokens;
+    return maxInputTokens.getAsInt();
+  }
+
+  private static IntSupplier positive(int maxInputTokens) {
+    if (maxInputTokens <= 0) {
+      throw new IllegalArgumentException("maxInputTokens must be positive, got " + maxInputTokens);
+    }
+    return () -> maxInputTokens;
   }
 
   /**
@@ -197,7 +237,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
               + " endpoint reported no token count; a silent cut cannot be ruled out",
           check.unverified().size(),
           chunks.getFirst().getMetadata().get(DOCUMENT_ID_METADATA_KEY),
-          maxInputTokens);
+          maxInputTokens());
     }
   }
 
@@ -288,7 +328,8 @@ public class VectorChunkStore implements ChunkMetadataStore {
   }
 
   private boolean mayReachLimit(String input) {
-    return input.getBytes(StandardCharsets.UTF_8).length + SPECIAL_TOKEN_RESERVE >= maxInputTokens;
+    return input.getBytes(StandardCharsets.UTF_8).length + SPECIAL_TOKEN_RESERVE
+        >= maxInputTokens();
   }
 
   /** The text the embedding model receives for {@code chunk}, Kontextpräfix included. */
@@ -319,7 +360,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
     }
     Integer tokens = promptTokens(response);
     return new Single(
-        response.getResult().getOutput(), tokens, tokens != null && tokens >= maxInputTokens);
+        response.getResult().getOutput(), tokens, tokens != null && tokens >= maxInputTokens());
   }
 
   /** The endpoint's token count for the request, or {@code null} when it reported none. */

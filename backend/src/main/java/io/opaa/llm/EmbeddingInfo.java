@@ -1,19 +1,25 @@
 package io.opaa.llm;
 
 /**
- * The currently configured embedding model - provider, model identifier and vector dimensionality,
- * read straight from the same {@code spring.ai.*}/{@code opaa.*} properties {@code application.yml}
- * already resolves for the active {@link org.springframework.ai.embedding.EmbeddingModel} bean.
- * Deliberately just a value read out of configuration, not a managed entity like {@link LlmModel}:
- * unlike the chat model, the embedding model is not editable through the admin API at all (see
- * {@link EmbeddingInfoService}).
+ * The installed embedding model - provider, model identifier and vector size - as {@code
+ * embedding_model} holds it. Not editable through the admin API at all (see {@link
+ * EmbeddingInfoService}).
  *
  * <p>{@code provider} is always {@code openai} - the OpenAI-compatible protocol is the only
- * connection path Spring AI wires here, Ollama included, via its own {@code /v1} endpoint. The
- * field stays part of this record (and the API response built from it) rather than being dropped,
- * since a future, genuinely different connection path is not ruled out.
+ * connection path, Ollama included, via its own {@code /v1} endpoint. The field stays part of this
+ * record (and the API response built from it), since a genuinely different connection path is not
+ * ruled out.
  *
  * <p>{@code baseUrl} is the effective endpoint, or {@code null} when it carries credentials - it is
- * shown to administrators and must never reproduce them.
+ * shown to administrators and must never reproduce them. {@link #NOT_INSTALLED} stands for an
+ * installation without an embedding model yet: no model, no address, size {@code 0}.
  */
-public record EmbeddingInfo(String provider, String model, int dimensions, String baseUrl) {}
+public record EmbeddingInfo(String provider, String model, int dimensions, String baseUrl) {
+
+  public static final EmbeddingInfo NOT_INSTALLED = new EmbeddingInfo("openai", null, 0, null);
+
+  /** Whether an embedding model is installed. */
+  public boolean installed() {
+    return model != null;
+  }
+}

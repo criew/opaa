@@ -96,9 +96,11 @@ spring:
     # - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The value is fixed, not
     # driven by an environment variable: with the native Ollama starter gone, "openai" is the only
     # autoconfiguration Spring AI can wire here.
+    # The embedding model is no autoconfiguration either: it is the row of embedding_model, chosen
+    # in the installation (ADR-0060, Entscheidung 10) and served by io.opaa.llm.InstalledEmbeddingModel.
     model:
       chat: openai
-      embedding: openai
+      embedding: none
     # The base URL has a default: locally operated models are the default
     # (docs/features/llm-integration.md#eigene-modelle-zuerst). The profile-specific overrides below
     # point at the local Ollama server (docker: the "ollama" service name; local/default:
@@ -116,10 +118,8 @@ spring:
         temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:}
         max-tokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:8000}
       embedding:
-        api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
-        model: ${OPAA_OPENAI_EMBEDDING_MODEL:bge-m3}
-        # Per embedding call; a batch of bge-m3 on CPU takes well over a minute.
+        # Per embedding call; a batch of bge-m3 on CPU takes well over a minute. Address, model, key
+        # and input limit are no configuration: they belong to the installed embedding model.
         timeout: ${OPAA_OPENAI_EMBEDDING_TIMEOUT:180s}
     mcp:
       server:
@@ -141,14 +141,14 @@ spring:
           completion: false
     vectorstore:
       pgvector:
-        # vector_store and its indexes come from the knowledge migration, so no instance runs DDL for
-        # it at start-up.
+        # vector_store and its indexes are created once, with the dimension of the probe embedding,
+        # when the embedding model is installed (io.opaa.knowledge.VectorTableCreator), so no
+        # instance runs DDL for it at start-up.
         initialize-schema: false
         # Must equal opaa.database.schema (io.opaa.config.DatabaseSchemaGuard).
         schema-name: ${opaa.database.schema}
         index-type: hnsw
         distance-type: ${OPAA_PGVECTOR_DISTANCE_TYPE:cosine_distance}
-        dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1024}
 
 opaa:
   permission:
@@ -232,16 +232,6 @@ opaa:
       # (docs/features/conversation-memory.md). Everything else about the note is a fixed
       # value with no addressee to reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
-    # Periods of the automatic chat cleanup a space can switch on (io.opaa.space.
-    # ChatAutoCleanupProperties). Floors 90 and 30 days; a smaller value stops the start.
-    auto-cleanup:
-      archive-after-days: ${OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS:90}
-      delete-after-days: ${OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS:365}
-    # Deletion of the chats of local accounts locked by the administration (io.opaa.chat.
-    # LockedAccountChatCleanupProperties). Floor 90 days; a smaller value stops the start.
-    locked-account-cleanup:
-      enabled: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED:true}
-      delete-after-days: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS:365}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
@@ -334,13 +324,18 @@ opaa:
     excerpt-max-characters: ${OPAA_SEARCH_EXCERPT_MAX_CHARACTERS:1500}
     fetch-max-characters: ${OPAA_SEARCH_FETCH_MAX_CHARACTERS:200000}
     context-passages: ${OPAA_SEARCH_CONTEXT_PASSAGES:1}
+  # The embedding model is the row of embedding_model (ADR-0060, Entscheidung 10). These values are
+  # read only while that row is missing, to take over the model an installation from before
+  # ADR-0060 was configured with (io.opaa.llm.LegacyEmbeddingConfiguration); afterwards they have
+  # no effect. Empty means the former default (bge-m3, the shared OPAA_OPENAI_BASE_URL, 2048 input
+  # tokens, 1024 dimensions).
   embedding:
-    # The input limit of the embedding endpoint in tokens, as it is served: with Ollama the batch
-    # size (num_batch), not the model's own context. An input that could reach it is embedded alone
-    # and split when the endpoint refuses it or counts the limit (VectorChunkStore#checkInputs).
-    # 2048 holds for every Ollama model as pulled; only a model created with a larger num_batch, such
-    # as bge-m3 from the Compose ollama-pull step, takes more and gets its value set explicitly.
-    max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:2048}
+    takeover:
+      base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:}
+      model: ${OPAA_OPENAI_EMBEDDING_MODEL:}
+      api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:}
+      max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:}
+      dimensions: ${OPAA_PGVECTOR_DIMENSIONS:}
   # The rerank model role - on the same level as the chat and embedding roles. The switch is
   # deliberately separate from the endpoint fields: reranking being off must be an operator's
   # statement, not an indistinguishable consequence of a missing configuration line
@@ -769,9 +764,6 @@ opaa:
     read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
     write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
   audit:
-    # Grants of the anlassbezogene Klaerung are deleted at the end of the calendar year that lies
-    # this many years after the end of their usability (1 to 10).
-    incident-scope-retention-years: ${OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS:1}
     payload:
       # A before/after key the event catalog (AuditEventCatalog) does not list is dropped and
       # logged; the dev profile and every test refuse the write instead.
@@ -893,8 +885,6 @@ spring:
       base-url: ${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}
       chat:
         base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
-      embedding:
-        base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
 
 ---
 spring:
