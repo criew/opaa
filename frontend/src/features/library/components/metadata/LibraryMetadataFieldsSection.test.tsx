@@ -76,6 +76,14 @@ const fassungRetiring = {
   ],
 }
 
+/** The value list of a selection field opens from its count, e.g. „2 Werte“. */
+async function openValues(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: /Werte\s*von Fassung/ }))
+}
+
+/** Changing and deleting a field start from its row's „Ändern“. */
+const EDIT_FIELD = { name: /^Ändern\s*Feld Fassung$/ }
+
 const runningRemap = {
   kind: 'VALUE_REMAP' as const,
   fieldKey: 'fassung',
@@ -128,13 +136,17 @@ describe('LibraryMetadataFieldsSection', () => {
   })
 
   it('shows a field with its Wirkstellen, its value list and the warning about value lists', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    expect(await screen.findByText('Fassung')).toBeInTheDocument()
-    expect(screen.getByText('Filter')).toBeInTheDocument()
-    expect(screen.getByText('Beleg 1')).toBeInTheDocument()
-    expect(screen.getByText('Fassung 2026 (F2026)')).toBeInTheDocument()
-    expect(screen.getByText(/keine schutzbedürftigen Bezeichnungen tragen/)).toBeInTheDocument()
+    const row = (await screen.findByText('Fassung')).closest('li')!
+    expect(row).toHaveTextContent(/Auswahl · 2 Werte.* · Filter, Beleg 1/)
+    await openValues(user)
+    expect(within(row).getByText('Fassung 2026')).toBeInTheDocument()
+    expect(within(row).getByText('Fassung 2027')).toBeInTheDocument()
+    expect(
+      screen.getByText('Wertelisten sieht jede Person, die die Bibliothek nutzt.'),
+    ).toBeInTheDocument()
   })
 
   it('never offers a field without a retrieval effect', async () => {
@@ -154,7 +166,7 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await screen.findByText('Fassung 2026 (F2026)')
+    await openValues(user)
     await user.click(screen.getByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }))
 
     expect(await screen.findByText(/3 Dokument\(e\) tragen „F2026“/)).toBeInTheDocument()
@@ -166,7 +178,8 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await user.click(await screen.findByRole('button', { name: 'Feld Fassung löschen' }))
+    await user.click(await screen.findByRole('button', EDIT_FIELD))
+    await user.click(await screen.findByRole('button', { name: 'Feld löschen' }))
 
     expect(
       await screen.findByText(/4 Dokument\(e\) tragen einen Wert für „Fassung“/),
@@ -179,7 +192,7 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await user.click(await screen.findByRole('button', { name: 'Feld Fassung bearbeiten' }))
+    await user.click(await screen.findByRole('button', EDIT_FIELD))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('checkbox', { name: 'Wirkt im Kontextpräfix' }))
 
@@ -223,7 +236,9 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Dokumentart' }))
+    expect(await screen.findByText('Titel')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Ändern\s*Kontextpräfix/ }))
+    await user.click(screen.getByRole('switch', { name: 'Dokumentart' }))
     const dialog = await screen.findByRole('dialog')
     expect(await within(dialog).findByText(/4812 Abschnitte/)).toBeInTheDocument()
     expect(mockUpdateCorePrefix).not.toHaveBeenCalled()
@@ -248,8 +263,10 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await user.click(await screen.findByRole('button', { name: 'Feld Fassung löschen' }))
-    const dialog = await screen.findByRole('dialog')
+    await user.click(await screen.findByRole('button', EDIT_FIELD))
+    await user.click(await screen.findByRole('button', { name: 'Feld löschen' }))
+    const confirm = await screen.findByRole('button', { name: 'Endgültig löschen' })
+    const dialog = confirm.closest<HTMLElement>('[role="dialog"]')!
 
     expect(
       await within(dialog).findByText('Diese Änderung hat keine Folgekosten.'),
@@ -283,9 +300,12 @@ describe('LibraryMetadataFieldsSection', () => {
 
     await screen.findByText('Fassung')
     expect(screen.queryByRole('button', { name: 'Feld anlegen' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Feld Fassung löschen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', EDIT_FIELD)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Kontextpräfix/ })).not.toBeInTheDocument()
+    await openValues(userEvent.setup())
+    expect(screen.getByText('Fassung 2026')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Feld Fassung bearbeiten' }),
+      screen.queryByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Wert ergänzen' })).not.toBeInTheDocument()
   })
@@ -294,7 +314,7 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await user.click(await screen.findByRole('button', { name: 'Feld Fassung bearbeiten' }))
+    await user.click(await screen.findByRole('button', EDIT_FIELD))
     const dialog = await screen.findByRole('dialog')
     await user.clear(within(dialog).getByLabelText('Feldname'))
     await user.type(within(dialog).getByLabelText('Feldname'), 'Fassung/Stand')
@@ -313,7 +333,7 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await screen.findByText('Fassung 2026 (F2026)')
+    await openValues(user)
     await user.click(screen.getByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }))
     const label = await screen.findByLabelText('Bezeichnung')
     await user.clear(label)
@@ -362,6 +382,7 @@ describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () =>
    * no longer editable.
    */
   it('zeigt die laufende Abbildung mit ihrem Fortschritt und legt den Wert still', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
     expect(
@@ -370,7 +391,8 @@ describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () =>
       ),
     ).toBeInTheDocument()
     expect(screen.getByText(/bleibt der alte Wert in der Werteliste/)).toBeInTheDocument()
-    expect(screen.getByText(/Fassung 2026 \(F2026\) — wird abgebildet/)).toBeInTheDocument()
+    await openValues(user)
+    expect(screen.getByText('Fassung 2026 · wird abgebildet')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }),
     ).not.toBeInTheDocument()
@@ -407,8 +429,9 @@ describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () =>
     expect(
       await screen.findByText(/Feld „Fassung“ wird gelöscht: 4 Dokumente offen/),
     ).toBeInTheDocument()
-    expect(screen.getByText('wird gelöscht')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Feld Fassung löschen' })).not.toBeInTheDocument()
+    expect(screen.getByText('Fassung').closest('li')).toHaveTextContent(/· wird gelöscht$/)
+    expect(screen.queryByRole('button', EDIT_FIELD)).not.toBeInTheDocument()
+    await openValues(userEvent.setup())
     expect(screen.queryByRole('button', { name: 'Wert ergänzen' })).not.toBeInTheDocument()
   })
 })

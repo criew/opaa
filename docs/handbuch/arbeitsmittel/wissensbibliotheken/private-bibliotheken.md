@@ -28,9 +28,9 @@ sind:
 Verbindungstest und Auflistung vor dem Anlegen laufen ebenso über das verbundene Konto.
 
 **Erkennbar** ist eine private Bibliothek an der Marke **„Privat“** (Schloss und Wort) auf ihrer
-Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur Eigentümerin,
-Diagnosesperre und ein Hinweis, warum es nicht mehr gibt; Berechtigungen, Externer Zugang,
-Obergrenze, Herleitung und „Eigentum übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
+Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur die Zeilen
+„Eigentümer“ und „Suchdiagnose“; Berechtigungen, Externer Zugang, Obergrenze, Herleitung und
+„Übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
 und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat,
 auch solche nur für Personen.
 
@@ -72,13 +72,14 @@ nimmt sie nicht auf, läuft aber weiter, übernimmt Löschungen in der Quelle un
 unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Eine übersprungene Datei gilt nicht als gelöscht;
 war sie schon aufgenommen und passt nur ihre neue Fassung nicht, bleibt die bisherige Fassung
 durchsuchbar. Dieselbe Kategorie trägt ein Lauf, der am Kontingent der Bibliothek selbst endete;
-dieses wird zuerst geprüft. Im Reiter „Quelle“ trägt der Lauf deshalb unter „Läufe“ die neutrale
-Marke „unvollständig: Speicherkontingent erschöpft, Dateien übersprungen“ und aufgeklappt einen
-Hinweis, der beide Ursachen und beide Wege nennt: Platz in dieser Bibliothek schaffen oder ihr
+dieses wird zuerst geprüft. Im Reiter „Quelle“ heißt der Lauf deshalb unter „Läufe“ „Kontingent
+voll“, sein Ergebnis endet auf „unvollständig“, und aufgeklappt nennt ein Hinweis beide Ursachen
+und beide Wege: Platz in dieser Bibliothek schaffen oder ihr
 Kontingent erhöhen lassen, das der Betrieb festlegt, oder die privaten Bibliotheken insgesamt
 verkleinern oder die persönliche Grenze von der Systemverwaltung erhöhen lassen. Welches Kontingent
 erschöpft war, nennt das Laufprotokoll an jeder übersprungenen Datei, mit Verbrauch und Grenze.
-Endete der letzte Lauf so, steht derselbe Hinweis auch im Kopf der Detailseite. Platz schaffen Dateien, die
+Endete der letzte Lauf so, heißt auch der Zustand im Kopf der Detailseite „Kontingent voll“; er
+führt zu diesem Lauf. Platz schaffen Dateien, die
 in der Quelle gelöscht werden oder durch eine eingegrenzte Quelle herausfallen, das Löschen einer
 ganzen privaten Bibliothek oder eine höhere Grenze der Systemverwaltung. Frei wird der Platz erst,
 wenn der Abgleich die Löschung übernimmt: bei einem Vollabgleich am Ende des Laufs, bei einer Runde
@@ -89,9 +90,9 @@ Anhang wird ohne Änderungsmerkmal gespeichert und im nächsten Lauf erneut gele
 nimmt der nächste Lauf, der sie erreicht, sie auf; bis dahin endet jeder solche Lauf unvollständig,
 und der Hinweis bleibt stehen.
 
-Ihren **eigenen Verbrauch** sieht die Besitzerin im Kopf der Detailseite jeder ihrer privaten
-Bibliotheken: „… von … in Ihren privaten Bibliotheken belegt“, bei unbegrenzter Grenze „… in Ihren
-privaten Bibliotheken belegt (unbegrenzt)“. Die Zahl gilt für alle ihre privaten Bibliotheken
+Ihren **eigenen Verbrauch** sieht die Besitzerin in den Kennzahlen im Kopf der Detailseite jeder
+ihrer privaten Bibliotheken: „… von … privat“, bei unbegrenzter Grenze „… privat“; der Tooltip
+sagt, dass die Zahl alle privaten Bibliotheken meint. Die Zahl gilt für alle ihre privaten Bibliotheken
 zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sonst.
 
 Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
@@ -158,8 +159,8 @@ machen lässt; der Fokus liegt zunächst auf „Abbrechen“. Ist die Bibliothek
 zurück in den Katalog und bestätigt es. Solange die Anfrage läuft, ist „Sofort löschen“ gesperrt.
 Läuft gerade eine Indexierung, meldet OPAA, dass die Bibliothek zur Löschung vorgemerkt ist, und die
 Seite bleibt stehen: Die
-Bibliothek trägt im Kopf die Marke **„Wird gelöscht“** und den Hinweis „Wird gelöscht – vorgemerkt
-am …“, ohne einen Zeitpunkt für den Abschluss zu versprechen. Bis dahin bietet die Seite weder
+Bibliothek trägt im Kopf die Marke **„Wird gelöscht“** und als Zustand „Wird gelöscht · `<Tag der
+Vormerkung>`“, ohne einen Zeitpunkt für den Abschluss zu versprechen. Bis dahin bietet die Seite weder
 „Jetzt indizieren“ noch ein erneutes Löschen, kein Bearbeiten von Name, Quelle, Zugang, Zeitplan,
 Metadatenfeldern oder Zuordnungen und kein Hochladen oder Löschen von Dokumenten. Ein Dokument
 lässt sich nicht mehr öffnen; der Versuch meldet „Die Bibliothek wird gelöscht – ihre Dokumente

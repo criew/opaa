@@ -33,18 +33,6 @@ export const googleDriveSource: SourceRegistration = {
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
     scopeNoteId: 'google-drive-sharing-consequence',
-    scopeHero: {
-      summary: (library) => {
-        const count = googleDriveScopesOf(googleDriveSettingsFromLibrary(library)).length
-        return count === 1 ? '1 Bereich' : `${count} Bereiche`
-      },
-      unlistedWarning: (keys) =>
-        (keys.length === 1
-          ? `Der letzte Lauf konnte den Bereich „${keys[0]}“ nicht erreichen; sein Bestand ist möglicherweise veraltet.`
-          : `Der letzte Lauf konnte die Bereiche ${keys.map((key) => `„${key}“`).join(', ')} nicht erreichen; ihr Bestand ist möglicherweise veraltet.`) +
-        ' Der Hinweis bleibt, bis ein Vollabgleich wieder alle Bereiche auflisten kann.',
-      unlistedTestId: 'google-drive-incomplete-listing-warning',
-    },
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,
     firstRunHint:

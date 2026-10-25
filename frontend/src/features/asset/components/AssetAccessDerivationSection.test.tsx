@@ -43,7 +43,7 @@ describe('AssetAccessDerivationSection', () => {
     )
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Herleitung anzeigen' }))
+    await user.click(screen.getByRole('button', { name: /^Anzeigen\s?Herleitung$/ }))
     expect(
       await screen.findByText(
         'Maria Weber darf diese Prompt-Bibliothek lesen – für alle Konten freigegeben.',
@@ -51,9 +51,9 @@ describe('AssetAccessDerivationSection', () => {
     ).toBeInTheDocument()
     expect(mockGetAssetAccessDerivation).toHaveBeenCalledWith('PROMPT_LIBRARY', 'prompts-1')
 
-    await user.click(screen.getByRole('button', { name: 'Schließen' }))
+    await user.click(screen.getByRole('button', { name: /^Schließen\s?Herleitung$/ }))
 
     expect(screen.queryByText(/Maria Weber darf/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Herleitung anzeigen' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: /^Anzeigen\s?Herleitung$/ })).toHaveFocus()
   })
 })

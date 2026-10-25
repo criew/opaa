@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
-import Stack from '@mui/material/Stack'
 import type { AssetType } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import PageSection from '@/shared/ui/PageSection'
+import { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 import AccessDerivation from './AccessDerivation'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 
@@ -32,30 +30,25 @@ export default function AssetAccessDerivationSection({
   }, [shown])
 
   return (
-    <PageSection
-      title={`Warum sehe ich diese ${assetTypeLabel(assetType)}?`}
-      description="Ihr eigener Weg zur wirksamen Rolle. Ohne Vollmacht, ohne Protokoll."
+    <ValueRow
+      title="Herleitung"
+      value={`Ihr Weg zu dieser ${assetTypeLabel(assetType)}`}
+      action={
+        <TextAction
+          onClick={() => {
+            if (shown) returnFocus.current = true
+            setShown((v) => !v)
+          }}
+          aria-expanded={shown}
+          context="Herleitung"
+        >
+          {shown ? 'Schließen' : 'Anzeigen'}
+        </TextAction>
+      }
     >
-      {shown ? (
-        <Stack spacing={0.5}>
-          <AccessDerivation target={{ kind: 'asset', assetType, assetId }} subjectName={ownName} />
-          <Link
-            component="button"
-            type="button"
-            sx={{ alignSelf: 'flex-end', fontSize: 12 }}
-            onClick={() => {
-              returnFocus.current = true
-              setShown(false)
-            }}
-          >
-            Schließen
-          </Link>
-        </Stack>
-      ) : (
-        <Button ref={openButton} size="small" onClick={() => setShown(true)}>
-          Herleitung anzeigen
-        </Button>
+      {shown && (
+        <AccessDerivation target={{ kind: 'asset', assetType, assetId }} subjectName={ownName} />
       )}
-    </PageSection>
+    </ValueRow>
   )
 }

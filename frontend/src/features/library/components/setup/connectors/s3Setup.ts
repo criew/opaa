@@ -19,7 +19,6 @@ import {
   issueList,
   joinSummary,
   listSummary,
-  counted,
   pairIssues,
 } from './common'
 import { S3ConnectionFields, S3ScopeFields } from './S3SetupFields'
@@ -43,14 +42,20 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
             .filter((scope) => scope.bucket.trim() !== '')
             .map((scope) => displayPath(`${scope.bucket}/${scope.prefix}`)),
         )
-        const patterns =
-          values.includePatterns.split('\n').filter((l) => l.trim()).length +
-          values.excludePatterns.split('\n').filter((l) => l.trim()).length
-        if (!list || patterns === 0) return list
-        const muster = counted(patterns, ['Muster', 'Muster'])
+        // the patterns are entries of their own: what is kept („nur …“), what is left out
+        const lines = (text: string) =>
+          text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+        const patterns = [
+          ...lines(values.includePatterns).map((pattern) => `nur ${pattern}`),
+          ...lines(values.excludePatterns).map((pattern) => `außer ${pattern}`),
+        ]
+        if (!list || patterns.length === 0) return list
         return typeof list === 'string'
-          ? `${list} · ${muster}`
-          : { ...list, lead: `${list.lead} · ${muster}` }
+          ? { lead: list, items: patterns }
+          : { ...list, items: [...list.items, ...patterns] }
       },
       Fields: S3ScopeFields,
     },

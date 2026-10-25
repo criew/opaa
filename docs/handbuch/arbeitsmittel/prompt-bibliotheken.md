@@ -118,15 +118,15 @@ sieht sie schreibgeschützt:
 | Reiter | Inhalt |
 |---|---|
 | **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle oben „Neuer Prompt" und je Prompt „Bearbeiten" und „Löschen" |
-| **Freigaben** | „Eigentümer" und „Warum sehe ich diese Prompt-Bibliothek?" für jede Rolle, dazwischen ab der Verwalterrolle „Berechtigungen" |
+| **Freigaben** | die Zeilen „Eigentümer" und „Herleitung" für jede Rolle, dazwischen ab der Verwalterrolle „Berechtigungen" |
 | **Zuordnungen** | „In Space verwenden" und die Spaces, denen die Bibliothek zugeordnet ist |
 
 Die Abschnitte der Reiter „Freigaben" und „Zuordnungen" sind dieselben Bausteine wie bei einer
 Wissensbibliothek, und jeder speichert für sich. „Berechtigungen" führt Personen, Gruppen und
-„Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für „Alle Konten"
-auch hier nur Leser und Bearbeiter. Über „Eigentum übergeben" reicht der Eigentümer die Bibliothek
+„Alle Konten" mit Rolle, Befristung und Entzug, dazu „Freigeben"; für „Alle Konten"
+auch hier nur Leser und Bearbeiter. Über „Übergeben" reicht der Eigentümer die Bibliothek
 an eine Person oder eine Gruppe weiter. Zwei Abschnitte der Wissensbibliothek fehlen hier:
-**„Externer Zugang"** und **„Diagnosesperre"** — beides sind Eigenschaften eines durchsuchbaren
+**„Externer Zugang"** und **„Suchdiagnose"** — beides sind Eigenschaften eines durchsuchbaren
 Bestands, den eine Prompt-Bibliothek nicht hat.
 
 Die frühere Adresse des Reiters „Verwaltung" führt auf den Reiter „Freigaben".
