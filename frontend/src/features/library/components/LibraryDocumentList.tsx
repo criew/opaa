@@ -170,7 +170,7 @@ export default function LibraryDocumentList({
   onToggleAttachmentGroup,
 }: LibraryDocumentListProps) {
   const isSearchActive = Boolean(pageState?.q)
-  // folders are not paged by the backend: from eight on the list shows the first ones (D19)
+  // folders are not paged by the backend: from eight on the list shows the first ones
   const [allFolders, setAllFolders] = useState(false)
   const shownFolders = allFolders ? folders : folders.slice(0, FOLDERS_SHOWN)
   const isMissingFilterActive = Boolean(pageState?.missingMetadataField)

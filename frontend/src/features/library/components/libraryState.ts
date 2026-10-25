@@ -1,6 +1,7 @@
 import type {
   IndexingRunResponse,
   LibraryResponse,
+  SourceBlock,
   SuccessionStateResponse,
 } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
@@ -110,12 +111,19 @@ interface StateInput {
   succession: SuccessionStateResponse | null | undefined
   /** The newest run of the history; null while there is none or it is not loaded. */
   newestRun: IndexingRunResponse | null
+  /**
+   * The newest run as far as a caller below MANAGER knows it, who may not read the history: its
+   * outcome and, for a completed one, when it ended. Used while newestRun is null.
+   */
+  lastRun?: { status: 'COMPLETED' | 'FAILED'; at: string | null } | null
   /** The polled state of a running run: its percent, null while nothing runs. */
   runningPercent: number | null
   /** A run runs, but its polled state could not be fetched: still „Läuft“, without a percent. */
   runningUnknown?: boolean
   /** Whether the source signs in at all (no „Anmeldung“ for a directory, web or feed). */
   signsIn: boolean
+  /** The library's own profile was deleted by the system administration. */
+  connectionProfileRemoved?: boolean
   /** Whether the caller sees the source's rows and runs; a reader gets the word without a link. */
   canSeeSource: boolean
   /** Upload: the last upload was turned away at the quota. */
@@ -173,11 +181,16 @@ function stateOf(input: StateInput): LibraryState {
   if (input.runningPercent !== null) {
     return { word: 'Läuft', tone: 'neutral', detail: `${input.runningPercent} %`, target: LAEUFE }
   }
-  const block = library.sourceBlock
-  if (block?.reason === 'EXPIRED' || block?.reason === 'NOT_CONNECTED') {
-    return { word: 'Zustimmung abgelaufen', tone: 'error', detail: null, target: VERBINDUNG }
-  }
+  const blocked = blockState(library.sourceBlock, input.connectionProfileRemoved)
+  if (blocked) return blocked
   if (!newestRun) {
+    const last = input.lastRun
+    if (last?.status === 'COMPLETED') {
+      return { word: 'Aktuell', tone: 'success', detail: formatDay(last.at), target: LAEUFE }
+    }
+    if (last?.status === 'FAILED') {
+      return { word: 'Fehlgeschlagen', tone: 'error', detail: formatDay(last.at), target: LAEUFE }
+    }
     return { word: 'Noch nie indiziert', tone: 'neutral', detail: null, target: LAEUFE }
   }
   const word = runWord(newestRun, input.signsIn)
@@ -191,6 +204,45 @@ function stateOf(input: StateInput): LibraryState {
       return { word, tone: 'error', detail: day, target: VERBINDUNG }
     default:
       return { word, tone: runTone(word), detail: day, target: LAEUFE }
+  }
+}
+
+/**
+ * A source that is not updated any more names why, in the words of the catalog tile's note
+ * (assetTileData.ts), and leads to the row „Verbindung“, where the notice offers the remedy.
+ */
+function blockState(
+  block: SourceBlock | null | undefined,
+  profileRemoved: boolean | undefined,
+): LibraryState | null {
+  const at = (word: string, tone: StatusTone = 'error'): LibraryState => ({
+    word,
+    tone,
+    detail: null,
+    target: VERBINDUNG,
+  })
+  if (profileRemoved) return at('Zugang entfernt')
+  if (!block) return null
+  switch (block.reason) {
+    case 'TYPE_LOCKED':
+    case 'PROFILE_LOCKED':
+    case 'PROFILE_REQUIRED':
+      return at('Gesperrt')
+    case 'ACCESS_REMOVED':
+      return at('Zugang entfernt')
+    case 'TARGET_OUTSIDE_PROFILE':
+      return at('Adresse außerhalb des Zugangs')
+    case 'EXPIRED':
+    case 'NOT_CONNECTED':
+      return at('Zustimmung abgelaufen')
+    case 'DORMANT':
+      return at('Ruhend', 'warning')
+    case 'OWNER_DEACTIVATED':
+      return at('Konto deaktiviert')
+    default: {
+      const unknown: never = block.reason
+      throw new Error(`Unknown source block reason ${String(unknown)}`)
+    }
   }
 }
 

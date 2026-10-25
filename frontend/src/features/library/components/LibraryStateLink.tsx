@@ -3,6 +3,7 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import type { StatusTone } from '@/shared/ui/StatusLine'
+import { TextAction } from '@/shared/ui/DetailSection'
 import { stateTargetHref, type LibraryState } from './libraryState'
 
 const TONE_COLOR: Record<StatusTone, string> = {
@@ -20,10 +21,13 @@ const TONE_COLOR: Record<StatusTone, string> = {
 export default function LibraryStateLink({
   state,
   focusRef,
+  onRetry,
 }: {
   state: LibraryState
   /** Takes the focus when the state appears after an action, e.g. an erasure was marked. */
   focusRef?: Ref<HTMLDivElement>
+  /** Fetches the state anew once polling gave up; offered to every role beside the word. */
+  onRetry?: () => void
 }) {
   const quiet = state.tone === 'success'
   const word = (
@@ -34,7 +38,7 @@ export default function LibraryStateLink({
       {state.word}
     </Box>
   )
-  return (
+  const status = (
     <Box
       component="span"
       ref={focusRef}
@@ -72,5 +76,14 @@ export default function LibraryStateLink({
       )}
       {state.detail && <span>· {state.detail}</span>}
     </Box>
+  )
+  // the retry stands beside the live region, so the state is announced without the action
+  return onRetry ? (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 1 }}>
+      {status}
+      <TextAction onClick={onRetry}>Stand erneut abrufen</TextAction>
+    </Box>
+  ) : (
+    status
   )
 }

@@ -74,7 +74,6 @@ export interface LibrarySourceSectionProps {
   onFullSync?: () => void
   /** Polling the running run gave up; the last known state stays. */
   statusUnknown?: boolean
-  onRetryStatus?: () => void
 }
 
 /**
@@ -93,7 +92,6 @@ export default function LibrarySourceSection({
   unlistedScopeKeys = NO_KEYS,
   onFullSync,
   statusUnknown = false,
-  onRetryStatus,
 }: LibrarySourceSectionProps) {
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -363,9 +361,8 @@ export default function LibrarySourceSection({
           title="Läufe"
           id="library-runs"
           action={
-            statusUnknown && onRetryStatus ? (
-              <TextAction onClick={onRetryStatus}>Stand erneut abrufen</TextAction>
-            ) : onFullSync && !erasing && runs.length > 0 ? (
+            // a status that could not be fetched is retried at the head's state word
+            onFullSync && !erasing && runs.length > 0 && !statusUnknown ? (
               <TextAction onClick={onFullSync} disabled={running !== null}>
                 Vollabgleich starten
               </TextAction>
@@ -458,7 +455,7 @@ function rowMarks(
   )
   return {
     storedStatus,
-    // only entries with a name can be marked; without names the run says it (D8)
+    // only entries with a name can be marked; without names the run says it
     // a directory or web address has no listed entries: its unreadable parts are listed in the
     // entries' form; elsewhere the listed entry carries the mark
     scopeStatus:

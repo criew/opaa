@@ -35,6 +35,9 @@ export function unreadableScopeNames(
         return libraries.find((entry) => entry.driveId === id)?.name ?? 'unbekannte Bibliothek'
       })
     }
+    // one OneDrive per library: its key names the drive, the Umfang the OneDrive
+    case 'ONEDRIVE':
+      return keys.map(() => 'OneDrive')
     case 'GOOGLE_DRIVE': {
       const scopes = list<{ drive?: string; folder?: string; name?: string }>(settings, 'scopes')
       return keys.map((key) => {

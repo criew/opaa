@@ -500,7 +500,7 @@ const SHORT_TYPE: Record<LibraryMetadataFieldResponse['type'], string> = {
   PATTERN: 'Kennung nach Muster',
 }
 
-/** From eight values on the list gets a search (D19). */
+/** From eight values on the list gets a search. */
 const VALUES_SHOWN = 8
 
 /** The value list of a selection field: a few as text, all with a search on request. */

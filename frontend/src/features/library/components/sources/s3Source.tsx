@@ -46,18 +46,6 @@ export const s3Source: SourceRegistration = {
       return first ? first.bucket.trim() : ''
     },
     scopeNoteId: 's3-sharing-consequence',
-    scopeHero: {
-      summary: (library) => {
-        const count = s3SettingsFromLibrary(library)?.scopes?.length ?? 0
-        return count === 1 ? '1 Geltungsbereich' : `${count} Geltungsbereiche`
-      },
-      unlistedWarning: (keys) =>
-        (keys.length === 1
-          ? `Der letzte Vollabgleich konnte den Geltungsbereich „${keys[0]}“ nicht auflisten; sein Bestand ist möglicherweise veraltet.`
-          : `Der letzte Vollabgleich konnte die Geltungsbereiche ${keys.map((key) => `„${key}“`).join(', ')} nicht auflisten; ihr Bestand ist möglicherweise veraltet.`) +
-        ' Der Hinweis bleibt, bis ein Vollabgleich wieder alle Geltungsbereiche auflisten kann.',
-      unlistedTestId: 's3-incomplete-listing-warning',
-    },
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.',
     setup: s3Setup,

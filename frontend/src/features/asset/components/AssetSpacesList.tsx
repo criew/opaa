@@ -18,7 +18,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 import { useSpaceListLoader } from './spaceListContext'
 
-/** From this many spaces the list gets a search (D19). */
+/** From this many spaces the list gets a search. */
 const SEARCH_FROM = 8
 
 interface AssetSpacesListProps {

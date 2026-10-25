@@ -49,7 +49,7 @@ import {
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
-/** From this many entries the list gets a search and the choice of recipient kind (D19). */
+/** From this many entries the list gets a search and the choice of recipient kind. */
 const SEARCH_FROM = 8
 /** Entries shown before „weitere anzeigen“. */
 const PAGE = 50
@@ -436,7 +436,7 @@ export default function AssetGrantsSection({
         </Alert>
       )}
 
-      {/* from eight entries a search and the kind of recipient (D19) */}
+      {/* from eight entries a search and the kind of recipient */}
       {listed.length >= SEARCH_FROM && (
         <Stack
           direction={{ xs: 'column', sm: 'row' }}

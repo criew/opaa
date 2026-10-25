@@ -10,6 +10,9 @@ interface LibraryMetadataTabProps {
   mayChange: boolean
   /** May read the extraction settings at all (MANAGER and above). */
   canEdit: boolean
+  /** The tab is shown; the fill counts are fetched anew on every visit. */
+  active: boolean
+  onFieldsChanged?: () => void
 }
 
 /**
@@ -20,13 +23,16 @@ export default function LibraryMetadataTab({
   libraryId,
   mayChange,
   canEdit,
+  active,
+  onFieldsChanged,
 }: LibraryMetadataTabProps) {
   return (
     <Stack>
-      <MetadataFillSection libraryId={libraryId} />
+      <MetadataFillSection libraryId={libraryId} active={active} />
       <LibraryMetadataFieldsSection
         libraryId={libraryId}
         canManageSchema={mayChange}
+        onFieldsChanged={onFieldsChanged}
         // GET .../metadata/extraction-settings answers from MANAGER on only
         trailingRows={
           canEdit && (

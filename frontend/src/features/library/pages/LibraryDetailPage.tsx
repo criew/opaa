@@ -150,13 +150,15 @@ export default function LibraryDetailPage() {
     libraryId ? (s.runHistoryByLibrary[libraryId] ?? NO_RUNS) : NO_RUNS,
   )
 
+  // the run history answers from MANAGER on only; below, the head reads the polled status
+  const mayReadRuns = canEdit
   useEffect(() => {
     if (!libraryId || !connectorSourceType) return
     void loadStatus(libraryId, connectorSourceType)
     // the head's state reads the newest run, so the history loads with the page
-    void loadRunHistory(libraryId)
+    if (mayReadRuns) void loadRunHistory(libraryId)
     return () => stopPolling(libraryId)
-  }, [libraryId, connectorSourceType, loadStatus, loadRunHistory, stopPolling])
+  }, [libraryId, connectorSourceType, mayReadRuns, loadStatus, loadRunHistory, stopPolling])
 
   const isRunning = run.status === 'RUNNING'
   const runProgressPercent =
@@ -171,12 +173,13 @@ export default function LibraryDetailPage() {
   useEffect(() => {
     if (wasRunningRef.current && !isRunning && libraryId) {
       void loadLibraryDetails(libraryId)
-      void loadRunHistory(libraryId)
+      if (mayReadRuns) void loadRunHistory(libraryId)
+      else void loadLibraries()
       setDocumentsRefreshToken((token) => token + 1)
       setStorageRefreshToken((token) => token + 1)
     }
     wasRunningRef.current = isRunning
-  }, [isRunning, libraryId, loadLibraryDetails, loadRunHistory])
+  }, [isRunning, libraryId, mayReadRuns, loadLibraryDetails, loadLibraries, loadRunHistory])
 
   // The running run's progress from the polled status - the head and the run row show this count.
   const running =
@@ -270,6 +273,7 @@ export default function LibraryDetailPage() {
   const newestWord = runs[0]
     ? runWord(runs[0], connectorConfiguration?.setup?.signsIn ?? true)
     : null
+  const [fieldsVersion, setFieldsVersion] = useState(0)
   const nextSteps = useNextSteps({
     libraryId: libraryId ?? '',
     sourceType: details?.sourceType ?? null,
@@ -285,6 +289,7 @@ export default function LibraryDetailPage() {
       newestWord !== 'Nicht erreichbar' &&
       newestWord !== 'Zustimmung abgelaufen',
     metadataEnabled: showMetadataTab,
+    fieldsVersion,
   })
 
   if (!libraryId) {
@@ -307,12 +312,19 @@ export default function LibraryDetailPage() {
     )
   }
 
+  const fullSync =
+    connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
+      ? () => void triggerIndexing(libraryId, connectorSourceType, 'FULL')
+      : undefined
+
   const state = libraryState({
     library: { ...library, ...details },
     documentCount: library.documentCount ?? 0,
     erasureRequestedAt,
     succession: details?.succession ?? library.succession,
     newestRun: runs[0] ?? null,
+    lastRun: mayReadRuns ? null : lastRunOf(run.status, run.timestamp, listEntry),
+    connectionProfileRemoved: details?.connectionProfileRemoved,
     runningPercent: running ? running.percent : null,
     runningUnknown: Boolean(connectorSourceType && isRunning && run.statusUnknown),
     uploadQuotaRejected,
@@ -398,7 +410,22 @@ export default function LibraryDetailPage() {
             succession: details?.succession ?? library.succession,
           })}
           responsibleHref={tabSearch('freigaben')}
-          status={<LibraryStateLink state={state} focusRef={erasureNoticeRef} />}
+          status={
+            <LibraryStateLink
+              state={state}
+              focusRef={erasureNoticeRef}
+              onRetry={
+                isRunning && run.statusUnknown ? () => retryStatusPolling(libraryId) : undefined
+              }
+            />
+          }
+          // the runs with their own „Vollabgleich starten“ are the managers'; whoever else may
+          // start a run finds the full reconciliation here
+          menuItems={
+            fullSync && !canEdit
+              ? [{ label: 'Vollabgleich starten', onClick: fullSync, disabled: isRunning }]
+              : undefined
+          }
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
           mayUseInSpace={mayUseInSpace}
@@ -551,14 +578,7 @@ export default function LibraryDetailPage() {
                 running={running}
                 unlistedScopeKeys={run.unlistedScopeKeys}
                 statusUnknown={isRunning && run.statusUnknown}
-                onRetryStatus={() => retryStatusPolling(libraryId)}
-                onFullSync={
-                  connectorSourceType &&
-                  mayManageDocuments &&
-                  connectorConfiguration?.fullSyncRhythm
-                    ? () => void triggerIndexing(libraryId, connectorSourceType, 'FULL')
-                    : undefined
-                }
+                onFullSync={fullSync}
               />
             ) : (
               <Typography sx={{ color: 'text.secondary' }}>
@@ -578,11 +598,11 @@ export default function LibraryDetailPage() {
             hidden={activeTab !== 'metadaten'}
           >
             <LibraryMetadataTab
-              // the fill counts change with every correction in „Dokumente“: counted anew per visit
-              key={activeTab === 'metadaten' ? 'metadata-shown' : 'metadata-hidden'}
               libraryId={libraryId}
               mayChange={mayChange}
               canEdit={canEdit}
+              active={activeTab === 'metadaten'}
+              onFieldsChanged={() => setFieldsVersion((version) => version + 1)}
             />
           </Box>
         )}
@@ -631,4 +651,21 @@ export default function LibraryDetailPage() {
       </Box>
     </Box>
   )
+}
+
+/**
+ * The newest run for a caller who may not read the history: the polled status says how it ended,
+ * the list entry when it last completed.
+ */
+function lastRunOf(
+  status: string,
+  timestamp: string | null | undefined,
+  entry: { lastRunStatus?: string; lastIndexedAt?: string } | undefined,
+): { status: 'COMPLETED' | 'FAILED'; at: string | null } | null {
+  const outcome = status === 'COMPLETED' || status === 'FAILED' ? status : entry?.lastRunStatus
+  if (outcome === 'COMPLETED') {
+    return { status: 'COMPLETED', at: entry?.lastIndexedAt ?? timestamp ?? null }
+  }
+  if (outcome === 'FAILED') return { status: 'FAILED', at: timestamp ?? null }
+  return null
 }

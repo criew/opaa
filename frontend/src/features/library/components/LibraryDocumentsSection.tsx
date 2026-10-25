@@ -242,7 +242,7 @@ export default function LibraryDocumentsSection({
     })
   }
 
-  // a library without a single document: only the empty state and its one action (D21)
+  // a library without a single document: only the empty state and its one action
   const filtered = Boolean(pageState?.q || missingFieldParam || folderIdParam)
   const libraryEmpty =
     !isLoading &&
@@ -287,7 +287,7 @@ export default function LibraryDocumentsSection({
     )
   }
 
-  // search and filters from eight documents on, or while a filter or search is active (D19)
+  // search and filters from eight documents on, or while a filter or search is active
   const searchable = (pageState?.totalElements ?? 0) >= 8 || filtered
   // a folder can be created at the root and inside any open folder
   const newFolder = canManageFolders ? (

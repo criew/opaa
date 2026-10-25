@@ -53,6 +53,19 @@ interface NextStepsInput {
   /** The source answers: no block, no refused sign-in on the newest run. */
   sourceConnected: boolean
   metadataEnabled: boolean
+  /** Changes whenever the library's metadata fields change, so „Feld anlegen“ is ticked at once. */
+  fieldsVersion?: number
+}
+
+/**
+ * The stored state of a library's list; the wizard's handover opens it at once, so the list
+ * outlives the first link that drops `justCreated` from the address.
+ */
+function initialState(libraryId: string, justCreated: boolean): StoredState | null {
+  const stored = readStored(libraryId)
+  if (!justCreated || stored === 'dismissed') return stored
+  writeStored(libraryId, 'open')
+  return 'open'
 }
 
 /**
@@ -63,13 +76,18 @@ export function useNextSteps(input: NextStepsInput): {
   steps: NextStep[]
   dismiss: () => void
 } {
-  const { libraryId, justCreated } = input
-  const [stored, setStored] = useState<StoredState | null>(() => readStored(libraryId))
+  const { libraryId, justCreated, fieldsVersion = 0 } = input
+  const [state, setState] = useState(() => ({
+    libraryId,
+    stored: initialState(libraryId, justCreated),
+  }))
+  // another library, or the handover arriving later: start from its own stored state
+  let stored = state.stored
+  if (state.libraryId !== libraryId || (justCreated && stored === null)) {
+    stored = initialState(libraryId, justCreated)
+    setState({ libraryId, stored })
+  }
   const [fieldCount, setFieldCount] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (justCreated && readStored(libraryId) !== 'dismissed') writeStored(libraryId, 'open')
-  }, [justCreated, libraryId])
 
   const active = input.mayChange && stored !== 'dismissed' && (justCreated || stored === 'open')
 
@@ -86,7 +104,7 @@ export function useNextSteps(input: NextStepsInput): {
     return () => {
       cancelled = true
     }
-  }, [active, input.metadataEnabled, libraryId])
+  }, [active, input.metadataEnabled, libraryId, fieldsVersion])
 
   if (!active || input.sourceType == null) return { steps: [], dismiss: () => {} }
 
@@ -133,7 +151,7 @@ export function useNextSteps(input: NextStepsInput): {
   }
   const dismiss = () => {
     writeStored(libraryId, 'dismissed')
-    setStored('dismissed')
+    setState({ libraryId, stored: 'dismissed' })
   }
   if (steps.every((step) => step.done)) return { steps: [], dismiss }
   return { steps, dismiss }

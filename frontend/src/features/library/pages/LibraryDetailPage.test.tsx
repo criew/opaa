@@ -686,8 +686,8 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // The Diagnosesperre is the row „Suchdiagnose“ of the Reiter „Freigaben“ - shown to whoever
-  // manages the library, but only its „Entsperren“/„Sperren“ is scoped to the responsible body.
+  // The Diagnosesperre is the row „Suchdiagnose“ of the Reiter „Freigaben“ - shown to every
+  // reader, but only its „Entsperren“/„Sperren“ is scoped to the responsible body.
   describe('Diagnosesperre (#1257)', () => {
     async function openSharing(user: ReturnType<typeof userEvent.setup>) {
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
@@ -703,13 +703,13 @@ describe('LibraryDetailPage', () => {
       expect(within(row).queryByRole('button')).not.toBeInTheDocument()
     })
 
-    it('shows no row to a VIEWER, who can neither set nor lift the lock', async () => {
+    it('shows a VIEWER the lock read-only, without a text action', async () => {
       setLibraryState(viewerLibrary, detailsOf(viewerLibrary, { diagnosticsLocked: true }))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await screen.findByRole('heading', { name: 'Herleitung' })
-      expect(screen.queryByRole('region', { name: 'Suchdiagnose' })).not.toBeInTheDocument()
+      const row = await openSharing(userEvent.setup())
+      expect(row).toHaveTextContent('Gesperrt für Suchdiagnosen anderer')
+      expect(within(row).queryByRole('button')).not.toBeInTheDocument()
     })
 
     // A system admin's myRole bypasses to OWNER unconditionally
@@ -1918,8 +1918,8 @@ describe('LibraryDetailPage', () => {
     ).not.toBeInTheDocument()
     const statusCallsBefore = mockGetIndexingStatus.mock.calls.length
 
-    const runs = screen.getByRole('region', { name: 'Läufe' })
-    await user.click(within(runs).getByRole('button', { name: 'Stand erneut abrufen' }))
+    // the retry sits at the state word, the same for every role
+    await user.click(screen.getByRole('button', { name: 'Stand erneut abrufen' }))
 
     await waitFor(() => {
       expect(mockGetIndexingStatus.mock.calls.length).toBeGreaterThan(statusCallsBefore)
@@ -3206,7 +3206,7 @@ describe('LibraryDetailPage', () => {
 
     it('creates a new folder via the dialog and reloads the current view', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone (D21)
+      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone
       mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument]))
       mockCreateLibraryFolder.mockResolvedValueOnce({
         id: 'folder-new',
@@ -3239,7 +3239,7 @@ describe('LibraryDetailPage', () => {
 
     it('shows a 409 name conflict inside the dialog without closing it', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone (D21)
+      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone
       mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument]))
       mockCreateLibraryFolder.mockRejectedValueOnce(
         new Error('Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene'),
@@ -3857,7 +3857,7 @@ describe('LibraryDetailPage', () => {
     // would then flash that same message once the dialog was gone.
     it('clears the page-level folderError alert when a dialog with a 409 is cancelled', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
-      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone (D21)
+      // „Neuer Ordner“ stands in the list's head; an empty library shows only its drop zone
       mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([someDocument]))
       mockCreateLibraryFolder.mockRejectedValueOnce(
         new Error('Ein Ordner mit diesem Namen existiert bereits auf dieser Ebene'),
@@ -4252,7 +4252,7 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
     })
 
-    // no lasting note on why (D20): the selection simply carries no „Löschen“
+    // no lasting note on why: the selection simply carries no „Löschen“
     it('offers no Löschen on a connector bestand', async () => {
       const connector = { ...managerLibrary, sourceType: 'FILESYSTEM' as const }
       mockGetLibraryDocuments.mockResolvedValue(

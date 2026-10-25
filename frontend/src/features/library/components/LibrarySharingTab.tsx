@@ -85,8 +85,8 @@ export default function LibrarySharingTab({
 
         {/* the single values close the tab as rows of the Reiter „Quelle“ under one line */}
         <Box sx={{ borderTop: sections ? 1 : 0, borderColor: 'divider' }}>
-          {/* a reader can neither set nor lift the lock: the row is the managers' alone */}
-          {details && (canEdit || details.diagnosticsLockToggleable) && (
+          {/* every reader sees the lock; only the responsible body gets the text action */}
+          {details && (
             <DiagnosticsLockControl
               locked={details.diagnosticsLocked ?? true}
               // myRole bypasses to OWNER for a system admin unconditionally

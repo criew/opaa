@@ -75,7 +75,7 @@ function formatDuration(run: IndexingRunResponse): string {
   return minutes > 0 ? `${minutes} min` : `${seconds} s`
 }
 
-/** Who started the run; a full reconciliation names its mode instead (D11). */
+/** Who started the run; a full reconciliation names its mode instead. */
 function trigger(run: IndexingRunResponse, showMode: boolean): string {
   if (showMode && run.runMode === 'FULL') return 'Vollabgleich'
   if (run.triggeredBy === 'SCHEDULED') return 'Zeitplan'
@@ -465,17 +465,6 @@ export default function LibraryRunList({
           const progress = run.status === 'RUNNING' ? running : null
           const label = progress ? `${word} · ${progress.percent} %` : word
           const detailId = `run-detail-${run.id}`
-          // a failed run with nothing to open - no events, no metrics, no reason, no remedy - stays shut
-          const expandable = !(
-            run.status === 'FAILED' &&
-            word !== 'Anmeldung abgelehnt' &&
-            word !== 'Nicht erreichbar' &&
-            word !== 'Zustimmung abgelaufen' &&
-            run.events.length === 0 &&
-            !run.metrics &&
-            run.failureCategory !== 'QUOTA_EXHAUSTED' &&
-            word !== 'Fehlgeschlagen'
-          )
           const rowSx = {
             ...COLUMNS,
             width: '100%',
@@ -538,41 +527,34 @@ export default function LibraryRunList({
               >
                 {result(run, progress)}
               </Box>
-              {expandable ? (
-                <ExpandMoreIcon
-                  aria-hidden
-                  sx={{
-                    fontSize: 20,
-                    alignSelf: 'center',
-                    color: 'text.secondary',
-                    transform: isOpen ? 'rotate(180deg)' : 'none',
-                  }}
-                />
-              ) : (
-                <span />
-              )}
+              <ExpandMoreIcon
+                aria-hidden
+                sx={{
+                  fontSize: 20,
+                  alignSelf: 'center',
+                  color: 'text.secondary',
+                  transform: isOpen ? 'rotate(180deg)' : 'none',
+                }}
+              />
             </>
           )
           return (
             <Box component="li" key={run.id} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              {expandable ? (
-                <ButtonBase
-                  data-run-row
-                  aria-expanded={isOpen}
-                  aria-controls={detailId}
-                  onClick={() => setOpen((prev) => ({ ...prev, [run.id]: !prev[run.id] }))}
-                  sx={{
-                    ...rowSx,
-                    '&:hover': { bgcolor: 'action.hover' },
-                    '&.Mui-focusVisible': { outline: 2, outlineColor: 'primary.main' },
-                  }}
-                >
-                  {cells}
-                </ButtonBase>
-              ) : (
-                <Box sx={rowSx}>{cells}</Box>
-              )}
-              {expandable && isOpen && (
+              {/* every run opens: at least its technical details stand inside */}
+              <ButtonBase
+                data-run-row
+                aria-expanded={isOpen}
+                aria-controls={detailId}
+                onClick={() => setOpen((prev) => ({ ...prev, [run.id]: !prev[run.id] }))}
+                sx={{
+                  ...rowSx,
+                  '&:hover': { bgcolor: 'action.hover' },
+                  '&.Mui-focusVisible': { outline: 2, outlineColor: 'primary.main' },
+                }}
+              >
+                {cells}
+              </ButtonBase>
+              {isOpen && (
                 <Box id={detailId}>
                   <RunDetail
                     run={run}

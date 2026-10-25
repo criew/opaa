@@ -226,14 +226,22 @@ function SwitchRow({
 }
 
 /**
- * How full the fields of the library are - the one place for it (D22): per field the empty
+ * How full the fields of the library are - the one place for it: per field the empty
  * documents and a jump into the documents filtered to them; where the values come from stands in
  * the row's tooltip.
  */
-export function MetadataFillSection({ libraryId }: { libraryId: string }) {
+export function MetadataFillSection({
+  libraryId,
+  active = true,
+}: {
+  libraryId: string
+  /** The tab is shown; the counts change with every correction elsewhere, so each visit counts. */
+  active?: boolean
+}) {
   const [quality, setQuality] = useState<LibraryMetadataQualityResponse | null>(null)
   const [, setSearchParams] = useSearchParams()
   useEffect(() => {
+    if (!active) return
     let cancelled = false
     getLibraryMetadataQuality(libraryId)
       .then((response) => {
@@ -243,7 +251,7 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
     return () => {
       cancelled = true
     }
-  }, [libraryId])
+  }, [libraryId, active])
   if (!quality || quality.totalDocuments === 0) return null
   return (
     <DetailSection title="Füllgrad">
