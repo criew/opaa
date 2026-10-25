@@ -182,17 +182,36 @@ class ConfluenceConnectionServiceTest {
 
   // regression guard for #3175: a failure before the instance judged the credentials says
   // nothing about them - null, so the setup names the address, never "Anmeldung abgelehnt"
-  @ParameterizedTest
-  @MethodSource("deployments")
-  void aTlsFailureLeavesTheCredentialsUnverified(Deployment deployment) throws Exception {
-    String url = start(deployment).replaceFirst("^http://", "https://");
+  @Test
+  void aTlsFailureLeavesTheCredentialsUnverified() throws Exception {
+    // a plain HTTP answer to the client's TLS handshake fails it at once
+    try (java.net.ServerSocket plain = new java.net.ServerSocket(0)) {
+      Thread answering =
+          Thread.ofVirtual()
+              .start(
+                  () -> {
+                    while (!plain.isClosed()) {
+                      try (java.net.Socket socket = plain.accept()) {
+                        socket
+                            .getOutputStream()
+                            .write(
+                                "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"
+                                    .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                      } catch (IOException e) {
+                        return;
+                      }
+                    }
+                  });
 
-    ConfluenceConnectionService.Probe probe =
-        service.probe(url, credentials(deployment.edition()), deployment.edition());
+      ConfluenceConnectionService.Probe probe =
+          service.probe("https://127.0.0.1:" + plain.getLocalPort(), TOKEN, null);
 
-    assertThat(probe.reachable()).isFalse();
-    assertThat(probe.credentialsVerified()).isNull();
-    assertThat(probe.message()).contains("TLS-Verbindung");
+      assertThat(probe.reachable()).isFalse();
+      assertThat(probe.credentialsVerified()).isNull();
+      assertThat(probe.message()).contains("TLS-Verbindung");
+      plain.close();
+      answering.join();
+    }
   }
 
   @ParameterizedTest
