@@ -10,6 +10,7 @@ export const mockConnectionLifecycleDefaults: ConnectionLifecycleSettingResponse
     maxValue: 365,
     overridden: false,
     updatedAt: null,
+    pausedBy: [],
   },
   {
     setting: 'PRIVATE_LIBRARY_DELETION_DAYS',
@@ -19,6 +20,7 @@ export const mockConnectionLifecycleDefaults: ConnectionLifecycleSettingResponse
     maxValue: 90,
     overridden: false,
     updatedAt: null,
+    pausedBy: [],
   },
   {
     setting: 'EXPIRED_CONNECTION_WARNING_THRESHOLD',
@@ -28,5 +30,6 @@ export const mockConnectionLifecycleDefaults: ConnectionLifecycleSettingResponse
     maxValue: 1000,
     overridden: false,
     updatedAt: null,
+    pausedBy: [],
   },
 ]

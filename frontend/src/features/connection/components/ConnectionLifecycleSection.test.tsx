@@ -20,6 +20,7 @@ const inactivity: ConnectionLifecycleSettingResponse = {
   maxValue: 365,
   overridden: false,
   updatedAt: null,
+  pausedBy: [],
 }
 const deletion: ConnectionLifecycleSettingResponse = {
   setting: 'PRIVATE_LIBRARY_DELETION_DAYS',
@@ -29,6 +30,7 @@ const deletion: ConnectionLifecycleSettingResponse = {
   maxValue: 90,
   overridden: true,
   updatedAt: '2026-10-20T08:00:00Z',
+  pausedBy: [],
 }
 const warning: ConnectionLifecycleSettingResponse = {
   setting: 'EXPIRED_CONNECTION_WARNING_THRESHOLD',
@@ -38,6 +40,7 @@ const warning: ConnectionLifecycleSettingResponse = {
   maxValue: 1000,
   overridden: false,
   updatedAt: null,
+  pausedBy: [],
 }
 
 function serve(settings: ConnectionLifecycleSettingResponse[], minimumGroupSize = 5) {
@@ -177,6 +180,36 @@ describe('ConnectionLifecycleSection', () => {
         name: 'Löschfrist privater Bibliotheken auf die Werkseinstellung von 30 zurücksetzen?',
       }),
     ).not.toHaveTextContent(/früher als bisher/)
+  })
+
+  it('names why the erasure pauses and ends the pause by storing the shown value', async () => {
+    serve([
+      inactivity,
+      {
+        ...deletion,
+        value: 30,
+        overridden: false,
+        pausedBy: [
+          {
+            variable: 'OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS',
+            retiredValue: '90',
+            effectiveValue: '30',
+          },
+        ],
+      },
+      warning,
+    ])
+    const sent = saveCapture()
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionLifecycleSection />)
+
+    expect(await screen.findByText('Löschen pausiert')).toBeInTheDocument()
+    expect(screen.getByText('OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Angezeigten Wert festlegen' }))
+
+    await waitFor(() =>
+      expect(sent).toEqual([{ setting: 'PRIVATE_LIBRARY_DELETION_DAYS', body: { value: 30 } }]),
+    )
   })
 
   it('refuses a value outside the bounds before sending', async () => {
