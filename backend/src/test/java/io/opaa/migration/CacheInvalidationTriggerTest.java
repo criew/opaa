@@ -72,6 +72,11 @@ class CacheInvalidationTriggerTest extends AbstractBaselineTest {
     assertThat(received()).containsExactly("mail-settings");
     execute("INSERT INTO embedding_index (id, dimensions, updated_at) VALUES (1, 1536, now())");
     assertThat(received()).containsExactly("embedding-index");
+    execute(
+        "INSERT INTO embedding_model (id, base_url, model_identifier, max_input_tokens,"
+            + " dimensions, installed_at) VALUES (1, 'http://embedding.example/v1', 'bge-m3',"
+            + " 2048, 1024, now())");
+    assertThat(received()).containsExactly("embedding-model");
   }
 
   @Test

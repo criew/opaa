@@ -36,8 +36,10 @@ namespaces:
       - java/io/opaa/account/LocalAdminResetRecordRepository.java
       - java/io/opaa/installation/InstallationStateRepository.java
   - number: 213
-    purpose: reconciling and switching the vector index schema, one instance at a time
-    owners: [java/io/opaa/indexing/chunk/VectorIndexSchema.java]
+    purpose: creating, reconciling and switching the vector table schema, one instance at a time
+    owners:
+      - java/io/opaa/indexing/chunk/VectorIndexSchema.java
+      - java/io/opaa/knowledge/VectorTableCreator.java
   - number: 230
     purpose: the boundaries of the permission history, installation-wide monotonic
     owners: [resources/db/migration/rights/V1.3__rights_baseline.sql]

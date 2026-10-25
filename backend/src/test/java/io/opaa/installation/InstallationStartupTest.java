@@ -3,6 +3,7 @@ package io.opaa.installation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -18,6 +19,7 @@ import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.instance.CurrentInstance;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +44,7 @@ class InstallationStartupTest {
   private final InstallationService installation = mock(InstallationService.class);
   private final DatabaseInstallationStatus status = mock(DatabaseInstallationStatus.class);
   private final LocalAdminReset adminReset = mock(LocalAdminReset.class);
+  private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private ListAppender<ILoggingEvent> logs;
 
@@ -72,10 +75,11 @@ class InstallationStartupTest {
     assertThat(startup.getPhase()).isEqualTo(CurrentInstance.REGISTERED_PHASE);
     startup.start();
 
-    InOrder order = Mockito.inOrder(installation, status, adminReset, registry);
+    InOrder order = Mockito.inOrder(installation, status, adminReset, embeddingModels, registry);
     order.verify(installation).completeAtStartupIfDue(true);
     order.verify(status).reload();
     order.verify(adminReset).resetIfForced();
+    order.verify(embeddingModels).adoptIfMissing();
     order.verify(registry).refresh();
     verify(installation, never()).ensureToken(any());
   }
@@ -89,6 +93,7 @@ class InstallationStartupTest {
 
     verify(installation).completeAtStartupIfDue(false);
     verify(adminReset, never()).resetIfForced();
+    verify(embeddingModels, never()).adoptIfMissing();
     verify(registry).refresh();
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .filteredOn(message -> message.contains("ErzeugtesTokenAbc123ErzeugtesToken"))
@@ -128,10 +133,36 @@ class InstallationStartupTest {
         .applyAnswersAtStartup(
             eq(
                 List.of(
-                    new StepInput.FirstAdmin("it@stadt.example", "IT", "Kennwort-aus-Secret-2026"),
+                    new StepInput.FirstAdmin(
+                        "it@stadt.example", "IT", "Kennwort-aus-Secret-2026", true),
                     new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
-                    new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null))));
+                    new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null),
+                    new StepInput.EmbeddingModel(null, "bge-m3", "", null))));
     verify(installation, never()).ensureToken(any());
+  }
+
+  @Test
+  void anAnswerFileKeepsThePasswordOnlyWhenItSaysSo() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"requirePasswordChange\":false,\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"},"
+                + "\"embeddingModel\":{\"model\":\"bge-m3\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.getFirst() instanceof StepInput.FirstAdmin admin
+                        && !admin.requirePasswordChange()));
   }
 
   @Test
@@ -144,7 +175,7 @@ class InstallationStartupTest {
 
     verify(installation).ensureToken(null);
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
-        .anyMatch(message -> message.contains("firstAdmin, signIn und chatModel"));
+        .anyMatch(message -> message.contains("firstAdmin, signIn, chatModel und"));
   }
 
   @Test
@@ -154,7 +185,8 @@ class InstallationStartupTest {
             directory.resolve("installation.json"),
             "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
                 + "\"password\":\"im-klartext\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
-                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"}}");
+                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"},"
+                + "\"embeddingModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"bge-m3\"}}");
     InstallationStartup startup = startup("oidc", null, answers.toString());
 
     assertThat(startup.decide()).isFalse();
@@ -183,6 +215,7 @@ class InstallationStartupTest {
         new AuthProperties(mode, null, null),
         status,
         adminReset,
+        embeddingModels,
         registry,
         JsonMapper.builder().build(),
         new RateLimitProperties(true, List.of(), null, null, null, null, null, null, null, null));
@@ -207,6 +240,7 @@ class InstallationStartupTest {
             new AuthProperties("oidc", null, null),
             status,
             adminReset,
+            embeddingModels,
             registry,
             JsonMapper.builder().build(),
             new RateLimitProperties(

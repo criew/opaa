@@ -7,6 +7,7 @@ import io.opaa.auth.OidcIssuerUris;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
+import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelEndpointUri;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.security.TargetAddressValidator;
@@ -30,6 +31,11 @@ import tools.jackson.databind.json.JsonMapper;
 class StepRules {
 
   static final int DEFAULT_MAX_TOKENS = 8000;
+  static final int DEFAULT_MAX_INPUT_TOKENS = EmbeddingEndpoint.DEFAULT_MAX_INPUT_TOKENS;
+
+  /** Upper bound of an embedding input limit; no served embedding model takes more. */
+  static final int MAX_INPUT_TOKENS = 1_000_000;
+
   static final String DEFAULT_PROVIDER_NAME = "Verzeichnisdienst";
   static final BigDecimal MAX_TEMPERATURE = new BigDecimal("2");
 
@@ -55,6 +61,15 @@ class StepRules {
 
   record ChatModelPayload(
       String baseUrl, String model, BigDecimal temperature, Integer maxTokens) {}
+
+  /** {@code dimensions} is set by a successful probe embedding and cleared by every save. */
+  record EmbeddingModelPayload(
+      String baseUrl, String model, Integer maxInputTokens, Integer dimensions) {
+
+    EmbeddingModelPayload withDimensions(int probed) {
+      return new EmbeddingModelPayload(baseUrl, model, maxInputTokens, probed);
+    }
+  }
 
   private final PasswordPolicy passwordPolicy;
   private final PasswordEncoder passwordEncoder;
@@ -91,6 +106,7 @@ class StepRules {
       case StepInput.FirstAdmin admin -> firstAdmin(admin);
       case StepInput.SignIn signIn -> signIn(signIn);
       case StepInput.ChatModel model -> chatModel(model, previousPayload, previousSecret);
+      case StepInput.EmbeddingModel model -> embeddingModel(model, previousPayload, previousSecret);
     };
   }
 
@@ -110,6 +126,15 @@ class StepRules {
         yield new InstallationOverview.ChatModel(
             model.baseUrl(), model.model(), secret != null, model.temperature(), maxTokens(model));
       }
+      case EMBEDDING_MODEL -> {
+        EmbeddingModelPayload model = embeddingModelPayload(payload);
+        yield new InstallationOverview.EmbeddingModel(
+            model.baseUrl(),
+            model.model(),
+            secret != null,
+            maxInputTokens(model),
+            model.dimensions());
+      }
     };
   }
 
@@ -127,6 +152,25 @@ class StepRules {
 
   static int maxTokens(ChatModelPayload model) {
     return model.maxTokens() == null ? DEFAULT_MAX_TOKENS : model.maxTokens();
+  }
+
+  EmbeddingModelPayload embeddingModelPayload(String payload) {
+    return json.readValue(payload, EmbeddingModelPayload.class);
+  }
+
+  /** {@code payload} with the vector size of a successful probe embedding. */
+  String withProbedDimensions(String payload, int dimensions) {
+    return json.writeValueAsString(embeddingModelPayload(payload).withDimensions(dimensions));
+  }
+
+  static int maxInputTokens(EmbeddingModelPayload model) {
+    return model.maxInputTokens() == null ? DEFAULT_MAX_INPUT_TOKENS : model.maxInputTokens();
+  }
+
+  /** The endpoint of a saved embedding model step, its key decrypted. */
+  EmbeddingEndpoint embeddingEndpoint(EmbeddingModelPayload model, String secret) {
+    return new EmbeddingEndpoint(
+        model.baseUrl(), model.model(), settingsEncryptor.decrypt(secret), maxInputTokens(model));
   }
 
   private Stored firstAdmin(StepInput.FirstAdmin input) {
@@ -201,28 +245,7 @@ class StepRules {
     List<FieldError> errors = new ArrayList<>();
     String baseUrl = trimmed(input.baseUrl());
     String model = trimmed(input.model());
-    if (baseUrl.isEmpty()) {
-      errors.add(error("chatModel.baseUrl", REQUIRED, "Die Basis-Adresse fehlt."));
-    } else if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      errors.add(
-          error(
-              "chatModel.baseUrl",
-              INVALID,
-              "Die Basis-Adresse muss mit http:// oder https:// beginnen."));
-    } else if (ModelEndpointUri.containsCredentials(baseUrl)) {
-      errors.add(
-          error(
-              "chatModel.baseUrl",
-              INVALID,
-              "Die Basis-Adresse darf keine Anmeldedaten enthalten; der Schlüssel gehört in das"
-                  + " Feld Zugangsschlüssel."));
-    }
-    if (model.isEmpty()) {
-      errors.add(error("chatModel.model", REQUIRED, "Die Modell-Kennung fehlt."));
-    }
-    requireAtMost(errors, "chatModel.baseUrl", baseUrl, MAX_ADDRESS);
-    requireAtMost(errors, "chatModel.model", model, MAX_NAME);
-    requireAtMost(errors, "chatModel.apiKey", input.apiKey(), MAX_API_KEY);
+    endpointErrors("chatModel", baseUrl, model, input.apiKey(), errors);
     if (input.maxTokens() != null && input.maxTokens() < 1) {
       errors.add(error("chatModel.maxTokens", INVALID, "Die Antwortlänge muss mindestens 1 sein."));
     }
@@ -231,33 +254,117 @@ class StepRules {
         && (temperature.signum() < 0 || temperature.compareTo(MAX_TEMPERATURE) > 0)) {
       errors.add(error("chatModel.temperature", INVALID, "Die Temperatur liegt zwischen 0 und 2."));
     }
-    if (errors.isEmpty()) {
-      String blocked = blockedModelAddress(modelAddresses, baseUrl);
-      if (blocked != null) {
-        errors.add(error("chatModel.baseUrl", "BLOCKED", blocked));
-      }
-    }
+    blockedAddressError("chatModel", baseUrl, errors);
     requireNoErrors(errors);
-    String secret;
-    if (input.apiKey() == null) {
-      if (previousSecret != null
-          && !sameEndpoint(chatModelPayload(previousPayload).baseUrl(), baseUrl)) {
-        throw FieldValidationException.of(
-            "chatModel.apiKey",
-            REQUIRED,
-            "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben oder"
-                + " das Feld leeren, um ihn zu entfernen.");
-      }
-      secret = previousSecret;
-    } else if (input.apiKey().isBlank()) {
-      secret = null;
-    } else {
-      secret = encrypt(input.apiKey().strip());
-    }
+    String secret =
+        secretOf(
+            "chatModel",
+            input.apiKey(),
+            previousSecret == null ? null : chatModelPayload(previousPayload).baseUrl(),
+            baseUrl,
+            previousSecret);
     return new Stored(
         json.writeValueAsString(
             new ChatModelPayload(baseUrl, model, temperature, input.maxTokens())),
         secret);
+  }
+
+  private Stored embeddingModel(
+      StepInput.EmbeddingModel input, String previousPayload, String previousSecret) {
+    List<FieldError> errors = new ArrayList<>();
+    String baseUrl = trimmed(input.baseUrl());
+    String model = trimmed(input.model());
+    endpointErrors("embeddingModel", baseUrl, model, input.apiKey(), errors);
+    if (input.maxInputTokens() != null
+        && (input.maxInputTokens() < 1 || input.maxInputTokens() > MAX_INPUT_TOKENS)) {
+      errors.add(
+          error(
+              "embeddingModel.maxInputTokens",
+              INVALID,
+              "Die Eingabegrenze liegt zwischen 1 und " + MAX_INPUT_TOKENS + " Tokens."));
+    }
+    blockedAddressError("embeddingModel", baseUrl, errors);
+    requireNoErrors(errors);
+    String secret =
+        secretOf(
+            "embeddingModel",
+            input.apiKey(),
+            previousSecret == null ? null : embeddingModelPayload(previousPayload).baseUrl(),
+            baseUrl,
+            previousSecret);
+    return new Stored(
+        json.writeValueAsString(
+            new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null)),
+        secret);
+  }
+
+  /**
+   * The rules of a model's address, identifier and key, lengths included, as field errors under
+   * {@code prefix}.
+   */
+  private static void endpointErrors(
+      String prefix, String baseUrl, String model, String apiKey, List<FieldError> errors) {
+    if (baseUrl.isEmpty()) {
+      errors.add(error(prefix + ".baseUrl", REQUIRED, "Die Basis-Adresse fehlt."));
+    } else if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      errors.add(
+          error(
+              prefix + ".baseUrl",
+              INVALID,
+              "Die Basis-Adresse muss mit http:// oder https:// beginnen."));
+    } else if (ModelEndpointUri.containsCredentials(baseUrl)) {
+      errors.add(
+          error(
+              prefix + ".baseUrl",
+              INVALID,
+              "Die Basis-Adresse darf keine Anmeldedaten enthalten; der Schlüssel gehört in das"
+                  + " Feld Zugangsschlüssel."));
+    }
+    if (model.isEmpty()) {
+      errors.add(error(prefix + ".model", REQUIRED, "Die Modell-Kennung fehlt."));
+    }
+    requireAtMost(errors, prefix + ".baseUrl", baseUrl, MAX_ADDRESS);
+    requireAtMost(errors, prefix + ".model", model, MAX_NAME);
+    requireAtMost(errors, prefix + ".apiKey", apiKey, MAX_API_KEY);
+    if (apiKey != null && apiKey.strip().chars().anyMatch(c -> c < 0x20 || c == 0x7f)) {
+      errors.add(
+          error(
+              prefix + ".apiKey",
+              INVALID,
+              "Der Zugangsschlüssel enthält Steuerzeichen wie einen Zeilenumbruch."));
+    }
+  }
+
+  /** The target address check of a valid address, as a field error under {@code prefix}. */
+  private void blockedAddressError(String prefix, String baseUrl, List<FieldError> errors) {
+    if (errors.isEmpty()) {
+      String blocked = blockedModelAddress(modelAddresses, baseUrl);
+      if (blocked != null) {
+        errors.add(error(prefix + ".baseUrl", "BLOCKED", blocked));
+      }
+    }
+  }
+
+  /**
+   * The key to store: a new one encrypted, an empty one removed, none kept from {@code
+   * previousSecret} only for an unchanged endpoint.
+   */
+  private String secretOf(
+      String prefix, String apiKey, String previousBaseUrl, String baseUrl, String previousSecret) {
+    if (apiKey == null) {
+      if (previousSecret != null && !sameEndpoint(previousBaseUrl, baseUrl)) {
+        throw FieldValidationException.of(
+            prefix + ".apiKey",
+            REQUIRED,
+            "Die Basis-Adresse hat sich geändert: Bitte den Zugangsschlüssel erneut eingeben oder"
+                + " das Feld leeren, um ihn zu entfernen.");
+      }
+      return previousSecret;
+    }
+    if (apiKey.isBlank()) {
+      return null;
+    }
+    return encrypt(prefix, apiKey.strip());
   }
 
   /**
@@ -299,12 +406,12 @@ class StepRules {
     return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port + path;
   }
 
-  private String encrypt(String apiKey) {
+  private String encrypt(String prefix, String apiKey) {
     try {
       return settingsEncryptor.encrypt(apiKey);
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
-          "chatModel.apiKey",
+          prefix + ".apiKey",
           INVALID,
           "Der Zugangsschlüssel kann nicht gespeichert werden: OPAA_SETTINGS_ENCRYPTION_KEY ist"
               + " nicht gesetzt oder ungültig.");

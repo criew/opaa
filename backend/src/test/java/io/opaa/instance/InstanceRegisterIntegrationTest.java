@@ -41,7 +41,7 @@ import org.springframework.transaction.support.TransactionOperations;
 class InstanceRegisterIntegrationTest {
 
   private static final String JWT_SECRET = "opaa.auth.local.jwt-secret";
-  private static final String DIMENSIONS = "spring.ai.vectorstore.pgvector.dimensions";
+  private static final String DISTANCE = "spring.ai.vectorstore.pgvector.distance-type";
 
   @Autowired private CurrentInstance currentInstance;
   @Autowired private InstanceRegistry registry;
@@ -152,14 +152,17 @@ class InstanceRegisterIntegrationTest {
   }
 
   @Test
-  void aSecondInstanceWithAnotherEmbeddingDimensionDoesNotStart() {
-    String other = String.valueOf(Integer.parseInt(environment.getProperty(DIMENSIONS)) + 512);
+  void aSecondInstanceWithAnotherVectorDistanceDoesNotStart() {
+    String other =
+        "euclidean_distance".equals(environment.getProperty(DISTANCE))
+            ? "cosine_distance"
+            : "euclidean_distance";
 
-    secondInstance(Map.of(DIMENSIONS, other), clock)
+    secondInstance(Map.of(DISTANCE, other), clock)
         .run(
             context -> {
               assertThat(context).hasFailed();
-              assertThat(refusal(context)).contains(DIMENSIONS + " (this instance: " + other + ")");
+              assertThat(refusal(context)).contains(DISTANCE + " (this instance: " + other + ")");
             });
   }
 

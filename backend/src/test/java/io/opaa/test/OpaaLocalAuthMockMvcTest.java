@@ -68,12 +68,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // under the target address check.
       "opaa.indexing.target-validation.allowlist=127.0.0.1",
       // Same model addresses as the canonical signature: never a reachable model. This family
-      // has no FakeEmbeddingModel, so the real embedding client points there too.
+      // has no FakeEmbeddingModel bean; its embedding clients come from FakeEmbeddingEndpoint.
       "spring.ai.openai.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
       "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL
     })
 @AutoConfigureMockMvc
-@Import({TestcontainersConfiguration.class, TestInstallation.class})
+@Import({TestcontainersConfiguration.class, FakeEmbeddingEndpoint.class, TestInstallation.class})
 @ActiveProfiles("oidc")
 @Testcontainers(disabledWithoutDocker = true)
 // The same guards as OpaaIntegrationTest (without its bean reset, these contexts carry no

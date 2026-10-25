@@ -1,43 +1,36 @@
 package io.opaa.llm;
 
 import org.springframework.ai.model.SpringAIModels;
-import org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingProperties;
-import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Resolves the currently configured embedding model for the read-only admin block
- * (docs/features/llm-integration.md#sofortige-wirkung). The embedding model is deliberately not
- * exposed as an editable resource: a change requires a full re-index because existing vectors
- * become incomparable, so it stays a configuration value picked at startup, not something the admin
- * API lets anyone edit.
- *
- * <p>Reads the bound Spring AI properties the actual {@code EmbeddingModel} bean is built from -
- * not the bean itself, since Spring AI's OpenAI embedding client does not expose its configured
- * model identifier back out again. {@code spring.ai.model.embedding} is fixed to {@code openai}, so
- * there is only ever one connection path to read from.
+ * The installed embedding model for the read-only admin block, the instance register and the index
+ * reconciliation (docs/features/llm-integration.md#sofortige-wirkung), read from {@code
+ * embedding_model}. Deliberately read-only: a change requires a full re-index because existing
+ * vectors become incomparable (ADR-0060, Entscheidung 10).
  */
 @Service
 public class EmbeddingInfoService {
 
-  private final String model;
-  private final int dimensions;
-  private final String baseUrl;
+  private final EmbeddingModelService embeddingModels;
 
-  @Autowired
-  public EmbeddingInfoService(
-      OpenAiEmbeddingProperties embedding, PgVectorStoreProperties vectorStore) {
-    this(embedding.getModel(), vectorStore.getDimensions(), embedding.getBaseUrl());
+  public EmbeddingInfoService(EmbeddingModelService embeddingModels) {
+    this.embeddingModels = embeddingModels;
   }
 
-  EmbeddingInfoService(String model, int dimensions, String baseUrl) {
-    this.model = model;
-    this.dimensions = dimensions;
-    this.baseUrl = ModelEndpointUri.containsCredentials(baseUrl) ? null : baseUrl;
-  }
-
+  /** The installed model, or {@link EmbeddingInfo#NOT_INSTALLED}. */
   public EmbeddingInfo getEmbeddingInfo() {
-    return new EmbeddingInfo(SpringAIModels.OPENAI, model, dimensions, baseUrl);
+    return embeddingModels
+        .installed()
+        .map(
+            settings ->
+                new EmbeddingInfo(
+                    SpringAIModels.OPENAI,
+                    settings.getModelIdentifier(),
+                    settings.getDimensions(),
+                    ModelEndpointUri.containsCredentials(settings.getBaseUrl())
+                        ? null
+                        : settings.getBaseUrl()))
+        .orElse(EmbeddingInfo.NOT_INSTALLED);
   }
 }

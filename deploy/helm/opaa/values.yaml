@@ -83,16 +83,17 @@ evaluationDatabase:
     limits:
       memory: 1Gi
 
-# Embedding endpoint (OpenAI-compatible API), read on every start. The key, if the endpoint needs
-# one, comes from the secret (key OPAA_OPENAI_EMBEDDING_API_KEY). A model server inside the cluster
+# Embedding endpoint (OpenAI-compatible API) for the transition: read only while the installation
+# has no embedding model, and taken over once (ADR-0060); afterwards these values have no effect.
+# The key, if the endpoint needs one, comes from the secret (key OPAA_OPENAI_EMBEDDING_API_KEY). A model server inside the cluster
 # is addressed by its service, e.g. Ollama: http://ollama.ai.svc.cluster.local:11434/v1
 embedding:
   baseUrl: ""
   # e.g. bge-m3, recommended for German texts
   model: ""
   # Dimensions of the embedding model, e.g. 1024 for bge-m3, 768 for nomic-embed-text, 1536 for
-  # text-embedding-3-small. Changing model or dimensions later needs a re-embedding started in the
-  # administration, no re-indexing.
+  # text-embedding-3-small. Used only by the takeover of an existing vector table; a new table gets
+  # the size of the probe embedding. Changing the values later changes nothing.
   dimensions: null
   # Budget of one embedding call; empty keeps the application default (180s, enough for bge-m3 on
   # CPU).

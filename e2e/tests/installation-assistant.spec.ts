@@ -64,6 +64,13 @@ test.describe('Einrichtungs-Assistent', () => {
     await submitStep(page)
     await expect(stepHeading(page, 'Chat-Modell')).toBeHidden()
 
+    // The probe embedding against the stub decides the vector size the completion creates.
+    await expect(stepHeading(page, 'Embedding-Modell')).toBeVisible()
+    await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
+    await page.getByLabel('Modell-Kennung').fill('ai-stub-embedding')
+    await submitStep(page)
+    await expect(stepHeading(page, 'Embedding-Modell')).toBeHidden()
+
     // The remaining steps are those the backend lists; optional ones are skipped.
     const skip = page.getByRole('button', { name: 'Überspringen' })
     while (!(await stepHeading(page, 'Abschluss').isVisible())) {

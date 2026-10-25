@@ -25,10 +25,34 @@
       "sourceType": "io.opaa.chat.web.ChatImportController"
     },
     {
-      "name": "opaa.embedding.max-input-tokens",
+      "name": "opaa.embedding.takeover.api-key",
+      "type": "java.lang.String",
+      "description": "Key of the embedding endpoint an installation from before ADR-0060 used; read once while no embedding model is installed.",
+      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
+    },
+    {
+      "name": "opaa.embedding.takeover.base-url",
+      "type": "java.lang.String",
+      "description": "Address of the embedding endpoint an installation from before ADR-0060 used; read once while no embedding model is installed.",
+      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
+    },
+    {
+      "name": "opaa.embedding.takeover.dimensions",
       "type": "java.lang.Integer",
-      "description": "Input limit of the embedding endpoint in tokens, as it is served; an input that could reach it is embedded alone.",
-      "sourceType": "io.opaa.indexing.chunk.VectorChunkStore"
+      "description": "Vector size an installation from before ADR-0060 was configured with; read once while no embedding model is installed and a vector table exists.",
+      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
+    },
+    {
+      "name": "opaa.embedding.takeover.max-input-tokens",
+      "type": "java.lang.Integer",
+      "description": "Input limit in tokens of the embedding endpoint an installation from before ADR-0060 used; read once while no embedding model is installed.",
+      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
+    },
+    {
+      "name": "opaa.embedding.takeover.model",
+      "type": "java.lang.String",
+      "description": "Embedding model an installation from before ADR-0060 used; read once while no embedding model is installed.",
+      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
     },
     {
       "name": "opaa.features.external-access.enabled",

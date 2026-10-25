@@ -116,7 +116,11 @@ Chat-, Embedding-, Rerank- und Transkriptionsmodell sind Einträge der Modellver
 Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration, ihre Timeouts und Lastgrenzen
 schon. `vector_store` entsteht nicht in der Migration, sondern beim Abschluss der Installation,
 unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die die Probeeinbettung des
-gewählten Modells liefert. `OPAA_PGVECTOR_DIMENSIONS` entfällt. Nach dem Abschluss lässt sich das
+gewählten Modells liefert. `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-Baseline legt
+`vector_store` weiterhin an, weil ein ausgeführtes Skript unverändert bleibt; eine spätere Migration
+entfernt die leere Tabelle auf einer Datenbank, auf der noch keine Instanz gestartet ist. Eine
+Installation von davor behält ihre Tabelle und übernimmt beim ersten Start einmalig das Modell, mit
+dem sie lief, samt Dimension ihrer bisherigen Konfiguration. Nach dem Abschluss lässt sich das
 Embedding-Modell nicht über die Oberfläche wechseln; ein Wechsel verlangt eine Neuindexierung und
 ist ein eigenes Thema (Offen).
 

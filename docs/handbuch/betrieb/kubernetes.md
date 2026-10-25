@@ -618,11 +618,11 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
-| `embedding.baseUrl` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_BASE_URL` | OpenAI-kompatibler Einbettungs-Endpunkt; der Schlüssel kommt aus dem Secret |
-| `embedding.model` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_MODEL` | Einbettungsmodell |
-| `embedding.dimensions` | leer, Pflicht | `OPAA_PGVECTOR_DIMENSIONS` | Vektorbreite des Modells |
+| `embedding.baseUrl` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_BASE_URL` | OpenAI-kompatibler Einbettungs-Endpunkt; der Schlüssel kommt aus dem Secret. Der erste Start übernimmt ihn einmalig als Embedding-Modell der Installation, danach wirkt der Wert nicht mehr ([Embedding](modelle.md#embedding)) |
+| `embedding.model` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_MODEL` | Einbettungsmodell; einmalig übernommen wie `embedding.baseUrl` |
+| `embedding.dimensions` | leer, Pflicht | `OPAA_PGVECTOR_DIMENSIONS` | Vektorbreite des Modells; nur für eine bestehende Vektorablage übernommen, sonst ermittelt die Probeeinbettung sie |
 | `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modelle.md#modell-wechseln)) |
-| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` | Eingabegrenze des Endpunkts in Tokens ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
+| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` | Eingabegrenze des Endpunkts in Tokens, einmalig übernommen wie `embedding.baseUrl` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
 | `rerank.enabled` | `false` | `OPAA_RERANK_ENABLED` | schaltet Reranking ein; verlangt dann `baseUrl` und `model` |
 | `rerank.baseUrl`, `rerank.model` | leer | `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` | Rerank-Endpunkt ohne den Pfad `/rerank`, Modell |
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |

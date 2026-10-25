@@ -163,7 +163,7 @@ class InstanceDisclosureAssemblerTest {
             .withProperty("spring.datasource.password", PASSWORD)
             .withProperty("opaa.upload.s3.secret-key", PASSWORD)
             .withProperty(
-                "spring.ai.openai.embedding.base-url",
+                "spring.ai.openai.base-url",
                 "https://nutzer:"
                     + URL_PASSWORD
                     + "@llm.example:8443/v1?key="
@@ -198,7 +198,7 @@ class InstanceDisclosureAssemblerTest {
       assertThat(markdown).as("Markdown form").doesNotContain(secret);
     }
     assertThat(json).doesNotContain("mail_settings.password").doesNotContain("api-key\"");
-    assertThat(setting(disclosure, "spring.ai.openai.embedding.base-url").effectiveValue())
+    assertThat(setting(disclosure, "spring.ai.openai.base-url").effectiveValue())
         .isEqualTo("https://llm.example:8443/v1");
     assertThat(disclosure.modelProviders())
         .extracting(ModelProvider::baseUrl)

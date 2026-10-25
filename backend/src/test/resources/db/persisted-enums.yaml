@@ -385,7 +385,7 @@ io.opaa.installation.InstallationState$TokenSource:
 io.opaa.installation.InstallationStep:
   attributes: [InstallationStepRecord.step]
   assessment: STATE
-  readable: [CHAT_MODEL, FIRST_ADMIN, SIGN_IN]
+  readable: [CHAT_MODEL, EMBEDDING_MODEL, FIRST_ADMIN, SIGN_IN]
   pending: []
 io.opaa.knowledge.ErasureCause:
   attributes: [KnowledgeLibrary.erasureCause]

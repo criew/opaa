@@ -54,6 +54,18 @@ public sealed interface StepInput {
     }
   }
 
+  /**
+   * The embedding model. {@code apiKey}: {@code null} keeps a key saved before, an empty value
+   * removes it; {@code maxInputTokens} {@code null} means the default.
+   */
+  record EmbeddingModel(String baseUrl, String model, String apiKey, Integer maxInputTokens)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.EMBEDDING_MODEL;
+    }
+  }
+
   /** How people sign in after the installation. */
   enum SignInMode {
     LOCAL_ONLY,

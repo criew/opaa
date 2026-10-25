@@ -55,7 +55,7 @@ class ConfigurationSettingsTest {
         .extracting(ComplianceManifest.SettingEntry::key)
         .contains(
             "llm_models.model_identifier",
-            "spring.ai.openai.embedding.model",
+            "embedding_model.model_identifier",
             "opaa.rerank.model",
             "opaa.transcription.model");
   }

@@ -2,8 +2,11 @@
 
 > **Status: in Umsetzung.** Zielbild zu Issue #3160. Gebaut sind Teilschritt 1 (Installationsmodus,
 > Token, Installations-API, Antwortdatei mit erstem Konto, Anmeldeverfahren und Chat-Modell; die drei
-> Seeder und die Startwerte sind entfallen) und Teilschritt 6 (Helm, Compose, e2e und
-> Erprobungsaufbau installieren über die Antwortdatei).
+> Seeder und die Startwerte sind entfallen), Teilschritt 3 im Backend (Embedding-Modell als Schritt
+> und in der Antwortdatei, `vector_store` entsteht beim Abschluss) und Teilschritt 6 (Helm, Compose,
+> e2e und Erprobungsaufbau installieren über die Antwortdatei). Eine ältere Installation übernimmt
+> ihr Embedding-Modell noch einmalig aus `OPAA_OPENAI_EMBEDDING_*`, bis ein Release mit dieser
+> Übernahme erschienen ist.
 > Entscheidungen: [ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md).
 
 ## Motivation
@@ -189,8 +192,8 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- Angaben späterer Schritte (`embeddingModel`, `outboundProxy`, `mail`, `branding`) wertet diese
-  Version noch nicht aus.
+- Angaben späterer Schritte (`outboundProxy`, `mail`, `branding`) wertet diese Version noch nicht
+  aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.
@@ -320,7 +323,9 @@ Je Teilschritt ein Sub-Issue an #3160:
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Wechsel des Embedding-Modells nach der Installation mit geführter Neuindexierung.
+- Wechsel des Embedding-Modells nach der Installation mit geführter Neuindexierung. Bis dahin ist er
+  ein Eingriff des Betriebs in `embedding_model` bei angehaltenen Instanzen; der Startabgleich und
+  die Neueinbettung übernehmen danach wie bisher.
 - Experten-Feinabstimmung (Gruppe F) später mit Messung und Leitplanken in der Verwaltung?
 
 ---

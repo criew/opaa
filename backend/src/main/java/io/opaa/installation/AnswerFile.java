@@ -17,7 +17,8 @@ import tools.jackson.databind.json.JsonMapper;
  * typically mounted from a secret, read when the file is applied. Parts of later steps are ignored.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-record AnswerFile(FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel) {
+record AnswerFile(
+    FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel, EmbeddingModel embeddingModel) {
 
   /** Upper bound of a secret file; a password or a key is far shorter. */
   static final long MAX_SECRET_BYTES = 8 * 1024;
@@ -49,6 +50,10 @@ record AnswerFile(FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel) {
       BigDecimal temperature,
       Integer maxTokens) {}
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record EmbeddingModel(
+      String baseUrl, String model, String apiKeyFile, String apiKey, Integer maxInputTokens) {}
+
   /** Reads and parses the file; the message of a failure names the file, never its content. */
   static AnswerFile read(Path file, JsonMapper json) {
     String text = readBounded(file, MAX_FILE_BYTES, "Die Antwortdatei");
@@ -66,11 +71,14 @@ record AnswerFile(FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel) {
 
   /** The steps of the file, with the secrets read from their files. */
   List<StepInput> steps() {
-    if (firstAdmin == null || signIn == null || chatModel == null) {
+    if (firstAdmin == null || signIn == null || chatModel == null || embeddingModel == null) {
       throw new ValidationException(
-          "Die Antwortdatei braucht die Angaben firstAdmin, signIn und chatModel.");
+          "Die Antwortdatei braucht die Angaben firstAdmin, signIn, chatModel und"
+              + " embeddingModel.");
     }
-    if (firstAdmin.password() != null || chatModel.apiKey() != null) {
+    if (firstAdmin.password() != null
+        || chatModel.apiKey() != null
+        || embeddingModel.apiKey() != null) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
               + " verweisen auf eine Datei, etwa aus einem Secret.");
@@ -83,6 +91,10 @@ record AnswerFile(FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel) {
         chatModel.apiKeyFile() == null || chatModel.apiKeyFile().isBlank()
             ? ""
             : secret(chatModel.apiKeyFile(), "chatModel.apiKeyFile");
+    String embeddingApiKey =
+        embeddingModel.apiKeyFile() == null || embeddingModel.apiKeyFile().isBlank()
+            ? ""
+            : secret(embeddingModel.apiKeyFile(), "embeddingModel.apiKeyFile");
     StepInput.Oidc oidc =
         signIn.oidc() == null
             ? null
@@ -103,7 +115,12 @@ record AnswerFile(FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel) {
             chatModel.model(),
             apiKey,
             chatModel.temperature(),
-            chatModel.maxTokens()));
+            chatModel.maxTokens()),
+        new StepInput.EmbeddingModel(
+            embeddingModel.baseUrl(),
+            embeddingModel.model(),
+            embeddingApiKey,
+            embeddingModel.maxInputTokens()));
   }
 
   /** The file's content without the trailing line break a mounted secret usually carries. */

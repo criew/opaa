@@ -70,7 +70,7 @@ test.describe('Anhangsgruppierung in der Dokumentliste', () => {
     // The two attachments are indexed within the same run, but the already-rendered document list
     // does not re-fetch on run completion - reload until the mail row shows its attachment toggle.
     const toggle = page.getByRole('button', {
-      name: `Anhänge von ${MAIL_FILE_NAME} anzeigen`,
+      name: `2 Anhänge von ${MAIL_FILE_NAME} anzeigen`,
     })
     await expect(async () => {
       await page.reload()
@@ -87,7 +87,7 @@ test.describe('Anhangsgruppierung in der Dokumentliste', () => {
     // Each attachment row is marked with its own "Anhang" chip.
     await expect(page.getByText('Anhang', { exact: true })).toHaveCount(2)
 
-    await page.getByRole('button', { name: `Anhänge von ${MAIL_FILE_NAME} verbergen` }).click()
+    await page.getByRole('button', { name: `2 Anhänge von ${MAIL_FILE_NAME} verbergen` }).click()
     await expect(page.getByText('foerderbescheid-anlage-eins.txt', { exact: true })).toBeHidden()
   })
 })

@@ -16,8 +16,9 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
 - **pgvector 0.8.0 oder neuer.** Das Image `pgvector/pgvector:pg18` bringt eine passende Fassung mit;
   bei einer älteren Erweiterung bricht der Start mit einer Meldung ab. Wer die Datenbank selbst
   betreibt und pgvector aktualisiert, führt danach `ALTER EXTENSION vector UPDATE;` aus.
-- **Die Vektortabelle** legt die Migration an, wenn sie fehlt, mit der Dimension aus
-  `OPAA_PGVECTOR_DIMENSIONS`. Nach einem Wechsel des Embedding-Modells stellt die Neueinbettung sie
+- **Die Vektortabelle** legt nicht die Migration an, sondern der Abschluss der Installation, mit
+  der Dimension, die die Probeeinbettung des Embedding-Modells ergibt. Eine bestehende Installation
+  behält ihre Vektortabelle. Nach einem Wechsel des Embedding-Modells stellt die Neueinbettung sie
   auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)).
 - **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
   Migrationsvorgang der Datenbank mit Sicherung und Wiederherstellung, kein Image-Update: Das

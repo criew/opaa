@@ -151,17 +151,17 @@ OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
 ```
 
-Das voreingestellte Embedding-Modell `bge-m3` bettet mit derselben Dimension ein, die
-`OPAA_PGVECTOR_DIMENSIONS` vorgibt. Für einen anderen Modellanbieter kommen `OPAA_OPENAI_BASE_URL`
-und `OPAA_OPENAI_API_KEY` hinzu, und `OPAA_PGVECTOR_DIMENSIONS` richtet sich nach dessen
-Embedding-Modell ([Modelle](modelle.md#welches-embedding-modell)); passt sie nicht, bricht die erste
-Einbettung mit einem Dimensionsfehler ab. Das Chat-Modell steht nicht in `.env.docker`: Es kommt aus
+Das Embedding-Modell und seine Dimension legt die [Installation](installation.md) fest; die
+Dimension ermittelt ihre Probeeinbettung. Ein bestehender Stapel aus der Zeit vor der Installation
+übernimmt beim ersten Start einmalig das Modell aus `OPAA_OPENAI_EMBEDDING_*` und
+`OPAA_PGVECTOR_DIMENSIONS` ([Modelle](modelle.md#embedding)); für ihn bleiben diese Zeilen bis zum
+ersten Start in `.env.docker` stehen. Das Chat-Modell steht nicht in `.env.docker`: Es kommt aus
 der Installation, im Modus `dev` gilt `phi3:mini` unter `OPAA_OPENAI_BASE_URL`.
 
 ## Installation im Compose-Stapel
 
 Im Betriebsmodus `oidc` (`SPRING_PROFILES_ACTIVE=docker,oidc`) bietet eine leere Datenbank nur die
-[Installation](installation.md) an: erstes Konto, Anmeldeverfahren, Chat-Modell. Zwei Wege führen
+[Installation](installation.md) an: erstes Konto, Anmeldeverfahren, Chat- und Embedding-Modell. Zwei Wege führen
 hindurch.
 
 **Im Browser oder über die Installations-API.** Ohne weitere Angaben schreibt der erste Start das
@@ -180,16 +180,18 @@ dort nur das Beispiel.
 
 ```bash
 cp installation/installation.example.json installation/installation.json
-# Adresse, Chat-Modell und gegebenenfalls Anmeldeverfahren in installation.json eintragen
+# Adresse, Chat- und Embedding-Modell und gegebenenfalls Anmeldeverfahren eintragen
 printf '%s' '<Passwort des ersten Kontos>' > installation/admin-password
 sudo chown 65532:65532 installation/admin-password && sudo chmod 0400 installation/admin-password
 ```
 
 In `.env.docker` die Zeile `OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json`
-einkommentieren und den Stapel starten. Die Installation prüft die Adresse des Chat-Modells wie eine
+einkommentieren und den Stapel starten. Die Installation prüft die Adressen der Modelle wie eine
 Quelle; das Ollama des Stapels braucht deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
 ([Installation](installation.md#schritte)). Das Passwort steht nie in der JSON-Datei, sondern nur in der
-Datei, auf die `passwordFile` zeigt; ein Zugangsschlüssel des Chat-Modells ebenso über `apiKeyFile`.
+Datei, auf die `passwordFile` zeigt; Zugangsschlüssel der Modelle ebenso über `apiKeyFile`. Das
+erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange `requirePasswordChange`
+nicht `false` ist; danach gilt das Passwort der Datei nicht mehr.
 Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
 löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
 `docker compose logs backend | grep "answer file"` nennt Schritt und Grund.

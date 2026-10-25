@@ -7,6 +7,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
 import io.opaa.instance.CurrentInstance;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,7 +22,8 @@ import tools.jackson.databind.json.JsonMapper;
  * The start-up of the installation (ADR-0060; ADR-0053: "Sperre"): after the instance is admitted
  * to the register and before the web server starts, it completes a due installation, applies the
  * answer file or stores the token, printing a generated one once. The {@code dev} mode installs
- * itself. Only a completed installation runs {@code OPAA_LOCAL_ADMIN_RESET}.
+ * itself. Only a completed installation runs {@code OPAA_LOCAL_ADMIN_RESET} and takes over the
+ * embedding model of an older installation, before the index reconciliation of the next phase.
  */
 @Component
 class InstallationStartup implements SmartLifecycle {
@@ -36,6 +38,7 @@ class InstallationStartup implements SmartLifecycle {
   private final AuthProperties authProperties;
   private final DatabaseInstallationStatus status;
   private final LocalAdminReset adminReset;
+  private final EmbeddingModelService embeddingModels;
   private final OidcProviderRegistry providerRegistry;
   private final JsonMapper json;
   private final List<String> trustedProxyCidrs;
@@ -47,6 +50,7 @@ class InstallationStartup implements SmartLifecycle {
       AuthProperties authProperties,
       DatabaseInstallationStatus status,
       LocalAdminReset adminReset,
+      EmbeddingModelService embeddingModels,
       OidcProviderRegistry providerRegistry,
       JsonMapper json,
       RateLimitProperties rateLimit) {
@@ -55,6 +59,7 @@ class InstallationStartup implements SmartLifecycle {
     this.authProperties = authProperties;
     this.status = status;
     this.adminReset = adminReset;
+    this.embeddingModels = embeddingModels;
     this.providerRegistry = providerRegistry;
     this.json = json;
     this.trustedProxyCidrs = rateLimit.trustedProxyCidrs();
@@ -87,6 +92,7 @@ class InstallationStartup implements SmartLifecycle {
     boolean completed = decided || !status.isPending();
     if (completed) {
       adminReset.resetIfForced();
+      embeddingModels.adoptIfMissing();
     }
     providerRegistry.refresh();
     if (!completed) {

@@ -80,6 +80,11 @@ public class InstallationStepRecord {
     this.updatedAt = now;
   }
 
+  /** Replaces the values with what a successful check learned, keeping the secret. */
+  void recordCheckedValues(String payload) {
+    this.payload = payload;
+  }
+
   void recordCheck(boolean succeeded, String message, Instant now) {
     this.checkSucceeded = succeeded;
     this.checkMessage =

@@ -14,6 +14,9 @@ import org.springframework.ai.embedding.EmbeddingResponse;
  */
 public class FakeEmbeddingModel implements EmbeddingModel {
 
+  /** The width of every vector this fake returns. */
+  public static final int DIMENSIONS = 1536;
+
   private record Hook(String marker, Runnable action) {}
 
   private final AtomicReference<Hook> hook = new AtomicReference<>();
@@ -65,8 +68,14 @@ public class FakeEmbeddingModel implements EmbeddingModel {
     pending.action().run();
   }
 
+  /** The width of every vector; asks nothing, as the installed model does. */
+  @Override
+  public int dimensions() {
+    return DIMENSIONS;
+  }
+
   private float[] generateFakeEmbedding() {
-    float[] embedding = new float[1536];
+    float[] embedding = new float[DIMENSIONS];
     for (int i = 0; i < embedding.length; i++) {
       embedding[i] = (float) Math.sin(i * 0.01);
     }

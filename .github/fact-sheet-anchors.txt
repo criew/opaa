@@ -253,6 +253,8 @@ voreinstellungen#bereich-spaces
 voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
 voreinstellungen#einstellungen
+voreinstellungen#embedding-model-base-url
+voreinstellungen#embedding-model-model-identifier
 voreinstellungen#external-access-settings-token-max-lifetime-days
 voreinstellungen#full-sync-rhythm-settings-interval-days-confluence
 voreinstellungen#full-sync-rhythm-settings-interval-days-dropbox
@@ -333,8 +335,6 @@ voreinstellungen#prompt-tool-loop-spike
 voreinstellungen#self-disclosure-settings-daily-limit
 voreinstellungen#self-disclosure-settings-enabled
 voreinstellungen#spring-ai-openai-base-url
-voreinstellungen#spring-ai-openai-embedding-base-url
-voreinstellungen#spring-ai-openai-embedding-model
 voreinstellungen#system-prompts
 fristen
 fristen#audit-retention-settings-retention-months

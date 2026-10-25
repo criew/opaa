@@ -142,6 +142,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "llm_model_seed_marker",
                   "installation_state",
                   "installation_steps",
+                  "embedding_model",
                   "private_storage_quota_settings",
                   "full_sync_rhythm_settings",
                   "vector_store",
@@ -219,6 +220,10 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
           Module.valueOf(Migrations.moduleOf(script).toUpperCase(Locale.ROOT)),
           () -> applyMigrations(connection, script));
     }
+    // vector_store is created by the installation, not a migration (ADR-0060), as knowledge's table
+    check.step(
+        Module.KNOWLEDGE,
+        () -> Migrations.createVectorTable(connection, connection.getSchema(), 1024));
 
     assertThat(check.violations()).isEmpty();
   }
