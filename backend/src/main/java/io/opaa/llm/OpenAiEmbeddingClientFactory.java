@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import io.micrometer.observation.ObservationRegistry;
+import io.opaa.compliance.DataFlowCarrier;
 import java.time.Duration;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
  * the request timeout of {@code spring.ai.openai.embedding.timeout} and the application's {@link
  * ObservationRegistry}. A missing key is sent as an empty one, as for the chat models.
  */
+@DataFlowCarrier
 @Component
 class OpenAiEmbeddingClientFactory implements EmbeddingClientFactory {
 

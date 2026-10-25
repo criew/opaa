@@ -219,7 +219,7 @@ Prompt-Variablen); dort gilt die Regel ohne Prüfung.
 
 `OPAA_MODE=migrate` (`opaa.mode`, gelesen aus Aufrufargumenten, Systemeigenschaften und Umgebung)
 startet statt der Anwendung nur Datenquelle, die Startwächter vor Flyway (`DatabaseSchemaGuard`,
-`DatabasePrerequisiteCheck`), die Platzhalter der Vektortabelle und Flyway, wendet die Migrationen an
+`DatabasePrerequisiteCheck`), die Platzhalter der Baseline-Vektortabelle und Flyway, wendet die Migrationen an
 und endet mit Exit-Code 0 (`io.opaa.config.DatabaseMigrationMode`). Flyway läuft dort auch bei
 `SPRING_FLYWAY_ENABLED=false`, damit Migrationsschritt und Instanzen dieselben Variablen teilen
 können. Instanzen starten danach mit `SPRING_FLYWAY_ENABLED=false`. Ohne den Modus migriert jeder
@@ -239,17 +239,32 @@ ein Passwort erscheint erst nach dem Commit seiner Transaktion im Log. `OPAA_LOC
 wirkt einmal je Setzen: Der Reset steht in `local_admin_seed_marker.forced_reset_at`, erst ein Start
 ohne die Variable löscht den Vermerk.
 
-## vector_store in der Migration
+## vector_store entsteht bei der Installation
 
-Die knowledge-Baseline legt `vector_store`, den Vektorindex `spring_ai_vector_index` und die beiden
-Ausdrucksindexe auf `library_id` und `document_id` an; `spring.ai.vectorstore.pgvector.initialize-schema`
-ist `false`. Sonst legte Spring AI die Tabelle beim Start jeder Instanz an, und zwei gleichzeitige
-Kaltstarts liefen in `CREATE EXTENSION`/`CREATE TABLE` gegeneinander (`VectorStoreColdStartTest`).
-Dimension, Indextyp und Distanz kommen als Flyway-Platzhalter (`${opaa_vector_store_dimensions}`,
-`${opaa_vector_store_index_type}`, `${opaa_vector_store_distance_ops}`) aus
-`spring.ai.vectorstore.pgvector` (`VectorStoreMigrationPlaceholders`); in den Migrationstests setzt
-`Migrations.PLACEHOLDERS` die Vorgaben. Die Migration läuft einmal; eine später geänderte Dimension
-führt sie nicht erneut aus, die bestehende Tabelle passt `EmbeddingIndexReconciler` an.
+`vector_store` gehört keiner Migration: Die Tabelle entsteht, sobald das Embedding-Modell feststeht,
+mit der Dimension seiner Probeeinbettung ([ADR-0060](../../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md),
+Entscheidung 10). `io.opaa.knowledge.VectorTableCreator` legt sie mit dem Vektorindex
+`spring_ai_vector_index` und den beiden Ausdrucksindexen auf `library_id` und `document_id` an, in der
+Transaktion, die `embedding_model` schreibt, und unter der Schemasperre der Vektortabelle
+(Namensraum `213`); zwei Instanzen legen sie so genau einmal an (`VectorStoreColdStartTest`).
+`spring.ai.vectorstore.pgvector.initialize-schema` bleibt `false`, damit Spring AI beim Start keiner
+Instanz DDL ausführt. Indextyp und Distanz kommen aus `spring.ai.vectorstore.pgvector`.
+
+Die knowledge-Baseline legt `vector_store` aus der Zeit davor weiterhin an; ein ausgeführtes Skript
+wird nicht geändert. Ihre Dimension ist ein fester Flyway-Platzhalter
+(`VectorStoreMigrationPlaceholders`), Indextyp und Distanz bleiben Platzhalter. Danach entfernt
+`knowledge/V2026.10.25.5__contract_vector_store_at_installation.sql` die leere Tabelle wieder, aber
+nur auf einer Datenbank, auf der noch keine Instanz gestartet ist (keine Zeile in
+`embedding_index`, die jeder Start schreibt) und die keinen Abschnitt hält. Auf einer solchen
+Datenbank läuft keine Vorgängerversion, daher bricht das Entfernen keine; als `contract_` ist es
+benannt, weil `RollingUpdateGuardTest` das Entfernen einer Tabelle sonst ablehnt. Eine bestehende
+Installation behält Tabelle, Spalten und Abschnitte unverändert (`VectorStoreAtInstallationMigrationTest`).
+`MigrationSchema` liest dieses Entfernen als Ausnahme und führt `vector_store` als vorhanden.
+
+Eine bestehende Installation übernimmt beim ersten Start ihr bisher konfiguriertes Embedding-Modell
+einmalig nach `embedding_model`, mit der Dimension ihrer bisherigen Konfiguration
+(`EmbeddingModelService#adoptAtStartup`). Eine später abweichende Dimension passt
+`EmbeddingIndexReconciler` an der bestehenden Tabelle an.
 
 ## Skript-Stil (ADR-0034)
 

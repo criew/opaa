@@ -40,29 +40,17 @@ class OpenAiBaseUrlGuardTest {
   }
 
   /**
-   * The embedding base URL is a live runtime address, and a failed embedding call carries it into
-   * the log: Spring's {@code ResourceAccessException} names the target URI, and {@code
-   * DocumentIngestService} logs the whole stack trace. Refused at startup, and the refusal itself
-   * must not repeat the address.
+   * The embedding model is no configuration value any more (ADR-0060, Entscheidung 10): an
+   * embedding address with credentials is refused by the probe embedding, not at start-up.
    */
   @Test
-  void refusesToStartWhenTheEmbeddingBaseUrlCarriesCredentials() {
+  void ignoresTheFormerEmbeddingBaseUrl() {
     contextRunner
         .withPropertyValues(
             "spring.ai.model.chat=none",
             "spring.ai.model.embedding=openai",
             "spring.ai.openai.embedding.base-url=https://benutzer:geheim@modellserver.example.internal/v1")
-        .run(
-            context ->
-                assertThat(context)
-                    .hasFailed()
-                    .getFailure()
-                    .rootCause()
-                    .hasMessageContaining("carries credentials")
-                    .hasMessageContaining("embedding")
-                    .hasMessageContaining("OPAA_OPENAI_EMBEDDING_API_KEY")
-                    .hasMessageNotContaining("geheim")
-                    .hasMessageNotContaining("modellserver.example.internal"));
+        .run(context -> assertThat(context).hasNotFailed());
   }
 
   @Test
@@ -96,20 +84,6 @@ class OpenAiBaseUrlGuardTest {
                     .hasMessageContaining("No base URL is configured for the chat function")
                     .hasMessageContaining("OPAA_OPENAI_BASE_URL")
                     .hasMessageContaining("OPAA_OPENAI_CHAT_BASE_URL"));
-  }
-
-  @Test
-  void refusesToStartWhenTheEmbeddingProviderIsOpenAiWithoutABaseUrl() {
-    contextRunner
-        .withPropertyValues("spring.ai.model.chat=none", "spring.ai.model.embedding=openai")
-        .run(
-            context ->
-                assertThat(context)
-                    .hasFailed()
-                    .getFailure()
-                    .rootCause()
-                    .hasMessageContaining("No base URL is configured for the embedding function")
-                    .hasMessageContaining("OPAA_OPENAI_EMBEDDING_BASE_URL"));
   }
 
   @Test

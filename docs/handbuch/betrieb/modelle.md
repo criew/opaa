@@ -6,7 +6,7 @@ Modelle es braucht, wie sie angebunden werden und woran es liegt, wenn sie nicht
 Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 
 > **Beispiel.** Ein Haus betreibt einen Modellserver im Rechenzentrum. Die Einbettung läuft dort mit
-> `bge-m3` und wird einmal in der Umgebung festgelegt. Für den Chat legt die Systemverwaltung in der
+> `bge-m3` und wird einmal bei der Installation festgelegt. Für den Chat legt die Systemverwaltung in der
 > Oberfläche zwei Modelle an, ein schnelles für den Alltag und ein größeres zum Vergleich, und
 > schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.
 
@@ -15,7 +15,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 | Rolle | Wofür | Festgelegt über | Wechsel |
 |---|---|---|---|
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Modellverwaltung in der Oberfläche; die Umgebung nur beim allerersten Start | jederzeit, ohne Neustart; berührt den Index nicht |
-| **Embedding** | Vektoren der Chunks und der Suchanfragen | Umgebung (`OPAA_OPENAI_EMBEDDING_*`, `OPAA_PGVECTOR_DIMENSIONS`) | mit Neustart; danach bettet die Systemverwaltung den Bestand neu ein ([Modell wechseln](#modell-wechseln)) |
+| **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation, mit Probeeinbettung ([Embedding](#embedding)) | nicht über die Oberfläche; nur durch einen Eingriff des Betriebs mit anschließender Neueinbettung ([Modell wechseln](#modell-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Umgebung (`OPAA_RERANK_*`) | jederzeit mit Neustart; aus ist die Voreinstellung |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Umgebung (`OPAA_TRANSCRIPTION_*`) | jederzeit mit Neustart; aus ist die Voreinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
@@ -38,8 +38,8 @@ OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-`OPAA_OPENAI_CHAT_BASE_URL` und `OPAA_OPENAI_EMBEDDING_BASE_URL` überschreiben die Adresse je Rolle;
-ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide. Ein **ausdrücklich leer gesetzter** Wert
+`OPAA_OPENAI_CHAT_BASE_URL` überschreibt die Adresse für den Chat. Die Adresse des Embedding-Modells
+ist eine Angabe der Installation ([Embedding](#embedding)). Ein **ausdrücklich leer gesetzter** Wert
 (`OPAA_OPENAI_BASE_URL=` in einer `.env`) überschreibt die Voreinstellung mit einer leeren
 Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die Variable nennt.
 
@@ -152,10 +152,21 @@ dafür zu kurz ist.
 
 ## Embedding
 
-Das Embedding-Modell legt die Umgebung fest, fortlaufend und nicht über die Oberfläche:
-`OPAA_OPENAI_EMBEDDING_MODEL`, die Adresse aus `OPAA_OPENAI_EMBEDDING_BASE_URL` oder
-`OPAA_OPENAI_BASE_URL`, der Schlüssel entsprechend, dazu `OPAA_PGVECTOR_DIMENSIONS` — die Zahl der
-Dimensionen, mit der das Modell einbettet. Die Oberfläche zeigt die Einbettung nur an.
+Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, Zugangsschlüssel und
+Eingabegrenze ([Installation](installation.md)). Ihre Prüfung ist eine Probeeinbettung: Sie zeigt,
+dass der Endpunkt das Modell bedient, und ergibt die Zahl der Dimensionen, mit der das Modell
+einbettet. Mit dieser Zahl legt der Abschluss der Installation die Vektorablage an; einstellen muss
+sie niemand. Vor dem Abschluss gibt es keine Vektorablage, und Indexierung und Suche antworten mit
+dem Hinweis, dass das Embedding-Modell noch nicht eingerichtet ist. Die Oberfläche zeigt die
+Einbettung danach nur an.
+
+Eine Installation aus der Zeit vor dem Installationsmodus übernimmt beim ersten Start einmalig das
+Modell, mit dem sie bisher lief: aus `OPAA_OPENAI_EMBEDDING_MODEL`, `OPAA_OPENAI_EMBEDDING_BASE_URL`
+oder `OPAA_OPENAI_BASE_URL`, dem Schlüssel entsprechend, `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` und
+`OPAA_PGVECTOR_DIMENSIONS`, jeweils mit ihrer früheren Vorgabe. Vektorablage und Abschnitte bleiben
+unverändert. Danach wirken diese Variablen nicht mehr; das Log nennt die Übernahme. Ein
+Zugangsschlüssel wird dabei mit `OPAA_SETTINGS_ENCRYPTION_KEY` verschlüsselt; fehlt der Schlüssel,
+nennt das Log die Variable, und Indexierung und Suche bleiben bis zum nächsten Start abgewiesen.
 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
 und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.
@@ -188,13 +199,13 @@ Suchqualität zählt deshalb vor allem, dass das Modell die Sprache der Dokument
 > **Beispiel.** In einer Messung auf 109 Verwaltungs-PDFs standen mit `bge-m3` 85 % der gesuchten
 > Kernfakten unter den ersten 20 Treffern der Vektorsuche, mit `nomic-embed-text` 37 %.
 
-Wer `nomic-embed-text` wählt, setzt `OPAA_PGVECTOR_DIMENSIONS` auf 768. Auf einem kleinen Server
+Die Dimensionen ermittelt die Probeeinbettung der Installation. Auf einem kleinen Server
 mit `bge-m3` lässt sich der Spitzenbedarf senken, indem das Modell nicht mit der vollen
 Eingabegrenze angelegt wird; OPAA teilt dann längere Chunks
 ([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
 
-Eine bestehende Installation wechselt das Modell über die Neueinbettung, ohne Neuindizierung und
-ohne Zurücksetzen der Datenbank ([Modell wechseln](#modell-wechseln)).
+Ein späterer Wechsel des Modells geht über die Neueinbettung, ohne Neuindizierung und ohne
+Zurücksetzen der Datenbank ([Modell wechseln](#modell-wechseln)).
 
 ### Eingabegrenze des Embedding-Modells
 
@@ -212,7 +223,8 @@ Grenze des Modells zählt Tokens. Wie viele Zeichen ein Token umfasst, hängt vo
 Deutscher Fließtext braucht wenige Tokens je Zeichen, Tabellen mit vielen Zahlen deutlich mehr.
 Die Zielgröße allein garantiert deshalb nicht, dass jeder Chunk passt.
 
-`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` nennt die Grenze des Endpunkts, wie er tatsächlich läuft.
+Die Eingabegrenze, eine Angabe des Embedding-Modells bei der Installation, nennt die Grenze des
+Endpunkts, wie er tatsächlich läuft.
 Kann ein Chunk sie erreichen, bettet OPAA ihn einzeln ein. Lehnt der Endpunkt ihn als zu lang ab
 oder meldet er eine Tokenzahl an der Grenze, teilt OPAA den Chunk an Absatz-, Zeilen- oder
 Satzgrenzen in zwei oder drei Teile mit höchstens halber Länge und prüft sie erneut. Jeder Teil
@@ -252,7 +264,7 @@ printf 'FROM bge-m3\nPARAMETER num_ctx 8192\nPARAMETER num_batch 8192\n' > Model
 ollama create bge-m3 -f Modelfile
 ```
 
-Der Name bleibt `bge-m3`. Erst danach `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` auf `8192` setzen;
+Der Name bleibt `bge-m3`. Erst danach bei der Installation `8192` als Eingabegrenze angeben;
 die Vorgabe passt zu jedem unverändert gezogenen Modell. Ein späteres `ollama pull bge-m3` stellt
 die alten Werte wieder her; danach das Anlegen wiederholen. Der Arbeitsspeicher wächst mit der Länge der tatsächlichen Eingabe,
 nicht mit der eingestellten Grenze.
@@ -260,13 +272,20 @@ nicht mit der eingestellten Grenze.
 ### Modell wechseln
 
 > **Beispiel.** Ein Haus stellt von `nomic-embed-text` auf `bge-m3` um, das deutsche Texte besser
-> trifft. Es setzt Modell und Dimension in der Umgebung, startet neu und lässt den Bestand über
+> trifft. Es hält OPAA an, trägt Modell und Dimension ein, startet neu und lässt den Bestand über
 > Nacht neu einbetten. Konten, Rechte, Spaces und Chats bleiben, und der Chat beantwortet Fragen auch
 > während der Umstellung — nur ohne die Vektorsuche.
 
-1. **Umgebung ändern und neu starten.** `OPAA_OPENAI_EMBEDDING_MODEL` und
-   `OPAA_PGVECTOR_DIMENSIONS` gemeinsam ändern, auf einer CPU auch `OPAA_OPENAI_EMBEDDING_TIMEOUT`
-   (siehe unten). Das Modell muss im Endpunkt vorhanden sein.
+Die Oberfläche bietet keinen Wechsel des Embedding-Modells an; ein geführter Wechsel ist noch nicht
+gebaut. Bis dahin ist er ein Eingriff des Betriebs in die Datenbank.
+
+1. **Alle Instanzen anhalten und das Modell eintragen.** In der Datenbank im Eintrag des
+   Embedding-Modells Modellname, Adresse und Dimension gemeinsam ändern, etwa
+   `UPDATE embedding_model SET model_identifier = 'bge-m3', dimensions = 1024;`. Die Dimension
+   nennt die Beschreibung des Modells, oder eine Probeeinbettung am Endpunkt. Der Zugangsschlüssel
+   bleibt. Auf einer CPU auch `OPAA_OPENAI_EMBEDDING_TIMEOUT` erhöhen (siehe unten). Das Modell
+   muss im Endpunkt vorhanden sein. Laufen Instanzen weiter, betten sie Suchanfragen schon mit dem
+   neuen Modell ein und suchen im alten Index.
 2. **OPAA erkennt den Wechsel beim Start** und startet trotzdem, auch bei einer anderen Dimension.
    Die Seite „Suche & Indexierung" zeigt im Reiter „Indexstatus" den Hinweis „Index veraltet" mit
    beiden Modellen, der Suchpfad Vektorsuche steht auf „Ausgesetzt". Bis zum Abschluss findet die
@@ -657,7 +676,7 @@ und im Protokoll des Backends.
 | Der Start bricht ab und nennt `OPAA_OPENAI_BASE_URL` | Die Variable ist leer gesetzt; die Zeile entfernen oder eine Adresse eintragen |
 | Jede Chat-Anfrage scheitert mit HTTP 400 | Meist eine Temperatur, die das Modell nicht annimmt |
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
-| Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
+| Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen, oder die Übernahme beim Start einer älteren Installation ist gescheitert; das Log nennt den Grund ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
 | Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
