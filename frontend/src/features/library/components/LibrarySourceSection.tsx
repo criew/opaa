@@ -18,7 +18,8 @@ import { scheduleFrequencyLabel } from './scheduleLabels'
 import EditLibrarySourceDialog from './EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from './EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'
-import { CONTENT_WIDTH, TEXT_LINK } from './setup/rowStyles'
+import { TEXT_LINK } from './setup/rowStyles'
+import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import SummaryRow from './setup/SummaryRow'
 import type { RowStatus } from './setup/setupTypes'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
@@ -166,7 +167,7 @@ export default function LibrarySourceSection({
         : null
 
   return (
-    <Stack sx={{ maxWidth: CONTENT_WIDTH }}>
+    <Stack sx={{ maxWidth: TAB_CONTENT_WIDTH }}>
       {library.sourceBlock?.notice && (
         <Alert
           severity="warning"

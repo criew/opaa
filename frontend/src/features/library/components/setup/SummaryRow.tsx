@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import StateDot from '@/shared/ui/StateDot'
 import PathLabel from './PathLabel'
+import { displayPath, PATH_SEPARATOR } from './paths'
 import { ROW_GRID, TEXT_LINK } from './rowStyles'
 import type { RowStatus, RowSummary } from './setupTypes'
 
@@ -14,6 +15,19 @@ const SHOWN = 5
 /** Compares entries regardless of spacing around separators and a trailing slash. */
 function entryKey(entry: string): string {
   return entry.toLowerCase().replace(/\s+/g, '').replace(/\/+$/, '')
+}
+
+/** A path or address in the one display form: host and segments joined by the separator. */
+function placePath(place: string): string {
+  if (/^https?:\/\//i.test(place)) {
+    try {
+      const url = new URL(place)
+      return [url.host, ...url.pathname.split('/').filter(Boolean)].join(PATH_SEPARATOR)
+    } catch {
+      return place
+    }
+  }
+  return displayPath(place)
 }
 
 /** „· nicht lesbar“ after an entry: the state in words, the signal colour only in the dot. */
@@ -92,26 +106,8 @@ export function SummaryValue({
         </Typography>
         {status && <StateDot tone={status.tone} label={status.label} />}
       </Box>
-      {(items.length > 0 || unlisted.length > 0) && (
+      {items.length > 0 && (
         <Box component="ul" sx={{ m: 0, mt: 0.25, p: 0, listStyle: 'none' }}>
-          {/* entries the summary does not list itself, such as paths below a whole directory */}
-          {unlisted.slice(0, SHOWN).map((name) => (
-            <Box
-              component="li"
-              key={`unlisted-${name}`}
-              title={name}
-              sx={{
-                fontSize: 13.5,
-                lineHeight: '22px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-              <UnreadableMark />
-            </Box>
-          ))}
           {items.slice(0, SHOWN).map((item) => (
             <Box
               component="li"
@@ -132,6 +128,24 @@ export function SummaryValue({
               und {items.length - SHOWN} weitere
             </Box>
           )}
+        </Box>
+      )}
+      {/* entries the summary does not list itself, such as a path below a whole directory: in a
+          block of their own, the path cut in the middle, the mark never */}
+      {unlisted.length > 0 && (
+        <Box component="ul" sx={{ m: 0, mt: 0.75, p: 0, listStyle: 'none' }}>
+          {unlisted.slice(0, SHOWN).map((name) => (
+            <Box
+              component="li"
+              key={`unlisted-${name}`}
+              sx={{ fontSize: 13.5, lineHeight: '22px', display: 'flex', alignItems: 'baseline' }}
+            >
+              <Box component="span" sx={{ minWidth: 0, flex: '0 1 auto' }}>
+                <PathLabel path={placePath(name)} />
+              </Box>
+              <UnreadableMark />
+            </Box>
+          ))}
         </Box>
       )}
     </Box>

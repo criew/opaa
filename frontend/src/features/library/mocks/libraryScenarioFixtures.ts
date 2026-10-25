@@ -17,6 +17,7 @@ import {
 } from './libraryFixtures'
 import { mockLibraryGrants } from '@/features/asset/mocks/assetFixtures'
 import {
+  CONFLUENCE_PAGES,
   FIXTURE_SCHEDULE,
   berlin,
   entryBase,
@@ -91,7 +92,11 @@ const SCALE: Record<string, Overlay> = {
     sourceSettings: { folders: generate(50, (i) => deepPath(i, (i % 8) + 1)) },
   }),
   [SOURCE_LIBRARY_IDS.DROPBOX]: () => ({
-    sourceSettings: { folders: generate(50, (i) => deepPath(i, (i % 8) + 1)), teamSpace: true },
+    sourceSettings: {
+      folders: generate(50, (i) => deepPath(i, (i % 8) + 1)),
+      teamSpace: true,
+      fullSyncIntervalDays: 7,
+    },
   }),
   [SOURCE_LIBRARY_IDS.GOOGLE_DRIVE]: () => ({
     sourceSettings: {
@@ -149,7 +154,12 @@ const BASE: Record<string, Overlay> = {
         { drive: '0AMockDrive', name: 'Ablage Projektteam' },
         { folder: '1MockFolder', name: 'Freigegebene Akten' },
       ],
+      // the full sync its runs report needs a rhythm in the schedule
+      fullSyncIntervalDays: 7,
     },
+  }),
+  [SOURCE_LIBRARY_IDS.DROPBOX]: (library) => ({
+    sourceSettings: { ...library.sourceSettings, fullSyncIntervalDays: 7 },
   }),
 }
 
@@ -238,6 +248,10 @@ export function applyLibraryScenario(): void {
     }
     if (next.privateLibrary && scenario !== 'default') {
       next.sourceSettings = { ...next.sourceSettings, folders: ['/Dokumente', '/Fortbildung'] }
+      // the page puts „Zugang“ before the name itself
+      if (next.connectionProfile) {
+        next.connectionProfile = { ...next.connectionProfile, name: 'Nextcloud intern' }
+      }
     }
     // the backend always names the owner; the fixtures leave it out
     if (scenario !== 'default') next.ownerName ??= 'Erika Muster'
@@ -245,15 +259,16 @@ export function applyLibraryScenario(): void {
     if (documents) {
       mockLibraryDocuments[id] = documents
       next.documentCount = documents.length
-      // an upload library's storage is what its documents take; `failed` has hit the quota
-      if (next.storageQuotaBytes != null) {
-        next.storageUsedBytes =
-          scenario === 'failed'
-            ? next.storageQuotaBytes
-            : Math.min(
-                documents.reduce((sum, document) => sum + (document.fileSize ?? 0), 0),
-                Math.round(next.storageQuotaBytes * 0.9),
-              )
+      // an upload library's storage is what its documents take; in `failed` they fill a small
+      // quota of 50 MB to the brim
+      if (next.storageQuotaBytes != null && scenario === 'failed') {
+        next.storageQuotaBytes = 50 * 1024 ** 2
+        next.storageUsedBytes = next.storageQuotaBytes
+      } else if (next.storageQuotaBytes != null) {
+        next.storageUsedBytes = Math.min(
+          documents.reduce((sum, document) => sum + (document.fileSize ?? 0), 0),
+          Math.round(next.storageQuotaBytes * 0.9),
+        )
       }
     }
     const folders = scenarioFolders(next, scenario)
@@ -320,7 +335,16 @@ interface RunContext {
 /** Libraries whose run reports unreadable areas as a count plus one UNREACHABLE event each. */
 const COUNTED_AREAS = new Set(['FILESYSTEM', 'HTTP_DIRECTORY', 'RSS_FEED'])
 
-/** Where an event points, built from the library's own scope. */
+/** The levels of a place, one separator for every source: „Ebene / Ebene / Datei“. */
+function place(...levels: Array<string | null | undefined>): string {
+  return levels
+    .flatMap((level) => (level ?? '').split('/'))
+    .map((level) => level.trim())
+    .filter(Boolean)
+    .join(' / ')
+}
+
+/** Where an event points, built from the library's own scope; relative to the source's root. */
 export function eventReference(library: LibraryResponse | undefined, e: number): string {
   const settings = (library?.sourceSettings ?? {}) as Record<string, unknown>
   const pick = <T>(key: string): T | undefined => {
@@ -334,34 +358,37 @@ export function eventReference(library: LibraryResponse | undefined, e: number):
     case 'RSS_FEED':
       return `${entryBase(library)}${library.sourceType === 'RSS_FEED' ? 'meldung' : 'richtlinie'}-${e}.html`
     case 'CONFLUENCE': {
+      // a space, one of its pages, an attachment of that page
       const space = pick<{ key: string; name?: string | null }>('spaces')
-      return `${space?.name ?? space?.key ?? 'Bauamt'} › ${name} › Anhang-${e}.pdf`
+      return place(
+        space?.name ?? space?.key ?? 'Bauamt',
+        CONFLUENCE_PAGES[e % CONFLUENCE_PAGES.length],
+        `Anlage-${e}.pdf`,
+      )
     }
     case 'S3': {
       const scope = pick<{ bucket: string; prefix?: string | null }>('scopes')
-      return `${scope?.bucket ?? 'protokolle'}/${scope?.prefix ?? ''}${slug}.pdf`
+      return place(scope?.bucket ?? 'protokolle', scope?.prefix, `${slug}.pdf`)
     }
     case 'SHAREPOINT': {
       const entry = pick<{ name: string }>('libraries')
-      return `${entry?.name ?? 'Dokumente'} › ${name}/Anlage-${e}.pdf`
+      return place(entry?.name ?? 'Dokumente', name, `Anlage-${e}.pdf`)
     }
     case 'GOOGLE_DRIVE': {
       const scope = pick<{ name?: string | null }>('scopes')
-      return `${scope?.name ?? 'Ablage Projektteam'} › ${name}/Anlage-${e}.pdf`
+      return place(scope?.name ?? 'Ablage Projektteam', name, `Anlage-${e}.pdf`)
     }
     case 'FILESYSTEM':
-      return `${library.sourcePath ?? '/srv/opaa'}/${name}/Anlage-${e}.pdf`
-    default: {
-      const folder = pick<string>('folders') ?? '/'
-      return `${folder === '/' ? '' : folder}/${name}/Anlage-${e}.pdf`
-    }
+      return place(name, `Anlage-${e}.pdf`)
+    default:
+      return place(pick<string>('folders'), name, `Anlage-${e}.pdf`)
   }
 }
 
 /** The place of an unreadable area for sources that only count them (directory, URL). */
 function unreadableAreaReference(library: LibraryResponse | undefined, n: number): string {
   const area = ['Archiv-2019', 'Personalakten'][n % 2]
-  if (library?.sourceType === 'FILESYSTEM') return `${library.sourcePath ?? '/srv/opaa'}/${area}`
+  if (library?.sourceType === 'FILESYSTEM') return area
   return `${library ? entryBase(library) : 'https://example.org/'}${area.toLowerCase()}/`
 }
 
@@ -470,7 +497,7 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
       // the full retention: ten runs, one beyond the event cap, mixed outcomes
       return {
         runs: generate(10, (i) => {
-          if (i === 1) return run(i, { status: 'COMPLETED', failed: 38, notes: 1702, minutes: 192 })
+          if (i === 1) return run(i, { status: 'COMPLETED', failed: 38, notes: 1702 })
           if (i === 4) return run(i, failedRun(library))
           if (i === 6) return run(i, { status: 'COMPLETED', incomplete: true, notes: 26 })
           return run(i, { status: 'COMPLETED', failed: i % 2 ? 12 : 0, notes: i % 2 ? 128 : 3 })
@@ -479,7 +506,10 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
     case 'empty':
       return { runs: [] }
     case 'failed':
-      return { runs: generate(3, (i) => run(i, failedRun(library))) }
+      // three refused runs after the last successful one of 21.10., whose documents remain
+      return {
+        runs: [...generate(3, (i) => run(i, failedRun(library))), run(4, { status: 'COMPLETED' })],
+      }
     case 'partial':
       return {
         runs: [

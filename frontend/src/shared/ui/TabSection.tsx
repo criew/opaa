@@ -119,3 +119,24 @@ export function ListSearchField({
     />
   )
 }
+
+/**
+ * The empty state of every tab: „Noch keine …“ and right after it the one action that fills it,
+ * as a text button in the same line. With an empty state shown, the section has no action above.
+ */
+export function EmptyLine({ text, action }: { text: string; action?: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'baseline',
+        columnGap: 1.5,
+        flexWrap: 'wrap',
+        '& .MuiButton-text': { px: 0, minWidth: 0, fontSize: 13.5 },
+      }}
+    >
+      <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>{text}</Typography>
+      {action}
+    </Box>
+  )
+}

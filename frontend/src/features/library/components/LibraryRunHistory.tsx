@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -36,9 +36,9 @@ const RUN_GRID = {
   display: 'grid',
   gridTemplateColumns: {
     xs: 'minmax(0, 1fr) auto',
-    md: '200px 128px 80px 150px minmax(0, 1fr) 24px',
+    md: '190px 124px 64px 136px minmax(0, 1fr) 24px',
   },
-  columnGap: 2,
+  columnGap: 1.5,
   alignItems: 'center',
 } as const
 
@@ -79,14 +79,15 @@ function triggerLabel(run: IndexingRunResponse, showMode: boolean): string {
 }
 
 /** Processed count plus the one problem that matters most; the detail names the rest. */
-/** „n Dokumente“, then every problem the run had, in the words of band and Umfang. */
+/** The processed count, then every problem the run had, in the words of band and Umfang. */
 function resultLabel(run: IndexingRunResponse, live: LiveProgress | null): string {
   if (run.status === 'RUNNING') {
     return live
       ? `${live.percent} % · ${formatCount(live.processed)} von ${formatCount(live.total)}`
       : 'wird ermittelt'
   }
-  const documents = `${formatCount(run.documentCount)} ${run.documentCount === 1 ? 'Dokument' : 'Dokumente'}`
+  // the column is headed „Dokumente“: the count stands without its unit
+  const documents = formatCount(run.documentCount)
   const unreadable = unreadableCount(run)
   return [
     documents,
@@ -98,16 +99,39 @@ function resultLabel(run: IndexingRunResponse, live: LiveProgress | null): strin
     .join(' · ')
 }
 
+/** A place with one separator between its levels, „ / “, whatever the source wrote. */
+function normalizedPlace(place: string): string {
+  const leading = place.trim().startsWith('/') ? '/' : ''
+  const parts = place
+    .split(/\s*›\s*|\s*\/\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  return parts.length > 1 ? leading + parts.join(' / ') : place.trim()
+}
+
 /**
- * A place cut in the middle: a long path keeps its first segment and its last two, so the file
- * name stays readable; the full place is in the tooltip.
+ * A place on one line, cut in the middle: the leading levels give way, the file name at its end
+ * stays readable at every width. The full place is in the tooltip.
  */
-function shortPlace(place: string): string {
-  if (place.length <= 64) return place
-  const separator = place.includes(' › ') ? ' › ' : '/'
-  const parts = place.split(separator)
-  if (parts.length <= 3) return place
-  return [parts[0], '…', ...parts.slice(-2)].join(separator)
+function PlaceLabel({ place, mark }: { place: string; mark?: ReactNode }) {
+  const text = normalizedPlace(place)
+  const at = text.lastIndexOf(' / ')
+  const head = at > 0 ? text.slice(0, at + 3) : ''
+  const tail = at > 0 ? text.slice(at + 3) : text
+  const cut = { whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis' } as const
+  return (
+    <Box component="span" sx={{ display: 'flex', minWidth: 0, maxWidth: '100%' }}>
+      {head && (
+        <Box component="span" sx={{ ...cut, flex: '0 1 auto', minWidth: '1.5em' }}>
+          {head}
+        </Box>
+      )}
+      <Box component="span" sx={{ ...cut, flex: '0 1 auto', minWidth: 0 }}>
+        {tail}
+      </Box>
+      {mark}
+    </Box>
+  )
 }
 
 function hasProblem(run: IndexingRunResponse): boolean {
@@ -207,15 +231,9 @@ function EventLine({ event }: { event: IndexingRunEvent }) {
         <Box
           component="span"
           tabIndex={0}
-          sx={{
-            display: 'block',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            color: 'text.primary',
-          }}
+          sx={{ display: 'block', minWidth: 0, color: 'text.primary' }}
         >
-          {event.reference ? shortPlace(event.reference) : plainMessage(event.message)}
+          {event.reference ? <PlaceLabel place={event.reference} /> : plainMessage(event.message)}
         </Box>
       </Tooltip>
     </Box>
@@ -277,12 +295,32 @@ function RunDetail({
   run,
   connectionTo,
   quotaRemedy,
+  scopeName,
 }: {
   run: IndexingRunResponse
   connectionTo: string
   quotaRemedy: string
+  scopeName: (key: string) => string
 }) {
-  const { errors, notes } = useMemo(() => groupEvents(run.events), [run.events])
+  const grouped = useMemo(() => groupEvents(run.events), [run.events])
+  // a source that reports unreadable areas as keys gets the same group as one that reports events
+  const unlisted = run.unlistedScopeKeys ?? []
+  const errors =
+    unlisted.length > 0 && !grouped.errors.some((group) => group.category === 'UNREACHABLE')
+      ? [
+          {
+            category: 'UNREACHABLE',
+            label: groupLabel('UNREACHABLE'),
+            events: unlisted.map((key) => ({
+              category: 'UNREACHABLE' as const,
+              message: 'Bereich nicht lesbar',
+              reference: scopeName(key),
+            })),
+          },
+          ...grouped.errors,
+        ]
+      : grouped.errors
+  const notes = grouped.notes
   const [dialogGroup, setDialogGroup] = useState<EventGroup | null>(null)
   const [notesOpen, setNotesOpen] = useState(false)
   const [technicalOpen, setTechnicalOpen] = useState(false)
@@ -367,12 +405,14 @@ function RunRow({
   live,
   connectionTo,
   quotaRemedy,
+  scopeName,
 }: {
   run: IndexingRunResponse
   showMode: boolean
   live: LiveProgress | null
   connectionTo: string
   quotaRemedy: string
+  scopeName: (key: string) => string
 }) {
   const [open, setOpen] = useState(false)
   const detailId = useId()
@@ -408,11 +448,27 @@ function RunRow({
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <StateDot tone={state.tone} label={state.word} />
-          {/* below md the row folds into two lines: the state, then start, result and trigger */}
-          <Typography sx={{ ...cell, display: { xs: 'block', md: 'none' }, fontSize: 13 }}>
-            {formatDateTime(run.startedAt).slice(0, 6)} · {resultLabel(run, live)} ·{' '}
-            {triggerLabel(run, showMode)}
+          {/* below md: state and start on the first line, result and trigger below - wrapped,
+              never cut */}
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <StateDot tone={state.tone} label={state.word} />
+            <Typography
+              component="span"
+              sx={{
+                display: { xs: 'inline', md: 'none' },
+                fontSize: 13,
+                color: 'text.secondary',
+                ml: 'auto',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {formatDateTime(run.startedAt).slice(0, 6)}
+            </Typography>
+          </Box>
+          <Typography
+            sx={{ display: { xs: 'block', md: 'none' }, fontSize: 13, color: 'text.secondary' }}
+          >
+            {resultLabel(run, live)} · {triggerLabel(run, showMode)}
           </Typography>
         </Box>
         <Typography sx={{ ...cell, display: { xs: 'none', md: 'block' } }}>
@@ -439,7 +495,14 @@ function RunRow({
         />
       </Box>
       <Box id={detailId} hidden={!open}>
-        {open && <RunDetail run={run} connectionTo={connectionTo} quotaRemedy={quotaRemedy} />}
+        {open && (
+          <RunDetail
+            run={run}
+            connectionTo={connectionTo}
+            quotaRemedy={quotaRemedy}
+            scopeName={scopeName}
+          />
+        )}
       </Box>
     </Box>
   )
@@ -457,6 +520,7 @@ export default function LibraryRunHistory({
   actions,
   connectionTo,
   quotaRemedy,
+  scopeName = (key) => key,
 }: {
   runs: IndexingRunResponse[]
   /** Whether the source has two run modes; only then the mode is named. */
@@ -466,6 +530,8 @@ export default function LibraryRunHistory({
   actions?: React.ReactNode
   connectionTo: string
   quotaRemedy: string
+  /** The stored name of a scope key the run could not read. */
+  scopeName?: (key: string) => string
 }) {
   const [onlyProblems, setOnlyProblems] = useState(false)
   const shown = onlyProblems ? runs.filter(hasProblem) : runs
@@ -521,7 +587,7 @@ export default function LibraryRunHistory({
             <span>Beginn</span>
             <span>Dauer</span>
             <span>Auslöser</span>
-            <span>Ergebnis</span>
+            <span>Dokumente</span>
             <span />
           </Box>
           <Box component="ul" aria-label="Läufe" sx={{ m: 0, p: 0, listStyle: 'none' }}>
@@ -533,6 +599,7 @@ export default function LibraryRunHistory({
                 live={run.status === 'RUNNING' ? live : null}
                 connectionTo={connectionTo}
                 quotaRemedy={quotaRemedy}
+                scopeName={scopeName}
               />
             ))}
           </Box>

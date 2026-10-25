@@ -141,8 +141,16 @@ export default function LibrarySourceRows({
       onScheduleChange={(patch) => setSchedule((prev) => ({ ...prev, ...patch }))}
       rhythm={rhythm}
       connectionPrelude={connectionPrelude}
-      connectionLead={profile ? `Zugang „${profile.name}“` : null}
-      rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope']}
+      // a name that already says „Zugang …“ is not prefixed a second time
+      connectionLead={
+        profile
+          ? /^zugang\b/i.test(profile.name)
+            ? profile.name
+            : `Zugang „${profile.name}“`
+          : null
+      }
+      // a reader sees what the band shows too: the Umfang and the schedule, both without „Ändern“
+      rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope', 'schedule']}
       canEdit={canEdit}
       headingLevel="h2"
       knownConnectionStatus={connectionStatus}

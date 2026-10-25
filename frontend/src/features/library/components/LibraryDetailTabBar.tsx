@@ -1,6 +1,8 @@
 import { Link as RouterLink } from 'react-router'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import type { Theme } from '@mui/material/styles'
 import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import type { LibraryDetailTab } from './libraryDetailAccess'
 
@@ -17,6 +19,7 @@ export default function LibraryDetailTabBar({
   tabs,
   tabSearch,
 }: LibraryDetailTabBarProps) {
+  const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   return (
     <>
       {/* Every tab is a link to the same page with another `?tab=` — middle click and
@@ -24,13 +27,16 @@ export default function LibraryDetailTabBar({
       <Tabs
         value={activeTab}
         aria-label="Bereiche dieser Bibliothek"
-        variant="scrollable"
-        // below 600 px arrows show that further tabs lie beyond; the active tab scrolls into view
-        scrollButtons="auto"
-        allowScrollButtonsMobile
+        // below 600 px the tabs wrap onto a second line instead of scrolling: every tab stays
+        // whole and in view, the active one marked by its own underline
+        variant={compact ? 'standard' : 'scrollable'}
+        scrollButtons={false}
         sx={{
-          '& .MuiTabs-scrollButtons.Mui-disabled': { opacity: 0.3 },
-          '& .MuiTabs-scrollButtons': { width: 28 },
+          '& .MuiTabs-list': { flexWrap: { xs: 'wrap', sm: 'nowrap' } },
+          '& .MuiTabs-indicator': { display: { xs: 'none', sm: 'block' } },
+          '& .MuiTab-root.Mui-selected': {
+            boxShadow: { xs: 'inset 0 -2px 0 currentColor', sm: 'none' },
+          },
           borderBottom: 1,
           borderColor: 'divider',
           maxWidth: TAB_CONTENT_WIDTH,
@@ -41,7 +47,8 @@ export default function LibraryDetailTabBar({
             fontSize: 13.5,
             fontWeight: 500,
             minHeight: 42,
-            px: 2,
+            minWidth: { xs: 0, sm: 90 },
+            px: { xs: 1, sm: 2 },
           },
         }}
       >

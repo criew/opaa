@@ -82,8 +82,15 @@ async function open(page, ctx, job, tab) {
   const { id, role } = resolve(job.type)
   const query = new URLSearchParams({ mockScenario: job.scenario, mockRole: role })
   if (tab) query.set('tab', tab)
+  // head, band and the connection row read the run history; a manager's page asks for it once
+  const { upload } = resolve(job.type)
+  const needsRuns = !upload && role === 'default'
   for (let attempt = 0; attempt < 2; attempt++) {
+    const runs = needsRuns
+      ? page.waitForResponse((r) => r.url().includes('/indexing/runs'), { timeout: 20000 }).catch(() => null)
+      : null
     await page.goto(`${ctx.base}/libraries/${id}?${query}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    if (runs) await runs
     await page.waitForSelector('main, [role=main]', { timeout: 15000 }).catch(() => {})
     await page.getByRole('tab').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
     // a running run polls for ever; settle on the rendered state instead of network idle

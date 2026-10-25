@@ -9,7 +9,7 @@ import MenuItem from '@mui/material/MenuItem'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import TabSection, { ListSearchField } from '@/shared/ui/TabSection'
+import TabSection, { EmptyLine, ListSearchField } from '@/shared/ui/TabSection'
 import { Link as RouterLink } from 'react-router'
 import { plural } from '@/shared/utils/format'
 import Link from '@mui/material/Link'
@@ -235,8 +235,9 @@ export default function LibraryMetadataFieldsSection({
   return (
     <TabSection
       title="Eigene Felder"
+      // empty, the action stands in the sentence of the empty state instead
       action={
-        canManageSchema ? (
+        canManageSchema && fields.length > 0 ? (
           <Button size="small" onClick={() => setCreateOpen(true)}>
             Feld anlegen
           </Button>
@@ -326,9 +327,18 @@ export default function LibraryMetadataFieldsSection({
           </Box>
         )}
         {fields.length === 0 ? (
-          <Typography component="li" variant="body2" sx={{ color: 'text.secondary', py: 1.5 }}>
-            Noch keine eigenen Felder.
-          </Typography>
+          <Box component="li" sx={{ py: 1.5 }}>
+            <EmptyLine
+              text="Noch keine eigenen Felder."
+              action={
+                canManageSchema ? (
+                  <Button size="small" onClick={() => setCreateOpen(true)}>
+                    Feld anlegen
+                  </Button>
+                ) : undefined
+              }
+            />
+          </Box>
         ) : (
           fields.map((field) => (
             <MetadataFieldRow

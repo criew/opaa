@@ -210,6 +210,21 @@ export async function steady(page, width) {
   }
 }
 
+/**
+ * The viewport shot once two frames in a row are identical: a frame taken while the compositor
+ * still paints the previous viewport size comes out tiled and differs from the next one.
+ */
+async function stableShot(page, file, log) {
+  let previous = null
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const frame = await page.screenshot().catch((e) => (log('  screenshot failed', e.message), null))
+    if (frame && previous && frame.equals(previous)) break
+    previous = frame ?? previous
+    await sleep(250)
+  }
+  if (previous) fs.writeFileSync(file, previous)
+}
+
 /** Grows the viewport so inner scroll containers (AppShell main, dialogs) fit, for __full. */
 async function growForFull(page, width) {
   for (let i = 0; i < 4; i++) {
@@ -350,7 +365,7 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
       await sleep(250)
       await steady(page, width)
       const name = `${area}__${type}__${scenario}__${scheme}__${width}`
-      await page.screenshot({ path: path.join(out, `${name}.png`) }).catch((e) => log('  screenshot failed', e.message))
+      await stableShot(page, path.join(out, `${name}.png`), log)
       const metrics = await pageMetrics(page)
       const axe = noAxe ? null : await runAxe(page, { contrastOnly: scheme !== 'light' })
       if (!noFull) {

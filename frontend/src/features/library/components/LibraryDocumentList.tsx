@@ -216,6 +216,8 @@ export default function LibraryDocumentList({
             ...(isAttachment && { py: 1.25 }),
           }}
         >
+          {/* without checkboxes the column stays where folders show their symbol */}
+          {!selectable && folders.length > 0 && <Box sx={{ width: 28, flexShrink: 0 }} />}
           {selectable && (
             <Checkbox
               size="small"
@@ -457,26 +459,14 @@ export default function LibraryDocumentList({
                 '&:last-of-type': { borderBottom: 0 },
               }}
             >
-              {/* A folder is not a document and cannot be selected - said with a disabled
-                  checkbox and its reason, rather than by leaving the column blank and making the
-                  rows below look misaligned. */}
-              {selectable && (
-                <Tooltip title="Ordner lassen sich nicht auswählen — nur die Dokumente darin">
-                  <Box component="span" sx={{ display: 'inline-flex' }}>
-                    <Checkbox
-                      size="small"
-                      disabled
-                      checked={false}
-                      slotProps={{
-                        input: {
-                          'aria-label': `Ordner ${folder.name} ist nicht auswählbar`,
-                        },
-                      }}
-                      sx={{ p: 0.5 }}
-                    />
-                  </Box>
-                </Tooltip>
-              )}
+              {/* a folder cannot be selected: its symbol stands in the checkbox column, so the
+                  names of folders and documents share one edge */}
+              <Box
+                aria-hidden
+                sx={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}
+              >
+                <FolderIcon color="action" sx={{ fontSize: 20 }} />
+              </Box>
               <Box
                 role="button"
                 tabIndex={0}
@@ -497,16 +487,17 @@ export default function LibraryDocumentList({
                   cursor: 'pointer',
                 }}
               >
-                <FolderIcon color="action" />
                 <Typography
                   title={folder.name}
                   sx={{
                     fontWeight: 600,
                     fontSize: 14,
                     minWidth: 0,
+                    overflowWrap: 'anywhere',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
                   }}
                 >
                   {folder.name}

@@ -1,6 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import type { Theme } from '@mui/material/styles'
 import Link from '@mui/material/Link'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
@@ -69,6 +72,11 @@ export interface AssetDetailHeaderProps {
   band?: ReactNode
   /** A word the type chip carries after the type, e.g. „privat“: one chip, not two. */
   typeSuffix?: string
+  /**
+   * The type's main action. From 600 px on a button left of the star; below, it moves into „⋯“
+   * together with the star, so chips and actions share one line.
+   */
+  primaryAction?: { label: string; icon: ReactNode; onClick: () => void; disabled?: boolean }
 }
 
 function formatDate(value: string): string {
@@ -253,7 +261,31 @@ export default function AssetDetailHeader({
   responsibleTo,
   band,
   typeSuffix,
+  primaryAction,
 }: AssetDetailHeaderProps) {
+  const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
+  const hasFavorite = favorite !== undefined && Boolean(onFavoriteChange)
+  const compactItems = compact
+    ? [
+        ...(primaryAction
+          ? [
+              {
+                label: primaryAction.label,
+                onClick: primaryAction.onClick,
+                disabled: primaryAction.disabled,
+              },
+            ]
+          : []),
+        ...(hasFavorite
+          ? [
+              {
+                label: favorite ? 'Aus Favoriten entfernen' : 'Als Favorit merken',
+                onClick: () => void onFavoriteChange?.(!favorite),
+              },
+            ]
+          : []),
+      ]
+    : []
   const baseDefinition = assetTypeDefinition(assetType)
   const definition =
     baseDefinition && typeSuffix
@@ -283,7 +315,7 @@ export default function AssetDetailHeader({
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 1.5,
-          flexWrap: 'wrap',
+          flexWrap: { xs: 'nowrap', sm: 'wrap' },
           mb: 1,
           position: 'relative',
           minHeight: 40,
@@ -291,7 +323,7 @@ export default function AssetDetailHeader({
       >
         <Stack
           direction="row"
-          spacing={1}
+          spacing={{ xs: 0.5, sm: 1 }}
           useFlexGap
           // one line below 600 px as well: type, source and role fit; a fourth chip is cut, not wrapped
           sx={{
@@ -310,17 +342,21 @@ export default function AssetDetailHeader({
           direction="row"
           spacing={1}
           useFlexGap
-          // below 600 px the actions always have their own line, with or without a main action
-          sx={{
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            flexShrink: 0,
-            flexBasis: { xs: '100%', sm: 'auto' },
-            minHeight: 40,
-          }}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', flexShrink: 0, minHeight: 40 }}
         >
+          {primaryAction && !compact && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={primaryAction.icon}
+              onClick={primaryAction.onClick}
+              disabled={primaryAction.disabled}
+            >
+              {primaryAction.label}
+            </Button>
+          )}
           {actions}
-          {favorite !== undefined && onFavoriteChange && (
+          {hasFavorite && !compact && onFavoriteChange && favorite !== undefined && (
             <FavoriteToggle name={name} favorite={favorite} onChange={onFavoriteChange} />
           )}
           <MoreActions
@@ -332,7 +368,7 @@ export default function AssetDetailHeader({
             onDelete={onDelete}
             deleteLabel={deleteLabel}
             deleteDisabled={deleteDisabled}
-            menuItems={menuItems}
+            menuItems={compactItems.length ? [...compactItems, ...(menuItems ?? [])] : menuItems}
           />
         </Stack>
       </Stack>
@@ -352,14 +388,13 @@ export default function AssetDetailHeader({
       <Box
         sx={{
           display: 'flex',
-          // one line from 600 px on; below, two lines are reserved for every asset, so the head
-          // keeps its height and no figure is cut
+          // one line from 600 px on; below, it wraps where it has to and no figure is cut
           flexWrap: 'wrap',
           alignItems: 'center',
           columnGap: { xs: 2, sm: 0 },
           mt: band ? 1 : 2.5,
           position: 'relative',
-          minHeight: { xs: band ? 44 : 22, sm: 22 },
+          minHeight: 22,
           lineHeight: '22px',
         }}
       >

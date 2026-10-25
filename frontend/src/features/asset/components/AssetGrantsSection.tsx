@@ -16,7 +16,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import TabSection, { ListSearchField, TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
+import TabSection, { EmptyLine, ListSearchField, TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import type {
   AssetGrantResponse,
   AssetGrantSubjectType,
@@ -452,7 +452,7 @@ export default function AssetGrantsSection({
       title="Berechtigungen"
       wide
       action={
-        !showForm ? (
+        !showForm && !(grants.length === 0 && !isLoading) ? (
           <Button size="small" onClick={() => setShowForm(true)}>
             Freigeben
           </Button>
@@ -486,9 +486,16 @@ export default function AssetGrantsSection({
         {isLoading ? (
           <Typography sx={{ color: 'text.secondary' }}>Berechtigungen werden geladen …</Typography>
         ) : grants.length === 0 ? (
-          <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
-            Noch keine Freigaben.
-          </Typography>
+          !showForm && (
+            <EmptyLine
+              text="Noch keine Freigaben."
+              action={
+                <Button size="small" onClick={() => setShowForm(true)}>
+                  Freigeben
+                </Button>
+              }
+            />
+          )
         ) : shownGrants.length === 0 ? (
           <Typography sx={{ color: 'text.secondary' }}>
             Keine Freigabe passt zu „{query.trim()}“.

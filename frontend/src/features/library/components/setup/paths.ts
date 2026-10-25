@@ -7,5 +7,6 @@ export function displayPath(path: string): string {
     .split('/')
     .map((s) => s.trim())
     .filter(Boolean)
-  return segments.length > 1 ? segments.join(PATH_SEPARATOR) : path.trim()
+  // a single segment keeps a leading slash („/Projekte“) but never a trailing one („satzungen“)
+  return segments.length > 1 ? segments.join(PATH_SEPARATOR) : path.trim().replace(/(.)\/+$/, '$1')
 }

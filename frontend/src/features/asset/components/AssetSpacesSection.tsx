@@ -30,24 +30,25 @@ export default function AssetSpacesSection({
 }) {
   // A new association reloads the list, so it shows up without a page reload.
   const [version, setVersion] = useState(0)
+  const [empty, setEmpty] = useState(false)
+  const useInSpace = mayUseInSpace ? (
+    <UseInSpaceButton
+      assetType={assetType}
+      assetId={assetId}
+      name={name}
+      size="small"
+      quiet
+      onAssociated={() => {
+        setVersion((v) => v + 1)
+        onChanged?.()
+      }}
+    />
+  ) : undefined
   return (
     <Box component="section" aria-label="Zuordnungen">
       <TabSection
-        action={
-          mayUseInSpace ? (
-            <UseInSpaceButton
-              assetType={assetType}
-              assetId={assetId}
-              name={name}
-              size="small"
-              quiet
-              onAssociated={() => {
-                setVersion((v) => v + 1)
-                onChanged?.()
-              }}
-            />
-          ) : undefined
-        }
+        // empty, the action stands in the sentence of the empty state instead
+        action={empty ? undefined : useInSpace}
       >
         <AssetSpacesList
           key={`${assetType}-${assetId}-${refreshToken}-${version}`}
@@ -55,6 +56,8 @@ export default function AssetSpacesSection({
           assetId={assetId}
           canManage={canManage}
           onChanged={onChanged}
+          emptyAction={useInSpace}
+          onEmptyChange={setEmpty}
         />
       </TabSection>
     </Box>

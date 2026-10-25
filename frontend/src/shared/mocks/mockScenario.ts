@@ -120,12 +120,15 @@ export function scenarioName(base: string, i: number, long = true): string {
     const suffix = LONG_SUFFIXES[(i / 3) % LONG_SUFFIXES.length]
     const name = `${base} ${number} – ${suffix}`
     // cut at a word, never inside one: „…Nord, Süd und“ rather than „…Süd und Öst“
-    return name.length <= 120
-      ? name
-      : name
-          .slice(0, name.lastIndexOf(' ', 120))
-          .replace(/(,|–| und| der)$/, '')
-          .trimEnd()
+    if (name.length <= 120) return name
+    let cut = name.slice(0, name.lastIndexOf(' ', 120))
+    // never inside brackets: „… Teilhabe“ rather than „… Teilhabe (Archiv“
+    const open = cut.lastIndexOf('(')
+    if (open > cut.lastIndexOf(')')) cut = cut.slice(0, open)
+    return cut
+      .trimEnd()
+      .replace(/(,|–| und| der)$/, '')
+      .trimEnd()
   }
   if (long && i === 7) return `${base} ${number} ${LONG_COMPOUND}`
   return `${base} ${number}`

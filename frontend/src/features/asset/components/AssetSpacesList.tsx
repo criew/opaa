@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
@@ -19,7 +19,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 import StateDot from '@/shared/ui/StateDot'
-import { ListSearchField } from '@/shared/ui/TabSection'
+import { EmptyLine, ListSearchField } from '@/shared/ui/TabSection'
 import { useSpaceListLoader } from './spaceListContext'
 
 /** From this many associations on, the list gets a search (D19). */
@@ -36,6 +36,10 @@ interface AssetSpacesListProps {
   canManage: boolean
   /** Called after an association was detached. */
   onChanged?: () => void
+  /** The one action of the empty state, in its sentence. */
+  emptyAction?: ReactNode
+  /** Tells whether the list is empty, so the section drops its action above. */
+  onEmptyChange?: (empty: boolean) => void
 }
 
 function formatDate(value: string): string {
@@ -101,6 +105,8 @@ export default function AssetSpacesList({
   assetId,
   canManage,
   onChanged,
+  emptyAction,
+  onEmptyChange,
 }: AssetSpacesListProps) {
   const [links, setLinks] = useState<AssetSpaceAssociationListResponse | null>(null)
   const [curatedSpaceIds, setCuratedSpaceIds] = useState<ReadonlySet<string>>(new Set())
@@ -169,6 +175,10 @@ export default function AssetSpacesList({
   }
 
   const hiddenCount = links?.hiddenCount ?? 0
+  const isEmpty = links !== null && links.items.length === 0 && hiddenCount === 0
+  useEffect(() => {
+    onEmptyChange?.(isEmpty)
+  }, [isEmpty, onEmptyChange])
   const searchable = (links?.items.length ?? 0) >= SEARCH_FROM
   const needle = query.trim().toLocaleLowerCase('de-DE')
   const shown = (links?.items ?? []).filter(
@@ -191,9 +201,7 @@ export default function AssetSpacesList({
         // association will land.
         <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
       ) : links.items.length === 0 && hiddenCount === 0 ? (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-          Noch keine Zuordnungen.
-        </Typography>
+        <EmptyLine text="Noch keine Zuordnungen." action={emptyAction} />
       ) : (
         <>
           {searchable && (

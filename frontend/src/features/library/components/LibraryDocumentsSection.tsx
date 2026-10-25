@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type { SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
@@ -24,6 +23,7 @@ import BulkMetadataDialog from './metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
+import { EmptyLine } from '@/shared/ui/TabSection'
 import LibraryDocumentList from './LibraryDocumentList'
 import LibraryDocumentsNotices from './LibraryDocumentsNotices'
 import LibraryDocumentUploadArea, { UploadToolbarActions } from './LibraryDocumentUploadArea'
@@ -265,16 +265,16 @@ export default function LibraryDocumentsSection({
           renameFolderTarget={renameFolderTarget}
         />
         {uploadArea || (
-          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-              Noch keine Dokumente.
-            </Typography>
-            {onIndexNow && (
-              <Button size="small" onClick={onIndexNow} sx={{ px: 0, minWidth: 0 }}>
-                Jetzt indizieren
-              </Button>
-            )}
-          </Box>
+          <EmptyLine
+            text="Noch keine Dokumente."
+            action={
+              onIndexNow ? (
+                <Button size="small" onClick={onIndexNow}>
+                  Jetzt indizieren
+                </Button>
+              ) : undefined
+            }
+          />
         )}
         {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
       </Box>

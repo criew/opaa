@@ -40,8 +40,25 @@ export const FIXTURE_SCHEDULE = {
   nextRunAt: berlin(25, 6, 0).toISOString(),
 }
 
-/** When the newest scheduled run indexed its documents (24.10.2026, 06:02 Berlin). */
-export const FIXTURE_INDEXED_AT = berlin(24, 6, 2).toISOString()
+/**
+ * When the library's newest successful run indexed its documents: 06:02 under the daily
+ * schedule, 10:16 for a library run by hand only. In `failed` the three newest runs were refused,
+ * so the documents stay as the run of 21.10. left them.
+ */
+export function indexedAtOf(library: LibraryResponse, scenario: MockScenario): string {
+  const scheduled = Boolean(library.schedule && library.schedule.frequency !== 'DISABLED')
+  const day = scenario === 'failed' ? 21 : 24
+  return (scheduled ? berlin(day, 6, 2) : berlin(day, 10, 16)).toISOString()
+}
+
+/** The pages of a Confluence space the fixtures name as places of documents and attachments. */
+export const CONFLUENCE_PAGES = [
+  'Bauordnung 2026',
+  'Sitzungsprotokolle',
+  'Dienstanweisungen',
+  'Haushaltsplan',
+  'Vorlagen und Formulare',
+]
 
 /** The directory a web library's or feed's entries live under, always ending in a slash. */
 export function entryBase(library: Pick<LibraryResponse, 'sourceUrl'>): string {
@@ -145,7 +162,8 @@ function planFor(scenario: MockScenario): DocumentPlan | null {
     case 'small':
       return { count: 3, failed: 0, pending: 0 }
     case 'scale':
-      return { count: 1250, failed: 38, pending: 14 }
+      // no run is going: nothing waits for processing
+      return { count: 1250, failed: 38, pending: 0 }
     case 'empty':
       return { count: 0, failed: 0, pending: 0 }
     case 'failed':
@@ -175,7 +193,7 @@ function hierarchyOf(library: LibraryResponse, i: number): Partial<LibraryDocume
       const space = spaces[i % spaces.length].key
       return {
         sourceContainerKey: space,
-        sourceHierarchyPath: `${scenarioName('Seite', (i % 9) + 1)} / ${scenarioName('Unterseite', i)}`,
+        sourceHierarchyPath: CONFLUENCE_PAGES[i % CONFLUENCE_PAGES.length],
       }
     }
     case 'HTTP_DIRECTORY':
@@ -193,7 +211,7 @@ function hierarchyOf(library: LibraryResponse, i: number): Partial<LibraryDocume
             i,
             level === 2,
           ),
-        ).join('/'),
+        ).join(' / '),
       }
   }
 }
@@ -208,19 +226,26 @@ export function scenarioDocuments(
   const upload = library.sourceType === 'UPLOAD'
   const folderCount = upload ? folderPlan(scenario) : 0
   return generate(plan.count, (i) => {
-    const [extension, contentType] = EXTENSIONS[i % EXTENSIONS.length]
+    const web = library.sourceType === 'HTTP_DIRECTORY' || library.sourceType === 'RSS_FEED'
+    const [extension, contentType] = web ? EXTENSIONS[4] : EXTENSIONS[i % EXTENSIONS.length]
     const failed = spread(i, plan.failed, plan.count, 3)
     const pending = !failed && spread(i, plan.pending, plan.count, 2)
     const base = scenarioName(upload ? 'Rundschreiben' : 'Dokument', i).replace(/\//g, '-')
+    // a web page or feed entry is named like its address
+    const fileName = web
+      ? `${library.sourceType === 'RSS_FEED' ? 'meldung' : 'richtlinie'}-${i}.html`
+      : `${base}.${extension}`
+    // an upload library that hit its quota holds files of a few megabytes each
+    const fullQuota = upload && scenario === 'failed'
     return {
       id: `${library.id}-doc-${i}`,
-      fileName: `${base}.${extension}`,
+      fileName,
       contentType,
-      fileSize: 18_000 + ((i * 7919) % 4_800_000),
+      fileSize: fullQuota ? 3_800_000 + i * 61_000 : 18_000 + ((i * 7919) % 4_800_000),
       status: failed ? 'FAILED' : pending ? 'PENDING' : 'INDEXED',
       sourceType: library.sourceType,
       chunkCount: failed || pending ? 0 : (i % 40) + 1,
-      indexedAt: failed || pending ? null : upload ? UPLOADED_AT : FIXTURE_INDEXED_AT,
+      indexedAt: failed || pending ? null : upload ? UPLOADED_AT : indexedAtOf(library, scenario),
       uploadedByUserId: upload ? 'mock-user-id' : null,
       errorMessage: failed ? DOCUMENT_ERRORS[i % DOCUMENT_ERRORS.length] : null,
       // an upload library files every fourth document into one of its folders

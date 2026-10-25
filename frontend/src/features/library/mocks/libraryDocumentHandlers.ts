@@ -46,6 +46,14 @@ const documentPollCounts = new Map<string, number>()
 const documentsPendingFailure = new Set<string>()
 const EMPTY_CONTENT_ERROR_MESSAGE = 'Aus der Datei konnte kein Text extrahiert werden'
 
+/** The size a fixture scenario reports for an uploaded test file, by its kind. */
+function plausibleSize(fileName: string): number {
+  const extension = fileName.split('.').pop()?.toLowerCase()
+  if (extension === 'pdf') return 412_640
+  if (extension === 'docx' || extension === 'doc') return 186_204
+  return 243_712
+}
+
 export function resetDocumentMockState() {
   documentPollCounts.clear()
   documentsPendingFailure.clear()
@@ -365,15 +373,18 @@ export const libraryDocumentHandlers = [
       )
     }
     const documentId = `document-${crypto.randomUUID().slice(0, 8)}`
+    // a fixture scenario uploads tiny test files: it reports a plausible size and takes the file
+    // in at once, so the list shows the new document as the newest indexed one
+    const scenario = currentMockScenario() !== 'default'
     const document: (typeof existing)[number] = {
       id: documentId,
       fileName: file.name,
       contentType: file.type || null,
-      fileSize: file.size,
-      status: 'PENDING' as DocumentStatus,
+      fileSize: scenario ? plausibleSize(file.name) : file.size,
+      status: (scenario && !isEmptyContent ? 'INDEXED' : 'PENDING') as DocumentStatus,
       sourceType: 'UPLOAD' as SourceTypeKey,
-      chunkCount: 0,
-      indexedAt: null,
+      chunkCount: scenario && !isEmptyContent ? 4 : 0,
+      indexedAt: scenario && !isEmptyContent ? new Date().toISOString() : null,
       uploadedByUserId: 'mock-user-id',
       folderId: effectiveFolderId,
       folderPath: buildMockFolderPath(libraryId, effectiveFolderId),

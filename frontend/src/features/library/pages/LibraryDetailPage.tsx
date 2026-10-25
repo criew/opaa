@@ -515,8 +515,8 @@ export default function LibraryDetailPage() {
               <HeaderFigure>
                 <span data-testid="private-storage-figure">
                   {privateStorage.quotaBytes > 0
-                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} belegt`
-                    : `${formatFileSize(privateStorage.usedBytes)} belegt`}
+                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)}`
+                    : formatFileSize(privateStorage.usedBytes)}
                 </span>
               </HeaderFigure>
             )}
@@ -541,30 +541,23 @@ export default function LibraryDetailPage() {
         }
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
-        actions={
-          // one main action at the same place for every library: run the source, or upload
-          connectorSourceType && mayManageDocuments ? (
-            <Button
-              // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs;
-              // a running run shows its progress in the band, not on the button (D7)
-              variant="outlined"
-              size="small"
-              startIcon={<PlayArrowIcon />}
-              onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-              disabled={isRunning}
-            >
-              Jetzt indizieren
-            </Button>
-          ) : isUpload && mayManageDocuments ? (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<UploadIcon />}
-              onClick={() => uploadPickerRef.current?.open()}
-            >
-              Dateien hochladen
-            </Button>
-          ) : undefined
+        // one main action at the same place for every library: run the source, or upload; a
+        // running run shows its progress in the band, not on the button (D7)
+        primaryAction={
+          connectorSourceType && mayManageDocuments
+            ? {
+                label: 'Jetzt indizieren',
+                icon: <PlayArrowIcon />,
+                onClick: () => void triggerIndexing(libraryId, connectorSourceType),
+                disabled: isRunning,
+              }
+            : isUpload && mayManageDocuments
+              ? {
+                  label: 'Dateien hochladen',
+                  icon: <UploadIcon />,
+                  onClick: () => uploadPickerRef.current?.open(),
+                }
+              : undefined
         }
       />
 
@@ -649,6 +642,9 @@ export default function LibraryDetailPage() {
             }
             connectionTo={tabSearch('quelle')}
             quotaRemedy={quotaRemedy}
+            scopeName={(key) =>
+              details ? (connectorConfiguration?.scopeHero?.scopeName?.(key, details) ?? key) : key
+            }
             // „Jetzt indizieren“ is the head's main action; the list adds only the full sync
             actions={
               mayManageDocuments && connectorConfiguration?.fullSyncRhythm ? (

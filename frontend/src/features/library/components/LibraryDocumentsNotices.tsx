@@ -19,7 +19,11 @@ function groupUploadErrors(messages: string[]): Array<{ reason: string; files: s
   const groups: Array<{ reason: string; files: string[] }> = []
   for (const message of messages) {
     const match = FILE_SUFFIX.exec(message)
-    const reason = match ? match[1] : message
+    // the reason's first sentence only: the list of allowed formats is no help after the fact
+    const reason = (match ? match[1] : message)
+      .split(/\.\s/)[0]
+      .replace(/\.$/, '')
+      .replace(/^Das Dateiformat wird nicht unterstützt$/, 'Format nicht unterstützt')
     const file = match ? match[2] : null
     const group = groups.find((entry) => entry.reason === reason)
     if (group) {
@@ -60,7 +64,11 @@ export default function LibraryDocumentsNotices({
     announced.current = uploadErrors
     const text = groupUploadErrors(uploadErrors)
       .map((group) =>
-        group.files.length > 0 ? `${group.reason}: ${group.files.join(', ')}` : group.reason,
+        group.files.length > 0
+          ? `${group.reason}: ${group.files.slice(0, 3).join(', ')}${
+              group.files.length > 3 ? ` und ${group.files.length - 3} weitere` : ''
+            }`
+          : group.reason,
       )
       .join(' · ')
     notify(text, 'error')
