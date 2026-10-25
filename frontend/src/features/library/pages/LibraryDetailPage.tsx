@@ -484,7 +484,7 @@ export default function LibraryDetailPage() {
         name={library.name}
         description={library.description}
         isPublic={library.reach.allAccounts}
-        typeSuffix={privateLibrary ? 'privat' : undefined}
+        isPrivate={privateLibrary}
         badges={
           <>
             {/* „privat“ rides on the type chip; the erasure is the state in the band */}

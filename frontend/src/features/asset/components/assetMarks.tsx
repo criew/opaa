@@ -52,6 +52,20 @@ export function PublicMark() {
   )
 }
 
+/** A private library as a lock beside the type chip, like the globe of a public asset. */
+export function PrivateLockMark() {
+  const label = 'Private Bibliothek – nur Sie sehen sie'
+  return (
+    <Tooltip title={label}>
+      <LockOutlinedIcon
+        titleAccess={label}
+        aria-label={label}
+        sx={{ fontSize: 16, color: 'text.secondary' }}
+      />
+    </Tooltip>
+  )
+}
+
 /** A private library: lock and the word, so the mark never rests on colour alone. */
 export function PrivateMark() {
   return (

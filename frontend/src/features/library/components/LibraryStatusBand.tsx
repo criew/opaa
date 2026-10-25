@@ -116,7 +116,7 @@ export default function LibraryStatusBand({
       aria-label={label}
       sx={{
         m: 0,
-        mt: 1.5,
+        mt: { xs: 0.5, sm: 1.5 },
         maxWidth: BAND_WIDTH,
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
@@ -133,7 +133,7 @@ export default function LibraryStatusBand({
             minWidth: 0,
             pl: { xs: 0, sm: index > 0 ? 2 : 0 },
             pr: { xs: field.link ? 2 : 0, sm: 2 },
-            py: { xs: 0.5, sm: 1 },
+            py: { xs: 0.25, sm: 1 },
             borderStyle: 'solid',
             borderColor: 'divider',
             borderWidth: 0,
@@ -146,7 +146,7 @@ export default function LibraryStatusBand({
               xs: index === 0 ? '"label value" ". detail"' : '"label value"',
               sm: '"label link" "value value"',
             },
-            gridTemplateRows: { xs: index === 0 ? '22px 20px' : '22px', sm: '20px 22px' },
+            gridTemplateRows: { xs: index === 0 ? '20px 18px' : '20px', sm: '20px 22px' },
             columnGap: 1.5,
             alignItems: 'baseline',
           }}

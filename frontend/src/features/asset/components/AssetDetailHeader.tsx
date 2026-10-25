@@ -18,7 +18,7 @@ import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
-import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
+import { FavoriteToggle, PrivateLockMark, PublicMark, TypeBadge } from './assetMarks'
 import { TAB_CONTENT_WIDTH } from '@/shared/ui/TabSection'
 import { spreadLabel } from './assetTileData'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
@@ -70,8 +70,8 @@ export interface AssetDetailHeaderProps {
   responsibleTo?: string
   /** The type's fixed status band under the figures; it then carries the date instead. */
   band?: ReactNode
-  /** A word the type chip carries after the type, e.g. „privat“: one chip, not two. */
-  typeSuffix?: string
+  /** A private asset: a lock beside the type chip instead of a chip of its own. */
+  isPrivate?: boolean
   /**
    * The type's main action. From 600 px on a button left of the star; below, it moves into „⋯“
    * together with the star, so chips and actions share one line.
@@ -160,6 +160,8 @@ function MoreActions({
           aria-controls={anchor ? menuId : undefined}
           aria-expanded={anchor ? true : undefined}
           onClick={(event) => setAnchor(event.currentTarget)}
+          // smaller below 600 px, so type, source and role fit beside it on one line
+          sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }}
         >
           <MoreHorizIcon />
         </IconButton>
@@ -260,9 +262,10 @@ export default function AssetDetailHeader({
   spacesTo,
   responsibleTo,
   band,
-  typeSuffix,
+  isPrivate = false,
   primaryAction,
 }: AssetDetailHeaderProps) {
+  const [renameRequest, setRenameRequest] = useState(0)
   const compact = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const hasFavorite = favorite !== undefined && Boolean(onFavoriteChange)
   const compactItems = compact
@@ -276,6 +279,10 @@ export default function AssetDetailHeader({
               },
             ]
           : []),
+        // the pencil gives up its place beside the title to a menu entry
+        ...(headline.canEdit
+          ? [{ label: headline.editLabel, onClick: () => setRenameRequest((n) => n + 1) }]
+          : []),
         ...(hasFavorite
           ? [
               {
@@ -286,11 +293,7 @@ export default function AssetDetailHeader({
           : []),
       ]
     : []
-  const baseDefinition = assetTypeDefinition(assetType)
-  const definition =
-    baseDefinition && typeSuffix
-      ? { ...baseDefinition, title: `${baseDefinition.title} · ${typeSuffix}` }
-      : baseDefinition
+  const definition = assetTypeDefinition(assetType)
   return (
     <Box
       component="header"
@@ -299,7 +302,7 @@ export default function AssetDetailHeader({
         // with a band the head ends at the content edge of the tabs below
         maxWidth: band ? TAB_CONTENT_WIDTH : 'none',
         // no line of its own: the tab bar below draws the one separator
-        pb: band ? { xs: 1, sm: 2 } : { xs: 2.5, md: 3 },
+        pb: band ? { xs: 0.5, sm: 2 } : { xs: 2.5, md: 3 },
         mb: band ? 0 : 3,
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
@@ -316,9 +319,9 @@ export default function AssetDetailHeader({
           alignItems: 'center',
           gap: 1.5,
           flexWrap: { xs: 'nowrap', sm: 'wrap' },
-          mb: 1,
+          mb: { xs: 0.5, sm: 1 },
           position: 'relative',
-          minHeight: 40,
+          minHeight: { xs: 32, sm: 40 },
         }}
       >
         <Stack
@@ -329,6 +332,7 @@ export default function AssetDetailHeader({
           sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
         >
           {definition && <TypeBadge definition={definition} />}
+          {isPrivate && <PrivateLockMark />}
           {isPublic && <PublicMark />}
           {badges}
           {administrative && <MetaBadge>administrativ</MetaBadge>}
@@ -375,6 +379,8 @@ export default function AssetDetailHeader({
           name={name}
           description={description}
           {...headline}
+          hidePencil={compact}
+          editRequest={renameRequest}
         />
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
@@ -387,7 +393,7 @@ export default function AssetDetailHeader({
           flexWrap: 'wrap',
           alignItems: 'center',
           columnGap: { xs: 2, sm: 0 },
-          mt: band ? 1 : 2.5,
+          mt: band ? { xs: 0.5, sm: 1 } : 2.5,
           position: 'relative',
           minHeight: 22,
           lineHeight: '22px',

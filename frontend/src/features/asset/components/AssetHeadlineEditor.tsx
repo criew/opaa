@@ -33,6 +33,10 @@ export interface AssetHeadlineEditorProps {
   onSave: (name: string, description: string) => Promise<void>
   /** Badges on the heading's baseline - role, source type, administrative bypass. */
   badges?: ReactNode
+  /** Leaves the pencil out; editing then starts through `editRequest`. */
+  hidePencil?: boolean
+  /** Every change of this counter opens the form once, e.g. from a menu entry. */
+  editRequest?: number
 }
 
 /**
@@ -53,6 +57,8 @@ export default function AssetHeadlineEditor({
   canEdit,
   onSave,
   badges,
+  hidePencil = false,
+  editRequest = 0,
 }: AssetHeadlineEditorProps) {
   const [draft, setDraft] = useState<{ name: string; description: string } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -81,6 +87,13 @@ export default function AssetHeadlineEditor({
   function startEditing() {
     setError(null)
     setDraft({ name, description: description ?? '' })
+  }
+
+  // each new value of `editRequest` opens the form once, as the pencil would
+  const [seenRequest, setSeenRequest] = useState(editRequest)
+  if (editRequest !== seenRequest) {
+    setSeenRequest(editRequest)
+    if (canEdit) startEditing()
   }
 
   function closeEditing() {
@@ -116,17 +129,18 @@ export default function AssetHeadlineEditor({
     <Stack
       direction="row"
       spacing={1.5}
+      useFlexGap
       sx={{
         alignItems: 'center',
         flexWrap: 'nowrap',
         mb: 0.5,
-        minHeight: 34,
+        minHeight: { xs: 28, sm: 34 },
         '& > h1': { flex: '0 1 auto', minWidth: 0 },
       }}
     >
       {draft ? <PageHeading title={name} visuallyHidden /> : <PageHeading title={name} />}
       {badges}
-      {canEdit && !draft && (
+      {canEdit && !draft && !hidePencil && (
         <Tooltip title={editLabel}>
           <IconButton ref={acceptPencil} size="small" aria-label={editLabel} onClick={startEditing}>
             <EditOutlinedIcon fontSize="small" />
@@ -138,8 +152,8 @@ export default function AssetHeadlineEditor({
 
   if (!draft) {
     return (
-      // a long compound breaks instead of running out of the head; the title takes at most three
-      // lines below 600 px and two above, the full name stays in the tooltip and for screen readers
+      // a long compound breaks instead of running out of the head; from 600 px on the title takes
+      // at most two lines, the full name stays in the tooltip and for screen readers
       <Box
         title={name}
         sx={{
@@ -147,10 +161,14 @@ export default function AssetHeadlineEditor({
           '& h1': {
             overflowWrap: 'anywhere',
             hyphens: 'auto',
-            display: '-webkit-box',
-            WebkitLineClamp: { xs: 3, sm: 2 },
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            // smaller below 600 px, never cut there (P43); from 600 px on at most two lines
+            '@media (max-width: 599.95px)': { fontSize: 14, lineHeight: '17px' },
+            '@media (min-width: 600px)': {
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            },
           },
         }}
       >
@@ -160,8 +178,8 @@ export default function AssetHeadlineEditor({
           title={description ?? undefined}
           sx={{
             fontSize: 13.5,
-            lineHeight: '22px',
-            minHeight: 22,
+            lineHeight: { xs: '20px', sm: '22px' },
+            minHeight: { xs: 20, sm: 22 },
             color: 'text.secondary',
             maxWidth: 640,
             whiteSpace: 'nowrap',
