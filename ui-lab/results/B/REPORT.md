@@ -1,6 +1,6 @@
-# Variante B „Statusband“ – Bericht Runde 3 (25.10.2026)
+# Variante B „Statusband“ – Bericht Runde 4 (25.10.2026)
 
-Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, vor dem Halt beim Maintainer und vor den Videos. Branch `feature/3084_ui-lab-detail-var-b`.
+Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, dazu eine Teilmatrix nach NACHCHECK-2 (Verlauf und Quelle in `scale`/`partial`, alle Arten in `empty`, Upload bei 320 px, privat bei 320 px). Vor dem Halt beim Maintainer und vor den Videos. Branch `feature/3084_ui-lab-detail-var-b`.
 
 ## Konzept
 
@@ -258,3 +258,39 @@ Ursachen:
 - **Regression 6 (R1-20)** erledigt: In allen Reitern gilt dasselbe Muster für leere Listen: „Noch keine … “ und die Handlung im selben Satz. Leer entfällt die Aktion oben rechts.
 - **Regression 7 (R1-39)** erledigt: Unter 600 px brechen die Reiter auf zwei Zeilen um, statt zu scrollen. Es gibt keine Wortreste und keine wechselnde Startlage mehr; der aktive Reiter ist immer sichtbar und unterstrichen.
 - **`tabsTop` bei 320 px**: Unter 600 px stehen Hauptaktion und Favorit im ⋯-Menü der Chipzeile, und die Kennzahlzeile wird nur bei Bedarf zweizeilig. Ergebnis siehe Kennzahlen.
+
+## Nachcheck-2 (Runde 4)
+
+- **R1-53** erledigt:
+  - Bei Fundorten und Umfangspfaden schrumpft nur der Anfang, das Endstück (Dateiname) nie (`flex-shrink: 0`).
+  - Die Laufzeile bei 320 px ist jetzt zweizeilig: Zustand, Datum und Auslöser in Zeile 1, das Ergebnis darunter.
+- **R1-44** erledigt:
+  - Solange die Läufe laden, zeigt die Zeile Verbindung keinen Zustand statt „nicht geprüft“.
+  - Die Aufnahme wartet auf den geladenen Zustand.
+- **N1** erledigt: Die Chipzeile bricht um statt abzuschneiden, das ⋯ bleibt am Ende der ersten Zeile.
+- **N2** erledigt:
+  - Upload leer: „Noch keine Dokumente. Dateien hochladen“, ohne Zieh-Anweisung; Dateien lassen sich trotzdem darauf ziehen.
+  - Unter 600 px steht „Dateien hochladen“ als erster Knopf in der Werkzeugleiste.
+  - „Ordner hochladen“ ist auch im ⋯-Menü erreichbar.
+- **`empty` bei 320 px** erledigt per Wortlaut: „kein Space ›“ statt „in keinem Space ›“. Die Kennzahlzeile ist einzeilig, `tabsTop` 344 wie in den anderen Szenarien.
+
+## Für den Maintainer
+
+Bewusste Abweichungen, die diese Variante zur Entscheidung vorlegt:
+
+1. **Kopfhöhe bei 320 px über 360 px** in zwei Fällen:
+   - `scale`, 391 px: Ein langer Titel ist dreizeilig (auf 3 Zeilen begrenzt), die Kennzahlzeile zweizeilig.
+   - privat, 376 px: Die vierte Kennzahl „2,4 GB von 10 GB“ und der Chip „Wissen · privat“ brechen um.
+2. **Kopfhöhe 1280 px in `scale` 6 px höher** (255 statt 249), weil der Titel zweizeilig ist (auf 2 Zeilen begrenzt). Innerhalb des Szenarios ist sie über alle Arten gleich.
+3. **Unter 600 px stehen Hauptaktion und Favorit im ⋯-Menü** der Chipzeile, damit es keine eigene Aktionszeile gibt (Budget). Für Upload ist „Dateien hochladen“ dort zusätzlich als erster Knopf der Werkzeugleiste sichtbar.
+4. **Reiterleiste unter 600 px zweizeilig** statt scrollbar: alle Reiter ganz sichtbar, der aktive unterstrichen.
+5. **Band ohne Rahmen:** Haarlinie oben und Trenner zwischen den Feldern statt eines Kastens aus drei Feldern. Gründe: Projektregel „kein ruhender Inhalt in einer Karte“ und P4.
+6. **Upload ohne Reiter Verlauf** (D15, E6). „Läuft“ bei Upload hat keine Prozentangabe, weil es keine Fortschrittszählung gibt.
+7. **Wortliste D2 erweitert** um „Noch leer“ (Upload) und am Lauf „Erfolgreich“ (Ergebnis eines Laufs).
+8. **axe-Rest:**
+   - `label-content-name-mismatch` am Rollen-Select in Freigaben und an den Auswahl-Checkboxen: Der zugängliche Name ist ausführlicher als der sichtbare Text.
+   - `target-size` an einzelnen ⋯-Knöpfen.
+9. **Upload-Popup:** Sein roter Rahmen kommt vom gemeinsamen `NotificationHost` (G 5.9) und gehört nicht zur Variante.
+10. **Mock- und Werkzeugänderungen dieses Branches gehören auf die Basis:**
+    - Fixtures: R1-73 bis R1-83, `CREDENTIALS_REJECTED`
+    - Werkzeug: `tabsTop`, `steady`, `stableShot`, Warten auf Läufe und Verbindung, Bereich `laeufe` über den Reiter Verlauf.
