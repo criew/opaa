@@ -274,6 +274,15 @@ export async function createFromReview(page: Page): Promise<void> {
 }
 
 /**
+ * The visible state word "Indiziert" of every indexed document row on a library's detail page.
+ * Each row carries the word twice, for narrow and for wide screens, so only the visible one counts;
+ * exact, because other texts on the page contain the word as a substring.
+ */
+export function indexedDocumentStates(page: Page): Locator {
+  return page.getByText('Indiziert', { exact: true }).filter({ visible: true })
+}
+
+/**
  * Creates a fresh UPLOAD library named libraryName for the acting user and uploads documentPath
  * (whose file name is documentName) into it, waiting for indexing to finish.
  */
@@ -301,7 +310,7 @@ export async function createLibraryWithDocuments(
   libraryName: string,
   documents: { path: string; name: string }[],
   // #1218 (ADR-0022): an uploaded mail's attachments become their own indexed document rows, so a
-  // caller uploading an .eml expects more "indiziert" chips than files it uploaded - it passes the
+  // caller uploading an .eml expects more "Indiziert" chips than files it uploaded - it passes the
   // full expected row count here; every other caller keeps the one-chip-per-upload default.
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
@@ -322,15 +331,10 @@ export async function createLibraryWithDocuments(
     // page (e.g. a status hint) also happens to contain this filename as a substring.
     await expect(page.getByText(name, { exact: true })).toBeVisible()
   }
-  // A fresh library (created moments ago, above) holds nothing but these uploads (plus, since
-  // #1218, the indexed attachment rows of any uploaded mail), so an exact chip count is the whole
-  // expectation - not just "at least one", which a single stuck upload amid several finished ones
-  // would still satisfy. exact: the Pflege-Anker above the list says "... indizierte
-  // Dokumente dieser Bibliothek" and loads a moment later, so a substring match counts a chip that
-  // is none - and only sometimes.
-  await expect(page.getByText('indiziert', { exact: true })).toHaveCount(expectedIndexedCount, {
-    timeout: 30_000,
-  })
+  // A fresh library holds nothing but these uploads (plus the indexed attachment rows of any
+  // uploaded mail), so an exact count is the whole expectation - "at least one" would still pass
+  // with a single stuck upload amid finished ones.
+  await expect(indexedDocumentStates(page)).toHaveCount(expectedIndexedCount, { timeout: 30_000 })
 }
 
 /**

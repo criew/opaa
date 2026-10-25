@@ -43,6 +43,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -198,6 +199,42 @@ public class OidcProviderService implements LocalAccountsSwitch {
         provider,
         null,
         auditState(provider));
+    eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+    return provider;
+  }
+
+  /**
+   * The first provider of an installation (ADR-0060, Entscheidung 9): validated like {@link
+   * #createProvider}, the default and this installation's own directory, recorded under the system
+   * process {@code actorRef} because no account exists yet. Runs inside the caller's transaction.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public OidcProvider createInitialProvider(
+      UUID organizationId, String actorRef, OidcProviderDraft draft) {
+    validate(draft, null);
+    if (repository.countByProviderType(ProviderType.OIDC) > 0) {
+      throw new ConflictException("Es gibt bereits einen Identitätsanbieter.");
+    }
+    OidcProvider provider =
+        new OidcProvider(
+            draft.displayName(),
+            draft.issuerUri(),
+            draft.clientId(),
+            draft.jwkSetUri(),
+            draft.claimMapping());
+    provider.setSortOrder((int) repository.count());
+    provider.markDefault();
+    provider.setExternal(false);
+    repository.save(provider);
+    auditEventRecorder.recordSystemProcessAction(
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef(actorRef)
+            .type(AuditEventType.OIDC_PROVIDER_CREATED)
+            .object(AuditObjectType.SYSTEM_SETTING, provider.getId(), objectLabel(provider))
+            .after(auditState(provider))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
     return provider;
   }

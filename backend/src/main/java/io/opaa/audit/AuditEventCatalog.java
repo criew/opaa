@@ -367,6 +367,12 @@ public final class AuditEventCatalog {
     put(keys, Set.of("noProxy", "proxyUrl"), OUTBOUND_PROXY_CHANGED);
     put(keys, Set.of("reason"), LOCAL_SESSION_REVOKED);
     put(keys, Set.of(), LOCAL_PASSWORD_CHANGED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN);
+    put(
+        keys,
+        Set.of("apiKeySet", "baseUrl", "issuerUri", "model", "passwordSet", "signInMode", "step"),
+        INSTALLATION_STEP_SAVED);
+    put(keys, Set.of("step", "succeeded"), INSTALLATION_STEP_CHECKED);
+    put(keys, Set.of("signInMode", "source"), INSTALLATION_COMPLETED);
     put(keys, Set.of("passwordSource", "state"), LOCAL_ADMIN_SEEDED);
     put(keys, Set.of("passwordSource", "recreated"), LOCAL_ADMIN_RESET);
     put(keys, Set.of("enabled"), LOCAL_ACCOUNTS_ENABLED);

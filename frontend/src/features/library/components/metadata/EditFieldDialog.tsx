@@ -28,12 +28,15 @@ export default function EditFieldDialog({
   onClose,
   onSaved,
   onError,
+  onDelete,
 }: {
   libraryId: string
   field: LibraryMetadataFieldResponse
   onClose: () => void
   onSaved: () => void
   onError: (message: string) => void
+  /** Removing the field starts here, so the row keeps only „Ändern“ at its edge. */
+  onDelete?: () => void
 }) {
   // Seeded from the field once; the caller remounts this dialog per field (key), so there is no
   // effect that copies props into state.
@@ -113,6 +116,11 @@ export default function EditFieldDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
+        {onDelete && (
+          <Button color="error" onClick={onDelete} sx={{ mr: 'auto' }}>
+            Feld löschen
+          </Button>
+        )}
         <Button onClick={onClose}>Abbrechen</Button>
         <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
           Speichern

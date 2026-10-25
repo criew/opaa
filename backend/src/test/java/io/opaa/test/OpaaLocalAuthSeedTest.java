@@ -11,12 +11,9 @@ import org.springframework.test.context.TestPropertySource;
  * {@link OpaaLocalAuthMockMvcTest} plus a deliverable initial administrator address and a network
  * restriction for local system administrators (ADR-0033, Entscheidungen 5 and 9).
  *
- * <p><b>Why this cannot be the base signature:</b> {@code opaa.auth.initial-admin-email} carries
- * the shipped default {@code admin@opaa.local} there, which {@code LocalAdminSeeder} refuses
- * outright - and a class on the base signature asserts that refusal, the first thing an operator
- * meets after an update. An address that works and an address that is refused cannot be the same
- * property value. {@code opaa.auth.local.admin-allowed-cidrs} rides along: it is only meaningful
- * for the class that drives the seeded administrator's sign-in, and its own context already exists.
+ * <p><b>Why this cannot be the base signature:</b> the seeding class needs the network restriction
+ * {@code opaa.auth.local.admin-allowed-cidrs}, which would lock the local administrators of every
+ * other class of the family out, and an address of its own that no other class seeds.
  *
  * <p>The external-access feature rides along switched off for the same reason (ADR-0044): what an
  * access-token value meets under {@code oidc} without the channel's filter chain can only be seen

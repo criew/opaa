@@ -13,8 +13,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param mode {@code oidc} or {@code dev}; set by the active profile, empty refuses the start
  * @param oidc the bootstrap of the first identity provider in the {@code oidc} mode
  * @param dev the users of the development mode
- * @param initialAdminEmail the address that becomes system administrator on its first sign-in and
- *     of the local bootstrap administrator
+ * @param initialAdminEmail the address of the local bootstrap administrator; set in the {@code
+ *     oidc} mode, a pending installation is completed from the start values (ADR-0060); in the
+ *     {@code dev} mode the address that becomes system administrator on its first sign-in
  */
 @PerInstance("seed and development values of this process")
 @NoDataImpact("authentication mode and bootstrap of the first identity provider")

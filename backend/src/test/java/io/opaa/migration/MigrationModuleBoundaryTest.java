@@ -140,6 +140,8 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "metadata_model_rejections",
                   "llm_models",
                   "llm_model_seed_marker",
+                  "installation_state",
+                  "installation_steps",
                   "private_storage_quota_settings",
                   "full_sync_rhythm_settings",
                   "vector_store",

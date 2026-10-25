@@ -73,37 +73,6 @@ function applyFinishedChange(libraryId: string, change: LibraryMetadataSchemaCha
 }
 
 export const libraryMetadataHandlers = [
-  // the Pflege-Anker of a library - counted over its mock documents on every call.
-  http.get('/api/v1/libraries/:libraryId/metadata/maintenance', ({ params }) => {
-    const libraryId = String(params.libraryId)
-    if (!mockLibraryDetails[libraryId]) {
-      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
-    }
-    const documents = mockLibraryDocuments[libraryId] ?? []
-    const totalDocuments = documents.length
-    return HttpResponse.json({
-      libraryId,
-      totalDocuments,
-      fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
-        const states = documents.map(
-          (doc) =>
-            (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey)
-              ?.state ?? 'EMPTY',
-        )
-        const documentsWithoutValue = states.filter((state) => state === 'EMPTY').length
-        return {
-          fieldKey,
-          label,
-          totalDocuments,
-          documentsWithoutValue,
-          missingShare: totalDocuments === 0 ? 0 : documentsWithoutValue / totalDocuments,
-          filledDocuments: states.filter((state) => state === 'SET').length,
-          notDeterminableDocuments: states.filter((state) => state === 'NOT_DETERMINABLE').length,
-        }
-      }),
-    })
-  }),
-
   // the two model-backed extraction switches, kept in memory so the switch reflects its own PUT.
   http.get('/api/v1/libraries/:libraryId/metadata/extraction-settings', ({ params }) => {
     const libraryId = String(params.libraryId)

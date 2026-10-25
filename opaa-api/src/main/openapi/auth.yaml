@@ -490,6 +490,11 @@ components:
           $ref: "#/components/schemas/LocalAccountsConfig"
         features:
           $ref: "#/components/schemas/FeaturesConfig"
+        installationPending:
+          type: boolean
+          description: >
+            True while the installation of the instance is pending (ADR-0060): the interface shows
+            only the setup, every other API call answers 503.
 
     FeaturesConfig:
       type: object

@@ -134,6 +134,7 @@ describe('logout empties the session stores', () => {
           sourceType: 'FILESYSTEM',
           unlistedScopeKeys: [],
           failureCategory: null,
+          incomplete: false,
           statusUnknown: false,
         },
       },

@@ -56,10 +56,14 @@ data:
       Titel oder Inhalt); nicht mit dem Konto, ein vorhandener Chat verhindert die Löschung des
       Kontos
     evaluations: >-
-      Chatsuche der Person über eigene Chats; keine Auswertung durch andere, Fragen werden nicht
-      protokolliert
+      Chatsuche der Person über eigene Chats; Export eines eigenen Chats als Markdown- oder
+      PDF-Datei durch die Person; keine Auswertung durch andere, Fragen werden nicht protokolliert
     notes:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
+      - >-
+        Die Person kann einen eigenen Chat als Markdown- oder PDF-Datei herunterladen (Fragen,
+        Antworten, Gesprächsnotiz, Dokumenttitel und Fundorte der Quellen); der Export wird weder
+        protokolliert noch gespeichert
   - id: chat-cleanup-holds
     title: Angehaltene Löschung der Chats eines gesperrten Kontos
     purpose: >-

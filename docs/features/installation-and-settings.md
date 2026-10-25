@@ -1,7 +1,10 @@
 # Schlanke Konfiguration und Einrichtungs-Assistent
 
-> **Status: Entwurf.** Zielbild zu Issue #3160; nichts davon ist gebaut. Entscheidungen:
-> [ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md).
+> **Status: in Umsetzung.** Zielbild zu Issue #3160. Gebaut ist Teilschritt 1 (Installationsmodus,
+> Token, Installations-API, Antwortdatei mit erstem Konto, Anmeldeverfahren und Chat-Modell); die
+> Startwerte `OPAA_INITIAL_ADMIN_*` schließen eine ausstehende Installation im Modus `oidc` noch
+> ab, bis Helm, Compose und e2e mit Teilschritt 6 auf die Antwortdatei umgestellt sind.
+> Entscheidungen: [ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md).
 
 ## Motivation
 
@@ -132,12 +135,17 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
 | Operation | Zweck |
 |---|---|
 | `GET /api/v1/installation` | Zustand: welche Schritte gespeichert und geprüft sind, welche Pflicht |
-| `PUT /api/v1/installation/steps/{step}` | Angaben eines Schritts speichern |
+| `PUT /api/v1/installation/steps/{step}` | Angaben eines Schritts speichern (`FIRST_ADMIN`, `SIGN_IN`, `CHAT_MODEL`) |
 | `POST /api/v1/installation/steps/{step}/check` | Prüfung eines Schritts ausführen |
-| `POST /api/v1/installation/answer-file` | Antwortdatei annehmen: alle Schritte speichern, prüfen und abschließen |
+| `POST /api/v1/installation/answer-file` | Antworten annehmen: alle Schritte speichern, prüfen und abschließen, alles oder nichts |
 | `POST /api/v1/installation/complete` | Abschließen |
 
 - Jede Operation verlangt das Token im Header `Authorization: Bearer <Token>`.
+- Je Netzadresse und Instanz gelten 300 Anfragen und 10 abgelehnte Tokens in 15 Minuten; danach
+  `429`, auch mit dem richtigen Token.
+- Die Adresse des Chat-Modells durchläuft beim Speichern und vor dem Verbindungstest die
+  Zieladressprüfung (`OPAA_INDEXING_TARGET_VALIDATION_*`); ein gespeicherter Schlüssel bleibt nur
+  bei unveränderter Adresse (Schema, Host, Port, Pfad).
 - Fehler kommen deutsch je Feld wie in der übrigen Verwaltung.
 - Nach dem Abschluss antwortet jede Operation `404`.
 
@@ -176,8 +184,13 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
 }
 ```
 
-- Geheimnisse stehen nie im Klartext, sondern als `…File`-Verweis auf eine Datei, die aus einem
-  Secret eingehängt ist.
+- In der Datei stehen Geheimnisse nie im Klartext, sondern als `…File`-Verweis auf eine Datei, die
+  aus einem Secret eingehängt ist; `password` oder `apiKey` in der Datei lehnt der Start ab. Über
+  `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
+  Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
+  Dateien des Backends lesen (ADR-0060, Entscheidung 7).
+- Angaben späterer Schritte (`embeddingModel`, `outboundProxy`, `mail`, `branding`) wertet diese
+  Version noch nicht aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.

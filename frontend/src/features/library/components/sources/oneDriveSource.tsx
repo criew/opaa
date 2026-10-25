@@ -49,17 +49,6 @@ export const oneDriveSource: SourceRegistration = {
       if (values.allFolders) return oneDriveLabel(values)
       return folders.length === 1 ? lastSegment(oneDriveFolderLabel(folders[0])) : ''
     },
-    scopeHero: {
-      summary: (library) => {
-        const values = oneDriveValuesOf(oneDriveSettingsFromLibrary(library))
-        const count = values.folders.length
-        if (count === 0) return 'Alle Ordner'
-        return count === 1 ? '1 Ordner' : `${count} Ordner`
-      },
-      unlistedWarning: () =>
-        'Der letzte Lauf konnte das OneDrive nicht erreichen; sein Bestand ist möglicherweise veraltet. Der Hinweis bleibt, bis ein Vollabgleich das OneDrive wieder auflisten kann.',
-      unlistedTestId: 'onedrive-incomplete-listing-warning',
-    },
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,
     firstRunHint:

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
@@ -65,7 +65,7 @@ function renderSection(
 }
 
 async function chooseSuccessor(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'Eigentum übergeben' }))
+  await user.click(screen.getByRole('button', { name: /^Übergeben\s?Eigentum$/ }))
   await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'Nina')
   await user.click(await screen.findByRole('option', { name: /Nina Klein/ }))
   await user.click(screen.getByRole('button', { name: 'Übergeben' }))
@@ -79,11 +79,12 @@ describe('AssetOwnerSection (#1941)', () => {
     mockSearchSelectableGroups.mockResolvedValue([])
   })
 
-  it('names the owning group and says why a group survives a change of staff', () => {
+  it('names the owning group and the kind of party in the row of the owner', () => {
     renderSection({ ownerType: 'GROUP', ownerName: 'Referat 50', canTransfer: false })
 
-    expect(screen.getByText('Referat 50')).toBeInTheDocument()
-    expect(screen.getByText(/Personalwechsel/)).toBeInTheDocument()
+    const row = screen.getByRole('region', { name: 'Eigentümer' })
+    expect(within(row).getByText('Referat 50')).toBeInTheDocument()
+    expect(within(row).getByText('· Gruppe')).toBeInTheDocument()
   })
 
   it('names an owner that may not be named without inventing one', () => {
@@ -95,11 +96,11 @@ describe('AssetOwnerSection (#1941)', () => {
   // Only the owner may hand over; for everyone else the section is information.
   it('offers the handover only where the caller holds the ownership', () => {
     const { unmount } = renderSection({ canTransfer: false })
-    expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Übergeben\s?Eigentum$/ })).not.toBeInTheDocument()
     unmount()
 
     renderSection()
-    expect(screen.getByRole('button', { name: 'Eigentum übergeben' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Übergeben\s?Eigentum$/ })).toBeInTheDocument()
   })
 
   it('asks back before handing the asset on and reloads afterwards', async () => {

@@ -65,6 +65,7 @@ class ChatServiceIntegrationTest {
 
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
+  @Autowired private ChatExportService chatExportService;
 
   // The shared spy of @OpaaIntegrationTest: appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnThe-
   // SameSequence below stubs one call of findMaxSequenceByChatId to force a deterministic
@@ -781,6 +782,44 @@ class ChatServiceIntegrationTest {
 
     assertThatThrownBy(() -> chatService.requireStillSpaceMember(chat))
         .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void exportPdfCarriesTheAuthorsChatWithItsMessages() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, "T", true, Set.of()));
+    chatService.appendTurn(chat, "Frage 1", "Antwort 1", List.of());
+
+    ChatPdf pdf = chatExportService.exportPdf(chat.getId(), author);
+
+    assertThat(pdf.fileName()).isEqualTo("T.pdf");
+    assertThat(pdf.content()).isNotEmpty();
+  }
+
+  @Test
+  void exportPdfOfAForeignChatIsNotFound() {
+    UUID author = createUser();
+    UUID otherMember = createUser();
+    Space space = new Space("Fachbereich", null, false, author, organizationA);
+    space.addMembership(SpaceMembership.ofUser(author, SpaceRole.MEMBER, organizationA));
+    space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
+    UUID spaceId = spaceRepository.save(space).getId();
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+
+    assertThatThrownBy(() -> chatExportService.exportPdf(chat.getId(), otherMember))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  /** The export follows the read rule: the author keeps it after leaving the space. */
+  @Test
+  void exportPdfStaysOpenToAnAuthorNoLongerInTheSpace() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    spaceMembershipRepository.deleteAll(spaceMembershipRepository.findBySpaceId(spaceId));
+
+    assertThat(chatExportService.exportPdf(chat.getId(), author).content()).isNotEmpty();
   }
 
   @Test

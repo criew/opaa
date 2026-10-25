@@ -56,7 +56,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   // 1. Owner - new on the detail page, with the transfer for the owner themselves.
   const owner = section(page, 'Eigentümer')
   await expect(owner).toBeVisible()
-  await expect(owner.getByRole('button', { name: 'Eigentum übergeben' })).toBeVisible()
+  await expect(owner.getByRole('button', { name: /^Übergeben/ })).toBeVisible()
 
   // 2. Grants - a list on the page, no longer behind a "Rechte verwalten" dialog.
   const grants = section(page, 'Berechtigungen')
@@ -66,10 +66,10 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   await personInput.fill('Dev User')
   await page.getByRole('option', { name: /Dev User/ }).click()
   await grants.getByRole('button', { name: 'Freigeben' }).last().click()
-  // The row's revoke button, not its subject name: the name also sits in the recipient picker of
+  // The row's action menu, not its subject name: the name also sits in the recipient picker of
   // the form, which can still be open at the moment of the assertion - an ambiguity Playwright
   // rejects outright instead of waiting it out.
-  await expect(grants.getByRole('button', { name: 'Freigabe für Dev User entziehen' })).toBeVisible()
+  await expect(grants.getByRole('button', { name: 'Aktionen für die Freigabe an Dev User' })).toBeVisible()
 
   // 3. "Alle Konten" is a recipient like any other - with a confirmation in front of it
   //    that spells out the reach (ADR-0037).
@@ -82,7 +82,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   await confirm.locator('#confirm-accept').click()
   await expect(confirm).toHaveCount(0)
   await expect(
-    grants.getByRole('button', { name: 'Freigabe für Alle Konten entziehen' }),
+    grants.getByRole('button', { name: 'Aktionen für die Freigabe an Alle Konten' }),
   ).toBeVisible()
 }
 
@@ -166,13 +166,13 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await expect(page.getByRole('heading', { level: 1, name: CONNECTOR_LIBRARY })).toBeVisible()
     await expectTabs(page, true)
 
-    // The tab "Quelle" carries the rows of the wizard and the runs; "Umfang" is absent for this
-    // source type, and "Verbindung" holds the stored address.
+    // The tab "Quelle" carries the rows of the wizard and the runs; "Umfang" reads the whole
+    // directory for this source type, and "Verbindung" holds the stored address.
     await page.getByRole('tab', { name: 'Quelle' }).click()
     await expect(section(page, 'Verbindung')).toContainText('rss-feed')
     await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
     await expect(page.getByLabel('Adresse', { exact: true })).toHaveValue(DIRECTORY_URL)
-    await expect(section(page, 'Umfang')).toHaveCount(0)
+    await expect(section(page, 'Umfang')).toContainText('Ganzes Verzeichnis')
     await expect(section(page, 'Zeitplan')).toBeVisible()
     await expect(section(page, 'Läufe')).toBeVisible()
 

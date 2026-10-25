@@ -10,12 +10,16 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.mail.MailSettingsService;
+import io.opaa.security.PasswordGenerator;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -23,6 +27,7 @@ import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaLocalAuthLinkTest;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
+import java.time.Clock;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
@@ -31,12 +36,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The composed journey of the local account management, as one regression anchor across the
@@ -81,6 +90,16 @@ class LocalAuthJourneyIntegrationTest {
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private AuthProperties authProperties;
+  @Autowired private LocalAuthProperties localAuthProperties;
+  @Autowired private OidcProviderRepository providers;
+  @Autowired private PasswordEncoder passwordEncoder;
+  @Autowired private PasswordPolicy passwordPolicy;
+  @Autowired private PasswordGenerator passwordGenerator;
+  @Autowired private AuditEventRecorder audit;
+  @Autowired private ApplicationEventPublisher events;
+  @Autowired private Clock clock;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private LocalAccountFixtures fixtures;
   private LocalAccount bootstrapAdmin;
@@ -106,9 +125,11 @@ class LocalAuthJourneyIntegrationTest {
     seedMarker.deleteAll();
     assertThat(localAccountCount()).isZero();
 
-    // opaa.auth.initial-admin-email is admin@opaa.local here - the shipped default, which would
-    // become the sign-in name of a privileged account at a reachable form and is not deliverable.
-    LocalAdminSeeder.Outcome outcome = seeder.seedIfNeeded();
+    // admin@opaa.local, the address the dev profile ships: it would become the sign-in name of a
+    // privileged account at a reachable form and is not deliverable.
+    LocalAdminSeeder.Outcome outcome =
+        new TransactionTemplate(transactionManager)
+            .execute(status -> seederWithAddress("admin@opaa.local").seedIfNeeded());
 
     assertThat(outcome).isEqualTo(LocalAdminSeeder.Outcome.REJECTED);
     assertThat(localAccountCount())
@@ -401,5 +422,24 @@ class LocalAuthJourneyIntegrationTest {
           }
         });
     return out.append('}').toString();
+  }
+
+  /** The seed of this context with another start value, every other collaborator the real one. */
+  private LocalAdminSeeder seederWithAddress(String address) {
+    return new LocalAdminSeeder(
+        new AuthProperties(
+            authProperties.mode(), authProperties.oidc(), authProperties.dev(), address),
+        localAuthProperties,
+        users,
+        credentials,
+        refreshTokens,
+        providers,
+        seedMarker,
+        passwordEncoder,
+        passwordPolicy,
+        passwordGenerator,
+        audit,
+        events,
+        clock);
   }
 }

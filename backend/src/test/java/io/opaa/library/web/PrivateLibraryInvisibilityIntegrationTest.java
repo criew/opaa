@@ -252,6 +252,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getBrandingLogo",
             "listCatalog",
             "getChat",
+            "exportChatPdf",
             "listConnectionProfileOptions",
             "getDocumentContent",
             "listEligibleExternalAccessLibraries",
@@ -315,7 +316,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listConnectionLogProfiles",
             "listDormantSourceConnections",
             "listMcpServers",
-            "getMcpServer")) {
+            "getMcpServer",
+            "getInstallation")) {
       probes.put(read, same());
     }
     probes.put("getHealth", volatileAnswer());

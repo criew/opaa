@@ -280,6 +280,7 @@ final class AuditSelfDisclosurePayload {
         OUTBOUND_PROXY_CHANGED);
     put(keys, Set.of("reason"), LOCAL_SESSION_REVOKED);
     put(keys, Set.of(), LOCAL_PASSWORD_CHANGED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN);
+    put(keys, Set.of(), INSTALLATION_STEP_SAVED, INSTALLATION_STEP_CHECKED, INSTALLATION_COMPLETED);
     put(keys, Set.of("purpose"), LOCAL_PASSWORD_SET);
     put(keys, Set.of("passwordSource"), LOCAL_ADMIN_SEEDED);
     put(keys, Set.of("recreated", "passwordSource"), LOCAL_ADMIN_RESET);
