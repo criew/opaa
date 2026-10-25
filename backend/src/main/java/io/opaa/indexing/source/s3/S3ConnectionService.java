@@ -51,7 +51,7 @@ public class S3ConnectionService {
    * @param credentialsVerified {@code false} when the store refused the key or none was usable as
    *     given (missing, malformed); {@code true} once any scope got an answer that presupposes a
    *     valid signature, also {@code AccessDenied}; {@code null} when no scope got that far
-   *     (blocked, unreachable, TLS, clock, throttling, server error)
+   *     (blocked, unreachable, TLS, region or addressing style, clock, throttling, server error)
    * @param objectCount the objects the first page of every scope showed, {@code null} unless every
    *     scope passed
    */
@@ -163,8 +163,7 @@ public class S3ConnectionService {
       return passed()
           || failure instanceof S3AccessException.BucketNotFound
           || failure instanceof S3AccessException.ListForbidden
-          || failure instanceof S3AccessException.ReadForbidden
-          || failure instanceof S3AccessException.WrongRegionOrStyle;
+          || failure instanceof S3AccessException.ReadForbidden;
     }
 
     S3ScopeCheck toCheck() {
