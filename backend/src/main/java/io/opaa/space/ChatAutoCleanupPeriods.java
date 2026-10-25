@@ -1,41 +1,43 @@
 package io.opaa.space;
 
-import io.opaa.compliance.DataImpact;
 import java.time.Duration;
 import java.time.Instant;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The installation-wide periods of the automatic chat cleanup a space can switch on. Only the
- * operator sets them; a value below its floor stops the start, so no configuration can turn the
- * cleanup into a short-notice deletion.
+ * The installation-wide periods of the automatic chat cleanup a space can switch on, as {@link
+ * ChatAutoCleanupSettings} holds them. Every value lies within its floor and ceiling, so no setting
+ * can turn the cleanup into a short-notice deletion.
  *
  * @param archiveAfterDays days without chat activity after which a chat that is not pinned is
- *     archived; default 90, at least {@value #MIN_ARCHIVE_AFTER_DAYS}
- * @param deleteAfterDays days in the chat archive after which a chat is deleted; default 365, at
- *     least {@value #MIN_DELETE_AFTER_DAYS}
+ *     archived, {@value #MIN_ARCHIVE_AFTER_DAYS} to {@value #MAX_DAYS}
+ * @param deleteAfterDays days in the chat archive after which a chat is deleted, {@value
+ *     #MIN_DELETE_AFTER_DAYS} to {@value #MAX_DAYS}
  */
-@ConfigurationProperties(prefix = "opaa.chat.auto-cleanup")
-public record ChatAutoCleanupProperties(
-    @DefaultValue("90") @DataImpact int archiveAfterDays,
-    @DefaultValue("365") @DataImpact int deleteAfterDays) {
+public record ChatAutoCleanupPeriods(int archiveAfterDays, int deleteAfterDays) {
 
   public static final int MIN_ARCHIVE_AFTER_DAYS = 90;
   public static final int MIN_DELETE_AFTER_DAYS = 30;
+  public static final int MAX_DAYS = 3650;
 
-  public ChatAutoCleanupProperties {
-    if (archiveAfterDays < MIN_ARCHIVE_AFTER_DAYS) {
+  /** The periods in force while the administration set none. */
+  public static final ChatAutoCleanupPeriods FACTORY_DEFAULTS = new ChatAutoCleanupPeriods(90, 365);
+
+  public ChatAutoCleanupPeriods {
+    if (archiveAfterDays < MIN_ARCHIVE_AFTER_DAYS || archiveAfterDays > MAX_DAYS) {
       throw new IllegalArgumentException(
-          "opaa.chat.auto-cleanup.archive-after-days must be at least "
+          "archiveAfterDays must lie between "
               + MIN_ARCHIVE_AFTER_DAYS
+              + " and "
+              + MAX_DAYS
               + ", got "
               + archiveAfterDays);
     }
-    if (deleteAfterDays < MIN_DELETE_AFTER_DAYS) {
+    if (deleteAfterDays < MIN_DELETE_AFTER_DAYS || deleteAfterDays > MAX_DAYS) {
       throw new IllegalArgumentException(
-          "opaa.chat.auto-cleanup.delete-after-days must be at least "
+          "deleteAfterDays must lie between "
               + MIN_DELETE_AFTER_DAYS
+              + " and "
+              + MAX_DAYS
               + ", got "
               + deleteAfterDays);
     }

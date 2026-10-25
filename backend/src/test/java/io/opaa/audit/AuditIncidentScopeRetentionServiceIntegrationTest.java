@@ -43,6 +43,7 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private AuditIncidentScopeRetentionSettings retentionSettings;
 
   private UUID organizationId;
   private UUID requester;
@@ -129,11 +130,15 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
             "SECURITY_INCIDENT:EXPIRED:1");
   }
 
+  /** One run at {@code instant} with {@code retentionYears} set by the administration. */
   private void runAt(String instant, int retentionYears) {
+    jdbcTemplate.update(
+        "INSERT INTO audit_incident_scope_retention_settings (id, retention_years, updated_at)"
+            + " VALUES (1, ?, now()) ON CONFLICT (id) DO UPDATE SET"
+            + " retention_years = EXCLUDED.retention_years",
+        retentionYears);
     new AuditIncidentScopeRetentionService(
-            grantRepository,
-            new AuditIncidentScopeRetention(retentionYears),
-            Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
+            grantRepository, retentionSettings, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
         .runOnce();
   }
 

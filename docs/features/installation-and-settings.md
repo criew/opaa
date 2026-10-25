@@ -257,7 +257,7 @@ Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
 | Rerank- und Transkriptionsmodell | Modelle (neue Reiter) |
 | Vollabgleich-Rhythmus je Konnektor (Vorgabe der Installation) | Anbindungen → Einstellungen |
 | Schwellen und Fristen der Verbindungen | Anbindungen → Einstellungen |
-| Aufbewahrung der Chats und der anlassbezogenen Klärungen | neben den übrigen Aufbewahrungsfristen |
+| Aufbewahrung der Chats und der anlassbezogenen Klärungen | Datenschutz, neben der Selbstauskunft |
 | Vorlauf der Wiedervorlage externer KI-Werkzeuge | Externe KI-Werkzeuge → Einstellungen |
 | Alterung „Ohne Zuständigkeit“ | Ohne Zuständigkeit |
 | Plausibilitätsschwelle des Verzeichnisabgleichs | Verzeichnisabgleich, je Anbieter |
@@ -652,11 +652,11 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | Variable | Heute | Künftig |
 |---|---|---|
 | `OPAA_AI_CHAT_PROVIDER` | `LlmModelSeeder (Altname)` | Altname entfällt |
-| `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | `opaa.audit.incident-scope-retention-years` | Aufbewahrung; Grenzen 1 bis 10 Jahre im Code |
-| `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `opaa.chat.auto-cleanup.archive-after-days` | Aufbewahrung, neben den übrigen Fristen |
-| `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Aufbewahrung |
-| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Aufbewahrung |
-| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED` | `opaa.chat.locked-account-cleanup.enabled` | Aufbewahrung |
+| `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | `opaa.audit.incident-scope-retention-years` | Vorgabe im Code; `audit_incident_scope_retention_settings`, Grenzen 1 bis 10 Jahre im Code |
+| `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `opaa.chat.auto-cleanup.archive-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
+| `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
+| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |
+| `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED` | `opaa.chat.locked-account-cleanup.enabled` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |
 | `OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD` | `opaa.connection.expired-connections.warning-threshold` | Anbindungen → Einstellungen |
 | `OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS` | `opaa.connection.inactivity-threshold-days` | Anbindungen → Einstellungen |
 | `OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS` | `opaa.connection.private-library-deletion-days` | Anbindungen → Einstellungen |

@@ -104,6 +104,24 @@ class ChatAutoCleanupIntegrationTest {
     assertThat(chatExists(chatId)).isFalse();
   }
 
+  /** The run reads the periods the administration set, not the factory defaults. */
+  @Test
+  void aDeletePeriodSetByTheAdministrationGovernsTheNextRun() {
+    UUID author = createUser();
+    UUID spaceId = createSpace(author, now);
+    UUID chatId = createArchivedChat(spaceId, author);
+    setArchivedAt(chatId, now.minus(DAY.multipliedBy(800)));
+    jdbcTemplate.update(
+        "INSERT INTO chat_auto_cleanup_settings"
+            + " (id, archive_after_days, delete_after_days, updated_at) VALUES (1, 90, 30, now())");
+
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(29)));
+    assertThat(chatExists(chatId)).isTrue();
+
+    cleanupService.runOnce(now.plus(DAY.multipliedBy(31)));
+    assertThat(chatExists(chatId)).isFalse();
+  }
+
   @Test
   void anAutomaticallyArchivedChatIsDeletedWithItsMessagesAfterTheDeletePeriod() {
     UUID author = createUser();

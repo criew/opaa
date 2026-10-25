@@ -223,9 +223,21 @@ class DataCollectionDisclosureIntegrationTest {
   }
 
   /**
+   * Settings with a factory default in the code and a row only once the administration sets its own
+   * value (ADR-0060, Entscheidung 1): while the default applies they have no time of change.
+   */
+  private static final Set<String> FACTORY_DEFAULT_KEYS =
+      Set.of(
+          "chat_auto_cleanup_settings.archive_after_days",
+          "chat_auto_cleanup_settings.delete_after_days",
+          "locked_account_chat_cleanup_settings.enabled",
+          "locked_account_chat_cleanup_settings.delete_after_days",
+          "audit_incident_scope_retention_settings.retention_years");
+
+  /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
-   * with value and time of change, and only the flows that happen on an action of a person stay
-   * open.
+   * with value and time of change - a factory default without a time only while it applies - and
+   * only the flows that happen on an action of a person stay open.
    */
   @Test
   void everyStoredSettingAndEverySwitchedFlowIsAnsweredByItsModule() throws Exception {
@@ -240,7 +252,9 @@ class DataCollectionDisclosureIntegrationTest {
     for (String key : databaseKeys) {
       JsonNode setting = setting(export, key);
       assertThat(setting.path("effectiveValue").isNull()).as(key + " has a value").isFalse();
-      assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
+      if (!FACTORY_DEFAULT_KEYS.contains(key) || setting.path("deviates").asBoolean()) {
+        assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
+      }
     }
     Set<String> open = new HashSet<>();
     for (JsonNode flow : export.path("instance").path("dataFlows")) {

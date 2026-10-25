@@ -74,7 +74,7 @@ public class SpaceService {
   private final CapabilityService capabilityService;
   private final SuccessionReachGuard successionGuard;
   private final SpaceSuccessionSource successionSource;
-  private final ChatAutoCleanupProperties chatAutoCleanup;
+  private final ChatAutoCleanupSettings chatAutoCleanup;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -102,7 +102,7 @@ public class SpaceService {
       CapabilityService capabilityService,
       SuccessionReachGuard successionGuard,
       SpaceSuccessionSource successionSource,
-      ChatAutoCleanupProperties chatAutoCleanup,
+      ChatAutoCleanupSettings chatAutoCleanup,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.spaceRepository = spaceRepository;
@@ -238,6 +238,7 @@ public class SpaceService {
     Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(memberSpaces);
+    ChatAutoCleanupPeriods periods = chatAutoCleanup.current();
     return memberSpaces.stream()
         // An archived space is left out of this list unless the caller has a chat of their own in
         // it, is the space's owner, or is a system admin - otherwise, in the typical case
@@ -259,7 +260,7 @@ public class SpaceService {
                     SpaceAccessPolicy.effectiveRole(space, caller.id(), callerGroupIds),
                     succession.containsKey(space.getId()),
                     succession.get(space.getId()),
-                    chatAutoCleanup))
+                    periods))
         .toList();
   }
 
@@ -284,7 +285,7 @@ public class SpaceService {
         space,
         accessPolicy.effectiveRole(space, caller),
         successionSource.openAmong(List.of(space)).contains(space.getId()),
-        chatAutoCleanup);
+        chatAutoCleanup.current());
   }
 
   public Space getSpace(UUID spaceId, CurrentUser caller) {

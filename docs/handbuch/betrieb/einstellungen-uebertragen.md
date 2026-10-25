@@ -16,12 +16,15 @@ Verfügung.
 
 Die Datei ist JSON, mit Formatname, Formatversion, Zeitpunkt des Exports und je Bereich dessen
 wirksame Werte. Ein leerer Wert (`null`) hat je Angabe seine eigene Bedeutung: Beim Branding gilt
-der OPAA-Standard, beim Speicherkontingent die Vorgabe des Betriebs, bei einer E-Mail-Vorlage der
+der OPAA-Standard, beim Speicherkontingent die Vorgabe des Betriebs, bei den Fristen der Chats und
+der anlassbezogenen Klärungen die Werkseinstellung, bei einer E-Mail-Vorlage der
 ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 
 | Bereich | Inhalt |
 |---|---|
 | Aufbewahrungsfristen | Protokoll, Rechtehistorie, Diagnoseprotokoll, Verbindungsprotokoll |
+| Fristen der Chats | Archivieren und Löschen der Chat-Bereinigung in Spaces, Schalter und Frist der Löschung nach einer Sperre, je `null` für die Werkseinstellung |
+| Anlassbezogene Klärungen | Löschfrist in Kalenderjahren oder `null` für die Werkseinstellung |
 | Branding | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe |
 | E-Mail-Versand | Schalter, Mailserver, Port, Zugangsname, Verschlüsselung, Absender |
 | E-Mail-Vorlagen | je Vorlage die eigene Fassung mit Betreff und Text oder `null` für den ausgelieferten Text |
@@ -47,7 +50,7 @@ umlenken, was die Installation erreicht oder zulässt, oder Nachweise früher l�
 „Sicherheitsrelevant“ markiert: Mailserver und Absender, E-Mail-Vorlagen (ihre Links erreichen
 Eingeladene), Ausgangsproxy, Selbstregistrierung, Passwortlänge und Gültigkeit der Links, externe
 KI-Werkzeuge mit Netzbereichen, Ablauf und Kontingent, erlaubte Linkziele und jede
-Aufbewahrungsfrist. Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
+Aufbewahrungs- und Löschfrist, auch die der Chats und der anlassbezogenen Klärungen. Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
   Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des

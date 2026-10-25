@@ -8,9 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The deletion of the grants of the anlassbezogene Klärung after {@link
- * AuditIncidentScopeRetention}, approved ones and requests never approved alike. The number of
- * requests, approvals and ends of usability per month stays behind in {@code
+ * The deletion of the grants of the anlassbezogene Klärung after the {@link
+ * AuditIncidentScopeRetention} in force at the run, approved ones and requests never approved
+ * alike. The number of requests, approvals and ends of usability per month stays behind in {@code
  * audit_incident_scope_monthly_counts}; nothing else of a grant does. {@link
  * AuditIncidentScopeRetentionScheduler} is the only production caller.
  */
@@ -21,15 +21,15 @@ public class AuditIncidentScopeRetentionService {
       LoggerFactory.getLogger(AuditIncidentScopeRetentionService.class);
 
   private final AuditIncidentScopeGrantRepository repository;
-  private final AuditIncidentScopeRetention retention;
+  private final AuditIncidentScopeRetentionSettings settings;
   private final Clock clock;
 
   AuditIncidentScopeRetentionService(
       AuditIncidentScopeGrantRepository repository,
-      AuditIncidentScopeRetention retention,
+      AuditIncidentScopeRetentionSettings settings,
       Clock clock) {
     this.repository = repository;
-    this.retention = retention;
+    this.settings = settings;
     this.clock = clock;
   }
 
@@ -39,7 +39,7 @@ public class AuditIncidentScopeRetentionService {
    */
   @Transactional
   public int runOnce() {
-    Instant cutoff = retention.deletionCutoff(clock.instant(), clock.getZone());
+    Instant cutoff = settings.current().deletionCutoff(clock.instant(), clock.getZone());
     int deleted =
         repository.deleteUsabilityEndedBefore(
             cutoff, cutoff.minus(AuditIncidentScopeGrant.USABLE_WINDOW));

@@ -47,6 +47,16 @@ public final class SettingsValues {
     return value.intValue();
   }
 
+  /** {@code true} or {@code false}, or {@code null} for an absent or {@code null} value. */
+  public Boolean optionalBoolean(String key) {
+    return values.get(key) == null ? null : requireBoolean(key);
+  }
+
+  /** A whole number in the range of {@code int}, or {@code null} for an absent or null value. */
+  public Integer optionalInt(String key) {
+    return values.get(key) == null ? null : requireInt(key);
+  }
+
   /** A whole number, or {@code null} for an absent or {@code null} value. */
   public Long optionalLong(String key) {
     Object value = values.get(key);

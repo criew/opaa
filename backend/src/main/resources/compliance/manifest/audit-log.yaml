@@ -188,7 +188,7 @@ data:
         Tage; freigeben lässt er sich unverändert auch danach
       settings:
         - io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW
-        - opaa.audit.incident-scope-retention-years
+        - audit_incident_scope_retention_settings.retention_years
     visibility: [AUDITOR]
     accessPaths: [UI, API, DATABASE]
     deletion: >-
@@ -221,6 +221,7 @@ nonPersonalTables:
   audit_incident_scope_monthly_counts:
     [organization_id, case_month, purpose, transition, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
+  audit_incident_scope_retention_settings: [id, retention_years, updated_at]
   siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, disabled_at, updated_at]
   audit_chain_checkpoints:
     [month, position, last_recorded_at, last_event_id, head_hash, algorithm, created_at]
@@ -273,14 +274,18 @@ settings:
     defaultValue: P30D
     effect: Wie lange eine freigegebene anlassbezogene Klärung genutzt werden kann
     bearings: [VISIBILITY, EVALUATION]
-  - key: opaa.audit.incident-scope-retention-years
-    source: PROPERTY
+  - key: audit_incident_scope_retention_settings.retention_years
+    source: DATABASE
     defaultValue: "1"
     range: 1 bis 10 Jahre
     effect: >-
       Löschfrist der Anträge und Freigaben der anlassbezogenen Klärung: gelöscht wird am Ende des
       Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt
     bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
+        eigenen Wert setzt; jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll
 auditEvents:
   - id: ASSET_GRANT_GRANTED
     trigger: Ein Recht an einem Asset wird vergeben, auch als Mitfreigabe aus der Freigabekette
@@ -778,6 +783,21 @@ auditEvents:
   - id: CONNECTION_LOG_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
     payloadKeys: [retentionMonths]
+  - id: CHAT_AUTO_CLEANUP_PERIODS_CHANGED
+    trigger: >-
+      Die Fristen der automatischen Bereinigung der Chats in Spaces ändern sich oder kehren zur
+      Werkseinstellung zurück
+    payloadKeys: [archiveAfterDays, deleteAfterDays, overridden]
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED
+    trigger: >-
+      Schalter oder Frist der Löschung der Chats gesperrter lokaler Konten ändern sich oder kehren
+      zur Werkseinstellung zurück
+    payloadKeys: [deleteAfterDays, enabled, overridden]
+  - id: INCIDENT_SCOPE_RETENTION_CHANGED
+    trigger: >-
+      Die Löschfrist der anlassbezogenen Klärungen ändert sich oder kehrt zur Werkseinstellung
+      zurück
+    payloadKeys: [overridden, retentionYears]
   - id: OUTBOUND_PROXY_CHANGED
     trigger: Der hausweite Ausgangsproxy oder seine Ausnahmeliste ändert sich
     payloadKeys: [noProxy, proxyUrl]
