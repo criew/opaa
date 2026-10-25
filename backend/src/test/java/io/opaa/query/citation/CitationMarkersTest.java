@@ -1,7 +1,10 @@
 package io.opaa.query.citation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 
+import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Citation-marker removal on the way into the conversation window. */
@@ -150,6 +153,27 @@ class CitationMarkersTest {
         "Nicht zulässig (【source: doc-1#0 | a.md】). Siehe (S. 4 【source: doc-2#1 | b.md】).";
 
     assertThat(CitationMarkers.strip(answer)).isEqualTo("Nicht zulässig . Siehe (S. 4 ).");
+  }
+
+  @Test
+  void aKeptMarkerAndTheWhitespaceBeforeARemovedOneStayAsBefore() {
+    String answer = "a 【source: doc-1#0 | a.md】 x \t【source: kaputt】 y";
+
+    assertThat(CitationMarkers.stripMalformed(answer)).isEqualTo("a 【source: doc-1#0 | a.md】 x y");
+  }
+
+  @Test
+  void longRunsOfWhitespaceAreReadInLinearTime() {
+    List<String> hostile =
+        List.of(
+            "a" + " ".repeat(50_000) + "b",
+            "a" + " \t".repeat(25_000) + "【source:x",
+            ("x" + " ".repeat(200)).repeat(250) + "【source: doc-1#0 | a.md】");
+
+    for (String text : hostile) {
+      assertTimeout(Duration.ofSeconds(2), () -> CitationMarkers.strip(text));
+      assertTimeout(Duration.ofSeconds(2), () -> CitationMarkers.stripMalformed(text));
+    }
   }
 
   @Test

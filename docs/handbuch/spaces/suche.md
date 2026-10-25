@@ -100,7 +100,7 @@ Aufruf des Chat-Modells (Abschnitt 3).
 | Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
 | Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
 | Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
-| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Eine Anzeige im Chat folgt. Die Exporte des Chats enthalten sie (Abschnitt 7, „Exportieren") |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Im Kopf des Chats zeigt ein Knopf die Zahl der Punkte und klappt die Liste auf, in der der Autor jeden Punkt einzeln entfernen kann, außer in einem archivierten Space; sichtbar wird die Notiz, sobald sie einen Punkt hat und der Chat drei beantwortete Runden zählt. Die Exporte des Chats enthalten sie (Abschnitt 7, „Exportieren") |
 
 Zwei Punkte sind betrieblich wichtig:
 
