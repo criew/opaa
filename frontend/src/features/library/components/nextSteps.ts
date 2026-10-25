@@ -117,7 +117,7 @@ export function useNextSteps(input: NextStepsInput): {
   if (input.sourceType === 'CONFLUENCE' || input.sourceType === 'S3') {
     steps.push({
       key: 'live',
-      label: 'Live-Aktualisierung einrichten',
+      label: 'Live-Abgleich einrichten',
       done: input.pushSecretSet,
       tab: 'quelle',
       row: 'live',

@@ -4,7 +4,11 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import Link from '@mui/material/Link'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
+import { Link as RouterLink } from 'react-router'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { IndexingRunResponse } from '@/shared/api/types'
 import StateDot from '@/shared/ui/StateDot'
@@ -15,7 +19,7 @@ import {
   indexingRunModeLabel,
   indexingTriggerSourceLabel,
 } from './indexingLabels'
-import { formatDay, isErrorEvent, runTone, runWord } from './libraryState'
+import { formatDay, isErrorEvent, runTone, runWord, stateTargetHref } from './libraryState'
 import { plainMessage } from './sourceKit/plainMessage'
 import { PATH_SEPARATOR } from './setup/paths'
 
@@ -250,8 +254,26 @@ function RunDetail({
       : word === 'Fehlgeschlagen' && run.message
         ? plainMessage(run.message)
         : null
+  // a run that failed at the connection leads straight to its row; the word says the cause
+  const connectionFailed =
+    word === 'Anmeldung abgelehnt' ||
+    word === 'Nicht erreichbar' ||
+    word === 'Zustimmung abgelaufen'
   return (
     <Box sx={{ pl: { xs: 0, sm: 2.25 }, pt: 1, pb: 2 }}>
+      {connectionFailed && (
+        <Box sx={{ mb: 1 }}>
+          <Link
+            component={RouterLink}
+            to={stateTargetHref({ tab: 'quelle', anchor: 'verbindung' })}
+            replace
+            underline="hover"
+            sx={{ fontSize: 13.5, fontWeight: 500 }}
+          >
+            Verbindung ändern ›
+          </Link>
+        </Box>
+      )}
       {reason && <Typography sx={{ ...LINE, mb: 1 }}>{reason}</Typography>}
       {unreadable > 0 && unreadableNames.length === 0 && (
         <Typography sx={{ ...LINE, mb: 1.25 }}>
@@ -384,11 +406,32 @@ export default function LibraryRunList({
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
     openNewest && runs[0] ? { [runs[0].id]: true } : {},
   )
+  const [onlyProblems, setOnlyProblems] = useState(false)
   if (runs.length === 0) {
     return <Typography sx={{ ...LINE, color: 'text.secondary' }}>Noch keine Läufe.</Typography>
   }
+  // a run with a problem: anything but a clean or a running one
+  const problems = runs.filter((run) => {
+    const word = runWord(run, signsIn)
+    return word !== 'Abgeschlossen' && word !== 'Läuft'
+  })
+  const shown = onlyProblems ? problems : runs
   return (
     <Box>
+      {/* the filter only where it shortens the list */}
+      {problems.length > 0 && problems.length < runs.length && (
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={onlyProblems ? 'problems' : 'all'}
+          onChange={(_event, next: string | null) => next && setOnlyProblems(next === 'problems')}
+          aria-label="Läufe filtern"
+          sx={{ mb: 1.5 }}
+        >
+          <ToggleButton value="all">Alle</ToggleButton>
+          <ToggleButton value="problems">Nur mit Fehlern ({problems.length})</ToggleButton>
+        </ToggleButtonGroup>
+      )}
       <Box
         aria-hidden
         sx={{
@@ -409,15 +452,18 @@ export default function LibraryRunList({
         <span />
       </Box>
       <Box component="ul" aria-label="Läufe" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-        {runs.map((run) => {
+        {shown.map((run) => {
           const isOpen = Boolean(open[run.id])
           const word = runWord(run, signsIn)
           const progress = run.status === 'RUNNING' ? running : null
           const label = progress ? `${word} · ${progress.percent} %` : word
           const detailId = `run-detail-${run.id}`
-          // a run refused at the start has nothing to open: no events, no metrics, no reason
+          // a failed run with nothing to open - no events, no metrics, no reason, no remedy - stays shut
           const expandable = !(
             run.status === 'FAILED' &&
+            word !== 'Anmeldung abgelehnt' &&
+            word !== 'Nicht erreichbar' &&
+            word !== 'Zustimmung abgelaufen' &&
             run.events.length === 0 &&
             !run.metrics &&
             run.failureCategory !== 'QUOTA_EXHAUSTED' &&
