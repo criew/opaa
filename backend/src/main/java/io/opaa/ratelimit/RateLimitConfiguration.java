@@ -11,6 +11,7 @@ import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import io.opaa.security.TrustedProxyClientIpResolver;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -107,7 +108,8 @@ public class RateLimitConfiguration {
       RateLimitMetrics metrics,
       JsonMapper jsonMapper,
       ObjectProvider<SelfServiceEndpointAvailability> selfServiceFlows,
-      InstallationCounters counters) {
+      InstallationCounters counters,
+      Clock clock) {
     // The per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries a
     // variable path segment, so its rule is a regex rather than a plain prefix - see
     // RateLimitFilter.Rule's Javadoc. The trailing $ deliberately excludes the sibling status
@@ -190,7 +192,7 @@ public class RateLimitConfiguration {
 
     var registration =
         new FilterRegistrationBean<>(
-            new RateLimitFilter(rules, clientIpResolver, metrics, jsonMapper));
+            new RateLimitFilter(rules, clientIpResolver, metrics, jsonMapper, clock));
     registration.addUrlPatterns("/api/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
     return registration;

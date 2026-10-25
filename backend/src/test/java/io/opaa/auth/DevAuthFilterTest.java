@@ -47,7 +47,8 @@ class DevAuthFilterTest {
   void authenticatesAsDefaultUserWithoutHeader() throws Exception {
     MockHttpServletResponse response = new MockHttpServletResponse();
 
-    new DevAuthFilter(DEV_AUTH, CLOCK).doFilter(new MockHttpServletRequest(), response, filterChain);
+    new DevAuthFilter(DEV_AUTH, CLOCK)
+        .doFilter(new MockHttpServletRequest(), response, filterChain);
 
     Jwt jwt = principal();
     assertThat(jwt.getSubject()).isEqualTo("dev-admin");
@@ -74,7 +75,8 @@ class DevAuthFilterTest {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(DevAuthFilter.DEV_USER_HEADER, "dev-user");
 
-    new DevAuthFilter(DEV_AUTH, CLOCK).doFilter(request, new MockHttpServletResponse(), filterChain);
+    new DevAuthFilter(DEV_AUTH, CLOCK)
+        .doFilter(request, new MockHttpServletResponse(), filterChain);
 
     assertThat(principal().getSubject()).isEqualTo("dev-user");
     assertThat(principal().getClaimAsString("email")).isEqualTo("dev-user@opaa.local");

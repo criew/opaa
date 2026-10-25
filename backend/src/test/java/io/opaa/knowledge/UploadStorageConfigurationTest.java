@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
+import java.time.Clock;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -23,7 +24,7 @@ class UploadStorageConfigurationTest {
   void anUnconfiguredStoreIsTheFilesystem() {
     UploadedOriginalStore store =
         configuration.uploadedOriginalStore(
-            properties(null), s3Properties(null), currentInstance, registry);
+            properties(null), s3Properties(null), currentInstance, registry, Clock.systemUTC());
 
     assertThat(store).isInstanceOf(FilesystemUploadedOriginalStore.class);
   }
@@ -32,7 +33,11 @@ class UploadStorageConfigurationTest {
   void theFilesystemStoreCanBeNamedExplicitly() {
     assertThat(
             configuration.uploadedOriginalStore(
-                properties("filesystem"), s3Properties(null), currentInstance, registry))
+                properties("filesystem"),
+                s3Properties(null),
+                currentInstance,
+                registry,
+                Clock.systemUTC()))
         .isInstanceOf(FilesystemUploadedOriginalStore.class);
   }
 
@@ -41,7 +46,11 @@ class UploadStorageConfigurationTest {
     assertThatThrownBy(
             () ->
                 configuration.uploadedOriginalStore(
-                    properties("s3"), s3Properties(null), currentInstance, registry))
+                    properties("s3"),
+                    s3Properties(null),
+                    currentInstance,
+                    registry,
+                    Clock.systemUTC()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("opaa.upload.s3.bucket");
   }
@@ -50,7 +59,7 @@ class UploadStorageConfigurationTest {
   void theS3StoreIsBuiltWithoutContactingTheStore() {
     UploadedOriginalStore store =
         configuration.uploadedOriginalStore(
-            properties("S3"), s3Properties("ablage"), currentInstance, registry);
+            properties("S3"), s3Properties("ablage"), currentInstance, registry, Clock.systemUTC());
     try {
       assertThat(store).isInstanceOf(S3UploadedOriginalStore.class);
       assertThat(configuration.uploadStoreHealthIndicator(store))
@@ -65,7 +74,11 @@ class UploadStorageConfigurationTest {
     assertThatThrownBy(
             () ->
                 configuration.uploadedOriginalStore(
-                    properties("ftp"), s3Properties(null), currentInstance, registry))
+                    properties("ftp"),
+                    s3Properties(null),
+                    currentInstance,
+                    registry,
+                    Clock.systemUTC()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("opaa.upload.store")
         .hasMessageContaining("ftp")

@@ -351,7 +351,8 @@ class RateLimitConfigurationTest {
             new RateLimitMetrics(new SimpleMeterRegistry()),
             JsonMapper.builder().build(),
             availability(),
-            new InMemoryInstallationCounters())
+            new InMemoryInstallationCounters(),
+            java.time.Clock.systemUTC())
         .getFilter();
   }
 

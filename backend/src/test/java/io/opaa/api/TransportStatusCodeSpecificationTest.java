@@ -374,7 +374,8 @@ class TransportStatusCodeSpecificationTest {
             new RateLimitMetrics(new SimpleMeterRegistry()),
             JsonMapper.builder().build(),
             servedSelfService(),
-            new InMemoryInstallationCounters())
+            new InMemoryInstallationCounters(),
+            java.time.Clock.systemUTC())
         .getFilter();
   }
 

@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -38,9 +39,11 @@ public class DevAuthFilter extends OncePerRequestFilter {
   private static final Duration TOKEN_VALIDITY = Duration.ofHours(1);
 
   private final AuthProperties.DevAuth devAuth;
+  private final Clock clock;
 
-  public DevAuthFilter(AuthProperties.DevAuth devAuth) {
+  public DevAuthFilter(AuthProperties.DevAuth devAuth, Clock clock) {
     this.devAuth = devAuth;
+    this.clock = clock;
   }
 
   @Override
@@ -63,7 +66,7 @@ public class DevAuthFilter extends OncePerRequestFilter {
   }
 
   private JwtAuthenticationToken authenticationFor(AuthProperties.DevUser user) {
-    Instant issuedAt = Instant.now();
+    Instant issuedAt = Instant.now(clock);
     Jwt jwt =
         new Jwt(
             "dev-" + user.subject(),

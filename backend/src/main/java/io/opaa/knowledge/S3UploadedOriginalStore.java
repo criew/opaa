@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -97,13 +98,19 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   private final S3FailureTranslator translator;
   private final S3SdkClient client;
   private final S3Client s3;
+  private final Clock clock;
 
+  /** A standalone store on the system clock. */
   public S3UploadedOriginalStore(UploadS3Properties properties) {
-    this(properties, WorkingDirectoryOwner.standalone());
+    this(properties, WorkingDirectoryOwner.standalone(), Clock.systemUTC());
   }
 
-  /** Working files go below the subdirectory of {@code owner}'s instance. */
-  public S3UploadedOriginalStore(UploadS3Properties properties, WorkingDirectoryOwner owner) {
+  /**
+   * Working files go below the subdirectory of {@code owner}'s instance; {@code clock} dates an
+   * object the listing reports without a modification time.
+   */
+  public S3UploadedOriginalStore(
+      UploadS3Properties properties, WorkingDirectoryOwner owner, Clock clock) {
     this(
         properties,
         UploadS3TargetPolicy.of(properties),
@@ -111,12 +118,14 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         MAX_RETRIES,
         RETRY_BACKOFF,
         LIST_PAGE_SIZE,
-        owner);
+        owner,
+        clock);
   }
 
   /**
    * With the bounds of the retry strategy and the listing page size chosen by the caller - for
-   * tests against a dead port and for exercising pagination with a handful of objects.
+   * tests against a dead port and for exercising pagination with a handful of objects, on the
+   * system clock.
    */
   S3UploadedOriginalStore(
       UploadS3Properties properties,
@@ -132,7 +141,8 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         maxRetries,
         retryBackoff,
         listPageSize,
-        WorkingDirectoryOwner.standalone());
+        WorkingDirectoryOwner.standalone(),
+        Clock.systemUTC());
   }
 
   S3UploadedOriginalStore(
@@ -142,8 +152,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
       int maxRetries,
       Duration retryBackoff,
       int listPageSize,
-      WorkingDirectoryOwner owner) {
+      WorkingDirectoryOwner owner,
+      Clock clock) {
     properties.requireComplete();
+    this.clock = clock;
     this.bucket = properties.bucket();
     this.keyPrefix = properties.keyPrefix();
     this.tempDirectory = properties.tempDirectory();
@@ -298,7 +310,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
         visitor.accept(
             new StoredOriginal(
                 locator,
-                lastModified == null ? Instant.now() : lastModified,
+                lastModified == null ? Instant.now(clock) : lastModified,
                 object.size() == null ? 0 : object.size()));
       }
       continuationToken =

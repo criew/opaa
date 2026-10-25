@@ -117,7 +117,9 @@ class TranscriptionControllerTest {
         .setControllerAdvice(
             new GlobalExceptionHandler(
                 new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC()))
-        .addFilters(new TranscriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC()), new RequestLoggingFilter())
+        .addFilters(
+            new TranscriptionMultipartGuard(new ObjectMapper(), java.time.Clock.systemUTC()),
+            new RequestLoggingFilter())
         .build();
   }
 

@@ -4,6 +4,7 @@ import io.opaa.api.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,9 +27,11 @@ public class LocalAuthAccessDeniedHandler implements AccessDeniedHandler {
   static final String DENIED_MESSAGE = "Zugriff verweigert";
 
   private final JsonMapper jsonMapper;
+  private final Clock clock;
 
-  public LocalAuthAccessDeniedHandler(JsonMapper jsonMapper) {
+  public LocalAuthAccessDeniedHandler(JsonMapper jsonMapper, Clock clock) {
     this.jsonMapper = jsonMapper;
+    this.clock = clock;
   }
 
   @Override
@@ -38,7 +41,7 @@ public class LocalAuthAccessDeniedHandler implements AccessDeniedHandler {
     boolean csrf = denied instanceof CsrfException;
     ErrorResponse body =
         new ErrorResponse(
-            csrf ? CSRF_MESSAGE : DENIED_MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now());
+            csrf ? CSRF_MESSAGE : DENIED_MESSAGE, HttpStatus.FORBIDDEN.value(), Instant.now(clock));
     if (csrf) {
       body.setCode(CSRF_CODE);
     }
