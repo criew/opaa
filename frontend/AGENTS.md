@@ -10,7 +10,8 @@ src/
                        ErrorBoundary, ProtectedRoute
     shell/             AppShell, Sidebar, GlobalRail, MobileHeader, Info-Dialog, Rahmen der globalen Bereiche
     areas/             Bereichsseiten aus mehreren Themen
-    mocks/             MSW-Sammelstelle (handlers.ts) und Browser-Worker (browser.ts)
+    mocks/             MSW-Sammelstelle (handlers.ts), Browser-Worker (browser.ts) und klickbarer
+                       Prototyp ohne Service Worker (inPageMocks.ts, prototype/)
   shared/              übergreifende Bausteine: UI, Sitzung, API-Client, Theme, Hilfsfunktionen
     mocks/             Fixtures und Handler für Sitzung und Health
   features/<thema>/    pages/ components/ stores/ api/ hooks/ utils/ mocks/
@@ -58,7 +59,7 @@ Die Angaben folgen dem Code, nicht der Erinnerung: Beim Ändern von `ALLOWED`, `
 - Ein Thema ist von außen nur über seine `index.ts` erreichbar, `app` zusätzlich über `routes.ts`. `index.ts` exportiert keine Seiten.
 - `index.ts` und `routes.ts` enthalten nur Re-Exports, `routes.ts` nur die eigenen Seiten (`src/app/featureBarrels.test.ts`). Der Build behandelt jede `index.ts` als frei von Seiteneffekten (`vite.config.ts`): Wer einen Namen daraus importiert, bündelt nur dessen Modul. Seiten lädt `app` je Thema als eigenen Chunk über `src/app/lazyPages.ts` nach; ins Einstiegs-Bundle gehören nur die Shell und was sie braucht, darunter der Info-Dialog mit der Version, die der Image-Rauchtest dort sucht.
 - Imports über Themengrenzen schreiben den Alias `@/` (`import { SubjectPicker } from '@/features/principal'`), Imports innerhalb eines Themas sind relativ.
-- Tests und Mock-Handler dürfen die Fixtures und Handler aller Themen und von `shared` nutzen (`mocks/`), Produktivcode nie, auch nicht die des eigenen Themas; nur der Einstieg `src/app/main.tsx` lädt die MSW-Sammelstelle (`app/mocks/browser`).
+- Tests und Mock-Handler dürfen die Fixtures und Handler aller Themen und von `shared` nutzen (`mocks/`), Produktivcode nie, auch nicht die des eigenen Themas; nur der Einstieg `src/app/main.tsx` lädt die MSW-Sammelstelle (`app/mocks/browser`, im Prototyp-Build `app/mocks/prototype/startPrototype`).
 - Ein Test darf mit `vi.mock()` ein einzelnes Modul hinter der `index.ts` eines erlaubten Themas ersetzen; wer über die `index.ts` importiert, sieht den Mock ebenfalls.
 - `vi.mock()`, `vi.doMock()` und `vi.importActual()` zählen wie Imports.
 - Eine neue Datei entsteht im Ordner ihres Themas oder Bereichs. Eine Datei, die bei einer Entflechtung das Thema wechselt, zieht in den Ordner ihres neuen Themas. Liegt eine Datei außerhalb dieser Ordner, scheitern `eslint/themes.test.mjs` und der CI-Schritt „Themengrenzen prüfen“.

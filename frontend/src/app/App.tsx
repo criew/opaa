@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
+import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'react-router'
 // app
 import ErrorBoundary from './ErrorBoundary'
 import ProtectedRoute from './ProtectedRoute'
@@ -131,6 +131,12 @@ function SpaceSettingsRedirect() {
   return <Navigate to={spaceId ? spaceSettingsRoute(spaceId) : '/spaces'} replace />
 }
 
+/**
+ * The static UI-lab prototype is served as plain files from any path, without a server that
+ * answers every route with index.html; the route therefore lives in the hash there.
+ */
+const Router = import.meta.env.MODE === 'prototype' ? HashRouter : BrowserRouter
+
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const promptLibraries = useFeatureEnabled('promptLibraries')
@@ -163,7 +169,7 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ErrorBoundary>
-        <BrowserRouter>
+        <Router>
           <Suspense fallback={<PageLoading />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
@@ -355,7 +361,7 @@ export default function App() {
               </Route>
             </Routes>
           </Suspense>
-        </BrowserRouter>
+        </Router>
       </ErrorBoundary>
     </ThemeProvider>
   )

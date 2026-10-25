@@ -10,7 +10,7 @@ import themeBoundaries from './eslint/boundaries.js'
 import { MOCK_GLOBS, TEST_INFRA } from './eslint/themes.js'
 
 export default defineConfig([
-  globalIgnores(['dist', 'public/mockServiceWorker.js']),
+  globalIgnores(['dist', 'dist-prototype', 'public/mockServiceWorker.js']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

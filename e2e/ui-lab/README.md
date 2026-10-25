@@ -16,6 +16,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | `record-flows.mjs` | Videomatrix je Art (ok, viele, fehler) als MP4 mit sichtbarem Mauszeiger |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
 | `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
+| `build-prototype.mjs` | baut den klickbaren Prototyp nach `out/prototype/` und teilt ihn in Upload-Pakete |
 | `build_site.py` | statische Vergleichsseite: Ist-Stand und Entwürfe mit Bewertung, Bildschirmen und Videos |
 | `site-template/` | Vorlage der Vergleichsseite und Beispielkonfiguration `site.example.json` |
 | `flows/` | Abläufe je Bereich: `libraries.mjs`, `pages.mjs` (beliebige Seiten), `library-videos.mjs` |
@@ -55,6 +56,54 @@ VITE_ENABLE_MOCKS=true pnpm exec vite --port 5191 --strictPort
 
 Ein Server je Variante und Agent, eigener Port; nach dem Lauf über die eigene PID beenden
 (`kill <pid>`), nie `pkill`.
+
+## Klickbarer Prototyp
+
+Das Frontend im Mock-Modus als statische Dateien, zum selbst Durchklicken statt
+Screenshot-Matrizen ansehen. Läuft aus jedem Unterpfad und in einem Sandbox-iframe
+(`sandbox="allow-scripts allow-same-origin"`), etwa als claude.ai-Artifact.
+
+```bash
+cd e2e
+node ui-lab/build-prototype.mjs            # baut und legt nach ui-lab/out/prototype/
+node ui-lab/build-prototype.mjs --skip-build   # nur kopieren und auflisten
+```
+
+Der Build (`pnpm run build:prototype` in `frontend/`, Ausgabe `dist-prototype/`) unterscheidet
+sich vom Dev-Server mit Mocks in drei Punkten:
+
+- **Kein Service Worker.** `src/app/mocks/inPageMocks.ts` ersetzt `fetch` und `XMLHttpRequest`
+  der Seite und beantwortet jede Anfrage mit denselben MSW-Handlern (`getResponse` aus `msw`);
+  was kein Handler beantwortet, geht an das ursprüngliche `fetch`.
+- **Hash-Routing.** Die Route steht hinter `#`: `index.html#/libraries/library-nextcloud-projekte`.
+  Deep Links und Neuladen funktionieren ohne Server, der jede Route mit `index.html` beantwortet.
+- **Relative Pfade** (`base: './'`).
+- **Reines ASCII in allen Skripten** und Seitentitel „OPAA-Prototyp“ (`frontend/prototypeOutput.ts`):
+  Das Hosting von claude.ai-Artifacts lehnt Dateien mit bestimmten rohen Zeichen ab, darunter
+  U+FFFD. `build-prototype.mjs` bricht ab, wenn eine Ausgabedatei U+FFFD oder ein Skript ein
+  Nicht-ASCII-Zeichen enthält.
+
+Szenario, Breite und Variante stehen als Suchparameter **vor** dem Hash, z. B.
+`index.html?mockScenario=scale#/libraries/library-s3-protokolle`.
+
+**Prototyp-Leiste** (violett, unten rechts, einklappbar; nur in diesem Build):
+
+| Feld | Wirkung |
+| --- | --- |
+| Szenario | lädt neu mit `?mockScenario=…` (Tabelle unten) |
+| Einstieg | springt zu einer Bibliothek je Quellart (Rolle Eigentümer), zur Leser-Bibliothek „Dienstanweisungen“ (`myRole: VIEWER`) oder zu Katalog, Spaces, Chat, Administration, Einstellungen. Der Mock-Benutzer ist immer Systemadministrator; Rollen gibt es nur je Bibliothek |
+| Breite | Normal oder 320 px: die App läuft dann in einem 320 px breiten iframe derselben Seite, damit ihre Media Queries greifen; die Route wird in den äußeren Hash gespiegelt |
+| Variante | nur sichtbar, wenn `UI_LAB_VARIANTS` in `frontend/src/shared/uiLabVariant.ts` Einträge hat; Komponenten fragen `currentUiLabVariant()` ab (`?variant=<id>`, `none` setzt zurück). Auf `main` leer, ein Lab-Branch trägt seine Varianten dort ein |
+
+**Hochladen.** `ui-lab/out/prototype/files.json` nennt alle Dateien mit Größe und teilt sie
+(ohne `index.html`) in Pakete von höchstens 55 MB und 240 Dateien. Für ein Artifact: `index.html`
+als Seite veröffentlichen, die Pakete nacheinander als `files` an dieselbe URL; die Pfade in
+`files.json` sind die veröffentlichten Pfade.
+
+**Lokal prüfen:** `ui-lab/out/prototype/` mit einem beliebigen statischen Server unter einem
+Unterpfad ausliefern (etwa `python3 -m http.server` im Elternordner, dann
+`http://localhost:8000/prototype/index.html`). Bilder, die die App als `<img src="/api/…">`
+lädt, laufen nicht über `fetch` und bleiben im Prototyp leer.
 
 ## Mock-Szenarien
 
