@@ -1,7 +1,7 @@
 {
   "args": {
     "base": "http://localhost:5193",
-    "out": "/tmp/claude-0/-home-user-opaa/904c8349-343f-5e74-a4a6-51b4dbb51a7c/scratchpad/c-extra",
+    "out": "/tmp/claude-0/-home-user-opaa/904c8349-343f-5e74-a4a6-51b4dbb51a7c/scratchpad/c3-extra",
     "flow": "library-detail",
     "types": [
       "privat",
@@ -34,7 +34,7 @@
       "abschluss"
     ]
   },
-  "shots": 288,
-  "seconds": 648,
-  "finishedAt": "2026-10-25T00:02:43.794Z"
+  "shots": 286,
+  "seconds": 686,
+  "finishedAt": "2026-10-25T03:50:17.855Z"
 }

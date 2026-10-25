@@ -1,7 +1,7 @@
 {
   "args": {
     "base": "http://localhost:5193",
-    "out": "/tmp/claude-0/-home-user-opaa/904c8349-343f-5e74-a4a6-51b4dbb51a7c/scratchpad/c-main",
+    "out": "/tmp/claude-0/-home-user-opaa/904c8349-343f-5e74-a4a6-51b4dbb51a7c/scratchpad/c3-main",
     "flow": "library-detail",
     "concurrency": 3,
     "scenarios": [
@@ -32,6 +32,6 @@
     ]
   },
   "shots": 1816,
-  "seconds": 4098,
-  "finishedAt": "2026-10-24T23:51:55.691Z"
+  "seconds": 4425,
+  "finishedAt": "2026-10-25T03:38:51.039Z"
 }
