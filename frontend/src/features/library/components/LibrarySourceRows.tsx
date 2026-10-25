@@ -61,7 +61,7 @@ export default function LibrarySourceRows({
   canEdit,
   connectionPrelude,
   connectionStatus,
-  scopeNote,
+  scopeUnreadable,
   fixedScope,
   scheduleStatus,
   extraRows,
@@ -75,7 +75,7 @@ export default function LibrarySourceRows({
   /** The connection's last known state from the runs (D10). */
   connectionStatus?: RowStatus | null
   /** Scope entries the last run could not read, at the row „Umfang“ (D8). */
-  scopeNote?: ReactNode
+  scopeUnreadable?: string[]
   /** „Umfang“ of a source without a choice (D9). */
   fixedScope?: string | null
   scheduleStatus?: RowStatus | null
@@ -148,9 +148,15 @@ export default function LibrarySourceRows({
       onScheduleChange={(patch) => setSchedule((prev) => ({ ...prev, ...patch }))}
       rhythm={rhythm}
       connectionPrelude={connectionPrelude}
-      connectionLead={profile ? `Zugang „${profile.name}“` : null}
+      connectionLead={
+        profile
+          ? /^Zugang\b/.test(profile.name)
+            ? profile.name
+            : `Zugang „${profile.name}“`
+          : null
+      }
       connectionStatus={connectionStatus}
-      scopeNote={scopeNote}
+      scopeUnreadable={scopeUnreadable}
       fixedScope={fixedScope}
       scheduleStatus={scheduleStatus}
       extraRows={extraRows}

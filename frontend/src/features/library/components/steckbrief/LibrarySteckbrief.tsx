@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Button from '@mui/material/Button'
-import LinearProgress from '@mui/material/LinearProgress'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -24,11 +23,13 @@ export type SteckbriefTarget = { tab: LibraryDetailTab; row?: string }
 export type TargetSearch = (target: SteckbriefTarget) => string
 
 export interface SteckbriefSource {
-  connection: string | null
+  /** Address of the source (host or path), the same short form for every type. */
+  address: string | null
   scope: string | null
   /** Names of scope entries the last run could not read. */
   unreadable: string[]
   schedule: string | null
+  nextRun: string | null
 }
 
 export interface SteckbriefUpload {
@@ -48,7 +49,7 @@ export interface LibrarySteckbriefProps {
   /** Connector libraries; absent for an upload library. */
   source: SteckbriefSource | null
   upload: SteckbriefUpload | null
-  documents: string
+  documents: string | null
   /** Storage across the owner's private libraries. */
   privateStorage: string | null
   spaces: string | null
@@ -56,6 +57,10 @@ export interface LibrarySteckbriefProps {
   steps: NextStep[]
   onDismissSteps: () => void
   targetSearch: TargetSearch
+  /** The open tab; its own block (Quelle) is not repeated beside it (P50). */
+  activeTab: LibraryDetailTab
+  /** Whether the reader can reach the state's cause; a reader sees no connection or runs. */
+  causeReachable: boolean
 }
 
 const CAUSE_TARGET: Record<StateCause, SteckbriefTarget> = {
@@ -83,11 +88,13 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function Line({ children }: { children: ReactNode }) {
+function Line({ children, title }: { children: ReactNode; title?: string }) {
   return (
     <Typography
       component="div"
-      sx={{ fontSize: 13, lineHeight: '22px', color: 'text.secondary', overflowWrap: 'anywhere' }}
+      title={title}
+      noWrap
+      sx={{ fontSize: 13, lineHeight: '24px', color: 'text.secondary' }}
     >
       {children}
     </Typography>
@@ -108,13 +115,20 @@ function TargetLine({
   label?: string
 }) {
   return (
-    <Line>
+    <Line title={typeof children === 'string' ? children : undefined}>
       <Link
         component={RouterLink}
         to={{ search: targetSearch(to) }}
         replace
         underline="hover"
-        color="inherit"
+        sx={{
+          display: 'inline-block',
+          minHeight: 24,
+          maxWidth: '100%',
+          verticalAlign: 'top',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
       >
         {label && (
           <Box component="span" sx={visuallyHidden}>
@@ -131,14 +145,24 @@ function TargetLine({
 export function StateLine({
   state,
   targetSearch,
+  linkable = true,
 }: {
   state: LibraryState
   targetSearch: TargetSearch
+  linkable?: boolean
 }) {
   const word = <StateDot tone={state.tone} label={state.word} strong />
   return (
-    <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 0.75 }}>
-      {state.cause ? (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'baseline',
+        flexWrap: 'wrap',
+        columnGap: 0.75,
+        minHeight: 24,
+      }}
+    >
+      {state.cause && linkable ? (
         <Link
           component={RouterLink}
           to={{ search: targetSearch(CAUSE_TARGET[state.cause]) }}
@@ -146,8 +170,12 @@ export function StateLine({
           underline="hover"
           color="inherit"
           data-testid="library-state"
+          sx={{ minHeight: 24, display: 'inline-flex', alignItems: 'center' }}
         >
           {word}
+          <Box component="span" aria-hidden sx={{ color: 'primary.main', ml: 0.5 }}>
+            ›
+          </Box>
         </Link>
       ) : (
         <Box component="span" data-testid="library-state">
@@ -266,47 +294,45 @@ function NextStepsBlock({
   )
 }
 
-/** The blocks of the Steckbrief, the same in the column and in the folded block below 1100 px. */
-function SteckbriefBlocks(props: LibrarySteckbriefProps) {
+/**
+ * The blocks of the Steckbrief in a fixed order - Zustand, Quelle (or Hochladen), Bestand, then
+ * the next steps - the same in the column and in the unfolded block below 1100 px.
+ */
+function SteckbriefBlocks({
+  hideState = false,
+  ...props
+}: LibrarySteckbriefProps & { hideState?: boolean }) {
   const { state, source, upload, targetSearch } = props
   const [rejectionsOpen, setRejectionsOpen] = useState(false)
   return (
     <>
-      {props.steps.length > 0 && (
-        <NextStepsBlock
-          steps={props.steps}
-          onDismiss={props.onDismissSteps}
-          targetSearch={targetSearch}
-        />
+      {!hideState && (
+        <Block title="Zustand">
+          <StateLine state={state} targetSearch={targetSearch} linkable={props.causeReachable} />
+          {props.statusUnknown && (
+            <Line>
+              Stand unbekannt ·{' '}
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={props.onRetryStatus}
+              >
+                Erneut abrufen
+              </Link>
+            </Line>
+          )}
+        </Block>
       )}
-      <Block title="Zustand">
-        <StateLine state={state} targetSearch={targetSearch} />
-        {state.word === 'Läuft' && props.progress != null && !props.statusUnknown && (
-          <LinearProgress
-            variant="determinate"
-            value={props.progress}
-            aria-label="Fortschritt des Laufs"
-            sx={{ mt: 1, height: 2, borderRadius: 999 }}
-          />
-        )}
-        {props.statusUnknown && (
-          <Line>
-            Stand unbekannt ·{' '}
-            <Link component="button" type="button" underline="hover" onClick={props.onRetryStatus}>
-              Erneut abrufen
-            </Link>
-          </Line>
-        )}
-      </Block>
-      {source && (
+      {source && props.activeTab !== 'quelle' && (
         <Block title="Quelle">
-          {source.connection && (
+          {source.address && (
             <TargetLine
               to={{ tab: 'quelle', row: 'connection' }}
               targetSearch={targetSearch}
               label="Verbindung"
             >
-              {source.connection}
+              {source.address}
             </TargetLine>
           )}
           {source.scope && (
@@ -316,12 +342,12 @@ function SteckbriefBlocks(props: LibrarySteckbriefProps) {
               label="Umfang"
             >
               {source.scope}
-              {source.unreadable.length > 0 && (
-                <Box component="span" sx={{ color: 'warning.main' }}>
-                  {` · ${source.unreadable.length} nicht lesbar`}
-                </Box>
-              )}
             </TargetLine>
+          )}
+          {source.unreadable.length > 0 && (
+            <Line>
+              <StateDot tone="warning" label={`${source.unreadable.length} nicht lesbar`} />
+            </Line>
           )}
           {source.schedule && (
             <TargetLine
@@ -332,9 +358,10 @@ function SteckbriefBlocks(props: LibrarySteckbriefProps) {
               {source.schedule}
             </TargetLine>
           )}
+          {source.nextRun && <Line>{source.nextRun}</Line>}
         </Block>
       )}
-      {upload && (
+      {upload && (upload.storage || upload.rejections.length > 0) && (
         <Block title="Hochladen">
           {upload.storage && <Line>{upload.storage}</Line>}
           {upload.rejections.length > 0 && (
@@ -344,7 +371,7 @@ function SteckbriefBlocks(props: LibrarySteckbriefProps) {
                 type="button"
                 underline="hover"
                 onClick={() => setRejectionsOpen(true)}
-                sx={{ fontSize: 13 }}
+                sx={{ fontSize: 13, minHeight: 24 }}
               >
                 Abgelehnte Dateien anzeigen
               </Link>
@@ -358,9 +385,11 @@ function SteckbriefBlocks(props: LibrarySteckbriefProps) {
         </Block>
       )}
       <Block title="Bestand">
-        <TargetLine to={{ tab: 'dokumente' }} targetSearch={targetSearch}>
-          {props.documents}
-        </TargetLine>
+        {props.documents && (
+          <TargetLine to={{ tab: 'dokumente' }} targetSearch={targetSearch}>
+            {props.documents}
+          </TargetLine>
+        )}
         {props.privateStorage && <Line>{props.privateStorage}</Line>}
         {props.spaces && (
           <TargetLine to={{ tab: 'zuordnungen' }} targetSearch={targetSearch}>
@@ -368,9 +397,16 @@ function SteckbriefBlocks(props: LibrarySteckbriefProps) {
           </TargetLine>
         )}
         <TargetLine to={{ tab: 'freigaben' }} targetSearch={targetSearch} label="Zuständig">
-          {props.responsible}
+          {`${props.responsible} · zuständig`}
         </TargetLine>
       </Block>
+      {props.steps.length > 0 && (
+        <NextStepsBlock
+          steps={props.steps}
+          onDismiss={props.onDismissSteps}
+          targetSearch={targetSearch}
+        />
+      )}
     </>
   )
 }
@@ -381,19 +417,13 @@ export const STECKBRIEF_WIDTH = 280
 
 /**
  * The Steckbrief of a library: state, source in short, holdings and - after creating it - the next
- * steps. From 1100 px a column right of the tabs, the same on every tab; below, one line above the
- * tabs that unfolds into the same blocks.
+ * steps. From 1100 px a column right of the tabs; below, always one folded line above the tabs
+ * (state word, open steps) that unfolds only on a click (pruefliste-detail D8, Richtung C).
  */
 export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
   const openSteps = props.steps.filter((step) => !step.done).length
-  // right after creating the library the folded Steckbrief opens once on its next steps
-  const [unfoldedForSteps, setUnfoldedForSteps] = useState(false)
-  if (openSteps > 0 && !unfoldedForSteps) {
-    setUnfoldedForSteps(true)
-    setOpen(true)
-  }
   return (
     <>
       <Box
@@ -411,6 +441,7 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
             borderColor: 'divider',
             pl: 3,
             pt: 1.25,
+            minWidth: 0,
           },
         }}
       >
@@ -444,14 +475,15 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
           </Typography>
           <Box
             component="span"
-            sx={{ minWidth: 0, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap' }}
+            sx={{
+              minWidth: 0,
+              flex: 1,
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+            }}
           >
             <StateDot tone={props.state.tone} label={props.state.word} />
-            {props.state.detail && (
-              <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-                {` · ${props.state.detail}`}
-              </Typography>
-            )}
             {openSteps > 0 && (
               <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
                 {` · ${openSteps} ${openSteps === 1 ? 'Schritt' : 'Schritte'} offen`}
@@ -468,7 +500,7 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
           />
         </ButtonBase>
         <Box id={panelId} hidden={!open} sx={{ pb: 2, pt: 1 }}>
-          {open && <SteckbriefBlocks {...props} />}
+          {open && <SteckbriefBlocks {...props} hideState={!props.statusUnknown} />}
         </Box>
       </Box>
     </>

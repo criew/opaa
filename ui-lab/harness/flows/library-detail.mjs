@@ -109,6 +109,13 @@ async function tabExists(page, tab) {
 }
 
 /** Expands the newest run, waits for its details and scrolls the „Läufe“ heading to the top. */
+/** After a resize: the expanded run's heading at the top again, focus and pointer at rest. */
+async function runsInView(page) {
+  await page.evaluate(() => document.getElementById('library-runs-title')?.scrollIntoView({ block: 'start' }))
+  await sleep(200)
+  await rest(page)
+}
+
 async function openRuns(page) {
   const heading = await firstVisible(page.getByRole('heading', { name: /^Läufe$/ }).or(page.getByText(/^Läufe$/)))
   if (!heading) return false
@@ -118,7 +125,8 @@ async function openRuns(page) {
     await page.waitForFunction((el) => el?.getAttribute('aria-expanded') === 'true', await first.elementHandle(), { timeout: 5000 }).catch(() => {})
     // the collapse transition ends before the shot
     await page.locator('#library-tabpanel-quelle .MuiCollapse-entered').first().waitFor({ timeout: 5000 }).catch(() => {})
-    await sleep(400)
+    await page.locator('#library-tabpanel-quelle .MuiAccordionDetails-root').first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    await sleep(800)
   }
   await heading.evaluate((el) => el.scrollIntoView({ block: 'start' }))
   await sleep(300)
@@ -141,20 +149,14 @@ export async function run(page, job, ctx) {
         await input.setInputFiles(uploadFiles).catch((e) => ctx.log('  upload', String(e).split('\n')[0]))
         await settle(page, 1200)
         await rest(page)
-        await ctx.shoot(area)
+        await ctx.shoot(area, { prepare: rest })
         continue
       }
       if (area === 'abschluss') {
         // the state right after the wizard: the Steckbrief shows the next steps (variant C)
         await open(page, ctx, job, null, { justCreated: '1' })
-        // below 1100 px the Steckbrief is one line; unfold it to show the steps
-        const fold = page.getByRole('button', { name: /^Steckbrief/ })
-        if (await fold.isVisible().catch(() => false)) {
-          await fold.click()
-          await sleep(300)
-        }
         await rest(page)
-        await ctx.shoot(area)
+        await ctx.shoot(area, { prepare: rest })
         continue
       }
       const tab = TABS[area]
@@ -168,7 +170,7 @@ export async function run(page, job, ctx) {
         continue
       }
       await rest(page)
-      await ctx.shoot(area)
+      await ctx.shoot(area, { prepare: area === 'laeufe' ? runsInView : rest })
     } catch (e) {
       ctx.error(area, e)
     }

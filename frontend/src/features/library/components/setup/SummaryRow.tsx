@@ -16,13 +16,22 @@ export function SummaryValue({
   summary,
   status,
   emptyText = 'keine',
+  unreadable = [],
 }: {
   summary: RowSummary
   status?: RowStatus | null
   emptyText?: string
+  /** Entries a run could not read: marked in the list, named below where the list omits them. */
+  unreadable?: string[]
 }) {
   const text = typeof summary === 'string' ? summary : (summary?.lead ?? null)
   const items = summary && typeof summary !== 'string' ? summary.items : []
+  const isUnreadable = (item: string) =>
+    unreadable.some((name) => item === name || item.startsWith(`${name} `))
+  const shownItems = items.slice(0, SHOWN)
+  const elsewhere = unreadable.filter(
+    (name) => !shownItems.some((item) => item === name || item.startsWith(`${name} `)),
+  )
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box
@@ -56,9 +65,14 @@ export function SummaryValue({
       </Box>
       {items.length > 0 && (
         <Box component="ul" sx={{ m: 0, mt: 0.25, p: 0, listStyle: 'none' }}>
-          {items.slice(0, SHOWN).map((item) => (
+          {shownItems.map((item) => (
             <Box component="li" key={item} sx={{ fontSize: 13.5, lineHeight: '22px' }}>
               <PathLabel path={item} />
+              {isUnreadable(item) && (
+                <Box component="span" sx={{ ml: 1 }}>
+                  <StateDot tone="warning" label="nicht lesbar" />
+                </Box>
+              )}
             </Box>
           ))}
           {items.length > SHOWN && (
@@ -69,6 +83,11 @@ export function SummaryValue({
               und {items.length - SHOWN} weitere
             </Box>
           )}
+        </Box>
+      )}
+      {elsewhere.length > 0 && (
+        <Box sx={{ mt: 0.5 }} data-testid="scope-unreadable">
+          <StateDot tone="warning" label={`nicht lesbar: ${elsewhere.join(', ')}`} />
         </Box>
       )}
     </Box>
@@ -82,8 +101,10 @@ interface SummaryRowProps {
   status?: RowStatus | null
   /** Issues of the row, shown under the summary while it is closed. */
   issues?: string[]
-  /** A finding about the row's value while it is closed, e.g. scope entries a run could not read. */
+  /** A finding about the row's value while it is closed. */
   note?: ReactNode
+  /** Entries of the value a run could not read (D8). */
+  unreadable?: string[]
   /** The action's word; „Ändern“ unless the row is still empty („Einrichten“). */
   actionLabel?: string
   open: boolean
@@ -105,6 +126,7 @@ export default function SummaryRow({
   status,
   issues = [],
   note,
+  unreadable,
   actionLabel = 'Ändern',
   open,
   onOpen,
@@ -124,13 +146,13 @@ export default function SummaryRow({
         <Typography
           component={headingLevel}
           id={`${id}-title`}
-          sx={{ fontSize: 15, fontWeight: 600, gridColumn: '1', color: 'text.primary' }}
+          sx={{ fontSize: 14, fontWeight: 600, gridColumn: '1', color: 'text.primary' }}
         >
           {title}
         </Typography>
         {!open && (
           <Box sx={{ gridColumn: { xs: '1 / -1', sm: '2' }, gridRow: { xs: '2', sm: '1' } }}>
-            <SummaryValue summary={summary} status={status} />
+            <SummaryValue summary={summary} status={status} unreadable={unreadable} />
             {note}
             {issues.length > 0 && (
               <Box id={issuesId} sx={{ mt: 0.5 }}>

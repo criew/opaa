@@ -133,3 +133,12 @@ export function generate<T>(count: number, make: (i: number) => T): T[] {
 export function scenarioErrorBody(status: number, message: string) {
   return { error: message, status, timestamp: new Date().toISOString() }
 }
+
+/**
+ * The page was opened right after the wizard (`?justCreated=1`): the fixtures then show a library
+ * that has no space association and no metadata field yet, so its next steps are open.
+ */
+export function mockJustCreated(): boolean {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('justCreated') === '1'
+}

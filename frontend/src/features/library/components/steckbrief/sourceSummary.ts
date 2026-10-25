@@ -8,8 +8,11 @@ import type { SourceFormContext } from '../sources/types'
 /** The rows of the Reiter „Quelle“ as short lines - the Steckbrief mirrors them, without „Ändern“. */
 export interface SourceSummary {
   connection: string | null
+  /** Host or path only - the same short form for every type (Steckbrief). */
+  address: string | null
   scope: string | null
   schedule: string | null
+  nextRun: string | null
   /** Whether the source offers live updates (webhook, events) as a fourth row. */
   live: boolean
 }
@@ -31,7 +34,8 @@ export function nextRunLabel(nextRunAt: string | null | undefined): string | nul
 export function sourceSummaryOf(library: LibraryResponse, libraryId: string): SourceSummary {
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
   const live = library.sourceType === 'CONFLUENCE' || library.sourceType === 'S3'
-  if (!configuration) return { connection: null, scope: null, schedule: null, live }
+  if (!configuration)
+    return { connection: null, address: null, scope: null, schedule: null, nextRun: null, live }
   const profile = library.connectionProfile ?? null
   const connection = (profile && sourceConnectionOfRef(profile)) ?? undefined
   const context: SourceFormContext = {
@@ -57,21 +61,45 @@ export function sourceSummaryOf(library: LibraryResponse, libraryId: string): So
         defaultDays: library.fullSyncIntervalDefaultDays ?? null,
       }
     : undefined
-  const schedule = [
-    scheduleSummary(scheduleValuesFrom(library.schedule, rhythm), rhythm),
-    nextRunLabel(library.schedule?.nextRunAt),
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const schedule = scheduleSummary(scheduleValuesFrom(library.schedule, rhythm), rhythm)
+  const scope =
+    lead(section('scope')?.summary(values, context) ?? null) ?? fixedScopeOf(library.sourceType)
   return {
+    address: addressOf(library),
+    nextRun: nextRunLabel(library.schedule?.nextRunAt),
     connection:
-      [profile ? `Zugang „${profile.name}“` : null, connectionText].filter(Boolean).join(' · ') ||
-      null,
+      [
+        profile
+          ? /^Zugang\b/.test(profile.name)
+            ? profile.name
+            : `Zugang „${profile.name}“`
+          : null,
+        connectionText,
+      ]
+        .filter(Boolean)
+        .join(' · ') || null,
+    // a Confluence space is not an OPAA space: the Steckbrief names both, one below the other
     scope:
-      lead(section('scope')?.summary(values, context) ?? null) ?? fixedScopeOf(library.sourceType),
+      library.sourceType === 'CONFLUENCE' && scope
+        ? scope.replace(/\bSpaces?\b/, (word) => `Confluence-${word}`)
+        : scope,
     schedule,
     live,
   }
+}
+
+/** Host of the source address, the path of a file system, or else the Zugang. */
+function addressOf(library: LibraryResponse): string | null {
+  if (library.sourceUrl) {
+    try {
+      const url = new URL(library.sourceUrl)
+      return url.port ? `${url.hostname}:${url.port}` : url.hostname
+    } catch {
+      return library.sourceUrl
+    }
+  }
+  if (library.sourcePath) return library.sourcePath
+  return library.connectionProfile?.name ?? null
 }
 
 function settingsList<T>(library: LibraryResponse, key: string): T[] {

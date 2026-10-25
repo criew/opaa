@@ -17,10 +17,16 @@ const STORAGE_PREFIX = 'opaa-next-steps:'
 
 type StoredState = 'open' | 'dismissed'
 
+// A dismissed list stays away for good (localStorage); an open one belongs to the visit after
+// the wizard and lives in the tab only (sessionStorage), never on the library itself.
+function storageFor(value: StoredState): Storage {
+  return value === 'dismissed' ? localStorage : sessionStorage
+}
+
 function readStored(libraryId: string): StoredState | null {
   try {
-    const value = localStorage.getItem(STORAGE_PREFIX + libraryId)
-    return value === 'open' || value === 'dismissed' ? value : null
+    if (localStorage.getItem(STORAGE_PREFIX + libraryId) === 'dismissed') return 'dismissed'
+    return sessionStorage.getItem(STORAGE_PREFIX + libraryId) === 'open' ? 'open' : null
   } catch {
     return null
   }
@@ -28,7 +34,7 @@ function readStored(libraryId: string): StoredState | null {
 
 function writeStored(libraryId: string, value: StoredState) {
   try {
-    localStorage.setItem(STORAGE_PREFIX + libraryId, value)
+    storageFor(value).setItem(STORAGE_PREFIX + libraryId, value)
   } catch {
     // without storage the list lasts as long as the address carries `justCreated`
   }
@@ -110,7 +116,7 @@ export function useNextSteps(input: NextStepsInput): {
   if (input.metadataEnabled) {
     steps.push({
       key: 'metadata',
-      label: 'Metadatenfelder anlegen',
+      label: 'Feld anlegen',
       done: (fieldCount ?? 0) > 0,
       tab: 'metadaten',
     })

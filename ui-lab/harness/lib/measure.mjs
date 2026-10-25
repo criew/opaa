@@ -113,7 +113,11 @@ const PAGE_METRICS = () => {
     perForm.set(form, (perForm.get(form) ?? 0) + 1)
   }
   const helpLines = helpEls.map(lineCount)
+  // upper edge of the tab bar in document coordinates (pruefliste-detail D1)
+  const tablist = document.querySelector('[role=tablist]')
+  const tabsTop = tablist ? Math.round(tablist.getBoundingClientRect().top + window.scrollY) : null
   return {
+    tabsTop,
     title: document.title,
     url: location.pathname + location.search,
     overflowX: overflow,
@@ -305,12 +309,14 @@ export function createRecorder({ out, widths, noAxe = false, noFull = false, log
   const record = (line) => fs.appendFileSync(metricsFile, JSON.stringify(line) + '\n')
   let shots = 0
 
-  async function shoot(page, { area, type, scenario, scheme }, extra = {}) {
+  async function shoot(page, { area, type, scenario, scheme }, { prepare, ...extra } = {}) {
     const shown = await appliedScheme(page)
     if (shown && shown !== scheme) log(`  WARNING ${area} ${type} ${scenario}: requested ${scheme}, page shows ${shown}`)
     for (const width of widths) {
       await page.setViewportSize({ width, height: VIEWPORT_HEIGHT })
       await sleep(250)
+      // a flow may bring its subject back into view after the resize, e.g. an expanded run
+      if (prepare) await prepare(page, width)
       const name = `${area}__${type}__${scenario}__${scheme}__${width}`
       await page.screenshot({ path: path.join(out, `${name}.png`) }).catch((e) => log('  screenshot failed', e.message))
       const metrics = await pageMetrics(page)

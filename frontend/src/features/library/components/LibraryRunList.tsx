@@ -70,7 +70,7 @@ function formatDuration(run: IndexingRunResponse): string {
   )
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours} h ${String(minutes).padStart(2, '0')}`
+  if (hours > 0) return `${hours} h ${minutes} min`
   if (minutes > 0) return `${minutes} min`
   return `${seconds} s`
 }
@@ -93,7 +93,9 @@ function resultLabel(run: IndexingRunResponse): string {
     return percent == null ? 'wird ermittelt' : `${percent} %`
   }
   if (run.status === 'FAILED') return 'abgebrochen'
-  const parts = [(run.documentCount + run.documentsSkipped).toLocaleString('de-DE')]
+  const parts = [
+    `${run.documentCount.toLocaleString('de-DE')} ${run.documentCount === 1 ? 'Dokument' : 'Dokumente'}`,
+  ]
   if (run.documentsFailed > 0)
     parts.push(`${run.documentsFailed.toLocaleString('de-DE')} fehlgeschlagen`)
   if ((run.unreadableScopeCount ?? 0) > 0) parts.push(`${run.unreadableScopeCount} nicht lesbar`)
@@ -113,13 +115,18 @@ function groupEvents(events: IndexingRunResponse['events']): {
 } {
   const groups = new Map<string, EventGroup>()
   for (const event of events) {
-    const group = groups.get(event.category) ?? {
-      key: event.category,
-      label: indexingRunEventCategoryLabel(event.category),
+    // a plain „Fehler“ names no reason: those group by their message instead (D13)
+    const key = event.category === 'ERROR' ? `ERROR:${event.message}` : event.category
+    const group = groups.get(key) ?? {
+      key,
+      label:
+        event.category === 'ERROR'
+          ? plainMessage(event.message)
+          : indexingRunEventCategoryLabel(event.category),
       events: [],
     }
     group.events.push(event)
-    groups.set(event.category, group)
+    groups.set(key, group)
   }
   const all = [...groups.values()].sort((a, b) => b.events.length - a.events.length)
   return {
@@ -141,6 +148,11 @@ function technicalLines(run: IndexingRunResponse): string[] {
   lines.push(
     `Anhänge: ${metrics.attachmentsProcessed} indiziert, ${metrics.attachmentsSkipped} übersprungen, ${metrics.attachmentsFailed} fehlgeschlagen`,
   )
+  if (run.eventsTruncatedCount > 0) {
+    lines.push(
+      `${run.eventsTruncatedCount.toLocaleString('de-DE')} Ereignisse über der Speichergrenze`,
+    )
+  }
   return lines
 }
 
@@ -204,6 +216,18 @@ function AllEventsDialog({ group, onClose }: { group: EventGroup | null; onClose
   )
 }
 
+/** Whether unfolding the run shows anything its row does not (D14); otherwise no chevron. */
+function hasDetail(run: IndexingRunResponse): boolean {
+  const signIn = run.failureCategory != null && REJECTED_SIGN_IN.has(run.failureCategory)
+  return (
+    run.events.length > 0 ||
+    Boolean(run.metrics) ||
+    (run.unreadableScopeCount ?? 0) > 0 ||
+    run.failureCategory === 'QUOTA_EXHAUSTED' ||
+    (run.status === 'FAILED' && Boolean(run.message) && !signIn)
+  )
+}
+
 /** The expanded run: only what its row does not say (D14). */
 function RunDetail({
   run,
@@ -223,23 +247,28 @@ function RunDetail({
   const signIn = run.failureCategory != null && REJECTED_SIGN_IN.has(run.failureCategory)
   return (
     <Box sx={{ pl: { sm: '192px' } }}>
-      {run.status === 'FAILED' && run.message && (
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          {plainMessage(run.message)}
-          {signIn && connectionAction && <> · {connectionAction}</>}
-        </Typography>
+      {/* a refused sign-in stands in the row and at the connection; others say why here */}
+      {run.status === 'FAILED' && run.message && !signIn && (
+        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>{plainMessage(run.message)}</Typography>
       )}
       {run.failureCategory === 'QUOTA_EXHAUSTED' && (
         <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>{quotaRemedy}</Typography>
       )}
+      {(run.unreadableScopeCount ?? 0) > 0 && (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>
+            Bereiche nicht lesbar · {run.unreadableScopeCount}
+          </Typography>
+          {connectionAction && (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+              Namen an der Zeile Umfang
+            </Typography>
+          )}
+        </Box>
+      )}
       {errors.map((group) => (
         <EventGroupView key={group.key} group={group} onShowAll={() => setAllOf(group)} />
       ))}
-      {run.eventsTruncatedCount > 0 && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-          {run.eventsTruncatedCount.toLocaleString('de-DE')} weitere nicht gespeichert
-        </Typography>
-      )}
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mt: errors.length > 0 ? 1.5 : 0 }}>
         {hintCount > 0 && (
           <Link
@@ -364,6 +393,72 @@ export default function LibraryRunList({
           <Box role="list" aria-label="Läufe">
             {runs.map((run) => {
               const state = runState(run)
+              const summaryRow = (
+                <Box sx={{ ...RUN_GRID, width: '100%' }}>
+                  <StateDot tone={state.tone} label={state.label} />
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: 13,
+                      color: 'text.secondary',
+                      fontVariantNumeric: 'tabular-nums',
+                      textAlign: { xs: 'right', sm: 'left' },
+                    }}
+                  >
+                    {formatStart(run.startedAt)}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: 13,
+                      color: 'text.secondary',
+                      display: { xs: 'none', sm: 'inline' },
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {formatDuration(run)}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    noWrap
+                    sx={{
+                      fontSize: 13,
+                      color: 'text.secondary',
+                      display: { xs: 'none', sm: 'block' },
+                    }}
+                  >
+                    {triggerLabel(run, showMode)}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: 13,
+                      color: 'text.primary',
+                      gridColumn: { xs: '1 / -1', sm: 'auto' },
+                      pr: { sm: 1 },
+                      whiteSpace: { sm: 'nowrap' },
+                      overflow: { sm: 'hidden' },
+                      textOverflow: { sm: 'ellipsis' },
+                    }}
+                  >
+                    <Box component="span" sx={{ display: { sm: 'none' }, color: 'text.secondary' }}>
+                      {`${formatDuration(run)} · ${triggerLabel(run, showMode)} · `}
+                    </Box>
+                    {resultLabel(run)}
+                  </Typography>
+                </Box>
+              )
+              if (!hasDetail(run)) {
+                return (
+                  <Box
+                    key={run.id}
+                    role="listitem"
+                    sx={{ borderBottom: 1, borderColor: 'divider', py: 1, pr: 5, minHeight: 44 }}
+                  >
+                    {summaryRow}
+                  </Box>
+                )
+              }
               return (
                 <Accordion
                   key={run.id}
@@ -387,59 +482,7 @@ export default function LibraryRunList({
                       '& .MuiAccordionSummary-content': { my: 1, minWidth: 0 },
                     }}
                   >
-                    <Box sx={{ ...RUN_GRID, width: '100%' }}>
-                      <StateDot tone={state.tone} label={state.label} />
-                      <Typography
-                        component="span"
-                        sx={{
-                          fontSize: 13,
-                          color: 'text.secondary',
-                          fontVariantNumeric: 'tabular-nums',
-                          textAlign: { xs: 'right', sm: 'left' },
-                        }}
-                      >
-                        {formatStart(run.startedAt)}
-                      </Typography>
-                      <Typography
-                        component="span"
-                        sx={{
-                          fontSize: 13,
-                          color: 'text.secondary',
-                          display: { xs: 'none', sm: 'inline' },
-                          fontVariantNumeric: 'tabular-nums',
-                        }}
-                      >
-                        {formatDuration(run)}
-                      </Typography>
-                      <Typography
-                        component="span"
-                        noWrap
-                        sx={{
-                          fontSize: 13,
-                          color: 'text.secondary',
-                          display: { xs: 'none', sm: 'block' },
-                        }}
-                      >
-                        {triggerLabel(run, showMode)}
-                      </Typography>
-                      <Typography
-                        component="span"
-                        noWrap
-                        sx={{
-                          fontSize: 13,
-                          color: 'text.primary',
-                          gridColumn: { xs: '1 / -1', sm: 'auto' },
-                        }}
-                      >
-                        <Box
-                          component="span"
-                          sx={{ display: { sm: 'none' }, color: 'text.secondary' }}
-                        >
-                          {`${formatDuration(run)} · ${triggerLabel(run, showMode)} · `}
-                        </Box>
-                        {resultLabel(run)}
-                      </Typography>
-                    </Box>
+                    {summaryRow}
                   </AccordionSummary>
                   <AccordionDetails sx={{ px: 0, pt: 0, pb: 2 }}>
                     <RunDetail

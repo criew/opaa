@@ -58,8 +58,8 @@ interface SourceSetupRowsProps<V> {
   connectionLead?: string | null
   /** The connection's last known state from the runs, while the row's own test has not run. */
   connectionStatus?: RowStatus | null
-  /** Under the closed „Umfang“: entries the last run could not read. */
-  scopeNote?: ReactNode
+  /** Entries of „Umfang“ the last run could not read (D8). */
+  scopeUnreadable?: string[]
   /** „Umfang“ of a source without a choice („Ganzes Verzeichnis“): a row without „Ändern“. */
   fixedScope?: string | null
   /** The schedule's state, e.g. the last planned runs failed. */
@@ -101,7 +101,7 @@ export default function SourceSetupRows<V>({
   connectionPrelude,
   connectionLead,
   connectionStatus = null,
-  scopeNote,
+  scopeUnreadable,
   fixedScope = null,
   scheduleStatus = null,
   extraRows,
@@ -405,7 +405,7 @@ export default function SourceSetupRows<V>({
                 ? [`Test fehlgeschlagen: ${plainMessage(check.outcome.message)}`]
                 : []),
             ]}
-            note={row === 'scope' ? scopeNote : undefined}
+            unreadable={row === 'scope' ? scopeUnreadable : undefined}
             open={openRow === row}
             onOpen={canEdit ? () => void open(row) : undefined}
             headingLevel={headingLevel}

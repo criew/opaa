@@ -33,6 +33,8 @@ import { useLibraryDeletion } from '../components/useLibraryDeletion'
 import LibraryHeaderNote from '../components/LibraryHeaderNote'
 import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
 import { useDocumentStore } from '../stores/documentStore'
+import { sourceRegistration } from '../components/sources/registry'
+import type { LibraryDocumentResponse } from '@/shared/api/types'
 import { PlainPageSections } from '@/shared/ui/PageSection'
 import LibrarySteckbrief, {
   STECKBRIEF_MEDIA,
@@ -45,6 +47,8 @@ import { sourceSummaryOf, unreadableScopeNames } from '../components/steckbrief/
 
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
+
+const NO_DOCUMENTS: LibraryDocumentResponse[] = []
 
 function spreadLabel(spaceCount: number): string {
   if (spaceCount === 0) return 'in keinem Space'
@@ -169,6 +173,9 @@ export default function LibraryDetailPage() {
     void loadRunHistory(libraryId)
   }, [libraryId, connectorSourceType, canEdit, loadRunHistory, isRunning])
   const uploadErrors = useDocumentStore((s) => s.uploadErrors)
+  const loadedDocuments = useDocumentStore(
+    (s) => (libraryId ? s.documentsByLibrary[libraryId] : undefined) ?? NO_DOCUMENTS,
+  )
 
   // A finished run changed the bestand: reload the library head (document count, storage) and
   // bump the token the documents area reloads its current view on - no manual page reload.
@@ -323,6 +330,14 @@ export default function LibraryDetailPage() {
     status: run,
     newestRun: runHistory?.[0] ?? null,
     uploadErrors,
+    uploadDocuments:
+      knownSourceType === 'UPLOAD'
+        ? {
+            failed: loadedDocuments.some((document) => document.status === 'FAILED'),
+            pending: loadedDocuments.some((document) => document.status === 'PENDING'),
+          }
+        : undefined,
+    signsIn: sourceRegistration(knownSourceType)?.configuration?.setup?.signsIn !== false,
   })
   const documentCount = library.documentCount ?? 0
   const responsible = responsibleParty({
@@ -443,10 +458,11 @@ export default function LibraryDetailPage() {
             summary
               ? {
                   // a reader sees the scope only, as in the Reiter „Quelle“
-                  connection: canEdit ? summary.connection : null,
+                  address: canEdit ? summary.address : null,
                   scope: summary.scope,
                   unreadable: details ? unreadableScopeNames(run.unlistedScopeKeys, details) : [],
                   schedule: canEdit ? summary.schedule : null,
+                  nextRun: canEdit ? summary.nextRun : null,
                 }
               : null
           }
@@ -462,7 +478,11 @@ export default function LibraryDetailPage() {
                 }
               : null
           }
-          documents={`${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`}
+          documents={
+            documentCount > 0
+              ? `${documentCount.toLocaleString('de-DE')} ${documentCount === 1 ? 'Dokument' : 'Dokumente'}`
+              : null
+          }
           privateStorage={
             privateStorage
               ? privateStorage.quotaBytes > 0
@@ -470,9 +490,12 @@ export default function LibraryDetailPage() {
                 : `${formatFileSize(privateStorage.usedBytes)} privat belegt`
               : null
           }
-          spaces={catalog.entry?.spaceCount != null ? spreadLabel(catalog.entry.spaceCount) : null}
+          spaces={catalog.entry?.spaceCount ? spreadLabel(catalog.entry.spaceCount) : null}
           responsible={responsible.label}
-          steps={nextSteps.steps}
+          // the step of the open tab stands there as its own action already
+          steps={nextSteps.steps.filter((step) => step.tab !== activeTab)}
+          activeTab={activeTab}
+          causeReachable={canEdit || state.cause === 'documents' || state.cause === 'sharing'}
           onDismissSteps={nextSteps.dismiss}
           targetSearch={targetSearch}
         />

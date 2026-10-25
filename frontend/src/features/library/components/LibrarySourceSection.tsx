@@ -27,7 +27,6 @@ import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import { sourceRegistration } from './sources/registry'
-import StateDot from '@/shared/ui/StateDot'
 import Link from '@mui/material/Link'
 import ConfluenceWebhookSection from './ConfluenceWebhookSection'
 import S3EventSection from './S3EventSection'
@@ -154,6 +153,7 @@ export default function LibrarySourceSection({
     ? ((library.sourceSettings?.fullSyncIntervalDays as number | null | undefined) ?? null)
     : null
 
+  const signsIn = configuration?.setup?.signsIn !== false
   // D10: the connection carries what the last finished run knows of the sign-in
   const finished = runs.find((run) => run.status !== 'RUNNING') ?? null
   const connectionStatus: RowStatus | null = !finished
@@ -161,18 +161,23 @@ export default function LibrarySourceSection({
     : finished.status === 'FAILED' &&
         finished.failureCategory != null &&
         REJECTED_SIGN_IN.has(finished.failureCategory)
-      ? { tone: 'error', label: 'Anmeldung abgelehnt' }
-      : { tone: 'success', label: `Anmeldung ok · zuletzt ${formatDay(finished.startedAt)}` }
+      ? { tone: 'error', label: signsIn ? 'Anmeldung abgelehnt' : 'nicht erreichbar' }
+      : {
+          tone: 'success',
+          label: `${signsIn ? 'Anmeldung ok' : 'erreichbar'} · zuletzt ${formatDay(finished.startedAt)}`,
+        }
+  const signInRefused =
+    finished?.status === 'FAILED' &&
+    finished.failureCategory != null &&
+    REJECTED_SIGN_IN.has(finished.failureCategory)
   const unreadable = unreadableScopeNames(unlistedKeys, library as LibraryResponse)
-  const scopeNote =
-    unreadable.length > 0 ? (
-      <Box sx={{ mt: 0.5 }} data-testid="scope-unreadable">
-        <StateDot tone="warning" label={`nicht lesbar: ${unreadable.join(', ')}`} />
-      </Box>
-    ) : undefined
-  const scheduleStatus: RowStatus | null = library.lastScheduledRunsFailed
-    ? { tone: 'error', label: 'letzte geplante Läufe fehlgeschlagen' }
-    : null
+  // the failed plan only where its cause is not already at the connection, and only with a plan
+  const scheduleStatus: RowStatus | null =
+    library.lastScheduledRunsFailed &&
+    !signInRefused &&
+    (library.schedule?.frequency ?? 'DISABLED') !== 'DISABLED'
+      ? { tone: 'error', label: 'letzte geplante Läufe fehlgeschlagen' }
+      : null
   const liveKind =
     library.sourceType === 'CONFLUENCE' ? 'webhook' : library.sourceType === 'S3' ? 'events' : null
   const liveRow =
@@ -278,7 +283,7 @@ export default function LibrarySourceSection({
             library={library}
             canEdit={canEditSource && !erasing}
             connectionStatus={connectionStatus}
-            scopeNote={scopeNote}
+            scopeUnreadable={unreadable}
             fixedScope={fixedScopeOf(library.sourceType)}
             scheduleStatus={scheduleStatus}
             extraRows={liveRow}

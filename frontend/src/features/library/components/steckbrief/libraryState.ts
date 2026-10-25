@@ -41,6 +41,10 @@ export interface LibraryStateInput {
   newestRun: IndexingRunResponse | null
   /** Upload rejections of this session, as the document store keeps them. */
   uploadErrors: string[]
+  /** What the loaded documents of an upload library show: failed or still processed ones. */
+  uploadDocuments?: { failed: boolean; pending: boolean }
+  /** Whether the source signs in at all; a path or an open web directory has no sign-in. */
+  signsIn?: boolean
 }
 
 /** „24.10.2026“. */
@@ -83,7 +87,7 @@ function isQuotaMessage(message: string): boolean {
  * run row therefore never disagree (D3).
  */
 export function libraryStateOf(input: LibraryStateInput): LibraryState {
-  const { library, erasing, status, newestRun, uploadErrors } = input
+  const { library, erasing, status, newestRun, uploadErrors, signsIn = true } = input
   if (erasing) return { word: 'Wird gelöscht', tone: 'warning', detail: null, cause: null }
   if (library.succession) {
     return { word: 'Nachfolge offen', tone: 'warning', detail: null, cause: 'sharing' }
@@ -97,11 +101,15 @@ export function libraryStateOf(input: LibraryStateInput): LibraryState {
     if (quota || uploadErrors.some(isQuotaMessage)) {
       return { word: 'Kontingent voll', tone: 'error', detail: null, cause: 'documents' }
     }
-    if (uploadErrors.length > 0) {
+    // the documents tell the state; rejected files never became one and stay out of it
+    if (input.uploadDocuments?.pending) {
+      return { word: 'Läuft', tone: 'neutral', detail: null, cause: 'documents' }
+    }
+    if (input.uploadDocuments?.failed) {
       return {
-        word: `${uploadErrors.length} fehlgeschlagen`,
-        tone: 'error',
-        detail: null,
+        word: 'Teilweise fehlgeschlagen',
+        tone: 'warning',
+        detail: formatDay(library.updatedAt),
         cause: 'documents',
       }
     }
@@ -143,7 +151,9 @@ export function libraryStateOf(input: LibraryStateInput): LibraryState {
   const day = formatDay(finished?.startedAt ?? status.timestamp)
   const failed = finished ? finished.status === 'FAILED' : status.status === 'FAILED'
   if (failed && category && REJECTED_SIGN_IN.has(category)) {
-    return { word: 'Anmeldung abgelehnt', tone: 'error', detail: day, cause: 'connection' }
+    return signsIn
+      ? { word: 'Anmeldung abgelehnt', tone: 'error', detail: day, cause: 'connection' }
+      : { word: 'Fehlgeschlagen', tone: 'error', detail: day, cause: 'connection' }
   }
   if (category === 'QUOTA_EXHAUSTED') {
     return { word: 'Kontingent voll', tone: 'error', detail: day, cause: 'runs' }
