@@ -8,7 +8,9 @@ import StateDot from '@/shared/ui/StateDot'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
+import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import Pagination from '@mui/material/Pagination'
 import Select from '@mui/material/Select'
 import Skeleton from '@mui/material/Skeleton'
@@ -40,6 +42,8 @@ function formatIndexedAt(indexedAt: string | null | undefined): string {
 
 /** Folders a level shows before „alle n Ordner anzeigen“. */
 const FOLDERS_SHOWN = 8
+
+const STATUS_COLOR = { success: 'success.main', neutral: 'text.disabled', error: 'error.main' }
 
 function statusTone(status: LibraryDocumentResponse['status']): 'success' | 'neutral' | 'error' {
   if (status === 'INDEXED') return 'success'
@@ -88,6 +92,8 @@ export interface LibraryDocumentListProps {
   renderFolderActions?: (folder: LibraryFolderListItem) => ReactNode
   /** Upload only: the per-row delete button. */
   renderRowActions?: (document: LibraryDocumentResponse) => ReactNode
+  /** Upload only: deleting from the row menu of a narrow screen. */
+  onDeleteDocument?: (document: LibraryDocumentResponse) => void
   /**
    * Which rows show their metadata panel and what that panel is; without
    * `renderMetadataPanel` - metadata switched off (ADR-0044) - no row offers one.
@@ -99,6 +105,48 @@ export interface LibraryDocumentListProps {
   /** Per-parent expansion of the attachment group. */
   isGroupExpanded: (parentId: string) => boolean
   onToggleAttachmentGroup: (parentId: string) => void
+}
+
+/** Below sm the row's actions share one „⋯“, so the name keeps its width (P43). */
+function RowMenu({
+  fileName,
+  infoLabel,
+  onInfo,
+  onOpenOriginal,
+  onDelete,
+}: {
+  fileName: string
+  infoLabel: string | null
+  onInfo: () => void
+  onOpenOriginal: () => void
+  onDelete?: () => void
+}) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const run = (action: () => void) => () => {
+    setAnchor(null)
+    action()
+  }
+  return (
+    <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexShrink: 0 }}>
+      <IconButton
+        size="small"
+        aria-label={`Aktionen für ${fileName}`}
+        aria-haspopup="menu"
+        onClick={(event) => setAnchor(event.currentTarget)}
+      >
+        <MoreHorizIcon fontSize="small" />
+      </IconButton>
+      <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
+        {infoLabel && <MenuItem onClick={run(onInfo)}>{infoLabel}</MenuItem>}
+        <MenuItem onClick={run(onOpenOriginal)}>Original öffnen</MenuItem>
+        {onDelete && (
+          <MenuItem onClick={run(onDelete)} sx={{ color: 'error.main' }}>
+            Löschen
+          </MenuItem>
+        )}
+      </Menu>
+    </Box>
+  )
 }
 
 /** A source address from the document's metadata: a link for http(s), plain text otherwise. */
@@ -147,6 +195,7 @@ export default function LibraryDocumentList({
   onOpenFolder,
   renderFolderActions,
   renderRowActions,
+  onDeleteDocument,
   metadataOpenById,
   onToggleMetadata,
   renderMetadataPanel,
@@ -276,8 +325,22 @@ export default function LibraryDocumentList({
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
               {/* below sm the state joins the second line instead of a column of its own */}
-              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                {` · ${documentStatusLabel(document.status)}`}
+              <Box
+                component="span"
+                sx={{ display: { xs: 'inline-flex', sm: 'none' }, alignItems: 'center', gap: 0.5 }}
+              >
+                {' · '}
+                <Box
+                  component="span"
+                  aria-hidden
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    bgcolor: STATUS_COLOR[statusTone(document.status)],
+                  }}
+                />
+                {documentStatusLabel(document.status)}
               </Box>
             </Typography>
             {options.viaFileName && (
@@ -312,7 +375,18 @@ export default function LibraryDocumentList({
               </Box>
             )}
           </Stack>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <RowMenu
+            fileName={document.fileName}
+            infoLabel={hasInfo ? (metadataOpen ? 'Angaben verbergen' : 'Angaben anzeigen') : null}
+            onInfo={() => onToggleMetadata?.(document.id)}
+            onOpenOriginal={() => onOpenOriginal(document)}
+            onDelete={onDeleteDocument ? () => onDeleteDocument(document) : undefined}
+          />
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center', flexShrink: 0, display: { xs: 'none', sm: 'flex' } }}
+          >
             {/* A FAILED document's asynchronous processing failure is only visible to the
                 user via this German errorMessage - the status chip alone only says something went
                 wrong, not what. */}
@@ -608,7 +682,8 @@ export default function LibraryDocumentList({
         </Stack>
       )}
 
-      {!isLoading && pageState && (documents.length > 0 || pageCount > 1) && (
+      {/* the count stands in the Steckbrief; here only what a filter or paging adds (D5) */}
+      {!isLoading && pageState && (isSearchActive || isMissingFilterActive || pageCount > 1) && (
         <Stack
           direction="row"
           sx={{

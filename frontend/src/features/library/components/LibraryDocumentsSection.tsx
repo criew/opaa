@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -23,7 +23,6 @@ import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
-import { notify } from '@/shared/stores/notificationStore'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
 import LibraryDocumentList from './LibraryDocumentList'
 import LibraryDocumentsNotices from './LibraryDocumentsNotices'
@@ -42,8 +41,10 @@ export interface LibraryDocumentsSectionProps {
   /** The library's selected spaces (CONFLUENCE) - resolves a row's space key to its name. */
   confluenceSpaces?: ConfluenceSpaceRef[] | null
   onDocumentsChanged: () => void
-  /** The empty connector library's one action (D21). */
-  onStartRun?: () => void
+  /** Where the page head keeps its main action: an upload library's „Hochladen“ goes there (D1). */
+  actionSlot?: HTMLElement | null
+  /** The upload library's storage quota is used up. */
+  quotaFull?: boolean
 }
 
 /**
@@ -58,7 +59,8 @@ export default function LibraryDocumentsSection({
   refreshToken,
   confluenceSpaces,
   onDocumentsChanged,
-  onStartRun,
+  actionSlot,
+  quotaFull = false,
 }: LibraryDocumentsSectionProps) {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
   const pageStateByLibrary = useDocumentStore((s) => s.pageStateByLibrary)
@@ -175,8 +177,6 @@ export default function LibraryDocumentsSection({
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
 
   const upload = useDocumentUpload(libraryId, canManage, onDocumentsChanged)
-  const uploadErrors = useDocumentStore((s) => s.uploadErrors)
-  const isUploading = useDocumentStore((s) => s.isUploading)
   // An empty library shows its empty state alone; the upload field only while nothing is there.
   const isEmptyRoot =
     !isLoading &&
@@ -185,22 +185,6 @@ export default function LibraryDocumentsSection({
     !searchInput &&
     !missingFieldParam &&
     breadcrumb.length === 0
-
-  // Rejected files quit the upload once as a popup; they stay listed in the Steckbrief (G 5.9).
-  const reportedRef = useRef(0)
-  useEffect(() => {
-    if (isUploading) return
-    const fresh = uploadErrors.length - reportedRef.current
-    reportedRef.current = uploadErrors.length
-    if (fresh > 0) {
-      notify(
-        fresh === 1
-          ? '1 Datei wurde nicht hochgeladen.'
-          : `${fresh} Dateien wurden nicht hochgeladen.`,
-        'error',
-      )
-    }
-  }, [uploadErrors, isUploading])
 
   // Leaving the shown list (into a folder or the anchor's worklist) drops its search and selection.
   function leaveList() {
@@ -261,6 +245,19 @@ export default function LibraryDocumentsSection({
 
   return (
     <Box sx={{ mb: 5 }}>
+      {isUploadLibrary &&
+        canManage &&
+        actionSlot &&
+        createPortal(
+          <LibraryDocumentUploadArea
+            compact
+            quotaFull={quotaFull}
+            upload={upload}
+            canManageFolders={canManageFolders}
+            onNewFolder={() => setNewFolderDialogOpen(true)}
+          />,
+          actionSlot,
+        )}
       {isUploadLibrary && canManage && isEmptyRoot && (
         <LibraryDocumentUploadArea
           upload={upload}
@@ -295,15 +292,14 @@ export default function LibraryDocumentsSection({
         isLoading={isLoading}
         confluenceSpaces={confluenceSpaces}
         emptyMessage={
-          isUploadLibrary ? 'Noch keine Dokumente hochgeladen.' : 'Noch keine Dokumente indiziert.'
+          // an empty upload library shows its upload field alone, one sentence in it
+          isUploadLibrary && canManage
+            ? ''
+            : isUploadLibrary
+              ? 'Noch keine Dokumente.'
+              : 'Noch keine Dokumente indiziert.'
         }
-        emptyAction={
-          !isUploadLibrary && canManage && onStartRun ? (
-            <Button variant="outlined" size="small" onClick={onStartRun}>
-              Jetzt indizieren
-            </Button>
-          ) : undefined
-        }
+
         toolbarFilter={
           metadataEnabled ? (
             <Select
@@ -328,16 +324,7 @@ export default function LibraryDocumentsSection({
             </Select>
           ) : undefined
         }
-        toolbarActions={
-          isUploadLibrary && canManage ? (
-            <LibraryDocumentUploadArea
-              compact
-              upload={upload}
-              canManageFolders={canManageFolders}
-              onNewFolder={() => setNewFolderDialogOpen(true)}
-            />
-          ) : undefined
-        }
+
         onDrop={isUploadLibrary && canManage ? upload.handleDrop : undefined}
         breadcrumb={
           // The Ordnerpfad stands directly above the search field, where the list it
@@ -405,6 +392,7 @@ export default function LibraryDocumentsSection({
               )
             : undefined
         }
+        onDeleteDocument={canDelete ? (document) => void handleDelete(document) : undefined}
         metadataOpenById={metadataOpenById}
         onToggleMetadata={toggleMetadataPanel}
         renderMetadataPanel={

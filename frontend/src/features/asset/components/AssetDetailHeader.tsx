@@ -261,7 +261,7 @@ export default function AssetDetailHeader({
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 1.5,
-          flexWrap: 'wrap',
+          flexWrap: compact ? 'nowrap' : 'wrap',
           mb: 1,
           position: 'relative',
           ...(compact && { minHeight: 40 }),
@@ -273,7 +273,12 @@ export default function AssetDetailHeader({
           useFlexGap
           sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
         >
-          {definition && <TypeBadge definition={definition} />}
+          {definition &&
+            (compact ? (
+              <MetaBadge>{definition.label}</MetaBadge>
+            ) : (
+              <TypeBadge definition={definition} />
+            ))}
           {isPublic && <PublicMark />}
           {badges}
           {administrative && <MetaBadge>administrativ</MetaBadge>}

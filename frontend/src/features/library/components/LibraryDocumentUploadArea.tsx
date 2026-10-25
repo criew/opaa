@@ -2,6 +2,8 @@ import { useState } from 'react'
 import Box from '@mui/material/Box'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
@@ -22,6 +24,8 @@ interface LibraryDocumentUploadAreaProps {
    * „Neuer Ordner“ for the list's toolbar; files are then dropped on the list itself.
    */
   compact?: boolean
+  /** The storage quota is used up: the menu says so instead of offering a futile upload. */
+  quotaFull?: boolean
 }
 
 /**
@@ -33,6 +37,7 @@ export default function LibraryDocumentUploadArea({
   canManageFolders,
   onNewFolder,
   compact = false,
+  quotaFull = false,
 }: LibraryDocumentUploadAreaProps) {
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const {
@@ -99,18 +104,39 @@ export default function LibraryDocumentUploadArea({
     return (
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
         {inputs}
+        {/* the busy state stands in the button itself (P39), it is not greyed out */}
         <Button
           variant="outlined"
           size="small"
           startIcon={<UploadFileIcon />}
           aria-haspopup="menu"
+          aria-busy={isUploading || undefined}
           onClick={(event) => setMenuAnchor(event.currentTarget)}
-          disabled={isUploading}
+          sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
         >
           {isUploading ? 'Lädt hoch …' : 'Hochladen'}
         </Button>
+        <Tooltip title="Hochladen">
+          <IconButton
+            aria-label="Hochladen"
+            aria-haspopup="menu"
+            aria-busy={isUploading || undefined}
+            onClick={(event) => setMenuAnchor(event.currentTarget)}
+            sx={{ display: { sm: 'none' } }}
+          >
+            <UploadFileIcon />
+          </IconButton>
+        </Tooltip>
         <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)}>
+          {quotaFull && (
+            <MenuItem disabled sx={{ '&.Mui-disabled': { opacity: 1 } }}>
+              <Typography sx={{ fontSize: 13, color: 'warning.main' }}>
+                Speicherkontingent voll
+              </Typography>
+            </MenuItem>
+          )}
           <MenuItem
+            disabled={quotaFull}
             onClick={() => {
               setMenuAnchor(null)
               fileInputRef.current?.click()
@@ -119,6 +145,7 @@ export default function LibraryDocumentUploadArea({
             Dateien …
           </MenuItem>
           <MenuItem
+            disabled={quotaFull}
             onClick={() => {
               setMenuAnchor(null)
               folderInputRef.current?.click()

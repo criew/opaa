@@ -3,6 +3,8 @@ import { useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
@@ -47,6 +49,17 @@ import { sourceSummaryOf, unreadableScopeNames } from '../components/steckbrief/
 
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
+
+/** The source type's short chip form (guidelines 5.5), one line even at 320 px (D1). */
+function sourceChipLabel(sourceType: LibraryDocumentResponse['sourceType']): string {
+  const short: Partial<Record<LibraryDocumentResponse['sourceType'], string>> = {
+    HTTP_DIRECTORY: 'Web',
+    RSS_FEED: 'Feed',
+    SMB: 'SMB',
+    S3: 'S3',
+  }
+  return short[sourceType] ?? documentSourceTypeLabel(sourceType)
+}
 
 const NO_DOCUMENTS: LibraryDocumentResponse[] = []
 
@@ -173,6 +186,7 @@ export default function LibraryDetailPage() {
     void loadRunHistory(libraryId)
   }, [libraryId, connectorSourceType, canEdit, loadRunHistory, isRunning])
   const uploadErrors = useDocumentStore((s) => s.uploadErrors)
+  const [uploadActionSlot, setUploadActionSlot] = useState<HTMLElement | null>(null)
   const loadedDocuments = useDocumentStore(
     (s) => (libraryId ? s.documentsByLibrary[libraryId] : undefined) ?? NO_DOCUMENTS,
   )
@@ -361,7 +375,7 @@ export default function LibraryDetailPage() {
           <>
             {privateLibrary && <PrivateMark />}
             {erasing && <ErasingMark />}
-            {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
+            {details && <MetaBadge>{sourceChipLabel(details.sourceType)}</MetaBadge>}
             <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
         }
@@ -389,19 +403,39 @@ export default function LibraryDetailPage() {
         deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
         deleteDisabled={eraseBusy}
         actions={
-          connectorSourceType &&
-          mayManageDocuments && (
-            <Button
-              // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
-              variant="outlined"
-              size="small"
-              startIcon={<PlayArrowIcon />}
-              onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-              // the run's progress stands once, in the Steckbrief (D7)
-              disabled={isRunning}
-            >
-              Jetzt indizieren
-            </Button>
+          knownSourceType === 'UPLOAD' && mayManageDocuments ? (
+            // the documents tab puts its „Hochladen“ here, the place of the main action (D1)
+            <Box ref={setUploadActionSlot} sx={{ display: 'flex' }} />
+          ) : (
+            connectorSourceType &&
+            mayManageDocuments && (
+              <>
+                <Button
+                  // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+                  // the run's progress stands once, in the Steckbrief (D7)
+                  disabled={isRunning}
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                >
+                  Jetzt indizieren
+                </Button>
+                <Tooltip title="Jetzt indizieren">
+                  <span>
+                    <IconButton
+                      aria-label="Jetzt indizieren"
+                      onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
+                      disabled={isRunning}
+                      sx={{ display: { sm: 'none' } }}
+                    >
+                      <PlayArrowIcon />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </>
+            )
           )
         }
         // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
@@ -528,10 +562,11 @@ export default function LibraryDetailPage() {
                   // itself, not from documentStore - without this it stays on whatever value was loaded
                   // on mount even after an upload or delete changes it.
                   onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
-                  onStartRun={
-                    connectorSourceType && mayManageDocuments && !isRunning
-                      ? () => void triggerIndexing(libraryId, connectorSourceType)
-                      : undefined
+                  actionSlot={uploadActionSlot}
+                  quotaFull={
+                    details.storageQuotaBytes != null &&
+                    details.storageUsedBytes != null &&
+                    details.storageUsedBytes >= details.storageQuotaBytes
                   }
                 />
               )}

@@ -156,10 +156,11 @@ export default function AssetHeadlineEditor({
                   lineHeight: '30px',
                   overflowWrap: 'anywhere',
                   hyphens: 'auto',
-                  display: '-webkit-box',
+                  // from sm one line with ellipsis (the tooltip has it all), below it the whole name
+                  display: { xs: 'block', sm: '-webkit-box' },
                   WebkitBoxOrient: 'vertical',
-                  WebkitLineClamp: { xs: 3, sm: 1 },
-                  overflow: 'hidden',
+                  WebkitLineClamp: { sm: 1 },
+                  overflow: { sm: 'hidden' },
                 }}
               />
             </Box>
