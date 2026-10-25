@@ -36,7 +36,8 @@ import org.slf4j.LoggerFactory;
  * Neither the access token of the person's account nor the short-lived credential of a pre-signed
  * download address appears in a log line of the connector, the file sync, the Graph client or the
  * source-access primitives at TRACE, nor in a protocol entry - across throttling, a refused and a
- * broken download, a refused token, another person's OneDrive and every call outside a run.
+ * broken download, a refused token, another person's OneDrive and every call outside a run. The log
+ * names neither the owner (address, name) nor her files and folders.
  */
 class OneDriveLogLeakTest {
 
@@ -129,6 +130,13 @@ class OneDriveLogLeakTest {
           .doesNotContain(server.presignedSecret())
           .doesNotContain("tempauth");
     }
+    // the protocol shows file names to the owner; the log names neither her nor her files
+    assertThat(logs)
+        .doesNotContain("anna@contoso.example")
+        .doesNotContain("Anna Amsel")
+        .doesNotContain("Bericht.txt")
+        .doesNotContain("Notiz.txt")
+        .doesNotContain("Akten");
   }
 
   private SourceSettings settings(ConnectorData data) {

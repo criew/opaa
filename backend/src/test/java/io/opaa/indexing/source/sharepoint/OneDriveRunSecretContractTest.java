@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.RunSecretContract;
 import io.opaa.indexing.spi.ScanJournal;
@@ -44,6 +45,7 @@ class OneDriveRunSecretContractTest extends RunSecretContract {
   private FakeGraphServer server;
   private String token = TOKEN_ANNA;
   private String configured = DRIVE_ANNA;
+  private IndexingRunMode mode = IndexingRunMode.FULL;
 
   @BeforeEach
   void serve() {
@@ -85,6 +87,11 @@ class OneDriveRunSecretContractTest extends RunSecretContract {
   @Override
   protected boolean ownerOnly() {
     return true;
+  }
+
+  @Override
+  protected IndexingRunMode runMode() {
+    return mode;
   }
 
   @Override
@@ -147,6 +154,42 @@ class OneDriveRunSecretContractTest extends RunSecretContract {
     verifyNoInteractions(cleanupService);
     assertThat(OneDriveTestDrives.touched(server, DRIVE_BERND)).isFalse();
     assertThat(server.requests()).anyMatch(request -> request.startsWith("/v1.0/me/drive"));
+  }
+
+  @Test
+  void aChangeRunIsRefusedBeforeItsFirstRequestToTheDriveToo() throws Exception {
+    mode = IndexingRunMode.INCREMENTAL;
+    configured = DRIVE_BERND;
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, OwnDrive.OTHER_DRIVE);
+    verify(ingestService, never()).ingest(any(), any());
+    assertThat(OneDriveTestDrives.touched(server, DRIVE_BERND)).isFalse();
+  }
+
+  @Test
+  void aRunOnAnAccountWithoutOneDriveFailsWithItsOwnReason() throws Exception {
+    token = "eyJ0eXAiOiJKV1QifQ.gast";
+    server.alsoAccept(token);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, OwnDrive.NO_DRIVE);
+    assertThat(OneDriveTestDrives.touched(server, DRIVE_ANNA)).isFalse();
+  }
+
+  @Test
+  void aRunWhoseAccountMayNotReadItsOneDriveFailsWithItsOwnReason() throws Exception {
+    server.failNext("me/drive", 403, "accessDenied", null, 1);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, OwnDrive.NOT_READABLE);
+    assertThat(OneDriveTestDrives.touched(server, DRIVE_ANNA)).isFalse();
   }
 
   @Test
