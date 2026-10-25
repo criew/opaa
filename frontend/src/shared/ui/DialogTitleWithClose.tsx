@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Box from '@mui/material/Box'
+import Tooltip from '@mui/material/Tooltip'
 import CloseIcon from '@mui/icons-material/Close'
 
 interface DialogTitleWithCloseProps {
@@ -30,14 +31,15 @@ export default function DialogTitleWithClose({ id, onClose, children }: DialogTi
       >
         {children}
       </Box>
-      <IconButton
-        onClick={onClose}
-        aria-label="Schließen"
-        title="Schließen"
-        sx={{ flex: 'none', mt: -0.75, mr: -1.5 }}
-      >
-        <CloseIcon fontSize="small" />
-      </IconButton>
+      <Tooltip title="Schließen">
+        <IconButton
+          onClick={onClose}
+          aria-label="Schließen"
+          sx={{ flex: 'none', mt: -0.75, mr: -1.5 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
     </DialogTitle>
   )
 }

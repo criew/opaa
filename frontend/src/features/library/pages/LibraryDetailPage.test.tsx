@@ -4206,9 +4206,7 @@ describe('LibraryDetailPage', () => {
     })
 
     it('keeps the outcome of a deletion that empties the library', async () => {
-      mockGetLibraryDocuments
-        .mockResolvedValueOnce(pageOf(uploads))
-        .mockResolvedValue(pageOf([]))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf(uploads)).mockResolvedValue(pageOf([]))
       mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
         deletedDocumentIds: ['doc-1', 'doc-2'],
         failures: [],
