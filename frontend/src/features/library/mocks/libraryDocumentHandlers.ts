@@ -159,6 +159,8 @@ export function resolveOrCreateMockFolderPath(
   return { folderId: parentFolderId }
 }
 
+const DOCUMENT_STATUSES: readonly DocumentStatus[] = ['PENDING', 'INDEXED', 'FAILED']
+
 export const libraryDocumentHandlers = [
   http.get('/api/v1/libraries/:libraryId/documents', ({ params, request }) => {
     const libraryId = String(params.libraryId)
@@ -194,6 +196,25 @@ export const libraryDocumentHandlers = [
     const size = Number(url.searchParams.get('size') ?? '20')
     const folderIdParam = url.searchParams.get('folderId')
     const missingMetadataField = url.searchParams.get('missingMetadataField')
+    // repeated ?status=FAILED&status=PENDING; a bare "status=" restricts nothing
+    const statuses = url.searchParams.getAll('status').filter(Boolean)
+    if (statuses.some((status) => !DOCUMENT_STATUSES.includes(status as DocumentStatus))) {
+      return HttpResponse.json({ error: 'Ungültiger Wert für Parameter: status' }, { status: 400 })
+    }
+    const matchesStatus = (doc: LibraryDocumentResponse) =>
+      statuses.length === 0 || statuses.includes(doc.status)
+    const matchesQ = (doc: LibraryDocumentResponse) =>
+      !q || doc.fileName.toLowerCase().includes(q.toLowerCase())
+    const rowPage = (matching: LibraryDocumentResponse[]) =>
+      HttpResponse.json({
+        items: matching.slice(page * size, page * size + size),
+        page,
+        size,
+        totalElements: matching.length,
+        folderId: null,
+        folders: [],
+        breadcrumb: [],
+      })
 
     // folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
     // unknown/foreign-folder 404 (ADR-0020).
@@ -226,18 +247,13 @@ export const libraryDocumentHandlers = [
         ((mockDocumentMetadata[doc.id] ?? []).find(
           (field) => field.fieldKey === missingMetadataField,
         )?.state ?? 'EMPTY') === 'EMPTY'
-      const matching = allDocuments.filter(
-        (doc) => (!q || doc.fileName.toLowerCase().includes(q.toLowerCase())) && isEmptyFor(doc),
+      return rowPage(
+        allDocuments.filter((doc) => matchesQ(doc) && isEmptyFor(doc) && matchesStatus(doc)),
       )
-      return HttpResponse.json({
-        items: matching.slice(page * size, page * size + size),
-        page,
-        size,
-        totalElements: matching.length,
-        folderId: null,
-        folders: [],
-        breadcrumb: [],
-      })
+    } else if (statuses.length > 0) {
+      // the status filter - bibliotheksweit over document rows like the anchor's list, so
+      // totalElements counts every row in those states, attachments included
+      return rowPage(allDocuments.filter((doc) => matchesQ(doc) && matchesStatus(doc)))
     } else if (q) {
       // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
       // folders/breadcrumb stay empty, folderId is echoed back as null. A hit on an attachment's

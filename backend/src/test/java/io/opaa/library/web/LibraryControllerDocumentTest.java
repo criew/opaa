@@ -37,6 +37,7 @@ import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.succession.SuccessionService;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -128,6 +129,7 @@ class LibraryControllerDocumentTest {
             eq("dienst"),
             any(),
             isNull(),
+            eq(Set.of()),
             argThat(
                 (Pageable p) ->
                     p.getPageNumber() == 1
@@ -159,7 +161,7 @@ class LibraryControllerDocumentTest {
     UUID folderId = UUID.randomUUID();
     var response = new LibraryDocumentPage(List.of(), 0, 20, 0L, List.of(), List.of(), folderId);
     when(libraryService.listDocuments(
-            eq(libraryId), eq(caller), isNull(), eq(folderId), isNull(), any()))
+            eq(libraryId), eq(caller), isNull(), eq(folderId), isNull(), eq(Set.of()), any()))
         .thenReturn(response);
 
     mockMvc
@@ -175,7 +177,13 @@ class LibraryControllerDocumentTest {
     UUID libraryId = UUID.randomUUID();
     var response = new LibraryDocumentPage(List.of(), 0, 20, 3L, List.of(), List.of(), null);
     when(libraryService.listDocuments(
-            eq(libraryId), eq(caller), isNull(), isNull(), eq("document_date"), any()))
+            eq(libraryId),
+            eq(caller),
+            isNull(),
+            isNull(),
+            eq("document_date"),
+            eq(Set.of()),
+            any()))
         .thenReturn(response);
 
     mockMvc
@@ -185,6 +193,58 @@ class LibraryControllerDocumentTest {
                 .with(asTestUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(3));
+  }
+
+  @Test
+  void listingDocumentsPassesEveryRepeatedStatusToTheService() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var response = new LibraryDocumentPage(List.of(), 0, 1, 4L, List.of(), List.of(), null);
+    when(libraryService.listDocuments(
+            eq(libraryId),
+            eq(caller),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(Set.of(DocumentStatus.FAILED, DocumentStatus.PENDING)),
+            any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("size", "1")
+                .param("status", "FAILED")
+                .param("status", "PENDING")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(4));
+  }
+
+  @Test
+  void listingDocumentsTreatsABareStatusAsNoRestriction() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var response = new LibraryDocumentPage(List.of(), 0, 20, 9L, List.of(), List.of(), null);
+    when(libraryService.listDocuments(
+            eq(libraryId), eq(caller), isNull(), isNull(), isNull(), eq(Set.of()), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("status", "")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(9));
+  }
+
+  @Test
+  void listingDocumentsRejectsAnUnknownStatusWith400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + UUID.randomUUID() + "/documents")
+                .param("status", "BROKEN")
+                .with(asTestUser()))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
