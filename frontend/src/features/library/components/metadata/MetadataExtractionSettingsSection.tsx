@@ -175,7 +175,11 @@ export default function MetadataExtractionSettingsSection({
               width: '100%',
               borderCollapse: 'collapse',
               tableLayout: 'fixed',
-              '& th:not(:first-of-type)': { width: 88 },
+              '& th:not(:first-of-type)': { width: { xs: 96, sm: 88 } },
+              // below sm only field and empty share: the origin columns would not fit (P25)
+              '& th:nth-of-type(2), & th:nth-of-type(3), & th:nth-of-type(4), & td:nth-of-type(2), & td:nth-of-type(3), & td:nth-of-type(4)':
+                { display: { xs: 'none', sm: 'table-cell' } },
+              '& td:first-of-type': { overflowWrap: 'break-word' },
               fontSize: 13,
               '& th': {
                 fontWeight: 400,

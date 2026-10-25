@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type { SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -371,7 +371,7 @@ export default function LibraryDocumentsSection({
                     size="small"
                     onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
                   >
-                    <MoreVertIcon fontSize="small" />
+                    <MoreHorizIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               )

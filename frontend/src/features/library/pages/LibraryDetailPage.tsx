@@ -302,6 +302,15 @@ export default function LibraryDetailPage() {
     documentCount: library?.documentCount ?? 0,
     spaceCount: catalog.entry?.spaceCount,
     pushSecretSet: Boolean(details?.pushSecretSet),
+    // read before the state word exists: the same facts it is made of
+    sourceConnected:
+      !details?.sourceBlock &&
+      !(
+        (runHistory?.[0]?.status ?? run.status) === 'FAILED' &&
+        ['AUTH', 'CREDENTIALS_REJECTED'].includes(
+          runHistory?.[0]?.failureCategory ?? run.failureCategory ?? '',
+        )
+      ),
     metadataEnabled: showMetadataTab,
   })
 

@@ -50,6 +50,8 @@ interface NextStepsInput {
   documentCount: number
   spaceCount: number | null | undefined
   pushSecretSet: boolean
+  /** The source answers: no block, no refused sign-in on the newest run. */
+  sourceConnected: boolean
   metadataEnabled: boolean
 }
 
@@ -98,7 +100,11 @@ export function useNextSteps(input: NextStepsInput): {
   ]
   // the wizard's own step, ticked: the list starts from what is already done
   if (input.sourceType !== 'UPLOAD') {
-    steps.unshift({ key: 'source', label: 'Quelle verbunden', done: true, tab: 'quelle' })
+    steps.unshift(
+      input.sourceConnected
+        ? { key: 'source', label: 'Quelle verbunden', done: true, tab: 'quelle' }
+        : { key: 'source', label: 'Zugang prüfen', done: false, tab: 'quelle', row: 'connection' },
+    )
   }
   if (input.sourceType === 'UPLOAD') {
     steps.unshift({

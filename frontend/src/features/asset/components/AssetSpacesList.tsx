@@ -42,11 +42,8 @@ function formatDate(value: string): string {
 
 /** Who associated and when - both only ever sent to a caller who manages the asset. */
 function provenance(association: AssetSpaceAssociationResponse): string | null {
-  const parts = [
-    association.createdByDisplayName ? `zugeordnet von ${association.createdByDisplayName}` : null,
-    association.createdAt ? `seit ${formatDate(association.createdAt)}` : null,
-  ].filter(Boolean)
-  return parts.length > 0 ? parts.join(' · ') : null
+  // the row keeps the date; who associated stands in the tooltip, so the row stays one line
+  return association.createdAt ? `seit ${formatDate(association.createdAt)}` : null
 }
 
 /** „Lösen“ as a text link at the right edge, the same form as „Entziehen“ in Freigaben (P45). */
@@ -207,13 +204,26 @@ export default function AssetSpacesList({
                       direction="row"
                       spacing={1}
                       useFlexGap
-                      sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
+                      // one line: the name gives way, „seit …“ keeps its place (P6)
+                      sx={{ alignItems: 'baseline', flexWrap: 'nowrap', minWidth: 0 }}
                     >
-                      <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
+                      <Typography
+                        noWrap
+                        title={association.spaceName}
+                        sx={{ fontSize: 13.5, fontWeight: 500, minWidth: 0 }}
+                      >
                         {association.spaceName}
                       </Typography>
                       {origin && (
-                        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                        <Typography
+                          noWrap
+                          title={
+                            association.createdByDisplayName
+                              ? `zugeordnet von ${association.createdByDisplayName}`
+                              : undefined
+                          }
+                          sx={{ fontSize: 12.5, color: 'text.secondary', flex: 'none' }}
+                        >
                           · {origin}
                         </Typography>
                       )}

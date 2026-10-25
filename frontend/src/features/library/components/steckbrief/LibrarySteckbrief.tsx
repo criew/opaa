@@ -152,6 +152,11 @@ export function StateLine({
   linkable?: boolean
 }) {
   const word = <StateDot tone={state.tone} label={state.word} strong />
+  const detail = state.detail && (
+    <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary', ml: 0.75 }}>
+      · {state.detail}
+    </Typography>
+  )
   return (
     <Box
       sx={{
@@ -173,6 +178,8 @@ export function StateLine({
           sx={{ minHeight: 24, display: 'inline-flex', alignItems: 'center' }}
         >
           {word}
+          {detail}
+          {/* the arrow ends the line: word and addition lead to the cause together */}
           <Box component="span" aria-hidden sx={{ color: 'primary.main', ml: 0.5 }}>
             ›
           </Box>
@@ -180,12 +187,8 @@ export function StateLine({
       ) : (
         <Box component="span" data-testid="library-state">
           {word}
+          {detail}
         </Box>
-      )}
-      {state.detail && (
-        <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-          · {state.detail}
-        </Typography>
       )}
     </Box>
   )
@@ -239,15 +242,41 @@ function NextStepsBlock({
   steps,
   onDismiss,
   targetSearch,
+  openOnly = false,
 }: {
   steps: NextStep[]
   onDismiss: () => void
   targetSearch: TargetSearch
+  /** Only the open steps, for the narrow line above the tabs. */
+  openOnly?: boolean
 }) {
+  const id = useId()
+  const shown = openOnly ? steps.filter((step) => !step.done) : steps
   return (
-    <Block title="Nächste Schritte">
+    <Box component="section" aria-labelledby={id} sx={{ '& + &': { mt: 2.5 } }}>
+      {/* „Ausblenden“ on the heading's line: the list ends with its last step */}
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.5 }}
+      >
+        <Typography
+          id={id}
+          component="h2"
+          sx={{ fontSize: 13, fontWeight: 600, color: 'text.primary' }}
+        >
+          Nächste Schritte
+        </Typography>
+        <Link
+          component="button"
+          type="button"
+          underline="hover"
+          onClick={onDismiss}
+          sx={{ fontSize: 12.5, minHeight: 24 }}
+        >
+          Ausblenden
+        </Link>
+      </Box>
       <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }} data-testid="next-steps">
-        {steps.map((step) => (
+        {shown.map((step) => (
           <Box
             component="li"
             key={step.key}
@@ -281,16 +310,7 @@ function NextStepsBlock({
           </Box>
         ))}
       </Box>
-      <Link
-        component="button"
-        type="button"
-        underline="hover"
-        onClick={onDismiss}
-        sx={{ fontSize: 12.5, mt: 0.5, minHeight: 24 }}
-      >
-        Ausblenden
-      </Link>
-    </Block>
+    </Box>
   )
 }
 
@@ -501,6 +521,7 @@ export default function LibrarySteckbrief(props: LibrarySteckbriefProps) {
               steps={props.steps}
               onDismiss={props.onDismissSteps}
               targetSearch={props.targetSearch}
+              openOnly
             />
           </Box>
         )}

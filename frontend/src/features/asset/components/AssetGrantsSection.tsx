@@ -456,23 +456,25 @@ export default function AssetGrantsSection({
               sx={{ mb: 1 }}
             />
           )}
-          <Box
-            aria-hidden
-            sx={{
-              display: { xs: 'none', sm: 'flex' },
-              gap: 1,
-              py: 0.5,
-              borderBottom: 1,
-              borderColor: 'divider',
-              fontSize: 12,
-              color: 'text.secondary',
-            }}
-          >
-            <Box sx={{ flex: 1 }}>Empfänger</Box>
-            <Box sx={{ width: 144 }}>Rolle</Box>
-            <Box sx={{ width: 112 }}>Befristung</Box>
-            <Box sx={{ width: 64 }} />
-          </Box>
+          {shownGrants.length > 0 && (
+            <Box
+              aria-hidden
+              sx={{
+                display: { xs: 'none', sm: 'flex' },
+                gap: 1,
+                py: 0.5,
+                borderBottom: 1,
+                borderColor: 'divider',
+                fontSize: 12,
+                color: 'text.secondary',
+              }}
+            >
+              <Box sx={{ flex: 1 }}>Empfänger</Box>
+              <Box sx={{ width: 144 }}>Rolle</Box>
+              <Box sx={{ width: 112 }}>Befristung</Box>
+              <Box sx={{ width: 64 }} />
+            </Box>
+          )}
           {shownGrants.map((grant) => {
             const expired = isExpired(grant.expiresAt)
             const subjectName = subjectDisplayName(grant)
