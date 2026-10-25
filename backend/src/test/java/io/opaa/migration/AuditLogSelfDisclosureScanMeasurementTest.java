@@ -7,6 +7,7 @@ import io.opaa.audit.AuditLogSelfDisclosureExporterFactory;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -50,7 +51,8 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
         firstMonth,
         MONTHS,
         sql -> {
-          // every 5,000th entry is about the person, a third each as actor, subject and object
+          // of every 15,000 entries one each names the person as actor, subject and object, and
+          // one as owner in the payload where it is an owner event
           fill(sql, firstMonth, "now() - interval '1 minute'", ROWS, 15_000);
         });
   }
@@ -135,6 +137,12 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
       System.out.printf(
           "[measure] filled %d month(s) in %s%n",
           months, Duration.ofNanos(System.nanoTime() - start));
+      String asOwner =
+          "event_type IN ('ASSET_OWNER_CHANGED', 'SPACE_CREATED') AND (before LIKE '%\"ownerId\":\""
+              + pseudonym
+              + "\"%' OR after LIKE '%\"ownerId\":\""
+              + pseudonym
+              + "\"%')";
       try (ResultSet rs =
           sql.executeQuery(
               "SELECT count(*) FILTER (WHERE actor_ref = '"
@@ -143,12 +151,18 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
                   + pseudonym
                   + "' OR object_id = '"
                   + pseudonym
-                  + "'), count(*) FROM audit_log")) {
+                  + "' OR ("
+                  + asOwner
+                  + ")), count(*) FILTER (WHERE "
+                  + asOwner
+                  + "), count(*) FILTER (WHERE event_type IN ('ASSET_OWNER_CHANGED',"
+                  + " 'SPACE_CREATED')), count(*) FROM audit_log")) {
         rs.next();
         expected = rs.getLong(1);
         System.out.printf(
-            "[measure] %,d entries in audit_log, %,d of them about the person%n",
-            rs.getLong(2), expected);
+            "[measure] %,d entries in audit_log, %,d owner entries, %,d of them about the person"
+                + " (%,d as owner in the payload)%n",
+            rs.getLong(4), rs.getLong(3), expected, rs.getLong(2));
       }
       try (ResultSet rs =
           sql.executeQuery(
@@ -160,28 +174,24 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
             rs.getString(1), rs.getLong(2));
       }
       LocalDate month = firstMonth.plusMonths(months / 2);
-      try (ResultSet rs =
-          sql.executeQuery(
-              "EXPLAIN (ANALYZE, BUFFERS) SELECT event_id FROM audit_log"
-                  + " WHERE organization_id = '"
-                  + ORG
-                  + "' AND recorded_at >= '"
-                  + month
-                  + "' AND recorded_at < '"
-                  + month.plusMonths(1)
-                  + "' AND ((actor_kind = 'USER' AND actor_ref = '"
-                  + pseudonym
-                  + "') OR (subject_kind = 'USER' AND subject_ref = '"
-                  + pseudonym
-                  + "') OR (object_type = 'USER_ACCOUNT' AND object_id = '"
-                  + pseudonym
-                  + "')) AND (event_type <> 'AUDIT_LOG_ACCESSED' OR (actor_kind = 'USER' AND"
-                  + " actor_ref = '"
-                  + pseudonym
-                  + "')) ORDER BY recorded_at, event_id")) {
-        System.out.println("[measure] plan of the id scan of one month window:");
-        while (rs.next()) {
-          System.out.println("[measure]   " + rs.getString(1));
+      try (PreparedStatement explain =
+          connection.prepareStatement(
+              "EXPLAIN (ANALYZE, BUFFERS) " + AuditLogSelfDisclosureExporterFactory.keysQuery())) {
+        Object[] arguments =
+            AuditLogSelfDisclosureExporterFactory.keysArguments(
+                UUID.fromString(ORG),
+                UUID.fromString(pseudonym),
+                person,
+                month.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                month.plusMonths(1).atStartOfDay(ZoneOffset.UTC).toInstant());
+        for (int i = 0; i < arguments.length; i++) {
+          explain.setObject(i + 1, arguments[i]);
+        }
+        try (ResultSet rs = explain.executeQuery()) {
+          System.out.println("[measure] plan of the id scan of one month window:");
+          while (rs.next()) {
+            System.out.println("[measure]   " + rs.getString(1));
+          }
         }
       }
     }
@@ -206,13 +216,24 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
   /**
    * Inserts {@code rows} entries spread evenly from {@code firstMonth} to {@code end}, by 5,000
    * other people; of every {@code personEvery} entries one each names the person as actor, subject
-   * and account object (none for 0). 40 % of the others carry a subject, 20 % a payload.
+   * and account object, and one as owner in the payload where it is an owner event (none for 0). 40
+   * % of the others carry a subject; two of seven are owner events with an owner in the payload,
+   * one of seven carries another payload.
    */
   private void fill(Statement sql, LocalDate firstMonth, String end, long rows, long personEvery)
       throws SQLException {
     long every = personEvery == 0 ? Long.MAX_VALUE : personEvery;
     long asSubject = every / 3;
     long asObject = 2 * every / 3;
+    long asOwner = every / 6;
+    String owner =
+        "CASE WHEN i % "
+            + every
+            + " = "
+            + asOwner
+            + " THEN '"
+            + pseudonym
+            + "' ELSE refs[(1 + (i * 6007) % 5000)::int] END";
     sql.execute(
         "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
             + " event_type, object_type, object_id, object_label, subject_kind, subject_ref,"
@@ -236,7 +257,8 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
             + pseudonym
             + "' ELSE refs[(1 + (i * 7919) % 5000)::int] END,"
             + " (ARRAY['SPACE_MEMBER_ADDED','GROUP_MEMBER_ADDED','ASSET_GRANT_GRANTED',"
-            + "'LIBRARY_CHANGED','LOCAL_SESSION_REVOKED'])[1 + i % 5],"
+            + "'LIBRARY_CHANGED','LOCAL_SESSION_REVOKED','ASSET_OWNER_CHANGED',"
+            + "'SPACE_CREATED'])[1 + i % 7],"
             + " CASE WHEN i % "
             + every
             + " = "
@@ -262,8 +284,14 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
             + " THEN '"
             + pseudonym
             + "' WHEN i % 5 < 2 THEN refs[(1 + (i * 104729) % 5000)::int] END,"
-            + " NULL,"
-            + " CASE WHEN i % 5 = 0 THEN '{\"role\":\"MEMBER\"}' END,"
+            + " CASE WHEN i % 7 = 5 THEN '{\"ownerId\":\"' || "
+            + owner
+            + " || '\"}' END,"
+            + " CASE i % 7 WHEN 0 THEN '{\"role\":\"MEMBER\"}'"
+            + " WHEN 5 THEN '{\"ownerId\":\"' || refs[(1 + (i * 3001) % 5000)::int] || '\"}'"
+            + " WHEN 6 THEN '{\"name\":\"Raum\",\"ownerId\":\"' || "
+            + owner
+            + " || '\",\"chatAutoCleanup\":false}' END,"
             + " 'SUCCESS', NULL, NULL"
             + " FROM others, generate_series(1::bigint, "
             + rows

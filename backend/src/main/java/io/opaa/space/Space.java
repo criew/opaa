@@ -2,6 +2,7 @@ package io.opaa.space;
 
 import io.opaa.audit.AuditNeutralLabels;
 import io.opaa.permission.AssetType;
+import io.opaa.permission.PermissionSubject;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -188,6 +189,11 @@ public class Space {
 
   public UUID getOwnerId() {
     return ownerId;
+  }
+
+  /** The owner as permission subject - a space owner is always a person. */
+  public PermissionSubject ownerSubject() {
+    return PermissionSubject.user(ownerId, organizationId);
   }
 
   public UUID getOrganizationId() {

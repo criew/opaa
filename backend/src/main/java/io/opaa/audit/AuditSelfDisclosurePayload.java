@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -23,11 +24,14 @@ import tools.jackson.databind.json.JsonMapper;
  */
 final class AuditSelfDisclosurePayload {
 
-  /** Keys whose value names a person (pseudonym or account id) or an owning group. */
-  static final Set<String> PERSON_KEYS = Set.of("ownerId");
+  /** Keys whose value names a person (pseudonym or account id) or a group. */
+  static final Set<String> PERSON_KEYS =
+      AuditPayloadPersons.SELF_DISCLOSURE.stream()
+          .map(AuditPayloadPersons.PayloadKey::key)
+          .collect(Collectors.toUnmodifiableSet());
 
   /** What stands for an id under {@link #PERSON_KEYS} that is not the person's own. */
-  static final String OTHER_OWNER = SelfDisclosureLabels.OTHER_PERSON + " oder Gruppe";
+  static final String OTHER_PERSON_OR_GROUP = SelfDisclosureLabels.OTHER_PERSON + " oder Gruppe";
 
   static final Map<AuditEventType, Set<String>> KEYS = keys();
 
@@ -65,7 +69,7 @@ final class AuditSelfDisclosurePayload {
             key,
             value.isString() && Arrays.asList(ownRefs).contains(value.stringValue())
                 ? SelfDisclosureLabels.YOU
-                : OTHER_OWNER);
+                : OTHER_PERSON_OR_GROUP);
       } else if (value.isValueNode() || isListOfValues(value)) {
         disclosed.put(key, value);
       }
@@ -197,7 +201,19 @@ final class AuditSelfDisclosurePayload {
             "ownedAssets",
             "stewardships",
             "rows"),
-        PERMISSION_TRANSFER_PREVIEWED,
+        PERMISSION_TRANSFER_PREVIEWED);
+    put(
+        keys,
+        Set.of(
+            "targetType",
+            "targetId",
+            "scope",
+            "assetGrants",
+            "spaceMemberships",
+            "capabilities",
+            "ownedAssets",
+            "stewardships",
+            "rows"),
         PERMISSION_TRANSFER_EXECUTED);
     put(
         keys,

@@ -239,6 +239,159 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
     assertThat(records.toString()).doesNotContain("Raum Fremd", "Klärung über Selma");
   }
 
+  /**
+   * An owner entry by someone else names the person only under {@code ownerId}: by pseudonym, in
+   * entries before the pseudonymisation of owners by account id. Only event types with an owner are
+   * searched there.
+   */
+  @Test
+  void ownerEntriesFindThePersonUnderOwnerIdOnlyForEventTypesWithAnOwner() throws Exception {
+    Instant now = Instant.now();
+    entry(
+        now,
+        "USER",
+        otherPseudonym,
+        "ASSET_OWNER_CHANGED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Gamma",
+        null,
+        null,
+        "{\"ownerId\":\"" + selfPseudonym + "\"}",
+        "{\"ownerId\":\"" + otherPseudonym + "\"}",
+        null);
+    entry(
+        now.plusMillis(1),
+        "USER",
+        otherPseudonym,
+        "SPACE_DELETED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Delta",
+        null,
+        null,
+        "{\"name\":\"Raum Delta\",\"ownerId\":\"" + self + "\"}",
+        null,
+        null);
+    entry(
+        now.plusMillis(2),
+        "USER",
+        otherPseudonym,
+        "LIBRARY_CHANGED",
+        "KNOWLEDGE_LIBRARY",
+        UUID.randomUUID().toString(),
+        "Bibliothek Fremd",
+        null,
+        null,
+        null,
+        "{\"changedFields\":[\"name\"],\"ownerId\":\"" + selfPseudonym + "\"}",
+        null);
+    entry(
+        now.plusMillis(3),
+        "USER",
+        otherPseudonym,
+        "SPACE_CREATED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Fremd",
+        null,
+        null,
+        null,
+        "{\"name\":\"Raum Fremd\",\"ownerId\":\"" + otherPseudonym + "\"}",
+        null);
+
+    List<Map<String, Object>> records = export(self);
+
+    assertThat(records)
+        .extracting(r -> r.get("eventType"))
+        .containsExactly("ASSET_OWNER_CHANGED", "SPACE_DELETED");
+    assertThat(records.get(0))
+        .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
+        .containsEntry("before", "{\"ownerId\":\"Sie\"}")
+        .containsEntry(
+            "after", "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_PERSON_OR_GROUP + "\"}");
+    assertThat(records.get(1))
+        .containsEntry("before", "{\"name\":\"Raum Delta\",\"ownerId\":\"Sie\"}");
+    assertThat(records.toString())
+        .doesNotContain("Bibliothek Fremd", "Raum Fremd", self.toString(), selfPseudonym);
+  }
+
+  /**
+   * The target of a transfer of rights is named only under {@code targetId}, by pseudonym or, in
+   * older entries, by account id; only an executed transfer is searched there, never a preview,
+   * which names the source's holdings for a transfer that may never run.
+   */
+  @Test
+  void transferEntriesFindTheTargetUnderTargetIdOnlyForAnExecutedTransfer() throws Exception {
+    Instant now = Instant.now();
+    entry(
+        now,
+        "USER",
+        otherPseudonym,
+        "PERMISSION_TRANSFER_EXECUTED",
+        "USER_ACCOUNT",
+        otherPseudonym,
+        OTHER_NAME,
+        "USER",
+        otherPseudonym,
+        null,
+        "{\"targetType\":\"USER\",\"targetId\":\"" + selfPseudonym + "\",\"rows\":2}",
+        null);
+    entry(
+        now.plusMillis(1),
+        "USER",
+        otherPseudonym,
+        "PERMISSION_TRANSFER_EXECUTED",
+        "USER_ACCOUNT",
+        otherPseudonym,
+        OTHER_NAME,
+        "USER",
+        otherPseudonym,
+        null,
+        "{\"targetType\":\"USER\",\"targetId\":\"" + self + "\",\"rows\":2}",
+        null);
+    entry(
+        now.plusMillis(2),
+        "USER",
+        otherPseudonym,
+        "PERMISSION_TRANSFER_PREVIEWED",
+        "USER_ACCOUNT",
+        otherPseudonym,
+        OTHER_NAME,
+        "USER",
+        otherPseudonym,
+        null,
+        "{\"targetType\":\"USER\",\"targetId\":\"" + selfPseudonym + "\",\"rows\":2}",
+        null);
+    entry(
+        now.plusMillis(3),
+        "USER",
+        otherPseudonym,
+        "GROUP_CHANGED",
+        "GROUP",
+        UUID.randomUUID().toString(),
+        "Gruppe Fremd",
+        null,
+        null,
+        null,
+        "{\"targetId\":\"" + selfPseudonym + "\"}",
+        null);
+
+    List<Map<String, Object>> records = export(self);
+
+    assertThat(records)
+        .extracting(r -> r.get("eventType"))
+        .containsExactly("PERMISSION_TRANSFER_EXECUTED", "PERMISSION_TRANSFER_EXECUTED");
+    assertThat(records)
+        .allSatisfy(
+            r ->
+                assertThat(r)
+                    .containsEntry("subject", SelfDisclosureLabels.OTHER_PERSON)
+                    .containsEntry(
+                        "after", "{\"targetType\":\"USER\",\"targetId\":\"Sie\",\"rows\":2}"));
+    assertThat(records.toString()).doesNotContain("Gruppe Fremd", self.toString(), selfPseudonym);
+  }
+
   @Test
   void readsEveryMonthAndBeyondOnePage() throws Exception {
     Instant now = Instant.now();
@@ -293,6 +446,68 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
     jdbc.update("DELETE FROM audit_actor_pseudonyms WHERE user_id = ?", self);
 
     assertThat(export(self)).isEmpty();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_actor_pseudonyms WHERE user_id = ?", Long.class, self))
+        .isZero();
+  }
+
+  /**
+   * Without a pseudonym the person still finds the older entries that name her as owner or target
+   * by account id; an entry under her former pseudonym no longer leads to her, and none is minted.
+   */
+  @Test
+  void aPersonWithoutPseudonymStillFindsOlderEntriesNamingHerAccountId() throws Exception {
+    jdbc.update("DELETE FROM audit_actor_pseudonyms WHERE user_id = ?", self);
+    Instant now = Instant.now();
+    entry(
+        now,
+        "USER",
+        otherPseudonym,
+        "ASSET_OWNER_CHANGED",
+        "SPACE",
+        UUID.randomUUID().toString(),
+        "Raum Alt",
+        null,
+        null,
+        "{\"ownerId\":\"" + self + "\"}",
+        "{\"ownerId\":\"" + other + "\"}",
+        null);
+    entry(
+        now.plusMillis(1),
+        "USER",
+        otherPseudonym,
+        "PERMISSION_TRANSFER_EXECUTED",
+        "USER_ACCOUNT",
+        otherPseudonym,
+        OTHER_NAME,
+        "USER",
+        otherPseudonym,
+        null,
+        "{\"targetType\":\"USER\",\"targetId\":\"" + self + "\"}",
+        null);
+    entry(
+        now.plusMillis(2),
+        "USER",
+        selfPseudonym,
+        "LIBRARY_CHANGED",
+        "KNOWLEDGE_LIBRARY",
+        UUID.randomUUID().toString(),
+        "Bibliothek Alt",
+        null,
+        null,
+        null,
+        "{\"changedFields\":[\"name\"]}",
+        null);
+
+    List<Map<String, Object>> records = export(self);
+
+    assertThat(records)
+        .extracting(r -> r.get("eventType"))
+        .containsExactly("ASSET_OWNER_CHANGED", "PERMISSION_TRANSFER_EXECUTED");
+    assertThat(records.get(0)).containsEntry("before", "{\"ownerId\":\"Sie\"}");
+    assertThat(records.get(1))
+        .containsEntry("after", "{\"targetType\":\"USER\",\"targetId\":\"Sie\"}");
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM audit_actor_pseudonyms WHERE user_id = ?", Long.class, self))

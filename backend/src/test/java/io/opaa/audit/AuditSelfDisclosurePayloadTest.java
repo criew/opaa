@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AuditEventType;
 import java.util.Arrays;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** The positive list of {@code before}/{@code after} keys a self-disclosure repeats. */
@@ -16,6 +17,20 @@ class AuditSelfDisclosurePayloadTest {
   void everyEventTypeHasADecision() {
     assertThat(AuditSelfDisclosurePayload.KEYS.keySet())
         .containsExactlyInAnyOrder(AuditEventType.values());
+  }
+
+  /** Each payload key is searched for exactly the event types whose list repeats it. */
+  @Test
+  void eachPayloadKeyIsSearchedForTheEventTypesWhoseListHoldsIt() {
+    for (AuditPayloadPersons.PayloadKey key : AuditPayloadPersons.SELF_DISCLOSURE) {
+      assertThat(key.eventTypes())
+          .as(key.key())
+          .containsExactlyInAnyOrderElementsOf(
+              AuditSelfDisclosurePayload.KEYS.entrySet().stream()
+                  .filter(e -> e.getValue().contains(key.key()))
+                  .map(Map.Entry::getKey)
+                  .toList());
+    }
   }
 
   @Test
@@ -71,6 +86,8 @@ class AuditSelfDisclosurePayloadTest {
     assertThat(
             AuditSelfDisclosurePayload.KEYS.values().stream()
                 .flatMap(keys -> keys.stream())
+                // a person key goes out only as "Sie" or another person, never with its value
+                .filter(key -> !AuditSelfDisclosurePayload.PERSON_KEYS.contains(key))
                 .distinct())
         .doesNotContainAnyElementsOf(
             Arrays.asList(
@@ -94,5 +111,7 @@ class AuditSelfDisclosurePayloadTest {
                 "scopeId",
                 "correlationRef",
                 "proxyUrl"));
+    assertThat(AuditSelfDisclosurePayload.PERSON_KEYS)
+        .containsExactlyInAnyOrder("ownerId", "targetId");
   }
 }

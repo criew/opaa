@@ -6,9 +6,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -40,18 +38,10 @@ class PersonalSpaceDeletionListener {
               .actor(event.actor().id())
               .type(AuditEventType.SPACE_DELETED)
               .object(AuditObjectType.SPACE, space.getId(), space.auditName())
-              .before(spaceAuditPayload(space, audit))
+              .before(SpaceService.spaceAuditPayload(space, audit))
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
     spaces.deleteAll(personal);
-  }
-
-  /** The same payload {@code SpaceService} writes for a space deletion. */
-  private static Map<String, Object> spaceAuditPayload(Space space, AuditEventRecorder audit) {
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put(
-        "ownerId", audit.pseudonymFor(space.getOwnerId(), space.getOrganizationId()).toString());
-    return payload;
   }
 }

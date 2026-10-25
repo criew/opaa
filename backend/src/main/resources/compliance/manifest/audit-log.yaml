@@ -82,7 +82,7 @@ data:
           - correlation_ref
           - schema_version
         person:
-          columns: [actor_ref, subject_ref, object_id]
+          columns: [actor_ref, subject_ref, object_id, before, after]
           excludedColumns:
             actor_ref: >-
               Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
@@ -96,8 +96,14 @@ data:
               sagt nur, ob ein Anlass angegeben war
           note: >-
             Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
-            Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
-            Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
+            Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. In before und after sucht die
+            Auskunft unter ownerId bei SPACE_CREATED, SPACE_DELETED, SPACE_ARCHIVED und
+            ASSET_OWNER_CHANGED (die Besitzerin) und unter targetId nur bei
+            PERMISSION_TRANSFER_EXECUTED (das Ziel der Übertragung), jeweils nach dem Pseudonym und
+            nach der Kontokennung älterer Einträge, auch wenn die Person kein Pseudonym hat; beide
+            Angaben gehen nur als „Sie“ oder „andere Person oder Gruppe“ heraus. Die anlassbezogene
+            Klärung durchsucht before und after nicht. Ereignisse einer
+            anlassbezogenen Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
             entfällt, Bezeichnungen anderer Objekte (Spaces, Gruppen, Bibliotheken) bleiben
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
@@ -106,9 +112,10 @@ data:
     visibility:
       - AUDITOR
       - >-
-        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen oder
-        Kontoobjekt ist, ohne Pseudonyme und Begründungen, andere Beteiligte als „andere Person“
-        oder „System“
+        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen,
+        Kontoobjekt, als Besitzerin oder als Ziel einer ausgeführten Rechteübertragung genannt
+        ist (die Vorschau einer Übertragung nicht), ohne Pseudonyme und Begründungen, andere
+        Beteiligte als „andere Person“ oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
@@ -442,6 +449,12 @@ auditEvents:
     trigger: Nicht mehr geschrieben; frühere Fassung von ASSET_DETACHED_FROM_SPACE
   - id: ASSET_OWNER_CHANGED
     trigger: Die Eigentümerschaft eines Assets geht über
+    details: >-
+      before und after nennen die bisherige und die neue Besitzerin: eine Person als Pseudonym,
+      eine Gruppe mit ihrer Kennung. Ein Eintrag je Vorgang; beide Personen finden ihn in ihrer
+      Selbstauskunft, auch wenn eine Dritte handelt. Die anlassbezogene Klärung findet ihn nur über
+      die handelnde Person. Einträge von vor dem Update tragen die Kontokennung bis zum Ablauf der
+      Frist
     payloadKeys: [ownerId, transferId]
   - id: ASSET_OWNERSHIP_CLAIMED
     trigger: Ein Asset ohne Zuständigkeit wird übernommen (noch nicht verdrahtet)
@@ -534,6 +547,10 @@ auditEvents:
     payloadKeys: [capability, scope, subjectType]
   - id: PERMISSION_TRANSFER_PREVIEWED
     trigger: Die Vorschau einer Rechteübertragung wird abgerufen, auch ohne Ausführung
+    details: >-
+      Die Vorschau erscheint nicht in der Selbstauskunft der Zielperson; sie nennt Umfangszahlen
+      der Quelle zu einer Übertragung, die nie ausgeführt sein muss. In der Auskunft der
+      Handelnden und der Quelle fehlt das Ziel
     payloadKeys:
       - assetGrants
       - capabilities
@@ -546,7 +563,10 @@ auditEvents:
       - targetType
   - id: PERMISSION_TRANSFER_EXECUTED
     trigger: Die Rechte eines Subjekts werden auf ein anderes übertragen
-    details: Quelle, Ziel, Umfang und Zahl der Zeilen
+    details: >-
+      Quelle, Ziel, Umfang und Zahl der Zeilen; eine Person als Ziel erscheint als Pseudonym und
+      findet den Eintrag in ihrer Selbstauskunft, mit den Umfangszahlen der auf sie übertragenen
+      Rechte
     payloadKeys:
       - assetGrants
       - capabilities
