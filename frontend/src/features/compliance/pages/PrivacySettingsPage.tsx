@@ -5,9 +5,15 @@ import { useAuthStore } from '@/shared/session/authStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { contentWidth } from '@/shared/theme/tokens'
+import ChatAutoCleanupRetentionSection from '../components/ChatAutoCleanupRetentionSection'
+import IncidentScopeRetentionSection from '../components/IncidentScopeRetentionSection'
+import LockedAccountChatRetentionSection from '../components/LockedAccountChatRetentionSection'
 import SelfDisclosureSettingsSection from '../components/SelfDisclosureSettingsSection'
 
-/** The installation's data protection settings in the administration (system admin only). */
+/**
+ * The installation's data protection settings in the administration (system admin only): the
+ * self-disclosure and the retention periods held in the database.
+ */
 export default function PrivacySettingsPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
 
@@ -29,9 +35,12 @@ export default function PrivacySettingsPage() {
         <AreaPageHeader
           icon={PrivacyTipOutlinedIcon}
           title="Datenschutz"
-          description="Gilt für die gesamte Installation: wie Personen Auskunft über ihre eigenen Daten erhalten."
+          description="Gilt für die gesamte Installation: wie Personen Auskunft über ihre eigenen Daten erhalten und wie lange Chats und anlassbezogene Klärungen aufbewahrt werden."
         />
         <SelfDisclosureSettingsSection />
+        <ChatAutoCleanupRetentionSection />
+        <LockedAccountChatRetentionSection />
+        <IncidentScopeRetentionSection />
       </Box>
     </Box>
   )

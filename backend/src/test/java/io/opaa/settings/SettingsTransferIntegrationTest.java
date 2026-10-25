@@ -194,6 +194,12 @@ class SettingsTransferIntegrationTest {
     sections.withObject("privateStorageQuota").put("quotaBytes", 1_073_741_824L);
     sections.withObject("fullSyncRhythm").put("SHAREPOINT", 3);
     sections.withObject("selfDisclosure").put("dailyLimit", 7);
+    sections.withObject("chatAutoCleanup").put("archiveAfterDays", 120).put("deleteAfterDays", 400);
+    sections
+        .withObject("lockedAccountChatCleanup")
+        .put("enabled", true)
+        .put("deleteAfterDays", 500);
+    sections.withObject("incidentScopeRetention").put("retentionYears", 2);
     assertThat(sections.propertyNames())
         .as("every registered section is changed by this test")
         .containsExactlyInAnyOrderElementsOf(

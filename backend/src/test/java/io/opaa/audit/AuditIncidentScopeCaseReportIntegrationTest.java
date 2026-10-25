@@ -57,6 +57,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private AuditIncidentScopeRetentionSettings retentionSettings;
 
   private UUID organizationId;
   private UUID requester;
@@ -127,7 +128,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
 
     new AuditIncidentScopeRetentionService(
             grantRepository,
-            AuditIncidentScopeRetention.defaults(),
+            retentionSettings,
             Clock.fixed(Instant.parse("2003-01-01T00:00:00Z"), ZoneOffset.UTC))
         .runOnce();
 

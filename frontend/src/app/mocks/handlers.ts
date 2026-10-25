@@ -58,6 +58,7 @@ import { diagnosticAccessHandlers } from '@/features/library/mocks/diagnosticAcc
 import { notificationHandlers } from '@/features/notification/mocks/notificationHandlers'
 // compliance
 import { selfDisclosureHandlers } from '@/features/compliance/mocks/selfDisclosureHandlers'
+import { retentionHandlers } from '@/features/compliance/mocks/retentionHandlers'
 // auth
 import { authHandlers } from '@/shared/mocks/authHandlers'
 import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
@@ -134,6 +135,7 @@ export const handlers = [
   ...notificationHandlers,
   // compliance
   ...selfDisclosureHandlers,
+  ...retentionHandlers,
   // auth
   ...authHandlers,
   ...localAuthHandlers,

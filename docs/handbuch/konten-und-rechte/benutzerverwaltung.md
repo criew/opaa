@@ -318,8 +318,8 @@ Fälle ist die Sperre der vorgesehene Weg.
 ### Was mit den Chats eines gesperrten Kontos geschieht
 
 Sperrt die Verwaltung ein lokales Konto, löscht OPAA seine Chats nach einer Frist ab der Sperre
-(`opaa.chat.locked-account-cleanup.*`, Werte im Kapitel [Suche](../spaces/suche.md), Abschnitt zur
-Chat-Bereinigung). Beispiel: Eine Sachbearbeiterin scheidet aus, ihr Konto wird gesperrt; nach Ablauf
+(einstellbar unter Administration → Datenschutz, Werte im Kapitel [Suche](../spaces/suche.md),
+Abschnitt zur Chat-Bereinigung). Beispiel: Eine Sachbearbeiterin scheidet aus, ihr Konto wird gesperrt; nach Ablauf
 der Frist sind ihre Chats in allen Spaces fort, auch angeheftete und die im persönlichen Space. Das
 Konto und der persönliche Space bleiben.
 
@@ -353,7 +353,8 @@ Konto und der persönliche Space bleiben.
 - **Geteilte Chats** bleiben, bis die Bereinigung ihres Space oder eine Löschung von Hand sie
   erfasst. Teilen lassen sich Chats derzeit nicht.
 
-Abschalten kann nur der Betrieb, mit `opaa.chat.locked-account-cleanup.enabled`; nach dem
+Abschalten und die Frist ändern kann die Systemverwaltung unter **Administration → Datenschutz**,
+Abschnitt „Chats gesperrter Konten“; jede Änderung steht im Revisionsprotokoll, nach dem
 Wiedereinschalten beginnt jede Frist neu. Bei der Einführung zählt die Frist frühestens ab dem
 Update, auch für Konten, die schon länger gesperrt sind.
 

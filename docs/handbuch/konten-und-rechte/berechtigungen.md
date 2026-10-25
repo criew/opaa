@@ -619,9 +619,9 @@ Nachweisprotokoll.
 
 **Wie lange eine anlassbezogene Klärung liegt.** Antrag und Freigabe bleiben mit Person, Zeitraum,
 Zweck und Begründung als Nachweis erhalten, nachdem die Freigabe nicht mehr nutzbar ist, und werden
-dann automatisch gelöscht, freigegebene wie nie freigegebene; die Frist steht in der Konfiguration
-(Abschnitt 15, `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS`). Eine Dienstvereinbarung kann sie
-verlängern. Für den Bericht an die Personalvertretung zählt OPAA jeden Antrag, jede Freigabe und
+dann automatisch gelöscht, freigegebene wie nie freigegebene; die Frist stellt die Systemverwaltung
+unter Administration → Datenschutz ein (Abschnitt 15). Eine Dienstvereinbarung kann sie
+verlängern; jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll. Für den Bericht an die Personalvertretung zählt OPAA jeden Antrag, jede Freigabe und
 das Ende ihrer Nutzbarkeit je Monat und Zweck mit; diese Zahlen bleiben nach dem Löschen der
 einzelnen Klärungen erhalten, nennen keine Person und erscheinen in der Auskunft über die
 Datenerhebung. Solange ein Antrag offen oder eine Freigabe noch nutzbar ist,
@@ -1026,7 +1026,7 @@ eingebaut.
 | `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](../spaces/suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
-| `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | **1 Jahr** | 1 bis 10 Jahre; ein Wert außerhalb bricht den Start ab | Löschfrist der anlassbezogenen Klärungen (Abschnitt 10): gelöscht wird am Ende des Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt. Die Nutzbarkeit einer Freigabe ist fest **30 Tage**; für die Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antrag plus 30 Tage — freigeben lässt er sich auch danach |
+| Löschfrist der anlassbezogenen Klärungen | **1 Jahr** (Werkseinstellung) | 1 bis 10 Jahre | Verwaltungseinstellung der Systemverwaltung unter Administration → Datenschutz, Abschnitt „Anlassbezogene Klärungen“; einen Wert außerhalb weist sie ab, die Datenbank erzwingt die Grenzen zusätzlich, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll und wirkt mit dem nächsten täglichen Lauf um 03:15 Uhr Serverzeit auf allen Instanzen; setzt eine laufende Instanz noch `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` auf mehr Jahre, pausiert die Löschung, bis hier ein Wert gespeichert ist (Abschnitt 10): gelöscht wird am Ende des Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt. Die Nutzbarkeit einer Freigabe ist fest **30 Tage**; für die Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antrag plus 30 Tage — freigeben lässt er sich auch danach |
 | Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Anbindungen → Einstellungen, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |

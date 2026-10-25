@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053
+Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053
 
 ## Kontext
 
@@ -141,6 +141,22 @@ gegen die Grenzen des Betriebs (Entscheidung 2) und ist ein Revisionsereignis. B
 die Einstellungen in der Datenbank, lassen sich Test und Produktion nicht mehr über die
 Konfiguration vergleichen.
 
+### 13. Eine entfallene Lösch- oder Aufbewahrungsvariable bremst nur
+
+Wandert eine Lösch- oder Aufbewahrungsfrist aus der Konfiguration in die Datenbank, wird ihre
+entfallene Variable nie als Wert übernommen (Entscheidung 1). Solange die Systemverwaltung noch keinen
+eigenen Wert gespeichert hat und eine laufende Instanz die Variable, unter Umgebungs- oder
+Property-Namen, auf eine längere Frist setzt, die Löschung abschaltet oder einen Wert setzt, den die
+frühere Bindung nicht lesen würde, hält der Löschschritt an, den die Frist steuert; Umkehrbares wie
+das Archivieren läuft weiter. Gelesen wird der Altwert mit derselben Umwandlung wie früher. Jede
+Instanz meldet ihre gesetzten Altwerte beim Start ins Instanzregister
+(`backend_instances.retired_settings`), und jeder Lauf fragt alle lebenden Instanzen: Eine einzige
+Instanz mit der Variable hält damit die Läufe aller Instanzen an, gleich wo die Sperre des Laufs
+liegt. Ein gespeicherter Wert, auch die Werkseinstellung, oder die auf allen lebenden Instanzen
+entfernte Variable beendet die Pause; der Lauf meldet jede Pause als Fehler im Log, die Verwaltung
+zeigt sie an. Begründung: Ein Update darf nicht unwiderruflich früher löschen, als der Betrieb
+eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
+
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
@@ -157,6 +173,8 @@ Konfiguration vergleichen.
 
 - Vorgaben aus der Konfiguration, die die Datenbank überschreibt — zwei Orte für einen Wert, genau
   das Problem dieses ADR.
+- Eine entfallene Fristvariable beim ersten Start in die Datenbank übernehmen — wäre ein Startwert
+  aus der Konfiguration (Entscheidung 1); stattdessen bremst sie nur (Entscheidung 13).
 - Installations-API ohne Token, abgesichert nur über Netzbereiche — eine Fehlkonfiguration des Netzes
   gäbe die Installation frei.
 - Antwortdatei nur über die API — ein Helm-Hook oder Job müsste das Token kennen und den Zeitpunkt

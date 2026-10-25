@@ -114,6 +114,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "audit_incident_scope_case_counts",
             "audit_incident_scope_grants",
             "audit_incident_scope_monthly_counts",
+            "audit_incident_scope_retention_settings",
             "audit_log",
             "audit_retention_settings",
             "branding_settings",
@@ -204,6 +205,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "connector_type_policies",
             "library_connections",
             // workspace
+            "chat_auto_cleanup_settings",
             "diagnostic_context_log",
             "diagnostic_context_retention_settings",
             "diagnostic_impersonation_grants",
@@ -219,6 +221,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "chat_note_items",
             "chat_personal_marks",
             "chats",
+            "locked_account_chat_cleanup_settings",
             "prompt_libraries",
             "prompts",
             "search_status_probes",

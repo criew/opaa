@@ -232,16 +232,6 @@ opaa:
       # (docs/features/conversation-memory.md). Everything else about the note is a fixed
       # value with no addressee to reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
-    # Periods of the automatic chat cleanup a space can switch on (io.opaa.space.
-    # ChatAutoCleanupProperties). Floors 90 and 30 days; a smaller value stops the start.
-    auto-cleanup:
-      archive-after-days: ${OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS:90}
-      delete-after-days: ${OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS:365}
-    # Deletion of the chats of local accounts locked by the administration (io.opaa.chat.
-    # LockedAccountChatCleanupProperties). Floor 90 days; a smaller value stops the start.
-    locked-account-cleanup:
-      enabled: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED:true}
-      delete-after-days: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS:365}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
@@ -785,9 +775,6 @@ opaa:
     read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
     write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
   audit:
-    # Grants of the anlassbezogene Klaerung are deleted at the end of the calendar year that lies
-    # this many years after the end of their usability (1 to 10).
-    incident-scope-retention-years: ${OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS:1}
     payload:
       # A before/after key the event catalog (AuditEventCatalog) does not list is dropped and
       # logged; the dev profile and every test refuse the write instead.
