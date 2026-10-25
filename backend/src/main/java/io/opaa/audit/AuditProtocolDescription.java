@@ -66,8 +66,8 @@ final class AuditProtocolDescription {
         new QueryPath(
             "anlassbezogene Klärung",
             "Die einzige Abfrage nach handelnder Person durch Dritte: alle Ereignisse der vorab"
-                + " festgelegten Person und die Einträge, die sie als Besitzerin nennen, in einem"
-                + " Zeitraum innerhalb des freigegebenen Zeitraums; nur mit"
+                + " festgelegten"
+                + " Person in einem Zeitraum innerhalb des freigegebenen Zeitraums; nur mit"
                 + " Freigabe im Vier-Augen-Prinzip durch eine zweite Person, nutzbar "
                 + AuditIncidentScopeGrant.USABLE_WINDOW.toDays()
                 + " Tage ab Freigabe"

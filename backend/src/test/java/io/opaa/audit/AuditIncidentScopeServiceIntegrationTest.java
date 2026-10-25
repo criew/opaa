@@ -209,56 +209,32 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   /**
-   * An owner change by someone else names the person only under {@code ownerId}; the approved grant
-   * finds it there, but only for the event types that carry an owner.
+   * The Klärung filters by the acting person only: an entry that names the person solely as owner
+   * in its payload, by pseudonym or by former account id, does not come back, though the person's
+   * self-disclosure shows it. Regression guard for the maintainer's decision on #3135.
    */
   @Test
-  void approvedGrantAlsoReturnsOwnerEntriesNamingThePersonAsOwner() {
+  void approvedGrantDoesNotReturnEntriesNamingThePersonOnlyAsOwner() {
     String subjectRef = pseudonymService.pseudonymFor(subject, organizationId).toString();
-    String otherRef = pseudonymService.pseudonymFor(approver, organizationId).toString();
     Instant at = scopeStart.plus(1, ChronoUnit.DAYS);
-    AuditLogEntry handedOn =
-        writeAuditEntry(
-            requester,
-            AuditEventType.ASSET_OWNER_CHANGED,
-            "{\"ownerId\":\"" + subjectRef + "\"}",
-            "{\"ownerId\":\"" + otherRef + "\"}",
-            at);
-    AuditLogEntry received =
-        writeAuditEntry(
-            requester,
-            AuditEventType.SPACE_CREATED,
-            null,
-            "{\"name\":\"Team\",\"ownerId\":\"" + subjectRef + "\"}",
-            at);
-    // an event type without an owner never matches on its payload
+    AuditLogEntry ownAction = writeAuditEntryForActor(subject, at);
     writeAuditEntry(
         requester,
-        AuditEventType.LIBRARY_CHANGED,
-        null,
+        AuditEventType.ASSET_OWNER_CHANGED,
         "{\"ownerId\":\"" + subjectRef + "\"}",
-        at);
-    // another person's owner change
-    writeAuditEntry(
-        requester,
-        AuditEventType.ASSET_OWNER_CHANGED,
-        "{\"ownerId\":\"" + otherRef + "\"}",
         "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
         at);
-    // an older entry names the owner by account id
-    AuditLogEntry formerly =
-        writeAuditEntry(
-            requester,
-            AuditEventType.ASSET_OWNER_CHANGED,
-            "{\"ownerId\":\"" + subject + "\"}",
-            "{\"ownerId\":\"" + otherRef + "\"}",
-            at);
-    // a group as owner never matches the person
     writeAuditEntry(
         requester,
-        AuditEventType.ASSET_OWNER_CHANGED,
-        "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
-        "{\"ownerId\":\"" + UUID.randomUUID() + "\"}",
+        AuditEventType.SPACE_CREATED,
+        null,
+        "{\"name\":\"Team\",\"ownerId\":\"" + subjectRef + "\"}",
+        at);
+    writeAuditEntry(
+        requester,
+        AuditEventType.SPACE_DELETED,
+        "{\"ownerId\":\"" + subject + "\"}",
+        null,
         at);
 
     AuditIncidentScopeGrant grant =
@@ -278,43 +254,7 @@ class AuditIncidentScopeServiceIntegrationTest {
 
     assertThat(result.getContent())
         .extracting(AuditLogEntry::getEventId)
-        .containsExactlyInAnyOrder(
-            handedOn.getEventId(), received.getEventId(), formerly.getEventId());
-    assertThat(result.getTotalElements()).isEqualTo(3);
-  }
-
-  /**
-   * A person who never got a pseudonym is still found by her account id in older owner entries; the
-   * read mints no pseudonym.
-   */
-  @Test
-  void approvedGrantFindsOlderOwnerEntriesOfAPersonWithoutPseudonym() {
-    AuditLogEntry formerly =
-        writeAuditEntry(
-            requester,
-            AuditEventType.SPACE_DELETED,
-            "{\"name\":\"Team\",\"ownerId\":\"" + subject + "\"}",
-            null,
-            scopeStart.plus(1, ChronoUnit.DAYS));
-    AuditIncidentScopeGrant grant =
-        incidentScopeService.request(
-            organizationId,
-            requester,
-            subject,
-            scopeStart,
-            scopeEnd,
-            AuditIncidentScopePurpose.SECURITY_INCIDENT,
-            "Verdacht auf unbefugten Zugriff auf Personalvorgaenge");
-    incidentScopeService.approve(organizationId, grant.getId(), approver);
-
-    Page<AuditLogEntry> result =
-        queryService.byIncidentScope(
-            organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50);
-
-    assertThat(result.getContent())
-        .extracting(AuditLogEntry::getEventId)
-        .containsExactly(formerly.getEventId());
-    assertThat(pseudonymService.findExistingPseudonym(subject)).isEmpty();
+        .containsExactly(ownAction.getEventId());
   }
 
   @Test

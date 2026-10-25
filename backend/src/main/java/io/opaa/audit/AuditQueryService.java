@@ -2,8 +2,12 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.organization.Organization;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -16,8 +20,9 @@ import org.springframework.stereotype.Service;
 /**
  * The single funnel every audit-log read goes through - the four access paths the specification
  * allows (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt),
- * plus the one personenbezogene exception ({@link #byIncidentScope}). The person's own entries for
- * her self-disclosure are read by {@link AuditLogSelfDisclosureExporter}, not here.
+ * plus the one personenbezogene exception ({@link #byIncidentScope}) and the verification of the
+ * checksum chain ({@link #verifyChain}), which returns no entry. The person's own entries for her
+ * self-disclosure are read by {@link AuditLogSelfDisclosureExporter}, not here.
  *
  * <p><b>Self-logging.</b> Every method is wrapped by {@link #loggedAccess}, which runs {@link
  * AuditAccessGate}: role, Anlass and bounds are enforced there rather than by {@code @PreAuthorize}
@@ -71,18 +76,21 @@ public class AuditQueryService {
   private final AuditActorPseudonymService pseudonymService;
   private final AuditEventRecorder eventRecorder;
   private final AuditAccessGate gate;
+  private final AuditChainService chainService;
 
   public AuditQueryService(
       AuditLogRepository auditLogRepository,
       AuditIncidentScopeService incidentScopeService,
       AuditActorPseudonymService pseudonymService,
       AuditEventRecorder eventRecorder,
-      AuditAccessGate gate) {
+      AuditAccessGate gate,
+      AuditChainService chainService) {
     this.auditLogRepository = auditLogRepository;
     this.incidentScopeService = incidentScopeService;
     this.pseudonymService = pseudonymService;
     this.eventRecorder = eventRecorder;
     this.gate = gate;
+    this.chainService = chainService;
   }
 
   /**
@@ -211,16 +219,15 @@ public class AuditQueryService {
 
   /**
    * The one personenbezogene exception: every event whose actor is the approved grant's named
-   * person, and every event of a type with an owner that names the person as owner ({@link
-   * AuditPayloadPersons#OWNER}), further bounded to a caller-requested time range that must lie
-   * entirely within the grant's own scope - a request reaching outside it is rejected, not clamped
-   * (see {@link AuditIncidentScopeGrant#covers}).
+   * person, further bounded to a caller-requested time range that must lie entirely within the
+   * grant's own scope - a request reaching outside it is rejected, not clamped (see {@link
+   * AuditIncidentScopeGrant#covers}).
    *
    * <p>Looks the subject's pseudonym up, never mints one: unlike {@link
    * AuditActorPseudonymService#pseudonymFor}, a read must never have the side effect of creating a
-   * re-identification row for a person who never triggered one themselves. Without one, only older
-   * owner entries naming the account id can lead to the person. Once the person's account is
-   * deleted the page is empty: the mapping is gone with it, and the grant's own pseudonym is not
+   * re-identification row for a person who never triggered one themselves. If none exists, the
+   * person has no entries in the log at all, so an empty page is correct. The same holds once the
+   * person's account is deleted: the mapping is gone with it, and the grant's own pseudonym is not
    * used as a filter.
    */
   public Page<AuditLogEntry> byIncidentScope(
@@ -254,18 +261,46 @@ public class AuditQueryService {
           if (grant.getSubjectUserId() == null) {
             return Page.empty(pageable);
           }
-          UUID pseudonym =
-              pseudonymService.findExistingPseudonym(grant.getSubjectUserId()).orElse(null);
-          AuditPayloadPersons.PayloadKey owner = AuditPayloadPersons.OWNER;
-          return auditLogRepository.findIncidentScope(
-              organizationId,
-              pseudonym == null ? null : pseudonym.toString(),
-              owner.eventTypes(),
-              owner.pattern(pseudonym),
-              owner.pattern(grant.getSubjectUserId()),
-              from,
-              to,
-              pageable);
+          return pseudonymService
+              .findExistingPseudonym(grant.getSubjectUserId())
+              .map(
+                  pseudonym ->
+                      auditLogRepository.findByOrganizationIdAndActorRefAndRecordedAtBetween(
+                          organizationId, pseudonym.toString(), from, to, pageable))
+              .orElseGet(() -> Page.empty(pageable));
+        });
+  }
+
+  /**
+   * Access path "Kettenprüfung" (ADR-0059, Entscheidung 5): recomputes the checksum chain of one
+   * month and compares it with its checkpoints and seal. Returns no entry of the log, only the
+   * result; it is nevertheless an access to the log and is logged like every other one. The chain
+   * spans the log of every organization, so only an auditor of the default organization may ask;
+   * {@code month} is taken as text so that a malformed value is rejected - and that rejection
+   * logged - here rather than by the argument binding.
+   */
+  public AuditChainReport verifyChain(
+      UUID organizationId, UUID callerId, String reason, String month) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "chain-verification");
+    scope.put("month", month);
+    return loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        scope,
+        () -> {
+          if (!Organization.DEFAULT_ID.equals(organizationId)) {
+            throw new AccessDeniedException(
+                "Die Kettenprüfung steht nur der Revision der Standardorganisation offen");
+          }
+          YearMonth parsed;
+          try {
+            parsed = YearMonth.parse(month);
+          } catch (DateTimeParseException | NullPointerException e) {
+            throw new ValidationException("Der Monat muss die Form JJJJ-MM haben");
+          }
+          return chainService.verify(parsed);
         });
   }
 

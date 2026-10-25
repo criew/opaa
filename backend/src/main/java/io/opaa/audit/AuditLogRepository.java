@@ -3,13 +3,10 @@ package io.opaa.audit;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 /**
  * Persistence for {@link AuditLogEntry}. Extends {@link JpaRepository} for {@code save} (always
@@ -45,10 +42,9 @@ interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {
    * The four revision access paths, plus the one personenbezogene exception. Every method here
    * takes a {@link Pageable} built exclusively by {@link AuditQueryService} - never one bound
    * directly from an API request - so the sort key ({@code recordedAt}, always) and the maximum
-   * page size are enforced in exactly one place. The only method filtering on {@code actorRef}, or
-   * on a person in {@code before}/{@code after}, at all is {@link #findIncidentScope} below, the
-   * technically bounded incident-scope exception, not a general filter a caller can reach any other
-   * way.
+   * page size are enforced in exactly one place. The only method filtering on {@code actorRef} at
+   * all is {@code findByOrganizationIdAndActorRefAndRecordedAtBetween} below, the technically
+   * bounded incident-scope exception, not a general filter a caller can reach any other way.
    */
   Page<AuditLogEntry> findByOrganizationIdAndObjectTypeAndObjectIdAndRecordedAtBetween(
       UUID organizationId,
@@ -67,25 +63,7 @@ interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {
   Page<AuditLogEntry> findByOrganizationIdAndCorrelationRefAndRecordedAtBetween(
       UUID organizationId, String correlationRef, Instant from, Instant to, Pageable pageable);
 
-  /**
-   * The technically bounded incident-scope path - see the interface Javadoc above: the entries in
-   * which the person acts, and those of {@code ownerEventTypes} whose payload matches one of the
-   * {@link AuditPayloadPersons.PayloadKey#pattern} patterns; a {@code null} reference or pattern
-   * matches nothing.
-   */
-  @Query(
-      "SELECT e FROM AuditLogEntry e WHERE e.organizationId = :organizationId"
-          + " AND e.recordedAt BETWEEN :from AND :to"
-          + " AND (e.actorRef = :actorRef OR (e.eventType IN :ownerEventTypes"
-          + " AND (e.before LIKE :pseudonymPattern OR e.after LIKE :pseudonymPattern"
-          + " OR e.before LIKE :accountPattern OR e.after LIKE :accountPattern)))")
-  Page<AuditLogEntry> findIncidentScope(
-      @Param("organizationId") UUID organizationId,
-      @Param("actorRef") String actorRef,
-      @Param("ownerEventTypes") Collection<AuditEventType> ownerEventTypes,
-      @Param("pseudonymPattern") String pseudonymPattern,
-      @Param("accountPattern") String accountPattern,
-      @Param("from") Instant from,
-      @Param("to") Instant to,
-      Pageable pageable);
+  /** The technically bounded incident-scope path - see the interface Javadoc above. */
+  Page<AuditLogEntry> findByOrganizationIdAndActorRefAndRecordedAtBetween(
+      UUID organizationId, String actorRef, Instant from, Instant to, Pageable pageable);
 }

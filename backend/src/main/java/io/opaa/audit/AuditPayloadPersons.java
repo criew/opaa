@@ -8,15 +8,13 @@ import java.util.UUID;
 /**
  * Where an entry names a person it carries neither as actor nor as subject: under a key of {@code
  * before}/{@code after}, as pseudonym (entries written before the pseudonymisation of that key: as
- * account id) or, for a group, as group id. Each {@link PayloadKey} is searched for its event types
- * only.
+ * account id) or, for a group, as group id. Only the self-disclosure searches these keys, each for
+ * its event types only; the anlassbezogene Klärung finds the acting person alone.
  */
 final class AuditPayloadPersons {
 
-  /**
-   * The owner of a space or asset; the self-disclosure and the anlassbezogene Klärung search it.
-   */
-  static final PayloadKey OWNER =
+  /** The owner of a space or asset. */
+  private static final PayloadKey OWNER =
       new PayloadKey(
           "ownerId",
           Set.of(
@@ -27,8 +25,8 @@ final class AuditPayloadPersons {
               AuditEventType.ASSET_OWNERSHIP_CLAIMED,
               AuditEventType.ASSET_SUCCESSION_OPENED));
 
-  /** The target of a transfer of rights; searched by the self-disclosure only. */
-  static final PayloadKey TRANSFER_TARGET =
+  /** The target of a transfer of rights. */
+  private static final PayloadKey TRANSFER_TARGET =
       new PayloadKey(
           "targetId",
           Set.of(

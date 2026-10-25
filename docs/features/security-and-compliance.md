@@ -462,10 +462,9 @@ Vorgang der [anlassbezogenen Klärung](#2-einen-personenbezogenen-auswertungspfa
 Vier-Augen-Prinzip unter Beteiligung der Personalvertretung, mit vorab festgelegter Person, vorab
 festgelegtem Zeitraum und dokumentiertem Zweck, die die Abfrage **technisch** begrenzen. Ohne
 freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Er
-findet die Einträge, in denen die Person handelt, und die Einträge der Ereignisarten mit Besitzerin
-(Space angelegt, gelöscht oder stillgelegt, Besitzwechsel, übernommen, Nachfolge offen), die sie in
-`before`/`after` als Besitzerin nennen, auch wenn eine Dritte handelt, per Pseudonym oder, in
-älteren Einträgen, per Kontokennung (#3135). Der
+findet nur die Einträge, in denen die Person handelt (`actor_ref`); `before`/`after` durchsucht er
+nicht, auch nicht nach einer Besitzerin oder dem Ziel einer Übertragung (Entscheidung des
+Maintainers zu #3135). Das tut allein die Selbstauskunft. Der
 Zugriff erzeugt seinen eigenen Eintrag, die betroffene Person wird unterrichtet, und die Zahl der Fälle
 geht in den Bericht an die Personalvertretung, für einen wählbaren Berichtszeitraum aus der
 [Auskunft über die Datenerhebung](#auskunft-über-die-datenerhebung).
