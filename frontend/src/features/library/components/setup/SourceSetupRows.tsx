@@ -111,7 +111,7 @@ export default function SourceSetupRows<V>({
 
   const fields = connectionFields(context)
   const request = spec.probe ? spec.probe(values, fields, context) : null
-  const check = useConnectionCheck(request, spec.signsIn ?? true)
+  const check = useConnectionCheck(request, spec.signsIn ?? true, spec.fixedAddress ?? false)
   const fieldId = (field: string) =>
     field === SCHEDULE_FIELD
       ? `${context.idPrefix}-schedule-full-sync-days`
@@ -157,7 +157,7 @@ export default function SourceSetupRows<V>({
         ...(checkBlocks && checkFailed && check.outcome
           ? [
               {
-                text: `Verbindung: Test (${failedStage ?? 'Adresse'})`,
+                text: failedStage ? `Verbindung: Test (${failedStage})` : 'Verbindung: Test',
                 onJump: () => jumpTo('connection', `${context.idPrefix}-check`),
               },
             ]
@@ -311,7 +311,10 @@ export default function SourceSetupRows<V>({
       case 'partial':
         return { tone: 'warning', label: 'teilweise lesbar' }
       case 'failed':
-        return { tone: 'error', label: `Test fehlgeschlagen (${failedStage ?? 'Adresse'})` }
+        return {
+          tone: 'error',
+          label: failedStage ? `Test fehlgeschlagen (${failedStage})` : 'Test fehlgeschlagen',
+        }
       case 'checking':
         return { tone: 'neutral', label: 'wird geprüft' }
       default:

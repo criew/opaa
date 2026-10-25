@@ -73,6 +73,7 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
     subject: 'Imitiertes Konto',
     scopes: 'Geteilte Ablagen und Ordner',
   },
+  fixedAddress: true,
   rowOf: (field) => (field === 'scopes' ? 'scope' : 'connection'),
   probe: (values, fields) =>
     fields.probeRequest<SourceConnectionTestRequest>({

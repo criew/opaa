@@ -70,6 +70,7 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
   },
   labels: { libraries: 'Dokumentbibliotheken und Ordner' },
   quietConnection: true,
+  fixedAddress: true,
   rowOf: (field) => (field === 'libraries' || field === 'site' ? 'scope' : 'connection'),
   probe: (values, fields) =>
     fields.probeRequest<SourceConnectionTestRequest>({

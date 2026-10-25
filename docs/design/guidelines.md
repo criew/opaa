@@ -552,7 +552,12 @@ sie gruppiert (je Gruppe ein sichtbarer Titel), damit die Wahl überschaubar ble
 **Gleichartige Wahl ohne unterscheidendes Icon** — etwa zwischen mehreren Zugängen derselben
 Quellart, die sich nur im Namen unterscheiden — erscheint als **Radioliste**, nicht als Kacheln: Ein Icon,
 das bei allen Optionen gleich wäre, unterscheidet nichts. Gibt es nur **eine** Option, gibt es keine
-Wahl: Sie steht als einfache Zeile da, ohne Radioknopf.
+Wahl: Sie steht als einfache Zeile da, ohne Radioknopf. Ausgenommen ist der private Weg einer
+Quellart, die Bibliotheken **und** Personen zulässt: Er bleibt auch als einzige Option ein Radio, das
+die Person ausdrücklich wählt, denn „privat“ lässt sich später nicht ändern
+([ADR-0049](../decisions/0049-private-bibliotheken-und-kontingente.md), Entscheidung 1). Bei einer
+Quellart nur für Personen (OneDrive) ist schon die Wahl der Quellart diese ausdrückliche Wahl; ihr
+einziger Zugang steht als Zeile da, mit dem Hinweis „nur für Sie, später nicht änderbar“.
 
 **Fremde Objekte aus einer Quelle** erscheinen als Liste oder Baum, nie als Kacheln — ihre Zahl und
 Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:

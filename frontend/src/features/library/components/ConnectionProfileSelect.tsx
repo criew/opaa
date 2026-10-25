@@ -18,6 +18,7 @@ import {
   OWN_ADDRESS,
   admitsLibraries,
   onOwnAccount,
+  onlyPersons,
   privateConnection,
   profileChoices,
 } from './connectionChoice'
@@ -89,13 +90,35 @@ export default function ConnectionProfileSelect({
     ...(ownOffered ? [{ value: OWN_ADDRESS, label: 'Eigene Adresse', detail: '' }] : []),
   ]
 
-  // one way needs no choice where the row „Verbindung“ names it; the private way is never chosen
-  // by itself, so it is always listed
-  const showList = rows.length > 1 || privateOptions.length > 0 || (showSingle && rows.length === 1)
+  // guidelines 5.11: a type only for persons with one private way has no choice - it stands as a
+  // line, chosen already (effectiveConnection), with its consequence in view
+  const soleLine = rows.length === 1 && privateOptions.length === 1 && onlyPersons(descriptor)
+  // one way needs no choice where the row „Verbindung“ names it; elsewhere the private way is
+  // never chosen by itself, so it is always listed
+  const showList =
+    !soleLine && (rows.length > 1 || privateOptions.length > 0 || (showSingle && rows.length === 1))
+
+  const rowText = (row: (typeof rows)[number]) => (
+    <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
+      <Box component="span" sx={{ fontSize: 14 }}>
+        {row.label}
+      </Box>
+      {row.detail && (
+        <Box component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+          {row.detail}
+        </Box>
+      )}
+    </Box>
+  )
 
   return (
     <Box data-testid={`${idPrefix}-connection`}>
-      {state.loaded && !state.error && showList && <FieldLabel id={headingId}>Zugang</FieldLabel>}
+      {state.loaded && !state.error && (showList || soleLine) && (
+        <FieldLabel id={headingId}>Zugang</FieldLabel>
+      )}
+      {state.loaded && !state.error && soleLine && (
+        <Box data-testid={`${idPrefix}-connection-sole`}>{rowText(rows[0])}</Box>
+      )}
       {!state.loaded && (
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
           Zugänge werden geladen …
@@ -121,18 +144,7 @@ export default function ConnectionProfileSelect({
               value={row.value}
               control={<Radio size="small" />}
               sx={{ mr: 0, alignItems: 'center' }}
-              label={
-                <Box component="span" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 1.5 }}>
-                  <Box component="span" sx={{ fontSize: 14 }}>
-                    {row.label}
-                  </Box>
-                  {row.detail && (
-                    <Box component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-                      {row.detail}
-                    </Box>
-                  )}
-                </Box>
-              }
+              label={rowText(row)}
             />
           ))}
         </RadioGroup>

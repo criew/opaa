@@ -19,7 +19,7 @@ const TYPES = {
   filesystem: { tile: /^Dateisystem/, library: 'library-filesystem-satzungen' },
   confluence: { tile: /^Confluence/, library: 'library-confluence-wiki' },
   sharepoint: { tile: /^SharePoint/, library: 'library-sharepoint-rathaus', profile: /Microsoft 365 Rheinfurt/ },
-  // only ever a private library: the one way is the profile's private radio
+  // only ever a private library: one private way is preselected as a line, several are radios
   onedrive: { tile: /^OneDrive/, library: 'library-onedrive-vorlagen', profile: /Microsoft 365 Rheinfurt · privat/ },
   nextcloud: { tile: /^Nextcloud/, library: 'library-nextcloud-projekte', ownAddress: true },
   smb: { tile: /^Windows-Dateifreigabe|^SMB|Dateifreigabe/, library: 'library-smb-ablage' },

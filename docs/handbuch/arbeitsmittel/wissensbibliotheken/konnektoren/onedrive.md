@@ -93,8 +93,9 @@ Eine OneDrive-Bibliothek legt fest:
 Der Assistent „Neue Wissensbibliothek" bietet die Quellart „OneDrive" nur Personen an, die auf
 einem OneDrive-Zugang ein verbundenes Konto haben. Unter „Zugang" steht dieser als „`<Zugang>` · privat"
 mit dem Hinweis „nur für Sie, später nicht änderbar"; eine geteilte Bibliothek und „Eigene Adresse"
-gibt es nicht, und der Schritt „Freigaben" entfällt. Den Zugang wählt man ausdrücklich, auch wenn es
-nur einen gibt.
+gibt es nicht, und der Schritt „Freigaben" entfällt. Gibt es nur einen solchen Zugang, ist er schon
+gewählt und steht als Zeile ohne Auswahlknopf da, samt Hinweis; die Zeile „Verbindung" bleibt dann
+zuerst aufgeklappt. Bei mehreren wählt man einen ausdrücklich.
 
 - **Verbindung** fragt weder Adresse noch Zugangsdaten ab. OPAA ermittelt das OneDrive des
   verbundenen Kontos selbst und nennt es mit seinem Namen als „das OneDrive Ihres verbundenen
@@ -109,8 +110,10 @@ nur einen gibt.
 
 Der Verbindungstest prüft mit dem verbundenen Konto, dass das gewählte OneDrive dessen eigenes und
 erreichbar ist, samt den gewählten Ordnern; bei Erfolg meldet er „Anmeldung erfolgreich; das OneDrive
-ist erreichbar." Ein Ergebnis gilt nur für die Auswahl, mit der getestet wurde: Wer danach Ordner
-ändert, sieht wieder „nicht geprüft".
+ist erreichbar." Die Adresse von Microsoft Graph ist fest; ein gescheiterter Test nennt deshalb nie
+die Stufe „Adresse", sondern „Anmeldung" oder „Rechte", und fehlt nur eine Angabe, allein die
+Meldung. Ein Ergebnis gilt nur für die Auswahl, mit der getestet wurde: Wer danach Ordner ändert,
+sieht wieder „nicht geprüft".
 
 Im Reiter „Quelle" öffnet „Ändern" jede Zeile einzeln, „Speichern" übernimmt sie. Unter
 „Verbindung" ermittelt „OneDrive neu wählen" das OneDrive des inzwischen verbundenen Kontos; ist es

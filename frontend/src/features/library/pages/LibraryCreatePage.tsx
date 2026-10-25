@@ -18,6 +18,7 @@ import LibraryReviewStep, { type ReviewEntry } from '../components/LibraryReview
 import {
   OWN_ADDRESS,
   effectiveConnection,
+  onlyPersons,
   privateProfileOf,
   profileOfChoice,
   selectableConnections,
@@ -184,7 +185,11 @@ export default function LibraryCreatePage() {
       : []
   const connectionChoice =
     admitsProfiles && descriptor
-      ? effectiveConnection(chosenConnections[sourceType] ?? null, selectable)
+      ? effectiveConnection(
+          chosenConnections[sourceType] ?? null,
+          selectable,
+          onlyPersons(descriptor),
+        )
       : OWN_ADDRESS
   const privateLibrary = privateProfileOf(connectionChoice) !== null
   const chosenProfile = profileOptions.options.find(

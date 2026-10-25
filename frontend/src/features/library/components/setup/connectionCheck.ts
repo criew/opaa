@@ -53,73 +53,97 @@ function unreadableOf(details: Record<string, unknown> | null | undefined): {
   return { failed, total }
 }
 
+const NOT_CHECKED = { state: 'open', text: 'nicht geprüft' } as const
+
 /**
  * The staged reading of one test result: the address answered, the sign-in was accepted, the
- * chosen scope can be read. The first stage that failed is the one the person has to fix.
+ * chosen scope can be read. The first stage that failed is the one the person has to fix. A
+ * source at a fixed address has no address stage: what it cannot reach, it may not sign in to or
+ * read.
  */
 export function outcomeOf(
   token: string,
   result: SourceConnectionTestResponse,
   signsIn: boolean,
+  fixedAddress = false,
 ): CheckOutcome {
   const { failed, total } = unreadableOf(result.details)
+  const address: CheckStage[] = fixedAddress
+    ? []
+    : [{ label: 'Adresse', state: 'ok', text: 'erreichbar' }]
   const signIn: CheckStage = signsIn
     ? { label: 'Anmeldung', state: 'ok', text: 'angenommen' }
     : { label: 'Anmeldung', state: 'skipped', text: 'entfällt' }
-  if (result.reachable) {
-    const rights: CheckStage =
+  const unreadable: CheckStage = {
+    label: 'Rechte',
+    state: 'failed',
+    text:
       failed.length > 0
-        ? {
-            label: 'Rechte',
-            state: 'failed',
-            text: `${failed.length} von ${Math.max(total, failed.length)} nicht lesbar`,
-          }
-        : { label: 'Rechte', state: 'ok', text: 'lesbar' }
-    return {
-      token,
-      state: failed.length > 0 ? 'partial' : 'passed',
-      stages: [{ label: 'Adresse', state: 'ok', text: 'erreichbar' }, signIn, rights],
-      message: result.message,
-      unreadable: failed,
-    }
+        ? `${failed.length} von ${Math.max(total, failed.length)} nicht lesbar`
+        : 'nicht lesbar',
   }
-  const refusedSignIn = signsIn && result.credentialsVerified === false
+  const outcome = (state: CheckOutcome['state'], stages: CheckStage[]): CheckOutcome => ({
+    token,
+    state,
+    stages,
+    message: result.message,
+    unreadable: failed,
+  })
+  if (result.reachable) {
+    return failed.length > 0
+      ? outcome('partial', [...address, signIn, unreadable])
+      : outcome('passed', [...address, signIn, { label: 'Rechte', state: 'ok', text: 'lesbar' }])
+  }
+  const rightsOpen: CheckStage = { label: 'Rechte', ...NOT_CHECKED }
+  if (signsIn && result.credentialsVerified === false) {
+    return outcome('failed', [
+      ...address,
+      { label: 'Anmeldung', state: 'failed', text: 'abgelehnt' },
+      rightsOpen,
+    ])
+  }
+  if (fixedAddress) {
+    // only an accepted sign-in tells the rights apart; a refusal before it (no scope chosen, no
+    // account) names no stage, the message says what is missing
+    return outcome(
+      'failed',
+      result.credentialsVerified === true
+        ? [signIn, unreadable]
+        : [signsIn ? { label: 'Anmeldung', ...NOT_CHECKED } : signIn, rightsOpen],
+    )
+  }
+  return outcome('failed', [
+    { label: 'Adresse', state: 'failed', text: 'nicht erreichbar' },
+    signsIn ? { label: 'Anmeldung', ...NOT_CHECKED } : signIn,
+    rightsOpen,
+  ])
+}
+
+function failedOutcome(
+  token: string,
+  message: string,
+  signsIn: boolean,
+  fixedAddress: boolean,
+): CheckOutcome {
+  const rightsOpen: CheckStage = { label: 'Rechte', ...NOT_CHECKED }
   return {
     token,
     state: 'failed',
-    stages: refusedSignIn
+    // the test itself did not answer: no stage of a fixed address can be blamed
+    stages: fixedAddress
       ? [
-          { label: 'Adresse', state: 'ok', text: 'erreichbar' },
-          { label: 'Anmeldung', state: 'failed', text: 'abgelehnt' },
-          { label: 'Rechte', state: 'open', text: 'nicht geprüft' },
+          signsIn
+            ? { label: 'Anmeldung', ...NOT_CHECKED }
+            : { label: 'Anmeldung', state: 'skipped', text: 'entfällt' },
+          rightsOpen,
         ]
       : [
           { label: 'Adresse', state: 'failed', text: 'nicht erreichbar' },
-          {
-            ...signIn,
-            state: signsIn ? 'open' : 'skipped',
-            text: signsIn ? 'nicht geprüft' : 'entfällt',
-          },
-          { label: 'Rechte', state: 'open', text: 'nicht geprüft' },
+          signsIn
+            ? { label: 'Anmeldung', ...NOT_CHECKED }
+            : { label: 'Anmeldung', state: 'skipped', text: 'entfällt' },
+          rightsOpen,
         ],
-    message: result.message,
-    unreadable: failed,
-  }
-}
-
-function failedOutcome(token: string, message: string, signsIn: boolean): CheckOutcome {
-  return {
-    token,
-    state: 'failed',
-    stages: [
-      { label: 'Adresse', state: 'failed', text: 'nicht erreichbar' },
-      {
-        label: 'Anmeldung',
-        state: signsIn ? 'open' : 'skipped',
-        text: signsIn ? 'nicht geprüft' : 'entfällt',
-      },
-      { label: 'Rechte', state: 'open', text: 'nicht geprüft' },
-    ],
     message,
     unreadable: [],
   }
@@ -142,6 +166,7 @@ export interface ConnectionCheck {
 export function useConnectionCheck(
   request: SourceConnectionTestRequest | null,
   signsIn: boolean,
+  fixedAddress = false,
 ): ConnectionCheck {
   const token = request ? JSON.stringify(request) : ''
   const [outcome, setOutcome] = useState<CheckOutcome | null>(null)
@@ -158,7 +183,7 @@ export function useConnectionCheck(
     setRunning(mine)
     let next: CheckOutcome
     try {
-      next = outcomeOf(mine, await testLibrarySource(current), signsIn)
+      next = outcomeOf(mine, await testLibrarySource(current), signsIn, fixedAddress)
     } catch (err) {
       next = failedOutcome(
         mine,
@@ -166,13 +191,14 @@ export function useConnectionCheck(
           ? err.message
           : 'Die Verbindung ließ sich nicht prüfen.',
         signsIn,
+        fixedAddress,
       )
     }
     setRunning((r) => (r === mine ? null : r))
     if (latest.current.token !== mine) return 'unchecked'
     setOutcome(next)
     return next.state
-  }, [signsIn])
+  }, [signsIn, fixedAddress])
 
   const visible = outcome?.token === token ? outcome : null
   const state: CheckState =
