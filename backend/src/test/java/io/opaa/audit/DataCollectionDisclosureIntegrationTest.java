@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
@@ -271,6 +272,26 @@ class DataCollectionDisclosureIntegrationTest {
     assertThat(new TreeMap<>(named)).isEqualTo(listed);
     assertThat(exportAsAdmin().path("manifest").path("auditEvents").toString())
         .contains("\"payloadKeys\"");
+  }
+
+  /**
+   * The keys the writers derive ({@link AuditPayloadKeys}) are those of the snapshot of the current
+   * schema version, {@code audit/event-catalog/v<N>-derived.json}: one that goes away needs the
+   * next version, a new one is recorded there ({@link AuditEventCatalogSnapshotTest}).
+   */
+  @Test
+  void theDerivedKeysAreThoseOfTheSnapshotOfTheCurrentSchemaVersion() throws Exception {
+    Map<String, Set<String>> derived = new TreeMap<>();
+    for (AuditPayloadKeys source : derivedPayloadKeys) {
+      derived
+          .computeIfAbsent(source.eventType().name(), type -> new TreeSet<>())
+          .addAll(source.keys());
+    }
+
+    assertThat(derived)
+        .isEqualTo(
+            AuditEventCatalogSnapshotTest.snapshot(
+                "v" + AuditEventCatalog.SCHEMA_VERSION + "-derived"));
   }
 
   /** The field list of the protocol description names exactly the columns of the audit log. */

@@ -365,7 +365,7 @@ auditEvents:
     payloadKeys: [name, promptsRemoved]
   - id: PROMPT_CREATED
     trigger: Ein Prompt wird einer Bibliothek hinzugefügt
-    details: Nur die Bibliothek, nie Titel oder Text
+    details: Bibliothek und Kurzname des Prompts, nie Titel oder Text
     payloadKeys: [name, promptLibraryId]
   - id: PROMPT_CHANGED
     trigger: Ein Prompt wird geändert
@@ -373,6 +373,7 @@ auditEvents:
     payloadKeys: [changedFields, promptLibraryId]
   - id: PROMPT_DELETED
     trigger: Ein Prompt wird entfernt
+    details: Bibliothek und Kurzname des Prompts, nie Titel oder Text
     payloadKeys: [name, promptLibraryId]
   - id: LIBRARY_SOURCE_UPDATED
     trigger: Die Quellkonfiguration einer Bibliothek ändert sich

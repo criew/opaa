@@ -106,15 +106,10 @@ spec:
               Abgelaufene Monate bleiben dann womöglich stehen und das Protokoll wächst über die
               Aufbewahrungsfrist hinaus. Log des Pods prüfen, vor allem am 1. des Monats um 03:00.
         - alert: OpaaAuditPayloadDropped
-          # The counter exists only after its first drop, so a series younger than the window counts
-          # as well as an increase of an older one.
+          # The backend registers the counter at 0 for every event type on start, so its first drop
+          # is an increase too; summed over the pods per event type.
           expr: >-
             sum by (event_type) (increase(opaa_audit_payload_dropped_total{ {{- $scrape }}}[1h])) > 0
-            or
-            count by (event_type) (
-              opaa_audit_payload_dropped_total{ {{- $scrape }}}
-              unless opaa_audit_payload_dropped_total{ {{- $scrape }}} offset 1h
-            )
           labels:
             severity: warning
           annotations:

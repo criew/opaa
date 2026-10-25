@@ -2,9 +2,12 @@ package io.opaa.audit;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.common.DatabaseClock;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +42,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>{@code before}/{@code after} carry only the keys {@link AuditEventCatalog} lists for the event
  * type: an unlisted key is dropped, logged as an error and counted in {@value #DROPPED_METRIC} by
- * event type, or, with {@link AuditPayloadProperties#rejectUnlisted()}, refuses the write and with
- * it the caller's transaction.
+ * event type (registered at 0 for every type on start, so an alert needs only its increase), or,
+ * with {@link AuditPayloadProperties#rejectUnlisted()}, refuses the write and with it the caller's
+ * transaction.
  */
 @Service
 public class AuditLogService {
@@ -54,7 +58,7 @@ public class AuditLogService {
   private final ObjectProvider<PersonalAuditObjects> personalObjects;
   private final ObjectProvider<AuditPayloadKeys> derivedPayloadKeys;
   private final AuditPayloadProperties payloadProperties;
-  private final MeterRegistry meterRegistry;
+  private final Map<AuditEventType, Counter> dropped = new EnumMap<>(AuditEventType.class);
 
   public AuditLogService(
       AuditLogRepository auditLogRepository,
@@ -68,7 +72,15 @@ public class AuditLogService {
     this.personalObjects = personalObjects;
     this.derivedPayloadKeys = derivedPayloadKeys;
     this.payloadProperties = payloadProperties;
-    this.meterRegistry = meterRegistry;
+    for (AuditEventType type : AuditEventType.values()) {
+      dropped.put(
+          type,
+          Counter.builder(DROPPED_METRIC)
+              .description(
+                  "Audit entries written without payload keys the event catalog does not list")
+              .tag("event_type", type.name())
+              .register(meterRegistry));
+    }
   }
 
   /**
@@ -114,11 +126,7 @@ public class AuditLogService {
         "Dropped audit payload keys {} not listed for {} in AuditEventCatalog",
         unlisted,
         entry.getEventType());
-    Counter.builder(DROPPED_METRIC)
-        .description("Audit entries written without payload keys the event catalog does not list")
-        .tag("event_type", entry.getEventType().name())
-        .register(meterRegistry)
-        .increment();
+    dropped.get(entry.getEventType()).increment();
     entry.replacePayload(
         AuditEventCatalog.listedOnly(listed, entry.getBefore()),
         AuditEventCatalog.listedOnly(listed, entry.getAfter()));

@@ -17,10 +17,12 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Holds {@link AuditEventCatalog#SCHEMA_VERSION} to the catalog: {@code
- * audit/event-catalog/v<N>.json} records the keys of every event type under version N, without the
- * derived ones of {@link AuditPayloadKeys}. Within a version a key or a type may be added, and the
- * snapshot records it; a key that goes away or is renamed needs the next version and its own
- * snapshot. A snapshot only ever grows, an earlier one never changes again.
+ * audit/event-catalog/v<N>.json} records the keys of every event type under version N, {@code
+ * v<N>-derived.json} those of {@link AuditPayloadKeys}, checked with the real beans in {@code
+ * DataCollectionDisclosureIntegrationTest}. A key missing from the catalog fails until the version
+ * is raised and its snapshot added; a new key fails until the current snapshot records it. The
+ * tests compare the catalog with the current snapshot only: that nobody deletes a key from a
+ * snapshot to make them pass is left to the review.
  */
 class AuditEventCatalogSnapshotTest {
 
@@ -85,7 +87,12 @@ class AuditEventCatalogSnapshotTest {
   }
 
   private static Map<String, Set<String>> snapshot(int version) throws IOException {
-    String resource = "/audit/event-catalog/v" + version + ".json";
+    return snapshot("v" + version);
+  }
+
+  /** {@code audit/event-catalog/<name>.json}, such as {@code v1} or {@code v1-derived}. */
+  static Map<String, Set<String>> snapshot(String name) throws IOException {
+    String resource = "/audit/event-catalog/" + name + ".json";
     try (InputStream in = AuditEventCatalogSnapshotTest.class.getResourceAsStream(resource)) {
       assertThat(in).as(resource).isNotNull();
       return JSON.readValue(in, new TypeReference<TreeMap<String, Set<String>>>() {});

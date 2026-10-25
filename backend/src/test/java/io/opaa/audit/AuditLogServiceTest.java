@@ -107,13 +107,20 @@ class AuditLogServiceTest {
   }
 
   @Test
+  void everyEventTypeIsCountedFromZeroOnStart() {
+    assertThat(registry.find(AuditLogService.DROPPED_METRIC).counters())
+        .hasSize(AuditEventType.values().length)
+        .allSatisfy(counter -> assertThat(counter.count()).isZero());
+  }
+
+  @Test
   void anEntryWithOnlyListedKeysCountsNothing() {
     when(repository.save(any(AuditLogEntry.class))).thenAnswer(call -> call.getArgument(0));
 
     service.record(
         payloadEntry(AuditEventType.SPACE_MEMBER_ROLE_CHANGED, "{\"role\":\"MEMBER\"}", null));
 
-    assertThat(registry.find(AuditLogService.DROPPED_METRIC).counter()).isNull();
+    assertThat(dropped(AuditEventType.SPACE_MEMBER_ROLE_CHANGED)).isZero();
   }
 
   @Test
@@ -141,7 +148,7 @@ class AuditLogServiceTest {
         .hasMessageContaining("SPACE_MEMBER_ROLE_CHANGED")
         .hasMessageNotContaining("Erika");
     verify(repository, never()).save(any());
-    assertThat(registry.find(AuditLogService.DROPPED_METRIC).counter()).isNull();
+    assertThat(dropped(AuditEventType.SPACE_MEMBER_ROLE_CHANGED)).isZero();
   }
 
   @Test
