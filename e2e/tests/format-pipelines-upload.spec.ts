@@ -62,7 +62,7 @@ test.describe('Formatabdeckung Upload', () => {
     // document row, no longer a nested chunk of the mail - visible as a grouped attachment row
     // with its own "Indiziert" state once the group is expanded: 3 parents + 1 attachment.
     const toggle = page.getByRole('button', {
-      name: 'Anhänge von formatdokument.eml anzeigen',
+      name: '1 Anhang von formatdokument.eml anzeigen',
     })
     await expect(toggle).toHaveText(/1 Anhang/)
     await toggle.click()

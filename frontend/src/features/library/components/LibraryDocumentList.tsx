@@ -208,6 +208,8 @@ export default function LibraryDocumentList({
   ) {
     const isAttachment = Boolean(document.parentDocumentId)
     const attachments = options.attachments ?? []
+    // visible toggle text; the toggle's accessible name starts with it so voice control can target it
+    const attachmentCount = `${attachments.length} ${attachments.length === 1 ? 'Anhang' : 'Anhänge'}`
     const expanded = isGroupExpanded(document.id)
     const metadataOpen = Boolean(renderMetadataPanel && metadataOpenById?.[document.id])
     return (
@@ -290,10 +292,10 @@ export default function LibraryDocumentList({
                   size="small"
                   onClick={() => onToggleAttachmentGroup(document.id)}
                   aria-expanded={expanded}
-                  aria-label={`Anhänge von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
+                  aria-label={`${attachmentCount} von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
                   startIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 >
-                  {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
+                  {attachmentCount}
                 </Button>
               </Box>
             )}
