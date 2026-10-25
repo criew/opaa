@@ -10,7 +10,12 @@ public enum InstallationStep {
   /** Local accounts only, or additionally an OIDC identity provider as the default provider. */
   SIGN_IN,
   /** The active chat model. */
-  CHAT_MODEL;
+  CHAT_MODEL,
+  /**
+   * The embedding model; its check is a probe embedding, whose vector size the completion creates
+   * the vector table with (ADR-0060, Entscheidung 10).
+   */
+  EMBEDDING_MODEL;
 
   public boolean isMandatory() {
     return true;

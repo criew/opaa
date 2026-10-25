@@ -29,6 +29,9 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   lehnt ein Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg; der optionale API-Schlüssel wird über
   `SettingsEncryptor` verschlüsselt, jede Änderung protokolliert. Genau ein Modell ist systemweit aktiv.
+- **Embedding-Modell:** die Zeile `embedding_model` (ADR-0060, Entscheidung 10), nie Konfiguration. `vector_store`
+  legt nur `VectorTableCreator` an, in der Transaktion von `EmbeddingModelService#install`/`adoptAtStartup`
+  unter Lock `213`; vorher wirft `InstalledEmbeddingModel` `EmbeddingModelNotInstalledException` (503).
 - **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestands- und
   Nachlauf), `metadata.web` (Metadaten, der Filter aller Such- und Chat-Anfragen samt strengem
   `MetadataFilterDeserializer`), `installation.web`. Die Endpunkte der Bibliothek liegen in `library.web`.

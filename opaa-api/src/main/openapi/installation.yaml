@@ -86,8 +86,9 @@ paths:
       security: []
       summary: >
         Runs the check of a saved step: the rules of the first account, the connection test of the
-        identity provider (discovery and JWK set) or of the chat model. The outcome is stored with
-        the step and returned; a failed check is no error of the call. Same token and network rules
+        identity provider (discovery and JWK set) or of the chat model, or the probe embedding of
+        the embedding model, which also determines its vector size. The outcome is stored with the
+        step and returned; a failed check is no error of the call. Same token and network rules
         as getInstallation.
       responses:
         "200":
@@ -166,9 +167,10 @@ paths:
       security: []
       summary: >
         Completes the installation exactly once, under a database lock, even with several
-        instances: creates the first system administration account, the sign-in method and the
-        chat model from the checked steps, discards the token and the saved steps and switches
-        every instance to normal operation. Same token and network rules as getInstallation.
+        instances: creates the first system administration account, the sign-in method, the chat
+        model and the embedding model with the vector table of its probed size from the checked
+        steps, discards the token and the saved steps and switches every instance to normal
+        operation. Same token and network rules as getInstallation.
       responses:
         "200":
           description: Installation completed
@@ -211,8 +213,8 @@ components:
       description: >
         A step of the installation. FIRST_ADMIN is the first system administration account (the
         local emergency account of ADR-0033), SIGN_IN the sign-in method, CHAT_MODEL the chat
-        model.
-      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL]
+        model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10).
+      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL]
 
     InstallationSignInMode:
       type: string
@@ -259,6 +261,8 @@ components:
           $ref: "#/components/schemas/InstallationSignIn"
         chatModel:
           $ref: "#/components/schemas/InstallationChatModelView"
+        embeddingModel:
+          $ref: "#/components/schemas/InstallationEmbeddingModelView"
 
     InstallationStepRequest:
       type: object
@@ -270,6 +274,8 @@ components:
           $ref: "#/components/schemas/InstallationSignIn"
         chatModel:
           $ref: "#/components/schemas/InstallationChatModel"
+        embeddingModel:
+          $ref: "#/components/schemas/InstallationEmbeddingModel"
 
     InstallationFirstAdmin:
       type: object
@@ -371,15 +377,57 @@ components:
         maxTokens:
           type: integer
 
+    InstallationEmbeddingModel:
+      type: object
+      required: [baseUrl, model]
+      properties:
+        baseUrl:
+          type: string
+          maxLength: 500
+          example: http://ollama:11434/v1
+        model:
+          type: string
+          maxLength: 200
+          example: bge-m3
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Stored encrypted; omitted keeps a key saved before, empty removes it.
+        maxInputTokens:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Input limit of the endpoint in tokens, as it is served; 2048 when absent.
+
+    InstallationEmbeddingModelView:
+      type: object
+      required: [baseUrl, model, apiKeySet, maxInputTokens]
+      properties:
+        baseUrl:
+          type: string
+        model:
+          type: string
+        apiKeySet:
+          type: boolean
+        maxInputTokens:
+          type: integer
+        dimensions:
+          type: integer
+          nullable: true
+          description: >
+            Vector size the last successful probe embedding returned; the completion creates the
+            vector table with it. Absent until the check succeeded.
+
     InstallationAnswers:
       type: object
       description: >
         All values of the answer file in one request (docs/features/installation-and-settings.md).
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
-        that the API cannot read files of the backend. Parts of later steps (embeddingModel,
-        outboundProxy, mail, branding) are not evaluated by this version.
-      required: [firstAdmin, signIn, chatModel]
+        that the API cannot read files of the backend. Parts of later steps (outboundProxy, mail,
+        branding) are not evaluated by this version.
+      required: [firstAdmin, signIn, chatModel, embeddingModel]
       properties:
         firstAdmin:
           $ref: "#/components/schemas/InstallationFirstAdmin"
@@ -387,3 +435,5 @@ components:
           $ref: "#/components/schemas/InstallationSignIn"
         chatModel:
           $ref: "#/components/schemas/InstallationChatModel"
+        embeddingModel:
+          $ref: "#/components/schemas/InstallationEmbeddingModel"

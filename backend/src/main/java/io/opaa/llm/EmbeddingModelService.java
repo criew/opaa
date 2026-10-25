@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import io.opaa.common.ConflictException;
+import io.opaa.common.InstallationStatus;
 import io.opaa.compliance.DataFlow;
 import io.opaa.knowledge.VectorTableCreator;
 import io.opaa.security.SettingsEncryptor;
@@ -55,6 +56,7 @@ public class EmbeddingModelService {
   private final VectorTableCreator vectorTable;
   private final LegacyEmbeddingConfiguration legacy;
   private final ApplicationEventPublisher events;
+  private final InstallationStatus installationStatus;
   private final TransactionTemplate transactions;
   private final Clock clock;
 
@@ -65,6 +67,7 @@ public class EmbeddingModelService {
       VectorTableCreator vectorTable,
       LegacyEmbeddingConfiguration legacy,
       ApplicationEventPublisher events,
+      InstallationStatus installationStatus,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.repository = repository;
@@ -73,6 +76,7 @@ public class EmbeddingModelService {
     this.vectorTable = vectorTable;
     this.legacy = legacy;
     this.events = events;
+    this.installationStatus = installationStatus;
     this.transactions = new TransactionTemplate(transactionManager);
     this.clock = clock;
   }
@@ -155,13 +159,17 @@ public class EmbeddingModelService {
    * Takes over the embedding model of an installation that has none stored yet: the configured one
    * of {@link LegacyEmbeddingConfiguration}. An existing vector table keeps the size it was created
    * with; without one, a probe embedding decides it and the table is created. A failed probe leaves
-   * the model uninstalled and is retried at the next start.
+   * the model uninstalled and is retried at the next start. A pending installation takes over
+   * nothing: its embedding model comes from the installation step.
    *
    * @return whether an embedding model is installed afterwards
    */
   public boolean adoptAtStartup() {
     if (installed().isPresent()) {
       return true;
+    }
+    if (installationStatus.isPending()) {
+      return false;
     }
     EmbeddingEndpoint endpoint = legacy.endpoint();
     if (ModelEndpointUri.containsCredentials(endpoint.baseUrl())) {

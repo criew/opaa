@@ -2,6 +2,7 @@ package io.opaa.installation.web;
 
 import io.opaa.api.dto.InstallationAnswers;
 import io.opaa.api.dto.InstallationChatModel;
+import io.opaa.api.dto.InstallationEmbeddingModel;
 import io.opaa.api.dto.InstallationFirstAdmin;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationSignIn;
@@ -24,6 +25,7 @@ final class InstallationRequestMapper {
       case FIRST_ADMIN -> firstAdmin(request.getFirstAdmin());
       case SIGN_IN -> signIn(request.getSignIn());
       case CHAT_MODEL -> chatModel(request.getChatModel());
+      case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
     };
   }
 
@@ -32,7 +34,10 @@ final class InstallationRequestMapper {
       throw missing("firstAdmin");
     }
     return List.of(
-        firstAdmin(body.getFirstAdmin()), signIn(body.getSignIn()), chatModel(body.getChatModel()));
+        firstAdmin(body.getFirstAdmin()),
+        signIn(body.getSignIn()),
+        chatModel(body.getChatModel()),
+        embeddingModel(body.getEmbeddingModel()));
   }
 
   private static StepInput firstAdmin(InstallationFirstAdmin admin) {
@@ -70,6 +75,14 @@ final class InstallationRequestMapper {
         model.getApiKey(),
         model.getTemperature(),
         model.getMaxTokens());
+  }
+
+  private static StepInput embeddingModel(InstallationEmbeddingModel model) {
+    if (model == null) {
+      throw missing("embeddingModel");
+    }
+    return new StepInput.EmbeddingModel(
+        model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getMaxInputTokens());
   }
 
   private static FieldValidationException missing(String field) {

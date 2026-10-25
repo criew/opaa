@@ -135,7 +135,8 @@ class InstallationStartupTest {
                 List.of(
                     new StepInput.FirstAdmin("it@stadt.example", "IT", "Kennwort-aus-Secret-2026"),
                     new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
-                    new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null))),
+                    new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null),
+                    new StepInput.EmbeddingModel(null, "bge-m3", "", null))),
             eq(CompletionSource.ANSWER_FILE_STARTUP));
     verify(installation, never()).ensureToken(any());
   }
@@ -150,7 +151,7 @@ class InstallationStartupTest {
 
     verify(installation).ensureToken(null);
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
-        .anyMatch(message -> message.contains("firstAdmin, signIn und chatModel"));
+        .anyMatch(message -> message.contains("firstAdmin, signIn, chatModel und"));
   }
 
   @Test
@@ -160,7 +161,8 @@ class InstallationStartupTest {
             directory.resolve("installation.json"),
             "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
                 + "\"password\":\"im-klartext\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
-                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"}}");
+                + "\"chatModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"qwen\"},"
+                + "\"embeddingModel\":{\"baseUrl\":\"http://ollama:11434/v1\",\"model\":\"bge-m3\"}}");
     InstallationStartup startup = startup("oidc", "", null, answers.toString());
 
     assertThat(startup.decide()).isFalse();

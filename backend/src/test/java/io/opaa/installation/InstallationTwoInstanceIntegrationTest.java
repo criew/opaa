@@ -104,6 +104,7 @@ class InstallationTwoInstanceIntegrationTest {
         new StepInput.FirstAdmin(
             InstallationFixture.ADMIN_EMAIL, "IT-Betrieb", InstallationFixture.ADMIN_PASSWORD),
         new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
-        new StepInput.ChatModel(fixture.chatBaseUrl(), "qwen2.5:7b", null, null, null));
+        new StepInput.ChatModel(fixture.chatBaseUrl(), "qwen2.5:7b", null, null, null),
+        new StepInput.EmbeddingModel(fixture.chatBaseUrl(), "bge-m3", null, null));
   }
 }

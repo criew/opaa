@@ -3,7 +3,7 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung, Anmeldeverfahren, Chat-Modell. Bis dahin steht sie im **Installationsmodus**
+der Systemverwaltung, Anmeldeverfahren, Chat-Modell, Embedding-Modell. Bis dahin steht sie im **Installationsmodus**
 und bietet nur die Installation an. Eingerichtet wird über die Installations-API, entweder Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
 selbst beschreiben [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md).
@@ -70,6 +70,7 @@ verwerfen die Prüfung des Schritts.
 | Erstes Konto (`FIRST_ADMIN`) | E-Mail-Adresse, Anzeigename, Passwort | zustellbar geformte Adresse, nicht `admin@opaa.local`; Passwortrichtlinie | Benutzerverwaltung |
 | Anmeldeverfahren (`SIGN_IN`) | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
 | Chat-Modell (`CHAT_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
+| Embedding-Modell (`EMBEDDING_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | nicht über die Oberfläche ([Modell wechseln](modelle.md#modell-wechseln)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -88,7 +89,8 @@ Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich bleibt (Sche
 Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt ihn.
 
 **Zielprüfung der Modelladresse.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
-Adresse des Chat-Modells beim Speichern und unmittelbar vor dem Verbindungstest wie die Quellen
+Adressen von Chat- und Embedding-Modell beim Speichern und unmittelbar vor Verbindungstest und
+Probeeinbettung wie die Quellen
 der Wissensbibliotheken: Adressen in internen, Loopback- oder Link-Local-Bereichen werden
 abgelehnt, ohne dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im
 Compose-Stapel, gibt der Betrieb mit seinem Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
@@ -98,7 +100,10 @@ frei.
 zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
 [Notanker-Konto](authentifizierung.md#erststart-und-systemverwalter-konto) an, mit dem gewählten
 Passwort und ohne erzwungenen Wechsel, richtet das Anmeldeverfahren ein (ein OIDC-Anbieter wird
-Standardanbieter), aktiviert das Chat-Modell und verwirft Token und Zwischenstand. Danach meldet
+Standardanbieter), aktiviert das Chat-Modell, legt das Embedding-Modell fest samt der Vektorablage
+mit der Zahl der Dimensionen aus der Probeeinbettung und verwirft Token und Zwischenstand. Vor dem
+Abschluss gibt es keine Vektorablage; das Embedding-Modell lässt sich danach nicht über die
+Oberfläche wechseln ([Modelle](modelle.md#embedding)). Danach meldet
 sich die Person mit dem ersten Konto an. Startwerte aus der Umgebung übernimmt eine so eingerichtete
 Instanz nie mehr. Jeder Schritt, jede Prüfung und der Abschluss stehen im Revisionsprotokoll.
 
@@ -127,6 +132,12 @@ Prüfungen, alles oder nichts.
     "model": "qwen2.5:7b",
     "apiKeyFile": null,
     "maxTokens": 8000
+  },
+  "embeddingModel": {
+    "baseUrl": "http://ollama:11434/v1",
+    "model": "bge-m3",
+    "apiKeyFile": null,
+    "maxInputTokens": 8192
   }
 }
 ```
@@ -140,8 +151,9 @@ Prüfungen, alles oder nichts.
 - **Über die API:** `POST /api/v1/installation/answer-file` nimmt dieselben Angaben mit Token an,
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
-- Angaben späterer Schritte (`embeddingModel`, `outboundProxy`, `mail`, `branding`) wertet diese
-  Version nicht aus; das Embedding-Modell kommt weiter aus der [Konfiguration](konfiguration.md).
+- Angaben späterer Schritte (`outboundProxy`, `mail`, `branding`) wertet diese Version nicht aus.
+- Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens
+  ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
 ## Fehlerbilder
 
@@ -154,6 +166,8 @@ Prüfungen, alles oder nichts.
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse | `Retry-After` abwarten |
 | `409` beim Abschluss | ein Schritt ist nicht gespeichert oder nicht erfolgreich geprüft | offene Schritte prüfen; die Meldung nennt sie |
+| Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
+| Prüfung des Embedding-Modells „… der Vektorindex nimmt höchstens 2000 auf" | das Modell liefert mehr Dimensionen, als der Vektorindex aufnimmt | ein anderes Embedding-Modell wählen |
 | `404` | die Installation ist abgeschlossen | anmelden mit dem ersten Konto |
 | Log „The answer file … was not applied" | eine Angabe oder Prüfung der Antwortdatei scheiterte | Datei korrigieren, neu starten |
 

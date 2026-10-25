@@ -167,7 +167,9 @@ class InstanceStartTest extends AbstractMigrationTest {
                   + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},\"chatModel\":{\"baseUrl\":"
                   + "\"http://127.0.0.1:"
                   + chat.getAddress().getPort()
-                  + "/v1\",\"model\":\"qwen2.5:7b\"}}");
+                  + "/v1\",\"model\":\"qwen2.5:7b\"},\"embeddingModel\":{\"baseUrl\":\""
+                  + embeddingBaseUrl()
+                  + "\",\"model\":\"bge-m3\"}}");
       Map<String, String> environment =
           Map.of(
               "OPAA_INSTALLATION_ANSWER_FILE",
@@ -189,6 +191,8 @@ class InstanceStartTest extends AbstractMigrationTest {
                   "SELECT count(*) FROM installation_state WHERE status = 'COMPLETED'"
                       + " AND completion_source = 'ANSWER_FILE_STARTUP' AND token_hash IS NULL"))
           .isOne();
+      assertThat(count("SELECT count(*) FROM embedding_model")).isOne();
+      assertThat(vectorDimensions()).isEqualTo(PROBE_DIMENSIONS);
       assertThat(first.log() + second.log())
           .doesNotContain("Kennwort-der-Installation-2026")
           .doesNotContain("INSTALLATION TOKEN");

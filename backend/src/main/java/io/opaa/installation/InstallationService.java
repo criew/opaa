@@ -17,6 +17,7 @@ import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.installation.InstallationState.TokenSource;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelSeedMarkerRepository;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
@@ -63,6 +64,7 @@ public class InstallationService {
   private final InitialAdministrator initialAdministrator;
   private final OidcProviderService oidcProviders;
   private final LlmModelService llmModels;
+  private final EmbeddingModelService embeddingModels;
   private final LocalAdminSeedMarkerRepository localAdminMarker;
   private final OidcProviderSeedMarkerRepository oidcMarker;
   private final LlmModelSeedMarkerRepository llmMarker;
@@ -78,6 +80,7 @@ public class InstallationService {
       InitialAdministrator initialAdministrator,
       OidcProviderService oidcProviders,
       LlmModelService llmModels,
+      EmbeddingModelService embeddingModels,
       LocalAdminSeedMarkerRepository localAdminMarker,
       OidcProviderSeedMarkerRepository oidcMarker,
       LlmModelSeedMarkerRepository llmMarker,
@@ -91,6 +94,7 @@ public class InstallationService {
     this.initialAdministrator = initialAdministrator;
     this.oidcProviders = oidcProviders;
     this.llmModels = llmModels;
+    this.embeddingModels = embeddingModels;
     this.localAdminMarker = localAdminMarker;
     this.oidcMarker = oidcMarker;
     this.llmMarker = llmMarker;
@@ -246,6 +250,10 @@ public class InstallationService {
                     new ConflictException(
                         "Der Schritt " + step.name() + " ist nicht gespeichert."));
     StepChecks.Outcome outcome = checks.check(step, record.getPayload(), record.getSecret());
+    if (outcome.succeeded() && outcome.dimensions() != null) {
+      record.recordCheckedValues(
+          rules.withProbedDimensions(record.getPayload(), outcome.dimensions()));
+    }
     record.recordCheck(outcome.succeeded(), outcome.message(), clock.instant());
     steps.save(record);
     record(
@@ -301,10 +309,25 @@ public class InstallationService {
         model.temperature(),
         StepRules.maxTokens(model),
         modelStep.getSecret());
+    installEmbeddingModel(saved.get(InstallationStep.EMBEDDING_MODEL));
     steps.deleteAllInBatch();
     markCompleted(
         state, source, Map.of("source", source.name(), "signInMode", signIn.mode().name()));
     return new InstallationOverview(false, true, List.of());
+  }
+
+  /**
+   * The embedding model and {@code vector_store} with the probed vector size, in the completion's
+   * transaction and under its locks, so the table exists exactly once (ADR-0060, Entscheidung 10).
+   */
+  private void installEmbeddingModel(InstallationStepRecord step) {
+    StepRules.EmbeddingModelPayload embedding = rules.embeddingModelPayload(step.getPayload());
+    if (embedding.dimensions() == null) {
+      throw new ConflictException(
+          "Die Probeeinbettung des Embedding-Modells fehlt; bitte den Schritt erneut prüfen.");
+    }
+    embeddingModels.install(
+        rules.embeddingEndpoint(embedding, step.getSecret()), embedding.dimensions());
   }
 
   private void markCompleted(
@@ -387,6 +410,11 @@ public class InstallationService {
         }
       }
       case InstallationOverview.ChatModel model -> {
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        summary.put("model", model.model());
+        summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.EmbeddingModel model -> {
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());

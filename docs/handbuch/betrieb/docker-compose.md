@@ -151,11 +151,11 @@ OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
 ```
 
-Das voreingestellte Embedding-Modell `bge-m3` bettet mit derselben Dimension ein, die
-`OPAA_PGVECTOR_DIMENSIONS` vorgibt. Für einen anderen Modellanbieter kommen `OPAA_OPENAI_BASE_URL`
-und `OPAA_OPENAI_API_KEY` hinzu, und `OPAA_PGVECTOR_DIMENSIONS` richtet sich nach dessen
-Embedding-Modell ([Modelle](modelle.md#welches-embedding-modell)); passt sie nicht, bricht die erste
-Einbettung mit einem Dimensionsfehler ab.
+Das Embedding-Modell und seine Dimension legt die [Installation](installation.md) fest; die
+Dimension ermittelt ihre Probeeinbettung. Ein Stapel, der ohne Installation mit den Variablen
+`OPAA_OPENAI_EMBEDDING_*` startet, übernimmt sie beim ersten Start einmalig
+([Modelle](modelle.md#embedding)). Für einen anderen Modellanbieter kommen `OPAA_OPENAI_BASE_URL` und
+`OPAA_OPENAI_API_KEY` hinzu.
 
 ## Dokumente
 
