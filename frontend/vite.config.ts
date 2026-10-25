@@ -6,7 +6,10 @@ import { resolveOpaaVersion } from './opaaVersion.ts'
 
 // TODO: Split MUI out of the entry chunk to bring it below 500 kB
 // https://vite.dev/config/
-export default defineConfig({
+// `vite build --mode prototype` builds the static UI-lab prototype (e2e/ui-lab/README.md): mocks
+// answered in the page, hash routing, relative asset paths so it runs from any sub-path.
+export default defineConfig(({ mode }) => ({
+  base: mode === 'prototype' ? './' : '/',
   plugins: [react()],
   // @/ points at src/, mirroring "paths" in tsconfig.app.json; Vitest inherits it.
   resolve: {
@@ -17,6 +20,10 @@ export default defineConfig({
   // 0.0.0-dev.
   define: {
     __OPAA_VERSION__: JSON.stringify(resolveOpaaVersion(process.env.OPAA_VERSION)),
+    ...(mode === 'prototype' && {
+      'import.meta.env.VITE_ENABLE_MOCKS': JSON.stringify('true'),
+      'import.meta.env.VITE_UI_LAB_PROTOTYPE': JSON.stringify('true'),
+    }),
   },
   build: {
     // dist/.vite/manifest.json feeds scripts/bundle-report.mjs.
@@ -58,4 +65,4 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
   },
-})
+}))

@@ -15,6 +15,7 @@ node_modules
 dist
 bundle-report
 dist-ssr
+dist-prototype
 *.local
 frontend/src/shared/api/generated/
 
