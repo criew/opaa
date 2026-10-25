@@ -5,7 +5,7 @@ import {
   getInstallation,
   saveInstallationStep,
 } from '../api/installationApi'
-import type { InstallationState, StepInput, SupportedStepId } from '../api/types'
+import type { InstallationStatusResponse, InstallationStepId, StepInput } from '../api/types'
 import { installationFailure, type InstallationFailure } from '../utils/installationErrors'
 import { nextView, resumeView, type WizardView } from '../utils/steps'
 
@@ -18,7 +18,7 @@ interface WizardState {
   phase: WizardPhase
   /** Held in memory only: a reload asks for it again and resumes from the API's state. */
   token: string | null
-  installation: InstallationState | null
+  installation: InstallationStatusResponse | null
   view: WizardView
   /** Why the assistant returned to the token, e.g. after the operator replaced it. */
   tokenNotice: string | null
@@ -36,6 +36,10 @@ const SAVE_FAILED = 'Die Angaben konnten nicht gespeichert werden.'
 const CHECK_FAILED = 'Die Prüfung ist fehlgeschlagen.'
 const COMPLETE_FAILED = 'Die Installation konnte nicht abgeschlossen werden.'
 const LOAD_FAILED = 'Der Stand der Einrichtung konnte nicht geladen werden.'
+
+function failed(message: string): WizardResult {
+  return { ok: false, failure: { kind: 'other', message, fieldErrors: [] } }
+}
 
 /**
  * The assistant's flow on the installation API. The API's state is the only record of progress:
@@ -76,40 +80,42 @@ export function useInstallationWizard() {
     }
   }, [])
 
-  /** Re-reads the API's state after an action; `false` when the flow had to be left. */
+  /** Re-reads the API's state after an action and shows the view it picks. */
   const refresh = useCallback(
-    async (token: string, view: (installation: InstallationState) => WizardView) => {
+    async (token: string, view: (installation: InstallationStatusResponse) => WizardView) => {
       try {
         const installation = await getInstallation(token)
         setState((current) => ({ ...current, installation, view: view(installation) }))
-        return true
       } catch (err) {
-        return !leaveOn(installationFailure(err, LOAD_FAILED))
+        leaveOn(installationFailure(err, LOAD_FAILED))
       }
     },
     [leaveOn],
   )
 
+  /**
+   * Saves the step (unless `values` is `null`: nothing changed, only check again) and checks it.
+   * A failed check keeps the step open and returns the backend's sentence about it.
+   */
   const submitStep = useCallback(
-    async <S extends SupportedStepId>(step: S, values: StepInput[S]): Promise<WizardResult> => {
+    async <S extends InstallationStepId>(
+      step: S,
+      values: StepInput[S] | null,
+    ): Promise<WizardResult> => {
       const token = state.token
       if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
+      let result: WizardResult = { ok: true }
       try {
-        await saveInstallationStep(token, step, values)
+        if (values) await saveInstallationStep(token, step, values)
+        const checked = await checkInstallationStep(token, step)
+        if (!checked.checked) result = failed(checked.checkMessage ?? CHECK_FAILED)
       } catch (err) {
-        const failure = installationFailure(err, SAVE_FAILED)
-        if (!leaveOn(failure)) await refresh(token, () => step)
-        return { ok: false, failure }
+        const failure = installationFailure(err, values ? SAVE_FAILED : CHECK_FAILED)
+        if (leaveOn(failure)) return { ok: false, failure }
+        result = { ok: false, failure }
       }
-      try {
-        await checkInstallationStep(token, step)
-      } catch (err) {
-        const failure = installationFailure(err, CHECK_FAILED)
-        if (!leaveOn(failure)) await refresh(token, () => step)
-        return { ok: false, failure }
-      }
-      await refresh(token, (installation) => nextView(installation, step))
-      return { ok: true }
+      await refresh(token, (installation) => (result.ok ? nextView(installation, step) : step))
+      return result
     },
     [state.token, leaveOn, refresh],
   )

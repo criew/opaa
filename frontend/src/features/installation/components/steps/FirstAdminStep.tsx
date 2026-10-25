@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import type { InstallationStep, StepInput, StoredStepValues } from '../../api/types'
+import type { InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { STEP_INFO } from '../../utils/steps'
@@ -9,48 +9,57 @@ import SecretInput from '../SecretInput'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface FirstAdminStepProps extends StepNavigationProps {
-  step: InstallationStep
-  submit: (values: StepInput['FIRST_ADMIN']) => Promise<WizardResult>
+  step: InstallationStepState
+  /** `null` re-checks the stored account without saving it again. */
+  submit: (values: StepInput['FIRST_ADMIN'] | null) => Promise<WizardResult>
 }
 
 /**
- * The first account: a local system administrator, the emergency account of ADR-0033. The
- * password rule is the backend's; its field errors arrive per rule and stand under the field.
+ * The first account: a local system administrator, the emergency account of ADR-0033. The API
+ * takes the password with every save; a stored account left unchanged is therefore only checked
+ * again, and changing it asks for the password anew. The password rule is the backend's; its
+ * field errors arrive per rule and stand under the field.
  */
 export default function FirstAdminStep({ step, submit, onBack, onSkip }: FirstAdminStepProps) {
   const id = useId()
-  const stored = step.values as StoredStepValues['FIRST_ADMIN'] | null
+  const stored = step.firstAdmin ?? null
   const [email, setEmail] = useState(stored?.email ?? '')
   const [displayName, setDisplayName] = useState(stored?.displayName ?? '')
   const [password, setPassword] = useState('')
   const [passwordRepeat, setPasswordRepeat] = useState('')
   const passwordStored = Boolean(stored?.passwordSet)
-  const form = useStepForm()
+  const form = useStepForm(step.checked ? null : step.checkMessage)
 
   function handleSubmit() {
-    const replacesPassword = !passwordStored || password !== ''
+    const unchanged =
+      passwordStored &&
+      password === '' &&
+      email.trim() === stored?.email &&
+      displayName.trim() === stored?.displayName
+    let passwordMessage: string | undefined
+    if (!unchanged && password === '') {
+      passwordMessage = passwordStored
+        ? 'Zum Ändern des Kontos bitte das Passwort erneut eingeben.'
+        : 'Bitte ein Passwort angeben.'
+    }
     const localErrors = compact({
       email: emailError(email),
       displayName: isBlank(displayName) ? 'Bitte einen Anzeigenamen angeben.' : undefined,
-      password: replacesPassword && password === '' ? 'Bitte ein Passwort angeben.' : undefined,
+      password: passwordMessage,
       passwordRepeat:
-        replacesPassword && password !== '' && password !== passwordRepeat
+        password !== '' && password !== passwordRepeat
           ? 'Die beiden Eingaben stimmen nicht überein.'
           : undefined,
     })
     void form.submit(localErrors, () =>
-      submit({
-        email: email.trim(),
-        displayName: displayName.trim(),
-        ...(password !== '' ? { password } : {}),
-      }),
+      submit(unchanged ? null : { email: email.trim(), displayName: displayName.trim(), password }),
     )
   }
 
   return (
     <StepFrame
       title={STEP_INFO.FIRST_ADMIN.label}
-      required={step.required}
+      mandatory={step.mandatory}
       laterUnder={STEP_INFO.FIRST_ADMIN.laterUnder}
       description="Das erste Konto ist ein lokales Konto der Systemverwaltung. Mit ihm melden Sie sich nach dem Abschluss an; es bleibt der Zugang, falls ein Identitätsanbieter später ausfällt."
       failure={form.failure}

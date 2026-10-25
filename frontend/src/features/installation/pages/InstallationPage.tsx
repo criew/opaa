@@ -2,16 +2,19 @@ import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { LOGIN_ROUTE } from '@/shared/routes'
-import type { InstallationState, InstallationStep, StepInput, SupportedStepId } from '../api/types'
+import type {
+  InstallationStatusResponse,
+  InstallationStepId,
+  InstallationStepState,
+  StepInput,
+} from '../api/types'
 import InstallationLayout from '../components/InstallationLayout'
 import StepList from '../components/StepList'
 import SummaryStep from '../components/SummaryStep'
 import TokenStep from '../components/TokenStep'
-import BrandingStep from '../components/steps/BrandingStep'
 import ChatModelStep from '../components/steps/ChatModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import SignInStep from '../components/steps/SignInStep'
-import UnsupportedStep from '../components/steps/UnsupportedStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
 import { findStep, nextView, previousView, viewOrder, type WizardView } from '../utils/steps'
 
@@ -19,14 +22,6 @@ import { findStep, nextView, previousView, viewOrder, type WizardView } from '..
  * The sign-in page is left with a full load on purpose: the application then reads its
  * configuration afresh and no longer finds an installation pending.
  */
-function SignInLink() {
-  return (
-    <Button variant="contained" href={LOGIN_ROUTE} sx={{ mt: 3 }}>
-      Zur Anmeldung
-    </Button>
-  )
-}
-
 function Outcome({ heading, message }: { heading: string; message: string }) {
   return (
     <InstallationLayout>
@@ -36,29 +31,37 @@ function Outcome({ heading, message }: { heading: string; message: string }) {
       <Alert severity="success" sx={{ mt: 2 }}>
         {message}
       </Alert>
-      <SignInLink />
+      <Button variant="contained" href={LOGIN_ROUTE} sx={{ mt: 3 }}>
+        Zur Anmeldung
+      </Button>
     </InstallationLayout>
   )
 }
 
-function progressOf(installation: InstallationState | null, view: WizardView): string | null {
+function progressOf(
+  installation: InstallationStatusResponse | null,
+  view: WizardView,
+): string | null {
   if (!installation) return null
   const order = viewOrder(installation)
   return `Schritt ${order.indexOf(view) + 1} von ${order.length}`
 }
 
-type Submit = <S extends SupportedStepId>(step: S, values: StepInput[S]) => Promise<WizardResult>
+type Submit = <S extends InstallationStepId>(
+  step: S,
+  values: StepInput[S] | null,
+) => Promise<WizardResult>
 
 interface StepViewProps {
-  step: InstallationStep
+  step: InstallationStepState
   submit: Submit
   onBack?: () => void
   onNext: () => void
 }
 
-/** The form of one step; optional steps can be skipped, unknown ones only passed. */
+/** The form of one step; an optional step can be skipped. */
 function StepView({ step, submit, onBack, onNext }: StepViewProps) {
-  const nav = { onBack, onSkip: step.required ? undefined : onNext }
+  const nav = { onBack, onSkip: step.mandatory ? undefined : onNext }
   switch (step.step) {
     case 'FIRST_ADMIN':
       return <FirstAdminStep step={step} submit={(v) => submit('FIRST_ADMIN', v)} {...nav} />
@@ -66,17 +69,13 @@ function StepView({ step, submit, onBack, onNext }: StepViewProps) {
       return <SignInStep step={step} submit={(v) => submit('SIGN_IN', v)} {...nav} />
     case 'CHAT_MODEL':
       return <ChatModelStep step={step} submit={(v) => submit('CHAT_MODEL', v)} {...nav} />
-    case 'BRANDING':
-      return <BrandingStep step={step} submit={(v) => submit('BRANDING', v)} {...nav} />
-    default:
-      return <UnsupportedStep step={step} onBack={onBack} onSkip={onNext} />
   }
 }
 
 /**
  * The set-up assistant of an installation in installation mode (ADR-0060). Reachable without a
  * session; every step behind the installation token. A reload asks for the token again and
- * continues at the first required step still open.
+ * continues at the first mandatory step still open.
  */
 export default function InstallationPage() {
   const wizard = useInstallationWizard()

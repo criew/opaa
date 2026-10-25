@@ -1,4 +1,4 @@
-import type { InstallationState, InstallationStep } from '../api/types'
+import type { InstallationStatusResponse, InstallationStepState } from '../api/types'
 
 /**
  * The mock's installation: installed by default, so every other mock keeps working. Pending
@@ -14,25 +14,24 @@ export const MOCK_UNREACHABLE_MARKER = 'kaputt'
 const STORAGE_KEY = 'opaa.mockInstallation'
 const STEPS_STORAGE_KEY = 'opaa.mockInstallationSteps'
 
-function initialSteps(): InstallationStep[] {
+function initialSteps(): InstallationStepState[] {
   return [
-    { step: 'FIRST_ADMIN', required: true, saved: false, checked: false, values: null },
-    { step: 'SIGN_IN', required: true, saved: false, checked: false, values: null },
-    { step: 'CHAT_MODEL', required: true, saved: false, checked: false, values: null },
-    { step: 'BRANDING', required: false, saved: false, checked: false, values: null },
+    { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
+    { step: 'SIGN_IN', mandatory: true, saved: false, checked: false },
+    { step: 'CHAT_MODEL', mandatory: true, saved: false, checked: false },
   ]
 }
 
-function storedSteps(): InstallationStep[] | null {
+function storedSteps(): InstallationStepState[] | null {
   try {
     const raw = window.sessionStorage.getItem(STEPS_STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as InstallationStep[]) : null
+    return raw ? (JSON.parse(raw) as InstallationStepState[]) : null
   } catch {
     return null
   }
 }
 
-function remember(steps: InstallationStep[]) {
+function remember(steps: InstallationStepState[]) {
   try {
     window.sessionStorage.setItem(STEPS_STORAGE_KEY, JSON.stringify(steps))
   } catch {
@@ -41,7 +40,7 @@ function remember(steps: InstallationStep[]) {
 }
 
 let pendingOverride: boolean | null = null
-let mockSteps: InstallationStep[] = storedSteps() ?? initialSteps()
+let mockSteps: InstallationStepState[] = storedSteps() ?? initialSteps()
 
 function pendingFromBrowser(): boolean {
   if (typeof window === 'undefined') return false
@@ -65,11 +64,18 @@ export function setMockInstallationPending(pending: boolean) {
   pendingOverride = pending
 }
 
-export function mockInstallationState(): InstallationState {
-  return { steps: mockSteps }
+export function mockInstallationState(): InstallationStatusResponse {
+  return {
+    pending: true,
+    completable: mockSteps.every((s) => !s.mandatory || s.checked),
+    steps: mockSteps,
+  }
 }
 
-export function updateMockStep(step: InstallationStep['step'], patch: Partial<InstallationStep>) {
+export function updateMockStep(
+  step: InstallationStepState['step'],
+  patch: Partial<InstallationStepState>,
+) {
   mockSteps = mockSteps.map((s) => (s.step === step ? { ...s, ...patch } : s))
   remember(mockSteps)
 }

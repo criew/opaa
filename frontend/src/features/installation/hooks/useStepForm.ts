@@ -5,11 +5,12 @@ import { byField, type FieldErrors } from '../utils/validation'
 /**
  * Submission state of one step's form. Entries that fail the local checks are not sent; the
  * backend's field errors replace the local ones after a send. In both cases the focus moves to
- * the first invalid field, so the correction can start where the message stands.
+ * the first invalid field, so the correction can start where the message stands. A step opened
+ * after a failed check starts with that check's sentence.
  */
-export function useStepForm() {
+export function useStepForm(initialFailure?: string | null) {
   const [errors, setErrors] = useState<FieldErrors>({})
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<string | null>(initialFailure ?? null)
   const [busy, setBusy] = useState(false)
 
   function focusFirstInvalid() {

@@ -90,7 +90,9 @@ describe('InstallationPage', () => {
     expect(field('Token')).toHaveAccessibleDescription('Bitte das Installations-Token eingeben.')
   })
 
-  it('lists required and optional steps in separate groups once the token is accepted', async () => {
+  it('lists mandatory and optional steps in separate groups once the token is accepted', async () => {
+    // The API decides what is mandatory; an optional step goes into a group of its own.
+    updateMockStep('SIGN_IN', { mandatory: false })
     const user = userEvent.setup()
     renderPage()
     await stepHeading('Installations-Token')
@@ -98,17 +100,36 @@ describe('InstallationPage', () => {
     await enterToken(user)
 
     expect(await stepHeading('Erstes Konto')).toBeInTheDocument()
-    const required = screen.getByRole('list', { name: 'Pflichtschritte' })
+    const mandatory = screen.getByRole('list', { name: 'Pflichtschritte' })
     const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
-    expect(within(required).getByText('Erstes Konto')).toBeInTheDocument()
-    expect(within(required).getByText('Chat-Modell')).toBeInTheDocument()
-    expect(within(required).queryByText('Branding')).not.toBeInTheDocument()
-    expect(within(optional).getByText('Branding')).toBeInTheDocument()
-    expect(screen.getByText('Schritt 2 von 6')).toBeInTheDocument()
-    expect(within(required).getByRole('button', { name: /Erstes Konto/ })).toHaveAttribute(
+    expect(within(mandatory).getByText('Erstes Konto')).toBeInTheDocument()
+    expect(within(mandatory).getByText('Chat-Modell')).toBeInTheDocument()
+    expect(within(mandatory).queryByText('Anmeldeverfahren')).not.toBeInTheDocument()
+    expect(within(optional).getByText('Anmeldeverfahren')).toBeInTheDocument()
+    expect(screen.getByText('Schritt 2 von 5')).toBeInTheDocument()
+    expect(within(mandatory).getByRole('button', { name: /Erstes Konto/ })).toHaveAttribute(
       'aria-current',
       'step',
     )
+
+    await user.click(within(optional).getByRole('button', { name: /Anmeldeverfahren/ }))
+    expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Identitätsanbieter')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
+    expect(mockInstallationState().steps.find((s) => s.step === 'SIGN_IN')?.saved).toBe(false)
+  })
+
+  it('shows no optional group while the API lists only mandatory steps', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await stepHeading('Installations-Token')
+
+    await enterToken(user)
+
+    await stepHeading('Erstes Konto')
+    expect(screen.queryByRole('list', { name: 'Optionale Schritte' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Überspringen' })).not.toBeInTheDocument()
   })
 
   it('keeps the token out of the browser storage', async () => {
@@ -169,7 +190,7 @@ describe('InstallationPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Die Angaben sind unvollständig.')
   })
 
-  it('runs through every step and completes only after all required ones', async () => {
+  it('runs through every step and completes only after all mandatory ones', async () => {
     const user = userEvent.setup()
     renderPage()
     await stepHeading('Installations-Token')
@@ -191,26 +212,22 @@ describe('InstallationPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Das Modell antwortet nicht')
     const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
     expect(within(nav).getByRole('button', { name: /Chat-Modell/ })).toHaveTextContent(
-      'Gespeichert, Prüfung offen',
+      'Prüfung fehlgeschlagen',
     )
     const baseUrl = field('Basis-Adresse')
     await user.clear(baseUrl)
     await user.type(baseUrl, 'http://ollama:11434/v1')
     await submitStep(user)
 
-    expect(await stepHeading('Branding')).toBeInTheDocument()
-    expect(screen.getByText('Optional · später unter Allgemein & Branding')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
-
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
-    expect(mockInstallationState().steps.every((s) => !s.required || s.checked)).toBe(true)
+    expect(mockInstallationState().completable).toBe(true)
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 
     expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toHaveAttribute('href', '/login')
   })
 
-  it('refuses the completion while a required step is open and names it', async () => {
+  it('refuses the completion while a mandatory step is open and names it', async () => {
     const user = userEvent.setup()
     renderPage()
     await stepHeading('Installations-Token')
@@ -229,22 +246,19 @@ describe('InstallationPage', () => {
     expect(screen.queryByText('Installation abgeschlossen')).not.toBeInTheDocument()
   })
 
-  it('resumes at the first open required step with the stored values', async () => {
+  it('resumes at the first open mandatory step with the stored values and check result', async () => {
     updateMockStep('FIRST_ADMIN', {
       saved: true,
       checked: true,
-      values: { email: 'it@stadt.example', displayName: 'IT', passwordSet: true },
+      firstAdmin: { email: 'it@stadt.example', displayName: 'IT', passwordSet: true },
     })
     updateMockStep('SIGN_IN', {
       saved: true,
       checked: false,
-      values: {
+      checkMessage: 'Die Discovery-Adresse des Anbieters ist nicht erreichbar.',
+      signIn: {
         mode: 'LOCAL_AND_OIDC',
-        oidc: {
-          issuerUri: 'https://login.stadt.example/realms/opaa',
-          clientId: 'opaa',
-          jwkSetUri: null,
-        },
+        oidc: { issuerUri: 'https://login.stadt.example/realms/opaa', clientId: 'opaa' },
       },
     })
     const user = userEvent.setup()
@@ -256,6 +270,7 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
     expect(field('Issuer-URI')).toHaveValue('https://login.stadt.example/realms/opaa')
     expect(screen.getByRole('radio', { name: /Lokale Konten und ein OIDC-Anbieter/ })).toBeChecked()
+    expect(screen.getByRole('alert')).toHaveTextContent('Discovery-Adresse')
 
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     expect(await stepHeading('Erstes Konto')).toBeInTheDocument()
@@ -263,6 +278,18 @@ describe('InstallationPage', () => {
     // The stored password is never mirrored back.
     expect(screen.getByText('Gesetzt')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Passwort ersetzen' })).toBeInTheDocument()
+
+    // Unchanged, the stored account is only checked again: the API needs the password to save.
+    await submitStep(user)
+    expect(await stepHeading('Anmeldeverfahren')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
+    await stepHeading('Erstes Konto')
+    await user.type(field('Anzeigename'), ' Betrieb')
+    await submitStep(user)
+    expect(
+      screen.getByText('Zum Ändern des Kontos bitte das Passwort erneut eingeben.'),
+    ).toBeInTheDocument()
   })
 
   it('returns to the token when the backend no longer accepts it', async () => {

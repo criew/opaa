@@ -25,9 +25,9 @@ flowchart LR
    Schritt und keinen gespeicherten Wert.
 2. **Pflichtschritte.** Erstes Konto, Anmeldeverfahren und Chat-Modell. „Prüfen und weiter“
    speichert die Angaben und prüft sie sofort, beim Chat-Modell etwa mit einem Verbindungstest.
-3. **Optionale Schritte.** Sie stehen in der Schrittliste in einer eigenen Gruppe und lassen sich mit
-   „Überspringen“ auslassen; die Zeile nennt, wo der Wert nach dem Abschluss in der Verwaltung zu
-   finden ist.
+3. **Optionale Schritte.** Meldet das Backend welche, stehen sie in der Schrittliste in einer eigenen
+   Gruppe und lassen sich mit „Überspringen“ auslassen; die Zeile nennt, wo der Wert nach dem
+   Abschluss in der Verwaltung zu finden ist. Heute sind alle Schritte Pflicht.
 4. **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
    sind; bis dahin nennt die Seite die offenen Schritte. Danach ist der Assistent auf jeder Instanz
    verschwunden, das Token verliert seine Gültigkeit, und die Anmeldung erfolgt mit dem ersten Konto.
@@ -37,7 +37,6 @@ flowchart LR
 | Erstes Konto | ja | Adresse vollständig und zustellbar, nicht `admin@opaa.local`; Passwortregel | Benutzer |
 | Anmeldeverfahren | ja | mit Identitätsanbieter: Discovery und JWK-Set erreichbar | Identitätsanbieter |
 | Chat-Modell | ja | Verbindungstest | Modelle |
-| Branding | nein | — | Allgemein & Branding |
 
 Welche Schritte erscheinen und welche davon Pflicht sind, bestimmt das Backend; die Schrittliste
 zeigt genau diese.
@@ -47,12 +46,15 @@ zeigt genau diese.
 Jeder Schritt steht in der Liste mit seinem Zustand:
 
 - **Geprüft** — gespeichert, und die Prüfung ist gelungen.
-- **Gespeichert, Prüfung offen** — die Angaben sind gespeichert, die Prüfung ist gescheitert oder
-  steht aus. Die Meldung über dem Formular nennt den Grund, etwa „Das Modell antwortet nicht“.
+- **Prüfung fehlgeschlagen** — die Angaben sind gespeichert, die Prüfung ist gescheitert. Die
+  Meldung über dem Formular nennt den Grund, auch nach erneutem Öffnen des Schritts.
+- **Gespeichert, Prüfung offen** — die Angaben sind gespeichert, geprüft wurden sie noch nicht.
 - **Offen** — noch nichts gespeichert.
 
 Ändert sich ein gespeicherter Wert, verfällt seine Prüfung. Geheimnisse wie Passwort oder
-API-Schlüssel zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit der Aktion „Ersetzen“.
+API-Schlüssel zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit der Aktion „Ersetzen“. Wer das
+erste Konto nachträglich ändert, gibt dessen Passwort dabei erneut ein; unverändert wird es nur noch
+einmal geprüft.
 
 ## Unterbrechen und fortsetzen
 
@@ -75,10 +77,10 @@ behält der Browser nur, solange die Seite offen ist.
 - Installationsmodus, Token, Installations-API und Antwortdatei im Backend (#3189). Bis dahin
   richtet sich eine Installation wie bisher über die Startvariablen ein, beschrieben unter
   [Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto).
-- Die Schritte Embedding-Modell, Ausgangsproxy und E-Mail-Versand im Browser; der Assistent zeigt sie,
-  falls das Backend sie meldet, als noch nicht im Browser einrichtbar.
+- Die Schritte Embedding-Modell, Ausgangsproxy, E-Mail-Versand und Branding; die übrigen
+  Einstellungen folgen nach dem Abschluss in der Verwaltung.
 
 ## Weiterführende Kapitel
 
-- [Authentifizierung](authentifizierung.md), [Modelle](modelle.md), [Branding](branding.md)
+- [Authentifizierung](authentifizierung.md), [Modelle](modelle.md)
 - [Konfiguration](konfiguration.md)

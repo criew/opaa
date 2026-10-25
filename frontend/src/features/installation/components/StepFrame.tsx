@@ -18,7 +18,7 @@ export interface StepNavigationProps {
 
 interface StepFrameProps extends StepNavigationProps {
   title: string
-  required: boolean
+  mandatory: boolean
   /** Where the value can be changed after the installation. */
   laterUnder?: string | null
   description: ReactNode
@@ -31,6 +31,8 @@ interface StepFrameProps extends StepNavigationProps {
   /** The primary action refuses for now; `describedBy` names the element that says why. */
   unavailable?: boolean
   describedBy?: string
+  /** Moves the focus to the heading when the step opens; off for the page's first view. */
+  focusHeading?: boolean
   onSubmit: () => void
   children: ReactNode
 }
@@ -42,7 +44,7 @@ interface StepFrameProps extends StepNavigationProps {
  */
 export default function StepFrame({
   title,
-  required,
+  mandatory,
   laterUnder,
   description,
   failure,
@@ -51,6 +53,7 @@ export default function StepFrame({
   busyAnnouncement = 'Angaben werden gespeichert und geprüft',
   unavailable = false,
   describedBy,
+  focusHeading = true,
   onSubmit,
   onBack,
   onSkip,
@@ -60,8 +63,8 @@ export default function StepFrame({
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
-    headingRef.current?.focus()
-  }, [title])
+    if (focusHeading) headingRef.current?.focus()
+  }, [title, focusHeading])
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -81,7 +84,7 @@ export default function StepFrame({
           mb: 0.75,
         }}
       >
-        {stepMeta(required, laterUnder)}
+        {stepMeta(mandatory, laterUnder)}
       </Typography>
       <Typography
         id={headingId}

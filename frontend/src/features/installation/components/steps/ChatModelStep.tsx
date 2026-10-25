@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import type { InstallationStep, StepInput, StoredStepValues } from '../../api/types'
+import type { InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { STEP_INFO } from '../../utils/steps'
@@ -9,7 +9,7 @@ import SecretInput from '../SecretInput'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface ChatModelStepProps extends StepNavigationProps {
-  step: InstallationStep
+  step: InstallationStepState
   submit: (values: StepInput['CHAT_MODEL']) => Promise<WizardResult>
 }
 
@@ -25,7 +25,7 @@ function temperatureError(value: string): string | undefined {
 }
 
 function maxTokensError(value: string): string | undefined {
-  if (isBlank(value)) return 'Bitte die maximale Antwortlänge angeben.'
+  if (isBlank(value)) return undefined
   const number = Number(value)
   return Number.isInteger(number) && number > 0
     ? undefined
@@ -38,7 +38,7 @@ function maxTokensError(value: string): string | undefined {
  */
 export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatModelStepProps) {
   const id = useId()
-  const stored = step.values as StoredStepValues['CHAT_MODEL'] | null
+  const stored = step.chatModel ?? null
   const [baseUrl, setBaseUrl] = useState(stored?.baseUrl ?? '')
   const [model, setModel] = useState(stored?.model ?? '')
   const [apiKey, setApiKey] = useState('')
@@ -48,7 +48,7 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
   const [maxTokens, setMaxTokens] = useState(
     stored?.maxTokens == null ? DEFAULT_MAX_TOKENS : String(stored.maxTokens),
   )
-  const form = useStepForm()
+  const form = useStepForm(step.checked ? null : step.checkMessage)
 
   function handleSubmit() {
     const localErrors = compact({
@@ -63,7 +63,7 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
         model: model.trim(),
         ...(apiKey !== '' ? { apiKey } : {}),
         temperature: isBlank(temperature) ? null : Number(temperature.replace(',', '.')),
-        maxTokens: Number(maxTokens),
+        maxTokens: isBlank(maxTokens) ? null : Number(maxTokens),
       }),
     )
   }
@@ -71,7 +71,7 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
   return (
     <StepFrame
       title={STEP_INFO.CHAT_MODEL.label}
-      required={step.required}
+      mandatory={step.mandatory}
       laterUnder={STEP_INFO.CHAT_MODEL.laterUnder}
       description="Das Modell, das im Chat antwortet. OPAA spricht es über eine OpenAI-kompatible Schnittstelle an, etwa Ollama, vLLM oder einen Cloud-Anbieter. Die Prüfung ist ein Verbindungstest."
       failure={form.failure}
@@ -122,10 +122,12 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
       <FormField
         id={`${id}-max-tokens`}
         label="Maximale Antwortlänge (Token)"
+        optional
         inputMode="numeric"
         value={maxTokens}
         onChange={setMaxTokens}
         error={form.errors.maxTokens}
+        hint={`Leer lassen für ${DEFAULT_MAX_TOKENS} Token.`}
       />
     </StepFrame>
   )

@@ -48,12 +48,13 @@ export default function TokenStep({ submit, notice }: TokenStepProps) {
   return (
     <StepFrame
       title={TOKEN_LABEL}
-      required
+      mandatory
       description="Die Einrichtung ist durch ein einmaliges Token geschützt. Der erste Start schreibt es als markierten Block ins Log des Backends, sofern der Betrieb es nicht über OPAA_INSTALLATION_TOKEN vorgegeben hat."
       failure={failure}
       busy={busy}
       submitLabel="Token prüfen"
       busyAnnouncement="Token wird geprüft"
+      focusHeading={notice !== null}
       onSubmit={() => void handleSubmit()}
     >
       <SecretInput

@@ -1,4 +1,5 @@
 import type { FieldError } from '@/shared/session/types'
+import { STEP_REQUEST_KEY } from '../api/types'
 
 /** Field name → German message; an empty record means the entries can be sent. */
 export type FieldErrors = Readonly<Record<string, string>>
@@ -55,10 +56,15 @@ export function compact(errors: Record<string, string | undefined>): FieldErrors
   )
 }
 
-/** The backend's field errors by field; the first message per field wins. */
+const REQUEST_PREFIX = new RegExp(`^(${Object.values(STEP_REQUEST_KEY).join('|')})\\.`)
+
+/**
+ * The backend's field errors by field, named as in the step's values (`firstAdmin.email` and
+ * `email` both become `email`); the first message per field wins.
+ */
 export function byField(fieldErrors: readonly FieldError[]): FieldErrors {
-  return fieldErrors.reduce<Record<string, string>>(
-    (acc, error) => (acc[error.field] ? acc : { ...acc, [error.field]: error.message }),
-    {},
-  )
+  return fieldErrors.reduce<Record<string, string>>((acc, error) => {
+    const field = error.field.replace(REQUEST_PREFIX, '')
+    return acc[field] ? acc : { ...acc, [field]: error.message }
+  }, {})
 }

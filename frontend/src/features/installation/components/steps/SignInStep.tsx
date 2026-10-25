@@ -4,7 +4,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Typography from '@mui/material/Typography'
-import type { InstallationStep, SignInMode, StepInput, StoredStepValues } from '../../api/types'
+import type { InstallationSignInMode, InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { STEP_INFO } from '../../utils/steps'
@@ -13,11 +13,11 @@ import FormField from '../FormField'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface SignInStepProps extends StepNavigationProps {
-  step: InstallationStep
+  step: InstallationStepState
   submit: (values: StepInput['SIGN_IN']) => Promise<WizardResult>
 }
 
-const MODES: { value: SignInMode; label: string; detail: string }[] = [
+const MODES: { value: InstallationSignInMode; label: string; detail: string }[] = [
   {
     value: 'LOCAL_ONLY',
     label: 'Nur lokale Konten',
@@ -36,12 +36,13 @@ const MODES: { value: SignInMode; label: string; detail: string }[] = [
  */
 export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepProps) {
   const id = useId()
-  const stored = step.values as StoredStepValues['SIGN_IN'] | null
-  const [mode, setMode] = useState<SignInMode>(stored?.mode ?? 'LOCAL_ONLY')
+  const stored = step.signIn ?? null
+  const [mode, setMode] = useState<InstallationSignInMode>(stored?.mode ?? 'LOCAL_ONLY')
   const [issuerUri, setIssuerUri] = useState(stored?.oidc?.issuerUri ?? '')
   const [clientId, setClientId] = useState(stored?.oidc?.clientId ?? '')
   const [jwkSetUri, setJwkSetUri] = useState(stored?.oidc?.jwkSetUri ?? '')
-  const form = useStepForm()
+  const [providerName, setProviderName] = useState(stored?.oidc?.displayName ?? '')
+  const form = useStepForm(step.checked ? null : step.checkMessage)
   const withProvider = mode === 'LOCAL_AND_OIDC'
   const legendId = `${id}-mode`
 
@@ -61,6 +62,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
               issuerUri: issuerUri.trim(),
               clientId: clientId.trim(),
               jwkSetUri: isBlank(jwkSetUri) ? null : jwkSetUri.trim(),
+              displayName: isBlank(providerName) ? null : providerName.trim(),
             }
           : null,
       }),
@@ -70,7 +72,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
   return (
     <StepFrame
       title={STEP_INFO.SIGN_IN.label}
-      required={step.required}
+      mandatory={step.mandatory}
       laterUnder={STEP_INFO.SIGN_IN.laterUnder}
       description="Legen Sie fest, wie sich Personen anmelden. Das erste Konto meldet sich immer lokal an."
       failure={form.failure}
@@ -85,7 +87,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
         </Typography>
         <RadioGroup
           value={mode}
-          onChange={(event) => setMode(event.target.value as SignInMode)}
+          onChange={(event) => setMode(event.target.value as InstallationSignInMode)}
           aria-labelledby={legendId}
         >
           {MODES.map((option) => (
@@ -134,6 +136,15 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
             onChange={setJwkSetUri}
             error={form.errors['oidc.jwkSetUri']}
             hint="Nur nötig, wenn das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser."
+          />
+          <FormField
+            id={`${id}-provider-name`}
+            label="Name auf der Anmeldeseite"
+            optional
+            value={providerName}
+            onChange={setProviderName}
+            error={form.errors['oidc.displayName']}
+            hint="Ohne Angabe steht dort „Verzeichnisdienst“."
           />
         </>
       )}

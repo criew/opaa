@@ -57,6 +57,8 @@ export default function InstallationLayout({
             ? { xs: 'minmax(0, 1fr)', md: '280px minmax(0, 1fr)' }
             : 'minmax(0, 1fr)',
           minHeight: 'calc(100vh - 73px)',
+          // Stacked below md, the rows keep their content height instead of sharing the page's.
+          alignContent: { xs: 'start', md: 'stretch' },
         }}
       >
         {navigation && (

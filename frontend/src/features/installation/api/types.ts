@@ -1,78 +1,89 @@
 /**
- * Shapes of the installation API (ADR-0060, spec docs/features/installation-and-settings.md).
+ * Shapes of the installation API (ADR-0060), named after the schemas of the OpenAPI fragment
+ * `installation.yaml`.
  *
- * Interim until #3189 adds the OpenAPI fragment `installation.yaml`: these types follow the API
- * sketch of the spec. Once the fragment exists they become aliases of the generated
- * `components['schemas'][...]`, and only this file and the mocks change.
+ * Interim until #3189 merges that fragment: these types repeat its schemas by hand. Once it is
+ * part of the bundled spec they become aliases of the generated `components['schemas'][...]`.
  */
 
-/** The steps of the assistant in the order the API lists them; the token is not one of them. */
-export type InstallationStepId =
-  | 'FIRST_ADMIN'
-  | 'SIGN_IN'
-  | 'CHAT_MODEL'
-  | 'EMBEDDING_MODEL'
-  | 'OUTBOUND_PROXY'
-  | 'MAIL'
-  | 'BRANDING'
+/** The steps the API lists, in its order; the token is not one of them. */
+export type InstallationStepId = 'FIRST_ADMIN' | 'SIGN_IN' | 'CHAT_MODEL'
 
-export type SignInMode = 'LOCAL_ONLY' | 'LOCAL_AND_OIDC'
+export type InstallationSignInMode = 'LOCAL_ONLY' | 'LOCAL_AND_OIDC'
 
-export interface FirstAdminValues {
+export interface InstallationFirstAdmin {
   email: string
   displayName: string
-  /** Write-only; omitted on save to keep the stored password. */
-  password?: string
+  password: string
 }
 
-export interface SignInValues {
-  mode: SignInMode
-  oidc: { issuerUri: string; clientId: string; jwkSetUri: string | null } | null
+export interface InstallationFirstAdminView {
+  email: string
+  displayName: string
+  passwordSet: boolean
 }
 
-export interface ChatModelValues {
+export interface InstallationOidcProvider {
+  issuerUri: string
+  clientId: string
+  jwkSetUri?: string | null
+  /** Name on the sign-in page; the backend uses „Verzeichnisdienst" when absent. */
+  displayName?: string | null
+}
+
+export interface InstallationSignIn {
+  mode: InstallationSignInMode
+  oidc?: InstallationOidcProvider | null
+}
+
+export interface InstallationChatModel {
   baseUrl: string
   model: string
-  /** Write-only; omitted on save to keep the stored key, `''` removes it. */
-  apiKey?: string
-  temperature: number | null
+  /** Omitted keeps a key saved before, empty removes it. */
+  apiKey?: string | null
+  temperature?: number | null
+  /** The backend uses 8000 when absent. */
+  maxTokens?: number | null
+}
+
+export interface InstallationChatModelView {
+  baseUrl: string
+  model: string
+  apiKeySet: boolean
+  temperature?: number | null
   maxTokens: number
 }
 
-export interface BrandingValues {
-  productName: string
-  primaryColor: string
-}
-
-/** What a stored step reads back: its values without secrets, secrets only as „gesetzt“. */
-export interface StoredStepValues {
-  FIRST_ADMIN: Omit<FirstAdminValues, 'password'> & { passwordSet: boolean }
-  SIGN_IN: SignInValues
-  CHAT_MODEL: Omit<ChatModelValues, 'apiKey'> & { apiKeySet: boolean }
-  BRANDING: BrandingValues
-}
-
-export interface StepInput {
-  FIRST_ADMIN: FirstAdminValues
-  SIGN_IN: SignInValues
-  CHAT_MODEL: ChatModelValues
-  BRANDING: BrandingValues
-}
-
-/** The steps this assistant has a form for. */
-export type SupportedStepId = keyof StepInput
-
-export interface InstallationStep {
+export interface InstallationStepState {
   step: InstallationStepId
-  required: boolean
-  /** The step's values are stored. */
+  mandatory: boolean
   saved: boolean
-  /** The check of the stored values succeeded; a changed value resets it. */
+  /** Whether the last check of the saved values succeeded. */
   checked: boolean
-  /** The stored values, `null` while nothing is stored. */
-  values: Record<string, unknown> | null
+  /** The German outcome of the last check, absent before the first one. */
+  checkMessage?: string | null
+  firstAdmin?: InstallationFirstAdminView | null
+  signIn?: InstallationSignIn | null
+  chatModel?: InstallationChatModelView | null
 }
 
-export interface InstallationState {
-  steps: InstallationStep[]
+export interface InstallationStatusResponse {
+  pending: boolean
+  /** Whether every mandatory step is saved and successfully checked. */
+  completable: boolean
+  steps: InstallationStepState[]
 }
+
+/** The values a step's save sends, by step. */
+export interface StepInput {
+  FIRST_ADMIN: InstallationFirstAdmin
+  SIGN_IN: InstallationSignIn
+  CHAT_MODEL: InstallationChatModel
+}
+
+/** The part of `InstallationStepRequest` that carries a step's values. */
+export const STEP_REQUEST_KEY = {
+  FIRST_ADMIN: 'firstAdmin',
+  SIGN_IN: 'signIn',
+  CHAT_MODEL: 'chatModel',
+} as const satisfies Record<InstallationStepId, string>

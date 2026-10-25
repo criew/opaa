@@ -1,6 +1,12 @@
 import axios from 'axios'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
-import type { InstallationState, InstallationStep, StepInput, SupportedStepId } from './types'
+import {
+  STEP_REQUEST_KEY,
+  type InstallationStatusResponse,
+  type InstallationStepId,
+  type InstallationStepState,
+  type StepInput,
+} from './types'
 
 const INSTALLATION_REQUEST_TIMEOUT_MS = 30_000
 
@@ -19,31 +25,34 @@ function bearer(token: string) {
 }
 
 /** The state of every step; doubles as the check of the token. */
-export async function getInstallation(token: string): Promise<InstallationState> {
-  const { data } = await installationClient.get<InstallationState>('', bearer(token))
+export async function getInstallation(token: string): Promise<InstallationStatusResponse> {
+  const { data } = await installationClient.get<InstallationStatusResponse>('', bearer(token))
   return data
 }
 
-/** Stores the step's values; the backend validates every field and resets the step's check. */
-export async function saveInstallationStep<S extends SupportedStepId>(
+/** Stores the step's values; the backend validates every field and discards the step's check. */
+export async function saveInstallationStep<S extends InstallationStepId>(
   token: string,
   step: S,
   values: StepInput[S],
-): Promise<InstallationStep> {
-  const { data } = await installationClient.put<InstallationStep>(
+): Promise<InstallationStepState> {
+  const { data } = await installationClient.put<InstallationStepState>(
     `/steps/${step}`,
-    values,
+    { [STEP_REQUEST_KEY[step]]: values },
     bearer(token),
   )
   return data
 }
 
-/** Runs the check of the stored values, e.g. the connection test of a model. */
+/**
+ * Runs the check of the stored values, e.g. the connection test of a model. A failed check is
+ * no error of the call: the returned state says `checked: false` and why in `checkMessage`.
+ */
 export async function checkInstallationStep(
   token: string,
-  step: SupportedStepId,
-): Promise<InstallationStep> {
-  const { data } = await installationClient.post<InstallationStep>(
+  step: InstallationStepId,
+): Promise<InstallationStepState> {
+  const { data } = await installationClient.post<InstallationStepState>(
     `/steps/${step}/check`,
     undefined,
     bearer(token),
@@ -58,8 +67,9 @@ export async function completeInstallation(token: string): Promise<void> {
 
 /**
  * Whether this installation still waits for its set-up, asked without a token: an installed
- * instance answers 404, one in installation mode refuses the missing token. Anything else -
- * network failure, a proxy error - counts as installed, so the regular sign-in stays reachable.
+ * instance answers 404, one in installation mode refuses the missing token (401) or the client's
+ * network (403). Anything else - network failure, a proxy error - counts as installed, so the
+ * regular sign-in stays reachable.
  */
 export async function probeInstallationPending(): Promise<boolean> {
   try {

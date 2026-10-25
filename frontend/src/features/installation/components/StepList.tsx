@@ -4,28 +4,22 @@ import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { darkRoles, fontFamily, lightRoles, radius } from '@/shared/theme/tokens'
-import type { InstallationState } from '../api/types'
+import type { InstallationStatusResponse } from '../api/types'
 import {
   STEP_INFO,
   STEP_STATUS_LABEL,
+  STEP_STATUS_TONE,
   SUMMARY_LABEL,
   TOKEN_LABEL,
   stepStatus,
-  type StepStatus,
   type WizardView,
 } from '../utils/steps'
 
 interface StepListProps {
-  installation: InstallationState | null
+  installation: InstallationStatusResponse | null
   view: WizardView
   /** Absent while no step may be opened, i.e. before the token was accepted. */
   onSelect?: (view: WizardView) => void
-}
-
-const TONE: Record<StepStatus, StatusTone> = {
-  checked: 'success',
-  unchecked: 'warning',
-  open: 'neutral',
 }
 
 const DOT_COLOR: Record<StatusTone, string> = {
@@ -138,13 +132,13 @@ function GroupTitle({ id, children }: { id: string; children: string }) {
 }
 
 /**
- * The steps of the assistant, required and optional ones in two labelled groups. Every step
+ * The steps of the assistant, mandatory and optional ones in two labelled groups. Every step
  * can be opened from here once the token is accepted; its state comes from the API only.
  */
 export default function StepList({ installation, view, onSelect }: StepListProps) {
   const steps = installation?.steps ?? []
-  const required = steps.filter((s) => s.required)
-  const optional = steps.filter((s) => !s.required)
+  const mandatory = steps.filter((s) => s.mandatory)
+  const optional = steps.filter((s) => !s.mandatory)
   const select = (target: WizardView) => (onSelect ? () => onSelect(target) : undefined)
 
   const renderSteps = (list: typeof steps) =>
@@ -155,7 +149,7 @@ export default function StepList({ installation, view, onSelect }: StepListProps
           key={s.step}
           label={STEP_INFO[s.step].label}
           status={STEP_STATUS_LABEL[status]}
-          tone={TONE[status]}
+          tone={STEP_STATUS_TONE[status]}
           current={view === s.step}
           onSelect={select(s.step)}
         />
@@ -172,7 +166,7 @@ export default function StepList({ installation, view, onSelect }: StepListProps
           tone={installation ? 'success' : 'neutral'}
           current={view === 'TOKEN'}
         />
-        {renderSteps(required)}
+        {renderSteps(mandatory)}
       </Box>
       {optional.length > 0 && (
         <>
@@ -187,11 +181,9 @@ export default function StepList({ installation, view, onSelect }: StepListProps
           <Entry
             label={SUMMARY_LABEL}
             status={
-              required.every((s) => s.checked)
-                ? 'Bereit zum Abschluss'
-                : 'Erst nach allen Pflichtschritten'
+              installation.completable ? 'Bereit zum Abschluss' : 'Erst nach allen Pflichtschritten'
             }
-            tone={required.every((s) => s.checked) ? 'success' : 'neutral'}
+            tone={installation.completable ? 'success' : 'neutral'}
             current={view === 'SUMMARY'}
             onSelect={select('SUMMARY')}
           />

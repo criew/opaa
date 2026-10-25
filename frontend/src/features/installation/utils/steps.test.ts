@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { InstallationState, InstallationStep } from '../api/types'
+import type { InstallationStatusResponse, InstallationStepState } from '../api/types'
 import {
   nextView,
-  openRequiredSteps,
+  openMandatorySteps,
   previousView,
   resumeView,
   stepMeta,
@@ -10,55 +10,58 @@ import {
 } from './steps'
 
 function step(
-  id: InstallationStep['step'],
-  required: boolean,
+  id: InstallationStepState['step'],
+  mandatory: boolean,
   saved = false,
   checked = false,
-): InstallationStep {
-  return { step: id, required, saved, checked, values: null }
+  checkMessage: string | null = null,
+): InstallationStepState {
+  return { step: id, mandatory, saved, checked, checkMessage }
 }
 
-const state = (steps: InstallationStep[]): InstallationState => ({ steps })
+function state(steps: InstallationStepState[]): InstallationStatusResponse {
+  return { pending: true, completable: steps.every((s) => !s.mandatory || s.checked), steps }
+}
 
 describe('installation steps', () => {
-  it('resumes at the first required step whose check is owed', () => {
+  it('resumes at the first mandatory step whose check is owed', () => {
     const installation = state([
       step('FIRST_ADMIN', true, true, true),
       step('SIGN_IN', true, true, false),
       step('CHAT_MODEL', true),
-      step('BRANDING', false),
     ])
     expect(resumeView(installation)).toBe('SIGN_IN')
   })
 
-  it('resumes at the summary once every required step is checked, open optional ones aside', () => {
-    const installation = state([step('FIRST_ADMIN', true, true, true), step('BRANDING', false)])
+  it('resumes at the summary once every mandatory step is checked, open optional ones aside', () => {
+    const installation = state([step('FIRST_ADMIN', true, true, true), step('CHAT_MODEL', false)])
     expect(resumeView(installation)).toBe('SUMMARY')
   })
 
   it('walks the API order between token and summary', () => {
-    const installation = state([step('FIRST_ADMIN', true), step('BRANDING', false)])
-    expect(nextView(installation, 'FIRST_ADMIN')).toBe('BRANDING')
-    expect(nextView(installation, 'BRANDING')).toBe('SUMMARY')
+    const installation = state([step('FIRST_ADMIN', true), step('CHAT_MODEL', false)])
+    expect(nextView(installation, 'FIRST_ADMIN')).toBe('CHAT_MODEL')
+    expect(nextView(installation, 'CHAT_MODEL')).toBe('SUMMARY')
     expect(nextView(installation, 'SUMMARY')).toBe('SUMMARY')
-    expect(previousView(installation, 'BRANDING')).toBe('FIRST_ADMIN')
+    expect(previousView(installation, 'CHAT_MODEL')).toBe('FIRST_ADMIN')
     // The token is never a way back: it was accepted, and entering it again changes nothing.
     expect(previousView(installation, 'FIRST_ADMIN')).toBeNull()
   })
 
-  it('names the required steps still open', () => {
+  it('names the mandatory steps still open', () => {
     const installation = state([
       step('FIRST_ADMIN', true, true, true),
       step('CHAT_MODEL', true, true, false),
-      step('MAIL', false),
+      step('SIGN_IN', false),
     ])
-    expect(openRequiredSteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
+    expect(openMandatorySteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
   })
 
-  it('tells a stored but unchecked step apart from an open one', () => {
+  it('tells a failed check apart from a step that is stored but not yet checked', () => {
+    expect(stepStatus(step('CHAT_MODEL', true, true, false, 'Verbindung abgelehnt'))).toBe('failed')
     expect(stepStatus(step('CHAT_MODEL', true, true, false))).toBe('unchecked')
     expect(stepStatus(step('CHAT_MODEL', true))).toBe('open')
-    expect(stepStatus(step('CHAT_MODEL', true, true, true))).toBe('checked')
+    expect(stepStatus(step('CHAT_MODEL', true, true, true, 'Prüfung erfolgreich.'))).toBe('checked')
   })
 
   it('says where an optional step can be changed later', () => {
