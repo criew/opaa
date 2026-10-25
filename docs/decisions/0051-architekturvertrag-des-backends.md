@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-10-25
 
 ## Kontext
 
@@ -48,6 +48,7 @@ funktioniert.
 | Ausgehende Verbindungen | `sourceaccess`; S3 über `io.opaa.s3`, Microsoft Graph über `io.opaa.msgraph`; jeder ausgehende Client ist über `@DataFlow` angemeldet, Hüllklassen ohne eigenes Ziel tragen `@DataFlowCarrier` (ADR-0052, Entscheidung 8) | `SourceAccessDependencyStructureTest`, `ModularArchitectureTest` (`OUTBOUND_CLIENTS`, `OUTBOUND_BEANS`) |
 | Datenbankschema | Flyway-Migrationen je Modul, SQL ohne Schemaqualifizierung (ADR-0034, ADR-0056) | `MigrationLayoutTest`, `MigrationModuleBoundaryTest`, `MigrationOrderTest` |
 | Spring-Testkontexte | die Signaturen in `io.opaa.test` | `SpringContextSignatureTest` |
+| Arbeit am Ende einer Transaktion | `common.TransactionCallbacks`: `afterCommitOrNow` (nur nach Commit) oder `afterCompletionOrNow` (nach Commit und Rollback, für Cache-Invalidierungen), beide ohne aktive Synchronisation sofort; `afterCommit` ohne Sofort-Zweig unter `MANDATORY` | `ModularArchitectureTest` (`transactionCallbacksGoThroughTheHelper`) |
 
 „Konvention“ heißt: Die Regel gilt, aber nur das Review hält sie.
 
@@ -92,7 +93,6 @@ unter der sie wieder vorgelegt wird; tritt sie ein, wird die Zeile zum Issue und
 | Zwei Tool-Kataloge (`McpToolCatalog` und der Tool-Loop-Spike) beschreiben dieselbe Suche | Der Spike liegt hinter einem Flag; sein Schicksal ist nicht entschieden | über den Spike entschieden ist; dann löschen oder Tool-SPI |
 | Entities stempeln `createdAt`/`updatedAt` mit `Instant.now()` statt über die `Clock` | Entities haben keine Injektion; die Stempel sind keine fachlichen Fristen (`backend/AGENTS.md`, „Zeit“) | ein Test einen deterministischen Entity-Stempel braucht |
 | Flache Wurzelpakete mit vielen Klassen (account, metadata, permission, auth, library, chat, llm) | Kein Sicherheitsproblem; dort gibt es kein zweites Anliegen, das eine Paketgrenze bräuchte | ein großer Umbau in einem dieser Pakete ansteht oder ein zweites Anliegen eine Paketregel braucht (Muster: `indexing.spi`/`run`) |
-| Anonyme `TransactionSynchronization` („nach Commit, sonst sofort“) an zehn Stellen | Zwei Semantiken (afterCommit, afterCompletion); zwei Helfer lohnen erst mit dem nächsten Vorkommen | die nächste Stelle entsteht |
 | `interval(Object)`-Parser in drei Dateiablage-Konnektoren | der nächste Dateiablage-Konnektor nimmt ihn in den Kern | der nächste Dateiablage-Konnektor entsteht |
 
 ### 6. Ratschen für Zählbares

@@ -17,6 +17,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
@@ -83,8 +84,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Manages knowledge libraries, the first asset type; access checks go through {@link
@@ -822,17 +821,7 @@ public class KnowledgeLibraryService {
    * chunks. Falls back to running immediately when no transaction is active.
    */
   private void deleteAfterCommit(Runnable cleanup) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      cleanup.run();
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            cleanup.run();
-          }
-        });
+    TransactionCallbacks.afterCommitOrNow(cleanup);
   }
 
   /**

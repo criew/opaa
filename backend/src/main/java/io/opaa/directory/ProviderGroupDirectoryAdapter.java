@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
@@ -25,8 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Answers {@link ProviderGroupDirectory} from the repositories of {@code io.opaa.group} - the one
@@ -158,17 +157,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
    * its own uncommitted reads (same reasoning as {@code GroupService}).
    */
   private void invalidateAfterCompletion(List<UUID> userIds) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      membershipResolver.invalidateUsers(userIds);
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            membershipResolver.invalidateUsers(userIds);
-          }
-        });
+    TransactionCallbacks.afterCompletionOrNow(() -> membershipResolver.invalidateUsers(userIds));
   }
 
   private boolean ownsAnything(UUID groupId) {
