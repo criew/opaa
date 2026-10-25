@@ -68,8 +68,8 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     - [Docker Compose](betrieb/docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](betrieb/kubernetes.md) — Betrieb mit dem Helm-Chart
-    - [Einrichtungs-Assistent](betrieb/einrichtungsassistent.md) — Erstinstallation im Browser:
-      Token, Pflicht- und optionale Schritte, Fortsetzen nach Abbruch, Abschluss
+    - [Installation](betrieb/installation.md) — Installationsmodus, Installations-Token, Schritte,
+      Einrichtungs-Assistent im Browser, Antwortdatei
     - [Images und Laufzeit](betrieb/images-und-laufzeit.md) — Images und Versionen, Laufzeitimages
       von Backend und Frontend, Speicher und Container-Grenzen, Readiness und Liveness, Graceful
       Shutdown
@@ -136,7 +136,7 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Betriebsübersicht](betrieb/README.md) → [Docker Compose](betrieb/docker-compose.md): „Schnellstart" → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betrieb/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) |
+| Erste Installation | [Betriebsübersicht](betrieb/README.md) → [Docker Compose](betrieb/docker-compose.md): „Schnellstart" → [Installation](betrieb/installation.md) → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betrieb/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) |
 | Erste Installation unter Kubernetes | [Kubernetes](betrieb/kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" |
 | OPAA unter Kubernetes vorführen | [Kubernetes](betrieb/kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
 | Konten anlegen oder entziehen | [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) → [E-Mail-Versand](betrieb/e-mail.md), falls Einladungen per Mail gehen |

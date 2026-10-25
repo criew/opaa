@@ -42,7 +42,7 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 | format | format | foundation |
 | identity | audit, branding, mail, auth, account, notification, selfdisclosure, linktarget | foundation |
 | rights | permission, asset, group, directory, succession | foundation, identity |
-| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren), health | foundation, format, identity, rights |
+| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren), health, installation | foundation, format, identity, rights |
 | connectors | jedes direkte Unterpaket von `indexing.source` | foundation, format, knowledge |
 | connections | connection | foundation, identity, rights, knowledge |
 | workspace | space, revision, diagnosticaccess | foundation, identity, rights, knowledge |

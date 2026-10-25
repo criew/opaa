@@ -1,8 +1,15 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../../../../test/test-utils'
-import MetadataExtractionSettingsSection from './MetadataExtractionSettingsSection'
+import {
+  answerConfirm,
+  renderWithProviders,
+  waitForDialogClosed,
+} from '../../../../test/test-utils'
+import MetadataExtractionSettingsSection, {
+  MetadataFillSection,
+} from './MetadataExtractionSettingsSection'
 
 const { mockGetSettings, mockUpdateSettings, mockGetQuality } = vi.hoisted(() => ({
   mockGetSettings: vi.fn(),
@@ -76,20 +83,36 @@ describe('MetadataExtractionSettingsSection', () => {
     )
   })
 
-  it('names the permanent Abfluss and the chat role at the switch', async () => {
+  async function openSwitches(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: /Ändern\s*Extraktion/ }))
+  }
+
+  it('names the permanent Abfluss to the remote provider at the switch', async () => {
+    const user = userEvent.setup()
     renderWithProviders(
       <MetadataExtractionSettingsSection libraryId="library-team" canManage={true} />,
     )
+    await openSwitches(user)
 
-    const hint = await screen.findByLabelText('Datenschutzhinweis')
-    expect(hint).toHaveTextContent(
-      'Mit eingeschalteter Extraktion verlässt der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus',
+    await user.click(screen.getByLabelText('Modellgestützte Extraktion', { selector: 'input' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Extraktion einschalten?' })
+    expect(dialog).toHaveTextContent(
+      'Der Inhalt jedes neuen Dokuments geht dann an api.openai.com.',
     )
-    expect(hint).toHaveTextContent('https://api.openai.com/v1')
-    expect(hint).toHaveTextContent('gpt-4o-mini')
+    // Nothing leaves the house before the question is answered.
+    expect(mockUpdateSettings).not.toHaveBeenCalled()
+
+    await answerConfirm(user, 'Extraktion einschalten?', 'Abbrechen')
+    await waitForDialogClosed()
+    expect(mockUpdateSettings).not.toHaveBeenCalled()
+    expect(
+      screen.getByLabelText('Modellgestützte Extraktion', { selector: 'input' }),
+    ).not.toBeChecked()
   })
 
-  it('says a locally operated model needs no outgoing connection', async () => {
+  it('switches a locally operated model on without asking about an outgoing connection', async () => {
+    const user = userEvent.setup()
     mockGetSettings.mockResolvedValue({
       ...remoteSettings,
       chatModel: {
@@ -102,10 +125,15 @@ describe('MetadataExtractionSettingsSection', () => {
     renderWithProviders(
       <MetadataExtractionSettingsSection libraryId="library-team" canManage={true} />,
     )
+    await openSwitches(user)
 
-    expect(await screen.findByLabelText('Datenschutzhinweis')).toHaveTextContent(
-      'ohne ausgehende Verbindung',
-    )
+    await user.click(screen.getByLabelText('Freie Schlagworte', { selector: 'input' }))
+
+    expect(mockUpdateSettings).toHaveBeenCalledWith('library-team', {
+      modelExtractionEnabled: false,
+      keywordsEnabled: true,
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('starts with both switches off and stores each change', async () => {
@@ -114,39 +142,99 @@ describe('MetadataExtractionSettingsSection', () => {
       <MetadataExtractionSettingsSection libraryId="library-team" canManage={true} />,
     )
 
-    const modelSwitch = await screen.findByLabelText('Modellgestützte Extraktion', {
-      selector: 'input',
-    })
+    expect(
+      await screen.findByText('Modellgestützt aus · Freie Schlagworte aus'),
+    ).toBeInTheDocument()
+    await openSwitches(user)
+    const modelSwitch = screen.getByLabelText('Modellgestützte Extraktion', { selector: 'input' })
     const keywordSwitch = screen.getByLabelText('Freie Schlagworte', { selector: 'input' })
     expect(modelSwitch).not.toBeChecked()
     expect(keywordSwitch).not.toBeChecked()
 
     await user.click(modelSwitch)
+    await answerConfirm(user, 'Extraktion einschalten?', 'Einschalten')
 
-    expect(mockUpdateSettings).toHaveBeenCalledWith('library-team', {
-      modelExtractionEnabled: true,
-      keywordsEnabled: false,
-    })
+    await waitFor(() =>
+      expect(mockUpdateSettings).toHaveBeenCalledWith('library-team', {
+        modelExtractionEnabled: true,
+        keywordsEnabled: false,
+      }),
+    )
     expect(
       await screen.findByLabelText('Modellgestützte Extraktion', { selector: 'input' }),
     ).toBeChecked()
+    expect(screen.getByText('Modellgestützt an · Freie Schlagworte aus')).toBeInTheDocument()
   })
 
-  it('shows the extraction quality per field and the Zählwerk', async () => {
+  it('shows the model and the Zählwerk under the technical details', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MetadataExtractionSettingsSection libraryId="library-team" canManage={true} />,
+    )
+    await openSwitches(user)
+
+    await user.click(await screen.findByRole('button', { name: 'Technische Angaben' }))
+
+    const details = screen.getByText(/Modellaufrufe 12/)
+    expect(details).toHaveTextContent('Modell gpt-4o-mini über https://api.openai.com/v1')
+    expect(details).toHaveTextContent('verworfen (Konfidenz) 2')
+    expect(details).toHaveTextContent('nicht angefragt 2')
+    expect(details).toHaveTextContent('Schlagworte 20')
+  })
+
+  it('offers no switches without the management right', async () => {
     renderWithProviders(
       <MetadataExtractionSettingsSection libraryId="library-team" canManage={false} />,
     )
 
-    expect(
-      await screen.findByText(
-        /regelbasiert 4 · modellbefüllt 3 · von Hand 1 · kein Wert ermittelbar 1 · leer 1 \(10 %\)/,
-      ),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/Modellaufrufe: 12/)).toBeInTheDocument()
-    expect(screen.getByText(/verworfen \(Konfidenz\): 2/)).toBeInTheDocument()
-    expect(screen.getByText(/nicht angefragt \(ausgelastet\): 2/)).toBeInTheDocument()
-    // Without the management right the switches are not offered at all.
+    expect(await screen.findByRole('heading', { name: 'Extraktion' })).toBeInTheDocument()
+    await waitFor(() => expect(mockGetQuality).toHaveBeenCalled())
+    expect(screen.queryByRole('button', { name: /Ändern/ })).toBeNull()
     expect(screen.queryByLabelText('Modellgestützte Extraktion', { selector: 'input' })).toBeNull()
     expect(mockGetSettings).not.toHaveBeenCalled()
+  })
+})
+
+describe('MetadataFillSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetQuality.mockResolvedValue(quality)
+  })
+
+  it('shows the fill level per field with the origin of its values', async () => {
+    renderWithProviders(<MetadataFillSection libraryId="library-team" />, { withRouter: true })
+
+    const row = (await screen.findByText('9 von 10 gefüllt (90 %)')).closest('li')
+    expect(row).toHaveTextContent('Dokumentart')
+    expect(row).toHaveAttribute(
+      'title',
+      'regelbasiert 4 · modellbefüllt 3 · von Hand 1 · nicht ermittelbar 1',
+    )
+    expect(
+      screen.getByRole('button', { name: /Anzeigen.*Dokumente ohne Dokumentart/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the documents without a value of a field through „Anzeigen“', async () => {
+    const user = userEvent.setup()
+    function Search() {
+      return <output aria-label="Adresse">{useLocation().search}</output>
+    }
+    renderWithProviders(
+      <>
+        <MetadataFillSection libraryId="library-team" />
+        <Search />
+      </>,
+      { withRouter: true, initialRoute: '/libraries/library-team?tab=metadaten' },
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: /Anzeigen\s*Dokumente ohne Dokumentart/ }),
+    )
+
+    // the filter replaces the tab, so the jump lands in the documents, filtered to the empty ones
+    expect(screen.getByRole('status', { name: 'Adresse' })).toHaveTextContent(
+      /^\?missingField=document_type$/,
+    )
   })
 })

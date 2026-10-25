@@ -226,17 +226,13 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     await user.click(screen.getByRole('tab', { name: 'Freigaben' }))
     expect(await screen.findByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Berechtigungen' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Übergeben\s?Eigentum$/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Herleitung' })).toBeInTheDocument()
 
     // Reading does not rule out using; detaching depends on the space, see AssetSpacesList.test.
     await user.click(screen.getByRole('tab', { name: 'Zuordnungen' }))
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: '„Hausweite Vorlagen“ in Space verwenden' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'In Space verwenden' })).toBeInTheDocument()
   }, 15000)
 
   it('leitet die frühere Adresse …/settings auf den Reiter „Freigaben“ weiter', async () => {
@@ -251,9 +247,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     )
     expect(await screen.findByRole('heading', { name: 'Berechtigungen' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Herleitung' })).toBeInTheDocument()
     // The associations have a tab of their own, the master data is in the header.
     expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Stammdaten' })).not.toBeInTheDocument()
@@ -333,11 +327,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
       'aria-selected',
       'true',
     )
-    expect(
-      await screen.findByRole('button', {
-        name: '„Formulierungshilfen Referat 50“ in Space verwenden',
-      }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'In Space verwenden' })).toBeInTheDocument()
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))

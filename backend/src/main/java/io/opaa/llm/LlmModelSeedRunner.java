@@ -2,15 +2,13 @@ package io.opaa.llm;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 /**
- * Triggers {@link LlmModelSeeder#seedIfNeeded()} once, at application startup, before any request
- * can be served - the same shape {@code UploadPendingRecoveryRunner} already uses for its own
- * one-shot startup migration.
+ * Triggers {@link LlmModelSeeder#seedIfNeeded()} once at start-up, called by {@code
+ * io.opaa.installation.InstallationStartup} only when the installation is completed (ADR-0060): a
+ * pending installation takes its chat model from the installation, never from the environment.
  *
  * <p>Deliberately thin: the actual transactional seeding logic lives in {@link LlmModelSeeder}, a
  * separate bean, because {@code @Transactional} only takes effect on a call that goes through that
@@ -35,7 +33,7 @@ import org.springframework.stereotype.Component;
  * v1.0.
  */
 @Component
-public class LlmModelSeedRunner implements ApplicationRunner {
+public class LlmModelSeedRunner {
 
   private static final Logger log = LoggerFactory.getLogger(LlmModelSeedRunner.class);
 
@@ -45,8 +43,7 @@ public class LlmModelSeedRunner implements ApplicationRunner {
     this.seeder = seeder;
   }
 
-  @Override
-  public void run(ApplicationArguments args) {
+  public void runStartupSeed() {
     try {
       seeder.seedIfNeeded();
     } catch (DataIntegrityViolationException e) {

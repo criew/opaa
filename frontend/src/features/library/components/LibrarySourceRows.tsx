@@ -16,7 +16,10 @@ import {
   withoutFixed,
 } from './sources/sourceConnection'
 import type { SourceFormContext } from './sources/types'
-import SourceSetupRows, { type SourceSetupHandle } from './setup/SourceSetupRows'
+import SourceSetupRows, {
+  type SourceSetupHandle,
+  type SourceSetupRowsMarks as SourceSetupRowsProps,
+} from './setup/SourceSetupRows'
 import type { SetupRowId } from './setup/setupTypes'
 
 export interface SourceRowsLibrary {
@@ -59,6 +62,7 @@ export default function LibrarySourceRows({
   library,
   canEdit,
   connectionPrelude,
+  marks,
   ref,
 }: {
   libraryId: string
@@ -66,6 +70,16 @@ export default function LibrarySourceRows({
   canEdit: boolean
   /** Inside „Verbindung“: the Zugang and the source connection with their own actions. */
   connectionPrelude?: ReactNode
+  /** What the runs know of the rows, and the rows after „Zeitplan“. */
+  marks?: Pick<
+    SourceSetupRowsProps,
+    | 'storedStatus'
+    | 'scopeStatus'
+    | 'scheduleStatus'
+    | 'scopeFallback'
+    | 'extraRows'
+    | 'scopeMarked'
+  >
   ref?: Ref<SourceSetupHandle>
 }) {
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
@@ -119,7 +133,7 @@ export default function LibrarySourceRows({
     <SourceSetupRows
       scheduleNote={
         library.schedule?.nextRunAt
-          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`
+          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}`
           : null
       }
       ref={ref}
@@ -137,7 +151,15 @@ export default function LibrarySourceRows({
       onScheduleChange={(patch) => setSchedule((prev) => ({ ...prev, ...patch }))}
       rhythm={rhythm}
       connectionPrelude={connectionPrelude}
-      connectionLead={profile ? `Zugang „${profile.name}“` : null}
+      {...marks}
+      // a profile named „Zugang …“ needs no second „Zugang“
+      connectionLead={
+        profile
+          ? /^zugang\b/i.test(profile.name)
+            ? profile.name
+            : `Zugang „${profile.name}“`
+          : null
+      }
       rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope']}
       canEdit={canEdit}
       headingLevel="h2"

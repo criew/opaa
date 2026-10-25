@@ -301,7 +301,7 @@ export async function createLibraryWithDocuments(
   libraryName: string,
   documents: { path: string; name: string }[],
   // #1218 (ADR-0022): an uploaded mail's attachments become their own indexed document rows, so a
-  // caller uploading an .eml expects more "indiziert" chips than files it uploaded - it passes the
+  // caller uploading an .eml expects more "Indiziert" chips than files it uploaded - it passes the
   // full expected row count here; every other caller keeps the one-chip-per-upload default.
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
@@ -328,7 +328,7 @@ export async function createLibraryWithDocuments(
   // would still satisfy. exact: the Pflege-Anker above the list says "... indizierte
   // Dokumente dieser Bibliothek" and loads a moment later, so a substring match counts a chip that
   // is none - and only sometimes.
-  await expect(page.getByText('indiziert', { exact: true })).toHaveCount(expectedIndexedCount, {
+  await expect(page.getByText('Indiziert', { exact: true }).filter({ visible: true })).toHaveCount(expectedIndexedCount, {
     timeout: 30_000,
   })
 }

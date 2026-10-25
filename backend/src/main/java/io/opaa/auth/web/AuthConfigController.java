@@ -11,6 +11,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.FeatureFlags;
+import io.opaa.common.InstallationStatus;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,7 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
  * localAccounts} object, so this endpoint can report no state the paths do not hold.
  *
  * <p>{@code features} carries every installation-wide feature flag (ADR-0044) from {@link
- * FeatureFlags}, so the frontend knows them before and after sign-in.
+ * FeatureFlags}, so the frontend knows them before and after sign-in; {@code installationPending}
+ * tells it to show only the setup (ADR-0060, Entscheidung 4).
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -49,6 +51,7 @@ public class AuthConfigController {
   private final LocalAuthSettingsRepository settingsRepository;
   private final ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows;
   private final FeatureFlags featureFlags;
+  private final ObjectProvider<InstallationStatus> installationStatus;
 
   public AuthConfigController(
       AuthProperties authProperties,
@@ -56,13 +59,15 @@ public class AuthConfigController {
       OidcProviderRegistry providerRegistry,
       LocalAuthSettingsRepository settingsRepository,
       ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      ObjectProvider<InstallationStatus> installationStatus) {
     this.authProperties = authProperties;
     this.providerRepository = providerRepository;
     this.providerRegistry = providerRegistry;
     this.settingsRepository = settingsRepository;
     this.selfServiceFlows = selfServiceFlows;
     this.featureFlags = featureFlags;
+    this.installationStatus = installationStatus;
   }
 
   @GetMapping("/config")
@@ -75,11 +80,15 @@ public class AuthConfigController {
                 .map(this::toSignInProvider)
                 .toList()
             : List.of();
-    return new AuthConfigResponse(
-        mode,
-        providers,
-        localAccounts(mode),
-        FeaturesConfigMapper.toFeaturesConfig(featureFlags.asMap()));
+    AuthConfigResponse response =
+        new AuthConfigResponse(
+            mode,
+            providers,
+            localAccounts(mode),
+            FeaturesConfigMapper.toFeaturesConfig(featureFlags.asMap()));
+    response.setInstallationPending(
+        installationStatus.getIfAvailable(() -> () -> false).isPending());
+    return response;
   }
 
   private LocalAccountsConfig localAccounts(String mode) {

@@ -481,9 +481,16 @@ Die bloße Verlängerung einer Sitzung im Hintergrund zählt nicht als erneute A
 
 ## Erststart und Systemverwalter-Konto
 
-**Beim allerersten Start im Modus `oidc` legt OPAA sich seinen ersten Systemverwalter selbst an** —
-als **lokales** Konto, unabhängig davon, ob ein Identitätsanbieter konfiguriert ist. Das ist der Weg
-hinein, bevor etwas eingerichtet ist, und der Weg zurück, wenn ein Anbieter falsch konfiguriert wurde.
+**Der erste Systemverwalter ist ein lokales Konto**, das Notanker-Konto, unabhängig davon, ob ein
+Identitätsanbieter konfiguriert ist. Das ist der Weg hinein, bevor etwas eingerichtet ist, und der
+Weg zurück, wenn ein Anbieter falsch konfiguriert wurde. Angelegt wird es auf einem von zwei Wegen:
+
+- **Installation:** Ohne `OPAA_INITIAL_ADMIN_EMAIL` startet eine leere Instanz im
+  Installationsmodus; das erste Konto ist ein Schritt der Installation, mit dem dort gewählten
+  Passwort ([Installation](installation.md)). Für diesen Weg gilt der Rest dieses Abschnitts bis
+  auf die Einmalausgabe des Passworts.
+- **Startwerte:** Ist `OPAA_INITIAL_ADMIN_EMAIL` gesetzt, legt der allererste Start im Modus `oidc`
+  das Konto aus den Startwerten an und schließt die Installation damit ab:
 
 ```env
 # Pflicht: die Adresse des ersten Systemverwalters - ein zustellbares Postfach,

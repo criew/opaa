@@ -49,18 +49,6 @@ export const smbSource: SourceRegistration = {
       }
     },
     scopeNoteId: 'smb-sharing-consequence',
-    scopeHero: {
-      summary: (library) => {
-        const count = smbSettingsOf(library).folders?.length ?? 1
-        return count === 1 ? '1 Ordner' : `${count} Ordner`
-      },
-      unlistedWarning: (keys) =>
-        (keys.length === 1
-          ? `Der letzte Abgleich konnte den Ordner „${keys[0]}“ nicht vollständig auflisten; sein Bestand ist möglicherweise veraltet.`
-          : `Der letzte Abgleich konnte die Ordner ${keys.map((key) => `„${key}“`).join(', ')} nicht vollständig auflisten; ihr Bestand ist möglicherweise veraltet.`) +
-        ' Der Hinweis bleibt, bis ein Lauf wieder alle Ordner auflisten kann.',
-      unlistedTestId: 'smb-incomplete-listing-warning',
-    },
     firstRunHint:
       'Jeder Lauf liest die Ordner vollständig ein; unveränderte Dateien (gleiche Änderungszeit und Größe) werden dabei nicht neu abgerufen.',
     setup: smbSetup,

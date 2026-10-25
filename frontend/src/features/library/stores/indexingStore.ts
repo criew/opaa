@@ -62,8 +62,11 @@ interface IndexingRunState {
   // could not list completely - carried by the status response independently of which run is the
   // latest one, so the warning at the library survives incremental, webhook and event runs.
   unlistedScopeKeys: string[]
-  // The category the newest run ended under, e.g. QUOTA_EXHAUSTED; null while it has none.
+  // The category the newest run ended under, e.g. QUOTA_EXHAUSTED; null while it has none - and
+  // always for a caller below MANAGER, who is not told it.
   failureCategory: string | null
+  // The newest run completed incomplete (request budget spent, a quota reached).
+  incomplete: boolean
   // Polling gave up after MAX_CONSECUTIVE_STATUS_FAILURES failed fetches. The last known status
   // is kept as is - a failed fetch says nothing about the run itself.
   statusUnknown: boolean
@@ -82,6 +85,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   sourceType: null,
   unlistedScopeKeys: [],
   failureCategory: null,
+  incomplete: false,
   statusUnknown: false,
 }
 
@@ -206,6 +210,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           timestamp: response.timestamp,
           sourceType,
           failureCategory: response.failureCategory ?? null,
+          incomplete: Boolean(response.incomplete),
           statusUnknown: false,
         },
         set,
@@ -253,6 +258,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           sourceType,
           unlistedScopeKeys: response.unlistedScopeKeys ?? [],
           failureCategory: response.failureCategory ?? null,
+          incomplete: Boolean(response.incomplete),
         },
         set,
         get,
@@ -371,6 +377,7 @@ async function runPollTick(
       timestamp: response.timestamp,
       unlistedScopeKeys: response.unlistedScopeKeys ?? [],
       failureCategory: response.failureCategory ?? null,
+      incomplete: Boolean(response.incomplete),
     },
     set,
     get,

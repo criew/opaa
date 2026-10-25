@@ -85,10 +85,13 @@ verrät nach dem Abschluss nicht, dass es ihn gibt, wie der MCP-Endpunkt bei ges
 Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
-abgeschlossen ist. Geheimnisse der Antwortdatei (Passwort, Modellschlüssel) dürfen auf Dateien
-verweisen, damit sie aus Secrets kommen. Helm-Chart, Compose, e2e-Stack, Erprobungsaufbauten und das
-Profil `dev` installieren über die Antwortdatei. Begründung: GitOps und CI klicken keinen
+abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort, Modellschlüssel) nie im Klartext,
+sondern als Verweis auf eine Datei, damit sie aus Secrets kommen; über die API kommen sie im Rumpf
+der Anfrage wie in den einzelnen Schritten. Helm-Chart, Compose, e2e-Stack, Erprobungsaufbauten und
+das Profil `dev` installieren über die Antwortdatei. Begründung: GitOps und CI klicken keinen
 Assistenten; ein einziger Prüfweg verhindert, dass Browser- und Dateiinstallation auseinanderlaufen.
+Ein Dateiverweis über die API ließe jeden Inhaber des Tokens Dateien des Backends lesen und an eine
+Modelladresse seiner Wahl senden.
 
 ### 8. Erstes Systemverwaltungskonto aus dem Assistenten
 

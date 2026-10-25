@@ -1,0 +1,36 @@
+package io.opaa.installation;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * What the installation API shows of a pending installation: every step with its saved values,
+ * never a secret, only whether one is set.
+ */
+public record InstallationOverview(boolean pending, boolean completable, List<StepState> steps) {
+
+  public InstallationOverview {
+    steps = List.copyOf(steps);
+  }
+
+  /** One step; {@code values} is {@code null} while the step is not saved. */
+  public record StepState(
+      InstallationStep step,
+      boolean mandatory,
+      boolean saved,
+      boolean checked,
+      String checkMessage,
+      SavedValues values) {}
+
+  /** The saved values of a step without its secret. */
+  public sealed interface SavedValues {}
+
+  public record FirstAdmin(String email, String displayName, boolean passwordSet)
+      implements SavedValues {}
+
+  public record SignIn(StepInput.SignInMode mode, StepInput.Oidc oidc) implements SavedValues {}
+
+  public record ChatModel(
+      String baseUrl, String model, boolean apiKeySet, BigDecimal temperature, int maxTokens)
+      implements SavedValues {}
+}

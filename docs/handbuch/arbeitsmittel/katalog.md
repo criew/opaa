@@ -69,10 +69,14 @@ erteilt werden, ist das Arbeitsmittel trotzdem angelegt, und ein Hinweis nennt d
 
 ## 5. Die Detailansicht
 
-Die Detailansicht ist für jede Art gleich aufgebaut. Oben steht der **Kopf** mit Art, Welt-Symbol,
-eigener Rolle, Stern und Menü „⋯", darunter Name und Beschreibung — wer verwaltet, ändert beide über
-den Stift — und die Kennzahlen: Umfang, Spaces, zuständige Stelle, „Aktualisiert am". Im Menü „⋯"
-stehen „In Space verwenden" und, für den Eigentümer, „Löschen".
+Die Detailansicht ist für jede Art gleich aufgebaut, in einer Spalte. Oben steht der **Kopf** mit
+Art, Welt-Symbol, eigener Rolle, der Hauptaktion der Art (etwa „Jetzt indizieren"), Stern und Menü
+„⋯", darunter Name und Beschreibung — wer verwaltet, ändert beide über den Stift. Ein langer Name
+wird nicht gekürzt, sondern bricht um. Darunter steht eine Zeile mit den Kennzahlen: Umfang, die
+Spaces (führt zum Reiter „Zuordnungen"), die zuständige Stelle (führt zum Reiter „Freigaben") und,
+wo die Art einen hat, ihr **Zustand** als ein Wort, etwa „Aktuell · 23.10.2026"; das Wort führt zu
+seiner Ursache. Auf einem schmalen Bildschirm steht nur der Zustand dort, die Kennzahlen öffnet
+„⌄". Im Menü „⋯" stehen „In Space verwenden" und, für den Eigentümer, „Löschen".
 
 Darunter liegen die **Reiter**. Die ersten zeigen den Inhalt der Art, etwa die Dokumente einer
 Wissensbibliothek oder die Prompts einer Prompt-Bibliothek; jede Art beschreibt sie in ihrem
@@ -83,7 +87,10 @@ Kapitel. Zwei Reiter haben alle Arten:
 | Freigaben | Eigentümer, wer welche Rolle hat, und die Herleitung „Warum sehe ich das?" ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 4) |
 | Zuordnungen | „In Space verwenden" und die Spaces, in denen das Arbeitsmittel bereitsteht |
 
-Jede Rolle sieht jeden Reiter; wer nur liest, sieht ihn schreibgeschützt.
+Jede Rolle sieht jeden Reiter; wer nur liest, sieht ihn schreibgeschützt. Einzelne Werte stehen als
+Zeile mit Titel, Wert und Textaktion, etwa „Eigentümer · Erika Muster · Übergeben". Ein Dialog, der
+nur etwas zeigt, etwa eine Liste oder eine Vorschau, schließt über „✕" oben rechts; ein Dialog mit
+Eingaben schließt über „Abbrechen".
 
 ## 6. In einem Space verwenden
 

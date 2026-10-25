@@ -34,18 +34,6 @@ export const dropboxSource: SourceRegistration = {
       return segments[segments.length - 1] ?? ''
     },
     scopeNoteId: 'dropbox-sharing-consequence',
-    scopeHero: {
-      summary: (library) => {
-        const count = dropboxSettingsOf(library).folders?.length ?? 0
-        return count === 1 ? '1 Ordner' : `${count} Ordner`
-      },
-      unlistedWarning: (keys) =>
-        (keys.length === 1
-          ? `Der letzte Lauf konnte den Ordner „${keys[0]}“ nicht auflisten; sein Bestand ist möglicherweise veraltet.`
-          : `Der letzte Lauf konnte die Ordner ${keys.map((key) => `„${key}“`).join(', ')} nicht auflisten; ihr Bestand ist möglicherweise veraltet.`) +
-        ' Der Hinweis bleibt, bis ein Vollabgleich wieder alle Ordner auflisten kann.',
-      unlistedTestId: 'dropbox-incomplete-listing-warning',
-    },
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,
     firstRunHint:

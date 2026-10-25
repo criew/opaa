@@ -31,13 +31,13 @@ public final class CitationMarkers {
    * A run of one or more markers together with the horizontal whitespace it sits in, and the line
    * end when nothing follows it on that line. Built on {@link CitationMarker#CLAIMED_PATTERN}, so a
    * malformed marker is part of a run like a well-formed one. Matching the surroundings as part of
-   * the marker is what keeps the removal local: no pass ever runs over the rest of the text.
+   * the marker is what keeps the removal local: no pass ever runs over the rest of the text. The
+   * pattern starts at the first marker; {@link #strip} walks back over the whitespace before it, so
+   * no match attempt scans a run of blanks that no marker follows.
    */
   private static final Pattern MARKER_RUN =
       Pattern.compile(
-          "(?<run>[ \\t]*(?:"
-              + CitationMarker.CLAIMED_PATTERN.pattern()
-              + "[ \\t]*)+)(?<lineEnd>\\R|$)?");
+          "(?<run>(?:" + CitationMarker.CLAIMED_PATTERN.pattern() + "[ \\t]*)+)(?<lineEnd>\\R|$)?");
 
   private static final String MARKER = CitationMarker.CLAIMED_PATTERN.pattern();
 
@@ -52,12 +52,16 @@ public final class CitationMarkers {
   private static final Pattern BRACKETED_MARKERS =
       Pattern.compile("\\(" + MARKER_LIST + "\\)|\\[" + MARKER_LIST + "\\](?!\\()");
 
+  /** Bracket levels unwrapped around markers; deeper nesting keeps its outer brackets. */
+  private static final int MAX_BRACKET_LEVELS = 8;
+
   private CitationMarkers() {}
 
   /**
    * {@code text} without the brackets the model put around its markers: {@code (【…】)} becomes
    * {@code 【…】}, several markers in one bracket follow each other without separator. Brackets that
-   * also hold other text are left alone. A text without such brackets is returned unchanged.
+   * also hold other text are left alone. A text without such brackets is returned unchanged. Each
+   * pass drops one level and scans the whole text, so at most {@value #MAX_BRACKET_LEVELS} run.
    */
   static String unwrapBracketed(String text) {
     if (text == null || text.isEmpty()) {
@@ -65,11 +69,12 @@ public final class CitationMarkers {
     }
     String result = text;
     String previous;
+    int passes = 0;
     // Each pass drops one bracket level, so "((【…】))" needs two; every pass shortens the text.
     do {
       previous = result;
       result = unwrapOnce(previous);
-    } while (!result.equals(previous));
+    } while (!result.equals(previous) && ++passes < MAX_BRACKET_LEVELS);
     return result.equals(text) ? text : result;
   }
 
@@ -113,17 +118,26 @@ public final class CitationMarkers {
     Matcher matcher = MARKER_RUN.matcher(text);
     StringBuilder result = new StringBuilder(text.length());
     int cursor = 0;
+    int previousEnd = 0;
     boolean changed = false;
     while (matcher.find()) {
-      String run = matcher.group("run");
+      // The run starts with the blanks before its first marker, never inside the previous run.
+      int start = matcher.start();
+      while (start > previousEnd && isSpace(text.charAt(start - 1))) {
+        start--;
+      }
+      previousEnd = matcher.end();
+      String run = text.substring(start, matcher.end("run"));
       List<String> markers =
           CitationMarker.CLAIMED_PATTERN.matcher(run).results().map(MatchResult::group).toList();
       List<String> kept = markers.stream().filter(Predicate.not(removed)).toList();
       if (kept.size() == markers.size()) {
         continue;
       }
-      result.append(text, cursor, matcher.start());
-      result.append(kept.isEmpty() ? replacementFor(text, matcher) : rebuilt(run, kept, matcher));
+      String lineEnd = matcher.group("lineEnd");
+      result.append(text, cursor, start);
+      result.append(
+          kept.isEmpty() ? replacementFor(text, start, run, lineEnd) : rebuilt(run, kept, lineEnd));
       cursor = matcher.end();
       changed = true;
     }
@@ -131,8 +145,7 @@ public final class CitationMarkers {
   }
 
   /** A run that keeps some of its markers: its own surrounding whitespace, the kept markers. */
-  private static String rebuilt(String run, List<String> kept, Matcher matcher) {
-    String lineEnd = matcher.group("lineEnd");
+  private static String rebuilt(String run, List<String> kept, String lineEnd) {
     return leadingWhitespaceOf(run)
         + String.join("", kept)
         + trailingWhitespaceOf(run)
@@ -143,13 +156,11 @@ public final class CitationMarkers {
    * What one marker run leaves behind: the line end it stood before, the line's own indentation at
    * the start of a line, and otherwise a single space if it sat in whitespace at all.
    */
-  private static String replacementFor(String text, Matcher matcher) {
-    String lineEnd = matcher.group("lineEnd");
+  private static String replacementFor(String text, int start, String run, String lineEnd) {
     if (lineEnd != null) {
       return lineEnd;
     }
-    String run = matcher.group("run");
-    if (matcher.start() == 0 || isLineBreak(text.charAt(matcher.start() - 1))) {
+    if (start == 0 || isLineBreak(text.charAt(start - 1))) {
       // Whitespace at the start of a line is the line's indentation, not the marker's.
       return leadingWhitespaceOf(run);
     }
