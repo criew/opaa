@@ -62,6 +62,14 @@ public class RetiredSettingVariables {
     retired.put("OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL", "the full-sync rhythm");
     retired.put(
         "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES", "the storage quota of private libraries");
+    retired.put(
+        "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS", "the inactivity threshold of the connections");
+    retired.put(
+        "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
+        "the deletion period of private libraries");
+    retired.put(
+        "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
+        "the warning threshold of expired connected accounts");
     return Collections.unmodifiableMap(retired);
   }
 }

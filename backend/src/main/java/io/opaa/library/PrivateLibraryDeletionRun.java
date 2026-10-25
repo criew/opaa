@@ -1,7 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.connection.account.ConnectionLifecycle;
-import io.opaa.connection.token.PrivateLibraryDeletionPeriod;
+import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.knowledge.ErasureCause;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository.PrivateLibraryFigures;
@@ -36,14 +36,14 @@ public class PrivateLibraryDeletionRun {
   private final KnowledgeLibraryRepository libraries;
   private final PrivateLibraryErasure erasure;
   private final ConnectionLifecycle lifecycle;
-  private final PrivateLibraryDeletionPeriod period;
+  private final ConnectionLifecycleSettings period;
   private final Clock clock;
 
   public PrivateLibraryDeletionRun(
       KnowledgeLibraryRepository libraries,
       PrivateLibraryErasure erasure,
       ConnectionLifecycle lifecycle,
-      PrivateLibraryDeletionPeriod period,
+      ConnectionLifecycleSettings period,
       Clock clock) {
     this.libraries = libraries;
     this.erasure = erasure;
@@ -70,7 +70,7 @@ public class PrivateLibraryDeletionRun {
    */
   public Result runOnce() {
     Result pending = erase(libraries.findIdsByErasureRequested(), null);
-    Instant cutoff = clock.instant().minus(period.period());
+    Instant cutoff = clock.instant().minus(period.privateLibraryDeletionPeriod());
     Set<UUID> deactivated = lifecycle.deletionPeriodStartedBefore(cutoff).keySet();
     Result due =
         deactivated.isEmpty()

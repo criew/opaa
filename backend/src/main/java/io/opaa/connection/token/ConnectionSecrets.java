@@ -81,7 +81,7 @@ public class ConnectionSecrets {
   private final ObjectProvider<GrantRejections> grantRejections;
   private final ObjectProvider<SourceConsentRejections> consentRejections;
   private final GrantRevocations revocations;
-  private final Duration inactivityThreshold;
+  private final ConnectionLifecycleSettings lifecycle;
   private final TransactionTemplate usage;
   private final TransactionTemplate renewal;
   private final Clock clock;
@@ -98,7 +98,7 @@ public class ConnectionSecrets {
       ObjectProvider<GrantRejections> grantRejections,
       ObjectProvider<SourceConsentRejections> consentRejections,
       GrantRevocations revocations,
-      ConnectionLifecycleProperties lifecycle,
+      ConnectionLifecycleSettings lifecycle,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.librariesOnProfile = librariesOnProfile;
@@ -112,7 +112,7 @@ public class ConnectionSecrets {
     this.grantRejections = grantRejections;
     this.consentRejections = consentRejections;
     this.revocations = revocations;
-    this.inactivityThreshold = lifecycle.inactivityThreshold();
+    this.lifecycle = lifecycle;
     this.usage = new TransactionTemplate(transactionManager);
     this.usage.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     this.renewal = new TransactionTemplate(transactionManager);
@@ -1018,7 +1018,10 @@ public class ConnectionSecrets {
   private Map<UUID, Reason> accountStates(Collection<UUID> userIds) {
     List<User> found = users.findAllById(userIds);
     Map<UUID, AccountUsability.State> states =
-        usability.snapshot().withInactivityThreshold(inactivityThreshold).statesOf(found);
+        usability
+            .snapshot()
+            .withInactivityThreshold(lifecycle.inactivityThreshold())
+            .statesOf(found);
     Map<UUID, Reason> reasons = new HashMap<>();
     for (UUID userId : userIds) {
       AccountUsability.State state = states.get(userId);

@@ -72,6 +72,7 @@ protokollereignisse#bereich-audit-log
 protokollereignisse#branding-settings-changed
 protokollereignisse#capability-granted
 protokollereignisse#capability-revoked
+protokollereignisse#connection-lifecycle-setting-changed
 protokollereignisse#connection-log-accessed
 protokollereignisse#connection-log-retention-changed
 protokollereignisse#connection-profile-changed
@@ -250,6 +251,9 @@ voreinstellungen#bereich-connections
 voreinstellungen#bereich-external-access
 voreinstellungen#bereich-rights
 voreinstellungen#bereich-spaces
+voreinstellungen#connection-lifecycle-settings-setting-value-expired-connection-warning-threshold
+voreinstellungen#connection-lifecycle-settings-setting-value-inactivity-threshold-days
+voreinstellungen#connection-lifecycle-settings-setting-value-private-library-deletion-days
 voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
 voreinstellungen#einstellungen
@@ -285,9 +289,6 @@ voreinstellungen#opaa-chat-auto-cleanup-delete-after-days
 voreinstellungen#opaa-chat-locked-account-cleanup-delete-after-days
 voreinstellungen#opaa-chat-locked-account-cleanup-enabled
 voreinstellungen#opaa-chat-note-max-items
-voreinstellungen#opaa-connection-expired-connections-warning-threshold
-voreinstellungen#opaa-connection-inactivity-threshold-days
-voreinstellungen#opaa-connection-private-library-deletion-days
 voreinstellungen#opaa-demo-chat-import-enabled
 voreinstellungen#opaa-directory-sync-schedule-enabled
 voreinstellungen#opaa-external-access-max-release-days
@@ -339,6 +340,8 @@ voreinstellungen#spring-ai-openai-embedding-model
 voreinstellungen#system-prompts
 fristen
 fristen#audit-retention-settings-retention-months
+fristen#connection-lifecycle-settings-setting-value-inactivity-threshold-days
+fristen#connection-lifecycle-settings-setting-value-private-library-deletion-days
 fristen#connection-log-retention-settings-retention-months
 fristen#daten
 fristen#diagnostic-context-retention-settings-retention-months
@@ -361,7 +364,5 @@ fristen#opaa-chat-auto-cleanup-archive-after-days
 fristen#opaa-chat-auto-cleanup-delete-after-days
 fristen#opaa-chat-locked-account-cleanup-delete-after-days
 fristen#opaa-chat-locked-account-cleanup-enabled
-fristen#opaa-connection-inactivity-threshold-days
-fristen#opaa-connection-private-library-deletion-days
 fristen#permission-history-retention-settings-retention-months
 fristen#protokollereignisse

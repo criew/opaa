@@ -1,8 +1,8 @@
 package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.connection.token.ConnectionSecrets;
-import io.opaa.connection.token.PrivateLibraryDeletionPeriod;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
@@ -97,7 +97,7 @@ public class SourceBlocks {
   /** Looked up per call: the accounts above this package answer it. */
   private final ObjectProvider<DeactivationStarts> deactivations;
 
-  private final PrivateLibraryDeletionPeriod deletionPeriod;
+  private final ConnectionLifecycleSettings deletionPeriod;
   private final Clock clock;
 
   /** Without the deletion date: a deactivated owner's block names no day. */
@@ -125,7 +125,7 @@ public class SourceBlocks {
       ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors,
       ObjectProvider<DeactivationStarts> deactivations,
-      PrivateLibraryDeletionPeriod deletionPeriod,
+      ConnectionLifecycleSettings deletionPeriod,
       Clock clock) {
     this.deactivations = deactivations;
     this.deletionPeriod = deletionPeriod;
@@ -363,7 +363,8 @@ public class SourceBlocks {
     }
     LocalDate deletedOn =
         LocalDate.ofInstant(
-            starts.get(person.userId()).plus(deletionPeriod.period()), clock.getZone());
+            starts.get(person.userId()).plus(deletionPeriod.privateLibraryDeletionPeriod()),
+            clock.getZone());
     return secretBlock(block.reason(), facts.profile(), person, deletedOn);
   }
 
