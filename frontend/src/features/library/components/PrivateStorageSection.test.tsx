@@ -66,11 +66,11 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     renderWithProviders(<PrivateStorageSection />)
 
     expect(await screen.findByTestId('private-storage-quota-current')).toHaveTextContent(
-      'Es gilt die Vorgabe der Installation: 10 GB je Person.',
+      'Es gilt die Werkseinstellung: 10 GB je Person.',
     )
     expect(screen.getByLabelText('Grenze je Person (GB)')).toHaveValue('10')
     expect(
-      screen.queryByRole('button', { name: 'Vorgabe wiederherstellen' }),
+      screen.queryByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
     ).not.toBeInTheDocument()
   })
 
@@ -94,7 +94,7 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: 20 * GIB }]))
     expect(await screen.findByTestId('private-storage-quota-current')).toHaveTextContent(
-      'Es gilt eine eigene Grenze: 20 GB je Person (Vorgabe der Installation: 10 GB).',
+      'Es gilt eine eigene Grenze: 20 GB je Person (Werkseinstellung: 10 GB).',
     )
   })
 
@@ -166,8 +166,12 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    await user.click(await screen.findByRole('button', { name: 'Vorgabe wiederherstellen' }))
-    await answerConfirm(user, /zur Vorgabe von 10 GB zurückkehren\?/, 'Vorgabe wiederherstellen')
+    await user.click(await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }))
+    await answerConfirm(
+      user,
+      /zur Werkseinstellung von 10 GB zurückkehren\?/,
+      'Werkseinstellung wiederherstellen',
+    )
 
     await waitFor(() => expect(sent).toEqual([{ quotaBytes: null }]))
   })
