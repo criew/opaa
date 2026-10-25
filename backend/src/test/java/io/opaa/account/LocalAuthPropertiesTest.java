@@ -17,7 +17,7 @@ class LocalAuthPropertiesTest {
   @Test
   void fillsInTheAdrDefaults() {
     LocalAuthProperties properties =
-        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null);
+        new LocalAuthProperties(null, null, null, null, null, null, null, null, null, null, null);
 
     assertThat(properties.jwtSecret()).isEmpty();
     assertThat(properties.accessTokenTtl()).isEqualTo(Duration.ofMinutes(15));
@@ -27,6 +27,7 @@ class LocalAuthPropertiesTest {
     assertThat(properties.adminSessionMaxLifetime()).isEqualTo(Duration.ofHours(12));
     assertThat(properties.cookieSecure()).isTrue();
     assertThat(properties.isAdminResetForced()).isFalse();
+    assertThat(properties.adminResetEmail()).isEmpty();
     assertThat(properties.adminAllowedCidrs()).isEmpty();
     assertThat(properties.refreshGracePeriod()).isEqualTo(Duration.ofSeconds(20));
   }
@@ -43,10 +44,12 @@ class LocalAuthPropertiesTest {
             null,
             null,
             " Force ",
+            " notanker@stadt.example ",
             List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"),
             null);
 
     assertThat(properties.isAdminResetForced()).isTrue();
+    assertThat(properties.adminResetEmail()).isEqualTo("notanker@stadt.example");
     assertThat(properties.adminAllowedCidrs()).containsExactly("10.0.0.0/8", "2001:db8::/32");
   }
 
@@ -55,14 +58,34 @@ class LocalAuthPropertiesTest {
     assertThatThrownBy(
             () ->
                 new LocalAuthProperties(
-                    null, null, null, null, null, null, null, null, List.of("10.0.0.0/33"), null))
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of("10.0.0.0/33"),
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS")
         .hasMessageContaining("10.0.0.0/33");
     assertThatThrownBy(
             () ->
                 new LocalAuthProperties(
-                    null, null, null, null, null, null, null, null, List.of("kein-netz"), null))
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of("kein-netz"),
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_LOCAL_ADMIN_ALLOWED_CIDRS");
   }
@@ -150,7 +173,7 @@ class LocalAuthPropertiesTest {
 
   private static LocalAuthProperties gracePeriod(Duration gracePeriod) {
     return new LocalAuthProperties(
-        null, null, null, null, null, null, null, null, null, gracePeriod);
+        null, null, null, null, null, null, null, null, null, null, gracePeriod);
   }
 
   private static LocalAuthProperties properties(
@@ -161,6 +184,6 @@ class LocalAuthPropertiesTest {
       Duration adminRefresh,
       Duration adminSession) {
     return new LocalAuthProperties(
-        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null);
+        secret, access, refresh, session, adminRefresh, adminSession, null, null, null, null, null);
   }
 }

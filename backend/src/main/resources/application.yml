@@ -198,10 +198,11 @@ opaa:
       # the reload that discarded the rotation's answer (ADR-0033, Entscheidung 7).
       refresh-grace-period: ${OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD:20s}
       # Emergency account of the system administration (ADR-0033, Entscheidungen 5 and 9), created
-      # by the installation: "force" restores it once at start-up with a password printed once
-      # (io.opaa.account.LocalAdminReset); the CIDR list limits the sign-in of local SYSTEM_ADMIN
-      # accounts to those networks, empty means no restriction.
+      # by the installation: "force" restores it once at start-up with a password printed once,
+      # or creates it under admin-reset-email where there is none (io.opaa.account.LocalAdminReset);
+      # the CIDR list limits the sign-in of local SYSTEM_ADMIN accounts, empty means no restriction.
       admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
+      admin-reset-email: ${OPAA_LOCAL_ADMIN_RESET_EMAIL:}
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
       # Lockout after failed sign-ins (Entscheidung 9; io.opaa.account.LocalAccountLockoutListener):
       # a fixed duration, no progressive extension; the counter returns to zero on success. The

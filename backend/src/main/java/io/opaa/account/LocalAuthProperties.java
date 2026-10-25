@@ -33,6 +33,8 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     false} only for local HTTP)
  * @param adminReset {@code OPAA_LOCAL_ADMIN_RESET}: {@code force} restores the bootstrap
  *     administrator once at start-up (Entscheidung 5); the operator removes it afterwards
+ * @param adminResetEmail {@code OPAA_LOCAL_ADMIN_RESET_EMAIL}: the address under which {@code
+ *     force} creates the emergency account on an installation that has none; trimmed, never null
  * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
  *     SYSTEM_ADMIN} may sign in from (Entscheidung 9); empty means no restriction
  * @param refreshGracePeriod how long after its rotation a refresh token whose successor was never
@@ -51,6 +53,7 @@ public record LocalAuthProperties(
     @DataImpact Duration adminSessionMaxLifetime,
     Boolean cookieSecure,
     String adminReset,
+    String adminResetEmail,
     @InstallationWide List<String> adminAllowedCidrs,
     @InstallationWide @NoDataImpact("tolerance of the replay detection, keeps no data longer")
         Duration refreshGracePeriod) {
@@ -61,6 +64,7 @@ public record LocalAuthProperties(
   public static final Duration MAX_REFRESH_GRACE_PERIOD = Duration.ofSeconds(60);
   public static final String ADMIN_RESET_FORCE = "force";
   public static final String ADMIN_RESET_VARIABLE = "OPAA_LOCAL_ADMIN_RESET";
+  public static final String ADMIN_RESET_EMAIL_VARIABLE = "OPAA_LOCAL_ADMIN_RESET_EMAIL";
   public static final String ADMIN_ALLOWED_CIDRS_VARIABLE = "OPAA_LOCAL_ADMIN_ALLOWED_CIDRS";
 
   private static final String PREFIX = "opaa.auth.local.";
@@ -68,6 +72,7 @@ public record LocalAuthProperties(
   public LocalAuthProperties {
     jwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
     adminReset = adminReset == null ? "" : adminReset.trim();
+    adminResetEmail = adminResetEmail == null ? "" : adminResetEmail.trim();
     adminAllowedCidrs = normalizeCidrs(adminAllowedCidrs);
     accessTokenTtl = accessTokenTtl != null ? accessTokenTtl : Duration.ofMinutes(15);
     refreshTokenTtl = refreshTokenTtl != null ? refreshTokenTtl : Duration.ofDays(7);

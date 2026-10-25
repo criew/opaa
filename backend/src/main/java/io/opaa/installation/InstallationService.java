@@ -295,7 +295,11 @@ public class InstallationService {
     InstallationStepRecord adminStep = saved.get(InstallationStep.FIRST_ADMIN);
     StepRules.FirstAdminPayload admin = rules.firstAdminPayload(adminStep.getPayload());
     initialAdministrator.create(
-        admin.email(), admin.displayName(), adminStep.getSecret(), SYSTEM_ACTOR);
+        admin.email(),
+        admin.displayName(),
+        adminStep.getSecret(),
+        SYSTEM_ACTOR,
+        admin.requirePasswordChange());
     StepRules.SignInPayload signIn =
         rules.signInPayload(saved.get(InstallationStep.SIGN_IN).getPayload());
     if (signIn.mode() == StepInput.SignInMode.LOCAL_AND_OIDC) {
