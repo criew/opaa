@@ -230,10 +230,16 @@ public enum AuditEventType {
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
    * The system administration set the house-wide storage quota across all private libraries of a
-   * person, or returned it to the configured default; {@code before} and {@code after} carry the
-   * value only.
+   * person, or returned it to the factory default; {@code before} and {@code after} carry the value
+   * only.
    */
   PRIVATE_STORAGE_QUOTA_CHANGED,
+  /**
+   * The system administration set the installation-wide rhythm of the full sync of one source type,
+   * or returned it to the factory default; {@code before} and {@code after} carry the type and the
+   * days only.
+   */
+  FULL_SYNC_RHYTHM_CHANGED,
   /**
    * A capability was granted to an account, a group or to all accounts (ADR-0036, Entscheidung 5).
    * A governance event rather than an ordinary permission change: withdrawing a capability from all
@@ -624,5 +630,14 @@ public enum AuditEventType {
    * The system administration changed the allowed link targets of answers; {@code before} and
    * {@code after} carry the whole list of origins.
    */
-  LINK_TARGETS_CHANGED
+  LINK_TARGETS_CHANGED,
+
+  // Export und Import der Einstellungen (ADR-0060, Entscheidung 12)
+  /**
+   * The system administration imported a settings document and it changed something; {@code after}
+   * names the format version and the changed sections. Every change the import made is its usual
+   * event, linked to this one by the same {@code correlation_ref}. An import that changes nothing
+   * writes nothing.
+   */
+  SETTINGS_IMPORTED
 }

@@ -216,6 +216,43 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Einstellungen ohne Geheimnisse als JSON. Der Import zeigt vorher die Unterschiede zur laufenden
   Installation, prüft jeden Wert und ist ein Revisionsereignis.
 
+### Export und Import (gebaut mit #3193)
+
+- **Ein Register:** Jede Einstellung gehört zu genau einem Abschnitt (`SettingsSection`), einer
+  Bean im Paket des Moduls, dem die Einstellung gehört. Ein Abschnitt liefert seine Werte ohne
+  Geheimnisse und wendet sie über denselben Schreibweg an wie die Oberfläche, mit dessen Prüfung,
+  Grenzen des Betriebs und Revisionsereignis. `SettingsSectionRegistryTest` lässt den Build
+  scheitern, wenn eine Tabelle `*_settings` keinem Abschnitt gehört und nicht begründet
+  ausgenommen ist.
+- **Format:** `{"format": "opaa-settings", "formatVersion": 1, "exportedAt": …, "sections": {…}}`,
+  je Abschnitt ein Objekt mit allen Schlüsseln und ihrem wirksamen Wert; was `null` bedeutet, legt
+  der Schlüssel fest (Branding: OPAA-Standard, Kontingent und Vollabgleich-Rhythmus: Werkseinstellung, Vorlage:
+  ausgelieferter Text, Mailserver-Feld: nicht gesetzt). Die Version steigt,
+  wenn ein Schlüssel seine Bedeutung ändert oder entfällt, nicht für neue Abschnitte und Schlüssel.
+  Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLogRetention`,
+  `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
+  Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates` (je Vorlage der Sprache
+  `de` ein Schlüssel), `fullSyncRhythm` (je Quellart mit Rhythmus ein Schlüssel, Tage oder `null`),
+  `outboundProxy`, `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
+- **Nicht übertragen** werden Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge und die
+  Freigabe der Konnektoren: Sie hängen an Geheimnissen dieser Installation.
+- **Import:** eine Transaktion; ein fehlender Abschnitt bleibt, ein fehlender Schlüssel behält
+  seinen Wert, ein unbekannter Abschnitt oder Schlüssel, eine andere Version oder ein Wert außerhalb
+  der Grenzen lehnt das ganze Dokument ab. Die Vorschau läuft denselben Weg und rollt zurück. Ein
+  Import prüft die Grenzen des Formulars im Schreibweg (Pflicht, Länge, Anzahl), meldet sie als
+  Feldfehler `<abschnitt>.<schlüssel>` und liest die Datei streng (keine doppelten oder unbekannten
+  Angaben). Die Vorschau markiert sicherheitsrelevante Änderungen und nennt jede Angabe deutsch.
+  Ändern sich Server, Port, Zugangsname oder Verschlüsselung des Mailservers, folgt das
+  gespeicherte Passwort nicht, die Änderung wird abgelehnt (wie `requireSecretFollows` der Zugänge).
+  Ein Schreibweg, dessen Eingabe gleich dem Gespeicherten ist, schreibt nichts. Ein
+  Import, der etwas ändert, schreibt `SETTINGS_IMPORTED`; er und jede Einzeländerung tragen dieselbe
+  Vorgangskennung. Ein unveränderter Import schreibt nichts. Grenzen: 256 KiB je Datei, 30 Prüfungen
+  und Importe je Stunde für die Installation.
+- **Geheimnisse im Protokoll:** Ein Ereignis nennt ein Geheimnis nur als `<name>Change` mit `SET`,
+  `CHANGED` oder `REMOVED` (`AuditSecretChange`), nie den Wert; Freitexte (Mail-Vorlagen,
+  Einleitungstext externer KI-Werkzeuge) nur als `<name>Sha256` und `<name>Length`
+  (`AuditTextDigest`).
+
 Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
 
 | Einstellung | Verwaltungsort |
@@ -634,7 +671,7 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL` | `opaa.indexing.dropbox.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL` | `opaa.indexing.google-drive.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL` | `opaa.indexing.nextcloud.full-descent-interval` | wie Confluence |
-| `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `opaa.indexing.sharepoint.full-sync-interval` | wie Confluence (gilt auch für OneDrive) |
+| `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `opaa.indexing.sharepoint.full-sync-interval` | wie Confluence; OneDrive, das die Variable mitnutzte, bekommt einen eigenen Wert der Quellart |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `opaa.auth.initial-admin-email` | Startwert entfällt; erstes Konto im Assistenten |
 | `OPAA_INITIAL_ADMIN_PASSWORD` | `opaa.auth.local.initial-admin-password` | Startwert entfällt; erstes Konto im Assistenten |
 | `OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` | `opaa.library.private-storage-quota-bytes` | Vorgabe im Code; `private_storage_quota_settings` |

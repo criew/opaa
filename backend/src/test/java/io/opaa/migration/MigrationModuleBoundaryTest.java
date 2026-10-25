@@ -144,6 +144,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "installation_steps",
                   "embedding_model",
                   "private_storage_quota_settings",
+                  "full_sync_rhythm_settings",
                   "vector_store",
                   "model_role_observations",
                   "library_maintenance_skips",

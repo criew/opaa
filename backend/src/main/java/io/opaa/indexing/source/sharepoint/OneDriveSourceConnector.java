@@ -43,6 +43,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +66,13 @@ public class OneDriveSourceConnector implements SourceConnector, SourceBrowser, 
 
   /** The type key this connector serves. */
   public static final SourceType TYPE = SourceType.of("ONEDRIVE");
+
+  /**
+   * The factory default of the full-sync rhythm: daily, because only the full sync follows renamed,
+   * moved or deleted folders. The administration may set another for the installation, a library
+   * its own ({@code FullSyncRhythm}).
+   */
+  public static final Duration FULL_SYNC_INTERVAL = Duration.ofDays(1);
 
   /** The authorization endpoint of Entra, completed with the profile's tenant. */
   public static final String AUTHORIZATION_TEMPLATE =
@@ -102,7 +110,7 @@ public class OneDriveSourceConnector implements SourceConnector, SourceBrowser, 
         SourceConnectorDescriptor.remoteRun(TYPE, "OneDrive")
             .withDataFlow("source-onedrive")
             .withoutDeepLink()
-            .withFullSyncInterval(graphs.properties().fullSyncInterval())
+            .withFullSyncInterval(FULL_SYNC_INTERVAL)
             .withProfiles(
                 ProfileDeclaration.of(
                         ConnectionProfileSupport.REQUIRED,

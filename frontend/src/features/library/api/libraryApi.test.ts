@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios'
 import { describe, expect, it } from 'vitest'
 import {
+  countLibraryDocuments,
   getLibraryDocuments,
   mapDocumentContentError,
   parseContentDispositionFileName,
@@ -176,6 +177,29 @@ describe('libraryApi', () => {
       expect(page.items).toHaveLength(1)
       // attachments are rows of their own here, unlike the grouped folder listing
       expect(page.totalElements).toBe(4)
+    })
+
+    it('counts without advancing the simulated processing, which a list load does', async () => {
+      for (let i = 0; i < 3; i++) {
+        expect(await countLibraryDocuments('library-mine', 'PENDING')).toBe(1)
+      }
+      await getLibraryDocuments('library-mine')
+      await getLibraryDocuments('library-mine')
+      expect(await countLibraryDocuments('library-mine', 'PENDING')).toBe(0)
+    })
+
+    it('lists nothing for the maintenance filter with a status that is not INDEXED', async () => {
+      const failed = await getLibraryDocuments('library-mine', {
+        missingMetadataField: 'document_type',
+        status: 'FAILED',
+      })
+      expect(failed.totalElements).toBe(0)
+    })
+
+    it('names the parent of an attachment on a flat page', async () => {
+      const page = await getLibraryDocuments('library-mine', { status: 'INDEXED' })
+      const attachment = page.items.find((item) => item.fileName === 'foerderbescheid.pdf')
+      expect(attachment?.parentFileName).toBe('posteingang-foerderbescheid.eml')
     })
 
     it('leaves the listing unchanged without a status', async () => {

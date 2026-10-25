@@ -37,7 +37,7 @@ Zwei Dinge werden getrennt gehalten:
 | Versand aktiv | Hauptschalter. Aus bedeutet: OPAA versendet nichts und meldet jeden Versand als übersprungen |
 | Server, Port | Adresse des Mailservers. Es findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten |
 | Verschlüsselung | `STARTTLS` verlangt die Aufwertung der Verbindung und bricht ab, wenn der Server sie nicht anbietet; `SSL` verschlüsselt ab dem ersten Byte; `NONE` überträgt unverschlüsselt und ist nur für einen Mailserver im selben vertrauenswürdigen Netz vertretbar |
-| Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als `***` angezeigt; wer `***` zurückschickt, lässt es unverändert, ein leeres Feld löscht es |
+| Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als `***` angezeigt; wer `***` zurückschickt, lässt es unverändert, ein leeres Feld löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab |
 | Absenderadresse, Absendername | Stehen als Absender in jeder Nachricht |
 
 Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel wie die Zugangsschlüssel
@@ -122,6 +122,7 @@ steht im Log, dort ohne die Empfängeradresse.
 | Zeitüberschreitung | Mailserver antwortet nicht innerhalb der Timeouts | Erreichbarkeit prüfen; notfalls `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` anpassen |
 | Meldung zu STARTTLS | Der Server bietet STARTTLS nicht an; OPAA bricht ab, statt unverschlüsselt fortzufahren | Beim Mailserver TLS einrichten, oder — nur im vertrauenswürdigen Netz — Verschlüsselung `NONE` wählen |
 | „535" oder Authentifizierungsfehler | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen; das Feld `***` lässt das gespeicherte Passwort unverändert, zum Ersetzen den neuen Wert eintragen |
+| Speichern abgelehnt, Hinweis am Passwortfeld | Server, Port, Benutzername oder Verschlüsselung wurden geändert, während ein Passwort hinterlegt ist | Passwort für die neue Verbindung eintragen oder löschen und erneut speichern |
 | Passwort lässt sich nicht speichern | Verschlüsselungsschlüssel fehlt oder ist ungültig | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |
 | Testnachricht kommt an, „Passwort vergessen" oder Erinnerungen nicht | Ohne Verschlüsselungsschlüssel geht keine Mail in die Warteschlange; das Protokoll meldet „Mailversand abgebrochen" mit dem Schlüssel als Grund | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |
 | Mail aus der Warteschlange kommt verspätet an | Der Mailserver war beim ersten Versuch nicht erreichbar oder hat abgelehnt; die Wiederholung läuft | „Letzter Fehler" auf der Einstellungsseite prüfen; nach acht Versuchen meldet das Protokoll die Mail als verworfen (Vorlage, gekürzte Empfängeradresse, Grund) |

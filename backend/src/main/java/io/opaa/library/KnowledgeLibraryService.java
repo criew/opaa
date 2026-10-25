@@ -36,6 +36,7 @@ import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.registry.SourceChangeGate;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.Secret;
 import io.opaa.indexing.spi.SecretKind;
 import io.opaa.indexing.spi.SourceBlock;
@@ -134,6 +135,7 @@ public class KnowledgeLibraryService {
   private final ConnectorReleaseService connectorRelease;
   private final EffectiveSourceSettings drafts;
   private final OwnerOnlyRule ownerOnlyRule;
+  private final FullSyncRhythm fullSyncRhythm;
   private final PrivateLibraryConnections privateConnections;
   private final SourceChangeGate changeGate;
 
@@ -161,8 +163,10 @@ public class KnowledgeLibraryService {
       ConnectorReleaseService connectorRelease,
       EffectiveSourceSettings drafts,
       OwnerOnlyRule ownerOnlyRule,
+      FullSyncRhythm fullSyncRhythm,
       PrivateLibraryConnections privateConnections) {
     this.ownerOnlyRule = ownerOnlyRule;
+    this.fullSyncRhythm = fullSyncRhythm;
     this.privateConnections = privateConnections;
     this.successionSource = successionSource;
     this.connectorRelease = connectorRelease;
@@ -952,9 +956,27 @@ public class KnowledgeLibraryService {
       Page<Document> page, UUID libraryId, Pageable pageable) {
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
+    // an attachment's parent is usually not on a flat page: one lookup names all of them
+    Set<UUID> parentIds =
+        page.getContent().stream()
+            .map(Document::getParentDocumentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    Map<UUID, String> parentNames =
+        parentIds.isEmpty()
+            ? Map.of()
+            : documentRepository.findAllById(parentIds).stream()
+                .collect(Collectors.toMap(Document::getId, Document::getFileName));
     return new LibraryDocumentPage(
         page.getContent().stream()
-            .map(document -> toLibraryDocumentEntry(document, foldersById))
+            .map(
+                document ->
+                    toLibraryDocumentEntry(
+                        document,
+                        foldersById,
+                        document.getParentDocumentId() == null
+                            ? null
+                            : parentNames.get(document.getParentDocumentId())))
             .toList(),
         pageable.getPageNumber(),
         pageable.getPageSize(),
@@ -990,19 +1012,20 @@ public class KnowledgeLibraryService {
     }
     List<LibraryDocumentEntry> entries = new ArrayList<>();
     for (Document parent : parents) {
-      appendSubtree(parent, childrenByParent, foldersById, entries);
+      appendSubtree(parent, null, childrenByParent, foldersById, entries);
     }
     return entries;
   }
 
   private void appendSubtree(
       Document document,
+      String parentFileName,
       Map<UUID, List<Document>> childrenByParent,
       Map<UUID, LibraryFolder> foldersById,
       List<LibraryDocumentEntry> entries) {
-    entries.add(toLibraryDocumentEntry(document, foldersById));
+    entries.add(toLibraryDocumentEntry(document, foldersById, parentFileName));
     for (Document child : childrenByParent.getOrDefault(document.getId(), List.of())) {
-      appendSubtree(child, childrenByParent, foldersById, entries);
+      appendSubtree(child, document.getFileName(), childrenByParent, foldersById, entries);
     }
   }
 
@@ -1424,11 +1447,10 @@ public class KnowledgeLibraryService {
         connectionResolver.holdsCredentials(library),
         pushSecretSet,
         connector.settingsView(library, connectionResolver.effectiveSettings(library), true),
-        // The instance-wide rhythm in whole days, so the schedule dialog can name the default
+        // The installation-wide rhythm in whole days, so the schedule dialog can name the default
         // instead of hard-coding it; a sub-day interval still reads as one day.
-        descriptor.fullSyncInterval() == null
-            ? null
-            : (int) Math.max(1, descriptor.fullSyncInterval().toDays()),
+        FullSyncRhythm.wholeDays(
+            fullSyncRhythm.installationDefault(descriptor.type(), descriptor.fullSyncInterval())),
         schedule,
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(),
@@ -1442,10 +1464,11 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(
-      Document document, Map<UUID, LibraryFolder> foldersById) {
+      Document document, Map<UUID, LibraryFolder> foldersById, String parentFileName) {
     return new LibraryDocumentEntry(
         document,
         LibraryFolderPaths.pathOf(document.getFolderId(), foldersById),
-        connectors.deepLink(document));
+        connectors.deepLink(document),
+        parentFileName);
   }
 }

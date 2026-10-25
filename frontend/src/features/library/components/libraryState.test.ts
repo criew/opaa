@@ -83,6 +83,37 @@ describe('libraryState', () => {
     })
   })
 
+  it('names the failed uploads with their number and leads to them, for every role', () => {
+    const upload = { sourceType: 'UPLOAD' as const, updatedAt: '2026-10-20T10:00:00Z' }
+    const failed = libraryState({
+      ...base,
+      library: upload,
+      failedDocuments: 1234,
+      canSeeSource: false,
+    })
+    // the number stands alone: documentCount counts top-level documents, the failures count rows
+    expect(failed).toEqual({
+      word: 'Teilweise fehlgeschlagen',
+      tone: 'warning',
+      detail: '1.234 Fehler',
+      target: { tab: 'dokumente', status: 'FAILED' },
+    })
+    expect(stateTargetHref(failed.target!)).toBe('?status=FAILED')
+    // a full quota still wins; no failure, or none known yet, leaves „Hochgeladen“
+    expect(
+      libraryState({ ...base, library: upload, failedDocuments: 2, uploadQuotaRejected: true })
+        .word,
+    ).toBe('Kontingent voll')
+    expect(libraryState({ ...base, library: upload, failedDocuments: 0 }).word).toBe('Hochgeladen')
+    expect(libraryState({ ...base, library: upload, failedDocuments: null }).word).toBe(
+      'Hochgeladen',
+    )
+  })
+
+  it('leaves a connector library to its runs, whatever its failed documents', () => {
+    expect(libraryState({ ...base, failedDocuments: 3 }).word).toBe('Noch nie indiziert')
+  })
+
   it('says „Läuft“ with the percent, or with an unknown state when polling gave up', () => {
     expect(libraryState({ ...base, runningPercent: 40 })).toMatchObject({
       word: 'Läuft',

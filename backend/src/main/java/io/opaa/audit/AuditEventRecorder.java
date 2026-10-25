@@ -56,12 +56,15 @@ public class AuditEventRecorder {
    * sibling that carries one. {@code event} must have been built with {@link
    * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}. An optional {@link
    * AuditEvent.Builder#correlationRef} links the per-document entries one person's bulk operation
-   * writes together (metadata Sammelzuweisung).
+   * writes together (metadata Sammelzuweisung); without one, the reference {@link AuditCorrelation}
+   * binds applies.
    */
   public void recordUserAction(AuditEvent event) {
     UUID actorUserId = requireUserActor(event);
     requireNoSubject(event, "recordUserAction");
     String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
+    String correlationRef =
+        event.correlationRef() != null ? event.correlationRef() : AuditCorrelation.current();
     auditLogService.record(
         AuditLogEntry.withoutSubject(
             event.organizationId(),
@@ -75,7 +78,7 @@ public class AuditEventRecorder {
             toJson(event.after()),
             event.outcome(),
             event.reason(),
-            event.correlationRef()));
+            correlationRef));
   }
 
   /**

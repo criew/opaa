@@ -7,10 +7,14 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditTextDigest;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
+import io.opaa.common.FieldValidationException;
+import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +48,14 @@ public class MailTemplateService {
 
   /** The one locale this release delivers text for; the column is prepared for more (ADR-0033). */
   public static final String DEFAULT_LOCALE = "de";
+
+  public static final int MAX_SUBJECT_LENGTH = 300;
+  public static final int MAX_BODY_PLAIN_LENGTH = 20_000;
+  public static final int MAX_BODY_HTML_LENGTH = 60_000;
+
+  static final String REQUIRED = "REQUIRED";
+  static final String TOO_LONG = "TOO_LONG";
+  static final String UNSUPPORTED_LOCALE = "UNSUPPORTED_LOCALE";
 
   private static final String PRODUCT_NAME_VARIABLE = "productName";
   private static final String ACTION_URL_VARIABLE = "actionUrl";
@@ -121,6 +133,12 @@ public class MailTemplateService {
         .toList();
   }
 
+  /** Every stored override of every locale, ordered by key and locale. */
+  @Transactional(readOnly = true)
+  public List<MailTemplate> overrides() {
+    return repository.findAll(org.springframework.data.domain.Sort.by("templateKey", "locale"));
+  }
+
   /** One template's effective state for one locale. */
   @Transactional(readOnly = true)
   public MailTemplateView get(MailTemplateKey key, String locale) {
@@ -133,7 +151,10 @@ public class MailTemplateService {
 
   /**
    * Stores or replaces the override for {@code key}/{@code locale}. Every placeholder referenced in
-   * any of the three fields must be one the key declares; the rejection names the field.
+   * any of the three fields must be one the key declares; the rejection names the field. Only the
+   * delivered locale takes an override, subject and plain text must not be blank, and the three
+   * fields stay within {@link #MAX_SUBJECT_LENGTH}, {@link #MAX_BODY_PLAIN_LENGTH} and {@link
+   * #MAX_BODY_HTML_LENGTH}.
    */
   @Transactional
   public MailTemplateView update(
@@ -144,15 +165,24 @@ public class MailTemplateService {
       String subject,
       String bodyPlain,
       String bodyHtml) {
+    requireWithinBounds(locale, subject, bodyPlain, bodyHtml);
     requireUsableContent(key, subject, bodyPlain, bodyHtml);
 
     String resolvedLocale = effectiveLocale(locale);
-    MailTemplate row =
-        findRow(key, resolvedLocale).orElseGet(() -> new MailTemplate(key, resolvedLocale));
-    row.replaceContent(subject, bodyPlain, bodyHtml, actorUserId);
-    repository.save(row);
-
-    recordTemplateEvent(organizationId, actorUserId, key, AuditEventType.MAIL_TEMPLATE_CHANGED);
+    Optional<MailTemplate> existing = findRow(key, resolvedLocale);
+    Map<String, Object> before = auditState(key, existing);
+    MailTemplate row = existing.orElseGet(() -> new MailTemplate(key, resolvedLocale));
+    if (existing.isEmpty() || !row.hasContent(subject, bodyPlain, bodyHtml)) {
+      row.replaceContent(subject, bodyPlain, bodyHtml, actorUserId);
+      repository.save(row);
+      recordTemplateEvent(
+          organizationId,
+          actorUserId,
+          key,
+          AuditEventType.MAIL_TEMPLATE_CHANGED,
+          before,
+          auditState(key, Optional.of(row)));
+    }
     return toView(key, resolvedLocale, Optional.of(row), brandingSettingsService.currentBranding());
   }
 
@@ -167,9 +197,15 @@ public class MailTemplateService {
     findRow(key, resolvedLocale)
         .ifPresent(
             row -> {
+              Map<String, Object> before = auditState(key, Optional.of(row));
               repository.delete(row);
               recordTemplateEvent(
-                  organizationId, actorUserId, key, AuditEventType.MAIL_TEMPLATE_RESET);
+                  organizationId,
+                  actorUserId,
+                  key,
+                  AuditEventType.MAIL_TEMPLATE_RESET,
+                  before,
+                  auditState(key, Optional.empty()));
             });
     return toView(key, resolvedLocale, Optional.empty(), brandingSettingsService.currentBranding());
   }
@@ -226,6 +262,46 @@ public class MailTemplateService {
       }
     }
     return values;
+  }
+
+  /** The delivered locale, the required fields and the lengths, each refused on its field. */
+  private static void requireWithinBounds(
+      String locale, String subject, String bodyPlain, String bodyHtml) {
+    List<FieldError> errors = new ArrayList<>();
+    if (!DEFAULT_LOCALE.equals(effectiveLocale(locale))) {
+      errors.add(
+          new FieldError(
+              "locale",
+              UNSUPPORTED_LOCALE,
+              "Vorlagen gibt es nur für die Sprache " + DEFAULT_LOCALE + "."));
+    }
+    requireText(errors, "subject", "Der Betreff", subject, MAX_SUBJECT_LENGTH, true);
+    requireText(errors, "bodyPlain", "Der Text", bodyPlain, MAX_BODY_PLAIN_LENGTH, true);
+    requireText(errors, "bodyHtml", "Der HTML-Text", bodyHtml, MAX_BODY_HTML_LENGTH, false);
+    if (!errors.isEmpty()) {
+      throw new FieldValidationException(
+          "Die E-Mail-Vorlage ist unvollständig oder zu lang.", errors);
+    }
+  }
+
+  private static void requireText(
+      List<FieldError> errors,
+      String field,
+      String label,
+      String text,
+      int maxLength,
+      boolean required) {
+    if (text == null || text.isBlank()) {
+      if (required) {
+        errors.add(new FieldError(field, REQUIRED, label + " darf nicht leer sein."));
+      }
+      return;
+    }
+    if (text.length() > maxLength) {
+      errors.add(
+          new FieldError(
+              field, TOO_LONG, label + " darf höchstens " + maxLength + " Zeichen lang sein."));
+    }
   }
 
   /**
@@ -363,8 +439,29 @@ public class MailTemplateService {
     return null;
   }
 
+  /**
+   * The text in force for the audit, as hash and length only ({@link AuditTextDigest}): the
+   * override with {@code overridden} true, or the delivered subject and plain text with {@code
+   * overridden} false; an absent HTML part is left out.
+   */
+  private static Map<String, Object> auditState(MailTemplateKey key, Optional<MailTemplate> row) {
+    Map<String, Object> state = new LinkedHashMap<>();
+    state.put("overridden", row.isPresent());
+    AuditTextDigest.put(
+        state, "subject", row.map(MailTemplate::getSubject).orElseGet(key::defaultSubject));
+    AuditTextDigest.put(
+        state, "bodyPlain", row.map(MailTemplate::getBodyPlain).orElseGet(key::defaultBodyPlain));
+    AuditTextDigest.put(state, "bodyHtml", row.map(MailTemplate::getBodyHtml).orElse(null));
+    return state;
+  }
+
   private void recordTemplateEvent(
-      UUID organizationId, UUID actorUserId, MailTemplateKey key, AuditEventType type) {
+      UUID organizationId,
+      UUID actorUserId,
+      MailTemplateKey key,
+      AuditEventType type,
+      Map<String, Object> before,
+      Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(organizationId)
@@ -375,6 +472,8 @@ public class MailTemplateService {
                 UUID.nameUUIDFromBytes(
                     ("mail-template:" + key.key()).getBytes(StandardCharsets.UTF_8)),
                 OBJECT_LABEL_PREFIX + key.label())
+            .before(before)
+            .after(after)
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

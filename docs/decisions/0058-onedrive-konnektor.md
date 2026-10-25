@@ -64,8 +64,10 @@ nichts. `User.Read` für `GET /me` wird nicht verlangt; eine leere Anzeige ist z
 
 ### 6. Grenzen und Adressen
 
-OneDrive nutzt `SharePointProperties` (`opaa.indexing.sharepoint.*`) mit, auch das tägliche
-Vollabgleich-Intervall; ein eigenes Präfix gibt es nicht. Adressen von Graph und Entra sind keine
+OneDrive nutzt `SharePointProperties` (`opaa.indexing.sharepoint.*`) mit; ein eigenes Präfix gibt
+es nicht. Der Vollabgleich-Rhythmus ist keine Konfiguration, sondern eine fachliche Einstellung je
+Quellart (ADR-0060, Entscheidung 1): OneDrive hat einen eigenen Wert neben SharePoint, mit derselben
+Werkseinstellung von einem Tag. Adressen von Graph und Entra sind keine
 Einstellung. Ein Test, der sie umlenkt, ersetzt die erzeugten Beans (`OneDriveTestSeam`);
 die Graph-Verbindungen des Testkontexts vertrauen dann nur dem Testdoppel.
 

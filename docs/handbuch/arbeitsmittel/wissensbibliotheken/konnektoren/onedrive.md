@@ -165,7 +165,8 @@ Stand, der zu Beginn galt ([Konnektoren](README.md#23-wann-eine-gelöschte-datei
 | gewählter Ordner gelöscht | das OneDrive gilt als nicht erreichbar, nichts wird entfernt; die Ordnerauswahl ist anzupassen |
 | Konto neu verbunden mit einem anderen Microsoft-Konto, Zustimmung entzogen | keine Löschung; der Bestand bleibt |
 
-Für Ordneränderungen gilt ein Fenster bis zum nächsten Vollabgleich; `full-sync-interval` begrenzt es.
+Für Ordneränderungen gilt ein Fenster bis zum nächsten Vollabgleich; der Vollabgleich-Rhythmus
+([Konnektoren](README.md#14-vollabgleich-rhythmus)) begrenzt es.
 
 ## 6. Ordner
 
@@ -231,7 +232,8 @@ verbinden".
 OneDrive nutzt dieselben Schlüssel wie SharePoint, `opaa.indexing.sharepoint.*` mit den
 Umgebungsvariablen `OPAA_INDEXING_SHAREPOINT_*`; Standards und Wirkung stehen im Kapitel
 [SharePoint](sharepoint.md#10-konfiguration), Abschnitt „Konfiguration". Jeder Wert gilt für beide
-Konnektoren, auch `full-sync-interval`; einen eigenen Vollabgleich-Rhythmus setzt die Bibliothek.
+Konnektoren. Der Vollabgleich-Rhythmus ist keine Konfiguration, OneDrive hat dafür einen eigenen Wert
+der Quellart ([Konnektoren](README.md#14-vollabgleich-rhythmus)).
 Die Obergrenze von fünfzig Ordnern ist fest.
 
 ## 11. Nicht gebaut

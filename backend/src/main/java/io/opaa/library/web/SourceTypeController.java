@@ -9,6 +9,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.CapabilityService;
@@ -35,12 +36,15 @@ public class SourceTypeController {
   private final SourceConnectionTestService sourceConnectionTestService;
   private final ConnectorReleaseService connectorRelease;
   private final CapabilityService capabilities;
+  private final FullSyncRhythm fullSyncRhythm;
 
   public SourceTypeController(
       SourceConnectorRegistry connectors,
       SourceConnectionTestService sourceConnectionTestService,
       ConnectorReleaseService connectorRelease,
-      CapabilityService capabilities) {
+      CapabilityService capabilities,
+      FullSyncRhythm fullSyncRhythm) {
+    this.fullSyncRhythm = fullSyncRhythm;
     this.connectors = connectors;
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.connectorRelease = connectorRelease;
@@ -64,7 +68,10 @@ public class SourceTypeController {
                 SourceConnectionTestResponseMapper.toResponse(
                     descriptor,
                     connectors.browser(descriptor.type()).isPresent(),
-                    descriptor.uploads() ? upload : creations.get(descriptor.type())))
+                    descriptor.uploads() ? upload : creations.get(descriptor.type()),
+                    FullSyncRhythm.wholeDays(
+                        fullSyncRhythm.installationDefault(
+                            descriptor.type(), descriptor.fullSyncInterval()))))
         .toList();
   }
 

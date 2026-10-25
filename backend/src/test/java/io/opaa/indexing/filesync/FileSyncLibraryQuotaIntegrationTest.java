@@ -274,7 +274,7 @@ class FileSyncLibraryQuotaIntegrationTest {
         DocumentRepository documentRepository,
         PersonalStorageQuota personalQuota,
         org.springframework.transaction.PlatformTransactionManager transactionManager) {
-      super(documentRepository, new LibraryProperties(0, 0), personalQuota, transactionManager);
+      super(documentRepository, new LibraryProperties(0), personalQuota, transactionManager);
     }
 
     @Override

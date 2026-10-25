@@ -3,6 +3,7 @@ package io.opaa.indexing.source.googledrive;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
@@ -43,6 +44,7 @@ public class GoogleDriveConnectorConfiguration {
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
       ScanJournal scanJournal,
+      FullSyncRhythm fullSyncRhythm,
       IndexingRunTemplate indexingRunTemplate,
       SupportedDocumentFormats supportedDocumentFormats,
       Clock clock) {
@@ -52,6 +54,7 @@ public class GoogleDriveConnectorConfiguration {
         documentRepository,
         libraryFolderService,
         scanJournal,
+        fullSyncRhythm,
         clock,
         indexingRunTemplate,
         supportedDocumentFormats);

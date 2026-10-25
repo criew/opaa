@@ -3,7 +3,6 @@ package io.opaa.indexing.source.googledrive;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 import static java.util.Objects.requireNonNullElse;
 
-import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
 import java.time.Duration;
@@ -27,7 +26,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxFilesPerRun files one full sync may list before it fails asking for narrower scopes;
  *     default 1 000 000
  * @param downloadConcurrency downloads in flight per run; default 2
- * @param fullSyncInterval the instance-wide rhythm of the full sync; default 7 days
  */
 @PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
@@ -41,8 +39,7 @@ public record GoogleDriveProperties(
     @NoDataImpact("pacing of retries") Duration retryBackoff,
     int requestBudgetPerRun,
     int maxFilesPerRun,
-    int downloadConcurrency,
-    @DataImpact Duration fullSyncInterval) {
+    int downloadConcurrency) {
 
   public static final int MAX_PAGE_SIZE = 1000;
 
@@ -58,10 +55,9 @@ public record GoogleDriveProperties(
     requestBudgetPerRun = positiveOr(requestBudgetPerRun, 20_000);
     maxFilesPerRun = positiveOr(maxFilesPerRun, 1_000_000);
     downloadConcurrency = positiveOr(downloadConcurrency, 2);
-    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(7));
   }
 
   public static GoogleDriveProperties defaults() {
-    return new GoogleDriveProperties(0, 0, null, null, null, null, 0, 0, 0, null);
+    return new GoogleDriveProperties(0, 0, null, null, null, null, 0, 0, 0);
   }
 }

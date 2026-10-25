@@ -1661,6 +1661,21 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   @Test
+  void listDocumentsNamesTheDirectParentOfEveryAttachmentInTheGroupedList() {
+    Document outerMail = seedDocument("posteingang.eml");
+    Document forwardedMail = seedAttachment(outerMail, 0, "weiterleitung.eml");
+    seedAttachment(forwardedMail, 0, "haushaltsplan.pdf");
+
+    var page =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 20));
+
+    assertThat(page.documents())
+        .extracting(LibraryDocumentEntry::parentFileName)
+        .containsExactly(null, "posteingang.eml", "weiterleitung.eml");
+  }
+
+  @Test
   void listDocumentsFlattensANestedAttachmentChainUnderItsTopLevelParent() {
     // Mail-in-Mail (ADR-0022, Entscheidung 2): the forwarded mail is itself an attachment with its
     // own attachment - the whole chain rides along under the outermost mail, depth-first.
@@ -1750,6 +1765,10 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(page.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("a-kaputt.txt", "b-im-ordner.txt", "f-anlage.pdf");
+    // the parent is not on the flat page, so the entry names it
+    assertThat(page.documents())
+        .extracting(LibraryDocumentEntry::parentFileName)
+        .containsExactly(null, null, "e-mail.eml");
     assertThat(page.folders()).isEmpty();
     assertThat(page.breadcrumb()).isEmpty();
     assertThat(page.folderId()).isNull();

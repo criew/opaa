@@ -37,6 +37,10 @@ final class DurationReading {
 
   private static final Pattern SHORT = Pattern.compile("(\\d+)(ms|s|m|h|d)");
   private static final Pattern NUMBER = Pattern.compile("\\d+");
+
+  /** The row a {@code DATABASE} key names in brackets, {@code table.column[ROW]}. */
+  private static final Pattern ROW = Pattern.compile("\\[[^\\]]*\\]$");
+
   private static final Pattern KEY_UNIT =
       Pattern.compile(".*[._#-](seconds|minutes|hours|days|weeks|months|years)");
 
@@ -66,7 +70,7 @@ final class DurationReading {
         default -> words(amount, ISO_UNITS[3]);
       };
     }
-    Matcher unit = KEY_UNIT.matcher(key.toLowerCase(Locale.ROOT));
+    Matcher unit = KEY_UNIT.matcher(ROW.matcher(key).replaceFirst("").toLowerCase(Locale.ROOT));
     if (NUMBER.matcher(trimmed).matches() && unit.matches()) {
       int index =
           switch (unit.group(1)) {
@@ -93,7 +97,7 @@ final class DurationReading {
     long seconds = -1;
     Matcher iso = ISO.matcher(trimmed.toUpperCase(Locale.ROOT));
     Matcher shortForm = SHORT.matcher(trimmed);
-    Matcher unit = KEY_UNIT.matcher(key.toLowerCase(Locale.ROOT));
+    Matcher unit = KEY_UNIT.matcher(ROW.matcher(key).replaceFirst("").toLowerCase(Locale.ROOT));
     if (trimmed.length() > 1 && iso.matches()) {
       seconds = 0;
       for (int i = 0; i < ISO_SECONDS.length; i++) {

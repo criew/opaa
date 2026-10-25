@@ -1,0 +1,170 @@
+# Topic "settings": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: settings
+    description: Export and import of the installation's settings (ADR-0060, Entscheidung 12).
+paths:
+  /api/v1/system/settings/export:
+    get:
+      operationId: exportSettings
+      tags: [settings]
+      summary: >-
+        Every setting of the installation that the system administration decides, as one versioned
+        document (system admin only). Secrets are never part of it: neither a password, a key nor
+        whether one is stored. Who changed a setting and when is not part of it either. Reading
+        writes no audit entry.
+      responses:
+        "200":
+          description: The settings of the installation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsDocument"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/settings/import/preview:
+    post:
+      operationId: previewSettingsImport
+      tags: [settings]
+      summary: >-
+        Checks a settings document against this installation and names every value it would change
+        (system admin only), without changing anything. The check is the one the import runs: the
+        same validation as the administration and the same limits of the operation. A section the
+        document does not carry stays as it is; a key a section does not carry keeps its value. The
+        body is read up to 256 KiB; preview and import together are limited to 30 calls per hour
+        for the installation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsDocument"
+      responses:
+        "200":
+          description: The changes the import would make, applied false
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsImportResult"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/system/settings/import:
+    post:
+      operationId: importSettings
+      tags: [settings]
+      summary: >-
+        Applies a settings document to this installation (system admin only), in one transaction:
+        either every value is taken over or none. Each value goes through the same write path as in
+        the administration, so every change is its usual audit event; all of them carry the same
+        correlation reference as the one SETTINGS_IMPORTED entry that names the changed sections.
+        Importing the same document again changes nothing and writes nothing. Secrets of this
+        installation stay as they are. Same body and call limits as the preview.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsDocument"
+      responses:
+        "200":
+          description: The changes made, applied true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsImportResult"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+components:
+  schemas:
+    SettingsDocument:
+      type: object
+      required: [format, formatVersion, sections]
+      properties:
+        format:
+          type: string
+          description: Always opaa-settings; any other value is refused.
+        formatVersion:
+          type: integer
+          description: >-
+            The version of the document format, 1 today. Raised when a key changes its meaning or
+            goes away, not when a section or a key is added; another version is refused.
+        exportedAt:
+          type: string
+          format: date-time
+          description: When the document was exported; informational, not checked on import.
+        sections:
+          type: object
+          description: >-
+            One object per section, keyed by the section's name (for example linkTargets,
+            auditRetention). An unknown section is refused; the keys of a section and their
+            meaning are those the export of the same version writes.
+          additionalProperties:
+            type: object
+            additionalProperties: true
+
+    SettingsImportResult:
+      type: object
+      required: [applied, changes]
+      properties:
+        applied:
+          type: boolean
+          description: Whether the changes were made (import) or only named (preview).
+        changes:
+          type: array
+          description: >-
+            Every value that differs from this installation, by section and key, in the order of
+            the sections. Empty when the document matches the installation.
+          items:
+            $ref: "#/components/schemas/SettingsChange"
+
+    SettingsChange:
+      type: object
+      required: [section, sectionLabel, key, keyLabel, securityRelevant]
+      properties:
+        section:
+          type: string
+        sectionLabel:
+          type: string
+          description: The German name of the section in the administration.
+        key:
+          type: string
+        keyLabel:
+          type: string
+          description: The German name of the key.
+        securityRelevant:
+          type: boolean
+          description: >-
+            Whether the change widens or redirects what the installation reaches or admits, or
+            shortens what it keeps as evidence: where mail goes, the mail templates (their links
+            reach invited persons), the outbound proxy, self-registration, password length and link
+            lifetimes, the external access channel with its networks, lifetime and quota, the
+            allowed link targets, every retention period, and the full-sync rhythm (how long what
+            a source deleted stays findable). The preview marks such a change.
+        before:
+          nullable: true
+          description: >-
+            The value in force on this installation, in the form the export writes; what null
+            means depends on the key (for example the OPAA default, the delivered mail text, not
+            set).
+        after:
+          nullable: true
+          description: The value after the import, in the form the export writes.

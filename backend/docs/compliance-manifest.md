@@ -172,6 +172,24 @@ Zeile, in einem umschließenden `if`/`with`/`range` oder in einem eingebundenen 
 Test je Schlüssel der Map; jede andere zusammengesetzte Variable lässt ihn scheitern. Überschreibt ein Produktivprofil von `application.yml` (alle außer `dev`)
 den Standardwert, nennt der Eintrag den Wert in `notes` als `"Profil <name>: <wert>"`.
 
+### Werkseinstellung mit Überschreibung in der Datenbank
+
+Eine fachliche Einstellung nach ADR-0060, Entscheidung 1, hat ihre Werkseinstellung im Code und eine Zeile in der
+Datenbank erst, wenn die Systemverwaltung einen eigenen Wert setzt. Sie steht als `DATABASE` unter `settings`, mit
+der Werkseinstellung als `defaultValue` und dem Verwaltungsort in `notes`, nie als `CONSTANT`: Die Auskunft meldet
+sonst immer den Werkswert. Die `InstanceStateSource` im Modul der Tabelle liefert den Wert in Kraft, mit
+`updated_at` der Zeile, ohne Zeile die Werkseinstellung mit `changedAt` `null`. Gilt eine Spalte je Zeile für etwas
+anderes, trägt jeder Eintrag die Zeile in eckigen Klammern im Schlüssel:
+
+```yaml
+  - key: full_sync_rhythm_settings.interval_days[SHAREPOINT]
+    source: DATABASE
+    defaultValue: "1"
+    range: 1 bis 365 Tage
+```
+
+`io.opaa.indexing.registry.FullSyncRhythmInstanceState` ist das Muster.
+
 ## Auskunft über die Datenerhebung (Instanzwerte)
 
 `GET /api/v1/admin/compliance/data-collection-disclosure` (JSON, `/markdown` für die lesbare
@@ -192,7 +210,7 @@ selbst, damit auch der abgewiesene Abruf das Ereignis `DATA_COLLECTION_DISCLOSUR
 
 | Änderung im Code | Nachzuziehen |
 |---|---|
-| neuer `DATABASE`-Eintrag unter `settings` | eine `InstanceStateSource` im Modul der Tabelle liefert Wert und Änderungszeitpunkt (`DataCollectionDisclosureIntegrationTest` scheitert sonst) |
+| neuer `DATABASE`-Eintrag unter `settings` | eine `InstanceStateSource` im Modul der Tabelle liefert Wert und Änderungszeitpunkt, ohne Zeile die Werkseinstellung ohne Zeitpunkt (`DataCollectionDisclosureIntegrationTest` scheitert sonst) |
 | neuer Datenfluss mit Schalter | eine `InstanceStateSource` meldet ihn; offen bleiben nur Flüsse, die allein auf eine Handlung hin entstehen |
 | neuer Konnektor, der nach außen geht | Datenfluss im eigenen Descriptor (`SourceConnectorDescriptor#withDataFlow`), dessen Eintrag unter `dataFlows`; die Registry meldet ihn über `io.opaa.knowledge.ConnectorDataFlows` (`ConnectorDataFlowsIntegrationTest`) |
 | neue Spalte von `audit_log` oder neuer Abfrageweg | `io.opaa.audit.AuditProtocolDescription` |

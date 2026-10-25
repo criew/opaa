@@ -6,6 +6,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.ScanJournal;
@@ -33,6 +34,7 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
 
   private final GraphConnections graphs;
   private final ScanJournal journal;
+  private final FullSyncRhythm rhythm;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final DriveRun driveRun;
@@ -43,11 +45,13 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       ScanJournal journal,
+      FullSyncRhythm rhythm,
       Clock clock,
       IndexingRunTemplate runTemplate,
       SupportedDocumentFormats supportedFormats) {
     this.graphs = graphs;
     this.journal = journal;
+    this.rhythm = rhythm;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.driveRun =
@@ -121,9 +125,10 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private Duration interval(SharePointSettings settings) {
-    return settings.fullSyncIntervalDays() != null
-        ? Duration.ofDays(settings.fullSyncIntervalDays())
-        : graphs.properties().fullSyncInterval();
+    return rhythm.interval(
+        SharePointSourceConnector.TYPE,
+        SharePointSourceConnector.FULL_SYNC_INTERVAL,
+        settings.fullSyncIntervalDays());
   }
 
   /** One change stream per document library, keyed like its container. */

@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import RowMenu from '@/shared/ui/RowMenu'
-import type { SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
+import type { DocumentStatus, SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -23,6 +23,7 @@ import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import BulkMetadataDialog from './metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
+import { statusFilterOptions } from './documentStatusFilter'
 import { listLibraryMetadataFields } from '../api/libraryMetadataApi'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
 import LibraryDocumentList from './LibraryDocumentList'
@@ -70,6 +71,8 @@ export default function LibraryDocumentsSection({
   const removeDocument = useDocumentStore((s) => s.removeDocument)
   const stopPolling = useDocumentStore((s) => s.stopPolling)
   const reset = useDocumentStore((s) => s.reset)
+  const loadStatusCounts = useDocumentStore((s) => s.loadStatusCounts)
+  const statusCounts = useDocumentStore((s) => s.statusCountsByLibrary[libraryId])
 
   const documents = documentsByLibrary[libraryId] ?? []
   const pageState = pageStateByLibrary[libraryId]
@@ -93,6 +96,9 @@ export default function LibraryDocumentsSection({
     metadataEnabled,
     missingFieldParam,
     setMissingFieldFilter,
+    statusParam,
+    invalidStatusParam,
+    setStatusFilter,
     navigateToFolder,
   } = useDocumentsUrlState(libraryId, leaveList)
   const folderActions = useLibraryFolderActions(libraryId, folderIdParam, onDocumentsChanged)
@@ -139,6 +145,22 @@ export default function LibraryDocumentsSection({
     }
   }, [libraryId, stopPolling, reset])
 
+  // after the reset above: the rows per state, for the toolbar's filter and the page's head -
+  // counted anew when a run finished; changes and settled uploads count anew in the store
+  useEffect(() => {
+    void loadStatusCounts(libraryId)
+  }, [libraryId, refreshToken, loadStatusCounts])
+
+  // Any way into another list - the toolbar, a breadcrumb, a link from the page's head or another
+  // tab - leaves the shown one: its search and selection go, so a Sammelaktion never acts on rows
+  // nobody sees any more.
+  const listKey = [folderIdParam, missingFieldParam, statusParam].join('|')
+  const [shownListKey, setShownListKey] = useState(listKey)
+  if (shownListKey !== listKey) {
+    setShownListKey(listKey)
+    leaveList()
+  }
+
   useEffect(() => {
     // Reacts to the URL's folder param too - a breadcrumb click or a folder row navigates by
     // changing the URL, and this is what turns that into a fresh load for the requested folder.
@@ -148,8 +170,9 @@ export default function LibraryDocumentsSection({
       q: '',
       folderId: folderIdParam,
       missingMetadataField: missingFieldParam,
+      status: statusParam,
     })
-  }, [libraryId, folderIdParam, missingFieldParam, loadDocuments])
+  }, [libraryId, folderIdParam, missingFieldParam, statusParam, loadDocuments])
 
   // the „ohne …“ filter offers the library's own fields after the core fields
   const [ownFields, setOwnFields] = useState<Array<[string, string]>>([])
@@ -185,6 +208,15 @@ export default function LibraryDocumentsSection({
       setSearchParams(next, { replace: true })
     }
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
+
+  useEffect(() => {
+    // the list shows unfiltered for a status it does not know - the URL says so too
+    if (invalidStatusParam) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('status')
+      setSearchParams(next, { replace: true })
+    }
+  }, [invalidStatusParam, searchParams, setSearchParams])
 
   // Leaving the shown list (into a folder or the anchor's worklist) drops its search and selection.
   function leaveList() {
@@ -243,7 +275,7 @@ export default function LibraryDocumentsSection({
   }
 
   // a library without a single document: only the empty state and its one action
-  const filtered = Boolean(pageState?.q || missingFieldParam || folderIdParam)
+  const filtered = Boolean(pageState?.q || missingFieldParam || statusParam || folderIdParam)
   const libraryEmpty =
     !isLoading &&
     pageState !== undefined &&
@@ -289,6 +321,17 @@ export default function LibraryDocumentsSection({
 
   // search and filters from eight documents on, or while a filter or search is active
   const searchable = (pageState?.totalElements ?? 0) >= 8 || filtered
+  // the status filter answers to the counts of the whole library, not to the open folder
+  const statusOptions = statusFilterOptions(statusCounts, statusParam)
+  const statusFilter =
+    statusOptions.length > 0 ? (
+      <FilterSelect
+        label="Status"
+        value={statusParam ?? ''}
+        onChange={(value) => setStatusFilter((value || null) as DocumentStatus | null)}
+        options={[['', 'Status'], ...statusOptions]}
+      />
+    ) : null
   // a folder can be created at the root and inside any open folder
   const newFolder = canManageFolders ? (
     <Box sx={{ ml: 'auto' }}>
@@ -332,6 +375,7 @@ export default function LibraryDocumentsSection({
         filters={
           searchable ? (
             <>
+              {statusFilter}
               {metadataEnabled && (
                 <FilterSelect
                   label="Metadaten"
@@ -351,8 +395,11 @@ export default function LibraryDocumentsSection({
               )}
               {newFolder}
             </>
-          ) : documents.length === 0 && folders.length === 0 ? (
-            newFolder
+          ) : statusFilter || (documents.length === 0 && folders.length === 0) ? (
+            <>
+              {statusFilter}
+              {documents.length === 0 && folders.length === 0 && newFolder}
+            </>
           ) : undefined
         }
         // without a toolbar „Neuer Ordner“ sits in the list's head, never on a line of its own

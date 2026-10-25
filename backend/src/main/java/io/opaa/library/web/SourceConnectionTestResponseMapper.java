@@ -13,6 +13,7 @@ import io.opaa.connection.ConnectorReleaseService.TypeCreation;
 import io.opaa.indexing.spi.ClientCredentialsAuth;
 import io.opaa.indexing.spi.DefaultKey;
 import io.opaa.indexing.spi.Endpoint;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.OAuthAuth;
 import io.opaa.indexing.spi.ProfileDeclaration;
 import io.opaa.indexing.spi.SignIn;
@@ -72,8 +73,19 @@ final class SourceConnectionTestResponseMapper {
         .message(listing.message());
   }
 
+  /** The descriptor with the factory default of its full-sync rhythm. */
   static SourceTypeDescriptor toResponse(
       SourceConnectorDescriptor descriptor, boolean browsable, TypeCreation creation) {
+    return toResponse(
+        descriptor, browsable, creation, FullSyncRhythm.wholeDays(descriptor.fullSyncInterval()));
+  }
+
+  /** The descriptor with the installation-wide full-sync rhythm in whole days, if it has one. */
+  static SourceTypeDescriptor toResponse(
+      SourceConnectorDescriptor descriptor,
+      boolean browsable,
+      TypeCreation creation,
+      Integer fullSyncIntervalDefaultDays) {
     ProfileDeclaration declaration = descriptor.profileDeclaration();
     return new SourceTypeDescriptor()
         .creatable(creation.creatable())
@@ -99,10 +111,7 @@ final class SourceConnectionTestResponseMapper {
         .serverAddress(
             new io.opaa.api.dto.ServerAddressRule(declaration.address().schemes())
                 .fixed(declaration.address().fixed()))
-        .fullSyncIntervalDefaultDays(
-            descriptor.fullSyncInterval() == null
-                ? null
-                : (int) Math.max(1, descriptor.fullSyncInterval().toDays()));
+        .fullSyncIntervalDefaultDays(fullSyncIntervalDefaultDays);
   }
 
   private static SourceTypeSignIn toResponse(SignIn signIn) {
