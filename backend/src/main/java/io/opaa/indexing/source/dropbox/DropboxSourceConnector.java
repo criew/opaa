@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -64,6 +65,12 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
 
   /** The type key this connector serves. */
   public static final SourceType TYPE = SourceType.of("DROPBOX");
+
+  /**
+   * The factory default of the full-sync rhythm. The administration may set another for the
+   * installation, a library its own ({@code FullSyncRhythm}).
+   */
+  public static final Duration FULL_SYNC_INTERVAL = Duration.ofDays(7);
 
   /** The permissions the Dropbox app needs; nothing it could write with. */
   public static final String SCOPES = "account_info.read files.metadata.read files.content.read";
@@ -92,7 +99,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
         SourceConnectorDescriptor.remoteRun(TYPE, "Dropbox")
             .withDataFlow("source-dropbox")
             .withoutDeepLink()
-            .withFullSyncInterval(properties.fullSyncInterval())
+            .withFullSyncInterval(FULL_SYNC_INTERVAL)
             .withProfiles(
                 ProfileDeclaration.of(
                         ConnectionProfileSupport.REQUIRED,

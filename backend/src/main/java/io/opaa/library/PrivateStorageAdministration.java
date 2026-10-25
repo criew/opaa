@@ -81,7 +81,7 @@ public class PrivateStorageAdministration {
     this.clock = clock;
   }
 
-  /** The value in force, the configured default and whether the administration set its own. */
+  /** The value in force, the factory default and whether the administration set its own. */
   public record QuotaSetting(long quotaBytes, long defaultQuotaBytes, boolean overridden) {}
 
   @Transactional(readOnly = true)

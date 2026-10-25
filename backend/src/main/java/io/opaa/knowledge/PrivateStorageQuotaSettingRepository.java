@@ -25,7 +25,7 @@ public interface PrivateStorageQuotaSettingRepository
       nativeQuery = true)
   int upsert(@Param("quotaBytes") long quotaBytes);
 
-  /** Removes the value, so that the configured default applies again. */
+  /** Removes the value, so that the factory default applies again. */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(value = "DELETE FROM private_storage_quota_settings WHERE id = 1", nativeQuery = true)
   int clear();

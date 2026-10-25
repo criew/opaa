@@ -993,7 +993,7 @@ paths:
       tags: [library]
       summary: >
         Reads the house-wide storage quota across all private libraries of a person (system
-        admin only): the value in force, the configured default and whether the
+        admin only): the value in force, the factory default and whether the
         administration set its own.
       responses:
         "200":
@@ -1009,7 +1009,7 @@ paths:
       tags: [library]
       summary: >
         Sets the house-wide storage quota across all private libraries of a person (system admin
-        only); quotaBytes null returns to the configured default, 0 means unlimited. Takes
+        only); quotaBytes null returns to the factory default, 0 means unlimited. Takes
         effect with the next document a run takes in; nothing already stored is removed.
       requestBody:
         required: true
@@ -1048,8 +1048,95 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/full-sync-rhythms:
+    get:
+      operationId: listFullSyncRhythms
+      tags: [library]
+      summary: >
+        The installation-wide rhythm of the full sync for every source type that has one
+        (system admin only): the value in force, the factory default and whether the
+        administration set its own. A library may still set its own rhythm.
+      responses:
+        "200":
+          description: One entry per source type with a full-sync rhythm, ordered by type key
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FullSyncRhythmResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/full-sync-rhythms/{sourceType}:
+    parameters:
+      - name: sourceType
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/SourceTypeKey"
+    put:
+      operationId: updateFullSyncRhythm
+      tags: [library]
+      summary: >
+        Sets the installation-wide rhythm of the full sync of one source type (system admin
+        only); intervalDays null returns to the factory default. Takes effect with the next run
+        of every library of the type without a rhythm of its own, on every instance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FullSyncRhythmRequest"
+      responses:
+        "200":
+          description: Rhythm updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FullSyncRhythmResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   schemas:
+    FullSyncRhythmRequest:
+      type: object
+      properties:
+        intervalDays:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 365
+          nullable: true
+          description: >
+            Days between two full syncs; null (or absent) returns to the factory default.
+
+    FullSyncRhythmResponse:
+      type: object
+      required: [sourceType, displayName, intervalDays, defaultIntervalDays, overridden]
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
+        displayName:
+          type: string
+          description: The German name of the source type, e.g. "Confluence".
+        intervalDays:
+          type: integer
+          format: int32
+          description: The rhythm in force for libraries without a rhythm of their own.
+        defaultIntervalDays:
+          type: integer
+          format: int32
+          description: The factory default that applies while the administration has set no value.
+        overridden:
+          type: boolean
+          description: Whether the administration set its own value.
+
     PrivateStorageUsageResponse:
       type: object
       required: [usedBytes, quotaBytes]
@@ -1073,7 +1160,7 @@ components:
           nullable: true
           description: >
             The house-wide limit in bytes; 0 means unlimited, null (or absent) returns to the
-            configured default.
+            factory default.
 
     PrivateStorageQuotaResponse:
       type: object
@@ -1087,8 +1174,8 @@ components:
           type: integer
           format: int64
           description: >
-            The configured default (OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES) that applies while
-            the administration has set no value; 0 means unlimited.
+            The factory default that applies while the administration has set no value; 0 means
+            unlimited.
         overridden:
           type: boolean
           description: Whether the administration set its own value.
@@ -1290,7 +1377,7 @@ components:
             connector of sourceType defines and validates, answering a wrong one with 400. Never
             a secret: credentials travel in sourceCredentials. CONFLUENCE takes edition (CLOUD or
             DATA_CENTER, as the connection test detected it), spaces (1-500 entries {key, name})
-            and fullSyncIntervalDays (1-365, absent for the instance-wide default); S3 takes
+            and fullSyncIntervalDays (1-365, absent for the installation-wide default); S3 takes
             region, pathStyle, scopes (1-50 non-overlapping {bucket, prefix}), includePatterns and
             excludePatterns; FILESYSTEM takes excludePatterns (0-50 globs relative to sourcePath,
             "/" as separator, an invalid one answered with 400). Types without settings take none.
@@ -1614,8 +1701,9 @@ components:
           type: integer
           nullable: true
           description: >
-            The instance-wide rhythm of the type's full reconciliation in whole days, which a
-            library may lengthen; absent for a type whose every run is a full one.
+            The installation-wide rhythm of the type's full reconciliation in whole days (set
+            by the administration, else the factory default), which a library may override;
+            absent for a type whose every run is a full one.
         creatable:
           type: boolean
           description: >
@@ -1792,7 +1880,7 @@ components:
             A change of the connector's settings (ADR-0038); absent leaves them untouched. What a
             present object replaces the connector decides: CONFLUENCE replaces each part it
             carries - spaces as a whole (non-empty; every change forces a full sync),
-            fullSyncIntervalDays (1-365, 0 returns to the instance-wide default) - and accepts
+            fullSyncIntervalDays (1-365, 0 returns to the installation-wide default) - and accepts
             edition only when it equals the stored one; S3 and FILESYSTEM replace their settings as
             a whole.
           nullable: true
@@ -2099,8 +2187,8 @@ components:
           type: integer
           nullable: true
           description: >
-            The instance-wide full-sync rhythm of the library's connector in whole days, so the
-            schedule dialog can name the default; present only if the connector has one and
+            The installation-wide full-sync rhythm of the library's connector in whole days, so
+            the schedule dialog can name the default; present only if the connector has one and
             myRole is at least MANAGER.
         schedule:
           description: >

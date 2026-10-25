@@ -30,8 +30,9 @@ import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.registry.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.spi.FullSyncRhythm;
+import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
 import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -105,9 +106,6 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
-    // Every null/zero component falls back to the record's own defaults (7-day rhythm).
-    ConfluenceProperties confluenceProperties =
-        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
             mock(AssetSuccessionSource.class),
@@ -143,13 +141,13 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
                     org.mockito.Mockito.mock(io.opaa.indexing.spi.SourceSyncStateRepository.class))
                 .confluenceConnectionService(
                     org.mockito.Mockito.mock(ConfluenceConnectionService.class))
-                .confluenceProperties(confluenceProperties)
                 .registry(),
             new LibrarySourceConnectionResolver(),
             mock(LibraryConnectionService.class),
             mock(ConnectorReleaseService.class),
             OwnAddressDrafts.over(TestSourceConnectors.connectors().registry(), libraryRepository),
             mock(io.opaa.asset.OwnerOnlyRule.class),
+            new FullSyncRhythm(mock(FullSyncRhythmSettingRepository.class)),
             mock(io.opaa.connection.PrivateLibraryConnections.class));
 
     ownerId = UUID.randomUUID();

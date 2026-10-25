@@ -39,9 +39,9 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.run.SyncStateBasis;
 import io.opaa.indexing.spi.ConnectorData;
-import io.opaa.indexing.spi.RunFailureCategory;
 import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.FullSyncRhythmSettingRepository;
+import io.opaa.indexing.spi.RunFailureCategory;
 import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
@@ -254,16 +254,7 @@ class ConfluenceIndexingExecutorTest {
     ConfluenceTestSettings.configure(library, edition, selection);
     ConfluenceProperties properties =
         new ConfluenceProperties(
-            2,
-            null,
-            null,
-            3,
-            Duration.ofSeconds(2),
-            0,
-            0,
-            0,
-            OVERLAP,
-            requestBudget);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, requestBudget);
     ConfluenceClientFactory factory =
         new ConfluenceClientFactory(properties, TargetAddressValidator.disabled(), sleeps::add);
     executor =
@@ -997,16 +988,7 @@ class ConfluenceIndexingExecutorTest {
     completedFullSync(anchor);
     ConfluenceProperties smallOverlap =
         new ConfluenceProperties(
-            2,
-            null,
-            null,
-            3,
-            Duration.ofSeconds(2),
-            0,
-            0,
-            0,
-            Duration.ofMinutes(1),
-            0);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, Duration.ofMinutes(1), 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(
@@ -1188,8 +1170,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(state.isFullSyncInterrupted()).as("the budget ended the first run").isTrue();
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
     ConfluenceProperties unbounded =
-        new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, 0);
+        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
@@ -1478,8 +1459,7 @@ class ConfluenceIndexingExecutorTest {
     requestBudget = 0;
     sleeps.clear();
     ConfluenceProperties unbounded =
-        new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, 0);
+        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, OVERLAP, 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),

@@ -11,6 +11,7 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.ScanJournal;
@@ -82,6 +83,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final ScanJournal journal;
+  private final FullSyncRhythm rhythm;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final ConfluenceAttachmentIndexing attachments;
@@ -93,6 +95,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       ScanJournal journal,
+      FullSyncRhythm rhythm,
       Clock clock,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
@@ -100,6 +103,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.journal = journal;
+    this.rhythm = rhythm;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.attachments = new ConfluenceAttachmentIndexing(attachmentIndexer, documentRepository);
@@ -123,16 +127,18 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * ADR-0023, Entscheidung 4: the first run, a run after the space selection changed, a run after
-   * an interrupted full sync and every run once {@code fullSyncInterval} has passed are full; the
-   * routine run in between is incremental. Decided from the state at trigger time, so a full run
-   * that fell due while an incremental one was running is taken at the next tick, not lost.
+   * an interrupted full sync and every run once the full-sync rhythm ({@link FullSyncRhythm}) has
+   * passed are full; the routine run in between is incremental. Decided from the state at trigger
+   * time, so a full run that fell due while an incremental one was running is taken at the next
+   * tick, not lost.
    */
   @Override
   public IndexingRunMode defaultRunMode(KnowledgeLibrary library, ConnectorData settings) {
-    // the library's own rhythm, where set, takes precedence over the instance-wide one.
-    Integer ownDays = ConfluenceSourceSettings.stored(settings).fullSyncIntervalDays();
     Duration fullSyncInterval =
-        ownDays != null ? Duration.ofDays(ownDays) : properties.fullSyncInterval();
+        rhythm.interval(
+            ConfluenceSourceConnector.TYPE,
+            ConfluenceSourceConnector.FULL_SYNC_INTERVAL,
+            ConfluenceSourceSettings.stored(settings).fullSyncIntervalDays());
     return journal
         .find(library.getId())
         .filter(state -> !state.isFullSyncDue(fullSyncInterval, clock.instant()))

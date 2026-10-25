@@ -18,7 +18,6 @@ class ConfluenceSourceConnectorViewTest {
   private final ConfluenceSourceConnector connector =
       new ConfluenceSourceConnector(
           mock(ConfluenceConnectionService.class),
-          new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
           mock(SourceSyncStateRepository.class),
           mock(ConfluenceWebhookService.class));
 

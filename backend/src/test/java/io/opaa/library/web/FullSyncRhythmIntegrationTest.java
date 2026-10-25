@@ -23,10 +23,10 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The installation-wide rhythm of the full sync per source type against the Flyway schema: only
- * the system administration reads and sets it, the factory default applies without a value of its
- * own, every change is an audit event with the value before and after, and the source types answer
- * the value in force.
+ * The installation-wide rhythm of the full sync per source type against the Flyway schema: only the
+ * system administration reads and sets it, the factory default applies without a value of its own,
+ * every change is an audit event with the value before and after, and the source types answer the
+ * value in force.
  */
 @OpaaIntegrationTest
 class FullSyncRhythmIntegrationTest {
@@ -111,8 +111,7 @@ class FullSyncRhythmIntegrationTest {
   void aValueOutsideOneToThreeHundredSixtyFiveDaysIsRefused() throws Exception {
     for (String body : List.of("{\"intervalDays\":0}", "{\"intervalDays\":366}")) {
       mockMvc
-          .perform(
-              put("/api/v1/admin/full-sync-rhythms/CONFLUENCE").with(devAdmin()).content(body))
+          .perform(put("/api/v1/admin/full-sync-rhythms/CONFLUENCE").with(devAdmin()).content(body))
           .andExpect(status().isBadRequest());
     }
     assertThat(auditEvents()).isZero();

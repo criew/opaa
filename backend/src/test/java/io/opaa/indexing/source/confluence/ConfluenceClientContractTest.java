@@ -90,7 +90,7 @@ class ConfluenceClientContractTest {
     ConfluenceCredentials credentials =
         server.addToken(EMAIL, TOKEN, Set.of("ENG", "HR", "DOC", "OPS"));
     ConfluenceProperties properties =
-        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, requestBudget);
+        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, requestBudget);
     return factory(properties, TargetAddressValidator.disabled())
         .createForRun(connection(deployment.edition(), credentials));
   }
@@ -107,8 +107,7 @@ class ConfluenceClientContractTest {
 
   /** Small page size so every listing paginates; three rate-limit retries, two-second cap. */
   private static ConfluenceProperties smallPages() {
-    return new ConfluenceProperties(
-        2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, null, 0);
+    return new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, 0);
   }
 
   private static void seed(FakeConfluenceServer server) {
@@ -189,7 +188,7 @@ class ConfluenceClientContractTest {
     ConfluenceClient client =
         client(
             deployment,
-            new ConfluenceProperties(2, null, null, 0, null, 0, 0, 0, null, null, 1),
+            new ConfluenceProperties(2, null, null, 0, null, 0, 0, 0, null, 1),
             TargetAddressValidator.disabled());
     client.verifyCredentials();
     assertThat(client.listSpaces()).isNotEmpty();
@@ -520,7 +519,7 @@ class ConfluenceClientContractTest {
   @MethodSource("deployments")
   void aListingThatNeverEndsIsAbandonedVisibly(Deployment deployment) throws Exception {
     ConfluenceProperties threePages =
-        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 3, null, null, 0);
+        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 3, null, 0);
     ConfluenceClient client = client(deployment, threePages, TargetAddressValidator.disabled());
     // the instance keeps handing out the same first page as "next"
     String path =

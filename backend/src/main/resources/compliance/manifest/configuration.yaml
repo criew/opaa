@@ -232,38 +232,66 @@ settings:
     effect: Adresse, an der ein verworfenes Dropbox-Token widerrufen wird
     bearings: [DATA_FLOW]
   # Vollabgleiche: erst sie entfernen, was in der Quelle gelöscht wurde
-  - key: opaa.indexing.confluence.full-sync-interval
-    defaultValue: 7d
+  - key: io.opaa.indexing.source.confluence.ConfluenceSourceConnector#FULL_SYNC_INTERVAL
+    source: CONSTANT
+    defaultValue: P7D
+    range: 1 bis 365 Tage
     effect: >-
       Abstand der Vollabgleiche von Confluence; nur sie entfernen Seiten aus dem Bestand, die in der
       Quelle gelöscht wurden
     bearings: [DATA]
     notes:
-      - Je Bibliothek überschreibbar
-  - key: opaa.indexing.sharepoint.full-sync-interval
-    defaultValue: 1d
+      - >-
+        Werkseinstellung; die Systemverwaltung setzt unter Anbindungen → Einstellungen einen
+        hausweiten Rhythmus je Quellart, eine Bibliothek einen eigenen
+  - key: io.opaa.indexing.source.sharepoint.SharePointSourceConnector#FULL_SYNC_INTERVAL
+    source: CONSTANT
+    defaultValue: P1D
+    range: 1 bis 365 Tage
     effect: >-
       Abstand der Vollabgleiche von SharePoint; sie entfernen Dateien gelöschter oder verschobener
       Ordner, die der Änderungslauf nicht einzeln meldet
     bearings: [DATA]
     notes:
-      - Je Bibliothek überschreibbar
-  - key: opaa.indexing.dropbox.full-sync-interval
-    defaultValue: 7d
+      - >-
+        Werkseinstellung; die Systemverwaltung setzt unter Anbindungen → Einstellungen einen
+        hausweiten Rhythmus je Quellart, eine Bibliothek einen eigenen
+  - key: io.opaa.indexing.source.sharepoint.OneDriveSourceConnector#FULL_SYNC_INTERVAL
+    source: CONSTANT
+    defaultValue: P1D
+    range: 1 bis 365 Tage
+    effect: >-
+      Abstand der Vollabgleiche von OneDrive; sie entfernen Dateien gelöschter oder verschobener
+      Ordner, die der Änderungslauf nicht einzeln meldet
+    bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung; die Systemverwaltung setzt unter Anbindungen → Einstellungen einen
+        hausweiten Rhythmus je Quellart, eine Bibliothek einen eigenen
+  - key: io.opaa.indexing.source.dropbox.DropboxSourceConnector#FULL_SYNC_INTERVAL
+    source: CONSTANT
+    defaultValue: P7D
+    range: 1 bis 365 Tage
     effect: >-
       Abstand der Vollabgleiche von Dropbox; sie entfernen, was der Änderungslauf nicht als gelöscht
       gemeldet hat
     bearings: [DATA]
     notes:
-      - Je Bibliothek überschreibbar
-  - key: opaa.indexing.google-drive.full-sync-interval
-    defaultValue: 7d
+      - >-
+        Werkseinstellung; die Systemverwaltung setzt unter Anbindungen → Einstellungen einen
+        hausweiten Rhythmus je Quellart, eine Bibliothek einen eigenen
+  - key: io.opaa.indexing.source.googledrive.GoogleDriveSourceConnector#FULL_SYNC_INTERVAL
+    source: CONSTANT
+    defaultValue: P7D
+    range: 1 bis 365 Tage
     effect: >-
       Abstand der Vollabgleiche von Google Drive; sie entfernen, was der Änderungslauf nicht als
       gelöscht gemeldet hat
     bearings: [DATA]
     notes:
-      - Je Bibliothek überschreibbar
+      - >-
+        Werkseinstellung; die Systemverwaltung setzt unter Anbindungen → Einstellungen einen
+        hausweiten Rhythmus je Quellart, eine Bibliothek einen eigenen
   - key: opaa.indexing.nextcloud.full-descent-interval
     defaultValue: 7d
     effect: >-
