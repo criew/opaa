@@ -237,7 +237,8 @@ class S3ConnectionServiceTest {
     S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isFalse();
-    assertThat(probe.credentialsVerified()).isTrue();
+    // a redirect or a malformed authorization comes before the signature is checked
+    assertThat(probe.credentialsVerified()).isNull();
     assertThat(probe.scopes().get(0).message()).contains("Region oder Adressstil");
     assertThat(probe.message()).contains("Region oder Adressstil");
   }

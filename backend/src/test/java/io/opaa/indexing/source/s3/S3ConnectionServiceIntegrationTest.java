@@ -129,6 +129,18 @@ class S3ConnectionServiceIntegrationTest {
         .doesNotContain("falscher-key");
   }
 
+  @Test
+  void aRefusedKeyOnAMissingBucketIsRefusedNotAccepted() throws Exception {
+    S3ConnectionService.Probe probe =
+        service.probe(
+            endpoint(),
+            "falscher-key:falsches-geheimnis",
+            settings(S3Scope.of("opaa-gibtsnicht-auch", "")));
+
+    assertThat(probe.reachable()).isFalse();
+    assertThat(probe.credentialsVerified()).isFalse();
+  }
+
   // regression guard for #3175: TLS or network failures say nothing about the key
   @Test
   void aTlsOrNetworkFailureLeavesTheKeyUnverified() throws Exception {
