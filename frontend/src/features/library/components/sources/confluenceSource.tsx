@@ -7,7 +7,6 @@ import {
 } from '../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../utils/confluenceSource'
 import { confluenceSetup } from '../setup/connectors/confluenceSetup'
-import { ConfluencePush } from './ConfluenceSourceViews'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -43,7 +42,6 @@ export const confluenceSource: SourceRegistration = {
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
     scopeNoteId: 'confluence-sharing-consequence',
-    Push: ConfluencePush,
     scopeHero: {
       summary: (library) => {
         const settings = confluenceSettingsOf(library)

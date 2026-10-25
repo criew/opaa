@@ -451,7 +451,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await create(user)
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'))
     expect(mockCreateNewLibrary).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(/nicht gespeichert werden: Alice/)).toBeInTheDocument()
   }, 15000)
@@ -629,7 +629,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       // the "Erste Indizierung sofort ..." switch defaults to on: the full sync starts right after
       // creation, before the navigation to the detail page
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'S3')
-      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1')
     }, 30000)
 
     it('creates an AWS library from the template with a derived virtual-host endpoint', async () => {
@@ -668,7 +668,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           }),
         ),
       )
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'))
       // switched off: no first run, the detail page's "Jetzt indizieren" or the schedule starts it
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 25000)
@@ -838,7 +838,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       // The "Erste Indizierung sofort ..." switch defaults to on - the first run starts right
       // after creation, before the navigation to the detail page.
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'CONFLUENCE')
-      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1')
     }, 25000)
 
     // An entered rhythm is sent along; only the empty field means „kein eigener Rhythmus"
@@ -874,7 +874,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await nameItAndContinue(user, 'Wiki Bauamt')
       await create(user)
 
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1'))
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 25000)
 
@@ -1166,7 +1166,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         expect.objectContaining({ name: 'Rechtsquellen Soziales', sourceType: 'UPLOAD' }),
       )
     })
-    expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+    expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu?justCreated=1')
   }, 15000)
 
   it('creates a group-owned library, offering only the groups returned for the user', async () => {

@@ -111,11 +111,38 @@ löscht sie. **Wer verwaltet**, ändert darüber hinaus Verbindung, Umfang und Z
 und vergibt Rechte. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht löschen;
 der nächste Lauf brächte sie zurück.
 
+**Der Zustand im Kopf** ist ein einziges Wort mit Datum oder Fortschritt, etwa „Aktuell · 23.10.2026",
+„Läuft · 40 %", „Teilweise fehlgeschlagen", „Anmeldung abgelehnt", „Nicht erreichbar",
+„Zustimmung abgelaufen", „Noch nie indiziert" oder bei einem Upload „Hochgeladen" und „Kontingent
+voll". Wer verwaltet, kommt mit einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum
+neuesten Lauf im Reiter „Quelle". Wer nur liest, sieht das Wort ohne Verweis.
+
+**Nach dem Anlegen** zeigt die Detailansicht unter den Reitern „Nächste Schritte": „Zugang prüfen",
+„In Space verwenden", bei Confluence und S3 „Live-Abgleich einrichten", „Feld anlegen", beim Upload
+„Dateien hochladen". Ein Schritt ist abgehakt, sobald er erledigt ist, „Zugang prüfen" erst nach
+einem Lauf, der die Quelle gelesen hat. „Ausblenden" blendet den Block dauerhaft aus; sind alle
+Schritte erledigt, verschwindet er von selbst.
+
+Im Reiter „Dokumente" sucht „Dateiname enthält …" in der ganzen Bibliothek, der Filter „Metadaten"
+zeigt die Dokumente ohne Wert in einem Feld. Die Aktionen einer Zeile, etwa „Löschen", stehen in
+ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine Meldung sie; „Schließen" faltet sie zu
+„Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
+
 Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ändern" klappt sie auf,
 „Speichern" übernimmt die Änderung, „Abbrechen" verwirft sie. Wo der Umfang nur im Auswahldialog
 gewählt wird, wie bei SharePoint, öffnet „Ändern" gleich den Dialog, und „Übernehmen" speichert
-sofort. Bei Quellen wie Confluence, S3 oder Nextcloud steht unter den Zeilen, auch für Lesende,
-dass alles daraus Indizierte für alle Leseberechtigten der Bibliothek sichtbar ist.
+sofort. Jede Zeile trägt, was die Läufe über sie wissen, etwa „Anmeldung ok · zuletzt 23.10.2026"
+an der Verbindung oder „2 nicht lesbar" am Umfang. Bei Confluence und S3 folgt die Zeile
+„Live-Abgleich" mit Webhook bzw. Ereignissen ([Konnektoren](konnektoren/README.md)). Bei Quellen wie
+Confluence, S3 oder Nextcloud steht unter den Zeilen, auch für Lesende, dass alles daraus Indizierte
+für alle Leseberechtigten der Bibliothek sichtbar ist.
+
+Darunter stehen für die Verwaltenden die **Läufe** als Tabelle mit Zustand, Beginn, Dauer, Auslöser
+und Ergebnis. Eine Zeile klappt auf und zeigt die Fundorte je Kategorie des Laufprotokolls
+(Abschnitt 6.2), „alle n anzeigen" öffnet die vollständige Liste, „Technische Angaben" die
+Kennzahlen. Ein an der Verbindung gescheiterter Lauf führt mit „Verbindung ändern ›" zur Zeile
+„Verbindung". Ab fünf Läufen grenzt „Alle · Nur mit Fehlern (n)" die Tabelle ein, sofern das etwas
+weglässt. Bei Quellen mit Vollabgleich steht dort auch „Vollabgleich starten".
 
 ### 3.3 Eine Wissensbibliothek anlegen
 

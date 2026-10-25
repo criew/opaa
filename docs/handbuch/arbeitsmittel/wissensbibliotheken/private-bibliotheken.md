@@ -28,9 +28,9 @@ sind:
 Verbindungstest und Auflistung vor dem Anlegen laufen ebenso über das verbundene Konto.
 
 **Erkennbar** ist eine private Bibliothek an der Marke **„Privat“** (Schloss und Wort) auf ihrer
-Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur Eigentümerin,
-Diagnosesperre und ein Hinweis, warum es nicht mehr gibt; Berechtigungen, Externer Zugang,
-Obergrenze, Herleitung und „Eigentum übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
+Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur die Zeilen
+„Eigentümer“ und „Suchdiagnose“; Berechtigungen, Externer Zugang, Obergrenze, Herleitung und
+„Übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
 und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat,
 auch solche nur für Personen.
 

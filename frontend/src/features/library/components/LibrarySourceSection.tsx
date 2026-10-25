@@ -161,7 +161,6 @@ export default function LibrarySourceSection({
       }
     }
   })()
-  const Push = configuration?.Push
 
   return (
     <Stack>
@@ -267,11 +266,6 @@ export default function LibrarySourceSection({
               Alles, was daraus indiziert wird, ist für alle Leseberechtigten dieser Bibliothek
               sichtbar – unabhängig von den Rechten in der Quelle.
             </ScopeConsequence>
-          )}
-          {Push && canEditSource && !erasing && (
-            <Box sx={{ mt: 3 }}>
-              <Push library={library} libraryId={libraryId} />
-            </Box>
           )}
           {!canEditSource && (
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>

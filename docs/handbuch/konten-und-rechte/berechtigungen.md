@@ -109,13 +109,13 @@ eines Arbeitsmittels in dieser Reihenfolge:
 
 | Abschnitt | Inhalt |
 |---|---|
-| **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt ein Arbeitsmittel mit offener Nachfolge wieder eine handlungsfähige Stelle. Jede Übergabe steht mit Namen im Nachweisprotokoll |
-| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen nur **Leser** und **Bearbeiter** zur Wahl; bei einer Konnektorbibliothek für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
+| **Eigentümer** | die zuständige Stelle mit Namen; über „Übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt ein Arbeitsmittel mit offener Nachfolge wieder eine handlungsfähige Stelle. Jede Übergabe steht mit Namen im Nachweisprotokoll |
+| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle und Befristung, Entzug über das Menü „⋯" der Zeile, dazu „Freigeben" für eine neue Freigabe. Für „Alle Konten" stehen nur **Leser** und **Bearbeiter** zur Wahl; bei einer Konnektorbibliothek für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
 | **Externer Zugang** | nur bei einer Wissensbibliothek: die Freigabe für externe KI-Werkzeuge |
-| **Diagnosesperre** | nur bei einer Wissensbibliothek: ob sie in einer fremden Suchdiagnose auftauchen darf |
-| **Warum sehe ich das?** | die eigene Herleitung (Abschnitt 11) |
+| **Suchdiagnose** | nur bei einer Wissensbibliothek: die Diagnosesperre, also ob sie in einer fremden Suchdiagnose auftauchen darf; „Sperren" bzw. „Entsperren" |
+| **Herleitung** | die eigene Herleitung „Warum sehe ich das?" (Abschnitt 11), über „Anzeigen" |
 
-Jeder Abschnitt speichert für sich. Eine lesende Rolle sieht Eigentümer, Diagnosesperre und die
+Jeder Abschnitt speichert für sich. Eine lesende Rolle sieht Eigentümer, Suchdiagnose und die
 Herleitung schreibgeschützt.
 
 **Ein Recht kann befristet sein.** Jede Rolle wird mit oder ohne Ablaufdatum erteilt; mit dem
@@ -984,8 +984,8 @@ und ausdrücklicher Bestätigung. Eine Zeile, die der Feststellungslauf noch nic
 hinsieht, steht in Abschnitt 15.
 
 **Der kleine Weg für ein einzelnes Objekt.** Geht es nur um ein Arbeitsmittel und nicht um den ganzen
-Bestand einer Person, genügt im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum
-übergeben" (Abschnitt 4). Auch das beendet den Zustand „Nachfolge offen" dieses Objekts und wird am
+Bestand einer Person, genügt im Reiter „Freigaben" die Zeile „Eigentümer" mit „Übergeben"
+(Abschnitt 4). Auch das beendet den Zustand „Nachfolge offen" dieses Objekts und wird am
 Vorgang vermerkt; auch das darf die Systemverwaltung. Der Unterschied zum Übertragungsdialog ist
 allein der Umfang: ein Objekt statt aller Wirkungen eines Subjekts.
 

@@ -565,7 +565,7 @@ export default function AssetGrantsSection({
                   sx={{ fontSize: 13.5, width: 150, gridColumn: { xs: 2, sm: 'auto' } }}
                 >
                   {rolesFor(grant.subjectType).map((option) => (
-                    // the role's meaning, formerly a legend below the list, on the option itself
+                    // each option carries the role's meaning
                     <MenuItem
                       key={option}
                       value={option}

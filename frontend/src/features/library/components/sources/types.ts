@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
 import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
@@ -85,8 +84,6 @@ export interface SourceConfiguration<V> {
    * ADR-0027); absent for a source without a scope.
    */
   scopeNoteId?: string
-  /** What a manager sets up below the rows for pushed changes (webhook, event notifications). */
-  Push?: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
   scopeHero?: SourceScopeHero
   /**
    * Whether runs come in two modes - incremental and a forcible full reconciliation with its own

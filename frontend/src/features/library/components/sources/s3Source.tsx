@@ -7,7 +7,6 @@ import {
   type S3SourceValues,
 } from '../../utils/s3Source'
 import { s3Setup } from '../setup/connectors/s3Setup'
-import { S3Push } from './S3SourceViews'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -47,7 +46,6 @@ export const s3Source: SourceRegistration = {
       return first ? first.bucket.trim() : ''
     },
     scopeNoteId: 's3-sharing-consequence',
-    Push: S3Push,
     scopeHero: {
       summary: (library) => {
         const count = s3SettingsFromLibrary(library)?.scopes?.length ?? 0
