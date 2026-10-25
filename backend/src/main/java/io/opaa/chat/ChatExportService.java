@@ -9,9 +9,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * The PDF export of a chat (docs/features/chat-list.md, "Export"). Who may export is decided by
- * {@link ChatService#getChatForExport}; the export closes with the branding's AI notice and product
- * name, as a copied answer does. Timestamps are printed in the zone of the application's clock.
+ * The PDF export of a chat (docs/features/chat-list.md, "Export"). Whoever may read the chat may
+ * export it - {@link ChatService#getChat}, the author only, 404 for everyone else; the export
+ * closes with the branding's AI notice and product name, as a copied answer does. Timestamps are
+ * printed in the zone of the application's clock.
  */
 @Service
 public class ChatExportService {
@@ -35,7 +36,7 @@ public class ChatExportService {
   }
 
   public ChatPdf exportPdf(UUID chatId, UUID userId) {
-    ChatTranscript transcript = ChatTranscript.of(chatService.getChatForExport(chatId, userId));
+    ChatTranscript transcript = ChatTranscript.of(chatService.getChat(chatId, userId));
     EffectiveBranding branding = brandingSettingsService.currentBranding();
     Instant now = Instant.now(clock);
     String note =

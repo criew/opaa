@@ -24,7 +24,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
   `ChatMessageWriter#writeTurnOnce` öffnet eine Transaktion. Sonst hält der Schreibweg eine
   Verbindung über den LLM-Aufruf.
 - **Ein Chat gehört seinem Autor.** Weder Raum- noch Systemverwaltung sieht ihn. Neue Fragen
-  und der PDF-Export verlangen weiter die Raummitgliedschaft (`requireStillSpaceMember`).
+  verlangen weiter die Raummitgliedschaft (`requireStillSpaceMember`).
 - **Chats gesperrter Konten** löscht `LockedAccountChatCleanupService`, nur nach Sperre durch die Verwaltung.
 - **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt außer dem
   Entity-Mapping keine Abfrage.

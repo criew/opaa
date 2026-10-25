@@ -9,7 +9,6 @@ import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.ColorScheme;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import java.io.IOException;
 import java.time.Clock;
@@ -87,7 +86,7 @@ class ChatExportServiceTest {
                 List.of(source),
                 Instant.parse("2026-03-05T09:15:30Z")));
     UUID chatId = UUID.randomUUID();
-    when(chatService.getChatForExport(chatId, userId))
+    when(chatService.getChat(chatId, userId))
         .thenReturn(conversation("Widerspruchsfrist Bauamt", turns));
 
     ChatPdf pdf = exportService.exportPdf(chatId, userId);
@@ -125,7 +124,7 @@ class ChatExportServiceTest {
                 "Was heißt 契約 auf Deutsch?",
                 List.of(),
                 Instant.parse("2026-03-05T09:15:00Z")));
-    when(chatService.getChatForExport(chatId, userId)).thenReturn(conversation("Wörter", turns));
+    when(chatService.getChat(chatId, userId)).thenReturn(conversation("Wörter", turns));
 
     assertThat(text(exportService.exportPdf(chatId, userId).content()))
         .contains("Was heißt ?? auf Deutsch?");
@@ -144,7 +143,7 @@ class ChatExportServiceTest {
                 longAnswer,
                 List.of(),
                 Instant.parse("2026-03-05T09:15:00Z")));
-    when(chatService.getChatForExport(chatId, userId)).thenReturn(conversation("Lang", turns));
+    when(chatService.getChat(chatId, userId)).thenReturn(conversation("Lang", turns));
 
     byte[] pdf = exportService.exportPdf(chatId, userId).content();
 
@@ -157,7 +156,7 @@ class ChatExportServiceTest {
   @Test
   void anEmptyChatSaysSo() throws IOException {
     UUID chatId = UUID.randomUUID();
-    when(chatService.getChatForExport(chatId, userId)).thenReturn(conversation(null, List.of()));
+    when(chatService.getChat(chatId, userId)).thenReturn(conversation(null, List.of()));
 
     ChatPdf pdf = exportService.exportPdf(chatId, userId);
 
@@ -166,18 +165,13 @@ class ChatExportServiceTest {
   }
 
   @Test
-  void refusalsOfTheReadCheckReachTheCaller() {
+  void aChatTheCallerMayNotReadIsNotFound() {
     UUID foreign = UUID.randomUUID();
-    UUID left = UUID.randomUUID();
-    when(chatService.getChatForExport(foreign, userId))
+    when(chatService.getChat(foreign, userId))
         .thenThrow(new NotFoundException("Chat nicht gefunden"));
-    when(chatService.getChatForExport(left, userId))
-        .thenThrow(new AccessDeniedException("Sie sind kein Mitglied dieses Space mehr"));
 
     assertThatThrownBy(() -> exportService.exportPdf(foreign, userId))
         .isInstanceOf(NotFoundException.class);
-    assertThatThrownBy(() -> exportService.exportPdf(left, userId))
-        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test

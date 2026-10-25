@@ -44,9 +44,9 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Chats as persistent, space-owned objects (docs/features/spaces-and-assets.md#chats). A chat is
  * visible only to its author, never to an admin ({@link ChatRepository#findByIdAndAuthorId}); the
- * author keeps reading, renaming and deleting it after leaving the space, but querying and
- * exporting need membership ({@link #requireStillSpaceMember}). Public methods take and return
- * domain types only. {@link #appendTurn} runs without a transaction; only {@link
+ * author keeps reading, renaming, exporting and deleting it after leaving the space, but querying
+ * needs membership ({@link #requireStillSpaceMember}). Public methods take and return domain types
+ * only. {@link #appendTurn} runs without a transaction; only {@link
  * ChatMessageWriter#writeTurnOnce} opens one per attempt, so no caller's transaction holds a second
  * connection.
  */
@@ -364,17 +364,6 @@ public class ChatService {
     return toConversation(getOwnedChat(chatId, authorId), authorId);
   }
 
-  /**
-   * The chat for an export: readable exactly like {@link #getChat} (404 for anyone but the author),
-   * and in addition only while the author is still a member of the chat's space (403 otherwise).
-   */
-  @Transactional(readOnly = true)
-  public ChatConversation getChatForExport(UUID chatId, UUID authorId) {
-    Chat chat = getOwnedChat(chatId, authorId);
-    requireStillSpaceMember(chat);
-    return toConversation(chat, authorId);
-  }
-
   @Transactional
   public ChatConversation updateChat(UUID chatId, UUID authorId, ChatPatch patch) {
     Chat chat = getOwnedChat(chatId, authorId);
@@ -436,7 +425,8 @@ public class ChatService {
   /**
    * Verifies the chat's author still belongs to the chat's space - see this class's Javadoc for why
    * only the query path requires this and {@link #getChat}/{@link #updateChat}/{@link #deleteChat}
-   * deliberately do not.
+   * - and with {@link #getChat} the export of a chat ({@link ChatExportService}) - deliberately do
+   * not.
    */
   @Transactional(readOnly = true)
   public void requireStillSpaceMember(Chat chat) {

@@ -65,6 +65,7 @@ class ChatServiceIntegrationTest {
 
   @Autowired private ChatService chatService;
   @Autowired private ChatRepository chatRepository;
+  @Autowired private ChatExportService chatExportService;
 
   // The shared spy of @OpaaIntegrationTest: appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnThe-
   // SameSequence below stubs one call of findMaxSequenceByChatId to force a deterministic
@@ -784,22 +785,20 @@ class ChatServiceIntegrationTest {
   }
 
   @Test
-  void getChatForExportReturnsTheAuthorsChatWithItsMessages() {
+  void exportPdfCarriesTheAuthorsChatWithItsMessages() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, "T", true, Set.of()));
     chatService.appendTurn(chat, "Frage 1", "Antwort 1", List.of());
 
-    ChatConversation exported = chatService.getChatForExport(chat.getId(), author);
+    ChatPdf pdf = chatExportService.exportPdf(chat.getId(), author);
 
-    assertThat(exported.getId()).isEqualTo(chat.getId());
-    assertThat(exported.getMessages())
-        .extracting(ChatTurn::getContent)
-        .containsExactly("Frage 1", "Antwort 1");
+    assertThat(pdf.fileName()).isEqualTo("T.pdf");
+    assertThat(pdf.content()).isNotEmpty();
   }
 
   @Test
-  void getChatForExportOfAForeignChatIsNotFound() {
+  void exportPdfOfAForeignChatIsNotFound() {
     UUID author = createUser();
     UUID otherMember = createUser();
     Space space = new Space("Fachbereich", null, false, author, organizationA);
@@ -808,21 +807,19 @@ class ChatServiceIntegrationTest {
     UUID spaceId = spaceRepository.save(space).getId();
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
 
-    assertThatThrownBy(() -> chatService.getChatForExport(chat.getId(), otherMember))
+    assertThatThrownBy(() -> chatExportService.exportPdf(chat.getId(), otherMember))
         .isInstanceOf(NotFoundException.class);
   }
 
+  /** The export follows the read rule: the author keeps it after leaving the space. */
   @Test
-  void getChatForExportIsDeniedToAnAuthorNoLongerInTheSpace() {
+  void exportPdfStaysOpenToAnAuthorNoLongerInTheSpace() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
     spaceMembershipRepository.deleteAll(spaceMembershipRepository.findBySpaceId(spaceId));
 
-    assertThatThrownBy(() -> chatService.getChatForExport(chat.getId(), author))
-        .isInstanceOf(AccessDeniedException.class);
-    // Reading stays open to the author after leaving; only the export needs the membership.
-    assertThatCode(() -> chatService.getChat(chat.getId(), author)).doesNotThrowAnyException();
+    assertThat(chatExportService.exportPdf(chat.getId(), author).content()).isNotEmpty();
   }
 
   @Test

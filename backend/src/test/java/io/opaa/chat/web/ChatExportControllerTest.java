@@ -14,7 +14,6 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.chat.ChatExportService;
 import io.opaa.chat.ChatPdf;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,18 +92,6 @@ class ChatExportControllerTest {
         .perform(get("/api/v1/chats/{chatId}/export/pdf", chatId).with(asTestUser()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error").value("Chat nicht gefunden"));
-  }
-
-  @Test
-  void anAuthorNoLongerInTheSpaceAnswers403() throws Exception {
-    UUID chatId = UUID.randomUUID();
-    when(chatExportService.exportPdf(chatId, currentUser.getId()))
-        .thenThrow(new AccessDeniedException("Sie sind kein Mitglied dieses Space mehr"));
-
-    mockMvc
-        .perform(get("/api/v1/chats/{chatId}/export/pdf", chatId).with(asTestUser()))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.error").value("Sie sind kein Mitglied dieses Space mehr"));
   }
 
   @Test

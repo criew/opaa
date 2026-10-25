@@ -187,9 +187,8 @@ paths:
         The chat's title as heading, then every question and answer in order with its timestamp,
         each answer followed by the sources it cites. Readable exactly like GET
         /api/v1/chats/{chatId} - only the author, never a space or system admin; a chat the caller
-        cannot see answers 404, exactly like one that does not exist. Unlike reading, the export
-        also requires the author to still be a member of the chat's space: a former member gets
-        403. Answered with Content-Disposition: attachment. The Markdown export is built by the
+        cannot see answers 404, exactly like one that does not exist. Whoever may read the chat may
+        export it, after leaving its space too. Answered with Content-Disposition: attachment. The Markdown export is built by the
         client from GET /api/v1/chats/{chatId} and has no endpoint of its own.
       responses:
         "200":
@@ -199,8 +198,6 @@ paths:
               schema:
                 type: string
                 format: binary
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 

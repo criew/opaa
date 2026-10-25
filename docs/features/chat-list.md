@@ -470,9 +470,9 @@ eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exp
   Glyphe einmal, sein Aufwand wächst linear mit dem Text. Die Zeitangaben stehen in der Zeitzone der
   Installation. Solange das PDF entsteht, zeigt die Oberfläche „Export wird erstellt …"; ein zweiter
   Klick auf denselben Export desselben Chats startet keinen weiteren.
-- **Wer exportieren darf:** wer den Chat lesen darf, also nur seine Autorin, und nur, solange sie
-  Mitglied des Space ist. Ein fremder Chat antwortet `404` wie ein unbekannter, ein ehemaliges
-  Mitglied `403`. Der Export wird nicht protokolliert und nicht gespeichert.
+- **Wer exportieren darf:** wer den Chat lesen darf (`GET /api/v1/chats/{chatId}`), also nur seine
+  Autorin, auch nach dem Austritt aus dem Space. Ein fremder Chat antwortet `404` wie ein
+  unbekannter. Der Export wird nicht protokolliert und nicht gespeichert.
 - **Außerhalb des Umfangs:** Export mehrerer Chats oder ganzer Spaces, Import.
 
 ### Wirkung auf Behördenunterlagen

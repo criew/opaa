@@ -932,9 +932,8 @@ Die Datei heißt wie der Chat.
 | Markdown | im Browser, aus dem gespeicherten Chat | Antworten mit ihrer Formatierung, Fußnoten als Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]` ist die erste Fußnote der zweiten Antwort); Zeiten in der Zeitzone des Browsers |
 | PDF | auf dem Server | A4 mit Seitenzahlen, Fußnoten als `[1]` je Antwort, Markdown-Zeichen zu lesbarem Text aufgelöst; Zeiten in der Zeitzone der Installation. Die Standardschriften kennen nur westeuropäische Zeichen: Unsichtbare Steuerzeichen entfallen, geschützte und schmale Leerzeichen werden zu Leerzeichen, Bindestrich- und Minuszeichen zu „-", Pfeile und Vergleichszeichen zu `->`, `<-`, `<=`, `>=` und Ähnlichem; alle übrigen Zeichen, etwa andere Schriften oder Emojis, erscheinen als „?" |
 
-Exportieren darf nur, wer den Chat lesen darf, also seine Autorin oder sein Autor, und nur, solange
-sie oder er Mitglied des Space ist; ein ehemaliges Mitglied erhält beim PDF eine Ablehnung. Der
-Export wird weder protokolliert noch auf dem Server gespeichert.
+Exportieren darf, wer den Chat lesen darf, also nur seine Autorin oder sein Autor, auch nach dem
+Austritt aus dem Space. Der Export wird weder protokolliert noch auf dem Server gespeichert.
 
 **Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
 „Private Quelle“, auch wenn die Antwort ihn nicht zitiert; stand eine solche Quelle im Kontext, steht
