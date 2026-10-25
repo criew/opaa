@@ -1,4 +1,4 @@
-# Variante A „Alles an seinen Ort“ – Bericht (Runde 2, 25.10.2026)
+# Variante A „Alles an seinen Ort“ – Bericht (Runde 3, 25.10.2026)
 
 Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-base`. Matrix: alle 11 Arten × `small scale failed empty partial slow` × hell/dunkel × 1280/320, dazu `privat`, `upload-leser`, `confluence-leser`, `nextcloud-leser` in `small scale failed`. Bilder `<bereich>__<art>__<szenario>__<schema>__<breite>[__full].jpg` (JPEG q70; `__full` nur hell, halbe Breite). Kennzahlen stehen in `metrics.jsonl` und `metrics-extra.jsonl`. Die Befunde aus `REVIEW-1.md` sind unten einzeln abgehakt.
 
@@ -175,6 +175,34 @@ Branch `feature/3084_ui-lab-detail-var-a`, Basis `feature/3084_ui-lab-detail-bas
 | R1-79 | erledigt: Füllgrad befüllt, eine lange Person, Zuordnungsdaten verschieden |
 | R1-80 | erledigt: Dateisystem, Web, RSS scheitern ohne Anmeldekategorie |
 
+
+## Nachcheck 1 – Runde 3
+
+Alle offenen Punkte aus `NACHCHECK-1.md` (Teil a und b) umgesetzt; R1-22 bleibt offene Frage an den Maintainer.
+
+| Punkt | Umsetzung | Beleg |
+|---|---|---|
+| R1-3, Regr. b7 | Kennzahlzeile bricht um statt zu kürzen: zwei Zeilen bei 320 px fest reserviert, jede Kennzahl ganz. Der Trenner „·“ der ersten Kennzahl einer Zeile liegt in einer weggeschnittenen Rinne, keine Zeile beginnt oder endet auf „·“. „in keinem Space“ ohne „›“ | `dokumente__filesystem__scale__light__320`, `dokumente__upload__small__light__320`, `quelle__confluence__empty__light__320` |
+| R1-6 | `partial`: Verwalter-Zeile ist jetzt „Jonas Albrecht“, Eigentümerin nur im Abschnitt Eigentum | `freigaben__gdrive__partial__light__1280` |
+| R1-11, R1-36 | Ein Pfadformat „a / b / c“: `displayPath` entfernt führende und schließende Schrägstriche immer. `PathLabel` kürzt nur den Kopf, das letzte Segment samt Trenner behält seine Breite. Fundorte nutzen dasselbe Format und Kürzungsverhalten; „›“ wird zu „ / “. Der Verbindungspfad (Dateisystem) und die Web-Adresse entfallen in jeder Fundortzeile | `laeufe__filesystem__partial__light__1280`, `quelle__s3__partial__light__1280`, `laeufe__nextcloud__scale__light__1280` |
+| R1-13, R1-51, Regr. a4/b1 | Dateisystem und Web melden in `partial` einen Pfad (`Gebührensatzungen`, `archiv`). Er steht im Umfang („● Nicht lesbar: Gebührensatzungen“) und im Lauf unter „Nicht lesbare Bereiche · 1“. RSS meldet keinen Bereich mehr; ohne Namen stünde eine einzelne Zeile „Ein Bereich der Quelle nicht lesbar“, nie eine leere Gruppe | `laeufe__filesystem__partial__light__1280`, `laeufe__web__partial__light__1280`, `laeufe__rss__partial__light__1280` |
+| R1-16, Regr. a1 | Upload: „Teilweise fehlgeschlagen · 17 fehlgeschlagen“ | `dokumente__upload__partial__light__1280` |
+| Regr. b4 | Upload, während der Upload läuft: „Läuft · 214 von 216 · 17 fehlgeschlagen“ | `upload__upload__partial__light__1280` |
+| R1-40 | Zusammenfassungen im Raster („täglich 06:00 · nächster Lauf …“) brechen teilweise um, der Trenner liegt in derselben Rinne wie im Kopf; nie ein „·“ am Zeilenende | `quelle__confluence__failed__light__320`, `quelle__dropbox__failed__light__320` |
+| Regr. a2/b5 | Laufzeile bei 320 px: Zeile 1 Zustand + Datum, Zeile 2 das ganze Ergebnis, umbrechend statt gekürzt; abgelehnte Läufe ohne „–“-Zeile | `laeufe__confluence__scale__light__320`, `laeufe__web__failed__light__320` |
+| Regr. a3/b3, R1-43 | Füllgrad: Labels brechen um, „Anzeigen“ auch bei eigenen Feldern. Der Filter „Metadaten“ in Dokumente bietet die eigenen Felder nach den Kernfeldern an | `metadaten__smb__scale__light__1280__full`, `dokumente__smb__scale__light__1280` |
+| Regr. a5 | Ereignisgruppe `UNREACHABLE` heißt „Nicht abrufbar“; „Nicht erreichbar“ bleibt der Zustand der Quelle | `laeufe__filesystem__partial__light__1280` |
+| Regr. a6 | Ein abgelehnter Lauf ohne Ereignisse und Messwerte ist nicht aufklappbar (kein Pfeil, kein Knopf). Aufklappbar bleiben Läufe mit Grund („Fehlgeschlagen“, Kontingent) | `laeufe__dropbox__failed__light__1280` |
+| Regr. a8 | Stift bei 320 px an der ersten Titelzeile ausgerichtet | `dokumente__upload__small__light__320` |
+| Regr. b6 | Reiterleiste holt den aktiven Reiter mittig ins Bild, der Pfeil überdeckt ihn nicht | `metadaten__upload__small__dark__320`, `laeufe__smb__failed__dark__320` |
+| R1-46 | Kennzahl-Links („in 3 Spaces ›“, Eigentümer ›) im Kopf ganz in Linkfarbe, nicht nur das „›“ | `dokumente__dropbox__scale__light__1280` |
+| R1-55 | S3-Umfang zeigt die Muster als Einträge („nur **/*.pdf“, „außer …“) | `quelle__s3__small__light__1280` |
+| R1-58 | Diagnosesperre nur für Verwaltende oder wer sie umschalten darf; Leser sehen den Abschnitt nicht | `freigaben__confluence-leser__small__light__1280` |
+| R1-72, Regr. b2 | Indizierdatum = Ende des letzten erfolgreichen Laufs: `failed` 20.10. (vor den Ablehnungen), S3/privat die krummen Handzeiten, Upload 24.10., 09:30 | `dokumente__gdrive__failed__light__1280`, `dokumente__s3__small__light__1280`, `dokumente__upload__small__light__1280__full` |
+| R1-78 | Hochgeladene Dateien 412 KB / 86 KB / 2,3 MB; Upload `failed`: Kontingent 100 MB, 12 Scans zu ≈ 8 MB | `upload__upload__small__light__1280`, `dokumente__upload__failed__light__1280` |
+| R1-79 | Google Drive: gleicher Umfang in allen Szenarien (Overlay `small` entfernt). S3: Berechtigung „Admin · Verwalter“ passt zum Rollenchip (angemeldetes Konto bekommt eine Zeile mit seiner Rolle, wenn es nicht Eigentümer ist). privat „2,4 GB von 10 GB“ bleibt: Der Wert ist die Summe über alle privaten Bibliotheken | `quelle__gdrive__small__light__1280`, `freigaben__s3__small__light__1280` |
+| Randnotiz SharePoint | „Vollabgleich“ um 12:51 bleibt: SharePoint ist auf täglichen Vollabgleich gestellt, jeder Lauf ist einer | `quelle__sharepoint__failed__light__1280` |
+| R1-22 | **offene Frage an den Maintainer:** Dürfen private Bibliotheken in Spaces verwendet werden? Die Variante zeigt den Reiter Zuordnungen bei privat unverändert | `zuordnungen__privat__scale__light__1280` |
 
 ## Schwächen
 
