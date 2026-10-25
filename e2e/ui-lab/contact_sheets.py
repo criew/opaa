@@ -3,11 +3,12 @@
 
     .venv/bin/python -I ui-lab/contact_sheets.py --dir <capture output> --out <dir>
                      [--full] [--schemes light] [--widths 1280,320] [--filter <text>]
-                     [--per-reviewer 2] [--cell-width 420] [--max-height 2400]
+                     [--per-reviewer 2] [--per-sheet 3] [--cell-width 640] [--max-height 2400]
 
 Cross sheets: per screen (area × scenario × scheme × width) one JPEG in <out>/sheets/ with that
 screen of every type (connector, page, ...) side by side, so differences between the types show;
-<out>/index.html lists them. Reviewer lists: the types are split into groups of --per-reviewer,
+more than --per-sheet types are split over several sheets (<key>__p<n>.jpg) so that each stays
+readable at screen width; <out>/index.html lists them. Screenshots may be PNG or JPEG. Reviewer lists: the types are split into groups of --per-reviewer,
 and <out>/reviewers/<n>-<types>.txt names the files one reviewer looks at: every light shot, every
 320 px shot and at least one dark shot per area; a __full shot byte-identical to its viewport
 shot is left out.
@@ -34,7 +35,8 @@ def parse_args():
     p.add_argument('--widths', default='1280,320')
     p.add_argument('--filter', default='', help='only screens whose key contains this text')
     p.add_argument('--per-reviewer', type=int, default=2)
-    p.add_argument('--cell-width', type=int, default=420)
+    p.add_argument('--per-sheet', type=int, default=3, help='types per cross sheet; more go to further sheets')
+    p.add_argument('--cell-width', type=int, default=640)
     p.add_argument('--max-height', type=int, default=2400)
     return p.parse_args()
 
@@ -48,7 +50,7 @@ def shots(directory):
         full = parts[-1] == 'full'
         if full:
             parts = parts[:-1]
-        if ext != '.png' or len(parts) != 5 or not parts[4].isdigit():
+        if ext not in ('.png', '.jpg') or len(parts) != 5 or not parts[4].isdigit():
             continue
         found[name] = (*parts[:4], parts[4], full)
     return found
@@ -77,20 +79,23 @@ def cross_sheets(args, found, types):
         width = int(key.rsplit('__', 1)[1])
         cell_width = min(args.cell_width, width)
         present = [t for t in types if t in screens[key]]
-        cells = [(t, cell(screens[key][t], cell_width, args.max_height, label_font)) for t in present]
-        gap, head = 12, 30
-        sheet = Image.new('RGB', (sum(c.width for _, c in cells) + gap * (len(cells) + 1), max(c.height for _, c in cells) + head + 28 + gap), 'white')
-        draw = ImageDraw.Draw(sheet)
-        draw.text((gap, 6), key, fill=(60, 60, 60), font=head_font)
-        x = gap
-        for t, c in cells:
-            draw.rectangle([x - 1, head + 25, x + c.width, head + 26 + c.height], outline=(180, 180, 180))
-            draw.text((x, head + 2), t, fill=(0, 0, 0), font=label_font)
-            sheet.paste(c, (x, head + 26))
-            x += c.width + gap
-        path = os.path.join(args.out, 'sheets', key + '.jpg')
-        sheet.save(path, 'JPEG', quality=80, optimize=True)
-        written.append((key, os.path.relpath(path, args.out), len(present)))
+        chunks = [present[i:i + args.per_sheet] for i in range(0, len(present), args.per_sheet)]
+        for n, chunk in enumerate(chunks, 1):
+            name = key if len(chunks) == 1 else f'{key}__p{n}'
+            cells = [(t, cell(screens[key][t], cell_width, args.max_height, label_font)) for t in chunk]
+            gap, head = 12, 30
+            sheet = Image.new('RGB', (sum(c.width for _, c in cells) + gap * (len(cells) + 1), max(c.height for _, c in cells) + head + 28 + gap), 'white')
+            draw = ImageDraw.Draw(sheet)
+            draw.text((gap, 6), name, fill=(60, 60, 60), font=head_font)
+            x = gap
+            for t, c in cells:
+                draw.rectangle([x - 1, head + 25, x + c.width, head + 26 + c.height], outline=(180, 180, 180))
+                draw.text((x, head + 2), t, fill=(0, 0, 0), font=label_font)
+                sheet.paste(c, (x, head + 26))
+                x += c.width + gap
+            path = os.path.join(args.out, 'sheets', name + '.jpg')
+            sheet.save(path, 'JPEG', quality=80, optimize=True)
+            written.append((name, os.path.relpath(path, args.out), len(chunk)))
     groups = defaultdict(list)
     for key, rel, n in written:
         groups[key.split('__')[0]].append((key, rel, n))
@@ -118,7 +123,8 @@ def reviewer_lists(args, found, types):
             if typ not in group:
                 continue
             if full:
-                viewport = name.replace('__full.png', '.png')
+                ext = os.path.splitext(name)[1]
+                viewport = name.replace('__full' + ext, ext)
                 if viewport in by_name and md5(os.path.join(args.dir, name)) == md5(os.path.join(args.dir, viewport)):
                     skipped += 1
                     continue
