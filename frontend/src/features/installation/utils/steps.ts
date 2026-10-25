@@ -17,6 +17,7 @@ export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   FIRST_ADMIN: { label: 'Erstes Konto', laterUnder: 'Benutzer' },
   SIGN_IN: { label: 'Anmeldeverfahren', laterUnder: 'Identitätsanbieter' },
   CHAT_MODEL: { label: 'Chat-Modell', laterUnder: 'Modelle' },
+  EMBEDDING_MODEL: { label: 'Embedding-Modell', laterUnder: null },
 }
 
 export const TOKEN_LABEL = 'Installations-Token'

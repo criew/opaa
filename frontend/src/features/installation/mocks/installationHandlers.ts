@@ -2,10 +2,12 @@ import { http, HttpResponse } from 'msw'
 import {
   STEP_REQUEST_KEY,
   type InstallationChatModel,
+  type InstallationEmbeddingModel,
   type InstallationFirstAdmin,
   type InstallationStepState,
 } from '../api/types'
 import {
+  MOCK_EMBEDDING_DIMENSIONS,
   MOCK_INSTALLATION_TOKEN,
   MOCK_UNREACHABLE_MARKER,
   completeMockInstallation,
@@ -78,15 +80,22 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
     const keySet = apiKey === undefined ? Boolean(step.chatModel?.apiKeySet) : Boolean(apiKey)
     return { chatModel: { ...rest, maxTokens: maxTokens ?? 8000, apiKeySet: keySet } }
   }
+  if (step.step === 'EMBEDDING_MODEL') {
+    const { apiKey, maxInputTokens, ...rest } = part as InstallationEmbeddingModel
+    const keySet = apiKey === undefined ? Boolean(step.embeddingModel?.apiKeySet) : Boolean(apiKey)
+    return {
+      embeddingModel: { ...rest, maxInputTokens: maxInputTokens ?? 2048, apiKeySet: keySet },
+    }
+  }
   return { signIn: part as InstallationStepState['signIn'] }
 }
 
 function checkMessageOf(step: InstallationStepState): string | null {
-  const values = JSON.stringify(step.chatModel ?? step.signIn ?? {})
+  const values = JSON.stringify(step.chatModel ?? step.embeddingModel ?? step.signIn ?? {})
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
-  return step.step === 'CHAT_MODEL'
-    ? 'Das Modell antwortet nicht: Verbindung abgelehnt. Prüfen Sie Basis-Adresse und Modell-Kennung.'
-    : 'Die Discovery-Adresse des Anbieters ist nicht erreichbar. Prüfen Sie die Issuer-URI.'
+  return step.step === 'SIGN_IN'
+    ? 'Die Discovery-Adresse des Anbieters ist nicht erreichbar. Prüfen Sie die Issuer-URI.'
+    : 'Das Modell antwortet nicht: Verbindung abgelehnt. Prüfen Sie Basis-Adresse und Modell-Kennung.'
 }
 
 export const installationHandlers = [
@@ -122,6 +131,14 @@ export const installationHandlers = [
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? 'Prüfung erfolgreich.',
+      ...(step.step === 'EMBEDDING_MODEL' && step.embeddingModel
+        ? {
+            embeddingModel: {
+              ...step.embeddingModel,
+              dimensions: failure === null ? MOCK_EMBEDDING_DIMENSIONS : null,
+            },
+          }
+        : {}),
     })
     return HttpResponse.json(findStep(step.step))
   }),

@@ -52,6 +52,8 @@ export interface AuthConfig {
   localAccounts?: LocalAccountsConfig
   /** The installation-wide feature flags (ADR-0044); absent from an older backend's response. */
   features?: FeatureFlags
+  /** The installation waits for its set-up (ADR-0060). */
+  installationPending?: components['schemas']['AuthConfigResponse']['installationPending']
 }
 
 /**
@@ -60,7 +62,10 @@ export interface AuthConfig {
  * caller of `getAuthConfig` reads through this type instead, so the absent-block case cannot be
  * read from a store state that changed since - only from the configuration a call just loaded.
  */
-export interface ResolvedAuthConfig extends Omit<AuthConfig, 'localAccounts' | 'features'> {
+export interface ResolvedAuthConfig extends Omit<
+  AuthConfig,
+  'localAccounts' | 'features' | 'installationPending'
+> {
   localAccounts: LocalAccountsConfig
   features: FeatureFlags
   /** The installation waits for its set-up (ADR-0060); `false` unless the backend says `true`. */

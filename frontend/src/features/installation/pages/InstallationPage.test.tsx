@@ -9,6 +9,7 @@ import {
   mockInstallationState,
   setMockInstallationPending,
   updateMockStep,
+  withMockEmbeddingStep,
 } from '../mocks/installationFixtures'
 import InstallationPage from './InstallationPage'
 
@@ -356,5 +357,78 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Bereits eingerichtet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toBeInTheDocument()
+  })
+
+  it('shows a backend field error without a field of its own above the form', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await stepHeading('Installations-Token')
+    updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
+    await enterToken(user)
+    await stepHeading('Anmeldeverfahren')
+    server.use(
+      http.put('/api/v1/installation/steps/:step', () =>
+        HttpResponse.json(
+          {
+            error: 'Die Angaben sind ungültig.',
+            status: 400,
+            timestamp: new Date().toISOString(),
+            fieldErrors: [
+              {
+                field: 'signIn.mode',
+                code: 'REQUIRED',
+                message: 'Bitte ein Anmeldeverfahren wählen.',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    await submitStep(user)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Die Angaben sind ungültig. Bitte ein Anmeldeverfahren wählen.',
+    )
+  })
+
+  describe('with the embedding model step', () => {
+    beforeEach(() => {
+      withMockEmbeddingStep()
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    it('lists the step as soon as the API does and shows the probed vector size', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+
+      expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
+      const mandatory = screen.getByRole('list', { name: 'Pflichtschritte' })
+      expect(within(mandatory).getByText('Embedding-Modell')).toBeInTheDocument()
+
+      await user.type(field('Basis-Adresse'), 'http://kaputt:11434/v1')
+      await user.type(field('Modell-Kennung'), 'bge-m3')
+      await submitStep(user)
+      expect(await screen.findByRole('alert')).toHaveTextContent('Das Modell antwortet nicht')
+
+      const baseUrl = field('Basis-Adresse')
+      await user.clear(baseUrl)
+      await user.type(baseUrl, 'http://ollama:11434/v1')
+      await user.type(field('Eingabegrenze (Token) (optional)'), '8192')
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      const embedding = mockInstallationState().steps.find((s) => s.step === 'EMBEDDING_MODEL')
+      expect(embedding?.embeddingModel).toMatchObject({ maxInputTokens: 8192, dimensions: 1024 })
+
+      await user.click(screen.getByRole('button', { name: 'Zurück' }))
+      expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
+      expect(screen.getByText('Geprüft: 1024 Dimensionen')).toBeInTheDocument()
+    })
   })
 })

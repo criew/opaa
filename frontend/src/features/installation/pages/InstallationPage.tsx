@@ -13,6 +13,7 @@ import StepList from '../components/StepList'
 import SummaryStep from '../components/SummaryStep'
 import TokenStep from '../components/TokenStep'
 import ChatModelStep from '../components/steps/ChatModelStep'
+import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import SignInStep from '../components/steps/SignInStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
@@ -69,6 +70,10 @@ function StepView({ step, submit, onBack, onNext }: StepViewProps) {
       return <SignInStep step={step} submit={(v) => submit('SIGN_IN', v)} {...nav} />
     case 'CHAT_MODEL':
       return <ChatModelStep step={step} submit={(v) => submit('CHAT_MODEL', v)} {...nav} />
+    case 'EMBEDDING_MODEL':
+      return (
+        <EmbeddingModelStep step={step} submit={(v) => submit('EMBEDDING_MODEL', v)} {...nav} />
+      )
   }
 }
 

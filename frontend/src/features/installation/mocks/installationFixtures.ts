@@ -14,12 +14,25 @@ export const MOCK_UNREACHABLE_MARKER = 'kaputt'
 const STORAGE_KEY = 'opaa.mockInstallation'
 const STEPS_STORAGE_KEY = 'opaa.mockInstallationSteps'
 
-function initialSteps(): InstallationStepState[] {
-  return [
+/** The vector size the mock's probe embedding reports. */
+export const MOCK_EMBEDDING_DIMENSIONS = 1024
+
+function initialSteps(withEmbedding = false): InstallationStepState[] {
+  const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
     { step: 'SIGN_IN', mandatory: true, saved: false, checked: false },
     { step: 'CHAT_MODEL', mandatory: true, saved: false, checked: false },
   ]
+  return withEmbedding
+    ? [...steps, { step: 'EMBEDDING_MODEL', mandatory: true, saved: false, checked: false }]
+    : steps
+}
+
+/** Adds the embedding model step, as an API that lists it does (`?mockInstallation=embedding`). */
+export function withMockEmbeddingStep() {
+  pendingOverride = true
+  mockSteps = initialSteps(true)
+  remember(mockSteps)
 }
 
 function storedSteps(): InstallationStepState[] | null {
@@ -46,8 +59,12 @@ function pendingFromBrowser(): boolean {
   if (typeof window === 'undefined') return false
   try {
     const fromQuery = new URLSearchParams(window.location.search).get('mockInstallation')
-    if (fromQuery === 'pending' || fromQuery === 'done') {
-      window.sessionStorage.setItem(STORAGE_KEY, fromQuery)
+    if (fromQuery === 'embedding' && !storedSteps()?.some((s) => s.step === 'EMBEDDING_MODEL')) {
+      mockSteps = initialSteps(true)
+      remember(mockSteps)
+    }
+    if (fromQuery === 'pending' || fromQuery === 'done' || fromQuery === 'embedding') {
+      window.sessionStorage.setItem(STORAGE_KEY, fromQuery === 'done' ? 'done' : 'pending')
     }
     return window.sessionStorage.getItem(STORAGE_KEY) === 'pending'
   } catch {

@@ -21,7 +21,15 @@ export function useStepForm(initialFailure?: string | null) {
     })
   }
 
-  async function submit(localErrors: FieldErrors, send: () => Promise<WizardResult>) {
+  /**
+   * `fields` names the form's fields; a backend field error for any other field (e.g. the whole
+   * provider block) joins the sentence above the form, so no message is lost.
+   */
+  async function submit(
+    localErrors: FieldErrors,
+    fields: readonly string[],
+    send: () => Promise<WizardResult>,
+  ) {
     setErrors(localErrors)
     if (Object.keys(localErrors).length > 0) {
       setFailure(null)
@@ -33,9 +41,15 @@ export function useStepForm(initialFailure?: string | null) {
     const result = await send()
     setBusy(false)
     if (result.ok) return
-    const fieldErrors = byField(result.failure.fieldErrors)
+    const all = byField(result.failure.fieldErrors)
+    const fieldErrors = Object.fromEntries(
+      Object.entries(all).filter(([field]) => fields.includes(field)),
+    )
+    const unplaced = Object.entries(all)
+      .filter(([field]) => !fields.includes(field))
+      .map(([, message]) => message)
     setErrors(fieldErrors)
-    setFailure(result.failure.message || null)
+    setFailure([result.failure.message, ...unplaced].filter(Boolean).join(' ') || null)
     if (Object.keys(fieldErrors).length > 0) focusFirstInvalid()
   }
 

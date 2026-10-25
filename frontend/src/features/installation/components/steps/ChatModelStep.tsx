@@ -1,14 +1,12 @@
 import { useId, useState } from 'react'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import Typography from '@mui/material/Typography'
 import type { InstallationStepState, StepInput } from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank, urlError } from '../../utils/validation'
 import FormField from '../FormField'
-import SecretInput from '../SecretInput'
+import ApiKeyField from '../ApiKeyField'
+import { apiKeyPart } from '../../utils/apiKey'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface ChatModelStepProps extends StepNavigationProps {
@@ -17,6 +15,7 @@ interface ChatModelStepProps extends StepNavigationProps {
 }
 
 const DEFAULT_MAX_TOKENS = '8000'
+const CHAT_MODEL_FIELDS = ['baseUrl', 'model', 'apiKey', 'temperature', 'maxTokens']
 const MAX_TEMPERATURE = 2
 
 function temperatureError(value: string): string | undefined {
@@ -62,12 +61,11 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
       temperature: temperatureError(temperature),
       maxTokens: maxTokensError(maxTokens),
     })
-    void form.submit(localErrors, () =>
+    void form.submit(localErrors, CHAT_MODEL_FIELDS, () =>
       submit({
         baseUrl: baseUrl.trim(),
         model: model.trim(),
-        // Omitted keeps the stored key, an empty one removes it (InstallationChatModel).
-        ...(apiKey !== '' ? { apiKey } : removeKey ? { apiKey: '' } : {}),
+        ...apiKeyPart(apiKey, removeKey),
         temperature: isBlank(temperature) ? null : Number(temperature.replace(',', '.')),
         maxTokens: isBlank(maxTokens) ? null : Number(maxTokens),
       }),
@@ -104,36 +102,15 @@ export default function ChatModelStep({ step, submit, onBack, onSkip }: ChatMode
         error={form.errors.model}
         hint="Der Name, unter dem der Dienst das Modell führt, etwa qwen2.5:7b."
       />
-      <SecretInput
+      <ApiKeyField
         id={`${id}-api-key`}
-        label="API-Schlüssel"
-        optional
-        autoComplete="off"
+        keyStored={keyStored}
         value={apiKey}
         onChange={setApiKey}
-        stored={keyStored && !removeKey}
+        remove={removeKey}
+        onRemoveChange={setRemoveKey}
         error={form.errors.apiKey}
-        hint="Leer lassen, wenn der Dienst keinen Schlüssel verlangt."
       />
-      {keyStored && (
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: -1 }}>
-          {removeKey && (
-            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-              Der gespeicherte Schlüssel wird beim Speichern entfernt.
-            </Typography>
-          )}
-          <Button
-            size="small"
-            variant="text"
-            onClick={() => {
-              setRemoveKey((remove) => !remove)
-              setApiKey('')
-            }}
-          >
-            {removeKey ? 'Schlüssel behalten' : 'Gespeicherten Schlüssel entfernen'}
-          </Button>
-        </Box>
-      )}
       <FormField
         id={`${id}-temperature`}
         label="Temperatur"

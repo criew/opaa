@@ -8,6 +8,8 @@ import FormField from '../FormField'
 import SecretInput from '../SecretInput'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
+const FIRST_ADMIN_FIELDS = ['email', 'displayName', 'password', 'passwordRepeat']
+
 interface FirstAdminStepProps extends StepNavigationProps {
   step: InstallationStepState
   /** `null` re-checks the stored account without saving it again. */
@@ -51,7 +53,7 @@ export default function FirstAdminStep({ step, submit, onBack, onSkip }: FirstAd
           ? 'Die beiden Eingaben stimmen nicht überein.'
           : undefined,
     })
-    void form.submit(localErrors, () =>
+    void form.submit(localErrors, FIRST_ADMIN_FIELDS, () =>
       submit(unchanged ? null : { email: email.trim(), displayName: displayName.trim(), password }),
     )
   }

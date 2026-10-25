@@ -12,6 +12,8 @@ import { compact, isBlank, urlError } from '../../utils/validation'
 import FormField from '../FormField'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
+const SIGN_IN_FIELDS = ['oidc.issuerUri', 'oidc.clientId', 'oidc.jwkSetUri', 'oidc.displayName']
+
 interface SignInStepProps extends StepNavigationProps {
   step: InstallationStepState
   submit: (values: StepInput['SIGN_IN']) => Promise<WizardResult>
@@ -54,7 +56,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
           'oidc.jwkSetUri': urlError(jwkSetUri, 'die JWK-Set-Adresse', true),
         })
       : {}
-    void form.submit(localErrors, () =>
+    void form.submit(localErrors, SIGN_IN_FIELDS, () =>
       submit({
         mode,
         oidc: withProvider
@@ -64,7 +66,7 @@ export default function SignInStep({ step, submit, onBack, onSkip }: SignInStepP
               jwkSetUri: isBlank(jwkSetUri) ? null : jwkSetUri.trim(),
               displayName: isBlank(providerName) ? null : providerName.trim(),
             }
-          : null,
+          : undefined,
       }),
     )
   }
