@@ -17,7 +17,7 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 
 | Nr | Status | Beleg |
 |---|---|---|
-| D1 | erfüllt: `tabsTop` 134 px bei 1280 und 264 px bei 320 in allen Arten, Rollen und Szenarien; bei 320 Titel in kleinerer Stufe auf zwei feste Zeilen (Tooltip mit dem ganzen Namen), privat ohne Quellart-Chip | `dokumente__*__small__light__1280`, `dokumente__smb__scale__light__320`, `dokumente__privat__small__light__320` |
+| D1 | erfüllt nach Maintainer-Entscheidung (≤ 360 px bei 320, kein Abschneiden): `tabsTop` 134 px bei 1280 in allen Arten und Szenarien; bei 320 Titel in kleinerer Stufe (16 px) ungekürzt, 242 px bei kurzem, bis 322 px bei langem Namen; privat ohne Quellart-Chip | `dokumente__*__small__light__1280`, `dokumente__smb__scale__light__320`, `dokumente__privat__small__light__320` |
 | D2 | erfüllt in der Steckbrief-Spalte statt im Kopf (Richtung C); Wort aus der Liste + Datum/Prozent, Link zur Ursache mit „›“ | `dokumente__confluence__failed__light__1280`, `dokumente__s3__slow__light__1280` |
 | D3 | erfüllt: Zustand, Laufzeile und Gruppen aus einer Zählung (Fixtures angeglichen) | `laeufe__smb__partial__light__1280__full` |
 | D4 | erfüllt: Zustand auf jedem Reiter (Spalte bzw. 320-Zeile) | `freigaben__nextcloud__failed__light__1280`, `…__320` |
@@ -121,7 +121,8 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 |---|---|
 | R1-33/34 Upload-Zustand | Zahl aus der geladenen Seite: „Kontingent voll · 5 fehlgeschlagen“, „Teilweise fehlgeschlagen · mind. n fehlgeschlagen“; Fehlgeschlagene vor Wartenden |
 | R1-28 Abschluss | „Quelle verbunden ✓“ als erster Schritt, ○ für offene; bei 320 stehen die Schritte offen unter der Steckbrief-Zeile |
-| D1/R1-27 Kopf 320 | Titel 18 px auf zwei feste Zeilen: `tabsTop` 264 überall (vorher 242–407); privat ohne Quellart-Chip; `tabsTop` jetzt Budget in `budgetViolations` |
+| D1/R1-27 Kopf 320 | nach Maintainer-Entscheidung: Titel 16 px, ungekürzt; `tabsTop` 242–322 (vorher bis 407); privat ohne Quellart-Chip; `tabsTop` jetzt Budget in `budgetViolations` |
+| Maintainer 1 | private Bibliotheken in Spaces: „in n Spaces“ bei privat bleibt (Fixture unverändert) |
 | R1-19 Füllgrad 320 | bei 320 nur Feld und Leer |
 | R1-25 Upload-Raster | Ordnerzeile mit Abständen der Dokumentzeile, ohne Ordner-Icon, zweite Zeile „Ordner · n Dokumente“: Namen an einer Kante, nicht mehr gekürzt |
 | R1-4 Upload leer | nur die Ablagefläche, Handlung im Kopf |
