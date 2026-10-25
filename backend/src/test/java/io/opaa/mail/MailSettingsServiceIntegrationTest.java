@@ -171,6 +171,33 @@ class MailSettingsServiceIntegrationTest {
         .doesNotContain("geheimesKennwort");
   }
 
+  /**
+   * Regression guard: replacing or removing the password alone is a change of the setting and is
+   * audited as {@code passwordChange}, never with the value (ADR-0060, Entscheidung 11).
+   */
+  @Test
+  void aReplacedOrRemovedPasswordAloneIsAuditedAsAChangeWithoutItsValue() {
+    mailSettingsService.updateSettings(organizationId, userId, configured("geheimesKennwort"));
+    mailSettingsService.updateSettings(organizationId, userId, configured("neuesKennwort"));
+    mailSettingsService.updateSettings(organizationId, userId, configured(""));
+
+    List<String> after =
+        jdbcTemplate.queryForList(
+            "SELECT CAST(after AS text) FROM audit_log WHERE organization_id = ? AND event_type = ?"
+                + " ORDER BY recorded_at",
+            String.class,
+            organizationId,
+            AuditEventType.MAIL_SETTINGS_CHANGED.name());
+
+    assertThat(after).hasSize(3);
+    assertThat(after.get(0)).contains("\"passwordChange\":\"SET\"");
+    assertThat(after.get(1))
+        .contains("\"passwordChange\":\"CHANGED\"")
+        .doesNotContain("neuesKennwort")
+        .doesNotContain("geheimesKennwort");
+    assertThat(after.get(2)).contains("\"passwordChange\":\"REMOVED\"");
+  }
+
   @Test
   void refusesToSwitchSendingOnWithoutHostPortOrSenderAddress() {
     assertThatThrownBy(

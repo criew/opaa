@@ -147,9 +147,9 @@ class ExternalAccessSettingsIntegrationTest {
         .doesNotContain("dev-admin");
   }
 
-  /** Regression guard: the instructions text changes no reach and is outside the closed list. */
+  /** ADR-0060, Entscheidung 11: the instructions text is a setting, its change is audited too. */
   @Test
-  void changingTheInstructionsTextAloneWritesNoAuditEntry() throws Exception {
+  void changingTheInstructionsTextAloneIsAuditedWithTheTextBeforeAndAfter() throws Exception {
     mockMvc
         .perform(
             put(SETTINGS)
@@ -168,7 +168,14 @@ class ExternalAccessSettingsIntegrationTest {
             jsonPath("$.serverInstructions")
                 .value("Zuerst „search“ aufrufen und die Herkunft angeben."));
 
-    assertThat(settingsEvents()).isEmpty();
+    List<Map<String, Object>> events = settingsEvents();
+    assertThat(events).hasSize(1);
+    assertThat(String.valueOf(events.getFirst().get("before")))
+        .contains("serverInstructions")
+        .doesNotContain("enabled");
+    assertThat(String.valueOf(events.getFirst().get("after")))
+        .contains("Zuerst „search“ aufrufen und die Herkunft angeben.")
+        .doesNotContain("tokenMaxLifetimeDays");
   }
 
   @Test

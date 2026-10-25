@@ -107,6 +107,53 @@ class MailTemplateServiceIntegrationTest {
     assertThat(rendered.bodyPlain()).isEqualTo("Hallo Erika, Grund: Zu viele Fehlversuche");
   }
 
+  /**
+   * Regression guard: an override and its reset carry the text in force before and after, and an
+   * override that changes nothing writes nothing (ADR-0060, Entscheidung 11).
+   */
+  @Test
+  void anOverrideAndItsResetAreAuditedWithTheTextBeforeAndAfter() {
+    templateService.update(
+        organizationId,
+        userId,
+        MailTemplateKey.TEST_MAIL,
+        MailTemplateService.DEFAULT_LOCALE,
+        "Eigener Betreff",
+        "Eigener Text",
+        null);
+    templateService.update(
+        organizationId,
+        userId,
+        MailTemplateKey.TEST_MAIL,
+        MailTemplateService.DEFAULT_LOCALE,
+        "Eigener Betreff",
+        "Eigener Text",
+        null);
+    templateService.reset(
+        organizationId, userId, MailTemplateKey.TEST_MAIL, MailTemplateService.DEFAULT_LOCALE);
+
+    List<Map<String, Object>> entries =
+        jdbcTemplate.queryForList(
+            "SELECT event_type, before, after FROM audit_log WHERE organization_id = ?"
+                + " AND event_type LIKE 'MAIL_TEMPLATE_%' ORDER BY recorded_at",
+            organizationId);
+
+    assertThat(entries).hasSize(2);
+    assertThat(String.valueOf(entries.get(0).get("before")))
+        .contains("\"overridden\":false")
+        .contains(jsonText(MailTemplateKey.TEST_MAIL.defaultSubject()));
+    assertThat(String.valueOf(entries.get(0).get("after")))
+        .contains("\"overridden\":true")
+        .contains("\"subject\":\"Eigener Betreff\"")
+        .contains("\"bodyPlain\":\"Eigener Text\"");
+    assertThat(String.valueOf(entries.get(1).get("before"))).contains("Eigener Betreff");
+    assertThat(String.valueOf(entries.get(1).get("after"))).contains("\"overridden\":false");
+  }
+
+  private static String jsonText(String value) {
+    return tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(value);
+  }
+
   @Test
   void resettingRemovesTheOverrideAndIsAuditedOnlyWhenSomethingWasThere() {
     templateService.update(
