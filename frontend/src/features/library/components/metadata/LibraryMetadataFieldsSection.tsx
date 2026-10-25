@@ -3,11 +3,10 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import PageSection from '@/shared/ui/PageSection'
-import { TEXT_LINK } from '../setup/rowStyles'
+import { ROW_GRID, TEXT_LINK } from '../setup/rowStyles'
 import FieldValues from './FieldValues'
 import SummaryRow from '../setup/SummaryRow'
 import { Link as RouterLink } from 'react-router'
@@ -301,100 +300,109 @@ export default function LibraryMetadataFieldsSection({
             Keine eigenen Felder.
           </Typography>
         ) : (
-          <Stack spacing={2} divider={<Divider flexItem />}>
+          <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
             {fields.map((field) => (
-              <Box key={field.fieldKey}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>{field.label}</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary', flex: 1 }}>
+              <Box
+                key={field.fieldKey}
+                component="section"
+                aria-label={field.label}
+                sx={{ ...ROW_GRID, py: 2, borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Typography
+                  component="h3"
+                  sx={{ fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}
+                >
+                  {field.label}
+                </Typography>
+                <Box
+                  sx={{
+                    gridColumn: { xs: '1 / -1', sm: '2' },
+                    gridRow: { xs: '2', sm: '1' },
+                    minWidth: 0,
+                  }}
+                >
+                  <Typography sx={{ fontSize: 13.5 }}>
                     {[TYPE_LABELS[field.type], ...effectChips(field)].join(' · ')}
+                    {field.deletionPending && ' · wird gelöscht'}
                   </Typography>
-                  {field.deletionPending && (
-                    <Chip size="small" color="warning" label="wird gelöscht" />
+                  {field.type === 'SELECT' && (
+                    <FieldValues
+                      count={field.values.length}
+                      render={(query, limit) => (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          useFlexGap
+                          sx={{ mt: 1, flexWrap: 'wrap' }}
+                        >
+                          {field.values
+                            .filter((value) => !query || value.label.toLowerCase().includes(query))
+                            .slice(0, limit)
+                            .map((value) => (
+                              <Chip
+                                key={value.code}
+                                size="small"
+                                variant="outlined"
+                                color={value.retiring ? 'warning' : 'default'}
+                                // the stored code stays in the tooltip, never in the label (P13)
+                                title={value.code}
+                                label={
+                                  value.retiring ? `${value.label} — wird abgebildet` : value.label
+                                }
+                                clickable={
+                                  canManageSchema && !value.retiring && !field.deletionPending
+                                }
+                                onClick={
+                                  canManageSchema && !value.retiring && !field.deletionPending
+                                    ? () => void openRemap(field, value.code)
+                                    : undefined
+                                }
+                              />
+                            ))}
+                          {canManageSchema && !field.deletionPending && (
+                            <AddValueButton
+                              libraryId={libraryId}
+                              fieldKey={field.fieldKey}
+                              onAdded={() => void reload()}
+                              onError={setError}
+                            />
+                          )}
+                        </Stack>
+                      )}
+                    />
                   )}
-                  {canManageSchema && !field.deletionPending && (
+                </Box>
+                {canManageSchema && !field.deletionPending && (
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    sx={{ gridColumn: { xs: '2', sm: '3' }, gridRow: '1', justifySelf: 'end' }}
+                  >
                     <Link
                       component="button"
                       type="button"
                       underline="hover"
                       onClick={() => setEditField(field)}
-                      aria-label={`Feld ${field.label} bearbeiten`}
+                      aria-label={`Ändern: Feld ${field.label}`}
                       sx={TEXT_LINK}
                     >
                       Ändern
                     </Link>
-                  )}
-                  {canManageSchema && !field.deletionPending && (
                     <Link
                       component="button"
                       type="button"
                       underline="hover"
-                      color="error"
                       onClick={() => void openDelete(field)}
-                      aria-label={`Feld ${field.label} löschen`}
+                      aria-label={`Löschen: Feld ${field.label}`}
                       sx={TEXT_LINK}
                     >
                       Löschen
                     </Link>
-                  )}
-                </Stack>
-                {field.valuePattern && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Muster: {field.valuePattern}
-                  </Typography>
-                )}
-                {field.type === 'SELECT' && (
-                  <FieldValues
-                    count={field.values.length}
-                    render={(query, limit) => (
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        useFlexGap
-                        sx={{ mt: 1, flexWrap: 'wrap' }}
-                      >
-                        {field.values
-                          .filter((value) => !query || value.label.toLowerCase().includes(query))
-                          .slice(0, limit)
-                          .map((value) => (
-                            <Chip
-                              key={value.code}
-                              size="small"
-                              variant="outlined"
-                              color={value.retiring ? 'warning' : 'default'}
-                              label={
-                                value.retiring
-                                  ? `${value.label} (${value.code}) — wird abgebildet`
-                                  : `${value.label} (${value.code})`
-                              }
-                              clickable={
-                                canManageSchema && !value.retiring && !field.deletionPending
-                              }
-                              onClick={
-                                canManageSchema && !value.retiring && !field.deletionPending
-                                  ? () => void openRemap(field, value.code)
-                                  : undefined
-                              }
-                              aria-label={
-                                canManageSchema ? `Wert ${value.label} bearbeiten` : undefined
-                              }
-                            />
-                          ))}
-                        {canManageSchema && !field.deletionPending && (
-                          <AddValueButton
-                            libraryId={libraryId}
-                            fieldKey={field.fieldKey}
-                            onAdded={() => void reload()}
-                            onError={setError}
-                          />
-                        )}
-                      </Stack>
-                    )}
-                  />
+                  </Stack>
                 )}
               </Box>
             ))}
-          </Stack>
+          </Box>
         )}
       </PageSection>
       {coreContextPrefix && (
@@ -406,6 +414,7 @@ export default function LibraryMetadataFieldsSection({
               'Titel',
               coreContextPrefix.documentType ? 'Dokumentart' : null,
               coreContextPrefix.documentDate ? 'Datum/Stand' : null,
+              ...fields.filter((field) => field.contextPrefix).map((field) => field.label),
             ]
               .filter(Boolean)
               .join(', ')}

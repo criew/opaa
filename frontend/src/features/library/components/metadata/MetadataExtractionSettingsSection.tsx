@@ -167,79 +167,83 @@ export default function MetadataExtractionSettingsSection({
         </Box>
       )}
 
-      <PageSection title="Füllgrad">
-        <Box
-          component="table"
-          sx={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            fontSize: 13,
-            '& th': {
-              fontWeight: 400,
-              color: 'text.secondary',
-              textAlign: 'right',
-              fontSize: 12,
-              pb: 0.5,
-              borderBottom: 1,
-              borderColor: 'divider',
-            },
-            '& th:first-of-type, & td:first-of-type': { textAlign: 'left' },
-            '& td': {
-              textAlign: 'right',
-              py: 0.75,
-              borderBottom: 1,
-              borderColor: 'divider',
-              fontVariantNumeric: 'tabular-nums',
-            },
-          }}
-        >
-          <thead>
-            <tr>
-              <th scope="col">Feld</th>
-              <th scope="col">Regel</th>
-              <th scope="col">Modell</th>
-              <th scope="col">Hand</th>
-              <th scope="col">leer</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(quality?.fields ?? []).map((field) => (
-              <tr key={field.fieldKey}>
-                <td>{field.label}</td>
-                <td>{field.deterministicDocuments}</td>
-                <td>{field.derivedDocuments}</td>
-                <td>{field.manualDocuments}</td>
-                <td>
-                  {field.emptyDocuments + field.notDeterminableDocuments} (
-                  {formatShare(field.emptyShare)})
-                </td>
+      {(quality?.totalDocuments ?? 0) > 0 && (
+        <PageSection title="Füllgrad">
+          <Box
+            component="table"
+            sx={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              tableLayout: 'fixed',
+              '& th:not(:first-of-type)': { width: 88 },
+              fontSize: 13,
+              '& th': {
+                fontWeight: 400,
+                color: 'text.secondary',
+                textAlign: 'right',
+                fontSize: 12,
+                pb: 0.5,
+                borderBottom: 1,
+                borderColor: 'divider',
+              },
+              '& th:first-of-type, & td:first-of-type': { textAlign: 'left' },
+              '& td': {
+                textAlign: 'right',
+                py: 0.75,
+                borderBottom: 1,
+                borderColor: 'divider',
+                fontVariantNumeric: 'tabular-nums',
+              },
+            }}
+          >
+            <thead>
+              <tr>
+                <th scope="col">Feld</th>
+                <th scope="col">Regel</th>
+                <th scope="col">Modell</th>
+                <th scope="col">Hand</th>
+                <th scope="col">Leer</th>
               </tr>
-            ))}
-          </tbody>
-        </Box>
-        {stats && (
-          <>
-            <Link
-              component="button"
-              type="button"
-              underline="hover"
-              aria-expanded={technicalOpen}
-              onClick={() => setTechnicalOpen((value) => !value)}
-              sx={{ ...TEXT_LINK, mt: 1 }}
-            >
-              Technische Angaben
-            </Link>
-            {technicalOpen && (
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
-                (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
-                {stats.rejectedOutsideVocabulary} · Fehler {stats.failures} · nicht angefragt{' '}
-                {stats.rejectedPoolFull} · Schlagworte {stats.keywordsAssigned}
-              </Typography>
-            )}
-          </>
-        )}
-      </PageSection>
+            </thead>
+            <tbody>
+              {(quality?.fields ?? []).map((field) => (
+                <tr key={field.fieldKey}>
+                  <td>{field.label}</td>
+                  <td>{field.deterministicDocuments}</td>
+                  <td>{field.derivedDocuments}</td>
+                  <td>{field.manualDocuments}</td>
+                  <td>
+                    {field.emptyDocuments + field.notDeterminableDocuments} (
+                    {formatShare(field.emptyShare)})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Box>
+          {stats && (
+            <>
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                aria-expanded={technicalOpen}
+                onClick={() => setTechnicalOpen((value) => !value)}
+                sx={{ ...TEXT_LINK, mt: 1 }}
+              >
+                Technische Angaben
+              </Link>
+              {technicalOpen && (
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                  Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
+                  (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
+                  {stats.rejectedOutsideVocabulary} · Fehler {stats.failures} · nicht angefragt{' '}
+                  {stats.rejectedPoolFull} · Schlagworte {stats.keywordsAssigned}
+                </Typography>
+              )}
+            </>
+          )}
+        </PageSection>
+      )}
     </Box>
   )
 }
