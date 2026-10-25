@@ -68,6 +68,8 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     - [Docker Compose](betrieb/docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](betrieb/kubernetes.md) — Betrieb mit dem Helm-Chart
+    - [Einrichtungs-Assistent](betrieb/einrichtungsassistent.md) — Erstinstallation im Browser:
+      Token, Pflicht- und optionale Schritte, Fortsetzen nach Abbruch, Abschluss
     - [Images und Laufzeit](betrieb/images-und-laufzeit.md) — Images und Versionen, Laufzeitimages
       von Backend und Frontend, Speicher und Container-Grenzen, Readiness und Liveness, Graceful
       Shutdown
