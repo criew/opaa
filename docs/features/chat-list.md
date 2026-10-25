@@ -470,11 +470,9 @@ eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exp
   ohne Einbettung), Fußnoten als `[1]`. Die Markdown-Zeichen der Antworten werden zu lesbarem Text.
   Die Standardschriften kennen nur den westeuropäischen Zeichensatz: Format- und Richtungszeichen
   entfallen, Sonderleerzeichen, Bindestrich- und Minusvarianten, Pfeile und Vergleichszeichen erhalten
-  einen einfachen Ersatz (`->`, `<=` …), alles Übrige erscheint als „?". Die Rechenzeit wächst mit
-  der Textlänge linear, auch bei Text, der darauf angelegt ist, Mustersuchen ausufern zu lassen: Der
-  Zeilenumbruch misst jede Glyphe einmal, und jedes Muster für Markdown und Zitiermarken blickt von
-  einer Stelle aus höchstens eine feste Zeichenzahl voraus (Hervorhebungen und Linktexte bis 300
-  Zeichen; längere bleiben mit ihren Markdown-Zeichen stehen). Die Zeitangaben stehen in der Zeitzone der
+  einen einfachen Ersatz (`->`, `<=` …), alles Übrige erscheint als „?". Die Rechenzeit bleibt
+  linear in der Textlänge. Hervorhebungen und Links werden bis 300 Zeichen aufgelöst, längere
+  behalten ihre Markdown-Zeichen. Die Zeitangaben stehen in der Zeitzone der
   Installation. Solange das PDF entsteht, zeigt die Oberfläche „Export wird erstellt …"; ein zweiter
   Klick auf denselben Export desselben Chats startet keinen weiteren.
 - **Wer exportieren darf:** wer den Chat lesen darf (`GET /api/v1/chats/{chatId}`), also nur seine

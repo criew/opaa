@@ -107,6 +107,26 @@ describe('chatAsMarkdown', () => {
     expect(markdown).not.toContain('【')
   })
 
+  it('prefixes only its own footnotes, never a footnote-like text in the answer or its code', () => {
+    const content = [
+      `Siehe Fußnote [^5] im Bescheid 【source: ${BESCHEID}#3 | Bescheid.pdf】.`,
+      '',
+      '```',
+      "grep '[^5]' akte.txt",
+      '```',
+    ].join('\n')
+    const markdown = chatAsMarkdown(
+      chat([answer(content, [source('Bescheid.pdf', BESCHEID, true, 'S. 3')])]),
+      NOTE,
+      EXPORTED,
+    )
+
+    expect(markdown).toContain('Siehe Fußnote [^5] im Bescheid[^1-1].')
+    expect(markdown).toContain("grep '[^5]' akte.txt")
+    expect(markdown).not.toContain('[^1-5]')
+    expect(markdown).toContain('[^1-1]: Bescheid.pdf, S. 3')
+  })
+
   it('lists cited sources the text never marks, and leaves out the merely checked ones', () => {
     const markdown = chatAsMarkdown(
       chat([

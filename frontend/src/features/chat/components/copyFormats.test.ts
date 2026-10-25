@@ -144,6 +144,18 @@ describe('answerAsPlainText', () => {
     expect(answerAsPlainText(code)).toBe('Aufruf:\n\nopaa --help  # *nicht* kursiv')
   })
 
+  test('reads long runs of blanks in linear time', () => {
+    for (const line of [
+      ' '.repeat(40_000),
+      `${' '.repeat(40_000)}-`,
+      `---${' '.repeat(40_000)}x`,
+    ]) {
+      const started = performance.now()
+      answerAsPlainText(`a\n${line}\nb`)
+      expect(performance.now() - started).toBeLessThan(500)
+    }
+  })
+
   test('leaves underscores inside words alone', () => {
     expect(answerAsPlainText('Datei 001_personalausweis_neu.md und _kursiv_')).toBe(
       'Datei 001_personalausweis_neu.md und kursiv',

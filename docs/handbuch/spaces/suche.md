@@ -100,7 +100,7 @@ Aufruf des Chat-Modells (Abschnitt 3).
 | Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
 | Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
 | Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
-| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Im Kopf des Chats zeigt ein Knopf die Zahl der Punkte und klappt die Liste auf, in der der Autor jeden Punkt einzeln entfernen kann, außer in einem archivierten Space; sichtbar wird die Notiz, sobald sie einen Punkt hat und der Chat drei beantwortete Runden zählt. Die Exporte des Chats enthalten sie (Abschnitt 7, „Exportieren") |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Im Kopf des Chats zeigt ein Knopf die Zahl der Punkte und klappt die Liste auf, in der der Autor jeden Punkt einzeln entfernen kann, außer in einem archivierten Space; sichtbar wird die Notiz, sobald sie einen Punkt hat und der Chat drei beantwortete Runden zählt. Die Exporte des Chats enthalten sie (Abschnitt „Belege prüfen und Fundstellen bilden", Absatz „Exportieren") |
 
 Zwei Punkte sind betrieblich wichtig:
 
@@ -921,7 +921,7 @@ bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennz
 eines Chats in der Chatliste und auf der Seite „Chats" bietet „Exportieren als Markdown" und
 „Exportieren als PDF"; solange das PDF entsteht, meldet ein Hinweis „Export wird erstellt …".
 Beide Dateien beginnen mit dem Titel als Überschrift, nennen Beginn des Chats
-und Exportzeitpunkt, führen die Gesprächsnotiz (Abschnitt 2) als eigenen Abschnitt „Gesprächsnotiz",
+und Exportzeitpunkt, führen die Gesprächsnotiz (Abschnitt „Frage, Chat, Suchbereich, Chunk") als eigenen Abschnitt „Gesprächsnotiz",
 sobald sie einen Punkt hat, und enthalten dann jede Frage und Antwort mit Datum und Uhrzeit. Unter jeder Antwort
 stehen ihre Quellenangaben: Jede Zitiermarke wird zur Fußnote mit Dokument und Fundort, gezählt je
 Antwort in der Reihenfolge des ersten Auftretens; zitierte Dokumente ohne Fußnote im Text folgen ohne

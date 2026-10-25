@@ -39,9 +39,15 @@ export function answerAsMarkdown(content: string): string {
 /**
  * The answer as Markdown with its sources: each marker becomes a Markdown footnote (`[^1]`, the
  * same number the chat shows), repeated neighbours collapse, and the cited documents follow as a
- * footnote list with their Fundort where the pipeline knew one.
+ * footnote list with their Fundort where the pipeline knew one. `labelPrefix` goes in front of
+ * every footnote label (`[^2-1]`), for documents that hold several answers; the answer's own text
+ * is never touched.
  */
-export function answerWithSources(answer: string, citations: CitationIndex): string {
+export function answerWithSources(
+  answer: string,
+  citations: CitationIndex,
+  labelPrefix = '',
+): string {
   const { texts, markers } = splitAtMarkers(unwrapBracketedMarkers(answer))
   const fileNameByNumber = new Map<number, string>()
   const parts: string[] = []
@@ -57,7 +63,7 @@ export function answerWithSources(answer: string, citations: CitationIndex): str
     if (marker === undefined || number === undefined || adjacent.has(number)) return
     if (!fileNameByNumber.has(number)) fileNameByNumber.set(number, marker.fileName)
     adjacent.add(number)
-    parts.push(`[^${number}]`)
+    parts.push(`[^${labelPrefix}${number}]`)
   })
   parts.push(texts[texts.length - 1])
   const body = parts.join('').trim()
@@ -66,7 +72,7 @@ export function answerWithSources(answer: string, citations: CitationIndex): str
     .sort(([a], [b]) => a - b)
     .map(([number, fileName]) => {
       const location = citations.locationByNumber.get(number)
-      return `[^${number}]: ${fileName}${location ? `, ${location}` : ''}`
+      return `[^${labelPrefix}${number}]: ${fileName}${location ? `, ${location}` : ''}`
     })
   return `${body}\n\n${notes.join('\n')}`
 }
@@ -107,7 +113,9 @@ export function answerAsPlainText(content: string): string {
       lines.push(line)
       continue
     }
-    if (/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line) && line.includes('-')) {
+    // Tested on the trimmed line: blanks at either end would make the pattern ambiguous, and a
+    // long run of them quadratic.
+    if (line.includes('-') && /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$/.test(line.trim())) {
       if (line.includes('|')) continue // table separator row
       lines.push('') // thematic break
       continue

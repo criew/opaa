@@ -41,11 +41,7 @@ export function chatAsMarkdown(chat: ChatDetail, note: string, exportedAt: Date)
     }
     answerNumber += 1
     const citations = buildCitationIndex(message.content, message.sources)
-    const prefix = answerNumber
-    const body = answerWithSources(message.content, citations).replace(
-      /\[\^(\d+)\]/g,
-      (_, number: string) => `[^${prefix}-${number}]`,
-    )
+    const body = answerWithSources(message.content, citations, `${answerNumber}-`)
     parts.push(`## Antwort · ${at}`, body)
     const unmarked = citations.docs.filter((doc) => doc.numbers.length === 0)
     if (unmarked.length > 0) {

@@ -120,6 +120,27 @@ class ChatTranscriptTest {
   }
 
   @Test
+  void theFootnoteKeyIsTheChunkAsWrittenLikeInTheChat() {
+    UUID document = UUID.randomUUID();
+    ChatSource source = new ChatSource("Akte.pdf", 0.9, 1, true).documentId(document);
+    String text =
+        "A "
+            + marker(document, 7, "Akte.pdf")
+            + " B "
+            + CitationMarker.render(document.toString(), "07", "Akte.pdf")
+            + " C "
+            + CitationMarker.render(document.toString(), "99999999999", "Akte.pdf")
+            + " D "
+            + CitationMarker.render(document.toString(), "99999999998", "Akte.pdf")
+            + ".";
+
+    ChatTranscript.Entry entry =
+        ChatTranscript.of(chat("T", answer(text, source))).entries().getFirst();
+
+    assertThat(entry.text()).isEqualTo("A[1] B[2] C[3] D[4].");
+  }
+
+  @Test
   void theGesprächsnotizComesAlongOldestFirst() {
     Chat chat =
         new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "T", true, Set.of());

@@ -96,12 +96,14 @@ record ChatTranscript(
       }
       body.setLength(end);
       lastEnd = matcher.end();
-      List<CitationMarker> parsed = CitationMarker.parse(matcher.group());
-      if (parsed.size() != 1 || !CitationMarker.isWellFormed(matcher.group())) {
+      Matcher wellFormed = CitationMarker.PATTERN.matcher(matcher.group());
+      if (!wellFormed.matches()) {
         continue;
       }
-      CitationMarker marker = parsed.getFirst();
-      String key = marker.documentId() + "#" + marker.chunkIndex();
+      CitationMarker marker = CitationMarker.parse(matcher.group()).getFirst();
+      // The chunk as written, like the chat keys it: "07" is not "7", and digits beyond an int
+      // stay distinct instead of all becoming -1.
+      String key = wellFormed.group(1).trim() + "#" + wellFormed.group(2);
       Integer number = numberByKey.get(key);
       if (number == null) {
         number = numberByKey.size() + 1;
