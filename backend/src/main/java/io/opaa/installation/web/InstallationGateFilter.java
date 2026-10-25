@@ -69,8 +69,13 @@ public class InstallationGateFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
     String path = pathHelper.getPathWithinApplication(request);
     boolean installationApi = isInstallationApi(path);
+    if (!installationApi && isOpen(request, path)) {
+      // open paths never ask the database, so health answers DOWN rather than 500 without it
+      chain.doFilter(request, response);
+      return;
+    }
     boolean pending = status.isPending();
-    if (pending && !installationApi && !isOpen(request, path)) {
+    if (pending && !installationApi) {
       write(response, HttpStatus.SERVICE_UNAVAILABLE, PENDING_MESSAGE, PENDING_CODE);
       return;
     }

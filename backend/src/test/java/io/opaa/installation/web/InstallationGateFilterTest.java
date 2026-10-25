@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.common.InstallationStatus;
 import java.time.Clock;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.mock.web.MockFilterChain;
@@ -75,5 +76,25 @@ class InstallationGateFilterTest {
     MockHttpServletResponse response = new MockHttpServletResponse();
     filter.doFilter(request, response, new MockFilterChain());
     return response;
+  }
+
+  // regression guard: health answers without the database, so it can report DOWN instead of 500
+  @Test
+  void theOpenPathsNeverAskTheDatabase() throws Exception {
+    InstallationGateFilter withoutDatabase =
+        new InstallationGateFilter(
+            () -> {
+              throw new IllegalStateException("database down");
+            },
+            JsonMapper.builder().build(),
+            Clock.systemUTC());
+
+    for (String path :
+        java.util.List.of("/actuator/health/readiness", "/actuator/health/liveness")) {
+      MockHttpServletResponse response = new MockHttpServletResponse();
+      withoutDatabase.doFilter(
+          new MockHttpServletRequest("GET", path), response, new MockFilterChain());
+      assertThat(response.getStatus()).as(path).isEqualTo(200);
+    }
   }
 }

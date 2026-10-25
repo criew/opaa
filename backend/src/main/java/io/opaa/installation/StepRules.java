@@ -35,6 +35,11 @@ class StepRules {
 
   private static final String INVALID = "INVALID";
   private static final String REQUIRED = "REQUIRED";
+  private static final String TOO_LONG = "TOO_LONG";
+  static final int MAX_ADDRESS = 500;
+  static final int MAX_NAME = 200;
+  static final int MAX_PROVIDER_NAME = 120;
+  static final int MAX_API_KEY = 2000;
 
   /** A step as stored: values without secret, and the hash or ciphertext of its secret. */
   record Stored(String payload, String secret) {}
@@ -172,6 +177,10 @@ class StepRules {
     if (clientId.isEmpty()) {
       errors.add(error("signIn.oidc.clientId", REQUIRED, "Die Client-ID fehlt."));
     }
+    requireAtMost(errors, "signIn.oidc.issuerUri", issuer, MAX_ADDRESS);
+    requireAtMost(errors, "signIn.oidc.clientId", clientId, MAX_NAME);
+    requireAtMost(errors, "signIn.oidc.jwkSetUri", jwkSetUri, MAX_ADDRESS);
+    requireAtMost(errors, "signIn.oidc.displayName", displayName, MAX_PROVIDER_NAME);
     requireNoErrors(errors);
     addressPolicy.requireAllowed(issuer, "Issuer-URI");
     if (!jwkSetUri.isEmpty()) {
@@ -210,6 +219,9 @@ class StepRules {
     if (model.isEmpty()) {
       errors.add(error("chatModel.model", REQUIRED, "Die Modell-Kennung fehlt."));
     }
+    requireAtMost(errors, "chatModel.baseUrl", baseUrl, MAX_ADDRESS);
+    requireAtMost(errors, "chatModel.model", model, MAX_NAME);
+    requireAtMost(errors, "chatModel.apiKey", input.apiKey(), MAX_API_KEY);
     if (input.maxTokens() != null && input.maxTokens() < 1) {
       errors.add(error("chatModel.maxTokens", INVALID, "Die Antwortlänge muss mindestens 1 sein."));
     }
@@ -295,6 +307,13 @@ class StepRules {
           INVALID,
           "Der Zugangsschlüssel kann nicht gespeichert werden: OPAA_SETTINGS_ENCRYPTION_KEY ist"
               + " nicht gesetzt oder ungültig.");
+    }
+  }
+
+  /** The lengths of the specification ({@code maxLength}), enforced here for every way in. */
+  private static void requireAtMost(List<FieldError> errors, String field, String value, int max) {
+    if (value != null && value.length() > max) {
+      errors.add(error(field, TOO_LONG, "Die Angabe ist zu lang (höchstens " + max + " Zeichen)."));
     }
   }
 

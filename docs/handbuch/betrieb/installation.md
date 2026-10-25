@@ -17,7 +17,7 @@ zugleich ([Mehrere Backend-Instanzen](mehrere-instanzen.md)).
 |---|---|---|
 | Installations-API | erreichbar, nur mit Installations-Token | `404`, auf jeder Instanz |
 | Anmeldekonfiguration und Branding der Oberfläche | erreichbar; meldet „Installation ausstehend" | wie immer |
-| Health, Readiness, Liveness | `UP`; Komponente `installation` mit `pending: true` | `pending: false` |
+| Health, Readiness, Liveness | `UP`; mit Anmeldung zeigt `/actuator/health` die Komponente `installation` mit `pending: true` | `pending: false` |
 | Metrik `opaa_installation_pending` | `1` | `0` |
 | jeder andere Aufruf | `503` mit dem Code `INSTALLATION_PENDING` | wie immer |
 
@@ -25,10 +25,15 @@ Die Readiness bleibt im Installationsmodus `UP`, damit Load Balancer und Ingress
 überhaupt erreichen. Einen Rückweg in den Installationsmodus gibt es nur über einen Eingriff des
 Betriebs in die Datenbank und einen Neustart.
 
-**Übergang.** Ist im Modus `oidc` `OPAA_INITIAL_ADMIN_EMAIL` gesetzt, richtet sich eine leere
-Instanz wie bisher aus den Startwerten ein ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto));
-ohne die Variable startet der Installationsmodus. Im Modus `dev` richtet sich jede Instanz selbst
-ein. Eine Datenbank, auf der schon eine frühere Version lief, gilt als eingerichtet.
+**Übergang.** Steht im Modus `oidc` in `OPAA_INITIAL_ADMIN_EMAIL` eine zustellbare Adresse,
+richtet sich eine leere Instanz aus den Startwerten ein ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto));
+ohne die Variable startet der Installationsmodus, ebenso mit `admin@opaa.local` oder einem Wert ohne
+`@` (das Log nennt den Grund). Im Modus `dev` richtet sich jede Instanz selbst ein. Eine Datenbank,
+auf der OPAA schon lief (Konten oder Startwerte übernommen), gilt als eingerichtet.
+
+Die Installation entscheidet eine Instanz erst, wenn das Instanzregister sie zugelassen hat
+([Mehrere Backend-Instanzen](mehrere-instanzen.md)); eine abgewiesene Instanz schließt nichts ab und
+erzeugt kein Token.
 
 ## Installations-Token
 
@@ -50,14 +55,22 @@ wer die Adresse zuerst aufruft.
 ```
 
 Zu lesen mit `docker compose logs backend | grep -A3 "INSTALLATION TOKEN"` bzw. `kubectl logs`.
-Gespeichert wird nur ein Prüfwert; mit dem Abschluss verfällt er. **Ein verlorenes Token** ersetzt
+**Das Token landet damit in jeder Log-Weiterleitung** (Log-Aggregator, SIEM, Ticket-Anhänge): Wer
+das nicht will, setzt `OPAA_INSTALLATION_TOKEN` aus einem Secret; dann erscheint kein Token im Log.
+Gespeichert wird nur ein Prüfwert; mit dem Abschluss verfällt er. Wird ein gesetztes Token
+wieder entfernt, gilt es beim nächsten Start nicht mehr; OPAA erzeugt ein neues. **Ein verlorenes Token** ersetzt
 der Betrieb, indem er `OPAA_INSTALLATION_TOKEN` setzt und neu startet. Wer das Log lesen kann, kann
 die Installation abschließen: Log-Zugriff ist bis dahin so schutzwürdig wie das Token selbst.
 
 `OPAA_INSTALLATION_ALLOWED_CIDRS` beschränkt die Installations-API zusätzlich auf Netzbereiche (wie
 `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`); hinter einem Reverse-Proxy zählt die Adresse aus
-`X-Forwarded-For`, sofern der Proxy in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` steht. Je Netzadresse
-und Instanz begrenzt OPAA Aufrufe und abgelehnte Tokens; jede Ablehnung steht im Log.
+`X-Forwarded-For`, sofern der Proxy in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` steht. **Fehlt diese
+Angabe hinter einem Reverse-Proxy,** sieht OPAA für jeden Aufruf die Adresse des Proxys: Die
+Netzbeschränkung prüft dann den Proxy statt der Person, und alle teilen sich ein Budget, sodass
+fremde Fehlversuche den Betrieb aussperren. Start und erster betroffener Aufruf warnen davor im Log.
+Je Netzadresse und Instanz begrenzt OPAA Aufrufe und abgelehnte Tokens; jede Ablehnung steht im
+Log. Netz, Budget und Token prüft OPAA, bevor es eine Anfrage liest; größere Anfragen als 64 KiB
+lehnt es ab.
 
 ## Schritte
 
@@ -152,7 +165,8 @@ Prüfungen, alles oder nichts.
 | `400` am Feld Basis-Adresse mit Hinweis auf `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | die Modelladresse liegt in einem gesperrten Bereich | Host in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` freigeben |
 | `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse | `Retry-After` abwarten |
+| `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse | `Retry-After` abwarten; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Schritt ist nicht gespeichert oder nicht erfolgreich geprüft | offene Schritte prüfen; die Meldung nennt sie |
 | `404` | die Installation ist abgeschlossen | anmelden mit dem ersten Konto |
 | Log „The answer file … was not applied" | eine Angabe oder Prüfung der Antwortdatei scheiterte | Datei korrigieren, neu starten |
@@ -164,6 +178,10 @@ Prüfungen, alles oder nichts.
 | `OPAA_INSTALLATION_TOKEN` | leer: erzeugt und einmal ins Log geschrieben | Installations-Token, mindestens 32 Zeichen |
 | `OPAA_INSTALLATION_ALLOWED_CIDRS` | leer: keine Beschränkung | Netzbereiche, aus denen die Installations-API antwortet |
 | `OPAA_INSTALLATION_ANSWER_FILE` | leer: keine | Pfad der Antwortdatei, die ein Start anwendet |
+
+Die drei Variablen gelten je Instanz und wirken nur, solange die Installation offen ist; nach dem
+Abschluss lassen sie sich entfernen, ohne dass ein Rolling Update daran scheitert. Starten mehrere
+Instanzen eine offene Installation mit verschiedenen Tokens, gilt das zuletzt gestartete.
 
 Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten.
 

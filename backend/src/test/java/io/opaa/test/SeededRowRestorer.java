@@ -68,7 +68,8 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
               Map.entry("local_admin_seed_marker", Ownership.WHOLE_TABLE),
               Map.entry("admin_review_reminders", Ownership.WHOLE_TABLE),
               Map.entry("oidc_provider_seed_marker", Ownership.WHOLE_TABLE),
-              Map.entry("installation_state", Ownership.WHOLE_TABLE)));
+              Map.entry("installation_state", Ownership.WHOLE_TABLE),
+              Map.entry("llm_model_seed_marker", Ownership.WHOLE_TABLE)));
 
   private static final String SNAPSHOT = SeededRowRestorer.class.getName() + ".snapshot";
 

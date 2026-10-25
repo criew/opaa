@@ -10,6 +10,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProviderSeedMarker;
 import io.opaa.auth.OidcProviderSeedMarkerRepository;
+import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TransactionCallbacks;
@@ -37,11 +38,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The installation of a fresh instance (ADR-0060, Entscheidungen 4 to 9). Every write takes the row
- * lock of {@code installation_state} and then the start-up lock (namespace {@code 211}), in that
- * order everywhere, so steps, checks, the completion and the start-up seeds of every instance run
- * one after another. The completion succeeds exactly once: a later call finds the row completed and
- * answers {@link NotFoundException}, like every call after it.
+ * The installation of a fresh instance (ADR-0060). Every write takes the row lock of {@code
+ * installation_state}, then the start-up lock {@code 211}, in that order everywhere, so steps,
+ * checks, completion and start-up seeds of all instances run one after another. The completion
+ * succeeds once; every later call answers {@link NotFoundException}.
  */
 @Service
 public class InstallationService {
@@ -67,6 +67,7 @@ public class InstallationService {
   private final OidcProviderSeedMarkerRepository oidcMarker;
   private final LlmModelSeedMarkerRepository llmMarker;
   private final AuditEventRecorder audit;
+  private final UserRepository users;
   private final DatabaseInstallationStatus status;
   private final Clock clock;
 
@@ -82,6 +83,7 @@ public class InstallationService {
       OidcProviderSeedMarkerRepository oidcMarker,
       LlmModelSeedMarkerRepository llmMarker,
       AuditEventRecorder audit,
+      UserRepository users,
       DatabaseInstallationStatus status,
       Clock clock) {
     this.states = states;
@@ -95,6 +97,7 @@ public class InstallationService {
     this.oidcMarker = oidcMarker;
     this.llmMarker = llmMarker;
     this.audit = audit;
+    this.users = users;
     this.status = status;
     this.clock = clock;
   }
@@ -170,19 +173,22 @@ public class InstallationService {
     return completeLocked(state, source);
   }
 
+  /** What a start found: whether the installation is completed, and by which source if just now. */
+  public record StartupDecision(boolean completed, CompletionSource source) {}
+
   /**
-   * The start-up decision for an installation that needs no step: an existing database, the {@code
-   * dev} mode or the start values of the transition complete it at once. Returns whether the
-   * installation is completed afterwards.
+   * Completes a pending installation that needs no step: a database in use (a start-up seed ran or
+   * an account exists), the {@code dev} mode or the start values of the transition.
    */
   @Transactional
-  public boolean completeAtStartupIfDue(boolean developmentMode, boolean legacyStartValues) {
+  public StartupDecision completeAtStartupIfDue(
+      boolean developmentMode, boolean legacyStartValues) {
     InstallationState state = lockState();
     if (state.isCompleted()) {
-      return true;
+      return new StartupDecision(true, null);
     }
     CompletionSource source = null;
-    if (anyStartupSeedRan()) {
+    if (databaseInUse()) {
       source = CompletionSource.EXISTING;
     } else if (developmentMode) {
       source = CompletionSource.DEVELOPMENT;
@@ -190,16 +196,28 @@ public class InstallationService {
       source = CompletionSource.LEGACY_START_VALUES;
     }
     if (source == null) {
-      return false;
+      return new StartupDecision(false, null);
     }
     markCompleted(state, source, Map.of("source", source.name()));
+    return new StartupDecision(true, source);
+  }
+
+  /**
+   * {@link #applyAnswers} for the start: an installation another instance completed meanwhile is
+   * success, not an error. Returns whether this call completed it.
+   */
+  @Transactional
+  public boolean applyAnswersAtStartup(List<StepInput> inputs) {
+    if (lockState().isCompleted()) {
+      return false;
+    }
+    applyAnswers(inputs, CompletionSource.ANSWER_FILE_STARTUP);
     return true;
   }
 
   /**
-   * Stores the hash of the configured token, or generates one if none is stored. Returns the token
-   * that must be printed once - a freshly generated one - or {@code null}; the caller prints it
-   * after this transaction committed.
+   * Keeps the stored token in line with the configuration and returns a freshly generated one to
+   * print after the commit, else {@code null}. A configured token no longer configured is replaced.
    */
   @Transactional
   public String ensureToken(String configuredToken) {
@@ -216,7 +234,7 @@ public class InstallationService {
       }
       return null;
     }
-    if (state.getTokenHash() != null) {
+    if (state.getTokenHash() != null && state.getTokenSource() == TokenSource.GENERATED) {
       return null;
     }
     String token = InstallationTokens.generate();
@@ -332,11 +350,12 @@ public class InstallationService {
     return state;
   }
 
-  /** A database an earlier version of OPAA started on already ran one of the start-up seeds. */
-  private boolean anyStartupSeedRan() {
+  /** A database OPAA already ran on: a start-up seed ran, or an account exists. */
+  private boolean databaseInUse() {
     return localAdminMarker.seedAlreadyAttempted()
         || oidcMarker.seedAlreadyAttempted()
-        || llmMarker.seedAlreadyAttempted();
+        || llmMarker.seedAlreadyAttempted()
+        || users.count() > 0;
   }
 
   private InstallationOverview overviewOfSavedSteps() {

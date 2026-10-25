@@ -4,11 +4,9 @@ import io.opaa.common.InstallationStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * {@link InstallationStatus} from the {@code installation_state} row (ADR-0053: "Datenbank"). While
- * pending, every question reads the row, so a completion on another instance takes effect with the
- * next request here; once a read finds it completed, the answer is latched for the process, because
- * nothing in the application sets the row back. A way back into the installation mode is an
- * operator's change in the database followed by a restart.
+ * {@link InstallationStatus} from {@code installation_state} (ADR-0053: "Datenbank"): read on every
+ * question while pending, so a completion elsewhere counts with the next request, then latched for
+ * the process. The way back is a change in the database and a restart.
  */
 @Component
 public class DatabaseInstallationStatus implements InstallationStatus {
