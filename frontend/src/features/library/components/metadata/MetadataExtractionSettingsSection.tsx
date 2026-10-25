@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -36,6 +37,7 @@ export default function MetadataExtractionSettingsSection({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const loadQuality = useCallback(() => {
     getLibraryMetadataQuality(libraryId)
@@ -100,51 +102,72 @@ export default function MetadataExtractionSettingsSection({
     await save(modelExtractionEnabled, keywordsEnabled)
   }
 
+  const onOff = (value: boolean) => (value ? 'an' : 'aus')
   return (
-    <DetailSection title="Extraktion">
+    <ValueRow
+      title="Extraktion"
+      value={
+        settings ? (
+          <>
+            {`Modellgestützt ${onOff(settings.modelExtractionEnabled)} · Freie Schlagworte ${onOff(settings.keywordsEnabled)}`}
+            {!model && (
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                Kein Chat-Modell aktiv
+              </Typography>
+            )}
+          </>
+        ) : (
+          '–'
+        )
+      }
+      action={
+        canManage && settings ? (
+          <TextAction onClick={() => setOpen((v) => !v)} aria-expanded={open} context="Extraktion">
+            {open ? 'Schließen' : 'Ändern'}
+          </TextAction>
+        ) : undefined
+      }
+    >
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
-      {canManage && settings && (
-        <Stack sx={{ borderTop: 1, borderColor: 'divider' }}>
-          <SwitchRow
-            label="Modellgestützte Extraktion"
-            checked={settings.modelExtractionEnabled}
-            disabled={saving}
-            onChange={(next) => void switchTo(next, settings.keywordsEnabled)}
-          />
-          <SwitchRow
-            label="Freie Schlagworte"
-            checked={settings.keywordsEnabled}
-            disabled={saving}
-            onChange={(next) => void switchTo(settings.modelExtractionEnabled, next)}
-          />
-        </Stack>
-      )}
-      {canManage && settings && !model && (
-        <Typography sx={{ mt: 1, fontSize: 13, color: 'text.secondary' }}>
-          Kein Chat-Modell aktiv: Die Extraktion bleibt wirkungslos.
-        </Typography>
-      )}
-      {stats && (
-        <Box sx={{ mt: 1 }}>
-          <TextAction onClick={() => setShowStats((v) => !v)} aria-expanded={showStats}>
-            Technische Angaben
-          </TextAction>
-          {showStats && (
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-              {model && `Modell ${model.modelIdentifier} über ${model.baseUrl} · `}
-              Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
-              (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
-              {stats.rejectedOutsideVocabulary} · Fehler {stats.failures} · nicht angefragt{' '}
-              {stats.rejectedPoolFull} · Schlagworte {stats.keywordsAssigned}
-            </Typography>
+      {open && canManage && settings && (
+        <>
+          <Stack>
+            <SwitchRow
+              label="Modellgestützte Extraktion"
+              checked={settings.modelExtractionEnabled}
+              disabled={saving}
+              onChange={(next) => void switchTo(next, settings.keywordsEnabled)}
+            />
+            <SwitchRow
+              label="Freie Schlagworte"
+              checked={settings.keywordsEnabled}
+              disabled={saving}
+              onChange={(next) => void switchTo(settings.modelExtractionEnabled, next)}
+            />
+          </Stack>
+          {stats && (
+            <Box sx={{ mt: 1 }}>
+              <TextAction onClick={() => setShowStats((v) => !v)} aria-expanded={showStats}>
+                Technische Angaben
+              </TextAction>
+              {showStats && (
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                  {model && `Modell ${model.modelIdentifier} über ${model.baseUrl} · `}
+                  Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
+                  (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
+                  {stats.rejectedOutsideVocabulary} · Fehler {stats.failures} · nicht angefragt{' '}
+                  {stats.rejectedPoolFull} · Schlagworte {stats.keywordsAssigned}
+                </Typography>
+              )}
+            </Box>
           )}
-        </Box>
+        </>
       )}
-    </DetailSection>
+    </ValueRow>
   )
 }
 

@@ -1,3 +1,4 @@
+import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
@@ -40,24 +41,28 @@ export default function LibrarySharingTab({
   onToggleDiagnosticsLock,
   onDismissDiagnosticsLockError,
 }: LibrarySharingTabProps) {
+  // permissions and external access stand between the rows; without them the rows join
+  const sections = canEdit && !privateLibrary
   return (
     <>
       {/* The order of the target design: owner · permissions · external
            access · diagnostics lock · derivation. Every section saves on its own;
            there is no shared „Speichern" button across sections. */}
       <Stack>
-        <AssetOwnerSection
-          assetType="KNOWLEDGE_LIBRARY"
-          assetId={libraryId}
-          ownerType={library.ownerType}
-          ownerName={library.ownerName}
-          // Only whoever holds the ownership may hand over - myRole carries OWNER for a system
-          // administration anyway, and the endpoint lets exactly that do so.
-          canTransfer={library.myRole === 'OWNER' && !privateLibrary}
-          onTransferred={onTransferred}
-        />
+        <Box sx={{ mb: sections ? 4 : 0 }}>
+          <AssetOwnerSection
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={libraryId}
+            ownerType={library.ownerType}
+            ownerName={library.ownerName}
+            // Only whoever holds the ownership may hand over - myRole carries OWNER for a system
+            // administration anyway, and the endpoint lets exactly that do so.
+            canTransfer={library.myRole === 'OWNER' && !privateLibrary}
+            onTransferred={onTransferred}
+          />
+        </Box>
 
-        {canEdit && !privateLibrary && (
+        {sections && (
           <>
             <AssetGrantsSection
               assetType="KNOWLEDGE_LIBRARY"
@@ -78,25 +83,28 @@ export default function LibrarySharingTab({
           </>
         )}
 
-        {/* a reader can neither set nor lift the lock: the section is the managers' alone */}
-        {details && (canEdit || details.diagnosticsLockToggleable) && (
-          <DiagnosticsLockControl
-            locked={details.diagnosticsLocked ?? true}
-            // myRole bypasses to OWNER for a system admin unconditionally
-            // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
-            // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
-            // grant never sees a button that is guaranteed to fail with 403.
-            canToggle={details.diagnosticsLockToggleable ?? false}
-            saving={diagnosticsLockSaving}
-            error={diagnosticsLockError}
-            onToggle={onToggleDiagnosticsLock}
-            onDismissError={onDismissDiagnosticsLockError}
-          />
-        )}
+        {/* the single values close the tab as rows of the Reiter „Quelle“ under one line */}
+        <Box sx={{ borderTop: sections ? 1 : 0, borderColor: 'divider' }}>
+          {/* a reader can neither set nor lift the lock: the row is the managers' alone */}
+          {details && (canEdit || details.diagnosticsLockToggleable) && (
+            <DiagnosticsLockControl
+              locked={details.diagnosticsLocked ?? true}
+              // myRole bypasses to OWNER for a system admin unconditionally
+              // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+              // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
+              // grant never sees a button that is guaranteed to fail with 403.
+              canToggle={details.diagnosticsLockToggleable ?? false}
+              saving={diagnosticsLockSaving}
+              error={diagnosticsLockError}
+              onToggle={onToggleDiagnosticsLock}
+              onDismissError={onDismissDiagnosticsLockError}
+            />
+          )}
 
-        {!privateLibrary && (
-          <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
-        )}
+          {!privateLibrary && (
+            <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
+          )}
+        </Box>
       </Stack>
     </>
   )

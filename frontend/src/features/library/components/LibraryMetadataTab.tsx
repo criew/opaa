@@ -24,9 +24,16 @@ export default function LibraryMetadataTab({
   return (
     <Stack>
       <MetadataFillSection libraryId={libraryId} />
-      <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
-      {/* GET .../metadata/extraction-settings answers from MANAGER on only */}
-      {canEdit && <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />}
+      <LibraryMetadataFieldsSection
+        libraryId={libraryId}
+        canManageSchema={mayChange}
+        // GET .../metadata/extraction-settings answers from MANAGER on only
+        trailingRows={
+          canEdit && (
+            <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
+          )
+        }
+      />
     </Stack>
   )
 }

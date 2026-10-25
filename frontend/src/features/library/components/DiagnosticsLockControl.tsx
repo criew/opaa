@@ -1,7 +1,6 @@
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
-import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 
 interface DiagnosticsLockControlProps {
   locked: boolean
@@ -26,27 +25,22 @@ export default function DiagnosticsLockControl({
   onDismissError,
 }: DiagnosticsLockControlProps) {
   return (
-    <DetailSection
-      title="Diagnosesperre"
+    <ValueRow
+      title="Suchdiagnose"
+      value={locked ? 'Gesperrt für Suchdiagnosen anderer' : 'Nicht gesperrt'}
       action={
         canToggle ? (
-          <TextAction onClick={onToggle} disabled={saving}>
-            {locked ? 'Sperre lösen' : 'Sperre setzen'}
+          <TextAction onClick={onToggle} disabled={saving} context="Suchdiagnose">
+            {locked ? 'Entsperren' : 'Sperren'}
           </TextAction>
         ) : undefined
       }
     >
-      {/* the state in one word; whoever may change it finds the action at the edge */}
-      <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1 }}>
-        <Typography sx={{ fontSize: 13.5 }}>
-          {locked ? 'Gesperrt für Suchdiagnosen anderer' : 'Nicht gesperrt'}
-        </Typography>
-      </Box>
       {error && (
-        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+        <Alert severity="error" onClose={onDismissError}>
           {error}
         </Alert>
       )}
-    </DetailSection>
+    </ValueRow>
   )
 }

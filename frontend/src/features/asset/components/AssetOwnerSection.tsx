@@ -4,7 +4,8 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 import { SubjectPicker } from '@/features/principal'
 import {
   confirmExternalSubject,
@@ -102,50 +103,53 @@ export default function AssetOwnerSection({
   }
 
   return (
-    <DetailSection
+    <ValueRow
       title="Eigentümer"
+      value={
+        <>
+          <Box component="span" sx={{ fontWeight: 600 }}>
+            {ownerName ??
+              (ownerType === 'GROUP' ? 'Nicht benannte Gruppe' : 'Nicht benannte Person')}
+          </Box>
+          <Box component="span" sx={{ color: 'text.secondary' }}>
+            {` · ${kindLabel}`}
+          </Box>
+        </>
+      }
       action={
         canTransfer && !open ? (
-          <TextAction onClick={() => setOpen(true)}>Eigentum übergeben</TextAction>
+          <TextAction onClick={() => setOpen(true)} context="Eigentum">
+            Übergeben
+          </TextAction>
         ) : undefined
       }
     >
-      <Stack spacing={2}>
-        <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1 }}>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>
-            {ownerName ??
-              (ownerType === 'GROUP' ? 'Nicht benannte Gruppe' : 'Nicht benannte Person')}
+      {open && (
+        <Stack spacing={2}>
+          <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
+            Eigentum übergeben
           </Typography>
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{kindLabel}</Typography>
-        </Box>
-
-        {open && (
-          <Stack spacing={2} sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
-            <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600 }}>
-              Eigentum übergeben
-            </Typography>
-            {error && <Alert severity="error">{error}</Alert>}
-            <SubjectPicker value={subject} onChange={setSubject} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Eine Gruppe erhält die Rolle „Verwaltung" — die Eigentümerrolle selbst bleibt an eine
-              Person gebunden, damit sie nicht mit jedem neuen Mitglied mitwächst.
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => void handleTransfer()}
-                disabled={saving || transferring}
-              >
-                {saving ? 'Wird übergeben …' : 'Übergeben'}
-              </Button>
-              <Button size="small" onClick={reset} disabled={saving}>
-                Abbrechen
-              </Button>
-            </Stack>
+          {error && <Alert severity="error">{error}</Alert>}
+          <SubjectPicker value={subject} onChange={setSubject} />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Eine Gruppe erhält die Rolle „Verwaltung" — die Eigentümerrolle selbst bleibt an eine
+            Person gebunden, damit sie nicht mit jedem neuen Mitglied mitwächst.
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => void handleTransfer()}
+              disabled={saving || transferring}
+            >
+              {saving ? 'Wird übergeben …' : 'Übergeben'}
+            </Button>
+            <Button size="small" onClick={reset} disabled={saving}>
+              Abbrechen
+            </Button>
           </Stack>
-        )}
-      </Stack>
-    </DetailSection>
+        </Stack>
+      )}
+    </ValueRow>
   )
 }

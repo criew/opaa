@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import ListSearch from '@/shared/ui/ListSearch'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import ValueRow from '@/shared/ui/ValueRow'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -38,6 +39,8 @@ interface Props {
   /** Only a person with the management right at the library may change the schema. */
   canManageSchema: boolean
   onFieldsChanged?: () => void
+  /** Rows of single values that follow the context prefix under the same line (Extraktion). */
+  trailingRows?: ReactNode
 }
 
 /**
@@ -50,7 +53,9 @@ export default function LibraryMetadataFieldsSection({
   libraryId,
   canManageSchema,
   onFieldsChanged,
+  trailingRows,
 }: Props) {
+  const [prefixOpen, setPrefixOpen] = useState(false)
   const [fields, setFields] = useState<LibraryMetadataFieldResponse[]>([])
   const [coreContextPrefix, setCoreContextPrefix] = useState<CoreContextPrefixResponse | null>(null)
   const [awaitingRerun, setAwaitingRerun] = useState(0)
@@ -231,89 +236,199 @@ export default function LibraryMetadataFieldsSection({
   }
 
   return (
-    <DetailSection
-      title="Felder"
-      action={
-        canManageSchema ? (
-          <TextAction onClick={() => setCreateOpen(true)}>Feld anlegen</TextAction>
-        ) : undefined
-      }
-    >
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {awaitingRerun > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`} Der
-          Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
-          <Link component={RouterLink} to="/admin/search/index">
-            Suche &amp; Indexierung
-          </Link>{' '}
-          gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
-        </Alert>
-      )}
-      {pendingChanges.length > 0 && (
-        <Alert
-          severity="info"
-          sx={{ mb: 2 }}
-          action={
-            canManageSchema &&
-            (running ? (
-              <Button size="small" onClick={() => (paused.current = true)}>
-                Anhalten
-              </Button>
-            ) : (
-              <Button size="small" onClick={() => void runPendingChanges()}>
-                Fortsetzen
-              </Button>
-            ))
-          }
-        >
-          {pendingChanges.map((change) => (
-            <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
-              {describeChange(change, fields)}
-            </Typography>
-          ))}
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
-            Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
-          </Typography>
-        </Alert>
-      )}
-      <Box
-        component="ul"
-        sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
+    <>
+      <DetailSection
+        title="Felder"
+        action={
+          canManageSchema ? (
+            <TextAction onClick={() => setCreateOpen(true)}>Feld anlegen</TextAction>
+          ) : undefined
+        }
       >
-        {coreContextPrefix && (
-          <FieldRow
-            label="Kernfelder"
-            detail={
-              // a reader reads the choice; whoever manages the schema switches it
-              canManageSchema
-                ? 'Titel, Dokumentart, Datum/Stand'
-                : `Titel, Dokumentart, Datum/Stand · im Kontextpräfix: ${[
-                    'Titel',
-                    coreContextPrefix.documentType && 'Dokumentart',
-                    coreContextPrefix.documentDate && 'Datum/Stand',
-                  ]
-                    .filter(Boolean)
-                    .join(', ')}`
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {awaitingRerun > 0 && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`}{' '}
+            Der Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
+            <Link component={RouterLink} to="/admin/search/index">
+              Suche &amp; Indexierung
+            </Link>{' '}
+            gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
+          </Alert>
+        )}
+        {pendingChanges.length > 0 && (
+          <Alert
+            severity="info"
+            sx={{ mb: 2 }}
+            action={
+              canManageSchema &&
+              (running ? (
+                <Button size="small" onClick={() => (paused.current = true)}>
+                  Anhalten
+                </Button>
+              ) : (
+                <Button size="small" onClick={() => void runPendingChanges()}>
+                  Fortsetzen
+                </Button>
+              ))
             }
           >
-            {canManageSchema && (
+            {pendingChanges.map((change) => (
+              <Typography key={`${change.fieldKey}|${change.valueCode ?? ''}`} variant="body2">
+                {describeChange(change, fields)}
+              </Typography>
+            ))}
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Bis der Lauf durch ist, bleibt der alte Wert in der Werteliste und die betroffenen
+              Dokumente werden weiterhin gefunden. Neu gesetzt werden kann er nicht mehr.
+            </Typography>
+          </Alert>
+        )}
+        <Box
+          component="ul"
+          sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
+        >
+          {fields.map((field) => (
+            <FieldRow
+              key={field.fieldKey}
+              label={field.label}
+              detail={
+                <>
+                  {SHORT_TYPE[field.type]}
+                  {field.type === 'SELECT' && (
+                    <>
+                      {' · '}
+                      <TextAction
+                        onClick={() =>
+                          setValuesOpen((prev) => ({
+                            ...prev,
+                            [field.fieldKey]: !prev[field.fieldKey],
+                          }))
+                        }
+                        aria-expanded={Boolean(valuesOpen[field.fieldKey])}
+                        context={`von ${field.label}`}
+                      >
+                        {`${field.values.length} Werte`}
+                      </TextAction>
+                    </>
+                  )}
+                  {effectChips(field).length > 0 && ` · ${effectChips(field).join(', ')}`}
+                  {field.deletionPending && ' · wird gelöscht'}
+                </>
+              }
+              actions={
+                canManageSchema && !field.deletionPending ? (
+                  <TextAction onClick={() => setEditField(field)} context={`Feld ${field.label}`}>
+                    Ändern
+                  </TextAction>
+                ) : undefined
+              }
+            >
+              {field.type === 'SELECT' && valuesOpen[field.fieldKey] && (
+                <ValueList
+                  field={field}
+                  editable={canManageSchema && !field.deletionPending}
+                  onOpen={(code) => void openRemap(field, code)}
+                  addButton={
+                    <AddValueButton
+                      libraryId={libraryId}
+                      fieldKey={field.fieldKey}
+                      onAdded={() => void reload()}
+                      onError={setError}
+                    />
+                  }
+                />
+              )}
+            </FieldRow>
+          ))}
+        </Box>
+
+        <CreateFieldDialog
+          open={createOpen}
+          libraryId={libraryId}
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            setCreateOpen(false)
+            void reload()
+            onFieldsChanged?.()
+          }}
+          onError={setError}
+        />
+
+        <RemapValueDialog
+          libraryId={libraryId}
+          remapField={remapField}
+          remapCode={remapCode}
+          remapUsage={remapUsage}
+          remapTarget={remapTarget}
+          valueLabel={valueLabel}
+          onValueLabelChange={setValueLabel}
+          onRemapTargetChange={setRemapTarget}
+          onSaveValueLabel={() => void saveValueLabel()}
+          onConfirm={() => void confirmRemap()}
+          onClose={() => setRemapField(null)}
+        />
+
+        {editField && (
+          <EditFieldDialog
+            key={editField.fieldKey}
+            libraryId={libraryId}
+            field={editField}
+            onClose={() => setEditField(null)}
+            onSaved={() => {
+              setEditField(null)
+              void reload()
+              onFieldsChanged?.()
+            }}
+            onError={setError}
+            onDelete={() => {
+              const target = editField
+              setEditField(null)
+              void openDelete(target)
+            }}
+          />
+        )}
+
+        <DeleteFieldDialog
+          libraryId={libraryId}
+          deleteField={deleteField}
+          deleteUsage={deleteUsage}
+          onConfirm={() => void confirmDelete()}
+          onClose={() => setDeleteField(null)}
+        />
+      </DetailSection>
+      {/* the single values as rows of the Reiter „Quelle“ under one line */}
+      <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+        {coreContextPrefix && (
+          <ValueRow
+            title="Kontextpräfix"
+            value={[
+              'Titel',
+              coreContextPrefix.documentType && 'Dokumentart',
+              coreContextPrefix.documentDate && 'Datum/Stand',
+            ]
+              .filter(Boolean)
+              .join(', ')}
+            action={
+              canManageSchema ? (
+                <TextAction
+                  onClick={() => setPrefixOpen((v) => !v)}
+                  aria-expanded={prefixOpen}
+                  context="Kontextpräfix"
+                >
+                  {prefixOpen ? 'Schließen' : 'Ändern'}
+                </TextAction>
+              ) : undefined
+            }
+          >
+            {prefixOpen && canManageSchema && (
               <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  columnGap: 2,
-                }}
+                sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, columnGap: 2 }}
               >
-                <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                  im Kontextpräfix
-                </Typography>
                 <CoreContextPrefixSwitch
                   libraryId={libraryId}
                   label="Dokumentart"
@@ -336,117 +451,11 @@ export default function LibraryMetadataFieldsSection({
                 />
               </Box>
             )}
-          </FieldRow>
+          </ValueRow>
         )}
-        {fields.map((field) => (
-          <FieldRow
-            key={field.fieldKey}
-            label={field.label}
-            detail={
-              <>
-                {SHORT_TYPE[field.type]}
-                {field.type === 'SELECT' && (
-                  <>
-                    {' · '}
-                    <TextAction
-                      onClick={() =>
-                        setValuesOpen((prev) => ({
-                          ...prev,
-                          [field.fieldKey]: !prev[field.fieldKey],
-                        }))
-                      }
-                      aria-expanded={Boolean(valuesOpen[field.fieldKey])}
-                      context={`von ${field.label}`}
-                    >
-                      {`${field.values.length} Werte`}
-                    </TextAction>
-                  </>
-                )}
-                {effectChips(field).length > 0 && ` · ${effectChips(field).join(', ')}`}
-                {field.deletionPending && ' · wird gelöscht'}
-              </>
-            }
-            actions={
-              canManageSchema && !field.deletionPending ? (
-                <TextAction onClick={() => setEditField(field)} context={`Feld ${field.label}`}>
-                  Ändern
-                </TextAction>
-              ) : undefined
-            }
-          >
-            {field.type === 'SELECT' && valuesOpen[field.fieldKey] && (
-              <ValueList
-                field={field}
-                editable={canManageSchema && !field.deletionPending}
-                onOpen={(code) => void openRemap(field, code)}
-                addButton={
-                  <AddValueButton
-                    libraryId={libraryId}
-                    fieldKey={field.fieldKey}
-                    onAdded={() => void reload()}
-                    onError={setError}
-                  />
-                }
-              />
-            )}
-          </FieldRow>
-        ))}
+        {trailingRows}
       </Box>
-
-      <CreateFieldDialog
-        open={createOpen}
-        libraryId={libraryId}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => {
-          setCreateOpen(false)
-          void reload()
-          onFieldsChanged?.()
-        }}
-        onError={setError}
-      />
-
-      <RemapValueDialog
-        libraryId={libraryId}
-        remapField={remapField}
-        remapCode={remapCode}
-        remapUsage={remapUsage}
-        remapTarget={remapTarget}
-        valueLabel={valueLabel}
-        onValueLabelChange={setValueLabel}
-        onRemapTargetChange={setRemapTarget}
-        onSaveValueLabel={() => void saveValueLabel()}
-        onConfirm={() => void confirmRemap()}
-        onClose={() => setRemapField(null)}
-      />
-
-      {editField && (
-        <EditFieldDialog
-          key={editField.fieldKey}
-          libraryId={libraryId}
-          field={editField}
-          onClose={() => setEditField(null)}
-          onSaved={() => {
-            setEditField(null)
-            void reload()
-            onFieldsChanged?.()
-          }}
-          onError={setError}
-          onDelete={() => {
-            const target = editField
-            setEditField(null)
-            void openDelete(target)
-          }}
-        />
-      )}
-
-      <DeleteFieldDialog
-        libraryId={libraryId}
-        deleteField={deleteField}
-        deleteUsage={deleteUsage}
-        onConfirm={() => void confirmDelete()}
-        onClose={() => setDeleteField(null)}
-      />
-    </DetailSection>
+    </>
   )
 }
 
