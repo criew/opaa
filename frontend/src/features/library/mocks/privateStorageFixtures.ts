@@ -2,7 +2,7 @@ import type { PrivateStorageSummaryResponse, PrivateStorageUsageResponse } from 
 
 const GIB = 1024 * 1024 * 1024
 
-/** The configured default limit across all private libraries of a person. */
+/** The factory default limit across all private libraries of a person. */
 export const MOCK_DEFAULT_PRIVATE_QUOTA_BYTES = 10 * GIB
 
 /** Use of the signed-in person across her private libraries. */

@@ -157,10 +157,10 @@ function QuotaForm({
   async function handleReset() {
     if (busy) return
     const confirmed = await confirmAction({
-      question: `Speicherkontingent privater Bibliotheken zur Vorgabe von ${sizeOrUnlimited(current.defaultQuotaBytes)} zurückkehren?`,
+      question: `Speicherkontingent privater Bibliotheken zur Werkseinstellung von ${sizeOrUnlimited(current.defaultQuotaBytes)} zurückkehren?`,
       consequence:
-        'Es gilt dann wieder die Vorgabe der Installation. Bereits Gespeichertes bleibt. Die Änderung steht im Revisionsprotokoll.',
-      confirmLabel: 'Vorgabe wiederherstellen',
+        'Es gilt dann wieder die Werkseinstellung. Bereits Gespeichertes bleibt. Die Änderung steht im Revisionsprotokoll.',
+      confirmLabel: 'Werkseinstellung wiederherstellen',
       tone: 'caution',
     })
     if (!confirmed) return
@@ -217,7 +217,7 @@ function QuotaForm({
             onClick={() => void handleReset()}
             sx={{ mt: { sm: 0.25 } }}
           >
-            Vorgabe wiederherstellen
+            Werkseinstellung wiederherstellen
           </Button>
         )}
       </Stack>
@@ -354,8 +354,8 @@ export default function PrivateStorageSection() {
         <>
           <Typography variant="body2" sx={{ mb: 2 }} data-testid="private-storage-quota-current">
             {quota.overridden
-              ? `Es gilt eine eigene Grenze: ${limitLabel(quota.quotaBytes)} (Vorgabe der Installation: ${sizeOrUnlimited(quota.defaultQuotaBytes)}).`
-              : `Es gilt die Vorgabe der Installation: ${limitLabel(quota.quotaBytes)}.`}
+              ? `Es gilt eine eigene Grenze: ${limitLabel(quota.quotaBytes)} (Werkseinstellung: ${sizeOrUnlimited(quota.defaultQuotaBytes)}).`
+              : `Es gilt die Werkseinstellung: ${limitLabel(quota.quotaBytes)}.`}
           </Typography>
           <QuotaForm
             key={`${quota.quotaBytes}-${quota.overridden}`}

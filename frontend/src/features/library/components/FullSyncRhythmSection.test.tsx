@@ -84,9 +84,7 @@ describe('FullSyncRhythmSection', () => {
     )
     await answerConfirm(user, question, 'Rhythmus ändern')
 
-    await waitFor(() =>
-      expect(sent).toEqual([{ type: 'CONFLUENCE', body: { intervalDays: 14 } }]),
-    )
+    await waitFor(() => expect(sent).toEqual([{ type: 'CONFLUENCE', body: { intervalDays: 14 } }]))
     expect(
       await within(row('Confluence')).findByText('Eigener Wert (Werkseinstellung: 7 Tage)'),
     ).toBeInTheDocument()

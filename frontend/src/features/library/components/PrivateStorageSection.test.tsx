@@ -166,7 +166,9 @@ describe('PrivateStorageSection – Grenze (#2276)', () => {
     const user = userEvent.setup()
     renderWithProviders(<PrivateStorageSection />)
 
-    await user.click(await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Werkseinstellung wiederherstellen' }),
+    )
     await answerConfirm(
       user,
       /zur Werkseinstellung von 10 GB zurückkehren\?/,
