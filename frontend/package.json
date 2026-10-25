@@ -7,6 +7,7 @@
     "generate:api-types": "node scripts/bundle-openapi.mjs ../opaa-api/src/main/openapi build/openapi/opaa-api.yaml && openapi-typescript build/openapi/opaa-api.yaml -o src/shared/api/generated/api.ts && prettier --write src/shared/api/generated/api.ts",
     "dev": "vite",
     "build": "pnpm run generate:api-types && tsc -b && vite build",
+    "build:prototype": "pnpm run generate:api-types && tsc -b && vite build --mode prototype --outDir dist-prototype",
     "lint": "eslint .",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",

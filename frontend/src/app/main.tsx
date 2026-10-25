@@ -15,16 +15,23 @@ import { installPreloadErrorReload } from './preloadErrorReload'
 
 installPreloadErrorReload()
 
-async function enableMocking() {
+/** Starts the mocks if enabled; resolves to whether this document renders the app. */
+async function enableMocking(): Promise<boolean> {
   if (!import.meta.env.VITE_ENABLE_MOCKS) {
-    return
+    return true
+  }
+  if (import.meta.env.VITE_UI_LAB_PROTOTYPE) {
+    const { startPrototype } = await import('./mocks/prototype/startPrototype')
+    return startPrototype()
   }
   const { startMockWorker } = await import('./mocks/browser')
-  return startMockWorker()
+  await startMockWorker()
+  return true
 }
 
 enableMocking()
-  .then(() => {
+  .then((renderApp) => {
+    if (!renderApp) return
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
         <App />
