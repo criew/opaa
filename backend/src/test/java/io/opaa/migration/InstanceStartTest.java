@@ -32,20 +32,27 @@ import org.junit.jupiter.api.Test;
  * The application as separate processes against one database, the way a rolling update starts it:
  * the migration mode migrates and ends with exit code 0, the await mode ends only after it, an
  * instance without migration starts on the migrated database, and two instances that cold-start
- * together against an empty database both start - with the emergency account reset exactly once and
- * only a working password in their logs. Real processes rather than contexts in this JVM: each
- * brings its own heap, its own exit code and its own connections, as two pods do.
+ * together against an empty database both start - with the emergency account reset exactly once,
+ * only a working password in their logs, and {@code vector_store} created once with the dimension
+ * of the probe embedding (ADR-0060, Entscheidung 10). Real processes rather than contexts in this
+ * JVM: each brings its own heap, its own exit code and its own connections, as two pods do.
  */
 class InstanceStartTest extends AbstractMigrationTest {
 
   private static final long START_SECONDS = 240;
   private static final String STARTED = "Started OpaaApplication";
+
+  /** The vector size of the stub embedding endpoint, far from any default. */
+  private static final int PROBE_DIMENSIONS = 8;
+
   private static final Pattern PASSWORD_LINE = Pattern.compile("Passwort:\\s+(\\S+)");
   private static final String ADMIN_EMAIL = "systemverwaltung@instances.test.example";
 
   private final List<Instance> instances = Collections.synchronizedList(new ArrayList<>());
 
   private Path uploads;
+
+  private HttpServer embeddingEndpoint;
 
   @Override
   protected List<String> baseFixtureMigrations() {
@@ -59,6 +66,10 @@ class InstanceStartTest extends AbstractMigrationTest {
       if (!instance.process().waitFor(30, TimeUnit.SECONDS)) {
         instance.process().destroyForcibly();
       }
+    }
+    if (embeddingEndpoint != null) {
+      embeddingEndpoint.stop(0);
+      embeddingEndpoint = null;
     }
   }
 
@@ -74,12 +85,15 @@ class InstanceStartTest extends AbstractMigrationTest {
     assertThat(migration.log()).contains("Started DatabaseMigrationMode").doesNotContain(STARTED);
     long applied = count("SELECT count(*) FROM flyway_schema_history");
     assertThat(applied).isPositive();
-    assertThat(count("SELECT count(*) FROM pg_class WHERE relname = 'vector_store'")).isOne();
+    assertThat(count("SELECT count(*) FROM pg_class WHERE relname = 'vector_store'"))
+        .as("the migration leaves the vector table to the embedding model")
+        .isZero();
 
     Instance instance = start("instance", Map.of("SPRING_FLYWAY_ENABLED", "false"));
 
     assertThat(instance.started().get(START_SECONDS, TimeUnit.SECONDS)).as(instance.log()).isTrue();
     assertThat(count("SELECT count(*) FROM flyway_schema_history")).isEqualTo(applied);
+    assertThat(vectorDimensions()).as(instance.log()).isEqualTo(PROBE_DIMENSIONS);
   }
 
   @Test
@@ -117,6 +131,8 @@ class InstanceStartTest extends AbstractMigrationTest {
 
     assertThat(count("SELECT count(*) FROM audit_log WHERE event_type = 'LOCAL_ADMIN_RESET'"))
         .isOne();
+    assertThat(count("SELECT count(*) FROM embedding_model")).isOne();
+    assertThat(vectorDimensions()).isEqualTo(PROBE_DIMENSIONS);
     List<String> printed = new ArrayList<>();
     for (Instance instance : List.of(first, second)) {
       Matcher password = PASSWORD_LINE.matcher(instance.log());
@@ -258,7 +274,7 @@ class InstanceStartTest extends AbstractMigrationTest {
                 "--opaa.directory-sync.schedule-enabled=false",
                 "--opaa.upload.storage-path=" + uploads,
                 "--spring.ai.openai.chat.base-url=http://chat-model.invalid/v1",
-                "--spring.ai.openai.embedding.base-url=http://embedding-model.invalid/v1",
+                "--spring.ai.openai.embedding.base-url=" + embeddingBaseUrl(),
                 "--spring.main.banner-mode=off"));
     ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
     builder
@@ -293,6 +309,41 @@ class InstanceStartTest extends AbstractMigrationTest {
     Instance instance = new Instance(process, log, started);
     instances.add(instance);
     return instance;
+  }
+
+  /** The declared size of the embedding column, or {@code -2} without a vector table. */
+  private long vectorDimensions() throws SQLException {
+    return count(
+        "SELECT coalesce((SELECT atttypmod FROM pg_attribute WHERE attrelid ="
+            + " to_regclass('vector_store') AND attname = 'embedding'), -2)");
+  }
+
+  /**
+   * An OpenAI-compatible embedding endpoint in this JVM, answering every request with one vector of
+   * {@value #PROBE_DIMENSIONS} dimensions per input - what the probe embedding of a start sees.
+   */
+  private String embeddingBaseUrl() throws IOException {
+    if (embeddingEndpoint == null) {
+      embeddingEndpoint =
+          HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+      embeddingEndpoint.createContext(
+          "/v1/embeddings",
+          exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] body =
+                ("{\"object\":\"list\",\"model\":\"stub\",\"data\":[{\"object\":\"embedding\","
+                        + "\"index\":0,\"embedding\":[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]}],"
+                        + "\"usage\":{\"prompt_tokens\":1,\"total_tokens\":1}}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+              out.write(body);
+            }
+          });
+      embeddingEndpoint.start();
+    }
+    return "http://127.0.0.1:" + embeddingEndpoint.getAddress().getPort() + "/v1";
   }
 
   private static boolean logReaches(Instance instance, String text) throws InterruptedException {

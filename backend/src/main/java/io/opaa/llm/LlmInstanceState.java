@@ -36,7 +36,7 @@ class LlmInstanceState implements InstanceStateSource {
   public Map<String, Boolean> dataFlows(UUID organizationId) {
     return Map.of(
         "chat-model", !models.findAllByActiveTrue().isEmpty(),
-        "embedding-model", true,
+        "embedding-model", embedding.getEmbeddingInfo().installed(),
         "rerank-model", sends(rerank.currentStatus().state()),
         "transcription-model", sends(transcription.currentStatus().state()));
   }
@@ -54,7 +54,9 @@ class LlmInstanceState implements InstanceStateSource {
               model.isActive()));
     }
     EmbeddingInfo info = embedding.getEmbeddingInfo();
-    providers.add(new ModelProvider("EMBEDDING", null, info.baseUrl(), info.model(), true));
+    if (info.installed()) {
+      providers.add(new ModelProvider("EMBEDDING", null, info.baseUrl(), info.model(), true));
+    }
     RerankRoleStatus rerankStatus = rerank.currentStatus();
     providers.add(
         new ModelProvider(

@@ -251,6 +251,8 @@ voreinstellungen#bereich-spaces
 voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
 voreinstellungen#einstellungen
+voreinstellungen#embedding-model-base-url
+voreinstellungen#embedding-model-model-identifier
 voreinstellungen#external-access-settings-token-max-lifetime-days
 voreinstellungen#io-opaa-account-localtokencleanupservice-retention
 voreinstellungen#io-opaa-audit-auditincidentscopegrant-usable-window
@@ -331,8 +333,6 @@ voreinstellungen#self-disclosure-settings-enabled
 voreinstellungen#spring-ai-openai-base-url
 voreinstellungen#spring-ai-openai-chat-base-url
 voreinstellungen#spring-ai-openai-chat-model
-voreinstellungen#spring-ai-openai-embedding-base-url
-voreinstellungen#spring-ai-openai-embedding-model
 voreinstellungen#system-prompts
 fristen
 fristen#audit-retention-settings-retention-months

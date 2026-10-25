@@ -25,7 +25,9 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
  * {@link MigrationSchema} reads the migrations without a database, so the compliance guard runs in
  * every unit test run. This test holds its reading against the catalog of a database the migrations
  * built - the same tables, partitions counted as their parent, and the same columns - and the
- * migrations' {@code vector_store} against the table Spring AI creates.
+ * {@code vector_store} of the installation against the table Spring AI creates. The migrations of a
+ * fresh database leave no {@code vector_store}; the installation creates it ({@link
+ * Migrations#createVectorTable}), and the reading counts it as present.
  */
 class MigrationSchemaParityTest extends AbstractMigrationTest {
 
@@ -42,22 +44,23 @@ class MigrationSchemaParityTest extends AbstractMigrationTest {
         .forEach((table, columns) -> read.put(table, new TreeSet<>(columns.columns().keySet())));
 
     try (Connection connection = connect()) {
+      Migrations.createVectorTable(connection, connection.getSchema(), 1024);
       assertThat(read).isEqualTo(catalog(connection));
     }
   }
 
   /**
-   * The knowledge migration creates {@code vector_store} with the columns and types Spring AI's
-   * {@code PgVectorStore} creates and reads, built as application.yml configures {@code
+   * The installation creates {@code vector_store} with the columns and types Spring AI's {@code
+   * PgVectorStore} creates and reads, built as application.yml configures {@code
    * spring.ai.vectorstore.pgvector}: a table Spring AI created on an older installation and one the
-   * migration creates are the same to the application.
+   * installation creates are the same to the application.
    */
   @Test
-  void theMigrationCreatesVectorStoreAsSpringAiDoes() throws SQLException {
+  void theInstallationCreatesVectorStoreAsSpringAiDoes() throws SQLException {
     Map<String, String> springAi;
     try (Connection sibling = connectToSiblingDatabase();
         Statement statement = sibling.createStatement()) {
-      statement.execute("DROP TABLE vector_store");
+      statement.execute("DROP TABLE IF EXISTS vector_store");
       PgVectorStore.builder(
               new JdbcTemplate(new SingleConnectionDataSource(sibling, true)),
               mock(EmbeddingModel.class))
@@ -72,6 +75,7 @@ class MigrationSchemaParityTest extends AbstractMigrationTest {
     }
 
     try (Connection connection = connect()) {
+      Migrations.createVectorTable(connection, connection.getSchema(), 1024);
       assertThat(vectorStoreColumns(connection))
           .containsOnlyKeys("id", "content", "metadata", "embedding")
           .isEqualTo(springAi);
