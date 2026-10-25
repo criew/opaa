@@ -37,19 +37,20 @@ function parseDays(draft: string): number | null {
 interface RhythmRowProps {
   rhythm: FullSyncRhythmResponse
   onSaved: (saved: FullSyncRhythmResponse) => void
-  onError: (message: string | null) => void
 }
 
-function RhythmRow({ rhythm, onSaved, onError }: RhythmRowProps) {
+/** One source type; a failed save is told at its own field and kept until the next edit. */
+function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
   const [draft, setDraft] = useState(String(rhythm.intervalDays))
   const [busy, setBusy] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const name = rhythm.displayName
   const days = parseDays(draft)
   const changed = days !== null && days !== rhythm.intervalDays
 
   async function save(next: number | null) {
     setBusy(true)
-    onError(null)
+    setSaveError(null)
     try {
       const saved = await updateFullSyncRhythm(rhythm.sourceType, next)
       onSaved(saved)
@@ -58,7 +59,9 @@ function RhythmRow({ rhythm, onSaved, onError }: RhythmRowProps) {
         'success',
       )
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : 'Der Rhythmus konnte nicht gespeichert werden.')
+      setSaveError(
+        err instanceof Error ? err.message : 'Der Rhythmus konnte nicht gespeichert werden.',
+      )
     } finally {
       setBusy(false)
     }
@@ -107,10 +110,10 @@ function RhythmRow({ rhythm, onSaved, onError }: RhythmRowProps) {
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value)
-              onError(null)
+              setSaveError(null)
             }}
-            error={days === null}
-            helperText={days === null ? RANGE_ERROR : undefined}
+            error={days === null || saveError !== null}
+            helperText={days === null ? RANGE_ERROR : (saveError ?? undefined)}
             slotProps={{
               htmlInput: {
                 inputMode: 'numeric',
@@ -164,8 +167,6 @@ function RhythmRow({ rhythm, onSaved, onError }: RhythmRowProps) {
 export default function FullSyncRhythmSection() {
   const [rhythms, setRhythms] = useState<FullSyncRhythmResponse[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
-
   const load = useCallback(
     () =>
       listFullSyncRhythms()
@@ -216,32 +217,24 @@ export default function FullSyncRhythmSection() {
           Vollabgleich-Rhythmus wird geladen …
         </Typography>
       ) : (
-        <>
-          <Table size="small" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>Quellart</TableCell>
-                <TableCell>Vollabgleich alle … Tage</TableCell>
-                <TableCell>Gilt</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rhythms.map((rhythm) => (
-                <RhythmRow
-                  key={`${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`}
-                  rhythm={rhythm}
-                  onSaved={replace}
-                  onError={setSaveError}
-                />
-              ))}
-            </TableBody>
-          </Table>
-          {saveError && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {saveError}
-            </Alert>
-          )}
-        </>
+        <Table size="small" aria-label="Vollabgleich-Rhythmus je Quellart" sx={{ maxWidth: 760 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Quellart</TableCell>
+              <TableCell>Vollabgleich alle … Tage</TableCell>
+              <TableCell>Gilt</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rhythms.map((rhythm) => (
+              <RhythmRow
+                key={`${rhythm.sourceType}-${rhythm.intervalDays}-${rhythm.overridden}`}
+                rhythm={rhythm}
+                onSaved={replace}
+              />
+            ))}
+          </TableBody>
+        </Table>
       )}
     </PageSection>
   )

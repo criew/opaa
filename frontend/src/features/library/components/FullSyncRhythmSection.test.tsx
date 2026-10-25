@@ -128,6 +128,45 @@ describe('FullSyncRhythmSection', () => {
     expect(sent).toEqual([])
   })
 
+  it('tells a refused save at the field of its own row and keeps it there', async () => {
+    list([confluence, sharePoint])
+    server.use(
+      http.put(`${LIST}/CONFLUENCE`, () =>
+        HttpResponse.json(
+          { error: 'Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen', status: 400 },
+          { status: 400 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<FullSyncRhythmSection />)
+
+    const field = await screen.findByLabelText('Vollabgleich von Confluence alle … Tage')
+    await user.clear(field)
+    await user.type(field, '14')
+    await user.click(screen.getByRole('button', { name: 'Rhythmus von Confluence speichern' }))
+    await answerConfirm(
+      user,
+      'Vollabgleich-Rhythmus von Confluence auf 14 Tage ändern?',
+      'Rhythmus ändern',
+    )
+
+    expect(
+      await within(row('Confluence')).findByText(
+        'Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen',
+      ),
+    ).toBeInTheDocument()
+    const other = screen.getByLabelText('Vollabgleich von SharePoint alle … Tage')
+    await user.clear(other)
+    await user.type(other, '4')
+    expect(
+      within(row('Confluence')).getByText(
+        'Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen',
+      ),
+    ).toBeInTheDocument()
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('offers a retry when the rhythms cannot be loaded', async () => {
     let calls = 0
     server.use(
