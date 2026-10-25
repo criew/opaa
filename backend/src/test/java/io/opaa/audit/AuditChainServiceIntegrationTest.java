@@ -43,7 +43,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The checksum chain against the real schema (ADR-0058, Entscheidung 4): a run chains and seals an
+ * The checksum chain against the real schema (ADR-0059, Entscheidung 4): a run chains and seals an
  * ended month and writes the seal entry with the head hash; a second run writes nothing twice; the
  * verification tells an intact month from one whose entry was changed, removed or inserted after
  * the fact, in whichever segment; the chain follows the partition bounds, not the session time

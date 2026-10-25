@@ -38,7 +38,7 @@ Module über den Port `PersonalAuditObjects` melden. Dieser Port setzt schon bei
 übergibt; die Ausleitung maskiert danach im SQL und fragt den Port für jeden Stapel noch einmal. Fragen zu einer Person klärt die Behörde über die anlassbezogene Klärung in OPAA.
 
 Die eine Nutzlast, die hinausgeht, ist das Monatssiegel der Prüfsummenkette
-([ADR-0058](0058-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md),
+([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md),
 Entscheidung 4): Mit dem Eintrag `AUDIT_LOG_MONTH_SEALED` gehen Monat, Anzahl der verketteten
 Einträge und Kopf-Prüfsumme als eigene CEF-Felder (`cs5`, `cn2`, `cs6`) hinaus, gelesen aus
 `audit_chain_seals` über die Kennung des Eintrags, nicht aus `after`. So liegt das Siegel außerhalb
@@ -52,7 +52,7 @@ Klärung, Speicherfrist im SIEM).
 ### 3. Vollständiges Lesen nur, wenn eingeschaltet
 
 `SiemExportService` liest `audit_log` der Reihe nach, mit genau den Spalten aus Entscheidung 2. Es ist
-neben den Abfragewegen der Revision, der Selbstauskunft und der Prüfsummenkette (ADR-0058,
+neben den Abfragewegen der Revision, der Selbstauskunft und der Prüfsummenkette (ADR-0059,
 Entscheidung 4) der einzige Leser, existiert nur bei `opaa.siem-export.enabled=true`, wird nur vom
 Zeitplan aufgerufen und nennt in seinem SQL keine Spalte mit Personenbezug, Begründung oder Nutzlast
 (`AuditLogReaderStructureTest`). Gelesen wird über

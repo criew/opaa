@@ -26,7 +26,7 @@ Branding, Mailversand, Benachrichtigungen und Selbstauskunft (Kategorien über `
   Port `LocalAccountsSwitch`; die Verwaltung der Anbieter liegt in `io.opaa.directory` (rights).
 - **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben über `AuditLogService#record`/`AuditEventRecorder`, gelesen
   nur über `AuditQueryService`, `AuditLogSelfDisclosureExporter` (Person selbst), eingeschaltet `SiemExportService`
-  (ADR-0055) und `AuditChainService` (Prüfsummenkette, ADR-0058). `AuditLogRepository` ist package-private; das
+  (ADR-0055) und `AuditChainService` (Prüfsummenkette, ADR-0059). `AuditLogRepository` ist package-private; das
   Anwendungskonto hat auf `audit_log` und den Kettentabellen nur `INSERT` und `SELECT`, gelöscht wird nur monatsweise.
 - **Ein Sendeweg:** `MailService` meldet das Ergebnis, statt zu werfen; neue Anlässe bringen Vorlagen, keinen
   zweiten Weg. Ohne Wartenden geht die Mail per `enqueue` in der fachlichen Transaktion in die Outbox (ADR-0053).

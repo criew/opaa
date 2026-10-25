@@ -46,7 +46,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The checksum chain of the audit log, one chain per monthly partition (ADR-0058, Entscheidung 4):
+ * The checksum chain of the audit log, one chain per monthly partition (ADR-0059, Entscheidung 4):
  * {@link #run()} chains settled entries in the order {@code (recorded_at, event_id)} with a
  * checkpoint per batch and seals an ended month together with its {@code AUDIT_LOG_MONTH_SEALED}
  * entry; {@link #verify} recomputes a month against checkpoints and seal. A reader of every column

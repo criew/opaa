@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The canonical form and the chaining of {@link AuditChainHasher} (ADR-0058, Entscheidung 4): every
+ * The canonical form and the chaining of {@link AuditChainHasher} (ADR-0059, Entscheidung 4): every
  * column counts, NULL and the empty string differ, the order of the entries matters and a chain of
  * the same entries over the same start yields the same head.
  */

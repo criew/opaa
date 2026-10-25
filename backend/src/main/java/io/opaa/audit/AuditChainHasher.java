@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * One procedure of the checksum chain (ADR-0058, Entscheidung 4), chosen by its name: {@code h0 =
+ * One procedure of the checksum chain (ADR-0059, Entscheidung 4), chosen by its name: {@code h0 =
  * SHA-256(name || LF || "YYYY-MM")}, {@code h_i = SHA-256(h_(i-1) || canonical(entry_i))} over
  * every column of {@code audit_log} in the order of {@link #COLUMNS}. A procedure never changes
  * once a month was sealed under it; a new column is a new procedure, chained from the next month

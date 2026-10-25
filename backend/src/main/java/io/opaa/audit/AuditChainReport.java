@@ -5,7 +5,7 @@ import java.time.YearMonth;
 import java.util.UUID;
 
 /**
- * The result of verifying the checksum chain of one month (ADR-0058, Entscheidung 5): whether the
+ * The result of verifying the checksum chain of one month (ADR-0059, Entscheidung 5): whether the
  * recomputed chain matches every checkpoint and the seal, how many entries the chain head covers
  * and how many lie above it, and, on a mismatch, the first segment that no longer fits. Carries no
  * content of the log.

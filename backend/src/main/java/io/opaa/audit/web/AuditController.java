@@ -190,7 +190,7 @@ public class AuditController {
   }
 
   /**
-   * The verification of the checksum chain of one month (ADR-0058, Entscheidung 5). {@code month}
+   * The verification of the checksum chain of one month (ADR-0059, Entscheidung 5). {@code month}
    * is bound as text so that a malformed value reaches {@link AuditQueryService} and its rejection
    * is logged, like a missing {@code reason}.
    */

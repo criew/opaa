@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
  * The readers of {@code audit_log} beside the funnel of {@link AuditFunnelStructureTest}, which
  * cannot see raw SQL: {@link AuditLogSelfDisclosureExporter}, {@link SiemExportService} and {@link
  * AuditChainService} name the table in a query, nothing else; the chain reads every column because
- * it hashes every column, and hands none of them out (ADR-0058, Entscheidung 4). No production
+ * it hashes every column, and hands none of them out (ADR-0059, Entscheidung 4). No production
  * class refers to the self-disclosure exporter, and only {@link SelfDisclosureService} - which
  * passes the signed-in person, never a parameter - calls an exporter. The SIEM export exists only
  * while switched on, is driven only by its schedule and never names a pseudonym, reason or payload

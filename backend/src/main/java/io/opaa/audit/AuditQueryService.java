@@ -272,7 +272,7 @@ public class AuditQueryService {
   }
 
   /**
-   * Access path "Kettenprüfung" (ADR-0058, Entscheidung 5): recomputes the checksum chain of one
+   * Access path "Kettenprüfung" (ADR-0059, Entscheidung 5): recomputes the checksum chain of one
    * month and compares it with its checkpoints and seal. Returns no entry of the log, only the
    * result; it is nevertheless an access to the log and is logged like every other one. The chain
    * spans the log of every organization, so only an auditor of the default organization may ask;

@@ -432,7 +432,7 @@ und gelesen werden. Die Revision prüft einen Monat über einen eigenen Abfragew
 Kette zu Kontrollpunkten und Siegel passt, und nennt bei einem Bruch die erste Abweichung mit
 Position, Art (geändert oder eingefügt/entfernt) und dem Zeitsegment zwischen den Kontrollpunkten,
 ohne einen Inhalt herauszugeben
-([ADR-0058](../decisions/0058-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md)).
+([ADR-0059](../decisions/0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md)).
 
 Die Grenze gehört weiter ausgesprochen:
 

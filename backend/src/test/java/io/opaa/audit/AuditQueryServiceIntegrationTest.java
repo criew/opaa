@@ -903,7 +903,7 @@ class AuditQueryServiceIntegrationTest {
 
   /**
    * The verification of the checksum chain goes through the same funnel as every read: it is open
-   * to the revision of the default organization only (ADR-0058, Entscheidung 5) because its counts
+   * to the revision of the default organization only (ADR-0059, Entscheidung 5) because its counts
    * cover every organization, it needs an Anlass, rejects a malformed month, and every attempt
    * leaves one {@code AUDIT_LOG_ACCESSED} entry with the access path and the month.
    */

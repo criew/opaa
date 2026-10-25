@@ -160,7 +160,7 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   }
 
   /**
-   * The checkpoints and seals of the checksum chain follow the model of the log itself (ADR-0058,
+   * The checkpoints and seals of the checksum chain follow the model of the log itself (ADR-0059,
    * Entscheidung 4): the application appends and reads, and may neither move a chain head back nor
    * remove a seal.
    */

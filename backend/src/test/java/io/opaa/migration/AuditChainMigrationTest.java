@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The delta migration of the checksum chain (ADR-0058, Entscheidung 4) on an installation that has
+ * The delta migration of the checksum chain (ADR-0059, Entscheidung 4) on an installation that has
  * everything else: the two chain tables belong to {@code opaa_audit_owner} and leave the
  * application account INSERT and SELECT only (ADR-0015), and the retention function takes the
  * checkpoints and the seal of a partition it drops with it, and only those.

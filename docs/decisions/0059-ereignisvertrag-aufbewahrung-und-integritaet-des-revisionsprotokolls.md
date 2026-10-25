@@ -1,4 +1,4 @@
-# ADR-0058: Ereignisvertrag, Aufbewahrung und Integrität des Revisionsprotokolls
+# ADR-0059: Ereignisvertrag, Aufbewahrung und Integrität des Revisionsprotokolls
 
 ## Status
 

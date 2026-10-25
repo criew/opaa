@@ -1,6 +1,6 @@
 SET LOCAL lock_timeout = '5s';
 
--- Checksum chain of the audit log, one chain per monthly partition (ADR-0058, Entscheidung 4).
+-- Checksum chain of the audit log, one chain per monthly partition (ADR-0059, Entscheidung 4).
 -- A checkpoint records how far the chain run got: the number of entries chained from the start of
 -- the month, the key of the last chained entry and the head hash. The primary key is the marker
 -- against a second run writing the same position twice (ADR-0053, Entscheidung 7).

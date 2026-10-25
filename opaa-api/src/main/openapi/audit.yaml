@@ -150,7 +150,7 @@ paths:
       tags: [audit]
       summary: >
         Verifies the checksum chain of one month of the audit log (AUDITOR role required,
-        ADR-0058 Entscheidung 4).
+        ADR-0059 Entscheidung 4).
       description: >
         Recomputes the chain of the month from the stored entries and compares it with every
         checkpoint the chain run has written and, for a closed month, with the seal. A changed,
