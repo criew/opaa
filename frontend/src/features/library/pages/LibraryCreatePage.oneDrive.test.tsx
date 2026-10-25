@@ -261,4 +261,104 @@ describe('LibraryCreatePage - OneDrive (#2467)', () => {
     expect(tested).toEqual([])
     expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
   }, 20000)
+
+  describe('a change of Zugang', () => {
+    const SECOND: ConnectionProfileOption = {
+      ...PROFILE,
+      id: 'profile-onedrive-2',
+      name: 'Microsoft 365 Schulamt',
+    }
+    let secondAnswer: () => Response
+
+    beforeEach(() => {
+      server.use(
+        http.get('/api/v1/connection-profiles', () => HttpResponse.json([PROFILE, SECOND])),
+        http.post('/api/v1/source-types/ONEDRIVE/browse', async ({ request }) => {
+          const body = (await request.clone().json()) as SourceBrowseRequest
+          browsed.push(body)
+          if (body.connectionProfileId !== SECOND.id || body.query?.drive) return undefined
+          return secondAnswer()
+        }),
+      )
+    })
+
+    /** Chooses the first Zugang, narrows to „Vorlagen“, then switches to the second one. */
+    async function narrowThenSwitch(user: User) {
+      await chooseOneDrive(user)
+      // two ways of connection: „Verbindung“ stays open with the choice
+      await user.click(
+        await screen.findByRole('radio', { name: /Microsoft 365 Rheinfurt · privat/ }),
+      )
+      expect(
+        await within(rowOf('Verbindung')).findByText(/„OneDrive“ – das OneDrive Ihres/),
+      ).toBeVisible()
+      await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+      await user.click(screen.getByRole('radio', { name: 'Nur ausgewählte Ordner' }))
+      await user.click(await screen.findByRole('checkbox', { name: 'Vorlagen' }))
+      await user.click(screen.getByRole('button', { name: /^Ändern\s*Verbindung$/ }))
+      await user.click(screen.getByRole('radio', { name: /Microsoft 365 Schulamt · privat/ }))
+    }
+
+    it('takes the OneDrive of the new account and drops the folders of the old one', async () => {
+      secondAnswer = () =>
+        HttpResponse.json({
+          complete: true,
+          entries: [{ key: 'drive:b!onedriveSchulamt', name: 'OneDrive Schulamt' }],
+        })
+      const user = userEvent.setup()
+      renderWizard()
+      await narrowThenSwitch(user)
+
+      await waitFor(() => expect(rowOf('Verbindung')).toHaveTextContent('OneDrive Schulamt'))
+      expect(rowOf('Umfang')).toHaveTextContent('Alle Ordner')
+      await next(user)
+      await waitFor(() => expect(tested.length).toBeGreaterThan(0))
+      expect(tested[tested.length - 1]).toMatchObject({
+        connectionProfileId: 'profile-onedrive-2',
+        sourceSettings: { drive: { driveId: 'b!onedriveSchulamt', name: 'OneDrive Schulamt' } },
+      })
+      expect(tested[tested.length - 1].sourceSettings?.drive).not.toHaveProperty('folders')
+    }, 30000)
+
+    it('keeps the folders when the new account owns the same OneDrive', async () => {
+      secondAnswer = () =>
+        HttpResponse.json({
+          complete: true,
+          entries: [{ key: 'drive:b!onedriveMaier', name: 'OneDrive' }],
+        })
+      const user = userEvent.setup()
+      renderWizard()
+      await narrowThenSwitch(user)
+
+      await waitFor(() =>
+        expect(browsed.some((request) => request.connectionProfileId === SECOND.id)).toBe(true),
+      )
+      await next(user)
+      await waitFor(() => expect(tested.length).toBeGreaterThan(0))
+      expect(tested[tested.length - 1]).toMatchObject({
+        connectionProfileId: 'profile-onedrive-2',
+        sourceSettings: {
+          drive: { driveId: 'b!onedriveMaier', folders: [{ id: '01VORLAGEN', name: 'Vorlagen' }] },
+        },
+      })
+    }, 30000)
+
+    it('drops the OneDrive of the old account when the new one is refused, and does not go on', async () => {
+      secondAnswer = () =>
+        HttpResponse.json({ complete: false, entries: [], message: ONEDRIVE_MESSAGES.notBusiness })
+      const user = userEvent.setup()
+      renderWizard()
+      await narrowThenSwitch(user)
+
+      const row = rowOf('Verbindung')
+      expect(await within(row).findByText(/kein OneDrive for Business/)).toBeVisible()
+      await next(user)
+      expect(within(rowOf('Verbindung')).getAllByText('OneDrive fehlt').length).toBeGreaterThan(0)
+      expect(screen.queryByLabelText(/^Name/)).not.toBeInTheDocument()
+      expect(tested.filter((probe) => probe.connectionProfileId === SECOND.id)).toEqual([])
+      expect(rowOf('Umfang')).not.toHaveTextContent('Vorlagen')
+      await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+      expect(screen.queryByRole('checkbox', { name: 'Vorlagen' })).not.toBeInTheDocument()
+    }, 30000)
+  })
 })

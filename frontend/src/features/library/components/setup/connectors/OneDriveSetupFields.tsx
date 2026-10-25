@@ -34,7 +34,10 @@ async function ownDrive(fields: ConnectionFields): Promise<Found> {
     if (entry) {
       return { driveId: entry.key.slice('drive:'.length), driveName: entry.name?.trim() || null }
     }
-    return { refusal: response.message ?? 'Graph nennt für das verbundene Konto kein OneDrive.' }
+    return {
+      refusal:
+        response.message ?? 'Für das verbundene Microsoft-Konto ist kein OneDrive bereitgestellt.',
+    }
   } catch (err) {
     return { refusal: err instanceof Error && err.message ? err.message : '' }
   }
@@ -43,7 +46,8 @@ async function ownDrive(fields: ConnectionFields): Promise<Found> {
 /**
  * Finds the OneDrive of the connected account whenever none is known for the way of connection
  * the values were made under, and again on `choose()`. A different OneDrive than before drops the
- * folders, which belong to the old one.
+ * folders, which belong to the old one; a refused lookup after a change of the way drops the old
+ * OneDrive as well.
  */
 function useOwnDrive({ values, onChange, fields }: SetupFieldsProps<OneDriveSourceValues>) {
   const probeKey = JSON.stringify(fields.probe)
@@ -65,6 +69,17 @@ function useOwnDrive({ values, onChange, fields }: SetupFieldsProps<OneDriveSour
       if (!alive) return
       if ('refusal' in found) {
         setOutcome({ token, refusal: found.refusal })
+        // a OneDrive found under another way of connection is not this account's: drop it
+        const before = latest.current.values
+        if (before.driveFoundWith !== null && before.driveFoundWith !== probeKey) {
+          latest.current.onChange({
+            driveId: '',
+            driveName: null,
+            driveFoundWith: null,
+            folders: [],
+            allFolders: true,
+          })
+        }
         return
       }
       setOutcome({ token, refusal: null })
