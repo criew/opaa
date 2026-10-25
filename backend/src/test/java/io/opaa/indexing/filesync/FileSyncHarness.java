@@ -41,7 +41,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,6 +110,7 @@ public final class FileSyncHarness {
   private final KnowledgeLibrary library;
   private final SourceIndexingExecutor executor;
   private SourceSyncState state;
+  private final Deque<String> connectionGenerations = new ArrayDeque<>();
 
   private Boolean listingComplete;
   private List<String> unlisted = List.of();
@@ -326,7 +329,14 @@ public final class FileSyncHarness {
             cleanupService,
             documentRepository,
             mock(LibraryStorageQuotaService.class),
-            new LibrarySourceConnectionResolver(),
+            new LibrarySourceConnectionResolver() {
+              @Override
+              public String connectionGeneration(KnowledgeLibrary library) {
+                return connectionGenerations.size() > 1
+                    ? connectionGenerations.poll()
+                    : connectionGenerations.peek();
+              }
+            },
             Clock.systemUTC());
     executor =
         new SourceIndexingExecutor() {
@@ -372,6 +382,16 @@ public final class FileSyncHarness {
   /** One event run over {@code references}, all inside the store's containers. */
   public Run refresh(FileStore store, List<FileReference> references) {
     return run(IndexingRunMode.EVENT, store, sync -> sync.refresh(references, 0, 0));
+  }
+
+  /**
+   * The port names {@code generations} for the connection one ask after another, the last one for
+   * every later ask - a change between two asks is a reconnection while the run goes.
+   */
+  public FileSyncHarness connectionGenerations(String... generations) {
+    connectionGenerations.clear();
+    connectionGenerations.addAll(List.of(generations));
+    return this;
   }
 
   /** The bestand after the last run, as {@code file_path}s. */

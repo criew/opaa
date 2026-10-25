@@ -213,6 +213,17 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   }
 
   /**
+   * What changes whenever {@code owner}'s account is connected anew ({@link #established}), {@code
+   * null} for none: the account row and the instant of its last reconnection, never its name.
+   */
+  public String generationOf(PersonOwned owner) {
+    return accounts
+        .findByUserIdAndProfileId(owner.userId(), owner.profileId())
+        .map(account -> account.getId() + "@" + account.getReconnectedAt())
+        .orElse(null);
+  }
+
+  /**
    * Connects or reconnects the caller's account on {@code profileId} with a personal secret, after
    * the connector signed in with it; nothing is stored when the sign-in fails ({@code 400}). The
    * sign-in runs outside a transaction; the secret is stored only while the profile row is held at

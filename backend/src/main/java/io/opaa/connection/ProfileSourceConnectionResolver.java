@@ -70,6 +70,14 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
     return effective.connectedAccountOf(library);
   }
 
+  /** A person's connected account; the other owners name none. */
+  @Override
+  public String connectionGeneration(KnowledgeLibrary library) {
+    return effective.secretOwnerOf(library) instanceof PersonOwned person
+        ? accounts.getObject().generationOf(person)
+        : null;
+  }
+
   @Override
   public Secret currentSecret(KnowledgeLibrary library) {
     return effective.currentSecret(library);

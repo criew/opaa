@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 4, 6 und 9), [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0045](0045-gemeinsamer-datei-abgleich.md) (Entscheidung 9)
 
@@ -24,7 +24,10 @@ Anlegen nur über `library.PrivateLibraryCreation`: ausdrückliche Wahl „priva
 unveränderlich; verlangt sind ein verbundenes Konto der Person auf dem Zugang, dessen Freigabe und
 das Ziel des Kontos (Ursprung und Bindung müssen `SecretTarget#key` ergeben, sonst `400`); ein
 eigenes Geheimnis nimmt sie nie an. Passt das Ziel nicht zum Konto, verweigert der Speicher mit
-`TARGET_OUTSIDE_PROFILE`. Für alle außer der Besitzerin existiert sie nicht (`404`,
+`TARGET_OUTSIDE_PROFILE`. Ein Lauf bleibt an die Verbindung gebunden, mit der er begann: Wird das
+Konto währenddessen neu verbunden (`SourceConnectionResolver#connectionGeneration`), endet er an
+seiner nächsten Frage nach dem Geheimnis (`ConnectionReconnectedException`, ein `EndsRun`), bevor
+das neue Geheimnis ihn erreicht; eine `404` unter einem anderen Konto entfernt so nichts. Für alle außer der Besitzerin existiert sie nicht (`404`,
 `PrivateLibraryInvisibilityIntegrationTest`); „Sicht als“ erreicht sie nie, die Diagnosesperre ist
 die zweite Schranke. Verwaltungssichten zeigen keine private Bibliothek einzeln: Zahlen am Zugang,
 Indexstatus und Pipeline-Stand (je eine Summenzeile), chunk-arme Dokumente, Speicherbereiche der

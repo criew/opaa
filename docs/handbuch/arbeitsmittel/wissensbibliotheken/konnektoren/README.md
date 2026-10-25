@@ -59,6 +59,9 @@ verbunden ist. Vorgaben eines Zugangs zählen mit, der Vollabgleich-Rhythmus nic
   Bei den Dateiablagen endet er meist als **fehlgeschlagen** mit „Die Quelle der Bibliothek wurde
   während des Laufs geändert …", bei Confluence als **unvollständig**. Der nächste Lauf gleicht
   unter den neuen Einstellungen ab.
+- Verbindet die Besitzerin einer privaten Bibliothek ihr Konto während eines Laufs neu, endet der
+  Lauf als **fehlgeschlagen** mit „Das verbundene Konto wurde während des Laufs neu verbunden. …",
+  bevor er mit dem neuen Konto liest oder etwas entfernt. Der nächste Lauf prüft das Konto neu.
 
 ### 1.2 Zieladressprüfung
 
