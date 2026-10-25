@@ -18,8 +18,8 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und Nachlauf liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest` (Virenprüfung,
   parsen, schneiden, speichern, markieren; ein Upload kommt geprüft an). Die `Document`-Zeile gehört `knowledge`.
-- **Modellwechsel:** Passt der Vektorindex nicht zum Embedding-Modell (`EmbeddingIndexState`), schreibt
-  `VectorStoreWriter` in `embedding_next`; `EmbeddingReindexService` bettet neu ein und schaltet um.
+- **Embedding-Modell:** Zeile `embedding_model`, `vector_store` nur über `VectorTableCreator` (ADR-0060). Ist der Index
+  veraltet (`EmbeddingIndexState`), schreibt `VectorStoreWriter` in `embedding_next`; die Neueinbettung stellt um.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf, Protokoll),
   `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen), `spi` (Konnektor-Vertrag),
   `credentials` (Ziel, Geheimnis, Dienstkonto), `registry` (Konnektor je Typ), `run` (Laufrahmen, Push-Eingang),
@@ -29,9 +29,6 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   lehnt ein Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg; der optionale API-Schlüssel wird über
   `SettingsEncryptor` verschlüsselt, jede Änderung protokolliert. Genau ein Modell ist systemweit aktiv.
-- **Embedding-Modell:** die Zeile `embedding_model` (ADR-0060, Entscheidung 10), nie Konfiguration. `vector_store`
-  legt nur `VectorTableCreator` an, in der Transaktion von `EmbeddingModelService#install`/`adoptAtStartup`
-  unter Lock `213`; vorher wirft `InstalledEmbeddingModel` `EmbeddingModelNotInstalledException` (503).
 - **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestands- und
   Nachlauf), `metadata.web` (Metadaten, der Filter aller Such- und Chat-Anfragen samt strengem
   `MetadataFilterDeserializer`), `installation.web`. Die Endpunkte der Bibliothek liegen in `library.web`.
