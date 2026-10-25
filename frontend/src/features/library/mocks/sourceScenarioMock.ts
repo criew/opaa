@@ -80,20 +80,30 @@ export function scenarioCounts(scenario: MockScenario = currentMockScenario()) {
   return COUNTS[scenario] ?? null
 }
 
-/** Why a listing of the `partial` scenario is incomplete, in the connectors' wording. */
-const INCOMPLETE_MESSAGES: Partial<Record<SourceTypeKey, string>> = {
+/** `SourceListing.cutAt` of the backend: the first `count` entries and the way to the others. */
+function cutAt(noun: string, hint: string) {
+  return (count: number) =>
+    count === 0
+      ? `Im gelesenen Teil der Liste sind keine ${noun}. ${hint}`
+      : `Es werden die ersten ${count} ${noun} gezeigt. ${hint}`
+}
+
+/**
+ * Why a listing of the `partial` scenario is incomplete, in the connectors' wording where they cut
+ * a listing; the shown line already says „Liste unvollständig.“, so no message repeats it.
+ */
+const INCOMPLETE_MESSAGES: Partial<Record<SourceTypeKey, string | ((count: number) => string)>> = {
   SHAREPOINT:
     'Microsoft Graph hat die Auflistung nach 10 Seiten beendet; es werden nur die ersten Einträge angezeigt.',
   CONFLUENCE:
     'Confluence hat die Auflistung begrenzt (HTTP 429, zu viele Anfragen); es fehlen Spaces. Bitte später erneut laden.',
   GOOGLE_DRIVE:
-    'Google Drive hat nicht alle geteilten Ablagen und Ordner geliefert; die Liste ist unvollständig.',
-  S3: 'Die Bucket-Liste ist unvollständig: Der Schlüssel darf nicht alle Buckets auflisten.',
-  NEXTCLOUD: 'Einige Ordner konnten nicht gelesen werden (HTTP 403); die Liste ist unvollständig.',
-  SMB: 'Einige Ordner der Freigabe sind für das Dienstkonto gesperrt (STATUS_ACCESS_DENIED); die Liste ist unvollständig.',
-  DROPBOX: 'Dropbox hat die Auflistung nach 2.000 Einträgen beendet; die Liste ist unvollständig.',
-  ONEDRIVE:
-    'Microsoft Graph hat die Auflistung nach 10 Seiten beendet; es werden nur die ersten Einträge angezeigt.',
+    'Die Auflistung zeigt nur einen Teil der geteilten Ablagen und der freigegebenen Ordner. Weitere Ordner lassen sich unten über ihre ID eintragen.',
+  S3: 'Der Schlüssel darf nicht alle Buckets auflisten.',
+  NEXTCLOUD: 'Einige Ordner konnten nicht gelesen werden (HTTP 403).',
+  SMB: 'Einige Ordner der Freigabe sind für das Dienstkonto gesperrt (STATUS_ACCESS_DENIED).',
+  DROPBOX: cutAt('Ordner', 'Weitere Ordner lassen sich über ihren Pfad angeben.'),
+  ONEDRIVE: cutAt('Ordner', 'Weitere zeigt die Auswahl nicht.'),
 }
 
 /** The refused listing of the `failed` scenario: status and the connector's German message. */
@@ -136,11 +146,16 @@ const TEST_FAILURES: Partial<Record<SourceTypeKey, string>> = {
   ONEDRIVE: 'Microsoft Graph hat das Zugriffstoken abgewiesen (HTTP 401).',
 }
 
+function incompleteMessage(type: SourceTypeKey, count: number): string | null {
+  const message = INCOMPLETE_MESSAGES[type]
+  return typeof message === 'function' ? message(count) : (message ?? null)
+}
+
 function listing(entries: Entry[], type: SourceTypeKey, counts: ScenarioCounts) {
   return HttpResponse.json({
     complete: counts.complete,
     entries,
-    message: counts.complete ? null : (INCOMPLETE_MESSAGES[type] ?? null),
+    message: counts.complete ? null : incompleteMessage(type, entries.length),
   } satisfies SourceBrowseResponse)
 }
 
