@@ -7,6 +7,7 @@ import BrandMark from '@/shared/ui/BrandMark'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { navyRoles } from '@/shared/theme/tokens'
+import bundledBackdropUrl from '../assets/login-backdrop.webp'
 
 // One staged entrance for the form column (guidelines 4.5); the theme collapses it under
 // prefers-reduced-motion.
@@ -25,6 +26,20 @@ const formReveal = keyframes`
  * where this value can be checked at all.
  */
 export const LOGIN_BACKDROP_SCRIM_OPACITY = 0.82
+
+/**
+ * The backdrop OPAA ships for the brand area; an installation's uploaded image replaces it.
+ * Origin, prompt and processing: docs/design/anmeldeseite-hintergrundbild.md.
+ */
+const DEFAULT_LOGIN_BACKDROP_URL = bundledBackdropUrl
+
+/**
+ * Opacity of the scrim over the bundled backdrop. Unlike an uploaded image this one is known:
+ * AuthLayout.contrast.test.ts proves the 4.5:1 of brand name and claim against the brightest
+ * pixel the shipped file actually contains (measured by scripts/measure-login-backdrop.mjs and
+ * pinned to the file's checksum) — which is what allows a lighter scrim than over uploads.
+ */
+export const LOGIN_BACKDROP_DEFAULT_SCRIM_OPACITY = 0.56
 
 /**
  * Opacity of the claim on the brand area — the weaker of the two texts there and thus the
@@ -74,16 +89,17 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   // Only one of the two brands is built, not one of them hidden: the same name twice in the
   // tree is a duplicate even when one half is invisible.
   const wide = useMediaQuery(theme.breakpoints.up('md'))
-  const backgroundUrl = useBrandingStore((s) => s.branding.loginBackgroundUrl)
+  const uploadedBackgroundUrl = useBrandingStore((s) => s.branding.loginBackgroundUrl)
 
-  // Without an image the current area stays: the same soft core on navy. With an image the
-  // scrim lies above it as its own layer, in the same background-image property — a
-  // gradient of two equal stops is the only form in which CSS lays an opaque colour over
-  // an image without needing a second element for it.
-  const scrim = alpha(navyRoles.bg1, LOGIN_BACKDROP_SCRIM_OPACITY)
-  const panelBackgroundImage = backgroundUrl
-    ? `linear-gradient(${scrim}, ${scrim}), url("${backgroundUrl}")`
-    : `radial-gradient(70% 55% at 20% 22%, ${alpha(navyRoles.accent, 0.28)} 0%, transparent 72%)`
+  // The scrim lies above the image as its own layer, in the same background-image property — a
+  // gradient of two equal stops is the only form in which CSS lays a translucent colour over an
+  // image without needing a second element for it. An uploaded image gets the worst-case scrim;
+  // the bundled backdrop the lighter one its own contrast proof allows.
+  const scrim = alpha(
+    navyRoles.bg1,
+    uploadedBackgroundUrl ? LOGIN_BACKDROP_SCRIM_OPACITY : LOGIN_BACKDROP_DEFAULT_SCRIM_OPACITY,
+  )
+  const panelBackgroundImage = `linear-gradient(${scrim}, ${scrim}), url("${uploadedBackgroundUrl ?? DEFAULT_LOGIN_BACKDROP_URL}")`
 
   return (
     <Box
@@ -102,10 +118,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             justifyContent: 'center',
             px: { md: 6, lg: 10 },
             py: 6,
+            // The navy stays underneath: it is what shows until the image has loaded and what
+            // the scrim is composited onto in the contrast proof.
             bgcolor: navyRoles.bg1,
             color: navyRoles.fg1,
-            // Depth instead of a flat area: a soft core at the top left, just enough that
-            // the area does not sit there as a block (guidelines 4.3 - atmosphere, no effects).
             backgroundImage: panelBackgroundImage,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
