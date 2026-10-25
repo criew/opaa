@@ -1,0 +1,19 @@
+{
+  "firstAdmin": {
+    "email": "admin@stadt-rheinfurt.example",
+    "displayName": "Systemverwaltung",
+    "passwordFile": "/run/opaa/installation/demo-smoke-admin-password"
+  },
+  "signIn": {
+    "mode": "LOCAL_AND_OIDC",
+    "oidc": {
+      "issuerUri": "http://localhost:8180/realms/opaa",
+      "clientId": "opaa-frontend",
+      "jwkSetUri": "http://keycloak:8180/realms/opaa/protocol/openid-connect/certs"
+    }
+  },
+  "chatModel": {
+    "baseUrl": "http://ai-stub:8089",
+    "model": "phi3:mini"
+  }
+}

@@ -3,7 +3,8 @@ name: E2E Lokale Anmeldung
 # Bewusst NICHT bei jedem Pull Request und kein Required Check (ADR-0033, #1543): der Lauf startet
 # einen eigenen Compose-Stack im Betriebsmodus "oidc" ohne Keycloak samt Mail-Fänger, legt Konten an,
 # verschickt echte Mails an diesen Fänger und fährt neun Szenarien mit echten Anmeldevorgängen durch -
-# mehrere Minuten je Lauf. Die Fachszenarien der regulären Suite (.github/workflows/e2e.yml) laufen
+# mehrere Minuten je Lauf. Danach ein zweiter Stack im Installationsmodus für den
+# Einrichtungs-Assistenten. Die Fachszenarien der regulären Suite (.github/workflows/e2e.yml) laufen
 # weiterhin im dev-Modus ohne Anmeldevorgang (ADR-0009); diese Suite ist die zusätzliche Abnahme des
 # lokalen Anmeldewegs.
 #
@@ -119,6 +120,16 @@ jobs:
         env:
           E2E_SKIP_BUILD: 'true'
 
+      # Derselbe Compose-Projektname, also dieselben Images: ein eigener Stapel im
+      # Installationsmodus ohne Antwortdatei, gegen den das Szenario des Einrichtungs-Assistenten
+      # läuft (ADR-0060). Auch nach roten Szenarien oben, damit beide Ergebnisse vorliegen.
+      - name: Einrichtungs-Assistent im Installationsmodus ausführen
+        if: ${{ !cancelled() }}
+        working-directory: e2e
+        run: pnpm run test:installation
+        env:
+          E2E_SKIP_BUILD: 'true'
+
       # if: !cancelled() (nicht failure()): läuft der Job in timeout-minutes, markiert GitHub ihn als
       # cancelled, nicht als failed - if: failure() überspränge den Upload genau dann, wenn er am
       # meisten gebraucht wird (wie in e2e.yml und demo-smoke.yml).
@@ -127,7 +138,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: local-auth-playwright-report
-          path: e2e/playwright-report/
+          path: |
+            e2e/playwright-report/
+            e2e/playwright-report-installation/
           if-no-files-found: ignore
           retention-days: 14
 
