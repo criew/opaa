@@ -54,6 +54,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -1712,6 +1713,163 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(page.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("posteingang.eml", "weiterleitung.eml", "haushaltsplan.pdf");
+  }
+
+  // status on GET .../documents: bibliotheksweit over document rows, attachments counted in their
+  // own right, so totalElements is the number of rows in the requested states.
+
+  private Document withStatus(Document document, DocumentStatus status) {
+    document.setStatus(status);
+    return documentRepository.save(document);
+  }
+
+  @Test
+  void listDocumentsWithAStatusListsEveryMatchingRowBibliotheksweitAndCountsThem() {
+    LibraryFolder folder = seedFolder("Akten", null);
+    withStatus(seedDocument("a-kaputt.txt"), DocumentStatus.FAILED);
+    withStatus(seedDocument("b-im-ordner.txt", folder.getId()), DocumentStatus.FAILED);
+    seedDocument("c-fertig.txt");
+    withStatus(seedDocument("d-wartet.txt"), DocumentStatus.PENDING);
+    Document mail = seedDocument("e-mail.eml");
+    withStatus(seedAttachment(mail, 0, "f-anlage.pdf"), DocumentStatus.FAILED);
+    seedAttachment(mail, 1, "g-anlage.pdf");
+
+    var page =
+        libraryService.listDocuments(
+            libraryId,
+            currentUserOf(editor, false),
+            null,
+            folder.getId(),
+            null,
+            Set.of(DocumentStatus.FAILED),
+            stableOrder(0, 20));
+
+    // the failed attachment is an entry of its own, without its indexed parent; folderId does
+    // not scope the filter
+    assertThat(page.totalElements()).isEqualTo(3);
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("a-kaputt.txt", "b-im-ordner.txt", "f-anlage.pdf");
+    assertThat(page.folders()).isEmpty();
+    assertThat(page.breadcrumb()).isEmpty();
+    assertThat(page.folderId()).isNull();
+
+    var countOnly =
+        libraryService.listDocuments(
+            libraryId,
+            currentUserOf(editor, false),
+            null,
+            null,
+            null,
+            Set.of(DocumentStatus.FAILED),
+            stableOrder(0, 1));
+    assertThat(countOnly.documents()).hasSize(1);
+    assertThat(countOnly.totalElements()).isEqualTo(3);
+  }
+
+  @Test
+  void listDocumentsWithSeveralStatusesAndAQMatchesTheirUnionNarrowedByFileName() {
+    withStatus(seedDocument("bericht-kaputt.txt"), DocumentStatus.FAILED);
+    withStatus(seedDocument("bericht-wartet.txt"), DocumentStatus.PENDING);
+    seedDocument("bericht-fertig.txt");
+    withStatus(seedDocument("notiz-kaputt.txt"), DocumentStatus.FAILED);
+
+    var page =
+        libraryService.listDocuments(
+            libraryId,
+            currentUserOf(editor, false),
+            "BERICHT",
+            null,
+            null,
+            Set.of(DocumentStatus.FAILED, DocumentStatus.PENDING),
+            stableOrder(0, 20));
+
+    assertThat(page.totalElements()).isEqualTo(2);
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("bericht-kaputt.txt", "bericht-wartet.txt");
+  }
+
+  @Test
+  void listDocumentsWithAnEmptyStatusSetListsTheRootLikeWithoutTheParameter() {
+    LibraryFolder folder = seedFolder("Akten", null);
+    withStatus(seedDocument("kaputt.txt"), DocumentStatus.FAILED);
+    seedDocument("fertig.txt");
+    seedDocument("im-ordner.txt", folder.getId());
+
+    var withEmptySet =
+        libraryService.listDocuments(
+            libraryId,
+            currentUserOf(editor, false),
+            null,
+            null,
+            null,
+            Set.of(),
+            stableOrder(0, 20));
+    var without =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 20));
+
+    assertThat(withEmptySet.totalElements()).isEqualTo(2).isEqualTo(without.totalElements());
+    assertThat(withEmptySet.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("fertig.txt", "kaputt.txt");
+    assertThat(withEmptySet.folders()).hasSize(1);
+  }
+
+  @Test
+  void listDocumentsWithTheMaintenanceFilterAndAStatusWithoutIndexedIsEmpty() {
+    seedDocument("ohne-datum.txt");
+    withStatus(seedDocument("kaputt.txt"), DocumentStatus.FAILED);
+
+    var failedOnly =
+        libraryService.listDocuments(
+            libraryId,
+            currentUserOf(editor, false),
+            null,
+            null,
+            "document_date",
+            Set.of(DocumentStatus.FAILED),
+            stableOrder(0, 20));
+    assertThat(failedOnly.totalElements()).isZero();
+    assertThat(failedOnly.documents()).isEmpty();
+
+    var withIndexed =
+        libraryService.listDocuments(
+            libraryId,
+            currentUserOf(editor, false),
+            null,
+            null,
+            "document_date",
+            Set.of(DocumentStatus.INDEXED, DocumentStatus.FAILED),
+            stableOrder(0, 20));
+    assertThat(withIndexed.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("ohne-datum.txt");
+  }
+
+  @Test
+  void listDocumentsWithAStatusStillAnswers404WithoutAGrant() {
+    withStatus(seedDocument("kaputt.txt"), DocumentStatus.FAILED);
+    User stranger = new User("stranger-subject", "issuer", "stranger@example.com", "Stranger");
+    stranger.setOrganizationId(organizationId);
+    User savedStranger = userRepository.save(stranger);
+
+    try {
+      assertThatThrownBy(
+              () ->
+                  libraryService.listDocuments(
+                      libraryId,
+                      currentUserOf(savedStranger, false),
+                      null,
+                      null,
+                      null,
+                      Set.of(DocumentStatus.FAILED),
+                      stableOrder(0, 20)))
+          .isInstanceOf(NotFoundException.class);
+    } finally {
+      userRepository.deleteById(savedStranger.getId());
+    }
   }
 
   // POST .../documents' own folderId - upload target validation and the resulting

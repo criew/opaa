@@ -849,6 +849,23 @@ public class KnowledgeLibraryService {
       UUID folderId,
       String missingMetadataField,
       Pageable pageable) {
+    return listDocuments(libraryId, caller, q, folderId, missingMetadataField, Set.of(), pageable);
+  }
+
+  /**
+   * {@link #listDocuments(UUID, CurrentUser, String, UUID, String, Pageable)} narrowed to {@code
+   * statuses}; an empty set narrows nothing. A non-empty set lists bibliotheksweit over document
+   * rows, attachments in their own right, so {@code totalElements} counts exactly the rows in those
+   * states.
+   */
+  public LibraryDocumentPage listDocuments(
+      UUID libraryId,
+      CurrentUser caller,
+      String q,
+      UUID folderId,
+      String missingMetadataField,
+      Set<DocumentStatus> statuses,
+      Pageable pageable) {
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
@@ -863,7 +880,14 @@ public class KnowledgeLibraryService {
     boolean searching = q != null && !q.isBlank();
     if (missingMetadataField != null && !missingMetadataField.isBlank()) {
       return listDocumentsWithoutMetadataValue(
-          libraryId, searching ? q : null, missingMetadataField.strip(), pageable);
+          libraryId, searching ? q : null, missingMetadataField.strip(), statuses, pageable);
+    }
+    if (!statuses.isEmpty()) {
+      return listDocumentRows(
+          documentRepository.searchByStatus(
+              libraryId, searching ? escapeLike(q) : "", statuses, pageable),
+          libraryId,
+          pageable);
     }
     if (searching) {
       // ADR-0022, Entscheidung 5: a hit on an attachment's file name must surface its top-level
@@ -916,13 +940,27 @@ public class KnowledgeLibraryService {
    * whole library) and combinable with {@code q}; folders and breadcrumb stay empty.
    */
   private LibraryDocumentPage listDocumentsWithoutMetadataValue(
-      UUID libraryId, String q, String fieldKey, Pageable pageable) {
+      UUID libraryId, String q, String fieldKey, Set<DocumentStatus> statuses, Pageable pageable) {
     if (CoreMetadataField.fromKey(fieldKey).isEmpty()) {
       throw new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey);
     }
-    Page<Document> page =
+    // the anchor only counts INDEXED rows, so a status filter without INDEXED leaves nothing
+    if (!statuses.isEmpty() && !statuses.contains(DocumentStatus.INDEXED)) {
+      return listDocumentRows(Page.empty(pageable), libraryId, pageable);
+    }
+    return listDocumentRows(
         documentRepository.searchWithoutMetadataValue(
-            libraryId, q == null ? "" : escapeLike(q), fieldKey, DocumentStatus.INDEXED, pageable);
+            libraryId, q == null ? "" : escapeLike(q), fieldKey, DocumentStatus.INDEXED, pageable),
+        libraryId,
+        pageable);
+  }
+
+  /**
+   * A bibliotheksweit page of document rows, one entry per row and attachments ungrouped, with
+   * empty folders and breadcrumb - the shape of every filtered list that counts rows.
+   */
+  private LibraryDocumentPage listDocumentRows(
+      Page<Document> page, UUID libraryId, Pageable pageable) {
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
     return new LibraryDocumentPage(

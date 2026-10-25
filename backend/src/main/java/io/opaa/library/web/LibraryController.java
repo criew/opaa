@@ -24,6 +24,7 @@ import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.PushSecretResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -51,8 +52,11 @@ import jakarta.validation.Valid;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -250,6 +254,7 @@ public class LibraryController {
       @RequestParam(required = false) String q,
       @RequestParam(required = false) UUID folderId,
       @RequestParam(required = false) String missingMetadataField,
+      @RequestParam(required = false) List<DocumentStatus> status,
       @Caller CurrentUser caller) {
     // The spec promises 1..100 - silently clamping an out-of-range value would contradict that
     // promise (size=500 quietly answering 100, size=0 quietly answering 1), so both bounds and
@@ -274,6 +279,10 @@ public class LibraryController {
             q,
             folderId,
             featureFlags.isEnabled(Feature.METADATA) ? missingMetadataField : null,
+            // a bare "status=" binds as a null element and means no restriction
+            status == null
+                ? Set.of()
+                : status.stream().filter(Objects::nonNull).collect(Collectors.toUnmodifiableSet()),
             pageable));
   }
 

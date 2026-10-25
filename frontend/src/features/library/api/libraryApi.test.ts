@@ -1,6 +1,10 @@
 import { AxiosError } from 'axios'
 import { describe, expect, it } from 'vitest'
-import { mapDocumentContentError, parseContentDispositionFileName } from './libraryApi'
+import {
+  getLibraryDocuments,
+  mapDocumentContentError,
+  parseContentDispositionFileName,
+} from './libraryApi'
 
 /** Minimal stand-in for the parts of AxiosResponse that normalizeError reads. */
 function axiosErrorWithResponse(status: number, data: unknown): AxiosError {
@@ -146,6 +150,39 @@ describe('libraryApi', () => {
       const err = axiosErrorWithResponse(500, undefined)
 
       await expect(mapDocumentContentError(err)).rejects.toThrow('HTTP 500')
+    })
+  })
+  // Runs against the MSW handler, which reads the repeated parameter the way the backend does:
+  // axios' default `status[]=` would arrive as no filter and list the whole root instead.
+  describe('getLibraryDocuments with status', () => {
+    const fileNames = (page: { items: { fileName: string }[] }) =>
+      page.items.map((item) => item.fileName)
+
+    it('lists only the documents in the given state, with their number', async () => {
+      const page = await getLibraryDocuments('library-mine', { status: 'FAILED' })
+      expect(fileNames(page)).toEqual(['vermerk.pptx'])
+      expect(page.totalElements).toBe(1)
+      expect(page.folders).toEqual([])
+    })
+
+    it('sends several states as a repeated parameter and lists their union', async () => {
+      const page = await getLibraryDocuments('library-mine', { status: ['FAILED', 'PENDING'] })
+      expect(fileNames(page).sort()).toEqual(['rundschreiben-03.docx', 'vermerk.pptx'])
+      expect(page.totalElements).toBe(2)
+    })
+
+    it('counts with size 1 across the whole library', async () => {
+      const page = await getLibraryDocuments('library-mine', { size: 1, status: 'INDEXED' })
+      expect(page.items).toHaveLength(1)
+      // attachments are rows of their own here, unlike the grouped folder listing
+      expect(page.totalElements).toBe(4)
+    })
+
+    it('leaves the listing unchanged without a status', async () => {
+      const withNull = await getLibraryDocuments('library-mine', { status: null })
+      const without = await getLibraryDocuments('library-mine')
+      expect(withNull.totalElements).toBe(without.totalElements)
+      expect(withNull.items.length).toBeGreaterThan(2)
     })
   })
 })
