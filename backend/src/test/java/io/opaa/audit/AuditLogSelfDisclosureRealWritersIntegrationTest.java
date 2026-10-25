@@ -198,7 +198,9 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
                     .containsEntry("before", "{\"ownerId\":\"Sie\"}")
                     .containsEntry(
                         "after",
-                        "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_OWNER + "\"}"));
+                        "{\"ownerId\":\""
+                            + AuditSelfDisclosurePayload.OTHER_PERSON_OR_GROUP
+                            + "\"}"));
     List<Map<String, Object>> ofNext = export(next.getId());
     assertThat(ofNext)
         .extracting(r -> r.get("eventType"))
@@ -212,7 +214,9 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
                 assertThat(r)
                     .containsEntry(
                         "before",
-                        "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_OWNER + "\"}")
+                        "{\"ownerId\":\""
+                            + AuditSelfDisclosurePayload.OTHER_PERSON_OR_GROUP
+                            + "\"}")
                     .containsEntry("after", "{\"ownerId\":\"Sie\"}"));
     assertThat(
             jdbc.queryForObject(

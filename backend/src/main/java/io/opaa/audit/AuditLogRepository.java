@@ -70,7 +70,8 @@ interface AuditLogRepository extends JpaRepository<AuditLogEntry, UUID> {
   /**
    * The technically bounded incident-scope path - see the interface Javadoc above: the entries in
    * which the person acts, and those of {@code ownerEventTypes} whose payload matches one of the
-   * {@link AuditOwnerPayload#ownerPattern} patterns.
+   * {@link AuditPayloadPersons.PayloadKey#pattern} patterns; a {@code null} reference or pattern
+   * matches nothing.
    */
   @Query(
       "SELECT e FROM AuditLogEntry e WHERE e.organizationId = :organizationId"

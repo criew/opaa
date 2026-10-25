@@ -75,8 +75,8 @@ final class AuditProtocolDescription {
         new QueryPath(
             "Selbstauskunft",
             "Nur über die angemeldete Person selbst, nie über eine andere und ohne Parameter:"
-                + " alle Ereignisse, in denen sie handelt, betroffen, Konto als Objekt oder als"
-                + " Besitzerin genannt ist,"
+                + " alle Ereignisse, in denen sie handelt, betroffen, Konto als Objekt, als"
+                + " Besitzerin oder als Ziel einer Rechteübertragung genannt ist,"
                 + " ohne Zeit- und Seitengrenze; ohne Pseudonyme und Begründungen, andere"
                 + " Beteiligte als „andere Person“ oder „System“. Statt eines eigenen Abrufeintrags"
                 + " stehen Beginn und Ende des Exports im Protokoll"));

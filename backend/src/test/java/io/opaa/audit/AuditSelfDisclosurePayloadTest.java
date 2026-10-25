@@ -19,15 +19,18 @@ class AuditSelfDisclosurePayloadTest {
         .containsExactlyInAnyOrder(AuditEventType.values());
   }
 
-  /** The event types searched for an owner are exactly those whose list repeats an owner. */
+  /** Each payload key is searched for exactly the event types whose list repeats it. */
   @Test
-  void theOwnerEventTypesAreThoseWhoseListHoldsTheOwner() {
-    assertThat(AuditOwnerPayload.EVENT_TYPES)
-        .containsExactlyInAnyOrderElementsOf(
-            AuditSelfDisclosurePayload.KEYS.entrySet().stream()
-                .filter(e -> e.getValue().contains(AuditOwnerPayload.KEY))
-                .map(Map.Entry::getKey)
-                .toList());
+  void eachPayloadKeyIsSearchedForTheEventTypesWhoseListHoldsIt() {
+    for (AuditPayloadPersons.PayloadKey key : AuditPayloadPersons.SELF_DISCLOSURE) {
+      assertThat(key.eventTypes())
+          .as(key.key())
+          .containsExactlyInAnyOrderElementsOf(
+              AuditSelfDisclosurePayload.KEYS.entrySet().stream()
+                  .filter(e -> e.getValue().contains(key.key()))
+                  .map(Map.Entry::getKey)
+                  .toList());
+    }
   }
 
   @Test
@@ -83,6 +86,8 @@ class AuditSelfDisclosurePayloadTest {
     assertThat(
             AuditSelfDisclosurePayload.KEYS.values().stream()
                 .flatMap(keys -> keys.stream())
+                // a person key goes out only as "Sie" or another person, never with its value
+                .filter(key -> !AuditSelfDisclosurePayload.PERSON_KEYS.contains(key))
                 .distinct())
         .doesNotContainAnyElementsOf(
             Arrays.asList(
@@ -106,5 +111,7 @@ class AuditSelfDisclosurePayloadTest {
                 "scopeId",
                 "correlationRef",
                 "proxyUrl"));
+    assertThat(AuditSelfDisclosurePayload.PERSON_KEYS)
+        .containsExactlyInAnyOrder("ownerId", "targetId");
   }
 }

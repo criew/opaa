@@ -307,7 +307,8 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
     assertThat(records.get(0))
         .containsEntry("actor", SelfDisclosureLabels.OTHER_PERSON)
         .containsEntry("before", "{\"ownerId\":\"Sie\"}")
-        .containsEntry("after", "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_OWNER + "\"}");
+        .containsEntry(
+            "after", "{\"ownerId\":\"" + AuditSelfDisclosurePayload.OTHER_PERSON_OR_GROUP + "\"}");
     assertThat(records.get(1))
         .containsEntry("before", "{\"name\":\"Raum Delta\",\"ownerId\":\"Sie\"}");
     assertThat(records.toString())

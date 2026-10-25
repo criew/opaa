@@ -1,5 +1,7 @@
 package io.opaa.audit;
 
+import java.time.Instant;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -14,5 +16,17 @@ public final class AuditLogSelfDisclosureExporterFactory {
   public static AuditLogSelfDisclosureExporter create(
       JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
     return new AuditLogSelfDisclosureExporter(jdbc, transactionManager);
+  }
+
+  /** The exporter's id scan of one window, for the measurement's query plan. */
+  public static String keysQuery() {
+    return AuditLogSelfDisclosureExporter.KEYS_SQL;
+  }
+
+  /** The arguments of {@link #keysQuery()} for one person and window. */
+  public static Object[] keysArguments(
+      UUID organizationId, UUID pseudonym, UUID accountId, Instant from, Instant to) {
+    return AuditLogSelfDisclosureExporter.keysArguments(
+        organizationId, pseudonym, accountId, from, to);
   }
 }

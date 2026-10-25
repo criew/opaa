@@ -17,6 +17,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,10 +30,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The category {@code audit-log}: the entries in which the person acts, is the subject, is the
- * account object or is named as owner ({@link AuditOwnerPayload}), found through her existing
- * pseudonym (never minted here). Besides {@link AuditQueryService} the only reader of {@code
- * audit_log}, for the person herself only, and without an access entry of its own: the start and
- * end events of the self-disclosure stand for it.
+ * account object or is named in the payload ({@link AuditPayloadPersons}), found through her
+ * existing pseudonym (never minted here) or, in older payloads, her account id. Besides {@link
+ * AuditQueryService} the only reader of {@code audit_log}, for the person herself only, and without
+ * an access entry of its own: the start and end events of the self-disclosure stand for it.
  *
  * <p>No pseudonym, no {@code reason} and no other person leaves: actor, subject and account object
  * go out as "Sie", "andere Person" or "System", a label of another account is dropped, {@code
@@ -79,8 +81,6 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private static final String USER = "USER";
   private static final String USER_ACCOUNT = "USER_ACCOUNT";
-  private static final String[] OWNER_EVENT_TYPES =
-      AuditOwnerPayload.EVENT_TYPES.stream().map(Enum::name).sorted().toArray(String[]::new);
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
@@ -102,8 +102,7 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
     if (span == null) {
       return;
     }
-    Person person =
-        new Person(subject.organizationId(), span.pseudonym(), subject.accountId().toString());
+    Person person = new Person(subject.organizationId(), span.pseudonym(), subject.accountId());
     RecordWriter writer = null;
     Instant month = monthOf(span.first());
     while (month.isBefore(span.end())) {
@@ -128,18 +127,20 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
     }
   }
 
-  /** The person's pseudonym and the time span of the log to read, or {@code null}. */
+  /**
+   * The person's pseudonym, {@code null} without one, and the time span of the log to read, or
+   * {@code null} for an empty log. Without a pseudonym only older entries naming the account id in
+   * the payload can lead to the person.
+   */
   private Span span(SelfDisclosureSubject subject) {
-    List<String> pseudonyms =
+    List<UUID> pseudonyms =
         jdbc.queryForList(
-            "SELECT CAST(pseudonym_id AS text) FROM audit_actor_pseudonyms"
+            "SELECT pseudonym_id FROM audit_actor_pseudonyms"
                 + " WHERE user_id = ? AND organization_id = ?",
-            String.class,
+            UUID.class,
             subject.accountId(),
             subject.organizationId());
-    if (pseudonyms.isEmpty()) {
-      return null;
-    }
+    UUID pseudonym = pseudonyms.isEmpty() ? null : pseudonyms.getFirst();
     return jdbc.queryForObject(
         "SELECT min(recorded_at) AS first, clock_timestamp() AS now FROM audit_log"
             + " WHERE organization_id = ?",
@@ -148,45 +149,64 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
           return first == null
               ? null
               : new Span(
-                  pseudonyms.getFirst(),
-                  first.toInstant(),
-                  rs.getTimestamp("now").toInstant().plusNanos(1000));
+                  pseudonym, first.toInstant(), rs.getTimestamp("now").toInstant().plusNanos(1000));
         },
         subject.organizationId());
   }
 
+  /** One key of {@link AuditPayloadPersons#SELF_DISCLOSURE}: its event types, either reference. */
+  private static final String PAYLOAD_KEY_CLAUSE =
+      " OR (event_type = ANY (?) AND (before LIKE ? OR after LIKE ? OR before LIKE ? OR after LIKE ?))";
+
+  /**
+   * The id scan of one window: actor, subject and account object by pseudonym, and each key of
+   * {@link AuditPayloadPersons#SELF_DISCLOSURE} for its event types by pseudonym or account id.
+   */
+  static final String KEYS_SQL =
+      "SELECT event_id FROM audit_log"
+          + " WHERE organization_id = ? AND recorded_at >= ? AND recorded_at < ?"
+          + " AND ((actor_kind = 'USER' AND actor_ref = ?)"
+          + " OR (subject_kind = 'USER' AND subject_ref = ?)"
+          + " OR (object_type = 'USER_ACCOUNT' AND object_id = ?)"
+          + PAYLOAD_KEY_CLAUSE.repeat(AuditPayloadPersons.SELF_DISCLOSURE.size())
+          + ")"
+          // no writer records a revision read with a subject or account object today; should
+          // one, a read about the person by someone else belongs to an anlassbezogene Klärung
+          + " AND (event_type <> 'AUDIT_LOG_ACCESSED' OR (actor_kind = 'USER' AND actor_ref = ?))"
+          + " ORDER BY recorded_at, event_id";
+
+  /** The arguments of {@link #KEYS_SQL}; {@code pseudonym} may be {@code null}. */
+  static Object[] keysArguments(
+      UUID organizationId, UUID pseudonym, UUID accountId, Instant from, Instant to) {
+    String ref = pseudonym == null ? null : pseudonym.toString();
+    List<Object> arguments =
+        new ArrayList<>(List.of(organizationId, Timestamp.from(from), Timestamp.from(to)));
+    arguments.addAll(Collections.nCopies(3, ref));
+    for (AuditPayloadPersons.PayloadKey key : AuditPayloadPersons.SELF_DISCLOSURE) {
+      arguments.add(key.eventTypeNames());
+      arguments.add(key.pattern(pseudonym));
+      arguments.add(key.pattern(pseudonym));
+      arguments.add(key.pattern(accountId));
+      arguments.add(key.pattern(accountId));
+    }
+    arguments.add(ref);
+    return arguments.toArray();
+  }
+
   /**
    * The ids of the person's entries in one window, in order: the one scan of the window's
-   * partition. Besides actor, subject and account object, an entry of an event type with an owner
-   * names the person under {@link AuditOwnerPayload#KEY}. Only the ids are held; the rows follow
-   * page by page through the primary key.
+   * partition. Only the ids are held; the rows follow page by page through the primary key.
    */
   private List<UUID> keys(Person person, Window window) {
     return jdbc.query(
-        "SELECT event_id FROM audit_log"
-            + " WHERE organization_id = ? AND recorded_at >= ? AND recorded_at < ?"
-            + " AND ((actor_kind = 'USER' AND actor_ref = ?)"
-            + " OR (subject_kind = 'USER' AND subject_ref = ?)"
-            + " OR (object_type = 'USER_ACCOUNT' AND object_id = ?)"
-            + " OR (event_type = ANY (?) AND (before LIKE ? OR after LIKE ?"
-            + " OR before LIKE ? OR after LIKE ?)))"
-            // no writer records a revision read with a subject or account object today; should
-            // one, a read about the person by someone else belongs to an anlassbezogene Klärung
-            + " AND (event_type <> 'AUDIT_LOG_ACCESSED' OR (actor_kind = 'USER' AND actor_ref = ?))"
-            + " ORDER BY recorded_at, event_id",
+        KEYS_SQL,
         (rs, i) -> rs.getObject("event_id", UUID.class),
-        person.organizationId(),
-        Timestamp.from(window.from()),
-        Timestamp.from(window.to()),
-        person.pseudonym(),
-        person.pseudonym(),
-        person.pseudonym(),
-        OWNER_EVENT_TYPES,
-        AuditOwnerPayload.ownerPattern(person.pseudonym()),
-        AuditOwnerPayload.ownerPattern(person.pseudonym()),
-        AuditOwnerPayload.ownerPattern(person.accountId()),
-        AuditOwnerPayload.ownerPattern(person.accountId()),
-        person.pseudonym());
+        keysArguments(
+            person.organizationId(),
+            person.pseudonym(),
+            person.accountId(),
+            window.from(),
+            window.to()));
   }
 
   private List<Map<String, Object>> rows(Person person, Window window, UUID[] eventIds) {
@@ -232,12 +252,10 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
         "subject", USER.equals(subjectKind) ? person.label(rs.getString("subject_ref")) : null);
     record.put(
         "before",
-        AuditSelfDisclosurePayload.disclose(
-            type, rs.getString("before"), person.pseudonym(), person.accountId()));
+        AuditSelfDisclosurePayload.disclose(type, rs.getString("before"), person.ownRefs()));
     record.put(
         "after",
-        AuditSelfDisclosurePayload.disclose(
-            type, rs.getString("after"), person.pseudonym(), person.accountId()));
+        AuditSelfDisclosurePayload.disclose(type, rs.getString("after"), person.ownRefs()));
     record.put("outcome", rs.getString("outcome"));
     record.put("correlationRef", rs.getString("correlation_ref"));
     record.put("reasonGiven", rs.getBoolean("reason_given"));
@@ -259,15 +277,26 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
         .toInstant();
   }
 
-  private record Span(String pseudonym, Instant first, Instant end) {}
+  private record Span(UUID pseudonym, Instant first, Instant end) {}
 
   private record Window(Instant from, Instant to) {}
 
-  /** The person as the log names her: by pseudonym, or by account id in a few account objects. */
-  private record Person(UUID organizationId, String pseudonym, String accountId) {
+  /**
+   * The person as the log names her: by pseudonym ({@code null} without one), or by account id in a
+   * few account objects and older payloads.
+   */
+  private record Person(UUID organizationId, UUID pseudonym, UUID accountId) {
 
     boolean isSelf(String ref) {
-      return pseudonym.equals(ref) || accountId.equals(ref);
+      return ref != null
+          && ((pseudonym != null && pseudonym.toString().equals(ref))
+              || accountId.toString().equals(ref));
+    }
+
+    String[] ownRefs() {
+      return pseudonym == null
+          ? new String[] {accountId.toString()}
+          : new String[] {pseudonym.toString(), accountId.toString()};
     }
 
     String label(String ref) {

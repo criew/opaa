@@ -212,15 +212,15 @@ public class AuditQueryService {
   /**
    * The one personenbezogene exception: every event whose actor is the approved grant's named
    * person, and every event of a type with an owner that names the person as owner ({@link
-   * AuditOwnerPayload}), further bounded to a caller-requested time range that must lie entirely
-   * within the grant's own scope - a request reaching outside it is rejected, not clamped (see
-   * {@link AuditIncidentScopeGrant#covers}).
+   * AuditPayloadPersons#OWNER}), further bounded to a caller-requested time range that must lie
+   * entirely within the grant's own scope - a request reaching outside it is rejected, not clamped
+   * (see {@link AuditIncidentScopeGrant#covers}).
    *
    * <p>Looks the subject's pseudonym up, never mints one: unlike {@link
    * AuditActorPseudonymService#pseudonymFor}, a read must never have the side effect of creating a
-   * re-identification row for a person who never triggered one themselves. If none exists, the
-   * person has no entries in the log at all, so an empty page is correct. The same holds once the
-   * person's account is deleted: the mapping is gone with it, and the grant's own pseudonym is not
+   * re-identification row for a person who never triggered one themselves. Without one, only older
+   * owner entries naming the account id can lead to the person. Once the person's account is
+   * deleted the page is empty: the mapping is gone with it, and the grant's own pseudonym is not
    * used as a filter.
    */
   public Page<AuditLogEntry> byIncidentScope(
@@ -254,20 +254,18 @@ public class AuditQueryService {
           if (grant.getSubjectUserId() == null) {
             return Page.empty(pageable);
           }
-          return pseudonymService
-              .findExistingPseudonym(grant.getSubjectUserId())
-              .map(
-                  pseudonym ->
-                      auditLogRepository.findIncidentScope(
-                          organizationId,
-                          pseudonym.toString(),
-                          AuditOwnerPayload.EVENT_TYPES,
-                          AuditOwnerPayload.ownerPattern(pseudonym.toString()),
-                          AuditOwnerPayload.ownerPattern(grant.getSubjectUserId().toString()),
-                          from,
-                          to,
-                          pageable))
-              .orElseGet(() -> Page.empty(pageable));
+          UUID pseudonym =
+              pseudonymService.findExistingPseudonym(grant.getSubjectUserId()).orElse(null);
+          AuditPayloadPersons.PayloadKey owner = AuditPayloadPersons.OWNER;
+          return auditLogRepository.findIncidentScope(
+              organizationId,
+              pseudonym == null ? null : pseudonym.toString(),
+              owner.eventTypes(),
+              owner.pattern(pseudonym),
+              owner.pattern(grant.getSubjectUserId()),
+              from,
+              to,
+              pageable);
         });
   }
 
