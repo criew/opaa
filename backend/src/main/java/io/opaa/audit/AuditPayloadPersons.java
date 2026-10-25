@@ -25,11 +25,7 @@ final class AuditPayloadPersons {
 
   /** The target of a transfer of rights. */
   private static final PayloadKey TRANSFER_TARGET =
-      new PayloadKey(
-          "targetId",
-          Set.of(
-              AuditEventType.PERMISSION_TRANSFER_PREVIEWED,
-              AuditEventType.PERMISSION_TRANSFER_EXECUTED));
+      new PayloadKey("targetId", Set.of(AuditEventType.PERMISSION_TRANSFER_EXECUTED));
 
   /** Every key the self-disclosure searches and repeats only as "Sie" or another person. */
   static final List<PayloadKey> SELF_DISCLOSURE = List.of(OWNER, TRANSFER_TARGET);

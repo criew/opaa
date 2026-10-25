@@ -98,7 +98,7 @@ data:
             Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
             Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. In before und after sucht die
             Auskunft unter ownerId bei SPACE_CREATED, SPACE_DELETED, SPACE_ARCHIVED und
-            ASSET_OWNER_CHANGED (die Besitzerin) und unter targetId bei PERMISSION_TRANSFER_PREVIEWED und
+            ASSET_OWNER_CHANGED (die Besitzerin) und unter targetId nur bei
             PERMISSION_TRANSFER_EXECUTED (das Ziel der Übertragung), jeweils nach dem Pseudonym und
             nach der Kontokennung älterer Einträge, auch wenn die Person kein Pseudonym hat; beide
             Angaben gehen nur als „Sie“ oder „andere Person oder Gruppe“ heraus. Die anlassbezogene
@@ -113,7 +113,8 @@ data:
       - AUDITOR
       - >-
         die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen,
-        Kontoobjekt, als Besitzerin oder als Ziel einer Rechteübertragung genannt ist, ohne Pseudonyme und Begründungen, andere
+        Kontoobjekt, als Besitzerin oder als Ziel einer ausgeführten Rechteübertragung genannt
+        ist (die Vorschau einer Übertragung nicht), ohne Pseudonyme und Begründungen, andere
         Beteiligte als „andere Person“ oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
@@ -546,6 +547,10 @@ auditEvents:
     payloadKeys: [capability, scope, subjectType]
   - id: PERMISSION_TRANSFER_PREVIEWED
     trigger: Die Vorschau einer Rechteübertragung wird abgerufen, auch ohne Ausführung
+    details: >-
+      Die Vorschau erscheint nicht in der Selbstauskunft der Zielperson; sie nennt Umfangszahlen
+      der Quelle zu einer Übertragung, die nie ausgeführt sein muss. In der Auskunft der
+      Handelnden und der Quelle fehlt das Ziel
     payloadKeys:
       - assetGrants
       - capabilities
@@ -560,7 +565,8 @@ auditEvents:
     trigger: Die Rechte eines Subjekts werden auf ein anderes übertragen
     details: >-
       Quelle, Ziel, Umfang und Zahl der Zeilen; eine Person als Ziel erscheint als Pseudonym und
-      findet den Eintrag in ihrer Selbstauskunft
+      findet den Eintrag in ihrer Selbstauskunft, mit den Umfangszahlen der auf sie übertragenen
+      Rechte
     payloadKeys:
       - assetGrants
       - capabilities

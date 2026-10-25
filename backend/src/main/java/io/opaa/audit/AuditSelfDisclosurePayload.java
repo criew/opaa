@@ -194,6 +194,18 @@ final class AuditSelfDisclosurePayload {
         keys,
         Set.of(
             "targetType",
+            "scope",
+            "assetGrants",
+            "spaceMemberships",
+            "capabilities",
+            "ownedAssets",
+            "stewardships",
+            "rows"),
+        PERMISSION_TRANSFER_PREVIEWED);
+    put(
+        keys,
+        Set.of(
+            "targetType",
             "targetId",
             "scope",
             "assetGrants",
@@ -202,7 +214,6 @@ final class AuditSelfDisclosurePayload {
             "ownedAssets",
             "stewardships",
             "rows"),
-        PERMISSION_TRANSFER_PREVIEWED,
         PERMISSION_TRANSFER_EXECUTED);
     put(
         keys,

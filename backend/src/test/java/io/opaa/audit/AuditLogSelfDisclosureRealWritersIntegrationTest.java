@@ -234,8 +234,9 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
   }
 
   /**
-   * The target of a transfer of rights is named only under {@code targetId}; she finds preview and
-   * execution in her self-disclosure as "Sie".
+   * The target of a transfer of rights is named only under {@code targetId}; she finds the
+   * execution in her self-disclosure as "Sie", but not the preview, and the source's preview leaves
+   * the target out.
    */
   @Test
   void theTargetOfATransferOfRightsFindsItInHerSelfDisclosure() throws Exception {
@@ -262,7 +263,7 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
     assertThat(ofSuccessor)
         .filteredOn(r -> r.get("eventType").toString().startsWith("PERMISSION_TRANSFER_"))
         .extracting(r -> r.get("eventType"))
-        .containsExactlyInAnyOrder("PERMISSION_TRANSFER_PREVIEWED", "PERMISSION_TRANSFER_EXECUTED");
+        .containsExactly("PERMISSION_TRANSFER_EXECUTED");
     assertThat(ofSuccessor)
         .filteredOn(r -> "PERMISSION_TRANSFER_EXECUTED".equals(r.get("eventType")))
         .singleElement()
@@ -274,6 +275,11 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
               assertThat(JSON.readTree((String) r.get("after")).get("targetId").stringValue())
                   .isEqualTo(SelfDisclosureLabels.YOU);
             });
+    assertThat(export(leaving.getId()))
+        .filteredOn(r -> "PERMISSION_TRANSFER_PREVIEWED".equals(r.get("eventType")))
+        .singleElement()
+        .satisfies(
+            r -> assertThat(JSON.readTree((String) r.get("after")).has("targetId")).isFalse());
     String all = ofSuccessor.toString();
     for (User user : List.of(admin, leaving, successor)) {
       assertThat(all)

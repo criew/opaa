@@ -318,7 +318,8 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
 
   /**
    * The target of a transfer of rights is named only under {@code targetId}, by pseudonym or, in
-   * older entries, by account id; only the two transfer event types are searched there.
+   * older entries, by account id; only an executed transfer is searched there, never a preview,
+   * which names the source's holdings for a transfer that may never run.
    */
   @Test
   void transferEntriesFindTheTargetUnderTargetIdOnlyForTransferEventTypes() throws Exception {
@@ -340,7 +341,7 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
         now.plusMillis(1),
         "USER",
         otherPseudonym,
-        "PERMISSION_TRANSFER_PREVIEWED",
+        "PERMISSION_TRANSFER_EXECUTED",
         "USER_ACCOUNT",
         otherPseudonym,
         OTHER_NAME,
@@ -351,6 +352,19 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
         null);
     entry(
         now.plusMillis(2),
+        "USER",
+        otherPseudonym,
+        "PERMISSION_TRANSFER_PREVIEWED",
+        "USER_ACCOUNT",
+        otherPseudonym,
+        OTHER_NAME,
+        "USER",
+        otherPseudonym,
+        null,
+        "{\"targetType\":\"USER\",\"targetId\":\"" + selfPseudonym + "\",\"rows\":2}",
+        null);
+    entry(
+        now.plusMillis(3),
         "USER",
         otherPseudonym,
         "GROUP_CHANGED",
@@ -367,7 +381,7 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
 
     assertThat(records)
         .extracting(r -> r.get("eventType"))
-        .containsExactly("PERMISSION_TRANSFER_EXECUTED", "PERMISSION_TRANSFER_PREVIEWED");
+        .containsExactly("PERMISSION_TRANSFER_EXECUTED", "PERMISSION_TRANSFER_EXECUTED");
     assertThat(records)
         .allSatisfy(
             r ->
