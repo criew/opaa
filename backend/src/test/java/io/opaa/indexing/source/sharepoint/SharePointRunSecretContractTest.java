@@ -1,8 +1,13 @@
 package io.opaa.indexing.source.sharepoint;
 
 import static io.opaa.indexing.source.sharepoint.SharePointTestStores.DRIVE_0;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.run.IndexingRunTemplate;
@@ -15,6 +20,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.msgraph.FakeGraphServer;
+import io.opaa.msgraph.GraphClient;
 import io.opaa.test.ProductionDocumentFormats;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -24,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * The SharePoint run against the {@link FakeGraphServer}, the access token being what the core
@@ -111,5 +118,36 @@ class SharePointRunSecretContractTest extends RunSecretContract {
             template,
             ProductionDocumentFormats.supportedFormats())
         .execute(jobId, library, runMode());
+  }
+
+  // regression guard for #3156: a token without any granted permission lacks the administrator
+  // consent, not a valid secret - the run ends with the consent's message, the access stays valid
+  @Test
+  void aTokenWithoutConsentEndsTheRunWithoutRejectingTheSecret() throws Exception {
+    server.failNextSaying(
+        "drives/" + DRIVE_0,
+        401,
+        "InvalidAuthenticationToken",
+        "Either scp or roles claim need to be present in the token.",
+        5);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(jobId, GraphClient.CONSENT_MISSING);
+    verify(jobService, never()).failJob(eq(jobId), anyString(), anyString());
+    verify(ingestService, never()).ingest(any(), any());
+    assertThat(rejectionsReported()).as("the port heard of no rejection").isZero();
+  }
+
+  @Test
+  void aRejectedTokenStillEndsTheRunAsRejected() throws Exception {
+    server.failNext("drives/" + DRIVE_0, 401, "InvalidAuthenticationToken", null, 5);
+    UUID jobId = UUID.randomUUID();
+
+    run(template(), jobId, library());
+
+    verify(jobService).failJob(eq(jobId), anyString(), eq("CREDENTIALS_REJECTED"));
+    assertThat(rejectionsReported()).as("the port heard of the rejection once").isEqualTo(1);
   }
 }

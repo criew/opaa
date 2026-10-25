@@ -31,6 +31,7 @@ import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import io.opaa.msgraph.FakeGraphServer;
+import io.opaa.security.TargetAddressValidator;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -363,6 +364,54 @@ class OneDriveSourceConnectorTest {
     assertThat(connector.testConnection(settings(TOKEN_ANNA, null), null).message())
         .isEqualTo("Bitte das OneDrive wählen.");
     assertThat(server.requests()).isEmpty();
+  }
+
+  @Test
+  void onlyARejectedTokenFailsTheSignInOfTheConnectionTest() {
+    server.failNext("me/drive", 401, "InvalidAuthenticationToken", null, 1);
+
+    SourceConnectionTestResult result =
+        connector.testConnection(settings(TOKEN_ANNA, OneDriveTestDrives.drive(DRIVE_ANNA)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isFalse();
+  }
+
+  // regression guard for #3156: a blocked target or a server error never reads as a rejected
+  // sign-in; the result names the failure and leaves the sign-in open
+  @Test
+  void aBlockedTargetOrAServerErrorLeavesTheSignInOpen() {
+    OneDriveSourceConnector blocked =
+        new OneDriveSourceConnector(
+            server.origin(),
+            "https://login.example.org/{tenant}/oauth2/v2.0/authorize",
+            "https://login.example.org/{tenant}/oauth2/v2.0/token",
+            SharePointTestStores.blockedConnections(server),
+            syncState);
+    SourceConnectionTestResult refusedTarget =
+        blocked.testConnection(settings(TOKEN_ANNA, OneDriveTestDrives.drive(DRIVE_ANNA)), null);
+    server.failNext("me/drive", 500, "generalException", null, 1);
+    SourceConnectionTestResult serverError =
+        connector.testConnection(settings(TOKEN_ANNA, OneDriveTestDrives.drive(DRIVE_ANNA)), null);
+
+    assertThat(refusedTarget.reachable()).isFalse();
+    assertThat(refusedTarget.credentialsVerified()).isNull();
+    assertThat(refusedTarget.message()).contains(TargetAddressValidator.ALLOWLIST_HINT);
+    assertThat(serverError.reachable()).isFalse();
+    assertThat(serverError.credentialsVerified()).isNull();
+    assertThat(serverError.message()).contains("HTTP 500");
+  }
+
+  @Test
+  void aRefusalAfterTheSignInLeavesItAccepted() {
+    server.failNext("me/drive", 403, "accessDenied", null, 1);
+
+    SourceConnectionTestResult result =
+        connector.testConnection(settings(TOKEN_ANNA, OneDriveTestDrives.drive(DRIVE_ANNA)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
+    assertThat(result.message()).isEqualTo(OwnDrive.NOT_READABLE);
   }
 
   // --- original ------------------------------------------------------------------------------

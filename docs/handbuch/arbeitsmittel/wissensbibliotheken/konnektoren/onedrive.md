@@ -111,9 +111,9 @@ zuerst aufgeklappt. Bei mehreren wählt man einen ausdrücklich.
 Der Verbindungstest prüft mit dem verbundenen Konto, dass das gewählte OneDrive dessen eigenes und
 erreichbar ist, samt den gewählten Ordnern; bei Erfolg meldet er „Anmeldung erfolgreich; das OneDrive
 ist erreichbar." Die Adresse von Microsoft Graph ist fest; ein gescheiterter Test nennt deshalb nie
-die Stufe „Adresse", sondern „Anmeldung" oder „Rechte", und fehlt nur eine Angabe, allein die
-Meldung. Ein Ergebnis gilt nur für die Auswahl, mit der getestet wurde: Wer danach Ordner ändert,
-sieht wieder „nicht geprüft".
+die Stufe „Adresse", sondern „Anmeldung" oder „Rechte"; fehlt nur eine Angabe oder scheitert er
+vor der Anmeldung, etwa an der Zieladressprüfung, allein die Meldung. Ein Ergebnis gilt nur für
+die Auswahl, mit der getestet wurde: Wer danach Ordner ändert, sieht wieder „nicht geprüft".
 
 Im Reiter „Quelle" öffnet „Ändern" jede Zeile einzeln, „Speichern" übernimmt sie. Unter
 „Verbindung" ermittelt „OneDrive neu wählen" das OneDrive des inzwischen verbundenen Kontos; ist es
@@ -124,6 +124,8 @@ Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen.
 Token ab, gilt die Verbindung als **abgelaufen**: Die Person wird benachrichtigt, die Bibliothek ruht
 mit „Abgelaufen" und „Konto neu verbinden", und ihr Bestand bleibt durchsuchbar
 ([Private Bibliotheken](../private-bibliotheken.md)). Eine Warnung vor dem Ablauf gibt es nicht.
+Ein Token ohne Berechtigung, etwa bei fehlender Administratorzustimmung, beendet dagegen nur den
+Lauf mit der Meldung zur Zustimmung; die Verbindung läuft nicht ab, und niemand wird benachrichtigt.
 Verbindet die Person ein anderes Microsoft-Konto, liest OPAA das OneDrive der Bibliothek nicht mehr:
 Jeder Lauf scheitert, bis sie mit dem Konto neu verbindet, dem das OneDrive gehört, oder das OneDrive
 neu wählt.
@@ -211,7 +213,7 @@ verbinden".
 | „Das verbundene Microsoft-Konto gehört zu einem anderen OneDrive als dem dieser Bibliothek. …" | mit einem anderen Konto neu verbunden; nichts wird gelesen, der Bestand bleibt | mit dem Konto neu verbinden, dem das OneDrive gehört, oder das OneDrive neu wählen |
 | „Für das verbundene Microsoft-Konto ist kein OneDrive bereitgestellt." | Konto ohne OneDrive, etwa ohne Lizenz oder als Gast im Mandanten | OneDrive bereitstellen lassen oder anderes Konto verbinden |
 | „Das verbundene Microsoft-Konto darf sein OneDrive nicht lesen; die Anwendung braucht die delegierte Berechtigung Files.Read." | Berechtigung fehlt an der App-Registrierung | `Files.Read` ergänzen (Abschnitt 2), dann neu verbinden |
-| „Das Token der App trägt keine Berechtigung: …" | Microsoft stellte das Token ohne Berechtigung aus | Berechtigungen und Zustimmung in Entra prüfen, dann neu verbinden |
+| „Das Token der App trägt keine Berechtigung: …" | Microsoft stellte das Token ohne Berechtigung aus; der Lauf endet, die Verbindung läuft nicht ab | Berechtigungen und Zustimmung in Entra prüfen, dann neu verbinden |
 | „Microsoft Graph hat das Zugriffstoken abgewiesen" | Zustimmung widerrufen oder abgelaufen; die Verbindung gilt als abgelaufen, die Bibliothek ruht | Konto neu verbinden |
 | „Das OneDrive ist für das verbundene Konto nicht sichtbar." | Graph zeigt das OneDrive nicht; der Bestand bleibt | Konto neu verbinden |
 | „Der gewählte Ordner „…" ist im OneDrive nicht mehr vorhanden; bitte die Ordnerauswahl anpassen." | Ordner gelöscht oder verschoben; der Bestand bleibt | Ordnerauswahl anpassen |

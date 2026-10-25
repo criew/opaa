@@ -44,7 +44,8 @@ record OwnDrive(String id, String driveType, String name, String owner) {
   /**
    * Refuses unless {@code driveId} is the token's own OneDrive for Business: a mismatch, another
    * kind of drive or none at all is {@link FileAccessException.ContainerUnlistable}, a rejected
-   * token {@link FileAccessException.CredentialsRejected}, any other failure {@link
+   * token {@link FileAccessException.CredentialsRejected} (one without consent {@link
+   * FileAccessException.PermissionMissing}), any other failure {@link
    * FileAccessException.RunEnding}.
    */
   static void require(GraphClient graph, String driveId)
@@ -54,7 +55,7 @@ record OwnDrive(String id, String driveType, String name, String owner) {
       own = read(graph);
     } catch (GraphException e) {
       throw switch (e.kind()) {
-        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case UNAUTHORIZED -> DriveFileStore.unauthorized(e);
         case NOT_FOUND -> new FileAccessException.ContainerUnlistable(NO_DRIVE);
         case FORBIDDEN ->
             new FileAccessException.ContainerUnlistable(

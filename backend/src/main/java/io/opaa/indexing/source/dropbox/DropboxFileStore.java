@@ -104,7 +104,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
     } catch (DropboxApiException e) {
       throw switch (e.kind()) {
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
-        case SCOPE_MISSING, BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
+        case SCOPE_MISSING -> new FileAccessException.PermissionMissing(e.getMessage());
+        case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.ContainerUnlistable(e.getMessage());
       };
     }
@@ -251,7 +252,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       }
       throw switch (e.kind()) {
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
-        case SCOPE_MISSING, BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
+        case SCOPE_MISSING -> new FileAccessException.PermissionMissing(e.getMessage());
+        case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.Transient(e.getMessage());
       };
     }
@@ -309,7 +311,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
     } catch (DropboxApiException e) {
       throw switch (e.kind()) {
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
-        case SCOPE_MISSING, BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
+        case SCOPE_MISSING -> new FileAccessException.PermissionMissing(e.getMessage());
+        case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         case NOT_FOUND, FORBIDDEN, CONFLICT ->
             new FileAccessException.ContainerUnlistable(
                 "Der Ordner „" + folder + "“ ist für das Konto nicht sichtbar.");
@@ -467,7 +470,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   private static FileAccessException fileFailure(DropboxApiException e) {
     return switch (e.kind()) {
       case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
-      case SCOPE_MISSING, BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
+      case SCOPE_MISSING -> new FileAccessException.PermissionMissing(e.getMessage());
+      case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
       case TOO_LARGE -> new FileAccessException.TooLarge(e.getMessage());
       case NOT_FOUND, FORBIDDEN, CONFLICT, BAD_REQUEST, RESET ->
           new FileAccessException.Unreadable(e.getMessage());

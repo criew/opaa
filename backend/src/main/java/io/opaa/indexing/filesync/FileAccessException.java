@@ -47,9 +47,19 @@ public abstract sealed class FileAccessException extends Exception {
   }
 
   /** No later request of this run will do better (credentials, clock, TLS, blocked target). */
-  public static sealed class RunEnding extends FileAccessException permits CredentialsRejected {
+  public static sealed class RunEnding extends FileAccessException
+      permits CredentialsRejected, PermissionMissing {
     public RunEnding(String message) {
       super(message);
+    }
+
+    /**
+     * What this end says about the secret, as {@code
+     * SourceConnectionTestResult#credentialsVerified} reports it: {@code null} here, it says
+     * nothing about the secret.
+     */
+    public Boolean credentialsVerified() {
+      return null;
     }
   }
 
@@ -60,6 +70,26 @@ public abstract sealed class FileAccessException extends Exception {
   public static final class CredentialsRejected extends RunEnding {
     public CredentialsRejected(String message) {
       super(message);
+    }
+
+    @Override
+    public Boolean credentialsVerified() {
+      return Boolean.FALSE;
+    }
+  }
+
+  /**
+   * The source accepted the secret, but the application lacks a permission or scope no request of
+   * this run gets; the run ends like any {@link RunEnding}.
+   */
+  public static final class PermissionMissing extends RunEnding {
+    public PermissionMissing(String message) {
+      super(message);
+    }
+
+    @Override
+    public Boolean credentialsVerified() {
+      return Boolean.TRUE;
     }
   }
 
