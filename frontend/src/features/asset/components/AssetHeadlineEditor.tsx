@@ -117,16 +117,24 @@ export default function AssetHeadlineEditor({
         <PageHeading title={name} visuallyHidden />
       ) : (
         // a long compound breaks with a hyphen instead of running out at 320 px
-        <PageHeading
-          title={name}
-          sx={{
-            minWidth: 0,
-            overflowWrap: 'anywhere',
-            hyphens: 'auto',
-            fontSize: { xs: 17, sm: undefined },
-            lineHeight: { xs: '22px', sm: undefined },
-          }}
-        />
+        <Box title={name} sx={{ minWidth: 0 }}>
+          {/* a fixed height for every name: one line at 1280 px, two below 600 px, the full
+              name in the tooltip - the tabs below never move (D1) */}
+          <PageHeading
+            title={name}
+            sx={{
+              overflow: 'hidden',
+              hyphens: 'manual',
+              overflowWrap: 'anywhere',
+              fontSize: { xs: 17, sm: undefined },
+              lineHeight: { xs: '22px', sm: 1.4 },
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: { xs: 2, sm: 1 },
+              minHeight: { xs: 44, sm: 'auto' },
+            }}
+          />
+        </Box>
       )}
       {badges}
       {canEdit && !draft && (

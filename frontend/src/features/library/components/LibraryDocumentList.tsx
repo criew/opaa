@@ -24,9 +24,9 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { LibraryDocumentResponse, LibraryFolderListItem } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 import type { DocumentPageState } from '../stores/documentStore'
-import { documentStatusLabel } from './indexingLabels'
 import { formatFileSize } from '@/shared/utils/labels'
 import StateDot from '@/shared/ui/StateDot'
+import { DOCUMENT_STATUS_WORDS } from './indexingLabels'
 import { TextAction } from '@/shared/ui/DetailSection'
 import { sourceRegistration } from './sources/registry'
 
@@ -58,6 +58,8 @@ export interface LibraryDocumentListProps {
   onPageSizeChange?: (size: number) => void
   /** The toolbar's filters after the search field. */
   filters?: ReactNode
+  /** Search and filters only from eight documents on or while filtering (D19, R1-63). */
+  showSearch?: boolean
   /** Whether rows carry a checkbox at all - a reader's list has no selection. */
   selectable: boolean
   selectedIds: string[]
@@ -91,8 +93,9 @@ export interface LibraryDocumentListProps {
  * A document's state as dot and word, like a run's: „indiziert“ quiet without a dot, a failure
  * with its reason one focus away (guidelines 5.5).
  */
+
 function DocumentStatusMark({ document }: { document: LibraryDocumentResponse }) {
-  const label = documentStatusLabel(document.status)
+  const label = DOCUMENT_STATUS_WORDS[document.status]
   if (document.status === 'INDEXED') {
     return (
       <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary', minWidth: 112 }}>
@@ -146,6 +149,7 @@ export default function LibraryDocumentList({
   onSearchChange,
   onPageChange,
   filters,
+  showSearch = true,
   selectable,
   selectedIds,
   onToggleSelected,
@@ -214,6 +218,7 @@ export default function LibraryDocumentList({
             py: isAttachment ? 1 : 1.25,
           }}
         >
+          {!selectable && <Box aria-hidden sx={{ width: 28, flex: 'none' }} />}
           {selectable && (
             <Checkbox
               size="small"
@@ -254,12 +259,25 @@ export default function LibraryDocumentList({
                 </>
               )}
               {formatFileSize(document.fileSize)}
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                {` · ${document.chunkCount} ${document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} · ${formatIndexedAt(document.indexedAt)}`}
-              </Box>
-              {/* below 600 px the state joins this line instead of its own column */}
-              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                {` · ${documentStatusLabel(document.status)}`}
+              {/* sections and date only where the document was indexed - no placeholders */}
+              {document.status === 'INDEXED' && (
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {` · ${document.chunkCount} ${document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} · ${formatIndexedAt(document.indexedAt)}`}
+                </Box>
+              )}
+              {/* below 600 px the state joins this line, with its dot, instead of its own column */}
+              <Box
+                component="span"
+                sx={{ display: { xs: 'inline-flex', sm: 'none' }, ml: 1, verticalAlign: 'top' }}
+              >
+                {document.status === 'INDEXED' ? (
+                  DOCUMENT_STATUS_WORDS.INDEXED
+                ) : (
+                  <StateDot
+                    tone={document.status === 'FAILED' ? 'error' : 'neutral'}
+                    label={DOCUMENT_STATUS_WORDS[document.status]}
+                  />
+                )}
               </Box>
             </Typography>
             {attachments.length > 0 && (
@@ -283,6 +301,7 @@ export default function LibraryDocumentList({
             {renderMetadataPanel && (
               <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
                 <IconButton
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
                   aria-label={`Metadaten von ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
                   aria-expanded={metadataOpen}
                   size="small"
@@ -314,74 +333,81 @@ export default function LibraryDocumentList({
     <Box>
       {breadcrumb}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          fullWidth
-          value={searchInput}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Dateiname enthält …"
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 16 }} />
-                </InputAdornment>
-              ),
-              endAdornment: searchInput ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label="Suche zurücksetzen"
-                    onClick={() => onSearchChange('')}
-                  >
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            },
-            htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
-          }}
-        />
-        {filters && (
-          <Stack
-            direction="row"
-            useFlexGap
-            spacing={1.5}
-            sx={{ alignItems: 'center', flexShrink: 0, minWidth: 0, flexWrap: 'wrap' }}
-          >
-            {filters}
-          </Stack>
-        )}
-      </Stack>
+      {(showSearch || filters) && (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+          {showSearch && (
+            <TextField
+              size="small"
+              fullWidth
+              value={searchInput}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Dateiname enthält …"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 16 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchInput ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        aria-label="Suche zurücksetzen"
+                        onClick={() => onSearchChange('')}
+                      >
+                        <CloseIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+                },
+                htmlInput: { 'aria-label': 'Dokumente durchsuchen' },
+              }}
+            />
+          )}
+          {filters && (
+            <Stack
+              direction="row"
+              useFlexGap
+              spacing={1.5}
+              sx={{ alignItems: 'center', flexShrink: 0, minWidth: 0, flexWrap: 'wrap' }}
+            >
+              {filters}
+            </Stack>
+          )}
+        </Stack>
+      )}
 
-      {/* The selection toolbar also stands on the root level, where a library may show only
-          folders - hiding it there made "Alle auf dieser Seite auswählen" look unavailable rather
-          than simply empty. */}
-      {/* The list's head: the select-all box, and while something is selected its actions */}
-      {selectable && documents.length > 0 && (
+      {/* The list's head for every role: the select-all box (or its space) and the column
+          name; while something is selected, its actions */}
+      {(documents.length > 0 || folders.length > 0) && (
         <Stack
           direction="row"
-          spacing={1.5}
+          spacing={{ xs: 1, sm: 2 }}
           sx={{
             alignItems: 'center',
             minHeight: 40,
-            px: 1.5,
+            px: { xs: 0.5, sm: 1.5 },
             borderBottom: 1,
             borderColor: 'divider',
             flexWrap: 'wrap',
           }}
-          role="toolbar"
-          aria-label="Sammelaktionen"
+          role={selectable ? 'toolbar' : undefined}
+          aria-label={selectable ? 'Sammelaktionen' : undefined}
         >
-          <Checkbox
-            size="small"
-            checked={allVisibleSelected}
-            indeterminate={!allVisibleSelected && selectedIds.length > 0}
-            onChange={onToggleAllVisible}
-            slotProps={{ input: { 'aria-label': 'Alle auf dieser Seite auswählen' } }}
-            sx={{ p: 0.5 }}
-          />
+          {selectable ? (
+            <Checkbox
+              size="small"
+              checked={allVisibleSelected}
+              disabled={documents.length === 0}
+              indeterminate={!allVisibleSelected && selectedIds.length > 0}
+              onChange={onToggleAllVisible}
+              slotProps={{ input: { 'aria-label': 'Alle auf dieser Seite auswählen' } }}
+              sx={{ p: 0.5 }}
+            />
+          ) : (
+            <Box aria-hidden sx={{ width: 28, flex: 'none' }} />
+          )}
           {/* accessibility.md 2.8: the count changes without moving the focus */}
           <Typography
             role="status"
@@ -424,6 +450,7 @@ export default function LibraryDocumentList({
                 justifyContent: 'space-between',
                 gap: 2,
                 py: 1.25,
+                px: { xs: 0.5, sm: 1.5 },
                 borderBottom: 1,
                 borderColor: 'divider',
                 '&:last-of-type': { borderBottom: 0 },
@@ -433,7 +460,7 @@ export default function LibraryDocumentList({
                   checkbox and its reason, rather than by leaving the column blank and making the
                   rows below look misaligned. */}
               {/* a folder is no document and has no box; the space keeps the names aligned */}
-              {selectable && <Box aria-hidden sx={{ width: 26, flex: 'none' }} />}
+              <Box aria-hidden sx={{ width: 28, flex: 'none' }} />
               <Box
                 role="button"
                 tabIndex={0}
@@ -536,16 +563,24 @@ export default function LibraryDocumentList({
             }}
           >
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isSearchActive
-                ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
-                : `${pageState.totalElements.toLocaleString('de-DE')} ${
-                    pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'
-                  }`}
-              {pageCount > 1 ? ` · Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : ''}
+              {/* the head counts the library; the foot counts a filtered list only */}
+              {[
+                isSearchActive
+                  ? `${pageState.totalElements.toLocaleString('de-DE')} Treffer für „${pageState.q}“`
+                  : isMissingFilterActive || pageState.status
+                    ? `${pageState.totalElements.toLocaleString('de-DE')} ${pageState.totalElements === 1 ? 'Dokument' : 'Dokumente'}`
+                    : null,
+                pageCount > 1 ? `Seite ${(pageState.page ?? 0) + 1} von ${pageCount}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Typography>
             {pageCount > 1 && (
               <Pagination
                 count={pageCount}
+                size="small"
+                siblingCount={0}
+                boundaryCount={1}
                 page={(pageState?.page ?? 0) + 1}
                 onChange={(_event, page) => onPageChange(page)}
                 // The app shell's own persistent navigation is also a <nav>; without a

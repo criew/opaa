@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
@@ -16,6 +17,16 @@ export default function LibraryDetailTabBar({
   tabs,
   tabSearch,
 }: LibraryDetailTabBarProps) {
+  // the chosen tab stays in sight when the bar gets narrower than its tabs
+  useEffect(() => {
+    const reveal = () =>
+      document
+        .getElementById(`library-tab-${activeTab}`)
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    reveal()
+    window.addEventListener('resize', reveal)
+    return () => window.removeEventListener('resize', reveal)
+  }, [activeTab])
   return (
     <>
       {/* Every tab is a link to the same page with another `?tab=` — middle click and
@@ -24,12 +35,12 @@ export default function LibraryDetailTabBar({
         value={activeTab}
         aria-label="Bereiche dieser Bibliothek"
         variant="scrollable"
-        scrollButtons={false}
+        // below 600 px arrows show that further tabs lie beyond, and lead there
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{
-          // at the right edge a fade shows that further tabs lie beyond
-          '& .MuiTabs-scroller': {
-            maskImage: { xs: 'linear-gradient(to right, #000 85%, transparent)', sm: 'none' },
-          },
+          '& .MuiTabs-scrollButtons.Mui-disabled': { opacity: 0.3 },
+          '& .MuiTabs-scrollButtons': { width: 28 },
           borderBottom: 1,
           borderColor: 'divider',
           mb: 4,

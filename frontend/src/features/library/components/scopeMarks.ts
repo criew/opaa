@@ -51,12 +51,3 @@ export function unreadableScopeNames(
       return keys
   }
 }
-
-/** „2 nicht lesbar: Bauamt, Rechtsamt“ - at most three names, the rest as a number. */
-export function unreadableLabel(names: string[], count: number): string {
-  const total = Math.max(count, names.length)
-  if (names.length === 0) return `${total} nicht lesbar`
-  const shown = names.slice(0, 3).join(', ')
-  const rest = total - Math.min(names.length, 3)
-  return `${total} nicht lesbar: ${shown}${rest > 0 ? ` und ${rest} weitere` : ''}`
-}

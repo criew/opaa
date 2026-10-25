@@ -2,6 +2,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { TextAction } from '@/shared/ui/DetailSection'
+import StateDot from '@/shared/ui/StateDot'
 import Typography from '@mui/material/Typography'
 import type { LibraryFolderListItem } from '@/shared/api/types'
 import { useDocumentStore } from '../stores/documentStore'
@@ -84,32 +85,38 @@ function groupByReason(messages: string[]): Array<{ reason: string; files: strin
   const groups = new Map<string, string[]>()
   for (const message of messages) {
     const match = /^(.*) \(Datei: (.*)\)$/.exec(message)
-    const reason = (match ? match[1] : message).replace(/\.$/, '')
-    groups.set(reason, [...(groups.get(reason) ?? []), ...(match ? [match[2]] : [])])
+    groups.set(shortReason(match ? match[1] : message), [
+      ...(groups.get(shortReason(match ? match[1] : message)) ?? []),
+      ...(match ? [match[2]] : []),
+    ])
   }
   return [...groups].map(([reason, files]) => ({ reason, files }))
 }
 
 /**
- * Files an upload turned away before a document existed: each reason once, the files after it.
- * It stays until it is closed or the next upload starts; one edge in the signal colour, no tint.
+ * A reason in one short sentence: the full quota is the head's state already, a format rejection
+ * names no list of allowed endings.
+ */
+function shortReason(reason: string): string {
+  if (/kontingent/i.test(reason)) return ''
+  return reason.split(/[.:;(]/)[0].trim()
+}
+
+/**
+ * Files an upload turned away before a document existed: each reason once, the files after it,
+ * the signal colour only in the dot. It stays until it is closed or the next upload starts.
  */
 function UploadRejections({ messages, onClose }: { messages: string[]; onClose: () => void }) {
   return (
-    <Box
-      role="alert"
-      sx={{ mb: 2, pl: 1.5, borderLeft: 3, borderColor: 'error.main', display: 'flex', gap: 2 }}
-    >
+    <Box role="alert" sx={{ mb: 2, display: 'flex', alignItems: 'baseline', gap: 2 }}>
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
         {groupByReason(messages).map(({ reason, files }) => (
           <Typography key={reason} sx={{ fontSize: 13, lineHeight: '22px' }}>
-            <Box component="span" sx={{ fontWeight: 600 }}>
-              {reason}
-            </Box>
+            <StateDot tone="error" label={reason || 'Nicht hochgeladen'} />
             {files.length > 0 && (
               <Box component="span" sx={{ color: 'text.secondary' }}>
-                {' '}
-                · nicht hochgeladen: {files.join(', ')}
+                {reason ? ' · nicht hochgeladen: ' : ': '}
+                {files.join(', ')}
               </Box>
             )}
           </Typography>

@@ -5,9 +5,8 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import DeleteIcon from '@mui/icons-material/Delete'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import RowMenu from '@/shared/ui/RowMenu'
 import type { DocumentStatus, SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
@@ -26,6 +25,7 @@ import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
 import LibraryDocumentBulkActions from './LibraryDocumentBulkActions'
 import LibraryDocumentList from './LibraryDocumentList'
+import { DOCUMENT_STATUS_WORDS } from './indexingLabels'
 import LibraryDocumentsNotices from './LibraryDocumentsNotices'
 import LibraryDocumentUploadArea from './LibraryDocumentUploadArea'
 import LibraryFolderBreadcrumb from './LibraryFolderBreadcrumb'
@@ -44,9 +44,6 @@ export interface LibraryDocumentsSectionProps {
   onDocumentsChanged: () => void
   /** UPLOAD: the page's upload, whose pickers the head opens as well. */
   upload: DocumentUpload
-  /** A connector library that never ran: its empty state offers the first run. */
-  neverIndexed?: boolean
-  onIndexNow?: () => void
 }
 
 /**
@@ -62,8 +59,6 @@ export default function LibraryDocumentsSection({
   confluenceSpaces,
   onDocumentsChanged,
   upload,
-  neverIndexed = false,
-  onIndexNow,
 }: LibraryDocumentsSectionProps) {
   const documentsByLibrary = useDocumentStore((s) => s.documentsByLibrary)
   const pageStateByLibrary = useDocumentStore((s) => s.pageStateByLibrary)
@@ -260,19 +255,23 @@ export default function LibraryDocumentsSection({
           <LibraryDocumentUploadArea upload={upload} />
         ) : (
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+            {/* the one action is the head's main action; the sentence names no second one */}
             Noch keine Dokumente.
-            {neverIndexed && onIndexNow && (
-              <>
-                {' '}
-                <TextAction onClick={onIndexNow}>Jetzt indizieren</TextAction>
-              </>
-            )}
           </Typography>
         )}
         {canManageFolders && <LibraryFolderDialogs folderActions={folderActions} />}
       </Box>
     )
   }
+
+  // search and filters from eight documents on, or while a filter or search is active (D19)
+  const searchable = (pageState?.totalElements ?? 0) >= 8 || filtered
+  const newFolder =
+    canManageFolders && !folderIdParam ? (
+      <Box sx={{ ml: 'auto' }}>
+        <TextAction onClick={() => setNewFolderDialogOpen(true)}>Neuer Ordner</TextAction>
+      </Box>
+    ) : undefined
 
   const dropTarget =
     isUploadLibrary && canManage
@@ -317,39 +316,40 @@ export default function LibraryDocumentsSection({
       )}
 
       <LibraryDocumentList
+        showSearch={searchable}
         filters={
-          <>
-            <FilterSelect
-              label="Status"
-              value={statusParam ?? ''}
-              onChange={(value) => setStatusFilter((value || null) as DocumentStatus | null)}
-              options={[
-                ['', 'Alle Status'],
-                ['FAILED', 'fehlgeschlagen'],
-                ['PENDING', 'wird verarbeitet'],
-                ['INDEXED', 'indiziert'],
-              ]}
-            />
-            {metadataEnabled && (
+          searchable ? (
+            <>
               <FilterSelect
-                label="Metadaten"
-                value={missingFieldParam ?? ''}
-                onChange={(value) => setMissingFieldFilter(value || null)}
+                label="Status"
+                value={statusParam ?? ''}
+                onChange={(value) => setStatusFilter((value || null) as DocumentStatus | null)}
                 options={[
-                  ['', 'Alle Metadaten'],
-                  ...CORE_METADATA_FIELDS.map((field): [string, string] => [
-                    field.key,
-                    `ohne ${field.label}`,
-                  ]),
+                  ['', 'Status'],
+                  ['FAILED', DOCUMENT_STATUS_WORDS.FAILED],
+                  ['PENDING', DOCUMENT_STATUS_WORDS.PENDING],
+                  ['INDEXED', DOCUMENT_STATUS_WORDS.INDEXED],
                 ]}
               />
-            )}
-            {canManageFolders && !folderIdParam && (
-              <Box sx={{ ml: 'auto' }}>
-                <TextAction onClick={() => setNewFolderDialogOpen(true)}>Neuer Ordner</TextAction>
-              </Box>
-            )}
-          </>
+              {metadataEnabled && (
+                <FilterSelect
+                  label="Metadaten"
+                  value={missingFieldParam ?? ''}
+                  onChange={(value) => setMissingFieldFilter(value || null)}
+                  options={[
+                    ['', 'Metadaten'],
+                    ...CORE_METADATA_FIELDS.map((field): [string, string] => [
+                      field.key,
+                      `ohne ${field.label}`,
+                    ]),
+                  ]}
+                />
+              )}
+              {newFolder}
+            </>
+          ) : (
+            newFolder
+          )
         }
         documents={documents}
         folders={folders}
@@ -390,30 +390,24 @@ export default function LibraryDocumentsSection({
         renderFolderActions={
           canManageFolders
             ? (folder) => (
-                <Tooltip title="Ordner umbenennen oder löschen">
-                  <IconButton
-                    aria-label={`Optionen für Ordner ${folder.name}`}
-                    size="small"
-                    onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <IconButton
+                  edge="end"
+                  aria-label={`Optionen für Ordner ${folder.name}`}
+                  size="small"
+                  onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
+                >
+                  <MoreHorizIcon fontSize="small" />
+                </IconButton>
               )
             : undefined
         }
         renderRowActions={
           canDelete
             ? (document) => (
-                <Tooltip title="Dokument löschen">
-                  <IconButton
-                    aria-label={`Dokument ${document.fileName} löschen`}
-                    size="small"
-                    onClick={() => void handleDelete(document)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <RowMenu
+                  label={`Aktionen für Dokument ${document.fileName}`}
+                  items={[{ label: 'Löschen', onClick: () => void handleDelete(document) }]}
+                />
               )
             : undefined
         }

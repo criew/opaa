@@ -1,4 +1,9 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import TextField from '@mui/material/TextField'
+import { TextAction } from '@/shared/ui/DetailSection'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
@@ -16,13 +21,128 @@ export function SummaryValue({
   summary,
   status,
   emptyText = 'keine',
+  statusBelow = false,
+  markedItems,
+  expandable = false,
 }: {
   summary: RowSummary
   status?: RowStatus | null
   emptyText?: string
+  /** The state on a line of its own under the value, never trailing it („…ablage ·“). */
+  statusBelow?: boolean
+  /** Entries to mark as not readable, matched against the listed entries. */
+  markedItems?: string[]
+  /** „und n weitere“ becomes „alle n anzeigen“ with a searchable list. */
+  expandable?: boolean
 }) {
+  const [showAll, setShowAll] = useState(false)
+  const [query, setQuery] = useState('')
   const text = typeof summary === 'string' ? summary : (summary?.lead ?? null)
   const items = summary && typeof summary !== 'string' ? summary.items : []
+  const norm = (value: string) => value.replace(/\s+/g, '').replace(/\/+$/, '').toLowerCase()
+  const marks = (markedItems ?? []).map(norm).filter(Boolean)
+  const isMarked = (item: string) => {
+    const value = norm(item)
+    return marks.some(
+      (mark) => value === mark || value.endsWith(`/${mark}`) || value.startsWith(mark),
+    )
+  }
+  const mark = (item: string) =>
+    isMarked(item) ? (
+      <Box component="span" sx={{ ml: 1, display: 'inline-flex' }}>
+        <StateDot tone="warning" label="nicht lesbar" />
+      </Box>
+    ) : null
+  if (statusBelow) {
+    return (
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          sx={{
+            fontSize: 13.5,
+            color: text ? 'text.primary' : 'text.secondary',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {text ?? emptyText}
+        </Typography>
+        {/* the collective mark only where no marked entry is in sight */}
+        {status && !(markedItems && items.slice(0, SHOWN).some(isMarked)) && (
+          <StateDot tone={status.tone} label={status.label} />
+        )}
+        {items.length > 0 && (
+          <Box component="ul" sx={{ m: 0, mt: 0.25, p: 0, listStyle: 'none' }}>
+            {items.slice(0, SHOWN).map((item) => (
+              <Box
+                component="li"
+                key={item}
+                sx={{ fontSize: 13.5, lineHeight: '22px', display: 'flex' }}
+              >
+                <Box component="span" sx={{ minWidth: 0 }}>
+                  <PathLabel path={item} />
+                </Box>
+                {mark(item)}
+              </Box>
+            ))}
+            {items.length > SHOWN && (
+              <Box
+                component="li"
+                sx={{ fontSize: 13.5, lineHeight: '22px', color: 'text.secondary' }}
+              >
+                {expandable ? (
+                  <TextAction onClick={() => setShowAll(true)}>
+                    alle {items.length} anzeigen
+                  </TextAction>
+                ) : (
+                  `und ${items.length - SHOWN} weitere`
+                )}
+              </Box>
+            )}
+          </Box>
+        )}
+        {expandable && (
+          <Dialog open={showAll} onClose={() => setShowAll(false)} fullWidth maxWidth="sm">
+            <DialogTitle>{text}</DialogTitle>
+            <DialogContent>
+              <TextField
+                size="small"
+                fullWidth
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Name enthält …"
+                slotProps={{ htmlInput: { 'aria-label': 'Einträge durchsuchen' } }}
+                sx={{ mb: 1.5, mt: 0.5 }}
+              />
+              <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+                {items
+                  .filter(
+                    (item) =>
+                      !query.trim() || item.toLowerCase().includes(query.trim().toLowerCase()),
+                  )
+                  .map((item) => (
+                    <Box
+                      component="li"
+                      key={item}
+                      sx={{
+                        py: 0.75,
+                        fontSize: 13.5,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        display: 'flex',
+                      }}
+                    >
+                      <Box component="span" sx={{ minWidth: 0 }}>
+                        <PathLabel path={item} />
+                      </Box>
+                      {mark(item)}
+                    </Box>
+                  ))}
+              </Box>
+            </DialogContent>
+          </Dialog>
+        )}
+      </Box>
+    )
+  }
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box
@@ -86,6 +206,8 @@ interface SummaryRowProps {
   /** Absent for a reader: the row then only shows what is set. */
   onOpen?: () => void
   headingLevel?: 'h2' | 'h3'
+  /** The Reiter „Quelle“: state on its own line, marked entries, the whole list on request. */
+  detail?: { markedItems?: string[] }
   /** The word of the link that opens the row; „Ändern“ unless the row has nothing set yet. */
   actionLabel?: string
   children?: ReactNode
@@ -106,6 +228,7 @@ export default function SummaryRow({
   onOpen,
   headingLevel = 'h3',
   actionLabel = 'Ändern',
+  detail,
   children,
 }: SummaryRowProps) {
   const bodyId = `${id}-body`
@@ -127,7 +250,13 @@ export default function SummaryRow({
         </Typography>
         {!open && (
           <Box sx={{ gridColumn: { xs: '1 / -1', sm: '2' }, gridRow: { xs: '2', sm: '1' } }}>
-            <SummaryValue summary={summary} status={status} />
+            <SummaryValue
+              summary={summary}
+              status={status}
+              statusBelow={Boolean(detail)}
+              markedItems={detail?.markedItems}
+              expandable={Boolean(detail)}
+            />
             {issues.length > 0 && (
               <Box id={issuesId} sx={{ mt: 0.5 }}>
                 {issues.map((issue) => (

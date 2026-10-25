@@ -73,7 +73,12 @@ export default function LibrarySourceRows({
   /** What the runs know of the rows, and the rows after „Zeitplan“. */
   marks?: Pick<
     SourceSetupRowsProps,
-    'storedStatus' | 'scopeStatus' | 'scheduleStatus' | 'scopeFallback' | 'extraRows'
+    | 'storedStatus'
+    | 'scopeStatus'
+    | 'scheduleStatus'
+    | 'scopeFallback'
+    | 'extraRows'
+    | 'scopeMarked'
   >
   ref?: Ref<SourceSetupHandle>
 }) {
@@ -128,7 +133,7 @@ export default function LibrarySourceRows({
     <SourceSetupRows
       scheduleNote={
         library.schedule?.nextRunAt
-          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`
+          ? `nächster Lauf ${new Date(library.schedule.nextRunAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}`
           : null
       }
       ref={ref}
@@ -147,7 +152,14 @@ export default function LibrarySourceRows({
       rhythm={rhythm}
       connectionPrelude={connectionPrelude}
       {...marks}
-      connectionLead={profile ? `Zugang „${profile.name}“` : null}
+      // a profile named „Zugang …“ needs no second „Zugang“
+      connectionLead={
+        profile
+          ? /^zugang\b/i.test(profile.name)
+            ? profile.name
+            : `Zugang „${profile.name}“`
+          : null
+      }
       rows={canEdit ? ['connection', 'scope', 'schedule'] : ['scope']}
       canEdit={canEdit}
       headingLevel="h2"

@@ -33,6 +33,7 @@ export type RunWord =
   | 'Fehlgeschlagen'
   | 'Läuft'
   | 'Anmeldung abgelehnt'
+  | 'Nicht erreichbar'
   | 'Zustimmung abgelaufen'
   | 'Kontingent voll'
 
@@ -68,10 +69,15 @@ export function runPartlyFailed(run: IndexingRunResponse): boolean {
   )
 }
 
-/** The word of one run; the head shows the same word for the newest run. */
-export function runWord(run: IndexingRunResponse): RunWord {
+/**
+ * The word of one run; the head shows the same word for the newest run. A source without a
+ * sign-in (directory, web, feed) never says „Anmeldung“: its refused run was not reachable.
+ */
+export function runWord(run: IndexingRunResponse, signsIn = true): RunWord {
   if (run.status === 'RUNNING') return 'Läuft'
-  if (run.failureCategory === 'CREDENTIALS_REJECTED') return 'Anmeldung abgelehnt'
+  if (run.failureCategory === 'CREDENTIALS_REJECTED')
+    return signsIn ? 'Anmeldung abgelehnt' : 'Nicht erreichbar'
+  if (run.status === 'FAILED' && !run.failureCategory && !signsIn) return 'Nicht erreichbar'
   if (run.failureCategory === 'EXPIRED' || run.failureCategory === 'NOT_CONNECTED')
     return 'Zustimmung abgelaufen'
   if (run.failureCategory === 'QUOTA_EXHAUSTED') return 'Kontingent voll'
@@ -104,6 +110,12 @@ interface StateInput {
   runningPercent: number | null
   /** Upload: documents that failed to process. */
   failedDocuments: number
+  /** Upload: documents still being processed. */
+  pendingDocuments: number
+  /** Whether the source signs in at all (no „Anmeldung“ for a directory, web or feed). */
+  signsIn: boolean
+  /** Whether the caller sees the source's rows and runs; a reader gets the word without a link. */
+  canSeeSource: boolean
   /** Upload: the last upload was turned away at the quota. */
   uploadQuotaRejected: boolean
 }
@@ -113,6 +125,13 @@ const LAEUFE: StateTarget = { tab: 'quelle', anchor: 'laeufe' }
 
 /** The one state of a library from what the page knows of it. */
 export function libraryState(input: StateInput): LibraryState {
+  const state = stateOf(input)
+  // a reader does not see the rows and runs the cause lives in: the word stays, the link goes
+  if (!input.canSeeSource && state.target?.tab === 'quelle') return { ...state, target: null }
+  return state
+}
+
+function stateOf(input: StateInput): LibraryState {
   const { library, newestRun } = input
   if (input.erasureRequestedAt) {
     return {
@@ -136,11 +155,21 @@ export function libraryState(input: StateInput): LibraryState {
       input.uploadQuotaRejected ||
       (quota != null && quota > 0 && (library.storageUsedBytes ?? 0) >= quota)
     if (full) return { word: 'Kontingent voll', tone: 'error', detail: null, target: null }
+    // uploaded documents still being processed: the same count as the documents' states
+    if (input.pendingDocuments > 0) {
+      const done = input.documentCount - input.pendingDocuments
+      return {
+        word: 'Läuft',
+        tone: 'neutral',
+        detail: `${done.toLocaleString('de-DE')} von ${input.documentCount.toLocaleString('de-DE')}`,
+        target: { tab: 'dokumente', params: { status: 'PENDING' } },
+      }
+    }
     if (input.failedDocuments > 0) {
       return {
         word: 'Teilweise fehlgeschlagen',
         tone: 'warning',
-        detail: `${input.failedDocuments.toLocaleString('de-DE')} ${input.failedDocuments === 1 ? 'Dokument' : 'Dokumente'}`,
+        detail: `${input.failedDocuments.toLocaleString('de-DE')} von ${input.documentCount.toLocaleString('de-DE')}`,
         target: { tab: 'dokumente', params: { status: 'FAILED' } },
       }
     }
@@ -164,12 +193,13 @@ export function libraryState(input: StateInput): LibraryState {
   if (!newestRun) {
     return { word: 'Noch nie indiziert', tone: 'neutral', detail: null, target: LAEUFE }
   }
-  const word = runWord(newestRun)
+  const word = runWord(newestRun, input.signsIn)
   const day = formatDay(newestRun.startedAt)
   switch (word) {
     case 'Abgeschlossen':
       return { word: 'Aktuell', tone: 'success', detail: day, target: LAEUFE }
     case 'Anmeldung abgelehnt':
+    case 'Nicht erreichbar':
     case 'Zustimmung abgelaufen':
       return { word, tone: 'error', detail: day, target: VERBINDUNG }
     default:

@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import IconButton from '@mui/material/IconButton'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
-import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import LinkOffIcon from '@mui/icons-material/LinkOff'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import StateDot from '@/shared/ui/StateDot'
+import ListSearch from '@/shared/ui/ListSearch'
+import RowMenu from '@/shared/ui/RowMenu'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -49,45 +45,12 @@ function formatDate(value: string): string {
 /** Who associated and when - both only ever sent to a caller who manages the asset. */
 function provenance(association: AssetSpaceAssociationResponse): string | null {
   const parts = [
-    association.createdByDisplayName ? `zugeordnet von ${association.createdByDisplayName}` : null,
-    association.createdAt ? formatDate(association.createdAt) : null,
-  ].filter(Boolean)
-  return parts.length > 0 ? parts.join(' · ') : null
-}
-
-/** The row's „⋯" with its one entry, „Aus Space lösen". */
-function RowActions({ spaceName, onDetach }: { spaceName: string; onDetach: () => void }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  return (
-    <>
-      <IconButton
-        size="small"
-        aria-label={`Aktionen für Space „${spaceName}“`}
-        aria-haspopup="menu"
-        aria-expanded={anchor ? true : undefined}
-        onClick={(event) => setAnchor(event.currentTarget)}
-      >
-        <MoreHorizIcon fontSize="small" />
-      </IconButton>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <MenuItem
-          onClick={() => {
-            setAnchor(null)
-            onDetach()
-          }}
-        >
-          <LinkOffIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-          Aus Space lösen
-        </MenuItem>
-      </Menu>
-    </>
-  )
+    association.createdAt ? `zugeordnet am ${formatDate(association.createdAt)}` : 'zugeordnet',
+    association.createdByDisplayName ? `von ${association.createdByDisplayName}` : null,
+  ]
+  return association.createdAt || association.createdByDisplayName
+    ? parts.filter(Boolean).join(' ')
+    : null
 }
 
 /**
@@ -196,15 +159,14 @@ export default function AssetSpacesList({
       ) : (
         <>
           {links.items.length >= SEARCH_FROM && (
-            <TextField
-              size="small"
-              fullWidth
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Space-Name enthält …"
-              slotProps={{ htmlInput: { 'aria-label': 'Spaces durchsuchen' } }}
-              sx={{ mb: 1.5 }}
-            />
+            <Box sx={{ mb: 1.5 }}>
+              <ListSearch
+                value={query}
+                onChange={setQuery}
+                placeholder="Space-Name enthält …"
+                label="Spaces durchsuchen"
+              />
+            </Box>
           )}
           <Box
             component="ul"
@@ -257,9 +219,15 @@ export default function AssetSpacesList({
                     )}
                   </Box>
                   {mayDetach(association.spaceId) && (
-                    <RowActions
-                      spaceName={association.spaceName}
-                      onDetach={() => void handleDetach(association.spaceId, association.spaceName)}
+                    <RowMenu
+                      label={`Aktionen für Space „${association.spaceName}“`}
+                      items={[
+                        {
+                          label: 'Aus Space lösen',
+                          onClick: () =>
+                            void handleDetach(association.spaceId, association.spaceName),
+                        },
+                      ]}
                     />
                   )}
                 </Box>

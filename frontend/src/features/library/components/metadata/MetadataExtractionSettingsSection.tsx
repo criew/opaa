@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import { CORE_METADATA_FIELDS } from './metadataValues'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -16,7 +17,6 @@ import {
   getLibraryMetadataQuality,
   updateLibraryMetadataExtractionSettings,
 } from '../../api/libraryMetadataApi'
-import { formatShare } from '@/shared/utils/labels'
 
 interface MetadataExtractionSettingsSectionProps {
   libraryId: string
@@ -81,6 +81,26 @@ export default function MetadataExtractionSettingsSection({
   const stats = quality?.modelExtraction
   const model = settings?.chatModel ?? null
 
+  /**
+   * Switching on sends documents to the model: where they go is asked once, at the switch, not
+   * stated on the page all the time (R1-59). A local model needs no question.
+   */
+  async function switchTo(modelExtractionEnabled: boolean, keywordsEnabled: boolean) {
+    const turningOn =
+      (modelExtractionEnabled && !settings?.modelExtractionEnabled) ||
+      (keywordsEnabled && !settings?.keywordsEnabled)
+    if (turningOn && model && !model.local) {
+      const ok = await confirmAction({
+        question: 'Extraktion einschalten?',
+        consequence: `Der Inhalt jedes neuen Dokuments geht dann an ${providerOf(model.baseUrl)}.`,
+        confirmLabel: 'Einschalten',
+        tone: 'caution',
+      })
+      if (!ok) return
+    }
+    await save(modelExtractionEnabled, keywordsEnabled)
+  }
+
   return (
     <DetailSection title="Extraktion">
       {error && (
@@ -92,32 +112,20 @@ export default function MetadataExtractionSettingsSection({
         <Stack sx={{ borderTop: 1, borderColor: 'divider' }}>
           <SwitchRow
             label="Modellgestützte Extraktion"
-            detail={`ergänzt leere Auswahlfelder ab ${formatShare(settings.confidenceThreshold)} Konfidenz`}
             checked={settings.modelExtractionEnabled}
             disabled={saving}
-            onChange={(next) => void save(next, settings.keywordsEnabled)}
+            onChange={(next) => void switchTo(next, settings.keywordsEnabled)}
           />
           <SwitchRow
             label="Freie Schlagworte"
-            detail="höchstens fünf je Dokument, nur für den Volltext"
             checked={settings.keywordsEnabled}
             disabled={saving}
-            onChange={(next) => void save(settings.modelExtractionEnabled, next)}
+            onChange={(next) => void switchTo(settings.modelExtractionEnabled, next)}
           />
         </Stack>
       )}
-      {canManage && settings && model && !model.local && (
-        // the one sentence that matters at these switches: where the documents go
-        <Typography
-          aria-label="Datenschutzhinweis"
-          sx={{ mt: 1.5, pl: 1.5, borderLeft: 3, borderColor: 'warning.main', fontSize: 13 }}
-        >
-          Eingeschaltet gehen die Inhalte jedes neuen Dokuments an {model.baseUrl} (
-          {model.modelIdentifier}).
-        </Typography>
-      )}
       {canManage && settings && !model && (
-        <Typography sx={{ mt: 1.5, fontSize: 13, color: 'text.secondary' }}>
+        <Typography sx={{ mt: 1, fontSize: 13, color: 'text.secondary' }}>
           Kein Chat-Modell aktiv: Die Extraktion bleibt wirkungslos.
         </Typography>
       )}
@@ -128,6 +136,7 @@ export default function MetadataExtractionSettingsSection({
           </TextAction>
           {showStats && (
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+              {model && `Modell ${model.modelIdentifier} über ${model.baseUrl} · `}
               Modellaufrufe {stats.calls} · übernommen {stats.acceptedValues} · verworfen
               (Konfidenz) {stats.rejectedBelowThreshold} · verworfen (Werteliste){' '}
               {stats.rejectedOutsideVocabulary} · Fehler {stats.failures} · nicht angefragt{' '}
@@ -140,16 +149,31 @@ export default function MetadataExtractionSettingsSection({
   )
 }
 
-/** One switch as a list row: name and a short line on what it does, the switch at the edge. */
+/** „120 von 214 gefüllt (56 %)“ - said positively, the share only where it is partial. */
+function fillLabel(filled: number, total: number): string {
+  const count = (value: number) => value.toLocaleString('de-DE')
+  if (filled === total) return `alle ${count(total)} gefüllt`
+  if (filled === 0) return `0 von ${count(total)} gefüllt`
+  return `${count(filled)} von ${count(total)} gefüllt (${Math.round((filled / total) * 100)} %)`
+}
+
+/** The host of a model address, the way a person recognises the provider. */
+function providerOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host
+  } catch {
+    return baseUrl
+  }
+}
+
+/** One switch as a list row: its name, the switch on the shared right edge. */
 function SwitchRow({
   label,
-  detail,
   checked,
   disabled,
   onChange,
 }: {
   label: string
-  detail: string
   checked: boolean
   disabled: boolean
   onChange: (next: boolean) => void
@@ -165,11 +189,11 @@ function SwitchRow({
         borderColor: 'divider',
       }}
     >
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{label}</Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{detail}</Typography>
-      </Box>
+      <Typography sx={{ flexGrow: 1, minWidth: 0, fontSize: 14, fontWeight: 600 }}>
+        {label}
+      </Typography>
       <Switch
+        edge="end"
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
@@ -211,31 +235,34 @@ export function MetadataFillSection({ libraryId }: { libraryId: string }) {
             component="li"
             key={field.fieldKey}
             title={`regelbasiert ${field.deterministicDocuments} · modellbefüllt ${field.derivedDocuments} · von Hand ${field.manualDocuments} · nicht ermittelbar ${field.notDeterminableDocuments}`}
+            // the grid of the rows of the Reiter „Quelle“: title | content | action
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr auto', sm: '160px 1fr auto' },
+              gridTemplateColumns: { xs: 'minmax(0, 1fr) auto', sm: '128px minmax(0, 1fr) auto' },
               columnGap: 2,
               alignItems: 'baseline',
-              py: 0.75,
+              py: 1,
               borderBottom: 1,
               borderColor: 'divider',
               fontSize: 13.5,
             }}
           >
-            <Box component="span" sx={{ fontWeight: 500 }}>
-              {field.label}
-            </Box>
             <Box
               component="span"
+              title={field.label}
               sx={{
-                color: 'text.secondary',
-                gridRow: { xs: 2, sm: 1 },
-                gridColumn: { xs: 1, sm: 2 },
+                fontWeight: 600,
+                fontSize: 15,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
-              {field.emptyDocuments === 0
-                ? 'bei allen Dokumenten gesetzt'
-                : `${field.emptyDocuments.toLocaleString('de-DE')} ohne Wert (${formatShare(field.emptyShare)})`}
+              {field.label}
+            </Box>
+            <Box component="span" sx={{ gridRow: { xs: 2, sm: 1 }, gridColumn: { xs: 1, sm: 2 } }}>
+              {fillLabel(field.totalDocuments - field.emptyDocuments, field.totalDocuments)}
             </Box>
             {field.emptyDocuments > 0 && coreKeys.has(field.fieldKey) ? (
               <TextAction

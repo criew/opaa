@@ -1,10 +1,8 @@
-import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import type { LibraryListResponse, LibraryResponse } from '@/shared/api/types'
 import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
 import { AssetOwnerSection } from '@/features/asset'
-import DetailSection from '@/shared/ui/DetailSection'
 import DiagnosticsLockControl from './DiagnosticsLockControl'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
 import ShareCapSwitch from './ShareCapSwitch'
@@ -59,17 +57,6 @@ export default function LibrarySharingTab({
           onTransferred={onTransferred}
         />
 
-        {privateLibrary && (
-          // what a private library cannot do shows in the missing sections; one line says why
-          <Typography
-            data-testid="library-private-note"
-            sx={{ fontSize: 13, color: 'text.secondary', mt: -2, mb: 4 }}
-          >
-            Privat: nur Sie sehen diese Bibliothek, auch die Systemverwaltung kann sie nicht
-            freigeben.
-          </Typography>
-        )}
-
         {canEdit && !privateLibrary && (
           <>
             <AssetGrantsSection
@@ -87,11 +74,7 @@ export default function LibrarySharingTab({
               }
             />
 
-            {externalAccessEnabled && (
-              <DetailSection title="Externer Zugang">
-                <LibraryExternalAccessSection libraryId={libraryId} />
-              </DetailSection>
-            )}
+            {externalAccessEnabled && <LibraryExternalAccessSection libraryId={libraryId} />}
           </>
         )}
 

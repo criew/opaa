@@ -15,7 +15,7 @@ import {
   indexingRunModeLabel,
   indexingTriggerSourceLabel,
 } from './indexingLabels'
-import { isErrorEvent, runTone, runWord } from './libraryState'
+import { formatDay, isErrorEvent, runTone, runWord } from './libraryState'
 import { plainMessage } from './sourceKit/plainMessage'
 
 /** Fundorte a group names before „alle n anzeigen“. */
@@ -26,9 +26,9 @@ const COLUMNS = {
   display: 'grid',
   gridTemplateColumns: {
     xs: 'minmax(0, 1fr) 20px',
-    sm: '184px 124px 76px 96px minmax(0, 1fr) 20px',
+    sm: '164px 104px 60px 78px minmax(0, 1fr) 20px',
   },
-  columnGap: 1.5,
+  columnGap: 1,
   alignItems: 'baseline',
 } as const
 
@@ -44,14 +44,15 @@ function count(value: number): string {
   return value.toLocaleString('de-DE')
 }
 
-function formatShortStart(value: string): string {
-  const date = new Date(value)
-  return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
-}
-
+/** „23.10.2026, 06:00“ - the one date-and-time form of the page. */
 function formatStart(value: string): string {
-  const date = new Date(value)
-  return `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+  return new Date(value).toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function formatDuration(run: IndexingRunResponse): string {
@@ -71,29 +72,67 @@ function trigger(run: IndexingRunResponse, showMode: boolean): string {
   if (showMode && run.runMode === 'FULL') return 'Vollabgleich'
   if (run.triggeredBy === 'SCHEDULED') return 'Zeitplan'
   if (run.triggeredBy === 'WEBHOOK') return 'Webhook'
-  return 'manuell'
+  return 'Manuell'
 }
 
 /** What the run yielded, in one form for every source: documents and errors, never both words. */
 function result(run: IndexingRunResponse, running: RunningProgress | null): string {
   if (running) return `${count(running.done)} von ${count(running.total)}`
   if (run.status === 'FAILED') return '–'
-  const documents = count(run.documentsIndexedTotal)
-  if (run.documentsFailed > 0) return `${documents} · ${count(run.documentsFailed)} fehlgeschlagen`
-  const unreadable = run.unreadableScopeCount ?? 0
-  if (unreadable > 0) return `${documents} · ${unreadable} nicht lesbar`
-  if (run.incomplete) return `${documents} · unvollständig`
-  return `${documents} Dokumente`
+  const parts = [`${count(run.documentsIndexedTotal)} Dokumente`]
+  if (run.documentsFailed > 0) parts.push(`${count(run.documentsFailed)} fehlgeschlagen`)
+  else if ((run.unreadableScopeCount ?? 0) > 0)
+    parts.push(`${run.unreadableScopeCount} nicht lesbar`)
+  else if (run.incomplete) parts.push('unvollständig')
+  return parts.join(' · ')
 }
 
-/** Events of one reason, in the order the run met them. */
+/** A reason's name in the run detail; the catch-all category is named as such and goes last. */
+function reasonLabel(category: RunEvent['category']): string {
+  return category === 'ERROR' ? 'Sonstige Fehler' : indexingRunEventCategoryLabel(category)
+}
+
+/** Events of one reason, the largest group first, the catch-all at the end. */
 function groupByReason(events: RunEvent[]): Array<{ label: string; events: RunEvent[] }> {
   const groups = new Map<string, RunEvent[]>()
   for (const event of events) {
-    const label = indexingRunEventCategoryLabel(event.category)
+    const label = reasonLabel(event.category)
     groups.set(label, [...(groups.get(label) ?? []), event])
   }
-  return [...groups].map(([label, entries]) => ({ label, events: entries }))
+  return [...groups]
+    .map(([label, entries]) => ({ label, events: entries }))
+    .sort(
+      (a, b) =>
+        Number(a.label === 'Sonstige Fehler') - Number(b.label === 'Sonstige Fehler') ||
+        b.events.length - a.events.length,
+    )
+}
+
+/**
+ * A Fundort on one line, shortened in the middle: the last segment (the file) always stays, a
+ * prefix every Fundort of the library shares (the address of a web directory) is left out.
+ */
+function Fundort({ reference, prefix }: { reference: string; prefix: string | null }) {
+  const shown = prefix && reference.startsWith(prefix) ? reference.slice(prefix.length) : reference
+  const cut = Math.max(shown.lastIndexOf('/'), shown.lastIndexOf('›'))
+  const head = cut > 0 ? shown.slice(0, cut + 1).trimEnd() : ''
+  const tail = cut > 0 ? shown.slice(cut + 1).trimStart() : shown
+  // „Space › Seite › Anhang.pdf“ keeps its spaces around the separator
+  const gap = cut > 0 && shown[cut] === '›' ? '\u00a0' : ''
+  return (
+    <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
+      <Box
+        component="span"
+        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
+      >
+        {head}
+      </Box>
+      <Box component="span" sx={{ flex: 'none', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+        {gap}
+        {tail}
+      </Box>
+    </Box>
+  )
 }
 
 function technicalLines(run: IndexingRunResponse, showMode: boolean): string[] {
@@ -146,10 +185,12 @@ function EventGroup({
   label,
   events,
   onShowAll,
+  prefix,
 }: {
   label: string
   events: RunEvent[]
   onShowAll: () => void
+  prefix: string | null
 }) {
   return (
     <Box component="li" sx={{ mb: 1.25 }}>
@@ -163,10 +204,9 @@ function EventGroup({
             key={`${event.reference ?? ''}-${index}`}
             // one line per Fundort; the whole path and the message stand in the tooltip
             title={`${event.reference ?? ''}\n${plainMessage(event.message)}`.trim()}
-            noWrap
             sx={{ ...LINE, color: 'text.secondary' }}
           >
-            {event.reference ?? plainMessage(event.message)}
+            <Fundort reference={event.reference ?? plainMessage(event.message)} prefix={prefix} />
           </Typography>
         ))}
       </Box>
@@ -179,26 +219,50 @@ function EventGroup({
 
 function RunDetail({
   run,
+  word,
   showMode,
   quotaRemedy,
+  prefix,
+  unreadableNames,
 }: {
   run: IndexingRunResponse
+  word: string
   showMode: boolean
   quotaRemedy: string
+  prefix: string | null
+  /** The names of the unreadable scope entries, where the run is the one that found them. */
+  unreadableNames: string[]
 }) {
   const [allOf, setAllOf] = useState<{ label: string; events: RunEvent[] } | null>(null)
-  const errors = groupByReason(run.events.filter(isErrorEvent))
+  const errorEvents = run.events.filter(isErrorEvent)
+  const errors = groupByReason(errorEvents)
   const notes = run.events.filter((event) => !isErrorEvent(event))
-  // only what the row cannot say: the reason of a failed run, the remedy of a full quota
+  // the row counts failed documents; what the run kept no Fundort for is named, not dropped
+  const withoutFundort = Math.max(0, run.documentsFailed - errorEvents.length)
+  const notesNotKept = Math.max(0, run.eventsTruncatedCount - withoutFundort)
+  const unreadable = run.unreadableScopeCount ?? 0
+  // only what the row cannot say: the remedy of a full quota, the reason of an unnamed failure
   const reason =
     run.failureCategory === 'QUOTA_EXHAUSTED'
       ? quotaRemedy
-      : run.status === 'FAILED' && run.message
+      : word === 'Fehlgeschlagen' && run.message
         ? plainMessage(run.message)
         : null
   return (
     <Box sx={{ pl: { xs: 0, sm: 2.25 }, pt: 1, pb: 2 }}>
       {reason && <Typography sx={{ ...LINE, mb: 1 }}>{reason}</Typography>}
+      {unreadable > 0 && (
+        <Box sx={{ mb: 1.25 }}>
+          <Typography sx={{ ...LINE, fontWeight: 600 }}>
+            Nicht lesbare Bereiche · {unreadable}
+          </Typography>
+          {unreadableNames.slice(0, SHOWN).map((name) => (
+            <Typography key={name} noWrap sx={{ ...LINE, color: 'text.secondary' }}>
+              {name}
+            </Typography>
+          ))}
+        </Box>
+      )}
       {errors.length > 0 && (
         <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
           {errors.map((group) => (
@@ -207,17 +271,21 @@ function RunDetail({
               label={group.label}
               events={group.events}
               onShowAll={() => setAllOf(group)}
+              prefix={prefix}
             />
           ))}
         </Box>
       )}
-      {run.eventsTruncatedCount > 0 && (
+      {withoutFundort > 0 && (
         <Typography sx={{ ...LINE, color: 'text.secondary' }}>
-          {count(run.eventsTruncatedCount)} weitere Ereignisse nicht gespeichert
+          {count(withoutFundort)} weitere fehlgeschlagen, ohne gespeicherten Fundort
         </Typography>
       )}
-      {notes.length > 0 && (
-        <Disclosure id={`run-notes-${run.id}`} label={`Hinweise · ${count(notes.length)}`}>
+      {notes.length + notesNotKept > 0 && (
+        <Disclosure
+          id={`run-notes-${run.id}`}
+          label={`Hinweise · ${count(notes.length + notesNotKept)}`}
+        >
           <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
             {groupByReason(notes).map((group) => (
               <EventGroup
@@ -225,9 +293,15 @@ function RunDetail({
                 label={group.label}
                 events={group.events}
                 onShowAll={() => setAllOf(group)}
+                prefix={prefix}
               />
             ))}
           </Box>
+          {notesNotKept > 0 && (
+            <Typography sx={{ ...LINE, color: 'text.secondary' }}>
+              {count(notesNotKept)} weitere ohne gespeicherten Fundort
+            </Typography>
+          )}
         </Disclosure>
       )}
       <Disclosure id={`run-technical-${run.id}`} label="Technische Angaben">
@@ -281,7 +355,16 @@ export default function LibraryRunList({
   running,
   quotaRemedy,
   openNewest = false,
+  signsIn = true,
+  unreadableNames = [],
+  fundortPrefix = null,
 }: {
+  /** Whether the source signs in; a directory, web or feed says „Nicht erreichbar“. */
+  signsIn?: boolean
+  /** Names of the scope entries the newest listing could not read. */
+  unreadableNames?: string[]
+  /** A prefix all Fundorte share (a web directory's address), left out of every line. */
+  fundortPrefix?: string | null
   runs: IndexingRunResponse[]
   /** The source knows two modes (incremental and full); only then a run names its mode. */
   showMode: boolean
@@ -321,7 +404,7 @@ export default function LibraryRunList({
       <Box component="ul" aria-label="Läufe" sx={{ m: 0, p: 0, listStyle: 'none' }}>
         {runs.map((run) => {
           const isOpen = Boolean(open[run.id])
-          const word = runWord(run)
+          const word = runWord(run, signsIn)
           const progress = run.status === 'RUNNING' ? running : null
           const label = progress ? `${word} · ${progress.percent} %` : word
           const detailId = `run-detail-${run.id}`
@@ -356,7 +439,7 @@ export default function LibraryRunList({
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {formatShortStart(run.startedAt)} · {result(run, progress)}
+                    {formatDay(run.startedAt)} · {result(run, progress)}
                   </Box>
                 </Box>
                 <Box
@@ -389,6 +472,7 @@ export default function LibraryRunList({
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}
+                  title={result(run, progress)}
                 >
                   {result(run, progress)}
                 </Box>
@@ -404,7 +488,16 @@ export default function LibraryRunList({
               </ButtonBase>
               {isOpen && (
                 <Box id={detailId}>
-                  <RunDetail run={run} showMode={showMode} quotaRemedy={quotaRemedy} />
+                  <RunDetail
+                    run={run}
+                    word={word}
+                    showMode={showMode}
+                    quotaRemedy={quotaRemedy}
+                    prefix={fundortPrefix}
+                    unreadableNames={
+                      run === runs.find((r) => r.status !== 'RUNNING') ? unreadableNames : []
+                    }
+                  />
                 </Box>
               )}
             </Box>

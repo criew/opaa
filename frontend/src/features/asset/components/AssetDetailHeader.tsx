@@ -94,13 +94,17 @@ export function HeaderFigure({
     <Box
       component="span"
       sx={[
-        { whiteSpace: 'nowrap', '&:not(:first-of-type)::before': SEPARATOR },
+        { display: 'inline', whiteSpace: 'nowrap', '&:not(:first-of-type)::before': SEPARATOR },
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
       {to ? (
+        // a figure that leads into a tab reads as a link: its chevron says where it goes
         <Link component={RouterLink} to={to} replace underline="hover" color="inherit">
           {children}
+          <Box component="span" aria-hidden sx={{ ml: 0.5, color: 'primary.main' }}>
+            ›
+          </Box>
         </Link>
       ) : (
         children
@@ -257,8 +261,8 @@ export default function AssetDetailHeader({
       sx={{
         position: 'relative',
         // no line of its own: the tab bar below draws the one separator
-        pb: { xs: 1.5, md: 3 },
-        mb: { xs: 1.5, md: 3 },
+        pb: { xs: 1.5, md: 2 },
+        mb: { xs: 1.5, md: 2 },
         '@keyframes opaaHeroIn': {
           from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'none' },
@@ -333,13 +337,14 @@ export default function AssetDetailHeader({
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
 
+      {/* one line at 1280 px; below 600 px the state leads and the figures follow on one line
+          that shortens with an ellipsis - two lines at most, every figure kept */}
       <Typography
         component="div"
         sx={{
           mt: { xs: 0.75, sm: 1.5 },
           fontSize: 13,
           lineHeight: '22px',
-          '& > span': { height: 22 },
           color: 'text.secondary',
           display: 'flex',
           flexWrap: 'wrap',
@@ -347,29 +352,46 @@ export default function AssetDetailHeader({
           position: 'relative',
         }}
       >
-        <HeaderFigure>{extent}</HeaderFigure>
-        {figures}
-        {/* below 600 px spread and responsible party stay in their tabs and the state takes a
-            line of its own, so the figures never run to a third row */}
-        {spaceCount != null && (
-          <HeaderFigure to={spaceHref} sx={{ display: { xs: 'none', sm: 'inline' } }}>
-            {spreadLabel(spaceCount)}
-          </HeaderFigure>
-        )}
-        <HeaderFigure to={responsibleHref} sx={{ display: { xs: 'none', sm: 'inline' } }}>
-          {responsible.label}
-        </HeaderFigure>
+        <Box
+          component="span"
+          title={[extent, spaceCount != null ? spreadLabel(spaceCount) : null, responsible.label]
+            .filter(Boolean)
+            .join(' · ')}
+          sx={{
+            display: 'block',
+            height: 22,
+            whiteSpace: 'nowrap',
+            overflow: { xs: 'hidden', sm: 'visible' },
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
+          }}
+        >
+          <HeaderFigure>{extent}</HeaderFigure>
+          {figures}
+          {spaceCount != null && (
+            <HeaderFigure to={spaceHref}>{spreadLabel(spaceCount)}</HeaderFigure>
+          )}
+          <HeaderFigure to={responsibleHref}>{responsible.label}</HeaderFigure>
+        </Box>
         {status ? (
-          <HeaderFigure
+          <Box
+            component="span"
             sx={{
+              height: 22,
+              whiteSpace: 'nowrap',
+              order: { xs: -1, sm: 0 },
               flexBasis: { xs: '100%', sm: 'auto' },
-              '&:not(:first-of-type)::before': { display: { xs: 'none', sm: 'inline' } },
+              '&::before': { ...SEPARATOR, display: { xs: 'none', sm: 'inline' } },
             }}
           >
             {status}
-          </HeaderFigure>
+          </Box>
         ) : (
-          updatedAt && <HeaderFigure>Aktualisiert am {formatDate(updatedAt)}</HeaderFigure>
+          updatedAt && (
+            <Box component="span" sx={{ height: 22, '&::before': SEPARATOR }}>
+              Aktualisiert am {formatDate(updatedAt)}
+            </Box>
+          )
         )}
       </Typography>
 

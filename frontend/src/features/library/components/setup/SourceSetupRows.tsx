@@ -42,7 +42,7 @@ export interface SourceSetupHandle {
 /** The marks the Reiter „Quelle“ lays on the rows. */
 export type SourceSetupRowsMarks = Pick<
   SourceSetupRowsProps<unknown>,
-  'storedStatus' | 'scopeStatus' | 'scheduleStatus' | 'scopeFallback' | 'extraRows'
+  'storedStatus' | 'scopeStatus' | 'scheduleStatus' | 'scopeFallback' | 'extraRows' | 'scopeMarked'
 >
 
 interface SourceSetupRowsProps<V> {
@@ -85,6 +85,8 @@ interface SourceSetupRowsProps<V> {
   scopeFallback?: string
   /** Rows after „Zeitplan“ with the same grid, e.g. the live update. */
   extraRows?: ReactNode
+  /** Edit mode: entries of „Umfang“ the last listing could not read. */
+  scopeMarked?: string[]
   ref?: Ref<SourceSetupHandle>
 }
 
@@ -119,6 +121,7 @@ export default function SourceSetupRows<V>({
   scheduleStatus,
   scopeFallback,
   extraRows,
+  scopeMarked,
   ref,
 }: SourceSetupRowsProps<V>) {
   const [openRow, setOpenRow] = useState<SetupRowId | null>(initialRow)
@@ -394,6 +397,7 @@ export default function SourceSetupRows<V>({
               status={statusOf(row)}
               open={false}
               headingLevel={headingLevel}
+              detail={mode === 'edit' ? {} : undefined}
             />
           )
         }
@@ -416,6 +420,11 @@ export default function SourceSetupRows<V>({
             open={openRow === row}
             onOpen={canEdit ? () => void open(row) : undefined}
             headingLevel={headingLevel}
+            detail={
+              mode === 'edit'
+                ? { markedItems: row === 'scope' ? scopeMarked : undefined }
+                : undefined
+            }
           >
             <Stack spacing={2.5}>
               {row === 'connection' && connectionPrelude}

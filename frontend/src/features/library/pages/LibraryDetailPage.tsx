@@ -189,18 +189,28 @@ export default function LibraryDetailPage() {
   // Upload: documents whose processing failed - the head names their number.
   const isUploadLibrary = details?.sourceType === 'UPLOAD'
   const [failedDocuments, setFailedDocuments] = useState(0)
+  const [pendingDocuments, setPendingDocuments] = useState(0)
+  // the list polls its pending documents; when their states change, the head counts anew
+  const shownPending = useDocumentStore((s) =>
+    libraryId
+      ? (s.documentsByLibrary[libraryId] ?? []).filter((doc) => doc.status === 'PENDING').length
+      : 0,
+  )
   useEffect(() => {
     if (!libraryId || !isUploadLibrary) return
     let cancelled = false
-    getLibraryDocuments(libraryId, { size: 1, status: 'FAILED' })
-      .then((page) => {
-        if (!cancelled) setFailedDocuments(page.totalElements)
-      })
-      .catch(() => {})
+    const countOf = (status: 'FAILED' | 'PENDING', set: (n: number) => void) =>
+      getLibraryDocuments(libraryId, { size: 1, status })
+        .then((page) => {
+          if (!cancelled) set(page.totalElements)
+        })
+        .catch(() => {})
+    void countOf('FAILED', setFailedDocuments)
+    void countOf('PENDING', setPendingDocuments)
     return () => {
       cancelled = true
     }
-  }, [libraryId, isUploadLibrary, documentsRefreshToken, details?.documentCount])
+  }, [libraryId, isUploadLibrary, documentsRefreshToken, details?.documentCount, shownPending])
   const uploadQuotaRejected = useDocumentStore((s) =>
     s.uploadErrors.some((message) => /kontingent/i.test(message)),
   )
@@ -306,15 +316,14 @@ export default function LibraryDetailPage() {
     newestRun: runs[0] ?? null,
     runningPercent: running ? running.percent : null,
     failedDocuments,
+    pendingDocuments,
     uploadQuotaRejected,
+    signsIn: connectorConfiguration?.setup?.signsIn ?? true,
+    canSeeSource: canEdit,
   })
   if (connectorSourceType && isRunning && run.statusUnknown) {
     state.detail = 'Stand unbekannt'
   }
-  const quotaFull =
-    details?.storageQuotaBytes != null &&
-    details.storageUsedBytes != null &&
-    details.storageUsedBytes >= details.storageQuotaBytes
 
   const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
     { value: 'dokumente', label: 'Dokumente' },
@@ -344,7 +353,7 @@ export default function LibraryDetailPage() {
               {privateLibrary && <PrivateMark />}
               {erasing && <ErasingMark />}
               {/* the short form of the catalog tile (guidelines 5.5), so the chips keep one line */}
-            {details && <MetaBadge>{documentSourceTypeShortLabel(details.sourceType)}</MetaBadge>}
+              {details && <MetaBadge>{documentSourceTypeShortLabel(details.sourceType)}</MetaBadge>}
               <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
             </>
           }
@@ -363,14 +372,12 @@ export default function LibraryDetailPage() {
           // quota is the state, not a second figure
           figures={
             <>
-              {details?.storageQuotaBytes != null &&
-                details.storageUsedBytes != null &&
-                !quotaFull && (
-                  <HeaderFigure>
-                    {formatFileSize(details.storageUsedBytes)} von{' '}
-                    {formatFileSize(details.storageQuotaBytes)}
-                  </HeaderFigure>
-                )}
+              {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
+                <HeaderFigure>
+                  {formatFileSize(details.storageUsedBytes)} von{' '}
+                  {formatFileSize(details.storageQuotaBytes)}
+                </HeaderFigure>
+              )}
               {privateStorage && (
                 <HeaderFigure>
                   <span data-testid="private-storage-figure">
@@ -506,12 +513,6 @@ export default function LibraryDetailPage() {
               sourceType={details.sourceType}
               canManage={mayManageDocuments}
               upload={upload}
-              neverIndexed={Boolean(connectorSourceType) && runs.length === 0 && !isRunning}
-              onIndexNow={
-                connectorSourceType && mayManageDocuments
-                  ? () => void triggerIndexing(libraryId, connectorSourceType)
-                  : undefined
-              }
               refreshToken={documentsRefreshToken}
               confluenceSpaces={confluenceSettingsOf(details).spaces}
               // The document count in the header comes from the library

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import TextField from '@mui/material/TextField'
+import ListSearch from '@/shared/ui/ListSearch'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -25,7 +25,7 @@ import type {
   LibraryMetadataFieldResponse,
   LibraryMetadataSchemaChangeResponse,
 } from '@/shared/api/types'
-import { TYPE_LABELS, describeChange, effectChips } from './metadataFieldText'
+import { describeChange, effectChips } from './metadataFieldText'
 import CoreContextPrefixSwitch from './CoreContextPrefixSwitch'
 import AddValueButton from './AddValueButton'
 import CreateFieldDialog from './CreateFieldDialog'
@@ -71,6 +71,7 @@ export default function LibraryMetadataFieldsSection({
   const [deleteUsage, setDeleteUsage] = useState<number | null>(null)
   const [editField, setEditField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [valueLabel, setValueLabel] = useState('')
+  const [valuesOpen, setValuesOpen] = useState<Record<string, boolean>>({})
 
   const reload = useCallback(async () => {
     try {
@@ -286,58 +287,94 @@ export default function LibraryMetadataFieldsSection({
         sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
       >
         {coreContextPrefix && (
-          <FieldRow label="Kernfelder" detail="Titel, Dokumentart, Datum/Stand">
-            {/* the title always stands in the context prefix; the two others are a choice */}
-            <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary', mr: 1 }}>
-              im Kontextpräfix:
-            </Typography>
-            <CoreContextPrefixSwitch
-              libraryId={libraryId}
-              label="Dokumentart"
-              fieldKey="document_type"
-              checked={coreContextPrefix.documentType}
-              disabled={!canManageSchema}
-              onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
-            />
-            <CoreContextPrefixSwitch
-              libraryId={libraryId}
-              label="Datum/Stand"
-              fieldKey="document_date"
-              checked={coreContextPrefix.documentDate}
-              disabled={!canManageSchema}
-              onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
-            />
+          <FieldRow
+            label="Kernfelder"
+            detail={
+              // a reader reads the choice; whoever manages the schema switches it
+              canManageSchema
+                ? 'Titel, Dokumentart, Datum/Stand'
+                : `Titel, Dokumentart, Datum/Stand · im Kontextpräfix: ${[
+                    'Titel',
+                    coreContextPrefix.documentType && 'Dokumentart',
+                    coreContextPrefix.documentDate && 'Datum/Stand',
+                  ]
+                    .filter(Boolean)
+                    .join(', ')}`
+            }
+          >
+            {canManageSchema && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  columnGap: 2,
+                }}
+              >
+                <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                  im Kontextpräfix
+                </Typography>
+                <CoreContextPrefixSwitch
+                  libraryId={libraryId}
+                  label="Dokumentart"
+                  fieldKey="document_type"
+                  checked={coreContextPrefix.documentType}
+                  disabled={false}
+                  onSave={(next) =>
+                    void saveCoreContextPrefix(next, coreContextPrefix.documentDate)
+                  }
+                />
+                <CoreContextPrefixSwitch
+                  libraryId={libraryId}
+                  label="Datum/Stand"
+                  fieldKey="document_date"
+                  checked={coreContextPrefix.documentDate}
+                  disabled={false}
+                  onSave={(next) =>
+                    void saveCoreContextPrefix(coreContextPrefix.documentType, next)
+                  }
+                />
+              </Box>
+            )}
           </FieldRow>
         )}
         {fields.map((field) => (
           <FieldRow
             key={field.fieldKey}
             label={field.label}
-            detail={[
-              TYPE_LABELS[field.type],
-              field.type === 'SELECT' ? `${field.values.length} Werte` : field.valuePattern,
-              effectChips(field).join(', '),
-              field.deletionPending ? 'wird gelöscht' : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+            detail={
+              <>
+                {SHORT_TYPE[field.type]}
+                {field.type === 'SELECT' && (
+                  <>
+                    {' · '}
+                    <TextAction
+                      onClick={() =>
+                        setValuesOpen((prev) => ({
+                          ...prev,
+                          [field.fieldKey]: !prev[field.fieldKey],
+                        }))
+                      }
+                      aria-expanded={Boolean(valuesOpen[field.fieldKey])}
+                      context={`von ${field.label}`}
+                    >
+                      {`${field.values.length} Werte`}
+                    </TextAction>
+                  </>
+                )}
+                {effectChips(field).length > 0 && ` · ${effectChips(field).join(', ')}`}
+                {field.deletionPending && ' · wird gelöscht'}
+              </>
+            }
             actions={
               canManageSchema && !field.deletionPending ? (
-                <>
-                  <TextAction onClick={() => setEditField(field)} context={`Feld ${field.label}`}>
-                    Ändern
-                  </TextAction>
-                  <TextAction
-                    onClick={() => void openDelete(field)}
-                    context={`Feld ${field.label}`}
-                  >
-                    Löschen
-                  </TextAction>
-                </>
+                <TextAction onClick={() => setEditField(field)} context={`Feld ${field.label}`}>
+                  Ändern
+                </TextAction>
               ) : undefined
             }
           >
-            {field.type === 'SELECT' && (
+            {field.type === 'SELECT' && valuesOpen[field.fieldKey] && (
               <ValueList
                 field={field}
                 editable={canManageSchema && !field.deletionPending}
@@ -394,6 +431,11 @@ export default function LibraryMetadataFieldsSection({
             onFieldsChanged?.()
           }}
           onError={setError}
+          onDelete={() => {
+            const target = editField
+            setEditField(null)
+            void openDelete(target)
+          }}
         />
       )}
 
@@ -416,7 +458,7 @@ function FieldRow({
   children,
 }: {
   label: string
-  detail: string
+  detail: ReactNode
   actions?: ReactNode
   children?: ReactNode
 }) {
@@ -442,7 +484,14 @@ function FieldRow({
   )
 }
 
-/** Values a field shows before „alle anzeigen“; from eight on the list gets a search (D19). */
+/** The type of a field in two or three words; the pattern itself stands in „Ändern“. */
+const SHORT_TYPE: Record<LibraryMetadataFieldResponse['type'], string> = {
+  SELECT: 'Auswahl',
+  DATE: 'Jahr oder Datum',
+  PATTERN: 'Kennung nach Muster',
+}
+
+/** From eight values on the list gets a search (D19). */
 const VALUES_SHOWN = 8
 
 /** The value list of a selection field: a few as text, all with a search on request. */
@@ -457,22 +506,8 @@ function ValueList({
   onOpen: (code: string) => void
   addButton: ReactNode
 }) {
-  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const values = field.values
-  if (!open) {
-    const shown = values.slice(0, 3).map((value) => value.label)
-    return (
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-        {shown.join(', ')}
-        {values.length > shown.length ? ` und ${values.length - shown.length} weitere` : ''}
-        {' · '}
-        <TextAction onClick={() => setOpen(true)} aria-expanded={false}>
-          {editable ? 'Werte bearbeiten' : 'Werte anzeigen'}
-        </TextAction>
-      </Typography>
-    )
-  }
   const needle = query.trim().toLowerCase()
   const matching = needle
     ? values.filter((value) => value.label.toLowerCase().includes(needle))
@@ -480,14 +515,14 @@ function ValueList({
   return (
     <Box sx={{ width: '100%', mt: 0.5 }}>
       {values.length >= VALUES_SHOWN && (
-        <TextField
-          size="small"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Wert enthält …"
-          slotProps={{ htmlInput: { 'aria-label': `Werte von ${field.label} durchsuchen` } }}
-          sx={{ mb: 1, width: 280, maxWidth: '100%' }}
-        />
+        <Box sx={{ mb: 1, width: 280, maxWidth: '100%' }}>
+          <ListSearch
+            value={query}
+            onChange={setQuery}
+            placeholder="Wert enthält …"
+            label={`Werte von ${field.label} durchsuchen`}
+          />
+        </Box>
       )}
       <Stack direction="row" useFlexGap spacing={0.75} sx={{ flexWrap: 'wrap' }}>
         {matching.map((value) => (
@@ -503,12 +538,11 @@ function ValueList({
         ))}
         {editable && addButton}
       </Stack>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
-        Wertelisten sieht jede Person, die die Bibliothek nutzt.{' '}
-        <TextAction onClick={() => setOpen(false)} aria-expanded>
-          Schließen
-        </TextAction>
-      </Typography>
+      {editable && (
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
+          Wertelisten sieht jede Person, die die Bibliothek nutzt.
+        </Typography>
+      )}
     </Box>
   )
 }

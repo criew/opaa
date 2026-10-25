@@ -36,14 +36,10 @@ export default function DiagnosticsLockControl({
         ) : undefined
       }
     >
+      {/* the state in one word; whoever may change it finds the action at the edge */}
       <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1 }}>
-        <Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>
-          {locked ? 'gesperrt' : 'freigegeben'}
-        </Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          {locked
-            ? 'erscheint in keiner Suchdiagnose einer anderen Person'
-            : 'kann in der Suchdiagnose einer anderen Person erscheinen'}
+        <Typography sx={{ fontSize: 13.5 }}>
+          {locked ? 'Gesperrt für Suchdiagnosen anderer' : 'Nicht gesperrt'}
         </Typography>
       </Box>
       {error && (

@@ -19,7 +19,7 @@ import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import LibraryRunList, { type RunningProgress } from './LibraryRunList'
 import LibraryLiveUpdateRow from './LibraryLiveUpdateRow'
 import { formatDay, runWord } from './libraryState'
-import { unreadableLabel, unreadableScopeNames } from './scopeMarks'
+import { unreadableScopeNames } from './scopeMarks'
 import type { SourceSetupRowsMarks } from './setup/SourceSetupRows'
 import type { RowStatus } from './setup/setupTypes'
 import { scheduleFrequencyLabel } from './scheduleLabels'
@@ -97,7 +97,7 @@ export default function LibrarySourceSection({
 }: LibrarySourceSectionProps) {
   const [searchParams] = useSearchParams()
   const location = useLocation()
-  const marks = rowMarks(library, runs[0] ?? null, unlistedScopeKeys)
+  const marks = rowMarks(library, runs, unlistedScopeKeys)
   // the head's state leads here with an anchor: scroll its row into view
   useEffect(() => {
     const target = ANCHORS[location.hash.slice(1)]
@@ -421,7 +421,7 @@ export default function LibrarySourceSection({
           action={
             statusUnknown && onRetryStatus ? (
               <TextAction onClick={onRetryStatus}>Stand erneut abrufen</TextAction>
-            ) : onFullSync && !erasing ? (
+            ) : onFullSync && !erasing && runs.length > 0 ? (
               <TextAction onClick={onFullSync} disabled={running !== null}>
                 Vollabgleich starten
               </TextAction>
@@ -434,6 +434,16 @@ export default function LibrarySourceSection({
             runs={runs}
             running={running}
             showMode={Boolean(configuration?.fullSyncRhythm)}
+            signsIn={configuration?.setup?.signsIn ?? true}
+            fundortPrefix={
+              library.sourceType === 'HTTP_DIRECTORY' || library.sourceType === 'RSS_FEED'
+                ? (library.sourceUrl ?? '').replace(/[^/]*$/, '') || null
+                : null
+            }
+            unreadableNames={unreadableScopeNames(
+              { sourceType: library.sourceType, sourceSettings: library.sourceSettings },
+              unlistedScopeKeys,
+            )}
             quotaRemedy={
               library.privateLibrary ? QUOTA_EXHAUSTED_REMEDY : LIBRARY_QUOTA_EXHAUSTED_REMEDY
             }
@@ -456,37 +466,49 @@ const ANCHORS: Record<string, string> = {
 /** What the runs know of the rows: the connection's last state, unreadable scope, failed plans. */
 function rowMarks(
   library: LibrarySourceSectionProps['library'],
-  newest: IndexingRunResponse | null,
-  unlistedScopeKeys?: string[],
+  runs: IndexingRunResponse[],
+  unlistedScopeKeys: string[] | undefined,
 ): SourceSetupRowsMarks {
   const signsIn = sourceRegistration(library.sourceType)?.configuration?.setup?.signsIn ?? true
+  // the last run that ended says what is known of the connection
+  const finished = runs.find((run) => run.status !== 'RUNNING') ?? null
+  const word = finished ? runWord(finished, signsIn) : null
+  const connectionFailed =
+    word === 'Anmeldung abgelehnt' ||
+    word === 'Nicht erreichbar' ||
+    word === 'Zustimmung abgelaufen'
   const storedStatus = ((): RowStatus | null => {
-    if (!newest || newest.status === 'RUNNING') return null
-    const word = runWord(newest)
-    if (word === 'Anmeldung abgelehnt' || word === 'Zustimmung abgelaufen') {
-      return { tone: 'error', label: `${word} am ${formatDay(newest.startedAt)}` }
+    if (!finished) return null
+    if (connectionFailed) {
+      return { tone: 'error', label: `${word} am ${formatDay(finished.startedAt)}` }
     }
-    if (newest.status === 'FAILED') return null
+    if (finished.status === 'FAILED') return null
     return {
       tone: 'success',
-      label: `${signsIn ? 'Anmeldung ok' : 'erreichbar'} · zuletzt ${formatDay(newest.startedAt)}`,
+      label: `${signsIn ? 'Anmeldung ok' : 'Erreichbar'} · zuletzt ${formatDay(finished.startedAt)}`,
     }
   })()
-  const unreadable = newest?.unreadableScopeCount ?? 0
+  const keys = unlistedScopeKeys ?? []
   const names = unreadableScopeNames(
     { sourceType: library.sourceType, sourceSettings: library.sourceSettings },
-    unlistedScopeKeys ?? [],
+    keys,
   )
-  const scopeStatus: RowStatus | null =
-    unreadable > 0 || names.length > 0
-      ? { tone: 'warning', label: unreadableLabel(names, unreadable) }
-      : null
+  // the scheduler's failures only matter where a schedule runs and the connection does not
+  // already name the cause
+  const scheduleRuns = library.schedule && library.schedule.frequency !== 'DISABLED'
+  const scheduledFailure = runs.some(
+    (run) => run.triggeredBy === 'SCHEDULED' && run.status === 'FAILED',
+  )
   return {
     storedStatus,
-    scopeStatus,
-    scheduleStatus: library.lastScheduledRunsFailed
-      ? { tone: 'error', label: 'letzte geplante Läufe fehlgeschlagen' }
-      : null,
+    // only entries with a name can be marked; without names the run says it (D8)
+    scopeStatus:
+      names.length > 0 ? { tone: 'warning', label: `${names.length} nicht lesbar` } : null,
+    scopeMarked: names.length > 0 ? [...keys, ...names] : undefined,
+    scheduleStatus:
+      library.lastScheduledRunsFailed && scheduleRuns && scheduledFailure && !connectionFailed
+        ? { tone: 'error', label: 'Letzte geplante Läufe fehlgeschlagen' }
+        : null,
     scopeFallback:
       library.sourceType === 'RSS_FEED'
         ? 'Alle Einträge des Feeds'

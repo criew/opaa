@@ -73,3 +73,10 @@ export function indexingRunEventCategoryLabel(
   if (!category) return ''
   return indexingRunEventCategoryLabels[category as IndexingRunEventCategory] ?? category
 }
+
+/** The state words of a document, capitalised like the states of runs and of the library. */
+export const DOCUMENT_STATUS_WORDS: Record<DocumentStatus, string> = {
+  INDEXED: 'Indiziert',
+  PENDING: 'Wird verarbeitet',
+  FAILED: 'Fehlgeschlagen',
+}

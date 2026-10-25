@@ -4,7 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
@@ -17,7 +16,8 @@ import Typography from '@mui/material/Typography'
 import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import ListSearch from '@/shared/ui/ListSearch'
+import RowMenu from '@/shared/ui/RowMenu'
 import type {
   AssetGrantResponse,
   AssetGrantSubjectType,
@@ -85,7 +85,7 @@ export interface AssetGrantsSectionProps {
 
 function formatExpiry(expiresAt: string | null | undefined): string {
   if (!expiresAt) return 'unbefristet'
-  return `bis ${new Date(expiresAt).toLocaleDateString('de-DE')}`
+  return `bis ${new Date(expiresAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
 }
 
 function isExpired(expiresAt: string | null | undefined): boolean {
@@ -408,7 +408,9 @@ export default function AssetGrantsSection({
   const needle = query.trim().toLowerCase()
   const kindOf = (grant: AssetGrantResponse) =>
     grant.subjectType === 'GROUP' ? 'GROUP' : grant.subjectType === 'USER' ? 'USER' : 'ALL'
-  const matching = grants.filter(
+  // the owner stands in its own section above and changes only by handing over (R1-6)
+  const listed = grants.filter((grant) => grant.role !== 'OWNER')
+  const matching = listed.filter(
     (grant) =>
       (kind === 'ALL' || kindOf(grant) === kind) &&
       (!needle || subjectDisplayName(grant).toLowerCase().includes(needle)),
@@ -435,19 +437,17 @@ export default function AssetGrantsSection({
       )}
 
       {/* from eight entries a search and the kind of recipient (D19) */}
-      {grants.length >= SEARCH_FROM && (
+      {listed.length >= SEARCH_FROM && (
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1.5}
           sx={{ mb: 1.5, alignItems: { sm: 'center' } }}
         >
-          <TextField
-            size="small"
+          <ListSearch
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={setQuery}
             placeholder="Name enthält …"
-            slotProps={{ htmlInput: { 'aria-label': 'Freigaben durchsuchen' } }}
-            sx={{ flexGrow: 1 }}
+            label="Freigaben durchsuchen"
           />
           <ToggleButtonGroup
             size="small"
@@ -467,7 +467,7 @@ export default function AssetGrantsSection({
         <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
           Berechtigungen werden geladen …
         </Typography>
-      ) : grants.length === 0 ? (
+      ) : listed.length === 0 ? (
         <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
           Noch keine Freigaben.
         </Typography>
@@ -491,12 +491,13 @@ export default function AssetGrantsSection({
               <Box
                 component="li"
                 key={grant.id}
+                // who conferred the role the grant carries now: on request, not in every row
+                title={`Rolle vergeben von ${grantedByDisplayName(grant)}`}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: {
-                    xs: 'minmax(0, 1fr) auto',
-                    sm: 'minmax(0, 1fr) 150px 104px 32px',
-                  },
+                  // below 600 px name and line take the whole width, role and ⋯ go below
+                  gridTemplateColumns: { xs: '1fr auto auto', sm: 'minmax(0, 1fr) auto auto' },
+                  rowGap: 0.5,
                   columnGap: 1.5,
                   alignItems: 'center',
                   py: 0.75,
@@ -508,31 +509,35 @@ export default function AssetGrantsSection({
                   <Typography noWrap title={subjectName} sx={{ fontSize: 13.5, fontWeight: 600 }}>
                     {subjectName}
                   </Typography>
-                  {/* grantedByUserId names whoever conferred the role the grant carries now */}
                   <Typography noWrap sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                    {[
-                      permissionSubjectTypeLabel(grant.subjectType),
-                      sizeHint,
-                      `vergeben von ${grantedByDisplayName(grant)}`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    {grant.subjectType === 'GROUP' &&
+                    {permissionSubjectTypeLabel(grant.subjectType)}
+                    {/* the member count is itself the way to the members */}
+                    {sizeHint &&
+                      (grant.subjectType === 'GROUP' &&
                       grant.subjectId &&
                       !expired &&
-                      !membersShown && (
+                      !membersShown ? (
                         <>
                           {' · '}
                           <TextAction
                             onClick={() =>
                               setMembersOpen((prev) => ({ ...prev, [grant.id]: true }))
                             }
-                            context={`der Gruppe „${subjectName}“`}
+                            context={`der Gruppe „${subjectName}“ anzeigen`}
                           >
-                            Mitglieder
+                            {sizeHint}
                           </TextAction>
                         </>
-                      )}
+                      ) : (
+                        ` · ${sizeHint}`
+                      ))}
+                    {expired ? (
+                      <Box component="span" sx={{ color: 'warning.main' }}>
+                        {' · abgelaufen'}
+                      </Box>
+                    ) : (
+                      grant.expiresAt && ` · ${formatExpiry(grant.expiresAt)}`
+                    )}
                   </Typography>
                   {/* ADR-0036 Entscheidung 9: members only on explicit request */}
                   {membersShown && grant.subjectId && (
@@ -557,7 +562,7 @@ export default function AssetGrantsSection({
                   value={grant.role}
                   inputProps={{ 'aria-label': `Rolle für ${subjectName}` }}
                   onChange={(e) => void handleRoleChange(grant, e.target.value as AssetRole)}
-                  sx={{ fontSize: 13.5 }}
+                  sx={{ fontSize: 13.5, width: 150, gridColumn: { xs: 2, sm: 'auto' } }}
                 >
                   {rolesFor(grant.subjectType).map((option) => (
                     // the role's meaning, formerly a legend below the list, on the option itself
@@ -570,22 +575,10 @@ export default function AssetGrantsSection({
                     </MenuItem>
                   ))}
                 </Select>
-                <Typography
-                  sx={{
-                    fontSize: 12.5,
-                    color: expired ? 'warning.main' : 'text.secondary',
-                    display: { xs: 'none', sm: 'block' },
-                  }}
-                >
-                  {expired ? 'abgelaufen' : grant.expiresAt ? formatExpiry(grant.expiresAt) : ''}
-                </Typography>
-                <IconButton
-                  aria-label={`Freigabe für ${subjectName} entziehen`}
-                  size="small"
-                  onClick={() => void handleRevoke(grant)}
-                >
-                  <DeleteOutlinedIcon fontSize="small" />
-                </IconButton>
+                <RowMenu
+                  label={`Aktionen für die Freigabe an ${subjectName}`}
+                  items={[{ label: 'Entziehen', onClick: () => void handleRevoke(grant) }]}
+                />
               </Box>
             )
           })}
