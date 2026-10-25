@@ -917,6 +917,24 @@ Chat: Bilder werden nicht übernommen (nur ihre Beschreibung und Adresse als Tex
 Linkziele bleiben anklickbar. Sonst bleibt es beim Text mit Vermerk. Der Vermerk steht nur beim Kopierknopf: Text, den jemand von Hand markiert und kopiert,
 bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennzeichnung.
 
+**Exportieren.** Ein ganzer Chat lässt sich zur Ablage oder Weitergabe als Datei sichern: Das Menü
+eines Chats in der Chatliste und auf der Seite „Chats" bietet „Exportieren als Markdown" und
+„Exportieren als PDF". Beide Dateien beginnen mit dem Titel als Überschrift, nennen Beginn des Chats
+und Exportzeitpunkt und enthalten jede Frage und Antwort mit Datum und Uhrzeit. Unter jeder Antwort
+stehen ihre Quellenangaben wie bei „Mit Quellenangaben": jede Fußnote mit derselben Nummer wie im
+Chat, Dokument und Fundort; zitierte Dokumente ohne Fußnote im Text folgen ohne Nummer, geprüfte,
+nicht zitierte fehlen. Am Ende steht derselbe Vermerk wie beim Kopieren, mit dem Datum des Exports.
+Die Datei heißt wie der Chat.
+
+| Format | Entsteht | Darstellung |
+|---|---|---|
+| Markdown | im Browser, aus dem gespeicherten Chat | Antworten mit ihrer Formatierung, Fußnoten als Markdown-Fußnoten; Zeiten in der Zeitzone des Browsers |
+| PDF | auf dem Server | A4 mit Seitenzahlen, Markdown-Zeichen zu lesbarem Text aufgelöst; Zeiten in der Zeitzone der Installation. Die Standardschriften kennen nur westeuropäische Zeichen, andere Zeichen erscheinen als „?" |
+
+Exportieren darf nur, wer den Chat lesen darf, also seine Autorin oder sein Autor, und nur, solange
+sie oder er Mitglied des Space ist; ein ehemaliges Mitglied erhält beim PDF eine Ablehnung. Der
+Export wird weder protokolliert noch auf dem Server gespeichert.
+
 **Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
 „Private Quelle“, auch wenn die Antwort ihn nicht zitiert; stand eine solche Quelle im Kontext, steht
 unter der Antwort die Zeile „Private Quellen im Kontext“. Beides sieht nur die Besitzerin, denn nur

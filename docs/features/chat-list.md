@@ -446,6 +446,31 @@ aus dem privaten Arbeitsbereich.
 
 ---
 
+## Export
+
+Ein einzelner Chat lässt sich zur Ablage oder Weitergabe als Datei sichern (#1925). Das Aktionsmenü
+eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exportieren als Markdown" und
+„Exportieren als PDF".
+
+- **Inhalt beider Formate:** der Titel als Überschrift, Beginn des Chats und Exportzeitpunkt, dann jede
+  Frage und Antwort in ihrer Reihenfolge mit Datum und Uhrzeit. Unter jeder Antwort stehen ihre
+  Quellenangaben: Jede Zitiermarke wird zur Fußnote mit derselben Nummer wie im Chat, die Liste nennt
+  Dokument und Fundort; zitierte Quellen ohne Marke im Text folgen ohne Nummer. Geprüfte, nicht
+  zitierte Quellen gehören nicht dazu. Am Ende steht der Vermerk aus Hinweis zur KI-Nutzung und
+  Produktname aus dem Branding, wie beim Kopieren einer Antwort.
+- **Markdown entsteht im Browser** aus dem bereits geladenen Chat und behält die Formatierung der
+  Antworten; die Fußnoten sind Markdown-Fußnoten (`[^1]`).
+- **PDF entsteht im Server** (`GET /api/v1/chats/{chatId}/export/pdf`, mit PDFBox, Standardschriften
+  ohne Einbettung). Die Markdown-Zeichen der Antworten werden zu lesbarem Text; Zeichen außerhalb
+  des westeuropäischen Zeichensatzes der Standardschriften erscheinen als „?". Die Zeitangaben stehen in
+  der Zeitzone der Installation.
+- **Wer exportieren darf:** wer den Chat lesen darf, also nur seine Autorin, und nur, solange sie
+  Mitglied des Space ist. Ein fremder Chat antwortet `404` wie ein unbekannter, ein ehemaliges
+  Mitglied `403`. Der Export wird nicht protokolliert und nicht gespeichert.
+- **Außerhalb des Umfangs:** Export mehrerer Chats oder ganzer Spaces, Import.
+
+---
+
 ## Persönliche Ordnungsmerkmale im Datenmodell
 
 Anheften und Archivieren werden **nicht** als Spalten am Chat gespeichert, sondern als eigene Zeile je

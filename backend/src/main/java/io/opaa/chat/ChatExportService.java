@@ -1,0 +1,60 @@
+package io.opaa.chat;
+
+import io.opaa.branding.BrandingSettingsService;
+import io.opaa.branding.EffectiveBranding;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+
+/**
+ * The PDF export of a chat (docs/features/chat-list.md, "Export"). Who may export is decided by
+ * {@link ChatService#getChatForExport}; the export closes with the branding's AI notice and product
+ * name, as a copied answer does. Timestamps are printed in the zone of the application's clock.
+ */
+@Service
+public class ChatExportService {
+
+  /** Characters a file name must not carry on common file systems, plus control characters. */
+  private static final String UNSAFE_FILE_NAME_CHARACTERS = "[\\\\/:*?\"<>|\\p{Cntrl}]";
+
+  private static final int FILE_NAME_MAX_LENGTH = 80;
+
+  private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+  private final ChatService chatService;
+  private final BrandingSettingsService brandingSettingsService;
+  private final Clock clock;
+
+  public ChatExportService(
+      ChatService chatService, BrandingSettingsService brandingSettingsService, Clock clock) {
+    this.chatService = chatService;
+    this.brandingSettingsService = brandingSettingsService;
+    this.clock = clock;
+  }
+
+  public ChatPdf exportPdf(UUID chatId, UUID userId) {
+    ChatTranscript transcript = ChatTranscript.of(chatService.getChatForExport(chatId, userId));
+    EffectiveBranding branding = brandingSettingsService.currentBranding();
+    Instant now = Instant.now(clock);
+    String note =
+        branding.aiNotice().strip()
+            + " – "
+            + branding.productName().strip()
+            + ", "
+            + DATE.format(now.atZone(clock.getZone()));
+    byte[] pdf = new ChatPdfRenderer(clock.getZone()).render(transcript, note, now);
+    return new ChatPdf(fileName(transcript.title()) + ".pdf", pdf);
+  }
+
+  /** The title without characters a file system rejects, at most {@value #FILE_NAME_MAX_LENGTH}. */
+  static String fileName(String title) {
+    String cleaned = title.replaceAll(UNSAFE_FILE_NAME_CHARACTERS, " ").replaceAll("\\s+", " ");
+    cleaned = cleaned.strip().replaceAll("^\\.+", "").strip();
+    if (cleaned.length() > FILE_NAME_MAX_LENGTH) {
+      cleaned = cleaned.substring(0, FILE_NAME_MAX_LENGTH).strip();
+    }
+    return cleaned.isEmpty() ? "Chat" : cleaned;
+  }
+}

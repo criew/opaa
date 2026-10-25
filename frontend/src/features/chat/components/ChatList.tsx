@@ -18,10 +18,12 @@ import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import SearchIcon from '@mui/icons-material/Search'
@@ -34,6 +36,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '@/features/space'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
+import { exportChat } from './exportChat'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -541,7 +544,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
             anchorEl={menuAnchor?.el ?? null}
             open={Boolean(menuAnchor && menuChat)}
             onClose={() => setMenuAnchor(null)}
-            slotProps={{ paper: { sx: { width: 190 } }, list: { 'aria-label': 'Chat-Aktionen' } }}
+            slotProps={{ paper: { sx: { width: 250 } }, list: { 'aria-label': 'Chat-Aktionen' } }}
           >
             <MenuItem
               aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ umbenennen` : undefined}
@@ -586,6 +589,34 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
                 <ArchiveOutlinedIcon sx={{ fontSize: 15 }} />
               </ListItemIcon>
               Archivieren
+            </MenuItem>
+            <MenuItem
+              aria-label={
+                menuChat ? `Chat „${chatTitle(menuChat)}“ als Markdown exportieren` : undefined
+              }
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) void exportChat(menuChat, 'markdown')
+              }}
+            >
+              <ListItemIcon>
+                <DescriptionOutlinedIcon sx={{ fontSize: 15 }} />
+              </ListItemIcon>
+              Exportieren als Markdown
+            </MenuItem>
+            <MenuItem
+              aria-label={
+                menuChat ? `Chat „${chatTitle(menuChat)}“ als PDF exportieren` : undefined
+              }
+              onClick={() => {
+                setMenuAnchor(null)
+                if (menuChat) void exportChat(menuChat, 'pdf')
+              }}
+            >
+              <ListItemIcon>
+                <PictureAsPdfOutlinedIcon sx={{ fontSize: 15 }} />
+              </ListItemIcon>
+              Exportieren als PDF
             </MenuItem>
             <Divider sx={{ my: 0.5 }} />
             <MenuItem

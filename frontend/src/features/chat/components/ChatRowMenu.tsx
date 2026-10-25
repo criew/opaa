@@ -8,11 +8,14 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import UnarchiveOutlinedIcon from '@mui/icons-material/UnarchiveOutlined'
 import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
 import { chatTitle } from './chatListSections'
+import { exportChat } from './exportChat'
 
 export interface ChatRowActions {
   /** Archives, brings back or deletes the given chats - the same path as the bulk actions. */
@@ -28,8 +31,8 @@ interface ChatRowMenuProps extends ChatRowActions {
 
 /**
  * The row menu of one chat on the chats page, built like the row menus of the administration
- * lists: the everyday actions first, "Löschen" last under a divider. An archived chat is brought
- * back rather than pinned or archived.
+ * lists: the everyday actions first, then the two exports, "Löschen" last under a divider. An
+ * archived chat is brought back rather than pinned or archived; it can be exported all the same.
  */
 export default function ChatRowMenu({
   chat,
@@ -90,6 +93,18 @@ export default function ChatRowMenu({
             </MenuItem>,
           ]
         )}
+        <MenuItem onClick={() => run(() => void exportChat(chat, 'markdown'))}>
+          <ListItemIcon>
+            <DescriptionOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Exportieren als Markdown
+        </MenuItem>
+        <MenuItem onClick={() => run(() => void exportChat(chat, 'pdf'))}>
+          <ListItemIcon>
+            <PictureAsPdfOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Exportieren als PDF
+        </MenuItem>
         <Divider />
         <MenuItem onClick={() => run(() => onAction('DELETE', [chat]))}>
           <ListItemIcon>
