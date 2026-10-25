@@ -210,7 +210,8 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
           finding.put("reachable", true);
           reachable++;
         } catch (FileAccessException.RunEnding e) {
-          return new SourceConnectionTestResult(false, e.getMessage(), null, false, null);
+          return new SourceConnectionTestResult(
+              false, e.getMessage(), null, e.credentialsVerified(), null);
         } catch (FileAccessException e) {
           finding.put("reachable", false);
           finding.put("message", e.getMessage());

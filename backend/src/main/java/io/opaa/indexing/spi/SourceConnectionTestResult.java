@@ -7,8 +7,10 @@ package io.opaa.indexing.spi;
  * @param message German, user-facing text, never a raw exception message.
  * @param documentCount {@code null} when {@code reachable} is {@code false} - a failed probe never
  *     reports a count for the source it could not read.
- * @param credentialsVerified whether the probe got as far as checking the credentials, {@code null}
- *     for a connector that does not tell
+ * @param credentialsVerified {@code false} only when the source rejected the secret (also after a
+ *     renewal); {@code true} once it accepted it, also when a permission, scope or consent is
+ *     missing then ({@code reachable} {@code false}); {@code null} when the probe did not get that
+ *     far (blocked target, TLS, network, clock, server error, quota) or the connector does not tell
  * @param details the connector's own findings, {@code null} for none (ADR-0038)
  */
 public record SourceConnectionTestResult(

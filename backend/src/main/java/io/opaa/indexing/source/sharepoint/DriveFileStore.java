@@ -172,7 +172,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
         case RESYNC ->
             new FileAccessException.CheckpointExpired(
                 "Microsoft Graph nimmt den Fortsetzungspunkt der Auflistung nicht mehr an.");
-        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case UNAUTHORIZED -> unauthorized(e);
         case NOT_FOUND, FORBIDDEN -> new FileAccessException.ContainerUnlistable(e.getMessage());
         // a page or folder Graph refuses for good starts the library over, bounded by the core
         case TRANSIENT ->
@@ -237,7 +237,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
    */
   static FileAccessException fileFailure(GraphException e) {
     return switch (e.kind()) {
-      case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+      case UNAUTHORIZED -> unauthorized(e);
       case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
       case NOT_FOUND -> new FileAccessException.Gone(e.getMessage());
       case FORBIDDEN -> new FileAccessException.Unreadable(e.getMessage());
@@ -248,6 +248,16 @@ final class DriveFileStore implements FileStore, ChangeFeed {
               ? new FileAccessException.Unavailable(e.getMessage() + REFUSED_DOWNLOAD_SUFFIX)
               : new FileAccessException.Transient(e.getMessage());
     };
+  }
+
+  /**
+   * A {@code 401}: a token without any granted permission lacks the administrator consent, which no
+   * new secret gives; any other is the rejected secret.
+   */
+  static FileAccessException.RunEnding unauthorized(GraphException e) {
+    return e.consentMissing()
+        ? new FileAccessException.PermissionMissing(e.getMessage())
+        : new FileAccessException.CredentialsRejected(e.getMessage());
   }
 
   private static boolean durable(int status) {
@@ -283,7 +293,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
         return UNREACHABLE_AT_START;
       }
       throw e.kind() == GraphException.Kind.UNAUTHORIZED
-          ? new FileAccessException.CredentialsRejected(e.getMessage())
+          ? unauthorized(e)
           : new FileAccessException.RunEnding(
               rule.driveNamed(displayName(library)) + ": " + e.getMessage());
     }
@@ -339,7 +349,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
             new FileAccessException.CursorExpired(
                 "Microsoft Graph nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr"
                     + " an.");
-        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case UNAUTHORIZED -> unauthorized(e);
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.Transient(e.getMessage());
       };
@@ -375,7 +385,7 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       }
     } catch (GraphException e) {
       throw switch (e.kind()) {
-        case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+        case UNAUTHORIZED -> unauthorized(e);
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         case NOT_FOUND, FORBIDDEN ->
             new FileAccessException.ContainerUnlistable(

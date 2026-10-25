@@ -278,6 +278,23 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void aTokenWithoutConsentLeavesTheSignInAccepted() {
+    server.failNextSaying(
+        "drives/" + DRIVE_0,
+        401,
+        "InvalidAuthenticationToken",
+        "Either scp or roles claim need to be present in the token.",
+        1);
+
+    SourceConnectionTestResult result =
+        connector.testConnection(withToken(libraries(DRIVE_0)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
+    assertThat(result.message()).contains("Administratorzustimmung erteilen");
+  }
+
+  @Test
   void theConnectionTestNamesTheMissingAdministratorConsent() {
     String graphSays = "Either scp or roles claim need to be present in the token.";
     server.failNextSaying("drives/" + DRIVE_0, 403, "AccessDenied", graphSays, 1);

@@ -111,8 +111,8 @@ zuerst aufgeklappt. Bei mehreren wählt man einen ausdrücklich.
 Der Verbindungstest prüft mit dem verbundenen Konto, dass das gewählte OneDrive dessen eigenes und
 erreichbar ist, samt den gewählten Ordnern; bei Erfolg meldet er „Anmeldung erfolgreich; das OneDrive
 ist erreichbar." Die Adresse von Microsoft Graph ist fest; ein gescheiterter Test nennt deshalb nie
-die Stufe „Adresse", sondern „Anmeldung" oder „Rechte", und fehlt nur eine Angabe, allein die
-Meldung. Ein Ergebnis gilt nur für die Auswahl, mit der getestet wurde: Wer danach Ordner ändert,
+die Stufe „Adresse", sondern „Anmeldung" oder „Rechte"; fehlt nur eine Angabe oder scheitert er
+vor der Anmeldung, etwa an der Zieladressprüfung, allein die Meldung. Ein Ergebnis gilt nur für die Auswahl, mit der getestet wurde: Wer danach Ordner ändert,
 sieht wieder „nicht geprüft".
 
 Im Reiter „Quelle" öffnet „Ändern" jede Zeile einzeln, „Speichern" übernimmt sie. Unter

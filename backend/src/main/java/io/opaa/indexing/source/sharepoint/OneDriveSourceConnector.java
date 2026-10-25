@@ -209,7 +209,8 @@ public class OneDriveSourceConnector implements SourceConnector, SourceBrowser, 
               graphs.properties().pageSize())
           .requireReachable(drive.container());
     } catch (FileAccessException.RunEnding e) {
-      return new SourceConnectionTestResult(false, e.getMessage(), null, false, null);
+      return new SourceConnectionTestResult(
+          false, e.getMessage(), null, e.credentialsVerified(), null);
     } catch (FileAccessException e) {
       return new SourceConnectionTestResult(false, e.getMessage(), null, true, null);
     } catch (InterruptedException e) {
