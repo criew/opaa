@@ -150,7 +150,17 @@ export const libraryMetadataHandlers = [
       modelExtractionEnabled: settings.modelExtractionEnabled,
       keywordsEnabled: settings.keywordsEnabled,
       confidenceThreshold: settings.confidenceThreshold,
-      fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
+      // the core fields and every own field that filters, as the backend reports them
+      fields: [
+        ...Object.entries(CORE_METADATA_LABELS),
+        ...(
+          mockLibraryMetadataFields[libraryId] ??
+          scenarioMetadataFields(currentMockScenario()) ??
+          []
+        )
+          .filter((field) => field.filter)
+          .map((field): [string, string] => [field.documentFieldKey, field.label]),
+      ].map(([fieldKey, label]) => {
         const values = documents.map((doc) =>
           (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey),
         )
@@ -181,14 +191,15 @@ export const libraryMetadataHandlers = [
           emptyShare: totalDocuments === 0 ? 0 : emptyDocuments / totalDocuments,
         }
       }),
+      // a switched-off extraction has called no model
       modelExtraction: {
-        calls: 12,
-        acceptedValues: 8,
-        rejectedBelowThreshold: 2,
-        rejectedOutsideVocabulary: 1,
-        failures: 1,
+        calls: settings.modelExtractionEnabled ? 12 : 0,
+        acceptedValues: settings.modelExtractionEnabled ? 8 : 0,
+        rejectedBelowThreshold: settings.modelExtractionEnabled ? 2 : 0,
+        rejectedOutsideVocabulary: settings.modelExtractionEnabled ? 1 : 0,
+        failures: settings.modelExtractionEnabled ? 1 : 0,
         rejectedPoolFull: 0,
-        keywordsAssigned: 20,
+        keywordsAssigned: settings.keywordsEnabled ? 20 : 0,
         lastCallAt: '2026-09-01T06:05:00Z',
       },
     })

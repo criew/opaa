@@ -8,7 +8,7 @@ import { applyLibraryScenario, scenarioIndexingRuns } from './libraryScenarioFix
 import { runningStatus, unlistedKeysOf } from './detailScenarioFixtures'
 import { currentMockScenario } from '@/shared/mocks/mockScenario'
 import { mockSearchStatus } from '../../search-admin/mocks/searchAdminFixtures'
-import { mockLibraryDetails, mockSourceTypes } from './libraryFixtures'
+import { mockLibraryDetails, mockLibraryDocuments, mockSourceTypes } from './libraryFixtures'
 import type { IndexingStatusResponse, PushSecretResponse } from '@/shared/api/types'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
@@ -163,7 +163,13 @@ export const indexingHandlers = [
     if (!indexingActive && currentMockScenario() === 'slow') {
       const library = mockLibraryDetails[libraryId]
       if (library && library.sourceType !== 'UPLOAD') {
-        return HttpResponse.json(runningStatus(libraryId, library.sourceType === 'RSS_FEED'))
+        return HttpResponse.json(
+          runningStatus(
+            libraryId,
+            library.sourceType === 'RSS_FEED',
+            mockLibraryDocuments[libraryId]?.length,
+          ),
+        )
       }
     }
     // under a scenario the status reports the newest run of the history, as the backend does

@@ -1,4 +1,5 @@
 import type {
+  DocumentMetadataFieldResponse,
   AssetGrantResponse,
   AssetRole,
   IndexingStatusResponse,
@@ -112,13 +113,13 @@ function planFor(scenario: MockScenario): DocumentPlan | null {
     case 'small':
       return { count: 3, failed: 0, pending: 0 }
     case 'scale':
-      return { count: 1250, failed: 9, pending: 14 }
+      return { count: 1250, failed: 9, pending: 0 }
     case 'empty':
       return { count: 0, failed: 0, pending: 0 }
     case 'failed':
       return { count: 12, failed: 5, pending: 0 }
     case 'partial':
-      return { count: 214, failed: 17, pending: 4 }
+      return { count: 214, failed: 17, pending: 0 }
     case 'slow':
       return { count: 26, failed: 0, pending: 9 }
     default:
@@ -139,8 +140,9 @@ function hierarchyOf(library: LibraryResponse, i: number): Partial<LibraryDocume
       }
     }
     case 'HTTP_DIRECTORY':
+      return { sourceUrl: `${library.sourceUrl ?? 'https://example.org/'}richtlinie-${i}.html` }
     case 'RSS_FEED':
-      return { sourceUrl: `${library.sourceUrl ?? 'https://example.org/'}eintrag-${i}.html` }
+      return { sourceUrl: `${feedBase(library)}eintrag-${i}.html` }
     case 'UPLOAD':
       return {}
     default:
@@ -156,6 +158,14 @@ function hierarchyOf(library: LibraryResponse, i: number): Partial<LibraryDocume
   }
 }
 
+/** The directory of a feed address, where its entries live. */
+export function feedBase(library: LibraryResponse): string {
+  return (library.sourceUrl ?? 'https://example.org/feed.xml').replace(/[^/]*$/, '')
+}
+
+/** The time the last successful run of the fixtures indexed its documents. */
+export const LAST_RUN_INDEXED = new Date(2026, 9, 23, 6, 7).toISOString()
+
 /** The documents of a fixture library under a scenario; null keeps the regular fixtures. */
 export function scenarioDocuments(
   library: LibraryResponse,
@@ -166,7 +176,9 @@ export function scenarioDocuments(
   const upload = library.sourceType === 'UPLOAD'
   const folderCount = upload ? folderPlan(scenario) : 0
   return generate(plan.count, (i) => {
-    const [extension, contentType] = EXTENSIONS[i % EXTENSIONS.length]
+    // a web directory and a feed deliver pages
+    const web = library.sourceType === 'HTTP_DIRECTORY' || library.sourceType === 'RSS_FEED'
+    const [extension, contentType] = web ? EXTENSIONS[4] : EXTENSIONS[i % EXTENSIONS.length]
     const failed = i <= plan.failed
     const pending = !failed && i <= plan.failed + plan.pending
     const base = scenarioName(upload ? 'Rundschreiben' : 'Dokument', i).replace(/\//g, '-')
@@ -178,7 +190,7 @@ export function scenarioDocuments(
       status: failed ? 'FAILED' : pending ? 'PENDING' : 'INDEXED',
       sourceType: library.sourceType,
       chunkCount: failed || pending ? 0 : (i % 40) + 1,
-      indexedAt: failed || pending ? null : '2026-10-24T04:02:00Z',
+      indexedAt: failed || pending ? null : LAST_RUN_INDEXED,
       uploadedByUserId: upload ? 'mock-user-id' : null,
       errorMessage: failed ? DOCUMENT_ERRORS[i % DOCUMENT_ERRORS.length] : null,
       // an upload library files every fourth document into one of its folders
@@ -266,8 +278,8 @@ export function scenarioGrants(scenario: MockScenario): AssetGrantResponse[] | n
           grant(
             100 + i,
             'USER',
-            i % 5 === 0
-              ? `Dr. Friederike von Grundstücksverkehrsgenehmigungsakte-Lindenberg ${i}`
+            i === 5
+              ? `Dr. Friederike von Grundstücksverkehrsgenehmigungsakte-Lindenberg`
               : `Person ${String(i).padStart(3, '0')}`,
             ROLES[(i + 2) % ROLES.length],
             i % 4 === 0 ? '2026-12-31T23:59:59.999Z' : null,
@@ -358,26 +370,33 @@ export function scenarioMetadataFields(
 }
 
 /** The status of the run the `slow` scenario keeps going: 62 % after a while, never done. */
-export function runningStatus(libraryId: string, rssFeed: boolean): IndexingStatusResponse {
-  const total = rssFeed ? 80 : 1340
+export function runningStatus(
+  libraryId: string,
+  rssFeed: boolean,
+  documents = 26,
+): IndexingStatusResponse {
+  const total = rssFeed ? Math.max(documents, 26) : documents
   const done = Math.round(total * 0.62)
   return {
     libraryId,
     status: 'RUNNING',
-    documentCount: done - 12,
+    documentCount: done - 2,
     totalDocuments: total,
-    documentsSkipped: 12,
+    documentsSkipped: 2,
     documentsFailed: 0,
-    documentsIndexedTotal: done - 12,
+    documentsIndexedTotal: done - 2,
     message: 'Indexing in progress',
     timestamp: '2026-10-24T09:12:00Z',
   }
 }
 
-/** Two scope entries of a library in the form its `unlistedScopeKeys` name them. */
+/**
+ * The scope entry the last listing could not read, in the form its `unlistedScopeKeys` name it:
+ * the first of the selection, the rest stays readable.
+ */
 export function unlistedKeysOf(library: LibraryResponse): string[] {
   const settings = (library.sourceSettings ?? {}) as Record<string, unknown>
-  const list = <T>(key: string) => ((settings[key] as T[] | undefined) ?? []).slice(0, 2)
+  const list = <T>(key: string) => ((settings[key] as T[] | undefined) ?? []).slice(0, 1)
   switch (library.sourceType) {
     case 'CONFLUENCE':
       return list<{ key: string }>('spaces').map((space) => space.key)
@@ -398,4 +417,44 @@ export function unlistedKeysOf(library: LibraryResponse): string[] {
     default:
       return []
   }
+}
+
+/**
+ * The core and own metadata of the scenario documents: most titles, every third document type
+ * missing, every second date - so the fill level and the „ohne …“ filter have something to show.
+ */
+export function scenarioDocumentMetadata(
+  documents: LibraryDocumentResponse[],
+  ownFields: LibraryMetadataFieldResponse[],
+): Record<string, DocumentMetadataFieldResponse[]> {
+  const set = (
+    fieldKey: string,
+    label: string,
+    value: string,
+    origin: 'DETERMINISTIC' | 'DERIVED',
+  ) =>
+    ({
+      fieldKey,
+      label,
+      state: 'SET',
+      value,
+      displayValue: value,
+      origin,
+      updatedAt: LAST_RUN_INDEXED,
+    }) as DocumentMetadataFieldResponse
+  const out: Record<string, DocumentMetadataFieldResponse[]> = {}
+  documents.forEach((doc, index) => {
+    if (doc.status !== 'INDEXED') return
+    const i = index + 1
+    const fields: DocumentMetadataFieldResponse[] = []
+    if (i % 6 !== 0) fields.push(set('title', 'Titel', doc.fileName, 'DETERMINISTIC'))
+    if (i % 3 !== 0) fields.push(set('document_type', 'Dokumentart', 'Vermerk', 'DERIVED'))
+    if (i % 2 === 0) fields.push(set('document_date', 'Datum/Stand', '2026', 'DETERMINISTIC'))
+    ownFields.forEach((field, k) => {
+      if ((i + k) % 4 !== 0)
+        fields.push(set(field.documentFieldKey, field.label, 'Wert 001', 'DETERMINISTIC'))
+    })
+    out[doc.id] = fields
+  })
+  return out
 }

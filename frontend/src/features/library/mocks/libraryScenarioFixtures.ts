@@ -8,6 +8,7 @@ import {
   type MockScenario,
 } from '@/shared/mocks/mockScenario'
 import { mockIndexingRuns } from './indexingFixtures'
+import { mockDocumentMetadata } from './libraryMetadataFixtures'
 import { scenarioSpaces, siteName } from './sourceScenarioMock'
 import {
   mockLibraries,
@@ -19,6 +20,9 @@ import { mockLibraryGrants } from '@/features/asset/mocks/assetFixtures'
 import {
   runningStatus,
   detailLabLibraries,
+  feedBase,
+  scenarioDocumentMetadata,
+  scenarioMetadataFields,
   scenarioDocuments,
   scenarioFolders,
   scenarioGrants,
@@ -245,6 +249,19 @@ export function applyLibraryScenario(): void {
     if (documents) {
       mockLibraryDocuments[id] = documents
       next.documentCount = documents.length
+      Object.assign(
+        mockDocumentMetadata,
+        scenarioDocumentMetadata(documents, scenarioMetadataFields(scenario) ?? []),
+      )
+      if (next.sourceType === 'UPLOAD') {
+        // the last upload and the bytes the documents take
+        next.updatedAt = new Date(2026, 9, 24, 9, 30).toISOString()
+        if (next.storageQuotaBytes && next.storageUsedBytes !== next.storageQuotaBytes) {
+          const bytes = documents.reduce((sum, doc) => sum + (doc.fileSize ?? 0), 0)
+          // a full quota is the `failed` scenario's alone
+          next.storageUsedBytes = Math.min(bytes, Math.round(next.storageQuotaBytes * 0.8))
+        }
+      }
     }
     const folders = scenarioFolders(next, scenario)
     if (folders) mockLibraryFolders[id] = folders
@@ -302,53 +319,97 @@ interface RunContext {
   library?: LibraryResponse
 }
 
-/** Where an event points, in the form the source names its entries. */
+/** Where an event points, in the form the source names its entries, inside the readable scope. */
 function eventReference(library: LibraryResponse | undefined, e: number): string {
   const name = scenarioName('Vorgang', e)
+  const settings = (library?.sourceSettings ?? {}) as Record<string, unknown>
+  // the last entry of the selection: under `partial` the first one is the unreadable one
+  const last = <T>(key: string): T | undefined => {
+    const list = (settings[key] as T[] | undefined) ?? []
+    return list[list.length - 1]
+  }
   switch (library?.sourceType) {
     case 'HTTP_DIRECTORY':
+      return `${library.sourceUrl ?? 'https://example.org/'}richtlinie-${e}.html`
     case 'RSS_FEED':
-      return `${library.sourceUrl ?? 'https://example.org/'}eintrag-${e}.html`
-    case 'CONFLUENCE':
-      return `Space BAU › ${name} › Anhang-${e}.pdf`
-    case 'S3':
-      return `protokolle/2025/${name.replace(/ /g, '-').toLowerCase()}.pdf`
-    case 'SHAREPOINT':
-      return `Rathaus › Dokumente › ${name}/Anlage-${e}.pdf`
-    default:
-      return `/Projekte/${name}/Anlage-${e}.pdf`
+      return `${feedBase(library)}eintrag-${e}.html`
+    case 'CONFLUENCE': {
+      const space = last<{ name?: string | null; key: string }>('spaces')
+      return `${space?.name ?? space?.key ?? 'Bauamt'} › ${name} › Anhang-${e}.pdf`
+    }
+    case 'S3': {
+      const scope = last<{ bucket: string; prefix?: string | null }>('scopes')
+      return `${scope?.bucket ?? 'protokolle'}/${scope?.prefix ?? ''}${name.replace(/ /g, '-').toLowerCase()}.pdf`
+    }
+    case 'SHAREPOINT': {
+      const entry = last<{ name?: string }>('libraries')
+      return `${entry?.name ?? 'Dokumente (Rathaus)'} › ${name}/Anlage-${e}.pdf`
+    }
+    case 'GOOGLE_DRIVE': {
+      const scope = last<{ name?: string }>('scopes')
+      return `${scope?.name ?? 'Projektablage'} › ${name}/Anlage-${e}.pdf`
+    }
+    case 'FILESYSTEM':
+      return `${library.sourcePath ?? '/srv/opaa'}/${name}/Anlage-${e}.pdf`
+    default: {
+      const folder = last<string>('folders') ?? '/'
+      return `${folder.replace(/\/$/, '')}/${name}/Anlage-${e}.pdf`
+    }
   }
 }
 
+/** Sources without a sign-in: a refused run is a source that could not be reached. */
+const NO_SIGN_IN = new Set(['FILESYSTEM', 'HTTP_DIRECTORY', 'RSS_FEED'])
+
 function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Run {
-  // runs start at the schedule's hour; without a schedule every run was started by hand
+  // scheduled runs start at the schedule's hour; without a schedule every run was started by hand
   const hour = library?.schedule?.hour ?? 6
   const scheduled = Boolean(library?.schedule && library.schedule.frequency !== 'DISABLED')
-  // local time, like the schedule's hour and its next run
-  const started = new Date(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0)
-  const minutes = spec.minutes ?? 7
-  const completed = new Date(started.getTime() + minutes * 60_000)
+  const manual = !scheduled || i % 3 === 0
+  // a run by hand starts at an uneven time of the working day
+  const started = manual
+    ? new Date(2026, 9, 24 - i, 9 + (i % 6), (i * 17) % 60)
+    : new Date(2026, 9, 24 - i, hour, library?.schedule?.minute ?? 0)
   const failed = spec.failed ?? 0
   const ended = spec.status === 'FAILED'
   const running = spec.status === 'RUNNING'
+  // a run refused at the start ends after seconds
+  const completed = new Date(started.getTime() + (ended ? 3_000 : (spec.minutes ?? 7) * 60_000))
   const events = ended ? 0 : (spec.events ?? 0)
-  const shown = Math.min(events, EVENT_CAP)
   const live =
-    running && library ? runningStatus(library.id, library.sourceType === 'RSS_FEED') : null
+    running && library
+      ? runningStatus(
+          library.id,
+          library.sourceType === 'RSS_FEED',
+          mockLibraryDocuments[library.id]?.length,
+        )
+      : null
   const total = live ? live.totalDocuments : ended ? 0 : documents + failed + 3
   const processed = live ? live.documentCount : ended ? 0 : total - failed - 3
+  // one error event per failed document, the rest are notes (removals, throttling); the backend
+  // keeps at most EVENT_CAP of them and counts the others
+  const errorEvents = Math.min(failed, events)
+  const noteEvents = Math.max(0, events - failed)
+  const shownErrors = Math.min(errorEvents, EVENT_CAP)
+  const shownNotes = Math.min(noteEvents, EVENT_CAP - shownErrors)
+  const unreachable = ended && NO_SIGN_IN.has(library?.sourceType ?? '')
+  const fullDaily =
+    (library?.sourceSettings as { fullSyncIntervalDays?: number } | null)?.fullSyncIntervalDays ===
+    1
   return {
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     status: spec.status,
-    triggeredBy: !scheduled || i % 3 === 0 ? 'MANUAL' : 'SCHEDULED',
-    runMode: i % 7 === 0 ? 'FULL' : 'INCREMENTAL',
+    triggeredBy: manual ? 'MANUAL' : 'SCHEDULED',
+    runMode: fullDaily || i % 7 === 0 ? 'FULL' : 'INCREMENTAL',
     documentCount: processed,
     totalDocuments: total,
     documentsSkipped: live ? live.documentsSkipped : ended ? 0 : 3,
     documentsFailed: failed,
     documentsIndexedTotal: processed,
-    message: spec.message ?? (running ? 'Indizierung läuft' : 'Indizierung abgeschlossen'),
-    failureCategory: spec.failureCategory ?? null,
+    message: unreachable
+      ? UNREACHABLE
+      : (spec.message ?? (running ? 'Indizierung läuft' : 'Indizierung abgeschlossen')),
+    failureCategory: unreachable ? null : (spec.failureCategory ?? null),
     incomplete: spec.incomplete ?? null,
     unreadableScopeCount: spec.unreadableScopeCount ?? null,
     startedAt: started.toISOString(),
@@ -365,14 +426,21 @@ function runOf(i: number, spec: RunSpec, { documents, library }: RunContext): Ru
           attachmentsFailed: failed > 0 ? 2 : 0,
           bytesDownloaded: total * 512 * 1024,
         },
-    events: generate(shown, (e) => {
-      // a run without failures records only removals and throttling
-      const kinds = failed > 0 ? EVENT_KINDS : EVENT_KINDS.slice(4)
-      return { ...kinds[e % kinds.length], reference: eventReference(library, e) }
-    }),
-    eventsTruncatedCount: events - shown,
+    events: [
+      ...generate(shownErrors, (e) => ({
+        ...EVENT_KINDS[(e - 1) % 4],
+        reference: eventReference(library, e),
+      })),
+      ...generate(shownNotes, (e) => ({
+        ...EVENT_KINDS[4 + (e % 2)],
+        reference: eventReference(library, shownErrors + e),
+      })),
+    ],
+    eventsTruncatedCount: errorEvents + noteEvents - shownErrors - shownNotes,
   }
 }
+
+const UNREACHABLE = 'Lauf abgebrochen: Die Quelle war nicht erreichbar.'
 
 const REFUSED = 'Lauf abgebrochen: Die Quelle hat die Anmeldung abgelehnt (HTTP 401).'
 
@@ -400,7 +468,11 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
           if (i === 1)
             return run(i, { status: 'COMPLETED', failed: 38, events: 1740, minutes: 192 })
           if (i === 4)
-            return run(i, { status: 'FAILED', message: REFUSED, failureCategory: 'CREDENTIALS_REJECTED' })
+            return run(i, {
+              status: 'FAILED',
+              message: REFUSED,
+              failureCategory: 'CREDENTIALS_REJECTED',
+            })
           if (i === 6) {
             return run(i, {
               status: 'COMPLETED',
@@ -427,7 +499,8 @@ export function scenarioIndexingRuns(libraryId?: string): IndexingRunListRespons
             status: 'COMPLETED',
             failed: 17,
             events: 17,
-            unreadableScopeCount: 2,
+            // one of the selection could not be read (unlistedKeysOf)
+            unreadableScopeCount: 1,
           }),
           run(2, { status: 'COMPLETED' }),
         ],

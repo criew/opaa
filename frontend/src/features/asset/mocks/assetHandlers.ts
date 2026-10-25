@@ -140,11 +140,13 @@ export const assetHandlers = [
         ? scenarioSpaces(currentMockScenario())
         : null
     if (seeded) {
-      const items = seeded.map((space) => ({
+      // associated by the owner on different days, one space with a narrower reader circle
+      const items = seeded.map((space, index) => ({
         ...space,
         createdByUserId: mockUser.id,
-        createdAt: '2026-09-12T08:00:00Z',
-        narrowerReaderCircle: false,
+        createdByDisplayName: 'Erika Muster',
+        createdAt: new Date(Date.UTC(2026, 8, 12 + index, 8)).toISOString(),
+        narrowerReaderCircle: index === 1,
       }))
       return HttpResponse.json({ items, hiddenCount: 0 })
     }
