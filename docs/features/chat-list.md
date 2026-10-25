@@ -465,7 +465,8 @@ eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exp
 - **Markdown entsteht im Browser:** Die Oberfläche lädt den Chat dafür frisch
   (`GET /api/v1/chats/{chatId}`), damit die Datei den gespeicherten Stand enthält, und behält die
   Formatierung der Antworten; die Fußnoten sind Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]`), weil
-  Fußnotenbezeichner in einem Dokument eindeutig sein müssen.
+  Fußnotenbezeichner in einem Dokument eindeutig sein müssen. Markdown-Fußnoten, die das Modell selbst in eine
+  Antwort schreibt, bleiben unverändert und können zwischen zwei Antworten denselben Bezeichner tragen.
 - **PDF entsteht im Server** (`GET /api/v1/chats/{chatId}/export/pdf`, mit PDFBox, Standardschriften
   ohne Einbettung), Fußnoten als `[1]`. Die Markdown-Zeichen der Antworten werden zu lesbarem Text.
   Die Standardschriften kennen nur den westeuropäischen Zeichensatz: Format- und Richtungszeichen
