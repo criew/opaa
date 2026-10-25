@@ -114,8 +114,11 @@ der nächste Lauf brächte sie zurück.
 **Der Zustand im Kopf** ist ein einziges Wort mit Datum oder Fortschritt, etwa „Aktuell · 23.10.2026",
 „Läuft · 40 %", „Teilweise fehlgeschlagen", „Anmeldung abgelehnt", „Nicht erreichbar",
 „Zustimmung abgelaufen", „Noch nie indiziert" oder bei einem Upload „Hochgeladen" und „Kontingent
-voll". Wer verwaltet, kommt mit einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum
-neuesten Lauf im Reiter „Quelle". Wer nur liest, sieht das Wort ohne Verweis.
+voll". Wird die Quelle nicht mehr erreicht, nennt das Wort den Grund wie die Kachel im Katalog,
+etwa „Gesperrt", „Zugang entfernt" oder „Adresse außerhalb des Zugangs". Wer verwaltet, kommt mit
+einem Klick auf das Wort zur Ursache: zur Zeile „Verbindung" oder zum neuesten Lauf im Reiter
+„Quelle". Wer nur liest oder bearbeitet, sieht das Wort ohne Verweis; den Verlauf der Läufe sehen
+erst Verwaltende, der Zustand kommt dann aus dem letzten Lauf.
 
 **Nach dem Anlegen** zeigt die Detailansicht unter den Reitern „Nächste Schritte": „Zugang prüfen",
 „In Space verwenden", bei Confluence und S3 „Live-Abgleich einrichten", „Feld anlegen", beim Upload
@@ -201,7 +204,7 @@ Anbieter die Erlaubnis beendet, und kann neu verbinden.
 
 | Auslöser | Beschreibung |
 |---|---|
-| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" im Menü „Weitere Aktionen" |
+| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten": für Verwaltende über den Läufen im Reiter „Quelle", für Bearbeitende im Menü „Weitere Aktionen" |
 | Zeitplan | je Bibliothek einstellbar (Abschnitt 4.2) |
 | Ereignis der Quelle | manche Quellen melden Änderungen selbst, etwa Confluence per Webhook oder ein Objektspeicher per Benachrichtigung; OPAA holt kurz darauf genau die gemeldeten Dokumente. Ersetzt weder Zeitplan noch Vollabgleich |
 | Nachzug | kein regulärer Lauf: Die Systemverwaltung lässt Dokumente neu verarbeiten, die mit einem älteren Verfahren entstanden sind (Abschnitt 7.2) |
@@ -253,8 +256,9 @@ heißt, dass der Lauf als Ganzes nicht zu Ende kam.
 
 Während ein Lauf läuft, fragt die Detailansicht seinen Stand regelmäßig ab. Ein einzelner
 Abruffehler, etwa während eines Updates, ändert die Anzeige nicht. Die Seite fragt danach in
-wachsenden Abständen erneut. Scheitern mehrere Abrufe in Folge, zeigt sie „Status unbekannt" mit
-„Erneut versuchen", nie „Fehlgeschlagen": Der Lauf selbst kann weiterlaufen. Bricht ebenso das
+wachsenden Abständen erneut. Scheitern mehrere Abrufe in Folge, heißt der Zustand im Kopf „Läuft ·
+Stand unbekannt", daneben steht für jede Rolle „Stand erneut abrufen", nie „Fehlgeschlagen": Der
+Lauf selbst kann weiterlaufen. Bricht ebenso das
 automatische Aktualisieren der Dokumentliste ab, zeigt die Liste einen Hinweis mit „Aktualisieren".
 
 Ein Lauf kann abgeschlossen und trotzdem **unvollständig** sein: wenn er sein Anfragebudget

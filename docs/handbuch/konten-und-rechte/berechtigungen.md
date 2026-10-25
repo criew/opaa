@@ -916,9 +916,10 @@ und indexieren.
 **Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
 Systemverwaltung" —, und zwar für jeden, der das Objekt sehen darf: bewusst ohne Datum, ohne den
 bisherigen Eigentümer und ohne Grund, dazu der Satz, dass das Objekt nutzbar bleibt und nichts
-gelöscht wird. Zu sehen ist die Kennzeichnung im **Katalog** und in der **Detailansicht**
-einer Bibliothek — einer Wissens- wie einer Prompt-Bibliothek — sowie in der **Space-Übersicht**
-und am **Space** selbst. Das Datum steht allein in der Betriebsliste. **Suchtreffer und
+gelöscht wird. Zu sehen ist die Kennzeichnung im **Katalog**, in der **Detailansicht** einer
+Prompt-Bibliothek, in der **Space-Übersicht** und am **Space** selbst. Die Detailansicht einer
+Wissensbibliothek nennt „Nachfolge offen“ als Zustand im Kopf, mit Verweis auf den Reiter
+„Freigaben“, und an der Stelle des Eigentümers die Zuständigkeit. Das Datum steht allein in der Betriebsliste. **Suchtreffer und
 Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts, und eine
 Kennzeichnung dort machte jede Antwort zu einer Zustandsauswertung.
 

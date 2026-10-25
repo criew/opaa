@@ -1263,6 +1263,85 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByRole('menuitem', { name: 'Vollabgleich starten' })).toBeNull()
   }, 15000)
 
+  it('offers a full reconciliation to an EDITOR in „⋯“, who sees no runs', async () => {
+    const mockTrigger = vi.fn().mockResolvedValue(undefined)
+    useIndexingStore.setState({ triggerIndexing: mockTrigger })
+    const editorLibrary = { ...managerLibrary, myRole: 'EDITOR' as const }
+    setLibraryState(
+      editorLibrary,
+      detailsOf(editorLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'ENG', name: 'Engineering' }] },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Vollabgleich starten' }))
+    expect(mockTrigger).toHaveBeenCalledWith(editorLibrary.id, 'CONFLUENCE', 'FULL')
+    await user.click(screen.getByRole('tab', { name: 'Quelle' }))
+    expect(screen.queryByRole('region', { name: 'Läufe' })).not.toBeInTheDocument()
+  })
+
+  // regression guard: the run history answers from MANAGER on only - a reader's head read
+  // „Noch nie indiziert“ from the refused history
+  it('reads the head state of a VIEWER from the polled status, never asking for the runs', async () => {
+    let runsAsked = false
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () => {
+        runsAsked = true
+        return HttpResponse.json({ error: 'verboten' }, { status: 403 })
+      }),
+    )
+    const reader = { ...viewerLibrary, sourceType: 'NEXTCLOUD' as const }
+    setLibraryState(
+      { ...reader, lastRunStatus: 'COMPLETED', lastIndexedAt: '2026-10-22T06:07:00Z' },
+      detailsOf(reader, { sourceType: 'NEXTCLOUD', sourceUrl: 'https://cloud.example' }),
+    )
+    mockGetIndexingStatus.mockResolvedValueOnce({
+      status: 'COMPLETED',
+      documentCount: 3,
+      totalDocuments: 3,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 3,
+      message: null,
+      timestamp: '2026-10-22T06:07:00Z',
+    } as IndexingStatusResponse)
+
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const state = await screen.findByTestId('library-state')
+    await waitFor(() => expect(state).toHaveTextContent(/^Aktuell\s*· 22\.10\.2026$/))
+    expect(within(state).queryByRole('link')).not.toBeInTheDocument()
+    expect(runsAsked).toBe(false)
+  })
+
+  it('names a locked source in the head and leads to the row „Verbindung“', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'NEXTCLOUD',
+        sourceUrl: 'https://cloud.example',
+        sourceBlock: {
+          reason: 'PROFILE_LOCKED',
+          notice: 'Gesperrt – Inhalt wird nicht mehr aktualisiert.',
+          responsible: 'die Systemverwaltung',
+        } as LibraryResponse['sourceBlock'],
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const state = await screen.findByTestId('library-state')
+    await waitFor(() => expect(state).toHaveTextContent(/^Gesperrt$/))
+    expect(within(state).getByRole('link', { name: 'Gesperrt' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/tab=quelle#verbindung$/),
+    )
+  })
+
   it('marks an incomplete run and shows its cost figures (#1141)', async () => {
     setLibraryState(
       managerLibrary,
