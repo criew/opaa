@@ -262,7 +262,9 @@ class LibraryControllerCredentialsIntegrationTest {
     String testBody = testResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(testBody)
         .contains("\"reachable\":false")
-        .contains("\"credentialsVerified\":false")
+        // regression guard for #3175: a refused target says nothing about the key
+        .doesNotContain("\"credentialsVerified\":false")
+        .doesNotContain("\"credentialsVerified\":true")
         .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST")
         .doesNotContain(secret)
         .doesNotContain("AKIAEXAMPLE");

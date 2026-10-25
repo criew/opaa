@@ -21,6 +21,52 @@ describe('outcomeOf (#3152)', () => {
       ])
     })
 
+    // regression guard for #3175: S3 and Confluence answer a TLS, network or blocked-target
+    // failure with credentialsVerified null - the address is to blame, not the sign-in
+    it.each([
+      ['S3 over TLS', 'Die TLS-Verbindung zum Objektspeicher ist fehlgeschlagen (Protokollfehler).'],
+      ['S3 unreachable', 'Der Objektspeicher ist nicht erreichbar: Die Verbindung wurde abgelehnt.'],
+      ['Confluence over TLS', 'TLS-Verbindung zu wiki.example.org fehlgeschlagen.'],
+    ])('names the address when the probe said nothing about the secret: %s', (_case, message) => {
+      const outcome = outcomeOf(
+        't',
+        { reachable: false, credentialsVerified: null, message, details: { scopes: [] } },
+        true,
+        false,
+      )
+      expect(stagesOf(outcome)).toEqual([
+        'Adresse nicht erreichbar',
+        'Anmeldung nicht geprüft',
+        'Rechte nicht geprüft',
+      ])
+    })
+
+    it('names the missing rights behind an accepted sign-in', () => {
+      const outcome = outcomeOf(
+        't',
+        {
+          reachable: false,
+          credentialsVerified: true,
+          message:
+            'Bereich „dokumente“: Der Bucket „dokumente“ darf mit diesen Zugangsdaten nicht aufgelistet werden (s3:ListBucket fehlt).',
+          details: {
+            scopes: [
+              { bucket: 'dokumente', prefix: '', bucketReachable: true, listAllowed: false },
+            ],
+          },
+        },
+        true,
+        false,
+      )
+      expect(outcome.state).toBe('failed')
+      expect(stagesOf(outcome)).toEqual([
+        'Adresse erreichbar',
+        'Anmeldung angenommen',
+        'Rechte 1 von 1 nicht lesbar',
+      ])
+      expect(outcome.unreadable).toEqual(['dokumente'])
+    })
+
     it('names the refused sign-in behind a reached address', () => {
       const outcome = outcomeOf(
         't',

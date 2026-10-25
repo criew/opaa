@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -105,6 +106,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
   private volatile int throttleStatus = 429;
   private volatile String foreignNextLink;
   private volatile int attachmentDownloadStatus = 200;
+  private final Map<String, Integer> statusByPath = new ConcurrentHashMap<>();
 
   public FakeConfluenceServer(ConfluenceEdition edition) throws IOException {
     this(edition, "");
@@ -219,6 +221,14 @@ public final class FakeConfluenceServer implements AutoCloseable {
     dataCenterApiHidden = true;
   }
 
+  /**
+   * From now on every request for exactly {@code path} (below the context path, without query)
+   * answers {@code status}, whoever asks.
+   */
+  public void answer(String path, int status) {
+    statusByPath.put(path, status);
+  }
+
   public void refuseAttachmentDownloads(int status) {
     attachmentDownloadStatus = status;
   }
@@ -247,6 +257,11 @@ public final class FakeConfluenceServer implements AutoCloseable {
         return;
       }
       String local = path.substring(contextPath.length());
+      Integer fixed = statusByPath.get(local);
+      if (fixed != null) {
+        send(exchange, fixed, "{\"message\":\"fixed answer\"}");
+        return;
+      }
       if (edition == ConfluenceEdition.CLOUD) {
         handleCloud(exchange, local, query);
       } else {

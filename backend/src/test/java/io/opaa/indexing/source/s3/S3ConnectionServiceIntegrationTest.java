@@ -104,6 +104,8 @@ class S3ConnectionServiceIntegrationTest {
             settings(S3Scope.of(bucket, ""), S3Scope.of("opaa-gibtsnicht", "")));
 
     assertThat(probe.reachable()).isFalse();
+    // the store answers AccessDenied, not InvalidAccessKeyId: the key itself was accepted
+    assertThat(probe.credentialsVerified()).isTrue();
     assertThat(probe.message()).contains("s3:ListBucket").contains("1 weiterer Bereich");
     assertThat(probe.scopes().get(0).listAllowed()).isFalse();
     // a restricted key cannot tell a missing bucket from a forbidden one - the store answers 403
@@ -125,6 +127,33 @@ class S3ConnectionServiceIntegrationTest {
         .contains("Zugangsdaten abgelehnt")
         .doesNotContain("falsches-geheimnis")
         .doesNotContain("falscher-key");
+  }
+
+  // regression guard for #3175: TLS or network failures say nothing about the key
+  @Test
+  void aTlsOrNetworkFailureLeavesTheKeyUnverified() throws Exception {
+    String tlsOnPlainPort = endpoint().replaceFirst("^http://", "https://");
+    S3ConnectionService.Probe tls =
+        service.probe(
+            tlsOnPlainPort, store.rootCredentials().stored(), settings(S3Scope.of(bucket, "")));
+    assertThat(tls.reachable()).isFalse();
+    assertThat(tls.credentialsVerified()).isNull();
+    assertThat(tls.message()).contains("TLS-Verbindung");
+
+    S3ConnectionService.Probe refused =
+        service.probe(
+            "http://127.0.0.1:" + closedPort(),
+            store.rootCredentials().stored(),
+            settings(S3Scope.of(bucket, "")));
+    assertThat(refused.reachable()).isFalse();
+    assertThat(refused.credentialsVerified()).isNull();
+    assertThat(refused.message()).contains("nicht erreichbar");
+  }
+
+  private static int closedPort() throws java.io.IOException {
+    try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
+      return socket.getLocalPort();
+    }
   }
 
   @Test

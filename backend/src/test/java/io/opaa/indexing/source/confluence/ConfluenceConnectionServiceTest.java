@@ -135,6 +135,7 @@ class ConfluenceConnectionServiceTest {
         service.probe(url, credentials(deployment.edition()), other);
     assertThat(mismatch.reachable()).isFalse();
     assertThat(mismatch.detectedEdition()).isEqualTo(deployment.edition());
+    assertThat(mismatch.credentialsVerified()).as("the credentials were never sent").isNull();
     assertThat(mismatch.message()).contains("nicht");
 
     String wrongFormat = deployment.edition() == ConfluenceEdition.CLOUD ? "nur-token" : "a:b";
@@ -147,9 +148,10 @@ class ConfluenceConnectionServiceTest {
   @Test
   void noConfluenceAndBadAddressesAreTold() throws Exception {
     ConfluenceConnectionService.Probe probe =
-        service.probe("http://127.0.0.1:9/nichts", null, null);
+        service.probe("http://127.0.0.1:9/nichts", TOKEN, null);
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.detectedEdition()).isNull();
+    assertThat(probe.credentialsVerified()).as("the token was never sent").isNull();
 
     assertThatThrownBy(() -> service.probe("kein-url", null, null))
         .isInstanceOf(ValidationException.class);
@@ -166,15 +168,66 @@ class ConfluenceConnectionServiceTest {
                 ConfluenceProperties.defaults(), new TargetAddressValidator(true, List.of())));
     String url = start(new Deployment(ConfluenceEdition.DATA_CENTER, ""));
 
-    ConfluenceConnectionService.Probe probe = strict.probe(url, null, null);
+    ConfluenceConnectionService.Probe probe = strict.probe(url, TOKEN, null);
 
     assertThat(probe.reachable()).isFalse();
+    assertThat(probe.credentialsVerified()).as("the token was never sent").isNull();
     assertThat(probe.message())
         .contains("gesperrten Adressbereich")
         .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
     assertThatThrownBy(() -> strict.requireEdition(url, ConfluenceEdition.DATA_CENTER))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
+  }
+
+  // regression guard for #3175: a failure before the instance judged the credentials says
+  // nothing about them - null, so the setup names the address, never "Anmeldung abgelehnt"
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void aTlsFailureLeavesTheCredentialsUnverified(Deployment deployment) throws Exception {
+    String url = start(deployment).replaceFirst("^http://", "https://");
+
+    ConfluenceConnectionService.Probe probe =
+        service.probe(url, credentials(deployment.edition()), deployment.edition());
+
+    assertThat(probe.reachable()).isFalse();
+    assertThat(probe.credentialsVerified()).isNull();
+    assertThat(probe.message()).contains("TLS-Verbindung");
+  }
+
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void aServerErrorOnTheVerificationLeavesTheCredentialsUnverified(Deployment deployment)
+      throws Exception {
+    String url = start(deployment);
+    server.answer(verificationPath(deployment.edition()), 500);
+
+    ConfluenceConnectionService.Probe probe =
+        service.probe(url, credentials(deployment.edition()), deployment.edition());
+
+    assertThat(probe.reachable()).isFalse();
+    assertThat(probe.detectedEdition()).isEqualTo(deployment.edition());
+    assertThat(probe.credentialsVerified()).isNull();
+    assertThat(probe.message()).contains("HTTP 500");
+  }
+
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void aForbiddenVerificationAcceptedTheCredentials(Deployment deployment) throws Exception {
+    String url = start(deployment);
+    server.answer(verificationPath(deployment.edition()), 403);
+
+    ConfluenceConnectionService.Probe probe =
+        service.probe(url, credentials(deployment.edition()), deployment.edition());
+
+    assertThat(probe.reachable()).isFalse();
+    assertThat(probe.credentialsVerified()).as("403 answers an authenticated caller").isTrue();
+    assertThat(probe.message()).contains("HTTP 403");
+  }
+
+  /** The one request {@link ConfluenceClient#verifyCredentials} sends. */
+  private static String verificationPath(ConfluenceEdition edition) {
+    return edition == ConfluenceEdition.CLOUD ? "/wiki/api/v2/spaces" : "/rest/api/user/current";
   }
 
   @ParameterizedTest
