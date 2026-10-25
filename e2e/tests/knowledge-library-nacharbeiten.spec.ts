@@ -8,7 +8,7 @@ import {
   libraryIdFromCurrentUrl,
 } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
-import { createFromReview, openNewLibraryWizard } from '../fixtures/chat'
+import { createFromReview, indexedDocumentStates, openNewLibraryWizard } from '../fixtures/chat'
 
 // Nacharbeiten-Serie aus Epic #458 (siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -169,7 +169,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
     // body needs over the suite's tiny committed fixtures - the document itself stays a
     // single-digit number of chunks (see buildLargePdf), so this is not an embedding-load wait.
     await expect(page.getByText(fileName)).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText('Indiziert', { exact: true }).filter({ visible: true })).toBeVisible({ timeout: 30_000 })
+    await expect(indexedDocumentStates(page)).toBeVisible({ timeout: 30_000 })
   })
 })
 
