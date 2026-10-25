@@ -2,10 +2,14 @@ package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.sun.net.httpserver.HttpServer;
 import io.opaa.security.PasswordEncoderConfiguration;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -129,7 +133,107 @@ class InstanceStartTest extends AbstractMigrationTest {
         .isTrue();
   }
 
+  // ADR-0060: the completion and the token of the installation happen once under the start-up lock
+  @Test
+  void twoInstancesColdStartingWithAnAnswerFileCompleteTheInstallationOnce() throws Exception {
+    HttpServer chat = chatEndpoint();
+    try {
+      Path directory = Files.createTempDirectory("opaa-installation");
+      Path password =
+          Files.writeString(directory.resolve("password"), "Kennwort-der-Installation-2026\n");
+      Path answers =
+          Files.writeString(
+              directory.resolve("installation.json"),
+              "{\"firstAdmin\":{\"email\":\""
+                  + ADMIN_EMAIL
+                  + "\",\"displayName\":\"IT\",\"passwordFile\":\""
+                  + password
+                  + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},\"chatModel\":{\"baseUrl\":"
+                  + "\"http://127.0.0.1:"
+                  + chat.getAddress().getPort()
+                  + "/v1\",\"model\":\"qwen2.5:7b\"}}");
+      Map<String, String> environment =
+          Map.of(
+              "OPAA_INSTALLATION_ANSWER_FILE",
+              answers.toString(),
+              "OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST",
+              "127.0.0.1");
+      Instance first = start("first", environment, false);
+      Instance second = start("second", environment, false);
+
+      assertThat(first.started().get(START_SECONDS, TimeUnit.SECONDS)).as(first.log()).isTrue();
+      assertThat(second.started().get(START_SECONDS, TimeUnit.SECONDS)).as(second.log()).isTrue();
+
+      assertThat(
+              count("SELECT count(*) FROM audit_log WHERE event_type = 'INSTALLATION_COMPLETED'"))
+          .isOne();
+      assertThat(count("SELECT count(*) FROM local_credentials WHERE is_bootstrap")).isOne();
+      assertThat(
+              count(
+                  "SELECT count(*) FROM installation_state WHERE status = 'COMPLETED'"
+                      + " AND completion_source = 'ANSWER_FILE_STARTUP' AND token_hash IS NULL"))
+          .isOne();
+      assertThat(first.log() + second.log())
+          .doesNotContain("Kennwort-der-Installation-2026")
+          .doesNotContain("INSTALLATION TOKEN");
+    } finally {
+      chat.stop(0);
+    }
+  }
+
+  @Test
+  void twoInstancesColdStartingWithoutStartValuesWaitForTheInstallationWithOneToken()
+      throws Exception {
+    Instance first = start("first", Map.of(), false);
+    Instance second = start("second", Map.of(), false);
+
+    assertThat(first.started().get(START_SECONDS, TimeUnit.SECONDS)).as(first.log()).isTrue();
+    assertThat(second.started().get(START_SECONDS, TimeUnit.SECONDS)).as(second.log()).isTrue();
+
+    Pattern tokenLine = Pattern.compile("Token:\\s+(\\S+)");
+    List<String> printed = new ArrayList<>();
+    for (Instance instance : List.of(first, second)) {
+      Matcher token = tokenLine.matcher(instance.log());
+      while (token.find()) {
+        printed.add(token.group(1));
+      }
+    }
+    assertThat(printed).hasSize(1);
+    assertThat(
+            count(
+                "SELECT count(*) FROM installation_state WHERE status = 'PENDING'"
+                    + " AND token_source = 'GENERATED' AND token_hash IS NOT NULL"))
+        .isOne();
+    assertThat(count("SELECT count(*) FROM local_credentials")).isZero();
+    assertThat(count("SELECT count(*) FROM llm_models")).isZero();
+  }
+
+  /** Answers every chat completion, as a model server does for the connection test. */
+  private static HttpServer chatEndpoint() throws IOException {
+    HttpServer server =
+        HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          byte[] body =
+              "{\"choices\":[{\"message\":{\"content\":\"Pong\"}}]}"
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+          }
+        });
+    server.start();
+    return server;
+  }
+
   private Instance start(String name, Map<String, String> environment) throws IOException {
+    return start(name, environment, true);
+  }
+
+  private Instance start(String name, Map<String, String> environment, boolean startValues)
+      throws IOException {
     // One original store for every instance: the store path is installation-wide, so an instance
     // with another path refuses to start (instance register, ADR-0053).
     if (uploads == null) {
@@ -150,7 +254,7 @@ class InstanceStartTest extends AbstractMigrationTest {
                 "--spring.profiles.active=oidc",
                 "--server.port=0",
                 "--opaa.auth.local.jwt-secret=instance-start-test-secret-0123456789-abcdefghij",
-                "--opaa.auth.initial-admin-email=" + ADMIN_EMAIL,
+                "--opaa.auth.initial-admin-email=" + (startValues ? ADMIN_EMAIL : ""),
                 "--opaa.directory-sync.schedule-enabled=false",
                 "--opaa.upload.storage-path=" + uploads,
                 "--spring.ai.openai.chat.base-url=http://chat-model.invalid/v1",

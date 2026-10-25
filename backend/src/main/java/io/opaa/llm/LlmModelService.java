@@ -11,12 +11,14 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -45,16 +47,22 @@ public class LlmModelService {
   private final SettingsEncryptor settingsEncryptor;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final LlmModelSeedMarkerRepository seedMarker;
+  private final Clock clock;
 
   public LlmModelService(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       AuditEventRecorder auditEventRecorder,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      LlmModelSeedMarkerRepository seedMarker,
+      Clock clock) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.seedMarker = seedMarker;
+    this.clock = clock;
   }
 
   @Transactional(readOnly = true)
@@ -213,6 +221,48 @@ public class LlmModelService {
         model,
         Map.of("active", false),
         Map.of("active", true));
+    eventPublisher.publishEvent(new ActiveChatModelChangedEvent());
+    return model;
+  }
+
+  /**
+   * The chat model of an installation (ADR-0060, Entscheidung 10): created active in place of any
+   * other, recorded under the system process {@code actorRef} because no account exists yet, and
+   * with the seed marker, so no start-up value is taken over afterwards. {@code apiKeyCiphertext}
+   * is already encrypted with {@link SettingsEncryptor}. Runs inside the caller's transaction.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public LlmModel installActiveModel(
+      UUID organizationId,
+      String actorRef,
+      String displayName,
+      String baseUrl,
+      String modelIdentifier,
+      BigDecimal temperature,
+      int maxTokens,
+      String apiKeyCiphertext) {
+    requireBaseUrlWithoutCredentials(baseUrl);
+    for (LlmModel currentlyActive : repository.findAllByActiveTrue()) {
+      currentlyActive.deactivate();
+      repository.saveAndFlush(currentlyActive);
+    }
+    LlmModel model =
+        new LlmModel(
+            displayName, baseUrl, modelIdentifier, temperature, maxTokens, apiKeyCiphertext);
+    model.activate();
+    repository.save(model);
+    if (!seedMarker.seedAlreadyAttempted()) {
+      seedMarker.save(new LlmModelSeedMarker(clock.instant()));
+    }
+    auditEventRecorder.recordSystemProcessAction(
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef(actorRef)
+            .type(AuditEventType.LLM_MODEL_CREATED)
+            .object(AuditObjectType.SYSTEM_SETTING, model.getId(), objectLabel(model))
+            .after(auditState(model))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
     eventPublisher.publishEvent(new ActiveChatModelChangedEvent());
     return model;
   }

@@ -20,7 +20,7 @@ class LlmModelSeedRunnerTest {
 
   @Test
   void delegatesToTheSeeder() {
-    assertThatCode(() -> runner.run(null)).doesNotThrowAnyException();
+    assertThatCode(() -> runner.runStartupSeed()).doesNotThrowAnyException();
 
     verify(seeder).seedIfNeeded();
   }
@@ -29,7 +29,7 @@ class LlmModelSeedRunnerTest {
   void swallowsADataIntegrityViolationAsTheExpectedLosingReplicaCase() {
     doThrow(new DataIntegrityViolationException("duplicate key")).when(seeder).seedIfNeeded();
 
-    assertThatCode(() -> runner.run(null)).doesNotThrowAnyException();
+    assertThatCode(() -> runner.runStartupSeed()).doesNotThrowAnyException();
   }
 
   @Test
@@ -42,7 +42,7 @@ class LlmModelSeedRunnerTest {
         .when(seeder)
         .seedIfNeeded();
 
-    assertThatThrownBy(() -> runner.run(null))
+    assertThatThrownBy(() -> runner.runStartupSeed())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("beschädigt");
   }

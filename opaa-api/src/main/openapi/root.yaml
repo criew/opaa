@@ -42,9 +42,13 @@ info:
     `Retry-After` **where the waiting time is known** - a refusal from a concurrency ceiling rather
     than from a time window has none to name.
 
-    `502` and `503` are absent for the same reason, although they read like infrastructure: they
-    are not answered for every call but only by the operations that themselves depend on something
-    outside this service - the AI provider one of them calls on the request thread, the object
+    While the installation of the instance is pending (ADR-0060), every call outside the
+    installation API, `GET /api/v1/auth/config`, the public branding and the health endpoints is
+    answered with `503` and the code `INSTALLATION_PENDING`; no operation declares it.
+
+    Apart from that, `502` and `503` are absent for the same reason, although they read like
+    infrastructure: they are not answered for every call but only by the operations that
+    themselves depend on something outside this service - the AI provider one of them calls on the request thread, the object
     store another reads an original from, the worker capacity a run is handed to, the encryption
     key a stored credential needs. Each such operation declares the status it can produce and names
     the dependency in its own description; an operation that declares neither cannot produce

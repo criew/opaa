@@ -428,6 +428,19 @@ public enum AuditEventType {
    * emergency access, not a person (ADR-0033, Entscheidung 13).
    */
   LOCAL_BOOTSTRAP_ACCOUNT_LOGIN,
+  /**
+   * A step of the pending installation was saved (ADR-0060, Entscheidung 11); {@code before} and
+   * {@code after} name the step and its values without the address of the first account and without
+   * a secret, only whether one is set.
+   */
+  INSTALLATION_STEP_SAVED,
+  /** The check of a step of the pending installation ran; {@code after} names step and outcome. */
+  INSTALLATION_STEP_CHECKED,
+  /**
+   * The installation was completed, exactly once per installation; {@code after} names how it was
+   * completed and the sign-in method.
+   */
+  INSTALLATION_COMPLETED,
   /** The local account management was switched on - the LOCAL provider row enabled. */
   LOCAL_ACCOUNTS_ENABLED,
   /**

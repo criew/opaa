@@ -70,7 +70,8 @@ io.opaa.api.types.AuditEventType:
     GROUP_MEMBERS_READ, GROUP_MEMBER_ADDED, GROUP_MEMBER_REMOVED, GROUP_PROTECTION_CHANGED,
     GROUP_REACTIVATED, GROUP_RELEASE_CHANGED, GROUP_STEWARD_APPOINTED, GROUP_STEWARD_DISMISSED,
     INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED, INDEXING_METADATA_BACKFILL_TRIGGERED,
-    INDEXING_PIPELINE_REINDEX_TRIGGERED, LIBRARY_CHANGED, LIBRARY_CREATED, LIBRARY_DELETED,
+    INDEXING_PIPELINE_REINDEX_TRIGGERED, INSTALLATION_COMPLETED, INSTALLATION_STEP_CHECKED,
+    INSTALLATION_STEP_SAVED, LIBRARY_CHANGED, LIBRARY_CREATED, LIBRARY_DELETED,
     LIBRARY_DETACHED_FROM_SPACE, LIBRARY_DIAGNOSTICS_LOCK_CHANGED, LIBRARY_SHARED_TO_SPACE,
     LIBRARY_SOURCE_UPDATED, LINK_TARGETS_CHANGED, LLM_MODEL_ACTIVATED, LLM_MODEL_CHANGED, LLM_MODEL_CREATED,
     LLM_MODEL_DEACTIVATED, LLM_MODEL_DELETED, LOCAL_ACCOUNTS_DISABLED, LOCAL_ACCOUNTS_ENABLED,
@@ -362,6 +363,29 @@ io.opaa.indexing.job.JobTriggerSource:
   attributes: [IndexingJob.triggeredBy]
   assessment: STATE
   readable: [MANUAL, SCHEDULED, WEBHOOK]
+  pending: []
+io.opaa.installation.InstallationState$CompletionSource:
+  attributes: [InstallationState.completionSource]
+  assessment: AUDIT
+  readable: [
+    ANSWER_FILE_API, ANSWER_FILE_STARTUP, DEVELOPMENT, EXISTING, INSTALLATION_API,
+    LEGACY_START_VALUES
+  ]
+  pending: []
+io.opaa.installation.InstallationState$Phase:
+  attributes: [InstallationState.status]
+  assessment: SECURITY
+  readable: [COMPLETED, PENDING]
+  pending: []
+io.opaa.installation.InstallationState$TokenSource:
+  attributes: [InstallationState.tokenSource]
+  assessment: STATE
+  readable: [CONFIGURED, GENERATED]
+  pending: []
+io.opaa.installation.InstallationStep:
+  attributes: [InstallationStepRecord.step]
+  assessment: STATE
+  readable: [CHAT_MODEL, FIRST_ADMIN, SIGN_IN]
   pending: []
 io.opaa.knowledge.ErasureCause:
   attributes: [KnowledgeLibrary.erasureCause]
