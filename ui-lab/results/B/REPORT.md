@@ -1,6 +1,6 @@
-# Variante B „Statusband“ – Bericht Runde 2 (25.10.2026)
+# Variante B „Statusband“ – Bericht Runde 3 (25.10.2026)
 
-Stand: Matrix 2 nach REVIEW-1, vor dem Halt beim Maintainer und vor den Videos. Branch `feature/3084_ui-lab-detail-var-b`.
+Stand: Matrix 3 nach REVIEW-1 und NACHCHECK-1, vor dem Halt beim Maintainer und vor den Videos. Branch `feature/3084_ui-lab-detail-var-b`.
 
 ## Konzept
 
@@ -209,3 +209,39 @@ Unverändert gegen die Basis: `LibraryCreatePage*` (51), `LibrarySourceSection.s
 - R1-72 erledigt: `__full` in Originalbreite (höchstens 1280 px), dunkle `__full` weiter weggelassen.
 - R1-73 bis R1-82 erledigt: Fehlerzahl = Fehlerereignisse, eine Uhr (Europe/Berlin), `slow` plausibel, Ablehnungen in Sekunden, `partial` mit genau einem nicht lesbaren Eintrag, gemischte erste Seite, Fundorte aus dem Umfang, fester Umfang je Bibliothek, gültige RSS-Adressen, privat in höchstens einem Space.
 - R1-83 teilweise: Speicher, Datum, Ordner, Namen, `slow`-Upload und Banner je Szenario stimmen. Offen: Fuß „938“ (Wurzelebene) gegen Kopf „1.250“ (ganze Bibliothek) – echtes Verhalten, mit Fixtures nicht zu lösen.
+
+## Nachcheck-1 (Runde 3)
+
+- **R1-13** erledigt: Der Reiter Quelle endet jetzt an derselben Kante (880 px ab Inhaltsbeginn) wie Kopf, Band, Verlauf und die übrigen Reiter.
+- **R1-15** erledigt: Nicht lesbare Pfade unter einem ganzen Verzeichnis (filesystem, web) stehen in einem eigenen Block unter den Mustern. Der Pfad wird in der Mitte gekürzt, die Markierung „· ● nicht lesbar“ nie.
+- **R1-18** erledigt: Es gibt ein Pfadformat mit „ / “:
+  - Fundorte im Verlauf werden auf diesen Trenner normalisiert, die Fixtures schreiben ihn auch.
+  - Ein Bucket ohne Präfix steht ohne Schrägstrich am Ende.
+- **R1-22, R1-46, Regression 1/2** erledigt:
+  - Die Spalte heißt „Dokumente“, die Zahl steht ohne Einheit: „214 · 17 fehlgeschlagen · 1 nicht lesbar“ passt bei 1280 in eine Zeile.
+  - Die Gruppe „Nicht lesbar“ entsteht auch aus den gemeldeten Bereichsschlüsseln (confluence, nextcloud, sharepoint, s3, gdrive, smb, dropbox), mit dem gespeicherten Namen.
+- **R1-25** erledigt (Zeitplan): Leser sehen im Reiter Quelle die Zeilen Umfang und Zeitplan, beide ohne „Ändern“. Bewusst nicht (Verbindung): Das Backend liefert Lesern die Verbindung nicht.
+  - „In Space verwenden“ für Leser bleibt: Laut ADR-0039 darf zuordnen, wer im Space `CURATOR` ist und das Asset lesen kann. Die Rolle an der Bibliothek muss dafür nicht höher sein.
+- **R1-37** erledigt: Ordner haben ihr Symbol in der Checkbox-Spalte statt einer blassen Checkbox. Ordner- und Dokumentnamen beginnen an derselben Kante.
+- **R1-44** erledigt: Das „nicht geprüft“ bei Nextcloud `scale` war ein Aufnahmefehler; die Laufliste kam erst nach dem Bild an. Der Flow wartet jetzt auf `/indexing/runs`.
+- **R1-53** erledigt:
+  - Fundorte werden in der Mitte gekürzt, der Dateiname bleibt bei jeder Breite.
+  - Die Laufzeile bei 320 px: Zustand und Datum in Zeile 1, Ergebnis und Auslöser darunter. Diese Zeile umbricht statt abzuschneiden; bei langem Ergebnis wird die Laufzeile dreizeilig, über dem Budget „höchstens 2 bei 320“. Abschneiden war im Review der schwerere Fehler.
+- **R1-55** erledigt: Ordnernamen bei 320 px zweizeilig statt „Ordn…“.
+- **R1-66** erledigt:
+  - Es gibt keine Inline-Meldung über der Liste. Die Meldung im Bild ist die globale Popup-Benachrichtigung (G 5.9: unten mittig, Rahmen und Schatten der Ebene 2, schließbar, 6 s).
+  - Sie nennt den Grund einmal und höchstens drei Dateien, ohne Formatliste.
+  - Ihren roten Rahmen bestimmt der gemeinsame `NotificationHost`, nicht die Variante.
+- **R1-70 / Regression 1** erledigt: Die Aufnahme nimmt das Viewport-Bild erst, wenn zwei Aufnahmen byte-gleich sind (`stableShot`).
+- **R1-76, R1-79, R1-83, Regression 6** erledigt (Fixtures):
+  - Das indiziert-Datum stammt aus dem letzten erfolgreichen Lauf.
+  - Confluence-Fundorte haben die Form Space / Seite / Anhang; web- und rss-Dokumente heißen `.html`.
+  - Upload-Größen und Kontingent sind plausibel, „Neuestes“ ist die frisch hochgeladene Datei, Namen werden nicht in Klammern gekürzt.
+  - Dropbox und Drive haben einen Vollabgleich-Rhythmus; Läufe dauern gleich lang.
+- **Regression 2/3 (Upload-Stand)**:
+  - Teilweise: Ein fehlgeschlagenes Dokument geht im Stand jetzt vor „Läuft“.
+  - Bewusst ohne Prozent: „Läuft“ hat bei Upload keine Zusatzangabe. Es gibt keine Zählung des Fortschritts; eine Zahl aus der geladenen Seite wäre falsch (R1-43).
+- **Regression 4** erledigt: Beginnt der Zugangsname schon mit „Zugang“, bekommt er kein zweites Präfix; das Fixture heißt „Nextcloud intern“.
+- **Regression 6 (R1-20)** erledigt: In allen Reitern gilt dasselbe Muster für leere Listen: „Noch keine … “ und die Handlung im selben Satz. Leer entfällt die Aktion oben rechts.
+- **Regression 7 (R1-39)** erledigt: Unter 600 px brechen die Reiter auf zwei Zeilen um, statt zu scrollen. Es gibt keine Wortreste und keine wechselnde Startlage mehr; der aktive Reiter ist immer sichtbar und unterstrichen.
+- **`tabsTop` bei 320 px**: Unter 600 px stehen Hauptaktion und Favorit im ⋯-Menü der Chipzeile, und die Kennzahlzeile wird nur bei Bedarf zweizeilig. Ergebnis siehe Kennzahlen.
