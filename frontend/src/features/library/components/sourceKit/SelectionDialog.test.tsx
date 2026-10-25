@@ -178,8 +178,30 @@ describe('SelectionDialog', () => {
     expect(
       await screen.findByRole('checkbox', { name: /Alle geladenen auswählen/ }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Liste unvollständig.')).toBeInTheDocument()
+    // the reason the source gave stands with it
+    expect(screen.getByText('Liste unvollständig. gekürzt')).toBeInTheDocument()
     expect(screen.queryByText(/Alle 2/)).not.toBeInTheDocument()
+  })
+
+  it('names only the reason of a refused level', async () => {
+    renderDialog(
+      treeSource(
+        {},
+        {
+          nested: false,
+          list: async () => ({
+            entries: [],
+            complete: false,
+            message: 'Der Ordner ist im OneDrive nicht mehr vorhanden.',
+          }),
+        },
+      ),
+    )
+
+    expect(
+      await screen.findByText('Der Ordner ist im OneDrive nicht mehr vorhanden.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Liste unvollständig/)).not.toBeInTheDocument()
   })
 
   it('adds an object typed by hand', async () => {

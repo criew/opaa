@@ -96,10 +96,14 @@ export function sharePointLibraryName(libraryName: string | null, siteName: stri
   return joined ? joined.slice(0, MAX_SHAREPOINT_NAME_LENGTH) : null
 }
 
+/** A name as the connector stores it: at most {@link MAX_SHAREPOINT_NAME_LENGTH} characters. */
+export function graphShownName(name: string) {
+  return name.slice(0, MAX_SHAREPOINT_NAME_LENGTH)
+}
+
 /** A folder path below the library's root, as its shown name. */
 export function sharePointFolderPath(trail: string[], name: string | null) {
-  const path = [...trail, name?.trim() || '…'].join(' / ')
-  return path.slice(0, MAX_SHAREPOINT_NAME_LENGTH)
+  return graphShownName([...trail, name?.trim() || '…'].join(' / '))
 }
 
 /** Whether the connector accepts the Graph ids of the library and of its folders. */

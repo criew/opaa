@@ -18,6 +18,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CloseIcon from '@mui/icons-material/Close'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { fontFamily } from '@/shared/theme/tokens'
+import { incompleteNote } from './incompleteNote'
 import { plainMessage } from './plainMessage'
 import PathLabel from '../setup/PathLabel'
 import { TEXT_LINK } from '../setup/rowStyles'
@@ -311,9 +312,9 @@ function SelectionDialogBody({
     </Box>
   ) : (
     <Box>
-      {current?.result && !current.result.complete && (
+      {current?.result && incompleteNote(current.result) && (
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
-          Liste unvollständig.
+          {incompleteNote(current.result)}
         </Typography>
       )}
       {loading && showLoading && (

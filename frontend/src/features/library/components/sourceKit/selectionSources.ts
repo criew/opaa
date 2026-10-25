@@ -9,6 +9,7 @@ import {
 } from '../../utils/googleDriveSource'
 import {
   SHAREPOINT_API,
+  graphShownName,
   sharePointFolderLabel,
   sharePointFolderPath,
   sharePointLibraryLabel,
@@ -16,6 +17,7 @@ import {
   type SharePointLibraryChoice,
 } from '../../utils/sharePointSource'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
+import { ONEDRIVE_API, oneDriveFolderLabel, type OneDriveFolder } from '../../utils/oneDriveSource'
 import type { ConnectionFields } from '../sources/sourceConnection'
 import type { BrowseResult, Crumb, SelectionItem, SelectionSource } from './selection'
 
@@ -287,7 +289,7 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
     const named = site && !drive.name.endsWith(`(${site.name})`)
     const choice = byDrive.get(driveId) ?? {
       driveId,
-      name: named ? sharePointLibraryName(drive.name, site.name) : drive.name,
+      name: named ? sharePointLibraryName(drive.name, site.name) : graphShownName(drive.name),
       folders: [],
       site: site ? { id: site.key.slice('site:'.length), name: site.name } : null,
     }
@@ -295,7 +297,7 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
       const between = item.trail.slice(driveCrumbAt + 1).map((crumb) => crumb.name)
       choice.folders.push({
         id: item.key.slice('folder:'.length),
-        name: between.length ? sharePointFolderPath(between, item.name) : item.name,
+        name: between.length ? sharePointFolderPath(between, item.name) : graphShownName(item.name),
       })
     }
     byDrive.set(driveId, choice)
@@ -348,6 +350,71 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
           return err instanceof Error ? err.message : 'Die Site ließ sich nicht öffnen.'
         }
       },
+    },
+  }
+}
+
+// ---- OneDrive folders ---------------------------------------------------------------------------
+
+/** The chosen folders as objects of the dialog; their stored path stands for the trail. */
+export function oneDriveItemsOf(folders: OneDriveFolder[]): SelectionItem[] {
+  return folders.map((folder) => ({
+    key: `folder:${folder.id}`,
+    name: oneDriveFolderLabel(folder),
+    trail: [],
+  }))
+}
+
+/**
+ * Chosen objects back as folders, each named by its path below the root; a folder chosen before
+ * keeps its stored entry.
+ */
+export function oneDriveFoldersOfItems(
+  items: SelectionItem[],
+  before: OneDriveFolder[],
+): OneDriveFolder[] {
+  return items.flatMap((item): OneDriveFolder[] => {
+    if (!item.key.startsWith('folder:')) return []
+    const id = item.key.slice('folder:'.length)
+    const kept = before.find((folder) => folder.id === id)
+    if (kept) return [kept]
+    const trail = item.trail.map((crumb) => crumb.name)
+    return [
+      {
+        id,
+        name: trail.length ? sharePointFolderPath(trail, item.name) : graphShownName(item.name),
+      },
+    ]
+  })
+}
+
+/** The folders of the one OneDrive, level by level below its root. */
+export function oneDriveSelectionSource(
+  probe: Probe,
+  driveId: string,
+  rootLabel: string,
+): SelectionSource {
+  return {
+    rootLabel,
+    noun: ['Ordner', 'Ordner'],
+    nested: true,
+    max: 50,
+    serverSearch: () => false,
+    searchLabel: (level) =>
+      `In „${level.length ? level[level.length - 1].name : rootLabel}“ suchen`,
+    list: async (level) => {
+      const last = level[level.length - 1]
+      const response = await browseSource(
+        'ONEDRIVE',
+        probe.probeRequest({
+          sourceUrl: ONEDRIVE_API,
+          query: {
+            drive: driveId,
+            ...(last ? { folder: last.key.slice('folder:'.length) } : {}),
+          },
+        }),
+      )
+      return resultOf(response, (key, name) => ({ key, name, selectable: true, openable: true }))
     },
   }
 }

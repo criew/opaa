@@ -90,13 +90,32 @@ Eine OneDrive-Bibliothek legt fest:
   Ebene;
 - **einen eigenen Vollabgleich-Rhythmus** in Tagen (optional).
 
-Adresse und Zugangsdaten fragt die Bibliothek nicht ab; die Adresse ist fest, das Token kommt vom
-verbundenen Konto. Der Verbindungstest prüft mit dem verbundenen Konto, dass das gewählte OneDrive
-dessen eigenes und erreichbar ist, samt den gewählten Ordnern. Eine andere Auswahl lässt den
-nächsten Lauf vollständig abgleichen.
+Der Assistent „Neue Wissensbibliothek" bietet die Quellart „OneDrive" nur Personen an, die auf
+einem OneDrive-Zugang ein verbundenes Konto haben. Unter „Zugang" steht dieser als „`<Zugang>` · privat"
+mit dem Hinweis „nur für Sie, später nicht änderbar"; eine geteilte Bibliothek und „Eigene Adresse"
+gibt es nicht, und der Schritt „Freigaben" entfällt. Den Zugang wählt man ausdrücklich, auch wenn es
+nur einen gibt.
 
-Die Oberfläche bietet die Einrichtung einer OneDrive-Bibliothek noch nicht an (siehe „Nicht
-gebaut"). Das verbundene Konto und der Zugang lassen sich schon über die allgemeinen Seiten pflegen.
+- **Verbindung** fragt weder Adresse noch Zugangsdaten ab. OPAA ermittelt das OneDrive des
+  verbundenen Kontos selbst und nennt es mit seinem Namen als „das OneDrive Ihres verbundenen
+  Microsoft-Kontos". Lässt es sich nicht ermitteln, steht dort „Das OneDrive ließ sich nicht
+  ermitteln." mit dem Grund aus Abschnitt „Protokoll und Fehlerbilder" und „Erneut ermitteln"; der
+  Assistent geht dann nicht weiter („OneDrive fehlt").
+- **Umfang** bietet „Alle Ordner" (Vorgabe) oder „Nur ausgewählte Ordner". Bis zu sieben Ordner der
+  obersten Ebene stehen zum Ankreuzen in der Zeile; „Ordner auswählen …" öffnet den Auswahldialog
+  mit allen Ebenen. Die Zeile nennt danach die gewählten Ordner mit ihrem Pfad, etwa
+  „Projekte / 2026".
+- **Zeitplan** mit „Vollabgleich alle … Tage" für den eigenen Vollabgleich-Rhythmus.
+
+Der Verbindungstest prüft mit dem verbundenen Konto, dass das gewählte OneDrive dessen eigenes und
+erreichbar ist, samt den gewählten Ordnern; bei Erfolg meldet er „Anmeldung erfolgreich; das OneDrive
+ist erreichbar." Ein Ergebnis gilt nur für die Auswahl, mit der getestet wurde: Wer danach Ordner
+ändert, sieht wieder „nicht geprüft".
+
+Im Reiter „Quelle" öffnet „Ändern" jede Zeile einzeln, „Speichern" übernimmt sie. Unter
+„Verbindung" ermittelt „OneDrive neu wählen" das OneDrive des inzwischen verbundenen Kontos; ist es
+ein anderes, gilt danach wieder „Alle Ordner", weil die bisherigen Ordner zum alten OneDrive gehören.
+Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen.
 
 **Wenn das Konto nicht mehr gilt.** Lehnt Microsoft die Erneuerung des Tokens ab oder weist Graph das
 Token ab, gilt die Verbindung als **abgelaufen**: Die Person wird benachrichtigt, die Bibliothek ruht
@@ -212,8 +231,6 @@ Die Obergrenze von fünfzig Ordnern ist fest.
 
 ## 11. Nicht gebaut
 
-- Einrichtung einer OneDrive-Bibliothek in der Oberfläche: Auswahl von OneDrive und Ordnern im
-  Assistenten und im Reiter „Quelle" ([#2467](https://github.com/criew/opaa/issues/2467))
 - Private Microsoft-Konten ([#3110](https://github.com/criew/opaa/issues/3110))
 - Widerruf der Zustimmung bei Microsoft beim Trennen
 - Warnung vor dem Ablauf der Zustimmung
