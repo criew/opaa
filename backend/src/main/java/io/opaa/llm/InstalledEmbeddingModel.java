@@ -3,14 +3,18 @@ package io.opaa.llm;
 import io.opaa.compliance.DataFlow;
 import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.security.SettingsEncryptor;
+import java.time.Duration;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.LongSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -22,6 +26,11 @@ import org.springframework.stereotype.Component;
  * <p>The row is written once and not changed afterwards, so the client is cached from the first
  * call that finds it; the absence is never cached. The {@link io.opaa.instance.InvalidationBus}
  * drops the client when the row changes on any instance (ADR-0053, Entscheidung 5).
+ *
+ * <p>A completed installation without a model - the takeover at the start found the endpoint
+ * unreachable - tries the takeover again on use, at most once per backoff interval of this
+ * instance, doubling from {@link #FIRST_RETRY} to {@link #MAX_RETRY} (ADR-0053: "je Instanz"; the
+ * takeover itself runs under the schema lock).
  */
 @DataFlow("embedding-model")
 @Component
@@ -30,20 +39,40 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
   /** The topic the trigger on {@code embedding_model} announces. */
   public static final String INVALIDATION_TOPIC = "embedding-model";
 
+  static final Duration FIRST_RETRY = Duration.ofSeconds(30);
+  static final Duration MAX_RETRY = Duration.ofMinutes(10);
+
   private static final Logger log = LoggerFactory.getLogger(InstalledEmbeddingModel.class);
 
   private final EmbeddingModelSettingsRepository repository;
   private final SettingsEncryptor settingsEncryptor;
   private final EmbeddingClientFactory clientFactory;
+  private final EmbeddingModelService embeddingModels;
+  private final LongSupplier nanoTime;
   private final AtomicReference<Installed> cache = new AtomicReference<>();
+  private long nextTakeover = Long.MIN_VALUE;
+  private Duration retry = FIRST_RETRY;
 
+  @Autowired
   public InstalledEmbeddingModel(
       EmbeddingModelSettingsRepository repository,
       SettingsEncryptor settingsEncryptor,
-      EmbeddingClientFactory clientFactory) {
+      EmbeddingClientFactory clientFactory,
+      EmbeddingModelService embeddingModels) {
+    this(repository, settingsEncryptor, clientFactory, embeddingModels, System::nanoTime);
+  }
+
+  InstalledEmbeddingModel(
+      EmbeddingModelSettingsRepository repository,
+      SettingsEncryptor settingsEncryptor,
+      EmbeddingClientFactory clientFactory,
+      EmbeddingModelService embeddingModels,
+      LongSupplier nanoTime) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.clientFactory = clientFactory;
+    this.embeddingModels = embeddingModels;
+    this.nanoTime = nanoTime;
   }
 
   @Override
@@ -91,7 +120,10 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
       return cached;
     }
     EmbeddingModelSettings settings =
-        repository.findInstalled().orElseThrow(EmbeddingModelNotInstalledException::new);
+        repository
+            .findInstalled()
+            .or(this::takeOverWhenDue)
+            .orElseThrow(EmbeddingModelNotInstalledException::new);
     EmbeddingEndpoint endpoint =
         new EmbeddingEndpoint(
             settings.getBaseUrl(),
@@ -107,6 +139,20 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
         settings.getModelIdentifier(),
         ModelEndpointUri.withoutSecrets(settings.getBaseUrl()));
     return built;
+  }
+
+  /** The takeover again, when the backoff allows it; empty while it does not or it fails. */
+  private Optional<EmbeddingModelSettings> takeOverWhenDue() {
+    long now = nanoTime.getAsLong();
+    if (nextTakeover != Long.MIN_VALUE && now - nextTakeover < 0) {
+      return Optional.empty();
+    }
+    if (!embeddingModels.missingAfterInstallation()) {
+      return Optional.empty();
+    }
+    nextTakeover = now + retry.toNanos();
+    retry = retry.multipliedBy(2).compareTo(MAX_RETRY) > 0 ? MAX_RETRY : retry.multipliedBy(2);
+    return embeddingModels.adoptIfMissing() ? repository.findInstalled() : Optional.empty();
   }
 
   private record Installed(EmbeddingModel client, int dimensions, int maxInputTokens) {}

@@ -32,11 +32,20 @@ class StepRules {
 
   static final int DEFAULT_MAX_TOKENS = 8000;
   static final int DEFAULT_MAX_INPUT_TOKENS = EmbeddingEndpoint.DEFAULT_MAX_INPUT_TOKENS;
+
+  /** Upper bound of an embedding input limit; no served embedding model takes more. */
+  static final int MAX_INPUT_TOKENS = 1_000_000;
+
   static final String DEFAULT_PROVIDER_NAME = "Verzeichnisdienst";
   static final BigDecimal MAX_TEMPERATURE = new BigDecimal("2");
 
   private static final String INVALID = "INVALID";
   private static final String REQUIRED = "REQUIRED";
+  private static final String TOO_LONG = "TOO_LONG";
+  static final int MAX_ADDRESS = 500;
+  static final int MAX_NAME = 200;
+  static final int MAX_PROVIDER_NAME = 120;
+  static final int MAX_API_KEY = 2000;
 
   /** A step as stored: values without secret, and the hash or ciphertext of its secret. */
   record Stored(String payload, String secret) {}
@@ -212,6 +221,10 @@ class StepRules {
     if (clientId.isEmpty()) {
       errors.add(error("signIn.oidc.clientId", REQUIRED, "Die Client-ID fehlt."));
     }
+    requireAtMost(errors, "signIn.oidc.issuerUri", issuer, MAX_ADDRESS);
+    requireAtMost(errors, "signIn.oidc.clientId", clientId, MAX_NAME);
+    requireAtMost(errors, "signIn.oidc.jwkSetUri", jwkSetUri, MAX_ADDRESS);
+    requireAtMost(errors, "signIn.oidc.displayName", displayName, MAX_PROVIDER_NAME);
     requireNoErrors(errors);
     addressPolicy.requireAllowed(issuer, "Issuer-URI");
     if (!jwkSetUri.isEmpty()) {
@@ -231,7 +244,7 @@ class StepRules {
     List<FieldError> errors = new ArrayList<>();
     String baseUrl = trimmed(input.baseUrl());
     String model = trimmed(input.model());
-    endpointErrors("chatModel", baseUrl, model, errors);
+    endpointErrors("chatModel", baseUrl, model, input.apiKey(), errors);
     if (input.maxTokens() != null && input.maxTokens() < 1) {
       errors.add(error("chatModel.maxTokens", INVALID, "Die Antwortlänge muss mindestens 1 sein."));
     }
@@ -260,13 +273,14 @@ class StepRules {
     List<FieldError> errors = new ArrayList<>();
     String baseUrl = trimmed(input.baseUrl());
     String model = trimmed(input.model());
-    endpointErrors("embeddingModel", baseUrl, model, errors);
-    if (input.maxInputTokens() != null && input.maxInputTokens() < 1) {
+    endpointErrors("embeddingModel", baseUrl, model, input.apiKey(), errors);
+    if (input.maxInputTokens() != null
+        && (input.maxInputTokens() < 1 || input.maxInputTokens() > MAX_INPUT_TOKENS)) {
       errors.add(
           error(
               "embeddingModel.maxInputTokens",
               INVALID,
-              "Die Eingabegrenze muss mindestens 1 Token sein."));
+              "Die Eingabegrenze liegt zwischen 1 und " + MAX_INPUT_TOKENS + " Tokens."));
     }
     blockedAddressError("embeddingModel", baseUrl, errors);
     requireNoErrors(errors);
@@ -283,9 +297,12 @@ class StepRules {
         secret);
   }
 
-  /** The rules of a model's address and identifier, as field errors under {@code prefix}. */
+  /**
+   * The rules of a model's address, identifier and key, lengths included, as field errors under
+   * {@code prefix}.
+   */
   private static void endpointErrors(
-      String prefix, String baseUrl, String model, List<FieldError> errors) {
+      String prefix, String baseUrl, String model, String apiKey, List<FieldError> errors) {
     if (baseUrl.isEmpty()) {
       errors.add(error(prefix + ".baseUrl", REQUIRED, "Die Basis-Adresse fehlt."));
     } else if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
@@ -305,6 +322,9 @@ class StepRules {
     if (model.isEmpty()) {
       errors.add(error(prefix + ".model", REQUIRED, "Die Modell-Kennung fehlt."));
     }
+    requireAtMost(errors, prefix + ".baseUrl", baseUrl, MAX_ADDRESS);
+    requireAtMost(errors, prefix + ".model", model, MAX_NAME);
+    requireAtMost(errors, prefix + ".apiKey", apiKey, MAX_API_KEY);
   }
 
   /** The target address check of a valid address, as a field error under {@code prefix}. */
@@ -387,6 +407,13 @@ class StepRules {
           INVALID,
           "Der Zugangsschlüssel kann nicht gespeichert werden: OPAA_SETTINGS_ENCRYPTION_KEY ist"
               + " nicht gesetzt oder ungültig.");
+    }
+  }
+
+  /** The lengths of the specification ({@code maxLength}), enforced here for every way in. */
+  private static void requireAtMost(List<FieldError> errors, String field, String value, int max) {
+    if (value != null && value.length() > max) {
+      errors.add(error(field, TOO_LONG, "Die Angabe ist zu lang (höchstens " + max + " Zeichen)."));
     }
   }
 

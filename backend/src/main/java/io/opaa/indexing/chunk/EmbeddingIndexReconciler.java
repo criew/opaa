@@ -7,7 +7,6 @@ import io.opaa.instance.CurrentInstance;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.EmbeddingModelInstalledEvent;
-import io.opaa.llm.EmbeddingModelService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
@@ -36,10 +35,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * place. An index without a recorded identity takes the configuration's when its size matches.
  * Going back to the model of the index drops the target column.
  *
- * <p>Without an installed embedding model there is no vector table and nothing to compare: the
- * start first lets {@link EmbeddingModelService#adoptAtStartup()} take over the model of an older
- * installation, and the reconciliation runs once a model is installed, at the latest after the
- * commit that installed it.
+ * <p>Without an installed embedding model there is no vector table and nothing to compare. It runs
+ * one phase after the start-up of the installation, which takes over the model of an older
+ * installation, and again after the commit of every later installation on this instance.
  */
 @Component
 public class EmbeddingIndexReconciler implements SmartLifecycle {
@@ -56,7 +54,6 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
   private final EmbeddingIndexStore store;
   private final VectorIndexSchema schema;
   private final EmbeddingInfoService embeddingInfoService;
-  private final EmbeddingModelService embeddingModels;
   private final Clock clock;
   private final CurrentInstance currentInstance;
   private final TransactionTemplate transactions;
@@ -67,7 +64,6 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
       EmbeddingIndexStore store,
       VectorIndexSchema schema,
       EmbeddingInfoService embeddingInfoService,
-      EmbeddingModelService embeddingModels,
       Clock clock,
       CurrentInstance currentInstance,
       PlatformTransactionManager transactionManager) {
@@ -75,7 +71,6 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
     this.store = store;
     this.schema = schema;
     this.embeddingInfoService = embeddingInfoService;
-    this.embeddingModels = embeddingModels;
     this.clock = clock;
     this.currentInstance = currentInstance;
     this.transactions = new TransactionTemplate(transactionManager);
@@ -83,7 +78,7 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
 
   @Override
   public void start() {
-    if (embeddingModels.adoptAtStartup()) {
+    if (embeddingInfoService.getEmbeddingInfo().installed()) {
       reconcile();
     } else {
       log.warn(
@@ -113,7 +108,7 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
 
   @Override
   public int getPhase() {
-    return CurrentInstance.REGISTERED_PHASE;
+    return CurrentInstance.REGISTERED_PHASE + 1;
   }
 
   public void reconcile() {

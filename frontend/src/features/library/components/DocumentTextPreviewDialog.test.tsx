@@ -65,7 +65,7 @@ describe('DocumentTextPreviewDialog', () => {
     renderWithProviders(
       <DocumentTextPreviewDialog previewDocument={markdownDoc('Inhalt')} onClose={onClose} />,
     )
-    await user.click(screen.getByRole('button', { name: 'Vorschau schließen' }))
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

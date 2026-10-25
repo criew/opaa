@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
@@ -178,7 +178,7 @@ describe('AssetGrantsSection', () => {
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
   })
 
-  it('shows the ceiling the caller passes in its slot, and names the type', async () => {
+  it('shows the ceiling the caller passes in its slot, below the empty list', async () => {
     setSystemAdmin()
     setGrants(library.id, [])
     renderWithProviders(
@@ -190,9 +190,7 @@ describe('AssetGrantsSection', () => {
     )
 
     expect(await screen.findByText('Obergrenze der Systemverwaltung')).toBeInTheDocument()
-    expect(
-      screen.getByText('Es sind noch keine Freigaben für diese Bibliothek erteilt.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Noch keine Freigaben.')).toBeInTheDocument()
     expect(mockGetAssetGrants).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id)
   })
 
@@ -215,7 +213,7 @@ describe('AssetGrantsSection', () => {
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
-    expect(screen.getByText('abgelaufen')).toBeInTheDocument()
+    expect(screen.getByText(/abgelaufen/)).toBeInTheDocument()
   })
 
   it('shows an expiry date for a time-limited grant', async () => {
@@ -350,7 +348,8 @@ describe('AssetGrantsSection', () => {
         expiresAt: null,
       })
     })
-    expect(await screen.findByText('Alle Konten')).toBeInTheDocument()
+    const list = await screen.findByRole('list', { name: 'Freigaben' })
+    expect(within(list).getAllByText('Alle Konten').length).toBeGreaterThan(0)
   })
 
   // The follow-up question depends on the reach, not on the form: a role change on the
@@ -499,7 +498,10 @@ describe('AssetGrantsSection', () => {
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
-    await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: 'Aktionen für die Freigabe an Alice' }),
+    )
+    await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Entziehen' }))
     await answerConfirm(userEventInstance, 'Freigabe für "Alice" entziehen?', 'Entziehen')
 
     await waitFor(() => {
@@ -627,11 +629,16 @@ describe('AssetGrantsSection', () => {
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Referat 50')).toBeInTheDocument()
-    expect(screen.getAllByText(/Rolle vergeben von Manager/i)).toHaveLength(2)
+    // who conferred the role stands on the row, on request
+    const rows = within(screen.getByRole('list', { name: 'Freigaben' })).getAllByRole('listitem')
+    expect(rows.map((row) => row.getAttribute('title'))).toEqual([
+      'Rolle vergeben von Manager',
+      'Rolle vergeben von Manager',
+    ])
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
   })
 
-  it('#1052: dates the granter line by updatedAt, never by createdAt', async () => {
+  it('#1052: names the granter without pairing it with the creation date', async () => {
     // grantedByUserId names whoever conferred the current role. Pairing that name with createdAt
     // would show a granter/date combination that never existed once a later role change moved the
     // name on.
@@ -642,7 +649,7 @@ describe('AssetGrantsSection', () => {
         subjectType: 'USER',
         subjectId: 'user-alice',
         subjectDisplayName: 'Alice',
-        role: 'OWNER',
+        role: 'EDITOR',
         expiresAt: null,
         grantedByUserId: 'admin-2',
         grantedByDisplayName: 'Admin B',
@@ -652,8 +659,9 @@ describe('AssetGrantsSection', () => {
     ])
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
-    expect(await screen.findByText(/Rolle vergeben von Admin B/i)).toHaveTextContent('20.8.2026')
-    expect(screen.queryByText(/1\.3\.2026/)).not.toBeInTheDocument()
+    const row = (await screen.findByText('Alice')).closest('li')
+    expect(row).toHaveAttribute('title', 'Rolle vergeben von Admin B')
+    expect(screen.queryByText(/1\.3\.2026|01\.03\.2026/)).not.toBeInTheDocument()
   })
 
   it('#777: offers the searchable user picker for a MANAGER without a system role', async () => {
@@ -738,7 +746,10 @@ describe('AssetGrantsSection', () => {
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
-    await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: 'Aktionen für die Freigabe an Manager' }),
+    )
+    await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Entziehen' }))
 
     // The overlay lies over the sharing dialog; the question makes it unambiguous.
     const question = 'Freigabe für "Manager" entziehen?'
@@ -810,7 +821,8 @@ describe('AssetGrantsSection', () => {
     ])
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
-    expect(await screen.findByText(/· 41 Mitglieder/)).toBeInTheDocument()
+    // the member count is itself the way to the members
+    expect(await screen.findByRole('button', { name: /^41 Mitglieder/ })).toBeInTheDocument()
     expect(screen.queryByText(/bei Erteilung/)).not.toBeInTheDocument()
   })
 
@@ -839,7 +851,7 @@ describe('AssetGrantsSection', () => {
     ])
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const trigger = await screen.findByRole('button', {
-      name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
+      name: /^41 Mitglieder\s?der Gruppe „Referat 50“ anzeigen$/,
     })
     expect(mockGetGrantedGroupMembers).not.toHaveBeenCalled()
 
@@ -877,7 +889,7 @@ describe('AssetGrantsSection', () => {
     ])
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
-    expect(await screen.findByText(/· 2 Mitglieder/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^2 Mitglieder/ })).toBeInTheDocument()
     expect(screen.queryByText(/kleine Gruppe/)).not.toBeInTheDocument()
   })
 
@@ -905,9 +917,11 @@ describe('AssetGrantsSection', () => {
 
     expect(await screen.findByText('Geschützte Gruppe')).toBeInTheDocument()
     expect(screen.queryByText('group-personalrat')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /Freigabe für Geschützte Gruppe entziehen/ }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Mitglied/ })).not.toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Aktionen für die Freigabe an Geschützte Gruppe' }),
+    )
+    expect(await screen.findByRole('menuitem', { name: 'Entziehen' })).toBeInTheDocument()
   })
 
   /**
@@ -993,23 +1007,24 @@ describe('AssetGrantsSection', () => {
     expect(await screen.findByLabelText(/nutzer-id/i)).toHaveValue('')
   })
 
-  it('explains every grantable role', async () => {
+  it('explains every grantable role under the role of the form', async () => {
     setSystemAdmin()
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
+    const userEventInstance = userEvent.setup()
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
 
     expect(
-      await screen.findByText(/darf die bibliothek benutzen und ihren inhalt einsehen/i),
+      screen.getByText(/darf die bibliothek benutzen und ihren inhalt einsehen/i),
     ).toBeInTheDocument()
-    expect(
-      screen.getByText(/darf zusätzlich dokumente ändern, hochladen und entfernen/i),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /darf zusätzlich rechte vergeben und die sichtbarkeit der bibliothek ändern/i,
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(/darf zusätzlich die bibliothek löschen und das eigentum übertragen/i),
-    ).toBeInTheDocument()
+    const explanations: Array<[string, RegExp]> = [
+      ['Bearbeiter', /darf zusätzlich dokumente ändern, hochladen und entfernen/i],
+      ['Verwalter', /darf zusätzlich rechte vergeben und die sichtbarkeit der bibliothek ändern/i],
+      ['Eigentümer', /darf zusätzlich die bibliothek löschen und das eigentum übertragen/i],
+    ]
+    for (const [label, explanation] of explanations) {
+      await userEventInstance.click(screen.getByRole('combobox', { name: 'Rolle' }))
+      await userEventInstance.click(await screen.findByRole('option', { name: label }))
+      expect(await screen.findByText(explanation)).toBeInTheDocument()
+    }
   })
 })

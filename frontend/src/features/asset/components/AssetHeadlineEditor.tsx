@@ -112,12 +112,48 @@ export default function AssetHeadlineEditor({
   }
 
   const headingRow = (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
-      {draft ? <PageHeading title={name} visuallyHidden /> : <PageHeading title={name} />}
+    <Stack
+      direction="row"
+      spacing={1.5}
+      sx={{
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        mb: 0.5,
+        minHeight: 34,
+        position: 'relative',
+      }}
+    >
+      {draft ? (
+        <PageHeading title={name} visuallyHidden />
+      ) : (
+        // a long compound breaks at a syllable instead of running out at 320 px
+        <Box title={name} sx={{ minWidth: 0 }}>
+          {/* one line at 1280 px with the full name in the tooltip; below 600 px the whole name
+              over as many lines as it needs, in a stage above the running text */}
+          <PageHeading
+            title={name}
+            sx={{
+              overflow: 'hidden',
+              hyphens: 'auto',
+              overflowWrap: 'break-word',
+              fontSize: { xs: 17, sm: 20 },
+              lineHeight: { xs: '22px', sm: '28px' },
+              display: { xs: 'block', sm: '-webkit-box' },
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: { xs: 'none', sm: 1 },
+            }}
+          />
+        </Box>
+      )}
       {badges}
       {canEdit && !draft && (
         <Tooltip title={editLabel}>
-          <IconButton ref={acceptPencil} size="small" aria-label={editLabel} onClick={startEditing}>
+          <IconButton
+            ref={acceptPencil}
+            size="small"
+            aria-label={editLabel}
+            onClick={startEditing}
+            sx={{ mt: { xs: '-6px', sm: 0 } }}
+          >
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -129,11 +165,14 @@ export default function AssetHeadlineEditor({
     return (
       <Box sx={{ minWidth: 0 }}>
         {headingRow}
-        {description && (
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>
-            {description}
-          </Typography>
-        )}
+        {/* one line, kept even when empty: the figures below never move */}
+        <Typography
+          noWrap
+          title={description ?? undefined}
+          sx={{ fontSize: 13.5, lineHeight: '20px', minHeight: 20, color: 'text.secondary' }}
+        >
+          {description}
+        </Typography>
       </Box>
     )
   }

@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
 import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../utils/librarySourceConfig'
@@ -40,13 +39,6 @@ export interface SourceFormContext {
   pendingConnectionId?: string
 }
 
-/** The one-line Umfang in the page head and the warning about a scope the last run could not read. */
-export interface SourceScopeHero {
-  summary: (library: StoredLibrarySource) => string
-  unlistedWarning: (keys: string[], library: StoredLibrarySource) => string
-  unlistedTestId: string
-}
-
 /**
  * Everything the frontend knows about one connector's configuration, registered once under its
  * type key (ADR-0038): the setup rows with their starting values and request fields, and what the
@@ -85,9 +77,6 @@ export interface SourceConfiguration<V> {
    * ADR-0027); absent for a source without a scope.
    */
   scopeNoteId?: string
-  /** What a manager sets up below the rows for pushed changes (webhook, event notifications). */
-  Push?: ComponentType<{ library: StoredLibrarySource; libraryId: string }>
-  scopeHero?: SourceScopeHero
   /**
    * Whether runs come in two modes - incremental and a forcible full reconciliation with its own
    * rhythm (Confluence).

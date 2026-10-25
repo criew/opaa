@@ -18,7 +18,6 @@ import type {
   UpdateLibraryMetadataFieldRequest,
   LibraryMetadataExtractionSettingsRequest,
   LibraryMetadataExtractionSettingsResponse,
-  LibraryMetadataMaintenanceResponse,
   LibraryMetadataQualityResponse,
   LibraryMetadataSampleResponse,
   MetadataValueRequest,
@@ -77,20 +76,6 @@ export async function bulkSetDocumentMetadata(
     const { data } = await client.post<BulkMetadataValueResponse>(
       `/v1/libraries/${libraryId}/documents/metadata/bulk`,
       request,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** the Pflege-Anker of a library - "N Dokumente ohne Wert" per core field. */
-export async function getLibraryMetadataMaintenance(
-  libraryId: string,
-): Promise<LibraryMetadataMaintenanceResponse> {
-  try {
-    const { data } = await client.get<LibraryMetadataMaintenanceResponse>(
-      `/v1/libraries/${libraryId}/metadata/maintenance`,
     )
     return data
   } catch (err) {

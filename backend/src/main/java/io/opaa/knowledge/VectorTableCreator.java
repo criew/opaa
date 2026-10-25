@@ -27,6 +27,12 @@ public class VectorTableCreator {
 
   static final int MAX_INDEXED_DIMENSIONS = 2000;
 
+  /** The column the vectors of the installed model are in. */
+  public static final String EMBEDDING_COLUMN = "embedding";
+
+  /** The column a running re-embedding fills. */
+  public static final String TARGET_COLUMN = "embedding_next";
+
   static final int MAX_VECTOR_DIMENSIONS = 16000;
 
   private final JdbcTemplate jdbcTemplate;
@@ -62,13 +68,44 @@ public class VectorTableCreator {
    * column is unbounded.
    */
   public Integer embeddingDimensions() {
+    return dimensionsOf(EMBEDDING_COLUMN);
+  }
+
+  /**
+   * The declared size of {@code column}, or {@code null} when the table or the column does not
+   * exist or the column is unbounded.
+   */
+  public Integer dimensionsOf(String column) {
     Integer typmod =
         jdbcTemplate.query(
             "SELECT atttypmod FROM pg_attribute WHERE attrelid = to_regclass(?)"
-                + " AND attname = 'embedding' AND NOT attisdropped",
+                + " AND attname = ? AND NOT attisdropped",
             rs -> rs.next() ? rs.getInt(1) : null,
-            table.qualifiedName());
+            table.qualifiedName(),
+            column);
     return typmod == null || typmod < 1 ? null : typmod;
+  }
+
+  /** Whether the table holds a chunk. */
+  public boolean hasRows() {
+    return Boolean.TRUE.equals(
+        jdbcTemplate.queryForObject(
+            "SELECT EXISTS (SELECT 1 FROM " + table.qualifiedName() + ")", Boolean.class));
+  }
+
+  /**
+   * Drops the table while it holds no chunk, so a table created with another size gives way to the
+   * installed model's. Runs under {@link #lockSchemaChanges()} in the caller's transaction.
+   *
+   * @throws IllegalStateException when the table holds a chunk
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void dropEmpty() {
+    lockSchemaChanges();
+    if (hasRows()) {
+      throw new IllegalStateException("vector table holds chunks and is not dropped");
+    }
+    jdbcTemplate.execute("DROP TABLE " + table.qualifiedName());
   }
 
   /**

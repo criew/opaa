@@ -7,9 +7,10 @@ import io.opaa.common.UnauthorizedException;
 import io.opaa.installation.InstallationProperties;
 import io.opaa.installation.InstallationService;
 import io.opaa.ratelimit.RateLimitService;
-import io.opaa.security.ClientIpResolver;
+import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -35,9 +36,11 @@ class InstallationAccessGuard {
   private static final Logger log = LoggerFactory.getLogger(InstallationAccessGuard.class);
   private static final String BEARER = "Bearer ";
   private static final String UNKNOWN_CLIENT = "unknown";
+  private static final String FORWARDED_FOR = "X-Forwarded-For";
+  private final AtomicBoolean untrustedProxyReported = new AtomicBoolean();
 
   private final InstallationService installation;
-  private final ClientIpResolver clientIpResolver;
+  private final TrustedProxyClientIpResolver clientIpResolver;
   private final List<IpAddressMatcher> allowedNetworks;
   private final RateLimitService requests = new RateLimitService(MAX_REQUESTS, WINDOW_SECONDS);
   private final RateLimitService refusals =
@@ -45,7 +48,7 @@ class InstallationAccessGuard {
 
   InstallationAccessGuard(
       InstallationService installation,
-      ClientIpResolver clientIpResolver,
+      TrustedProxyClientIpResolver clientIpResolver,
       InstallationProperties properties) {
     this.installation = installation;
     this.clientIpResolver = clientIpResolver;
@@ -59,6 +62,7 @@ class InstallationAccessGuard {
    */
   void requireAccess(HttpServletRequest request) {
     String address = clientIpResolver.resolve(request);
+    warnAboutAnUntrustedProxy(request, address);
     if (!permitsNetwork(address)) {
       throw new AccessDeniedException(NETWORK_MESSAGE);
     }
@@ -77,6 +81,28 @@ class InstallationAccessGuard {
     }
     log.warn("Installation token refused for a request from {}", key);
     throw new UnauthorizedException(TOKEN_MESSAGE);
+  }
+
+  /**
+   * Warns once when the network restriction meets {@code X-Forwarded-For} from a connection that is
+   * no trusted proxy: the restriction and the budgets then see the proxy's address for every
+   * client. Read beneath the request wrappers, as the header arrived, before Spring rewrites it.
+   */
+  private void warnAboutAnUntrustedProxy(HttpServletRequest request, String address) {
+    String connection = clientIpResolver.remoteAddress(request);
+    if (allowedNetworks.isEmpty()
+        || clientIpResolver.forwardedFor(request) == null
+        || connection == null
+        || clientIpResolver.isTrustedProxy(connection)
+        || !untrustedProxyReported.compareAndSet(false, true)) {
+      return;
+    }
+    log.warn(
+        "The installation API is restricted to networks, but a request carries {} from {}, which"
+            + " is no trusted proxy: set OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS, or every client has"
+            + " the proxy's address",
+        FORWARDED_FOR,
+        connection);
   }
 
   /** Fails closed: while restricted, an address that is no numeric literal is refused. */

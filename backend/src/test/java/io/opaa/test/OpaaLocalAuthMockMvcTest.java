@@ -30,9 +30,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * themselves the subject under test, the way {@link OpaaPropertyVariantIntegrationTest} does for
  * the canonical signature: {@link OpaaLocalAuthLinkTest} (a public base URL - classes on the base
  * signature prove the link flows are off <em>without</em> one), {@link OpaaLocalAuthSeedTest} (a
- * deliverable initial administrator address - the base carries the shipped default, which the seed
- * refuses) and {@link OpaaLocalAuthRateLimitTest} (the production rate limits - the base raises
- * them, see below). Each is listed in {@code SpringContextSignatureTest}.
+ * deliverable initial administrator address of its own and the network restriction of local
+ * administrators) and {@link OpaaLocalAuthRateLimitTest} (the production rate limits - the base
+ * raises them, see below). Each is listed in {@code SpringContextSignatureTest}.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -43,9 +43,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(
     properties = {
       "opaa.auth.local.jwt-secret=" + OpaaLocalAuthMockMvcTest.JWT_SECRET,
-      // The shipped default before the installation mode (ADR-0060): the start values complete the
-      // installation of a fresh test database, and the seed refuses this address on purpose.
-      "opaa.auth.initial-admin-email=admin@opaa.local",
+      // A deliverable address: on a fresh test database the start values complete the
+      // installation (ADR-0060), so no class of this family meets the installation mode.
+      "opaa.auth.initial-admin-email=" + OpaaLocalAuthMockMvcTest.INITIAL_ADMIN_EMAIL,
       "opaa.rate-limit.local-auth.login.max-requests=100000",
       "opaa.rate-limit.local-auth.login.global-max-requests=100000",
       "opaa.rate-limit.local-auth.refresh.max-requests=100000",
@@ -66,8 +66,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // allowlist short-circuits the sign-in's address check before it would resolve it, so no
       // class of this family makes a DNS lookup for a fixture. The check itself stays on.
       "opaa.auth.oidc.target-validation.allowlist=" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST,
-      // The chat endpoint the installation classes run on loopback; the target address check of
-      // the installation's model step stays on for every other address.
+      // The installation classes run their chat endpoint on loopback; every other address stays
+      // under the target address check.
       "opaa.indexing.target-validation.allowlist=127.0.0.1",
       // Same model addresses as the canonical signature: never a reachable model. This family
       // has no FakeEmbeddingModel bean; its embedding clients come from FakeEmbeddingEndpoint.
@@ -88,6 +88,9 @@ public @interface OpaaLocalAuthMockMvcTest {
 
   /** A public, deliberately non-production secret that passes {@code @ValidSecret}. */
   String JWT_SECRET = "mockmvc-local-auth-integration-test-key-0123456789-abcdefghij";
+
+  /** The start value of the emergency account of this family's database. */
+  String INITIAL_ADMIN_EMAIL = "notanker@opaa.test.example";
 
   /** The host every OIDC provider fixture of this family uses; see the allowlist above. */
   String PROVIDER_HOST = "idp.test.example";

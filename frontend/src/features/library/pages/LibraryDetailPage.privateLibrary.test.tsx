@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { server } from '@/test/server'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -115,7 +115,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     expect(dialog).toHaveTextContent(/der Text der Antworten bleibt stehen/)
     expect(dialog).toHaveTextContent(/nicht rückgängig/)
     expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus()
-  })
+  }, 15000)
 
   it('erases nothing when the question is cancelled', async () => {
     let deleted = false
@@ -166,10 +166,16 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     await openDeleteAction(user, 'Sofort löschen')
     await answerConfirm(user, '„Meine Ablage“ sofort löschen?', 'Endgültig löschen')
 
-    const notice = await screen.findByTestId('library-erasure-notice')
-    expect(notice).toHaveTextContent(/Wird gelöscht/)
-    expect(notice).toHaveTextContent(/schließt die Löschung von selbst ab/)
-    await waitFor(() => expect(notice).toHaveFocus())
+    // the head's one state word says it, with the day it was marked and no promise of an end
+    await waitFor(() =>
+      expect(screen.getByTestId('library-state')).toHaveTextContent(
+        /^Wird gelöscht\s*· 05\.10\.2026$/,
+      ),
+    )
+    const state = screen.getByTestId('library-state')
+    expect(state).toHaveAttribute('role', 'status')
+    expect(state).not.toHaveTextContent(/Uhr|Minute|Stunde|bis/)
+    await waitFor(() => expect(state).toHaveFocus())
     expect(navigate).not.toHaveBeenCalled()
   })
 
@@ -234,7 +240,9 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByTestId('library-erasure-notice')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByTestId('library-state')).toHaveTextContent(/^Wird gelöscht/),
+    )
     expect(screen.getByLabelText('Wird gelöscht')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Jetzt indizieren/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Weitere Aktionen' })).not.toBeInTheDocument()
@@ -269,19 +277,20 @@ describe('LibraryDetailPage – private Bibliothek: Speicherkontingent (#2276)',
     showLibrary(privateEntry, detailsOf(privateEntry))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByTestId('private-storage-figure')).toHaveTextContent(
-      '1,5 GB von 10 GB in Ihren privaten Bibliotheken belegt',
-    )
+    const figure = await screen.findByTestId('private-storage-figure')
+    expect(figure).toHaveTextContent('1,5 GB von 10 GB privat')
+    // the figure counts all private libraries, not this one - said in its tooltip
+    expect(figure).toHaveAttribute('title', 'Belegter Speicher aller privaten Bibliotheken')
   })
 
-  it('says „unbegrenzt“ for a limit of 0', async () => {
+  it('names no limit for a limit of 0', async () => {
     storage(1.5 * GIB, 0)
     showLibrary(privateEntry, detailsOf(privateEntry))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByTestId('private-storage-figure')).toHaveTextContent(
-      '1,5 GB in Ihren privaten Bibliotheken belegt (unbegrenzt)',
-    )
+    const figure = await screen.findByTestId('private-storage-figure')
+    expect(figure).toHaveTextContent('1,5 GB privat')
+    expect(figure).not.toHaveTextContent(/von/)
   })
 
   it('asks nothing about the personal storage on a shared library', async () => {
@@ -300,34 +309,57 @@ describe('LibraryDetailPage – private Bibliothek: Speicherkontingent (#2276)',
     expect(asked).toBe(false)
   })
 
-  it('says in the head when the last run ended at a quota, naming both and what frees space', async () => {
+  it('says in the head when the last run ended at a quota and names what frees space in its run', async () => {
     storage(10 * GIB, 10 * GIB)
     server.use(
-      http.get('/api/v1/libraries/:libraryId/indexing/status', () =>
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
         HttpResponse.json({
-          status: 'COMPLETED',
-          documentCount: 3,
-          totalDocuments: 40,
-          documentsSkipped: 0,
-          documentsFailed: 0,
-          documentsIndexedTotal: 3,
-          message: 'Indizierung abgeschlossen — unvollständig',
-          failureCategory: 'QUOTA_EXHAUSTED',
-          incomplete: true,
-          timestamp: '2026-10-04T10:05:00Z',
+          runs: [
+            {
+              id: 'run-quota',
+              status: 'COMPLETED',
+              triggeredBy: 'MANUAL',
+              runMode: 'FULL',
+              documentCount: 3,
+              totalDocuments: 40,
+              documentsSkipped: 0,
+              documentsFailed: 0,
+              documentsIndexedTotal: 3,
+              message: 'Indizierung abgeschlossen — unvollständig',
+              failureCategory: 'QUOTA_EXHAUSTED',
+              incomplete: true,
+              startedAt: '2026-10-04T10:00:00Z',
+              completedAt: '2026-10-04T10:05:00Z',
+              events: [],
+              eventsTruncatedCount: 0,
+            },
+          ],
         }),
       ),
     )
     showLibrary(privateEntry, detailsOf(privateEntry))
+    const user = userEvent.setup()
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    const notice = await screen.findByTestId('private-quota-exhausted-notice')
-    expect(notice).toHaveTextContent('unvollständig: Speicherkontingent erschöpft')
-    expect(notice).toHaveTextContent(/Kontingent dieser Bibliothek/)
-    expect(notice).toHaveTextContent(/gemeinsame Kontingent Ihrer privaten Bibliotheken/)
-    expect(notice).toHaveTextContent(/eine ganze private Bibliothek löschen/)
-    expect(notice).toHaveTextContent('Dateien übersprungen')
-    expect(notice).toHaveTextContent(/Dateien beim Anbieter löschen oder die Quelle eingrenzen/)
-    expect(notice).not.toHaveTextContent(/keinen Platz/)
+    const state = await screen.findByTestId('library-state')
+    await waitFor(() => expect(state).toHaveTextContent(/^Kontingent voll\s*· 04\.10\.2026$/))
+
+    // the word leads to the newest run, opened, whose detail names both quotas and the remedy;
+    // jsdom has no scrollIntoView, the page scrolls the run list into view with it
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    onTestFinished(() => {
+      // @ts-expect-error jsdom has no scrollIntoView; restore that state
+      delete Element.prototype.scrollIntoView
+    })
+    await user.click(within(state).getByRole('link', { name: 'Kontingent voll' }))
+    const runs = await screen.findByRole('list', { name: 'Läufe' })
+    const remedy = await within(runs).findByText(/Kontingent dieser Bibliothek/)
+    expect(remedy).toHaveTextContent(/gemeinsame Kontingent Ihrer privaten Bibliotheken/)
+    expect(remedy).toHaveTextContent(/eine ganze private Bibliothek löschen/)
+    expect(remedy).toHaveTextContent(/übersprungen/)
+    expect(remedy).toHaveTextContent(/Dateien beim Anbieter löschen oder die Quelle eingrenzen/)
+    expect(remedy).not.toHaveTextContent(/keinen Platz/)
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
   })
 })

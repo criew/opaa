@@ -264,4 +264,28 @@ class StepRulesTest {
                     .extracting(FieldValidationException.FieldError::field)
                     .containsExactly("embeddingModel.apiKey"));
   }
+
+  @Test
+  void theEmbeddingStepKeepsTheLengthLimitsOfTheChatStep() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.EmbeddingModel(
+                        "http://ollama:11434/" + "v".repeat(StepRules.MAX_ADDRESS),
+                        "m".repeat(StepRules.MAX_NAME + 1),
+                        "k".repeat(StepRules.MAX_API_KEY + 1),
+                        StepRules.MAX_INPUT_TOKENS + 1),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .contains(
+                        "embeddingModel.baseUrl",
+                        "embeddingModel.model",
+                        "embeddingModel.apiKey",
+                        "embeddingModel.maxInputTokens"));
+  }
 }

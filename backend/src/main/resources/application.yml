@@ -180,7 +180,7 @@ opaa:
     # io.opaa.auth.AuthProfileGuard.
     # Start value of the transition to the installation mode (ADR-0060): set in the "oidc" mode, a
     # pending installation is completed from OPAA_INITIAL_ADMIN_*; empty, the installation mode
-    # starts. In the "dev" mode an empty value falls back to the default dev user's address.
+    # starts. The "dev" profile below keeps admin@opaa.local, the address of dev-admin.
     initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:}
     # How old the sign-in behind a token (its auth_time) may be for an operation marked
     # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
@@ -959,6 +959,8 @@ opaa:
       reject-unlisted: true
   auth:
     mode: dev
+    # The dev-admin's address: it becomes the system administrator, as the shared default did.
+    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
     local:
       # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known secret so bootRun and the backend
       # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
@@ -972,8 +974,8 @@ opaa:
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
       default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}
       users:
-        # The default user: with opaa.auth.initial-admin-email empty, its address is the initial
-        # administrator's, so it is provisioned as SYSTEM_ADMIN on first request.
+        # Matches opaa.auth.initial-admin-email of this profile, and is therefore
+        # provisioned as SYSTEM_ADMIN on first request.
         - subject: dev-admin
           email: admin@opaa.local
           display-name: Dev Admin

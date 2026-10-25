@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
+import { TextAction } from '@/shared/ui/DetailSection'
+import StateDot from '@/shared/ui/StateDot'
 import Typography from '@mui/material/Typography'
 import type { LibraryFolderListItem } from '@/shared/api/types'
 import { useDocumentStore } from '../stores/documentStore'
@@ -32,18 +35,22 @@ export default function LibraryDocumentsNotices({
   const clearFolderError = useDocumentStore((s) => s.clearFolderError)
   const clearFolderNotFoundMessage = useDocumentStore((s) => s.clearFolderNotFoundMessage)
 
+  // „Schließen“ folds the message into one fixed line; the files stay listed until the next upload
+  const [foldedFor, setFoldedFor] = useState<string[] | null>(null)
+  const folded = foldedFor === uploadErrors
+
   return (
     <>
-      {uploadErrors.length > 0 && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={clearUploadErrors}>
-          <Stack spacing={0.5}>
-            {uploadErrors.map((message) => (
-              <Typography key={message} variant="body2">
-                {message}
-              </Typography>
-            ))}
-          </Stack>
-        </Alert>
+      {uploadErrors.length > 0 && !folded && (
+        <UploadRejections messages={uploadErrors} onClose={() => setFoldedFor(uploadErrors)} />
+      )}
+      {uploadErrors.length > 0 && folded && (
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <TextAction onClick={() => setFoldedFor(null)}>
+            Abgelehnte Dateien anzeigen ({rejectedCount(uploadErrors)})
+          </TextAction>
+          <TextAction onClick={clearUploadErrors}>Verwerfen</TextAction>
+        </Box>
       )}
       {deleteError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearDeleteError}>
@@ -83,5 +90,62 @@ export default function LibraryDocumentsNotices({
         </Alert>
       )}
     </>
+  )
+}
+
+/** The number of files the messages name; a message without a file counts once. */
+function rejectedCount(messages: string[]): number {
+  return groupByReason(messages).reduce((sum, group) => sum + Math.max(1, group.files.length), 0)
+}
+
+/** „<reason> (Datei: <name>)“ as the store collects it, grouped by reason. */
+function groupByReason(messages: string[]): Array<{ reason: string; files: string[] }> {
+  const groups = new Map<string, string[]>()
+  for (const message of messages) {
+    const match = /^(.*) \(Datei: (.*)\)$/.exec(message)
+    groups.set(shortReason(match ? match[1] : message), [
+      ...(groups.get(shortReason(match ? match[1] : message)) ?? []),
+      ...(match ? [match[2]] : []),
+    ])
+  }
+  return [...groups].map(([reason, files]) => ({ reason, files }))
+}
+
+/**
+ * A reason in one short sentence: the full quota is the head's state already, a format rejection
+ * names no list of allowed endings.
+ */
+function shortReason(reason: string): string {
+  if (/kontingent/i.test(reason)) return ''
+  return reason.split(/[.:;(]/)[0].trim()
+}
+
+/**
+ * Files an upload turned away before a document existed: each reason once, the files after it,
+ * the signal colour only in the dot. It stays until it is closed or the next upload starts.
+ */
+function UploadRejections({ messages, onClose }: { messages: string[]; onClose: () => void }) {
+  return (
+    <Box role="alert" sx={{ mb: 2, display: 'flex', alignItems: 'baseline', gap: 2 }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        {/* one form for every reason: what was not uploaded, the reason below it */}
+        {groupByReason(messages).map(({ reason, files }) => (
+          <Box key={reason} sx={{ fontSize: 13, lineHeight: '22px' }}>
+            <StateDot
+              tone="error"
+              label={files.length > 0 ? `Nicht hochgeladen: ${files.join(', ')}` : reason}
+            />
+            {reason && files.length > 0 && (
+              <Typography sx={{ fontSize: 13, lineHeight: '22px', color: 'text.secondary', pl: 2 }}>
+                {reason}
+              </Typography>
+            )}
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ flex: 'none' }}>
+        <TextAction onClick={onClose}>Schließen</TextAction>
+      </Box>
+    </Box>
   )
 }

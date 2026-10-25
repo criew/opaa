@@ -1,25 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import LinearProgress from '@mui/material/LinearProgress'
-import Stack from '@mui/material/Stack'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import DataUsageIcon from '@mui/icons-material/DataUsage'
-import HistoryIcon from '@mui/icons-material/History'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import type { IndexingRunResponse } from '@/shared/api/types'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
 import { sourceRegistration } from '../components/sources/registry'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
-import { documentSourceTypeLabel } from '../components/sources/sourceLabels'
+import { documentSourceTypeShortLabel } from '../components/sources/sourceLabels'
 import { AssetDetailHeader, HeaderFigure } from '@/features/asset'
 import { responsibleParty } from '@/features/asset'
+// a stable empty history: a selector must not return a fresh array for an unchanged slice
+const NO_RUNS: IndexingRunResponse[] = []
 import { ErasingMark, PrivateMark } from '@/features/asset'
 import { useMyPrivateStorage } from '../components/useMyPrivateStorage'
 import { useAssetCatalogEntry } from '@/features/asset'
@@ -33,14 +32,18 @@ import {
   canDeleteLibrary,
   canEditLibrary,
   canManageDocuments,
-  formatIndexedAt,
   resolveTab,
 } from '../components/libraryDetailAccess'
 import type { LibraryDetailTab } from '../components/libraryDetailAccess'
 import { useLibraryDeletion } from '../components/useLibraryDeletion'
-import LibraryHeaderNote from '../components/LibraryHeaderNote'
-import LibraryScopeHero from '../components/LibraryScopeHero'
-import LibraryRoleNotices from '../components/LibraryRoleNotices'
+import LibraryStateLink from '../components/LibraryStateLink'
+import { libraryState, runWord } from '../components/libraryState'
+import LibraryNextSteps from '../components/LibraryNextSteps'
+import { useNextSteps } from '../components/nextSteps'
+import { CONTENT_WIDTH } from '../components/setup/rowStyles'
+import { useDocumentUpload } from '../hooks/useDocumentUpload'
+import { useDocumentStore } from '../stores/documentStore'
+import LibraryUploadInputs from '../components/LibraryUploadInputs'
 import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
 import LibraryMetadataTab from '../components/LibraryMetadataTab'
 import LibrarySharingTab from '../components/LibrarySharingTab'
@@ -102,10 +105,6 @@ export default function LibraryDetailPage() {
     erasing,
     setLocalError,
   })
-  const newestRunCategory = useIndexingStore((s) =>
-    libraryId ? s.runsByLibrary[libraryId]?.failureCategory : undefined,
-  )
-  const quotaExhausted = privateLibrary && !erasing && newestRunCategory === 'QUOTA_EXHAUSTED'
   const ownsPrivateLibrary = privateLibrary && library?.myRole === 'OWNER'
   const [storageRefreshToken, setStorageRefreshToken] = useState(0)
   const privateStorage = useMyPrivateStorage(ownsPrivateLibrary, storageRefreshToken)
@@ -146,14 +145,20 @@ export default function LibraryDetailPage() {
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
   const retryStatusPolling = useIndexingStore((s) => s.retryStatusPolling)
-  // Takes the focus from „Erneut versuchen", which disappears with the notice it belongs to.
-  const runStatusRef = useRef<HTMLDivElement>(null)
+  const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
+  const runs = useIndexingStore((s) =>
+    libraryId ? (s.runHistoryByLibrary[libraryId] ?? NO_RUNS) : NO_RUNS,
+  )
 
+  // the run history answers from MANAGER on only; below, the head reads the polled status
+  const mayReadRuns = canEdit
   useEffect(() => {
     if (!libraryId || !connectorSourceType) return
     void loadStatus(libraryId, connectorSourceType)
+    // the head's state reads the newest run, so the history loads with the page
+    if (mayReadRuns) void loadRunHistory(libraryId)
     return () => stopPolling(libraryId)
-  }, [libraryId, connectorSourceType, loadStatus, stopPolling])
+  }, [libraryId, connectorSourceType, mayReadRuns, loadStatus, loadRunHistory, stopPolling])
 
   const isRunning = run.status === 'RUNNING'
   const runProgressPercent =
@@ -168,11 +173,32 @@ export default function LibraryDetailPage() {
   useEffect(() => {
     if (wasRunningRef.current && !isRunning && libraryId) {
       void loadLibraryDetails(libraryId)
+      if (mayReadRuns) void loadRunHistory(libraryId)
+      else void loadLibraries()
       setDocumentsRefreshToken((token) => token + 1)
       setStorageRefreshToken((token) => token + 1)
     }
     wasRunningRef.current = isRunning
-  }, [isRunning, libraryId, loadLibraryDetails])
+  }, [isRunning, libraryId, mayReadRuns, loadLibraryDetails, loadLibraries, loadRunHistory])
+
+  // The running run's progress from the polled status - the head and the run row show this count.
+  const running =
+    connectorSourceType && isRunning && !run.statusUnknown
+      ? {
+          percent: runProgressPercent,
+          done: run.documentCount + run.documentsSkipped,
+          total: run.totalDocuments,
+        }
+      : null
+
+  const isUploadLibrary = details?.sourceType === 'UPLOAD'
+  const uploadQuotaRejected = useDocumentStore((s) =>
+    s.uploadErrors.some((message) => /kontingent/i.test(message)),
+  )
+  const upload = useDocumentUpload(libraryId ?? '', mayManageDocuments, () => {
+    if (libraryId) void loadLibraryDetails(libraryId)
+  })
+  const [uploadMenu, setUploadMenu] = useState<HTMLElement | null>(null)
 
   /**
    * The area's own address - a tab is a link, so middle-click and „open in new tab" work, and the
@@ -242,6 +268,30 @@ export default function LibraryDetailPage() {
     await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
   }
 
+  // the source counts as connected only once a run has read it and the newest did not fail at
+  // the connection
+  const newestWord = runs[0]
+    ? runWord(runs[0], connectorConfiguration?.setup?.signsIn ?? true)
+    : null
+  const [fieldsVersion, setFieldsVersion] = useState(0)
+  const nextSteps = useNextSteps({
+    libraryId: libraryId ?? '',
+    sourceType: details?.sourceType ?? null,
+    justCreated: searchParams.get('justCreated') === '1',
+    mayChange,
+    documentCount: library?.documentCount ?? 0,
+    spaceCount: catalog.entry?.spaceCount,
+    pushSecretSet: Boolean(details?.pushSecretSet),
+    sourceConnected:
+      !details?.sourceBlock &&
+      runs.some((entry) => entry.status === 'COMPLETED') &&
+      newestWord !== 'Anmeldung abgelehnt' &&
+      newestWord !== 'Nicht erreichbar' &&
+      newestWord !== 'Zustimmung abgelaufen',
+    metadataEnabled: showMetadataTab,
+    fieldsVersion,
+  })
+
   if (!libraryId) {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
@@ -262,9 +312,25 @@ export default function LibraryDetailPage() {
     )
   }
 
-  const isRssFeedRun = Boolean(sourceRegistration(connectorSourceType)?.runCountsEntries)
-  const runFailedSuffix =
-    run.documentsFailed > 0 ? `, davon ${run.documentsFailed} fehlgeschlagen` : ''
+  const fullSync =
+    connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
+      ? () => void triggerIndexing(libraryId, connectorSourceType, 'FULL')
+      : undefined
+
+  const state = libraryState({
+    library: { ...library, ...details },
+    documentCount: library.documentCount ?? 0,
+    erasureRequestedAt,
+    succession: details?.succession ?? library.succession,
+    newestRun: mayReadRuns ? (runs[0] ?? null) : runFromStatus(run, listEntry?.lastIndexedAt),
+    lastRun: mayReadRuns || run.status !== 'IDLE' ? null : lastRunOf(listEntry),
+    connectionProfileRemoved: details?.connectionProfileRemoved,
+    runningPercent: running ? running.percent : null,
+    runningUnknown: Boolean(connectorSourceType && isRunning && run.statusUnknown),
+    uploadQuotaRejected,
+    signsIn: connectorConfiguration?.setup?.signsIn ?? true,
+    canSeeSource: canEdit,
+  })
 
   const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
     { value: 'dokumente', label: 'Dokumente' },
@@ -280,359 +346,360 @@ export default function LibraryDetailPage() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <AssetDetailHeader
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={libraryId}
-        name={library.name}
-        description={library.description}
-        isPublic={library.reach.allAccounts}
-        badges={
-          <>
-            {privateLibrary && <PrivateMark />}
-            {erasing && <ErasingMark />}
-            {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
-            <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
-          </>
-        }
-        administrative={isAdministrativeOverride}
-        headline={{
-          idPrefix: 'library-detail',
-          nameLabel: 'Name der Bibliothek',
-          editLabel: 'Name und Beschreibung bearbeiten',
-          canEdit: mayChange,
-          onSave: saveHeadline,
-        }}
-        extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
-          (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
-        }`}
-        // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only.
-        figures={
-          <>
-            {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
-              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
-                {formatFileSize(details.storageUsedBytes)} von{' '}
-                {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
-              </HeaderFigure>
-            )}
-            {privateStorage && (
-              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
-                <span data-testid="private-storage-figure">
-                  {privateStorage.quotaBytes > 0
-                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} in Ihren privaten Bibliotheken belegt`
-                    : `${formatFileSize(privateStorage.usedBytes)} in Ihren privaten Bibliotheken belegt (unbegrenzt)`}
-                </span>
-              </HeaderFigure>
-            )}
-            {connectorSourceType && canTrigger && !isRunning && run.status !== 'IDLE' && (
-              <HeaderFigure
-                icon={
-                  <HistoryIcon
-                    sx={{
-                      fontSize: 16,
-                      color: run.status === 'COMPLETED' ? 'success.main' : 'error.main',
-                    }}
-                  />
-                }
-              >
-                Letzter Lauf: {run.status === 'COMPLETED' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
-                {' · '}
-                {isRssFeedRun
-                  ? `${run.totalDocuments} Feed-Einträge, ${run.documentsSkipped} übersprungen, ${run.documentCount} indiziert (${run.documentsIndexedTotal} Dokumente insgesamt)${runFailedSuffix}`
-                  : `Dokumente: ${run.documentCount} verarbeitet${run.documentsSkipped > 0 ? ` (${run.documentsSkipped} übersprungen)` : ''}${runFailedSuffix}`}
-                {run.timestamp ? ` · ${formatIndexedAt(run.timestamp)}` : ''}
-              </HeaderFigure>
-            )}
-          </>
-        }
-        spaceCount={catalog.entry?.spaceCount}
-        responsible={responsibleParty({
-          ownerType: library.ownerType,
-          ownerLabel: library.ownerName,
-          succession: details?.succession ?? library.succession,
-        })}
-        // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
-        updatedAt={listEntry?.lastIndexedAt ?? library.updatedAt}
-        favorite={catalog.entry?.favorite}
-        onFavoriteChange={catalog.setFavorite}
-        mayUseInSpace={mayUseInSpace}
-        onAssociated={associationsChanged}
-        onDelete={
-          !canDelete || erasing
-            ? undefined
-            : privateLibrary
-              ? () => void handleErase()
-              : () => void handleDelete()
-        }
-        deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
-        deleteDisabled={eraseBusy}
-        // ADR-0023, Entscheidung 4: the full reconciliation can be forced, from the „…“ menu
-        menuItems={
-          connectorSourceType && mayManageDocuments && connectorConfiguration?.fullSyncRhythm
-            ? [
-                {
-                  label: 'Vollabgleich starten',
-                  disabled: isRunning,
-                  onClick: () => void triggerIndexing(libraryId, connectorSourceType, 'FULL'),
-                },
-              ]
-            : undefined
-        }
-        actions={
-          connectorSourceType &&
-          mayManageDocuments && (
+    <Box sx={{ flexGrow: 1, p: { xs: 2, md: 5 }, overflowY: 'auto' }}>
+      {/* one column for head, tabs and every tab's content - the width of wizard and editing */}
+      <Box sx={{ maxWidth: CONTENT_WIDTH }}>
+        <AssetDetailHeader
+          assetType="KNOWLEDGE_LIBRARY"
+          assetId={libraryId}
+          name={library.name}
+          description={library.description}
+          isPublic={library.reach.allAccounts}
+          badges={
             <>
-              {/* what a run reads, where a source has two kinds of run; the span keeps the
-                  tooltip on a disabled button */}
+              {privateLibrary && <PrivateMark />}
+              {erasing && <ErasingMark />}
+              {/* the short form of the catalog tile (guidelines 5.5), so the chips keep one line */}
+              {details && <MetaBadge>{documentSourceTypeShortLabel(details.sourceType)}</MetaBadge>}
+              <MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>
+            </>
+          }
+          administrative={isAdministrativeOverride}
+          headline={{
+            idPrefix: 'library-detail',
+            nameLabel: 'Name der Bibliothek',
+            editLabel: 'Name und Beschreibung bearbeiten',
+            canEdit: mayChange,
+            onSave: saveHeadline,
+          }}
+          extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
+            (library.documentCount ?? 0) === 1 ? 'Dokument' : 'Dokumente'
+          }`}
+          // storageQuotaBytes/storageUsedBytes reach a caller with at least MANAGER only; a full
+          // quota is the state, not a second figure
+          figures={
+            <>
+              {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
+                <HeaderFigure>
+                  <span title="Belegtes Speicherkontingent dieser Bibliothek">
+                    {formatFileSize(details.storageUsedBytes)} von{' '}
+                    {formatFileSize(details.storageQuotaBytes)}
+                  </span>
+                </HeaderFigure>
+              )}
+              {privateStorage && (
+                <HeaderFigure>
+                  {/* the private storage of all private libraries, not of this one */}
+                  <span
+                    data-testid="private-storage-figure"
+                    title="Belegter Speicher aller privaten Bibliotheken"
+                  >
+                    {privateStorage.quotaBytes > 0
+                      ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} privat`
+                      : `${formatFileSize(privateStorage.usedBytes)} privat`}
+                  </span>
+                </HeaderFigure>
+              )}
+            </>
+          }
+          spaceCount={catalog.entry?.spaceCount}
+          spaceHref={tabSearch('zuordnungen')}
+          responsible={responsibleParty({
+            ownerType: library.ownerType,
+            ownerLabel: library.ownerName,
+            succession: details?.succession ?? library.succession,
+          })}
+          responsibleHref={tabSearch('freigaben')}
+          status={
+            <LibraryStateLink
+              state={state}
+              focusRef={erasureNoticeRef}
+              onRetry={
+                isRunning && run.statusUnknown ? () => retryStatusPolling(libraryId) : undefined
+              }
+            />
+          }
+          // the runs with their own „Vollabgleich starten“ are the managers'; whoever else may
+          // start a run finds the full reconciliation here
+          menuItems={
+            fullSync && !canEdit
+              ? [{ label: 'Vollabgleich starten', onClick: fullSync, disabled: isRunning }]
+              : undefined
+          }
+          favorite={catalog.entry?.favorite}
+          onFavoriteChange={catalog.setFavorite}
+          mayUseInSpace={mayUseInSpace}
+          onAssociated={associationsChanged}
+          onDelete={
+            !canDelete || erasing
+              ? undefined
+              : privateLibrary
+                ? () => void handleErase()
+                : () => void handleDelete()
+          }
+          deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
+          deleteDisabled={eraseBusy}
+          actions={
+            connectorSourceType && mayManageDocuments ? (
+              // one primary action per surface: the rows of the Reiter „Quelle" save with theirs;
+              // while a run runs, its progress is the state, not a second text on the button
+              // what a run reads, where a source has two kinds of run; the span keeps the tooltip
+              // on a disabled button
               <Tooltip title={connectorConfiguration?.runsHint ?? ''} describeChild>
                 <span>
                   <Button
-                    // one primary action per surface: the rows of the Reiter „Quelle“ save with theirs
                     variant="outlined"
                     size="small"
-                    startIcon={<PlayArrowIcon />}
                     onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
                     disabled={isRunning}
                   >
-                    {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
+                    Jetzt indizieren
                   </Button>
                 </span>
               </Tooltip>
-            </>
-          )
-        }
-        // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
-        // owner, no reason.
-        note={
-          <LibraryHeaderNote
-            succession={details?.succession}
-            erasureRequestedAt={erasureRequestedAt}
-            erasureNoticeRef={erasureNoticeRef}
-            quotaExhausted={quotaExhausted}
-          />
-        }
-      >
-        {/* The header shows the scope only as a short line with a jump into the „Quelle"
-           tab; it is complete there, for every role. The warning about a
-           partially read scope, by contrast, stays here: it concerns the content that
-           every view of the page shows, not the setting behind it. */}
-        {details && connectorConfiguration?.scopeHero && (
-          <LibraryScopeHero
-            details={details}
-            scopeHero={connectorConfiguration.scopeHero}
-            unlistedScopeKeys={run.unlistedScopeKeys}
-            sourceSearch={tabSearch('quelle')}
-          />
-        )}
-
-        {/* A running indexing stays visible no matter which area below is active (guidelines
-            5.7) - anchored in the hero with a pulsing dot as the one moving element. */}
-        {connectorSourceType && isRunning && (
-          <Box
-            ref={runStatusRef}
-            tabIndex={-1}
-            sx={{ mt: 2.5, pt: 2, borderTop: 1, borderTopColor: 'divider', position: 'relative' }}
-          >
-            {run.statusUnknown ? (
-              // The last known status stays RUNNING: failed fetches say nothing about the run.
-              <Alert
-                severity="warning"
-                role="status"
-                data-testid="library-run-status-unknown"
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
+            ) : isUploadLibrary && mayManageDocuments ? (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  aria-haspopup="menu"
+                  onClick={(event) => setUploadMenu(event.currentTarget)}
+                  disabled={upload.isUploading}
+                >
+                  {upload.isUploading ? 'Wird hochgeladen …' : 'Hochladen'}
+                </Button>
+                <Menu
+                  anchorEl={uploadMenu}
+                  open={uploadMenu !== null}
+                  onClose={() => setUploadMenu(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                  <MenuItem
                     onClick={() => {
-                      runStatusRef.current?.focus()
-                      retryStatusPolling(libraryId)
+                      setUploadMenu(null)
+                      upload.fileInputRef.current?.click()
                     }}
                   >
-                    Erneut versuchen
-                  </Button>
-                }
-              >
-                <AlertTitle>Status unbekannt</AlertTitle>
-                Der Stand des Indizierungslaufs konnte wiederholt nicht abgerufen werden. Der Lauf
-                kann im Hintergrund weiterlaufen.
-              </Alert>
-            ) : (
-              <>
-                <LinearProgress
-                  variant={run.totalDocuments > 0 ? 'determinate' : 'indeterminate'}
-                  value={runProgressPercent}
-                  sx={{ mb: 1, borderRadius: 999 }}
-                />
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Box
-                    aria-hidden
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '999px',
-                      bgcolor: 'primary.main',
-                      '@keyframes opaaPulse': {
-                        '0%': { opacity: 0.35 },
-                        '50%': { opacity: 1 },
-                        '100%': { opacity: 0.35 },
-                      },
-                      animation: 'opaaPulse 1.2s ease-in-out infinite',
-                      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                    Dateien auswählen …
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      setUploadMenu(null)
+                      upload.folderInputRef.current?.click()
                     }}
-                  />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }} role="status">
-                    {run.totalDocuments > 0
-                      ? isRssFeedRun
-                        ? `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Feed-Einträgen verarbeitet (${run.documentsIndexedTotal} Dokumente indiziert)`
-                        : `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Dokumenten verarbeitet`
-                      : isRssFeedRun
-                        ? 'Feed-Einträge werden ermittelt …'
-                        : 'Dokumente werden ermittelt …'}
-                  </Typography>
-                </Stack>
+                  >
+                    Ordner auswählen …
+                  </MenuItem>
+                </Menu>
               </>
+            ) : undefined
+          }
+        />
+        {isUploadLibrary && mayManageDocuments && <LibraryUploadInputs upload={upload} />}
+
+        {localError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
+            {localError}
+          </Alert>
+        )}
+        {/* A failed GET /libraries/{id} while the list entry is cached leaves the typed areas
+          below empty; this notice explains it and offers the reload. */}
+        {!details && storeError && (
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => void loadLibraryDetails(libraryId)}
+              >
+                Erneut versuchen
+              </Button>
+            }
+          >
+            Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden. Versuchen Sie
+            es in einem Moment erneut.
+          </Alert>
+        )}
+
+        <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
+
+        <LibraryNextSteps steps={nextSteps.steps} onDismiss={nextSteps.dismiss} />
+
+        {/* Every area stays mounted while another one is active: status polling, running uploads
+          and loaded run protocols keep living, only their visibility toggles. */}
+        <Box
+          role="tabpanel"
+          id="library-tabpanel-dokumente"
+          aria-labelledby="library-tab-dokumente"
+          hidden={activeTab !== 'dokumente'}
+        >
+          {details && (
+            <LibraryDocumentsSection
+              // Forces a remount on library change (rather than resetting local state like
+              // searchInput from within an effect, which react-hooks/set-state-in-effect flags as a
+              // cascading-render risk): a fresh component instance starts every piece of local
+              // state at its initial value for free. The prefix keeps the key distinct from the
+              // other keyed sections of this page - two siblings sharing the bare libraryId made
+              // React duplicate the spaces section into stuck "Wird geladen …" clones.
+              key={`documents-${libraryId}`}
+              libraryId={libraryId}
+              sourceType={details.sourceType}
+              canManage={mayManageDocuments}
+              upload={upload}
+              refreshToken={documentsRefreshToken}
+              confluenceSpaces={confluenceSettingsOf(details).spaces}
+              // The document count in the header comes from the library
+              // itself, not from documentStore - without this it stays on whatever value was loaded
+              // on mount even after an upload or delete changes it.
+              onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
+            />
+          )}
+        </Box>
+
+        {showSourceTab && (
+          <Box
+            role="tabpanel"
+            id="library-tabpanel-quelle"
+            aria-labelledby="library-tab-quelle"
+            hidden={activeTab !== 'quelle'}
+          >
+            {/* Source paths and the run protocol stay behind the MANAGER
+              bar (canEditSource); the Umfang above them is visible to every reader. */}
+            {details ? (
+              <LibrarySourceSection
+                libraryId={libraryId}
+                library={details}
+                canEditSource={canEdit}
+                erasing={erasing}
+                runs={runs}
+                running={running}
+                unlistedScopeKeys={run.unlistedScopeKeys}
+                statusUnknown={isRunning && run.statusUnknown}
+                onFullSync={fullSync}
+              />
+            ) : (
+              <Typography sx={{ color: 'text.secondary' }}>
+                {storeError
+                  ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
+                  : 'Quelle wird geladen …'}
+              </Typography>
             )}
           </Box>
         )}
-      </AssetDetailHeader>
 
-      {localError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocalError(null)}>
-          {localError}
-        </Alert>
-      )}
-      {/* A failed GET /libraries/{id} while the list entry is cached leaves the typed areas
-          below empty; this notice explains it and offers the reload. */}
-      {!details && storeError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => void loadLibraryDetails(libraryId)}>
-              Erneut versuchen
-            </Button>
-          }
-        >
-          Die Angaben zu dieser Bibliothek konnten nicht vollständig geladen werden. Versuchen Sie
-          es in einem Moment erneut.
-        </Alert>
-      )}
-      <LibraryRoleNotices
-        canTrigger={canTrigger}
-        canEdit={canEdit}
-        isAdministrativeOverride={isAdministrativeOverride}
-      />
-
-      <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
-
-      {/* Every area stays mounted while another one is active: status polling, running uploads
-          and loaded run protocols keep living, only their visibility toggles. */}
-      <Box
-        role="tabpanel"
-        id="library-tabpanel-dokumente"
-        aria-labelledby="library-tab-dokumente"
-        hidden={activeTab !== 'dokumente'}
-      >
-        {details && (
-          <LibraryDocumentsSection
-            // Forces a remount on library change (rather than resetting local state like
-            // searchInput from within an effect, which react-hooks/set-state-in-effect flags as a
-            // cascading-render risk): a fresh component instance starts every piece of local
-            // state at its initial value for free. The prefix keeps the key distinct from the
-            // other keyed sections of this page - two siblings sharing the bare libraryId made
-            // React duplicate the spaces section into stuck "Wird geladen …" clones.
-            key={`documents-${libraryId}`}
-            libraryId={libraryId}
-            sourceType={details.sourceType}
-            canManage={mayManageDocuments}
-            refreshToken={documentsRefreshToken}
-            confluenceSpaces={confluenceSettingsOf(details).spaces}
-            // The document count in the header comes from the library
-            // itself, not from documentStore - without this it stays on whatever value was loaded
-            // on mount even after an upload or delete changes it.
-            onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
-          />
+        {showMetadataTab && (
+          <Box
+            role="tabpanel"
+            id="library-tabpanel-metadaten"
+            aria-labelledby="library-tab-metadaten"
+            hidden={activeTab !== 'metadaten'}
+          >
+            <LibraryMetadataTab
+              libraryId={libraryId}
+              mayChange={mayChange}
+              canEdit={canEdit}
+              active={activeTab === 'metadaten'}
+              onFieldsChanged={() => setFieldsVersion((version) => version + 1)}
+            />
+          </Box>
         )}
-      </Box>
 
-      {showSourceTab && (
         <Box
           role="tabpanel"
-          id="library-tabpanel-quelle"
-          aria-labelledby="library-tab-quelle"
-          hidden={activeTab !== 'quelle'}
+          id="library-tabpanel-freigaben"
+          aria-labelledby="library-tab-freigaben"
+          hidden={activeTab !== 'freigaben'}
         >
-          {/* Source paths and the run protocol stay behind the MANAGER
-              bar (canEditSource); the Umfang above them is visible to every reader. */}
-          {details ? (
-            <LibrarySourceSection
-              libraryId={libraryId}
-              library={details}
-              canEditSource={canEdit}
-              erasing={erasing}
+          <LibrarySharingTab
+            libraryId={libraryId}
+            library={library}
+            details={details}
+            privateLibrary={privateLibrary}
+            canEdit={canEdit}
+            externalAccessEnabled={externalAccessEnabled}
+            shareCapVisible={shareCapVisible}
+            onTransferred={() => reloadLibrary()}
+            onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
+            diagnosticsLockSaving={diagnosticsLockSaving}
+            diagnosticsLockError={diagnosticsLockError}
+            onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}
+            onDismissDiagnosticsLockError={() => setDiagnosticsLockError(null)}
+          />
+        </Box>
+
+        <Box
+          role="tabpanel"
+          id="library-tabpanel-zuordnungen"
+          aria-labelledby="library-tab-zuordnungen"
+          hidden={activeTab !== 'zuordnungen'}
+        >
+          {activeTab === 'zuordnungen' && (
+            <AssetSpacesSection
+              assetType="KNOWLEDGE_LIBRARY"
+              assetId={libraryId}
+              name={library.name}
+              canManage={mayChange}
+              mayUseInSpace={mayUseInSpace}
+              refreshToken={associationsVersion}
+              onChanged={() => catalog.reload()}
             />
-          ) : (
-            <Typography sx={{ color: 'text.secondary' }}>
-              {storeError
-                ? 'Die Quelle lässt sich anzeigen, sobald die Bibliothek vollständig geladen ist.'
-                : 'Quelle wird geladen …'}
-            </Typography>
           )}
         </Box>
-      )}
-
-      {showMetadataTab && (
-        <Box
-          role="tabpanel"
-          id="library-tabpanel-metadaten"
-          aria-labelledby="library-tab-metadaten"
-          hidden={activeTab !== 'metadaten'}
-        >
-          <LibraryMetadataTab libraryId={libraryId} mayChange={mayChange} canEdit={canEdit} />
-        </Box>
-      )}
-
-      <Box
-        role="tabpanel"
-        id="library-tabpanel-freigaben"
-        aria-labelledby="library-tab-freigaben"
-        hidden={activeTab !== 'freigaben'}
-      >
-        <LibrarySharingTab
-          libraryId={libraryId}
-          library={library}
-          details={details}
-          privateLibrary={privateLibrary}
-          canEdit={canEdit}
-          externalAccessEnabled={externalAccessEnabled}
-          shareCapVisible={shareCapVisible}
-          onTransferred={() => reloadLibrary()}
-          onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
-          diagnosticsLockSaving={diagnosticsLockSaving}
-          diagnosticsLockError={diagnosticsLockError}
-          onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}
-          onDismissDiagnosticsLockError={() => setDiagnosticsLockError(null)}
-        />
-      </Box>
-
-      <Box
-        role="tabpanel"
-        id="library-tabpanel-zuordnungen"
-        aria-labelledby="library-tab-zuordnungen"
-        hidden={activeTab !== 'zuordnungen'}
-      >
-        {activeTab === 'zuordnungen' && (
-          <AssetSpacesSection
-            assetType="KNOWLEDGE_LIBRARY"
-            assetId={libraryId}
-            name={library.name}
-            canManage={mayChange}
-            mayUseInSpace={mayUseInSpace}
-            refreshToken={associationsVersion}
-            onChanged={() => catalog.reload()}
-          />
-        )}
       </Box>
     </Box>
   )
+}
+
+/**
+ * The newest run as the polled status tells it to a caller who may not read the history: outcome,
+ * failed documents and incompleteness, so the head says the same word as for a manager. The
+ * failure category is withheld below MANAGER, so a refused sign-in or a quota stays
+ * „Fehlgeschlagen“ resp. „Teilweise fehlgeschlagen“.
+ */
+function runFromStatus(
+  status: {
+    status: string
+    documentCount: number
+    totalDocuments: number
+    documentsSkipped: number
+    documentsFailed: number
+    documentsIndexedTotal: number
+    failureCategory: string | null
+    incomplete: boolean
+    timestamp: string | null
+  },
+  lastIndexedAt: string | undefined,
+): IndexingRunResponse | null {
+  if (status.status !== 'COMPLETED' && status.status !== 'FAILED') return null
+  const at = (status.status === 'COMPLETED' ? lastIndexedAt : undefined) ?? status.timestamp ?? ''
+  return {
+    id: 'status',
+    status: status.status,
+    triggeredBy: 'MANUAL',
+    runMode: 'FULL',
+    documentCount: status.documentCount,
+    totalDocuments: status.totalDocuments,
+    documentsSkipped: status.documentsSkipped,
+    documentsFailed: status.documentsFailed,
+    documentsIndexedTotal: status.documentsIndexedTotal,
+    failureCategory: status.failureCategory,
+    incomplete: status.incomplete,
+    startedAt: at,
+    events: [],
+    eventsTruncatedCount: 0,
+  }
+}
+
+/** Before the status arrives, the list entry tells how the newest run ended. */
+function lastRunOf(
+  entry: { lastRunStatus?: string; lastIndexedAt?: string } | undefined,
+): { status: 'COMPLETED' | 'FAILED'; at: string | null } | null {
+  if (entry?.lastRunStatus === 'COMPLETED') {
+    return { status: 'COMPLETED', at: entry.lastIndexedAt ?? null }
+  }
+  if (entry?.lastRunStatus === 'FAILED') return { status: 'FAILED', at: null }
+  return null
 }

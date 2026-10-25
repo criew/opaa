@@ -100,7 +100,7 @@ Aufruf des Chat-Modells (Abschnitt 3).
 | Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
 | Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
 | Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
-| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Eine Anzeige im Chat folgt |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Im Kopf des Chats zeigt ein Knopf die Zahl der Punkte und klappt die Liste auf, in der der Autor jeden Punkt einzeln entfernen kann, außer in einem archivierten Space; sichtbar wird die Notiz, sobald sie einen Punkt hat und der Chat drei beantwortete Runden zählt. Die Exporte des Chats enthalten sie (Abschnitt „Belege prüfen und Fundstellen bilden", Absatz „Exportieren") |
 
 Zwei Punkte sind betrieblich wichtig:
 
@@ -914,8 +914,27 @@ Branding und dem Datum der Antwort (TT.MM.JJJJ), etwa „Antworten werden von ei
 Markdown-Varianten die Antwort zusätzlich als formatierten Text (HTML) mit sichtbarem Fuß ab, sodass
 sie sich mit Formatierung in Textverarbeitungen einfügen lässt; dabei gelten dieselben Regeln wie im
 Chat: Bilder werden nicht übernommen (nur ihre Beschreibung und Adresse als Text), und nur erlaubte
-Linkziele bleiben anklickbar. Sonst bleibt es beim Text mit Vermerk. Der Vermerk steht nur beim Kopierknopf: Text, den jemand von Hand markiert und kopiert,
+Linkziele bleiben anklickbar. Sonst bleibt es beim Text mit Vermerk. Der Vermerk steht nur beim Kopierknopf und in den Exporten: Text, den jemand von Hand markiert und kopiert,
 bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennzeichnung.
+
+**Exportieren.** Ein ganzer Chat lässt sich zur Ablage oder Weitergabe als Datei sichern: Das Menü
+eines Chats in der Chatliste und auf der Seite „Chats" bietet „Exportieren als Markdown" und
+„Exportieren als PDF"; solange das PDF entsteht, meldet ein Hinweis „Export wird erstellt …".
+Beide Dateien beginnen mit dem Titel als Überschrift, nennen Beginn des Chats
+und Exportzeitpunkt, führen die Gesprächsnotiz (Abschnitt „Frage, Chat, Suchbereich, Chunk") als eigenen Abschnitt „Gesprächsnotiz",
+sobald sie einen Punkt hat, und enthalten dann jede Frage und Antwort mit Datum und Uhrzeit. Unter jeder Antwort
+stehen ihre Quellenangaben: Jede Zitiermarke wird zur Fußnote mit Dokument und Fundort, gezählt je
+Antwort in der Reihenfolge des ersten Auftretens; zitierte Dokumente ohne Fußnote im Text folgen ohne
+Nummer, geprüfte, nicht zitierte fehlen. Am Ende steht derselbe Vermerk wie beim Kopieren, mit dem Datum des Exports.
+Die Datei heißt wie der Chat.
+
+| Format | Entsteht | Darstellung |
+|---|---|---|
+| Markdown | im Browser, aus dem gespeicherten Chat, den die Oberfläche dafür frisch lädt | Antworten mit ihrer Formatierung, Fußnoten als Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]` ist die erste Fußnote der zweiten Antwort); Zeiten in der Zeitzone des Browsers |
+| PDF | auf dem Server | A4 mit Seitenzahlen, Fußnoten als `[1]` je Antwort, Markdown-Zeichen zu lesbarem Text aufgelöst; Zeiten in der Zeitzone der Installation. Die Standardschriften kennen nur westeuropäische Zeichen: Unsichtbare Steuerzeichen entfallen, geschützte und schmale Leerzeichen werden zu Leerzeichen, Bindestrich- und Minuszeichen zu „-", Pfeile und Vergleichszeichen zu `->`, `<-`, `<=`, `>=` und Ähnlichem; alle übrigen Zeichen, etwa andere Schriften oder Emojis, erscheinen als „?" |
+
+Exportieren darf, wer den Chat lesen darf, also nur seine Autorin oder sein Autor, auch nach dem
+Austritt aus dem Space. Der Export wird weder protokolliert noch auf dem Server gespeichert.
 
 **Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
 „Private Quelle“, auch wenn die Antwort ihn nicht zitiert; stand eine solche Quelle im Kontext, steht

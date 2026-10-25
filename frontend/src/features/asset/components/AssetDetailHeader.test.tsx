@@ -29,7 +29,7 @@ function renderHeader(overrides: Partial<AssetDetailHeaderProps> = {}) {
 
 describe('AssetDetailHeader (#2208)', () => {
   it('shows type badge, globe, name, description and the shared figures', () => {
-    renderHeader({ isPublic: true, spaceCount: 3 })
+    renderHeader({ isPublic: true, spaceCount: 3, responsibleHref: '?tab=sharing' })
 
     expect(screen.getByText('Prompts')).toBeInTheDocument()
     expect(screen.getByLabelText('Für alle Konten freigegeben')).toBeInTheDocument()
@@ -39,8 +39,11 @@ describe('AssetDetailHeader (#2208)', () => {
     expect(screen.getByText('Standardantworten für die Bürgerberatung')).toBeInTheDocument()
     expect(screen.getByText('12 Prompts')).toBeInTheDocument()
     expect(screen.getByText('in 3 Spaces')).toBeInTheDocument()
-    expect(screen.getByText('Bürgerbüro')).toBeInTheDocument()
-    expect(screen.getByTitle('Zuständige Gruppe')).toBeInTheDocument()
+    // the responsible party is a plain figure that leads into the tab of the permissions
+    expect(screen.getByRole('link', { name: 'Bürgerbüro' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('tab=sharing'),
+    )
     expect(screen.getByText('Aktualisiert am 03.10.2026')).toBeInTheDocument()
   })
 

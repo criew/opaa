@@ -12,7 +12,6 @@ interface BulkDocumentActionsOptions {
   selectedDocumentIds: string[]
   setSelectedDocumentIds: Dispatch<SetStateAction<string[]>>
   setMetadataRefreshToken: Dispatch<SetStateAction<number>>
-  setAnchorRefreshToken: Dispatch<SetStateAction<number>>
   onDocumentsChanged: () => void
 }
 
@@ -25,7 +24,6 @@ export function useBulkDocumentActions({
   selectedDocumentIds,
   setSelectedDocumentIds,
   setMetadataRefreshToken,
-  setAnchorRefreshToken,
   onDocumentsChanged,
 }: BulkDocumentActionsOptions) {
   const loadDocuments = useDocumentStore((s) => s.loadDocuments)
@@ -51,7 +49,6 @@ export function useBulkDocumentActions({
     setBulkResult({ severity: 'success', text: `Feld gesetzt: ${parts.join(', ')}.` })
     setSelectedDocumentIds([])
     setMetadataRefreshToken((previous) => previous + 1)
-    setAnchorRefreshToken((previous) => previous + 1)
     // A document that just got a value leaves the anchor's worklist - reload the same page.
     void loadDocuments(libraryId, {})
   }
@@ -99,7 +96,6 @@ export function useBulkDocumentActions({
         })
       }
       setSelectedDocumentIds([])
-      setAnchorRefreshToken((previous) => previous + 1)
       onDocumentsChanged()
     } catch {
       // The error message is already shown via documentStore.deleteError.

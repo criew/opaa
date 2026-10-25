@@ -7,12 +7,16 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
+import org.springframework.core.io.ClassPathResource;
 
 /**
  * What two instances starting together against an empty database do to its schema before they
@@ -74,5 +78,19 @@ class VectorStoreColdStartTest extends AbstractMigrationTest {
       connection.commit();
     }
     return null;
+  }
+
+  /**
+   * The table comes from the installation only: Spring AI must not create it at the start of an
+   * instance, which raced between instances starting together.
+   */
+  @Test
+  void theDeliveredConfigurationLetsNoInstanceCreateTheTableAtStartUp() {
+    YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
+    yaml.setResources(new ClassPathResource("application.yml"));
+    Properties properties = yaml.getObject();
+
+    assertThat(properties.getProperty("spring.ai.vectorstore.pgvector.initialize-schema"))
+        .isEqualTo("false");
   }
 }

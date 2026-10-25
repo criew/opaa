@@ -417,7 +417,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
       await page.getByRole("tab", { name: "Zuordnungen" }).click();
       await expect(
-        page.getByRole("button", { name: `„${name}“ in Space verwenden` }),
+        page.getByRole("region", { name: "Spaces" }).getByRole("button", { name: "In Space verwenden" }),
       ).toBeVisible();
       await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Zuordnungen");
     } finally {

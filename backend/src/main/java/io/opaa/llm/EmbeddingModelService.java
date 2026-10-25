@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Clock;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,17 +25,17 @@ import org.springframework.transaction.support.TransactionTemplate;
  * vector_store} with that size in one transaction. Installed once; there is no way to change it
  * through the administration, since every stored vector depends on it.
  *
- * <p>An installation from before ADR-0060 takes over its configured model once at the start ({@link
- * #adoptAtStartup()}), under the schema lock of the vector table (ADR-0053: "Sperre"): with the
- * vector size its configuration declared when the table exists, with a probe embedding when it does
- * not.
+ * <p>An installation from before ADR-0060 takes over its configured model ({@link #adoptIfMissing})
+ * under the schema lock of the vector table (ADR-0053: "Sperre"): with an existing table only when
+ * the configuration names the model the index records, with the size of the existing column;
+ * without a table with a probe embedding, run outside the lock.
  */
 @DataFlow("embedding-model")
 @Service
 public class EmbeddingModelService {
 
   /** The text of the probe embedding. */
-  static final String PROBE_TEXT = "OPAA Probeeinbettung";
+  static final String PROBE_TEXT = HttpEmbeddingProbe.PROBE_TEXT;
 
   private static final Logger log = LoggerFactory.getLogger(EmbeddingModelService.class);
 
@@ -51,10 +52,11 @@ public class EmbeddingModelService {
   }
 
   private final EmbeddingModelSettingsRepository repository;
-  private final EmbeddingClientFactory clientFactory;
+  private final EmbeddingProbe probe;
   private final SettingsEncryptor settingsEncryptor;
   private final VectorTableCreator vectorTable;
   private final LegacyEmbeddingConfiguration legacy;
+  private final RecordedEmbeddingIndex recordedIndex;
   private final ApplicationEventPublisher events;
   private final InstallationStatus installationStatus;
   private final TransactionTemplate transactions;
@@ -62,19 +64,21 @@ public class EmbeddingModelService {
 
   EmbeddingModelService(
       EmbeddingModelSettingsRepository repository,
-      EmbeddingClientFactory clientFactory,
+      EmbeddingProbe probe,
       SettingsEncryptor settingsEncryptor,
       VectorTableCreator vectorTable,
       LegacyEmbeddingConfiguration legacy,
+      RecordedEmbeddingIndex recordedIndex,
       ApplicationEventPublisher events,
       InstallationStatus installationStatus,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.repository = repository;
-    this.clientFactory = clientFactory;
+    this.probe = probe;
     this.settingsEncryptor = settingsEncryptor;
     this.vectorTable = vectorTable;
     this.legacy = legacy;
+    this.recordedIndex = recordedIndex;
     this.events = events;
     this.installationStatus = installationStatus;
     this.transactions = new TransactionTemplate(transactionManager);
@@ -87,54 +91,50 @@ public class EmbeddingModelService {
     return repository.findInstalled();
   }
 
+  /** Whether the installation is completed and still has no embedding model. */
+  public boolean missingAfterInstallation() {
+    return !installationStatus.isPending() && installed().isEmpty();
+  }
+
   /**
    * Embeds a probe text with {@code endpoint} and reports the vector size it returned. A failure is
-   * a result, never an exception; the reason goes to the log, the message names what to check.
+   * a result, never an exception; the message names what to check. Call it outside any transaction:
+   * it waits for the network.
    */
   public ProbeOutcome probe(EmbeddingEndpoint endpoint) {
     String addressProblem = addressProblem(endpoint.baseUrl());
     if (addressProblem != null) {
       return ProbeOutcome.failure(addressProblem);
     }
-    float[] vector;
-    try {
-      vector = clientFactory.create(endpoint).embed(PROBE_TEXT);
-    } catch (RuntimeException e) {
-      log.warn(
-          "Probe embedding failed for model '{}' at {}: {}",
-          endpoint.modelIdentifier(),
-          ModelEndpointUri.withoutSecrets(endpoint.baseUrl()),
-          e.getMessage());
+    ProbeOutcome outcome = probe.probe(endpoint);
+    if (!outcome.succeeded()) {
       return ProbeOutcome.failure(
-          "Die Probeeinbettung ist fehlgeschlagen. Prüfen Sie Basis-Adresse, Modell-Kennung und"
-              + " Zugangsschlüssel und ob das Modell Einbettungen liefert.");
+          "Die Probeeinbettung ist fehlgeschlagen: "
+              + outcome.message()
+              + " Prüfen Sie Basis-Adresse, Modell-Kennung und Zugangsschlüssel.");
     }
-    if (vector == null || vector.length == 0) {
-      return ProbeOutcome.failure(
-          "Das Modell hat bei der Probeeinbettung keinen Vektor geliefert.");
-    }
-    if (vector.length > vectorTable.maxDimensions()) {
+    int size = outcome.dimensions();
+    if (size > vectorTable.maxDimensions()) {
       return ProbeOutcome.failure(
           "Das Modell liefert Vektoren mit "
-              + vector.length
+              + size
               + " Dimensionen; der Vektorindex nimmt höchstens "
               + vectorTable.maxDimensions()
               + " auf. Wählen Sie ein anderes Embedding-Modell.");
     }
     return new ProbeOutcome(
         true,
-        "Probeeinbettung erfolgreich: Das Modell liefert Vektoren mit "
-            + vector.length
-            + " Dimensionen.",
-        vector.length);
+        "Probeeinbettung erfolgreich: Das Modell liefert Vektoren mit " + size + " Dimensionen.",
+        size);
   }
 
   /**
    * Stores {@code endpoint} as the embedding model and creates the vector table with {@code
-   * dimensions}, in the caller's transaction or a new one.
+   * dimensions}, in the caller's transaction or a new one. A table of another size is replaced
+   * while it holds no chunk.
    *
    * @throws ConflictException when an embedding model is installed already, or when a vector table
-   *     of another size exists
+   *     of another size holds chunks
    */
   @Transactional
   public EmbeddingModelSettings install(EmbeddingEndpoint endpoint, int dimensions) {
@@ -144,27 +144,29 @@ public class EmbeddingModelService {
     }
     Integer existing = vectorTable.embeddingDimensions();
     if (existing != null && existing != dimensions) {
-      throw new ConflictException(
-          "Die Vektortabelle besteht bereits mit "
-              + existing
-              + " Dimensionen; das Modell liefert "
-              + dimensions
-              + ".");
+      if (vectorTable.hasRows()) {
+        throw new ConflictException(
+            "Die Vektortabelle besteht bereits mit "
+                + existing
+                + " Dimensionen und enthält Abschnitte; das Modell liefert "
+                + dimensions
+                + ".");
+      }
+      vectorTable.dropEmpty();
     }
     vectorTable.createIfAbsent(dimensions);
     return store(endpoint, dimensions);
   }
 
   /**
-   * Takes over the embedding model of an installation that has none stored yet: the configured one
-   * of {@link LegacyEmbeddingConfiguration}. An existing vector table keeps the size it was created
-   * with; without one, a probe embedding decides it and the table is created. A failed probe leaves
-   * the model uninstalled and is retried at the next start. A pending installation takes over
-   * nothing: its embedding model comes from the installation step.
+   * Takes over the embedding model of a completed installation that has none stored: the configured
+   * one of {@link LegacyEmbeddingConfiguration}. A pending installation takes over nothing; its
+   * embedding model comes from the installation step. A refusal or a failed probe leaves the model
+   * uninstalled, and a later call tries again.
    *
    * @return whether an embedding model is installed afterwards
    */
-  public boolean adoptAtStartup() {
+  public boolean adoptIfMissing() {
     if (installed().isPresent()) {
       return true;
     }
@@ -178,18 +180,18 @@ public class EmbeddingModelService {
               + " it without them and the key via OPAA_OPENAI_EMBEDDING_API_KEY");
       return false;
     }
-    Integer probed = vectorTable.exists() ? null : probeForStartup(endpoint);
-    if (!vectorTable.exists() && probed == null) {
+    Integer probed = vectorTable.exists() ? null : probeForTakeover(endpoint);
+    if (probed == null && !vectorTable.exists()) {
       return false;
     }
     try {
       return Boolean.TRUE.equals(transactions.execute(status -> adoptLocked(endpoint, probed)));
     } catch (IllegalStateException e) {
       log.error(
-          "The embedding model {} could not be taken over: {}. Set OPAA_SETTINGS_ENCRYPTION_KEY and"
-              + " restart; until then indexing and search are refused",
+          "The embedding model {} could not be taken over ({}). Set OPAA_SETTINGS_ENCRYPTION_KEY;"
+              + " until then indexing and search are refused",
           endpoint,
-          e.getMessage());
+          e.getClass().getSimpleName());
       return false;
     }
   }
@@ -199,14 +201,16 @@ public class EmbeddingModelService {
     if (repository.findInstalled().isPresent()) {
       return true;
     }
-    Integer existing = vectorTable.embeddingDimensions();
-    int dimensions;
-    if (existing != null) {
-      dimensions = legacy.dimensions();
+    Integer dimensions;
+    if (vectorTable.exists()) {
+      dimensions = dimensionsOfExistingIndex(endpoint);
     } else if (probed != null) {
       dimensions = probed;
       vectorTable.createIfAbsent(dimensions);
     } else {
+      dimensions = null;
+    }
+    if (dimensions == null) {
       return false;
     }
     store(endpoint, dimensions);
@@ -219,14 +223,48 @@ public class EmbeddingModelService {
     return true;
   }
 
-  private Integer probeForStartup(EmbeddingEndpoint endpoint) {
+  /**
+   * The size of the column the configured model's vectors are in, or {@code null} when the
+   * configuration names a model the index does not record: then nothing is taken over, since the
+   * stored vectors would no longer match their model.
+   */
+  private Integer dimensionsOfExistingIndex(EmbeddingEndpoint endpoint) {
+    Integer current = vectorTable.dimensionsOf(VectorTableCreator.EMBEDDING_COLUMN);
+    Optional<RecordedEmbeddingIndex.Recorded> recorded = recordedIndex.recorded();
+    if (recorded.isEmpty()) {
+      return current;
+    }
+    RecordedEmbeddingIndex.Recorded index = recorded.get();
+    String model = endpoint.modelIdentifier();
+    if (index.targetModel() != null && index.targetModel().equals(model)) {
+      return vectorTable.dimensionsOf(VectorTableCreator.TARGET_COLUMN);
+    }
+    boolean sameModel =
+        index.model() == null
+            ? Objects.equals(current, legacy.dimensions())
+            : index.model().equals(model);
+    if (sameModel) {
+      return current;
+    }
+    log.error(
+        "The configured embedding model '{}' is not the one the vector index was built with ('{}',"
+            + " {} dimensions; target '{}'); nothing is taken over and indexing and search are"
+            + " refused. Configure the model of the index, or change the model as the handbook"
+            + " describes",
+        model,
+        index.model(),
+        current,
+        index.targetModel());
+    return null;
+  }
+
+  private Integer probeForTakeover(EmbeddingEndpoint endpoint) {
     ProbeOutcome outcome = probe(endpoint);
     if (!outcome.succeeded()) {
       log.error(
-          "No embedding model is installed and the probe embedding of {} failed: {} Indexing and"
-              + " search are refused until a start succeeds with a reachable model",
-          endpoint,
-          outcome.message());
+          "No embedding model is installed and the probe embedding of {} failed; indexing and"
+              + " search are refused until a later attempt reaches the model",
+          endpoint);
       return null;
     }
     return outcome.dimensions();

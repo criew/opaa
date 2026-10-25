@@ -62,6 +62,21 @@ export const chatHandlers = [
     return HttpResponse.json({ ...chat, archivedAt: mockChatArchive[chatId] ?? null })
   }),
 
+  // Stands in for ChatExportController: a placeholder PDF, not the server's rendering.
+  http.get('/api/v1/chats/:chatId/export/pdf', ({ params }) => {
+    const chat = mockChatDetails[String(params.chatId)]
+    if (!chat) {
+      return HttpResponse.json({ error: 'Chat nicht gefunden' }, { status: 404 })
+    }
+    return new HttpResponse(new Blob(['%PDF-1.7 mock'], { type: 'application/pdf' }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="chat.pdf"',
+      },
+    })
+  }),
+
   http.patch('/api/v1/chats/:chatId', async ({ params, request }) => {
     const chatId = String(params.chatId)
     const chat = mockChatDetails[chatId]

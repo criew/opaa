@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
-import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import LinkOffIcon from '@mui/icons-material/LinkOff'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
+import StateDot from '@/shared/ui/StateDot'
+import ListSearch from '@/shared/ui/ListSearch'
+import RowMenu from '@/shared/ui/RowMenu'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -22,6 +17,9 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../../shared/assetTypes'
 import { useSpaceListLoader } from './spaceListContext'
+
+/** From this many spaces the list gets a search. */
+const SEARCH_FROM = 8
 
 interface AssetSpacesListProps {
   assetType: AssetType
@@ -47,45 +45,12 @@ function formatDate(value: string): string {
 /** Who associated and when - both only ever sent to a caller who manages the asset. */
 function provenance(association: AssetSpaceAssociationResponse): string | null {
   const parts = [
-    association.createdByDisplayName ? `zugeordnet von ${association.createdByDisplayName}` : null,
-    association.createdAt ? formatDate(association.createdAt) : null,
-  ].filter(Boolean)
-  return parts.length > 0 ? parts.join(' · ') : null
-}
-
-/** The row's „⋯" with its one entry, „Aus Space lösen". */
-function RowActions({ spaceName, onDetach }: { spaceName: string; onDetach: () => void }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  return (
-    <>
-      <IconButton
-        size="small"
-        aria-label={`Aktionen für Space „${spaceName}“`}
-        aria-haspopup="menu"
-        aria-expanded={anchor ? true : undefined}
-        onClick={(event) => setAnchor(event.currentTarget)}
-      >
-        <MoreHorizIcon fontSize="small" />
-      </IconButton>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <MenuItem
-          onClick={() => {
-            setAnchor(null)
-            onDetach()
-          }}
-        >
-          <LinkOffIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-          Aus Space lösen
-        </MenuItem>
-      </Menu>
-    </>
-  )
+    association.createdAt ? `zugeordnet am ${formatDate(association.createdAt)}` : 'zugeordnet',
+    association.createdByDisplayName ? `von ${association.createdByDisplayName}` : null,
+  ]
+  return association.createdAt || association.createdByDisplayName
+    ? parts.filter(Boolean).join(' ')
+    : null
 }
 
 /**
@@ -103,6 +68,7 @@ export default function AssetSpacesList({
   const [links, setLinks] = useState<AssetSpaceAssociationListResponse | null>(null)
   const [curatedSpaceIds, setCuratedSpaceIds] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
   const loadSpaces = useSpaceListLoader()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const noun = assetTypeLabel(assetType)
@@ -165,6 +131,10 @@ export default function AssetSpacesList({
     }
   }
 
+  const needle = query.trim().toLowerCase()
+  const matching = (links?.items ?? []).filter(
+    (association) => !needle || association.spaceName.toLowerCase().includes(needle),
+  )
   const hiddenCount = links?.hiddenCount ?? 0
   const hiddenNote =
     hiddenCount === 1
@@ -184,67 +154,94 @@ export default function AssetSpacesList({
         <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
       ) : links.items.length === 0 && hiddenCount === 0 ? (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Diese {noun} ist derzeit keinem Space zugeordnet.
+          Noch keinem Space zugeordnet.
         </Typography>
       ) : (
-        <Stack component="ul" spacing={1} sx={{ m: 0, p: 0, listStyle: 'none' }}>
-          {links.items.map((association) => {
-            const origin = provenance(association)
-            return (
-              <Box
-                component="li"
-                key={association.spaceId}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 1.5,
-                  py: 0.75,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  useFlexGap
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
-                >
-                  <WorkspacesOutlinedIcon
-                    aria-hidden
-                    sx={{ fontSize: 18, color: 'text.secondary' }}
-                  />
-                  <Typography sx={{ fontWeight: 500 }}>{association.spaceName}</Typography>
-                  {origin && (
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                      · {origin}
-                    </Typography>
-                  )}
-                  {association.narrowerReaderCircle && (
-                    <Tooltip
-                      title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
-                    >
-                      <Chip label="nicht alle Mitglieder lesen" size="small" color="warning" />
-                    </Tooltip>
-                  )}
-                </Stack>
-                {mayDetach(association.spaceId) && (
-                  <RowActions
-                    spaceName={association.spaceName}
-                    onDetach={() => void handleDetach(association.spaceId, association.spaceName)}
-                  />
-                )}
-              </Box>
-            )
-          })}
-          {/* The number is there on purpose: it says that the list is incomplete without naming
-             a single private space. */}
-          {hiddenCount > 0 && (
-            <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
-              {hiddenNote}
-            </Typography>
+        <>
+          {links.items.length >= SEARCH_FROM && (
+            <Box sx={{ mb: 1.5 }}>
+              <ListSearch
+                value={query}
+                onChange={setQuery}
+                placeholder="Space-Name enthält …"
+                label="Spaces durchsuchen"
+              />
+            </Box>
           )}
-        </Stack>
+          <Box
+            component="ul"
+            sx={{ m: 0, p: 0, listStyle: 'none', borderTop: 1, borderColor: 'divider' }}
+          >
+            {matching.length === 0 && (
+              <Typography component="li" sx={{ py: 1.25, fontSize: 13.5, color: 'text.secondary' }}>
+                Kein Space entspricht dieser Suche.
+              </Typography>
+            )}
+            {matching.map((association) => {
+              const origin = provenance(association)
+              return (
+                <Box
+                  component="li"
+                  key={association.spaceId}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1.5,
+                    py: 0.75,
+                    minHeight: 48,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      noWrap
+                      title={association.spaceName}
+                      sx={{ fontSize: 13.5, fontWeight: 600 }}
+                    >
+                      {association.spaceName}
+                    </Typography>
+                    {(origin || association.narrowerReaderCircle) && (
+                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                        {origin}
+                        {origin && association.narrowerReaderCircle && ' · '}
+                        {association.narrowerReaderCircle && (
+                          <Tooltip
+                            title={`Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese ${noun}.`}
+                          >
+                            <Box component="span" tabIndex={0}>
+                              <StateDot tone="warning" label="nicht für alle Mitglieder lesbar" />
+                            </Box>
+                          </Tooltip>
+                        )}
+                      </Typography>
+                    )}
+                  </Box>
+                  {mayDetach(association.spaceId) && (
+                    <RowMenu
+                      label={`Aktionen für Space „${association.spaceName}“`}
+                      items={[
+                        {
+                          label: 'Aus Space lösen',
+                          onClick: () =>
+                            void handleDetach(association.spaceId, association.spaceName),
+                        },
+                      ]}
+                    />
+                  )}
+                </Box>
+              )
+            })}
+            {/* The number is there on purpose: it says that the list is incomplete without naming
+               a single private space. */}
+            {hiddenCount > 0 && (
+              <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
+                {hiddenNote}
+              </Typography>
+            )}
+          </Box>
+        </>
       )}
     </Box>
   )

@@ -17,7 +17,10 @@ import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
 import io.opaa.installation.InstallationState.CompletionSource;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelSeedRunner;
+import io.opaa.ratelimit.RateLimitProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -28,7 +31,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.context.SmartLifecycle;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -42,6 +45,7 @@ class InstallationStartupTest {
   private final DatabaseInstallationStatus status = mock(DatabaseInstallationStatus.class);
   private final OidcProviderSeedRunner identitySeeds = mock(OidcProviderSeedRunner.class);
   private final LlmModelSeedRunner chatModelSeed = mock(LlmModelSeedRunner.class);
+  private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private ListAppender<ILoggingEvent> logs;
 
@@ -49,6 +53,9 @@ class InstallationStartupTest {
 
   @BeforeEach
   void captureLogs() {
+    when(status.isPending()).thenReturn(true);
+    when(installation.completeAtStartupIfDue(anyBoolean(), anyBoolean()))
+        .thenReturn(new InstallationService.StartupDecision(false, null));
     logs = new ListAppender<>();
     logs.start();
     ((Logger) LoggerFactory.getLogger(InstallationStartup.class)).addAppender(logs);
@@ -61,17 +68,21 @@ class InstallationStartupTest {
 
   @Test
   void runsBeforeTheWebServerAndSeedsOnlyACompletedInstallation() {
-    when(installation.completeAtStartupIfDue(true, false)).thenReturn(true);
+    when(installation.completeAtStartupIfDue(true, false))
+        .thenReturn(new InstallationService.StartupDecision(true, CompletionSource.DEVELOPMENT));
     InstallationStartup startup = startup("dev", "", null, null);
 
-    assertThat(startup).isInstanceOf(SmartInitializingSingleton.class);
-    startup.afterSingletonsInstantiated();
+    assertThat(startup).isInstanceOf(SmartLifecycle.class);
+    assertThat(startup.getPhase()).isEqualTo(CurrentInstance.REGISTERED_PHASE);
+    startup.start();
 
-    InOrder order = Mockito.inOrder(installation, status, identitySeeds, chatModelSeed);
+    InOrder order =
+        Mockito.inOrder(installation, status, identitySeeds, chatModelSeed, embeddingModels);
     order.verify(installation).completeAtStartupIfDue(true, false);
     order.verify(status).reload();
     order.verify(identitySeeds).runStartupSeeds();
     order.verify(chatModelSeed).runStartupSeed();
+    order.verify(embeddingModels).adoptIfMissing();
     verify(installation, never()).ensureToken(any());
   }
 
@@ -80,11 +91,12 @@ class InstallationStartupTest {
     when(installation.ensureToken(null)).thenReturn("ErzeugtesTokenAbc123ErzeugtesToken");
     InstallationStartup startup = startup("oidc", "", null, null);
 
-    startup.afterSingletonsInstantiated();
+    startup.start();
 
     verify(installation).completeAtStartupIfDue(false, false);
     verify(identitySeeds, never()).runStartupSeeds();
     verify(chatModelSeed, never()).runStartupSeed();
+    verify(embeddingModels, never()).adoptIfMissing();
     verify(registry).refresh();
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .filteredOn(message -> message.contains("ErzeugtesTokenAbc123ErzeugtesToken"))
@@ -96,7 +108,7 @@ class InstallationStartupTest {
     String configured = "konfiguriertes-installations-token-0123456789";
     InstallationStartup startup = startup("oidc", "", configured, null);
 
-    startup.afterSingletonsInstantiated();
+    startup.start();
 
     verify(installation).ensureToken(configured);
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
@@ -130,21 +142,20 @@ class InstallationStartupTest {
 
     verify(installation).completeAtStartupIfDue(false, false);
     verify(installation)
-        .applyAnswers(
+        .applyAnswersAtStartup(
             eq(
                 List.of(
                     new StepInput.FirstAdmin("it@stadt.example", "IT", "Kennwort-aus-Secret-2026"),
                     new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
                     new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null),
-                    new StepInput.EmbeddingModel(null, "bge-m3", "", null))),
-            eq(CompletionSource.ANSWER_FILE_STARTUP));
+                    new StepInput.EmbeddingModel(null, "bge-m3", "", null))));
     verify(installation, never()).ensureToken(any());
   }
 
   @Test
   void aRefusedAnswerFileLeavesTheInstallationPendingWithItsToken() throws Exception {
     Path answers = Files.writeString(directory.resolve("installation.json"), "{}");
-    when(installation.applyAnswers(any(), any())).thenThrow(new ConflictException("nie"));
+    when(installation.applyAnswersAtStartup(any())).thenThrow(new ConflictException("nie"));
     InstallationStartup startup = startup("oidc", "", null, answers.toString());
 
     assertThat(startup.decide()).isFalse();
@@ -167,7 +178,7 @@ class InstallationStartupTest {
 
     assertThat(startup.decide()).isFalse();
 
-    verify(installation, never()).applyAnswers(any(), any());
+    verify(installation, never()).applyAnswersAtStartup(any());
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
         .anyMatch(message -> message.contains("nicht im Klartext"))
         .noneMatch(message -> message.contains("im-klartext"));
@@ -175,12 +186,13 @@ class InstallationStartupTest {
 
   @Test
   void anAnswerFileIsIgnoredOnceTheInstallationIsCompleted() throws Exception {
-    when(installation.completeAtStartupIfDue(anyBoolean(), anyBoolean())).thenReturn(true);
+    when(installation.completeAtStartupIfDue(anyBoolean(), anyBoolean()))
+        .thenReturn(new InstallationService.StartupDecision(true, null));
     InstallationStartup startup = startup("oidc", "", null, directory.resolve("x").toString());
 
     assertThat(startup.decide()).isTrue();
 
-    verify(installation, never()).applyAnswers(any(), any());
+    verify(installation, never()).applyAnswersAtStartup(any());
   }
 
   private InstallationStartup startup(
@@ -192,7 +204,71 @@ class InstallationStartupTest {
         status,
         identitySeeds,
         chatModelSeed,
+        embeddingModels,
         registry,
-        JsonMapper.builder().build());
+        JsonMapper.builder().build(),
+        new RateLimitProperties(true, List.of(), null, null, null, null, null, null, null, null));
+  }
+
+  @Test
+  void aRefusedStartAddressLeavesTheInstallationPending() {
+    InstallationStartup startup = startup("oidc", "admin@opaa.local", null, null);
+
+    startup.decide();
+
+    verify(installation).completeAtStartupIfDue(false, false);
+  }
+
+  @Test
+  void theTransitionIsReportedOnlyWhenItDecided() {
+    InstallationStartup pending = startup("oidc", "it@stadt.example", null, null);
+    pending.decide();
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .noneMatch(message -> message.contains("deprecated"));
+
+    when(installation.completeAtStartupIfDue(false, true))
+        .thenReturn(
+            new InstallationService.StartupDecision(true, CompletionSource.LEGACY_START_VALUES));
+    pending.decide();
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .filteredOn(message -> message.contains("deprecated"))
+        .hasSize(1);
+  }
+
+  @Test
+  void aNetworkRestrictionWithoutTrustedProxiesIsWarnedAbout() {
+    InstallationStartup startup =
+        new InstallationStartup(
+            installation,
+            new InstallationProperties(null, List.of("10.0.0.0/8"), null),
+            new AuthProperties("oidc", null, null, ""),
+            status,
+            identitySeeds,
+            chatModelSeed,
+            embeddingModels,
+            registry,
+            JsonMapper.builder().build(),
+            new RateLimitProperties(
+                true, List.of(), null, null, null, null, null, null, null, null));
+
+    startup.start();
+
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS"));
+  }
+
+  // regression guard: the losing instance does not report a pending installation another completed
+  @Test
+  void anInstallationAnotherInstanceCompletedIsNotReportedAsPending() throws Exception {
+    Path answers = Files.writeString(directory.resolve("installation.json"), "{}");
+    when(status.isPending()).thenReturn(false);
+    InstallationStartup startup = startup("oidc", "", null, answers.toString());
+
+    startup.start();
+
+    verify(identitySeeds).runStartupSeeds();
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .noneMatch(
+            message -> message.contains("stays pending") || message.contains("installation mode"));
   }
 }

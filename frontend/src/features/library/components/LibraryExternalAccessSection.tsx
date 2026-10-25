@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Divider from '@mui/material/Divider'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '@/features/succession'
-import SectionHead from '@/shared/ui/SectionHead'
+import DetailSection from '@/shared/ui/DetailSection'
 import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../api/libraryApi'
 import { updateLibraryExternalAccess } from '@/features/external-access'
@@ -124,63 +123,62 @@ export default function LibraryExternalAccessSection({
   }
 
   const released = access.state === 'ACTIVE'
+  // below the manager role the backend delivers no release: then no section at all, not an
+  // empty head
   return (
-    <Stack spacing={1}>
-      {/* The divider belongs to this section, not to the dialog: below the manager role
-         the backend does not deliver the release at all, and a divider without a following section
-         would be a line that separates nothing. */}
-      <Divider sx={{ my: 1 }} />
-      <SectionHead component="h3">Externe KI-Werkzeuge</SectionHead>
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      <FormControlLabel
-        control={
-          <Switch
-            checked={released}
-            disabled={saving}
-            slotProps={{ input: { 'aria-label': 'Für externe KI-Werkzeuge nutzbar' } }}
-            onChange={(event) => void apply(event.target.checked)}
-          />
-        }
-        label="Für externe KI-Werkzeuge nutzbar"
-      />
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <TextField
-          label="Freigabe bis"
-          type="date"
-          value={dateInput}
-          disabled={saving}
-          onChange={(event) => setDateInput(event.target.value)}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
-          }}
-          size="small"
-          sx={{ maxWidth: 220 }}
-        />
-        {released && (
-          <Button size="small" disabled={saving} onClick={() => void apply(true)}>
-            Ablaufdatum übernehmen
-          </Button>
+    <DetailSection title="Externer Zugang">
+      <Stack spacing={1}>
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         )}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={released}
+              disabled={saving}
+              slotProps={{ input: { 'aria-label': 'Für externe KI-Werkzeuge nutzbar' } }}
+              onChange={(event) => void apply(event.target.checked)}
+            />
+          }
+          label="Für externe KI-Werkzeuge nutzbar"
+        />
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <TextField
+            label="Freigabe bis"
+            type="date"
+            value={dateInput}
+            disabled={saving}
+            onChange={(event) => setDateInput(event.target.value)}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { max: latestAdmissibleDate(access.maxReleaseDays) },
+            }}
+            size="small"
+            sx={{ maxWidth: 220 }}
+          />
+          {released && (
+            <Button size="small" disabled={saving} onClick={() => void apply(true)}>
+              Ablaufdatum übernehmen
+            </Button>
+          )}
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            höchstens {access.maxReleaseDays} Tage
+          </Typography>
+        </Stack>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          höchstens {access.maxReleaseDays} Tage
+          Personen mit Lesezugriff können diese Bibliothek in einem eigenen Zugangstoken auswählen
+          und aus externen Werkzeugen darin suchen.
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          Derzeit in {access.tokenCount} Zugangstokens enthalten.
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {stateLine(access)} Nach Ablauf erlischt die Freigabe; die Erneuerung ist eine bewusste
+          Entscheidung der Bibliotheksverantwortung.
         </Typography>
       </Stack>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Personen mit Lesezugriff können diese Bibliothek in einem eigenen Zugangstoken auswählen und
-        aus externen Werkzeugen darin suchen.
-      </Typography>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Derzeit in {access.tokenCount} Zugangstokens enthalten.
-      </Typography>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        {stateLine(access)} Nach Ablauf erlischt die Freigabe; die Erneuerung ist eine bewusste
-        Entscheidung der Bibliotheksverantwortung.
-      </Typography>
-    </Stack>
+    </DetailSection>
   )
 }

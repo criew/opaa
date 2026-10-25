@@ -332,4 +332,39 @@ class InstallationApiIntegrationTest {
         String.class,
         InstallationService.SYSTEM_ACTOR);
   }
+
+  // regression guard: the door is decided before the body is read
+  @Test
+  void aLargeBodyWithoutTokenIsRefusedBeforeItIsReadAndOneWithTokenIsTooLarge() throws Exception {
+    String large = "{\"chatModel\":{\"model\":\"" + "x".repeat(200_000) + "\"}}";
+
+    mockMvc
+        .perform(
+            put(BASE + "/steps/CHAT_MODEL").contentType(MediaType.APPLICATION_JSON).content(large))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(
+            authorized(put(BASE + "/steps/CHAT_MODEL"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(large))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("Die Anfrage ist zu groß."));
+  }
+
+  @Test
+  void anOverlongValueIsAFieldError() throws Exception {
+    mockMvc
+        .perform(
+            authorized(put(BASE + "/steps/CHAT_MODEL"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"chatModel\":{\"baseUrl\":\""
+                        + fixture.chatBaseUrl()
+                        + "\",\"model\":\""
+                        + "m".repeat(StepRules.MAX_NAME + 1)
+                        + "\"}}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("chatModel.model"))
+        .andExpect(jsonPath("$.fieldErrors[0].code").value("TOO_LONG"));
+  }
 }

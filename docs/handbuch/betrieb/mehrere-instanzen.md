@@ -207,7 +207,9 @@ Zeit; zwei, die gleichzeitig starten, prüfen nacheinander.
 - die Funktionsschalter, die Zeitzone und `OPAA_INSTANCE_DEAD_AFTER`
 
 **Je Instanz abweichen dürfen** technische Werte ohne Wirkung auf Daten: Timeouts, die Größe von
-Connection- und Thread-Pools, der Abstand des Herzschlags.
+Connection- und Thread-Pools, der Abstand des Herzschlags, und die Variablen der
+[Installation](installation.md#konfiguration), die nach dem Abschluss wirkungslos sind und dann
+ohne Neustart aller Instanzen entfallen dürfen.
 
 **Die Version** darf nur während eines Updates abweichen, und nur innerhalb des
 **Versionsfensters**: Jede Version nennt die älteste Version, neben der sie laufen darf. Ein Release

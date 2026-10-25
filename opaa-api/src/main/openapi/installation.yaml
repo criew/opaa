@@ -46,7 +46,8 @@ paths:
       security: []
       summary: >
         Saves the values of one step; the part of the body named after the step is required, the
-        other parts are ignored. Saving discards an earlier check of the step. A password is stored
+        other parts are ignored. Network, budget and token are checked before the body is read;
+        a body above 64 KiB is unreadable (400). Saving discards an earlier check of the step. A password is stored
         only as a hash, a model key only encrypted. Same token and network rules as
         getInstallation.
       requestBody:
@@ -97,6 +98,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InstallationStepState"
+        "400":
+          description: Unknown step
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -178,6 +185,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InstallationStatusResponse"
+        "400":
+          description: A value of a saved step no longer passes its rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

@@ -1,13 +1,10 @@
 import {
   confluenceCredentialsOf,
   confluenceSettingsOf,
-  confluenceSpaceLabel,
   EMPTY_CONFLUENCE_VALUES,
   type ConfluenceSourceValues,
 } from '../../utils/confluenceSource'
-import { confluenceEditionLabel } from '../../utils/confluenceSource'
 import { confluenceSetup } from '../setup/connectors/confluenceSetup'
-import { ConfluencePush } from './ConfluenceSourceViews'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
@@ -43,26 +40,6 @@ export const confluenceSource: SourceRegistration = {
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
     scopeNoteId: 'confluence-sharing-consequence',
-    Push: ConfluencePush,
-    scopeHero: {
-      summary: (library) => {
-        const settings = confluenceSettingsOf(library)
-        const count = settings.spaces?.length ?? 0
-        return [
-          count === 1 ? '1 Space' : `${count} Spaces`,
-          settings.edition ? confluenceEditionLabel(settings.edition) : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')
-      },
-      unlistedWarning: (keys, library) => {
-        const spaces = confluenceSettingsOf(library).spaces
-        return keys.length === 1
-          ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceLabel(keys[0], spaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet. Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.`
-          : `Der letzte Vollabgleich konnte die Spaces ${keys.map((key) => confluenceSpaceLabel(key, spaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet. Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.`
-      },
-      unlistedTestId: 'confluence-incomplete-listing-warning',
-    },
     fullSyncRhythm: true,
     firstRunHint:
       'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.',
