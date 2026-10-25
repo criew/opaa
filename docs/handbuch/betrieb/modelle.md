@@ -28,8 +28,9 @@ eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschich
 
 **Voreingestellt sind lokal betriebene Modelle.** Eine Installation, an der niemand etwas
 konfiguriert, ruft kein Modell außerhalb des Hauses auf: `OPAA_OPENAI_BASE_URL` zeigt auf
-`http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Chat- und
-Embedding-Modell sind `phi3:mini` und `bge-m3`, und Ollama braucht keinen Zugangsschlüssel.
+`http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), das Embedding-Modell ist
+`bge-m3`, und Ollama braucht keinen Zugangsschlüssel. Das Chat-Modell kommt aus der
+[Installation](installation.md); im Modus `dev` ist es `phi3:mini`.
 Betrieb ohne Netzanbindung ist der vorgesehene Fall; es gibt kein automatisches Ausweichen auf ein
 Modell außerhalb des Hauses. Für einen anderen Anbieter wird die **Zieladresse** überschrieben:
 
@@ -38,8 +39,8 @@ OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-`OPAA_OPENAI_CHAT_BASE_URL` und `OPAA_OPENAI_EMBEDDING_BASE_URL` überschreiben die Adresse je Rolle;
-ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide. Ein **ausdrücklich leer gesetzter** Wert
+`OPAA_OPENAI_EMBEDDING_BASE_URL` überschreibt die Adresse der Einbettung; ohne sie gilt
+`OPAA_OPENAI_BASE_URL`. Ein **ausdrücklich leer gesetzter** Wert
 (`OPAA_OPENAI_BASE_URL=` in einer `.env`) überschreibt die Voreinstellung mit einer leeren
 Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die Variable nennt.
 
@@ -59,12 +60,15 @@ Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Model
 ein Systemverwalter Modelle an, bearbeitet, testet und aktiviert sie. Genau eines ist aktiv; eine
 Aktivierung oder Änderung wirkt ohne Neustart, das aktive Modell lässt sich nicht löschen.
 
-**Der erste Start übernimmt die Umgebung.** Beim allerersten Start legt OPAA aus
-`OPAA_OPENAI_CHAT_*`, `OPAA_OPENAI_API_KEY` und `OPAA_OPENAI_BASE_URL` einmalig das erste Chat-Modell
-an und aktiviert es. Danach haben diese Variablen für den Chat keine Wirkung mehr. Ist dabei ein
-Zugangsschlüssel gesetzt, muss auch `OPAA_SETTINGS_ENCRYPTION_KEY` gesetzt sein; sonst bleibt das
-Modell unangelegt, eine Fehlermeldung steht im Log, und der nächste Start mit Schlüssel holt die
-Übernahme nach ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+**Das erste Chat-Modell kommt aus der Installation.** Der Schritt „Chat-Modell“ des Assistenten
+oder der Antwortdatei legt es mit Adresse, Modellname und Zugangsschlüssel an, prüft es mit dem
+Verbindungstest und aktiviert es beim Abschluss ([Installation](installation.md)). Den Schlüssel
+verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
+([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+
+**Im Modus `dev` und im Übergang** mit `OPAA_INITIAL_ADMIN_EMAIL` legt der erste Start das erste
+Chat-Modell noch einmalig aus `OPAA_OPENAI_CHAT_*`, `OPAA_OPENAI_API_KEY` und `OPAA_OPENAI_BASE_URL` an;
+danach haben diese Variablen für den Chat keine Wirkung mehr.
 
 Das Formular führt in drei Abschnitten:
 
@@ -124,7 +128,7 @@ Weitere Sampling-Parameter (`top_p`, `top_k`) sendet OPAA nie.
 **Die maximale Antwortlänge** (Token) begrenzt die Ausgabe. Bei Modellen mit internem Reasoning zählt
 das Reasoning mit, ohne sichtbar zu werden; ein knapper Wert schneidet die Antwort mitten im Satz ab
 oder lässt sie leer. Das Formular schlägt für neue Einträge einen darauf ausgelegten Wert vor;
-`OPAA_OPENAI_CHAT_MAX_TOKENS` bestimmt nur das erste Modell. Bricht ein Modell an der Grenze ab oder
+die Installation setzt den Wert des ersten Modells. Bricht ein Modell an der Grenze ab oder
 liefert es keinen Text, schreibt das Backend eine Warnung, und unter der Antwort erscheint ein
 Hinweis, dass sie unvollständig ist oder fehlt — nur für die gerade erzeugte Antwort, nicht im
 gespeicherten Verlauf.

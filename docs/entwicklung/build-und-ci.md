@@ -144,7 +144,14 @@ examples/kubernetes-trial/trial.sh down # beide Namespaces samt Daten entfernen
 pnpm install                            # Abhängigkeiten installieren
 pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
 pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
+pnpm run test:local-auth                # lokale Anmeldung im Modus oidc, installiert aus e2e/installation/
+pnpm run test:installation              # Einrichtungs-Assistent gegen einen Stack im Installationsmodus
 ```
+
+Die Stacks im Modus `oidc` (local-auth, Demo-Smoke, Zwei-Instanzen, ohne Internet) installieren sich
+mit den Antwortdateien unter `e2e/installation/` (ADR-0060); `test:installation` startet ohne
+Antwortdatei mit gesetztem Token. Beide Ziele laufen in `.github/workflows/local-auth-e2e.yml`,
+an einem PR über das Label `local-auth-suite`.
 
 ## Zwei-Instanzen-Suite
 
@@ -252,7 +259,8 @@ zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversan
 # Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate und
 # danach mit OPAA_MODE=await-migration (beide müssen mit Exit-Code 0 enden), dann das Backend ohne
 # Migration gegen pgvector bis Readiness UP samt Healthcheck des Images, Frontend davor bis
-# /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# /api/health und der gemeldeten offenen Installation (ohne Antwortdatei); in CI als Job
+# image-smoke-arm64 (ci.yml) auf einem arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend

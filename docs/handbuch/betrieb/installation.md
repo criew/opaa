@@ -25,10 +25,10 @@ Die Readiness bleibt im Installationsmodus `UP`, damit Load Balancer und Ingress
 überhaupt erreichen. Einen Rückweg in den Installationsmodus gibt es nur über einen Eingriff des
 Betriebs in die Datenbank und einen Neustart.
 
-**Übergang.** Ist im Modus `oidc` `OPAA_INITIAL_ADMIN_EMAIL` gesetzt, richtet sich eine leere
-Instanz wie bisher aus den Startwerten ein ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto));
-ohne die Variable startet der Installationsmodus. Im Modus `dev` richtet sich jede Instanz selbst
-ein. Eine Datenbank, auf der schon eine frühere Version lief, gilt als eingerichtet.
+**Übergang.** Ist im Modus `oidc` ohne Antwortdatei `OPAA_INITIAL_ADMIN_EMAIL` gesetzt, richtet sich
+eine leere Instanz wie bisher aus den Startwerten ein ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto));
+Vorlagen und Helm-Chart setzen die Variable nicht mehr. Ohne sie startet der Installationsmodus.
+Im Modus `dev` richtet sich jede Instanz selbst ein. Eine Datenbank, auf der schon eine frühere Version lief, gilt als eingerichtet.
 
 ## Installations-Token
 
@@ -137,6 +137,10 @@ Prüfungen, alles oder nichts.
   oder `apiKey` in der Datei lehnt der Start ab. Scheitert eine Prüfung, bleibt der
   Installationsmodus, und das Log nennt Schritt und Grund. Nach dem Abschluss wird die Datei
   übergangen.
+- **Compose und Helm-Chart** hängen die Datei ein: Compose das Verzeichnis `installation/`
+  ([Installation im Compose-Stapel](docker-compose.md#installation-im-compose-stapel)), der Chart
+  rendert sie aus `bootstrap` und hängt das Passwort aus dem Secret ein
+  ([Kubernetes](kubernetes.md#7-installation-und-erste-anmeldung)).
 - **Über die API:** `POST /api/v1/installation/answer-file` nimmt dieselben Angaben mit Token an,
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.

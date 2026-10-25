@@ -9,9 +9,8 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 
 - **Log** auf der Standardausgabe, als Text oder mit `LOGGING_STRUCTURED_FORMAT_CONSOLE` (`ecs`,
   `logstash`, `gelf`) als JSON. Beim Start stehen dort Version, Warnungen zur Konfiguration, das
-  Einmalpasswort des Erststarts
-  ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto)) und jeder
-  Startabbruch mit dem Namen der Variable.
+  Installations-Token des ersten Starts ([Installation](installation.md#installations-token)), das
+  Ergebnis einer Antwortdatei und jeder Startabbruch mit dem Namen der Variable.
 - **Inhalt:** Geheimnisse, Zugangsdaten und Request-Bodies erscheinen nicht, Namen aus privaten
   Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.

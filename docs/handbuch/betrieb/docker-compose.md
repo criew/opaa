@@ -65,8 +65,8 @@ Modelfile mit dieser Grenze angelegt ist
 
 Ohne erreichbaren Server startet der Stapel, aber Indexierung und Fragen schlagen fehl. Danach ist
 die Oberfläche unter `http://localhost:3000` erreichbar, die API unter `http://localhost:8081/api`.
-Wie der erste Systemverwalter hereinkommt, steht unter
-[Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto).
+Im Modus `dev` der Vorlage richtet sich der Stapel selbst ein; im Betriebsmodus `oidc` startet eine
+leere Datenbank im Installationsmodus ([Installation im Compose-Stapel](#installation-im-compose-stapel)).
 
 ## Services
 
@@ -155,7 +155,62 @@ Das voreingestellte Embedding-Modell `bge-m3` bettet mit derselben Dimension ein
 `OPAA_PGVECTOR_DIMENSIONS` vorgibt. Für einen anderen Modellanbieter kommen `OPAA_OPENAI_BASE_URL`
 und `OPAA_OPENAI_API_KEY` hinzu, und `OPAA_PGVECTOR_DIMENSIONS` richtet sich nach dessen
 Embedding-Modell ([Modelle](modelle.md#welches-embedding-modell)); passt sie nicht, bricht die erste
-Einbettung mit einem Dimensionsfehler ab.
+Einbettung mit einem Dimensionsfehler ab. Das Chat-Modell steht nicht in `.env.docker`: Es kommt aus
+der Installation, im Modus `dev` gilt `phi3:mini` unter `OPAA_OPENAI_BASE_URL`.
+
+## Installation im Compose-Stapel
+
+Im Betriebsmodus `oidc` (`SPRING_PROFILES_ACTIVE=docker,oidc`) bietet eine leere Datenbank nur die
+[Installation](installation.md) an: erstes Konto, Anmeldeverfahren, Chat-Modell. Zwei Wege führen
+hindurch.
+
+**Im Browser oder über die Installations-API.** Ohne weitere Angaben schreibt der erste Start das
+Installations-Token einmalig ins Log:
+
+```bash
+docker compose logs backend | grep -A3 "INSTALLATION TOKEN"
+```
+
+Wer das Token selbst vorgeben will, setzt `OPAA_INSTALLATION_TOKEN` in `.env.docker` (mindestens
+32 Zeichen, `openssl rand -base64 48`).
+
+**Mit einer Antwortdatei**, ohne Browser. Der Stapel hängt das Verzeichnis `installation/`
+(`OPAA_INSTALLATION_DIR_HOST`) schreibgeschützt unter `/run/opaa/installation` ein; Git verfolgt
+dort nur das Beispiel.
+
+```bash
+cp installation/installation.example.json installation/installation.json
+# Adresse, Chat-Modell und gegebenenfalls Anmeldeverfahren in installation.json eintragen
+printf '%s' '<Passwort des ersten Kontos>' > installation/admin-password
+sudo chown 65532:65532 installation/admin-password && sudo chmod 0400 installation/admin-password
+```
+
+In `.env.docker` die Zeile `OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json`
+einkommentieren und den Stapel starten. Die Installation prüft die Adresse des Chat-Modells wie eine
+Quelle; das Ollama des Stapels braucht deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
+([Installation](installation.md#schritte)). Das Passwort steht nie in der JSON-Datei, sondern nur in der
+Datei, auf die `passwordFile` zeigt; ein Zugangsschlüssel des Chat-Modells ebenso über `apiKeyFile`.
+Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
+löschen. Scheitert eine Prüfung, bleibt der Installationsmodus, und
+`docker compose logs backend | grep "answer file"` nennt Schritt und Grund.
+
+**Mit dem gebündelten Keycloak** (Profil `oidc`) bekommt die Antwortdatei das Anmeldeverfahren
+`LOCAL_AND_OIDC`. Der Browser erreicht den Issuer unter `localhost`, das Backend die Schlüssel unter
+dem Dienstnamen:
+
+```json
+"signIn": {
+  "mode": "LOCAL_AND_OIDC",
+  "oidc": {
+    "issuerUri": "http://localhost:8180/realms/opaa",
+    "clientId": "opaa-frontend",
+    "jwkSetUri": "http://keycloak:8180/realms/opaa/protocol/openid-connect/certs"
+  }
+}
+```
+
+Dazu in `.env.docker` `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost,keycloak` (beide Adressen
+sind intern) und `OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180`.
 
 ## Dokumente
 
@@ -591,16 +646,19 @@ Neuaufsetzen mit vollständiger Neuindizierung.
 Welche Schritte ein Release verlangt, nennen seine Notizen im Abschnitt „Vorbereitung für
 Bestandsinstallationen"; für Einzelheiten verweisen sie hierher. Eine `.env.docker` oder eine eigene
 Compose-Datei aus einem älteren Stand braucht diese Punkte, alle **vor** dem `docker compose up -d`.
-Ohne Punkt 1 startet das Backend nicht, ohne Punkt 2 entsteht kein Systemverwalterkonto, ohne
-Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht erreichbar:
+Ohne Punkt 1 startet das Backend nicht, ohne Punkt 2 sperrt die Adressprüfung einen internen
+Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht erreichbar:
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Im Betriebsmodus `oidc` bricht der Start ohne es ab,
    ebenso bei weniger als 32 Zeichen oder einem Platzhalter. Erzeugen mit `openssl rand -base64 48`
    ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
-2. **`OPAA_INITIAL_ADMIN_EMAIL` auf ein zustellbares Postfach setzen**, am besten ein
-   Funktionspostfach der IT. Der frühere Vorgabewert `admin@opaa.local` wird abgelehnt; OPAA legt dann
-   kein Systemverwalterkonto an und sagt das im Log
-   ([Erststart](authentifizierung.md#erststart-und-systemverwalter-konto)).
+2. **Startwerte entfernen, Adressen der Anbieter freigeben.** Eine Datenbank, auf der schon eine
+   frühere Version lief, gilt als eingerichtet ([Installation](installation.md)); `OPAA_INITIAL_ADMIN_*`,
+   `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID`, `OPAA_OIDC_JWK_SET_URI`, `OPAA_OIDC_AUTHORITY`,
+   `OPAA_OIDC_BOOTSTRAP` und `OPAA_OPENAI_CHAT_*` braucht sie nicht mehr. Liegt ein Anbieter auf einer
+   internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Hosts in
+   `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`, bevor `OPAA_OIDC_*` wegfällt: Bis dahin gab die Adresse
+   aus `OPAA_OIDC_*` sie frei.
 3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen**, sobald ein Proxy vor dem Backend steht — und der
    nginx des Frontend-Containers ist einer. Eingetragen wird seine feste Adresse als `/32`; ohne sie
    gilt die Anmeldegrenze für das ganze Haus ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
@@ -619,9 +677,7 @@ Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht errei
    vorgeschalteter Proxy meldet `502`. Die `docker-compose.yml` des Repositorys tut das bereits.
 
 Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind; ein Identitätsanbieter läuft
-unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jemand einschaltet. Die
-Ausnahme: `OPAA_INITIAL_ADMIN_EMAIL` macht kein Konto eines Identitätsanbieters mehr zum
-Systemverwalter; bereits vergebene Rollen bleiben.
+unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jemand einschaltet.
 
 ### Neu aufsetzen statt aktualisieren
 
@@ -655,8 +711,9 @@ docker compose exec postgres psql -U opaa -d opaa -tAc \
    des Buckets beim Objektspeicher; beim mitgelieferten genügt nach
    `docker compose --profile upload-s3 down` ein `docker volume rm <projekt>_opaa-upload-store-data`.
    Sonst bleiben Originale liegen, auf die nichts mehr zeigt.
-4. `docker compose pull && docker compose up -d`. Der erste Start legt das Schema an, übernimmt den
-   Anbieter aus `OPAA_OIDC_*` und legt das Konto der Systemverwaltung an.
+4. `docker compose pull && docker compose up -d`. Der erste Start legt das Schema an und steht im
+   Installationsmodus, bis die Installation abgeschlossen ist
+   ([Installation im Compose-Stapel](#installation-im-compose-stapel)).
 5. Bibliotheken neu anlegen und indizieren.
 
 Variablen, die seit älteren Ständen entfallen sind, nennt die
