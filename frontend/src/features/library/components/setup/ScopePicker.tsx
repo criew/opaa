@@ -7,6 +7,7 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Typography from '@mui/material/Typography'
 import SelectionDialog from '../sourceKit/SelectionDialog'
+import { incompleteNote } from '../sourceKit/incompleteNote'
 import { plainMessage } from '../sourceKit/plainMessage'
 import {
   toggle,
@@ -164,10 +165,9 @@ export default function ScopePicker({
     } else if (inlineFits) {
       body = (
         <Box>
-          {current?.result && !current.result.complete && (
+          {current?.result && incompleteNote(current.result) && (
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-              Liste unvollständig.
-              {current.result.message && ` ${plainMessage(current.result.message)}`}
+              {incompleteNote(current.result)}
             </Typography>
           )}
           <Box role="group" aria-label={plural} aria-describedby={error ? errorId : undefined}>
@@ -197,10 +197,9 @@ export default function ScopePicker({
     } else {
       body = (
         <Box>
-          {current?.result && !current.result.complete && (
+          {current?.result && incompleteNote(current.result) && (
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-              Liste unvollständig.
-              {current.result.message && ` ${plainMessage(current.result.message)}`}
+              {incompleteNote(current.result)}
             </Typography>
           )}
           {value.length > 0 && (
