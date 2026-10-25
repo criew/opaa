@@ -13,7 +13,7 @@ nutzen (`@playwright/test`, `@axe-core/playwright`), die Renovate dort pflegt.
 | --- | --- |
 | `capture.mjs` | Screenshots und Kennzahlen je Ablauf, Szenario, Schema und Breite |
 | `calibrate.mjs` | prüft die Messung gegen eine bekannt gute und eine bekannt schlechte Seite |
-| `record-flows.mjs` | Videomatrix je Art (ok, viele, fehler) als MP4 mit sichtbarem Mauszeiger |
+| `record-flows.mjs` | Videos je Art und Szenario (`--kinds`) als MP4 mit sichtbarem Mauszeiger; im UI-Lab je Szenario ein Video über alle Reiter |
 | `compare.py` | Vergleichsbögen und Kennzahlentabelle über mehrere Varianten |
 | `contact_sheets.py` | Querbögen einer Variante (derselbe Bildschirm aller Bereiche nebeneinander) und Bilderlisten für das Konsistenz-Review |
 | `build-prototype.mjs` | baut den klickbaren Prototyp nach `out/prototype/` und teilt ihn in Upload-Pakete |
@@ -60,7 +60,7 @@ Ein Server je Variante und Agent, eigener Port; nach dem Lauf über die eigene P
 ## Klickbarer Prototyp
 
 Das Frontend im Mock-Modus als statische Dateien, zum selbst Durchklicken statt
-Screenshot-Matrizen ansehen. Läuft aus jedem Unterpfad und in einem Sandbox-iframe
+Screenshot-Matrizen ansehen; im UI-Lab die Entscheidungsgrundlage beider Stufen. Läuft aus jedem Unterpfad und in einem Sandbox-iframe
 (`sandbox="allow-scripts allow-same-origin"`), etwa als claude.ai-Artifact.
 
 ```bash
@@ -96,9 +96,10 @@ Szenario, Breite und Variante stehen als Suchparameter **vor** dem Hash, z. B.
 | Variante | nur sichtbar, wenn `UI_LAB_VARIANTS` in `frontend/src/shared/uiLabVariant.ts` Einträge hat; Komponenten fragen `currentUiLabVariant()` ab (`?variant=<id>`, `none` setzt zurück). Auf `main` leer, ein Lab-Branch trägt seine Varianten dort ein |
 
 **Hochladen.** `ui-lab/out/prototype/files.json` nennt alle Dateien mit Größe und teilt sie
-(ohne `index.html`) in Pakete von höchstens 55 MB und 240 Dateien. Für ein Artifact: `index.html`
-als Seite veröffentlichen, die Pakete nacheinander als `files` an dieselbe URL; die Pfade in
-`files.json` sind die veröffentlichten Pfade.
+(ohne `index.html`) in Pakete von höchstens 55 MB und 240 Dateien, unter der Grenze eines
+Artifact-Publish von 255 Dateien. Für ein Artifact: `index.html` als Seite veröffentlichen, die
+Pakete nacheinander als `files` an dieselbe URL; die Pfade in `files.json` sind die
+veröffentlichten Pfade. Bricht der Build wegen U+FFFD ab, wird nichts hochgeladen.
 
 **Lokal prüfen:** `ui-lab/out/prototype/` mit einem beliebigen statischen Server unter einem
 Unterpfad ausliefern (etwa `python3 -m http.server` im Elternordner, dann
@@ -203,8 +204,8 @@ node ui-lab/record-flows.mjs --base http://localhost:5191 --out <dir>
      [--scheme light|dark] [--width 1280] [--height 800] [--pause 700] [--keep-webm]
 ```
 
-Nimmt die **Videomatrix** auf: je Art drei Videos, **ok** (`small`), **viele** (`scale`) und
-**fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
+Nimmt je Art und Fall ein Video auf, vorgegeben drei Fälle **ok** (`small`), **viele** (`scale`)
+und **fehler** (`failed`), als `<art>__<fall>__<schema>.mp4` (H.264) mit sichtbarem Mauszeiger,
 Klickring, optionaler Bildunterschrift und Pause nach jedem Schritt. Ein Ablaufmodul exportiert
 `TYPES` (die Arten), optional `KINDS` (Fall → Szenario, Vorgabe wie oben) und **eine**
 Ablaufdefinition `run(h, { type, kind, scenario })`, die den Weg einer Art in jedem Fall spielt;
@@ -216,7 +217,9 @@ Videos mit Art, Fall, Szenario und Schema; `build_site.py` ordnet sie darüber z
 testet und geht weiter bis „Freigaben“; viele dasselbe mit großer Liste, mehr Auswahl und
 Scrollen; fehler zuerst „Weiter“ auf leerem Formular, dann die abgelehnte Auflistung bzw. den
 abgelehnten Test. Eine Variante mit anderer Struktur bringt ihr eigenes Modul derselben Form mit
-(`--flows`).
+(`--flows`). Im UI-Lab entstehen Videos nur für die Gewinnerin: je Szenario ein Video, das alle
+Reiter mit echten Aktionen durchläuft und keinen Weg wiederholt. Dafür spielt `run` je Fall den
+ganzen Weg über alle Reiter; `--kinds` wählt die Szenarien, `--types` die Hauptart.
 
 ## compare.py
 
@@ -273,5 +276,11 @@ und `shots/` als Dateien.
 - `__full` endet bei 16 000 px (300 Drive-Bereiche als Liste werden abgeschnitten).
 - Hilfetexte erkennt die Messung an `MuiFormHelperText-root`; ein Entwurf mit eigenem
   Hilfetext-Baustein muss diese Klasse tragen, sonst zählt das Budget ihn nicht.
+- `compare.py`, `contact_sheets.py` und `build_site.py` verkleinern die Bilder und speichern sie
+  als JPEG. Für die Abnahme gilt die volle Auflösung (Skill, Grundregel 9): Bögen und Sprites
+  dienen nur der Übersicht, beurteilt wird am PNG aus `capture.mjs`.
+- `capture.mjs` und `record-flows.mjs` setzen kein `?variant=`. Für den Messlauf einer Variante
+  aus `UI_LAB_VARIANTS` macht der Lab-Branch sie für diesen Lauf zur Vorgabe von
+  `currentUiLabVariant()`.
 - Die Kennzahl `uiWords` schließt Daten nur über ihre Struktur aus (Listen, Bäume, Tabellen,
   Beschreibungslisten, Auswahlkästchen). Deshalb gilt das Wortbudget nur in `small` und `default`.
