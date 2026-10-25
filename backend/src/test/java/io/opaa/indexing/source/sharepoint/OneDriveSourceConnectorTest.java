@@ -253,6 +253,26 @@ class OneDriveSourceConnectorTest {
         .isEmpty();
   }
 
+  @Test
+  void aShortcutToAFolderOfAnotherDriveIsNotOffered() {
+    server.folder(DRIVE_ANNA, "geteilt", "Geteilt", FakeGraphServer.rootId(DRIVE_ANNA))
+            .remoteDriveId =
+        DRIVE_BERND;
+
+    SourceListing root = connector.browse(query(TOKEN_ANNA, Map.of("drive", DRIVE_ANNA)));
+
+    assertThat(root.entries()).containsExactly(new SourceListing.Entry("folder:akten", "Akten"));
+  }
+
+  @Test
+  void aFolderNoLongerInTheOneDriveIsNamedAsSuch() {
+    SourceListing listing =
+        connector.browse(query(TOKEN_ANNA, Map.of("drive", DRIVE_ANNA, "folder", "weg")));
+
+    assertThat(listing.complete()).isFalse();
+    assertThat(listing.message()).isEqualTo(OneDriveSourceConnector.FOLDER_GONE);
+  }
+
   // regression guard for ADR-0058, Entscheidung 3: a token never reads a OneDrive not its own
   @Test
   void theFoldersOfAnotherPersonsOneDriveAreNeverAsked() {

@@ -82,6 +82,8 @@ public class OneDriveSourceConnector implements SourceConnector, SourceBrowser, 
 
   private static final String DRIVE_STATE = "oneDrive";
 
+  static final String FOLDER_GONE = "Der Ordner ist im OneDrive nicht mehr vorhanden.";
+
   private final URI apiBase;
   private final SourceConnectorDescriptor descriptor;
   private final GraphConnections graphs;
@@ -263,9 +265,21 @@ public class OneDriveSourceConnector implements SourceConnector, SourceBrowser, 
                     own.name() == null || own.name().isBlank() ? "OneDrive" : own.name())),
             null);
       }
-      return SharePointSourceConnector.folders(graph, drive, folder);
     } catch (GraphException e) {
       return new SourceListing(false, List.of(), browseFailure(e));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ValidationException("Die Auflistung wurde unterbrochen.");
+    }
+    try {
+      return SharePointSourceConnector.folders(graph, drive, folder);
+    } catch (GraphException e) {
+      return new SourceListing(
+          false,
+          List.of(),
+          e.kind() == GraphException.Kind.NOT_FOUND && !e.consentMissing()
+              ? FOLDER_GONE
+              : browseFailure(e));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Auflistung wurde unterbrochen.");
