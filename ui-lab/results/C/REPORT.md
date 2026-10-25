@@ -139,7 +139,20 @@ Branch `feature/3084_ui-lab-detail-var-c` · Matrix: 11 Arten × 6 Szenarien + p
 | R1-25 Begründung | zurückgenommen, umgesetzt (siehe oben) |
 | R1-26 Pfadtrenner | bewusst nicht: die Zusammenfassungen kommen aus dem geteilten Assistenten-Raster |
 
+## Nachcheck 2 (Runde 4, Teilmatrix hell)
+
+| Punkt | Ergebnis |
+|---|---|
+| Füllgrad @320 | nur Feld und Leer (Spalten Regel/Modell/Hand ab sm) – `metadaten__*__{small,scale}__light__320` |
+| R1-45 Zuordnung | einzeilig: Name kürzt mit Tooltip, „· seit …“ bleibt in der Zeile, „zugeordnet von“ im Tooltip – `zuordnungen__*__scale__light__{1280,320}` |
+| Abschluss | „✓ Quelle verbunden“ nur ohne Sperre und ohne abgelehnte Anmeldung, sonst erster Schritt „Zugang prüfen“ (○, Link auf Verbindung); „Ausblenden“ in der Kopfzeile; bei 320 nur offene Schritte – `abschluss__*` |
+| Kleinkram | Zustandszeile ohne „› ·“ (Pfeil am Ende), Freigaben-Tabellenkopf nur mit Einträgen, Ordner mit ⋯ wie Dokumente |
+
+Teilmatrix: 200 Aufnahmen hell (Metadaten 320, Zuordnungen scale, Abschluss alle Arten und Szenarien plus Sonderfälle), axe 0, `overflowX` 0, 2 × `blank` einzeln nachgeholt.
+
 ## Schwächen
+
+- **Abschluss bei 320 über dem Kopf-Budget:** `tabsTop` 234–354 px bei bis zu drei offenen Schritten; mit vier offenen Schritten (`failed`: „Zugang prüfen“ zusätzlich) oder langem Titel (`scale`) bis 412 px (14 Bilder). Gewollt: Die Schritte stehen nur nach dem Anlegen offen und verschwinden mit „Ausblenden“ oder sobald alles erledigt ist.
 
 - **Zwei Spalten:** Unter 1100 px bleibt eine zusätzliche Zeile über den Reitern (Steckbrief-Zeile, 40 px); aufgeklappt wird sie wieder zum Zwischenbereich.
 - **Zustand nicht im Kopf:** D2 verlangt den Kopf; C setzt ihn in die Spalte. Bei 320 steht nur das Wort, Ursache erst nach Aufklappen bzw. im Reiter.
