@@ -36,7 +36,9 @@ import {
 import type { LibraryDetailTab } from '../components/libraryDetailAccess'
 import { useLibraryDeletion } from '../components/useLibraryDeletion'
 import LibraryStateLink from '../components/LibraryStateLink'
-import { libraryState } from '../components/libraryState'
+import { libraryState, runWord } from '../components/libraryState'
+import LibraryNextSteps from '../components/LibraryNextSteps'
+import { useNextSteps } from '../components/nextSteps'
 import { CONTENT_WIDTH } from '../components/setup/rowStyles'
 import { useDocumentUpload } from '../hooks/useDocumentUpload'
 import { useDocumentStore } from '../stores/documentStore'
@@ -288,6 +290,28 @@ export default function LibraryDetailPage() {
     await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
   }
 
+  // the source counts as connected only once a run has read it and the newest did not fail at
+  // the connection
+  const newestWord = runs[0]
+    ? runWord(runs[0], connectorConfiguration?.setup?.signsIn ?? true)
+    : null
+  const nextSteps = useNextSteps({
+    libraryId: libraryId ?? '',
+    sourceType: details?.sourceType ?? null,
+    justCreated: searchParams.get('justCreated') === '1',
+    mayChange,
+    documentCount: library?.documentCount ?? 0,
+    spaceCount: catalog.entry?.spaceCount,
+    pushSecretSet: Boolean(details?.pushSecretSet),
+    sourceConnected:
+      !details?.sourceBlock &&
+      runs.some((entry) => entry.status === 'COMPLETED') &&
+      newestWord !== 'Anmeldung abgelehnt' &&
+      newestWord !== 'Nicht erreichbar' &&
+      newestWord !== 'Zustimmung abgelaufen',
+    metadataEnabled: showMetadataTab,
+  })
+
   if (!libraryId) {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 } }}>
@@ -495,6 +519,8 @@ export default function LibraryDetailPage() {
         )}
 
         <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
+
+        <LibraryNextSteps steps={nextSteps.steps} onDismiss={nextSteps.dismiss} />
 
         {/* Every area stays mounted while another one is active: status polling, running uploads
           and loaded run protocols keep living, only their visibility toggles. */}

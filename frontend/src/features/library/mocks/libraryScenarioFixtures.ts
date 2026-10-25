@@ -4,6 +4,7 @@ import {
   currentMockRole,
   currentMockScenario,
   generate,
+  mockJustCreated,
   scenarioName,
   type MockScenario,
 } from '@/shared/mocks/mockScenario'
@@ -209,7 +210,7 @@ function registerLabLibraries() {
 export function applyLibraryScenario(): void {
   const scenario = currentMockScenario()
   const role = currentMockRole()
-  const key = `${scenario}/${role ?? ''}`
+  const key = `${scenario}/${role ?? ''}/${mockJustCreated() ? 'new' : ''}`
   if (key === applied) return
   if (scenario !== 'default' || role) registerLabLibraries()
   const ids = [

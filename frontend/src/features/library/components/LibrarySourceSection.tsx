@@ -468,6 +468,7 @@ const ANCHORS: Record<string, string> = {
   umfang: 'edit-source-row-scope',
   zeitplan: 'edit-source-row-schedule',
   laeufe: 'library-runs',
+  live: 'edit-source-row-live',
 }
 
 /** What the runs know of the rows: the connection's last state, unreadable scope, failed plans. */

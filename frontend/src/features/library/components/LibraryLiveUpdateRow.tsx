@@ -27,7 +27,7 @@ export default function LibraryLiveUpdateRow({
   return (
     <SummaryRow
       id="edit-source-row-live"
-      title="Live-Abgleich"
+      title="Live-Aktualisierung"
       summary={set ? (confluence ? 'an, über den Webhook' : 'an, über Ereignisse') : 'aus'}
       open={open}
       onOpen={canEdit ? () => setOpen(true) : undefined}

@@ -7,7 +7,12 @@ import type {
   LibraryMetadataFieldResponse,
   LibraryResponse,
 } from '@/shared/api/types'
-import { generate, scenarioName, type MockScenario } from '@/shared/mocks/mockScenario'
+import {
+  generate,
+  mockJustCreated,
+  scenarioName,
+  type MockScenario,
+} from '@/shared/mocks/mockScenario'
 import type { MockLibraryFolder } from './libraryFixtures'
 
 /**
@@ -327,6 +332,8 @@ function scenarioGrantsOf(scenario: MockScenario): AssetGrantResponse[] | null {
 export function scenarioSpaces(
   scenario: MockScenario,
 ): Array<{ spaceId: string; spaceName: string }> | null {
+  // just created: no space uses the library yet
+  if (mockJustCreated() && scenario !== 'default') return []
   const count =
     scenario === 'small'
       ? 1
@@ -374,6 +381,7 @@ function field(
 export function scenarioMetadataFields(
   scenario: MockScenario,
 ): LibraryMetadataFieldResponse[] | null {
+  if (mockJustCreated() && scenario !== 'default') return []
   switch (scenario) {
     case 'small':
       return [field(1, 0, 'PATTERN')]

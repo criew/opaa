@@ -9,7 +9,7 @@ import type { LibraryDetailTab } from './libraryDetailAccess'
 /** Where the cause of a state lives: a tab and, inside it, the anchor of its row. */
 export interface StateTarget {
   tab: LibraryDetailTab
-  anchor?: 'verbindung' | 'umfang' | 'zeitplan' | 'laeufe'
+  anchor?: 'verbindung' | 'umfang' | 'zeitplan' | 'laeufe' | 'live'
   /** Extra search parameters of the target, e.g. the documents' status filter. */
   params?: Record<string, string>
 }
