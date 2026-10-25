@@ -251,6 +251,20 @@ export default function LibraryDocumentsSection({
     folders.length === 0 &&
     !filtered
 
+  // role="status" (polite) rather than the Alert's own assertive default: the outcome of a
+  // finished action is announced without interrupting (accessibility.md 2.8). It stays when the
+  // action emptied the library.
+  const bulkOutcome = bulkResult && (
+    <Alert
+      severity={bulkResult.severity}
+      role="status"
+      sx={{ mb: 2 }}
+      onClose={() => setBulkResult(null)}
+    >
+      {bulkResult.text}
+    </Alert>
+  )
+
   if (libraryEmpty) {
     return (
       <Box sx={{ mb: 5 }}>
@@ -259,6 +273,7 @@ export default function LibraryDocumentsSection({
           newFolderDialogOpen={newFolderDialogOpen}
           renameFolderTarget={renameFolderTarget}
         />
+        {bulkOutcome}
         {isUploadLibrary && canManage ? (
           <LibraryDocumentUploadArea upload={upload} />
         ) : (
@@ -310,18 +325,7 @@ export default function LibraryDocumentsSection({
         renameFolderTarget={renameFolderTarget}
       />
 
-      {bulkResult && (
-        // role="status" (polite) rather than the Alert's own assertive default: the outcome of a
-        // finished action is announced without interrupting (accessibility.md 2.8).
-        <Alert
-          severity={bulkResult.severity}
-          role="status"
-          sx={{ mb: 2 }}
-          onClose={() => setBulkResult(null)}
-        >
-          {bulkResult.text}
-        </Alert>
-      )}
+      {bulkOutcome}
 
       <LibraryDocumentList
         showSearch={searchable}

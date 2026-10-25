@@ -64,7 +64,7 @@ async function createRssLibrary(page: Page, name: string, feedUrl: string): Prom
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await createFromReview(page)
   await expect(page.getByRole('heading', { name })).toBeVisible()
-  const match = page.url().match(/\/libraries\/([^/]+)$/)
+  const match = page.url().match(/\/libraries\/([^/?#]+)(?:[?#].*)?$/)
   if (!match) {
     throw new Error(`Unexpected library detail URL after creation: ${page.url()}`)
   }

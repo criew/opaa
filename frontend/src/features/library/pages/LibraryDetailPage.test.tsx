@@ -4205,6 +4205,29 @@ describe('LibraryDetailPage', () => {
       expect(result.closest('.MuiAlert-root')).toHaveClass('MuiAlert-colorWarning')
     })
 
+    it('keeps the outcome of a deletion that empties the library', async () => {
+      mockGetLibraryDocuments
+        .mockResolvedValueOnce(pageOf(uploads))
+        .mockResolvedValue(pageOf([]))
+      mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
+        deletedDocumentIds: ['doc-1', 'doc-2'],
+        failures: [],
+      })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await screen.findByText('a.pdf')
+      await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
+      await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
+      await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
+
+      expect(await screen.findByText('2 Dokumente gelöscht.')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('a.pdf')).not.toBeInTheDocument())
+      expect(screen.getByText('2 Dokumente gelöscht.')).toBeInTheDocument()
+    })
+
     it('counts identical reasons instead of repeating them', async () => {
       mockGetLibraryDocuments.mockResolvedValue(pageOf(uploads))
       mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
