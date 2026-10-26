@@ -2,19 +2,19 @@ import { expect, test, type Page } from '@playwright/test'
 import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 
 /**
- * The set-up assistant against a stack in installation mode (ADR-0060): operating mode oidc
- * without OPAA_INITIAL_ADMIN_EMAIL, the token preset through OPAA_INSTALLATION_TOKEN and passed
- * here as E2E_INSTALLATION_TOKEN, ai-stub on OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST. Every
- * scenario of this file needs a fresh database, as completing ends the installation mode for good.
- *
- * Skipped until #3194 adds a target with such a stack; the stacks of this suite are installed
- * from their start values and never offer the assistant.
+ * The set-up assistant against a stack in installation mode (ADR-0060), the target "installation"
+ * of scripts/run-e2e.mjs: operating mode oidc without answer file, the token preset through
+ * OPAA_INSTALLATION_TOKEN and passed here as E2E_INSTALLATION_TOKEN, ai-stub on
+ * OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST. Every scenario of this file needs a fresh database, as
+ * completing ends the installation mode for good.
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
 
-test.skip(INSTALLATION_TOKEN === '', 'until #3194: needs a stack in installation mode')
+if (INSTALLATION_TOKEN === '') {
+  throw new Error('E2E_INSTALLATION_TOKEN is not set: run the target "installation" of run-e2e.mjs')
+}
 
 async function enterToken(page: Page, token: string) {
   await page.getByLabel('Token', { exact: true }).fill(token)

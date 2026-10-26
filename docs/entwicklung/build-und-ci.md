@@ -144,7 +144,17 @@ examples/kubernetes-trial/trial.sh down # beide Namespaces samt Daten entfernen
 pnpm install                            # Abhängigkeiten installieren
 pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
 pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
+pnpm run test:local-auth                # lokale Anmeldung im Modus oidc, installiert aus e2e/installation/
+pnpm run test:installation              # Einrichtungs-Assistent gegen einen Stack im Installationsmodus
 ```
+
+Die Stacks im Modus `oidc` (local-auth, Demo-Smoke, Zwei-Instanzen, ohne Internet) installieren sich
+mit den Antwortdateien unter `e2e/installation/` (ADR-0060); `test:installation` startet ohne
+Antwortdatei mit gesetztem Token. Beide Ziele laufen in `.github/workflows/local-auth-e2e.yml`,
+an einem PR über das Label `local-auth-suite`. Das Token des Ziels `installation`
+(`e2e/installation.env`) und die Passwörter unter `e2e/installation/` sind öffentliche Testwerte; sie
+stehen auch in den Playwright-Traces und Berichten, die die Workflows als Artefakt hochladen, und
+gehören in keine andere Installation.
 
 ## Zwei-Instanzen-Suite
 
@@ -172,9 +182,14 @@ startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisie
    als älteste verträgliche Version nennt — die Version, von der das Release ein Rolling Update
    zusagt;
 3. sonst `main` 24 Stunden vor der Basis (Merge-Base mit `origin/main`: für einen PR das `main`, von
-   dem er abzweigt, auf `main` der eigene Stand), frühestens der Merge von #3095, der erste Stand mit
-   Flyway. Eine mit Liquibase migrierte Installation wird nicht übernommen
-   ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2).
+   dem er abzweigt, auf `main` der eigene Stand), frühestens der Merge von #3206, der erste Stand,
+   der das Embedding-Modell in der Datenbank hält. Eine ältere Installation übernimmt ihr
+   Embedding-Modell nicht ([ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md),
+   Entscheidung 10; eine Datenbank eines solchen Zwischenstands von `main`, etwa eines Demo-Stacks,
+   startet deshalb einmal mit einem Stand ab dem Merge von #3206 oder wird neu aufgesetzt), ebenso
+   wenig eine mit Liquibase migrierte
+   ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2). Ab dieser
+   Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei.
 
 Solange kein Release ein Versionsfenster nennt, prüft die Suite also den Sprung über einen Tag
 Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten Sprung.
@@ -252,7 +267,8 @@ zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversan
 # Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate und
 # danach mit OPAA_MODE=await-migration (beide müssen mit Exit-Code 0 enden), dann das Backend ohne
 # Migration gegen pgvector bis Readiness UP samt Healthcheck des Images, Frontend davor bis
-# /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# /api/health und der gemeldeten offenen Installation (ohne Antwortdatei); in CI als Job
+# image-smoke-arm64 (ci.yml) auf einem arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend

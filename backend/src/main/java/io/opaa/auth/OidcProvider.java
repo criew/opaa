@@ -20,8 +20,7 @@ import java.util.UUID;
  * there is no secret. {@link #getJwkSetUri()} optionally names the backend-side address of the JWK
  * set when it differs from what discovery under the issuer would yield (the Compose split between
  * {@code keycloak:8180} and {@code localhost:8180}). At most one row is the default provider
- * ({@code ux_oidc_providers_single_default}), the one {@code opaa.auth.initial-admin-email} applies
- * to.
+ * ({@code ux_oidc_providers_single_default}), the one the sign-in page offers first.
  *
  * <p>Since ADR-0033 the local account management is one row of this table too ({@link
  * #localProvider}, {@link ProviderType#LOCAL}, at most one - {@code
@@ -110,7 +109,7 @@ public class OidcProvider {
   /**
    * The one {@link ProviderType#LOCAL} row (ADR-0033, Entscheidung 4): switched off until an
    * administrator enables the local account management, never the default, fixed issuer, no client
-   * id. Created by the bootstrap seed, never by the provider API.
+   * id. Created by the installation, never by the provider API.
    */
   public static OidcProvider localProvider(String displayName) {
     OidcProvider provider = new OidcProvider();

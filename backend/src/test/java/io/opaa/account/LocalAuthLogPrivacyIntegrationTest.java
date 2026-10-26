@@ -17,7 +17,6 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import jakarta.servlet.http.Cookie;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,7 +52,7 @@ class LocalAuthLogPrivacyIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
-  @Autowired private LocalAdminSeeder seeder;
+  @Autowired private LocalAdminReset reset;
   @Autowired private JdbcTemplate jdbc;
 
   private LocalAccountFixtures fixtures;
@@ -209,12 +208,11 @@ class LocalAuthLogPrivacyIntegrationTest {
   }
 
   /**
-   * The seed's one exception (ADR-0033, Entscheidung 5): the bootstrap administrator's one-time
+   * The reset's one exception (ADR-0033, Entscheidung 5): the bootstrap administrator's one-time
    * password stands in exactly one log event - the marked block - and nowhere else; the address
    * stands in no line of OPAA's loggers, and neither {@code LOCAL_ADMIN_RESET} nor the bootstrap
    * sign-in event {@code LOCAL_BOOTSTRAP_ACCOUNT_LOGIN} carries address, name or account id.
-   * Exercised through the restart path, the one that runs against an existing account in this
-   * shared context (the seed itself refuses the context's default address on purpose).
+   * Exercised through the forced restart, the one path that prints a password.
    */
   @Test
   void theBootstrapPasswordStandsOnlyInItsMarkedBlockAndTheAddressNowhere() throws Exception {
@@ -223,7 +221,8 @@ class LocalAuthLogPrivacyIntegrationTest {
     LocalCredentials row = fixtures.credentialsOf(bootstrap);
     row.markBootstrap();
     fixtures.save(row);
-    assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(LocalAdminSeeder.Outcome.RESET);
+    reset.releaseNextReset();
+    assertThat(reset.reset()).isEqualTo(LocalAdminReset.Outcome.RESET);
     List<ILoggingEvent> blocks =
         snapshot().stream()
             .filter(event -> event.getFormattedMessage().contains("EINMALIGE AUSGABE"))
@@ -535,8 +534,8 @@ class LocalAuthLogPrivacyIntegrationTest {
     List<String> secrets = List.of(invitationToken, resetToken, NEW_PASSWORD, secondPassword);
     List<String> personal =
         List.of(invitedEmail, invitedEmail.toUpperCase(), admin.email(), "Erika Eingeladen");
-    assertThat(logs.list).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
-    for (ILoggingEvent event : new ArrayList<>(logs.list)) {
+    assertThat(snapshot()).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
+    for (ILoggingEvent event : snapshot()) {
       String line = event.getFormattedMessage() + " " + throwableText(event);
       String where = "log line of " + event.getLoggerName() + " at " + event.getLevel();
       for (String secret : secrets) {

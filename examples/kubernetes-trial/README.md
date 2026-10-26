@@ -86,13 +86,14 @@ Datenbank, Modellen, Originalen und Geheimnissen. Der Cluster selbst bleibt; ihn
 | Umgebungsvariable | Vorgabe | Wirkung |
 |---|---|---|
 | `TRIAL_PORT` | `8088` | Port, unter dem der Ingress-Controller auf diesem Rechner erreichbar ist; muss zum Port aus `k3d cluster create -p` passen. Bei `80` entfällt der Port in allen Adressen. Nach dem ersten `up` nicht mehr ändern (siehe unten) |
-| `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und OPAA beim ersten Start als Chat-Modell übernimmt |
+| `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und die Installation beim ersten Start einrichtet |
 | `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images; nach dem ersten Release mit Chart eine Versionsnummer. Bei `main` zieht jeder neu gestartete Pod den aktuellen Stand (`pullPolicy: Always`); `kubectl -n opaa-trial rollout restart deploy` holt ihn |
 | `KUBE_CONTEXT` | aktueller Kontext | kubectl-Kontext des Zielclusters |
 | `TRIAL_ALLOW_CONTEXT` | leer | Name eines Kontexts, der nicht nach einem lokalen Cluster aussieht und trotzdem gemeint ist |
 
-Adresse und Chat-Modell sind Startwerte von OPAA: Der erste Start übernimmt den Identitätsanbieter
-samt Issuer und das Chat-Modell in die Datenbank. Ein späteres `up` mit anderem `TRIAL_PORT` oder
+Adresse und Chat-Modell stehen in der Antwortdatei der Installation, die der Chart aus `bootstrap`
+rendert: Der erste Start richtet den Identitätsanbieter samt Issuer, das Chat-Modell und das erste
+Konto in der Datenbank ein. Ein späteres `up` mit anderem `TRIAL_PORT` oder
 `TRIAL_CHAT_MODEL` ändert daran nichts. Für einen anderen Port oder ein anderes erstes Modell wird der
 Aufbau mit `down` und `up` neu angelegt; ein weiteres Chat-Modell lässt sich auch in der
 Modellverwaltung eintragen. Das Einbettungsmodell ist fest `nomic-embed-text` mit 768 Dimensionen, das
@@ -115,11 +116,13 @@ Ollama in `manifests/ollama.yaml` zulässt; wer eines ausprobiert, hebt die Gren
 | `keycloak/realm-opaa.json` | Realm `opaa` mit dem öffentlichen Client `opaa` und den Testkonten |
 
 **Geheimnisse.** Beim ersten `up` erzeugt `trial.sh` mit `openssl` die Pflichtgeheimnisse des Charts,
-das Passwort des ersten Systemverwalters, die Schlüssel des Objektspeichers und das Passwort der
+das Passwort des ersten Systemverwalters (Schlüssel `installation-admin-password`, vom Chart als
+Datei der Antwortdatei eingehängt), die Schlüssel des Objektspeichers und das Passwort der
 Keycloak-Verwaltung und legt sie als Secrets an (`opaa-secrets` in `opaa-trial`, `rustfs-credentials`
 und `keycloak-admin` in `opaa-trial-services`). Der Chart liest sie über `secrets.existingSecret`.
 Ein weiteres `up` lässt vorhandene Secrets unverändert, sonst wären die mit den alten Schlüsseln
-verschlüsselten Daten unlesbar. Fest im Repository stehen nur die Passwörter der beiden Testkonten.
+verschlüsselten Daten unlesbar; einem Aufbau aus der Zeit vor der Antwortdatei ergänzt es nur den
+Schlüssel `installation-admin-password` aus dem bisherigen Passwort. Fest im Repository stehen nur die Passwörter der beiden Testkonten.
 
 **Ein Issuer für Browser und Backend.** Keycloak prägt in jedes Token die Adresse, unter der der
 Browser es erreicht (`KC_HOSTNAME`, http://keycloak.localhost:8088). Im Cluster löst

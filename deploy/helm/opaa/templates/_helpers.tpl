@@ -309,6 +309,78 @@ emptyDir:
 {{- join "," $paths }}
 {{- end }}
 
+{{/*
+OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: targetValidation.identityProviderAllowlist plus host and port
+of bootstrap.oidc, so the provider of the answer file passes the address check at installation and
+at every later use (ADR-0060, Entscheidung 9) without admitting the host's other ports.
+*/}}
+{{- define "opaa.identityProviderAllowlist" -}}
+{{- $hosts := .Values.targetValidation.identityProviderAllowlist | default list }}
+{{- range list .Values.bootstrap.oidc.issuerUri .Values.bootstrap.oidc.jwkSetUri }}
+{{- with . }}
+{{- $url := urlParse (trim .) }}
+{{- if $url.hostname }}
+{{- $port := regexFind "[0-9]+$" (regexFind ":[0-9]+$" $url.host) | default (ternary "443" "80" (eq (lower $url.scheme) "https")) }}
+{{- $name := ternary (printf "[%s]" $url.hostname) $url.hostname (contains ":" $url.hostname) }}
+{{- $entry := printf "%s:%s" $name $port }}
+{{- if not (has $entry $hosts) }}
+{{- $hosts = append $hosts $entry }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- join "," $hosts }}
+{{- end }}
+
+{{/* "true" when the chart renders an answer file: bootstrap.initialAdmin.email is set. */}}
+{{- define "opaa.installation.answerFileEnabled" -}}
+{{- if .Values.bootstrap.initialAdmin.email }}true{{ end }}
+{{- end }}
+
+{{/* "true" when the answer file names a key file for the chat model. */}}
+{{- define "opaa.installation.chatApiKey" -}}
+{{- if or .Values.bootstrap.chatModel.apiKeyInSecret (and (not .Values.secrets.existingSecret) .Values.secrets.chatApiKey) }}true{{ end }}
+{{- end }}
+
+{{/* "true" when the answer file names a key file for the embedding model. */}}
+{{- define "opaa.installation.embeddingApiKey" -}}
+{{- if or .Values.embedding.apiKeyInSecret (and (not .Values.secrets.existingSecret) .Values.secrets.embeddingApiKey) }}true{{ end }}
+{{- end }}
+
+{{/* Mount path of the secret files the answer file points to. */}}
+{{- define "opaa.installation.secretsPath" -}}
+/etc/opaa/installation-secrets
+{{- end }}
+
+{{/*
+The answer file (ADR-0060, Entscheidung 7) from bootstrap and embedding: first account, sign-in,
+chat and embedding model. Password and keys are never part of it, only paths of files mounted from
+the secret; the first account changes its password at the first sign-in unless told otherwise.
+*/}}
+{{- define "opaa.installation.answerFile" -}}
+{{- $b := .Values.bootstrap }}
+{{- $secrets := include "opaa.installation.secretsPath" . }}
+{{- $admin := dict "email" $b.initialAdmin.email "displayName" ($b.initialAdmin.displayName | default "Systemverwaltung") "passwordFile" (printf "%s/admin-password" $secrets) "requirePasswordChange" (ne $b.initialAdmin.requirePasswordChange false) }}
+{{- $signIn := dict "mode" "LOCAL_ONLY" }}
+{{- with $b.oidc }}
+{{- if .issuerUri }}
+{{- $oidc := dict "issuerUri" .issuerUri "clientId" (required "bootstrap.oidc.clientId is required with bootstrap.oidc.issuerUri" .clientId) }}
+{{- with .jwkSetUri }}{{ $_ := set $oidc "jwkSetUri" . }}{{ end }}
+{{- with .displayName }}{{ $_ := set $oidc "displayName" . }}{{ end }}
+{{- $signIn = dict "mode" "LOCAL_AND_OIDC" "oidc" $oidc }}
+{{- end }}
+{{- end }}
+{{- $chat := dict "baseUrl" (required "bootstrap.chatModel.baseUrl is required with bootstrap.initialAdmin.email" $b.chatModel.baseUrl) "model" (required "bootstrap.chatModel.model is required with bootstrap.initialAdmin.email" $b.chatModel.model) }}
+{{- if include "opaa.installation.chatApiKey" . }}{{ $_ := set $chat "apiKeyFile" (printf "%s/chat-api-key" $secrets) }}{{ end }}
+{{- if not (kindIs "invalid" $b.chatModel.temperature) }}{{ $_ := set $chat "temperature" $b.chatModel.temperature }}{{ end }}
+{{- with $b.chatModel.maxTokens }}{{ $_ := set $chat "maxTokens" (int .) }}{{ end }}
+{{- $e := .Values.embedding }}
+{{- $embedding := dict "baseUrl" (required "embedding.baseUrl is required with bootstrap.initialAdmin.email" $e.baseUrl) "model" (required "embedding.model is required with bootstrap.initialAdmin.email" $e.model) }}
+{{- if include "opaa.installation.embeddingApiKey" . }}{{ $_ := set $embedding "apiKeyFile" (printf "%s/embedding-api-key" $secrets) }}{{ end }}
+{{- with $e.maxInputTokens }}{{ $_ := set $embedding "maxInputTokens" (int .) }}{{ end }}
+{{- dict "firstAdmin" $admin "signIn" $signIn "chatModel" $chat "embeddingModel" $embedding | toPrettyJson }}
+{{- end }}
+
 
 {{/* "true" when a label selector selects by something; an empty selector matches everything. */}}
 {{- define "opaa.selectorSet" -}}

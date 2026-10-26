@@ -43,9 +43,7 @@ public class InstallationState {
     /** The {@code dev} mode installs itself. */
     DEVELOPMENT,
     /** A database an earlier version already started on. */
-    EXISTING,
-    /** The start values {@code OPAA_INITIAL_ADMIN_*} of the transition. */
-    LEGACY_START_VALUES
+    EXISTING
   }
 
   @Id private Short id;

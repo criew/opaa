@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -61,21 +61,15 @@ die Verzeichnisabgleich-Einstellungen (ADR-0036); keine Secret-Spalte. `jwk_set_
 Vertrauensanker (es bestimmt, welche Schlüssel Token beglaubigen): nur für `SYSTEM_ADMIN`
 änderbar, jede Änderung ein Audit-Ereignis.
 
-### 3. Konfiguration in der Datenbank, Bootstrap aus der Umgebung, Adressprüfung mit eigener Allowlist
-
-Die Übernahme des ersten Anbieters aus der Umgebung und `OPAA_OIDC_BOOTSTRAP` werden durch den
-Einrichtungs-Assistenten abgelöst (ADR-0060, Entscheidung 9); bis zu dessen Umsetzung gilt der
-folgende Absatz.
+### 3. Konfiguration in der Datenbank, erster Anbieter aus der Installation, Adressprüfung mit eigener Allowlist
 
 Anbieter werden über die Admin-API (`identity-providers.yaml`, nur `SYSTEM_ADMIN`) gepflegt, wirken
-ohne Neustart und sind Audit-Ereignisse `OIDC_PROVIDER_*` (`AuditObjectType.SYSTEM_SETTING`).
-`OidcProviderSeeder` übernimmt beim ersten Start im `oidc`-Profil
-`opaa.auth.oidc.{issuer-uri,client-id,jwk-set-uri}` als aktivierte Standardzeile, gesichert durch
-`OidcProviderSeedMarker` statt „Tabelle leer?“; ein Start ohne Übernahme schreibt keine Markierung,
-eine abweichende `OPAA_OIDC_AUTHORITY` wird protokolliert verworfen, die Variablen bleiben erlaubte
-Adressen der Adressprüfung. `OPAA_OIDC_BOOTSTRAP=force` (bis 31.03.2027, abgelöst durch
-`OPAA_LOCAL_ADMIN_RESET=force`) überschreibt oder legt die Zeile einmalig an, aktiviert sie und macht
-sie zum Standard (`OidcProviderSeeder#forceBootstrap`; unvollständige Umgebung: `ERROR`).
+ohne Neustart und sind Audit-Ereignisse `OIDC_PROVIDER_*` (`AuditObjectType.SYSTEM_SETTING`). Den
+ersten Anbieter legt die Installation an (ADR-0060, Entscheidung 9); eine Übernahme aus
+`OPAA_OIDC_*` gibt es nicht mehr. `OPAA_OIDC_BOOTSTRAP=force` entfällt; die frühere Zusage, die
+Variable bis zum 31.03.2027 zu tragen, ist zurückgenommen, der Wiederanlauf ist
+`OPAA_LOCAL_ADMIN_RESET=force` mit Korrektur in der Anbieterverwaltung (ADR-0033, Entscheidung 5).
+
 Genau ein OIDC-Anbieter ist Standard (`ux_oidc_providers_single_default`), der erste automatisch;
 `is_default` steuert Anmeldevorschlag und Löschschutz: Der Standard ist nicht deaktivier- oder löschbar, solange ein anderer aktivierter
 Anbieter an seine Stelle treten kann (`409`). Der letzte aktivierte OIDC-Anbieter darf gehen, wenn
@@ -86,8 +80,9 @@ vergibt `SYSTEM_ADMIN` nur dem Dev-Issuer.
 Die Adressprüfung (`OidcAddressPolicy`) hat einen eigenen Block `opaa.auth.oidc.target-validation.*`,
 damit das Abschalten der Konnektorprüfung die Anmeldung nicht mitnimmt; sie gilt beim Speichern, beim
 Registry-Aufbau, im Verbindungstest und für die `jwks_uri` der Discovery, ohne Weiterleitungen, und
-jeder Decoder trägt einen Issuer-Validator. Startmeldungen (#2396) und Betrieb:
-[Handbuch](../handbuch/betrieb/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
+jeder Decoder trägt einen Issuer-Validator. Ein Eintrag `host:port` der Allowlist gibt nur diesen
+Port frei, ein Eintrag ohne Port jeden Port des Hosts. Startmeldungen (#2396) und Betrieb:
+[Handbuch](../handbuch/betrieb/authentifizierung.md#adressprüfung-und-tokenprüfung).
 
 ### 4. Claim-Zuordnung, Rollen, Gruppen und Organisation je Anbieter
 

@@ -61,8 +61,8 @@ class LocalPasswordAuth:
         payload = response.json()
         if payload.get("passwordChangeRequired"):
             raise AuthError(
-                "Das Notanker-Konto verlangt einen Passwortwechsel - fuer den Seed muss "
-                "OPAA_INITIAL_ADMIN_PASSWORD beim ersten Start gesetzt gewesen sein."
+                "Das Notanker-Konto verlangt einen Passwortwechsel - fuer den Seed muss sein "
+                "Passwort aus der Installation stammen (Antwortdatei, ADR-0060)."
             )
         self._access_token = payload["accessToken"]
         self._expires_at = time.monotonic() + max(payload.get("expiresInSeconds", 60) - 30, 5)

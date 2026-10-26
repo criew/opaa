@@ -409,7 +409,7 @@ class RetrievalEvaluationHarnessTest {
 
   @BeforeEach
   void setUpIndexingTarget() {
-    // Replace whatever LlmModelSeeder wrote at context startup with the pinned eval chat
+    // Replace the chat model the database installed itself with with the pinned eval chat
     // model, so QueryDecompositionService resolves it through the production path. Safe here
     // because nothing has resolved a chat client yet (ActiveChatModelResolver builds lazily),
     // so no client can have been cached from the seeded row.

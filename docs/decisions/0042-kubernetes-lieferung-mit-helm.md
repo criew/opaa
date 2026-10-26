@@ -49,11 +49,12 @@ lokale Benutzerverwaltung (ADR-0033). Drei Arten von Konfiguration:
 | Art | Beispiele | Im Chart |
 |---|---|---|
 | Bereitstellungswerte, bei jedem Start gelesen | Datenbank, Originalablage, Embedding, Rerank, Proxy-Kette, Feature-Flags (ADR-0044), Zeitgrenzen | Werte, wirken bei jedem `helm upgrade` |
-| Startwerte, einmal beim ersten Start in die Datenbank übernommen | erster Identitätsanbieter (`OPAA_OIDC_*`), erstes Chat-Modell, Erstadmin (`OPAA_INITIAL_ADMIN_*`) | Werte unter `bootstrap`, nur für die Erstinstallation; Werte und `NOTES.txt` sagen das ausdrücklich |
+| Antwortdatei der Installation, angewendet, solange die Installation offen ist | erstes Konto, Anmeldeverfahren mit Identitätsanbieter, Chat-Modell | Werte unter `bootstrap`, als Antwortdatei gerendert; Passwort und Schlüssel als Dateien aus dem Secret; Werte und `NOTES.txt` sagen das ausdrücklich |
 | Verwaltungseinstellungen, nur in der Datenbank | Mailserver, Verzeichnis-Konnektoren, Fremdzugänge | keine Werte |
 
-Die Startwerte unter `bootstrap` gehen in der Antwortdatei des Einrichtungs-Assistenten auf
-(ADR-0060, Entscheidung 7). Für Startwerte gibt es keinen dauerhaften Schalter und keinen Rückgriff wie
+Die Werte unter `bootstrap` sind die Antwortdatei des Einrichtungs-Assistenten (ADR-0060,
+Entscheidung 7); ohne `bootstrap.initialAdmin.email` bleibt die Installation dem Browser überlassen.
+Für die Antwortdatei gibt es keinen dauerhaften Schalter und keinen Rückgriff wie
 `OPAA_OIDC_BOOTSTRAP=force`: Er bliebe in GitOps-Werkzeugen stehen und wirkte bei jedem Neustart.
 Dasselbe gilt für `OPAA_LOCAL_ADMIN_RESET=force`, das einmalig per `kubectl set env` oder befristetem
 `extraEnv` gesetzt und danach entfernt wird. **Einzige Ausnahme** ist eine Erprobungsdatenbank

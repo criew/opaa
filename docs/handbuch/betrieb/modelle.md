@@ -28,8 +28,9 @@ eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschich
 
 **Voreingestellt sind lokal betriebene Modelle.** Eine Installation, an der niemand etwas
 konfiguriert, ruft kein Modell außerhalb des Hauses auf: `OPAA_OPENAI_BASE_URL` zeigt auf
-`http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Chat- und
-Embedding-Modell sind `phi3:mini` und `bge-m3`, und Ollama braucht keinen Zugangsschlüssel.
+`http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), das Embedding-Modell ist
+`bge-m3`, und Ollama braucht keinen Zugangsschlüssel. Das Chat-Modell kommt aus der
+[Installation](installation.md); im Modus `dev` ist es `phi3:mini`.
 Betrieb ohne Netzanbindung ist der vorgesehene Fall; es gibt kein automatisches Ausweichen auf ein
 Modell außerhalb des Hauses. Für einen anderen Anbieter wird die **Zieladresse** überschrieben:
 
@@ -38,8 +39,8 @@ OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-`OPAA_OPENAI_CHAT_BASE_URL` überschreibt die Adresse für den Chat. Die Adresse des Embedding-Modells
-ist eine Angabe der Installation ([Embedding](#embedding)). Ein **ausdrücklich leer gesetzter** Wert
+Die Adresse des Embedding-Modells ist eine Angabe der Installation ([Embedding](#embedding)); das
+Chat-Modell ebenso. Ein **ausdrücklich leer gesetzter** Wert
 (`OPAA_OPENAI_BASE_URL=` in einer `.env`) überschreibt die Voreinstellung mit einer leeren
 Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die Variable nennt.
 
@@ -59,12 +60,23 @@ Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Model
 ein Systemverwalter Modelle an, bearbeitet, testet und aktiviert sie. Genau eines ist aktiv; eine
 Aktivierung oder Änderung wirkt ohne Neustart, das aktive Modell lässt sich nicht löschen.
 
-**Der erste Start übernimmt die Umgebung.** Beim allerersten Start legt OPAA aus
-`OPAA_OPENAI_CHAT_*`, `OPAA_OPENAI_API_KEY` und `OPAA_OPENAI_BASE_URL` einmalig das erste Chat-Modell
-an und aktiviert es. Danach haben diese Variablen für den Chat keine Wirkung mehr. Ist dabei ein
-Zugangsschlüssel gesetzt, muss auch `OPAA_SETTINGS_ENCRYPTION_KEY` gesetzt sein; sonst bleibt das
-Modell unangelegt, eine Fehlermeldung steht im Log, und der nächste Start mit Schlüssel holt die
-Übernahme nach ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+**Das erste Chat-Modell kommt aus der Installation.** Der Schritt „Chat-Modell“ des Assistenten
+oder der Antwortdatei legt es mit Adresse, Modellname und Zugangsschlüssel an, prüft es mit dem
+Verbindungstest und aktiviert es beim Abschluss ([Installation](installation.md)). Den Schlüssel
+verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
+([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+
+**Im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` unter `OPAA_OPENAI_BASE_URL`
+als erstem Chat-Modell, ohne Zugangsschlüssel.
+
+**Ein Modell im eigenen Netz** — Ollama im Compose-Stapel, ein Dienst im Cluster — liegt meist in
+einem internen Adressbereich, den die Zielprüfung ablehnt. Freigegeben wird es über
+`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, dieselbe Liste wie für die Quellen der
+Wissensbibliotheken. **Ein dort eingetragener Modell-Host ist damit auch ein erlaubtes Ziel der
+Konnektoren:** Wer Bibliotheken anbinden darf, könnte ihn als Quelle eintragen und Antworten des
+Modellservers einlesen. Deshalb den Host mit seinem Port eintragen (`ollama:11434`), nicht einen
+ganzen Namens- oder Adressbereich, und den Modellserver selbst nur die Modell-Schnittstelle anbieten
+lassen.
 
 Das Formular führt in drei Abschnitten:
 
@@ -124,7 +136,7 @@ Weitere Sampling-Parameter (`top_p`, `top_k`) sendet OPAA nie.
 **Die maximale Antwortlänge** (Token) begrenzt die Ausgabe. Bei Modellen mit internem Reasoning zählt
 das Reasoning mit, ohne sichtbar zu werden; ein knapper Wert schneidet die Antwort mitten im Satz ab
 oder lässt sie leer. Das Formular schlägt für neue Einträge einen darauf ausgelegten Wert vor;
-`OPAA_OPENAI_CHAT_MAX_TOKENS` bestimmt nur das erste Modell. Bricht ein Modell an der Grenze ab oder
+die Installation setzt den Wert des ersten Modells. Bricht ein Modell an der Grenze ab oder
 liefert es keinen Text, schreibt das Backend eine Warnung, und unter der Antwort erscheint ein
 Hinweis, dass sie unvollständig ist oder fehlt — nur für die gerade erzeugte Antwort, nicht im
 gespeicherten Verlauf.
@@ -160,13 +172,11 @@ sie niemand. Vor dem Abschluss gibt es keine Vektorablage, und Indexierung und S
 dem Hinweis, dass das Embedding-Modell noch nicht eingerichtet ist. Die Oberfläche zeigt die
 Einbettung danach nur an.
 
-Eine Installation aus der Zeit vor dem Installationsmodus übernimmt beim ersten Start einmalig das
-Modell, mit dem sie bisher lief: aus `OPAA_OPENAI_EMBEDDING_MODEL`, `OPAA_OPENAI_EMBEDDING_BASE_URL`
-oder `OPAA_OPENAI_BASE_URL`, dem Schlüssel entsprechend, `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` und
-`OPAA_PGVECTOR_DIMENSIONS`, jeweils mit ihrer früheren Vorgabe. Vektorablage und Abschnitte bleiben
-unverändert. Danach wirken diese Variablen nicht mehr; das Log nennt die Übernahme. Ein
-Zugangsschlüssel wird dabei mit `OPAA_SETTINGS_ENCRYPTION_KEY` verschlüsselt; fehlt der Schlüssel,
-nennt das Log die Variable, und Indexierung und Suche bleiben bis zum nächsten Start abgewiesen.
+`OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
+übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
+auf ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)). Den Zugangsschlüssel
+verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
+mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne Zugangsschlüssel.
 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
 und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.
@@ -707,7 +717,8 @@ und im Protokoll des Backends.
 | Der Start bricht ab und nennt `OPAA_OPENAI_BASE_URL` | Die Variable ist leer gesetzt; die Zeile entfernen oder eine Adresse eintragen |
 | Jede Chat-Anfrage scheitert mit HTTP 400 | Meist eine Temperatur, die das Modell nicht annimmt |
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
-| Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen, oder die Übernahme beim Start einer älteren Installation ist gescheitert; das Log nennt den Grund ([Embedding](#embedding)) |
+| Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell ([Installation](installation.md)) |
+| Indexierung und Suche antworten „Diese Installation hat kein Embedding-Modell", der Start schreibt einen Fehler | Die Installation ist abgeschlossen, hat aber kein Embedding-Modell, etwa eine Datenbank eines Entwicklungsstands von `main` vor dem Embedding-Modell in der Datenbank. Aus der Umgebung übernimmt OPAA keines ([Embedding](#embedding)). Abhilfe: Datenbank neu aufsetzen und installieren, oder einmal mit einem Stand starten, der das Modell noch übernahm (ein Stand von `main` mit dem Embedding-Modell als Installationsschritt und noch mit der Übernahme aus `OPAA_OPENAI_EMBEDDING_*`), und danach aktualisieren. Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
 | Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |

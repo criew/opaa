@@ -33,7 +33,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  *
  * <p>{@code dev-admin} (subject {@code dev-admin}, email {@code admin@opaa.local}) is provisioned
  * as {@code SYSTEM_ADMIN} on first request because its email matches {@code
- * opaa.auth.initial-admin-email} (see {@code application.yml}, {@code dev} profile) - the same
+ * opaa.auth.dev.system-admin-email} (see {@code application.yml}, {@code dev} profile) - the same
  * seeding {@code AuditControllerAuthorizationIntegrationTest} relies on for {@code dev-user}. That
  * first request also provisions {@code dev-admin} into {@link Organization#DEFAULT_ID}, which this
  * class never touches or deletes (other tests sharing this Spring context depend on that row

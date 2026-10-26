@@ -1,6 +1,6 @@
 package io.opaa.installation;
 
-import io.opaa.account.LocalAdminSeeder;
+import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
@@ -46,7 +46,12 @@ class StepRules {
   /** A step as stored: values without secret, and the hash or ciphertext of its secret. */
   record Stored(String payload, String secret) {}
 
-  record FirstAdminPayload(String email, String displayName) {}
+  /** {@code requirePasswordChange} is absent from steps saved before it existed: no change. */
+  record FirstAdminPayload(String email, String displayName, Boolean requirePasswordChange) {
+    FirstAdminPayload {
+      requirePasswordChange = Boolean.TRUE.equals(requirePasswordChange);
+    }
+  }
 
   record SignInPayload(StepInput.SignInMode mode, StepInput.Oidc oidc) {}
 
@@ -170,14 +175,9 @@ class StepRules {
     String displayName = trimmed(input.displayName());
     if (email.isEmpty()) {
       errors.add(error("firstAdmin.email", REQUIRED, "Die E-Mail-Adresse fehlt."));
-    } else if (!looksLikeAnAddress(email) || email.length() > 320) {
-      errors.add(error("firstAdmin.email", INVALID, "Das ist keine gültige E-Mail-Adresse."));
-    } else if (LocalAdminSeeder.REJECTED_DEFAULT_EMAIL.equalsIgnoreCase(email)) {
-      errors.add(
-          error(
-              "firstAdmin.email",
-              INVALID,
-              "Bitte ein zustellbares Postfach angeben, etwa ein Funktionspostfach der IT."));
+    } else {
+      InitialAdministrator.addressProblem(email)
+          .ifPresent(problem -> errors.add(error("firstAdmin.email", INVALID, problem)));
     }
     if (displayName.isEmpty()) {
       errors.add(error("firstAdmin.displayName", REQUIRED, "Der Anzeigename fehlt."));
@@ -189,7 +189,8 @@ class StepRules {
     }
     requireNoErrors(errors);
     return new Stored(
-        json.writeValueAsString(new FirstAdminPayload(email, displayName)),
+        json.writeValueAsString(
+            new FirstAdminPayload(email, displayName, input.requirePasswordChange())),
         passwordEncoder.encode(input.password()));
   }
 
@@ -374,13 +375,5 @@ class StepRules {
 
   private static String trimmed(String value) {
     return value == null ? "" : value.trim();
-  }
-
-  private static boolean looksLikeAnAddress(String email) {
-    int at = email.indexOf('@');
-    return at > 0
-        && at < email.length() - 1
-        && email.indexOf('@', at + 1) < 0
-        && email.chars().noneMatch(Character::isWhitespace);
   }
 }

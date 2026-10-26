@@ -240,7 +240,7 @@ class AccountUsabilityTest {
         credentials,
         providers,
         removals,
-        new AuthProperties(mode, null, null, null),
+        new AuthProperties(mode, null, null),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 

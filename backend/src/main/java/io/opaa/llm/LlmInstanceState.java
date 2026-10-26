@@ -5,7 +5,7 @@ import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import io.opaa.compliance.InstanceStateSource;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -47,47 +47,57 @@ class LlmInstanceState implements InstanceStateSource {
     this.transcription = transcription;
   }
 
+  /**
+   * The active chat model, "keines" while the installation has not set one, and the installed
+   * embedding model.
+   */
   @Override
   public Map<String, StoredValue> storedSettings() {
-    Map<String, StoredValue> stored = new HashMap<>();
+    StoredValue active =
+        models.findAllByActiveTrue().stream()
+            .findFirst()
+            .map(model -> new StoredValue(model.getModelIdentifier(), model.getUpdatedAt()))
+            .orElseGet(() -> new StoredValue("keines", null));
+    Map<String, StoredValue> settings = new LinkedHashMap<>();
+    settings.put("llm_models.model_identifier", active);
     embeddingModels
         .installed()
         .ifPresent(
-            settings -> {
-              stored.put(
+            installed -> {
+              settings.put(
                   "embedding_model.base_url",
                   new StoredValue(
-                      ModelEndpointUri.withoutSecrets(settings.getBaseUrl()),
-                      settings.getInstalledAt()));
-              stored.put(
+                      ModelEndpointUri.withoutSecrets(installed.getBaseUrl()),
+                      installed.getInstalledAt()));
+              settings.put(
                   "embedding_model.model_identifier",
-                  new StoredValue(settings.getModelIdentifier(), settings.getInstalledAt()));
+                  new StoredValue(installed.getModelIdentifier(), installed.getInstalledAt()));
             });
     rerankRows
         .findStored()
         .ifPresentOrElse(
             row ->
                 putRole(
-                    stored,
+                    settings,
                     "rerank_model",
                     row.isEnabled(),
                     row.getBaseUrl(),
                     row.getModelIdentifier(),
                     row.getUpdatedAt()),
-            () -> putRole(stored, "rerank_model", false, null, null, null));
+            () -> putRole(settings, "rerank_model", false, null, null, null));
     transcriptionRows
         .findStored()
         .ifPresentOrElse(
             row ->
                 putRole(
-                    stored,
+                    settings,
                     "transcription_model",
                     row.isEnabled(),
                     row.getBaseUrl(),
                     row.getModelIdentifier(),
                     row.getUpdatedAt()),
-            () -> putRole(stored, "transcription_model", false, null, null, null));
-    return stored;
+            () -> putRole(settings, "transcription_model", false, null, null, null));
+    return Map.copyOf(settings);
   }
 
   private static void putRole(

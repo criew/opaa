@@ -951,7 +951,7 @@ final class SmbShareClient implements AutoCloseable {
 
     @Override
     public Socket createSocket(String host, int port) throws IOException {
-      validator.validateHost(host);
+      validator.validateHost(host, port);
       Socket socket = new Socket();
       try {
         socket.connect(new InetSocketAddress(host, port), timeoutMillis);

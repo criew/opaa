@@ -9,15 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.account.InitialAdministrator;
-import io.opaa.account.LocalAdminSeedMarkerRepository;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.OidcProviderSeedMarkerRepository;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
-import io.opaa.llm.LlmModelSeedMarkerRepository;
 import io.opaa.llm.LlmModelService;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.env.Environment;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -57,13 +55,11 @@ class InstallationServiceCheckTest {
             mock(OidcProviderService.class),
             mock(LlmModelService.class),
             embeddingModels,
-            mock(LocalAdminSeedMarkerRepository.class),
-            mock(OidcProviderSeedMarkerRepository.class),
-            mock(LlmModelSeedMarkerRepository.class),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),
             Clock.fixed(NOW, ZoneOffset.UTC),
+            mock(Environment.class),
             mock(PlatformTransactionManager.class));
   }
 

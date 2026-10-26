@@ -11,7 +11,6 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
-import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,22 +46,22 @@ public class LlmModelService {
   private final SettingsEncryptor settingsEncryptor;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
-  private final LlmModelSeedMarkerRepository seedMarker;
-  private final Clock clock;
 
   public LlmModelService(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       AuditEventRecorder auditEventRecorder,
-      ApplicationEventPublisher eventPublisher,
-      LlmModelSeedMarkerRepository seedMarker,
-      Clock clock) {
+      ApplicationEventPublisher eventPublisher) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
-    this.seedMarker = seedMarker;
-    this.clock = clock;
+  }
+
+  /** Whether any chat model exists, active or not: a sign of a database already in use. */
+  @Transactional(readOnly = true)
+  public boolean anyModelExists() {
+    return repository.count() > 0;
   }
 
   @Transactional(readOnly = true)
@@ -227,9 +226,9 @@ public class LlmModelService {
 
   /**
    * The chat model of an installation (ADR-0060, Entscheidung 10): created active in place of any
-   * other, recorded under the system process {@code actorRef} because no account exists yet, and
-   * with the seed marker, so no start-up value is taken over afterwards. {@code apiKeyCiphertext}
-   * is already encrypted with {@link SettingsEncryptor}. Runs inside the caller's transaction.
+   * other, recorded under the system process {@code actorRef} because no account exists yet. {@code
+   * apiKeyCiphertext} is already encrypted with {@link SettingsEncryptor}, {@code null} without a
+   * key. Runs inside the caller's transaction.
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public LlmModel installActiveModel(
@@ -251,9 +250,6 @@ public class LlmModelService {
             displayName, baseUrl, modelIdentifier, temperature, maxTokens, apiKeyCiphertext);
     model.activate();
     repository.save(model);
-    if (!seedMarker.seedAlreadyAttempted()) {
-      seedMarker.save(new LlmModelSeedMarker(clock.instant()));
-    }
     auditEventRecorder.recordSystemProcessAction(
         AuditEvent.builder()
             .organizationId(organizationId)

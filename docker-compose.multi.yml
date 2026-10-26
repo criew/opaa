@@ -56,6 +56,7 @@ services:
     volumes: !override
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
+      - ${OPAA_INSTALLATION_DIR_HOST:-./installation}:/run/opaa/installation:ro
       - opaa-backend-a-tmp:/tmp
     networks:
       default:
@@ -77,6 +78,7 @@ services:
     volumes: !override
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
+      - ${OPAA_INSTALLATION_DIR_HOST:-./installation}:/run/opaa/installation:ro
       - opaa-backend-b-tmp:/tmp
     networks:
       default:

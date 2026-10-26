@@ -124,8 +124,8 @@ test.describe('Kennzeichnung KI-erzeugter Antworten (#3010)', () => {
     // the note stands in a paragraph of its own, under the answer
     expect(lines.at(-2)).toBe('')
     // no model name anywhere in the copied text: the stack's chat model is phi3:mini, shown as
-    // "Übernommen aus der Umgebungskonfiguration"
-    expect(copied).not.toMatch(/phi3|Umgebungskonfiguration|gpt|llama|mistral|claude/i)
+    // "Chat-Modell der Entwicklung"
+    expect(copied).not.toMatch(/phi3|der Entwicklung|gpt|llama|mistral|claude/i)
   })
 
   test('Branding: geänderter Hinweistext wirkt im Chat und im Vermerk, Zurücksetzen stellt den Standard her', async ({

@@ -26,8 +26,14 @@ record AnswerFile(
   /** Upper bound of the answer file itself. */
   static final long MAX_FILE_BYTES = 64 * 1024;
 
+  /** {@code requirePasswordChange} absent means {@code true}: the file's password is one-off. */
   @JsonIgnoreProperties(ignoreUnknown = true)
-  record FirstAdmin(String email, String displayName, String passwordFile, String password) {}
+  record FirstAdmin(
+      String email,
+      String displayName,
+      String passwordFile,
+      String password,
+      Boolean requirePasswordChange) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   record SignIn(StepInput.SignInMode mode, Oidc oidc) {}
@@ -98,7 +104,11 @@ record AnswerFile(
                 signIn.oidc().jwkSetUri(),
                 signIn.oidc().displayName());
     return List.of(
-        new StepInput.FirstAdmin(firstAdmin.email(), firstAdmin.displayName(), password),
+        new StepInput.FirstAdmin(
+            firstAdmin.email(),
+            firstAdmin.displayName(),
+            password,
+            !Boolean.FALSE.equals(firstAdmin.requirePasswordChange())),
         new StepInput.SignIn(signIn.mode(), oidc),
         new StepInput.ChatModel(
             chatModel.baseUrl(),

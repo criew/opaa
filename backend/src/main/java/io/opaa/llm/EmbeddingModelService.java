@@ -25,10 +25,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * vector_store} with that size in one transaction. Installed once; there is no way to change it
  * through the administration, since every stored vector depends on it.
  *
- * <p>An installation from before ADR-0060 takes over its configured model ({@link #adoptIfMissing})
- * under the schema lock of the vector table (ADR-0053: "Sperre"): with an existing table only when
- * the configuration names the model the index records, with the size of the existing column;
- * without a table with a probe embedding, run outside the lock.
+ * <p>The {@code dev} mode installs its model itself ({@link #adoptIfMissing}) under the schema lock
+ * of the vector table (ADR-0053: "Sperre"): with an existing table only when its configuration
+ * names the model the index records, with the size of the existing column; without a table with a
+ * probe embedding, run outside the lock. Every other mode gets its model from the installation
+ * only.
  */
 @DataFlow("embedding-model")
 @Service
@@ -55,7 +56,7 @@ public class EmbeddingModelService {
   private final EmbeddingProbe probe;
   private final SettingsEncryptor settingsEncryptor;
   private final VectorTableCreator vectorTable;
-  private final LegacyEmbeddingConfiguration legacy;
+  private final DevelopmentEmbeddingConfiguration development;
   private final RecordedEmbeddingIndex recordedIndex;
   private final ApplicationEventPublisher events;
   private final InstallationStatus installationStatus;
@@ -67,7 +68,7 @@ public class EmbeddingModelService {
       EmbeddingProbe probe,
       SettingsEncryptor settingsEncryptor,
       VectorTableCreator vectorTable,
-      LegacyEmbeddingConfiguration legacy,
+      DevelopmentEmbeddingConfiguration development,
       RecordedEmbeddingIndex recordedIndex,
       ApplicationEventPublisher events,
       InstallationStatus installationStatus,
@@ -77,7 +78,7 @@ public class EmbeddingModelService {
     this.probe = probe;
     this.settingsEncryptor = settingsEncryptor;
     this.vectorTable = vectorTable;
-    this.legacy = legacy;
+    this.development = development;
     this.recordedIndex = recordedIndex;
     this.events = events;
     this.installationStatus = installationStatus;
@@ -159,10 +160,10 @@ public class EmbeddingModelService {
   }
 
   /**
-   * Takes over the embedding model of a completed installation that has none stored: the configured
-   * one of {@link LegacyEmbeddingConfiguration}. A pending installation takes over nothing; its
-   * embedding model comes from the installation step. A refusal or a failed probe leaves the model
-   * uninstalled, and a later call tries again.
+   * Installs the embedding model of the {@code dev} mode in a completed installation that has none:
+   * the one of {@link DevelopmentEmbeddingConfiguration}. Any other mode and a pending installation
+   * install nothing; their model comes from the installation step. A refusal or a failed probe
+   * leaves the model uninstalled, and a later call tries again.
    *
    * @return whether an embedding model is installed afterwards
    */
@@ -170,14 +171,14 @@ public class EmbeddingModelService {
     if (installed().isPresent()) {
       return true;
     }
-    if (installationStatus.isPending()) {
+    if (installationStatus.isPending() || !development.active()) {
       return false;
     }
-    EmbeddingEndpoint endpoint = legacy.endpoint();
+    EmbeddingEndpoint endpoint = development.endpoint();
     if (ModelEndpointUri.containsCredentials(endpoint.baseUrl())) {
       log.error(
-          "The configured embedding base URL carries credentials and is not taken over; configure"
-              + " it without them and the key via OPAA_OPENAI_EMBEDDING_API_KEY");
+          "The embedding base URL of the dev mode carries credentials and is not installed;"
+              + " configure it without them and the key in spring.ai.openai.embedding.api-key");
       return false;
     }
     Integer probed = vectorTable.exists() ? null : probeForTakeover(endpoint);
@@ -215,8 +216,8 @@ public class EmbeddingModelService {
     }
     store(endpoint, dimensions);
     log.info(
-        "Took over the configured embedding model '{}' at {} ({} dimensions) into embedding_model;"
-            + " its configuration variables have no effect from now on",
+        "Installed the embedding model '{}' of the dev mode at {} ({} dimensions) into"
+            + " embedding_model",
         endpoint.modelIdentifier(),
         ModelEndpointUri.withoutSecrets(endpoint.baseUrl()),
         dimensions);
@@ -241,7 +242,7 @@ public class EmbeddingModelService {
     }
     boolean sameModel =
         index.model() == null
-            ? Objects.equals(current, legacy.dimensions())
+            ? Objects.equals(current, development.dimensions())
             : index.model().equals(model);
     if (sameModel) {
       return current;

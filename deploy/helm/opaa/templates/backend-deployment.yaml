@@ -43,6 +43,9 @@ spec:
         {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/backend-configmap.yaml") . | sha256sum }}
+        {{- if include "opaa.installation.answerFileEnabled" . }}
+        checksum/installation: {{ include (print $.Template.BasePath "/backend-installation-configmap.yaml") . | sha256sum }}
+        {{- end }}
         {{- if not .Values.secrets.existingSecret }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
@@ -122,13 +125,18 @@ spec:
                   name: {{ $secretName }}
                   key: {{ . }}
             {{- end }}
-            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_OPENAI_CHAT_API_KEY" "OPAA_INITIAL_ADMIN_PASSWORD" }}
+            {{- range list "OPAA_INSTALLATION_TOKEN" }}
             - name: {{ . }}
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: {{ . }}
                   optional: true
+            {{- end }}
+            {{- if include "opaa.installation.answerFileEnabled" . }}
+            # Only the serving pods apply the answer file; the migration steps never install.
+            - name: OPAA_INSTALLATION_ANSWER_FILE
+              value: /etc/opaa/installation/installation.json
             {{- end }}
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -178,6 +186,14 @@ spec:
               mountPath: /etc/opaa/truststore
               readOnly: true
             {{- end }}
+            {{- if include "opaa.installation.answerFileEnabled" . }}
+            - name: installation
+              mountPath: /etc/opaa/installation
+              readOnly: true
+            - name: installation-secrets
+              mountPath: {{ include "opaa.installation.secretsPath" . }}
+              readOnly: true
+            {{- end }}
             {{- range .Values.filesystemSources }}
             - name: {{ printf "source-%s" .name }}
               mountPath: {{ .mountPath }}
@@ -196,6 +212,28 @@ spec:
         {{- end }}
         {{- with include "opaa.backend.truststoreVolumes" . }}
         {{- . | trim | nindent 8 }}
+        {{- end }}
+        {{- if include "opaa.installation.answerFileEnabled" . }}
+        - name: installation
+          configMap:
+            name: {{ printf "%s-installation" (include "opaa.backend.fullname" .) }}
+        # Optional: an installed release reads none of the files, and a missing key must not keep
+        # its pod from starting; a pending installation names the missing file in its log.
+        - name: installation-secrets
+          secret:
+            secretName: {{ $secretName }}
+            optional: true
+            items:
+              - key: installation-admin-password
+                path: admin-password
+              {{- if include "opaa.installation.chatApiKey" . }}
+              - key: installation-chat-api-key
+                path: chat-api-key
+              {{- end }}
+              {{- if include "opaa.installation.embeddingApiKey" . }}
+              - key: installation-embedding-api-key
+                path: embedding-api-key
+              {{- end }}
         {{- end }}
         {{- range .Values.filesystemSources }}
         - name: {{ printf "source-%s" .name }}

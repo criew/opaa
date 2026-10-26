@@ -25,7 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the harness measures the same resolution, options and HTTP path a real request runs through
  * instead of a harness-only {@code ChatModel} bean.
  *
- * <p>Replaces whatever {@code LlmModelSeeder} put there at context startup. Safe at that point
+ * <p>Replaces the chat model the database installed itself with (ADR-0060). Safe at that point
  * because nothing resolves a chat client before the first decomposing query: {@code
  * ActiveChatModelResolver} builds its client lazily, so no client can have been cached from the
  * seeded row.

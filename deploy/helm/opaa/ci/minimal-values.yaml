@@ -1,4 +1,5 @@
-# Smallest set of values a fresh installation needs; the secrets are throwaway test values.
+# Smallest set of values a fresh installation needs: no answer file, the installation is completed
+# in the browser or over the installation API. The secrets are throwaway test values.
 publicBaseUrl: https://opaa.example.org
 database:
   host: postgres.example.org
@@ -6,12 +7,6 @@ embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
   model: bge-m3
   dimensions: 1024
-bootstrap:
-  initialAdmin:
-    email: it-postfach@example.org
-  chatModel:
-    baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
-    model: qwen2.5:3b
 secrets:
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password

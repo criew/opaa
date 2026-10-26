@@ -42,7 +42,9 @@ export async function runOffline({ repoRoot, e2eDir, extraTestArgs }) {
     OPAA_OFFLINE_DNS_ADDRESS: DNS_ADDRESS,
     OPAA_FRONTEND_PORT: frontendPort,
     OPAA_OFFLINE_DNS_LOG_PORT: dnsLogPort,
+    OPAA_INSTALLATION_DIR_HOST: './e2e/installation',
   }
+  const admin = answerFileAdmin(e2eDir, 'offline')
   const run = (command, args, { cwd = repoRoot, extraEnv = {} } = {}) => {
     const result = spawnSync(command, args, {
       cwd,
@@ -85,8 +87,8 @@ export async function runOffline({ repoRoot, e2eDir, extraTestArgs }) {
         extraEnv: {
           E2E_BASE_URL: baseUrl,
           E2E_EGRESS_DNS_URL: `http://localhost:${dnsLogPort}`,
-          E2E_BOOTSTRAP_ADMIN_EMAIL: envFileValue(repoRoot, 'OPAA_INITIAL_ADMIN_EMAIL'),
-          E2E_BOOTSTRAP_ADMIN_PASSWORD: envFileValue(repoRoot, 'OPAA_INITIAL_ADMIN_PASSWORD'),
+          E2E_BOOTSTRAP_ADMIN_EMAIL: admin.email,
+          E2E_BOOTSTRAP_ADMIN_PASSWORD: admin.password,
         },
       },
     )
@@ -122,9 +124,12 @@ function recordLogFindings(e2eDir, unreachable) {
 }
 
 /** One value of e2e/offline.env, which only the Compose stack reads. */
-function envFileValue(repoRoot, key) {
-  const text = readFileSync(join(repoRoot, 'e2e/offline.env'), 'utf8')
-  return text.match(new RegExp(`^${key}=(.*)$`, 'm'))?.[1].trim() ?? ''
+/** The first account of e2e/installation/<name>.json, with the password from its password file. */
+function answerFileAdmin(e2eDir, name) {
+  const dir = join(e2eDir, 'installation')
+  const { firstAdmin } = JSON.parse(readFileSync(join(dir, `${name}.json`), 'utf8'))
+  const passwordFile = join(dir, firstAdmin.passwordFile.split('/').pop())
+  return { email: firstAdmin.email, password: readFileSync(passwordFile, 'utf8').trim() }
 }
 
 async function waitUntilReady(url) {
