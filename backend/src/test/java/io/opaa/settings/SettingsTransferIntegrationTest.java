@@ -204,6 +204,7 @@ class SettingsTransferIntegrationTest {
         .put("enabled", true)
         .put("deleteAfterDays", 500);
     sections.withObject("incidentScopeRetention").put("retentionYears", 2);
+    sections.withObject("connectorRelease").put("PROFILE_PROBE.locked", true);
     assertThat(sections.propertyNames())
         .as("every registered section is changed by this test")
         .containsExactlyInAnyOrderElementsOf(

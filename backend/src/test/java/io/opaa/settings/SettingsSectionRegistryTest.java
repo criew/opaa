@@ -24,23 +24,32 @@ class SettingsSectionRegistryTest {
   static final Set<String> OTHER_SETTINGS_TABLES = Set.of("mail_templates");
 
   /**
-   * Tables of the administration that are no part of the document, with the reason. Each of them
-   * describes connections of this installation with secrets of their own; without the secrets an
-   * imported entry would be one that cannot connect.
+   * Tables of the administration that are no part of the document, with the reason: they connect
+   * this installation to its own services, or decide who signs in and with which role.
    */
   static final Map<String, String> NOT_TRANSFERRED =
       Map.of(
-          "llm_models", "models with address and key of this installation",
+          "llm_models",
+              "chat models: the address receives every chat; no stable key, the access key of this"
+                  + " installation never follows a new address",
           "embedding_model",
               "the embedding model: its vectors fill this installation's index; set by the"
                   + " installation, never changed by an import (ADR-0060, Entscheidung 10)",
-          "rerank_model", "the rerank model with address and key of this installation",
+          "rerank_model",
+              "the rerank model: address and key of this installation, the key never follows a"
+                  + " new address",
           "transcription_model",
-              "the transcription model with address and key of this installation",
-          "oidc_providers", "identity providers, the sign-in procedure of this installation",
-          "directory_connectors", "directory access with the secret of a service account",
-          "connection_profiles", "connection profiles with the secrets of their app registration",
-          "connector_type_policies", "release and lock of connector types per installation");
+              "the transcription model: the address receives speech input, the key never follows"
+                  + " a new address",
+          "oidc_providers",
+              "identity providers: the sign-in procedure and the mapping of claims to system"
+                  + " roles; an import could lock the administration out or widen who is admin",
+          "directory_connectors",
+              "directory access with the secret of a service account, bound to an identity"
+                  + " provider that is not transferred either",
+          "connection_profiles",
+              "connection profiles: app registration and secret of this installation; a changed"
+                  + " address, tenant or scope discards every connected account");
 
   @Autowired private SettingsTransferService transfer;
 

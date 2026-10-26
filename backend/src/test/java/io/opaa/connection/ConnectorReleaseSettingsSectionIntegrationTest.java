@@ -33,8 +33,8 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * The connector release in the settings document (ADR-0060, Entscheidung 12): per source type its
  * lock and, where profiles are optional, "Nur über Zugänge", matched by the type key and applied
- * through the administration's write paths with their audit events. A requirement without a
- * profile that could take over refuses the whole document.
+ * through the administration's write paths with their audit events. A requirement without a profile
+ * that could take over refuses the whole document.
  */
 @OpaaIntegrationTest
 class ConnectorReleaseSettingsSectionIntegrationTest {
@@ -154,7 +154,8 @@ class ConnectorReleaseSettingsSectionIntegrationTest {
         .andExpect(jsonPath("$.changes[0].after").value("LOCKED"));
 
     assertThat(section(export()).get(REQUIRED).stringValue()).isEqualTo("LOCKED");
-    assertThat(auditEventTypes()).containsExactly("CONNECTOR_PROFILE_REQUIRED", "SETTINGS_IMPORTED");
+    assertThat(auditEventTypes())
+        .containsExactly("CONNECTOR_PROFILE_REQUIRED", "SETTINGS_IMPORTED");
 
     section(document).putNull(REQUIRED);
     send(IMPORT, JSON.writeValueAsString(document)).andExpect(status().isOk());
@@ -225,8 +226,7 @@ class ConnectorReleaseSettingsSectionIntegrationTest {
             "SELECT event_type FROM audit_log WHERE actor_kind = 'USER'"
                 + " AND object_type = 'SYSTEM_SETTING' AND recorded_at >= ?"
                 + " AND event_type NOT LIKE 'CONNECTION_PROFILE_%' ORDER BY recorded_at",
-            String.class,
-            Timestamp.from(methodStartedAt))
+            String.class, Timestamp.from(methodStartedAt))
         .stream()
         .toList();
   }
