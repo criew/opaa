@@ -44,9 +44,10 @@ class EmbeddingModelServiceTest {
   private final InstallationStatus status = mock(InstallationStatus.class);
   private final MockEnvironment environment =
       new MockEnvironment()
-          .withProperty(LegacyEmbeddingConfiguration.BASE_URL, "http://ollama:11434/v1")
-          .withProperty(LegacyEmbeddingConfiguration.MODEL, "bge-m3")
-          .withProperty(LegacyEmbeddingConfiguration.DIMENSIONS, "1024");
+          .withProperty(DevelopmentEmbeddingConfiguration.MODE_PROPERTY, "dev")
+          .withProperty(DevelopmentEmbeddingConfiguration.BASE_URL, "http://ollama:11434/v1")
+          .withProperty(DevelopmentEmbeddingConfiguration.MODEL, "bge-m3")
+          .withProperty(DevelopmentEmbeddingConfiguration.DIMENSIONS, "1024");
 
   @BeforeEach
   void setUp() {
@@ -107,6 +108,17 @@ class EmbeddingModelServiceTest {
   }
 
   @Test
+  void anotherModeThanDevInstallsNothingFromTheConfiguration() {
+    environment.setProperty(DevelopmentEmbeddingConfiguration.MODE_PROPERTY, "oidc");
+    when(table.exists()).thenReturn(false);
+
+    assertThat(service(KEY).adoptIfMissing()).isFalse();
+
+    verifyNoInteractions(probe);
+    verify(repository, never()).save(any());
+  }
+
+  @Test
   void aFailedProbeTakesOverNothing() {
     when(table.exists()).thenReturn(false);
     when(probe.probe(any()))
@@ -121,7 +133,7 @@ class EmbeddingModelServiceTest {
   @Test
   void anAddressWithCredentialsIsNeitherProbedNorTakenOver() {
     environment.setProperty(
-        LegacyEmbeddingConfiguration.BASE_URL, "https://nutzer:geheim@llm.example/v1");
+        DevelopmentEmbeddingConfiguration.BASE_URL, "https://nutzer:geheim@llm.example/v1");
 
     assertThat(service(KEY).adoptIfMissing()).isFalse();
 
@@ -134,7 +146,7 @@ class EmbeddingModelServiceTest {
     givenTable(1024, null);
     when(index.recorded())
         .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("bge-m3", null)));
-    environment.setProperty(LegacyEmbeddingConfiguration.API_KEY, "sk-geheim");
+    environment.setProperty(DevelopmentEmbeddingConfiguration.API_KEY, "sk-geheim");
 
     assertThat(service(null).adoptIfMissing()).isFalse();
 
@@ -201,7 +213,7 @@ class EmbeddingModelServiceTest {
         probe,
         new SettingsEncryptor(new SettingsEncryptionProperties(settingsKey)),
         table,
-        new LegacyEmbeddingConfiguration(environment),
+        new DevelopmentEmbeddingConfiguration(environment),
         index,
         mock(ApplicationEventPublisher.class),
         status,

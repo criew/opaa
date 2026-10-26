@@ -1,0 +1,22 @@
+{
+  "firstAdmin": {
+    "email": "it-betrieb@stadt.example",
+    "displayName": "Systemverwaltung",
+    "passwordFile": "/run/opaa/installation/admin-password",
+    "requirePasswordChange": true
+  },
+  "signIn": {
+    "mode": "LOCAL_ONLY"
+  },
+  "chatModel": {
+    "baseUrl": "http://ollama:11434/v1",
+    "model": "phi3:mini",
+    "apiKeyFile": null,
+    "maxTokens": 8000
+  },
+  "embeddingModel": {
+    "baseUrl": "http://ollama:11434/v1",
+    "model": "bge-m3",
+    "apiKeyFile": null
+  }
+}

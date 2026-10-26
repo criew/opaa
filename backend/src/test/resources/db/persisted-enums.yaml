@@ -373,8 +373,7 @@ io.opaa.installation.InstallationState$CompletionSource:
   attributes: [InstallationState.completionSource]
   assessment: AUDIT
   readable: [
-    ANSWER_FILE_API, ANSWER_FILE_STARTUP, DEVELOPMENT, EXISTING, INSTALLATION_API,
-    LEGACY_START_VALUES
+    ANSWER_FILE_API, ANSWER_FILE_STARTUP, DEVELOPMENT, EXISTING, INSTALLATION_API
   ]
   pending: []
 io.opaa.installation.InstallationState$Phase:

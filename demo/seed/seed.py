@@ -172,11 +172,10 @@ def provision_users(
         raise SystemExit(
             f"Admin-Konto '{profile.admin.identity}' hat nicht die Rolle SYSTEM_ADMIN "
             f"(tatsaechlich: {admin_role}). Im Keycloak-Profil vergibt der Seed die Rolle ueber das "
-            "lokale Notanker-Konto der Systemverwaltung (ADR-0033): OPAA_INITIAL_ADMIN_EMAIL und "
-            "OPAA_INITIAL_ADMIN_PASSWORD muessen beim allerersten Start des Stacks gesetzt gewesen "
-            "sein und dem Seed als --local-admin-email/--local-admin-password bzw. als "
-            "Umgebungsvariablen vorliegen. Abhilfe: den Stack mit 'docker compose ... down -v' "
-            "zuruecksetzen und den Seed erneut laufen lassen."
+            "lokale Notanker-Konto der Systemverwaltung (ADR-0033): das erste Konto der Installation "
+            "(Antwortdatei, ADR-0060) muss dem Seed als --local-admin-email/--local-admin-password "
+            "vorliegen. Abhilfe: den Stack mit 'docker compose ... down -v' zuruecksetzen, mit der "
+            "Antwortdatei neu installieren und den Seed erneut laufen lassen."
         )
     return user_ids
 
@@ -405,8 +404,8 @@ def find_provider(admin_client: Client, display_name: str = "Verzeichnisdienst")
     provider = next((p for p in providers if p["displayName"] == display_name), None)
     if provider is None:
         raise SystemExit(
-            f"Anbieter '{display_name}' nicht gefunden - der Bootstrap aus OPAA_OIDC_* ist "
-            "offenbar noch nicht abgeschlossen."
+            f"Anbieter '{display_name}' nicht gefunden - die Installation hat ihn nicht als "
+            "Anmeldeverfahren eingerichtet (Antwortdatei, signIn)."
         )
     return provider
 
@@ -1169,8 +1168,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--local-admin-email",
         default=os.environ.get("OPAA_INITIAL_ADMIN_EMAIL", ""),
-        help="E-mail of the local bootstrap administrator (ADR-0033) the 'demo' profile signs in "
-        "as to grant SYSTEM_ADMIN to the Keycloak admin (default: $OPAA_INITIAL_ADMIN_EMAIL)",
+        help="E-mail of the first account of the installation (ADR-0033, ADR-0060) the 'demo' "
+        "profile signs in as to grant SYSTEM_ADMIN to the Keycloak admin "
+        "(default: $OPAA_INITIAL_ADMIN_EMAIL)",
     )
     parser.add_argument(
         "--local-admin-password",

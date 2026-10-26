@@ -1,0 +1,23 @@
+# Value file of v0.1.0-rc.4 (deploy/helm/opaa/ci/minimal-values.yaml), unchanged: static-check.sh renders it
+# as the upgrade of an installed release. Never adjust it to the chart.
+# Smallest set of values a fresh installation needs; the secrets are throwaway test values.
+publicBaseUrl: https://opaa.example.org
+database:
+  host: postgres.example.org
+embedding:
+  baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
+  model: bge-m3
+  dimensions: 1024
+bootstrap:
+  initialAdmin:
+    email: it-postfach@example.org
+  chatModel:
+    baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
+    model: qwen2.5:3b
+secrets:
+  jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
+  databasePassword: ci-only-password
+  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
+  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+uploads:
+  store: persistentVolumeClaim

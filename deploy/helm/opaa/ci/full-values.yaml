@@ -13,16 +13,24 @@ embedding:
   dimensions: 1536
   timeout: 180s
   maxInputTokens: 8191
+  apiKeyInSecret: true
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org
+    displayName: IT-Betrieb
+    requirePasswordChange: false
   oidc:
     issuerUri: https://login.example.org/realms/opaa
     clientId: opaa
+    jwkSetUri: https://keys.example.org/realms/opaa/certs
+    displayName: Landesportal
     authority: https://login.example.org/realms/opaa
   chatModel:
     baseUrl: https://models.example.org/v1
     model: gpt-4.1-mini
+    apiKeyInSecret: true
+    temperature: 0.2
+    maxTokens: 4000
 secrets:
   existingSecret: opaa-secrets
 uploads:

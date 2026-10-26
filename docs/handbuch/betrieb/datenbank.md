@@ -134,8 +134,8 @@ erreichbar, wartet es weiter.
 
 Eine Migration wartet höchstens fünf Sekunden auf die Sperre einer Tabelle und bricht dann ab, statt
 die Anfragen aller Instanzen hinter sich aufzustauen; der abgebrochene Lauf lässt sich wiederholen.
-Mehrere Instanzen, die gleichzeitig starten, legen das Notanker-Konto und die übrigen Startwerte
-nacheinander an, nie doppelt.
+Mehrere Instanzen, die gleichzeitig starten, wenden eine Antwortdatei nacheinander an und schließen
+die Installation genau einmal ab, nie doppelt.
 
 **Update auf `v0.1.0`:** Von einem Vorabstand (`v0.1.0-rc.1` bis `rc.4`) aus ist es kein Rolling
 Update. Vorher alle Instanzen anhalten; die Migrationen dieser Stände entfernen Spalten und Tabellen,

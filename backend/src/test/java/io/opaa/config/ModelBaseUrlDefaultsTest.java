@@ -14,9 +14,9 @@ import org.springframework.core.io.ClassPathResource;
 
 /**
  * The model base URLs {@code application.yml} ships without any environment variable: a locally
- * operated Ollama server for chat, and none for the embedding model, whose address the installation
- * sets. Read from the file itself, because every Spring test signature overrides the chat and
- * embedding addresses with ones that never answer.
+ * operated Ollama server for the chat model of the {@code dev} mode, and none for the embedding
+ * model, whose address the installation sets. Read from the file itself, because every Spring test
+ * signature overrides the addresses with ones that never answer.
  */
 class ModelBaseUrlDefaultsTest {
 
@@ -27,9 +27,9 @@ class ModelBaseUrlDefaultsTest {
     PropertyResolver defaults = profileIndependentDefaults();
 
     assertThat(defaults.getProperty("spring.ai.openai.base-url")).isEqualTo(LOCAL_OLLAMA);
-    assertThat(defaults.getProperty("spring.ai.openai.chat.base-url")).isEqualTo(LOCAL_OLLAMA);
+    assertThat(defaults.getProperty("spring.ai.openai.chat.base-url")).isNull();
     assertThat(defaults.getProperty("spring.ai.openai.embedding.base-url")).isNull();
-    assertThat(defaults.getProperty("opaa.embedding.takeover.base-url")).isEmpty();
+    assertThat(defaults.getProperty("opaa.embedding.takeover.base-url")).isNull();
   }
 
   /** The first document of {@code application.yml}, placeholders resolved to their defaults. */

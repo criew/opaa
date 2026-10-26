@@ -282,6 +282,7 @@ voreinstellungen#ki-funktion-speech-transcription
 voreinstellungen#ki-funktion-tool-loop-spike
 voreinstellungen#ki-funktionen
 voreinstellungen#link-target-settings-allowed-origins
+voreinstellungen#llm-models-model-identifier
 voreinstellungen#local-auth-settings-default-expiry-days
 voreinstellungen#local-auth-settings-inactive-days
 voreinstellungen#local-auth-settings-invitation-token-ttl-hours
@@ -338,8 +339,6 @@ voreinstellungen#prompt-tool-loop-spike
 voreinstellungen#self-disclosure-settings-daily-limit
 voreinstellungen#self-disclosure-settings-enabled
 voreinstellungen#spring-ai-openai-base-url
-voreinstellungen#spring-ai-openai-chat-base-url
-voreinstellungen#spring-ai-openai-chat-model
 voreinstellungen#succession-settings-aging-threshold-months
 voreinstellungen#system-prompts
 fristen

@@ -23,7 +23,6 @@ services:
       egress-dns:
         condition: service_healthy
     environment:
-      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
       OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
       OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
 

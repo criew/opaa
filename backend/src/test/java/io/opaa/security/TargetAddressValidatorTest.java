@@ -232,6 +232,41 @@ class TargetAddressValidatorTest {
   }
 
   @Test
+  void anEntryWithAPortAdmitsOnlyThatPortOfTheHost() {
+    TargetAddressValidator validator = enabled(List.of("localhost:8180", "[::1]:8443"));
+
+    assertThatCode(() -> validator.validate(URI.create("http://localhost:8180/realms/opaa")))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> validator.validate(URI.create("https://[::1]:8443/realms/opaa")))
+        .doesNotThrowAnyException();
+    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost:8081/actuator")))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
+    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost/")))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
+    assertThatThrownBy(() -> validator.validateHost("localhost"))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
+  }
+
+  @Test
+  void anEntryWithAPortMatchesTheDefaultPortOfTheScheme() {
+    TargetAddressValidator validator = enabled(List.of("internal-source.local:443"));
+
+    assertThatCode(() -> validator.validate(URI.create("https://internal-source.local/x")))
+        .doesNotThrowAnyException();
+    assertThatThrownBy(() -> validator.validate(URI.create("http://internal-source.local/x")))
+        .isInstanceOf(java.io.IOException.class);
+  }
+
+  @Test
+  void anEntryWithoutAPortKeepsAdmittingEveryPort() {
+    TargetAddressValidator validator = enabled(List.of("localhost"));
+
+    assertThatCode(() -> validator.validate(URI.create("http://localhost:8081/")))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> validator.validateHost("localhost")).doesNotThrowAnyException();
+  }
+
+  @Test
   void allowlistDoesNotExemptAnUnrelatedHost() {
     TargetAddressValidator validator = enabled(List.of("internal-source.local"));
     assertThatThrownBy(() -> validator.validate(URI.create("http://127.0.0.1/")))

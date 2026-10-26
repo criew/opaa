@@ -14,6 +14,7 @@ bootstrap:
     baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
     model: qwen2.5:3b
 secrets:
+  initialAdminPassword: ci-only-Notanker-2026
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
   credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=

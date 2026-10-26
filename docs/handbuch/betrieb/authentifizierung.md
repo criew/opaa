@@ -83,18 +83,22 @@ docker compose --profile oidc up --build
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
-OPAA_OIDC_ISSUER_URI=http://localhost:8180/realms/opaa
-OPAA_OIDC_CLIENT_ID=opaa-frontend
-OPAA_OIDC_JWK_SET_URI=http://keycloak:8180/realms/opaa/protocol/openid-connect/certs
+OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost:8180,keycloak:8180
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 ```
 
-- **Zwei Adressen für denselben Anbieter.** `OPAA_OIDC_ISSUER_URI` ist die Adresse, die der Browser
-  verwendet, und zugleich die Authority des Anmeldeflusses; `OPAA_OIDC_JWK_SET_URI` nennt den Weg des
+Der erste Anbieter ist ein Schritt der [Installation](installation.md), das Anmeldeverfahren
+„lokale Konten und OIDC“, im Assistenten oder in der Antwortdatei
+([Installation im Compose-Stapel](docker-compose.md#installation-im-compose-stapel)). Weitere Anbieter
+legt die Anbieterverwaltung an.
+
+- **Zwei Adressen für denselben Anbieter.** Der Issuer (`http://localhost:8180/realms/opaa`) ist die
+  Adresse, die der Browser verwendet, und zugleich die Authority des Anmeldeflusses; die
+  JWK-Set-Adresse (`http://keycloak:8180/realms/opaa/protocol/openid-connect/certs`) nennt den Weg des
   Backends zu den Signaturschlüsseln, im Compose-Netz über den Namen `keycloak` statt `localhost`.
-  `OPAA_OIDC_AUTHORITY` ist ohne Wirkung.
-- **Die Variablen gelten nur beim ersten Start**; danach führt die Anbieterverwaltung
-  ([Bestandsübernahme](#bestandsübernahme-aus-opaa_oidc_)).
+- **Beide Hosts sind intern** und brauchen deshalb die Allowlist der Adressprüfung (siehe
+  [Adressprüfung](#adressprüfung-und-tokenprüfung)), mit Port: Ein Eintrag `localhost` allein gäbe
+  jeden Port frei, auch den der Verwaltungsschnittstelle des Backends.
 - **Ohne `OPAA_CSP_CONNECT_SRC_EXTRA`** blockiert der Browser den Aufruf gegen Keycloak (nächster
   Abschnitt). Mehrere Origins werden durch Leerzeichen getrennt; eine Änderung wirkt nach einem
   Neustart des Frontend-Containers.
@@ -371,7 +375,7 @@ und entfernt. Ein erfolgreicher Test antwortet etwa „Verzeichnis erreichbar: R
 Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden fehlenden Rollen. Erreicht das Backend
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel `http://keycloak:8180` statt
 `http://localhost:8180` —, gehört die Backend-Adresse in das Feld der Admin-API; ohne Angabe leitet
-OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe [Adressprüfung](#bestandsübernahme-aus-opaa_oidc_)
+OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe [Adressprüfung](#adressprüfung-und-tokenprüfung)
 wie die Issuer-URI; Redirects folgt das Backend nicht.
 
 **Das Geheimnis liegt verschlüsselt** mit `OPAA_CREDENTIALS_ENCRYPTION_KEY`; ohne diesen Schlüssel
@@ -386,27 +390,15 @@ entzieht nichts, bis der Zugang neu hinterlegt ist.
 unerreichbar abbrechen, statt eine abgeschnittene Liste anzuwenden. Die Werte sind für
 Verwaltungsrealms reichlich bemessen; wer sie erreicht, hebt sie bewusst an.
 
-### Bestandsübernahme aus `OPAA_OIDC_*`
-
-`OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_SET_URI` sind **Startwerte**: Beim
-ersten Start im Modus `oidc` übernimmt OPAA sie einmalig als ersten, aktivierten Standardanbieter
-„Verzeichnisdienst", bevor die erste Anmeldung möglich ist. Danach führt die Anbieterverwaltung; eine
-Änderung der Variablen wirkt nicht mehr. Fehlt eine der beiden Pflichtvariablen (Issuer-URI,
-Client-ID) oder ist die Issuer-URI keine http(s)-Adresse, wird nichts übernommen, das Protokoll nennt,
-was zu setzen ist, und der nächste Start holt es nach. Gibt es ein anmeldefähiges lokales
-Systemverwalterkonto, ist eine fehlende Issuer-URI nur ein Hinweis (Betrieb nur mit lokalen Konten),
-eine fehlerhafte Angabe ein Fehler. Sobald ein Anbieter angelegt ist, entfällt die Meldung.
-
-**Die Variablen bleiben gesetzt.** `OPAA_OIDC_BOOTSTRAP=force` stellt den Anbieter aus der Umgebung
-einmalig wieder her (Zeile mit diesem Issuer überschrieben bzw. angelegt, aktiviert, Standard); der
-Weg ist veraltet und entfällt ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)),
-an seine Stelle tritt die [Notfallprozedur](#notfallprozedur-wieder-hereinkommen). Danach die
-Variable wieder entfernen.
+### Adressprüfung und Tokenprüfung
 
 **Adressprüfung.** Jede eingetragene Issuer- und JWK-Set-Adresse durchläuft dieselbe Prüfung gegen
 private Netzbereiche wie die Quellen ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), mit
 eigenen Schaltern `OPAA_OIDC_TARGET_VALIDATION_ENABLED` und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`.
-Ein hausinterner Anbieter gehört in die Allowlist; die Adressen der Startwerte sind immer erlaubt.
+Ein hausinterner Anbieter gehört in die Allowlist, auch der aus der Installation; keine Adresse ist
+ohne Eintrag erlaubt. Ein Eintrag `host:port` (IPv6 als `[adresse]:port`) gibt nur diesen Port frei,
+ohne Port gilt er für jeden Port des Hosts; für interne Anbieter immer den Port nennen. Das Helm-Chart
+trägt den Anbieter der Antwortdatei mit Host und Port selbst ein.
 Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Redirects zu folgen.
 
 **Tokenprüfung.** Ein Token wird nur angenommen, wenn sein `azp`-Claim die Client-ID der Anbieterzeile
@@ -456,7 +448,7 @@ kcadm.sh update realms/opaa -s accessTokenLifespan=900 -s ssoSessionIdleTimeout=
 ```
 
 oder der Audience-Mapper des Clients `opaa-seed` auf die Client-ID der Anbieterzeile (ohne ihn weist
-das Backend jeden Aufruf eines Befüllungslaufs mit 401 ab, siehe [Tokenprüfung](#bestandsübernahme-aus-opaa_oidc_);
+das Backend jeden Aufruf eines Befüllungslaufs mit 401 ab, siehe [Tokenprüfung](#adressprüfung-und-tokenprüfung);
 lautet die Client-ID nicht `opaa-frontend`, gehört ihr Wert in `included.client.audience`):
 
 ```bash
@@ -490,58 +482,18 @@ Die bloße Verlängerung einer Sitzung im Hintergrund zählt nicht als erneute A
 
 **Der erste Systemverwalter ist ein lokales Konto**, das Notanker-Konto, unabhängig davon, ob ein
 Identitätsanbieter konfiguriert ist. Das ist der Weg hinein, bevor etwas eingerichtet ist, und der
-Weg zurück, wenn ein Anbieter falsch konfiguriert wurde. Angelegt wird es auf einem von zwei Wegen:
-
-- **Installation:** Ohne `OPAA_INITIAL_ADMIN_EMAIL` startet eine leere Instanz im
-  Installationsmodus; das erste Konto ist ein Schritt der Installation, mit dem dort gewählten
-  Passwort ([Installation](installation.md)). Für diesen Weg gilt der Rest dieses Abschnitts bis
-  auf die Einmalausgabe des Passworts.
-- **Startwerte:** Ist `OPAA_INITIAL_ADMIN_EMAIL` gesetzt, legt der allererste Start im Modus `oidc`
-  das Konto aus den Startwerten an und schließt die Installation damit ab:
-
-```env
-# Pflicht: die Adresse des ersten Systemverwalters - ein zustellbares Postfach,
-# am besten ein Funktionspostfach der IT.
-OPAA_INITIAL_ADMIN_EMAIL=it-postfach@beispielstadt.de
-
-# Optional: ein festes Anfangspasswort statt eines erzeugten. Für CI und
-# automatisierte Bereitstellung gedacht; dann wird kein Wechsel erzwungen.
-#OPAA_INITIAL_ADMIN_PASSWORD=
-```
-
-**Wo das Einmalpasswort steht.** Ohne `OPAA_INITIAL_ADMIN_PASSWORD` erzeugt OPAA ein Passwort und
-schreibt es **einmalig** als markierten Block ins Protokoll:
-
-```text
-=====================================================================
-  NOTANKER-KONTO DER SYSTEMVERWALTUNG - EINMALIGE AUSGABE
-  Anmeldung:  mit der Adresse aus OPAA_INITIAL_ADMIN_EMAIL
-  Passwort:   <hier steht das erzeugte Passwort>
-  Der Wechsel des Passworts wird bei der ersten Anmeldung erzwungen.
-  Diese Ausgabe erscheint einmalig und wird nicht wiederholt.
-=====================================================================
-```
-
-Zu lesen mit `docker compose logs backend | grep -A5 NOTANKER` bzw. `kubectl logs` direkt nach dem
-ersten Start; danach nennt das Protokoll nur noch, **dass** gesät wurde. **Eine Log-Weiterleitung
-sieht diesen Block** — bewusst in Kauf genommen: Das Passwort gilt nur bis zur ersten Anmeldung, das
-Konto ist ohne Anmeldung wertlos, und wer das Protokoll nicht belasten will, setzt
-`OPAA_INITIAL_ADMIN_PASSWORD` und übergibt selbst.
-
-**Die Adresse muss zustellbar sein.** Steht in `OPAA_INITIAL_ADMIN_EMAIL` nichts, etwas ohne `@` oder
-der frühere Vorgabewert `admin@opaa.local`, legt OPAA **kein** Konto an, schreibt einen Fehler mit dem
-Namen der Variable ins Protokoll und holt die Anlage beim nächsten Start mit korrigierter Adresse
-nach. Die Adresse wird zum Anmeldenamen eines privilegierten Kontos, und unter `admin@opaa.local`
-erreicht kein Rücksetzlink ein Postfach.
-
-**Gibt es schon Konten, entsteht das Konto ohne Passwort.** Findet OPAA beim Anlegen bereits Konten
-eines Anbieters vor, legt es das Notanker-Konto „eingeladen" an und schreibt kein Passwort ins
-Protokoll. Ein Haus, das lokale Konten ausschließt, bekommt so kein gültiges Passwort in sein Log; wer
-das Konto braucht, aktiviert es über die [Notfallprozedur](#notfallprozedur-wieder-hereinkommen).
+Weg zurück, wenn ein Anbieter falsch konfiguriert wurde. Es ist ein Schritt der
+[Installation](installation.md), im Assistenten oder in der Antwortdatei, mit dem dort gewählten
+Passwort. Aus dem Assistenten gilt es ohne erzwungenen Wechsel. Eine Antwortdatei nennt das Passwort
+nur als Pfad einer Datei, und die erste Anmeldung verlangt ein neues, solange die Datei nicht
+`requirePasswordChange: false` sagt; so gilt das Passwort, das in einem Secret oder einer Datei
+liegen bleibt, danach nicht mehr.
+Die Adresse muss ein zustellbares Postfach sein, am besten ein Funktionspostfach der IT;
+`admin@opaa.local` lehnt die Installation ab, weil unter ihr kein Rücksetzlink ein Postfach erreicht.
 
 **Das Notanker-Konto ist ein Notfallzugangsmittel, kein Arbeitskonto.**
 
-1. **Einmal anmelden, Passwort wechseln** (erzwungen, wenn es erzeugt wurde).
+1. **Einmal anmelden** und prüfen, dass das Konto funktioniert.
 2. **Persönliche Verwalterkonten anlegen**, je Person eines
    ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md)); die tägliche Arbeit läuft über diese Konten.
 3. **Das Passwort versiegelt hinterlegen**, dort, wo das Haus andere Notfallzugänge verwahrt.
@@ -556,8 +508,9 @@ der Sperre nach Inaktivität ist es ausgenommen, die Sperre nach Fehlversuchen g
 Systemverwalter aus. Erkannt wird es an einer internen Markierung, nicht an der Adresse; Adresse und
 Anzeigename dürfen sich ändern.
 
-`OPAA_INITIAL_ADMIN_EMAIL` macht **kein Konto eines Identitätsanbieters** zum Systemverwalter; die
-Variable bezeichnet nur das Notanker-Konto. Im Modus `dev` ist `dev-admin` Systemverwalter.
+Das erste Konto der Installation macht **kein Konto eines Identitätsanbieters** zum
+Systemverwalter, auch wenn die Adresse übereinstimmt; es bezeichnet nur das Notanker-Konto. Im Modus
+`dev` ist `dev-admin` Systemverwalter.
 
 ## Lokale Benutzerverwaltung
 
@@ -629,7 +582,7 @@ Wiederverwendung und beendet alle Sitzungen.
 ## Notfallprozedur: wieder hereinkommen
 
 Für den Fall, dass sich **niemand** mehr anmelden kann — der letzte Anbieter ist falsch konfiguriert,
-das Notanker-Konto gelöscht oder sein Passwort verloren:
+das Notanker-Konto gesperrt, abgelaufen, sein Passwort verloren oder das Konto nicht vorhanden:
 
 ```env
 OPAA_LOCAL_ADMIN_RESET=force
@@ -641,9 +594,36 @@ weitere Start mit gesetztem Wert lässt das Konto unverändert und vermerkt das 
 Start ohne den Wert gibt einen neuen Reset frei. Der Start stellt einen anmeldefähigen lokalen
 Systemverwalter her:
 Das Notanker-Konto wird entsperrt, ein Ablaufdatum entfernt, die Rolle wiederhergestellt, ein neues
-Einmalpasswort gesetzt (im Protokoll oder aus `OPAA_INITIAL_ADMIN_PASSWORD`) und alle seine Sitzungen
-beendet. Wurde das Konto gelöscht, legt der Start es mit der konfigurierten Adresse neu an. Der
-Vorgang steht laut im Protokoll und im Nachweisprotokoll.
+Einmalpasswort gesetzt und alle seine Sitzungen beendet. Das Einmalpasswort steht **einmalig** als
+markierter Block im Protokoll, der Wechsel wird bei der ersten Anmeldung erzwungen:
+
+```text
+=====================================================================
+  NOTANKER-KONTO DER SYSTEMVERWALTUNG - EINMALIGE AUSGABE
+  Anmeldung:  mit der Adresse des Notanker-Kontos
+  Passwort:   <hier steht das erzeugte Passwort>
+  Der Wechsel des Passworts wird bei der ersten Anmeldung erzwungen.
+  Diese Ausgabe erscheint einmalig und wird nicht wiederholt.
+=====================================================================
+```
+
+Zu lesen mit `docker compose logs backend | grep -A5 NOTANKER` bzw. `kubectl logs`. **Eine
+Log-Weiterleitung sieht diesen Block** — bewusst in Kauf genommen: Das Passwort gilt nur bis zur
+ersten Anmeldung. Der Vorgang steht laut im Protokoll und im Nachweisprotokoll.
+
+**Kein Notanker-Konto vorhanden**, etwa nach einem Eingriff in die Datenbank: Dann legt derselbe
+Start es an, sobald zusätzlich die Adresse gesetzt ist:
+
+```env
+OPAA_LOCAL_ADMIN_RESET=force
+OPAA_LOCAL_ADMIN_RESET_EMAIL=it-betrieb@stadt.example
+```
+
+Die Adresse folgt denselben Regeln wie im Assistenten (zustellbares Postfach, nicht
+`admin@opaa.local`) und darf noch keinem lokalen Konto gehören; das Passwort steht wie oben
+einmalig im Protokoll. Fehlt die Adresse oder ist sie nicht verwendbar, legt der Start nichts an und
+nennt den Grund. Ein zweites Notanker-Konto entsteht nie. Beide Variablen danach wieder entfernen.
+Eine eingerichtete Installation ohne Notanker-Konto meldet das bei jedem Start als Warnung.
 
 Danach läuft die Reparatur über die Oberfläche: als lokaler Systemverwalter anmelden und in der
 Anbieterverwaltung den falschen Anbieter korrigieren oder einen neuen anlegen. Ein Eingriff in die
@@ -672,20 +652,21 @@ vereinheitlicht**: Jede gehört zu einem anderen Modus oder Werkzeug und folgt d
 
 | Muster | Geltungsbereich | Nutzer |
 |--------|------------------|--------|
-| **Notanker-Konto** (`OPAA_INITIAL_ADMIN_EMAIL`) | jede Installation im Modus `oidc` — **kein Testkonto, sondern ein echtes Konto**; es steht hier, weil Test- und Demo-Stapel es mit festem Passwort bestücken | Anzeigename „Systemverwaltung", Rolle `SYSTEM_ADMIN`. Die im Repository stehenden Passwörter `RheinfurtNotanker!2026` (Demo-Smoke, `e2e/demo-smoke.env`) und `E2eNotankerKonto!2026` (Ziel `local-auth`, `e2e/local-auth.env`) gehören zu Stapeln, die ein Befehl erzeugt und wieder wegwirft — nie Vorgaben für eine Installation |
+| **Notanker-Konto** (erstes Konto der Installation) | jede Installation im Modus `oidc` — **kein Testkonto, sondern ein echtes Konto**; es steht hier, weil Test- und Demo-Stapel es mit festem Passwort bestücken | Anzeigename „Systemverwaltung", Rolle `SYSTEM_ADMIN`. Die im Repository stehenden Passwörter unter `e2e/installation/`, etwa `RheinfurtNotanker!2026` (Demo-Smoke) und `E2eNotankerKonto!2026` (Ziel `local-auth`), gehören zu Stapeln, die ein Befehl erzeugt und wieder wegwirft — nie Vorgaben für eine Installation |
 | Entwicklungsnutzer (`opaa.auth.dev.users`) | Modus `dev` | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer); kein Passwort, weil keines geprüft wird |
 | Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | Modus `oidc` mit dem mitgelieferten Keycloak | `testuser`/`testpass` (`test@opaa.local`), ein regulärer Nutzer; Systemverwalter wird er nur durch Rollenvergabe oder den Rollen-Claim |
 | Demo-Realm-Nutzer (`keycloak/realm-export.json`) | Demo-Instanz „Stadt Rheinfurt" (Profil `demo`, befüllt durch `demo/seed/seed.py`) | `demo-admin` (`admin@stadt-rheinfurt.example`; die Rolle vergibt der Befüllungslauf), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt`, alle mit `RheinfurtDemo!2026`; dazu der Client `opaa-seed` nur für das Befüllen |
-| Realm des Kubernetes-Erprobungsaufbaus (`examples/kubernetes-trial/keycloak/realm-opaa.json`) | Keycloak im [Erprobungsaufbau](kubernetes.md#erprobung-mit-dem-beispiel-setup), Client `opaa` | `testuser`/`testpass` und `maria.weber` mit `RheinfurtDemo!2026`, beide regulär; das Notanker-Konto bekommt ein beim Start erzeugtes Passwort im Secret des Aufbaus |
+| Realm des Kubernetes-Erprobungsaufbaus (`examples/kubernetes-trial/keycloak/realm-opaa.json`) | Keycloak im [Erprobungsaufbau](kubernetes.md#erprobung-mit-dem-beispiel-setup), Client `opaa` | `testuser`/`testpass` und `maria.weber` mit `RheinfurtDemo!2026`, beide regulär; das Notanker-Konto bekommt ein von `trial.sh` erzeugtes Passwort im Secret des Aufbaus |
 | Partner-Realm-Nutzer (`keycloak/realm-partner-export.json`) | zweiter Anbieter (Realm `partner`, Client `opaa-partner`), über die Anbieterverwaltung anzulegen | `maria.weber` mit **derselben E-Mail** wie im Realm `opaa` und `RheinfurtDemo!2026` — ein zweites Konto ohne die Rechte der Demo-Maria, der Nachweis, dass Konten zweier Anbieter nie zusammengeführt werden |
 | E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite, Ziel `e2e`, im Modus `dev` | `dev-admin` und `dev-user`, ergänzt um `dev-outsider` und `dev-format-pipelines` (über `OPAA_AUTH_DEV_USERS_*`) |
-| E2E-Ziel `local-auth` (`e2e/local-auth.env`, `e2e/docker-compose.local-auth.yml`) | Modus `oidc` **ohne** Keycloak — der Lauf, der eine echte lokale Anmeldung übt | nur das Notanker-Konto mit festem Passwort; weitere Konten legen die Szenarien selbst an |
+| E2E-Ziel `local-auth` (`e2e/local-auth.env`, `e2e/installation/local-auth.json`) | Modus `oidc` **ohne** Keycloak — der Lauf, der eine echte lokale Anmeldung übt | nur das Notanker-Konto der Antwortdatei mit festem Passwort; weitere Konten legen die Szenarien selbst an |
+| E2E-Ziel `installation` (`e2e/installation.env`) | Modus `oidc` im Installationsmodus — der Lauf des Einrichtungs-Assistenten | kein Konto vor dem Lauf; das Szenario legt das erste Konto im Assistenten an |
 
 Die E2E-Suite läuft im Modus `dev`, weil dort dieselben Autorisierungsregeln gelten wie mit
 Anmeldung, ohne Keycloak im Prüfpfad; die Anmeldevorgänge selbst prüfen der Demo-Smoke-Lauf (Keycloak)
 und das Ziel `local-auth` (lokale Anmeldung). Dass das Notanker-Konto in zwei Stapeln ein festes,
-öffentlich bekanntes Passwort trägt, ist genau der Grund, warum `OPAA_INITIAL_ADMIN_PASSWORD` auf einer
-erreichbaren Instanz ungesetzt bleibt. Zugangsdaten, mit denen eine Bibliothek ihre Quelle abruft,
+öffentlich bekanntes Passwort trägt, ist genau der Grund, warum keines dieser Passwörter auf einer
+erreichbaren Instanz verwendet wird. Zugangsdaten, mit denen eine Bibliothek ihre Quelle abruft,
 sind kein Konto bei OPAA ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#zugangsdaten-verschlüsselung)).
 
 ## Fehlerbehebung
@@ -715,15 +696,13 @@ nennt die Meldung mit Variablennamen.
 
 In dieser Reihenfolge prüfen:
 
-- **`OPAA_INITIAL_ADMIN_PASSWORD` ist gesetzt.** Dann erzeugt OPAA keines.
-- **Die Adresse wurde abgelehnt.** Eine Fehlerzeile nennt `OPAA_INITIAL_ADMIN_EMAIL` und den Grund;
-  korrigieren und neu starten.
-- **Es gab schon Konten.** Dann entsteht das Konto ohne Passwort; Aktivierung über die
+- **Die Installation lief über Assistent oder Antwortdatei.** Dann gibt es kein Einmalpasswort;
+  das Passwort ist das dort gewählte. Ein Einmalpasswort erzeugt nur die
   [Notfallprozedur](#notfallprozedur-wieder-hereinkommen).
-- **Unter Kubernetes** ist der Pod seit dem ersten Start mehrmals neu gestartet und das Protokoll weg.
-
-Ein bereits angelegtes Konto wiederholt die Ausgabe nicht; wer das Passwort verloren hat, nutzt die
-Notfallprozedur.
+- **Die Notfallprozedur fand kein Notanker-Konto und keine Adresse in
+  `OPAA_LOCAL_ADMIN_RESET_EMAIL`**, oder sie hatte seit dem Setzen von `OPAA_LOCAL_ADMIN_RESET` schon
+  zurückgesetzt; beides steht im Protokoll.
+- **Unter Kubernetes** ist der Pod seither mehrmals neu gestartet und das Protokoll weg.
 
 ### Die Anmeldung antwortet `429` mit `Retry-After`
 
@@ -757,7 +736,7 @@ Er verschiebt den nächsten geplanten Lauf um ein Intervall, ohne etwas anzuwend
 ### Jeder Aufruf eines eigenen Dienst-Clients endet mit 401
 
 Das Token nennt die Client-ID der Anbieterzeile weder in `azp` noch in `aud`; der Client braucht einen
-Audience-Mapper ([Tokenprüfung](#bestandsübernahme-aus-opaa_oidc_)).
+Audience-Mapper ([Tokenprüfung](#adressprüfung-und-tokenprüfung)).
 
 ## Weiterführende Kapitel
 

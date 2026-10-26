@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -97,35 +97,36 @@ steht nur `malformed_token`, denn ohne `sub` ist nicht feststellbar, ob ein `SYS
 passieren darf. Der Login antwortet mit derselben Einheitsantwort wie bei falschem Passwort. Das Abschalten widerruft
 die Sitzungen regulärer Konten zusätzlich eifrig (`ADMIN`, je Konto ein Audit-Ereignis).
 
-### 5. Erstadministrator: lokales Notanker-Konto beim ersten Start, Einmalpasswort ins Log, Wiederanlauf per Variable
+### 5. Erstadministrator: lokales Notanker-Konto aus der Installation, Wiederanlauf per Variable
 
-Die Anlage des Kontos aus `OPAA_INITIAL_ADMIN_*` und das erzeugte Einmalpasswort werden durch den
-Einrichtungs-Assistenten abgelöst (ADR-0060, Entscheidung 8); Notanker-Rolle und Wiederanlauf
-bleiben. Bis zur Umsetzung gilt der folgende Absatz.
+Das lokale `SYSTEM_ADMIN`-Konto mit `is_bootstrap = true` (Anzeigename aus der Installation) und die
+`LOCAL`-Anbieterzeile entstehen mit der Installation (ADR-0060, Entscheidung 8), mit Adresse und
+Passwort aus Assistent oder Antwortdatei; ein Konto aus der Antwortdatei muss sein Passwort bei der
+ersten Anmeldung wechseln (Grund `INITIAL`), solange die Datei es nicht abschaltet. Die Adresse
+`admin@opaa.local` wird abgelehnt; sie bleibt in `application.yml` für den `dev`-Modus. **Das
+Notanker-Konto ist ein Notfallzugangsmittel, kein Arbeitskonto und kein Sammelkonto:** Nach der
+Einrichtung legt der erste Systemverwalter persönliche Verwalterkonten an, je Person eines. Jede
+Anmeldung damit ist `LOCAL_BOOTSTRAP_ACCOUNT_LOGIN` und löst eine Mail an alle übrigen
+Systemverwalter aus; die Fehlversuch-Sperre gilt auch für dieses Konto (sonst wäre das IP-Limit die
+einzige Bremse am höchstprivilegierten Konto), auditiert und als `WARN` im Log, **ohne Mail** (ein
+Verstärker für jeden, der die Adresse kennt). Identifiziert über `is_bootstrap`, nicht über die
+Adresse. Die Erstadministrator-Regel für OIDC-Konten entfällt (`InitialAdminPolicy` nur noch
+Dev-Issuer).
 
-`LocalAdminSeeder` (Markierung `LocalAdminSeedMarker`, nur im `oidc`-Profil) legt immer die `LOCAL`-Anbieterzeile an und ein lokales `SYSTEM_ADMIN`-Konto aus
-`OPAA_INITIAL_ADMIN_EMAIL` (Anzeigename „Systemverwaltung", `is_bootstrap = true`,
-`password_change_required` mit Grund `INITIAL`). **Neuinstallation und Bestand sind zwei Fälle**,
-unterschieden allein daran, ob `users` Konten mit lokalem oder zu einer `oidc_providers`-Zeile
-gehörendem Issuer enthält (Dev-Konten und Konten gelöschter Anbieter zählen nicht): Im Bestandsfall
-entsteht das Konto als `INVITED` ohne Passwort und ohne Log-Ausgabe, der Betrieb aktiviert es
-bewusst mit `OPAA_LOCAL_ADMIN_RESET=force`; ein Opt-out per Variable gibt es nicht. **Passwort:**
-`OPAA_INITIAL_ADMIN_PASSWORD`, wenn gesetzt (ohne erzwungenen Wechsel; Weg für CI, E2E, Demo), sonst
-ein erzeugtes Passwort (20 Zeichen) einmalig als markierter Block ins Anwendungslog — im Container
-ohne Shell (ADR-0029) der Kanal, den der Betrieb liest; gültig nur bis zur ersten Anmeldung. Der
-Vorgabewert `admin@opaa.local` wird für das Konto abgelehnt (Fehler im Log, Anlage beim nächsten
-Start), bleibt aber in `application.yml` für den `dev`-Modus. **Das Notanker-Konto ist ein
-Notfallzugangsmittel, kein Arbeitskonto und kein Sammelkonto:** Nach der Einrichtung legt der erste
-Systemverwalter persönliche Verwalterkonten an, je Person eines. Jede Anmeldung damit ist `LOCAL_BOOTSTRAP_ACCOUNT_LOGIN` und löst eine Mail an
-alle übrigen Systemverwalter aus; die Fehlversuch-Sperre gilt auch für dieses Konto (sonst wäre das
-IP-Limit die einzige Bremse am höchstprivilegierten Konto), auditiert und als `WARN` im Log,
-**ohne Mail** (ein Verstärker für jeden, der die Adresse kennt). Identifiziert über `is_bootstrap`,
-nicht über die Adresse. Die Erstadministrator-Regel für OIDC-Konten entfällt (`InitialAdminPolicy`
-nur noch Dev-Issuer). **Wiederanlauf:** `OPAA_LOCAL_ADMIN_RESET=force` stellt beim Start einmalig
-einen anmeldefähigen lokalen Systemverwalter her, aus jedem Zustand (`INVITED`, Passwort unbekannt,
-Fehlversuch-Sperre, abgelehnte Adresse; Neuanlage nur nach Datenbankeingriff), widerruft alle
-Sitzungen des Kontos, auditiert `LOCAL_ADMIN_RESET`. `OPAA_OIDC_BOOTSTRAP=force` bleibt bis
-**31.03.2027** mit `WARN`-Zeile; `OPAA_OIDC_*` behalten ihre Bootstrap-Rolle (ADR-0025).
+**Wiederanlauf:** `OPAA_LOCAL_ADMIN_RESET=force` stellt beim Start einmalig einen anmeldefähigen
+lokalen Systemverwalter her, aus jedem Zustand (`INVITED`, Passwort unbekannt, Fehlversuch-Sperre,
+Ablauf), mit einem erzeugten Passwort (20 Zeichen), das einmalig als markierter Block ins
+Anwendungslog geht — im Container ohne Shell (ADR-0029) der Kanal, den der Betrieb liest; gültig nur
+bis zur ersten Anmeldung, deren Wechsel erzwungen ist. Er widerruft alle Sitzungen des Kontos und
+auditiert `LOCAL_ADMIN_RESET`. Hat die Installation kein Notanker-Konto, etwa weil es gelöscht
+wurde, legt der Wiederanlauf es an, unter der Adresse aus `OPAA_LOCAL_ADMIN_RESET_EMAIL` und mit
+denselben Adressregeln wie die Installation (`recreated` im Audit-Eintrag); ein zweites entsteht nie.
+Er wirkt einmal je Setzen der Variable, mehrere Instanzen nacheinander unter der Startsperre, und erst
+ein Start ohne die Variable gibt den nächsten frei. Der Start einer eingerichteten Installation ohne
+Notanker-Konto warnt und nennt diesen Weg. `OPAA_OIDC_BOOTSTRAP=force` entfällt mit ADR-0060
+(Entscheidung 9); die frühere Zusage, die Variable bis zum 31.03.2027 zu tragen, ist zurückgenommen.
+Ein falsch konfigurierter letzter Anbieter wird nach dem Wiederanlauf in der Anbieterverwaltung
+korrigiert.
 
 ### 6. Token: HS256-Access-Token mit HKDF-abgeleitetem Schlüssel aus einem validierten Secret
 

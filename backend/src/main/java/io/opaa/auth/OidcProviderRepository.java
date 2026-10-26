@@ -51,7 +51,8 @@ public interface OidcProviderRepository extends JpaRepository<OidcProvider, UUID
   Optional<OidcProvider> findByProviderType(ProviderType providerType);
 
   /**
-   * The one LOCAL row (ADR-0033, {@code ux_oidc_providers_single_local}), if the seed created it.
+   * The one LOCAL row (ADR-0033, {@code ux_oidc_providers_single_local}), if the installation
+   * created it.
    */
   default Optional<OidcProvider> findLocalRow() {
     return findByProviderType(ProviderType.LOCAL);

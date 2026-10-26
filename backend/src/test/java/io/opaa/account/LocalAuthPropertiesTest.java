@@ -26,15 +26,14 @@ class LocalAuthPropertiesTest {
     assertThat(properties.adminRefreshTokenTtl()).isEqualTo(Duration.ofHours(4));
     assertThat(properties.adminSessionMaxLifetime()).isEqualTo(Duration.ofHours(12));
     assertThat(properties.cookieSecure()).isTrue();
-    assertThat(properties.initialAdminPassword()).isEmpty();
-    assertThat(properties.hasInitialAdminPassword()).isFalse();
     assertThat(properties.isAdminResetForced()).isFalse();
+    assertThat(properties.adminResetEmail()).isEmpty();
     assertThat(properties.adminAllowedCidrs()).isEmpty();
     assertThat(properties.refreshGracePeriod()).isEqualTo(Duration.ofSeconds(20));
   }
 
   @Test
-  void readsTheBootstrapSettingsOfTheLocalAdministrator() {
+  void readsTheResetAndNetworkSettingsOfTheLocalAdministrator() {
     LocalAuthProperties properties =
         new LocalAuthProperties(
             null,
@@ -44,15 +43,13 @@ class LocalAuthPropertiesTest {
             null,
             null,
             null,
-            "  ci-passwort  ",
             " Force ",
+            " notanker@stadt.example ",
             List.of(" 10.0.0.0/8 ", "", "2001:db8::/32"),
             null);
 
-    // never trimmed: a password may begin or end with a space
-    assertThat(properties.initialAdminPassword()).isEqualTo("  ci-passwort  ");
-    assertThat(properties.hasInitialAdminPassword()).isTrue();
     assertThat(properties.isAdminResetForced()).isTrue();
+    assertThat(properties.adminResetEmail()).isEqualTo("notanker@stadt.example");
     assertThat(properties.adminAllowedCidrs()).containsExactly("10.0.0.0/8", "2001:db8::/32");
   }
 

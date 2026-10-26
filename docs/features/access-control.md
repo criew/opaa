@@ -512,30 +512,25 @@ erneute Anmeldung.
 
 ### Der erste Systemverwalter, das Notanker-Konto und der Aussperrschutz
 
-Beim allerersten Start im
-`oidc`-Betriebsmodus legt `LocalAdminSeeder` — vor dem Webserver, gegen Wiederholung durch eine
-Markierungszeile gesichert — die `LOCAL`-Anbieterzeile („Lokale Konten", deaktiviert, nie
-Standard) und das lokale Notanker-Konto der Systemverwaltung an: Adresse aus
-`OPAA_INITIAL_ADMIN_EMAIL` (der alte Vorgabewert `admin@opaa.local`, eine fehlende oder keine
-E-Mail-Adresse werden abgelehnt — Fehler im Log, keine Markierung, Anlage beim nächsten Start),
-Anzeigename „Systemverwaltung", Anlagegrund „Notanker-Konto der Systemverwaltung", `is_bootstrap`,
-`SYSTEM_ADMIN`, Adresse als bestätigt. Auf einer **Neuinstallation** (keine Konten in `users` —
-nicht die OIDC-Übernahmemarkierung, die im selben Start auch nach einer abgelehnten Adresse
-entsteht) ist das Konto scharf: mit `OPAA_INITIAL_ADMIN_PASSWORD`, falls gesetzt (CI/E2E, kein
-erzwungener Wechsel), sonst mit einem erzeugten Einmalpasswort, das **einmalig** als deutlich
-markierter Block ins Anwendungslog geschrieben wird und bei der ersten Anmeldung gewechselt werden
-muss (`pcr` mit Anlass `INITIAL`). Auf einer **Bestandsinstallation** entsteht das Konto als
-`INVITED` ohne Passwort und ohne Log-Ausgabe; `OPAA_LOCAL_ADMIN_RESET=force` aktiviert es beim
-nächsten Start einmalig (entsperrt, Ablauf gelöscht, neues Einmalpasswort, `SYSTEM_ADMIN`
-wiederhergestellt, alle Sitzungen widerrufen; ein gelöschtes Konto wird neu angelegt) — auditiert
-als `LOCAL_ADMIN_RESET`; die Anlage als `LOCAL_ADMIN_SEEDED`. Jede erfolgreiche Anmeldung mit dem
-Notanker-Konto (erkannt über `is_bootstrap`, nicht über die Adresse) ist ein Audit-Ereignis
-`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN` und löst die Mail `BOOTSTRAP_ACCOUNT_USED` an alle übrigen
-Systemverwalter aus. Die
-Erstadministrator-Regel für OIDC-Konten ist aufgehoben: `InitialAdminPolicy` wirkt nur noch für den
-Dev-Issuer (`dev-admin` bleibt Systemverwalter); IdP-Konten werden Systemverwalter allein durch
-Rollenvergabe. `OPAA_OIDC_BOOTSTRAP=force` funktioniert bis zum 31.03.2027 weiter und warnt bei
-jeder Verwendung mit Ersatz und Datum. Mit `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (IPv4/IPv6, leer =
+Die Installation (ADR-0060) legt die `LOCAL`-Anbieterzeile („Lokale Konten", deaktiviert, nie
+Standard) und das lokale Notanker-Konto der Systemverwaltung an: Adresse, Anzeigename und Passwort
+aus Assistent oder Antwortdatei (`admin@opaa.local` und Adressen ohne `@` werden abgelehnt),
+Anlagegrund „Notanker-Konto der Systemverwaltung", `is_bootstrap`, `SYSTEM_ADMIN`, Adresse als
+bestätigt, auditiert als `LOCAL_ADMIN_SEEDED`. Ein Konto aus der Antwortdatei muss sein Passwort bei
+der ersten Anmeldung wechseln (`pcr` mit Anlass `INITIAL`), solange die Datei nicht
+`requirePasswordChange: false` sagt. `OPAA_LOCAL_ADMIN_RESET=force` stellt das Konto beim nächsten
+Start einmalig wieder her (entsperrt, Ablauf gelöscht, neues Einmalpasswort einmalig als markierter
+Block im Anwendungslog, Wechsel erzwungen, `SYSTEM_ADMIN` wiederhergestellt, alle Sitzungen
+widerrufen) — auditiert als `LOCAL_ADMIN_RESET`. Fehlt der Installation das Notanker-Konto, legt
+derselbe Start es unter der Adresse aus `OPAA_LOCAL_ADMIN_RESET_EMAIL` an (`recreated` im
+Audit-Eintrag); ohne die Adresse meldet das Log, was fehlt, und ein Start ohne Notanker-Konto warnt.
+Jede erfolgreiche Anmeldung mit dem Notanker-Konto (erkannt über `is_bootstrap`, nicht über die
+Adresse) ist ein Audit-Ereignis `LOCAL_BOOTSTRAP_ACCOUNT_LOGIN` und löst die Mail
+`BOOTSTRAP_ACCOUNT_USED` an alle übrigen Systemverwalter aus. Die Erstadministrator-Regel für
+OIDC-Konten ist aufgehoben: `InitialAdminPolicy` wirkt nur noch für den Dev-Issuer (`dev-admin`
+bleibt Systemverwalter); IdP-Konten werden Systemverwalter allein durch Rollenvergabe.
+`OPAA_OIDC_BOOTSTRAP=force` ist entfallen; die frühere Zusage, die Variable bis zum 31.03.2027 zu
+tragen, ist zurückgenommen (ADR-0033, Entscheidung 5). Mit `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (IPv4/IPv6, leer =
 keine Beschränkung) melden sich lokale `SYSTEM_ADMIN`-Konten nur aus den genannten Netzen an — die
 Abweisung ist dieselbe wie bei einem falschen Passwort, liegt aber vor der Fehlversuchszählung (aus einem nicht erlaubten Netz lässt sich das Konto nicht sperren); geprüft
 wird die aufgelöste Client-Adresse (siehe Rate-Limiting unten).
@@ -967,11 +962,11 @@ JWK-Set-Adresse, die Claim-Zuordnung, Reihenfolge, Standardanbieter, aktiviert/d
 Backend prüft jedes Token gegen den Anbieter seines Issuers, ein deaktivierter Anbieter wird ab dem
 nächsten Token abgewiesen (`unknown_issuer`). Der erste Anbieter ist automatisch der Standardanbieter;
 er kann weder deaktiviert noch gelöscht werden, bevor ein anderer aktivierter Anbieter Standard ist.
-Die Issuer-URI eines Anbieters, über den bereits Konten angelegt wurden, ist nicht änderbar. Beim
-ersten Start im `oidc`-Modus übernimmt OPAA den bisherigen `OPAA_OIDC_*`-Anbieter einmalig als
-Standardanbieter „Verzeichnisdienst"; `OPAA_OIDC_BOOTSTRAP=force` stellt ihn im Notfall wieder
-her. Vom Betreiber eingegebene Adressen durchlaufen eine eigene Adressprüfung
-(`OPAA_OIDC_TARGET_VALIDATION_*`); die Bootstrap-Adressen sind immer erlaubt. Ein Verbindungstest
+Die Issuer-URI eines Anbieters, über den bereits Konten angelegt wurden, ist nicht änderbar. Den
+ersten Anbieter legt die Installation als Standardanbieter an (ADR-0060, Entscheidung 9). Vom
+Betreiber eingegebene Adressen durchlaufen eine eigene Adressprüfung
+(`OPAA_OIDC_TARGET_VALIDATION_*`), ohne Ausnahme für den Anbieter der Installation; ein Eintrag
+`host:port` der Allowlist gibt nur diesen Port frei. Ein Verbindungstest
 prüft Discovery-Dokument und JWK-Set vor dem Speichern. Die Anmeldeseite (#1332) und die
 Verwaltungsoberfläche (#1333) folgen.
 
@@ -979,11 +974,9 @@ Verwaltungsoberfläche (#1333) folgen.
 `(Issuer, Subject)`. Dieselbe Person bei zwei Anbietern hat zwei Konten mit getrennten
 persönlichen Spaces, Systemrollen und Space-Rechten — eine Zusammenführung über die E-Mail findet
 nie statt, auch nicht stillschweigend bei gleicher Adresse (Anbieter B kann kein Konto aus Anbieter
-A übernehmen). Die Erstadministrator-Regel (`OPAA_INITIAL_ADMIN_EMAIL`) greift nur beim Anlegen
-eines Kontos und nur über den **Standardanbieter** (im `dev`-Modus: den Dev-Issuer); dieselbe
-Adresse aus einem zweiten Anbieter ergibt einen regulären Nutzer, ebenso ein Konto, das angelegt
-wird, solange noch kein Standardanbieter existiert — beides wird als Warnung protokolliert, da die
-Regel nur einmal, beim Anlegen, greift. Ein Token eines deaktivierten oder gelöschten Anbieters wird
+A übernehmen). Die Erstadministrator-Regel greift nur im `dev`-Modus, beim Anlegen eines Kontos
+über den Dev-Issuer (`opaa.auth.dev.system-admin-email`); im `oidc`-Modus ist der erste
+Systemverwalter das Notanker-Konto der Installation. Ein Token eines deaktivierten oder gelöschten Anbieters wird
 mit `401` und `error_description="unknown_issuer"` abgewiesen, sodass die Oberfläche den Fall vom
 abgelaufenen Token unterscheiden kann.
 

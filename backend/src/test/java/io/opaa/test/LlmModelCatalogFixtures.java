@@ -12,10 +12,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *
  * <p>{@code llm_models} has no owner column and at most one active row ({@code
  * ux_llm_models_single_active}), so a class that needs a known catalogue state cannot scope its
- * cleanup by id the way every other table allows. It also holds a row no test class created: {@code
- * LlmModelSeeder} takes the environment configuration over once per fresh application context, and
- * that row decides whether {@code ActiveChatModelResolver} finds an active model at all. Taking a
- * snapshot and restoring it is therefore what "remove only your own rows" means here.
+ * cleanup by id the way every other table allows. It also holds a row no test class created: the
+ * chat model the test database installed itself with (ADR-0060), and that row decides whether
+ * {@code ActiveChatModelResolver} finds an active model at all. Taking a snapshot and restoring it
+ * is therefore what "remove only your own rows" means here.
  */
 public final class LlmModelCatalogFixtures {
 

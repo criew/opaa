@@ -2,12 +2,11 @@ package io.opaa.installation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.account.OidcProviderSeedRunner;
+import io.opaa.account.LocalAdminReset;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.llm.EmbeddingModelService;
-import io.opaa.llm.LlmModelSeedRunner;
 import io.opaa.ratelimit.RateLimitProperties;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
@@ -42,8 +41,7 @@ class InstallationStartupRaceIntegrationTest {
   @Autowired private LocalAccountFixturesFactory accountsFactory;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private AuthProperties authProperties;
-  @Autowired private OidcProviderSeedRunner identitySeeds;
-  @Autowired private LlmModelSeedRunner chatModelSeed;
+  @Autowired private LocalAdminReset adminReset;
   @Autowired private EmbeddingModelService embeddingModels;
   @Autowired private OidcProviderRegistry registry;
   @Autowired private JsonMapper json;
@@ -102,8 +100,7 @@ class InstallationStartupRaceIntegrationTest {
         new InstallationProperties(null, List.of(), answers.toString()),
         authProperties,
         status,
-        identitySeeds,
-        chatModelSeed,
+        adminReset,
         embeddingModels,
         registry,
         json,

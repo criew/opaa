@@ -19,14 +19,11 @@ import org.springframework.core.env.Environment;
  * outright, because {@code io.opaa.llm.ActiveChatModelResolver} builds every chat client itself,
  * programmatically, from the active {@code llm_models} row. The property still has a real, narrower
  * purpose: {@code io.opaa.config.OpenAiBaseUrlGuard} still reads it to decide whether {@code
- * spring.ai.openai.chat.base-url} must be set - that guard is unrelated to autoconfiguration and
- * still matters because {@code io.opaa.llm.LlmModelSeeder} reads {@code spring.ai.openai.chat.*}
- * directly for the one-time takeover into {@code llm_models} on first start
- * (docs/handbuch/betrieb/modelle.md, section "Chat-Modelle in der Oberfläche anlegen").
- * {@code @MockitoBean private ChatModel} bean of the shared test configuration therefore no longer
- * replaces a bean the excluded autoconfiguration would have produced; it exists only so a test's
- * {@code Environment} assertions do not need a real, reachable chat endpoint to load the
- * application context.
+ * spring.ai.openai.base-url} must be set - the address the {@code dev} mode installs its chat model
+ * with (ADR-0060). The chat models themselves come from the installation. {@code @MockitoBean
+ * private ChatModel} bean of the shared test configuration therefore no longer replaces a bean the
+ * excluded autoconfiguration would have produced; it exists only so a test's {@code Environment}
+ * assertions do not need a real, reachable chat endpoint to load the application context.
  */
 @OpaaIntegrationTest
 class ProviderConfigurationTest {
@@ -40,8 +37,8 @@ class ProviderConfigurationTest {
   }
 
   @Test
-  void theChatModelKeepsItsDefaultAndTheEmbeddingModelHasNone() {
-    assertThat(environment.getProperty("spring.ai.openai.chat.model")).isEqualTo("phi3:mini");
+  void neitherTheChatNorTheEmbeddingModelIsAConfigurationValue() {
+    assertThat(environment.getProperty("spring.ai.openai.chat.model")).isNull();
     assertThat(environment.getProperty("spring.ai.openai.embedding.model")).isNull();
   }
 
@@ -52,17 +49,9 @@ class ProviderConfigurationTest {
   }
 
   @Test
-  void theSharedBaseUrlKeepsItsDefault() {
-    // The "local" profile the suite activates alongside "dev" overrides nothing (application.yml
-    // documents it as a no-op), and "docker" is not active - so this is the top-level default.
-    assertThat(environment.getProperty("spring.ai.openai.base-url"))
-        .isEqualTo("http://localhost:11434/v1");
-  }
-
-  @Test
-  void chatAndEmbeddingBaseUrlsAreTheTestSignaturesAddressesThatNeverAnswer() {
+  void theSharedAndTheEmbeddingBaseUrlAreTheTestSignaturesAddressesThatNeverAnswer() {
     // The application.yml defaults of both are checked by ModelBaseUrlDefaultsTest.
-    assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
+    assertThat(environment.getProperty("spring.ai.openai.base-url"))
         .isEqualTo(OpaaIntegrationTest.CHAT_BASE_URL);
     assertThat(environment.getProperty("spring.ai.openai.embedding.base-url"))
         .isEqualTo(OpaaIntegrationTest.EMBEDDING_BASE_URL);

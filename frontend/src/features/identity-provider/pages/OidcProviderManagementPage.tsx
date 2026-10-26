@@ -92,8 +92,9 @@ export default function OidcProviderManagementPage() {
           <Alert severity="warning" sx={{ mb: 2 }}>
             Kein Anbieter ist Standardanbieter – der Anmeldevorschlag und der Löschschutz des
             Standardanbieters greifen nicht. Machen Sie einen aktivierten, erreichbaren Anbieter zum
-            Standard oder stellen Sie den Umgebungsanbieter mit OPAA_OIDC_BOOTSTRAP=force wieder
-            her. Der Verzeichnisabgleich hängt nicht daran: Er wird je Anbieter eingeschaltet.
+            Standard. Kann sich niemand mehr anmelden, stellt der Betrieb mit
+            OPAA_LOCAL_ADMIN_RESET=force das Notanker-Konto wieder her (Notfallprozedur im
+            Handbuch). Der Verzeichnisabgleich hängt nicht daran: Er wird je Anbieter eingeschaltet.
           </Alert>
         )}
 

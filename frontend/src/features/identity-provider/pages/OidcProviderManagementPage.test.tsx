@@ -378,6 +378,9 @@ describe('OidcProviderManagementPage', () => {
     // consequence of a missing default provider.
     expect(hinweis).toHaveTextContent(/Der Verzeichnisabgleich h.ngt nicht daran/)
     expect(hinweis).not.toHaveTextContent(/Verzeichnisabgleich greifen nicht/)
+    // The way back is the emergency account; the retired bootstrap variable is never named.
+    expect(hinweis).toHaveTextContent(/OPAA_LOCAL_ADMIN_RESET=force/)
+    expect(hinweis).not.toHaveTextContent(/OPAA_OIDC_BOOTSTRAP/)
   })
 
   it('runs the connection test from the dialog and shows the outcome', async () => {
