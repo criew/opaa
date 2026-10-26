@@ -79,12 +79,21 @@ class VectorSearchHnswIntegrationTest {
   @BeforeEach
   void chunksAndAnHnswIndexExist() {
     EmbeddingIndexState indexState = new EmbeddingIndexState();
+    // The query is embedded under the generation the shared index carries, as the installed
+    // client would; another class of the suite may have changed it.
+    long generation =
+        jdbcTemplate.queryForObject(
+            "SELECT coalesce((SELECT generation FROM embedding_index WHERE id = 1), ?)",
+            Long.class,
+            EmbeddingClients.INITIAL_GENERATION);
+    EmbeddingClients.Pinned pinned =
+        new EmbeddingClients.Pinned(new NegatedFakeEmbeddingModel(), generation, 8192);
     vectorSearchStage =
         new VectorSearchStage(
             new VectorChunkSearch(
                 jdbcTemplate,
                 transactionManager,
-                EmbeddingClients.fixed(new NegatedFakeEmbeddingModel(), 8192),
+                () -> pinned,
                 indexState,
                 objectMapper,
                 new VectorIndexScanProperties(20000),
