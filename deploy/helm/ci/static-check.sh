@@ -162,6 +162,9 @@ expect_rendered_set() {
   fi
 }
 expect_rendered_set full 'OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: "login2.example.org,login.example.org:443,keys.example.org:443"'
+# Model hosts come from their own list plus the models of the answer file, never from the sources' list.
+expect_rendered_set full 'OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: "reranker.ai.svc.cluster.local:8080,models.example.org:443"'
+expect_rendered_set full 'OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: "confluence.example.org"'
 expect_rendered_set features-off "value: /etc/opaa/installation/installation.json"
 expect_rendered_set features-off "optional: true"
 expect_rendered_set minimal "key: OPAA_INSTALLATION_TOKEN"
@@ -184,6 +187,8 @@ for rc4 in deploy/helm/ci/upgrade-from-rc4/*-values.yaml; do
     exit 1
   fi
 done
+# An rc.4 value file never listed its model host for models; the chart adds that of the answer file.
+expect_rendered_set rc4-minimal 'OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: "ollama.ai.svc.cluster.local:11434"'
 if grep -qF "installation-admin-password:" "$work_dir/rc4-minimal.yaml"; then
   echo "The rc.4 minimal value set renders a password it does not have." >&2
   exit 1

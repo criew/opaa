@@ -12,7 +12,6 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.security.TargetAddressValidator;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -35,10 +34,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * What the system administration does with the rerank and transcription model roles (ADR-0060,
  * Entscheidung 10): read, change and test them. A change is validated like every model endpoint
- * ({@link ModelEndpointRules}, target address check included), stored with the key encrypted, and
- * recorded with the values before and after (Entscheidung 11); a change to the same values writes
- * nothing. The speech-input feature is the operation's limit: the transcription role cannot be
- * switched on while it is off (Entscheidung 2).
+ * ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored
+ * one), stored with the key encrypted, and recorded with the values before and after (Entscheidung
+ * 11); a change to the same values writes nothing. The speech-input feature is the operation's
+ * limit: the transcription role cannot be switched on while it is off (Entscheidung 2).
  *
  * <p>The change reaches every instance through the triggers on the two tables; this instance drops
  * its cache and probes the new endpoint right after the commit, so the state on the page follows
@@ -94,7 +93,7 @@ public class ModelRoleAdministration {
   private final RerankClient rerankClient;
   private final TranscriptionClient transcriptionClient;
   private final SettingsEncryptor settingsEncryptor;
-  private final TargetAddressValidator modelAddresses;
+  private final ModelAddressPolicy modelAddresses;
   private final AuditEventRecorder auditEventRecorder;
   private final Environment environment;
   private final ApplicationEventPublisher events;
@@ -112,7 +111,7 @@ public class ModelRoleAdministration {
       RerankClient rerankClient,
       TranscriptionClient transcriptionClient,
       SettingsEncryptor settingsEncryptor,
-      TargetAddressValidator modelAddresses,
+      ModelAddressPolicy modelAddresses,
       AuditEventRecorder auditEventRecorder,
       Environment environment,
       ApplicationEventPublisher events,
@@ -168,7 +167,7 @@ public class ModelRoleAdministration {
     String identifier = trimmed(model);
     List<FieldError> errors = new ArrayList<>();
     ModelEndpointRules.endpointErrors(RERANK, address, identifier, apiKey, enabled, errors);
-    blockedAddressError(RERANK, address, errors);
+    blockedAddressError(RERANK, address, storedRerankAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status -> storeRerank(organizationId, actorUserId, enabled, address, identifier, apiKey));
@@ -240,7 +239,7 @@ public class ModelRoleAdministration {
               "Die Sprache ist ein Kürzel aus zwei Buchstaben nach ISO 639-1, etwa de oder en;"
                   + " leer erkennt das Modell die Sprache selbst."));
     }
-    blockedAddressError(TRANSCRIPTION, address, errors);
+    blockedAddressError(TRANSCRIPTION, address, storedTranscriptionAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status ->
@@ -314,7 +313,7 @@ public class ModelRoleAdministration {
             address,
             identifier,
             apiKey,
-            rerankRows.findStored().map(RerankModelSettings::getBaseUrl).orElse(null),
+            storedRerankAddress(),
             rerankRows.findStored().map(RerankModelSettings::getApiKeyCiphertext).orElse(null));
     RerankClient.ProbeFailure failure =
         rerankClient.probe(new RerankEndpoint(true, address, identifier, key), TEST_TIMEOUT);
@@ -333,7 +332,7 @@ public class ModelRoleAdministration {
             address,
             identifier,
             apiKey,
-            transcriptionRows.findStored().map(TranscriptionModelSettings::getBaseUrl).orElse(null),
+            storedTranscriptionAddress(),
             transcriptionRows
                 .findStored()
                 .map(TranscriptionModelSettings::getApiKeyCiphertext)
@@ -346,7 +345,10 @@ public class ModelRoleAdministration {
         : new TestOutcome(false, german(failure.message(), failure.timedOut()));
   }
 
-  /** Validates a draft and returns the key to send; checked against the target address check. */
+  /**
+   * Validates a draft and returns the key to send; an address other than the stored one passes the
+   * address check first.
+   */
   private String testKey(
       String prefix,
       String address,
@@ -356,7 +358,7 @@ public class ModelRoleAdministration {
       String storedCiphertext) {
     List<FieldError> errors = new ArrayList<>();
     ModelEndpointRules.endpointErrors(prefix, address, identifier, apiKey, true, errors);
-    blockedAddressError(prefix, address, errors);
+    blockedAddressError(prefix, address, storedBaseUrl, errors);
     requireNoErrors(errors);
     if (apiKey != null) {
       return apiKey.strip();
@@ -415,10 +417,19 @@ public class ModelRoleAdministration {
         RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.TRANSCRIPTION));
   }
 
-  /** The target address check of a valid address, as a field error under {@code prefix}. */
-  private void blockedAddressError(String prefix, String baseUrl, List<FieldError> errors) {
+  private String storedRerankAddress() {
+    return rerankRows.findStored().map(RerankModelSettings::getBaseUrl).orElse(null);
+  }
+
+  private String storedTranscriptionAddress() {
+    return transcriptionRows.findStored().map(TranscriptionModelSettings::getBaseUrl).orElse(null);
+  }
+
+  /** The address check of a valid address, as a field error under {@code prefix}. */
+  private void blockedAddressError(
+      String prefix, String baseUrl, String storedBaseUrl, List<FieldError> errors) {
     if (errors.isEmpty() && !baseUrl.isEmpty()) {
-      String blocked = ModelEndpointRules.blockedModelAddress(modelAddresses, baseUrl);
+      String blocked = modelAddresses.blockedReason(baseUrl, storedBaseUrl);
       if (blocked != null) {
         errors.add(new FieldError(prefix + ".baseUrl", ModelEndpointRules.BLOCKED, blocked));
       }

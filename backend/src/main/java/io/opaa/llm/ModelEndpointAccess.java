@@ -22,8 +22,9 @@ import org.springframework.util.StringUtils;
 
 /**
  * What every admin-triggered call to a chat model endpoint shares - the connection test and the
- * model discovery alike: the "no credentials in the address" rule, the stored-key rule, one client
- * configuration and one German wording per connection failure.
+ * model discovery alike: the "no credentials in the address" rule, the address check of models for
+ * an address other than the model's stored one, the stored-key rule, one client configuration and
+ * one German wording per connection failure.
  *
  * <p><b>The stored key never leaves its own origin.</b> With {@code modelId} and without a given
  * key, the stored key of that model is used only when the requested {@code baseUrl} is same-origin
@@ -41,10 +42,27 @@ final class ModelEndpointAccess {
 
   private final LlmModelRepository repository;
   private final SettingsEncryptor settingsEncryptor;
+  private final ModelAddressPolicy modelAddresses;
 
-  ModelEndpointAccess(LlmModelRepository repository, SettingsEncryptor settingsEncryptor) {
+  ModelEndpointAccess(
+      LlmModelRepository repository,
+      SettingsEncryptor settingsEncryptor,
+      ModelAddressPolicy modelAddresses) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
+    this.modelAddresses = modelAddresses;
+  }
+
+  /**
+   * Why the address check of models refuses {@code baseUrl}, or {@code null}; the stored endpoint
+   * of {@code modelId} passes unchecked ({@link ModelAddressPolicy#blockedReason(String, String)}).
+   */
+  String blockedAddress(String baseUrl, UUID modelId) {
+    String storedBaseUrl =
+        modelId == null
+            ? null
+            : repository.findById(modelId).map(LlmModel::getBaseUrl).orElse(null);
+    return modelAddresses.blockedReason(baseUrl, storedBaseUrl);
   }
 
   /**

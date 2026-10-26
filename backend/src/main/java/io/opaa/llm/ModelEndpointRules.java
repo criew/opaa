@@ -1,8 +1,6 @@
 package io.opaa.llm;
 
 import io.opaa.common.FieldValidationException.FieldError;
-import io.opaa.security.TargetAddressValidator;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -11,9 +9,9 @@ import java.util.Locale;
 /**
  * The rules every entered model endpoint follows, in the installation as in the model
  * administration: lengths, an http(s) address without credentials, a key without control
- * characters, the target address check, and that a stored key stays only with the same endpoint.
- * Field errors are named {@code <prefix>.baseUrl}, {@code <prefix>.model} and {@code
- * <prefix>.apiKey}.
+ * characters, and that a stored key stays only with the same endpoint; the address check is {@link
+ * ModelAddressPolicy}. Field errors are named {@code <prefix>.baseUrl}, {@code <prefix>.model} and
+ * {@code <prefix>.apiKey}.
  */
 public final class ModelEndpointRules {
 
@@ -78,21 +76,6 @@ public final class ModelEndpointRules {
       errors.add(
           new FieldError(
               field, TOO_LONG, "Die Angabe ist zu lang (höchstens " + max + " Zeichen)."));
-    }
-  }
-
-  /**
-   * Why the target address check refuses {@code baseUrl}, or {@code null}; the rejection names the
-   * setting that releases an internal host ({@link TargetAddressValidator#ALLOWLIST_HINT}).
-   */
-  public static String blockedModelAddress(TargetAddressValidator validator, String baseUrl) {
-    try {
-      validator.validate(new URI(baseUrl.strip()));
-      return null;
-    } catch (URISyntaxException e) {
-      return "Die Basis-Adresse ist keine gültige URL.";
-    } catch (IOException e) {
-      return e.getMessage() + " " + TargetAddressValidator.ALLOWLIST_HINT;
     }
   }
 

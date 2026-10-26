@@ -40,6 +40,7 @@ data:
   OPAA_INDEXING_FILESYSTEM_ALLOWLIST: {{ include "opaa.filesystemAllowlist" . | quote }}
   OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.indexingAllowlist | quote }}
   OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: {{ include "opaa.identityProviderAllowlist" . | quote }}
+  OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: {{ include "opaa.modelAllowlist" . | quote }}
   {{- with .Values.embedding.timeout }}
   OPAA_OPENAI_EMBEDDING_TIMEOUT: {{ . | quote }}
   {{- end }}

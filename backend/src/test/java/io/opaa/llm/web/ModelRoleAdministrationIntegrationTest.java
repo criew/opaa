@@ -2,6 +2,7 @@ package io.opaa.llm.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -242,7 +243,10 @@ class ModelRoleAdministrationIntegrationTest {
                 .content(
                     "{\"enabled\":true,\"baseUrl\":\"http://10.20.30.40/v1\",\"model\":\"m\"}"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors[0].code").value("BLOCKED"));
+        .andExpect(jsonPath("$.fieldErrors[0].code").value("BLOCKED"))
+        .andExpect(
+            jsonPath("$.fieldErrors[0].message")
+                .value(containsString("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST")));
     mockMvc
         .perform(
             post("/api/v1/admin/models/transcription/test")

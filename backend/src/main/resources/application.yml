@@ -311,6 +311,13 @@ opaa:
     excerpt-max-characters: ${OPAA_SEARCH_EXCERPT_MAX_CHARACTERS:1500}
     fetch-max-characters: ${OPAA_SEARCH_FETCH_MAX_CHARACTERS:200000}
     context-passages: ${OPAA_SEARCH_CONTEXT_PASSAGES:1}
+  # Address check of every model endpoint the installation or the model administration stores or
+  # tests (chat, embedding, rerank, transcription); separate from opaa.indexing.target-validation,
+  # so a model host released here is no permitted source and vice versa. Entries host or host:port.
+  model:
+    target-validation:
+      enabled: ${OPAA_MODEL_TARGET_VALIDATION_ENABLED:true}
+      allowlist: ${OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST:}
   # The load limits of the rerank model role. Switch, address, model and key are rows of the
   # model administration (rerank_model, ADR-0060, Entscheidung 10); the factory default is off.
   rerank:

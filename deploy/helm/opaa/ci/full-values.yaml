@@ -66,6 +66,8 @@ targetValidation:
     - confluence.example.org
   identityProviderAllowlist:
     - login2.example.org
+  modelAllowlist:
+    - reranker.ai.svc.cluster.local:8080
 filesystemSources:
   - name: shared-drive
     mountPath: /data/shared-drive

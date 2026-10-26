@@ -48,10 +48,11 @@ import tools.jackson.databind.ObjectMapper;
  * discovery.
  *
  * <p>Same rules as {@link LlmModelConnectionTester}, through {@link ModelEndpointAccess}: no
- * credentials in the address, the stored key only for its model's own origin, no redirects. All
- * Ollama calls are derived from {@code baseUrl} by path alone and therefore stay on its origin.
- * Every body is read with a byte ceiling and a deadline, and the detail calls share one overall
- * budget, so a slow or hostile endpoint cannot hold the admin request for long.
+ * credentials in the address, the address check of models, the stored key only for its model's own
+ * origin, no redirects. All Ollama calls are derived from {@code baseUrl} by path alone and
+ * therefore stay on its origin. Every body is read with a byte ceiling and a deadline, and the
+ * detail calls share one overall budget, so a slow or hostile endpoint cannot hold the admin
+ * request for long.
  */
 @DataFlow("model-endpoint")
 @Service
@@ -89,8 +90,9 @@ public class LlmModelDiscoverer {
   public LlmModelDiscoverer(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
-      ObjectMapper objectMapper) {
-    this(repository, settingsEncryptor, objectMapper, DETAILS_BUDGET);
+      ObjectMapper objectMapper,
+      ModelAddressPolicy modelAddresses) {
+    this(repository, settingsEncryptor, objectMapper, modelAddresses, DETAILS_BUDGET);
   }
 
   /** {@code detailsBudget} replaces {@link #DETAILS_BUDGET}, so a test need not wait it out. */
@@ -98,8 +100,9 @@ public class LlmModelDiscoverer {
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       ObjectMapper objectMapper,
+      ModelAddressPolicy modelAddresses,
       Duration detailsBudget) {
-    this.access = new ModelEndpointAccess(repository, settingsEncryptor);
+    this.access = new ModelEndpointAccess(repository, settingsEncryptor, modelAddresses);
     this.objectMapper = objectMapper;
     this.detailsBudget = detailsBudget;
   }
@@ -113,6 +116,14 @@ public class LlmModelDiscoverer {
    * @throws NotFoundException 404 when {@code modelId} is set but no such model exists
    */
   public ModelDiscovery discover(String baseUrl, String apiKey, UUID modelId) {
+    return discover(baseUrl, apiKey, modelId, null);
+  }
+
+  /**
+   * {@link #discover(String, String, UUID)} for the model {@code storedModelId} being edited, whose
+   * stored endpoint passes the address check unchecked ({@link LlmModelConnectionTester#test}).
+   */
+  public ModelDiscovery discover(String baseUrl, String apiKey, UUID modelId, UUID storedModelId) {
     String key = access.effectiveApiKey(baseUrl, apiKey, modelId);
     URI modelsUri;
     try {
@@ -124,6 +135,11 @@ public class LlmModelDiscoverer {
     if (!ModelEndpointAccess.isHttp(modelsUri) || modelsUri.getHost() == null) {
       return ModelDiscovery.failed(
           Failure.INVALID_ADDRESS, "Die Basis-Adresse muss mit http:// oder https:// beginnen.");
+    }
+    String blocked =
+        access.blockedAddress(baseUrl, storedModelId != null ? storedModelId : modelId);
+    if (blocked != null) {
+      return ModelDiscovery.failed(Failure.INVALID_ADDRESS, blocked);
     }
 
     try (HttpClient client = ModelEndpointAccess.newHttpClient()) {

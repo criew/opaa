@@ -101,7 +101,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Ollama lokal",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -119,7 +119,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Anbieter X",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.70"),
             2000,
@@ -139,7 +139,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Modell A",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.70"),
             2000,
@@ -149,7 +149,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Modell B",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.70"),
             2000,
@@ -164,7 +164,7 @@ class LlmModelServiceIntegrationTest {
         organizationId,
         userId,
         "Anbieter X",
-        "https://modellserver.example.internal/v1",
+        "https://localhost:8443/v1",
         "gpt-4o",
         new BigDecimal("0.70"),
         2000,
@@ -184,7 +184,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Anbieter X",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.70"),
             2000,
@@ -197,7 +197,7 @@ class LlmModelServiceIntegrationTest {
             userId,
             model.getId(),
             "Anbieter X (umbenannt)",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.50"),
             1500,
@@ -219,7 +219,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Anbieter X",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.70"),
             2000,
@@ -230,7 +230,7 @@ class LlmModelServiceIntegrationTest {
         userId,
         model.getId(),
         "Anbieter X",
-        "https://modellserver.example.internal/v1",
+        "https://localhost:8443/v1",
         "gpt-4o",
         new BigDecimal("0.70"),
         2000,
@@ -253,7 +253,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Anbieter X",
-            "https://modellserver.example.internal/v1",
+            "https://localhost:8443/v1",
             "gpt-4o",
             new BigDecimal("0.70"),
             2000,
@@ -281,7 +281,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Erstes Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -291,7 +291,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Zweites Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "llama3",
             new BigDecimal("0.70"),
             2000,
@@ -314,7 +314,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Erstes Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -324,7 +324,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Zweites Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "llama3",
             new BigDecimal("0.70"),
             2000,
@@ -350,7 +350,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Modell A",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -361,7 +361,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Modell B",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "llama3",
             new BigDecimal("0.70"),
             2000,
@@ -382,7 +382,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Zu löschendes Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -405,7 +405,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Aktives Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -458,7 +458,7 @@ class LlmModelServiceIntegrationTest {
             organizationId,
             userId,
             "Sauberes Modell",
-            "http://ollama:11434/v1",
+            "http://localhost:11434/v1",
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
@@ -481,7 +481,71 @@ class LlmModelServiceIntegrationTest {
 
     assertThat(auditEntries(AuditEventType.LLM_MODEL_CHANGED)).isEmpty();
     assertThat(llmModelService.getModel(model.getId()).getBaseUrl())
-        .isEqualTo("http://ollama:11434/v1");
+        .isEqualTo("http://localhost:11434/v1");
+  }
+
+  /** A chat model address in an internal range needs its host in the allowlist of models. */
+  @Test
+  void creatingAModelAtAnUnlistedInternalAddressIsRejectedAndWritesNothing() {
+    assertThatThrownBy(
+            () ->
+                llmModelService.createModel(
+                    organizationId,
+                    userId,
+                    "Interner Server",
+                    "http://10.20.30.40/v1",
+                    "phi3:mini",
+                    new BigDecimal("0.70"),
+                    2000,
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST");
+
+    assertThat(llmModelService.listModels()).isEmpty();
+    assertThat(auditEntries(AuditEventType.LLM_MODEL_CREATED)).isEmpty();
+  }
+
+  /**
+   * A model stored before the allowlist named its host stays editable while its endpoint stays;
+   * moving it to another unlisted internal address is refused.
+   */
+  @Test
+  void aStoredUnlistedAddressStaysEditableButNoNewOneIsAccepted() {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO llm_models (id, display_name, base_url, model_identifier, max_tokens, active,"
+            + " created_at, updated_at) VALUES (?, 'Bestand', 'http://10.20.30.40/v1', 'phi3:mini',"
+            + " 2000, false, now(), now())",
+        id);
+
+    LlmModel renamed =
+        llmModelService.updateModel(
+            organizationId,
+            userId,
+            id,
+            "Bestand umbenannt",
+            "http://10.20.30.40/v1/",
+            "phi3:mini",
+            null,
+            2000,
+            null);
+    assertThat(renamed.getDisplayName()).isEqualTo("Bestand umbenannt");
+
+    assertThatThrownBy(
+            () ->
+                llmModelService.updateModel(
+                    organizationId,
+                    userId,
+                    id,
+                    "Bestand umbenannt",
+                    "http://10.20.30.41/v1",
+                    "phi3:mini",
+                    null,
+                    2000,
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST");
+    assertThat(llmModelService.getModel(id).getBaseUrl()).isEqualTo("http://10.20.30.40/v1/");
   }
 
   private List<Map<String, Object>> auditEntries(AuditEventType eventType) {

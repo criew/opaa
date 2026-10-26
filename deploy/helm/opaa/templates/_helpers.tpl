@@ -310,13 +310,13 @@ emptyDir:
 {{- end }}
 
 {{/*
-OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: targetValidation.identityProviderAllowlist plus host and port
-of bootstrap.oidc, so the provider of the answer file passes the address check at installation and
-at every later use (ADR-0060, Entscheidung 9) without admitting the host's other ports.
+Comma-separated allowlist: the entries of "hosts" plus host:port of every address in "urls" not yet
+listed, so an address named in the values passes its address check without admitting the host's
+other ports.
 */}}
-{{- define "opaa.identityProviderAllowlist" -}}
-{{- $hosts := .Values.targetValidation.identityProviderAllowlist | default list }}
-{{- range list .Values.bootstrap.oidc.issuerUri .Values.bootstrap.oidc.jwkSetUri }}
+{{- define "opaa.allowlistWithAddresses" -}}
+{{- $hosts := .hosts | default list }}
+{{- range .urls }}
 {{- with . }}
 {{- $url := urlParse (trim .) }}
 {{- if $url.hostname }}
@@ -330,6 +330,23 @@ at every later use (ADR-0060, Entscheidung 9) without admitting the host's other
 {{- end }}
 {{- end }}
 {{- join "," $hosts }}
+{{- end }}
+
+{{/*
+OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: targetValidation.identityProviderAllowlist plus host and port
+of bootstrap.oidc, so the provider of the answer file passes the address check at installation and
+at every later use (ADR-0060, Entscheidung 9).
+*/}}
+{{- define "opaa.identityProviderAllowlist" -}}
+{{- include "opaa.allowlistWithAddresses" (dict "hosts" .Values.targetValidation.identityProviderAllowlist "urls" (list .Values.bootstrap.oidc.issuerUri .Values.bootstrap.oidc.jwkSetUri)) }}
+{{- end }}
+
+{{/*
+OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: targetValidation.modelAllowlist plus host and port of the
+chat and embedding model of the answer file, so they pass the address check of models.
+*/}}
+{{- define "opaa.modelAllowlist" -}}
+{{- include "opaa.allowlistWithAddresses" (dict "hosts" .Values.targetValidation.modelAllowlist "urls" (list .Values.bootstrap.chatModel.baseUrl .Values.embedding.baseUrl)) }}
 {{- end }}
 
 {{/* "true" when the chart renders an answer file: bootstrap.initialAdmin.email is set. */}}

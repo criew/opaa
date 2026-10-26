@@ -8,9 +8,9 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.EmbeddingEndpoint;
+import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.security.TargetAddressValidator;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +72,7 @@ class StepRules {
   private final SettingsEncryptor settingsEncryptor;
   private final OidcAddressPolicy addressPolicy;
   private final JsonMapper json;
-  private final TargetAddressValidator modelAddresses;
+  private final ModelAddressPolicy modelAddresses;
 
   StepRules(
       PasswordPolicy passwordPolicy,
@@ -80,7 +80,7 @@ class StepRules {
       SettingsEncryptor settingsEncryptor,
       OidcAddressPolicy addressPolicy,
       JsonMapper json,
-      TargetAddressValidator modelAddresses) {
+      ModelAddressPolicy modelAddresses) {
     this.passwordPolicy = passwordPolicy;
     this.passwordEncoder = passwordEncoder;
     this.settingsEncryptor = settingsEncryptor;
@@ -300,7 +300,7 @@ class StepRules {
     ModelEndpointRules.endpointErrors(prefix, baseUrl, model, apiKey, true, errors);
   }
 
-  /** The target address check of a valid address, as a field error under {@code prefix}. */
+  /** The address check of a valid address, as a field error under {@code prefix}. */
   private void blockedAddressError(String prefix, String baseUrl, List<FieldError> errors) {
     if (errors.isEmpty()) {
       String blocked = blockedModelAddress(modelAddresses, baseUrl);
@@ -333,12 +333,12 @@ class StepRules {
   }
 
   /**
-   * Why the target address check refuses {@code baseUrl}, or {@code null}: the installation runs
+   * Why the address check of models refuses {@code baseUrl}, or {@code null}: the installation runs
    * before any account exists, so its probes must not reach internal ranges unless the operator
-   * released the host.
+   * released the host, also for a step saved before.
    */
-  static String blockedModelAddress(TargetAddressValidator validator, String baseUrl) {
-    return ModelEndpointRules.blockedModelAddress(validator, baseUrl);
+  static String blockedModelAddress(ModelAddressPolicy policy, String baseUrl) {
+    return policy.blockedReason(baseUrl);
   }
 
   /** Whether a saved key may stay with {@code next} ({@link ModelEndpointRules#sameEndpoint}). */
