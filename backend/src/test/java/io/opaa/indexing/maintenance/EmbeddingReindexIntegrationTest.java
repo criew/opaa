@@ -249,7 +249,9 @@ class EmbeddingReindexIntegrationTest {
     rerunService.reembedInPlace(reembedded);
     Document fresh = indexed("satzung-c.md");
 
-    jdbcTemplate.update("UPDATE embedding_index SET model = 'bge-m3'");
+    jdbcTemplate.update(
+        "UPDATE embedding_index SET model = 'bge-m3',"
+            + " generation = (SELECT generation FROM embedding_model)");
     reconciler.reconcile();
 
     assertThat(state.isStale()).isFalse();

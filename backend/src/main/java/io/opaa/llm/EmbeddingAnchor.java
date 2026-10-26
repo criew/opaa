@@ -33,22 +33,22 @@ public final class EmbeddingAnchor {
   }
 
   /**
-   * The smallest cosine similarity between {@code vectors} and the stored {@code anchor}, or {@code
-   * -1} when they cannot be compared: another count or another width.
+   * The smallest cosine similarity between {@code vectors} and the stored {@code anchor}, between
+   * -1 and 1, or {@link Double#NaN} when they cannot be compared: another count or another width.
    */
   static double smallestSimilarity(float[] anchor, List<float[]> vectors) {
     if (anchor == null || vectors.size() != TEXTS.size()) {
-      return -1;
+      return Double.NaN;
     }
     int width = vectors.getFirst().length;
     if (anchor.length != width * TEXTS.size()) {
-      return -1;
+      return Double.NaN;
     }
     double smallest = 1;
     for (int i = 0; i < vectors.size(); i++) {
       float[] vector = vectors.get(i);
       if (vector.length != width) {
-        return -1;
+        return Double.NaN;
       }
       smallest = Math.min(smallest, cosine(anchor, i * width, vector));
     }

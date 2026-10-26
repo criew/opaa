@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.compliance.DataFlow;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Clock;
@@ -87,6 +88,7 @@ public class EmbeddingModelAdministration {
   private final ModelAddressPolicy modelAddresses;
   private final SettingsEncryptor settingsEncryptor;
   private final EmbeddingGenerations generations;
+  private final InstalledEmbeddingModel installedModel;
   private final Clock clock;
 
   EmbeddingModelAdministration(
@@ -97,6 +99,7 @@ public class EmbeddingModelAdministration {
       ModelAddressPolicy modelAddresses,
       SettingsEncryptor settingsEncryptor,
       EmbeddingGenerations generations,
+      InstalledEmbeddingModel installedModel,
       Clock clock) {
     this.rows = rows;
     this.previousRows = previousRows;
@@ -105,6 +108,7 @@ public class EmbeddingModelAdministration {
     this.modelAddresses = modelAddresses;
     this.settingsEncryptor = settingsEncryptor;
     this.generations = generations;
+    this.installedModel = installedModel;
     this.clock = clock;
   }
 
@@ -226,7 +230,7 @@ public class EmbeddingModelAdministration {
       anchor = EmbeddingAnchor.flatten(current.vectors());
     }
     double similarity = EmbeddingAnchor.smallestSimilarity(anchor, probed.vectors());
-    if (similarity < 0) {
+    if (Double.isNaN(similarity)) {
       return new Comparison(Kind.MODEL_CHANGE, null);
     }
     return new Comparison(
@@ -271,6 +275,7 @@ public class EmbeddingModelAdministration {
         generation,
         anchor);
     rows.saveAndFlush(row);
+    dropClientAfterCommit();
     return new Change(before, withKeyChange(state(row), resolved.apiKeyChange()));
   }
 
@@ -285,6 +290,7 @@ public class EmbeddingModelAdministration {
     Map<String, Object> before = state(row);
     row.restore(previous.get());
     rows.saveAndFlush(row);
+    dropClientAfterCommit();
     previousRows.delete(previous.get());
     previousRows.flush();
     return Optional.of(new Change(before, state(row)));
@@ -305,6 +311,7 @@ public class EmbeddingModelAdministration {
     row.moveEndpoint(
         resolved.endpoint().baseUrl(), resolved.ciphertext(), resolved.endpoint().maxInputTokens());
     rows.saveAndFlush(row);
+    dropClientAfterCommit();
     return new Change(before, withKeyChange(state(row), resolved.apiKeyChange()));
   }
 
@@ -315,6 +322,7 @@ public class EmbeddingModelAdministration {
     long generation = generations.next();
     row.renumber(generation);
     rows.saveAndFlush(row);
+    dropClientAfterCommit();
     return generation;
   }
 
@@ -328,6 +336,14 @@ public class EmbeddingModelAdministration {
     return outcome.vectors().size() == EmbeddingAnchor.TEXTS.size()
         ? EmbeddingAnchor.flatten(outcome.vectors())
         : null;
+  }
+
+  /**
+   * The client of this instance follows the row at the commit, before the bus reports it; other
+   * instances follow through the bus.
+   */
+  private void dropClientAfterCommit() {
+    TransactionCallbacks.afterCommitOrNow(installedModel::invalidateAll);
   }
 
   private EmbeddingModelSettings requireInstalled() {

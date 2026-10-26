@@ -23,6 +23,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.llm.DiscoveredModel;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.EmbeddingModelAdministration;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelDiscoverer;
@@ -69,6 +70,7 @@ class LlmModelControllerTest {
   @MockitoBean private LlmModelDiscoverer discoverer;
   @MockitoBean private UserService userService;
   @MockitoBean private EmbeddingInfoService embeddingInfoService;
+  @MockitoBean private EmbeddingModelAdministration embeddingAdministration;
 
   private final UUID actingAdminId = UUID.randomUUID();
   private final UUID actingAdminOrganizationId = UUID.randomUUID();

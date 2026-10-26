@@ -55,6 +55,65 @@ class VectorChunkStoreTest {
           new EmbeddingRateEstimator(4.0),
           2048);
 
+  // regression guard for ADR-0061, Entscheidung 6: a vector is never written under a generation
+  // the index no longer carries; the write embeds again with the client of the current model
+  @Test
+  void aWriteWhoseGenerationChangedEmbedsAgainWithTheCurrentClient() {
+    EmbeddingModel before = mock(EmbeddingModel.class);
+    EmbeddingModel after = mock(EmbeddingModel.class);
+    EmbeddingClients clients = mock(EmbeddingClients.class);
+    when(clients.pin())
+        .thenReturn(new EmbeddingClients.Pinned(before, 4, 2048))
+        .thenReturn(new EmbeddingClients.Pinned(after, 5, 2048));
+    List<Document> chunks = List.of(new Document("chunk text"));
+    List<float[]> old = List.of(new float[] {0.1f});
+    List<float[]> fresh = List.of(new float[] {0.9f});
+    when(before.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))
+        .thenReturn(old);
+    when(after.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))
+        .thenReturn(fresh);
+    org.mockito.Mockito.doThrow(new EmbeddingGenerationChangedException(4))
+        .when(vectorStoreWriter)
+        .writeEmbeddedChunks(chunks, old, 4);
+    VectorChunkStore store =
+        new VectorChunkStore(
+            vectorStore,
+            clients,
+            batchingStrategy,
+            vectorStoreWriter,
+            fullTextChunkStore,
+            new EmbeddingRateEstimator(4.0));
+
+    store.addChunks(chunks);
+
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunks, fresh, 5);
+  }
+
+  @Test
+  void aWriteWhoseGenerationKeepsChangingFailsAfterItsAttempts() {
+    EmbeddingClients clients = mock(EmbeddingClients.class);
+    when(clients.pin()).thenReturn(new EmbeddingClients.Pinned(embeddingModel, 4, 2048));
+    List<Document> chunks = List.of(new Document("chunk text"));
+    when(embeddingModel.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))
+        .thenReturn(List.of(new float[] {0.1f}));
+    org.mockito.Mockito.doThrow(new EmbeddingGenerationChangedException(4))
+        .when(vectorStoreWriter)
+        .writeEmbeddedChunks(anyList(), anyList(), anyLong());
+    VectorChunkStore store =
+        new VectorChunkStore(
+            vectorStore,
+            clients,
+            batchingStrategy,
+            vectorStoreWriter,
+            fullTextChunkStore,
+            new EmbeddingRateEstimator(4.0));
+
+    assertThatThrownBy(() -> store.addChunks(chunks))
+        .isInstanceOf(EmbeddingGenerationChangedException.class);
+    verify(vectorStoreWriter, org.mockito.Mockito.times(VectorChunkStore.GENERATION_ATTEMPTS))
+        .writeEmbeddedChunks(anyList(), anyList(), anyLong());
+  }
+
   @Test
   void
       addChunksEmbedsFirstThenHandsTheResultToVectorStoreWriterWithoutTouchingVectorStoreDirectly() {

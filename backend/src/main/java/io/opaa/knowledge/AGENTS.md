@@ -18,8 +18,10 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und Nachlauf liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest` (Virenprüfung,
   parsen, schneiden, speichern, markieren; ein Upload kommt geprüft an). Die `Document`-Zeile gehört `knowledge`.
-- **Embedding-Modell:** Zeile `embedding_model`, `vector_store` nur über `VectorTableCreator` (ADR-0060). Ist der Index
-  veraltet (`EmbeddingIndexState`), schreibt `VectorStoreWriter` in `embedding_next`; die Neueinbettung stellt um.
+- **Embedding-Modell:** Zeile `embedding_model`, `vector_store` nur über `VectorTableCreator` (ADR-0060). Welche Spalte
+  ein Vektor bekommt, entscheidet seine Generation gegen `embedding_index` (`VectorStoreWriter`, ADR-0061); Wechsel,
+  Verwerfen und Endpunktwechsel nur über `EmbeddingModelChangeService`, Schreibwege der Zeile in
+  `EmbeddingModelAdministration`.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf, Protokoll),
   `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen), `spi` (Konnektor-Vertrag),
   `credentials` (Ziel, Geheimnis, Dienstkonto), `registry` (Konnektor je Typ), `run` (Laufrahmen, Push-Eingang),
@@ -44,6 +46,7 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
 - [ADR-0028](../../../../../../../docs/decisions/0028-tsv-version-uebergang.md): Übergang von `content_tsv_version`
 - [ADR-0030](../../../../../../../docs/decisions/0030-originalablage-der-uploads.md): Originalablage der Uploads
 - [ADR-0045](../../../../../../../docs/decisions/0045-gemeinsamer-datei-abgleich.md): gemeinsamer Datei-Abgleich
+- [ADR-0061](../../../../../../../docs/decisions/0061-wechsel-des-embedding-modells.md): Wechsel des Embedding-Modells, Generation
 - [ADR-0049](../../../../../../../docs/decisions/0049-private-bibliotheken-und-kontingente.md) (Entscheidung 5): Kontingent überspringt Elemente
 
 ## Verweise
