@@ -156,8 +156,8 @@ gegen die Grenzen des Betriebs (Entscheidung 2) und ist ein Revisionsereignis. B
 die Einstellungen in der Datenbank, lassen sich Test und Produktion nicht mehr über die
 Konfiguration vergleichen.
 
-Übertragen wird auch die Freigabe der Konnektoren: je Quellart die Sperre und „Nur über Zugänge“,
-abgeglichen über den Schlüssel der Quellart. Beides enthält kein Geheimnis und geht durch die
+Übertragen werden auch je Quellart die Sperre und „Nur über Zugänge“, abgeglichen über den
+Schlüssel der Quellart. Beides enthält kein Geheimnis und geht durch die
 Schreibwege der Verwaltung. Weil Zugänge nicht übertragen werden, lehnt der Import „Nur über
 Zugänge“ ab, wenn in der Zielinstallation kein Zugang die Quellart übernehmen könnte.
 
@@ -178,11 +178,15 @@ festlegen, wer sich mit welcher Rolle anmeldet:
 - **Zugänge**: App-Registrierung und Geheimnis gehören zur Installation, deren Adresse in die
   Rücksprungadresse eingeht. Eine geänderte Adresse, ein anderer Mandant oder andere Scopes
   verwerfen alle Geheimnisse und beenden die verbundenen Konten aller Personen.
+- **Konnektor-Freigabe** (die Anlegerechte je Quellart und Zugang): Sie verweist auf Gruppen und
+  Zugänge dieser Installation, die es in einer anderen so nicht gibt.
 - **Bilder des Brandings**: Sie dürfen größer sein als eine Einstellungsdatei und werden in der
   Verwaltung hochgeladen.
 
-Ein Zugang protokolliert Client-ID, Mandant, Scopes und Konnektor-Vorgaben mit ihren Werten vorher
-und nachher; sie sind keine Geheimnisse (Entscheidung 11).
+Ein Zugang protokolliert Client-ID, Mandant und Scopes mit ihren Werten vorher und nachher; sie
+sind keine Geheimnisse (Entscheidung 11). Von den Konnektor-Vorgaben nennt das Protokoll nur die
+gesetzten und die geänderten Schlüssel, nie ihre Werte: Eine Vorgabe kann eine Person nennen, etwa
+das Konto, in dessen Namen Google Drive gelesen wird.
 
 ### 13. Eine entfallene Lösch- oder Aufbewahrungsvariable bremst nur
 
