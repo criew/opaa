@@ -114,7 +114,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Erstes Konto | ja | E-Mail-Adresse, Anzeigename, Passwort nach der Passwortregel | Adresse zustellbar formatiert, nicht `admin@opaa.local` | Benutzer (Notanker-Konto, ADR-0033) |
 | Anmeldeverfahren | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Discovery und JWK-Set erreichbar, Adressprüfung | Identitätsanbieter |
 | Chat-Modell | ja | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
-| Embedding-Modell | ja | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Anzeige unter Modelle; Wechsel nicht über die Oberfläche (ADR-0060, Entscheidung 10) |
+| Embedding-Modell | ja | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | SMTP-Server, Absender | Testnachricht | E-Mail |
 | Branding | optional | Produktname, Farbe | — | Allgemein & Branding |
@@ -309,7 +309,8 @@ Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
 - **Identitätsanbieter** ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md)): Der erste Anbieter
   kommt aus dem Assistenten.
 - **Modelle** ([llm-integration.md](./llm-integration.md)): Alle Modellrollen in der Datenbank;
-  `vector_store` entsteht beim Abschluss.
+  `vector_store` entsteht beim Abschluss. Der spätere Wechsel des Embedding-Modells:
+  [embedding-model-change.md](./embedding-model-change.md).
 - **Mehrinstanzbetrieb** ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)): Zustand in
   der Datenbank, Abschluss und Antwortdatei unter Advisory-Lock.
 - **Helm** ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)): `bootstrap` wird zur
@@ -356,9 +357,10 @@ Je Teilschritt ein Sub-Issue an #3160:
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Wechsel des Embedding-Modells nach der Installation mit geführter Neuindexierung. Bis dahin ist er
-  ein Eingriff des Betriebs in `embedding_model` bei angehaltenen Instanzen; der Startabgleich und
-  die Neueinbettung übernehmen danach wie bisher.
+- Wechsel des Embedding-Modells nach der Installation: Konzept in
+  [Wechsel des Embedding-Modells](./embedding-model-change.md) (ADR-0061), noch nicht gebaut. Bis
+  dahin ist er ein Eingriff des Betriebs in `embedding_model` bei angehaltenen Instanzen; der
+  Startabgleich und die Neueinbettung übernehmen danach wie bisher.
 - Experten-Feinabstimmung (Gruppe F) später mit Messung und Leitplanken in der Verwaltung?
 
 ---
