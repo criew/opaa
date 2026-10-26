@@ -218,7 +218,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Einstellungen ohne Geheimnisse als JSON. Der Import zeigt vorher die Unterschiede zur laufenden
   Installation, prüft jeden Wert und ist ein Revisionsereignis.
 
-### Export und Import (gebaut mit #3193)
+### Export und Import (gebaut mit #3193 und #3201)
 
 - **Ein Register:** Jede Einstellung gehört zu genau einem Abschnitt (`SettingsSection`), einer
   Bean im Paket des Moduls, dem die Einstellung gehört. Ein Abschnitt liefert seine Werte ohne
@@ -232,13 +232,37 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   ausgelieferter Text, Mailserver-Feld: nicht gesetzt). Die Version steigt,
   wenn ein Schlüssel seine Bedeutung ändert oder entfällt, nicht für neue Abschnitte und Schlüssel.
   Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLifecycle` (Tage oder
-  Anzahl, `null` für die Werkseinstellung), `connectionLogRetention`,
+  Anzahl, `null` für die Werkseinstellung), `connectionLogRetention`, `connectorRelease` (je
+  Quellart `<TYPE>.locked`, bei Quellarten mit optionalem Zugang zusätzlich
+  `<TYPE>.profileRequired` mit `null`, `RUNS` oder `LOCKED`),
   `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
   Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates` (je Vorlage der Sprache
   `de` ein Schlüssel), `fullSyncRhythm` (je Quellart mit Rhythmus ein Schlüssel, Tage oder `null`),
   `outboundProxy`, `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
-- **Nicht übertragen** werden Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge und die
-  Freigabe der Konnektoren: Sie hängen an Geheimnissen dieser Installation.
+- **Freigabe der Konnektoren** (`connectorRelease`): abgeglichen über den Schlüssel der Quellart,
+  angewandt über `ConnectorLockService.lockType` und `ProfileRequirementService.require` mit deren
+  Ereignissen (`CONNECTOR_LOCKED`/`CONNECTOR_UNLOCKED`, `CONNECTOR_PROFILE_REQUIRED`/
+  `CONNECTOR_PROFILE_OPTIONAL`); jede Angabe ist sicherheitsrelevant markiert. Findet sich für
+  „Nur über Zugänge“ kein nicht gesperrter Zugang, der Bibliotheken zulässt, lehnt der Import das
+  Dokument unter `connectorRelease.<TYPE>.profileRequired` mit dem Code
+  `PROFILE_REQUIREMENT_NEEDS_PROFILE` ab.
+- **Nicht übertragen** (ADR-0060, Entscheidung 12):
+  - Chat-Modelle: Die Adresse empfängt jeden Chat, es gibt keinen eindeutigen Namen, und der
+    Schlüssel folgt keiner neuen Adresse.
+  - Embedding-Modell: Es gehört zum Index der Installation.
+  - Rerank- und Transkriptionsmodell: Die Adresse empfängt Anfragen bzw. Spracheingaben, der
+    Schlüssel folgt keiner neuen Adresse.
+  - Identitätsanbieter und Schalter der lokalen Konten: das Anmeldeverfahren. Die Zuordnung von
+    Claims zu Systemrollen erweiterte per Import die Systemverwaltung, ein ausgeschalteter Anbieter
+    oder Standardwechsel sperrte sie aus. Ein Geheimnis haben Identitätsanbieter nicht.
+  - Verzeichniszugänge: das Geheimnis des Dienstkontos, gebunden an einen Identitätsanbieter.
+  - Zugänge: App-Registrierung und Geheimnis der Installation; eine geänderte Adresse, ein anderer
+    Mandant oder andere Scopes verwerfen alle Geheimnisse und beenden die verbundenen Konten.
+  - Bilder des Brandings: größer als die Grenze der Datei.
+- **Zugänge im Protokoll:** `CONNECTION_PROFILE_CREATED`, `…_CHANGED` und `…_DELETED` nennen
+  `clientId`, `tenant`, `scopes` und `connectorSettings` (gespeichertes JSON) mit Wert, `""` für
+  nicht gesetzt, neben den Schaltern `clientIdSet`, `tenantSet`, `scopesSet` und
+  `connectorSettingsSet`. Die Selbstauskunft gibt diese Werte nicht weiter, wie die Server-Adresse.
 - **Import:** eine Transaktion; ein fehlender Abschnitt bleibt, ein fehlender Schlüssel behält
   seinen Wert, ein unbekannter Abschnitt oder Schlüssel, eine andere Version oder ein Wert außerhalb
   der Grenzen lehnt das ganze Dokument ab. Die Vorschau läuft denselben Weg und rollt zurück. Ein

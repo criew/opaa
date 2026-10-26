@@ -193,7 +193,8 @@ wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken/README.md), Absc
   muss ein neues Secret eintragen.
 - Endpunkte, an die Geheimnisse gehen, müssen `https://` verwenden.
 - Anlegen, Ändern, Löschen, Sperren, die Notabschaltung und jeder Anmeldetest stehen im
-  Revisionsprotokoll. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
+  Revisionsprotokoll; Client-ID, Mandant, Scopes und Vorgaben für den Konnektor dort mit
+  vorherigem und neuem Wert. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
   getrennt wurden ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 12).
 
 ## 9. Konfiguration

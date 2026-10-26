@@ -40,21 +40,37 @@ ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 | Externe KI-Werkzeuge | Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle, Einleitungstext, Erinnerung vor Ablauf einer Freigabe |
 | Ohne Zuständigkeit | ab wie vielen Monaten ein Eintrag als „lange offen“ gilt |
 | Verzeichnisabgleich | die Plausibilitätsschwelle in Prozent |
+| Freigabe der Konnektoren | je Quellart, ob sie gesperrt ist, und, wo ein Zugang wählbar ist, ob sie nur über Zugänge nutzbar ist und was dann mit Bibliotheken mit eigener Adresse geschieht |
+
+Die Freigabe der Konnektoren gilt je Quellart, etwa für Confluence oder SharePoint. Schaltet die
+Datei „Nur über Zugänge“ ein, braucht diese Installation dafür schon einen nicht gesperrten Zugang
+der Quellart, der Bibliotheken zulässt. Fehlt er, lehnt der Import die ganze Datei ab; der Zugang
+ist dann erst anzulegen.
 
 **Nicht in der Datei** stehen Passwörter und Schlüssel, auch nicht, ob einer hinterlegt ist, und
-nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei sind Modelle, Identitätsanbieter,
-Verzeichniszugänge, Zugänge und die Freigabe der Konnektoren: Sie verbinden die Installation mit
-ihren eigenen Diensten und brauchen deren Geheimnisse. Der Schalter der lokalen Konten gehört zum
-Anmeldeverfahren der Installation und bleibt ebenfalls draußen, ebenso die drei Bilder des
-Brandings.
+nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
+
+- **Modelle** für Chat, Embedding, Rerank und Transkription. Ihre Adresse bestimmt, wohin Chats und
+  Spracheingaben gehen, und ein Schlüssel folgt keiner neuen Adresse. Das Embedding-Modell gehört
+  zum Suchindex dieser Installation.
+- **Identitätsanbieter und der Schalter der lokalen Konten.** Sie legen fest, wer sich anmeldet und
+  wer welche Systemrolle erhält. Ein Import könnte den Kreis der Systemverwaltung erweitern oder die
+  Systemverwaltung aussperren.
+- **Verzeichniszugänge.** Sie brauchen das Geheimnis eines Dienstkontos und gehören zu einem
+  Identitätsanbieter.
+- **Zugänge.** Ihre App-Registrierung und ihr Geheimnis gehören zu dieser Installation; eine
+  geänderte Adresse oder ein anderer Mandant beendet die verbundenen Konten aller Personen.
+- **Die drei Bilder des Brandings.** Sie können größer sein, als eine Datei sein darf, und werden
+  im Branding hochgeladen.
 
 ## Importieren
 
 Nach der Auswahl der Datei prüft OPAA sie gegen diese Installation, ohne etwas zu ändern, und zeigt
 jede Angabe, die sich ändern würde, mit bisherigem und neuem Wert. Änderungen, die erweitern oder
 umlenken, was die Installation erreicht oder zulässt, oder Nachweise früher löschen, sind als
-„Sicherheitsrelevant“ markiert: Mailserver und Absender, E-Mail-Vorlagen (ihre Links erreichen
-Eingeladene), Ausgangsproxy, Selbstregistrierung, Passwortlänge und Gültigkeit der Links, externe
+„Sicherheitsrelevant“ markiert: Mailserver und Absender, die Freigabe der Konnektoren (eine Sperre
+hält die Läufe einer Quellart an), E-Mail-Vorlagen (ihre Links erreichen Eingeladene),
+Ausgangsproxy, Selbstregistrierung, Passwortlänge und Gültigkeit der Links, externe
 KI-Werkzeuge mit Netzbereichen, Ablauf und Kontingent, erlaubte Linkziele, jede
 Aufbewahrungs- und Löschfrist, auch die der Chats, der anlassbezogenen Klärungen und der privaten
 Bibliotheken, die Inaktivitätsschwelle der Verbindungen (sie hält Zugangsdaten abwesender Personen
@@ -84,7 +100,8 @@ die Installation, nach einer Rückfrage.
 Jede Änderung einer Einstellung steht im Revisionsprotokoll, ob über das Formular, die
 Schnittstelle oder einen Import, mit vorherigem und neuem Wert. Ein Geheimnis erscheint dort nur als
 „gesetzt“, „geändert“ oder „entfernt“, nie mit seinem Wert; das gilt auch für die Geheimnisse von
-Modellen, Verzeichniszugängen und Zugängen. Freitexte — Betreff und Text der E-Mail-Vorlagen, der
+Modellen, Verzeichniszugängen und Zugängen. Was an einem Zugang kein Geheimnis ist — Client-ID,
+Mandant, Scopes und Vorgaben für den Konnektor —, steht dort mit vorherigem und neuem Wert. Freitexte — Betreff und Text der E-Mail-Vorlagen, der
 Einleitungstext für externe KI-Werkzeuge — stehen dort nur als Prüfsumme (SHA-256) und Länge vorher
 und nachher: Ob und wann sich ein Text geändert hat, ist belegt, sein Wortlaut nicht aufbewahrt. Eine
 Änderung auf denselben Wert schreibt keinen Eintrag. Ein Import, der etwas ändert, schreibt zusätzlich einen
@@ -115,11 +132,6 @@ curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
 curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   --data @opaa-einstellungen.json http://localhost:8081/api/v1/system/settings/import
 ```
-
-## Was nicht gebaut ist
-
-- Übertragen von Modellen, Identitätsanbietern, Verzeichniszugängen, Zugängen, Konnektorfreigaben
-  und Bildern des Brandings (#3201).
 
 ## Weiterführende Kapitel
 
