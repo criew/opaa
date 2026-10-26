@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -80,7 +80,8 @@ Rechtewahrheit neben den Leserechten). Die Freigabe ist ein Reichweitenfeld
 historisiert, nicht nur protokolliert — mit ADR-0016 und ADR-0032 —, damit „war dieser Bestand 2026
 aus dem Haus erreichbar?" auch nach der Löschfrist des Nachweisprotokolls beantwortbar bleibt. Sie
 ist pflichtbefristet auf höchstens `opaa.external-access.max-release-days` (365) mit
-Wiedervorlage per Mail (`reminder-lead-days` 14, Mailweg aus ADR-0033); eine unbefristete Freigabe
+Wiedervorlage per Mail (Vorlauf eine Einstellung der externen KI-Werkzeuge, Werkseinstellung 14 Tage,
+höchstens einen Tag unter der längsten Befristung; Mailweg aus ADR-0033); eine unbefristete Freigabe
 wäre eine Ratsche. Seit ADR-0037 und ADR-0039 ist sie das einzige Reichweitenfeld neben den Grants.
 Freigaberecht: Verwalter-Rolle der Bibliothek plus Systemverwaltung, keine Genehmigungsstufe —
 Befristung, Historisierung und die angezeigte Anzahl der Tokens, die die Bibliothek enthalten

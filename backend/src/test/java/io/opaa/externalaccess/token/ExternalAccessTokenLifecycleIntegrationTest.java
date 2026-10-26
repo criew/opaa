@@ -99,7 +99,8 @@ class ExternalAccessTokenLifecycleIntegrationTest {
             values.tokenRateLimitPerHour(),
             values.allowedCidrs(),
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
   }
 
   @AfterEach

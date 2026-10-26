@@ -88,7 +88,7 @@ public class DirectorySyncService {
   private final DirectorySyncStatusRepository statusRepository;
   private final DirectorySyncPendingPlanRepository pendingPlanRepository;
   private final OidcProviderRepository providerRepository;
-  private final DirectorySyncProperties properties;
+  private final DirectorySyncChangeThreshold changeThreshold;
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncRunLock runLock;
   private final Clock clock;
@@ -101,7 +101,7 @@ public class DirectorySyncService {
       DirectorySyncStatusRepository statusRepository,
       DirectorySyncPendingPlanRepository pendingPlanRepository,
       OidcProviderRepository providerRepository,
-      DirectorySyncProperties properties,
+      DirectorySyncChangeThreshold changeThreshold,
       AuditEventRecorder auditEventRecorder,
       DirectorySyncRunLock runLock,
       Clock clock,
@@ -112,7 +112,7 @@ public class DirectorySyncService {
     this.statusRepository = statusRepository;
     this.pendingPlanRepository = pendingPlanRepository;
     this.providerRepository = providerRepository;
-    this.properties = properties;
+    this.changeThreshold = changeThreshold;
     this.auditEventRecorder = auditEventRecorder;
     this.runLock = runLock;
     this.clock = clock;
@@ -133,8 +133,8 @@ public class DirectorySyncService {
   /**
    * Computes the diff and applies it if - and only if - the directory was reachable, did not return
    * an implausibly empty group list, and the fraction of memberships at risk does not exceed {@link
-   * DirectorySyncProperties#changeThresholdFraction()}. Above the threshold nothing is written and
-   * the plan is left pending for a decision, replacing whatever this provider had pending.
+   * DirectorySyncChangeThreshold#fraction()}. Above the threshold nothing is written and the plan
+   * is left pending for a decision, replacing whatever this provider had pending.
    */
   public SyncReport run(UUID organizationId, UUID providerId) {
     SyncTarget target = requireRunnable(organizationId, providerId);
@@ -399,7 +399,7 @@ public class DirectorySyncService {
         0,
         0,
         0.0,
-        properties.changeThresholdFraction(),
+        changeThreshold.fraction(),
         message);
   }
 

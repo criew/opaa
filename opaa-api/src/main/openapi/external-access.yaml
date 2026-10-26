@@ -318,7 +318,9 @@ components:
         and a visible change date makes such a rollback noticeable.
       required:
         [enabled, tokenMaxLifetimeDays, tokenRateLimitPerHour, allowedCidrs,
-        massRetrievalAlertThreshold, serverInstructions, defaultServerInstructions, updatedAt]
+        massRetrievalAlertThreshold, serverInstructions, defaultServerInstructions,
+        releaseReminderLeadDays, releaseReminderLeadDaysOverridden,
+        defaultReleaseReminderLeadDays, maxReleaseReminderLeadDays, updatedAt]
       properties:
         enabled:
           type: boolean
@@ -341,6 +343,29 @@ components:
         defaultServerInstructions:
           type: string
           description: The delivered default text, so the administration can reset to it without knowing it.
+        releaseReminderLeadDays:
+          type: integer
+          description: >
+            Days before a library's release expires on which the person who set it is reminded by
+            mail, as in force; 0 switches the reminder off, the release still expires.
+        releaseReminderLeadDaysOverridden:
+          type: boolean
+          description: Whether the administration set its own lead; false while the factory default applies.
+        storedReleaseReminderLeadDays:
+          type: integer
+          nullable: true
+          description: >
+            The lead as the administration stored it, absent while the factory default applies;
+            may exceed maxReleaseReminderLeadDays after the Befristung was lowered, and is the
+            value to send back unchanged.
+        defaultReleaseReminderLeadDays:
+          type: integer
+          description: The factory default of the reminder lead.
+        maxReleaseReminderLeadDays:
+          type: integer
+          description: >
+            The longest admissible lead, one day less than the longest Befristung of a release
+            (opaa.external-access.max-release-days).
         updatedAt:
           type: string
           format: date-time
@@ -369,6 +394,13 @@ components:
           type: integer
         serverInstructions:
           type: string
+        releaseReminderLeadDays:
+          type: integer
+          nullable: true
+          description: >
+            Days before a library's release expires on which the person who set it is reminded,
+            from 0 (off) to maxReleaseReminderLeadDays, or the stored value unchanged; absent or null
+            returns to the factory default.
 
     ExternalAccessState:
       type: string

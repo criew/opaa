@@ -18,6 +18,7 @@ import StatusLine from '@/shared/ui/StatusLine'
 import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
 import DirectorySyncOverview from '../components/DirectorySyncOverview'
 import DirectorySyncPanel from '../components/DirectorySyncPanel'
+import DirectorySyncThresholdSection from '../components/DirectorySyncThresholdSection'
 import { usePendingPlans } from '../components/usePendingPlans'
 import {
   attentionOf,
@@ -212,6 +213,8 @@ export default function DirectorySyncPage() {
             </Typography>
           )}
         </Box>
+
+        <DirectorySyncThresholdSection />
       </Box>
 
       <DirectorySyncPanel

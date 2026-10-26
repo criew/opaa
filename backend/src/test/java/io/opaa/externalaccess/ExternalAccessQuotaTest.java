@@ -38,7 +38,7 @@ class ExternalAccessQuotaTest {
     when(settings.current())
         .thenReturn(
             new ExternalAccessSettingsService.View(
-                new Values(true, 90, limit, List.of(), 600, ""), START, null));
+                new Values(true, 90, limit, List.of(), 600, "", null), 364, START, null));
   }
 
   @Test

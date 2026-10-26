@@ -10,6 +10,7 @@ import io.opaa.indexing.filesync.FileSyncWording;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.RequestBudget;
@@ -25,6 +26,7 @@ import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.scheduling.annotation.Async;
@@ -33,7 +35,7 @@ import org.springframework.scheduling.annotation.Async;
  * Runs the full sync of a Nextcloud library on {@link FileSync}: every configured folder is walked
  * with {@code PROPFIND} depth 1, unchanged folders are skipped by their ETag, and a complete
  * listing removes what it did not meet. There is no change log and no push, so every run is a full
- * one.
+ * one; after the full-sync rhythm of Nextcloud a run lists every folder again, unchanged ones too.
  */
 public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSyncWording {
 
@@ -44,6 +46,7 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
   private final ScanJournal journal;
+  private final FullSyncRhythm rhythm;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final SupportedDocumentFormats supportedFormats;
@@ -56,6 +59,7 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       ScanJournal journal,
+      FullSyncRhythm rhythm,
       Clock clock,
       IndexingRunTemplate runTemplate,
       SupportedDocumentFormats supportedFormats) {
@@ -66,6 +70,7 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
     this.documentRepository = documentRepository;
     this.folderService = folderService;
     this.journal = journal;
+    this.rhythm = rhythm;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.supportedFormats = supportedFormats;
@@ -137,7 +142,7 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
                     properties.maxEntriesPerRun(),
                     properties.downloadConcurrency(),
                     "nextcloud-download-",
-                    properties.fullDescentInterval()),
+                    fullDescentInterval()),
                 this,
                 documentIngestService,
                 documentRepository,
@@ -148,6 +153,12 @@ public class NextcloudIndexingExecutor implements SourceIndexingExecutor, FileSy
                 supportedFormats)) {
       return sync.run();
     }
+  }
+
+  /** The installation's full-sync rhythm of Nextcloud, read for every run. */
+  Duration fullDescentInterval() {
+    return rhythm.installationDefault(
+        NextcloudSourceConnector.TYPE, NextcloudSourceConnector.FULL_DESCENT_INTERVAL);
   }
 
   @Override

@@ -200,6 +200,7 @@ export default function ExternalToolsTab() {
         allowedCidrs: current.allowedCidrs,
         massRetrievalAlertThreshold: current.massRetrievalAlertThreshold,
         serverInstructions: current.serverInstructions,
+        releaseReminderLeadDays: current.storedReleaseReminderLeadDays ?? null,
       })
       setSettings(stored)
       notify(

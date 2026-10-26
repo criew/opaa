@@ -7,6 +7,7 @@ export const mockFullSyncRhythmDefaults: ReadonlyArray<
   { sourceType: 'CONFLUENCE', displayName: 'Confluence', defaultIntervalDays: 7 },
   { sourceType: 'DROPBOX', displayName: 'Dropbox', defaultIntervalDays: 7 },
   { sourceType: 'GOOGLE_DRIVE', displayName: 'Google Drive', defaultIntervalDays: 7 },
+  { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', defaultIntervalDays: 7 },
   { sourceType: 'ONEDRIVE', displayName: 'OneDrive', defaultIntervalDays: 1 },
   { sourceType: 'SHAREPOINT', displayName: 'SharePoint', defaultIntervalDays: 1 },
 ]

@@ -784,7 +784,8 @@ class McpServerIntegrationTest {
             quotaPerHour,
             values.allowedCidrs(),
             alertThreshold,
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
   }
 
   private void removeOwnRows() {

@@ -14,6 +14,7 @@ import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
+import io.opaa.library.ExternalAccessProperties;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -36,6 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Every change is audited as {@link AuditEventType#EXTERNAL_ACCESS_SETTINGS_CHANGED} with
  * before/after of the changed keys, the instructions text included as hash and length (ADR-0060,
  * Entscheidung 11).
+ *
+ * <p>The reminder lead of a library's release ends one day before the longest Befristung ({@code
+ * opaa.external-access.max-release-days}). A stored lead beyond a since lowered Befristung stays as
+ * stored, may be sent back unchanged and reads as that bound; the audit names the stored value.
  */
 @Service
 public class ExternalAccessSettingsService {
@@ -56,13 +61,25 @@ public class ExternalAccessSettingsService {
           "tokenRateLimitPerHour",
           "allowedCidrs",
           "massRetrievalAlertThreshold",
-          "serverInstructions");
+          "serverInstructions",
+          "releaseReminderLeadDays",
+          "releaseReminderLeadDaysOverridden");
 
   private static final String SETTINGS_OBJECT_ID = "external_access_settings";
   private static final String SETTINGS_OBJECT_LABEL = "Externe KI-Werkzeuge";
 
-  /** The stored values plus when and by whom they were changed last. */
-  public record View(Values values, Instant updatedAt, String updatedBy) {}
+  /**
+   * The stored values plus the highest admissible reminder lead and when and by whom they were
+   * changed last.
+   */
+  public record View(
+      Values values, int maxReleaseReminderLeadDays, Instant updatedAt, String updatedBy) {
+
+    /** The reminder lead in force. */
+    public int releaseReminderLeadDays() {
+      return values.releaseReminderLeadDaysInForce(maxReleaseReminderLeadDays);
+    }
+  }
 
   /** A full replacement; the bounds are checked here so a violation names its field. */
   public record Update(
@@ -71,7 +88,8 @@ public class ExternalAccessSettingsService {
       int tokenRateLimitPerHour,
       List<String> allowedCidrs,
       int massRetrievalAlertThreshold,
-      String serverInstructions) {
+      String serverInstructions,
+      Integer releaseReminderLeadDays) {
     public Update {
       allowedCidrs = allowedCidrs == null ? List.of() : List.copyOf(allowedCidrs);
     }
@@ -82,18 +100,21 @@ public class ExternalAccessSettingsService {
   private final AuditEventRecorder audit;
   private final Clock clock;
   private final FeatureFlags featureFlags;
+  private final ExternalAccessProperties releaseBounds;
 
   public ExternalAccessSettingsService(
       ExternalAccessSettingsRepository settings,
       UserRepository users,
       AuditEventRecorder audit,
       Clock clock,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      ExternalAccessProperties releaseBounds) {
     this.settings = settings;
     this.users = users;
     this.audit = audit;
     this.clock = clock;
     this.featureFlags = featureFlags;
+    this.releaseBounds = releaseBounds;
   }
 
   /**
@@ -118,30 +139,56 @@ public class ExternalAccessSettingsService {
         .orElseGet(List::of);
   }
 
+  /**
+   * The reminder lead of a library's release in force, read from the row on every call so a change
+   * holds on every instance from the next run on (ADR-0053).
+   */
+  @Transactional(readOnly = true)
+  public int releaseReminderLeadDays() {
+    return settings
+        .findSingleton()
+        .map(ExternalAccessSettings::values)
+        .orElseGet(Values::defaults)
+        .releaseReminderLeadDaysInForce(maxReleaseReminderLeadDays());
+  }
+
+  /** One day less than the longest Befristung: a longer lead would remind as the release is set. */
+  public int maxReleaseReminderLeadDays() {
+    return releaseBounds.maxReleaseDays() - 1;
+  }
+
   @Transactional(readOnly = true)
   public View current() {
     return settings
         .findSingleton()
-        .map(row -> new View(row.values(), row.getUpdatedAt(), displayNameOf(row.getUpdatedBy())))
-        .orElseGet(() -> new View(Values.defaults(), null, null));
+        .map(row -> view(row.values(), row))
+        .orElseGet(() -> new View(Values.defaults(), maxReleaseReminderLeadDays(), null, null));
   }
 
   @Transactional
   public View update(CurrentUser actor, Update update) {
-    Values target = validate(update);
     ExternalAccessSettings row =
         settings
             .findSingleton()
             .orElseThrow(
                 () -> new IllegalStateException("external_access_settings row is missing"));
     Values before = row.values();
+    Values target = validate(update, before.releaseReminderLeadDays());
     if (target.equals(before)) {
-      return new View(before, row.getUpdatedAt(), displayNameOf(row.getUpdatedBy()));
+      return view(before, row);
     }
     row.replace(target, actor.id(), clock.instant());
     settings.save(row);
     recordChange(actor, before, target);
-    return new View(target, row.getUpdatedAt(), displayNameOf(row.getUpdatedBy()));
+    return view(target, row);
+  }
+
+  private View view(Values values, ExternalAccessSettings row) {
+    return new View(
+        values,
+        maxReleaseReminderLeadDays(),
+        row.getUpdatedAt(),
+        displayNameOf(row.getUpdatedBy()));
   }
 
   private String displayNameOf(UUID userId) {
@@ -151,8 +198,17 @@ public class ExternalAccessSettingsService {
     return users.findById(userId).map(User::getDisplayName).orElse(null);
   }
 
-  private static Values validate(Update update) {
+  private Values validate(Update update, Integer storedLead) {
     List<FieldError> errors = new ArrayList<>();
+    if (update.releaseReminderLeadDays() != null
+        && !update.releaseReminderLeadDays().equals(storedLead)) {
+      requireBetween(
+          errors,
+          "releaseReminderLeadDays",
+          update.releaseReminderLeadDays(),
+          0,
+          maxReleaseReminderLeadDays());
+    }
     requireBetween(
         errors,
         "tokenMaxLifetimeDays",
@@ -211,7 +267,8 @@ public class ExternalAccessSettingsService {
         update.tokenRateLimitPerHour(),
         cidrs,
         update.massRetrievalAlertThreshold(),
-        instructions);
+        instructions,
+        update.releaseReminderLeadDays());
   }
 
   private static void requireBetween(
@@ -267,6 +324,12 @@ public class ExternalAccessSettingsService {
     map.put("allowedCidrs", values.allowedCidrs());
     map.put("massRetrievalAlertThreshold", values.massRetrievalAlertThreshold());
     map.put("serverInstructions", values.serverInstructions());
+    map.put(
+        "releaseReminderLeadDays",
+        values.releaseReminderLeadDays() == null
+            ? ExternalAccessDefaults.RELEASE_REMINDER_LEAD_DAYS
+            : values.releaseReminderLeadDays());
+    map.put("releaseReminderLeadDaysOverridden", values.releaseReminderLeadDays() != null);
     return map;
   }
 }

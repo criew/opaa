@@ -106,6 +106,8 @@ export type SuccessionEntryResponse = components['schemas']['SuccessionEntryResp
 export type SuccessionListResponse = components['schemas']['SuccessionListResponse']
 export type SuccessionCountsResponse = components['schemas']['SuccessionCountsResponse']
 export type SuccessionStateResponse = components['schemas']['SuccessionStateResponse']
+export type SuccessionSettingsRequest = components['schemas']['SuccessionSettingsRequest']
+export type SuccessionSettingsResponse = components['schemas']['SuccessionSettingsResponse']
 
 export type DirectorySyncOutcome = components['schemas']['DirectorySyncOutcome']
 export type DirectorySyncStatusResponse = components['schemas']['DirectorySyncStatusResponse']
@@ -121,6 +123,8 @@ export type DirectorySyncPlanDecisionRequest =
   components['schemas']['DirectorySyncPlanDecisionRequest']
 export type OidcProviderDirectorySyncRequest =
   components['schemas']['OidcProviderDirectorySyncRequest']
+export type DirectorySyncSettingsRequest = components['schemas']['DirectorySyncSettingsRequest']
+export type DirectorySyncSettingsResponse = components['schemas']['DirectorySyncSettingsResponse']
 export type DirectoryConnectorType = components['schemas']['DirectoryConnectorType']
 export type DirectoryConnectorRequest = components['schemas']['DirectoryConnectorRequest']
 export type DirectoryConnectorTestRequest = components['schemas']['DirectoryConnectorTestRequest']

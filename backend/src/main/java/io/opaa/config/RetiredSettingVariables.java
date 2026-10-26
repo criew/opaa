@@ -4,9 +4,11 @@ import io.opaa.llm.RetiredModelRoleVariables;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
@@ -63,6 +65,12 @@ public class RetiredSettingVariables {
   /** The retired retention periods, held on the page of the data protection settings. */
   static final Map<String, String> RETIRED_RETENTION = retiredRetention();
 
+  /**
+   * The retired administration values, each under its variable and its property name, with the
+   * setting and the place it lives now.
+   */
+  static final Map<String, String> RETIRED_ADMINISTRATION_VALUES = retiredAdministrationValues();
+
   private final Environment environment;
 
   public RetiredSettingVariables(Environment environment) {
@@ -100,6 +108,14 @@ public class RetiredSettingVariables {
                     + " otherwise deletion follows the factory default once its period is reached");
           }
         });
+    // The environment answers a property name for its variable too: one message per setting.
+    Set<String> named = new HashSet<>();
+    RETIRED_ADMINISTRATION_VALUES.forEach(
+        (name, setting) -> {
+          if (environment.containsProperty(name) && named.add(setting)) {
+            messages.add(name + " is no longer read; set " + setting);
+          }
+        });
     RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.RERANK)
         .forEach(variable -> messages.add(modelRoleMessage(variable, "Reranking")));
     RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.TRANSCRIPTION)
@@ -114,6 +130,29 @@ public class RetiredSettingVariables {
         + " Modelle > "
         + tab
         + " - until then the role is off";
+  }
+
+  private static Map<String, String> retiredAdministrationValues() {
+    Map<String, String> retired = new LinkedHashMap<>();
+    String reminder =
+        "the reminder before a release expires under Administration > Anbindungen > Externe"
+            + " KI-Werkzeuge > Einstellungen";
+    retired.put("OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS", reminder);
+    retired.put("opaa.external-access.reminder-lead-days", reminder);
+    String aging = "the aging threshold under Administration > Ohne Zuständigkeit";
+    retired.put("OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS", aging);
+    retired.put("opaa.succession.aging-threshold-months", aging);
+    String plausibility =
+        "the plausibility threshold in percent under Administration > Verzeichnisabgleich; until"
+            + " then 30 percent applies, so if it was stricter, restart with"
+            + " OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false, set the threshold, then switch the"
+            + " schedule on again - a lock ends the person's connected accounts for good";
+    retired.put("OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION", plausibility);
+    retired.put("opaa.directory-sync.change-threshold-fraction", plausibility);
+    String descent = "the full-sync rhythm of Nextcloud in whole days " + CONNECTION_SETTINGS;
+    retired.put("OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL", descent);
+    retired.put("opaa.indexing.nextcloud.full-descent-interval", descent);
+    return Collections.unmodifiableMap(retired);
   }
 
   private static Map<String, String> retiredRetention() {

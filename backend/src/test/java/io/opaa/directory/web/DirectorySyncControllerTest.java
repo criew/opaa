@@ -22,6 +22,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.directory.sync.DirectorySyncReportDisclosure;
 import io.opaa.directory.sync.DirectorySyncReportDisclosure.Channel;
 import io.opaa.directory.sync.DirectorySyncService;
+import io.opaa.directory.sync.DirectorySyncSettingsAdministration;
 import io.opaa.directory.sync.PendingPlanView;
 import io.opaa.directory.sync.SyncReport;
 import java.time.Instant;
@@ -56,6 +57,7 @@ class DirectorySyncControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private DirectorySyncService directorySyncService;
   @MockitoBean private DirectorySyncReportDisclosure reportDisclosure;
+  @MockitoBean private DirectorySyncSettingsAdministration settingsAdministration;
   @MockitoBean private UserService userService;
 
   private final UUID actingAdminId = UUID.randomUUID();

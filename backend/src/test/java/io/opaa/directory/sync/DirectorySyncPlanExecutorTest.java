@@ -44,7 +44,7 @@ class DirectorySyncPlanExecutorTest {
           groupRepository,
           userRepository,
           mock(GroupMembershipResolver.class),
-          new DirectorySyncProperties(0.3, true),
+          threshold(30),
           mock(PermissionHistoryService.class),
           auditEventRecorder,
           pendingPlanRepository,
@@ -161,6 +161,13 @@ class DirectorySyncPlanExecutorTest {
     assertThat(report.accountsLocked()).extracting(UserRef::id).containsExactly(account.getId());
     assertThat(account.isDirectoryLocked()).isTrue();
     verify(adminGuard, never()).hasLoginCapableAdminBesides(any(), any());
+  }
+
+  private static DirectorySyncChangeThreshold threshold(int percent) {
+    DirectorySyncChangeThreshold threshold = mock(DirectorySyncChangeThreshold.class);
+    when(threshold.fraction()).thenReturn(percent / 100.0);
+    when(threshold.percent()).thenReturn(percent);
+    return threshold;
   }
 
   private User account(String subject, SystemRole role) {

@@ -8,7 +8,10 @@ import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
-/** The channel settings of the external AI tools, the switch of the installation included. */
+/**
+ * The channel settings of the external AI tools, the switch of the installation included, and the
+ * reminder lead of a library's release ({@code null} while the factory default applies).
+ */
 @Component
 class ExternalAccessSettingsSection implements SettingsSection {
 
@@ -47,7 +50,9 @@ class ExternalAccessSettingsSection implements SettingsSection {
         "massRetrievalAlertThreshold",
         "Schwelle des Abflussalarms",
         "serverInstructions",
-        "Einleitungstext");
+        "Einleitungstext",
+        "releaseReminderLeadDays",
+        "Erinnerung vor Ablauf einer Freigabe in Tagen");
   }
 
   @Override
@@ -70,6 +75,7 @@ class ExternalAccessSettingsSection implements SettingsSection {
     values.put("allowedCidrs", current.allowedCidrs());
     values.put("massRetrievalAlertThreshold", current.massRetrievalAlertThreshold());
     values.put("serverInstructions", current.serverInstructions());
+    values.put("releaseReminderLeadDays", current.releaseReminderLeadDays());
     return values;
   }
 
@@ -83,6 +89,16 @@ class ExternalAccessSettingsSection implements SettingsSection {
             values.requireInt("tokenRateLimitPerHour"),
             values.requireStrings("allowedCidrs"),
             values.requireInt("massRetrievalAlertThreshold"),
-            values.optionalString("serverInstructions")));
+            values.optionalString("serverInstructions"),
+            optionalDays(values, "releaseReminderLeadDays")));
+  }
+
+  /** A whole number of days the service bounds itself; one beyond an int is out of any range. */
+  private static Integer optionalDays(SettingsValues values, String key) {
+    Long days = values.optionalLong(key);
+    if (days == null) {
+      return null;
+    }
+    return (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, days));
   }
 }

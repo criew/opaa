@@ -82,7 +82,8 @@ class ExternalAccessTokenTwoInstanceIntegrationTest {
             values.tokenRateLimitPerHour(),
             values.allowedCidrs(),
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
     mockMvc
         .perform(get("/api/v1/auth/me").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
         .andExpect(status().isOk());

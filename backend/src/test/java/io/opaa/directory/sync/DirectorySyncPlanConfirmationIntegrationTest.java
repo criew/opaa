@@ -131,6 +131,28 @@ class DirectorySyncPlanConfirmationIntegrationTest {
         .isNotNull();
   }
 
+  /**
+   * The threshold the administration set holds for the next run without a restart: raised above the
+   * share at risk, the same run applies, and its report names the threshold it ran under.
+   */
+  @Test
+  void aThresholdTheAdministrationRaisedLetsTheSameRunApply() {
+    Group group = groupLosingMostOfItsMembers();
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO directory_sync_settings (id, change_threshold_percent, updated_at)"
+              + " VALUES (1, 70, now())");
+
+      SyncReport report = directorySyncService.run(ORGANIZATION_ID, provider.getId());
+
+      assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+      assertThat(report.thresholdFraction()).isEqualTo(0.7);
+      assertThat(membershipRepository.findByGroupId(group.getId())).hasSize(1);
+    } finally {
+      jdbcTemplate.update("DELETE FROM directory_sync_settings");
+    }
+  }
+
   /** A dry run writes nothing at all - including no plan someone could confirm later. */
   @Test
   void aDryRunAboveTheThresholdLeavesNoPlanAtAll() {

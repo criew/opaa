@@ -241,6 +241,17 @@ public enum AuditEventType {
    */
   FULL_SYNC_RHYTHM_CHANGED,
   /**
+   * The system administration set from which age an entry of the operational list "Ohne
+   * Zuständigkeit" is highlighted, or returned it to the factory default; {@code before} and {@code
+   * after} carry the months only.
+   */
+  SUCCESSION_AGING_THRESHOLD_CHANGED,
+  /**
+   * The system administration set the plausibility threshold of the directory sync, or returned it
+   * to the factory default; {@code before} and {@code after} carry the percentage only.
+   */
+  DIRECTORY_SYNC_CHANGE_THRESHOLD_CHANGED,
+  /**
    * A capability was granted to an account, a group or to all accounts (ADR-0036, Entscheidung 5).
    * A governance event rather than an ordinary permission change: withdrawing a capability from all
    * accounts changes the working conditions of every employee, so the personnel council's extract

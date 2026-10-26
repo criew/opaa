@@ -2,12 +2,17 @@ package io.opaa.succession.web;
 
 import io.opaa.api.dto.SuccessionCountsResponse;
 import io.opaa.api.dto.SuccessionListResponse;
+import io.opaa.api.dto.SuccessionSettingsRequest;
+import io.opaa.api.dto.SuccessionSettingsResponse;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.succession.SuccessionService;
+import io.opaa.succession.SuccessionSettingsAdministration;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,9 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SuccessionController {
 
   private final SuccessionService successionService;
+  private final SuccessionSettingsAdministration settings;
 
-  public SuccessionController(SuccessionService successionService) {
+  public SuccessionController(
+      SuccessionService successionService, SuccessionSettingsAdministration settings) {
     this.successionService = successionService;
+    this.settings = settings;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -45,5 +53,19 @@ public class SuccessionController {
   @GetMapping("/counts")
   public SuccessionCountsResponse countSuccessionEntries(@Caller CurrentUser caller) {
     return SuccessionResponseMapper.toResponse(successionService.counts(caller.organizationId()));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/settings")
+  public SuccessionSettingsResponse getSuccessionSettings(@Caller CurrentUser caller) {
+    return SuccessionResponseMapper.toResponse(settings.current(caller));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/settings")
+  public SuccessionSettingsResponse updateSuccessionSettings(
+      @RequestBody SuccessionSettingsRequest request, @Caller CurrentUser caller) {
+    return SuccessionResponseMapper.toResponse(
+        settings.change(caller, request.getAgingThresholdMonths()));
   }
 }

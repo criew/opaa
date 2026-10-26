@@ -3,10 +3,13 @@ package io.opaa.succession.web;
 import io.opaa.api.dto.SuccessionCountsResponse;
 import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
+import io.opaa.api.dto.SuccessionSettingsResponse;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.succession.SuccessionAgingThreshold;
 import io.opaa.succession.SuccessionEntry;
 import io.opaa.succession.SuccessionPage;
+import io.opaa.succession.SuccessionSettingsAdministration;
 import java.util.Map;
 
 /**
@@ -28,6 +31,15 @@ final class SuccessionResponseMapper {
         page.size(),
         page.totalElements(),
         page.totalPages());
+  }
+
+  static SuccessionSettingsResponse toResponse(SuccessionSettingsAdministration.Setting setting) {
+    return new SuccessionSettingsResponse(
+        setting.agingThresholdMonths(),
+        SuccessionAgingThreshold.FACTORY_DEFAULT_MONTHS,
+        SuccessionAgingThreshold.MIN_MONTHS,
+        SuccessionAgingThreshold.MAX_MONTHS,
+        setting.overridden());
   }
 
   static SuccessionCountsResponse toResponse(Map<SuccessionKind, Integer> counts) {

@@ -233,9 +233,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     verify(mail, never()).enqueue(any(), any(), anyString(), any());
   }
 
-  /**
-   * {@code reminderLeadDays == 0} schaltet die Wiedervorlage ab; die Freigabe erlischt trotzdem.
-   */
+  /** Ein Vorlauf von 0 Tagen schaltet die Wiedervorlage ab; die Freigabe erlischt trotzdem. */
   @Test
   void aLeadOfZeroDaysSwitchesTheReminderOff() {
     UUID owner = createUser("Erika Mustermann");
@@ -285,8 +283,8 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
 
   /**
    * Der Erinnerungslauf mit gestellter Uhr und gestelltem Vorlauf. Eine zweite Instanz statt der
-   * Bean des Kontexts: die Produktionsbean liest die Wanduhr und die ausgelieferte Property, und
-   * ein klassenlokaler Ersatz spaltete den Kontext.
+   * Bean des Kontexts: die Produktionsbean liest die Wanduhr und den gespeicherten Vorlauf, und ein
+   * klassenlokaler Ersatz spaltete den Kontext.
    */
   private LibraryExternalAccessReminderService reminderServiceAt(Instant now, int leadDays) {
     return new LibraryExternalAccessReminderService(
@@ -294,7 +292,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
         userRepository,
         mail,
         publicBaseUrl,
-        new ExternalAccessProperties(365, leadDays),
+        () -> leadDays,
         Clock.fixed(now, ZoneId.of("Europe/Berlin")));
   }
 

@@ -142,23 +142,12 @@ settings:
     range: mindestens 5, nur nach oben änderbar
     effect: Kleinste Gruppe, die ein Rechteprofil-Lauf mit Space-Kontext zeigt
     bearings: [VISIBILITY, EVALUATION]
-  - key: opaa.succession.aging-threshold-months
-    defaultValue: "12"
-    effect: Ab welchem Alter ein Eintrag der Nachfolge-Betriebsliste hervorgehoben wird
-    bearings: [VISIBILITY, EVALUATION]
   - key: opaa.directory-sync.schedule-enabled
     defaultValue: "true"
     effect: >-
       Ob die Verzeichnis-Synchronisation planmäßig läuft und Gruppen, Mitgliedschaften und
       Kontostatus aus dem Verzeichnis übernimmt
     bearings: [DATA, VISIBILITY]
-  - key: opaa.external-access.reminder-lead-days
-    defaultValue: "14"
-    range: 0 schaltet die Erinnerung ab
-    effect: >-
-      Tage vor Ablauf einer Freigabe für externe KI-Werkzeuge, an denen die verantwortliche Person per E-Mail
-      erinnert wird
-    bearings: [DATA_FLOW]
   # Ablage der Originale und Quellen
   - key: opaa.upload.store
     defaultValue: filesystem
@@ -269,9 +258,15 @@ settings:
       - >-
         Werkseinstellung, solange die Systemverwaltung unter Anbindungen → Einstellungen keinen
         eigenen Wert setzt; eine Bibliothek kann einen eigenen Rhythmus setzen
-  - key: opaa.indexing.nextcloud.full-descent-interval
-    defaultValue: 7d
+  - key: full_sync_rhythm_settings.interval_days[NEXTCLOUD]
+    source: DATABASE
+    defaultValue: "7"
+    range: 1 bis 365 Tage
     effect: >-
-      Wie lange gemerkte Ordnerkennungen einen Ordner von der Auflistung verschonen; erst die volle
-      Auflistung entfernt, was dort fehlt
+      Tage, die gemerkte Ordnerkennungen von Nextcloud einen Ordner von der Auflistung verschonen;
+      erst die volle Auflistung entfernt, was dort fehlt
     bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Anbindungen → Einstellungen keinen
+        eigenen Wert setzt; einen eigenen Rhythmus je Bibliothek gibt es für Nextcloud nicht

@@ -37,6 +37,18 @@ settings:
     range: 1 bis 365 Tage
     effect: Höchstlaufzeit eines Zugangstokens
     bearings: [DATA, DATA_FLOW]
+  - key: external_access_settings.release_reminder_lead_days
+    source: DATABASE
+    defaultValue: "14"
+    range: 0 bis einen Tag unter der längsten Befristung; 0 schaltet die Erinnerung ab
+    effect: >-
+      Tage vor Ablauf einer Freigabe für externe KI-Werkzeuge, an denen die verantwortliche Person per
+      E-Mail erinnert wird
+    bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung in den Einstellungen der externen
+        KI-Werkzeuge keinen eigenen Wert setzt
   - key: opaa.external-access.max-release-days
     source: PROPERTY
     defaultValue: "365"

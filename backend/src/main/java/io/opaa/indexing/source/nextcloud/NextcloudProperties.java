@@ -3,7 +3,6 @@ package io.opaa.indexing.source.nextcloud;
 import static io.opaa.common.PropertyDefaults.notNegativeOr;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
-import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
 import java.time.Duration;
@@ -20,8 +19,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxEntriesPerRun listed files per run before the run fails visibly
  * @param downloadConcurrency downloads one run keeps in flight; {@code 1} is serial
  * @param maxResponseBytes upper bound of one {@code PROPFIND} answer
- * @param fullDescentInterval how long remembered folder ETags may spare a listing before a full
- *     sync lists every folder again
  */
 @PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
@@ -32,15 +29,13 @@ public record NextcloudProperties(
     int requestBudgetPerRun,
     int maxEntriesPerRun,
     int downloadConcurrency,
-    long maxResponseBytes,
-    @DataImpact Duration fullDescentInterval) {
+    long maxResponseBytes) {
 
   public static final long DEFAULT_MAX_FILE_SIZE_BYTES = 50L * 1024 * 1024;
   public static final int DEFAULT_REQUEST_BUDGET_PER_RUN = 20_000;
   public static final int DEFAULT_MAX_ENTRIES_PER_RUN = 1_000_000;
   public static final int DEFAULT_DOWNLOAD_CONCURRENCY = 2;
   public static final long DEFAULT_MAX_RESPONSE_BYTES = 64L * 1024 * 1024;
-  public static final Duration DEFAULT_FULL_DESCENT_INTERVAL = Duration.ofDays(7);
 
   public NextcloudProperties {
     maxFileSizeBytes =
@@ -54,11 +49,10 @@ public record NextcloudProperties(
         notNegativeOr("downloadConcurrency", downloadConcurrency, DEFAULT_DOWNLOAD_CONCURRENCY);
     maxResponseBytes =
         notNegativeOr("maxResponseBytes", maxResponseBytes, DEFAULT_MAX_RESPONSE_BYTES);
-    fullDescentInterval = positiveOr(fullDescentInterval, DEFAULT_FULL_DESCENT_INTERVAL);
   }
 
   /** All defaults. */
   public static NextcloudProperties defaults() {
-    return new NextcloudProperties(0, null, 0, 0, 0, 0, null);
+    return new NextcloudProperties(0, null, 0, 0, 0, 0);
   }
 }

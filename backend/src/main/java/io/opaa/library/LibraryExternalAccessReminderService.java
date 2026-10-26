@@ -54,7 +54,7 @@ public class LibraryExternalAccessReminderService {
   private final UserRepository userRepository;
   private final MailService mail;
   private final PublicBaseUrl publicBaseUrl;
-  private final ExternalAccessProperties properties;
+  private final ExternalAccessReminderLead lead;
   private final Clock clock;
 
   public LibraryExternalAccessReminderService(
@@ -62,13 +62,13 @@ public class LibraryExternalAccessReminderService {
       UserRepository userRepository,
       MailService mail,
       PublicBaseUrl publicBaseUrl,
-      ExternalAccessProperties properties,
+      ExternalAccessReminderLead lead,
       Clock clock) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.mail = mail;
     this.publicBaseUrl = publicBaseUrl;
-    this.properties = properties;
+    this.lead = lead;
     this.clock = clock;
   }
 
@@ -77,11 +77,12 @@ public class LibraryExternalAccessReminderService {
    */
   @Transactional
   public int runOnce() {
-    if (properties.reminderLeadDays() == 0) {
+    int leadDays = lead.days();
+    if (leadDays <= 0) {
       return 0;
     }
     Instant now = clock.instant();
-    Instant until = now.plus(Duration.ofDays(properties.reminderLeadDays()));
+    Instant until = now.plus(Duration.ofDays(leadDays));
     List<KnowledgeLibrary> due =
         libraryRepository.findAllById(libraryRepository.lockExternalAccessReminderDue(now, until));
     int queued = 0;
