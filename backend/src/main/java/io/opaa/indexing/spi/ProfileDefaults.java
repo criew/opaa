@@ -16,6 +16,9 @@ import java.util.Set;
  */
 public record ProfileDefaults(List<DefaultKey> keys) {
 
+  /** The longest text a default may hold, as every other text field of a profile. */
+  public static final int MAX_TEXT_LENGTH = 255;
+
   private static final ProfileDefaults NONE = new ProfileDefaults(List.of());
 
   public ProfileDefaults {
@@ -98,7 +101,12 @@ public record ProfileDefaults(List<DefaultKey> keys) {
         if (!(value instanceof String text)) {
           throw new ValidationException(field + " muss ein Text sein");
         }
-        yield text.isBlank() ? null : text.trim();
+        String trimmed = text.trim();
+        if (trimmed.length() > MAX_TEXT_LENGTH) {
+          throw new ValidationException(
+              field + " darf höchstens " + MAX_TEXT_LENGTH + " Zeichen lang sein");
+        }
+        yield trimmed.isEmpty() ? null : trimmed;
       }
       case BOOLEAN -> {
         if (!(value instanceof Boolean)) {
