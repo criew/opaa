@@ -837,7 +837,11 @@ public class ConnectionProfileService {
     }
   }
 
-  /** Field names and non-secret values only; the secret appears as whether one is set. */
+  /**
+   * Field names and non-secret values only; the secret appears as whether one is set. Client ID,
+   * tenant, scopes and connector defaults are no secrets and appear with their value, {@code ""}
+   * when none is set, beside the older {@code *Set} flags.
+   */
   static Map<String, Object> auditState(ConnectionProfile profile) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("name", profile.getName());
@@ -856,6 +860,10 @@ public class ConnectionProfileService {
     state.put("tenantSet", profile.getTenant() != null);
     state.put("scopesSet", profile.getScopes() != null);
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
+    state.put("clientId", Objects.toString(profile.getClientId(), ""));
+    state.put("tenant", Objects.toString(profile.getTenant(), ""));
+    state.put("scopes", Objects.toString(profile.getScopes(), ""));
+    state.put("connectorSettings", Objects.toString(profile.getConnectorSettings(), ""));
     ProfileEndpoints endpoints = profile.getEndpoints();
     if (!endpoints.equals(ProfileEndpoints.NONE)) {
       state.put("authorizationEndpoint", Objects.toString(endpoints.authorization(), ""));

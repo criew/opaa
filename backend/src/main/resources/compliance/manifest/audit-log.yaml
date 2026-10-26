@@ -976,13 +976,17 @@ auditEvents:
       - tokenRateLimitPerHour
   - id: CONNECTION_PROFILE_CREATED
     trigger: Ein Verbindungsprofil wird angelegt
-    details: Das Client-Geheimnis nur als „gesetzt“ (clientSecretChange), nie mit dem Wert
+    details: >-
+      Client-ID, Mandant, Scopes und Konnektor-Vorgaben mit ihrem Wert; das Client-Geheimnis nur
+      als „gesetzt“ (clientSecretChange), nie mit dem Wert
     payloadKeys:
       - authMethod
       - authorizationEndpoint
+      - clientId
       - clientIdSet
       - clientSecretChange
       - clientSecretSet
+      - connectorSettings
       - connectorSettingsSet
       - issuer
       - kind
@@ -990,23 +994,28 @@ auditEvents:
       - ownership
       - responsibleGroupId
       - revocationEndpoint
+      - scopes
       - scopesSet
       - serverUrl
       - sourceType
+      - tenant
       - tenantSet
       - tokenEndpoint
   - id: CONNECTION_PROFILE_CHANGED
     trigger: Ein Verbindungsprofil wird geändert
     details: >-
-      Zahl der Verbindungen, die ihr Geheimnis verloren; das Client-Geheimnis nur als „gesetzt“,
+      Zahl der Verbindungen, die ihr Geheimnis verloren; Client-ID, Mandant, Scopes und
+      Konnektor-Vorgaben vorher und nachher mit ihrem Wert; das Client-Geheimnis nur als „gesetzt“,
       „geändert“ oder „entfernt“ (clientSecretChange), nie mit dem Wert
     payloadKeys:
       - authMethod
       - authorizationEndpoint
+      - clientId
       - clientIdSet
       - clientSecretChange
       - clientSecretSet
       - connectionsDiscarded
+      - connectorSettings
       - connectorSettingsSet
       - issuer
       - kind
@@ -1014,9 +1023,11 @@ auditEvents:
       - ownership
       - responsibleGroupId
       - revocationEndpoint
+      - scopes
       - scopesSet
       - serverUrl
       - sourceType
+      - tenant
       - tenantSet
       - tokenEndpoint
   - id: CONNECTION_PROFILE_DELETED
@@ -1024,9 +1035,11 @@ auditEvents:
     payloadKeys:
       - authMethod
       - authorizationEndpoint
+      - clientId
       - clientIdSet
       - clientSecretSet
       - connectionsRemoved
+      - connectorSettings
       - connectorSettingsSet
       - issuer
       - kind
@@ -1034,9 +1047,11 @@ auditEvents:
       - ownership
       - responsibleGroupId
       - revocationEndpoint
+      - scopes
       - scopesSet
       - serverUrl
       - sourceType
+      - tenant
       - tenantSet
       - tokenEndpoint
   - id: CONNECTION_PROFILE_DISCONNECTED
