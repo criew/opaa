@@ -311,8 +311,8 @@ flowchart LR
 - **Ein totgeglaubter Lauf richtet keinen Schaden an.** Arbeitet eine Instanz doch noch, schreibt
   sie ihren Fortschritt nur, solange der Lauf noch läuft und noch ihr gehört. Ist er aufgegeben,
   merkt sie das beim nächsten Schritt und hört auf, ohne etwas aus dem Bestand zu entfernen.
-- **Die Neueinbettung übernimmt eine andere Instanz**, Läufe und Uploads werden aufgegeben und
-  lassen sich wiederholen ([Wiederanlauf nach Störungen](../arbeitsmittel/wissensbibliotheken/README.md#45-wiederanlauf-nach-störungen)).
+- **Die Neueinbettung und das Nachfüllen übernimmt eine andere Instanz**, Läufe und Uploads werden
+  aufgegeben und lassen sich wiederholen ([Wiederanlauf nach Störungen](../arbeitsmittel/wissensbibliotheken/README.md#45-wiederanlauf-nach-störungen)).
 - **Arbeitsdateien** liegen je Instanz in einem eigenen Unterverzeichnis; ein Aufräumlauf entfernt
   die eigenen und die beendeter Instanzen.
 
@@ -464,6 +464,11 @@ auch neben Instanzen der neuen, also auch dann, wenn schon alle Instanzen ersetz
 vorige Version danach Fehler, bleibt die Sicherung von vor dem Update der Rückfall. Bis zum ersten
 Release mit dieser Zusage und über eine Versionsgrenze hinweg führt der Rückweg nur über diese
 Sicherung.
+
+**Wechsel des Embedding-Modells.** Während eines Updates lehnt OPAA Wechsel, Verwerfen und
+Endpunktwechsel des Embedding-Modells ab: Alle laufenden Instanzen müssen dieselbe Version haben,
+zwei Builds derselben Version gelten dabei als gleich. Umgekehrt gehört ein Rückweg auf die vorige
+Version nicht in die Zeit eines laufenden Wechsels ([Modell wechseln](modelle.md#modell-wechseln)).
 
 ## Docker Compose und Kubernetes
 

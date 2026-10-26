@@ -103,4 +103,35 @@ describe('EmbeddingIndexSection', () => {
 
     expect(await screen.findByText('Die Neueinbettung läuft bereits.')).toBeInTheDocument()
   })
+
+  it('resumes an unfinished refill after a discard', async () => {
+    let resumed = false
+    const unfinished: EmbeddingReindexStatusResponse = {
+      ...mockEmbeddingIndexStale,
+      stale: false,
+      running: false,
+      configured: mockEmbeddingIndexStale.current,
+      withoutCurrentVector: 3,
+      lastRun: { status: 'FAILED', kind: 'REFILL', message: 'Unvollständig.' },
+    }
+    server.use(
+      http.get(ENDPOINT, () => HttpResponse.json(unfinished)),
+      http.post(ENDPOINT, () => {
+        resumed = true
+        return HttpResponse.json({
+          ...unfinished,
+          running: true,
+          lastRun: { status: 'RUNNING', kind: 'REFILL' },
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<EmbeddingIndexSection />)
+
+    expect(await screen.findByText('Letztes Nachfüllen')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Nachfüllen fortsetzen' }))
+
+    await waitFor(() => expect(resumed).toBe(true))
+    expect(await screen.findByRole('button', { name: 'Nachfüllen abbrechen' })).toBeInTheDocument()
+  })
 })

@@ -15,7 +15,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 | Rolle | Wofür | Festgelegt über | Wechsel |
 |---|---|---|---|
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Modellverwaltung in der Oberfläche; die Umgebung nur beim allerersten Start | jederzeit, ohne Neustart; berührt den Index nicht |
-| **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation, mit Probeeinbettung ([Embedding](#embedding)) | nicht über die Oberfläche; nur durch einen Eingriff des Betriebs mit anschließender Neueinbettung ([Modell wechseln](#modell-wechseln)) |
+| **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation, mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
@@ -191,8 +191,9 @@ Eingabegrenze ([Installation](installation.md)). Ihre Prüfung ist eine Probeein
 dass der Endpunkt das Modell bedient, und ergibt die Zahl der Dimensionen, mit der das Modell
 einbettet. Mit dieser Zahl legt der Abschluss der Installation die Vektorablage an; einstellen muss
 sie niemand. Vor dem Abschluss gibt es keine Vektorablage, und Indexierung und Suche antworten mit
-dem Hinweis, dass das Embedding-Modell noch nicht eingerichtet ist. Die Oberfläche zeigt die
-Einbettung danach nur an.
+dem Hinweis, dass das Embedding-Modell noch nicht eingerichtet ist. Danach zeigt die
+Modellverwaltung im Reiter „Einbettung" Modell, Endpunkt, Dimensionen, Eingabegrenze und ob ein
+Zugangsschlüssel gespeichert ist; dort läuft auch jeder Wechsel.
 
 `OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
 übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
@@ -200,8 +201,9 @@ auf ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)). Den 
 verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
 mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne Zugangsschlüssel.
 
-Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
-und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.
+Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar.
+OPAA führt ihn deshalb mit Probeeinbettung, Vorschau und ausdrücklicher Bestätigung
+([Modell wechseln](#modell-wechseln)).
 
 > **Ältere Ollama-Fassungen betten lange Chunks falsch ein.** Sie zerlegen eine Eingabe über 512
 > Token in mehrere Teile. Embedding-Modelle wie `nomic-embed-text` und `bge-m3` lesen einen Text
@@ -304,39 +306,55 @@ nicht mit der eingestellten Grenze.
 ### Modell wechseln
 
 > **Beispiel.** Ein Haus stellt von `nomic-embed-text` auf `bge-m3` um, das deutsche Texte besser
-> trifft. Es hält OPAA an, trägt Modell und Dimension ein, startet neu und lässt den Bestand über
-> Nacht neu einbetten. Konten, Rechte, Spaces und Chats bleiben, und der Chat beantwortet Fragen auch
-> während der Umstellung — nur ohne die Vektorsuche.
+> trifft. Die Systemverwaltung trägt das neue Modell ein, liest in der Vorschau „etwa 7 Stunden"
+> und startet den Wechsel am Abend. Konten, Rechte, Spaces und Chats bleiben, und der Chat
+> beantwortet Fragen auch während der Umstellung — nur ohne die Vektorsuche.
 
-Die Oberfläche bietet keinen Wechsel des Embedding-Modells an. Der Wechsel ist ein Eingriff des
-Betriebs in die Datenbank, und er taugt nur für einen Endpunkt mit demselben Zugangsschlüssel oder
-ohne Schlüssel: Der Schlüssel liegt verschlüsselt im Eintrag und lässt sich so nicht ändern. Ein
-geführter Wechsel mit Probeeinbettung ist nicht gebaut.
+Der Wechsel läuft in der Modellverwaltung, Reiter „Einbettung", unter „Modell wechseln oder
+Endpunkt ändern". Einen Eingriff in die Datenbank braucht er nicht.
 
-1. **Alle Instanzen anhalten und das Modell eintragen.** In der Datenbank im Eintrag des
-   Embedding-Modells Modellname, Adresse und Dimension gemeinsam ändern, etwa
-   `UPDATE embedding_model SET model_identifier = 'bge-m3', dimensions = 1024;`. Die Dimension
-   nennt die Beschreibung des Modells, oder eine Probeeinbettung am Endpunkt. Der Zugangsschlüssel
-   bleibt. Auf einer CPU auch `OPAA_OPENAI_EMBEDDING_TIMEOUT` erhöhen (siehe unten). Das Modell
-   muss im Endpunkt vorhanden sein. Laufen Instanzen weiter, betten sie Suchanfragen schon mit dem
-   neuen Modell ein und suchen im alten Index.
-2. **OPAA erkennt den Wechsel beim Start** und startet trotzdem, auch bei einer anderen Dimension.
-   Die Seite „Suche & Indexierung" zeigt im Reiter „Indexstatus" den Hinweis „Index veraltet" mit
-   beiden Modellen, der Suchpfad Vektorsuche steht auf „Ausgesetzt". Bis zum Abschluss findet die
-   Suche Chunks nur über die Volltextsuche; der Chat zeigt dazu den Hinweis „Eingeschränkte Suche".
-   Was in dieser Zeit neu indiziert wird, bekommt schon Vektoren des neuen Modells.
-3. **„Neueinbettung starten".** Der Lauf bettet die gespeicherten Chunks mit dem neuen Modell neu
-   ein: Text, Zuschnitt, Fundstellen und Dokumente bleiben, Quellen werden nicht erneut gelesen.
-   Die Seite zeigt den Fortschritt; Chunks privater Bibliotheken zählt sie nur mit, wenn genug
-   Personen solche führen (Mindestgruppengröße). „Neueinbettung abbrechen" hält den Lauf nach dem aktuellen
-   Dokument an, das bereits Eingebettete bleibt erhalten, und „Neueinbettung fortsetzen" macht dort
-   weiter. Ein Neustart während des Laufs setzt ihn von selbst fort; endet die Instanz, die ihn
-   ausführt, übernimmt ihn die nächste Instanz, die startet oder bereits läuft. Abbrechen und
-   Fortsetzen wirken gleich, welche Instanz die Seite beantwortet.
-4. **Abschluss.** Haben alle Chunks einen neuen Vektor, stellt OPAA die Vektorablage um, bei einer
-   anderen Dimension samt Index, und die Vektorsuche läuft wieder. Start, Abbruch und Ende stehen im
-   Revisionsprotokoll.
-5. **Nachzug, falls gemeldet.** Zählt das neue Modell einen Chunk über der Eingabegrenze, etwa eine
+```mermaid
+flowchart LR
+  A[Modell<br/>eintragen] --> B[Probe-<br/>einbettung]
+  B --> C[Vorschau]
+  C --> D[Wechsel<br/>starten]
+  D --> E[Neu-<br/>einbettung]
+  E --> F[Umschalten]
+  E -.-> G[Verwerfen]
+```
+
+1. **Eintragen.** Basis-Adresse, Modell-Kennung, Eingabegrenze und Zugangsschlüssel, mit derselben
+   [Adressprüfung](#adressprüfung-der-modelle) wie in der Installation. „beibehalten" gibt es für
+   den Schlüssel nur, solange die Adresse denselben Endpunkt nennt (Schema, Host, Port, Pfad); bei
+   einem anderen ist er neu einzugeben oder „ohne" zu wählen. So geht ein Schlüssel nie an einen
+   anderen Anbieter.
+2. **„Probeeinbettung".** OPAA bettet drei feste Probetexte ein und vergleicht sie mit dem
+   gespeicherten Referenzanker des aktiven Modells. Ist es dasselbe Modell an einem anderen
+   Endpunkt, bietet die Seite stattdessen „Endpunkt ändern" an ([Endpunkt wechseln](#endpunkt-wechseln)).
+3. **Vorschau.** Sie nennt die Zahl der Chunks (private Bibliotheken nur ab der
+   Mindestgruppengröße), die Tokens grob geschätzt, die Dauer und den zusätzlichen Speicher. Die
+   Dauer misst OPAA am neuen Endpunkt mit künstlichen Texten in der Zielgröße der Chunks; vor der
+   Bestätigung geht kein Inhalt einer Bibliothek dorthin. Antwortet der Endpunkt darauf nicht, rechnet
+   OPAA mit dem voreingestellten Durchsatz und sagt das. Einen Preis nennt die Vorschau
+   nicht; die Tokenzahl lässt sich mit dem eigenen Tarif rechnen.
+4. **„Wechsel starten".** Ein Dialog wiederholt die beiden Folgen und verlangt die Bestätigung.
+   OPAA prüft dann alles erneut, setzt das neue Modell, bewahrt das bisherige für ein Verwerfen auf
+   und startet die Neueinbettung. Ab jetzt ist die Vektorsuche ausgesetzt: Suche und Chat finden
+   Chunks nur über die Volltextsuche, der Chat zeigt den Hinweis „Eingeschränkte Suche", und die
+   Seite „Suche & Indexierung" zeigt im Reiter „Indexstatus" den Hinweis „Index veraltet".
+5. **Neueinbettung.** Der Lauf bettet die gespeicherten Chunks mit dem neuen Modell neu ein: Text,
+   Zuschnitt, Fundstellen und Dokumente bleiben, Quellen werden nicht erneut gelesen. Was in dieser
+   Zeit neu indiziert wird, bekommt nur Vektoren des neuen Modells. Den Fortschritt zeigen der
+   Reiter „Einbettung" und der Reiter „Indexstatus". „Neueinbettung abbrechen" im Indexstatus hält
+   den Lauf nach dem aktuellen Dokument an, das bereits Eingebettete bleibt erhalten, und
+   „Neueinbettung fortsetzen" macht dort weiter. Ein Neustart setzt den Lauf von selbst fort; endet
+   die Instanz, die ihn ausführt, übernimmt ihn die nächste. Abbrechen und Fortsetzen wirken gleich,
+   welche Instanz die Seite beantwortet.
+6. **Umschalten.** Haben alle Chunks einen neuen Vektor, baut OPAA den Vektorindex für das neue
+   Modell und stellt um, bei einer anderen Dimension samt Vektorablage. Die Vektorsuche läuft wieder.
+   **Mit dem Umschalten fallen die bisherigen Vektoren weg;** zurück geht es dann nur mit einem
+   neuen Wechsel und einer vollständigen Neueinbettung.
+7. **Nachzug, falls gemeldet.** Zählt das neue Modell einen Chunk über der Eingabegrenze, etwa eine
    Zahlentabelle, die `bge-m3` in mehr Tokens zerlegt als `nomic-embed-text`, bettet die
    Neueinbettung ihn gekürzt ein und merkt sein Dokument für den Nachzug vor; das Log nennt die
    Pipeline. Danach den Nachzug dieser Pipeline über die Admin-API aufrufen, mit ihrer Kennung als
@@ -344,12 +362,35 @@ geführter Wechsel mit Probeeinbettung ist nicht gebaut.
    ([Pipeline-Versionen und Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)). Er
    teilt den Chunk.
 
-Ein Wechsel nur des Endpunkts, etwa auf einen anderen Server mit demselben Modell, gilt nicht als
-Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die neuen Vektoren. Die
-bereits neu eingebetteten Chunks behalten ihren alten Vektor. Nur Chunks, die in der Zwischenzeit
-neu oder mit geändertem Text indiziert wurden, haben keinen; sie findet nur die Volltextsuche, bis
-ihr Dokument erneut indiziert wird. Eine unveränderte Datei überspringt der Abgleich dabei
-([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)).
+**Verwerfen.** Bis zum Umschalten kehrt „Wechsel verwerfen" im Reiter „Einbettung" zum bisherigen
+Modell zurück, samt Schlüssel; die Vektorsuche läuft sofort wieder. Chunks, die seit der
+Bestätigung neu oder mit geändertem Text indiziert wurden, haben keinen Vektor des bisherigen
+Modells. Ihre Zahl nennt der Dialog, und ein anschließender Lauf füllt sie mit dem bisherigen Modell
+nach; bis dahin findet sie nur die Volltextsuche. Den Stand des Nachfüllens zeigt der Indexstatus,
+mit „Nachfüllen abbrechen" und „Nachfüllen fortsetzen". Sobald OPAA den Vektorindex für das neue
+Modell baut, lässt sich der Wechsel nicht mehr verwerfen; wurde der Lauf während des Baus
+angehalten, gelingt das Verwerfen, sobald der Bau fertig ist.
+
+**Speicher.** Während des Wechsels liegen alte und neue Vektoren nebeneinander. Die Neueinbettung
+schreibt dazu jede Zeile neu, mit neuen Einträgen in allen Indizes der Tabelle. Die Vorschau nennt
+deshalb eine Spanne: unten die neuen Vektoren samt Index, oben zusätzlich die heutige Größe der
+Vektortabelle. Freier Platz in Höhe der Obergrenze ist die Faustregel. Nach dem Umschalten gibt
+PostgreSQL den Platz der alten Vektoren erst frei, wenn die Zeilen neu geschrieben werden.
+
+**Mehrere Instanzen.** Wechsel, Verwerfen und Endpunktwechsel gelingen nur, wenn alle laufenden
+Instanzen dieselbe Version haben; sonst nennt die Seite das laufende Rolling Update
+([Mehrere Instanzen](mehrere-instanzen.md)). Ein Release-Rollback während eines Wechsels ist nicht
+vorgesehen, erst nach dem Umschalten oder Verwerfen ([Aktualisierung](aktualisierung.md)).
+
+**Grenzen.** Probeeinbettung und „Wechsel starten" teilen sich 30 Aufrufe je Stunde für die ganze
+Installation, „Endpunkt ändern" hat eigene 30. Die Durchsatzprobe der Vorschau besteht aus höchstens
+drei Aufrufen mit je 16 künstlichen Texten. Ist die Grenze der Probe erschöpft, bietet die Seite
+„Endpunkt ändern" weiter an; es prüft selbst.
+
+**Nach einer Rücksicherung.** Passt das gespeicherte Modell beim Start nicht zum Index, etwa nach
+einer Rücksicherung nur eines Teils der Datenbank, setzt OPAA die Vektorsuche aus und zeigt „Index
+veraltet". Dann im Indexstatus „Neueinbettung starten". Ein Verwerfen gibt es in diesem Fall nicht,
+weil kein bisheriges Modell aufbewahrt ist.
 
 **Dauer und Ressourcen.** Die Neueinbettung kostet so viele Embedding-Aufrufe wie eine
 Indexierung des Bestands, aber kein Lesen, Zerlegen oder Texterkennen. Auf einer CPU bestimmt das
@@ -367,6 +408,34 @@ Lässt sich ein Dokument nicht einbetten, läuft die Neueinbettung über die üb
 „fehlgeschlagen"; das Log nennt die Dokumente. Scheitern fünf Dokumente in Folge, bricht sie gleich
 ab, weil dann eher Endpunkt oder Timeout die Ursache sind. Die Vektorsuche bleibt ausgesetzt, bis
 ein weiterer Start auch die fehlenden eingebettet hat.
+
+### Endpunkt wechseln
+
+Ein anderer Server mit demselben Modell, ein neuer Zugangsschlüssel oder eine andere Eingabegrenze
+brauchen keine Neueinbettung. Typischer Anlass ist der Ausfall des bisherigen Servers.
+
+Dafür im Reiter „Einbettung" die neue Adresse und den Schlüssel eintragen und „Probeeinbettung"
+wählen; meldet die Seite, dass der Endpunkt wie das aktive Modell einbettet, „Endpunkt ändern". Das
+gilt sofort auf allen Instanzen, ohne Neustart. OPAA nimmt den Endpunkt nur an, wenn Modell-Kennung
+und Dimension gleich bleiben und seine Vektoren der festen Probetexte denen des **Referenzankers**
+nahezu gleichen. Gewertet wird die kleinste Ähnlichkeit der drei Texte; sie muss mindestens 0,99
+erreichen.
+
+Den Anker nimmt OPAA bei der Installation und bei jedem Modellwechsel auf, und ein Endpunktwechsel
+lässt ihn unverändert. Fehlt er, holt ihn OPAA nach, sobald das Modell erfolgreich einbettet; bis
+dahin vergleicht die Prüfung mit dem bisherigen Endpunkt und lehnt ab, wenn dieser nicht antwortet.
+
+**Grenze des Schutzes.** Der Vergleich erkennt eine andere Fassung oder Quantisierung unter
+gleichem Namen und einen falsch eingetragenen Server. Ein Server, der die öffentlichen Probetexte
+gezielt so beantwortet, besteht ihn trotzdem; davor schützen die Adressprüfung und die Wahl des
+Anbieters. Ein nachträglich aufgenommener Anker hält den Endpunkt fest, der in diesem Moment aktiv
+ist. War der schon eine andere Fassung, lehnt die Prüfung den Weg zurück zum ursprünglichen Server
+ab; dann bleibt der Modellwechsel.
+
+**Ersatz-Endpunkt während eines Wechsels.** Fällt der neue Endpunkt während der Neueinbettung aus,
+den Lauf im Indexstatus anhalten und im Reiter „Einbettung" „Ersatz-Endpunkt eintragen" wählen. Die
+Prüfung ist dieselbe, gegen den Anker des neuen Modells. Danach den Lauf fortsetzen. Während ein Lauf
+arbeitet, nimmt OPAA keinen Endpunktwechsel an.
 
 ## Reranking einschalten
 
@@ -704,7 +773,7 @@ Je Rolle wirkt der Ausfall anders:
 | Rolle | Wirkung | Vorsorge | Wiederanlauf |
 |---|---|---|---|
 | Chat | Fragen im Chat scheitern | ein Ersatzmodell vorab anlegen und testen, nicht aktivieren ([Chat-Modelle in der Oberfläche anlegen](#chat-modelle-in-der-oberfläche-anlegen)) | Ersatzmodell aktivieren, wirkt ohne Neustart; nach dem Ausfall zurückschalten |
-| Embedding | Fragen scheitern, weil die Suche die Frage nicht einbetten kann; neue Dokumente enden als fehlgeschlagen | einen Ersatz-Endpunkt mit demselben Modell vorhalten; ein Wechsel nur des Endpunkts ist kein Modellwechsel | alle Instanzen anhalten, in der Datenbank die Adresse des Embedding-Modells ändern (`UPDATE embedding_model SET base_url = '…';`) und wieder starten; der gespeicherte Zugangsschlüssel bleibt und gilt dann auch für den Ersatz-Endpunkt, ein Endpunkt mit anderem Schlüssel taugt so nicht ([Modell wechseln](#modell-wechseln)). In der Zwischenzeit fehlgeschlagene Dokumente erneut verarbeiten lassen, bei Quellen mit dem nächsten Lauf. Ein anderes Modell verlangt eine Neueinbettung, bis dahin nur Volltextsuche ([Modell wechseln](#modell-wechseln)) |
+| Embedding | Fragen scheitern, weil die Suche die Frage nicht einbetten kann; neue Dokumente enden als fehlgeschlagen | einen Ersatz-Endpunkt mit demselben Modell vorhalten; ein Wechsel nur des Endpunkts ist kein Modellwechsel | im Reiter „Einbettung" den Ersatz-Endpunkt eintragen, mit eigenem Schlüssel, wenn nötig; wirkt ohne Neustart ([Endpunkt wechseln](#endpunkt-wechseln)). In der Zwischenzeit fehlgeschlagene Dokumente erneut verarbeiten lassen, bei Quellen mit dem nächsten Lauf, bei Uploads mit „erneut verarbeiten". Ein anderes Modell verlangt eine Neueinbettung, bis dahin nur Volltextsuche ([Modell wechseln](#modell-wechseln)) |
 | Reranking | Suche läuft ohne Reranking, die Reihenfolge der Treffer ist schlechter | keine | von selbst, sobald der Endpunkt antwortet |
 | Transkription | Spracheingabe nicht verfügbar | keine | von selbst |
 
@@ -743,7 +812,12 @@ und im Protokoll des Backends.
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell ([Installation](installation.md)) |
 | Indexierung und Suche antworten „Diese Installation hat kein Embedding-Modell", der Start schreibt einen Fehler | Die Installation ist abgeschlossen, hat aber kein Embedding-Modell, etwa eine Datenbank eines Entwicklungsstands von `main` vor dem Embedding-Modell in der Datenbank. Aus der Umgebung übernimmt OPAA keines ([Embedding](#embedding)). Abhilfe: Datenbank neu aufsetzen und installieren, oder einmal mit einem Stand starten, der das Modell noch übernahm (ein Stand von `main` mit dem Embedding-Modell als Installationsschritt und noch mit der Übernahme aus `OPAA_OPENAI_EMBEDDING_*`), und danach aktualisieren. Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse |
-| „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
+| „Index veraltet", Chat meldet „Eingeschränkte Suche" | Ein Wechsel des Embedding-Modells läuft, oder nach einer Rücksicherung passt das gespeicherte Modell nicht zum Index; den Fortschritt im Indexstatus verfolgen oder dort die Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
+| Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
+| „Nicht alle laufenden Instanzen haben dieselbe Version" | Ein Rolling Update läuft noch; es abschließen und den Schritt wiederholen |
+| „Die Vektortabelle ist gerade belegt" | Eine andere Sitzung hält eine Sperre auf der Vektortabelle, etwa ein Indexbau; in einigen Minuten wiederholen |
+| „Das Umschalten auf das neue Modell läuft bereits" beim Verwerfen | Der Vektorindex für das neue Modell wird schon gebaut; den Abschluss abwarten |
+| HTTP `429` bei Probeeinbettung oder Wechsel | Die Grenze von 30 Aufrufen je Stunde ist erreicht ([Modell wechseln](#modell-wechseln), „Grenzen") |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
 | Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |

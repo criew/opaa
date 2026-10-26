@@ -257,28 +257,28 @@ describe('LlmModelManagementPage', () => {
       within(tabelle)
         .getAllByRole('columnheader')
         .map((z) => z.textContent),
-    ).toEqual(['Modell', 'Anbieter', 'Dimensionen'])
+    ).toEqual(['Modell', 'Endpunkt', 'Dimensionen', 'Eingabegrenze', 'Schlüssel'])
     expect(within(tabelle).getByText('nomic-embed-text')).toBeInTheDocument()
-    expect(within(tabelle).getByText('openai')).toBeInTheDocument()
+    expect(within(tabelle).getByText('http://ollama:11434/v1')).toBeInTheDocument()
     expect(within(tabelle).getByText('1536')).toBeInTheDocument()
-    expect(screen.getByText(/vollständige Neuindizierung/i)).toBeInTheDocument()
+    expect(screen.getByText(/bestehenden Vektoren unvergleichbar/i)).toBeInTheDocument()
   })
 
   /**
-   * The actual difference to the neighbouring tab: nothing can be changed on the embedding model.
-   * A change would make existing vectors incomparable - so the view must not even
-   * look as if it were possible.
+   * The difference to the neighbouring tab: the embedding model is never edited in place - no
+   * row menu - but changed through the probe embedding of the guided change below the table.
    */
-  it('offers nothing to operate in the embedding area', async () => {
+  it('changes the embedding model only through the probe of the guided change', async () => {
     signInAs('SYSTEM_ADMIN')
 
     renderEmbedding()
-    await screen.findByRole('table', { name: 'Einbettungsmodell' })
+    const tabelle = await screen.findByRole('table', { name: 'Einbettungsmodell' })
 
+    expect(within(tabelle).queryAllByRole('button')).toEqual([])
+    expect(within(tabelle).queryAllByRole('menuitem')).toEqual([])
     const panel = screen.getByRole('tabpanel')
-    expect(within(panel).queryAllByRole('button')).toEqual([])
-    expect(within(panel).queryAllByRole('textbox')).toEqual([])
-    expect(within(panel).queryAllByRole('menuitem')).toEqual([])
+    expect(within(panel).getByRole('button', { name: 'Probeeinbettung' })).toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'Wechsel starten' })).not.toBeInTheDocument()
   })
 
   it('creates a model without an API key without a validation error', async () => {

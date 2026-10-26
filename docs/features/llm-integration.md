@@ -358,7 +358,7 @@ Einbettungsmodells macht alle vorhandenen Vektoren unvergleichbar und erzwingt e
 Neuindizierung. Eine Auswahlliste, die eine Wissensbasis unbrauchbar macht, sobald jemand sie versehentlich
 verstellt, ist keine Erleichterung, sondern eine Falle. Der Wechsel bleibt deshalb ein geplanter Vorgang
 mit Probeeinbettung, Vorschau und Bestätigung: [Wechsel des Embedding-Modells](./embedding-model-change.md)
-(Zielbild, ADR-0061).
+(ADR-0061).
 
 Die Anzeige entfällt trotzdem nicht. Ohne sie entstünde der Eindruck, OPAA arbeite mit genau einem Modell,
 und die naheliegende Frage „warum kann ich das Einbettungsmodell nicht wechseln?" bliebe unbeantwortet.

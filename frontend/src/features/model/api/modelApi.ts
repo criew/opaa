@@ -1,5 +1,9 @@
 import type {
   EmbeddingInfoResponse,
+  EmbeddingModelChangeRequest,
+  EmbeddingModelDraft,
+  EmbeddingModelProbeResponse,
+  EmbeddingReindexStatusResponse,
   LlmModelDiscoveryRequest,
   LlmModelDiscoveryResponse,
   LlmModelRequest,
@@ -172,6 +176,61 @@ export async function testTranscriptionModel(
 export async function getEmbeddingInfo(): Promise<EmbeddingInfoResponse> {
   try {
     const { data } = await client.get<EmbeddingInfoResponse>('/v1/admin/models/embedding-info')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// The guided change of the embedding model (ADR-0061): probe and preview, confirmation, discard
+// and endpoint change. The key is write-only: omitted keeps the stored one, '' sends none.
+export async function probeEmbeddingModelChange(
+  draft: EmbeddingModelDraft,
+): Promise<EmbeddingModelProbeResponse> {
+  try {
+    const { data } = await client.post<EmbeddingModelProbeResponse>(
+      '/v1/admin/models/embedding/probe',
+      draft,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function startEmbeddingModelChange(
+  request: EmbeddingModelChangeRequest,
+): Promise<EmbeddingReindexStatusResponse> {
+  try {
+    const { data } = await client.post<EmbeddingReindexStatusResponse>(
+      '/v1/admin/models/embedding/change',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function discardEmbeddingModelChange(): Promise<EmbeddingReindexStatusResponse> {
+  try {
+    const { data } = await client.delete<EmbeddingReindexStatusResponse>(
+      '/v1/admin/models/embedding/change',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function changeEmbeddingModelEndpoint(
+  draft: EmbeddingModelDraft,
+): Promise<EmbeddingReindexStatusResponse> {
+  try {
+    const { data } = await client.put<EmbeddingReindexStatusResponse>(
+      '/v1/admin/models/embedding/endpoint',
+      draft,
+    )
     return data
   } catch (err) {
     normalizeError(err)

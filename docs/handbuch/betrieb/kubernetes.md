@@ -281,8 +281,8 @@ ingress:
   Chart nicht möglich.
 - Die Dimension des Embedding-Modells ermittelt die Probeeinbettung der Installation; einstellen
   muss sie niemand. `embedding.dimensions` ist ohne Wirkung und wird nur noch angenommen, damit
-  ältere Werte-Dateien weiter rendern. Ein späterer Wechsel des Modells verlangt eine Neueinbettung
-  aus der Administration ([Modell wechseln](modelle.md#modell-wechseln)).
+  ältere Werte-Dateien weiter rendern. Ein späterer Wechsel des Modells läuft in der Modellverwaltung,
+  mit Neueinbettung ([Modell wechseln](modelle.md#modell-wechseln)).
 - **Interne Modell-Hosts** gehören mit Port in `targetValidation.modelAllowlist`, etwa
   `ollama.ai.svc.cluster.local:11434`, nicht in die Liste der Quellen. Host und Port von
   `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` trägt der Chart selbst und dauerhaft ein,
@@ -973,8 +973,9 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 
 **Eine geänderte Werte-Datei ändert an der Antwortdatei nichts mehr.** Nach dem Abschluss der
 Installation führt die Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht
-nachführen. Das gilt auch für das Embedding-Modell: Ein Wechsel ist eine Neueinbettung des Bestands
-aus der Administration (siehe [Modell wechseln](modelle.md#modell-wechseln)).
+nachführen. Das gilt auch für das Embedding-Modell: Ein Wechsel läuft in der Modellverwaltung mit
+einer Neueinbettung des Bestands, ein anderer Endpunkt desselben Modells ohne (siehe
+[Modell wechseln](modelle.md#modell-wechseln)).
 
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
 Start einen anmeldefähigen lokalen Systemverwalter her; hat die Installation kein Notanker-Konto,

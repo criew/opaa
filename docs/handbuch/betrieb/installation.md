@@ -83,7 +83,7 @@ verwerfen die Prüfung des Schritts.
 | Erstes Konto (`FIRST_ADMIN`) | E-Mail-Adresse, Anzeigename, Passwort | zustellbar geformte Adresse, nicht `admin@opaa.local`; Passwortrichtlinie | Benutzerverwaltung |
 | Anmeldeverfahren (`SIGN_IN`) | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
 | Chat-Modell (`CHAT_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
-| Embedding-Modell (`EMBEDDING_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | nicht über die Oberfläche ([Modell wechseln](modelle.md#modell-wechseln)) |
+| Embedding-Modell (`EMBEDDING_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung", mit Neueinbettung ([Modell wechseln](modelle.md#modell-wechseln)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -118,8 +118,8 @@ Passwort: aus dem Assistenten ohne erzwungenen Wechsel, aus einer Antwortdatei m
 ersten Anmeldung, solange `requirePasswordChange` nicht `false` ist. Er richtet das
 Anmeldeverfahren ein (ein OIDC-Anbieter wird Standardanbieter), aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung und
-verwirft Token und Zwischenstand. Vor dem Abschluss gibt es keine Vektorablage; das Embedding-Modell
-lässt sich danach nicht über die Oberfläche wechseln ([Modelle](modelle.md#embedding)). Danach
+verwirft Token und Zwischenstand. Vor dem Abschluss gibt es keine Vektorablage; ein späterer Wechsel
+des Embedding-Modells läuft in der Modellverwaltung, mit Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto an. Jeder Schritt, jede Prüfung und der Abschluss stehen
 im Revisionsprotokoll.
 

@@ -360,9 +360,11 @@ sehr kleiner Suchbereich in einem sehr großen Bestand; für einen solchen Filte
 meist ohnehin die exakte Suche ohne Index. Eine kürzere Liste nennt das Erklärprotokoll mit der
 Zahl der gelieferten Kandidaten.
 
-Nach einem Wechsel des Embedding-Modells ist die Vektorsuche bis zum Abschluss der Neueinbettung
-ausgesetzt: Frage und Chunks stammten sonst aus verschiedenen Modellen. Die Stufe erscheint im
-Erklärprotokoll dann als nicht verfügbar, und die Volltextsuche trägt die Frage allein
+Während eines Wechsels des Embedding-Modells ist die Vektorsuche von der Bestätigung bis zum
+Abschluss der Neueinbettung ausgesetzt: Frage und Chunks stammten sonst aus verschiedenen Modellen.
+Die Stufe erscheint im Erklärprotokoll dann als nicht verfügbar, und die Volltextsuche trägt die
+Frage allein. Dasselbe gilt für eine Frage, die eine Instanz mit einem Modell einbettet, das der
+Index nicht mehr führt, etwa in dem kurzen Moment nach dem Umschalten auf einer anderen Instanz
 ([Modell wechseln](../betrieb/modelle.md#modell-wechseln)).
 
 Die Vektorsuche findet, was der Frage **in der Bedeutung** nahe ist, auch wenn kein Wort
