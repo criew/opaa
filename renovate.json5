@@ -450,6 +450,15 @@
       matchUpdateTypes: ['major'],
       enabled: false,
     },
+    // OkHttp-Major bleibt aus, bis Spring AI nachzieht: okhttp steht nur als explizite
+    // Deklaration der ohnehin transitiven Version aus spring-ai-openai im Katalog.
+    // io.opaa.llm.ModelRedirectRefusal nutzt die interne Klasse RealCall; ein isolierter Bump
+    // auf 5.x mischt sie mit dem von Spring AI erwarteten 4.x-Client. Mit Spring AI anheben.
+    {
+      matchPackageNames: ['com.squareup.okhttp3:okhttp'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
     // Der MCP-Starter kommt als eigener PR und mergt nie automatisch (ADR-0035): Er bringt
     // mcp-core mit, und mcp-core entscheidet, welche MCP-Protokollfassungen diese Installation
     // spricht. Ein Wechsel ist damit keine Abhängigkeitsaktualisierung, sondern eine

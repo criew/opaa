@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.openai.errors.UnexpectedStatusCodeException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -102,7 +103,8 @@ class ModelClientRedirectTest {
         embeddingClientFactory()
             .create(new EmbeddingEndpoint(originBaseUrl(), "bge-m3", "sk-geheim", 2048));
 
-    assertThatThrownBy(() -> client.embed("vertraulicher Text")).isNotNull();
+    assertThatThrownBy(() -> client.embed("vertraulicher Text"))
+        .satisfies(e -> assertRefusedWithStatus(e, status));
 
     assertThat(targetRequests).hasValue(0);
     assertThat(originRequests).hasValue(1);
@@ -127,7 +129,8 @@ class ModelClientRedirectTest {
     redirectEverything(status);
     ChatClient client = chatResolver(originBaseUrl(), "cipher").resolveChatClient();
 
-    assertThatThrownBy(() -> client.prompt("vertraulicher Prompt").call().content()).isNotNull();
+    assertThatThrownBy(() -> client.prompt("vertraulicher Prompt").call().content())
+        .satisfies(e -> assertRefusedWithStatus(e, status));
 
     assertThat(targetRequests).hasValue(0);
     assertThat(originRequests).hasValue(1);
@@ -152,6 +155,36 @@ class ModelClientRedirectTest {
     assertThatThrownBy(() -> client.prompt("vertraulicher Prompt").call().content()).isNotNull();
 
     assertThat(targetRequests).hasValue(0);
+  }
+
+  @Test
+  void aRelativeRedirectOnTheSameServerIsNotFollowedEither() {
+    AtomicInteger elsewhereRequests = new AtomicInteger();
+    origin.createContext(
+        "/elsewhere",
+        exchange -> {
+          elsewhereRequests.incrementAndGet();
+          exchange.getRequestBody().readAllBytes();
+          send(exchange, 200, EMBEDDING);
+        });
+    origin.createContext(
+        "/v1",
+        exchange -> {
+          originRequests.incrementAndGet();
+          exchange.getRequestBody().readAllBytes();
+          exchange.getResponseHeaders().add("Location", "/elsewhere/embeddings");
+          exchange.sendResponseHeaders(307, -1);
+          exchange.close();
+        });
+    EmbeddingModel client =
+        embeddingClientFactory()
+            .create(new EmbeddingEndpoint(originBaseUrl(), "bge-m3", "sk-geheim", 2048));
+
+    assertThatThrownBy(() -> client.embed("vertraulicher Text"))
+        .satisfies(e -> assertRefusedWithStatus(e, 307));
+
+    assertThat(elsewhereRequests).hasValue(0);
+    assertThat(originRequests).hasValue(1);
   }
 
   @Test
@@ -225,6 +258,18 @@ class ModelClientRedirectTest {
             out.write(body);
           }
         });
+  }
+
+  /** The refusal arrives as the SDK's status exception, not as the fail-closed IOException. */
+  private static void assertRefusedWithStatus(Throwable thrown, int status) {
+    Throwable cause = thrown;
+    while (cause != null && !(cause instanceof UnexpectedStatusCodeException)) {
+      cause = cause.getCause();
+    }
+    assertThat(cause)
+        .as("UnexpectedStatusCodeException in the cause chain of %s", thrown)
+        .isInstanceOf(UnexpectedStatusCodeException.class);
+    assertThat(((UnexpectedStatusCodeException) cause).statusCode()).isEqualTo(status);
   }
 
   private String originBaseUrl() {
