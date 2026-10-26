@@ -3,7 +3,7 @@
 # "Zwei-Instanzen-Suite"), run by .github/workflows/multi-instance.yml and locally from the
 # repository root. Runs the scenarios of e2e/multi-instance/ in two phases, each into a fresh
 # namespace: "fresh" installs the current images with backend.replicas 2 against an empty
-# evaluation database (scenarios 01-04, 06), "rolling" installs the previous images and lets
+# evaluation database (scenarios 01-04, 06, 07), "rolling" installs the previous images and lets
 # scenario 05 upgrade to the current ones under load, followed by a rollout restart.
 #
 # Expects the current kubectl context to point at a kind cluster holding the images
@@ -147,7 +147,7 @@ for phase in $PHASES; do
   case "$phase" in
     fresh)
       install "$NEXT_BACKEND" "$NEXT_FRONTEND"
-      scenarios 01- 02- 03- 04- 06- || failed=1
+      scenarios 01- 02- 03- 04- 06- 07- || failed=1
       ;;
     rolling)
       install "$PREVIOUS_BACKEND" "$PREVIOUS_FRONTEND"
