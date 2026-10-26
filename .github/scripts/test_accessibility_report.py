@@ -321,9 +321,11 @@ def test_the_accessibility_run_records_without_failing_and_takes_nothing_from_a_
     caches = [line.strip() for line in body.splitlines() if "cache" in line and not line.strip().startswith("#")]
     assert caches == ["package-manager-cache: false"]
     assert "actions/cache" not in body and "type=gha" not in body
-    assert body.count("E2E_A11Y_REPORT_ONLY: 'true'") == 2
+    assert body.count("E2E_A11Y_REPORT_ONLY: 'true'") == 3
     assert "pnpm run test:local-auth || rc=$?" in body
+    assert "pnpm run test:installation || rc=$?" in body
     assert "accessibility-results/e2e" in body and "accessibility-results/local-auth" in body
+    assert "accessibility-results/installation" in body
     assert "python3 .github/scripts/accessibility_report.py" in body
     assert "name: accessibility-results" in body
 
@@ -332,15 +334,17 @@ def test_every_spec_with_an_axe_check_is_expected_and_runs_in_the_accessibility_
     """The run finds the specs itself; a new one is measured, and expected, without a list."""
     body = job(REUSABLE.read_text(encoding="utf-8"), "axe")
 
-    assert ("grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename | sort)"
-            in body)
+    # The set-up assistant needs a stack in installation mode and is measured in its own step.
+    assert ("grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename \\\n"
+            "            | grep -vx 'installation-assistant.spec.ts' | sort)" in body)
+    assert "echo installation-assistant.spec.ts >\"$E2E_A11Y_RESULTS_DIR/expected.txt\"" in body
     assert "pnpm test \"${specs[@]}\" || rc=$?" in body
     assert "grep -l 'expectNoSeriousA11yViolations(' local-auth/tests/*.spec.ts" in body
     # An empty search stops before a suite runs, not after it.
     assert body.index("if ((${#specs[@]} == 0)); then") < body.index('pnpm test "${specs[@]}"')
     assert body.index('if [[ ! -s "$E2E_A11Y_RESULTS_DIR/expected.txt" ]]; then') < body.index(
         "pnpm run test:local-auth")
-    assert body.count('>"$E2E_A11Y_RESULTS_DIR/expected.txt"') == 2
+    assert body.count('>"$E2E_A11Y_RESULTS_DIR/expected.txt"') == 3
     # The pattern finds a call, not the import of the fixture.
     calls = [p for p in (ROOT / "e2e").rglob("*.spec.ts") if "node_modules" not in p.parts
              and "expectNoSeriousA11yViolations(" in p.read_text(encoding="utf-8")]

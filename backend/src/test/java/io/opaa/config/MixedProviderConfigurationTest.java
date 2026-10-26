@@ -29,7 +29,7 @@ class MixedProviderConfigurationTest {
   void contextLoadsWithDifferentChatAndEmbeddingBaseUrls() {
     assertThat(environment.getProperty("spring.ai.model.chat")).isEqualTo("openai");
     assertThat(environment.getProperty("spring.ai.model.embedding")).isEqualTo("none");
-    assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
+    assertThat(environment.getProperty("spring.ai.openai.base-url"))
         .isEqualTo(OpaaIntegrationTest.CHAT_BASE_URL);
     assertThat(embeddingInfo.getEmbeddingInfo().baseUrl())
         .isEqualTo("http://model-server.invalid:8000/v1");

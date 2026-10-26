@@ -1,0 +1,136 @@
+# Value file of v0.1.0-rc.4 (deploy/helm/opaa/ci/full-values.yaml), unchanged: static-check.sh renders it
+# as the upgrade of an installed release. Never adjust it to the chart.
+# Every optional object switched on, with an existing secret instead of secret values.
+publicBaseUrl: https://opaa.example.org
+database:
+  host: postgres.example.org
+  port: 5433
+  name: opaa_prod
+  username: opaa_app
+  schema: opaa
+  sslMode: verify-full
+embedding:
+  baseUrl: https://models.example.org/v1
+  model: text-embedding-3-small
+  dimensions: 1536
+  timeout: 180s
+  maxInputTokens: 8191
+bootstrap:
+  initialAdmin:
+    email: it-postfach@example.org
+  oidc:
+    issuerUri: https://login.example.org/realms/opaa
+    clientId: opaa
+    authority: https://login.example.org/realms/opaa
+  chatModel:
+    baseUrl: https://models.example.org/v1
+    model: gpt-4.1-mini
+secrets:
+  existingSecret: opaa-secrets
+uploads:
+  store: s3
+  s3:
+    endpoint: https://s3.example.org
+    bucket: opaa-originals
+    keyPrefix: prod/
+rerank:
+  enabled: true
+  baseUrl: http://reranker.ai.svc.cluster.local:80
+  model: BAAI/bge-reranker-v2-m3
+  timeout: 120s
+  probeInterval: 24h
+transcription:
+  enabled: true
+  baseUrl: https://stt.example.org/v1
+  model: Systran/faster-whisper-large-v3
+  language: de
+  maxAudioBytes: "10485760"
+  timeout: 120s
+  maxConcurrent: "4"
+mail:
+  connectTimeout: 5s
+targetValidation:
+  indexingAllowlist:
+    - confluence.example.org
+  identityProviderAllowlist:
+    - login2.example.org
+filesystemSources:
+  - name: shared-drive
+    mountPath: /data/shared-drive
+    volume:
+      nfs:
+        server: nas.example.org
+        path: /export/opaa
+extraCACertificates:
+  configMap: internal-ca
+backend:
+  logFormat: ecs
+  image:
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  extraEnv:
+    - name: OPAA_QUERY_TOP_K
+      value: "10"
+  podAnnotations:
+    example.org/team: platform
+frontend:
+  replicas: 2
+  cspConnectSrcExtra: https://login.example.org
+  backendReadTimeout: 15m
+ingress:
+  enabled: true
+  className: nginx
+  host: opaa.example.org
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 52m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+  tls:
+    - secretName: opaa-tls
+      hosts:
+        - opaa.example.org
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+  hostnames:
+    - opaa.example.org
+  timeouts:
+    request: 900s
+trustedProxyCidrs:
+  - 10.244.0.0/16
+localAdminAllowedCidrs:
+  - 10.20.0.0/16
+networkPolicy:
+  backendIngress:
+    extraFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: tools
+        podSelector:
+          matchLabels:
+            app: mcp-gateway
+  frontendIngress:
+    controllerNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: ingress-nginx
+    controllerPodSelector:
+      matchLabels:
+        app.kubernetes.io/name: ingress-nginx
+  egress:
+    enabled: true
+    backendRules:
+      - to:
+          - ipBlock:
+              cidr: 10.20.0.15/32
+        ports:
+          - port: 5433
+            protocol: TCP
+metrics:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+  prometheusRule:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack

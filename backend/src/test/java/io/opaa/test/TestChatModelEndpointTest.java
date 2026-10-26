@@ -11,10 +11,9 @@ import org.springframework.test.context.BootstrapUtils;
 import org.springframework.test.context.support.TestPropertySourceUtils;
 
 /**
- * No context of the suite may reach a real model over the network. On first start {@code
- * LlmModelSeeder} turns {@code spring.ai.openai.chat.base-url} into the active chat model of the
- * test database - or, with {@code OPAA_AI_CHAT_PROVIDER=ollama} in the environment, the legacy
- * {@code OPAA_OLLAMA_*} variables. Left at the defaults, both are a locally running Ollama, which
+ * No context of the suite may reach a real model over the network. The test database installs
+ * itself the way the {@code dev} mode does, with {@code spring.ai.openai.base-url} as the address
+ * of its active chat model (ADR-0060). Left at the default, that is a locally running Ollama, which
  * retrieval (sub-question decomposition) then actually calls; the same holds for the embedding
  * endpoint wherever the real embedding client is in place.
  *
@@ -25,9 +24,8 @@ import org.springframework.test.context.support.TestPropertySourceUtils;
  */
 class TestChatModelEndpointTest {
 
-  private static final String CHAT_BASE_URL = "spring.ai.openai.chat.base-url";
+  private static final String CHAT_BASE_URL = "spring.ai.openai.base-url";
   private static final String EMBEDDING_BASE_URL = "spring.ai.openai.embedding.base-url";
-  private static final String LEGACY_CHAT_PROVIDER = "OPAA_AI_CHAT_PROVIDER";
 
   static Stream<Class<?>> signatureCarriers() throws ClassNotFoundException {
     // The signature annotations resolve like a class carrying them; the two named classes run the
@@ -41,29 +39,18 @@ class TestChatModelEndpointTest {
 
   @ParameterizedTest
   @MethodSource("signatureCarriers")
-  void theSeededChatModelPointsAtAnAddressThatNeverAnswers(Class<?> carrier) {
+  void theInstalledChatModelPointsAtAnAddressThatNeverAnswers(Class<?> carrier) {
     Map<String, Object> inlined = inlinedProperties(carrier);
 
     assertThat(inlined)
         .as(
-            "%s must set %s itself, otherwise the seeded chat model is the application.yml"
+            "%s must set %s itself, otherwise the installed chat model is the application.yml"
                 + " default and a locally running model server receives real chat requests",
             carrier.getSimpleName(), CHAT_BASE_URL)
         .containsKey(CHAT_BASE_URL);
     assertThat(hostOf(inlined, CHAT_BASE_URL))
         .as("host of %s in %s", CHAT_BASE_URL, carrier.getSimpleName())
         .endsWith(".invalid");
-  }
-
-  @ParameterizedTest
-  @MethodSource("signatureCarriers")
-  void theLegacyOllamaTakeoverCannotBypassTheTestAddress(Class<?> carrier) {
-    assertThat(inlinedProperties(carrier))
-        .as(
-            "%s must blank %s, otherwise OPAA_OLLAMA_* in the developer's shell decide the seeded"
-                + " chat model",
-            carrier.getSimpleName(), LEGACY_CHAT_PROVIDER)
-        .containsEntry(LEGACY_CHAT_PROVIDER, "");
   }
 
   @ParameterizedTest

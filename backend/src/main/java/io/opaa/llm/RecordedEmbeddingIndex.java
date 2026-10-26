@@ -4,8 +4,9 @@ import java.util.Optional;
 
 /**
  * The embedding identity the vector index records ({@code embedding_index}), a port implemented
- * where the index lives. Read by the takeover of an older installation, which only takes over the
- * model the stored vectors were built with or are being re-embedded to.
+ * where the index lives. Read by the self-installation of the {@code dev} mode, which on an
+ * existing table only installs the model the stored vectors were built with or are being
+ * re-embedded to.
  */
 public interface RecordedEmbeddingIndex {
 

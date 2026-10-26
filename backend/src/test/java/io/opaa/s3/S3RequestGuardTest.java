@@ -1,6 +1,7 @@
 package io.opaa.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -65,6 +66,30 @@ class S3RequestGuardTest {
               assertThat(signal.unknownHost()).isFalse();
               assertThat(signal.getMessage()).contains("127.0.0.1");
             });
+  }
+
+  // regression guard: a host:port entry admits the requests of a host checked with its port
+  @Test
+  void anAllowlistEntryWithThePortAdmitsTheRequestsToThatPort() {
+    S3RequestGuard admitted =
+        S3RequestGuard.targetCheckOnly(
+            S3RequestGuard.TargetPolicy.hostOnly(
+                new TargetAddressValidator(true, List.of("127.0.0.1:9000"))));
+    S3RequestGuard otherPort =
+        S3RequestGuard.targetCheckOnly(
+            S3RequestGuard.TargetPolicy.hostOnly(
+                new TargetAddressValidator(true, List.of("127.0.0.1:9001"))));
+
+    assertThatCode(
+            () ->
+                admitted.beforeTransmission(
+                    before(request("127.0.0.1")), new ExecutionAttributes()))
+        .doesNotThrowAnyException();
+    assertThatThrownBy(
+            () ->
+                otherPort.beforeTransmission(
+                    before(request("127.0.0.1")), new ExecutionAttributes()))
+        .isInstanceOf(NonRetryableException.class);
   }
 
   @Test

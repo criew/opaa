@@ -45,7 +45,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: opaa-secrets
-                  key: OPAA_INITIAL_ADMIN_PASSWORD
+                  key: installation-admin-password
           command: ["/bin/sh", "-c"]
           args:
             - |

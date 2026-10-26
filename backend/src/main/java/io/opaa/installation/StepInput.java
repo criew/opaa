@@ -11,8 +11,19 @@ public sealed interface StepInput {
 
   InstallationStep step();
 
-  /** The first system administration account. */
-  record FirstAdmin(String email, String displayName, String password) implements StepInput {
+  /**
+   * The first system administration account; {@code requirePasswordChange} forces a new password at
+   * its first sign-in, so the password handed in stops working once it is used.
+   */
+  record FirstAdmin(
+      String email, String displayName, String password, boolean requirePasswordChange)
+      implements StepInput {
+
+    /** An account whose password the person chose in the assistant and keeps. */
+    public FirstAdmin(String email, String displayName, String password) {
+      this(email, displayName, password, false);
+    }
+
     @Override
     public InstallationStep step() {
       return InstallationStep.FIRST_ADMIN;

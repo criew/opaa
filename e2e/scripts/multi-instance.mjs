@@ -56,6 +56,8 @@ export async function runMultiInstance({ repoRoot, e2eDir, extraTestArgs }) {
     OPAA_COMPOSE_SUBNET: '172.26.0.0/16',
     OPAA_COMPOSE_FRONTEND_ADDRESS: '172.26.0.10',
     OPAA_FRONTEND_PORT: ports.frontend,
+    // Absolute: the scenarios run Compose from e2e/ as well.
+    OPAA_INSTALLATION_DIR_HOST: join(repoRoot, 'e2e/installation'),
     OPAA_DB_PORT: ports.db,
     OPAA_BACKEND_A_PORT: ports.a,
     OPAA_BACKEND_B_PORT: ports.b,

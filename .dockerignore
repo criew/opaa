@@ -24,4 +24,6 @@ eval/
 page/
 demo/
 **/.env*
+# Answer file and secret files of a Compose installation (ADR-0060): never part of an image.
+installation/
 **/*.md

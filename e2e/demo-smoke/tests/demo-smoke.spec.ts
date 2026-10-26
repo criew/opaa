@@ -44,8 +44,8 @@ const S3_DOCUMENT_NAME_PATTERN = /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss|bau
 const PARTNER_PROVIDER_NAME = 'Partnerportal'
 const PARTNER_ISSUER = 'http://localhost:8180/realms/partner'
 const PARTNER_CLIENT_ID = 'opaa-partner'
-// The backend fetches the keys inside the Compose network - the same split as the seeded
-// provider's OPAA_OIDC_JWK_SET_URI (e2e/demo-smoke.env).
+// The backend fetches the keys inside the Compose network - the same split as the jwkSetUri of
+// the installed provider (e2e/installation/demo-smoke.json).
 const PARTNER_JWK_SET_URI = 'http://keycloak:8180/realms/partner/protocol/openid-connect/certs'
 
 interface KeycloakLogin {
@@ -220,8 +220,8 @@ test.describe('Demo-Smoke (#232)', () => {
 
     await page.goto('/admin/identity-providers')
     await expect(page.getByRole('heading', { name: 'Identitätsanbieter' })).toBeVisible()
-    // the seeded provider from e2e/demo-smoke.env's OPAA_OIDC_* bootstrap values (ADR-0025,
-    // Entscheidung 3) is listed as the default. The providers are table rows; a row's
+    // the provider of the answer file e2e/installation/demo-smoke.json (ADR-0060) is listed as
+    // the default. The providers are table rows; a row's
     // accessible name is the concatenation of its cells, hence the regular expression.
     const providerTable = page.getByRole('table', { name: 'Identitätsanbieter' })
     await expect(

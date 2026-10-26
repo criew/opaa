@@ -35,9 +35,12 @@ public class OpenAiBaseUrlGuard {
 
   @PostConstruct
   void rejectMissingBaseUrl() {
-    check("chat", "spring.ai.openai.chat.base-url", "OPAA_OPENAI_CHAT_BASE_URL");
+    // The chat models live in the model administration; the shared address still feeds the
+    // auto-configured client and the chat model the dev mode installs itself.
+    check("chat", "spring.ai.openai.base-url", null);
   }
 
+  /** {@code specificVariable} {@code null}: the function reads the shared address only. */
   private void check(String function, String baseUrlProperty, String specificVariable) {
     String provider = environment.getProperty("spring.ai.model." + function);
     if (!OPENAI_PROVIDER.equalsIgnoreCase(provider)) {
@@ -52,10 +55,14 @@ public class OpenAiBaseUrlGuard {
           """
           The base URL configured for the %s function carries credentials \
           (https://user:secret@host/v1). Configure the address without them and supply the access \
-          key via OPAA_OPENAI_API_KEY or %s instead - a base URL is written to log files and \
-          status output and is not treated as a secret anywhere. \
-          See docs/handbuch/betrieb/modelle.md."""
-              .formatted(function, specificVariable.replace("_BASE_URL", "_API_KEY")));
+          key via %s instead - a base URL is written to log files and status output and is not \
+          treated as a secret anywhere. See docs/handbuch/betrieb/modelle.md."""
+              .formatted(
+                  function,
+                  specificVariable == null
+                      ? "OPAA_OPENAI_API_KEY"
+                      : "OPAA_OPENAI_API_KEY or "
+                          + specificVariable.replace("_BASE_URL", "_API_KEY")));
     }
     if (StringUtils.hasText(baseUrl)) {
       return;
@@ -65,8 +72,13 @@ public class OpenAiBaseUrlGuard {
         No base URL is configured for the %s function. "openai" is the name of the API protocol, \
         not of a target: locally operated model servers speak it too, and application.yml's own \
         default already points at one (Ollama). This means the configured value is explicitly \
-        blank rather than missing - check OPAA_OPENAI_BASE_URL and \
-        %s (applies to %s only) for an empty override. See docs/handbuch/betrieb/modelle.md."""
-            .formatted(function, specificVariable, function));
+        blank rather than missing - check %s for an empty override. See \
+        docs/handbuch/betrieb/modelle.md."""
+            .formatted(
+                function,
+                specificVariable == null
+                    ? "OPAA_OPENAI_BASE_URL"
+                    : "OPAA_OPENAI_BASE_URL (shared) and %s (applies to %s only)"
+                        .formatted(specificVariable, function)));
   }
 }

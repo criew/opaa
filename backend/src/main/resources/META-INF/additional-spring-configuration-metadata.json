@@ -25,36 +25,6 @@
       "sourceType": "io.opaa.chat.web.ChatImportController"
     },
     {
-      "name": "opaa.embedding.takeover.api-key",
-      "type": "java.lang.String",
-      "description": "Key of the embedding endpoint an installation from before ADR-0060 used; read once while no embedding model is installed.",
-      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
-    },
-    {
-      "name": "opaa.embedding.takeover.base-url",
-      "type": "java.lang.String",
-      "description": "Address of the embedding endpoint an installation from before ADR-0060 used; read once while no embedding model is installed.",
-      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
-    },
-    {
-      "name": "opaa.embedding.takeover.dimensions",
-      "type": "java.lang.Integer",
-      "description": "Vector size an installation from before ADR-0060 was configured with; read once while no embedding model is installed and a vector table exists.",
-      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
-    },
-    {
-      "name": "opaa.embedding.takeover.max-input-tokens",
-      "type": "java.lang.Integer",
-      "description": "Input limit in tokens of the embedding endpoint an installation from before ADR-0060 used; read once while no embedding model is installed.",
-      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
-    },
-    {
-      "name": "opaa.embedding.takeover.model",
-      "type": "java.lang.String",
-      "description": "Embedding model an installation from before ADR-0060 used; read once while no embedding model is installed.",
-      "sourceType": "io.opaa.llm.LegacyEmbeddingConfiguration"
-    },
-    {
       "name": "opaa.features.external-access.enabled",
       "type": "java.lang.Boolean",
       "description": "Feature flag of external access: access tokens, library releases and the MCP server (ADR-0044).",

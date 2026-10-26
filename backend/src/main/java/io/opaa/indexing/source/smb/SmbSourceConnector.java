@@ -392,7 +392,7 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
    */
   private void requireReachable(SmbAddress address) {
     try {
-      targetAddressValidator.validateHost(address.socketHost());
+      targetAddressValidator.validateHost(address.socketHost(), address.port());
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
       throw new SourceTargetRefusedException(e.getMessage());
     } catch (IOException e) {

@@ -2,10 +2,8 @@
 # e2e/docker-compose.e2e.yml`), never by a developer's own `docker compose
 # up`.
 
-# Single source of truth for the fake embedding vector's length, shared by pgvector's column width
-# (OPAA_PGVECTOR_DIMENSIONS, backend) and the stub's own default (EMBEDDING_DIMENSIONS, ai-stub) -
-# two independently hardcoded "1536"s could drift apart silently
-# whenever one gets edited without the other; one anchor referenced from both cannot.
+# The fake embedding vector's length of ai-stub (EMBEDDING_DIMENSIONS); the backend learns it from
+# the probe embedding of its installation, so no second value can drift apart from it.
 x-embedding-dimensions: &embedding-dimensions "1536"
 
 services:
@@ -83,7 +81,6 @@ services:
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.
       OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
-      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
       # A third dev user, "dev-outsider", used by test(e2e) #424 as the person with no grant on
       # anything (the negative case: a share must not leak to someone it was never extended to).
       # It is added here, not in application.yml's opaa.auth.dev.users default, because it is

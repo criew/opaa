@@ -1,0 +1,19 @@
+{
+  "firstAdmin": {
+    "email": "systemverwaltung@opaa.example",
+    "displayName": "Systemverwaltung",
+    "passwordFile": "/run/opaa/installation/multi-instance-admin-password",
+    "requirePasswordChange": false
+  },
+  "signIn": {
+    "mode": "LOCAL_ONLY"
+  },
+  "chatModel": {
+    "baseUrl": "http://ai-stub:8089",
+    "model": "phi3:mini"
+  },
+  "embeddingModel": {
+    "baseUrl": "http://ai-stub:8089",
+    "model": "bge-m3"
+  }
+}

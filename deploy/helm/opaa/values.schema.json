@@ -784,6 +784,14 @@
         "description": "IPv4 or IPv6 address or CIDR range"
       }
     },
+    "installationAllowedCidrs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9A-Fa-f:.]+(/[0-9]{1,3})?$",
+        "description": "IPv4 or IPv6 address or CIDR range"
+      }
+    },
     "networkPolicy": {
       "type": "object",
       "additionalProperties": false,
@@ -847,15 +855,19 @@
       "properties": {
         "baseUrl": {
           "type": "string",
-          "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+          "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$"
         },
         "model": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "dimensions": {
-          "type": "integer",
-          "minimum": 1
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Without effect, still accepted so that existing value files keep rendering.",
+          "deprecated": true
         },
         "timeout": {
           "type": "string",
@@ -868,14 +880,13 @@
             "null"
           ],
           "minimum": 1,
-          "description": "Input limit of the embedding endpoint in tokens; null keeps the application default"
+          "description": "Input limit of the embedding endpoint in tokens, part of the answer file; null keeps the default"
+        },
+        "apiKeyInSecret": {
+          "type": "boolean",
+          "description": "The answer file reads the embedding model's key from the secret key installation-embedding-api-key"
         }
-      },
-      "required": [
-        "baseUrl",
-        "model",
-        "dimensions"
-      ]
+      }
     },
     "bootstrap": {
       "type": "object",
@@ -887,34 +898,48 @@
           "properties": {
             "email": {
               "type": "string",
-              "pattern": "^[^@\\s]+@[^@\\s]+$",
+              "pattern": "^$|^[^@\\s]+@[^@\\s]+$",
               "not": {
                 "pattern": "(?i)^admin@opaa\\.local$"
               },
-              "description": "Deliverable mailbox of the first system administrator; admin@opaa.local is refused by the backend"
+              "description": "Deliverable mailbox of the first system administrator; set, the chart renders the answer file of the installation. admin@opaa.local is refused by the backend"
+            },
+            "displayName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "requirePasswordChange": {
+              "type": "boolean",
+              "description": "The first sign-in of the account from the answer file asks for a new password"
             }
-          },
-          "required": [
-            "email"
-          ]
+          }
         },
         "oidc": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "issuerUri": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$",
+              "description": "http(s) address without user information"
             },
             "clientId": {
               "type": "string"
             },
             "authority": {
               "type": "string",
-              "description": "Without effect: the issuer is the authority of the sign-in flow as well. Still accepted so that existing value files keep rendering.",
+              "description": "Without effect, still accepted so that existing value files keep rendering.",
               "deprecated": true
             },
             "jwkSetUri": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$",
+              "description": "http(s) address without user information"
+            },
+            "displayName": {
+              "type": "string",
+              "maxLength": 200
             }
           }
         },
@@ -924,23 +949,33 @@
           "properties": {
             "baseUrl": {
               "type": "string",
-              "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+              "pattern": "^$|^https?://[^\\s/@]+(/[^\\s]*)?$"
             },
             "model": {
-              "type": "string",
-              "minLength": 1
+              "type": "string"
+            },
+            "apiKeyInSecret": {
+              "type": "boolean",
+              "description": "The answer file reads the chat model's key from the secret key installation-chat-api-key"
+            },
+            "temperature": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 2
+            },
+            "maxTokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
             }
-          },
-          "required": [
-            "baseUrl",
-            "model"
-          ]
+          }
         }
-      },
-      "required": [
-        "initialAdmin",
-        "chatModel"
-      ]
+      }
     },
     "secrets": {
       "type": "object",
@@ -981,6 +1016,11 @@
         },
         "transcriptionApiKey": {
           "type": "string"
+        },
+        "installationToken": {
+          "type": "string",
+          "pattern": "^$|^\\S{32,}$",
+          "description": "Token of the installation API, at least 32 characters without spaces (OPAA_INSTALLATION_TOKEN); empty: generated by the first start and printed once"
         }
       },
       "required": [
