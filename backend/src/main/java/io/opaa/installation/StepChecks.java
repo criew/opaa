@@ -3,15 +3,15 @@ package io.opaa.installation;
 import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
+import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.security.TargetAddressValidator;
 import org.springframework.stereotype.Component;
 
 /**
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
  * administration runs for an identity provider and a chat model, and a probe embedding for the
  * embedding model, which also yields its vector size (Entscheidung 10). A model address is checked
- * against the target address check again right before the probe. The outcome is German and
+ * against the address check of models again right before the probe. The outcome is German and
  * user-facing; a failed check is a result, never an exception.
  */
 @Component
@@ -35,7 +35,7 @@ class StepChecks {
   private final OidcProviderConnectionTester oidcTester;
   private final LlmModelConnectionTester chatTester;
   private final SettingsEncryptor settingsEncryptor;
-  private final TargetAddressValidator modelAddresses;
+  private final ModelAddressPolicy modelAddresses;
   private final EmbeddingModelService embeddingModels;
 
   StepChecks(
@@ -43,7 +43,7 @@ class StepChecks {
       OidcProviderConnectionTester oidcTester,
       LlmModelConnectionTester chatTester,
       SettingsEncryptor settingsEncryptor,
-      TargetAddressValidator modelAddresses,
+      ModelAddressPolicy modelAddresses,
       EmbeddingModelService embeddingModels) {
     this.rules = rules;
     this.oidcTester = oidcTester;

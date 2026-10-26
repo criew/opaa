@@ -28,8 +28,9 @@ import tools.jackson.databind.ObjectMapper;
  * Probes a managed chat model's OpenAI-compatible endpoint with a bounded one-token chat completion
  * and reports unreachable, not authenticated and unknown model apart, in German.
  *
- * <p>No target-address blocking: a model address on the operator's own network is the normal case.
- * The stored key is only ever sent to the origin of the model's own stored {@code baseUrl}.
+ * <p>An address other than the model's stored one passes {@link ModelAddressPolicy} before anything
+ * is sent. The stored key is only ever sent to the origin of the model's own stored {@code
+ * baseUrl}.
  */
 @DataFlow("model-endpoint")
 @Service
@@ -45,8 +46,9 @@ public class LlmModelConnectionTester {
   public LlmModelConnectionTester(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
-      ObjectMapper objectMapper) {
-    this.access = new ModelEndpointAccess(repository, settingsEncryptor);
+      ObjectMapper objectMapper,
+      ModelAddressPolicy modelAddresses) {
+    this.access = new ModelEndpointAccess(repository, settingsEncryptor, modelAddresses);
     this.objectMapper = objectMapper;
   }
 
@@ -62,11 +64,15 @@ public class LlmModelConnectionTester {
   public TestOutcome test(
       String baseUrl, String modelIdentifier, String apiKey, UUID modelId, BigDecimal temperature) {
     return probe(
-        baseUrl, modelIdentifier, access.effectiveApiKey(baseUrl, apiKey, modelId), temperature);
+        baseUrl,
+        modelIdentifier,
+        access.effectiveApiKey(baseUrl, apiKey, modelId),
+        temperature,
+        modelId);
   }
 
   private TestOutcome probe(
-      String baseUrl, String modelIdentifier, String apiKey, BigDecimal temperature) {
+      String baseUrl, String modelIdentifier, String apiKey, BigDecimal temperature, UUID modelId) {
     URI uri;
     try {
       uri = chatCompletionsUri(baseUrl);
@@ -75,6 +81,10 @@ public class LlmModelConnectionTester {
     }
     if (!ModelEndpointAccess.isHttp(uri)) {
       return TestOutcome.failure("Die Basis-Adresse muss mit http:// oder https:// beginnen.");
+    }
+    String blocked = access.blockedAddress(baseUrl, modelId);
+    if (blocked != null) {
+      return TestOutcome.failure(blocked);
     }
 
     String requestBody = buildRequestBody(modelIdentifier, temperature);

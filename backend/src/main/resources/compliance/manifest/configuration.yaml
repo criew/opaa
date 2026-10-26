@@ -31,6 +31,7 @@ settings:
       - >-
         Wird bei der Installation festgelegt; eine ältere Installation übernimmt beim ersten Start
         einmalig ihre bisherige Konfiguration. Nicht über die Oberfläche änderbar
+      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
   - key: embedding_model.model_identifier
     source: DATABASE
     defaultValue: keine, Angabe der Installation
@@ -53,7 +54,7 @@ settings:
     effect: Adresse des Rerank-Modells; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
     notes:
-      - Geprüft gegen die Zieladressprüfung des Betriebs (OPAA_INDEXING_TARGET_VALIDATION_*)
+      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
   - key: rerank_model.model_identifier
     source: DATABASE
     defaultValue: ""
@@ -88,7 +89,7 @@ settings:
     effect: Adresse des Transkriptionsmodells; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
     notes:
-      - Geprüft gegen die Zieladressprüfung des Betriebs (OPAA_INDEXING_TARGET_VALIDATION_*)
+      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
   - key: transcription_model.model_identifier
     source: DATABASE
     defaultValue: ""

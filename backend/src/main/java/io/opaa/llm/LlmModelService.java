@@ -17,8 +17,10 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Reads and changes the managed chat models (Stufe 1,
@@ -36,6 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
  * AuditEventType#LLM_MODEL_ACTIVATED}/{@link AuditEventType#LLM_MODEL_DEACTIVATED}) with {@code
  * before}/{@code after} maps that never carry the key itself - only whether one is set, the same
  * convention {@code BrandingSettingsService} uses for the logo's bytes.
+ *
+ * <p>A new or changed address passes {@link ModelAddressPolicy} before the transaction opens, since
+ * the check resolves names; an edit keeping the stored endpoint is not checked again.
  */
 @Service
 public class LlmModelService {
@@ -46,16 +51,22 @@ public class LlmModelService {
   private final SettingsEncryptor settingsEncryptor;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final ModelAddressPolicy modelAddresses;
+  private final TransactionTemplate transactions;
 
   public LlmModelService(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       AuditEventRecorder auditEventRecorder,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      ModelAddressPolicy modelAddresses,
+      PlatformTransactionManager transactionManager) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.modelAddresses = modelAddresses;
+    this.transactions = new TransactionTemplate(transactionManager);
   }
 
   /** Whether any chat model exists, active or not: a sign of a database already in use. */
@@ -79,7 +90,6 @@ public class LlmModelService {
    * becomes the systemwide active one, so creating and activating are always two distinguishable
    * audit events even when a caller does both in the same request.
    */
-  @Transactional
   public LlmModel createModel(
       UUID organizationId,
       UUID actorUserId,
@@ -90,19 +100,24 @@ public class LlmModelService {
       int maxTokens,
       String apiKey) {
     requireBaseUrlWithoutCredentials(baseUrl);
-    LlmModel model =
-        new LlmModel(
-            displayName,
-            baseUrl,
-            modelIdentifier,
-            temperature,
-            maxTokens,
-            settingsEncryptor.encrypt(apiKey));
-    repository.save(model);
-    Map<String, Object> after = auditState(model);
-    AuditSecretChange.put(after, "apiKey", null, model.getApiKeyCiphertext());
-    recordChange(organizationId, actorUserId, AuditEventType.LLM_MODEL_CREATED, model, null, after);
-    return model;
+    requireAllowedAddress(baseUrl, null);
+    return transactions.execute(
+        status -> {
+          LlmModel model =
+              new LlmModel(
+                  displayName,
+                  baseUrl,
+                  modelIdentifier,
+                  temperature,
+                  maxTokens,
+                  settingsEncryptor.encrypt(apiKey));
+          repository.save(model);
+          Map<String, Object> after = auditState(model);
+          AuditSecretChange.put(after, "apiKey", null, model.getApiKeyCiphertext());
+          recordChange(
+              organizationId, actorUserId, AuditEventType.LLM_MODEL_CREATED, model, null, after);
+          return model;
+        });
   }
 
   /**
@@ -117,7 +132,6 @@ public class LlmModelService {
    * An edit to an inactive model needs no invalidation; the resolver never looked at that row
    * anyway.
    */
-  @Transactional
   public LlmModel updateModel(
       UUID organizationId,
       UUID actorUserId,
@@ -129,6 +143,33 @@ public class LlmModelService {
       int maxTokens,
       String apiKey) {
     requireBaseUrlWithoutCredentials(baseUrl);
+    String storedBaseUrl =
+        repository.findById(id).map(LlmModel::getBaseUrl).orElseThrow(() -> notFound(id));
+    requireAllowedAddress(baseUrl, storedBaseUrl);
+    return transactions.execute(
+        status ->
+            replaceDetails(
+                organizationId,
+                actorUserId,
+                id,
+                displayName,
+                baseUrl,
+                modelIdentifier,
+                temperature,
+                maxTokens,
+                apiKey));
+  }
+
+  private LlmModel replaceDetails(
+      UUID organizationId,
+      UUID actorUserId,
+      UUID id,
+      String displayName,
+      String baseUrl,
+      String modelIdentifier,
+      BigDecimal temperature,
+      int maxTokens,
+      String apiKey) {
     LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
     Map<String, Object> before = auditState(model);
     String previousApiKeyCiphertext = model.getApiKeyCiphertext();
@@ -308,6 +349,14 @@ public class LlmModelService {
   private static void requireBaseUrlWithoutCredentials(String baseUrl) {
     if (ModelEndpointUri.containsCredentials(baseUrl)) {
       throw new ValidationException(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE);
+    }
+  }
+
+  /** Rejected before the transaction opens: the address check resolves names. */
+  private void requireAllowedAddress(String baseUrl, String storedBaseUrl) {
+    String blocked = modelAddresses.blockedReason(baseUrl, storedBaseUrl);
+    if (blocked != null) {
+      throw new ValidationException(blocked);
     }
   }
 

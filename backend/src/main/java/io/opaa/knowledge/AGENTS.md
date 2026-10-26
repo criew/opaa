@@ -29,6 +29,7 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   lehnt ein Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **Modelle:** Einzige Schreibwege sind `LlmModelService` (Chat, genau eines aktiv) und `ModelRoleAdministration`
   (`rerank_model`, `transcription_model`); Schlüssel über `SettingsEncryptor`, jede Änderung protokolliert.
+  Jede neue Modelladresse prüft `ModelAddressPolicy` (eigene Allowlist, nie die der Quellen), Laufzeitaufrufe nicht.
 - **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestands- und
   Nachlauf), `metadata.web` (Metadaten, der Filter aller Such- und Chat-Anfragen samt strengem
   `MetadataFilterDeserializer`), `installation.web`. Die Endpunkte der Bibliothek liegen in `library.web`.

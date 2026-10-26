@@ -122,6 +122,18 @@ public class TargetAddressValidator {
     checkHost(host, throughOutboundProxy);
   }
 
+  /**
+   * Whether an allowlist entry names the host of {@code uri} on the port a client connects to - by
+   * name alone, without resolving it and regardless of {@code enabled}.
+   */
+  public boolean isAllowlisted(URI uri) {
+    String scheme = uri.getScheme();
+    return uri.getHost() != null
+        && scheme != null
+        && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+        && isAllowed(uri.getHost(), effectivePort(uri));
+  }
+
   /** The port a client connects to for {@code uri}: its own, or the default of its scheme. */
   public static int portOf(URI uri) {
     return effectivePort(uri);
