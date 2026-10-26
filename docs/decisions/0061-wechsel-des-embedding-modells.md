@@ -17,77 +17,99 @@ Die Neueinbettung selbst ist gebaut: Sie füllt eine Zielspalte der Vektortabell
 Instanz, lässt sich auf jeder Instanz abbrechen, setzt nach einem Neustart fort, und eine lebende
 Instanz übernimmt den Lauf einer toten (ADR-0053, Entscheidung 8). Sind alle Chunks neu eingebettet,
 tauscht eine Transaktion unter dem Schemalock der Vektortabelle die Spalten. Solange der Index nicht
-zum Modell passt, ist die Vektorsuche ausgesetzt, und die Volltextsuche antwortet allein.
+zum Modell passt, ist die Vektorsuche ausgesetzt, und die Volltextsuche antwortet allein. Ob zwei
+Modelle vergleichbare Vektoren liefern, entscheiden Startabgleich und Neueinbettung nur nach
+Modellname und Dimension; ein Schreiber bettet ein, bevor er die Spalte wählt, und die Vektorsuche
+prüft den Stand der Spalten nicht gegen das Modell, mit dem sie die Frage eingebettet hat.
 
 Ein Wechsel nur des Endpunkts, etwa auf einen Ersatzserver bei einem Ausfall, ist heute ebenfalls
-ein Datenbankeingriff. Issue #3214, Spezifikation:
-[Wechsel des Embedding-Modells](../features/embedding-model-change.md).
+ein Datenbankeingriff. Issue #3214, Spezifikation: [Wechsel des
+Embedding-Modells](../features/embedding-model-change.md).
 
 ## Entscheidung
 
 ### 1. Geführter Wechsel mit angekündigter Unterbrechung der Vektorsuche
 
 Die Systemverwaltung wechselt das Embedding-Modell unter Modelle → Embedding: neues Modell mit
-Adresse, Schlüssel und Eingabegrenze, Probeeinbettung, Vorschau, Bestätigung. Ab der Bestätigung
-bis zum Umschalten ist die Vektorsuche ausgesetzt; Suche und Chat antworten mit der Volltextsuche
-und dem Hinweis „Eingeschränkte Suche“. Die Vorschau kündigt das an, mit Zahl der Chunks, Tokens
+Adresse, Schlüssel und Eingabegrenze, Probeeinbettung, Vorschau, Bestätigung. Ab der Bestätigung bis
+zum Umschalten ist die Vektorsuche ausgesetzt; Suche und Chat antworten mit der Volltextsuche und
+dem Hinweis „Eingeschränkte Suche“. Die Vorschau kündigt das an, mit Zahl der Chunks, Tokens
 (geschätzt), Dauer und Speicherbedarf. Es gibt keinen parallelen Index mit zwei Modellen und kein
 doppeltes Einbetten. Begründung: Der Wechsel ist selten und geplant; ein paralleler Index verlangte
 zwei Modelle in jedem Schreibpfad und ein Umschalten des Abfragemodells auf allen Instanzen im
 selben Augenblick, für eine Unterbrechung, die sich ankündigen und über Nacht legen lässt.
 
-### 2. Die Bestätigung setzt das Modell in einer Transaktion
+### 2. Die Generation entscheidet über Vergleichbarkeit
 
-Die Bestätigung bettet die Probe erneut ein; weicht die Dimension von der Vorschau ab, wird sie
-abgelehnt. Dann setzt eine Transaktion unter dem Schemalock der Vektortabelle die Modellzeile samt
-Schlüssel auf das neue Modell, bewahrt die bisherige Zeile als **Vorgänger**, legt die leere
-Zielspalte mit der neuen Dimension an und startet den Lauf als Lauf dieser Instanz. Danach gelten
-Lauf, Abbruch, Fortsetzen und Übernahme unverändert. Ein zweiter Wechsel ist erst nach Umschalten
-oder Verwerfen möglich. Begründung: Ohne Entwurf auf dem Server gibt es keinen Zwischenstand, der
-veralten könnte; was gilt, entscheidet die Transaktion.
+Modellzeile und Index tragen eine **Generation**: die Modellzeile die des Modells, der Index die der
+Vektorspalte und während eines Wechsels die der Zielspalte. Jeder Modellwechsel vergibt eine neue,
+ein Endpunktwechsel behält sie. Vergleichbar sind Vektoren nur bei gleicher Generation;
+Startabgleich und Neueinbettung vergleichen sie zusätzlich zu Modellname und Dimension. Jede
+Einbettung trägt die Generation des Modell-Clients, der sie erzeugt hat, und der Client-Cache ist
+nach ihr geschlüsselt. Begründung: Ein Wechsel auf eine andere Fassung oder Quantisierung unter
+gleichem Namen und gleicher Dimension sähe sonst beim nächsten Start wie das alte Modell aus und
+würde still zurückgedreht.
 
-### 3. Abbrechen, Verwerfen, kein Rückweg nach dem Umschalten
+### 3. Die Bestätigung setzt das Modell in einer Transaktion
 
-„Abbrechen“ pausiert den Lauf; das Eingebettete bleibt. „Verwerfen“ setzt vor dem Umschalten in
-einer Transaktion unter dem Schemalock den Vorgänger zurück, entfernt die Zielspalte und beendet
-einen laufenden Lauf; die Vektorsuche läuft sofort wieder mit dem alten Modell. Chunks, die seit
-der Bestätigung neu oder mit geändertem Text geschrieben wurden, haben dann keinen Vektor und
-findet nur die Volltextsuche, bis ihr Dokument neu indiziert wird; die Bestätigung des Verwerfens
-nennt ihre Zahl. Das Umschalten verwirft alte Spalte und Vorgänger. Danach führt nur ein neuer
-Wechsel zurück; die Bestätigung des Wechsels sagt das. Begründung: Bis zum Umschalten steht die alte
-Spalte ohnehin, ein Rückweg kostet nur die Wiederherstellung der Zeile. Eine alte Spalte über das
-Umschalten hinaus hielte den doppelten Speicher ohne Frist.
+Die Bestätigung prüft auf dem Server alle Angaben erneut und bettet die Probe erneut ein; weicht die
+Dimension von der Vorschau ab, wird sie abgelehnt. Dann setzt eine Transaktion unter dem Schemalock
+der Vektortabelle, mit derselben Wartegrenze auf Tabellensperren wie das Umschalten, die Modellzeile
+samt Schlüssel und neuer Generation, bewahrt die bisherige Zeile verschlüsselt als **Vorgänger**,
+legt die leere Zielspalte an und startet den Lauf als Lauf dieser Instanz. Was unter dem Lock
+entschieden wird, liest sie aus der Datenbank, nicht aus dem Stand der Instanz. Läuft die
+Wartegrenze ab, antwortet sie `409` und lässt sich wiederholen. Ein zweiter Wechsel ist erst nach
+Umschalten oder Verwerfen möglich. Begründung: Ohne Entwurf auf dem Server gibt es keinen
+Zwischenstand, der veralten könnte; was gilt, entscheidet die Transaktion.
 
-### 4. Endpunkt ohne Neueinbettung nur bei gleichem Modell
+### 4. Abbrechen, Verwerfen mit Nachfüllen, kein Rückweg nach dem Umschalten
+
+„Abbrechen“ pausiert den Lauf; das Eingebettete bleibt. „Verwerfen“ ist vor dem Umschalten möglich,
+nicht aber, sobald der Lauf den Index der Zielspalte baut. Es setzt in einer Transaktion wie in
+Entscheidung 3 den Vorgänger zurück, entfernt die Zielspalte und beendet einen laufenden Lauf; die
+Vektorsuche läuft sofort wieder mit dem alten Modell. Chunks, die seit der Bestätigung geschrieben
+wurden und keinen alten Vektor haben, füllt ein anschließender Lauf mit dem wiederhergestellten
+Modell nach. Das Umschalten verwirft alte Spalte und Vorgänger; danach führt nur ein neuer Wechsel
+zurück, und die Bestätigung sagt das. Begründung: Bis zum Umschalten steht die alte Spalte ohnehin,
+der Rückweg kostet nur die Zeile und das Nachfüllen weniger Chunks. Einen Indexbau abzubrechen, der
+ohne Transaktion läuft, wäre aufwendiger als abzuwarten.
+
+### 5. Endpunkt ohne Neueinbettung nur bei gleichem Modell
 
 Adresse, Schlüssel und Eingabegrenze ändern sich ohne Neueinbettung nur, wenn Modellname und
-Dimension gleich bleiben und der Probevektor des neuen Endpunkts dem **Referenzvektor** nahezu
-gleicht (Kosinus-Ähnlichkeit mindestens 0,99). Der Referenzvektor ist der Probevektor, den
-Installation, Bestätigung eines Wechsels und Endpunktwechsel mit der Modellzeile speichern; fehlt er, bettet die Prüfung die Probe mit
-dem bisherigen Endpunkt ein, und ist dieser nicht erreichbar, lehnt sie ab und verweist auf den
-Modellwechsel. Während eines Wechsels ist der Endpunktwechsel gesperrt. Begründung: Derselbe Name
-kann hinter einem anderen Server eine andere Fassung oder Quantisierung bedeuten; erst der Vergleich
-zeigt, ob die gespeicherten Vektoren vergleichbar bleiben.
+Dimension gleich bleiben und die Vektoren mehrerer fester Probetexte am neuen Endpunkt denen des
+**Referenzankers** nahezu gleichen: Gewertet wird die kleinste Kosinus-Ähnlichkeit, sie muss
+mindestens 0,99 sein. Der Anker entsteht mit Installation oder Modellwechsel und bleibt über
+Endpunktwechsel erhalten; fehlt er, erhebt ihn die erste gelungene Einbettung des Modells. Ein
+gespeicherter Schlüssel bleibt nur bei derselben Adresse (Schema, Host, Port, Pfad), wie in der
+Modellverwaltung. Bei angehaltenem Lauf eines Wechsels gilt dasselbe für das Zielmodell, als
+Ersatz-Endpunkt. Begründung: Derselbe Name kann hinter einem anderen Server eine andere Fassung
+bedeuten; ein fester Anker lässt keine Drift über viele Wechsel zu. Der Schutz zielt auf Versehen:
+Ein Endpunkt, der die öffentlichen Probetexte gezielt vortäuscht, besteht ihn.
 
-### 5. Mehrinstanzbetrieb
+### 6. Mehrinstanzbetrieb: gleiche Version, Generation beim Schreiben und Lesen
 
-Ein Wechsel startet nur, wenn alle lebenden Instanzen dieselbe Version melden. Die Instanzen
-erfahren Modellzeile und Spaltenstand über den Invalidierungsbus (ADR-0053, Entscheidung 5). Ein
-Schreiber bettet nur mit dem Modell ein, das sein Spaltenstand für die gewählte Spalte nennt; passt
-sein Modell-Client nicht dazu, liest er beides neu. Nachläufe (Kontextpräfix, Nachzug, Änderung
-eines Metadatenschemas) sind während des Wechsels nicht gesperrt: Sie schreiben wie jede Indexierung
-in die Zielspalte. Begründung: Zwischen Commit und Busereignis darf kein Vektor des einen Modells in
-die Spalte des anderen geraten; die gleiche Version schließt eine Instanz aus, die diese Regel nicht
-kennt.
+Bestätigung, Verwerfen und Endpunktwechsel gelingen nur, wenn alle lebenden Instanzen dieselbe
+Version melden, verglichen ohne Build-Metadaten. Ein Release-Rollback ist während eines Wechsels
+nicht vorgesehen, erst nach Umschalten oder Verwerfen. Modellzeile und Spaltenstand erfahren die
+Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5). Ein Schreiber prüft beim Schreiben,
+ob die Generation seiner Einbettung die der gewählten Spalte ist; sonst verwirft er sie und bettet
+neu ein. Die Vektorsuche prüft dasselbe für die Frage und liefert sonst nichts, dann antwortet die
+Volltextsuche. Nachläufe (Kontextpräfix, Nachzug, Änderung eines Metadatenschemas) bleiben während
+eines Wechsels erlaubt: Sie schreiben über denselben Weg. Begründung: Zwischen Commit und
+Busereignis darf kein Vektor einer Generation in die Spalte einer anderen geraten und keine Frage
+gegen Vektoren eines anderen Modells laufen; eine ältere Instanz kennt die Generation nicht.
 
-### 6. Vorschau ohne Inhalte und ohne Preis
+### 7. Vorschau ohne Inhalte und ohne Preis, mit festen Grenzen
 
 Chunks zählt die Vorschau wie der Fortschritt der Neueinbettung, private Bibliotheken nur ab der
-Mindestgruppengröße. Tokens schätzt sie aus der Textlänge der Chunks, die Dauer aus einer
-Durchsatzprobe des neuen Endpunkts mit künstlichen Texten in der Zielgröße der Chunks, ohne Probe
-aus `opaa.indexing.embedding-rate-estimate`. Der Speicherbedarf folgt aus Chunks, Dimension und
-Vektorindex. Einen Preis nennt sie nicht. Begründung: Vor der Bestätigung geht kein Inhalt an den
-neuen Empfänger, und OPAA kennt die Tarife der Anbieter nicht.
+Mindestgruppengröße. Tokens schätzt sie aus der Textlänge, die Dauer aus einer Durchsatzprobe mit
+künstlichen Texten, ohne Probe aus `opaa.indexing.embedding-rate-estimate`, den Speicher als Spanne,
+die neue Tupel und Indexeinträge der Neueinbettung einschließt. Einen Preis nennt sie nicht. Probe
+und Bestätigung zählen gegen eine installationsweite Grenze wie der Einstellungsimport; Zahl und
+Größe der Probeaufrufe sind fest begrenzt. Begründung: Vor der Bestätigung geht kein Inhalt an den
+neuen Empfänger, OPAA kennt die Tarife der Anbieter nicht, und eine Probe darf den Endpunkt nicht
+als Lastquelle missbrauchen lassen.
 
 ## Konsequenzen
 
@@ -95,19 +117,24 @@ neuen Empfänger, und OPAA kennt die Tarife der Anbieter nicht.
   bleibt als Schutz, etwa nach einer Rücksicherung mit abweichender Modellzeile.
 - Während eines Wechsels findet die Suche nur über die Volltextsuche; die Antwortqualität sinkt für
   die angekündigte Dauer.
-- Neu eingebettete Chunks belegen bis zum Umschalten zusätzlichen Speicher; den Platz der alten
-  Spalte gibt PostgreSQL erst frei, wenn die Zeilen neu geschrieben werden.
-- Ein Release-Rollback während eines Wechsels bleibt möglich, aber ein neuer Wechsel startet erst,
-  wenn alle Instanzen wieder dieselbe Version melden.
+- Die Neueinbettung braucht freien Platz deutlich über der Größe der neuen Vektoren; PostgreSQL gibt
+  den Platz der alten Spalte erst frei, wenn die Zeilen neu geschrieben werden.
+- Ein Release-Rollback wartet, bis ein Wechsel umgeschaltet oder verworfen ist; zwei Builds
+  derselben Version gelten als gleich.
 
 ## Verworfene Alternativen
 
 - Paralleler Index mit altem Modell für die Suche bis zum Umschalten — doppeltes Einbetten neuer
-  Dokumente und ein instanzübergreifend gleichzeitiges Umschalten des Abfragemodells (Entscheidung 1).
+  Dokumente und ein instanzübergreifend gleichzeitiges Umschalten des Abfragemodells.
+- Vergleichbarkeit nur nach Modellname und Dimension — dreht einen Wechsel unter gleichem Namen beim
+  Neustart zurück (Entscheidung 2).
 - Alte Spalte nach dem Umschalten eine Frist lang als Sofort-Rückweg — doppelter Speicher und ein
-  Aufräumlauf für einen Fall, den der Probevektor und die Vorschau vorher abfangen.
-- Endpunktwechsel nur nach Modellname und Dimension — erkennt eine andere Fassung unter demselben
-  Namen nicht (Entscheidung 4).
+  Aufräumlauf für einen Fall, den Probe und Vorschau vorher abfangen.
+- Verwerfen ohne Nachfüllen — ließe die seit der Bestätigung geschriebenen Chunks bis zur nächsten
+  Indexierung ihres Dokuments ohne Vektor.
+- Indexbau beim Verwerfen abbrechen — braucht das Beenden einer fremden Datenbanksitzung.
+- Anker bei jedem Endpunktwechsel neu setzen — ließe eine schrittweise Drift zu (Entscheidung 5).
 - Sperre der Nachläufe während eines Wechsels — sie schreiben bereits in die Zielspalte, die Sperre
   schützte nichts.
-- Kostenvorschau in Euro — OPAA kennt keine Tarife; Tokens lassen sich mit dem eigenen Tarif rechnen.
+- Kostenvorschau in Euro — OPAA kennt keine Tarife; Tokens lassen sich mit dem eigenen Tarif
+  rechnen.

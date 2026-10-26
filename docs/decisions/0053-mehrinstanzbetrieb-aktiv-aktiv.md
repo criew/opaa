@@ -212,8 +212,8 @@ für Spring Framework 7 und Spring Boot 4 gepflegt. Weil ShedLock allein bei ein
 - **Neueinbettung:** Start, Abbruch und Besitz über die Zeile in `embedding_index`. Die DDL des
   Startabgleichs (`EmbeddingIndexReconciler`) und des Modellwechsels läuft nur unter dem Schemalock
   der Vektortabelle; das Embedding-Modell ist eine Zeile der Datenbank und damit für alle Instanzen
-  gleich. Ein Modellwechsel startet nur, wenn alle lebenden Instanzen dieselbe Version melden
-  (ADR-0061, Entscheidung 5).
+  gleich. Bestätigung und Verwerfen eines Modellwechsels und ein Endpunktwechsel gelingen nur, wenn
+  alle lebenden Instanzen dieselbe Version melden (ADR-0061, Entscheidung 6).
 - **Wartungsläufe** (Metadaten-Bestandslauf, Kontextpräfix- und Pipeline-Nachlauf, Schemaänderung)
   bleiben ohne Exklusivsperre: Sie sind je Aufruf idempotent und wiederaufnehmbar, ein Doppelstart
   kostet nur Modellaufrufe, wie schon im Einzelbetrieb bei zwei Personen.
