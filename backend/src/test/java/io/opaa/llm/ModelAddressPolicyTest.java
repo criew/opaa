@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -55,5 +56,13 @@ class ModelAddressPolicyTest {
 
     assertThat(off.blockedReason("http://10.0.0.5/v1")).isNull();
     assertThat(new ModelTargetValidationProperties(null, null).enabled()).isTrue();
+  }
+
+  @Test
+  void anEntryWithAPortOutsideTheRangeRefusesTheStart() {
+    assertThatThrownBy(
+            () -> new ModelTargetValidationProperties(true, List.of("ollama:99999999999")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("ollama:99999999999");
   }
 }

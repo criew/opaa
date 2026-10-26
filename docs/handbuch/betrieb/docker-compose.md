@@ -185,8 +185,9 @@ sudo chown 65532:65532 installation/admin-password && sudo chmod 0400 installati
 
 In `.env.docker` die Zeile `OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json`
 einkommentieren und den Stapel starten. Die Installation prüft die Adressen der Modelle; das Ollama
-des Stapels braucht deshalb `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
-([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)), nicht in der Liste der Quellen.
+des Stapels braucht `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, wie es
+`.env.docker.example` setzt ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)),
+nicht in der Liste der Quellen.
 Das Passwort steht nie in der JSON-Datei, sondern nur in der
 Datei, auf die `passwordFile` zeigt; Zugangsschlüssel der Modelle ebenso über `apiKeyFile`. Das
 erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange `requirePasswordChange`
@@ -248,7 +249,10 @@ docker compose --profile ollama up --build
 
 - **`ollama`** ist der Server, mit dem Volume `opaa-ollama-data` für die Modelle. Er veröffentlicht
   keinen Host-Port; Backend und Init-Schritt erreichen ihn im Compose-Netz unter dem Namen `ollama`,
-  auf den die Modelladresse im Profil `docker` bereits zeigt. Der auskommentierte `ports`-Eintrag
+  auf den die Modelladresse im Profil `docker` bereits zeigt. Die Adressprüfung der Modelle lässt
+  ihn nur mit dem Eintrag `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` durch, den
+  `.env.docker.example` setzt; fehlt er in der eigenen `.env.docker`, lehnen Installation und
+  Modellverwaltung die Vorlage `http://ollama:11434/v1` ab. Der auskommentierte `ports`-Eintrag
   bindet, falls aktiviert, nur an `127.0.0.1`.
 - **`ollama-pull`** zieht `bge-m3` (Einbettung) und `phi3:mini` (Chat) und beendet sich. Beide sind
   nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell

@@ -4,8 +4,8 @@ import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 /**
  * The set-up assistant against a stack in installation mode (ADR-0060), the target "installation"
  * of scripts/run-e2e.mjs: operating mode oidc without answer file, the token preset through
- * OPAA_INSTALLATION_TOKEN and passed here as E2E_INSTALLATION_TOKEN, ai-stub on
- * OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST. Every scenario of this file needs a fresh database, as
+ * OPAA_INSTALLATION_TOKEN and passed here as E2E_INSTALLATION_TOKEN, ai-stub:8089 on
+ * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST. Every scenario of this file needs a fresh database, as
  * completing ends the installation mode for good.
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''

@@ -285,9 +285,10 @@ ingress:
   aus der Administration ([Modell wechseln](modelle.md#modell-wechseln)).
 - **Interne Modell-Hosts** gehören mit Port in `targetValidation.modelAllowlist`, etwa
   `ollama.ai.svc.cluster.local:11434`, nicht in die Liste der Quellen. Host und Port von
-  `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` trägt der Chart selbst ein; nötig ist ein
-  Eintrag für Modelle, die die Verwaltung später anlegt, etwa Rerank- und Transkriptionsmodell
-  ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
+  `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` trägt der Chart selbst und dauerhaft ein,
+  auch nach der Installation; die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port.
+  Nötig ist ein Eintrag für Modelle auf anderen Hosts, die die Verwaltung später anlegt, etwa Rerank-
+  und Transkriptionsmodell ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
 - `bootstrap.*` ist die **Antwortdatei** der [Installation](installation.md): Mit
   `bootstrap.initialAdmin.email` rendert der Chart sie, und der erste Start richtet OPAA daraus ein
   (siehe [7. Installation und erste Anmeldung](#7-installation-und-erste-anmeldung)). Ohne die
@@ -654,7 +655,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `transcription.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei. Endpunkt, Modell, Schlüssel und Sprache pflegt die Systemverwaltung unter Modelle → Spracheingabe, den Rerank-Endpunkt unter Modelle → Reranking |
 | `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
 | `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Quellen, die die Zielprüfung passieren dürfen, am besten als `host:port`; Modell-Hosts gehören nicht hierher |
-| `targetValidation.modelAllowlist` | leer | `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Modell-Endpunkte als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` ergänzt der Chart selbst |
+| `targetValidation.modelAllowlist` | leer | `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Modell-Endpunkte als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` ergänzt der Chart selbst und dauerhaft, die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Weitere interne Identitätsanbieter als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.oidc` ergänzt der Chart selbst |
 
 ### Funktionen

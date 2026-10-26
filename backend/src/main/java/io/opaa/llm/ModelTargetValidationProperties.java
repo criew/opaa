@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -15,7 +16,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param enabled whether model addresses are checked against internal networks when the
  *     installation or the model administration stores or tests them
  * @param allowlist hosts of model endpoints that may resolve to internal addresses, each {@code
- *     host} (every port) or {@code host:port} (IPv6 as {@code [address]:port}); empty by default
+ *     host} (every port) or {@code host:port} (IPv6 as {@code [address]:port}); empty by default, a
+ *     port outside 1-65535 refuses the start
  */
 @InstallationWide
 @NoDataImpact("SSRF hardening of model endpoint addresses")
@@ -29,5 +31,11 @@ public record ModelTargetValidationProperties(
       enabled = true;
     }
     allowlist = allowlist == null ? List.of() : List.copyOf(allowlist);
+    List<String> invalid = TargetAddressValidator.invalidEntries(allowlist);
+    if (!invalid.isEmpty()) {
+      throw new IllegalArgumentException(
+          "OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST names a port outside 1-65535: "
+              + String.join(", ", invalid));
+    }
   }
 }

@@ -280,6 +280,20 @@ class TargetAddressValidatorTest {
   }
 
   @Test
+  void anEntryWithAPortOutsideTheRangeAdmitsNothingAndThrowsNothing() {
+    List<String> entries = List.of("localhost:99999999999", "localhost:0", "localhost:65536");
+    TargetAddressValidator validator = enabled(entries);
+
+    assertThat(validator.isAllowlisted(URI.create("http://localhost:8080/"))).isFalse();
+    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost:8080/")))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
+    assertThat(TargetAddressValidator.invalidEntries(entries)).isEqualTo(entries);
+    assertThat(
+            TargetAddressValidator.invalidEntries(List.of("ollama:11434", "ollama", "[::1]:443")))
+        .isEmpty();
+  }
+
+  @Test
   void allowlistDoesNotExemptAnUnrelatedHost() {
     TargetAddressValidator validator = enabled(List.of("internal-source.local"));
     assertThatThrownBy(() -> validator.validate(URI.create("http://127.0.0.1/")))

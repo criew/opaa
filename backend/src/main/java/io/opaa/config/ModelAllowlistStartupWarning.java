@@ -17,15 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 /**
  * Warns at start about stored model endpoints whose host only the sources' allowlist names: model
  * addresses are checked against {@code OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST} alone, so such an
  * endpoint keeps working and stays editable unchanged, but a new address on its host is refused,
- * and the sources' entry is no longer needed for it. Only warns; each instance warns for its own
- * environment (ADR-0053).
+ * and the sources' entry is no longer needed for it. Also names entries of the sources' allowlist
+ * whose port is outside 1-65535, which admit nothing. Only warns and never refuses the start; each
+ * instance warns for its own environment (ADR-0053).
  */
 @Component
 class ModelAllowlistStartupWarning {
@@ -60,17 +60,33 @@ class ModelAllowlistStartupWarning {
   @EventListener(ApplicationReadyEvent.class)
   public void warnAboutModelHostsOfTheSourcesAllowlist() {
     try {
-      warnings(indexing.targetValidation(), models, storedEndpoints()).forEach(log::warn);
-    } catch (DataAccessException e) {
-      log.warn("Could not read the stored model endpoints to compare allowlists: {}", e.toString());
+      currentWarnings().forEach(log::warn);
+    } catch (RuntimeException e) {
+      log.warn(
+          "Could not compare the stored model endpoints with the allowlists: {}", e.toString());
     }
+  }
+
+  /** The warnings for the stored endpoints and the configured allowlists of this instance. */
+  List<String> currentWarnings() {
+    List<String> messages = new ArrayList<>();
+    TargetAddressValidator.invalidEntries(indexing.targetValidation().allowlist())
+        .forEach(
+            entry ->
+                messages.add(
+                    "OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST entry '"
+                        + printable(entry)
+                        + "' names a port outside 1-65535 and admits nothing"));
+    messages.addAll(warnings(indexing.targetValidation(), models, storedEndpoints()));
+    return messages;
   }
 
   private List<StoredEndpoint> storedEndpoints() {
     List<StoredEndpoint> stored = new ArrayList<>();
     for (LlmModel model : chatModels.findAllByOrderByDisplayNameAsc()) {
       stored.add(
-          new StoredEndpoint("chat model '" + model.getDisplayName() + "'", model.getBaseUrl()));
+          new StoredEndpoint(
+              "chat model '" + printable(model.getDisplayName()) + "'", model.getBaseUrl()));
     }
     embeddingModel
         .findInstalled()
@@ -86,7 +102,8 @@ class ModelAllowlistStartupWarning {
 
   /**
    * One message per stored endpoint the sources' allowlist names and the models' does not, and one
-   * when the sources' check is off while the models' is on; by name and port, without resolving.
+   * when the sources' check is off while the models' is on and the models' allowlist leaves a
+   * stored endpoint unnamed; by name and port, without resolving.
    */
   static List<String> warnings(
       IndexingProperties.TargetValidation sources,
@@ -96,14 +113,21 @@ class ModelAllowlistStartupWarning {
     if (!models.enabled()) {
       return messages;
     }
-    if (!sources.enabled()) {
+    ModelAddressPolicy modelEntries = ModelAddressPolicy.of(models);
+    boolean anyUnlisted =
+        stored.stream()
+            .anyMatch(
+                endpoint ->
+                    parsed(endpoint.baseUrl()) != null
+                        && !modelEntries.isAllowlisted(endpoint.baseUrl()));
+    if (!sources.enabled() && anyUnlisted) {
       messages.add(
           "OPAA_INDEXING_TARGET_VALIDATION_ENABLED=false no longer switches off the address check"
               + " of model endpoints; it has its own switch OPAA_MODEL_TARGET_VALIDATION_ENABLED"
-              + " and allowlist OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST");
+              + " and allowlist OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST; a stored model endpoint"
+              + " it does not name keeps working, a new address on its host is refused");
     }
     TargetAddressValidator sourceEntries = new TargetAddressValidator(true, sources.allowlist());
-    ModelAddressPolicy modelEntries = ModelAddressPolicy.of(models);
     for (StoredEndpoint endpoint : stored) {
       URI uri = parsed(endpoint.baseUrl());
       if (uri == null || modelEntries.isAllowlisted(endpoint.baseUrl())) {
@@ -124,6 +148,11 @@ class ModelAllowlistStartupWarning {
       }
     }
     return messages;
+  }
+
+  /** {@code text} for one log line: control characters, line breaks included, become spaces. */
+  static String printable(String text) {
+    return text == null ? "" : text.replaceAll("\\p{Cntrl}", " ");
   }
 
   private static URI parsed(String baseUrl) {

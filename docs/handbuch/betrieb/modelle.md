@@ -77,6 +77,14 @@ prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste eng
 Liste der Quellen den Host eines gespeicherten Modells, warnt der Start im Log und nennt den
 Eintrag, der in die Liste der Modelle gehört.
 
+**Was ein Eintrag freigibt.** Ein Eintrag wird nach Name und Port durchgelassen, ohne dass OPAA die
+aufgelöste Adresse prüft: Wer den Namensdienst für diesen Namen kontrolliert, bestimmt, wohin die
+Anfrage geht. Deshalb nur Namen aus der eigenen, vertrauenswürdigen Zone eintragen und Einträge mit
+Port vorziehen. Ein Eintrag gilt für jede Modellrolle auf diesem Host und Port. Weil die Aufrufe im
+laufenden Betrieb nicht geprüft werden, fällt auch ein späterer Wechsel der Namensauflösung nach dem
+Speichern nicht auf; die eigentliche Absicherung bleibt die Beschränkung des ausgehenden Verkehrs
+des Backends auf Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
+
 ## Chat-Modelle in der Oberfläche anlegen
 
 Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Modelle → Chat-Modelle** legt
@@ -99,7 +107,7 @@ Das Formular führt in drei Abschnitten:
 
    | Vorlage | Trägt ein | Hinweis |
    |---|---|---|
-   | Ollama | `http://ollama:11434/v1` | Der Host `ollama` ist danach markiert und wird mit dem eigenen überschrieben. |
+   | Ollama | `http://ollama:11434/v1` | Der Host `ollama` ist danach markiert und wird mit dem eigenen überschrieben. Host und Port brauchen einen Eintrag in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`; der Compose-Stapel setzt `ollama:11434` ([Adressprüfung der Modelle](#adressprüfung-der-modelle)). |
    | OpenAI | `https://api.openai.com/v1` | nur mit Zugangsschlüssel |
    | Anthropic (Claude) | `https://api.anthropic.com/v1` | nur mit Zugangsschlüssel; das Feld Temperatur leer lassen |
 

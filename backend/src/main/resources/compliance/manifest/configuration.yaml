@@ -31,7 +31,7 @@ settings:
       - >-
         Wird bei der Installation festgelegt; eine ältere Installation übernimmt beim ersten Start
         einmalig ihre bisherige Konfiguration. Nicht über die Oberfläche änderbar
-      - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
+      - Bei der Installation gegen die Adressprüfung der Modelle geprüft (OPAA_MODEL_TARGET_VALIDATION_*)
   - key: embedding_model.model_identifier
     source: DATABASE
     defaultValue: keine, Angabe der Installation

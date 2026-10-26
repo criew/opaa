@@ -191,6 +191,19 @@ public class TargetAddressValidator {
   }
 
   private static boolean admits(String entry, String host, int port) {
+    int colon = portSeparator(entry);
+    if (colon < 0) {
+      return entry.equalsIgnoreCase(host);
+    }
+    int entryPort = parsePort(entry.substring(colon + 1));
+    String name = host.indexOf(':') >= 0 && !host.startsWith("[") ? "[" + host + "]" : host;
+    return entryPort != NO_PORT
+        && port == entryPort
+        && entry.substring(0, colon).equalsIgnoreCase(name);
+  }
+
+  /** The colon before the port of an entry {@code host:port} or {@code [addr]:port}, else -1. */
+  private static int portSeparator(String entry) {
     int colon = entry.lastIndexOf(':');
     boolean bracketed = entry.startsWith("[");
     boolean withPort =
@@ -198,13 +211,34 @@ public class TargetAddressValidator {
             && colon < entry.length() - 1
             && entry.substring(colon + 1).chars().allMatch(Character::isDigit)
             && (bracketed ? entry.charAt(colon - 1) == ']' : entry.indexOf(':') == colon);
-    if (!withPort) {
-      return entry.equalsIgnoreCase(host);
+    return withPort ? colon : -1;
+  }
+
+  /** The port 1-65535 of {@code digits}, else {@link #NO_PORT}; never throws. */
+  private static int parsePort(String digits) {
+    if (digits.length() > 5) {
+      return NO_PORT;
     }
-    String name = host.indexOf(':') >= 0 && !host.startsWith("[") ? "[" + host + "]" : host;
-    return port != NO_PORT
-        && entry.substring(0, colon).equalsIgnoreCase(name)
-        && Integer.parseInt(entry.substring(colon + 1)) == port;
+    int port = Integer.parseInt(digits);
+    return port >= 1 && port <= 65535 ? port : NO_PORT;
+  }
+
+  /**
+   * The entries of {@code allowlist} naming a port outside 1-65535; such an entry admits nothing,
+   * so a caller refuses or reports it at start.
+   */
+  public static List<String> invalidEntries(List<String> allowlist) {
+    if (allowlist == null) {
+      return List.of();
+    }
+    return allowlist.stream()
+        .map(String::trim)
+        .filter(
+            entry -> {
+              int colon = portSeparator(entry);
+              return colon >= 0 && parsePort(entry.substring(colon + 1)) == NO_PORT;
+            })
+        .toList();
   }
 
   /** Package-private so {@code TargetAddressValidatorTest} can exercise it directly, per range. */

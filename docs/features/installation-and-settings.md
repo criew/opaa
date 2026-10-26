@@ -343,7 +343,7 @@ Konfiguration; Gruppe E entfällt oder wandert in die Datenbank.
 |---|---|---|
 | A | Start und Infrastruktur: nötig, bevor es eine Datenbank gibt, oder vom Betrieb bereitgestellte Dienste | 68 |
 | B | Schlüssel und Geheimnisse des Betriebs, die Werte der Datenbank schützen oder Dienste anbinden | 8 |
-| C | Grenzen des Betriebs (ADR-0060, Entscheidung 2) | 27 |
+| C | Grenzen des Betriebs (ADR-0060, Entscheidung 2) | 29 |
 | D | Lastgrenzen, Überlastschutz und Technik: Budgets, Größen, Timeouts, Nebenläufigkeit, Endpunkte | 182 |
 | E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 48 |
 | F | Experten-Feinabstimmung von Suche und Index (ADR-0060, Entscheidung 3) | 38 |
