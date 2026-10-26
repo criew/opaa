@@ -39,16 +39,19 @@ doppeltes Einbetten. Begründung: Der Wechsel ist selten und geplant; ein parall
 zwei Modelle in jedem Schreibpfad und ein Umschalten des Abfragemodells auf allen Instanzen im
 selben Augenblick, für eine Unterbrechung, die sich ankündigen und über Nacht legen lässt.
 
-### 2. Die Generation entscheidet über Vergleichbarkeit
+### 2. Generation, Name und Dimension entscheiden über Vergleichbarkeit
 
 Modellzeile und Index tragen eine **Generation**: die Modellzeile die des Modells, der Index die der
-Vektorspalte und während eines Wechsels die der Zielspalte. Jeder Modellwechsel vergibt eine neue,
-ein Endpunktwechsel behält sie. Vergleichbar sind Vektoren nur bei gleicher Generation;
-Startabgleich und Neueinbettung vergleichen sie zusätzlich zu Modellname und Dimension. Jede
-Einbettung trägt die Generation des Modell-Clients, der sie erzeugt hat, und der Client-Cache ist
-nach ihr geschlüsselt. Begründung: Ein Wechsel auf eine andere Fassung oder Quantisierung unter
-gleichem Namen und gleicher Dimension sähe sonst beim nächsten Start wie das alte Modell aus und
-würde still zurückgedreht.
+Vektorspalte und während eines Wechsels die der Zielspalte. Der Index ist veraltet, sobald
+Generation, Modellname oder Dimension der Modellzeile von denen der Vektorspalte abweichen. Jeder
+Modellwechsel vergibt eine neue Generation aus einer Folge ohne Wiedervergabe, ein Endpunktwechsel
+behält sie. Die Migration gibt dem Bestand die Generation 1, der Zielspalte einer laufenden
+Neueinbettung eine eigene, der Modellzeile die der Spalte, deren Name und Dimension sie nennt; die
+Folge beginnt nach der höchsten vergebenen Nummer. Jede Einbettung trägt die Generation des
+Modell-Clients, der sie erzeugt hat, und der Client-Cache ist nach ihr geschlüsselt. Begründung: Ein
+Wechsel auf eine andere Fassung oder Quantisierung unter gleichem Namen und gleicher Dimension sähe
+sonst beim nächsten Start wie das alte Modell aus und würde still zurückgedreht; Name und Dimension
+bleiben im Vergleich, damit ein Eingriff in die Datenbank weiter erkannt wird.
 
 ### 3. Die Bestätigung setzt das Modell in einer Transaktion
 
@@ -65,14 +68,16 @@ Zwischenstand, der veralten könnte; was gilt, entscheidet die Transaktion.
 ### 4. Abbrechen, Verwerfen mit Nachfüllen, kein Rückweg nach dem Umschalten
 
 „Abbrechen“ pausiert den Lauf; das Eingebettete bleibt. „Verwerfen“ ist vor dem Umschalten möglich,
-nicht aber, sobald der Lauf den Index der Zielspalte baut. Es setzt in einer Transaktion wie in
-Entscheidung 3 den Vorgänger zurück, entfernt die Zielspalte und beendet einen laufenden Lauf; die
-Vektorsuche läuft sofort wieder mit dem alten Modell. Chunks, die seit der Bestätigung geschrieben
-wurden und keinen alten Vektor haben, füllt ein anschließender Lauf mit dem wiederhergestellten
-Modell nach. Das Umschalten verwirft alte Spalte und Vorgänger; danach führt nur ein neuer Wechsel
-zurück, und die Bestätigung sagt das. Begründung: Bis zum Umschalten steht die alte Spalte ohnehin,
-der Rückweg kostet nur die Zeile und das Nachfüllen weniger Chunks. Einen Indexbau abzubrechen, der
-ohne Transaktion läuft, wäre aufwendiger als abzuwarten.
+nicht aber, solange ein laufender Lauf mit lebender Besitzerin den Index der Zielspalte baut; jedes
+Ende des Laufs löscht diesen Vermerk. Verwerfen setzt in einer Transaktion wie in Entscheidung 3 den
+Vorgänger zurück, entfernt die Zielspalte und beendet einen laufenden Lauf; die Vektorsuche läuft
+sofort wieder mit dem alten Modell. Chunks ohne alten Vektor füllt ein Lauf der Art **Nachfüllen**
+mit dem wiederhergestellten Modell nach, ohne Umschalten. Ein Lauf arbeitet nur, solange Besitzerin,
+Art und Generation im Index-Datensatz seine sind; eine Bestätigung beendet ein Nachfüllen in ihrer
+Transaktion. Nach dem Umschalten führt nur ein neuer Wechsel zurück, und die Bestätigung sagt das.
+Begründung: Bis zum Umschalten steht die alte Spalte ohnehin. Einen Indexbau ohne Transaktion
+abzubrechen wäre aufwendiger als abzuwarten, und ein Nachfüllen vor einer Neueinbettung nützt
+nichts.
 
 ### 5. Endpunkt ohne Neueinbettung nur bei gleichem Modell
 
@@ -85,20 +90,22 @@ gespeicherter Schlüssel bleibt nur bei derselben Adresse (Schema, Host, Port, P
 Modellverwaltung. Bei angehaltenem Lauf eines Wechsels gilt dasselbe für das Zielmodell, als
 Ersatz-Endpunkt. Begründung: Derselbe Name kann hinter einem anderen Server eine andere Fassung
 bedeuten; ein fester Anker lässt keine Drift über viele Wechsel zu. Der Schutz zielt auf Versehen:
-Ein Endpunkt, der die öffentlichen Probetexte gezielt vortäuscht, besteht ihn.
+Ein Endpunkt, der die öffentlichen Probetexte gezielt vortäuscht, besteht ihn, und ein nachträglich
+erhobener Anker friert den dann aktiven Endpunkt ein, auch wenn der schon eine andere Fassung war.
 
 ### 6. Mehrinstanzbetrieb: gleiche Version, Generation beim Schreiben und Lesen
 
 Bestätigung, Verwerfen und Endpunktwechsel gelingen nur, wenn alle lebenden Instanzen dieselbe
 Version melden, verglichen ohne Build-Metadaten. Ein Release-Rollback ist während eines Wechsels
 nicht vorgesehen, erst nach Umschalten oder Verwerfen. Modellzeile und Spaltenstand erfahren die
-Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5). Ein Schreiber prüft beim Schreiben,
-ob die Generation seiner Einbettung die der gewählten Spalte ist; sonst verwirft er sie und bettet
-neu ein. Die Vektorsuche prüft dasselbe für die Frage und liefert sonst nichts, dann antwortet die
-Volltextsuche. Nachläufe (Kontextpräfix, Nachzug, Änderung eines Metadatenschemas) bleiben während
-eines Wechsels erlaubt: Sie schreiben über denselben Weg. Begründung: Zwischen Commit und
-Busereignis darf kein Vektor einer Generation in die Spalte einer anderen geraten und keine Frage
-gegen Vektoren eines anderen Modells laufen; eine ältere Instanz kennt die Generation nicht.
+Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5). Bindend ist die Datenbank: Eine
+Schreibanweisung schreibt nur, wenn die Generation ihrer Einbettung im Index-Datensatz die der
+gewählten Spalte ist, die Vektorabfrage sucht nur unter derselben Bedingung; die Prüfung gegen den
+Stand der Instanz fängt vorher den üblichen Fall. Passt die Generation nicht, bettet der Schreiber
+neu ein und die Vektorsuche liefert nichts. Nachläufe (Kontextpräfix, Nachzug, Änderung eines
+Metadatenschemas) bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die
+Busereignisse verpasst, darf auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die
+Spalte einer anderen Generation schreiben; eine ältere Instanz kennt die Generation nicht.
 
 ### 7. Vorschau ohne Inhalte und ohne Preis, mit festen Grenzen
 
@@ -106,10 +113,11 @@ Chunks zählt die Vorschau wie der Fortschritt der Neueinbettung, private Biblio
 Mindestgruppengröße. Tokens schätzt sie aus der Textlänge, die Dauer aus einer Durchsatzprobe mit
 künstlichen Texten, ohne Probe aus `opaa.indexing.embedding-rate-estimate`, den Speicher als Spanne,
 die neue Tupel und Indexeinträge der Neueinbettung einschließt. Einen Preis nennt sie nicht. Probe
-und Bestätigung zählen gegen eine installationsweite Grenze wie der Einstellungsimport; Zahl und
-Größe der Probeaufrufe sind fest begrenzt. Begründung: Vor der Bestätigung geht kein Inhalt an den
-neuen Empfänger, OPAA kennt die Tarife der Anbieter nicht, und eine Probe darf den Endpunkt nicht
-als Lastquelle missbrauchen lassen.
+und Bestätigung zählen gegen eine gemeinsame installationsweite Grenze wie der Einstellungsimport,
+der Endpunktwechsel gegen eine eigene, Verwerfen gegen keine; Zahl und Größe der Probeaufrufe sind
+fest begrenzt. Begründung: Vor der Bestätigung geht kein Inhalt an den neuen Empfänger, OPAA kennt
+die Tarife nicht, und eine Probe darf den Endpunkt nicht als Lastquelle missbrauchen lassen; im
+Ausfall dürfen verbrauchte Proben weder Endpunktwechsel noch Verwerfen aussperren.
 
 ## Konsequenzen
 
@@ -128,6 +136,10 @@ als Lastquelle missbrauchen lassen.
   Dokumente und ein instanzübergreifend gleichzeitiges Umschalten des Abfragemodells.
 - Vergleichbarkeit nur nach Modellname und Dimension — dreht einen Wechsel unter gleichem Namen beim
   Neustart zurück (Entscheidung 2).
+- Vergleichbarkeit nur nach Generation — übersähe einen Eingriff in die Datenbank, der Name oder
+  Dimension ändert, und hielte einen Bestand mitten in einer Neueinbettung für aktuell.
+- `409` für eine Bestätigung während des Nachfüllens — hielte nur auf, die Neueinbettung bettet
+  ohnehin jeden Chunk ein.
 - Alte Spalte nach dem Umschalten eine Frist lang als Sofort-Rückweg — doppelter Speicher und ein
   Aufräumlauf für einen Fall, den Probe und Vorschau vorher abfangen.
 - Verwerfen ohne Nachfüllen — ließe die seit der Bestätigung geschriebenen Chunks bis zur nächsten

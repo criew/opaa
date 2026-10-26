@@ -33,8 +33,8 @@ ehrlichen Ankündigung von Dauer und Folgen, mit Abbruch und Rückweg bis zum Um
    und Chat antworten bis zum Umschalten mit der Volltextsuche.
 5. **Abbrechen** pausiert, **Verwerfen** kehrt vor dem Umschalten zum alten Modell zurück und füllt
    fehlende Vektoren nach; nach dem Umschalten gibt es keinen Rückweg außer einem neuen Wechsel.
-6. **Generation** statt Modellname entscheidet, ob Vektoren vergleichbar sind, beim Start, beim
-   Schreiben und bei der Suche.
+6. **Generation** entscheidet zusammen mit Modellname und Dimension, ob Vektoren vergleichbar sind,
+   beim Start, beim Schreiben und bei der Suche, geprüft auch in der Datenbank.
 7. **Mehrinstanzbetrieb:** genau ein Wechsel, nur bei gleicher Version aller Instanzen; Lauf und
    Übernahme wie gebaut.
 8. **Kein Datenbankeingriff mehr** im Handbuch.
@@ -161,16 +161,44 @@ Ein doppeltes Einbetten neuer Dokumente mit beiden Modellen gibt es nicht.
 | Verwerfen | vor dem Umschalten, nicht während des Indexbaus | Vorgänger wird wieder aktiv, Zielspalte entfällt, ein laufender Lauf endet; Vektorsuche sofort wieder mit dem alten Modell; anschließend Nachfüllen |
 | Zurück nach dem Umschalten | — | nur als neuer Modellwechsel mit vollständiger Neueinbettung |
 
-- **Indexbau.** Sobald der Lauf mit dem Bau des Vektorindex der Zielspalte beginnt, vermerkt er das
-  im Index-Datensatz; Verwerfen antwortet dann `409` mit dem Hinweis, dass das Umschalten läuft. Ein
-  Indexbau ohne Transaktion ließe sich nur abbrechen, indem eine fremde Datenbanksitzung beendet
-  wird.
+- **Indexbau.** Beginnt der Lauf mit dem Bau des Vektorindex der Zielspalte, vermerkt er das im
+  Index-Datensatz. Der Vermerk sperrt Verwerfen nur, solange der Lauf läuft und seine Besitzerin
+  lebt; jedes Ende des Laufs (Umschalten, Abbruch, Fehler) löscht ihn, ebenso die Übernahme durch
+  eine andere Instanz, die den Bau neu beginnt. Solange er gilt, antwortet Verwerfen `409` mit dem
+  Hinweis, dass das Umschalten läuft. Ein Indexbau ohne Transaktion ließe sich nur abbrechen, indem
+  eine fremde Datenbanksitzung beendet wird.
+- **Nach einem Abbruch während des Baus** läuft der Bau in seiner Datenbanksitzung noch zu Ende,
+  denn der Abbruch wirkt erst nach dem laufenden Schritt. Verwerfen wartet dann auf dessen
+  Tabellensperre und antwortet nach der Wartegrenze `409`, bis der Bau fertig ist; danach gelingt
+  es.
 - **Nachfüllen.** Chunks, die seit der Bestätigung neu oder mit geändertem Text geschrieben wurden,
   haben nach dem Verwerfen keinen Vektor der Vektorspalte. Das Verwerfen startet deshalb in
   derselben Transaktion einen Lauf mit dem wiederhergestellten Modell, der nur diese Chunks
-  einbettet. Er gehört der verwerfenden Instanz und folgt Besitz, Abbruch, Fortsetzen und Übernahme
-  der Neueinbettung. Die Vektorsuche läuft währenddessen; die fehlenden Chunks findet bis dahin nur
-  die Volltextsuche. Der Dialog des Verwerfens nennt ihre Zahl.
+  einbettet. Die Vektorsuche läuft währenddessen; die fehlenden Chunks findet bis dahin nur die
+  Volltextsuche. Der Dialog des Verwerfens nennt ihre Zahl.
+
+### Zwei Arten von Läufen
+
+Es gibt einen Platz für einen Lauf. Der Index-Datensatz vermerkt neben Status und Besitzerin die Art
+des Laufs und die Generation, für die er arbeitet.
+
+| | Neueinbettung | Nachfüllen |
+|---|---|---|
+| Auswahl | Chunks ohne Vektor in der Zielspalte | Chunks ohne Vektor in der Vektorspalte |
+| schreibt in | Zielspalte | Vektorspalte |
+| Start und Fortsetzen | nur bei veraltetem Index | nur bei aktuellem Index und vermerktem Nachfüllen |
+| Übernahme | wie gebaut, bei veraltetem Index | wie gebaut, bei aktuellem Index |
+| Abschluss | Indexbau und Umschalten | Ende ohne Umschalten, sobald kein Chunk ohne Vektor bleibt; bleiben welche, „fehlgeschlagen" mit Fortsetzen |
+| Revisionsereignis am Ende | `EMBEDDING_REINDEX_COMPLETED` | keines |
+
+- **Bestätigung während des Nachfüllens** beendet das Nachfüllen in ihrer Transaktion, statt `409`
+  zu antworten. Die Neueinbettung bettet ohnehin jeden Chunk ein, auch die noch nicht nachgefüllten;
+  ein `409` hielte die Systemverwaltung nur bis zum Ende eines Laufs auf, der danach nichts mehr
+  nützt.
+- **Ein Worker arbeitet nur, solange Besitzerin, Art und Generation** im Index-Datensatz seinen
+  eigenen gleichen. Löst eine Bestätigung auf derselben Instanz das Nachfüllen ab, endet dessen
+  Worker daher auch, obwohl die Besitzerin dieselbe bleibt; dasselbe gilt für die Neueinbettung, die
+  ein Verwerfen beendet.
 
 ---
 
@@ -197,7 +225,10 @@ erreichbar, lehnt die Prüfung ab und nennt den Modellwechsel als Weg.
 **Grenze des Schutzes.** Er zielt auf Versehen: eine andere Fassung oder Quantisierung unter
 gleichem Namen, ein falsch eingetragener Server. Ein Endpunkt, der die öffentlichen Probetexte
 gezielt vortäuscht und anderes einbettet, besteht ihn; gegen einen böswilligen Endpunkt schützen
-Adressprüfung der Modelle und die Wahl des Anbieters.
+Adressprüfung der Modelle und die Wahl des Anbieters. Ein nachträglich erhobener Anker friert den
+Endpunkt ein, der gerade aktiv ist. War der bereits eine andere Fassung, etwa nach einem früheren
+Eingriff in die Datenbank, lehnt die Prüfung den Rückweg zum ursprünglichen Server ab; dann bleibt
+nur der Modellwechsel.
 
 **Ersatz-Endpunkt.** Ist der Lauf eines Modellwechsels angehalten oder fehlgeschlagen, etwa weil der
 neue Endpunkt ausfiel, darf ein Ersatz-Endpunkt für das Zielmodell eingetragen werden, geprüft gegen
@@ -213,18 +244,26 @@ Modell wird eingetragen, ohne Neustart und ohne Neueinbettung.
 
 ## Generation
 
-Ob Vektoren vergleichbar sind, entscheidet die Generation, nicht der Modellname.
+Ob Vektoren vergleichbar sind, entscheiden Generation, Modellname und Dimension zusammen: Weicht
+eines davon ab, ist der Index veraltet.
 
 - **Modellzeile** trägt die Generation des Modells, der **Index-Datensatz** die der Vektorspalte und
-  während eines Wechsels die der Zielspalte. Bestehende Zeilen bekommen die Generation 1.
-- **Vergabe.** Jede Bestätigung vergibt die nächste Generation aus einer Folge, die nie eine Nummer
+  während eines Wechsels die der Zielspalte.
+- **Bestand.** Die Migration gibt Modellzeile und Vektorspalte die Generation 1. Steckt die
+  Installation mitten in einer Neueinbettung, etwa nach dem bisherigen Eingriff in die Datenbank,
+  bekommt die Zielspalte die Generation 2, und die Modellzeile bekommt die Generation der Spalte,
+  deren Modellname und Dimension sie nennt. Die Folge der Generationen beginnt nach der höchsten
+  vergebenen Nummer.
+- **Vergabe.** Jede Bestätigung vergibt die nächste Generation aus dieser Folge, die nie eine Nummer
   zweimal ausgibt, auch nicht nach einem Verwerfen. Endpunktwechsel und Ersatz-Endpunkt behalten
   sie.
-- **Startabgleich.** Gleicht die Generation der Modellzeile der der Vektorspalte, ist der Index
-  aktuell; gleicht sie der der Zielspalte, läuft ein Wechsel weiter. Sonst wurde die Modellzeile
-  außerhalb des geführten Wegs geändert, etwa durch eine Rücksicherung; dann setzt der Startabgleich
-  die Vektorsuche aus und legt eine Zielspalte an, wie gebaut. Ein Wechsel unter gleichem Namen und
-  gleicher Dimension wird so beim Neustart nicht als „wieder das alte Modell" zurückgedreht.
+- **Startabgleich.** Stimmen Generation, Name und Dimension der Modellzeile mit der Vektorspalte
+  überein, ist der Index aktuell; stimmen sie mit der Zielspalte überein, läuft ein Wechsel weiter.
+  Sonst wurde die Modellzeile außerhalb des geführten Wegs geändert, etwa durch eine Rücksicherung
+  oder einen Eingriff in die Datenbank; dann setzt der Startabgleich die Vektorsuche aus und legt
+  eine Zielspalte an, wie gebaut. Ein Wechsel unter gleichem Namen und gleicher Dimension wird so
+  beim Neustart nicht als „wieder das alte Modell" zurückgedreht, und ein Eingriff, der nur Name
+  oder Dimension ändert, wird weiter erkannt.
 - **Einbettungen** tragen die Generation des Clients, der sie erzeugt hat. Der Client-Cache ist nach
   Generation geschlüsselt; ein Client, dessen Bau eine Invalidierung überholt hat, wird nicht
   übernommen.
@@ -245,14 +284,24 @@ Ob Vektoren vergleichbar sind, entscheidet die Generation, nicht der Modellname.
   nach Umschalten oder Verwerfen; das Handbuch sagt das. Eine ältere Instanz kennt die Generation
   nicht, ihr Startabgleich verglich nur den Modellnamen und könnte einen Wechsel unter gleichem
   Namen verwerfen.
-- **Lauf, Besitz, Übernahme** wie gebaut, auch für das Nachfüllen.
+- **Lauf, Besitz, Übernahme** nach Art des Laufs, siehe „Zwei Arten von Läufen".
 - **Schreiben.** Ein Schreiber bettet ein, wählt dann unter der Spaltensperre seine Spalte und prüft
   dort, ob die Generation seiner Einbettung die der Spalte ist. Passt sie nicht, verwirft er die
   Einbettung, lässt die Sperre los und bettet mit dem neuen Client erneut ein, höchstens dreimal,
-  sonst scheitert das Dokument und wird wie jedes gescheiterte wiederholt. Eine fehlende Zielspalte
-  nach einem Verwerfen behandelt er ebenso.
+  sonst scheitert das Dokument. Ein gescheitertes Dokument einer Quelle versucht deren nächster Lauf
+  erneut; ein Upload bleibt gescheitert, bis jemand ihn „erneut verarbeiten" lässt. Eine fehlende
+  Zielspalte nach einem Verwerfen behandelt der Schreiber wie eine fremde Generation.
+- **Prüfung in der Datenbank.** Die Prüfung gegen den Stand der Instanz fängt den üblichen Fall;
+  bindend ist die Schreibanweisung selbst. Sie schreibt nur, wenn die Generation im Index-Datensatz
+  zur Einbettung passt, für die Zielspalte gegen deren Generation, für die Vektorspalte gegen die
+  der Vektorspalte (`… AND (SELECT target_generation FROM embedding_index) = ?`). Schreibt sie
+  nichts, gilt das als fremde Generation. Eine Instanz, die Busereignisse verpasst hat, schreibt so
+  auch über ein Verwerfen und eine erneute Bestätigung hinweg keinen Vektor in die Spalte einer
+  anderen Generation. Das Umschalten wartet mit seiner Tabellensperre auf laufende Schreiber; was
+  vorher geprüft und geschrieben wurde, wird mit der Spalte umgeschaltet.
 - **Suchen.** Die Vektorsuche bettet die Frage ein und prüft unter der Spaltensperre, ob deren
-  Generation die der Vektorspalte ist; sonst liefert sie nichts, und die Volltextsuche trägt die
+  Generation die der Vektorspalte ist; die Abfrage prüft dasselbe noch einmal gegen den
+  Index-Datensatz. Passt sie nicht, liefert die Vektorsuche nichts, und die Volltextsuche trägt die
   Frage allein.
 - **Bus.** Modellzeile (`embedding-model`) und Index-Datensatz (`embedding-index`) melden jede
   Änderung. Eine Instanz liest bei beiden Ereignissen Modell und Spaltenstand neu; das konfigurierte
@@ -266,12 +315,18 @@ Ob Vektoren vergleichbar sind, entscheidet die Generation, nicht der Modellname.
 |---|---|
 | Modellzeile | zusätzlich Generation und Referenzanker |
 | Vorgänger | eigene Tabelle mit einer Zeile, Inhalt wie die Modellzeile samt Generation und Anker; der Schlüssel verschlüsselt mit `OPAA_SETTINGS_ENCRYPTION_KEY` wie in der Modellzeile, die nur eine Zeile zulässt |
-| Index-Datensatz | zusätzlich Generation der Vektorspalte, Generation der Zielspalte, Beginn des Umschaltens und die Art des Laufs (Neueinbettung oder Nachfüllen) |
-| Folge der Generationen | fortlaufend, ohne Wiedervergabe |
+| Index-Datensatz | zusätzlich Generation der Vektorspalte, Generation der Zielspalte, Vermerk „Indexbau läuft", Art des Laufs (Neueinbettung oder Nachfüllen) und Generation, für die der Lauf arbeitet |
+| Folge der Generationen | fortlaufend, ohne Wiedervergabe, beginnend nach der höchsten vergebenen |
 
-Alle Änderungen sind additiv (neue Tabelle, neue Spalten nullable oder mit bleibendem Vorgabewert)
-und brechen die Vorgängerversion nicht. Ist die Art des Laufs ein persistierter Aufzählungswert,
-gilt für neue Werte das Verzeichnis der persistierten Aufzählungen.
+- **Umschalten.** Seine Transaktion tauscht die Spalten, macht die Generation der Zielspalte zur
+  Generation der Vektorspalte, leert die Generation der Zielspalte, löscht den Vermerk zum Indexbau
+  und den Vorgänger und beendet den Lauf.
+- **Verwerfen** leert Generation der Zielspalte und Vermerk ebenso und vermerkt das Nachfüllen.
+- **Migration.** Neue Tabelle und neue Spalten sind additiv (nullable oder mit bleibendem
+  Vorgabewert) und brechen die Vorgängerversion nicht. Das Setzen der Generationen im Bestand ist
+  eine Datenänderung und braucht einen Delta-Test, auch für eine Installation mitten in einer
+  Neueinbettung. Ist die Art des Laufs ein persistierter Aufzählungswert, gilt für neue Werte das
+  Verzeichnis der persistierten Aufzählungen.
 
 ---
 
@@ -288,8 +343,9 @@ Bestätigung, Endpunktwechsel und Ersatz-Endpunkt prüfen alles neu, unabhängig
 - Art des Vorgangs nach Kennung, Dimension und Ähnlichkeit: Ein Modellwechsel auf ein Modell, das
   als Endpunktwechsel gälte, und ein Endpunktwechsel, der die Ähnlichkeit verfehlt, werden
   abgelehnt.
-- Zustand: kein laufender Wechsel für die Bestätigung, ein angehaltener für den Ersatz-Endpunkt,
-  kein laufender Lauf für den Endpunktwechsel; kein veralteter Index aus dem Startabgleich.
+- Zustand: kein laufender Wechsel für die Bestätigung (ein Nachfüllen beendet sie), ein angehaltener
+  für den Ersatz-Endpunkt, kein laufender Lauf für den Endpunktwechsel; kein veralteter Index aus
+  dem Startabgleich.
 - gleiche Version aller lebenden Instanzen.
 
 ---
@@ -308,6 +364,7 @@ Bestätigung, Endpunktwechsel und Ersatz-Endpunkt prüfen alles neu, unabhängig
   Start.
 - Verwerfen beendet einen laufenden Lauf mit dem Status „abgebrochen" und der Meldung des
   Verwerfens, ohne eigenes `EMBEDDING_REINDEX_CANCELLED`.
+- Beendet eine Bestätigung ein Nachfüllen, steht das im Ereignis der Bestätigung.
 - Das Nachfüllen erzeugt kein Ereignis: Es ist ein Systemvorgang, der weder Zugriffe verändert noch
   Verwaltungshandeln ist, und schaltet nichts um; sein Stand steht im Indexstatus und im Log.
 - Ein abgelehnter Vorgang oder eine fehlgeschlagene Probe erzeugt kein Ereignis; es ändert sich
@@ -334,9 +391,17 @@ Im Thema `models`, nur für die Systemverwaltung (`SYSTEM_ADMIN`):
 | Endpunkt ändern | Endpunktwechsel und Ersatz-Endpunkt |
 
 Fortschritt, Abbruch und Fortsetzen bleiben die bestehenden Operationen der Neueinbettung im Thema
-`indexing`. Der Zugangsschlüssel kommt nur schreibend vor, wie in der Modellverwaltung. Alle vier
-Operationen zählen gegen eine gemeinsame installationsweite Grenze von 30 Aufrufen je Stunde, wie
-der Einstellungsimport; darüber antworten sie `429`.
+`indexing`. Der Zugangsschlüssel kommt nur schreibend vor, wie in der Modellverwaltung.
+
+**Grenzen der Aufrufe**, je installationsweit, darüber `429`:
+
+| Operation | Grenze | Grund |
+|---|---|---|
+| Probe, Bestätigung | gemeinsam 30 je Stunde, wie der Einstellungsimport | Sie senden Probetexte und künstliche Texte an einen frei gewählten Endpunkt; die Grenze verhindert, dass er als Lastquelle dient |
+| Endpunkt ändern | eigene Grenze, 30 je Stunde | Sie sendet ebenfalls Probetexte, darf aber im Ausfall nicht an verbrauchten Proben scheitern; sie prüft selbst und braucht keine vorherige Probe |
+| Verwerfen | keine | Es sendet nichts nach außen, und der Zustand lässt es je Wechsel nur einmal zu |
+
+Ist die Grenze der Probe erschöpft, bietet die Oberfläche den Endpunktwechsel direkt an.
 
 ---
 
@@ -382,14 +447,22 @@ Generation) ins Register des prozesslokalen Zustands.
 - Race: mit Client A eingebettet, dann Commit einer Bestätigung auf Instanz B, dann Schreiben auf A
 - Suche zwischen den beiden Busereignissen liefert keine Vektortreffer einer fremden Generation
 - Verwerfen während des Laufs, während des Indexbaus (abgelehnt) und nach dem Umschalten (abgelehnt)
-- Nachfüllen nach dem Verwerfen, mit Übernahme durch eine andere Instanz
+- Nachfüllen nach dem Verwerfen, mit Übernahme durch eine andere Instanz; Bestätigung während des
+  Nachfüllens beendet es, auch dessen Worker auf derselben Instanz
+- Vermerk „Indexbau läuft" nach Abbruch und nach Fehler beim Umschalten: Verwerfen gelingt nach dem
+  Ende des Baus
+- Schreibanweisung mit veraltetem Stand der Instanz nach Verwerfen und erneuter Bestätigung schreibt
+  nichts
+- Migration der Generationen, auch mitten in einer Neueinbettung nach einem Eingriff in die
+  Datenbank
+- Eingriff, der nur Name oder Dimension der Modellzeile ändert, wird beim Start erkannt
 - Neustart nach der Bestätigung; Wechsel unter gleichem Namen und gleicher Dimension über einen
   Neustart
 - Endpunktwechsel mit und ohne Referenzanker, an der Grenze 0,99, Schlüssel bei anderem Host,
   Ersatz-Endpunkt bei angehaltenem Lauf
 - Versionsbedingung für Bestätigung, Verwerfen und Endpunktwechsel
 - Schlüssel weder im Protokoll noch im Log
-- Grenze von 30 Aufrufen je Stunde
+- Grenzen der Aufrufe: erschöpfte Probe sperrt Endpunktwechsel und Verwerfen nicht
 - e2e: Wechsel in der Oberfläche bis zum Umschalten, mit zwei Instanzen
 
 **Veraltete Javadocs** (sagen „nicht über die Oberfläche" oder „Fingerabdruck hält die Identität
