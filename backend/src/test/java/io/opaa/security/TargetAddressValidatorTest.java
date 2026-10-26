@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -264,6 +265,32 @@ class TargetAddressValidatorTest {
     assertThatCode(() -> validator.validate(URI.create("http://localhost:8081/")))
         .doesNotThrowAnyException();
     assertThatCode(() -> validator.validateHost("localhost")).doesNotThrowAnyException();
+  }
+
+  @Test
+  void isAllowlistedMatchesNameAndPortWithoutResolvingAndRegardlessOfTheSwitch() {
+    TargetAddressValidator validator =
+        new TargetAddressValidator(false, List.of("ollama:11434", "internal-source.local"));
+
+    assertThat(validator.isAllowlisted(URI.create("http://ollama:11434/v1"))).isTrue();
+    assertThat(validator.isAllowlisted(URI.create("http://ollama:8080/v1"))).isFalse();
+    assertThat(validator.isAllowlisted(URI.create("https://internal-source.local/x"))).isTrue();
+    assertThat(validator.isAllowlisted(URI.create("ftp://internal-source.local/x"))).isFalse();
+    assertThat(validator.isAllowlisted(URI.create("http://127.0.0.1/"))).isFalse();
+  }
+
+  @Test
+  void anEntryWithAPortOutsideTheRangeAdmitsNothingAndThrowsNothing() {
+    List<String> entries = List.of("localhost:99999999999", "localhost:0", "localhost:65536");
+    TargetAddressValidator validator = enabled(entries);
+
+    assertThat(validator.isAllowlisted(URI.create("http://localhost:8080/"))).isFalse();
+    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost:8080/")))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
+    assertThat(TargetAddressValidator.invalidEntries(entries)).isEqualTo(entries);
+    assertThat(
+            TargetAddressValidator.invalidEntries(List.of("ollama:11434", "ollama", "[::1]:443")))
+        .isEmpty();
   }
 
   @Test

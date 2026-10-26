@@ -31,7 +31,9 @@ paths:
       description: >
         Created inactive; activateLlmModel is the only way a model becomes the systemwide active
         one, so creating and activating are always two distinguishable audit events even in the
-        same request sequence.
+        same request sequence. The address is checked against the address check of models (400):
+        an address in an internal range passes only with its host on the allowlist of models
+        (OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST), never on the one of the sources.
       requestBody:
         required: true
         content:
@@ -67,7 +69,9 @@ paths:
         A full replacement of every editable field except active, which only activateLlmModel
         changes. apiKey follows the three-way convention BrandingUpdateRequest already uses for
         its own optional fields: omitted (null) leaves the stored key unchanged, an empty string
-        clears it, and any other value replaces it.
+        clears it, and any other value replaces it. A baseUrl other than the stored endpoint passes
+        the address check of models first (400), as for createLlmModel; the stored one is kept
+        unchecked.
       requestBody:
         required: true
         content:
@@ -147,7 +151,9 @@ paths:
         works for a draft that has not been saved yet, so the entry is checkable before it is
         stored. When modelId is given and apiKey is omitted, the stored, decrypted key of that
         model is used for the probe instead - the key itself is never accepted back from a client
-        that never had it to begin with.
+        that never had it to begin with. A baseUrl other than the stored endpoint of storedModelId
+        (or modelId) fails the address check of models before anything is sent, as for
+        createLlmModel.
       requestBody:
         required: true
         content:
@@ -183,7 +189,8 @@ paths:
         family, parameter count, context length, capabilities). The stored-key rule is the same as
         for testLlmModel: with modelId and without apiKey, the stored key of that model is used,
         but only when baseUrl is same-origin with the model's own stored baseUrl - otherwise 400
-        before the key is decrypted.
+        before the key is decrypted. The address check of models is the one of testLlmModel; a
+        refused address answers with failure INVALID_ADDRESS.
       requestBody:
         required: true
         content:
@@ -253,8 +260,10 @@ paths:
         Takes effect on every instance without a restart; a change is an audit event with the
         values before and after, the key only as set, changed or removed. apiKey omitted keeps the
         stored key, but only while the base address stays the same endpoint; an empty string
-        removes it. A switched-on role needs address and model. The address is checked against the
-        target address check of the operation (400 with code BLOCKED).
+        removes it. A switched-on role needs address and model. An address other than the stored
+        endpoint is checked against the address check of models, whose allowlist is
+        OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, not the one of the sources (400 with code BLOCKED);
+        the stored endpoint is kept unchecked.
       requestBody:
         required: true
         content:
@@ -280,8 +289,9 @@ paths:
       summary: Probe a rerank endpoint, saved or not yet saved (system admin only)
       description: >
         One rerank request with a single test document. apiKey omitted uses the stored key, only
-        for the stored endpoint (otherwise 400); an empty string sends none. The address is checked
-        against the target address check right before the request; redirects are not followed.
+        for the stored endpoint (otherwise 400); an empty string sends none. An address other than
+        the stored endpoint is checked against the address check of models right before the request
+        (400 with code BLOCKED); redirects are not followed.
       requestBody:
         required: true
         content:
@@ -507,7 +517,16 @@ components:
           description: >
             When set and apiKey is omitted or empty, reuses that model's stored, decrypted key for
             the probe, provided baseUrl is same-origin with the model's own stored baseUrl - 404 if
-            modelId does not exist, 400 if baseUrl is a different origin.
+            modelId does not exist, 400 if baseUrl is a different origin. Without storedModelId it
+            also names the stored endpoint that passes the address check of models unchecked.
+        storedModelId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The model being edited: its stored endpoint passes the address check of models
+            unchecked, so a model stored before the allowlist named its host stays testable. Never
+            supplies a key, so it holds while the removal of the stored key is requested.
         temperature:
           type: number
           format: double
@@ -532,8 +551,8 @@ components:
     LlmModelDiscoveryRequest:
       type: object
       description: >
-        Lists an endpoint's models without requiring the entry to be saved first. apiKey and
-        modelId follow exactly the rules of LlmModelTestRequest.
+        Lists an endpoint's models without requiring the entry to be saved first. apiKey, modelId
+        and storedModelId follow exactly the rules of LlmModelTestRequest.
       required: [baseUrl]
       properties:
         baseUrl:
@@ -555,12 +574,19 @@ components:
           description: >
             When set and apiKey is omitted or empty, reuses that model's stored, decrypted key,
             provided baseUrl is same-origin with the model's own stored baseUrl - 404 if modelId
-            does not exist, 400 if baseUrl is a different origin.
+            does not exist, 400 if baseUrl is a different origin. Without storedModelId it also
+            names the stored endpoint that passes the address check of models unchecked.
+        storedModelId:
+          type: string
+          format: uuid
+          nullable: true
+          description: As in LlmModelTestRequest; never supplies a key.
 
     LlmModelDiscoveryFailure:
       type: string
       description: >
-        Why no model list could be read: INVALID_ADDRESS (not an http(s) URL), UNREACHABLE (DNS,
+        Why no model list could be read: INVALID_ADDRESS (not an http(s) URL, or refused by the
+        address check of models), UNREACHABLE (DNS,
         refused, timeout, TLS), UNAUTHENTICATED (HTTP 401 or 403), NO_MODEL_LIST (the endpoint
         answers but offers no readable model list, e.g. HTTP 404) and UNEXPECTED_RESPONSE (any other
         status, or a list beyond the size limit).

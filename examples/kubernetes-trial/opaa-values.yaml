@@ -29,10 +29,11 @@ bootstrap:
   chatModel:
     baseUrl: http://ollama.opaa-trial-services.svc.cluster.local:11434/v1
 
-# The installation checks the addresses of chat and embedding model like a source; Ollama is a
-# cluster address. Listed here, it is also a permitted target of the connectors.
+# The installation checks the addresses of chat and embedding model against the allowlist of
+# models; Ollama is a cluster address. The chart adds host and port of both models itself; the
+# entry stays for models added later in the administration on the same server.
 targetValidation:
-  indexingAllowlist:
+  modelAllowlist:
     - ollama.opaa-trial-services.svc.cluster.local:11434
 
 # Created by trial.sh with generated keys; never part of this file.

@@ -184,10 +184,11 @@ sudo chown 65532:65532 installation/admin-password && sudo chmod 0400 installati
 ```
 
 In `.env.docker` die Zeile `OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json`
-einkommentieren und den Stapel starten. Die Installation prüft die Adressen der Modelle wie eine
-Quelle; das Ollama des Stapels braucht deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-([Installation](installation.md#schritte)). Damit ist `ollama` zugleich ein erlaubtes Ziel der
-Konnektoren ([Modelle](modelle.md#chat-modelle-in-der-oberfläche-anlegen)). Das Passwort steht nie in der JSON-Datei, sondern nur in der
+einkommentieren und den Stapel starten. Die Installation prüft die Adressen der Modelle; das Ollama
+des Stapels braucht `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, wie es
+`.env.docker.example` setzt ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)),
+nicht in der Liste der Quellen.
+Das Passwort steht nie in der JSON-Datei, sondern nur in der
 Datei, auf die `passwordFile` zeigt; Zugangsschlüssel der Modelle ebenso über `apiKeyFile`. Das
 erste Konto muss sein Passwort bei der ersten Anmeldung wechseln, solange `requirePasswordChange`
 nicht `false` ist; danach gilt das Passwort der Datei nicht mehr. Nach dem Abschluss übergeht OPAA die Antwortdatei; Passwortdatei und Schlüssel lassen sich dann
@@ -248,7 +249,10 @@ docker compose --profile ollama up --build
 
 - **`ollama`** ist der Server, mit dem Volume `opaa-ollama-data` für die Modelle. Er veröffentlicht
   keinen Host-Port; Backend und Init-Schritt erreichen ihn im Compose-Netz unter dem Namen `ollama`,
-  auf den die Modelladresse im Profil `docker` bereits zeigt. Der auskommentierte `ports`-Eintrag
+  auf den die Modelladresse im Profil `docker` bereits zeigt. Die Adressprüfung der Modelle lässt
+  ihn nur mit dem Eintrag `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` durch, den
+  `.env.docker.example` setzt; fehlt er in der eigenen `.env.docker`, lehnen Installation und
+  Modellverwaltung die Vorlage `http://ollama:11434/v1` ab. Der auskommentierte `ports`-Eintrag
   bindet, falls aktiviert, nur an `127.0.0.1`.
 - **`ollama-pull`** zieht `bge-m3` (Einbettung) und `phi3:mini` (Chat) und beendet sich. Beide sind
   nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell
@@ -659,6 +663,8 @@ Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberflä
    `OPAA_PGVECTOR_DIMENSIONS` wirken nicht mehr und können entfallen; der Start warnt je Variable.
    Liegt ein Anbieter auf einer internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Host und
    Port in `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`; bisher gab die Adresse aus `OPAA_OIDC_*` sie frei.
+   Interne Modell-Hosts gehören mit Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, nicht in die
+   Liste der Quellen ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
    Ein Update von `v0.1.0-rc.4` setzt die Datenbank neu auf (Release-Notizen) und installiert danach
    über Antwortdatei oder Assistent.
 3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen**, sobald ein Proxy vor dem Backend steht — und der

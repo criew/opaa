@@ -283,10 +283,12 @@ ingress:
   muss sie niemand. `embedding.dimensions` ist ohne Wirkung und wird nur noch angenommen, damit
   ältere Werte-Dateien weiter rendern. Ein späterer Wechsel des Modells verlangt eine Neueinbettung
   aus der Administration ([Modell wechseln](modelle.md#modell-wechseln)).
-- **Interne Modell-Hosts** gehören mit Port in `targetValidation.indexingAllowlist`, etwa
-  `ollama.ai.svc.cluster.local:11434`, weil die Installation die Adressen der Modelle wie Quellen
-  prüft. Ein Eintrag dort ist zugleich ein erlaubtes Ziel der Konnektoren
-  ([Modelle](modelle.md#chat-modelle-in-der-oberfläche-anlegen)).
+- **Interne Modell-Hosts** gehören mit Port in `targetValidation.modelAllowlist`, etwa
+  `ollama.ai.svc.cluster.local:11434`, nicht in die Liste der Quellen. Host und Port von
+  `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` trägt der Chart selbst und dauerhaft ein,
+  auch nach der Installation; die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port.
+  Nötig ist ein Eintrag für Modelle auf anderen Hosts, die die Verwaltung später anlegt, etwa Rerank-
+  und Transkriptionsmodell ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
 - `bootstrap.*` ist die **Antwortdatei** der [Installation](installation.md): Mit
   `bootstrap.initialAdmin.email` rendert der Chart sie, und der erste Start richtet OPAA daraus ein
   (siehe [7. Installation und erste Anmeldung](#7-installation-und-erste-anmeldung)). Ohne die
@@ -652,7 +654,8 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `rerank.probeInterval` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_PROBE_INTERVAL` | Abstand der Erreichbarkeitsprüfung ohne Fragen; bei einem bezahlten Endpunkt groß wählen, etwa `24h` |
 | `transcription.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei. Endpunkt, Modell, Schlüssel und Sprache pflegt die Systemverwaltung unter Modelle → Spracheingabe, den Rerank-Endpunkt unter Modelle → Reranking |
 | `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
-| `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Quellen und Modelle, die die Adressprüfung passieren dürfen, am besten als `host:port`; ein Modell-Host ist damit auch ein erlaubtes Ziel der Konnektoren |
+| `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Quellen, die die Zielprüfung passieren dürfen, am besten als `host:port`; Modell-Hosts gehören nicht hierher |
+| `targetValidation.modelAllowlist` | leer | `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Modell-Endpunkte als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` ergänzt der Chart selbst und dauerhaft, die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Weitere interne Identitätsanbieter als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.oidc` ergänzt der Chart selbst |
 
 ### Funktionen
@@ -696,7 +699,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `bootstrap.oidc.jwkSetUri` | leer | `signIn.oidc.jwkSetUri` | Adresse der Signaturschlüssel, falls das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser |
 | `bootstrap.oidc.displayName` | leer | `signIn.oidc.displayName` | Name des Anbieters auf der Anmeldeseite; leer heißt „Verzeichnisdienst“ |
 | `bootstrap.oidc.authority` | leer | — | ohne Wirkung; wird angenommen, damit bestehende Werte-Dateien gültig bleiben |
-| `bootstrap.chatModel.baseUrl`, `.model` | leer, Pflicht mit Adresse | `chatModel.baseUrl`, `chatModel.model` | das Chat-Modell, mit Zielprüfung und Verbindungstest vor dem Abschluss; ein Modell im Cluster braucht seinen Host in `targetValidation.indexingAllowlist` |
+| `bootstrap.chatModel.baseUrl`, `.model` | leer, Pflicht mit Adresse | `chatModel.baseUrl`, `chatModel.model` | das Chat-Modell, mit Adressprüfung und Verbindungstest vor dem Abschluss; Host und Port trägt der Chart in die Liste der Modelle ein (`targetValidation.modelAllowlist`) |
 | `bootstrap.chatModel.apiKeyInSecret` | `false` | `chatModel.apiKeyFile` | liest den Schlüssel des Chat-Modells aus dem Secret (`installation-chat-api-key`); mit `secrets.chatApiKey` gilt das von selbst |
 | `bootstrap.chatModel.temperature`, `.maxTokens` | leer (Vorgaben der Modellverwaltung) | `chatModel.temperature`, `chatModel.maxTokens` | Temperatur und Antwortlänge |
 | `installationAllowedCidrs` | leer | `OPAA_INSTALLATION_ALLOWED_CIDRS` | Netze, aus denen die Installations-API antwortet; leer heißt ohne Einschränkung |
@@ -1010,13 +1013,14 @@ bootstrap:
     baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
     model: qwen2.5:7b
 targetValidation:
-  indexingAllowlist:
+  modelAllowlist:
     - ollama.ai.svc.cluster.local:11434
 ```
 
-Die Installation prüft die Adressen der Modelle wie Quellen; der Eintrag in
-`targetValidation.indexingAllowlist` gibt den Modellserver frei, mit Port, weil er ihn zugleich als
-Ziel der Konnektoren freigibt ([Modelle](modelle.md#chat-modelle-in-der-oberfläche-anlegen)).
+Die Installation prüft die Adressen der Modelle gegen `targetValidation.modelAllowlist`; Host und
+Port beider Modelle der Antwortdatei trägt der Chart selbst ein, der Eintrag gibt denselben Server
+für Modelle frei, die die Verwaltung später anlegt. Ein Ziel der Konnektoren wird er dadurch nicht
+([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
 
 Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe von
 `embedding.maxInputTokens`. Wer `bge-m3` per Modelfile mit 8.192 Tokens anlegt, setzt

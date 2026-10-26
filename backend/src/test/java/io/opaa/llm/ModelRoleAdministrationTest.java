@@ -12,7 +12,6 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Optional;
@@ -135,7 +134,7 @@ class ModelRoleAdministrationTest {
         mock(RerankClient.class),
         mock(TranscriptionClient.class),
         mock(SettingsEncryptor.class),
-        TargetAddressValidator.disabled(),
+        ModelAddressPolicy.disabled(),
         audit,
         environment,
         mock(ApplicationEventPublisher.class),

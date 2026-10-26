@@ -7,9 +7,10 @@ import org.springframework.core.env.MapPropertySource;
 import org.testcontainers.DockerClientFactory;
 
 /**
- * Registers {@code opaa.indexing.target-validation.allowlist} with the three hosts this suite's own
- * test doubles listen on: the Docker host address (loopback on a plain host, the bridge gateway
- * inside a container), {@code localhost} and {@code 127.0.0.1}.
+ * Registers {@code opaa.indexing.target-validation.allowlist} and {@code
+ * opaa.model.target-validation.allowlist} with the three hosts this suite's own test doubles listen
+ * on: the Docker host address (loopback on a plain host, the bridge gateway inside a container),
+ * {@code localhost} and {@code 127.0.0.1}.
  *
  * <p>Target validation itself stays <b>on</b> - the allowlist matches by host name, never by
  * resolved address, so every refusal a test asserts (a private endpoint, a proxy, a bucket host
@@ -24,6 +25,7 @@ final class OpaaTestTargetAllowlistInitializer
 
   @Override
   public void initialize(ConfigurableApplicationContext applicationContext) {
+    String hosts = DockerClientFactory.instance().dockerHostIpAddress() + ",localhost,127.0.0.1";
     applicationContext
         .getEnvironment()
         .getPropertySources()
@@ -32,7 +34,8 @@ final class OpaaTestTargetAllowlistInitializer
                 "opaaTestTargetAllowlist",
                 Map.of(
                     "opaa.indexing.target-validation.allowlist",
-                    DockerClientFactory.instance().dockerHostIpAddress()
-                        + ",localhost,127.0.0.1")));
+                    hosts,
+                    "opaa.model.target-validation.allowlist",
+                    hosts)));
   }
 }

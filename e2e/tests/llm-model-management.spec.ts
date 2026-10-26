@@ -393,8 +393,7 @@ test.describe('Modellverwaltung (#760) - unabhängige Szenarien', () => {
       timeout: 20_000,
     })
 
-    // Anlegen bleibt trotzdem möglich - der fehlgeschlagene Test allein blockiert nichts. Hier aber
-    // bewusst abgebrochen, damit dieses Szenario kein weiteres, aufzuräumendes Modell hinterlässt.
+    // Abgebrochen, damit dieses Szenario kein weiteres, aufzuräumendes Modell hinterlässt.
     await dialog.getByRole('button', { name: 'Abbrechen' }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible()
   })

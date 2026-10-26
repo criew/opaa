@@ -176,6 +176,7 @@ export default function LlmModelFormDialog({
       baseUrl: baseUrl.trim(),
       apiKey: resolveApiKey(),
       modelId: storedKeyModelId(),
+      storedModelId: model?.id,
     })
   }
 
@@ -228,6 +229,7 @@ export default function LlmModelFormDialog({
         modelIdentifier: modelIdentifier.trim(),
         apiKey: resolveApiKey(),
         modelId: storedKeyModelId(),
+        storedModelId: model?.id,
         temperature: resolveTemperature(),
       })
     } catch (err) {

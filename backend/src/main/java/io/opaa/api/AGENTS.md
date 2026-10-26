@@ -26,7 +26,7 @@ Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schic
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Flyway.
   `PgVectorVersionGuard` verweigert den Start bei pgvector älter als 0.8.0. Ein Wechsel des
   Embedding-Modells verhindert den Start nicht; das erkennt `indexing.chunk.EmbeddingIndexReconciler`.
-  `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit Zugangsdaten.
+  `OpenAiBaseUrlGuard` lehnt eine leere Basis-URL oder eine mit Zugangsdaten ab; `ModelAllowlistStartupWarning` warnt.
   `DatabasePrerequisiteCheck` läuft vor jeder `Flyway`-Bean und bricht ab, wenn pgvector auf
   dem Server nicht installiert ist; den Bericht schreibt `DatabasePrerequisiteFailureAnalyzer`
   (registriert in `META-INF/spring.factories`). Eine Fehlerkette auszuwerten genügt dafür nicht:

@@ -101,13 +101,12 @@ Das Passwort speichert OPAA nur als Hash, den Zugangsschlüssel verschlüsselt m
 Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich bleibt (Schema, Host, Port,
 Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt ihn.
 
-**Zielprüfung der Modelladresse.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
+**Adressprüfung der Modelle.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
 Adressen von Chat- und Embedding-Modell beim Speichern und unmittelbar vor Verbindungstest und
-Probeeinbettung wie die Quellen
-der Wissensbibliotheken: Adressen in internen, Loopback- oder Link-Local-Bereichen werden
-abgelehnt, ohne dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im
-Compose-Stapel, gibt der Betrieb mit seinem Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-frei. Die Probeeinbettung folgt keiner Weiterleitung, wartet höchstens zehn Sekunden, wiederholt
+Probeeinbettung: Adressen in internen, Loopback- oder Link-Local-Bereichen werden abgelehnt, ohne
+dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im Compose-Stapel, gibt der
+Betrieb mit Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` frei (`ollama:11434`); die
+Liste der Quellen gibt kein Modell frei ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)). Die Probeeinbettung folgt keiner Weiterleitung, wartet höchstens zehn Sekunden, wiederholt
 sich nicht und liest nur eine begrenzte Antwort. Zwischen Prüfung und Anfrage löst OPAA den
 Hostnamen erneut auf; wer den Namensdienst des Modells kontrolliert, könnte die Anfrage in diesem
 Moment noch umlenken. Einen festen Endpunkt im eigenen Netz trifft das nicht.
@@ -216,7 +215,7 @@ Prüfungen, alles oder nichts.
 |---|---|---|
 | `503`, Code `INSTALLATION_PENDING` | Die Instanz ist nicht eingerichtet | Installation abschließen |
 | `401` „Das Installations-Token fehlt oder ist ungültig." | Token fehlt oder falsch | Token aus dem Log oder `OPAA_INSTALLATION_TOKEN` nehmen |
-| `400` am Feld Basis-Adresse mit Hinweis auf `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | die Modelladresse liegt in einem gesperrten Bereich | Host in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` freigeben |
+| `400` am Feld Basis-Adresse mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | die Modelladresse liegt in einem gesperrten Bereich | Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` freigeben |
 | `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |

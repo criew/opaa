@@ -104,7 +104,8 @@ In der eigenen `.env.docker` zusätzlich setzen:
 SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json
 OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST=localhost:8180,keycloak:8180
-OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore,ollama
+OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore
+OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST=ollama:11434
 OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
@@ -128,8 +129,9 @@ Herkunft und Zwang jeder einzelnen Variable:
   #1534), den gebündelten Keycloak als Anbieter „Verzeichnisdienst", das Chat-Modell `phi3:mini` und
   das Embedding-Modell `bge-m3`, beide auf dem `ollama` des Stapels. Issuer und JWK-Set des Keycloak
   liegen auf internen Adressen, deshalb `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` mit Host und Port;
-  die Modelle auf `ollama` ebenso, deshalb `ollama` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`.
-  Dieser Eintrag gibt `ollama` zugleich als Ziel der Konnektoren frei. `requirePasswordChange` ist
+  die Modelle auf `ollama` ebenso, deshalb `ollama:11434` in der eigenen Liste der Modelle
+  `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`. Sie gibt `ollama` nicht als Ziel der Konnektoren frei,
+  und die Liste der Quellen nennt `ollama` nicht. `requirePasswordChange` ist
   `false`, weil der Seed sich mit dem Passwort der Datei anmeldet; nach dem Seed das Passwort in der
   Oberfläche ändern und `installation/admin-password` löschen. Seit diesem Stand
   wird der Keycloak-Nutzer `demo-admin` **nicht mehr von selbst** `SYSTEM_ADMIN`; Schritt 1 des Seeds
@@ -1090,7 +1092,7 @@ ausdrücklich benannt wird:
 | | Anbieter | Modell | Anmerkung |
 |---|---|---|---|
 | **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — der einzige Anbindungsweg für beide Funktionen (siehe [„LLM-Anbieter"](../docs/handbuch/betrieb/modelle.md#llm-anbieter)). Kommt aus der Installation: `demo/installation.testinstanz.json` nennt `https://api.anthropic.com/v1` und `claude-haiku-4-5`, den Schlüssel liest sie aus `installation/chat-api-key` (`apiKeyFile`); danach führt ihn die Modellverwaltung. |
-| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg. Kommt ebenfalls aus der Antwortdatei: `http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama`) und `nomic-embed-text`; die Probeeinbettung legt 768 Dimensionen fest. `host.docker.internal` steht deshalb in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`. |
+| **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg. Kommt ebenfalls aus der Antwortdatei: `http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama`) und `nomic-embed-text`; die Probeeinbettung legt 768 Dimensionen fest. `host.docker.internal:11434` steht deshalb in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`. |
 
 **Neu aufsetzen der Testinstanz** (`down -v`, danach der Seed) wie oben unter „Installation mit
 einem Befehl", mit dieser Antwortdatei statt `demo/installation.demo.json`:
@@ -1103,8 +1105,8 @@ sudo chown 65532:65532 installation/admin-password installation/chat-api-key
 sudo chmod 0400 installation/admin-password installation/chat-api-key
 ```
 
-In `.env.docker` zusätzlich `host.docker.internal` an `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-anhängen. Nach dem Seed das Passwort des Notanker-Kontos in der Oberfläche ändern und beide Dateien
+In `.env.docker` zusätzlich `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST=host.docker.internal:11434`
+setzen (statt `ollama:11434`). Nach dem Seed das Passwort des Notanker-Kontos in der Oberfläche ändern und beide Dateien
 löschen; OPAA liest sie nach der Installation nicht mehr.
 
 Zwei Punkte dazu:
