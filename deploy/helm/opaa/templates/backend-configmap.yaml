@@ -48,13 +48,6 @@ data:
   {{- with .Values.embedding.maxInputTokens }}
   OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS: {{ . | quote }}
   {{- end }}
-  OPAA_RERANK_ENABLED: {{ .Values.rerank.enabled | quote }}
-  {{- with .Values.rerank.baseUrl }}
-  OPAA_RERANK_BASE_URL: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.rerank.model }}
-  OPAA_RERANK_MODEL: {{ . | quote }}
-  {{- end }}
   {{- with .Values.rerank.timeout }}
   OPAA_RERANK_TIMEOUT: {{ . | quote }}
   {{- end }}
@@ -87,16 +80,6 @@ data:
   OPAA_SIEM_EXPORT_INCLUDE_LABELS: {{ .Values.siemExport.includeLabels | quote }}
   {{- with .Values.siemExport.timeout }}
   OPAA_SIEM_EXPORT_TIMEOUT: {{ . | quote }}
-  {{- end }}
-  OPAA_TRANSCRIPTION_ENABLED: {{ .Values.transcription.enabled | quote }}
-  {{- with .Values.transcription.baseUrl }}
-  OPAA_TRANSCRIPTION_BASE_URL: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.transcription.model }}
-  OPAA_TRANSCRIPTION_MODEL: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.transcription.language }}
-  OPAA_TRANSCRIPTION_LANGUAGE: {{ . | quote }}
   {{- end }}
   {{- with .Values.transcription.maxAudioBytes }}
   OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES: {{ . | quote }}

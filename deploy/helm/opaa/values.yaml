@@ -104,14 +104,9 @@ embedding:
   # limit is embedded alone and split when the endpoint proves it too long.
   maxInputTokens: null
 
-# Rerank endpoint (POST {baseUrl}/rerank), read on every start. The key, if needed, comes from the
-# secret (key OPAA_RERANK_API_KEY).
+# Load limits of the rerank model role. Switch, endpoint, model and key are set by the system
+# administration under Modelle > Reranking (ADR-0060, Entscheidung 10).
 rerank:
-  enabled: false
-  # Without the path /rerank and without credentials in the address, e.g. http://reranker.ai:80
-  baseUrl: ""
-  # e.g. BAAI/bge-reranker-v2-m3
-  model: ""
   # Budget of one rerank request; empty keeps the application default (240s).
   timeout: ""
   # Longest gap without an answer before the endpoint is probed with a real, billable request
@@ -135,18 +130,10 @@ siemExport:
   # Budget of one delivery; empty keeps the default (30s).
   timeout: ""
 
-# Transcription endpoint for dictation in the chat (OpenAI-compatible: POST
-# {baseUrl}/audio/transcriptions, GET {baseUrl}/models), read on every start. The key, if needed,
-# comes from the secret (key OPAA_TRANSCRIPTION_API_KEY). Recordings are passed through, never
-# stored.
+# Load limits of the transcription model role (dictation in the chat). Switch, endpoint, model, key
+# and language are set by the system administration under Modelle > Spracheingabe. Recordings are
+# passed through, never stored.
 transcription:
-  enabled: false
-  # Without the path /audio/transcriptions and without credentials, e.g. https://stt.example:8000/v1
-  baseUrl: ""
-  # e.g. Systran/faster-whisper-large-v3
-  model: ""
-  # ISO-639-1 code passed on to the endpoint; empty keeps the application default (de).
-  language: ""
   # Largest recording in bytes; empty keeps the application default (10485760).
   maxAudioBytes: ""
   # Budget of one transcription request; empty keeps the application default (120s).
@@ -282,8 +269,8 @@ secrets:
   #   required: OPAA_AUTH_JWT_SECRET, OPAA_DB_PASSWORD, OPAA_CREDENTIALS_ENCRYPTION_KEY,
   #             OPAA_SETTINGS_ENCRYPTION_KEY
   #   required with uploads.store s3: OPAA_UPLOAD_S3_ACCESS_KEY, OPAA_UPLOAD_S3_SECRET_KEY
-  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY, OPAA_RERANK_API_KEY,
-  #             OPAA_TRANSCRIPTION_API_KEY, OPAA_INITIAL_ADMIN_PASSWORD
+  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY,
+  #             OPAA_INITIAL_ADMIN_PASSWORD
   existingSecret: ""
   # Values for a secret created by the chart. The chart never generates a key: a generated key is
   # lost with helm template, in GitOps tools or on reinstallation (ADR-0042, Entscheidung 5).
@@ -298,8 +285,6 @@ secrets:
   s3SecretKey: ""
   embeddingApiKey: ""
   chatApiKey: ""
-  rerankApiKey: ""
-  transcriptionApiKey: ""
   initialAdminPassword: ""
 
 backend:
