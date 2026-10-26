@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-25</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Sonntag, 25. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-24.html" rel="prev" title="Samstag, 24. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/40245346225" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">70</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+43</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">49</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">49</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/3104">#3104</a> feat(library): Quelleinrichtung nach UI-Lab-Variante F umsetzen</span>
+<span class="epic-progress">5 / 5 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Quelleinrichtung nach UI-Lab-Variante F umgesetzt und gemergt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/3123">#3123</a></span>feat(library): Quelleinrichtung im Zeilengerüst nach UI-Lab-Variante F (+7432/−1473, 116 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1296">#1296</a> feat: Audit-Trail-Review: Ereignisvertrag, Integrität und extern anbindbarer Datenstrom</span>
+<span class="epic-progress">6 / 6 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Ereignisvertrag, Prüfsummenkette und ADR zum Revisionsprotokoll abgeschlossen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/3145">#3145</a></span>feat(audit): Ereigniskatalog mit erlaubten Nutzlastschlüsseln und Schemaversion (+2488/−165, 54 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3142">#3142</a></span>feat(audit): Prüfsummenkette je Monat mit Monatssiegel und ADR zum Revisionsprotokoll (+3382/−116, 48 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2146">#2146</a> feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox)</span>
+<span class="epic-progress">19 / 22 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 86%"></div></div>
+<ul><li>OneDrive und SharePoint mit Integration Tests und Oberfläche fertiggestellt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/3181">#3181</a></span>test(sharepoint): Lauf gegen einen echten Mandanten mit Sites.Selected (+451/−12, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3153">#3153</a></span>feat(library): OneDrive als private Bibliothek im Zeilengerüst einrichten (+1790/−32, 29 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1928">#1928</a> feat: UI-Redesign der Admin-Seiten</span>
+<span class="epic-progress">8 / 8 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Betriebsliste: Reiter-Zählung mit einer Abfrage statt drei optimiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/3134">#3134</a></span>perf(succession): Zahl je Reiter der Betriebsliste mit einer Abfrage (+406/−18, 21 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Installationsmodus, Assistent und Einstellungsverwaltung in Datenbank migriert</li><li>Detailansicht Wissensbibliothek nach Variante M umgesetzt</li><li>Chat-Export als Markdown und PDF, Dokumentfilter nach Status implementiert</li><li>E2E-Fehler behoben, Architektur-Befunde adressiert, UI-Lab-Werkzeuge erweitert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/3219">#3219</a></span>fix(library): Name des Anhänge-Schalters beginnt mit sichtbarem Text (+21/−12, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3216">#3216</a></span>fix(e2e): Offline-Suite zählt „Indiziert“ über den gemeinsamen Helfer (+22/−21, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3215">#3215</a></span>fix(chat): Export-Einträge im Chat-Menü nennen ihren sichtbaren Text im zugänglichen Namen (+25/−3, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3213">#3213</a></span>feat(library): Status-Filter im Reiter Dokumente und Fehlerzahl im Kopf (+788/−64, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3206">#3206</a></span>feat(setup): Embedding-Modell im Assistenten, Vektortabelle beim Abschluss (+3662/−504, 108 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3205">#3205</a></span>feat(settings): Revisionsereignisse jeder Einstellung, Export und Import ohne Geheimnisse (+4534/−126, 92 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3203">#3203</a></span>feat(library): Vollabgleich-Rhythmus und Speicherkontingent in der Datenbank statt in der Konfiguration (+2362/−313, 127 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3199">#3199</a></span>feat(installation): Installationsmodus, Token, Installations-API und Antwortdatei (+5403/−103, 84 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3198">#3198</a></span>feat(installation): Browser-Assistent für die Installation (+3174/−7, 48 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3197">#3197</a></span>feat(library): Detailansicht der Wissensbibliothek nach UI-Lab-Variante M (+6539/−3307, 111 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3196">#3196</a></span>fix(indexing): S3- und Confluence-Verbindungstest melden Netz- und TLS-Fehler nicht als abgelehnte Anmeldung (+336/−50, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3188">#3188</a></span>docs(decisions): ADR-0060 und Spezifikation – schlanke Konfiguration und Einrichtungs-Assistent (#3160) (+871/−7, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3187">#3187</a></span>feat(chat): Chatverlauf als Markdown und PDF exportieren (+2488/−85, 38 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3186">#3186</a></span>feat(library): Dokumentliste nach Indexierungsstatus filtern (+382/−19, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3185">#3185</a></span>test(e2e): Offline-Szenario Verbindungsversuch an Variante F anpassen (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3184">#3184</a></span>fix(indexing): Verbindungstest meldet nur abgelehnte Anmeldung als „Anmeldung abgelehnt“ (+389/−35, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3183">#3183</a></span>fix(e2e): Vorgängerversion der Zwei-Instanzen-Suite frühestens ab Flyway (+7/−5, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3180">#3180</a></span>test(e2e): Assistent erst nach geladenen Quellarten bedienen (+3/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3178">#3178</a></span>refactor(indexing): Datenfluss je Konnektortyp aus dem Descriptor ableiten (+258/−54, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3177">#3177</a></span>refactor(architecture): Clock in per @Bean erzeugten Beans, Ratsche erfasst sie (+292/−77, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3176">#3176</a></span>refactor(common): Helfer für Arbeit am Ende einer Transaktion (+319/−141, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3174">#3174</a></span>feat(ui-lab): Werkzeuge in voller Auflösung und mit Variantenwahl (+129/−80, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3173">#3173</a></span>ci(compliance): Pfadliste um persönliche Audit-Objekte und Instanzzustände ergänzen (+4/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3167">#3167</a></span>docs(ui-lab): Skill in Stufen „schnell“ und „groß“ mit Prototyp statt Screenshot-Matrix (+129/−79, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3166">#3166</a></span>docs(design): Schließen-Kreuz, Wertzeilen, Titelstufe und Filterregel in die Leitlinien (+23/−1, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3161">#3161</a></span>feat(login): Mitgeliefertes Hintergrundbild für die Anmeldeseite (+309/−22, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3158">#3158</a></span>fix(library): Stufen bei fester Adresse ohne „Adresse“, einzigen privaten Zugang vorwählen (+499/−113, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3157">#3157</a></span>feat(ui-lab): Frontend als statischen klickbaren Prototyp bauen (+947/−14, 21 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3155">#3155</a></span>fix(indexing): Lauf beenden, wenn das verbundene Konto mitten im Lauf neu verbunden wird (+381/−7, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3154">#3154</a></span>test(chat): Chunk-Index-Prüfung der Chat-Selbstauskunft deterministisch machen (+16/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3151">#3151</a></span>test(indexing): OneDrive als verbundenes Konto im verdrahteten Kontext prüfen (+766/−12, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3150">#3150</a></span>test(e2e): Suite an die Quelleinrichtung nach Variante F anpassen (+258/−182, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3149">#3149</a></span>fix(ui-lab): Querbögen lesbar bei vielen Arten, JPEG-Aufnahmen (+25/−19, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3148">#3148</a></span>feat(indexing): OneDrive for Business als verbundenes Konto einer Person lesen (+2456/−106, 44 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3146">#3146</a></span>fix(audit): Selbstauskunft findet Besitzerwechsel und Ziel einer Rechteübertragung (+869/−143, 21 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3143">#3143</a></span>fix(ui-lab): Aufnahme wartet auf den Reiter-Unterstrich, E2E vor Umsetzungs-Merge (+32/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3141">#3141</a></span>fix(library): Freigabewechsel verlangt neue SMB-Zugangsdaten, SharePoint-Kennungen geprüft (+228/−48, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3138">#3138</a></span>refactor(library): Alten Pfad der Quellformulare nach Variante F entfernen (+74/−8122, 56 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3137">#3137</a></span>fix(update-package): Diagramm-SVGs nach Review nachbessern (+143/−20, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3132">#3132</a></span>fix(indexing): Push-Ereignisse reiht der Kern für die geladene Bibliothek ein (+336/−177, 21 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3131">#3131</a></span>test(migration): Kaltstart-Test migriert ohne Flyway-Baseline (+28/−2, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3130">#3130</a></span>refactor(indexing): Drive-Store von SharePoint für weitere Laufwerksarten öffnen (+412/−124, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3116">#3116</a></span>fix(audit): Besitzerinnen und Besitzer im Protokoll nur per Pseudonym nennen (+142/−24, 12 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-26 um 06:07 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-25T00:00:00 bis 2026-10-25T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
