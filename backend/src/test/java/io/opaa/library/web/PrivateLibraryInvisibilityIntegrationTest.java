@@ -228,6 +228,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getLocalUserChatCleanup",
             "listLlmModels",
             "getEmbeddingInfo",
+            "getRerankModelSettings",
+            "getTranscriptionModelSettings",
             "listOidcProviders",
             "getOidcProvider",
             "getOidcProviderImpact",

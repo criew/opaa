@@ -29,12 +29,12 @@ class RerankModelRoleTest {
   private static final String ENDPOINT = "http://localhost:8081/v1";
   private static final String SECRET_IN_BASE_URL = "benutzer:geheim";
 
-  private static RerankProperties properties(boolean enabled, String baseUrl, String model) {
-    return new RerankProperties(enabled, baseUrl, model, KEY, Duration.ofSeconds(5), null);
-  }
-
   private static RerankModelRole role(RerankClient client, boolean enabled, String url, String m) {
-    return new RerankModelRole(properties(enabled, url, m), client, Clock.systemUTC());
+    return new RerankModelRole(
+        new RerankProperties(Duration.ofSeconds(5), null),
+        () -> new RerankEndpoint(enabled, url, m, KEY),
+        client,
+        Clock.systemUTC());
   }
 
   @Test
@@ -47,7 +47,7 @@ class RerankModelRoleTest {
     assertThat(status.state()).isEqualTo(RerankRoleState.DISABLED);
     assertThat(status.diagnostic()).isNull();
     assertThat(role.usable()).isFalse();
-    verify(client, never()).probe(any());
+    verify(client, never()).probe(any(), any());
   }
 
   @Test
@@ -60,9 +60,9 @@ class RerankModelRoleTest {
     assertThat(status.state()).isEqualTo(RerankRoleState.UNCONFIGURED);
     assertThat(status.baseUrl()).isNull();
     assertThat(status.modelIdentifier()).isNull();
-    assertThat(status.diagnostic()).contains("opaa.rerank.base-url");
+    assertThat(status.diagnostic()).contains("no base URL");
     assertThat(role.usable()).isFalse();
-    verify(client, never()).probe(any());
+    verify(client, never()).probe(any(), any());
   }
 
   /**
@@ -85,8 +85,8 @@ class RerankModelRoleTest {
     assertThat(role.usable()).isFalse();
     assertThat(role.refresh().baseUrl()).isNull();
     assertThat(role.rerank("q", List.of("a"))).isEmpty();
-    verify(client, never()).probe(any());
-    verify(client, never()).rerank(any(), anyString(), any());
+    verify(client, never()).probe(any(), any());
+    verify(client, never()).rerank(any(), any(), anyString(), any());
   }
 
   /** Half a configuration is no configuration: an endpoint without a model cannot be called. */
@@ -113,7 +113,7 @@ class RerankModelRoleTest {
   @Test
   void aBoundRoleWhoseEndpointAnswersIsReadyAfterTheProbe() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
+    when(client.probe(any(), any())).thenReturn(null);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     assertThat(role.refresh().state()).isEqualTo(RerankRoleState.READY);
@@ -125,7 +125,7 @@ class RerankModelRoleTest {
   @Test
   void aBoundRoleWhoseEndpointStaysSilentIsUnreachable() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any()))
+    when(client.probe(any(), any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
@@ -140,7 +140,7 @@ class RerankModelRoleTest {
   @Test
   void neitherTheStatusNorTheUsabilityCheckProbes() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
+    when(client.probe(any(), any())).thenReturn(null);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
     role.refresh();
 
@@ -149,15 +149,15 @@ class RerankModelRoleTest {
       role.usable();
     }
 
-    verify(client, org.mockito.Mockito.times(1)).probe(any());
+    verify(client, org.mockito.Mockito.times(1)).probe(any(), any());
   }
 
   /** A failed call is a state change, not an exception the query has to survive. */
   @Test
   void aFailedCallYieldsNoScoresAndMovesTheRoleToUnreachable() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
-    when(client.rerank(any(), anyString(), any()))
+    when(client.probe(any(), any())).thenReturn(null);
+    when(client.rerank(any(), any(), anyString(), any()))
         .thenThrow(new RerankUnavailableException("endpoint not reachable"));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
     role.refresh();
@@ -176,8 +176,8 @@ class RerankModelRoleTest {
   @Test
   void aTimedOutCallMovesTheRoleToUnreachableButMarksItAsTimedOut() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
-    when(client.rerank(any(), anyString(), any()))
+    when(client.probe(any(), any())).thenReturn(null);
+    when(client.rerank(any(), any(), anyString(), any()))
         .thenThrow(new RerankClient.RerankTimeoutException("request timed out", null));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
     role.refresh();
@@ -192,7 +192,8 @@ class RerankModelRoleTest {
   @Test
   void aProbeThatTimesOutMarksTheStatusAsTimedOut() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(new RerankClient.ProbeFailure("request timed out", true));
+    when(client.probe(any(), any()))
+        .thenReturn(new RerankClient.ProbeFailure("request timed out", true));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     RerankRoleStatus status = role.refresh();
@@ -204,7 +205,8 @@ class RerankModelRoleTest {
   @Test
   void aSuccessfulCallReturnsTheScoresAndKeepsTheRoleReady() {
     RerankClient client = mock(RerankClient.class);
-    when(client.rerank(any(), anyString(), any())).thenReturn(List.of(new ScoredCandidate(0, 1.0)));
+    when(client.rerank(any(), any(), anyString(), any()))
+        .thenReturn(List.of(new ScoredCandidate(0, 1.0)));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     assertThat(role.rerank("Frage", List.of("a"))).containsExactly(new ScoredCandidate(0, 1.0));
@@ -217,7 +219,7 @@ class RerankModelRoleTest {
     RerankClient client = mock(RerankClient.class);
 
     assertThat(role(client, false, ENDPOINT, "m").rerank("Frage", List.of("a"))).isEmpty();
-    verify(client, never()).rerank(any(), anyString(), any());
+    verify(client, never()).rerank(any(), any(), anyString(), any());
   }
 
   /**
@@ -229,7 +231,7 @@ class RerankModelRoleTest {
   void aFailedCallIsCountedAndStaysCountedAfterTheRoleRecovers() {
     RerankClient client = mock(RerankClient.class);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
-    when(client.rerank(any(), anyString(), any()))
+    when(client.rerank(any(), any(), anyString(), any()))
         .thenThrow(new RerankUnavailableException("connection refused"))
         .thenReturn(List.of(new ScoredCandidate(0, 1.0)));
 
@@ -249,7 +251,7 @@ class RerankModelRoleTest {
   void anEmptyRankingForANonEmptyRequestCountsAsDegradedToo() {
     RerankClient client = mock(RerankClient.class);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
-    when(client.rerank(any(), anyString(), any())).thenReturn(List.of());
+    when(client.rerank(any(), any(), anyString(), any())).thenReturn(List.of());
 
     assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
 
@@ -261,7 +263,8 @@ class RerankModelRoleTest {
 
   private static RerankModelRole scheduledRole(RerankClient client, MutableClock clock) {
     return new RerankModelRole(
-        new RerankProperties(true, ENDPOINT, "m", KEY, Duration.ofSeconds(5), PROBE_INTERVAL),
+        new RerankProperties(Duration.ofSeconds(5), PROBE_INTERVAL),
+        () -> new RerankEndpoint(true, ENDPOINT, "m", KEY),
         client,
         clock);
   }
@@ -273,8 +276,9 @@ class RerankModelRoleTest {
   @Test
   void realCallsWithinTheProbeIntervalReplaceTheScheduledProbe() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
-    when(client.rerank(any(), anyString(), any())).thenReturn(List.of(new ScoredCandidate(0, 1.0)));
+    when(client.probe(any(), any())).thenReturn(null);
+    when(client.rerank(any(), any(), anyString(), any()))
+        .thenReturn(List.of(new ScoredCandidate(0, 1.0)));
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     RerankModelRole role = scheduledRole(client, clock);
     role.refresh();
@@ -285,25 +289,25 @@ class RerankModelRoleTest {
       role.probePeriodically();
     }
 
-    verify(client, times(1)).probe(any());
+    verify(client, times(1)).probe(any(), any());
     assertThat(role.usable()).isTrue();
   }
 
   @Test
   void theScheduleProbesOnceTheLastResultIsOlderThanTheProbeInterval() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
+    when(client.probe(any(), any())).thenReturn(null);
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     RerankModelRole role = scheduledRole(client, clock);
     role.refresh();
 
     clock.advance(PROBE_INTERVAL.minusSeconds(1));
     role.probePeriodically();
-    verify(client, times(1)).probe(any());
+    verify(client, times(1)).probe(any(), any());
 
     clock.advance(Duration.ofSeconds(1));
     role.probePeriodically();
-    verify(client, times(2)).probe(any());
+    verify(client, times(2)).probe(any(), any());
   }
 
   /**
@@ -313,7 +317,7 @@ class RerankModelRoleTest {
   @Test
   void anUnreachableRoleRetriesSoonAndReturnsToReady() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any()))
+    when(client.probe(any(), any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false))
         .thenReturn(null);
@@ -324,29 +328,29 @@ class RerankModelRoleTest {
 
     clock.advance(RerankModelRole.RETRY_INTERVAL.minusSeconds(1));
     role.probePeriodically();
-    verify(client, times(1)).probe(any());
+    verify(client, times(1)).probe(any(), any());
 
     clock.advance(Duration.ofSeconds(1));
     role.probePeriodically();
-    verify(client, times(2)).probe(any());
+    verify(client, times(2)).probe(any(), any());
     assertThat(role.usable()).isFalse();
 
     clock.advance(RerankModelRole.RETRY_INTERVAL);
     role.probePeriodically();
-    verify(client, times(3)).probe(any());
+    verify(client, times(3)).probe(any(), any());
     assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.READY);
 
     clock.advance(RerankModelRole.RETRY_INTERVAL);
     role.probePeriodically();
-    verify(client, times(3)).probe(any());
+    verify(client, times(3)).probe(any(), any());
   }
 
   /** A real call that failed puts the role into the same short retry as a failed probe. */
   @Test
   void aFailedRealCallIsFollowedByARetryWithinTheRetryInterval() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
-    when(client.rerank(any(), anyString(), any()))
+    when(client.probe(any(), any())).thenReturn(null);
+    when(client.rerank(any(), any(), anyString(), any()))
         .thenThrow(new RerankUnavailableException("connection refused"));
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     RerankModelRole role = scheduledRole(client, clock);
@@ -357,7 +361,7 @@ class RerankModelRoleTest {
     clock.advance(RerankModelRole.RETRY_INTERVAL);
     role.probePeriodically();
 
-    verify(client, times(2)).probe(any());
+    verify(client, times(2)).probe(any(), any());
     assertThat(role.usable()).isTrue();
   }
 
@@ -367,45 +371,47 @@ class RerankModelRoleTest {
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     RerankModelRole role =
         new RerankModelRole(
-            new RerankProperties(false, ENDPOINT, "m", KEY, Duration.ofSeconds(5), null),
+            new RerankProperties(Duration.ofSeconds(5), null),
+            () -> new RerankEndpoint(false, ENDPOINT, "m", KEY),
             client,
             clock);
 
     clock.advance(Duration.ofDays(1));
     role.probePeriodically();
 
-    verify(client, never()).probe(any());
+    verify(client, never()).probe(any(), any());
   }
 
   /** A probe interval shorter than the retry interval also shortens the retry. */
   @Test
   void aProbeIntervalBelowTheRetryIntervalShortensTheRetry() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any()))
+    when(client.probe(any(), any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     Duration shortInterval = Duration.ofSeconds(30);
     RerankModelRole role =
         new RerankModelRole(
-            new RerankProperties(true, ENDPOINT, "m", KEY, Duration.ofSeconds(5), shortInterval),
+            new RerankProperties(Duration.ofSeconds(5), shortInterval),
+            () -> new RerankEndpoint(true, ENDPOINT, "m", KEY),
             client,
             clock);
     role.refresh();
 
     clock.advance(shortInterval.minusSeconds(1));
     role.probePeriodically();
-    verify(client, times(1)).probe(any());
+    verify(client, times(1)).probe(any(), any());
 
     clock.advance(Duration.ofSeconds(1));
     role.probePeriodically();
-    verify(client, times(2)).probe(any());
+    verify(client, times(2)).probe(any(), any());
   }
 
   /** Nothing to score means no contact with the endpoint, so it must not postpone the probe. */
   @Test
   void aCallWithoutCandidatesIsNoSignOfLife() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
+    when(client.probe(any(), any())).thenReturn(null);
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     RerankModelRole role = scheduledRole(client, clock);
     role.refresh();
@@ -415,8 +421,8 @@ class RerankModelRoleTest {
     clock.advance(Duration.ofMinutes(1));
     role.probePeriodically();
 
-    verify(client, never()).rerank(any(), anyString(), any());
-    verify(client, times(2)).probe(any());
+    verify(client, never()).rerank(any(), any(), anyString(), any());
+    verify(client, times(2)).probe(any(), any());
     assertThat(role.degradedCallCount()).isZero();
   }
 
@@ -424,7 +430,7 @@ class RerankModelRoleTest {
   @Test
   void aClockSteppedBackDoesNotPostponeTheProbe() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any())).thenReturn(null);
+    when(client.probe(any(), any())).thenReturn(null);
     MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
     RerankModelRole role = scheduledRole(client, clock);
     role.refresh();
@@ -432,13 +438,13 @@ class RerankModelRoleTest {
     clock.advance(Duration.ofHours(-6));
     role.probePeriodically();
 
-    verify(client, times(2)).probe(any());
+    verify(client, times(2)).probe(any(), any());
   }
 
   @Test
   void noStateEverCarriesTheAccessKey() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probe(any()))
+    when(client.probe(any(), any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankModelRole unreachable = role(client, true, ENDPOINT, "m");
     unreachable.refresh();

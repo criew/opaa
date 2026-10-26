@@ -38,6 +38,17 @@ class RerankClientTest {
   private String baseUrl;
   private RerankClient client;
 
+  /** An endpoint with the budget of one call. */
+  private record Call(RerankEndpoint endpoint, Duration timeout) {}
+
+  private List<ScoredCandidate> rerank(Call call, String query, List<String> documents) {
+    return client.rerank(call.endpoint(), call.timeout(), query, documents);
+  }
+
+  private RerankClient.ProbeFailure probe(Call call) {
+    return client.probe(call.endpoint(), call.timeout());
+  }
+
   @BeforeEach
   void setUp() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -51,8 +62,9 @@ class RerankClientTest {
     server.stop(0);
   }
 
-  private RerankProperties properties(String apiKey) {
-    return new RerankProperties(true, baseUrl, "bge-reranker", apiKey, Duration.ofSeconds(5), null);
+  private Call properties(String apiKey) {
+    return new Call(
+        new RerankEndpoint(true, baseUrl, "bge-reranker", apiKey), Duration.ofSeconds(5));
   }
 
   private void respond(String body, AtomicReference<String> capturedBody) {
@@ -83,7 +95,7 @@ class RerankClientTest {
         requestBody);
 
     List<ScoredCandidate> scored =
-        client.rerank(properties(""), "Gebührensatzung", List.of("erster Text", "zweiter Text"));
+        rerank(properties(""), "Gebührensatzung", List.of("erster Text", "zweiter Text"));
 
     assertThat(scored).containsExactly(new ScoredCandidate(1, 0.9), new ScoredCandidate(0, 0.1));
     assertThat(requestBody.get()).contains("\"model\":\"bge-reranker\"");
@@ -96,7 +108,7 @@ class RerankClientTest {
   void readsTheBareArrayResponseShapeToo() {
     respond("[{\"index\":0,\"score\":2.5},{\"index\":1,\"score\":-1.0}]", new AtomicReference<>());
 
-    List<ScoredCandidate> scored = client.rerank(properties(""), "Frage", List.of("a", "b"));
+    List<ScoredCandidate> scored = rerank(properties(""), "Frage", List.of("a", "b"));
 
     assertThat(scored).containsExactly(new ScoredCandidate(0, 2.5), new ScoredCandidate(1, -1.0));
   }
@@ -106,7 +118,7 @@ class RerankClientTest {
   void sortsByDescendingScore() {
     respond("[{\"index\":0,\"score\":0.2},{\"index\":1,\"score\":0.8}]", new AtomicReference<>());
 
-    assertThat(client.rerank(properties(""), "Frage", List.of("a", "b")))
+    assertThat(rerank(properties(""), "Frage", List.of("a", "b")))
         .extracting(ScoredCandidate::index)
         .containsExactly(1, 0);
   }
@@ -116,7 +128,7 @@ class RerankClientTest {
   void dropsScoresForIndexesOutsideTheRequestedRange() {
     respond("[{\"index\":0,\"score\":0.2},{\"index\":7,\"score\":0.9}]", new AtomicReference<>());
 
-    assertThat(client.rerank(properties(""), "Frage", List.of("a", "b")))
+    assertThat(rerank(properties(""), "Frage", List.of("a", "b")))
         .containsExactly(new ScoredCandidate(0, 0.2));
   }
 
@@ -126,7 +138,7 @@ class RerankClientTest {
     AtomicReference<String> authorization = new AtomicReference<>();
     respond("[{\"index\":0,\"score\":1.0}]", requestBody, authorization);
 
-    client.rerank(properties("s3cret-key"), "Frage", List.of("a"));
+    rerank(properties("s3cret-key"), "Frage", List.of("a"));
 
     assertThat(authorization.get()).isEqualTo("Bearer s3cret-key");
     assertThat(requestBody.get()).doesNotContain("s3cret");
@@ -141,7 +153,7 @@ class RerankClientTest {
           exchange.close();
         });
 
-    assertThatThrownBy(() -> client.rerank(properties("s3cret-key"), "Frage", List.of("a")))
+    assertThatThrownBy(() -> rerank(properties("s3cret-key"), "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class)
         .hasMessageContaining("HTTP 401")
         .hasMessageNotContaining("s3cret");
@@ -151,7 +163,7 @@ class RerankClientTest {
   void anUnparsableResponseIsReportedAsUnavailable() {
     respond("{\"unexpected\":true}", new AtomicReference<>());
 
-    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a")))
+    assertThatThrownBy(() -> rerank(properties(""), "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class)
         .hasMessageContaining("no result list");
   }
@@ -159,10 +171,10 @@ class RerankClientTest {
   @Test
   void aRefusedConnectionIsReportedAsUnavailableButNotAsATimeout() {
     // Port 1 on loopback: nothing listens there, and no DNS lookup is involved.
-    RerankProperties unreachable =
-        new RerankProperties(true, "http://127.0.0.1:1/v1", "m", "", Duration.ofSeconds(2), null);
+    Call unreachable =
+        new Call(new RerankEndpoint(true, "http://127.0.0.1:1/v1", "m", ""), Duration.ofSeconds(2));
 
-    RerankClient.ProbeFailure failure = client.probe(unreachable);
+    RerankClient.ProbeFailure failure = probe(unreachable);
 
     assertThat(failure).isNotNull();
     assertThat(failure.message()).isNotBlank();
@@ -173,7 +185,7 @@ class RerankClientTest {
   void aReachableEndpointProbesWithoutAFailure() {
     respond("[{\"index\":0,\"score\":1.0}]", new AtomicReference<>());
 
-    assertThat(client.probe(properties(""))).isNull();
+    assertThat(probe(properties(""))).isNull();
   }
 
   /**
@@ -197,13 +209,13 @@ class RerankClientTest {
             out.write(response);
           }
         });
-    RerankProperties slow =
-        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(50), null);
+    Call slow =
+        new Call(new RerankEndpoint(true, baseUrl, "bge-reranker", ""), Duration.ofMillis(50));
 
-    assertThatThrownBy(() -> client.rerank(slow, "Frage", List.of("a")))
+    assertThatThrownBy(() -> rerank(slow, "Frage", List.of("a")))
         .isInstanceOf(RerankClient.RerankTimeoutException.class);
 
-    RerankClient.ProbeFailure failure = client.probe(slow);
+    RerankClient.ProbeFailure failure = probe(slow);
     assertThat(failure).isNotNull();
     assertThat(failure.timedOut()).isTrue();
   }
@@ -234,14 +246,14 @@ class RerankClientTest {
             Thread.currentThread().interrupt();
           }
         });
-    RerankProperties stallingBody =
-        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(300), null);
+    Call stallingBody =
+        new Call(new RerankEndpoint(true, baseUrl, "bge-reranker", ""), Duration.ofMillis(300));
 
     assertTimeoutPreemptively(
         Duration.ofSeconds(3),
         () -> {
           Instant start = Instant.now();
-          assertThatThrownBy(() -> client.rerank(stallingBody, "Frage", List.of("a")))
+          assertThatThrownBy(() -> rerank(stallingBody, "Frage", List.of("a")))
               .isInstanceOf(RerankClient.RerankTimeoutException.class);
           assertThat(Duration.between(start, Instant.now())).isLessThan(Duration.ofSeconds(2));
         });
@@ -249,7 +261,7 @@ class RerankClientTest {
 
   @Test
   void anEmptyCandidateListIsNotSentAtAll() {
-    assertThat(client.rerank(properties(""), "Frage", List.of())).isEmpty();
+    assertThat(rerank(properties(""), "Frage", List.of())).isEmpty();
   }
 
   /**
@@ -277,12 +289,12 @@ class RerankClientTest {
           }
         });
 
-    assertThat(client.rerank(properties(""), "Frage", List.of("a")))
+    assertThat(rerank(properties(""), "Frage", List.of("a")))
         .containsExactly(new ScoredCandidate(0, 0.5));
     assertThat(bodies).hasSize(2);
 
     // The learned spelling is reused: the second call costs one request, not two.
-    assertThat(client.rerank(properties(""), "Frage", List.of("a"))).hasSize(1);
+    assertThat(rerank(properties(""), "Frage", List.of("a"))).hasSize(1);
     assertThat(bodies).hasSize(3);
     assertThat(bodies.get(2)).contains("texts");
   }
@@ -314,7 +326,7 @@ class RerankClientTest {
           }
         });
 
-    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a")))
+    assertThatThrownBy(() -> rerank(properties(""), "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class);
   }
 
@@ -324,7 +336,7 @@ class RerankClientTest {
         "{\"results\":[{\"index\":0,\"relevance_score\":0.9},{\"index\":0,\"relevance_score\":0.8}]}",
         new AtomicReference<>());
 
-    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a")))
+    assertThatThrownBy(() -> rerank(properties(""), "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class)
         .hasMessageContaining("2 ranking entries for 1");
   }
@@ -336,7 +348,7 @@ class RerankClientTest {
         "{\"results\":[{\"index\":7,\"relevance_score\":0.9},{\"index\":-1,\"relevance_score\":0.8}]}",
         new AtomicReference<>());
 
-    assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a", "b")))
+    assertThatThrownBy(() -> rerank(properties(""), "Frage", List.of("a", "b")))
         .isInstanceOf(RerankUnavailableException.class)
         .hasMessageContaining("out of range");
   }
@@ -369,10 +381,10 @@ class RerankClientTest {
 
   @Test
   void aBaseUrlWithoutASchemeIsRejected() {
-    RerankProperties noScheme =
-        new RerankProperties(true, "localhost:8080", "m", "", Duration.ofSeconds(2), null);
+    Call noScheme =
+        new Call(new RerankEndpoint(true, "localhost:8080", "m", ""), Duration.ofSeconds(2));
 
-    assertThatThrownBy(() -> client.rerank(noScheme, "Frage", List.of("a")))
+    assertThatThrownBy(() -> rerank(noScheme, "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class)
         .hasMessageContaining("http://");
   }

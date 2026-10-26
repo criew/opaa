@@ -56,7 +56,7 @@ class ConfigurationSettingsTest {
         .contains(
             "spring.ai.openai.chat.model",
             "embedding_model.model_identifier",
-            "opaa.rerank.model",
-            "opaa.transcription.model");
+            "rerank_model.model_identifier",
+            "transcription_model.model_identifier");
   }
 }

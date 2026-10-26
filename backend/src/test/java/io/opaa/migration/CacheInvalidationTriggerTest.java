@@ -77,6 +77,12 @@ class CacheInvalidationTriggerTest extends AbstractBaselineTest {
             + " dimensions, installed_at) VALUES (1, 'http://embedding.example/v1', 'bge-m3',"
             + " 2048, 1024, now())");
     assertThat(received()).containsExactly("embedding-model");
+    execute("INSERT INTO rerank_model (id, enabled, updated_at) VALUES (1, true, now())");
+    assertThat(received()).containsExactly("rerank-model");
+    execute(
+        "INSERT INTO transcription_model (id, enabled, language, updated_at)"
+            + " VALUES (1, false, 'de', now())");
+    assertThat(received()).containsExactly("transcription-model");
   }
 
   @Test

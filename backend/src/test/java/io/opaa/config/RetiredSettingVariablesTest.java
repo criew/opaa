@@ -58,6 +58,23 @@ class RetiredSettingVariablesTest {
                 + " follows the factory default once its period is reached");
   }
 
+  /** A role configured through the former variables goes off with the update - never silently. */
+  @Test
+  void aRetiredModelRoleVariableStillSetIsNamedWithItsTabUnderModels() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_RERANK_MODEL", "bge-reranker")
+            .withProperty("opaa.transcription.enabled", "true")
+            .withProperty("OPAA_RERANK_TIMEOUT", "10s");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_RERANK_MODEL is no longer read and not taken over; set the model role under"
+                + " Administration > Modelle > Reranking - until then the role is off",
+            "OPAA_TRANSCRIPTION_ENABLED is no longer read and not taken over; set the model role"
+                + " under Administration > Modelle > Spracheingabe - until then the role is off");
+  }
+
   @Test
   void theFiveRetiredRetentionVariablesAreKnown() {
     assertThat(RetiredSettingVariables.RETIRED_RETENTION)

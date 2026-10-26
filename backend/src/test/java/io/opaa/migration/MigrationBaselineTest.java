@@ -190,6 +190,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "source_sync_revisits",
             "source_sync_state",
             "embedding_model",
+            "rerank_model",
+            "transcription_model",
             // vector_store is no migration's table: the installation creates it (ADR-0060)
             // connectors
             "rss_feed_state",

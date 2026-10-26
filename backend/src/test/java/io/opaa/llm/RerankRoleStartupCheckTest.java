@@ -28,21 +28,23 @@ class RerankRoleStartupCheckTest {
   @Test
   void aBaseUrlWithCredentialsIsReportedWithoutEverPrintingTheCredentials() {
     RerankClient client = mock(RerankClient.class);
-    RerankProperties properties =
-        new RerankProperties(
+    RerankEndpoint endpoint =
+        new RerankEndpoint(
             true,
             "https://" + SECRET_IN_BASE_URL + "@reranker.example.internal/v1",
             "bge-reranker",
-            "",
-            Duration.ofSeconds(5),
-            null);
+            "");
     // Would the address ever reach the probe, the endpoint answers as unreachable - the branch
     // that writes the endpoint into the log line at ERROR level.
-    when(client.probe(any()))
+    when(client.probe(any(), any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankRoleStartupCheck check =
         new RerankRoleStartupCheck(
-            new RerankModelRole(properties, client, Clock.systemUTC()),
+            new RerankModelRole(
+                new RerankProperties(Duration.ofSeconds(5), null),
+                () -> endpoint,
+                client,
+                Clock.systemUTC()),
             mock(TaskScheduler.class),
             Clock.systemUTC());
 
@@ -51,7 +53,7 @@ class RerankRoleStartupCheckTest {
     assertThat(events).isNotEmpty();
     assertThat(events)
         .allSatisfy(event -> assertThat(event.getFormattedMessage()).doesNotContain("geheim"));
-    verify(client, never()).probe(any());
+    verify(client, never()).probe(any(), any());
   }
 
   private static List<ILoggingEvent> captureWhile(Runnable action) {

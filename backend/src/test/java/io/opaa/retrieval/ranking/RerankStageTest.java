@@ -85,7 +85,7 @@ class RerankStageTest {
 
     assertThat(outcome.state().selection()).isEqualTo(state.selection());
     assertThat(outcome.explanation().status()).isEqualTo(StageStatus.DISABLED);
-    assertThat(outcome.explanation().notes().get(0)).contains("OPAA_RERANK_ENABLED");
+    assertThat(outcome.explanation().notes().get(0)).contains("model administration");
     verify(role, never()).rerank(anyString(), any());
   }
 

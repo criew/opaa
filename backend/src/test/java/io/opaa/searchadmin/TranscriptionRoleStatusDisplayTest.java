@@ -39,9 +39,9 @@ class TranscriptionRoleStatusDisplayTest {
   @Test
   void theSubCasesNameTheirCause() {
     assertThat(shown(TranscriptionRoleState.UNCONFIGURED, false, true).detail())
-        .contains("Anmeldedaten", "OPAA_TRANSCRIPTION_API_KEY");
+        .contains("Anmeldedaten", "Modelle → Spracheingabe");
     assertThat(shown(TranscriptionRoleState.UNCONFIGURED, false, false).detail())
-        .contains("OPAA_TRANSCRIPTION_BASE_URL", "OPAA_TRANSCRIPTION_MODEL");
+        .contains("Modelle → Spracheingabe", "Basis-Adresse oder Modell");
     assertThat(shown(TranscriptionRoleState.UNREACHABLE, true, false).detail())
         .contains("OPAA_TRANSCRIPTION_TIMEOUT");
     assertThat(shown(TranscriptionRoleState.UNREACHABLE, false, false).detail())

@@ -42,7 +42,7 @@ const BACKEND_NOTES = [
   'overall budget top-k 8',
   'deduplicated by chunk id: 150 list entries became 62 distinct candidates',
   'reranking switched off through opaa.query.rerank-candidate-count=0',
-  "reranking switched off through the rerank model role's own switch (opaa.rerank.enabled / OPAA_RERANK_ENABLED)",
+  "reranking switched off through the rerank model role's own switch (model administration)",
   "the rerank model role is switched on but was not usable when this run started - no endpoint or model is configured for it, or its endpoint did not answer; the role's own state says which (RerankRoleStatusProvider#currentStatus)",
   'no candidate reached this stage; there was nothing to rerank',
   'the rerank model role scored nothing; the fused order was kept and capped at top-k 8',

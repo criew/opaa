@@ -37,6 +37,17 @@ class TranscriptionClientTest {
   private TranscriptionClient client;
   private final CountDownLatch release = new CountDownLatch(1);
 
+  /** An endpoint with the budget of one call. */
+  private record Call(TranscriptionEndpoint endpoint, Duration timeout) {}
+
+  private String transcribe(Call call, byte[] audio, TranscriptionAudioFormat format) {
+    return client.transcribe(call.endpoint(), call.timeout(), audio, format);
+  }
+
+  private ProbeFailure probe(Call call) {
+    return client.probe(call.endpoint(), call.timeout());
+  }
+
   @BeforeEach
   void setUp() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -53,12 +64,13 @@ class TranscriptionClientTest {
     client.close();
   }
 
-  private TranscriptionProperties properties(String apiKey, String language, Duration timeout) {
-    return new TranscriptionProperties(
-        true, baseUrl, "whisper-large-v3-turbo", apiKey, language, 1024 * 1024, timeout, 4);
+  private Call properties(String apiKey, String language, Duration timeout) {
+    return new Call(
+        new TranscriptionEndpoint(true, baseUrl, "whisper-large-v3-turbo", apiKey, language),
+        timeout);
   }
 
-  private TranscriptionProperties properties() {
+  private Call properties() {
     return properties("secret-key", "de", Duration.ofSeconds(5));
   }
 
@@ -92,7 +104,7 @@ class TranscriptionClientTest {
     AtomicReference<Captured> captured = new AtomicReference<>();
     respond("/v1/audio/transcriptions", 200, "{\"text\":\"  Hallo Welt \"}", captured);
 
-    String text = client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM);
+    String text = transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM);
 
     assertThat(text).isEqualTo("Hallo Welt");
     Captured request = captured.get();
@@ -113,7 +125,7 @@ class TranscriptionClientTest {
     AtomicReference<Captured> captured = new AtomicReference<>();
     respond("/v1/audio/transcriptions", 200, "{\"text\":\"x\"}", captured);
 
-    client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.MP4);
+    transcribe(properties(), AUDIO, TranscriptionAudioFormat.MP4);
 
     Captured request = captured.get();
     assertThat(request.body()).doesNotContain("name=\"user\"").contains("recording.mp4");
@@ -130,8 +142,7 @@ class TranscriptionClientTest {
     AtomicReference<Captured> captured = new AtomicReference<>();
     respond("/v1/audio/transcriptions", 200, "{\"text\":\"x\"}", captured);
 
-    client.transcribe(
-        properties("", "", Duration.ofSeconds(5)), AUDIO, TranscriptionAudioFormat.WEBM);
+    transcribe(properties("", "", Duration.ofSeconds(5)), AUDIO, TranscriptionAudioFormat.WEBM);
 
     assertThat(captured.get().body()).doesNotContain("name=\"language\"");
     assertThat(captured.get().headers()).doesNotContainKey("Authorization");
@@ -146,7 +157,7 @@ class TranscriptionClientTest {
         "{\"error\":\"could not decode " + SECRET_TEXT + "\"}",
         new AtomicReference<>());
 
-    assertThatThrownBy(() -> client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
+    assertThatThrownBy(() -> transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class)
         .satisfies(e -> assertThat(messagesOf(e)).doesNotContain(SECRET_TEXT, "fake-opus"))
         .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isTrue())
@@ -158,7 +169,7 @@ class TranscriptionClientTest {
     respond(
         "/v1/audio/transcriptions", 200, "{\"text\": \"" + SECRET_TEXT, new AtomicReference<>());
 
-    assertThatThrownBy(() -> client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
+    assertThatThrownBy(() -> transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class)
         .hasNoCause()
         .satisfies(e -> assertThat(messagesOf(e)).doesNotContain(SECRET_TEXT));
@@ -168,7 +179,7 @@ class TranscriptionClientTest {
   void anAnswerWithoutTextIsAFailure() {
     respond("/v1/audio/transcriptions", 200, "{\"segments\":[]}", new AtomicReference<>());
 
-    assertThatThrownBy(() -> client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
+    assertThatThrownBy(() -> transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class)
         .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isTrue())
         .hasMessage("endpoint response contains no text");
@@ -189,7 +200,7 @@ class TranscriptionClientTest {
 
     assertThatThrownBy(
             () ->
-                client.transcribe(
+                transcribe(
                     properties("k", "de", Duration.ofMillis(300)),
                     AUDIO,
                     TranscriptionAudioFormat.WEBM))
@@ -203,7 +214,7 @@ class TranscriptionClientTest {
     AtomicReference<Captured> captured = new AtomicReference<>();
     respond("/v1/models", 200, "{\"data\":[]}", captured);
 
-    ProbeFailure failure = client.probe(properties());
+    ProbeFailure failure = probe(properties());
 
     assertThat(failure).isNull();
     assertThat(captured.get().method()).isEqualTo("GET");
@@ -215,7 +226,7 @@ class TranscriptionClientTest {
   void aRefusedProbeNamesTheStatus() {
     respond("/v1/models", 401, "", new AtomicReference<>());
 
-    ProbeFailure failure = client.probe(properties());
+    ProbeFailure failure = probe(properties());
 
     assertThat(failure).isNotNull();
     assertThat(failure.message()).contains("401");
@@ -226,7 +237,7 @@ class TranscriptionClientTest {
   void aProbeAgainstAClosedPortIsAFailure() {
     server.stop(0);
 
-    assertThat(client.probe(properties())).isNotNull();
+    assertThat(probe(properties())).isNotNull();
   }
 
   private static String messagesOf(Throwable e) {
