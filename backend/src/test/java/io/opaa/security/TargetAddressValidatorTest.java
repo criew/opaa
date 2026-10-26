@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -264,6 +265,18 @@ class TargetAddressValidatorTest {
     assertThatCode(() -> validator.validate(URI.create("http://localhost:8081/")))
         .doesNotThrowAnyException();
     assertThatCode(() -> validator.validateHost("localhost")).doesNotThrowAnyException();
+  }
+
+  @Test
+  void isAllowlistedMatchesNameAndPortWithoutResolvingAndRegardlessOfTheSwitch() {
+    TargetAddressValidator validator =
+        new TargetAddressValidator(false, List.of("ollama:11434", "internal-source.local"));
+
+    assertThat(validator.isAllowlisted(URI.create("http://ollama:11434/v1"))).isTrue();
+    assertThat(validator.isAllowlisted(URI.create("http://ollama:8080/v1"))).isFalse();
+    assertThat(validator.isAllowlisted(URI.create("https://internal-source.local/x"))).isTrue();
+    assertThat(validator.isAllowlisted(URI.create("ftp://internal-source.local/x"))).isFalse();
+    assertThat(validator.isAllowlisted(URI.create("http://127.0.0.1/"))).isFalse();
   }
 
   @Test

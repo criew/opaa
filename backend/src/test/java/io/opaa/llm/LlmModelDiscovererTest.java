@@ -92,7 +92,9 @@ class LlmModelDiscovererTest {
         new SettingsEncryptor(
             new SettingsEncryptionProperties(
                 Base64.getEncoder().encodeToString("0123456789abcdef0123456789abcdef".getBytes())));
-    discoverer = new LlmModelDiscoverer(repository, settingsEncryptor, new ObjectMapper());
+    discoverer =
+        new LlmModelDiscoverer(
+            repository, settingsEncryptor, new ObjectMapper(), ModelAddressPolicy.disabled());
   }
 
   @AfterEach
@@ -316,7 +318,11 @@ class LlmModelDiscovererTest {
     try {
       LlmModelDiscoverer budgeted =
           new LlmModelDiscoverer(
-              repository, settingsEncryptor, new ObjectMapper(), Duration.ofMillis(300));
+              repository,
+              settingsEncryptor,
+              new ObjectMapper(),
+              ModelAddressPolicy.disabled(),
+              Duration.ofMillis(300));
       String ollamaBaseUrl = "http://127.0.0.1:" + ollama.getAddress().getPort() + "/v1";
 
       long start = System.nanoTime();
@@ -358,7 +364,11 @@ class LlmModelDiscovererTest {
     try {
       LlmModelDiscoverer budgeted =
           new LlmModelDiscoverer(
-              repository, settingsEncryptor, new ObjectMapper(), Duration.ofSeconds(20));
+              repository,
+              settingsEncryptor,
+              new ObjectMapper(),
+              ModelAddressPolicy.disabled(),
+              Duration.ofSeconds(20));
       String ollamaBaseUrl = "http://127.0.0.1:" + ollama.getAddress().getPort() + "/v1";
       AtomicReference<ModelDiscovery> result = new AtomicReference<>();
       Thread caller = new Thread(() -> result.set(budgeted.discover(ollamaBaseUrl, null, null)));
@@ -424,6 +434,25 @@ class LlmModelDiscovererTest {
     assertThat(discovery.success()).isFalse();
     assertThat(discovery.failure()).isEqualTo(Failure.UNREACHABLE);
     assertThat(discovery.message()).isNotBlank();
+  }
+
+  @Test
+  void anUnlistedInternalAddressIsRefusedBeforeAnyRequest() {
+    AtomicBoolean reached = new AtomicBoolean();
+    server.createContext("/v1/models", exchange -> reached.set(true));
+    LlmModelDiscoverer strict =
+        new LlmModelDiscoverer(
+            repository,
+            settingsEncryptor,
+            new ObjectMapper(),
+            ModelAddressPolicy.allowing(List.of()));
+
+    ModelDiscovery discovery = strict.discover(baseUrl, null, null);
+
+    assertThat(discovery.success()).isFalse();
+    assertThat(discovery.failure()).isEqualTo(Failure.INVALID_ADDRESS);
+    assertThat(discovery.message()).contains("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST");
+    assertThat(reached).isFalse();
   }
 
   @Test

@@ -10,10 +10,10 @@ import io.opaa.account.PasswordPolicy;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
+import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.security.TargetAddressValidator;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class StepRulesTest {
           encryptor,
           addressPolicy,
           JsonMapper.builder().build(),
-          new TargetAddressValidator(true, List.of("ollama", "ollama.example.org")));
+          ModelAddressPolicy.allowing(List.of("ollama", "ollama.example.org")));
 
   @Test
   void theFirstAccountIsStoredWithItsPasswordHashOnly() {
@@ -180,7 +180,7 @@ class StepRulesTest {
     assertThat(encryptor.decrypt(withNewKey.secret())).isEqualTo("sk-neu");
   }
 
-  // regression guard: the model address of the installation passes the target address check
+  // regression guard: the model address of the installation passes the address check of models
   @Test
   void aModelAddressInABlockedRangeIsAFieldError() {
     for (String blocked :
@@ -197,6 +197,38 @@ class StepRulesTest {
                       .extracting(FieldValidationException.FieldError::field)
                       .containsExactly("chatModel.baseUrl"));
     }
+  }
+
+  @Test
+  void aModelHostIsReleasedOnlyByItsEntryInTheAllowlistOfModels() {
+    StepRules withPort =
+        new StepRules(
+            new PasswordPolicy(() -> 12),
+            encoder,
+            encryptor,
+            addressPolicy,
+            JsonMapper.builder().build(),
+            ModelAddressPolicy.allowing(List.of("127.0.0.1:11434")));
+
+    assertThat(
+            withPort
+                .toStored(
+                    new StepInput.ChatModel("http://127.0.0.1:11434/v1", "qwen", null, null, null),
+                    null,
+                    null)
+                .payload())
+        .contains("127.0.0.1:11434");
+    assertThatThrownBy(
+            () ->
+                withPort.toStored(
+                    new StepInput.EmbeddingModel("http://127.0.0.1:8080/v1", "bge-m3", null, null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors().getFirst().message())
+                    .contains("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST"));
   }
 
   @Test

@@ -12,10 +12,10 @@ import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
+import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
@@ -31,7 +31,7 @@ class StepChecksTest {
   private final SettingsEncryptor encryptor =
       new SettingsEncryptor(
           new SettingsEncryptionProperties("c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="));
-  private final TargetAddressValidator strict = new TargetAddressValidator(true, List.of());
+  private final ModelAddressPolicy strict = ModelAddressPolicy.allowing(List.of());
   private final StepRules rules =
       new StepRules(
           new PasswordPolicy(() -> 12),
@@ -61,7 +61,9 @@ class StepChecksTest {
     StepChecks.Outcome outcome = checks.check(InstallationStep.CHAT_MODEL, payload, null);
 
     assertThat(outcome.succeeded()).isFalse();
-    assertThat(outcome.message()).contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
+    assertThat(outcome.message())
+        .contains("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST")
+        .doesNotContain("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
     verifyNoInteractions(chatTester);
   }
 
@@ -86,7 +88,7 @@ class StepChecksTest {
             mock(OidcProviderConnectionTester.class),
             chatTester,
             encryptor,
-            new TargetAddressValidator(false, List.of()),
+            ModelAddressPolicy.disabled(),
             embeddingModels);
     when(embeddingModels.probe(any(EmbeddingEndpoint.class)))
         .thenReturn(

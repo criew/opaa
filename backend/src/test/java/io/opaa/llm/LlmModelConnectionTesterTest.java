@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,7 +59,9 @@ class LlmModelConnectionTesterTest {
         new SettingsEncryptor(
             new SettingsEncryptionProperties(
                 Base64.getEncoder().encodeToString("0123456789abcdef0123456789abcdef".getBytes())));
-    tester = new LlmModelConnectionTester(repository, settingsEncryptor, new ObjectMapper());
+    tester =
+        new LlmModelConnectionTester(
+            repository, settingsEncryptor, new ObjectMapper(), ModelAddressPolicy.disabled());
   }
 
   @AfterEach
@@ -153,6 +156,43 @@ class LlmModelConnectionTesterTest {
         tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.message()).isEqualTo("Verbindung erfolgreich, Modell hat geantwortet.");
+  }
+
+  @Test
+  void anUnlistedInternalAddressFailsTheTestWithoutAnyRequest() {
+    AtomicBoolean reached = new AtomicBoolean();
+    server.createContext("/v1/chat/completions", exchange -> reached.set(true));
+    LlmModelConnectionTester strict =
+        new LlmModelConnectionTester(
+            repository,
+            settingsEncryptor,
+            new ObjectMapper(),
+            ModelAddressPolicy.allowing(List.of("127.0.0.1:1")));
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        strict.test(baseUrl, "phi3:mini", "sk-draft", null, null);
+
+    assertThat(outcome.success()).isFalse();
+    assertThat(outcome.message()).contains("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST");
+    assertThat(reached).isFalse();
+  }
+
+  @Test
+  void theStoredAddressOfAModelStaysTestableWithoutAnEntry() {
+    respondWith("{}");
+    UUID modelId = UUID.randomUUID();
+    when(repository.findById(modelId))
+        .thenReturn(
+            Optional.of(
+                new LlmModel("Bestand", baseUrl, "phi3:mini", new BigDecimal("0.70"), 2000, null)));
+    LlmModelConnectionTester strict =
+        new LlmModelConnectionTester(
+            repository,
+            settingsEncryptor,
+            new ObjectMapper(),
+            ModelAddressPolicy.allowing(List.of()));
+
+    assertThat(strict.test(baseUrl, "phi3:mini", null, modelId, null).success()).isTrue();
   }
 
   private void respondWith(String json) {

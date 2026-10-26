@@ -76,6 +76,7 @@ class FingerprintKeysTest {
             "opaa.upload.s3.bucket",
             "opaa.indexing.filesystem.allowlist",
             "opaa.indexing.target-validation.allowlist",
+            "opaa.model.target-validation.allowlist",
             "opaa.rate-limit.trusted-proxy-cidrs",
             "opaa.public-base-url",
             "opaa.features.external-access.enabled",
