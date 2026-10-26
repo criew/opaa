@@ -458,11 +458,11 @@ public class SearchStatusService {
           status.baseUrlRejected()
               ? "Reranking ist eingeschaltet, aber die hinterlegte Basis-Adresse enthält"
                   + " Anmeldedaten (Form \"https://benutzer:passwort@host\") und wird deshalb"
-                  + " abgelehnt. Tragen Sie die Adresse ohne Anmeldedaten ein und hinterlegen Sie"
-                  + " den Zugangsschlüssel in OPAA_RERANK_API_KEY. Die Suche läuft weiter - ohne"
+                  + " abgelehnt. Tragen Sie unter Modelle → Reranking die Adresse ohne Anmeldedaten"
+                  + " und den Zugangsschlüssel im eigenen Feld ein. Die Suche läuft weiter - ohne"
                   + " diese Stufe."
-              : "Reranking ist eingeschaltet, aber es ist keine Rerank-Modellrolle hinterlegt. Die"
-                  + " Suche läuft weiter - ohne diese Stufe.";
+              : "Reranking ist eingeschaltet, aber unter Modelle → Reranking fehlen Basis-Adresse"
+                  + " oder Modell. Die Suche läuft weiter - ohne diese Stufe.";
       case UNREACHABLE ->
           status.timedOut()
               ? "Reranking ist eingeschaltet, aber der hinterlegte Endpunkt hat nicht innerhalb"
@@ -502,8 +502,8 @@ public class SearchStatusService {
   private static String transcriptionDetail(TranscriptionRoleStatus status) {
     return switch (status.state()) {
       case DISABLED ->
-          "Die Spracheingabe ist abgeschaltet (OPAA_TRANSCRIPTION_ENABLED oder die Funktion"
-              + " Spracheingabe). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung,"
+          "Die Spracheingabe ist abgeschaltet (Modelle → Spracheingabe oder die Funktion"
+              + " Spracheingabe des Betriebs). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung,"
               + " kein Fehler.";
       case READY ->
           "Die Spracheingabe ist eingeschaltet und der Endpunkt antwortet. Im Chat erscheint das"
@@ -511,12 +511,11 @@ public class SearchStatusService {
       case UNCONFIGURED ->
           status.baseUrlRejected()
               ? "Die Spracheingabe ist eingeschaltet, aber die Basis-Adresse enthält Anmeldedaten"
-                  + " und wird abgelehnt. Tragen Sie die Adresse ohne Anmeldedaten ein und"
-                  + " hinterlegen Sie den Schlüssel in OPAA_TRANSCRIPTION_API_KEY. Bis dahin"
-                  + " erscheint im Chat kein Mikrofon."
-              : "Die Spracheingabe ist eingeschaltet, aber Endpunkt oder Modell fehlen"
-                  + " (OPAA_TRANSCRIPTION_BASE_URL, OPAA_TRANSCRIPTION_MODEL). Bis dahin erscheint"
-                  + " im Chat kein Mikrofon.";
+                  + " und wird abgelehnt. Tragen Sie unter Modelle → Spracheingabe die Adresse ohne"
+                  + " Anmeldedaten und den Schlüssel im eigenen Feld ein. Bis dahin erscheint im"
+                  + " Chat kein Mikrofon."
+              : "Die Spracheingabe ist eingeschaltet, aber unter Modelle → Spracheingabe fehlen"
+                  + " Basis-Adresse oder Modell. Bis dahin erscheint im Chat kein Mikrofon.";
       case UNREACHABLE ->
           status.timedOut()
               ? "Die Spracheingabe ist eingeschaltet, aber der Endpunkt hat nicht innerhalb des"

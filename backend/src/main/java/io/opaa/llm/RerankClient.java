@@ -176,35 +176,39 @@ public class RerankClient {
    *     answers something this method cannot read as a ranking.
    */
   public List<ScoredCandidate> rerank(
-      RerankProperties properties, String query, List<String> documents) {
+      RerankEndpoint endpoint, Duration timeout, String query, List<String> documents) {
     if (documents.isEmpty()) {
       return List.of();
     }
     Dialect known = dialect.get();
     Dialect first = known == null ? Dialect.COHERE : known;
     try {
-      List<ScoredCandidate> scored = send(properties, query, documents, first);
+      List<ScoredCandidate> scored = send(endpoint, timeout, query, documents, first);
       dialect.set(first);
       return scored;
     } catch (SchemaMismatchException e) {
       Dialect fallback = first.other();
-      List<ScoredCandidate> scored = send(properties, query, documents, fallback);
+      List<ScoredCandidate> scored = send(endpoint, timeout, query, documents, fallback);
       dialect.set(fallback);
       return scored;
     }
   }
 
   private List<ScoredCandidate> send(
-      RerankProperties properties, String query, List<String> documents, Dialect dialect) {
-    URI uri = rerankUri(properties.baseUrl());
-    String body = requestBody(properties.model(), query, documents, dialect);
+      RerankEndpoint endpoint,
+      Duration timeout,
+      String query,
+      List<String> documents,
+      Dialect dialect) {
+    URI uri = rerankUri(endpoint.baseUrl());
+    String body = requestBody(endpoint.model(), query, documents, dialect);
     HttpRequest.Builder request =
         HttpRequest.newBuilder(uri)
-            .timeout(properties.timeout())
+            .timeout(timeout)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
-    if (StringUtils.hasText(properties.apiKey())) {
-      request.header("Authorization", "Bearer " + properties.apiKey());
+    if (StringUtils.hasText(endpoint.apiKey())) {
+      request.header("Authorization", "Bearer " + endpoint.apiKey());
     }
 
     // nanoTime, not Instant/currentTimeMillis: a wall-clock jump (e.g. an NTP correction) must not
@@ -221,7 +225,7 @@ public class RerankClient {
           throw new RerankUnavailableException(describeStatus(response.statusCode()));
         }
         Duration elapsed = Duration.ofNanos(System.nanoTime() - callStartNanos);
-        Duration remaining = properties.timeout().minus(elapsed);
+        Duration remaining = timeout.minus(elapsed);
         return parse(readBounded(responseBody, remaining), documents.size());
       }
     } catch (IOException e) {
@@ -248,9 +252,9 @@ public class RerankClient {
    *
    * @return the failure, or {@code null} when the endpoint answered.
    */
-  public ProbeFailure probe(RerankProperties properties) {
+  public ProbeFailure probe(RerankEndpoint endpoint, Duration timeout) {
     try {
-      rerank(properties, "Ping", List.of("Ping"));
+      rerank(endpoint, timeout, "Ping", List.of("Ping"));
       return null;
     } catch (RerankTimeoutException e) {
       return new ProbeFailure(e.getMessage(), true);

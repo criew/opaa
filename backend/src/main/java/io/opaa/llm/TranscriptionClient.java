@@ -114,34 +114,37 @@ public class TranscriptionClient {
    *     answers something without a text.
    */
   public String transcribe(
-      TranscriptionProperties properties, byte[] audio, TranscriptionAudioFormat format) {
-    URI uri = endpointUri(properties.baseUrl(), "/audio/transcriptions");
+      TranscriptionEndpoint endpoint,
+      Duration timeout,
+      byte[] audio,
+      TranscriptionAudioFormat format) {
+    URI uri = endpointUri(endpoint.baseUrl(), "/audio/transcriptions");
     String boundary = "opaa-" + UUID.randomUUID();
     HttpRequest.Builder request =
         HttpRequest.newBuilder(uri)
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-            .POST(multipartBody(boundary, properties, audio, format));
-    authorize(request, properties);
-    byte[] body = withinDeadline(properties.timeout(), () -> send(request.build()));
+            .POST(multipartBody(boundary, endpoint, audio, format));
+    authorize(request, endpoint);
+    byte[] body = withinDeadline(timeout, () -> send(request.build()));
     return parseText(body);
   }
 
   /** Asks {@code GET {baseUrl}/models}; costs nothing and sends no audio. */
-  public ProbeFailure probe(TranscriptionProperties properties) {
+  public ProbeFailure probe(TranscriptionEndpoint endpoint, Duration timeout) {
     try {
-      URI uri = endpointUri(properties.baseUrl(), "/models");
+      URI uri = endpointUri(endpoint.baseUrl(), "/models");
       HttpRequest.Builder request = HttpRequest.newBuilder(uri).GET();
-      authorize(request, properties);
-      withinDeadline(properties.timeout(), () -> send(request.build()));
+      authorize(request, endpoint);
+      withinDeadline(timeout, () -> send(request.build()));
       return null;
     } catch (TranscriptionUnavailableException e) {
       return new ProbeFailure(e.getMessage(), e.timedOut());
     }
   }
 
-  private static void authorize(HttpRequest.Builder request, TranscriptionProperties properties) {
-    if (StringUtils.hasText(properties.apiKey())) {
-      request.header("Authorization", "Bearer " + properties.apiKey());
+  private static void authorize(HttpRequest.Builder request, TranscriptionEndpoint endpoint) {
+    if (StringUtils.hasText(endpoint.apiKey())) {
+      request.header("Authorization", "Bearer " + endpoint.apiKey());
     }
   }
 
@@ -190,13 +193,13 @@ public class TranscriptionClient {
   /** The recording is published from the caller's array itself; no copy of it is made. */
   private static HttpRequest.BodyPublisher multipartBody(
       String boundary,
-      TranscriptionProperties properties,
+      TranscriptionEndpoint endpoint,
       byte[] audio,
       TranscriptionAudioFormat format) {
     ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
-    field(out, boundary, "model", properties.model());
-    if (!properties.language().isEmpty()) {
-      field(out, boundary, "language", properties.language());
+    field(out, boundary, "model", endpoint.model());
+    if (!endpoint.language().isEmpty()) {
+      field(out, boundary, "language", endpoint.language());
     }
     field(out, boundary, "response_format", "json");
     ascii(

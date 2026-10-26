@@ -1,5 +1,6 @@
 package io.opaa.config;
 
+import io.opaa.llm.RetiredModelRoleVariables;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -68,7 +69,20 @@ public class RetiredSettingVariables {
                     + " otherwise deletion follows the factory default once its period is reached");
           }
         });
+    RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.RERANK)
+        .forEach(variable -> messages.add(modelRoleMessage(variable, "Reranking")));
+    RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.TRANSCRIPTION)
+        .forEach(variable -> messages.add(modelRoleMessage(variable, "Spracheingabe")));
     return messages;
+  }
+
+  /** The model roles are never taken over: switched on before, the role is off until set there. */
+  private static String modelRoleMessage(String variable, String tab) {
+    return variable
+        + " is no longer read and not taken over; set the model role under Administration >"
+        + " Modelle > "
+        + tab
+        + " - until then the role is off";
   }
 
   private static Map<String, String> retiredRetention() {

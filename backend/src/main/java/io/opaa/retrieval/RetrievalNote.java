@@ -80,8 +80,7 @@ public enum RetrievalNote {
   RERANK_DISABLED_BY_CANDIDATE_COUNT(
       "reranking switched off through opaa.query.rerank-candidate-count=0"),
   RERANK_DISABLED_BY_ROLE_SWITCH(
-      "reranking switched off through the rerank model role's own switch (opaa.rerank.enabled /"
-          + " OPAA_RERANK_ENABLED)"),
+      "reranking switched off through the rerank model role's own switch (model administration)"),
   RERANK_NOT_USABLE(
       "the rerank model role is switched on but was not usable when this run started - no"
           + " endpoint or model is configured for it, or its endpoint did not answer; the role's"

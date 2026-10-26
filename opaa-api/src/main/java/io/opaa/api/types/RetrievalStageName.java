@@ -97,9 +97,9 @@ public enum RetrievalStageName {
    * {@link #RANK_FUSION} and before {@link #DOCUMENT_COMPLETION}: completion adds sibling chunks of
    * already selected documents and must therefore work on the final ranking.
    *
-   * <p>Off in the shipped configuration ({@code OPAA_RERANK_ENABLED}), and off it is the identity.
-   * Switched on but unusable (role unbound, endpoint silent, call failed), the stage still restores
-   * the {@code top-k} cap and records that it could not rerank, so a broken endpoint costs the
+   * <p>Off by the factory default of the model administration, and off it is the identity. Switched
+   * on but unusable (role unbound, endpoint silent, call failed), the stage still restores the
+   * {@code top-k} cap and records that it could not rerank, so a broken endpoint costs the
    * ordering, never the query. Taking it out through {@code RetrievalPipelineProperties} also takes
    * the widened budget with it ({@code RetrievalContext#withoutReranking()}), so it is the identity
    * there too, whatever {@code QueryProperties#rerankCandidateCount} says.

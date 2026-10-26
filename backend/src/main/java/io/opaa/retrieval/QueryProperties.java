@@ -54,8 +54,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     reranking runs. Default 50. The window does not extend the reach of retrieval - what no
  *     search returned cannot be reranked - so raising it without raising {@link #fetchK} buys
  *     nothing. {@code 0} switches the stage off through its own parameter; whether reranking runs
- *     at all is additionally governed by the rerank model role's switch ({@code
- *     OPAA_RERANK_ENABLED}), which is an installation decision, not a retrieval parameter.
+ *     at all is additionally governed by the rerank model role's switch (model administration),
+ *     which is an installation decision, not a retrieval parameter.
  * @param conversationWindowMessages the width of the conversation window in messages - what {@code
  *     ConversationMemoryConfiguration}'s {@code ChatMemory} bean retains per conversation and
  *     therefore what the answer prompt carries. Default 20 (10 turns), at least 2, at most 100, and

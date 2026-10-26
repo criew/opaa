@@ -282,6 +282,14 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
         keys,
+        Set.of("enabled", "baseUrl", "model", "apiKeySet", "apiKeyChange"),
+        RERANK_MODEL_CHANGED);
+    put(
+        keys,
+        Set.of("enabled", "baseUrl", "model", "language", "apiKeySet", "apiKeyChange"),
+        TRANSCRIPTION_MODEL_CHANGED);
+    put(
+        keys,
         Set.of("validFrom", "validUntil", "revoked"),
         DIAGNOSTIC_IMPERSONATION_GRANTED,
         DIAGNOSTIC_IMPERSONATION_REVOKED);

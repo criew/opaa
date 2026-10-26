@@ -358,6 +358,16 @@ public enum AuditEventType {
    * indirectly readable from the {@link #LLM_MODEL_ACTIVATED} event of whatever model replaced it.
    */
   LLM_MODEL_DEACTIVATED,
+  /**
+   * The rerank model role (switch, address, model or key) changed in the model administration; the
+   * key appears only as set, changed or removed.
+   */
+  RERANK_MODEL_CHANGED,
+  /**
+   * The transcription model role (switch, address, model, key or language) changed in the model
+   * administration; the key appears only as set, changed or removed.
+   */
+  TRANSCRIPTION_MODEL_CHANGED,
 
   // Diagnose in fremdem Rechtekontext ("Sicht als")
   /**

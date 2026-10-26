@@ -336,16 +336,9 @@ opaa:
       api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:}
       max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:}
       dimensions: ${OPAA_PGVECTOR_DIMENSIONS:}
-  # The rerank model role - on the same level as the chat and embedding roles. The switch is
-  # deliberately separate from the endpoint fields: reranking being off must be an operator's
-  # statement, not an indistinguishable consequence of a missing configuration line
-  # (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Default off - the role ships built, not
-  # activated, until the benchmark shows a gain on the project's own corpora.
+  # The load limits of the rerank model role. Switch, address, model and key are rows of the
+  # model administration (rerank_model, ADR-0060, Entscheidung 10); the factory default is off.
   rerank:
-    enabled: ${OPAA_RERANK_ENABLED:false}
-    base-url: ${OPAA_RERANK_BASE_URL:}
-    model: ${OPAA_RERANK_MODEL:}
-    api-key: ${OPAA_RERANK_API_KEY:}
     # 240s carries the measured CPU case (~3 min/query, 50 candidates, 20 CPU cores,
     # BAAI/bge-reranker-v2-m3) - a shorter default reports normal CPU latency as UNREACHABLE.
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
@@ -353,15 +346,10 @@ opaa:
     # Longest gap without a result from the endpoint before the role probes it; each probe is a
     # real, billable rerank request, and every real call resets the gap. At least 10s.
     probe-interval: ${OPAA_RERANK_PROBE_INTERVAL:60s}
-  # The transcription model role (dictation in the chat input), built like the rerank role: an
-  # explicit switch, an OpenAI-compatible endpoint ({base-url}/audio/transcriptions), never fatal.
-  # Default off. The audio is passed through in memory and never stored or logged.
+  # The load limits of the transcription model role (dictation in the chat input). Switch, address,
+  # model, key and language are rows of the model administration (transcription_model); the
+  # factory default is off. The audio is passed through in memory and never stored or logged.
   transcription:
-    enabled: ${OPAA_TRANSCRIPTION_ENABLED:false}
-    base-url: ${OPAA_TRANSCRIPTION_BASE_URL:}
-    model: ${OPAA_TRANSCRIPTION_MODEL:}
-    api-key: ${OPAA_TRANSCRIPTION_API_KEY:}
-    language: ${OPAA_TRANSCRIPTION_LANGUAGE:de}
     max-audio-bytes: ${OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES:10485760}
     timeout: ${OPAA_TRANSCRIPTION_TIMEOUT:120s}
     # Recordings passed on at the same time, installation-wide; each is held in memory meanwhile.

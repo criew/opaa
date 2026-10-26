@@ -8,16 +8,12 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.EmbeddingEndpoint;
-import io.opaa.llm.ModelEndpointUri;
+import io.opaa.llm.ModelEndpointRules;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.security.TargetAddressValidator;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
@@ -42,10 +38,10 @@ class StepRules {
   private static final String INVALID = "INVALID";
   private static final String REQUIRED = "REQUIRED";
   private static final String TOO_LONG = "TOO_LONG";
-  static final int MAX_ADDRESS = 500;
-  static final int MAX_NAME = 200;
+  static final int MAX_ADDRESS = ModelEndpointRules.MAX_ADDRESS;
+  static final int MAX_NAME = ModelEndpointRules.MAX_NAME;
   static final int MAX_PROVIDER_NAME = 120;
-  static final int MAX_API_KEY = 2000;
+  static final int MAX_API_KEY = ModelEndpointRules.MAX_API_KEY;
 
   /** A step as stored: values without secret, and the hash or ciphertext of its secret. */
   record Stored(String payload, String secret) {}
@@ -297,41 +293,10 @@ class StepRules {
         secret);
   }
 
-  /**
-   * The rules of a model's address, identifier and key, lengths included, as field errors under
-   * {@code prefix}.
-   */
+  /** The rules of a model's address, identifier and key ({@link ModelEndpointRules}). */
   private static void endpointErrors(
       String prefix, String baseUrl, String model, String apiKey, List<FieldError> errors) {
-    if (baseUrl.isEmpty()) {
-      errors.add(error(prefix + ".baseUrl", REQUIRED, "Die Basis-Adresse fehlt."));
-    } else if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      errors.add(
-          error(
-              prefix + ".baseUrl",
-              INVALID,
-              "Die Basis-Adresse muss mit http:// oder https:// beginnen."));
-    } else if (ModelEndpointUri.containsCredentials(baseUrl)) {
-      errors.add(
-          error(
-              prefix + ".baseUrl",
-              INVALID,
-              "Die Basis-Adresse darf keine Anmeldedaten enthalten; der Schlüssel gehört in das"
-                  + " Feld Zugangsschlüssel."));
-    }
-    if (model.isEmpty()) {
-      errors.add(error(prefix + ".model", REQUIRED, "Die Modell-Kennung fehlt."));
-    }
-    requireAtMost(errors, prefix + ".baseUrl", baseUrl, MAX_ADDRESS);
-    requireAtMost(errors, prefix + ".model", model, MAX_NAME);
-    requireAtMost(errors, prefix + ".apiKey", apiKey, MAX_API_KEY);
-    if (apiKey != null && apiKey.strip().chars().anyMatch(c -> c < 0x20 || c == 0x7f)) {
-      errors.add(
-          error(
-              prefix + ".apiKey",
-              INVALID,
-              "Der Zugangsschlüssel enthält Steuerzeichen wie einen Zeilenumbruch."));
-    }
+    ModelEndpointRules.endpointErrors(prefix, baseUrl, model, apiKey, true, errors);
   }
 
   /** The target address check of a valid address, as a field error under {@code prefix}. */
@@ -369,40 +334,15 @@ class StepRules {
   /**
    * Why the target address check refuses {@code baseUrl}, or {@code null}: the installation runs
    * before any account exists, so its probes must not reach internal ranges unless the operator
-   * released the host ({@link TargetAddressValidator#ALLOWLIST_HINT}).
+   * released the host.
    */
   static String blockedModelAddress(TargetAddressValidator validator, String baseUrl) {
-    try {
-      validator.validate(new URI(baseUrl.strip()));
-      return null;
-    } catch (URISyntaxException e) {
-      return "Die Basis-Adresse ist keine gültige URL.";
-    } catch (IOException e) {
-      return e.getMessage() + " " + TargetAddressValidator.ALLOWLIST_HINT;
-    }
+    return ModelEndpointRules.blockedModelAddress(validator, baseUrl);
   }
 
-  /**
-   * Whether a saved key may stay with {@code next}: scheme, host, port and path unchanged, so a key
-   * never follows the address to another endpoint.
-   */
+  /** Whether a saved key may stay with {@code next} ({@link ModelEndpointRules#sameEndpoint}). */
   static boolean sameEndpoint(String previous, String next) {
-    try {
-      return endpointKey(previous).equals(endpointKey(next));
-    } catch (URISyntaxException | NullPointerException e) {
-      return false;
-    }
-  }
-
-  private static String endpointKey(String baseUrl) throws URISyntaxException {
-    URI uri = new URI(baseUrl.strip());
-    String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
-    int port = uri.getPort() != -1 ? uri.getPort() : "https".equals(scheme) ? 443 : 80;
-    String path = uri.getPath() == null ? "" : uri.getPath();
-    while (path.endsWith("/")) {
-      path = path.substring(0, path.length() - 1);
-    }
-    return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port + path;
+    return ModelEndpointRules.sameEndpoint(previous, next);
   }
 
   private String encrypt(String prefix, String apiKey) {
@@ -419,9 +359,7 @@ class StepRules {
 
   /** The lengths of the specification ({@code maxLength}), enforced here for every way in. */
   private static void requireAtMost(List<FieldError> errors, String field, String value, int max) {
-    if (value != null && value.length() > max) {
-      errors.add(error(field, TOO_LONG, "Die Angabe ist zu lang (höchstens " + max + " Zeichen)."));
-    }
+    ModelEndpointRules.requireAtMost(errors, field, value, max);
   }
 
   private static void requireNoErrors(List<FieldError> errors) {

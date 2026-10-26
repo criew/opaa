@@ -12,7 +12,7 @@ import io.opaa.llm.RerankRoleState;
  */
 public enum RerankAvailability {
 
-  /** {@code OPAA_RERANK_ENABLED} is off: the installation deliberately does not rerank. */
+  /** The rerank switch of the model administration is off: deliberately no reranking. */
   SWITCHED_OFF,
 
   /**

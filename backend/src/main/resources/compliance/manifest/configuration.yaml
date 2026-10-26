@@ -53,27 +53,25 @@ settings:
       - >-
         Wird bei der Installation mit einer Probeeinbettung festgelegt, die die Vektordimension
         bestimmt. Nicht über die Oberfläche änderbar
-  - key: opaa.rerank.enabled
+  - key: rerank_model.enabled
+    source: DATABASE
     defaultValue: "false"
     effect: Ob die Rerank-Rolle Suchtreffer samt Frage an ein Rerank-Modell sendet
     bearings: [DATA_FLOW]
-    helm:
-      values: rerank.enabled
-      defaultValue: "false"
-  - key: opaa.rerank.base-url
+    notes:
+      - Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Reranking
+  - key: rerank_model.base_url
+    source: DATABASE
     defaultValue: ""
     effect: Adresse des Rerank-Modells; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
-    helm:
-      values: rerank.baseUrl
-      defaultValue: ""
-  - key: opaa.rerank.model
+    notes:
+      - Geprüft gegen die Zieladressprüfung des Betriebs (OPAA_INDEXING_TARGET_VALIDATION_*)
+  - key: rerank_model.model_identifier
+    source: DATABASE
     defaultValue: ""
-    effect: Standard-Rerank-Modell; ohne Angabe ist die Rolle nicht gebunden
+    effect: Rerank-Modell; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
-    helm:
-      values: rerank.model
-      defaultValue: ""
   - key: opaa.malware-scan.enabled
     defaultValue: "false"
     effect: Ob jede Datei vor der Aufnahme in eine Bibliothek an den Virenscanner geht
@@ -88,27 +86,27 @@ settings:
     helm:
       values: malwareScan.host
       defaultValue: ""
-  - key: opaa.transcription.enabled
+  - key: transcription_model.enabled
+    source: DATABASE
     defaultValue: "false"
     effect: Ob die Spracheingabe Aufnahmen an ein Transkriptionsmodell sendet
     bearings: [DATA_FLOW]
-    helm:
-      values: transcription.enabled
-      defaultValue: "false"
-  - key: opaa.transcription.base-url
+    notes:
+      - >-
+        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Spracheingabe,
+        begrenzt durch opaa.features.speech-input.enabled
+  - key: transcription_model.base_url
+    source: DATABASE
     defaultValue: ""
     effect: Adresse des Transkriptionsmodells; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
-    helm:
-      values: transcription.baseUrl
-      defaultValue: ""
-  - key: opaa.transcription.model
+    notes:
+      - Geprüft gegen die Zieladressprüfung des Betriebs (OPAA_INDEXING_TARGET_VALIDATION_*)
+  - key: transcription_model.model_identifier
+    source: DATABASE
     defaultValue: ""
-    effect: Standard-Transkriptionsmodell; ohne Angabe ist die Rolle nicht gebunden
+    effect: Transkriptionsmodell; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
-    helm:
-      values: transcription.model
-      defaultValue: ""
   # Funktionen
   - key: opaa.features.prompt-libraries.enabled
     defaultValue: "true"

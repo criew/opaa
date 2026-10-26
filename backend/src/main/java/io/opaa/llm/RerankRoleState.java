@@ -9,7 +9,7 @@ package io.opaa.llm;
 public enum RerankRoleState {
 
   /**
-   * {@code OPAA_RERANK_ENABLED} is off. An explicit statement, not an unnoticed configuration gap.
+   * The switch of the model administration is off. An explicit statement, not a configuration gap.
    */
   DISABLED,
 

@@ -27,8 +27,8 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
   darüber Wurzel, `web`, Konnektoren. Rückwege sind Ports: `VanishedDocumentReconciler`, `EmbeddingBatching`.
 - **`FormatConfiguration`** registriert die Dateiformate (Modul format) als Beans; `DocumentIngestService`
   lehnt ein Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
-- **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg; der optionale API-Schlüssel wird über
-  `SettingsEncryptor` verschlüsselt, jede Änderung protokolliert. Genau ein Modell ist systemweit aktiv.
+- **Modelle:** Einzige Schreibwege sind `LlmModelService` (Chat, genau eines aktiv) und `ModelRoleAdministration`
+  (`rerank_model`, `transcription_model`); Schlüssel über `SettingsEncryptor`, jede Änderung protokolliert.
 - **Web-Schicht:** `llm.web` (Modelle, Spracheingabe), `indexing.web` (Indexierung, Bestands- und
   Nachlauf), `metadata.web` (Metadaten, der Filter aller Such- und Chat-Anfragen samt strengem
   `MetadataFilterDeserializer`), `installation.web`. Die Endpunkte der Bibliothek liegen in `library.web`.

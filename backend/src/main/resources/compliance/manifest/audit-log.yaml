@@ -747,6 +747,20 @@ auditEvents:
   - id: LLM_MODEL_DEACTIVATED
     trigger: Ein Chatmodell ist nicht mehr aktiv, weil ein anderes aktiviert wurde
     payloadKeys: [active]
+  - id: RERANK_MODEL_CHANGED
+    trigger: Schalter, Adresse, Modell oder Zugangsschlüssel des Rerank-Modells werden geändert
+    details: >-
+      Vorher und nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert,
+      als „gesetzt“, „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
+    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, model]
+  - id: TRANSCRIPTION_MODEL_CHANGED
+    trigger: >-
+      Schalter, Adresse, Modell, Sprache oder Zugangsschlüssel des Transkriptionsmodells werden
+      geändert
+    details: >-
+      Vorher und nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert,
+      als „gesetzt“, „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
+    payloadKeys: [apiKeyChange, apiKeySet, baseUrl, enabled, language, model]
   - id: DIAGNOSTIC_IMPERSONATION_GRANTED
     trigger: Die Befugnis „Sicht als“ wird einer Person erteilt
     payloadKeys: [revoked, scopeGroupId, validFrom, validUntil]
