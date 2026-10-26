@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 /**
  * Builds clients over the one OpenAI-compatible path (Ollama included, under its {@code /v1}), with
  * the request timeout of {@code spring.ai.openai.embedding.timeout} and the application's {@link
- * ObservationRegistry}. A missing key is sent as an empty one, as for the chat models.
+ * ObservationRegistry}. A missing key is sent as an empty one, as for the chat models. Redirects
+ * are not followed ({@link ModelRedirectRefusal}).
  */
 @DataFlowCarrier
 @Component
@@ -42,6 +43,7 @@ class OpenAiEmbeddingClientFactory implements EmbeddingClientFactory {
     return OpenAiEmbeddingModel.builder()
         .options(options)
         .metadataMode(MetadataMode.EMBED)
+        .httpClientBuilderCustomizer(ModelRedirectRefusal.INSTANCE)
         .observationRegistry(observationRegistry.getIfUnique(() -> ObservationRegistry.NOOP))
         .build();
   }

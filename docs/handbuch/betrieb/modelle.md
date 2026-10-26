@@ -19,6 +19,10 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
+Keine Rolle folgt einem Redirect, weder im Betrieb noch im Verbindungstest: Antwortet ein Modellserver
+mit einer Weiterleitung (HTTP 3xx), scheitert der Aufruf, und weder Frage noch Textausschnitte gehen
+an die neue Adresse. Eingetragen wird deshalb die Adresse, unter der das Modell selbst antwortet.
+
 ## LLM-Anbieter
 
 Es gibt einen einzigen Anbindungsweg für Chat und Einbettung: die **openai-kompatible
@@ -733,6 +737,7 @@ und im Protokoll des Backends.
 | „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
+| Chat oder Einbettung scheitern, Log: „answered HTTP 3xx with a redirect; redirects are not followed“ | Der Modellserver leitet weiter, etwa von `http` auf `https` oder auf einen anderen Pfad. Die Zieladresse direkt eintragen |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
 
 ## Weiterführende Kapitel
