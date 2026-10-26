@@ -121,6 +121,10 @@ und stellt mehr Anfragen an die Quelle. Der Rhythmus kommt aus genau einer Stell
    Einstellungen**, Abschnitt „Vollabgleich-Rhythmus", festlegt,
 3. sonst aus der Werkseinstellung der Quellart.
 
+Nextcloud liest keine Änderungen, sondern überspringt Ordner, deren Prüfsumme sich nicht geändert
+hat; nach seinem Rhythmus listet ein Lauf wieder jeden Ordner. Einen eigenen Rhythmus je Bibliothek
+gibt es dort nicht, nur den Wert der Quellart.
+
 | Quellart | Werkseinstellung |
 |---|---|
 | Confluence | 7 Tage |
@@ -128,6 +132,7 @@ und stellt mehr Anfragen an die Quelle. Der Rhythmus kommt aus genau einer Stell
 | SharePoint | 1 Tag |
 | OneDrive | 1 Tag |
 | Dropbox | 7 Tage |
+| Nextcloud | 7 Tage |
 
 Jeder Wert liegt zwischen 1 und 365 Tagen. „Werkseinstellung wiederherstellen" führt eine Quellart
 zur Werkseinstellung zurück. Eine Änderung gilt ab dem nächsten Lauf auf jeder Instanz und steht im

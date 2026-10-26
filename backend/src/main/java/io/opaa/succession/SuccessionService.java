@@ -55,17 +55,17 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
 
   private final List<SuccessionFindingSource> sources;
   private final SuccessionCaseRepository cases;
-  private final SuccessionProperties properties;
+  private final SuccessionAgingThreshold agingThreshold;
   private final Clock clock;
 
   SuccessionService(
       List<SuccessionFindingSource> sources,
       SuccessionCaseRepository cases,
-      SuccessionProperties properties,
+      SuccessionAgingThreshold agingThreshold,
       Clock clock) {
     this.sources = sources;
     this.cases = cases;
-    this.properties = properties;
+    this.agingThreshold = agingThreshold;
     this.clock = clock;
   }
 
@@ -96,7 +96,7 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
     }
 
     Instant now = clock.instant();
-    Instant agingCutoff = now.minus(properties.agingThresholdMonths() * 30L, ChronoUnit.DAYS);
+    Instant agingCutoff = now.minus(agingThreshold.months() * 30L, ChronoUnit.DAYS);
     List<SuccessionEntry> entries = new ArrayList<>();
     for (SuccessionFinding finding : findings) {
       SuccessionCase open = openCases.get(new CaseKey(finding.objectType(), finding.objectId()));

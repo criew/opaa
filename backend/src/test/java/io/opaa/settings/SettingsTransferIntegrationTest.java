@@ -180,6 +180,9 @@ class SettingsTransferIntegrationTest {
     sections.withObject("connectionLifecycle").put("inactivityThresholdDays", 120);
     sections.withObject("branding").put("productName", "Stadt-Assistent");
     sections.withObject("externalAccess").put("tokenRateLimitPerHour", 90);
+    sections.withObject("externalAccess").put("releaseReminderLeadDays", 21);
+    sections.withObject("succession").put("agingThresholdMonths", 6);
+    sections.withObject("directorySync").put("changeThresholdPercent", 40);
     sections
         .withObject("linkTargets")
         .putArray("allowedOrigins")
@@ -243,7 +246,7 @@ class SettingsTransferIntegrationTest {
     ObjectNode rhythm = sections(document).withObject("fullSyncRhythm");
     assertThat(rhythm.propertyNames())
         .containsExactlyInAnyOrder(
-            "CONFLUENCE", "DROPBOX", "GOOGLE_DRIVE", "ONEDRIVE", "SHAREPOINT");
+            "CONFLUENCE", "DROPBOX", "GOOGLE_DRIVE", "NEXTCLOUD", "ONEDRIVE", "SHAREPOINT");
     rhythm.put("ONEDRIVE", 4);
     rhythm.put("CONFLUENCE", 30);
     String changed = JSON.writeValueAsString(document);
@@ -271,6 +274,54 @@ class SettingsTransferIntegrationTest {
                 .get("ONEDRIVE")
                 .isNull())
         .isTrue();
+  }
+
+  /**
+   * The reminder lead, the aging threshold and the plausibility threshold travel with their factory
+   * default as {@code null}: the plausibility threshold of the directory sync is marked, the aging
+   * threshold and the reminder lead are not, and a value outside its bounds is refused under its
+   * field.
+   */
+  @Test
+  void theAdministrationValuesTravelAndOnlyTheDirectoryThresholdIsMarked() throws Exception {
+    ObjectNode document = (ObjectNode) JSON.readTree(export());
+    ObjectNode sections = sections(document);
+    assertThat(sections.get("directorySync").get("changeThresholdPercent").isNull()).isTrue();
+    assertThat(sections.get("succession").get("agingThresholdMonths").isNull()).isTrue();
+    assertThat(sections.get("externalAccess").get("releaseReminderLeadDays").isNull()).isTrue();
+    sections.withObject("directorySync").put("changeThresholdPercent", 80);
+    sections.withObject("succession").put("agingThresholdMonths", 24);
+    sections.withObject("externalAccess").put("releaseReminderLeadDays", 30);
+
+    send(PREVIEW, JSON.writeValueAsString(document))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.changes.length()").value(3))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'changeThresholdPercent')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(true)))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'agingThresholdMonths')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(false)))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'releaseReminderLeadDays')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(false)));
+
+    Map<String, String> refused = new java.util.LinkedHashMap<>();
+    refused.put(
+        "{\"directorySync\": {\"changeThresholdPercent\": 0}}",
+        "directorySync.changeThresholdPercent");
+    refused.put(
+        "{\"succession\": {\"agingThresholdMonths\": 121}}", "succession.agingThresholdMonths");
+    for (Map.Entry<String, String> entry : refused.entrySet()) {
+      send(
+              IMPORT,
+              "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\": "
+                  + entry.getKey()
+                  + "}")
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.fieldErrors[0].field").value(entry.getValue()));
+    }
+    assertThat(auditEventTypes()).isEmpty();
   }
 
   /** A value outside 1 to 365 days or of another type is refused under its field. */

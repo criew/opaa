@@ -218,7 +218,8 @@ class ExternalAccessTokenRateLimitIntegrationTest {
             tokenRequestsPerHour,
             List.of(CHANNEL_NETWORK),
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
   }
 
   private static CurrentUser callerOf(User user) {

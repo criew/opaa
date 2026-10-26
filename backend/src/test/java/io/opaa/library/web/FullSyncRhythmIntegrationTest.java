@@ -62,10 +62,18 @@ class FullSyncRhythmIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(
             jsonPath("$[*].sourceType")
-                .value(contains("CONFLUENCE", "DROPBOX", "GOOGLE_DRIVE", "ONEDRIVE", "SHAREPOINT")))
-        .andExpect(jsonPath("$[*].defaultIntervalDays").value(contains(7, 7, 7, 1, 1)))
-        .andExpect(jsonPath("$[*].intervalDays").value(contains(7, 7, 7, 1, 1)))
-        .andExpect(jsonPath("$[*].overridden").value(contains(false, false, false, false, false)))
+                .value(
+                    contains(
+                        "CONFLUENCE",
+                        "DROPBOX",
+                        "GOOGLE_DRIVE",
+                        "NEXTCLOUD",
+                        "ONEDRIVE",
+                        "SHAREPOINT")))
+        .andExpect(jsonPath("$[*].defaultIntervalDays").value(contains(7, 7, 7, 7, 1, 1)))
+        .andExpect(jsonPath("$[*].intervalDays").value(contains(7, 7, 7, 7, 1, 1)))
+        .andExpect(
+            jsonPath("$[*].overridden").value(contains(false, false, false, false, false, false)))
         .andExpect(jsonPath("$[0].displayName").value("Confluence"));
   }
 

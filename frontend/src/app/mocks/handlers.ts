@@ -23,6 +23,8 @@ import { groupHandlers } from '@/features/group/mocks/groupHandlers'
 import { groupAdminHandlers } from '@/features/group/mocks/groupAdminHandlers'
 // succession
 import { successionHandlers } from '@/features/succession/mocks/successionHandlers'
+// directory-sync
+import { directorySyncSettingsHandlers } from '@/features/directory-sync/mocks/directorySyncSettingsHandlers'
 // capability
 import { capabilityHandlers } from '@/features/capability/mocks/capabilityHandlers'
 // user
@@ -101,6 +103,8 @@ export const handlers = [
   ...groupAdminHandlers,
   // succession
   ...successionHandlers,
+  // directory-sync
+  ...directorySyncSettingsHandlers,
   // capability
   ...capabilityHandlers,
   // user

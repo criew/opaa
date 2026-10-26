@@ -244,6 +244,7 @@ data:
           - allowed_cidrs
           - mass_retrieval_alert_threshold
           - server_instructions
+          - release_reminder_lead_days
           - updated_at
           - version
         person:

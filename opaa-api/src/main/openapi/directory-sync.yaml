@@ -25,6 +25,48 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/directory-sync/settings:
+    get:
+      operationId: getDirectorySyncSettings
+      tags: [directory-sync]
+      summary: >
+        The plausibility threshold of the directory sync, installation-wide (system admin only):
+        the value in force, the factory default, the bounds and whether the administration set
+        its own (ADR-0036, Entscheidung 3).
+      responses:
+        "200":
+          description: The threshold in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateDirectorySyncSettings
+      tags: [directory-sync]
+      summary: >
+        Sets the plausibility threshold of the directory sync (system admin only);
+        changeThresholdPercent null returns to the factory default. Holds from the next run of
+        every provider on every instance; a pending plan stays pending until it is decided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectorySyncSettingsRequest"
+      responses:
+        "200":
+          description: Threshold updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/oidc-providers/{providerId}/directory-sync:
     put:
       operationId: setOidcProviderDirectorySync
@@ -779,6 +821,42 @@ components:
           minLength: 1
           maxLength: 500
           example: Reorganisation zum 01.10., mit dem Personalreferat abgestimmt
+
+    DirectorySyncSettingsRequest:
+      type: object
+      properties:
+        changeThresholdPercent:
+          type: integer
+          format: int32
+          nullable: true
+          description: >
+            The share in percent of memberships, groups and accounts a run may remove, freeze or
+            lock before it is held back for confirmation, within minChangeThresholdPercent and
+            maxChangeThresholdPercent; null (or absent) returns to the factory default.
+
+    DirectorySyncSettingsResponse:
+      type: object
+      required:
+        [changeThresholdPercent, defaultChangeThresholdPercent, minChangeThresholdPercent,
+        maxChangeThresholdPercent, overridden]
+      properties:
+        changeThresholdPercent:
+          type: integer
+          format: int32
+          description: The threshold in force, in percent.
+        defaultChangeThresholdPercent:
+          type: integer
+          format: int32
+          description: The factory default that applies while the administration has set no value.
+        minChangeThresholdPercent:
+          type: integer
+          format: int32
+        maxChangeThresholdPercent:
+          type: integer
+          format: int32
+        overridden:
+          type: boolean
+          description: Whether the administration set its own value.
 
     OidcProviderDirectorySyncRequest:
       type: object

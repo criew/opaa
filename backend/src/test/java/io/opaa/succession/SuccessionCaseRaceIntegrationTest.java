@@ -48,7 +48,7 @@ class SuccessionCaseRaceIntegrationTest {
   @Autowired private SuccessionService successionService;
   @Autowired private SuccessionDetectionService detectionService;
   @Autowired private SuccessionCaseRepository cases;
-  @Autowired private SuccessionProperties successionProperties;
+  @Autowired private SuccessionAgingThreshold agingThreshold;
   @Autowired private List<SuccessionFindingSource> sources;
   @Autowired private OrganizationRepository organizations;
   @Autowired private AssetTypes assetTypes;
@@ -155,7 +155,7 @@ class SuccessionCaseRaceIntegrationTest {
                 "findByKindAndObjectIdAndClosedAtIsNull",
                 args -> library.equals(args[1]),
                 () -> detectionService.runFor(organizationId)),
-            successionProperties,
+            agingThreshold,
             clock);
 
     new TransactionTemplate(transactionManager)

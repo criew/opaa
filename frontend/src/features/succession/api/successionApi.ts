@@ -2,6 +2,8 @@ import type {
   SuccessionCountsResponse,
   SuccessionKind,
   SuccessionListResponse,
+  SuccessionSettingsRequest,
+  SuccessionSettingsResponse,
 } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
 
@@ -29,6 +31,34 @@ export async function getSuccessionEntries(
 export async function getSuccessionCounts(): Promise<SuccessionCountsResponse> {
   try {
     const { data } = await apiClient.get<SuccessionCountsResponse>('/v1/admin/succession/counts')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** From which age an entry is highlighted, with factory default and bounds. */
+export async function getSuccessionSettings(): Promise<SuccessionSettingsResponse> {
+  try {
+    const { data } = await apiClient.get<SuccessionSettingsResponse>(
+      '/v1/admin/succession/settings',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Sets the aging threshold in months; `null` returns to the factory default. */
+export async function updateSuccessionSettings(
+  agingThresholdMonths: number | null,
+): Promise<SuccessionSettingsResponse> {
+  try {
+    const body: SuccessionSettingsRequest = { agingThresholdMonths }
+    const { data } = await apiClient.put<SuccessionSettingsResponse>(
+      '/v1/admin/succession/settings',
+      body,
+    )
     return data
   } catch (err) {
     normalizeError(err)

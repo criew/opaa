@@ -366,7 +366,8 @@ class ExternalAccessSearchIntegrationTest {
             quotaPerHour,
             values.allowedCidrs(),
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
   }
 
   private void release(UUID library) {

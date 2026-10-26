@@ -232,7 +232,8 @@ class DataCollectionDisclosureIntegrationTest {
           "chat_auto_cleanup_settings.delete_after_days",
           "locked_account_chat_cleanup_settings.enabled",
           "locked_account_chat_cleanup_settings.delete_after_days",
-          "audit_incident_scope_retention_settings.retention_years");
+          "audit_incident_scope_retention_settings.retention_years",
+          "succession_settings.aging_threshold_months");
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
@@ -320,6 +321,9 @@ class DataCollectionDisclosureIntegrationTest {
     jdbcTemplate.update(
         "INSERT INTO audit_incident_scope_retention_settings (id, retention_years, updated_at)"
             + " VALUES (1, 4, now())");
+    jdbcTemplate.update(
+        "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
+            + " VALUES (1, 6, now())");
 
     JsonNode export = exportAsAdmin();
 
@@ -329,7 +333,8 @@ class DataCollectionDisclosureIntegrationTest {
             "chat_auto_cleanup_settings.delete_after_days", "400",
             "locked_account_chat_cleanup_settings.enabled", "false",
             "locked_account_chat_cleanup_settings.delete_after_days", "500",
-            "audit_incident_scope_retention_settings.retention_years", "4");
+            "audit_incident_scope_retention_settings.retention_years", "4",
+            "succession_settings.aging_threshold_months", "6");
     assertThat(expected.keySet()).isEqualTo(FACTORY_DEFAULT_KEYS);
     expected.forEach(
         (key, value) -> {
@@ -338,6 +343,39 @@ class DataCollectionDisclosureIntegrationTest {
           assertThat(setting.path("deviates").asBoolean()).as(key).isTrue();
           assertThat(setting.path("changedAt").isNull()).as(key).isFalse();
         });
+  }
+
+  /**
+   * A setting in a column of a seeded row or in a row of its type answers the value the
+   * administration set and its time: a source that ignored it would report the factory default.
+   */
+  @Test
+  void theAdministrationValuesAnswerWhatTheAdministrationSet() throws Exception {
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO full_sync_rhythm_settings (source_type, interval_days, updated_at)"
+              + " VALUES ('NEXTCLOUD', 3, now())");
+      jdbcTemplate.update(
+          "UPDATE external_access_settings SET release_reminder_lead_days = 30 WHERE id = 1");
+
+      JsonNode export = exportAsAdmin();
+
+      Map<String, String> expected =
+          Map.of(
+              "full_sync_rhythm_settings.interval_days[NEXTCLOUD]", "3",
+              "external_access_settings.release_reminder_lead_days", "30");
+      expected.forEach(
+          (key, value) -> {
+            JsonNode setting = setting(export, key);
+            assertThat(setting.path("effectiveValue").asString()).as(key).isEqualTo(value);
+            assertThat(setting.path("deviates").asBoolean()).as(key).isTrue();
+            assertThat(setting.path("changedAt").isNull()).as(key).isFalse();
+          });
+    } finally {
+      jdbcTemplate.update("DELETE FROM full_sync_rhythm_settings WHERE source_type = 'NEXTCLOUD'");
+      jdbcTemplate.update(
+          "UPDATE external_access_settings SET release_reminder_lead_days = NULL WHERE id = 1");
+    }
   }
 
   /**

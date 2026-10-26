@@ -60,7 +60,7 @@ class ExternalAccessMassRetrievalAlarmTest {
     when(settings.current())
         .thenReturn(
             new ExternalAccessSettingsService.View(
-                new Values(true, 90, 60, List.of(), value, ""), START, null));
+                new Values(true, 90, 60, List.of(), value, "", null), 364, START, null));
   }
 
   @Test

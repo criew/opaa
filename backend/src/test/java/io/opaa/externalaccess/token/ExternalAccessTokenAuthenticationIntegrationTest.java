@@ -178,7 +178,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             values.tokenRateLimitPerHour(),
             values.allowedCidrs(),
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
   }
 
   @AfterEach
@@ -471,7 +472,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             values.tokenRateLimitPerHour(),
             cidrs,
             values.massRetrievalAlertThreshold(),
-            values.serverInstructions()));
+            values.serverInstructions(),
+            values.releaseReminderLeadDays()));
   }
 
   private void assertRefusedWith(String value, String marker) throws Exception {

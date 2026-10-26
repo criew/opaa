@@ -19,8 +19,9 @@ import java.util.Objects;
  *     documents; every other library is a connector library. Only {@link SourceType#UPLOAD} may
  *     accept uploads: the upload store, its folders and originals are keyed to that type
  * @param pushIntake the push intake the connector offers, {@code null} for none
- * @param fullSyncInterval the instance-wide rhythm of the connector's full reconciliation, which a
- *     library may lengthen; {@code null} for a connector whose every run is a full one
+ * @param fullSyncInterval the factory default of the installation-wide rhythm of the connector's
+ *     full reconciliation, which a library may lengthen where its connector offers that; {@code
+ *     null} for a connector whose every run reconciles in full
  * @param profileDeclaration how the connector stands to connection profiles ("Profilangabe"),
  *     including the service account key the core signs with for a library's own key
  * @param dataFlow the id of the {@code dataFlows} entry of the compliance manifest the connector

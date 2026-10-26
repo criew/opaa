@@ -217,6 +217,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/admin/succession/settings:
+    get:
+      operationId: getSuccessionSettings
+      tags: [succession]
+      summary: >
+        From which age an entry of the operational list is highlighted (system admin only): the
+        value in force, the factory default, the bounds and whether the administration set its
+        own (ADR-0036 Entscheidung 6).
+      responses:
+        "200":
+          description: The aging threshold in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateSuccessionSettings
+      tags: [succession]
+      summary: >
+        Sets the aging threshold of the operational list (system admin only);
+        agingThresholdMonths null returns to the factory default. Holds for the next reading on
+        every instance; it highlights and triggers nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuccessionSettingsRequest"
+      responses:
+        "200":
+          description: Aging threshold updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   schemas:
     PermissionTransferScope:
@@ -593,6 +635,41 @@ components:
           type: integer
           description: Entries of the tab GROUP_WITHOUT_EFFECT.
           example: 0
+
+    SuccessionSettingsRequest:
+      type: object
+      properties:
+        agingThresholdMonths:
+          type: integer
+          format: int32
+          nullable: true
+          description: >
+            From which age in months an entry is highlighted, within minAgingThresholdMonths and
+            maxAgingThresholdMonths; null (or absent) returns to the factory default.
+
+    SuccessionSettingsResponse:
+      type: object
+      required:
+        [agingThresholdMonths, defaultAgingThresholdMonths, minAgingThresholdMonths,
+        maxAgingThresholdMonths, overridden]
+      properties:
+        agingThresholdMonths:
+          type: integer
+          format: int32
+          description: The threshold in force, in months of 30 days.
+        defaultAgingThresholdMonths:
+          type: integer
+          format: int32
+          description: The factory default that applies while the administration has set no value.
+        minAgingThresholdMonths:
+          type: integer
+          format: int32
+        maxAgingThresholdMonths:
+          type: integer
+          format: int32
+        overridden:
+          type: boolean
+          description: Whether the administration set its own value.
 
     SuccessionStateResponse:
       type: object

@@ -454,8 +454,6 @@ opaa:
       max-entries-per-run: ${OPAA_INDEXING_NEXTCLOUD_MAX_ENTRIES_PER_RUN:1000000}
       download-concurrency: ${OPAA_INDEXING_NEXTCLOUD_DOWNLOAD_CONCURRENCY:2}
       max-response-bytes: ${OPAA_INDEXING_NEXTCLOUD_MAX_RESPONSE_BYTES:67108864}
-      # how long remembered folder ETags may spare a listing before a run lists every folder again
-      full-descent-interval: ${OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL:7d}
     # Bounds of the SMB connector (io.opaa.indexing.source.smb, SmbProperties); 0 falls back to the
     # default.
     smb:
@@ -592,11 +590,9 @@ opaa:
     # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
   external-access:
-    # Longest admissible Befristung of a library's release for Fremdzugaenge, and how many days
-    # before it ends the responsible person is reminded by mail. 0 reminder days switches the
-    # reminder off; the release still expires on its own.
+    # Longest admissible Befristung of a library's release for Fremdzugaenge. How many days before
+    # it ends the responsible person is reminded is a setting of the external AI tools.
     max-release-days: ${OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS:365}
-    reminder-lead-days: ${OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS:14}
   documents:
     # The synchronous remote-content proxy path (GET /api/v1/documents/{documentId}/content for an
     # HTTP_DIRECTORY/RSS_FEED document) has its own, smaller bound, a short timeout per hop and a
@@ -744,14 +740,10 @@ opaa:
       # logged; the dev profile and every test refuse the write instead.
       reject-unlisted: false
   succession:
-    # Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird (ADR-0036, Entscheidung 6).
-    # Hebt hervor, loest nie etwas aus.
-    aging-threshold-months: ${OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS:12}
     # Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende; der Zustand
     # selbst ist abgeleitet und gilt auch ohne ihn.
     detection-cron: ${OPAA_SUCCESSION_DETECTION_CRON:0 5 * * * *}
   directory-sync:
-    change-threshold-fraction: ${OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION:0.3}
     # The minute tick that starts a due provider's run. The interval itself is a setting of the
     # provider row (ADR-0036, Entscheidung 2); this switch only decides whether the tick exists.
     schedule-enabled: ${OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED:true}

@@ -103,8 +103,9 @@ gelistet. Ein unveränderter Ordner kostet so eine Anfrage, dazu eine für die A
 gelistet wird ein Ordner, der sich geändert hat, umbenannt oder verschoben wurde oder in dem beim
 letzten Lauf etwas nicht geladen oder aufgenommen werden konnte oder in OPAA gelöscht wurde. Den
 ganzen Baum listet ein Lauf nach einer Änderung von Größengrenze, Formaten, Adresse oder Ordnern,
-einmal nach einem Update, das die Grundlage ändert, und spätestens nach `full-descent-interval` — das
-fängt Änderungen ab, die Nextcloud nicht weiterträgt, etwa auf externem Speicher.
+einmal nach einem Update, das die Grundlage ändert, und spätestens nach dem
+[Vollabgleich-Rhythmus](README.md#14-vollabgleich-rhythmus) von Nextcloud — das fängt Änderungen ab,
+die Nextcloud nicht weiterträgt, etwa auf externem Speicher.
 
 **Über mehrere Läufe.** Die Ordner werden in Namensreihenfolge abgearbeitet. Reicht das Budget nicht,
 endet der Lauf als „unvollständig, wird fortgesetzt", und der nächste setzt an der gemerkten Stelle
@@ -123,7 +124,7 @@ entfernt.
 Ein Ordner, der dauerhaft nicht gelistet werden kann (gelöscht, Freigabe entzogen), macht seinen
 Bereich unvollständig: Neue und geänderte Dateien kommen weiter an, entfernt wird nichts, bis der
 Ordner wieder listbar ist oder aus der Bibliothek genommen wird. In diesem Zustand listet jeder Lauf
-den ganzen Baum, sobald die gemerkten Prüfsummen älter als `full-descent-interval` sind.
+den ganzen Baum, sobald die gemerkten Prüfsummen älter als der Vollabgleich-Rhythmus sind.
 
 ## 6. Ordner
 
@@ -177,7 +178,9 @@ Alle Schlüssel unter `opaa.indexing.nextcloud.*`, Umgebungsvariablen `OPAA_INDE
 | `max-entries-per-run` | 1 000 000 | gelistete Dateien je Vollabgleich, auch über mehrere Läufe; darüber scheitert der Lauf |
 | `download-concurrency` | 2 | gleichzeitige Downloads je Lauf |
 | `max-response-bytes` | 64 MiB | Obergrenze einer Auflistungsantwort, also eines Ordners |
-| `full-descent-interval` | 7 Tage | Höchstalter der gemerkten Ordner-Prüfsummen |
+
+Das Höchstalter der gemerkten Ordner-Prüfsummen ist keine Variable mehr, sondern der
+[Vollabgleich-Rhythmus](README.md#14-vollabgleich-rhythmus) der Quellart Nextcloud.
 
 ## 11. Nicht gebaut
 

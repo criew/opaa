@@ -94,6 +94,7 @@ protokollereignisse#diagnostic-impersonation-revoked
 protokollereignisse#directory-account-locked
 protokollereignisse#directory-account-unlocked
 protokollereignisse#directory-sync-change-applied
+protokollereignisse#directory-sync-change-threshold-changed
 protokollereignisse#directory-sync-plan-discarded
 protokollereignisse#directory-sync-report-read
 protokollereignisse#directory-sync-run-completed
@@ -198,6 +199,7 @@ protokollereignisse#space-deleted
 protokollereignisse#space-member-added
 protokollereignisse#space-member-removed
 protokollereignisse#space-member-role-changed
+protokollereignisse#succession-aging-threshold-changed
 protokollereignisse#system-admin-role-granted
 protokollereignisse#system-admin-role-revocation-refused
 protokollereignisse#system-admin-role-revoked
@@ -265,10 +267,12 @@ voreinstellungen#diagnostic-context-retention-settings-retention-months
 voreinstellungen#einstellungen
 voreinstellungen#embedding-model-base-url
 voreinstellungen#embedding-model-model-identifier
+voreinstellungen#external-access-settings-release-reminder-lead-days
 voreinstellungen#external-access-settings-token-max-lifetime-days
 voreinstellungen#full-sync-rhythm-settings-interval-days-confluence
 voreinstellungen#full-sync-rhythm-settings-interval-days-dropbox
 voreinstellungen#full-sync-rhythm-settings-interval-days-google-drive
+voreinstellungen#full-sync-rhythm-settings-interval-days-nextcloud
 voreinstellungen#full-sync-rhythm-settings-interval-days-onedrive
 voreinstellungen#full-sync-rhythm-settings-interval-days-sharepoint
 voreinstellungen#io-opaa-account-localtokencleanupservice-retention
@@ -298,7 +302,6 @@ voreinstellungen#opaa-chat-note-max-items
 voreinstellungen#opaa-demo-chat-import-enabled
 voreinstellungen#opaa-directory-sync-schedule-enabled
 voreinstellungen#opaa-external-access-max-release-days
-voreinstellungen#opaa-external-access-reminder-lead-days
 voreinstellungen#opaa-features-external-access-enabled
 voreinstellungen#opaa-features-metadata-enabled
 voreinstellungen#opaa-features-prompt-libraries-enabled
@@ -309,7 +312,6 @@ voreinstellungen#opaa-indexing-dropbox-content-base
 voreinstellungen#opaa-indexing-dropbox-revocation-endpoint
 voreinstellungen#opaa-indexing-dropbox-token-endpoint
 voreinstellungen#opaa-indexing-filesystem-allowlist
-voreinstellungen#opaa-indexing-nextcloud-full-descent-interval
 voreinstellungen#opaa-malware-scan-enabled
 voreinstellungen#opaa-malware-scan-host
 voreinstellungen#opaa-permission-minimum-group-size
@@ -320,7 +322,6 @@ voreinstellungen#opaa-siem-export-enabled
 voreinstellungen#opaa-siem-export-host
 voreinstellungen#opaa-siem-export-include-labels
 voreinstellungen#opaa-siem-export-tls
-voreinstellungen#opaa-succession-aging-threshold-months
 voreinstellungen#opaa-transcription-base-url
 voreinstellungen#opaa-transcription-enabled
 voreinstellungen#opaa-transcription-model
@@ -339,6 +340,7 @@ voreinstellungen#prompt-tool-loop-spike
 voreinstellungen#self-disclosure-settings-daily-limit
 voreinstellungen#self-disclosure-settings-enabled
 voreinstellungen#spring-ai-openai-base-url
+voreinstellungen#succession-settings-aging-threshold-months
 voreinstellungen#system-prompts
 fristen
 fristen#audit-incident-scope-retention-settings-retention-years

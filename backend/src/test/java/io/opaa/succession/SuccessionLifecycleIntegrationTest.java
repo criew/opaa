@@ -607,6 +607,26 @@ class SuccessionLifecycleIntegrationTest {
         .isTrue();
   }
 
+  /** The months the administration set decide from the next reading on, without a restart. */
+  @Test
+  void theThresholdTheAdministrationSetDecidesFromTheNextReadingOn() {
+    CurrentUser owner = user(SystemRole.USER);
+    libraryOwnedByUser(owner.id());
+    lock(owner.id());
+    detectionService.runFor(organizationId);
+    backdateFirstSeen(firstEntry().caseId(), 200);
+    assertThat(firstEntry().highlighted()).as("younger than twelve months").isFalse();
+
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
+              + " VALUES (1, 6, now())");
+      assertThat(firstEntry().highlighted()).as("older than six months").isTrue();
+    } finally {
+      jdbcTemplate.update("DELETE FROM succession_settings");
+    }
+  }
+
   /**
    * ADR-0036, Entscheidung 8: the records are protocol and follow the protocol's window. A closed
    * record goes; an open one is never deleted, whatever its age.

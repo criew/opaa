@@ -5,9 +5,12 @@ import io.opaa.api.dto.DirectorySyncMembershipChange;
 import io.opaa.api.dto.DirectorySyncPendingPlanResponse;
 import io.opaa.api.dto.DirectorySyncPendingPlanSummary;
 import io.opaa.api.dto.DirectorySyncReportResponse;
+import io.opaa.api.dto.DirectorySyncSettingsResponse;
 import io.opaa.api.dto.DirectorySyncStatusResponse;
 import io.opaa.api.dto.DirectorySyncUserRef;
+import io.opaa.directory.sync.DirectorySyncChangeThreshold;
 import io.opaa.directory.sync.DirectorySyncPendingPlan;
+import io.opaa.directory.sync.DirectorySyncSettingsAdministration;
 import io.opaa.directory.sync.DirectorySyncStatus;
 import io.opaa.directory.sync.DirectorySyncStatusView;
 import io.opaa.directory.sync.GroupChange;
@@ -25,6 +28,16 @@ import java.util.List;
 final class DirectorySyncResponseMapper {
 
   private DirectorySyncResponseMapper() {}
+
+  static DirectorySyncSettingsResponse toSettingsResponse(
+      DirectorySyncSettingsAdministration.Setting setting) {
+    return new DirectorySyncSettingsResponse(
+        setting.changeThresholdPercent(),
+        DirectorySyncChangeThreshold.FACTORY_DEFAULT_PERCENT,
+        DirectorySyncChangeThreshold.MIN_PERCENT,
+        DirectorySyncChangeThreshold.MAX_PERCENT,
+        setting.overridden());
+  }
 
   static DirectorySyncReportResponse toReportResponse(SyncReport report) {
     DirectorySyncReportResponse response =

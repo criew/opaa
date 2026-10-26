@@ -9,6 +9,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import SuccessionList from '../components/SuccessionList'
+import SuccessionSettingsSection from '../components/SuccessionSettingsSection'
 import { SUCCESSION_TABS, type SuccessionTab } from '../components/successionPresentation'
 import { contentWidth } from '@/shared/theme/tokens'
 
@@ -75,6 +76,8 @@ function SuccessionContent({ activeTab }: { activeTab: SuccessionTab }) {
 export default function SuccessionPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const { tab } = useParams()
+  // A new threshold marks the entries anew: the list is read again under a fresh key.
+  const [listRevision, setListRevision] = useState(0)
 
   if (tab !== undefined && !isSuccessionTab(tab)) {
     return <Navigate to="/admin/succession/open" replace />
@@ -101,7 +104,9 @@ export default function SuccessionPage() {
           description="Hier steht, um was sich niemand mehr kümmern kann – etwa weil die verantwortliche Person ausgeschieden ist oder eine Gruppe keine Mitglieder mehr hat. Die Inhalte bleiben nutzbar, und nichts wird gelöscht; neue Freigaben sind aber gesperrt, bis wieder jemand zuständig ist. Die Liste erinnert nicht und verschickt nichts."
         />
 
-        <SuccessionContent activeTab={activeTab} />
+        <SuccessionContent key={listRevision} activeTab={activeTab} />
+
+        <SuccessionSettingsSection onSaved={() => setListRevision((current) => current + 1)} />
       </Box>
     </Box>
   )

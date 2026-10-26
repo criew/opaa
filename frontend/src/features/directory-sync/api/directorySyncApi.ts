@@ -4,6 +4,8 @@ import type {
   DirectoryConnectorTestRequest,
   DirectorySyncPendingPlanResponse,
   DirectorySyncReportResponse,
+  DirectorySyncSettingsRequest,
+  DirectorySyncSettingsResponse,
   DirectorySyncStatusResponse,
   OidcProviderDirectorySyncRequest,
   OidcProviderResponse,
@@ -154,4 +156,32 @@ export async function discardPendingPlan(
 function isNotFound(err: unknown): boolean {
   const status = (err as { response?: { status?: number } } | null)?.response?.status
   return status === 404
+}
+
+/** The installation-wide plausibility threshold, with factory default and bounds. */
+export async function getDirectorySyncSettings(): Promise<DirectorySyncSettingsResponse> {
+  try {
+    const { data } = await apiClient.get<DirectorySyncSettingsResponse>(
+      '/v1/admin/directory-sync/settings',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Sets the plausibility threshold in percent; `null` returns to the factory default. */
+export async function updateDirectorySyncSettings(
+  changeThresholdPercent: number | null,
+): Promise<DirectorySyncSettingsResponse> {
+  try {
+    const body: DirectorySyncSettingsRequest = { changeThresholdPercent }
+    const { data } = await apiClient.put<DirectorySyncSettingsResponse>(
+      '/v1/admin/directory-sync/settings',
+      body,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
 }

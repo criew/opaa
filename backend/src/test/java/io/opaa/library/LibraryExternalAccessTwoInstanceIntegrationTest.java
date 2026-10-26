@@ -59,7 +59,7 @@ class LibraryExternalAccessTwoInstanceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private PublicBaseUrl publicBaseUrl;
-  @Autowired private ExternalAccessProperties properties;
+  @Autowired private ExternalAccessReminderLead reminderLead;
   @Autowired private Clock clock;
 
   private final String libraryName = "Zwei Instanzen " + UUID.randomUUID();
@@ -134,7 +134,7 @@ class LibraryExternalAccessTwoInstanceIntegrationTest {
     TransactionTemplate transactions = new TransactionTemplate(transactionManager);
     LibraryExternalAccessReminderService reminders =
         new LibraryExternalAccessReminderService(
-            libraryRepository, userRepository, mail, publicBaseUrl, properties, clock) {
+            libraryRepository, userRepository, mail, publicBaseUrl, reminderLead, clock) {
           @Override
           public int runOnce() {
             return transactions.execute(status -> super.runOnce());
