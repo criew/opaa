@@ -120,7 +120,11 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
         repository
             .findInstalled()
             .or(this::takeOverWhenDue)
-            .orElseThrow(EmbeddingModelNotInstalledException::new);
+            .orElseThrow(
+                () ->
+                    embeddingModels.missingAfterInstallation()
+                        ? EmbeddingModelNotInstalledException.afterInstallation()
+                        : EmbeddingModelNotInstalledException.pending());
     return build(settings);
   }
 

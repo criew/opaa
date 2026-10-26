@@ -85,6 +85,21 @@ class InstallationStartupTest {
   }
 
   @Test
+  void aCompletedInstallationWithoutAnEmbeddingModelOutsideTheDevModeNamesTheRemedy() {
+    when(installation.completeAtStartupIfDue(false))
+        .thenReturn(new InstallationService.StartupDecision(true, null));
+    when(embeddingModels.missingAfterInstallation()).thenReturn(true);
+    InstallationStartup startup = startup("oidc", null, null);
+
+    startup.start();
+
+    assertThat(logs.list)
+        .filteredOn(event -> event.getLevel() == ch.qos.logback.classic.Level.ERROR)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .anyMatch(message -> message.contains("has no embedding model"));
+  }
+
+  @Test
   void aPendingInstallationPrintsTheGeneratedTokenOnceAndResetsNothing() {
     when(installation.ensureToken(null)).thenReturn("ErzeugtesTokenAbc123ErzeugtesToken");
     InstallationStartup startup = startup("oidc", null, null);

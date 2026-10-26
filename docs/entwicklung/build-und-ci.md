@@ -185,7 +185,9 @@ startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisie
    dem er abzweigt, auf `main` der eigene Stand), frühestens der Merge von #3206, der erste Stand,
    der das Embedding-Modell in der Datenbank hält. Eine ältere Installation übernimmt ihr
    Embedding-Modell nicht ([ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md),
-   Entscheidung 10), ebenso wenig eine mit Liquibase migrierte
+   Entscheidung 10; eine Datenbank eines solchen Zwischenstands von `main`, etwa eines Demo-Stacks,
+   startet deshalb einmal mit einem Stand ab dem Merge von #3206 oder wird neu aufgesetzt), ebenso
+   wenig eine mit Liquibase migrierte
    ([ADR-0056](../decisions/0056-lizenz-der-migrationsbibliothek.md), Entscheidung 2). Ab dieser
    Untergrenze installiert auch die Vorgängerversion aus der Antwortdatei.
 

@@ -76,6 +76,36 @@ class S3ClientFactoryTest {
   }
 
   @Test
+  void anAllowlistEntryWithThePortAdmitsTheEndpointAndItsBucketHosts() throws Exception {
+    S3ClientFactory factory =
+        new S3ClientFactory(
+            S3Properties.defaults(),
+            new TargetAddressValidator(true, List.of("10.0.0.5:9000", "docs.minio.intern:443")));
+
+    try (S3ObjectStore store =
+        factory.create(connection("http://10.0.0.5:9000", true), List.of(S3Scope.of("docs", "")))) {
+      assertThat(store).isNotNull();
+    }
+    // the bucket host is checked with the endpoint's port; it is listed, so nothing is resolved
+    S3ClientFactory virtualHosts =
+        new S3ClientFactory(
+            S3Properties.defaults(),
+            new TargetAddressValidator(true, List.of("minio.intern", "docs.minio.intern:443")));
+    try (S3ObjectStore store =
+        virtualHosts.create(
+            connection("https://minio.intern", false), List.of(S3Scope.of("docs", "")))) {
+      assertThat(store).isNotNull();
+    }
+    assertThatThrownBy(
+            () ->
+                new S3ClientFactory(
+                        S3Properties.defaults(),
+                        new TargetAddressValidator(true, List.of("10.0.0.5:9001")))
+                    .create(connection("http://10.0.0.5:9000", true), List.of()))
+        .isInstanceOf(S3AccessException.TargetBlocked.class);
+  }
+
+  @Test
   void underPathStyleAddressingOnlyTheEndpointIsChecked() throws Exception {
     S3ClientFactory factory =
         new S3ClientFactory(

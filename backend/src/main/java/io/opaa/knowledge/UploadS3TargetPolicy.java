@@ -49,7 +49,7 @@ final class UploadS3TargetPolicy implements S3RequestGuard.TargetPolicy {
     if (isConfiguredEndpoint(request)) {
       return;
     }
-    validator.validateHost(request.host());
+    validator.validateHost(request.host(), request.port());
   }
 
   private boolean isConfiguredEndpoint(SdkHttpRequest request) {

@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * and NAT64 included. Checked before the first request and again on every redirect hop. {@code
  * enabled} is the operator's off switch, {@code allowlist} the exception: an entry {@code host}
  * admits every port of the host, an entry {@code host:port} (IPv6 as {@code [addr]:port}) only that
- * port of a URI - a bare host checked without a port never matches it.
+ * port - of a URI, or of a bare host whose caller names the port it connects to.
  *
  * <p>DNS rebinding is an accepted limitation: the vetted address and the one the client connects to
  * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
@@ -107,6 +107,27 @@ public class TargetAddressValidator {
   }
 
   /**
+   * {@link #validateHost(String)} for a connection to {@code port}, so an allowlist entry {@code
+   * host:port} admits it; a negative port is none.
+   */
+  public void validateHost(String host, int port) throws IOException {
+    validateHost(host, port, false);
+  }
+
+  /** {@link #validateHost(String, boolean)} for a connection to {@code port}. */
+  public void validateHost(String host, int port, boolean throughOutboundProxy) throws IOException {
+    if (!enabled || host == null || isAllowed(host, port < 0 ? NO_PORT : port)) {
+      return;
+    }
+    checkHost(host, throughOutboundProxy);
+  }
+
+  /** The port a client connects to for {@code uri}: its own, or the default of its scheme. */
+  public static int portOf(URI uri) {
+    return effectivePort(uri);
+  }
+
+  /**
    * {@link #validateHost(String)} for a client whose route the caller decided itself: with {@code
    * throughOutboundProxy} the outbound proxy resolves the name, so a name that does not resolve
    * locally passes. Only a caller that actually hands its client that proxy may say so.
@@ -168,8 +189,9 @@ public class TargetAddressValidator {
     if (!withPort) {
       return entry.equalsIgnoreCase(host);
     }
+    String name = host.indexOf(':') >= 0 && !host.startsWith("[") ? "[" + host + "]" : host;
     return port != NO_PORT
-        && entry.substring(0, colon).equalsIgnoreCase(host)
+        && entry.substring(0, colon).equalsIgnoreCase(name)
         && Integer.parseInt(entry.substring(colon + 1)) == port;
   }
 

@@ -92,7 +92,16 @@ class InstallationStartup implements SmartLifecycle {
     boolean completed = decided || !status.isPending();
     if (completed) {
       adminReset.resetIfForced();
-      embeddingModels.adoptIfMissing();
+      if (!embeddingModels.adoptIfMissing()
+          && !DEV_MODE.equals(authProperties.mode())
+          && embeddingModels.missingAfterInstallation()) {
+        log.error(
+            "The installation is completed but has no embedding model, so indexing and search are"
+                + " refused. No embedding model is taken over from the environment: set the"
+                + " database up anew and install, or, for a database of a development state from"
+                + " before the embedding model was stored, start once with a state that took it"
+                + " over (docs/handbuch/betrieb/modelle.md, \"Fehlerbilder\")");
+      }
     }
     providerRegistry.refresh();
     if (!completed) {

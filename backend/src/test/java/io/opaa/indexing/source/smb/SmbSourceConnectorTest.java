@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.smb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -92,6 +93,24 @@ class SmbSourceConnectorTest {
                 assertThat(result.reachable()).isFalse();
                 assertThat(result.message()).contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
               });
+    }
+
+    // regression guard: a host:port entry admits the server on the port SMB connects to
+    @Test
+    void anAllowlistEntryWithThePortAdmitsTheServerOnItsPort() {
+      SmbSourceConnector defaultPort =
+          new SmbSourceConnector(
+              SmbProperties.defaults(),
+              new TargetAddressValidator(true, List.of("127.0.0.1:445", "127.0.0.2:1445")),
+              mock(SourceSyncStateRepository.class));
+
+      assertThatCode(() -> defaultPort.validate(settings("smb://127.0.0.1/Daten", "a:b")))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> defaultPort.validate(settings("smb://127.0.0.2:1445/Daten", "a:b")))
+          .doesNotThrowAnyException();
+      assertThatThrownBy(() -> defaultPort.validate(settings("smb://127.0.0.2/Daten", "a:b")))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
     }
 
     /**

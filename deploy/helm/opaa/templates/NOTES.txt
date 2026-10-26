@@ -32,8 +32,10 @@ Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit
 
 {{ if .Release.IsUpgrade -}}
 Eine eingerichtete Installation übergeht bootstrap; Mailserver, Identitätsanbieter und Modelle
-werden in der Oberfläche geändert. Das Passwort des ersten Kontos braucht sie nicht mehr:
-secrets.initialAdminPassword bzw. den Schlüssel installation-admin-password entfernen.
+werden in der Oberfläche geändert. Nach dem Abschluss der Installation braucht sie das Passwort des
+ersten Kontos nicht mehr: dann secrets.initialAdminPassword bzw. den Schlüssel
+installation-admin-password entfernen. Ein Update von v0.1.0-rc.4 setzt die Datenbank neu auf; ihr
+erster Start installiert noch aus der Antwortdatei und braucht das Passwort.
 {{- else if include "opaa.installation.answerFileEnabled" . -}}
 INSTALLATION AUS DER ANTWORTDATEI
   Der erste Start richtet OPAA aus bootstrap und embedding ein: erstes Konto {{ .Values.bootstrap.initialAdmin.email }},
