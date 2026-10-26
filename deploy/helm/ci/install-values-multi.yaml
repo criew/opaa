@@ -29,9 +29,10 @@ uploads:
 targetValidation:
   indexingAllowlist:
     - objectstore.multi-test.svc.cluster.local
-    # The chat and embedding model of the answer file; the installation checks their address like
-    # a source.
-    - ai-stub.multi-test.svc.cluster.local
+  # The chart adds host and port of the answer file's models itself; named here as well, since the
+  # suite's ai-stub is the one model endpoint of the run.
+  modelAllowlist:
+    - ai-stub.multi-test.svc.cluster.local:8089
   identityProviderAllowlist:
     - ai-stub.multi-test.svc.cluster.local:8089
 secrets:

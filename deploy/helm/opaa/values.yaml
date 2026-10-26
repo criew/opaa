@@ -91,8 +91,8 @@ embedding:
   # embedding; without it the installation in the browser asks for it. Afterwards the values change
   # nothing; another model means a re-embedding. Its key, if needed, comes from the secret as a file
   # (key installation-embedding-api-key): set secrets.embeddingApiKey, or apiKeyInSecret with
-  # secrets.existingSecret. An internal host of the model needs
-  # targetValidation.indexingAllowlist.
+  # secrets.existingSecret. Host and port of baseUrl pass the address check of models
+  # (targetValidation.modelAllowlist) on their own.
   baseUrl: ""
   # e.g. bge-m3, recommended for German texts
   model: ""
@@ -191,8 +191,12 @@ features:
 # cluster-internal addresses by default.
 targetValidation:
   # Sources of libraries inside the cluster or the data centre, e.g. an in-house S3 endpoint or
-  # Confluence (OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST).
+  # Confluence (OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST). Model hosts do not belong here.
   indexingAllowlist: []
+  # Model endpoints inside the cluster or the data centre as host:port, e.g. a rerank or
+  # transcription service added under Modelle; host and port of bootstrap.chatModel.baseUrl and
+  # embedding.baseUrl are always added (OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST).
+  modelAllowlist: []
   # Further identity providers added in the user interface; the hosts of bootstrap.oidc are always
   # added (OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST).
   identityProviderAllowlist: []

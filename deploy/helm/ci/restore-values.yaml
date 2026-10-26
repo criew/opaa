@@ -13,10 +13,8 @@ bootstrap:
 embedding:
   baseUrl: http://ai-stub:8089
   model: bge-m3
-# ai-stub is a cluster address, which the installation's target address check refuses unlisted.
-targetValidation:
-  indexingAllowlist:
-    - ai-stub
+# ai-stub is a cluster address the address check of models refuses unlisted; the chart adds
+# ai-stub:8089 of the answer file to targetValidation.modelAllowlist itself.
 networkPolicy:
   egress:
     backendRules:

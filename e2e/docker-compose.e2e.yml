@@ -77,6 +77,9 @@ services:
       # exactly the case opaa.indexing.target-validation.allowlist exists for, mirroring how a real
       # deployment names its own trusted internal sources.
       OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: rss-feed,ai-stub,nextcloud,dropbox-stub
+      # The models of this suite (chat model administration, connection test) are ai-stub as well;
+      # the address check of models has its own list, the entry above releases no model.
+      OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: ai-stub:8089
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.

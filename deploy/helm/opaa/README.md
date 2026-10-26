@@ -106,7 +106,7 @@ den Weg.
 | `extraCACertificates` | eigene CA-Zertifikate für Identitätsanbieter, Modelle, Objektspeicher, Datenbank und Quellen (etwa Confluence, Nextcloud, Webverzeichnis und Feed) |
 | `embedding`, `rerank` | Modell-Endpunkte, auch im Cluster (etwa Ollama über seinen Service) |
 | `mail` | Zeitgrenzen der SMTP-Verbindung; den Mailserver richtet die Oberfläche ein |
-| `targetValidation` | Ausnahmen der Adressprüfung für Quellen und Identitätsanbieter im eigenen Netz |
+| `targetValidation` | Ausnahmen der Adressprüfung für Quellen, Modelle und Identitätsanbieter im eigenen Netz, je eine eigene Liste |
 
 ## Was der Chart festlegt
 
