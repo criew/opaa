@@ -7,12 +7,14 @@ import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.SourceType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * The audit state of a profile names client ID, tenant, scopes and connector defaults with their
- * value, so a change shows before and after; the {@code *Set} flags stay beside them.
+ * The audit state of a profile names client ID, tenant and scopes with their value and the
+ * connector defaults only by key, since a default may name a person (the delegated account of
+ * Google Drive); the {@code *Set} flags stay beside them.
  */
 class ConnectionProfileAuditStateTest {
 
@@ -31,7 +33,7 @@ class ConnectionProfileAuditStateTest {
             null,
             "rathaus-tenant",
             "Sites.Read.All offline_access",
-            ConnectorData.of(Map.of("includeLists", true))),
+            ConnectorData.of(Map.of("subject", "anna.muster@stadt.example", "includeLists", true))),
         null,
         NOW);
 
@@ -41,11 +43,13 @@ class ConnectionProfileAuditStateTest {
         .containsEntry("clientId", "client-4711")
         .containsEntry("tenant", "rathaus-tenant")
         .containsEntry("scopes", "Sites.Read.All offline_access")
-        .containsEntry("connectorSettings", "{\"includeLists\":true}")
+        .containsEntry("connectorSettingsKeys", List.of("includeLists", "subject"))
+        .doesNotContainKey("connectorSettings")
         .containsEntry("clientIdSet", true)
         .containsEntry("tenantSet", true)
         .containsEntry("scopesSet", true)
         .containsEntry("connectorSettingsSet", true);
+    assertThat(state.toString()).doesNotContain("anna.muster");
   }
 
   @Test
@@ -71,10 +75,22 @@ class ConnectionProfileAuditStateTest {
         .containsEntry("clientId", "")
         .containsEntry("tenant", "")
         .containsEntry("scopes", "")
-        .containsEntry("connectorSettings", "")
+        .containsEntry("connectorSettingsKeys", List.of())
         .containsEntry("clientIdSet", false)
         .containsEntry("tenantSet", false)
         .containsEntry("scopesSet", false)
         .containsEntry("connectorSettingsSet", false);
+  }
+
+  @Test
+  void aChangeOfTheConnectorDefaultsNamesTheChangedKeysWithoutTheirValues() {
+    String before = "{\"subject\":\"anna.muster@stadt.example\",\"region\":\"eu\",\"keep\":true}";
+    String after = "{\"subject\":\"ben.beispiel@stadt.example\",\"keep\":true,\"lists\":false}";
+
+    assertThat(ConnectionProfileService.changedConnectorSettingsKeys(before, after))
+        .containsExactly("lists", "region", "subject");
+    assertThat(ConnectionProfileService.changedConnectorSettingsKeys(null, null)).isEmpty();
+    assertThat(ConnectionProfileService.changedConnectorSettingsKeys(null, after))
+        .containsExactly("keep", "lists", "subject");
   }
 }

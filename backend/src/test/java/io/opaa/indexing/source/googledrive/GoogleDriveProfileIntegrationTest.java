@@ -15,6 +15,7 @@ import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -152,6 +153,39 @@ class GoogleDriveProfileIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.profileSupport").value("OPTIONAL"))
         .andExpect(jsonPath("$.profileRequired").value(true));
+  }
+
+  /** The imitated account may be a person's address: the audit names its key, never its value. */
+  @Test
+  void theAuditNamesAChangedImitatedAccountWithoutItsAddress() throws Exception {
+    String name =
+        jdbc.queryForObject(
+            "SELECT name FROM connection_profiles WHERE id = ?", String.class, profile);
+    mockMvc
+        .perform(
+            as(put(PROFILES + "/" + profile))
+                .content(
+                    """
+                    {"name": "%s", "serverUrl": "https://www.googleapis.com",
+                     "authMethod": "SERVICE_ACCOUNT_KEY", "ownership": "LIBRARY",
+                     "connectorSettings": {"subject": "anna.muster@example.org"}}
+                    """
+                        .formatted(name)))
+        .andExpect(status().isOk());
+
+    List<Map<String, Object>> entries =
+        jdbc.queryForList(
+            "SELECT event_type, before, after FROM audit_log"
+                + " WHERE object_id = ? ORDER BY recorded_at",
+            profile.toString());
+
+    assertThat(entries)
+        .extracting(entry -> entry.get("event_type"))
+        .containsExactly("CONNECTION_PROFILE_CREATED", "CONNECTION_PROFILE_CHANGED");
+    assertThat(String.valueOf(entries.get(1).get("after")))
+        .contains("\"connectorSettingsChanged\":[\"subject\"]")
+        .contains("\"connectorSettingsKeys\":[\"subject\"]");
+    assertThat(entries.toString()).doesNotContain("fach@example.org", "anna.muster@example.org");
   }
 
   private static MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request) {
