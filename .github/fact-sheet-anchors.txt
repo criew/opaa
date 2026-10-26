@@ -73,6 +73,7 @@ protokollereignisse#branding-settings-changed
 protokollereignisse#capability-granted
 protokollereignisse#capability-revoked
 protokollereignisse#chat-auto-cleanup-periods-changed
+protokollereignisse#connection-lifecycle-setting-changed
 protokollereignisse#connection-log-accessed
 protokollereignisse#connection-log-retention-changed
 protokollereignisse#connection-profile-changed
@@ -258,6 +259,9 @@ voreinstellungen#bereich-rights
 voreinstellungen#bereich-spaces
 voreinstellungen#chat-auto-cleanup-settings-archive-after-days
 voreinstellungen#chat-auto-cleanup-settings-delete-after-days
+voreinstellungen#connection-lifecycle-settings-setting-value-expired-connection-warning-threshold
+voreinstellungen#connection-lifecycle-settings-setting-value-inactivity-threshold-days
+voreinstellungen#connection-lifecycle-settings-setting-value-private-library-deletion-days
 voreinstellungen#connection-log-retention-settings-retention-months
 voreinstellungen#diagnostic-context-retention-settings-retention-months
 voreinstellungen#einstellungen
@@ -295,9 +299,6 @@ voreinstellungen#opaa-auth-local-admin-session-max-lifetime
 voreinstellungen#opaa-auth-local-refresh-token-ttl
 voreinstellungen#opaa-auth-local-session-max-lifetime
 voreinstellungen#opaa-chat-note-max-items
-voreinstellungen#opaa-connection-expired-connections-warning-threshold
-voreinstellungen#opaa-connection-inactivity-threshold-days
-voreinstellungen#opaa-connection-private-library-deletion-days
 voreinstellungen#opaa-demo-chat-import-enabled
 voreinstellungen#opaa-directory-sync-schedule-enabled
 voreinstellungen#opaa-external-access-max-release-days
@@ -346,6 +347,8 @@ fristen#audit-incident-scope-retention-settings-retention-years
 fristen#audit-retention-settings-retention-months
 fristen#chat-auto-cleanup-settings-archive-after-days
 fristen#chat-auto-cleanup-settings-delete-after-days
+fristen#connection-lifecycle-settings-setting-value-inactivity-threshold-days
+fristen#connection-lifecycle-settings-setting-value-private-library-deletion-days
 fristen#connection-log-retention-settings-retention-months
 fristen#daten
 fristen#diagnostic-context-retention-settings-retention-months
@@ -365,7 +368,5 @@ fristen#opaa-auth-local-admin-refresh-token-ttl
 fristen#opaa-auth-local-admin-session-max-lifetime
 fristen#opaa-auth-local-refresh-token-ttl
 fristen#opaa-auth-local-session-max-lifetime
-fristen#opaa-connection-inactivity-threshold-days
-fristen#opaa-connection-private-library-deletion-days
 fristen#permission-history-retention-settings-retention-months
 fristen#protokollereignisse

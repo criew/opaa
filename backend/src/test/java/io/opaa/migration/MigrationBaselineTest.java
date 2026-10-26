@@ -199,6 +199,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "connected_accounts",
             "connection_authorizations",
             "connection_grant_revocations",
+            "connection_lifecycle_settings",
             "connection_log",
             "connection_log_retention_settings",
             "connection_person_states",

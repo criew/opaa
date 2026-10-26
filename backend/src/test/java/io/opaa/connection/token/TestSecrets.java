@@ -72,7 +72,7 @@ public final class TestSecrets {
         mock(ObjectProvider.class),
         mock(ObjectProvider.class),
         mock(GrantRevocations.class),
-        ConnectionLifecycleProperties.defaults(),
+        TestLifecycleSettings.factoryDefaults(),
         mock(PlatformTransactionManager.class),
         Clock.systemUTC());
   }

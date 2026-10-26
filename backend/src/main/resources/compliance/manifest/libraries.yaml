@@ -152,7 +152,8 @@ data:
       rule: >-
         Solange das Dokument in der Bibliothek oder der Quelle besteht; private Bibliotheken
         deaktivierter Personen nach 30 Tagen
-      settings: [opaa.connection.private-library-deletion-days]
+      settings:
+        - connection_lifecycle_settings.setting_value[PRIVATE_LIBRARY_DELETION_DAYS]
     visibility: [Personen mit Leserecht an der Bibliothek]
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-

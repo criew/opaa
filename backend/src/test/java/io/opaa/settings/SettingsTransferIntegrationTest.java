@@ -177,6 +177,7 @@ class SettingsTransferIntegrationTest {
     retention(sections, "permissionHistoryRetention", 48, 60);
     retention(sections, "diagnosticContextRetention", 6, 9);
     retention(sections, "connectionLogRetention", 18, 20);
+    sections.withObject("connectionLifecycle").put("inactivityThresholdDays", 120);
     sections.withObject("branding").put("productName", "Stadt-Assistent");
     sections.withObject("externalAccess").put("tokenRateLimitPerHour", 90);
     sections.withObject("externalAccess").put("releaseReminderLeadDays", 21);
@@ -332,6 +333,86 @@ class SettingsTransferIntegrationTest {
     refused.put("{\"fullSyncRhythm\": {\"DROPBOX\": 366}}", "fullSyncRhythm.DROPBOX");
     refused.put("{\"fullSyncRhythm\": {\"SHAREPOINT\": 2.5}}", "fullSyncRhythm.SHAREPOINT");
     refused.put("{\"fullSyncRhythm\": {\"S3\": 3}}", "fullSyncRhythm");
+    for (Map.Entry<String, String> entry : refused.entrySet()) {
+      send(
+              IMPORT,
+              "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\": "
+                  + entry.getKey()
+                  + "}")
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.fieldErrors[0].field").value(entry.getValue()));
+    }
+
+    assertThat(export()).isEqualTo(withoutExportedAt(before));
+    assertThat(auditEventTypes()).isEmpty();
+  }
+
+  /**
+   * The thresholds and periods of the connections travel with their own value or {@code null} for
+   * the factory default; the inactivity threshold and the deletion period are marked
+   * security-relevant, the warning threshold is not, and the same file again writes nothing.
+   */
+  @Test
+  void theConnectionLifecycleTravelsAndAgainChangesNothing() throws Exception {
+    ObjectNode document = (ObjectNode) JSON.readTree(export());
+    ObjectNode lifecycle = sections(document).withObject("connectionLifecycle");
+    assertThat(lifecycle.propertyNames())
+        .containsExactly(
+            "inactivityThresholdDays",
+            "privateLibraryDeletionDays",
+            "expiredConnectionWarningThreshold");
+    assertThat(lifecycle.get("privateLibraryDeletionDays").isNull()).isTrue();
+    lifecycle.put("inactivityThresholdDays", 180);
+    lifecycle.put("privateLibraryDeletionDays", 14);
+    lifecycle.put("expiredConnectionWarningThreshold", 25);
+    String changed = JSON.writeValueAsString(document);
+
+    send(PREVIEW, changed)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.changes.length()").value(3))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'inactivityThresholdDays')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(true)))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'privateLibraryDeletionDays')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(true)))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'expiredConnectionWarningThreshold')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(false)));
+    send(IMPORT, changed).andExpect(status().isOk());
+
+    assertThat(export()).isEqualTo(withoutExportedAt(changed));
+    assertThat(auditEventTypes())
+        .filteredOn("CONNECTION_LIFECYCLE_SETTING_CHANGED"::equals)
+        .hasSize(3);
+    int entries = auditEntries().size();
+    send(IMPORT, changed).andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty());
+    assertThat(auditEntries()).hasSize(entries);
+
+    lifecycle.putNull("privateLibraryDeletionDays");
+    send(IMPORT, JSON.writeValueAsString(document)).andExpect(status().isOk());
+    assertThat(
+            sections((ObjectNode) JSON.readTree(export()))
+                .get("connectionLifecycle")
+                .get("privateLibraryDeletionDays")
+                .isNull())
+        .isTrue();
+  }
+
+  /** A value outside the bounds of its setting is refused under its field, nothing written. */
+  @Test
+  void aConnectionLifecycleValueOutsideItsBoundsIsRefusedUnderItsField() throws Exception {
+    String before = export();
+    Map<String, String> refused = new java.util.LinkedHashMap<>();
+    refused.put(
+        "{\"connectionLifecycle\": {\"inactivityThresholdDays\": 29}}",
+        "connectionLifecycle.inactivityThresholdDays");
+    refused.put(
+        "{\"connectionLifecycle\": {\"privateLibraryDeletionDays\": 91}}",
+        "connectionLifecycle.privateLibraryDeletionDays");
+    refused.put(
+        "{\"connectionLifecycle\": {\"expiredConnectionWarningThreshold\": 0}}",
+        "connectionLifecycle.expiredConnectionWarningThreshold");
     for (Map.Entry<String, String> entry : refused.entrySet()) {
       send(
               IMPORT,

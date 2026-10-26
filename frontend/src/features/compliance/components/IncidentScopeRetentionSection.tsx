@@ -5,7 +5,7 @@ import { useRetentionSetting } from '../hooks/useRetentionSetting'
 import RetentionForm from './RetentionForm'
 import { periodLabel, type RetentionField, type RetentionValues } from '../utils/retentionPeriod'
 import RetentionLoadState from './RetentionLoadState'
-import RetentionPauseNotice from './RetentionPauseNotice'
+import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 
 const FIELDS: RetentionField[] = [
   { key: 'retentionYears', label: 'Löschfrist (Kalenderjahre)', unit: 'years', min: 1, max: 10 },

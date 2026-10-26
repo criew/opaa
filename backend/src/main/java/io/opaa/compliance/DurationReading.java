@@ -44,6 +44,20 @@ final class DurationReading {
   private static final Pattern KEY_UNIT =
       Pattern.compile(".*[._#-](seconds|minutes|hours|days|weeks|months|years)");
 
+  /**
+   * The unit of {@code key}: named by its column, else by its row ({@code
+   * table.setting_value[INACTIVITY_THRESHOLD_DAYS]}).
+   */
+  private static Matcher unitOf(String key) {
+    Matcher row = ROW.matcher(key);
+    Matcher column = KEY_UNIT.matcher(row.replaceFirst("").toLowerCase(Locale.ROOT));
+    if (column.matches() || !row.reset().find()) {
+      return column;
+    }
+    String name = row.group();
+    return KEY_UNIT.matcher("." + name.substring(1, name.length() - 1).toLowerCase(Locale.ROOT));
+  }
+
   private DurationReading() {}
 
   /** The reading of {@code value} of the setting {@code key}, or {@code null} if it has none. */
@@ -70,7 +84,7 @@ final class DurationReading {
         default -> words(amount, ISO_UNITS[3]);
       };
     }
-    Matcher unit = KEY_UNIT.matcher(ROW.matcher(key).replaceFirst("").toLowerCase(Locale.ROOT));
+    Matcher unit = unitOf(key);
     if (NUMBER.matcher(trimmed).matches() && unit.matches()) {
       int index =
           switch (unit.group(1)) {
@@ -97,7 +111,7 @@ final class DurationReading {
     long seconds = -1;
     Matcher iso = ISO.matcher(trimmed.toUpperCase(Locale.ROOT));
     Matcher shortForm = SHORT.matcher(trimmed);
-    Matcher unit = KEY_UNIT.matcher(ROW.matcher(key).replaceFirst("").toLowerCase(Locale.ROOT));
+    Matcher unit = unitOf(key);
     if (trimmed.length() > 1 && iso.matches()) {
       seconds = 0;
       for (int i = 0; i < ISO_SECONDS.length; i++) {

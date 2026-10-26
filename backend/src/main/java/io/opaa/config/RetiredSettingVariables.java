@@ -30,8 +30,36 @@ public class RetiredSettingVariables {
 
   private static final String PRIVACY_SETTINGS = "under Administration > Datenschutz";
 
+  private static final String INACTIVITY =
+      "the inactivity threshold of the connections (the factory default of 90 days applies now: a"
+          + " lower value set before let connections rest earlier, so the secrets of absent persons"
+          + " stay usable longer now; a higher one let them rest later) "
+          + CONNECTION_SETTINGS;
+
+  private static final String DELETION =
+      "the deletion period of private libraries (the factory default of 30 days applies now; it is"
+          + " never taken over, it only brakes: while it keeps longer and no value is set there, the"
+          + " erasure of private libraries after their period pauses) "
+          + CONNECTION_SETTINGS;
+
+  private static final String WARNING =
+      "the warning threshold of expired connected accounts (the factory default of 10 applies now) "
+          + CONNECTION_SETTINGS;
+
   /** Each retired variable with the setting it preset and the place that setting lives now. */
   static final Map<String, String> RETIRED = retired();
+
+  /**
+   * The property each variable of {@link #RETIRED} was bound to, where one was; either name gives
+   * one message, since relaxed binding finds the variable under the property name as well.
+   */
+  static final Map<String, String> PROPERTY_NAMES =
+      Map.of(
+          "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS", "opaa.connection.inactivity-threshold-days",
+          "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
+              "opaa.connection.private-library-deletion-days",
+          "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
+              "opaa.connection.expired-connections.warning-threshold");
 
   /** The retired retention periods, held on the page of the data protection settings. */
   static final Map<String, String> RETIRED_RETENTION = retiredRetention();
@@ -58,8 +86,11 @@ public class RetiredSettingVariables {
     List<String> messages = new ArrayList<>();
     RETIRED.forEach(
         (variable, setting) -> {
-          if (environment.containsProperty(variable)) {
-            messages.add(variable + " is no longer read; set " + setting);
+          String property = PROPERTY_NAMES.get(variable);
+          if (environment.containsProperty(variable)
+              || (property != null && environment.containsProperty(property))) {
+            String named = property == null ? variable : variable + " (" + property + ")";
+            messages.add(named + " is no longer read; set " + setting);
           }
         });
     RETIRED_RETENTION.forEach(
@@ -138,6 +169,9 @@ public class RetiredSettingVariables {
     retired.put(
         "OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES",
         "the storage quota of private libraries " + CONNECTION_SETTINGS);
+    retired.put("OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS", INACTIVITY);
+    retired.put("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", DELETION);
+    retired.put("OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD", WARNING);
     String account = "the first account in the installation, then in the user administration";
     retired.put("OPAA_INITIAL_ADMIN_EMAIL", account);
     retired.put("OPAA_INITIAL_ADMIN_PASSWORD", account);

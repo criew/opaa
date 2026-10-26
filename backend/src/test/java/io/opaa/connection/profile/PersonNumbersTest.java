@@ -4,19 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.connection.profile.PersonNumbers.OwnerSplit;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
+import io.opaa.connection.token.ConnectionLifecycleSetting;
+import io.opaa.connection.token.ConnectionLifecycleSettings;
+import io.opaa.connection.token.TestLifecycleSettings;
 import io.opaa.permission.GroupSizeProperties;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 
 /**
  * Under the minimum group size 5 no answer, and no difference of two answers, points at fewer than
@@ -116,10 +116,7 @@ class PersonNumbersTest {
   @Test
   void aThresholdBelowTheMinimumWarnsOnEveryAnswerThatAdmitsIt() {
     PersonNumbers lowThreshold =
-        new PersonNumbers(
-            TestPersonCounts.NO_PERSONS,
-            new GroupSizeProperties(5),
-            new ExpiredConnectionWarningProperties(4));
+        new PersonNumbers(TestPersonCounts.NO_PERSONS, new GroupSizeProperties(5), warningAt(4));
 
     assertThat(lowThreshold.mask(new PersonConnections.StateCounts(0, 0)).expiredWarning())
         .isTrue();
@@ -141,9 +138,7 @@ class PersonNumbersTest {
   void theWarningSaysNothingTheAnswerDoesNot(int warningThreshold) {
     PersonNumbers numbers =
         new PersonNumbers(
-            TestPersonCounts.NO_PERSONS,
-            new GroupSizeProperties(5),
-            new ExpiredConnectionWarningProperties(warningThreshold));
+            TestPersonCounts.NO_PERSONS, new GroupSizeProperties(5), warningAt(warningThreshold));
     for (long connected = 0; connected <= 30; connected++) {
       for (long expired = 0; expired <= 30; expired++) {
         ProfileCounts counts = numbers.mask(new PersonConnections.StateCounts(connected, expired));
@@ -153,21 +148,6 @@ class PersonNumbersTest {
             .isEqualTo(admitted >= warningThreshold);
       }
     }
-  }
-
-  /** A threshold below N is kept, but said at start: every profile for persons then warns. */
-  @Test
-  @ExtendWith(OutputCaptureExtension.class)
-  void aThresholdBelowTheMinimumIsLoggedAtStart(CapturedOutput output) {
-    new PersonNumbers(
-        TestPersonCounts.NO_PERSONS,
-        new GroupSizeProperties(5),
-        new ExpiredConnectionWarningProperties(4));
-    assertThat(output.getAll()).contains("WARN").contains("below the minimum group size");
-
-    int before = output.getAll().length();
-    TestPersonCounts.numbersOver(TestPersonCounts.NO_PERSONS);
-    assertThat(output.getAll().substring(before)).doesNotContain("below the minimum group size");
   }
 
   /** What the shown numbers alone admit: an exact part, else N-1 below N, else the total. */
@@ -184,10 +164,7 @@ class PersonNumbersTest {
   @Test
   void twoStatesWithTheSameAnswerCarryTheSameWarning() {
     PersonNumbers lowThreshold =
-        new PersonNumbers(
-            TestPersonCounts.NO_PERSONS,
-            new GroupSizeProperties(5),
-            new ExpiredConnectionWarningProperties(3));
+        new PersonNumbers(TestPersonCounts.NO_PERSONS, new GroupSizeProperties(5), warningAt(3));
     for (PersonNumbers numbers : List.of(TestPersonCounts.numbers(), lowThreshold)) {
       Map<String, Boolean> warningByAnswer = new HashMap<>();
       for (long connected = 0; connected <= 30; connected++) {
@@ -232,5 +209,10 @@ class PersonNumbersTest {
             .privateLibraries(libraries, List.of(new OwnerSplit(owners, otherOwners)));
 
     assertThat(count == null ? "-" : count.toString()).isEqualTo(shown);
+  }
+
+  private static ConnectionLifecycleSettings warningAt(int threshold) {
+    return TestLifecycleSettings.with(
+        ConnectionLifecycleSetting.EXPIRED_CONNECTION_WARNING_THRESHOLD, threshold);
   }
 }

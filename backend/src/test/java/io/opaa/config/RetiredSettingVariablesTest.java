@@ -130,7 +130,56 @@ class RetiredSettingVariablesTest {
             "OPAA_OPENAI_EMBEDDING_API_KEY",
             "OPAA_OPENAI_EMBEDDING_MODEL",
             "OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS",
-            "OPAA_PGVECTOR_DIMENSIONS");
+            "OPAA_PGVECTOR_DIMENSIONS",
+            "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS",
+            "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
+            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD");
+    assertThat(RetiredSettingVariables.PROPERTY_NAMES)
+        .containsOnlyKeys(
+            "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS",
+            "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS",
+            "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD");
+  }
+
+  /** A property file or a system property naming the old key is found as well. */
+  @Test
+  void aRetiredPropertyNameIsNamedWithItsNewPlace() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("opaa.connection.inactivity-threshold-days", "120");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS (opaa.connection.inactivity-threshold-days)"
+                + " is no longer read; set the inactivity threshold of the connections (the factory default of 90 days applies now: a"
+                + " lower value set before let connections rest earlier, so the secrets of absent"
+                + " persons stay usable longer now; a higher one let them rest later) under"
+                + " Administration > Anbindungen > Einstellungen");
+  }
+
+  /** The variable and its property name, both found by relaxed binding, give one message. */
+  @Test
+  void aVariableSetUnderBothNamesIsNamedOnce() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD", "5")
+            .withProperty("opaa.connection.expired-connections.warning-threshold", "5");
+
+    assertThat(RetiredSettingVariables.foundIn(environment)).hasSize(1);
+  }
+
+  @Test
+  void aRetiredThresholdOfTheConnectionsIsNamedWithItsNewPlace() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", "60");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS"
+                + " (opaa.connection.private-library-deletion-days) is no longer read; set the"
+                + " deletion period of private libraries (the factory default of 30 days applies"
+                + " now; it is never taken over, it only brakes: while it keeps longer and no value"
+                + " is set there, the erasure of private libraries after their period pauses) under"
+                + " Administration > Anbindungen > Einstellungen");
   }
 
   @Test

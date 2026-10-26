@@ -8,7 +8,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.connection.account.ConnectedAccountService.Ended;
 import io.opaa.connection.log.ConnectionLogActor;
-import io.opaa.connection.token.ConnectionLifecycleProperties;
+import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.instance.ScheduledRunLocks;
 import java.time.Clock;
@@ -51,7 +51,7 @@ public class ConnectionLifecycleReconciler {
   private final ConnectionSecrets secrets;
   private final UserRepository users;
   private final AccountUsability usability;
-  private final ConnectionLifecycleProperties lifecycle;
+  private final ConnectionLifecycleSettings lifecycle;
   private final TransactionTemplate perPerson;
   private final Clock clock;
 
@@ -61,7 +61,7 @@ public class ConnectionLifecycleReconciler {
       ConnectionSecrets secrets,
       UserRepository users,
       AccountUsability usability,
-      ConnectionLifecycleProperties lifecycle,
+      ConnectionLifecycleSettings lifecycle,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.states = states;
