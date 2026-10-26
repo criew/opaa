@@ -998,6 +998,8 @@ components:
           description: >
             Whether the reference anchor an endpoint change is compared with is stored. Without it
             the stored endpoint is probed for one.
+        index:
+          $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
 
     EmbeddingModelDraft:
       type: object
