@@ -7,6 +7,8 @@ interface RetentionPauseNoticeProps {
   pauses: RetentionPause[]
   /** Sets the values shown as the administration's own, which ends the pause. */
   onConfirm: () => void
+  /** The label of the action; one shown value is fixed in the singular. */
+  confirmLabel?: string
 }
 
 /**
@@ -14,7 +16,11 @@ interface RetentionPauseNoticeProps {
  * period. The variable is never read as a value; it only holds the deletion back until the
  * administration sets a value of its own or the operator removes it.
  */
-export default function RetentionPauseNotice({ pauses, onConfirm }: RetentionPauseNoticeProps) {
+export default function RetentionPauseNotice({
+  pauses,
+  onConfirm,
+  confirmLabel = 'Angezeigte Werte festlegen',
+}: RetentionPauseNoticeProps) {
   if (pauses.length === 0) return null
   return (
     <Alert
@@ -22,7 +28,7 @@ export default function RetentionPauseNotice({ pauses, onConfirm }: RetentionPau
       sx={{ mb: 2 }}
       action={
         <Button color="inherit" size="small" onClick={onConfirm}>
-          Angezeigte Werte festlegen
+          {confirmLabel}
         </Button>
       }
     >

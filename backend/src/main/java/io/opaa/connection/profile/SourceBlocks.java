@@ -330,8 +330,12 @@ public class SourceBlocks {
     Map<UUID, SourceBlock> blocks = new HashMap<>();
     List<Facts> all = factsOf(libraries, considered);
     Map<UUID, Instant> starts = deactivationStartsOf(all, considered);
-    // read once per call, not per library: one query however many owners are deactivated
-    Duration period = starts.isEmpty() ? null : deletionPeriod.privateLibraryDeletionPeriod();
+    // read once per call, not per library; while the erasure pauses no day is named, it could lie
+    // in the past already (ADR-0060, Entscheidung 13)
+    Duration period =
+        starts.isEmpty() || !deletionPeriod.deletionPauses().isEmpty()
+            ? null
+            : deletionPeriod.privateLibraryDeletionPeriod();
     for (Facts facts : all) {
       facts
           .firstBlock(considered)
@@ -362,6 +366,7 @@ public class SourceBlocks {
       SourceBlock block, Facts facts, Map<UUID, Instant> starts, Duration period) {
     if (block.reason() != Reason.OWNER_DEACTIVATED
         || !(facts.secretOwner() instanceof PersonOwned person)
+        || period == null
         || !starts.containsKey(person.userId())) {
       return block;
     }
