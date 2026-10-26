@@ -39,8 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Entscheidung 11).
  *
  * <p>The reminder lead of a library's release ends one day before the longest Befristung ({@code
- * opaa.external-access.max-release-days}); a stored lead beyond a since lowered Befristung reads as
- * that bound.
+ * opaa.external-access.max-release-days}). A stored lead beyond a since lowered Befristung stays as
+ * stored, may be sent back unchanged and reads as that bound; the audit names the stored value.
  */
 @Service
 public class ExternalAccessSettingsService {
@@ -167,13 +167,13 @@ public class ExternalAccessSettingsService {
 
   @Transactional
   public View update(CurrentUser actor, Update update) {
-    Values target = validate(update);
     ExternalAccessSettings row =
         settings
             .findSingleton()
             .orElseThrow(
                 () -> new IllegalStateException("external_access_settings row is missing"));
     Values before = row.values();
+    Values target = validate(update, before.releaseReminderLeadDays());
     if (target.equals(before)) {
       return view(before, row);
     }
@@ -198,9 +198,10 @@ public class ExternalAccessSettingsService {
     return users.findById(userId).map(User::getDisplayName).orElse(null);
   }
 
-  private Values validate(Update update) {
+  private Values validate(Update update, Integer storedLead) {
     List<FieldError> errors = new ArrayList<>();
-    if (update.releaseReminderLeadDays() != null) {
+    if (update.releaseReminderLeadDays() != null
+        && !update.releaseReminderLeadDays().equals(storedLead)) {
       requireBetween(
           errors,
           "releaseReminderLeadDays",
@@ -315,7 +316,7 @@ public class ExternalAccessSettingsService {
             .build());
   }
 
-  private Map<String, Object> asAuditedMap(Values values) {
+  private static Map<String, Object> asAuditedMap(Values values) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("enabled", values.enabled());
     map.put("tokenMaxLifetimeDays", values.tokenMaxLifetimeDays());
@@ -325,7 +326,9 @@ public class ExternalAccessSettingsService {
     map.put("serverInstructions", values.serverInstructions());
     map.put(
         "releaseReminderLeadDays",
-        values.releaseReminderLeadDaysInForce(maxReleaseReminderLeadDays()));
+        values.releaseReminderLeadDays() == null
+            ? ExternalAccessDefaults.RELEASE_REMINDER_LEAD_DAYS
+            : values.releaseReminderLeadDays());
     map.put("releaseReminderLeadDaysOverridden", values.releaseReminderLeadDays() != null);
     return map;
   }

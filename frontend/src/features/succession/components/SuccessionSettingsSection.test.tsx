@@ -38,7 +38,7 @@ describe('SuccessionSettingsSection', () => {
     expect(onSaved).toHaveBeenCalledTimes(1)
   })
 
-  it('warns that a reset highlights entries only later', async () => {
+  it('names that a reset highlights entries only later, with the same tone as such a change', async () => {
     server.use(
       http.get('/api/v1/admin/succession/settings', () =>
         HttpResponse.json({
@@ -64,6 +64,7 @@ describe('SuccessionSettingsSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       'erst nach 12 Monate statt nach 6 Monate hervorgehoben',
     )
+    expect(useConfirmStore.getState().request?.tone).toBe('caution')
     await answerConfirm(user, question, 'Werkseinstellung wiederherstellen')
 
     await waitFor(() => expect(sent).toEqual([{ agingThresholdMonths: null }]))

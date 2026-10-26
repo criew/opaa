@@ -80,7 +80,7 @@ describe('DirectorySyncThresholdSection', () => {
     )
     const question = 'Auf die Werkseinstellung von 30 % zurücksetzen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
-      'Läufe ab 30 % statt ab 60 % warten dann auf Bestätigung',
+      'Läufe, die mehr als 30 % statt mehr als 60 % entfernen oder sperren würden, warten dann auf Bestätigung',
     )
     expect(useConfirmStore.getState().request?.tone).toBe('danger')
     await answerConfirm(user, question, 'Werkseinstellung wiederherstellen')

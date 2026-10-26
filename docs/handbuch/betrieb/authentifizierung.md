@@ -284,7 +284,11 @@ Ergebnis „fehlgeschlagen", ohne Ursache.
   Prozent gilt für alle Anbieter; die Systemverwaltung setzt sie unten auf der Seite
   Verzeichnisabgleich, ohne eigenen Wert gilt die Werkseinstellung. Wer sie anhebt, lässt größere
   Entzüge ohne Bestätigung durch; deshalb fragt die Seite dabei mit Warnung nach, und jede Änderung
-  steht im Nachweisprotokoll.
+  steht im Nachweisprotokoll. Wer vor dem Update `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION`
+  strenger als `0.3` gesetzt hatte, startet die neue Version zuerst mit
+  `OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false`, trägt die Schwelle ein und schaltet den Zeittakt danach
+  wieder ein: Bis dahin gälte 30 %, und eine Sperre beendet die verbundenen Konten der Person, was ein
+  Entsperren nicht zurückholt.
 
 **Der Bestätigungsweg.** Ein wartender Plan steht mit seinem **Alter** in der Übersicht. Ein neuer
 Lauf ersetzt ihn, es staut sich also kein Vorrat an Plänen. **Bestätigt wird gegen einen frischen

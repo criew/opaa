@@ -114,7 +114,10 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
   Werkseinstellung 30), jede Änderung ist ein Governance-Ereignis und in der Vorschau eines Imports
   als sicherheitsrelevant markiert (ADR-0060, Entscheidung 1).
 - **Kontosperren aus dem Abgleich** unterliegen derselben Schwelle und demselben Bestätigungsweg, sind
-  rückholbar, werden historisiert (`AccountStateHistory`, Entscheidung 8); die Person erhält bei der
+  als Kontozustand rückholbar (Entsperren), nicht aber in ihren Folgen: Eine Sperre ist eine
+  Deaktivierung nach ADR-0041, der Abgleich der Verbindungen beendet die verbundenen Konten, verwirft
+  deren Geheimnisse und startet die Löschfrist der privaten Bibliotheken; ein Entsperren verbindet
+  nichts neu. Sie werden historisiert (`AccountStateHistory`, Entscheidung 8); die Person erhält bei der
   nächsten Anmeldung Grund und Ansprechstelle.
 - **Mechanismuswechsel:** Token-Gruppen bleiben mit eingefrorener Mitgliedschaft stehen, sind kein neues
   Grant-Ziel, der Differenzbericht weist sie aus; nichts wird still entzogen.
@@ -500,7 +503,7 @@ Die Zusagen sind Teil der Entscheidung. Kennungen nach `discussion-berechtigungs
 | A5 Hinweis beim Anlegen einer internen Gruppe | gilt | — |
 | A6 Mitgliederabruf durch `SYSTEM_ADMIN` ist Audit-Ereignis | gilt (`GROUP_MEMBERS_READ`) | #1991: Abgleichsbericht als zweiter Weg protokolliert |
 | B1–B6 Mindestgruppengröße für Profile, Schnittmenge zum Laufzeitpunkt, Protokoll mit Space-Kontext, `SYSTEM_ADMIN`-Vorbehalt, erzwungene Untergrenze, Leitplanke (b) | gilt (gebaut, #1835, Entscheidung 7) | — |
-| C1–C4 Sperren aus dem Abgleich: Schwelle und Bestätigung, rückholbar, Grund und Ansprechstelle, kein stiller Entzug | gilt (Entscheidung 3) | — |
+| C1–C4 Sperren aus dem Abgleich: Schwelle und Bestätigung, rückholbar, Grund und Ansprechstelle, kein stiller Entzug | gilt (Entscheidung 3); rückholbar ist der Kontozustand, die verbundenen Konten nicht (ADR-0041) | — |
 | D1 Höchstdauer als Vorbedingung weiterer Quellen | gilt (Entscheidung 8) | — |
 | D2 Personen-Einstieg nur mit Vier-Augen-Vollmacht | gilt; Personen-Einstieg nicht gebaut | — |
 | D3 jeder Abruf ein Ereignis, auch abgewiesen | gilt | — |

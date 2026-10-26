@@ -49,6 +49,7 @@ const CUSTOM_REQUEST = {
 const CUSTOM_SETTINGS = {
   ...CUSTOM_REQUEST,
   releaseReminderLeadDaysOverridden: true,
+  storedReleaseReminderLeadDays: 21,
   updatedBy: 'Dev Admin',
 }
 
@@ -355,6 +356,29 @@ describe('ExternalToolsTab', () => {
     expect(mockExternalAccessSettings.enabled).toBe(false)
     expect(mockExternalAccessSettings.allowedCidrs).toEqual(['10.20.0.0/24'])
     expect(mockExternalAccessSettings.tokenMaxLifetimeDays).toBe(7)
+    expect(mockExternalAccessSettings.releaseReminderLeadDays).toBe(21)
+    expect(mockExternalAccessSettings.releaseReminderLeadDaysOverridden).toBe(true)
+  })
+
+  it.each(['', '1.5'])('lehnt den Vorlauf %j vor dem Senden ab', async (typed) => {
+    const puts: unknown[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (request.method === 'PUT') puts.push(request.url)
+    })
+    const user = userEvent.setup()
+    render()
+
+    const panel = await openSettings(user)
+    const lead = within(panel).getByLabelText('Erinnerung vor Ablauf (Tage)')
+    await user.clear(lead)
+    if (typed !== '') await user.type(lead, typed)
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    expect(
+      await within(panel).findByText('Bitte eine ganze Zahl von 0 bis 364 eingeben.'),
+    ).toBeVisible()
+    expect(within(panel).getByText(/Die Erinnerung vor Ablauf ist nicht gespeichert/)).toBeVisible()
+    expect(puts).toEqual([])
   })
 
   // Opening the panel adds no history entry, so „Zurück" leaves the tab

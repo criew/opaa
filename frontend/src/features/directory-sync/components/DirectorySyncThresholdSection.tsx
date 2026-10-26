@@ -79,7 +79,7 @@ export default function DirectorySyncThresholdSection() {
             consequence:
               next > settings.changeThresholdPercent
                 ? `Ein Lauf darf dann bis zu ${percentLabel(next)} entfernen und sperren, ohne dass jemand bestätigt. ${CHANGE_CONSEQUENCE}`
-                : `Läufe ab ${percentLabel(next)} warten dann auf Ihre Bestätigung. ${CHANGE_CONSEQUENCE}`,
+                : `Läufe, die mehr als ${percentLabel(next)} entfernen oder sperren würden, warten dann auf Ihre Bestätigung. ${CHANGE_CONSEQUENCE}`,
             danger: true,
           })}
           confirmReset={(current, factory) => ({
@@ -87,8 +87,8 @@ export default function DirectorySyncThresholdSection() {
             consequence: CHANGE_CONSEQUENCE,
             warning:
               factory < current
-                ? `Läufe ab ${percentLabel(factory)} statt ab ${percentLabel(current)} warten dann auf Bestätigung; ein Abgleich, der bisher durchlief, bleibt womöglich stehen.`
-                : null,
+                ? `Läufe, die mehr als ${percentLabel(factory)} statt mehr als ${percentLabel(current)} entfernen oder sperren würden, warten dann auf Bestätigung; ein Abgleich, der bisher durchlief, bleibt womöglich stehen.`
+                : `Ein Lauf darf dann bis zu ${percentLabel(factory)} statt bis zu ${percentLabel(current)} entfernen und sperren, ohne dass jemand bestätigt.`,
           })}
           savedMessage={(percent) =>
             `Die Plausibilitätsschwelle des Verzeichnisabgleichs ist jetzt ${percentLabel(percent)}.`

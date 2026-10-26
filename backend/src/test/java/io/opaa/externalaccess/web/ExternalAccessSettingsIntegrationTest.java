@@ -131,6 +131,34 @@ class ExternalAccessSettingsIntegrationTest {
   }
 
   /**
+   * A stored lead beyond a since lowered Befristung stays as stored: sent back unchanged it is
+   * accepted, it reads as the bound, and an unchanged lead is in no audit entry.
+   */
+  @Test
+  void aStoredLeadBeyondTheBoundIsKeptRawAndReadAsTheBound() throws Exception {
+    jdbc.update(
+        "UPDATE external_access_settings SET release_reminder_lead_days = 400 WHERE id = 1");
+
+    mockMvc
+        .perform(get(SETTINGS).with(devUser("dev-admin")))
+        .andExpect(jsonPath("$.releaseReminderLeadDays").value(364))
+        .andExpect(jsonPath("$.storedReleaseReminderLeadDays").value(400));
+    assertThat(reminderLead.days()).isEqualTo(364);
+
+    putLead(400).andExpect(status().isOk());
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT release_reminder_lead_days FROM external_access_settings WHERE id = 1",
+                Integer.class))
+        .isEqualTo(400);
+    assertThat(settingsEvents()).as("nothing changed, nothing audited").isEmpty();
+
+    putLead(500)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("releaseReminderLeadDays"));
+  }
+
+  /**
    * The lead ends one day before the longest Befristung; beyond it, or negative, nothing is kept.
    */
   @Test

@@ -351,6 +351,13 @@ components:
         releaseReminderLeadDaysOverridden:
           type: boolean
           description: Whether the administration set its own lead; false while the factory default applies.
+        storedReleaseReminderLeadDays:
+          type: integer
+          nullable: true
+          description: >
+            The lead as the administration stored it, absent while the factory default applies;
+            may exceed maxReleaseReminderLeadDays after the Befristung was lowered, and is the
+            value to send back unchanged.
         defaultReleaseReminderLeadDays:
           type: integer
           description: The factory default of the reminder lead.
@@ -392,8 +399,8 @@ components:
           nullable: true
           description: >
             Days before a library's release expires on which the person who set it is reminded,
-            from 0 (off) to maxReleaseReminderLeadDays; absent or null returns to the factory
-            default.
+            from 0 (off) to maxReleaseReminderLeadDays, or the stored value unchanged; absent or null
+            returns to the factory default.
 
     ExternalAccessState:
       type: string

@@ -21,6 +21,16 @@ const MIN_DAYS = 1
 const MAX_DAYS = 365
 const RANGE_ERROR = `Bitte eine ganze Zahl von ${MIN_DAYS} bis ${MAX_DAYS} eingeben.`
 
+/** Source types whose libraries have no rhythm of their own: the value holds for all of them. */
+const WITHOUT_OWN_RHYTHM = new Set(['NEXTCLOUD'])
+
+/** Which libraries a change reaches, in words. */
+function scopeOf(rhythm: FullSyncRhythmResponse): string {
+  return WITHOUT_OWN_RHYTHM.has(rhythm.sourceType)
+    ? `alle ${rhythm.displayName}-Bibliotheken`
+    : `alle ${rhythm.displayName}-Bibliotheken ohne eigenen Rhythmus`
+}
+
 /** Days in words: „1 Tag“, „7 Tage“. */
 function daysLabel(days: number): string {
   return days === 1 ? '1 Tag' : `${days} Tage`
@@ -73,7 +83,7 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
     if (busy || !changed || days === null) return
     const confirmed = await confirmAction({
       question: `Vollabgleich-Rhythmus von ${name} auf ${daysLabel(days)} ändern?`,
-      consequence: `Gilt ab dem nächsten Lauf für alle ${name}-Bibliotheken ohne eigenen Rhythmus. Ein kürzerer Rhythmus entfernt früher, was in der Quelle gelöscht wurde, und stellt mehr Anfragen an die Quelle. Die Änderung steht im Revisionsprotokoll.`,
+      consequence: `Gilt ab dem nächsten Lauf für ${scopeOf(rhythm)}. Ein kürzerer Rhythmus entfernt früher, was in der Quelle gelöscht wurde, und stellt mehr Anfragen an die Quelle. Die Änderung steht im Revisionsprotokoll.`,
       confirmLabel: 'Rhythmus ändern',
       tone: 'caution',
     })
@@ -85,7 +95,7 @@ function RhythmRow({ rhythm, onSaved }: RhythmRowProps) {
     if (busy) return
     const confirmed = await confirmAction({
       question: `Vollabgleich-Rhythmus von ${name} auf die Werkseinstellung von ${daysLabel(rhythm.defaultIntervalDays)} zurücksetzen?`,
-      consequence: `Gilt ab dem nächsten Lauf für alle ${name}-Bibliotheken ohne eigenen Rhythmus. Die Änderung steht im Revisionsprotokoll.`,
+      consequence: `Gilt ab dem nächsten Lauf für ${scopeOf(rhythm)}. Die Änderung steht im Revisionsprotokoll.`,
       confirmLabel: 'Werkseinstellung wiederherstellen',
       tone: 'caution',
     })
@@ -200,7 +210,7 @@ export default function FullSyncRhythmSection() {
   return (
     <PageSection
       title="Vollabgleich-Rhythmus"
-      description="Zwischen zwei Vollabgleichen holt ein Änderungslauf nur, was die Quelle als neu oder geändert meldet, und Nextcloud überspringt Ordner, die sich nicht geändert haben; erst ein Vollabgleich listet die ganze Quelle und entfernt, was dort gelöscht wurde. Hier legen Sie je Quellart fest, nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus wieder vollständig abgleicht."
+      description="Zwischen zwei Vollabgleichen holt ein Änderungslauf nur, was die Quelle als neu oder geändert meldet, und Nextcloud überspringt Ordner, die sich nicht geändert haben; erst ein Vollabgleich listet die ganze Quelle und entfernt, was dort gelöscht wurde. Hier legen Sie je Quellart fest, nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus wieder vollständig abgleicht; bei Nextcloud, wann ein Lauf wieder jeden Ordner listet."
     >
       {loadError ? (
         <Alert

@@ -30,6 +30,7 @@ final class ExternalAccessSettingsResponseMapper {
             view.maxReleaseReminderLeadDays(),
             view.updatedAt());
     response.setUpdatedBy(view.updatedBy());
+    response.setStoredReleaseReminderLeadDays(view.values().releaseReminderLeadDays());
     return response;
   }
 }

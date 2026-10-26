@@ -82,12 +82,8 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
           })}
           confirmReset={(current, factory) => ({
             danger: factory < current,
-            consequence:
-              'Gilt ab dem nächsten Laden der Liste. Die Änderung steht im Revisionsprotokoll.',
-            warning:
-              factory > current
-                ? `Einträge werden dann erst nach ${monthsLabel(factory)} statt nach ${monthsLabel(current)} hervorgehoben.`
-                : null,
+            consequence: `Einträge werden dann ${factory < current ? 'schon' : 'erst'} nach ${monthsLabel(factory)} statt nach ${monthsLabel(current)} hervorgehoben. Gilt ab dem nächsten Laden der Liste. Die Änderung steht im Revisionsprotokoll.`,
+            warning: null,
           })}
           savedMessage={(months) =>
             `Einträge werden jetzt ab ${monthsLabel(months)} als lange offen hervorgehoben.`

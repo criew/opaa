@@ -98,7 +98,10 @@ public class RetiredSettingVariables {
     retired.put("OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS", aging);
     retired.put("opaa.succession.aging-threshold-months", aging);
     String plausibility =
-        "the plausibility threshold in percent under Administration > Verzeichnisabgleich";
+        "the plausibility threshold in percent under Administration > Verzeichnisabgleich; until"
+            + " then 30 percent applies, so if it was stricter, restart with"
+            + " OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false, set the threshold, then switch the"
+            + " schedule on again - a lock ends the person's connected accounts for good";
     retired.put("OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION", plausibility);
     retired.put("opaa.directory-sync.change-threshold-fraction", plausibility);
     String descent = "the full-sync rhythm of Nextcloud in whole days " + CONNECTION_SETTINGS;

@@ -36,6 +36,7 @@ function initialSettings(): ExternalAccessSettingsResponse {
     defaultServerInstructions: DEFAULT_SERVER_INSTRUCTIONS,
     releaseReminderLeadDays: 14,
     releaseReminderLeadDaysOverridden: false,
+    storedReleaseReminderLeadDays: null,
     defaultReleaseReminderLeadDays: 14,
     maxReleaseReminderLeadDays: 364,
     updatedAt: '2026-09-18T12:00:00Z',
@@ -93,6 +94,7 @@ export const externalAccessHandlers = [
       serverInstructions: body.serverInstructions,
       releaseReminderLeadDays: lead ?? 14,
       releaseReminderLeadDaysOverridden: lead !== null,
+      storedReleaseReminderLeadDays: lead,
       updatedAt: '2026-09-18T12:30:00Z',
       updatedBy: 'Dev Admin',
     }

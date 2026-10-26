@@ -47,7 +47,10 @@ class RetiredSettingVariablesTest {
                 + " release expires under Administration > Anbindungen > Externe KI-Werkzeuge >"
                 + " Einstellungen",
             "opaa.directory-sync.change-threshold-fraction is no longer read; set the"
-                + " plausibility threshold in percent under Administration > Verzeichnisabgleich");
+                + " plausibility threshold in percent under Administration > Verzeichnisabgleich;"
+                + " until then 30 percent applies, so if it was stricter, restart with"
+                + " OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false, set the threshold, then switch the"
+                + " schedule on again - a lock ends the person's connected accounts for good");
   }
 
   /** The environment answers a property name for its variable as well: one message, not two. */

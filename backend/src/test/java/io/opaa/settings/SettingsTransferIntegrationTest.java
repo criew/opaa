@@ -276,9 +276,10 @@ class SettingsTransferIntegrationTest {
   }
 
   /**
-   * The administration values of #3210 travel with their factory default as {@code null}: the
-   * plausibility threshold of the directory sync is marked, the aging threshold and the reminder
-   * lead are not, and a value outside its bounds is refused under its field.
+   * The reminder lead, the aging threshold and the plausibility threshold travel with their factory
+   * default as {@code null}: the plausibility threshold of the directory sync is marked, the aging
+   * threshold and the reminder lead are not, and a value outside its bounds is refused under its
+   * field.
    */
   @Test
   void theAdministrationValuesTravelAndOnlyTheDirectoryThresholdIsMarked() throws Exception {

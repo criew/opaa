@@ -41,6 +41,7 @@ class ExternalAccessSettingsResponseMapperTest {
     assertThat(response.getReleaseReminderLeadDaysOverridden()).isTrue();
     assertThat(response.getDefaultReleaseReminderLeadDays()).isEqualTo(14);
     assertThat(response.getMaxReleaseReminderLeadDays()).isEqualTo(364);
+    assertThat(response.getStoredReleaseReminderLeadDays()).isEqualTo(30);
     assertThat(response.getUpdatedAt()).isEqualTo(changedAt);
     assertThat(response.getUpdatedBy()).isEqualTo("Frau Vogel");
   }

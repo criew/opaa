@@ -285,6 +285,9 @@ class DataCollectionDisclosureIntegrationTest {
     jdbcTemplate.update(
         "INSERT INTO audit_incident_scope_retention_settings (id, retention_years, updated_at)"
             + " VALUES (1, 4, now())");
+    jdbcTemplate.update(
+        "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
+            + " VALUES (1, 6, now())");
 
     JsonNode export = exportAsAdmin();
 
@@ -294,8 +297,9 @@ class DataCollectionDisclosureIntegrationTest {
             "chat_auto_cleanup_settings.delete_after_days", "400",
             "locked_account_chat_cleanup_settings.enabled", "false",
             "locked_account_chat_cleanup_settings.delete_after_days", "500",
-            "audit_incident_scope_retention_settings.retention_years", "4");
-    assertThat(FACTORY_DEFAULT_KEYS).containsAll(expected.keySet());
+            "audit_incident_scope_retention_settings.retention_years", "4",
+            "succession_settings.aging_threshold_months", "6");
+    assertThat(expected.keySet()).isEqualTo(FACTORY_DEFAULT_KEYS);
     expected.forEach(
         (key, value) -> {
           JsonNode setting = setting(export, key);
@@ -306,15 +310,12 @@ class DataCollectionDisclosureIntegrationTest {
   }
 
   /**
-   * The administration values of #3210 answer the value the administration set and its time: a
-   * source that ignored its row or column would report the factory default and fail here.
+   * A setting in a column of a seeded row or in a row of its type answers the value the
+   * administration set and its time: a source that ignored it would report the factory default.
    */
   @Test
   void theAdministrationValuesAnswerWhatTheAdministrationSet() throws Exception {
     try {
-      jdbcTemplate.update(
-          "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
-              + " VALUES (1, 6, now())");
       jdbcTemplate.update(
           "INSERT INTO full_sync_rhythm_settings (source_type, interval_days, updated_at)"
               + " VALUES ('NEXTCLOUD', 3, now())");
@@ -325,10 +326,8 @@ class DataCollectionDisclosureIntegrationTest {
 
       Map<String, String> expected =
           Map.of(
-              "succession_settings.aging_threshold_months", "6",
               "full_sync_rhythm_settings.interval_days[NEXTCLOUD]", "3",
               "external_access_settings.release_reminder_lead_days", "30");
-      assertThat(FACTORY_DEFAULT_KEYS).contains("succession_settings.aging_threshold_months");
       expected.forEach(
           (key, value) -> {
             JsonNode setting = setting(export, key);
@@ -337,7 +336,6 @@ class DataCollectionDisclosureIntegrationTest {
             assertThat(setting.path("changedAt").isNull()).as(key).isFalse();
           });
     } finally {
-      jdbcTemplate.update("DELETE FROM succession_settings");
       jdbcTemplate.update("DELETE FROM full_sync_rhythm_settings WHERE source_type = 'NEXTCLOUD'");
       jdbcTemplate.update(
           "UPDATE external_access_settings SET release_reminder_lead_days = NULL WHERE id = 1");

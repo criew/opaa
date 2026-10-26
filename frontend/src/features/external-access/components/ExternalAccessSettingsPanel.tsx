@@ -58,9 +58,10 @@ function draftOf(settings: ExternalAccessSettingsResponse): Draft {
     allowedCidrs: settings.allowedCidrs.join('\n'),
     massRetrievalAlertThreshold: String(settings.massRetrievalAlertThreshold),
     serverInstructions: settings.serverInstructions,
-    releaseReminderLeadDays: settings.releaseReminderLeadDaysOverridden
-      ? String(settings.releaseReminderLeadDays)
-      : null,
+    releaseReminderLeadDays:
+      settings.storedReleaseReminderLeadDays == null
+        ? null
+        : String(settings.storedReleaseReminderLeadDays),
   }
 }
 
@@ -228,12 +229,17 @@ function SettingsForm({
   }
 
   async function save() {
-    const lead =
-      draft.releaseReminderLeadDays === null
-        ? settings.defaultReleaseReminderLeadDays
-        : Number(draft.releaseReminderLeadDays)
+    const typed = draft.releaseReminderLeadDays
+    if (typed !== null && !/^\d+$/.test(typed.trim())) {
+      const message = `Bitte eine ganze Zahl von 0 bis ${settings.maxReleaseReminderLeadDays} eingeben.`
+      setFieldMessages({ releaseReminderLeadDays: message })
+      setError(`Die Erinnerung vor Ablauf ist nicht gespeichert: ${message}`)
+      return
+    }
+    const lead = typed === null ? settings.defaultReleaseReminderLeadDays : Number(typed)
+    const unchanged = typed !== null && lead === settings.storedReleaseReminderLeadDays
     if (
-      Number.isInteger(lead) &&
+      !unchanged &&
       lead < settings.releaseReminderLeadDays &&
       !(await confirmAction({
         question:
@@ -411,7 +417,11 @@ function SettingsForm({
               fieldMessages.releaseReminderLeadDays ??
               (draft.releaseReminderLeadDays === null
                 ? `Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}. Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`
-                : `Eigener Wert (Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}). Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`)
+                : (settings.storedReleaseReminderLeadDays ?? 0) >
+                      settings.maxReleaseReminderLeadDays &&
+                    Number(draft.releaseReminderLeadDays) === settings.storedReleaseReminderLeadDays
+                  ? `Gespeichert, wirkt aber nur als ${daysLabel(settings.maxReleaseReminderLeadDays)}: einen Tag unter der längsten Befristung.`
+                  : `Eigener Wert (Werkseinstellung: ${daysLabel(settings.defaultReleaseReminderLeadDays)}). Höchstens ${daysLabel(settings.maxReleaseReminderLeadDays)}, einen Tag unter der längsten Befristung.`)
             }
             sx={{ maxWidth: 340 }}
           />
