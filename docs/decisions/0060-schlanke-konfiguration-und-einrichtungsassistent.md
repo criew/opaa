@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053
+Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
 
 ## Kontext
 
@@ -133,9 +133,10 @@ gewählten Modells liefert. `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-
 entfernt die leere Tabelle auf einer Datenbank, auf der noch keine Instanz gestartet ist. Eine
 Übernahme des Embedding-Modells aus der Umgebung gibt es nicht: Das Update von `v0.1.0-rc.4` setzt die
 Datenbank ohnehin neu auf (ADR-0056), jede Installation danach wählt ihr Modell in der Installation.
-Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). Nach dem Abschluss lässt sich das
-Embedding-Modell nicht über die Oberfläche wechseln; ein Wechsel verlangt eine Neuindexierung und
-ist ein eigenes Thema (Offen).
+Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). Nach dem Abschluss
+wechselt die Systemverwaltung das Embedding-Modell in der Oberfläche, mit Probeeinbettung, Vorschau
+und Neueinbettung; einen Endpunkt desselben Modells ändert sie ohne Neueinbettung
+([ADR-0061](0061-wechsel-des-embedding-modells.md)).
 
 Jede Modelladresse, die Installation oder Modellverwaltung speichern, testen oder nach Modellen
 abfragen, prüft eine eigene Adressprüfung der Modelle mit eigenem Schalter und eigener Allowlist
@@ -219,6 +220,5 @@ eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
 
 ## Offen
 
-- Wechsel des Embedding-Modells nach der Installation mit geführter Neuindexierung.
 - Ob die Experten-Feinabstimmung (Entscheidung 3) später mit Messung und Leitplanken in die
   Verwaltung wandert.

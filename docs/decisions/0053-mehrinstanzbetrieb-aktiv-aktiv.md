@@ -2,8 +2,8 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
-ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060
+Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060 und ADR-0061
 
 ## Kontext
 
@@ -85,12 +85,13 @@ oder einen kurzen Datenbankaussetzer, ein ausgefallener Pod gibt seine Läufe na
 Der Abdruck umfasst jeden `opaa.*`-Schlüssel mit `@DataImpact`, also die maschinelle Liste aus dem
 Fakten-Manifest (ADR-0052 Entscheidung 9). Neue datenwirksame Schlüssel gehen damit von selbst ein.
 Dazu kommen die als installationsweit gekennzeichneten technischen Werte: `OPAA_AUTH_JWT_SECRET`,
-`OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY`, die Embedding-Identität (Modell,
-Basis-URL, Dimension), Chunking, Auth-Profil, `OPAA_DB_SCHEMA`, Originalablage samt Bucket bzw. Pfad,
-Allowlists, Proxy-Vertrauensliste, `opaa.public-base-url`, die Feature-Flags und die Zeitzone der
-JVM. Gekennzeichnet sind sie mit `@InstallationWide`, jeder übrige `opaa.*`-Schlüssel mit
-`@PerInstance` als „je Instanz zulässig“ (Zeitgrenzen, Pool-Größen); `FingerprintKeysTest` erzwingt die
-Einordnung wie `ConfigurationSettingsTest`. Gespeichert wird je Schlüssel ein HMAC unter einem
+`OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY`, Chunking, Auth-Profil,
+`OPAA_DB_SCHEMA`, Originalablage samt Bucket bzw. Pfad, Allowlists, Proxy-Vertrauensliste,
+`opaa.public-base-url`, die Feature-Flags und die Zeitzone der JVM. Das Embedding-Modell gehört
+nicht dazu: Es ist eine Zeile der Datenbank (ADR-0060, Entscheidung 10). Gekennzeichnet sind
+die technischen Werte mit `@InstallationWide`, jeder übrige `opaa.*`-Schlüssel mit `@PerInstance`
+als „je Instanz zulässig“ (Zeitgrenzen, Pool-Größen); `FingerprintKeysTest` erzwingt die Einordnung
+wie `ConfigurationSettingsTest`. Gespeichert wird je Schlüssel ein HMAC unter einem
 Schlüssel, den die erste Instanz im Register anlegt, nie der Wert; die Meldung nennt bei einem
 Geheimnis nur den Schlüssel.
 
@@ -112,9 +113,8 @@ Die Auskunft über die Datenerhebung (ADR-0052 Entscheidung 11) gibt den gemeins
 weist eine Abweichung aus. Umsetzung: #2945.
 
 Ein abweichender Wert zeigt sich sonst nur als sporadischer Fehler je nach getroffener Instanz: 401
-bei abweichendem Secret, unlesbare Geheimnisse, Neueinbettung im Wechsel, Löschung nach der kürzesten
-Frist. Der Schnitt über die Schnittmenge lässt neue Schlüssel zu, ohne dass jedes Release eine
-Versionsgrenze wird.
+bei abweichendem Secret, unlesbare Geheimnisse, Löschung nach der kürzesten Frist. Der Schnitt über
+die Schnittmenge lässt neue Schlüssel zu, ohne dass jedes Release eine Versionsgrenze wird.
 
 ### 5. Invalidierungsbus über `LISTEN`/`NOTIFY`
 
@@ -210,8 +210,10 @@ für Spring Framework 7 und Spring Boot 4 gepflegt. Weil ShedLock allein bei ein
 - **Arbeitsdateien** liegen in einem Unterverzeichnis je Instanz; ein Sweep räumt das eigene und die
   toter Instanzen.
 - **Neueinbettung:** Start, Abbruch und Besitz über die Zeile in `embedding_index`. Die DDL des
-  Startabgleichs (`EmbeddingIndexReconciler`) läuft nur unter einem Advisory-Lock und nur, wenn alle
-  lebenden Instanzen dieselbe Embedding-Identität melden, was Entscheidung 4 ohnehin erzwingt.
+  Startabgleichs (`EmbeddingIndexReconciler`) und des Modellwechsels läuft nur unter dem Schemalock
+  der Vektortabelle; das Embedding-Modell ist eine Zeile der Datenbank und damit für alle Instanzen
+  gleich. Ein Modellwechsel startet nur, wenn alle lebenden Instanzen dieselbe Version melden
+  (ADR-0061, Entscheidung 5).
 - **Wartungsläufe** (Metadaten-Bestandslauf, Kontextpräfix- und Pipeline-Nachlauf, Schemaänderung)
   bleiben ohne Exklusivsperre: Sie sind je Aufruf idempotent und wiederaufnehmbar, ein Doppelstart
   kostet nur Modellaufrufe, wie schon im Einzelbetrieb bei zwei Personen.
