@@ -455,6 +455,27 @@ class LlmModelDiscovererTest {
     assertThat(reached).isFalse();
   }
 
+  // regression guard: removing the stored key must not take the stored address out of the exemption
+  @Test
+  void theStoredAddressStaysListableWhileTheRemovalOfItsKeyIsRequested() {
+    respond("/v1/models", 200, "{\"data\":[{\"id\":\"phi3:mini\"}]}");
+    UUID modelId = UUID.randomUUID();
+    when(repository.findById(modelId))
+        .thenReturn(
+            Optional.of(
+                new LlmModel("Bestand", baseUrl, "phi3:mini", new BigDecimal("0.70"), 2000, null)));
+    LlmModelDiscoverer strict =
+        new LlmModelDiscoverer(
+            repository,
+            settingsEncryptor,
+            new ObjectMapper(),
+            ModelAddressPolicy.allowing(List.of()));
+
+    ModelDiscovery discovery = strict.discover(baseUrl, null, null, modelId);
+
+    assertThat(discovery.success()).as(discovery.message()).isTrue();
+  }
+
   @Test
   void anEndpointWithoutModelListIsReportedAsSuch() {
     respond("/v1/models", 404, null);

@@ -63,16 +63,35 @@ public class LlmModelConnectionTester {
    */
   public TestOutcome test(
       String baseUrl, String modelIdentifier, String apiKey, UUID modelId, BigDecimal temperature) {
+    return test(baseUrl, modelIdentifier, apiKey, modelId, null, temperature);
+  }
+
+  /**
+   * {@link #test(String, String, String, UUID, BigDecimal)} for the model {@code storedModelId}
+   * being edited: its stored endpoint passes the address check unchecked, also while {@code
+   * modelId} is withheld because the removal of the stored key is requested.
+   */
+  public TestOutcome test(
+      String baseUrl,
+      String modelIdentifier,
+      String apiKey,
+      UUID modelId,
+      UUID storedModelId,
+      BigDecimal temperature) {
     return probe(
         baseUrl,
         modelIdentifier,
         access.effectiveApiKey(baseUrl, apiKey, modelId),
         temperature,
-        modelId);
+        storedModelId != null ? storedModelId : modelId);
   }
 
   private TestOutcome probe(
-      String baseUrl, String modelIdentifier, String apiKey, BigDecimal temperature, UUID modelId) {
+      String baseUrl,
+      String modelIdentifier,
+      String apiKey,
+      BigDecimal temperature,
+      UUID storedModelId) {
     URI uri;
     try {
       uri = chatCompletionsUri(baseUrl);
@@ -82,7 +101,7 @@ public class LlmModelConnectionTester {
     if (!ModelEndpointAccess.isHttp(uri)) {
       return TestOutcome.failure("Die Basis-Adresse muss mit http:// oder https:// beginnen.");
     }
-    String blocked = access.blockedAddress(baseUrl, modelId);
+    String blocked = access.blockedAddress(baseUrl, storedModelId);
     if (blocked != null) {
       return TestOutcome.failure(blocked);
     }

@@ -305,6 +305,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     expect(discoveries[0]).toEqual({
       baseUrl: 'http://ollama:11434/v1',
       modelId: mockLlmModels[0].id,
+      storedModelId: mockLlmModels[0].id,
     })
   })
 })
@@ -494,5 +495,32 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
 
     await waitFor(() => expect(tests).toHaveLength(1))
     expect(tests[0]).not.toHaveProperty('modelId')
+  })
+
+  // regression guard: removing the stored key keeps the stored address out of the address check
+  it('names the edited model for the address check also once its key removal is requested', async () => {
+    const tests = recordRequests('/api/v1/admin/models/test')
+    const discoveries = recordRequests('/api/v1/admin/models/discover')
+    const user = userEvent.setup()
+    const withKey = { ...mockLlmModels[0], apiKeySet: true }
+    renderWithProviders(
+      <LlmModelFormDialog open model={withKey} onClose={vi.fn()} onSaved={vi.fn()} />,
+    )
+    const dialog = within(screen.getByRole('dialog'))
+
+    await user.click(
+      dialog.getByRole('button', {
+        name: `Gespeicherten Schlüssel von "${withKey.displayName}" entfernen`,
+      }),
+    )
+    await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
+    await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
+
+    await waitFor(() => expect(tests).toHaveLength(1))
+    await waitFor(() => expect(discoveries).toHaveLength(1))
+    expect(tests[0]).toMatchObject({ storedModelId: withKey.id })
+    expect(tests[0]).not.toHaveProperty('modelId')
+    expect(discoveries[0]).toMatchObject({ storedModelId: withKey.id })
+    expect(discoveries[0]).not.toHaveProperty('modelId')
   })
 })

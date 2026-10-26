@@ -139,6 +139,7 @@ public class LlmModelController {
             request.getModelIdentifier(),
             request.getApiKey(),
             request.getModelId(),
+            request.getStoredModelId(),
             toTemperature(request.getTemperature()));
     return new LlmModelTestResponse(outcome.success(), outcome.message());
   }
@@ -148,7 +149,11 @@ public class LlmModelController {
   public LlmModelDiscoveryResponse discoverModels(
       @Valid @RequestBody LlmModelDiscoveryRequest request) {
     return LlmModelDiscoveryResponseMapper.toResponse(
-        discoverer.discover(request.getBaseUrl(), request.getApiKey(), request.getModelId()));
+        discoverer.discover(
+            request.getBaseUrl(),
+            request.getApiKey(),
+            request.getModelId(),
+            request.getStoredModelId()));
   }
 
   private static BigDecimal toTemperature(Double temperature) {

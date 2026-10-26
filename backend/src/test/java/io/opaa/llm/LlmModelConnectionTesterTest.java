@@ -195,6 +195,45 @@ class LlmModelConnectionTesterTest {
     assertThat(strict.test(baseUrl, "phi3:mini", null, modelId, null).success()).isTrue();
   }
 
+  // regression guard: removing the stored key must not take the stored address out of the exemption
+  @Test
+  void theStoredAddressStaysTestableWhileTheRemovalOfItsKeyIsRequested() {
+    AtomicReference<String> receivedAuthHeader = new AtomicReference<>("unset");
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          receivedAuthHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] body = "{}".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+          }
+        });
+    UUID modelId = UUID.randomUUID();
+    when(repository.findById(modelId))
+        .thenReturn(
+            Optional.of(
+                new LlmModel(
+                    "Bestand",
+                    baseUrl,
+                    "phi3:mini",
+                    new BigDecimal("0.70"),
+                    2000,
+                    settingsEncryptor.encrypt("sk-stored-secret"))));
+    LlmModelConnectionTester strict =
+        new LlmModelConnectionTester(
+            repository,
+            settingsEncryptor,
+            new ObjectMapper(),
+            ModelAddressPolicy.allowing(List.of()));
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        strict.test(baseUrl, "phi3:mini", null, null, modelId, null);
+
+    assertThat(outcome.success()).as(outcome.message()).isTrue();
+    assertThat(receivedAuthHeader.get()).isNull();
+  }
+
   private void respondWith(String json) {
     server.createContext(
         "/v1/chat/completions",

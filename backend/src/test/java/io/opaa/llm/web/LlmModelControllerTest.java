@@ -332,7 +332,7 @@ class LlmModelControllerTest {
 
   @Test
   void testModelReturnsTheTesterOutcome() throws Exception {
-    when(connectionTester.test("http://ollama:11434/v1", "phi3", null, null, null))
+    when(connectionTester.test("http://ollama:11434/v1", "phi3", null, null, null, null))
         .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
 
     mockMvc
@@ -350,7 +350,7 @@ class LlmModelControllerTest {
   @Test
   void discoverModelsPassesTheRequestThroughAndReturnsTheModels() throws Exception {
     UUID modelId = UUID.randomUUID();
-    when(discoverer.discover("http://ollama:11434/v1", "sk-x", modelId))
+    when(discoverer.discover("http://ollama:11434/v1", "sk-x", modelId, null))
         .thenReturn(
             ModelDiscovery.found(
                 true,
@@ -384,7 +384,7 @@ class LlmModelControllerTest {
 
   @Test
   void aFailedDiscoveryIsA200CarryingTheFailure() throws Exception {
-    when(discoverer.discover("http://ollama:11434/v1", null, null))
+    when(discoverer.discover("http://ollama:11434/v1", null, null, null))
         .thenReturn(
             ModelDiscovery.failed(
                 ModelDiscovery.Failure.UNREACHABLE, "Die Verbindung wurde vom Server abgelehnt."));
@@ -404,7 +404,7 @@ class LlmModelControllerTest {
   @Test
   void aStoredKeyForAnotherOriginIsRejectedWith400() throws Exception {
     UUID modelId = UUID.randomUUID();
-    when(discoverer.discover("http://elsewhere:11434/v1", null, modelId))
+    when(discoverer.discover("http://elsewhere:11434/v1", null, modelId, null))
         .thenThrow(new ValidationException("Die angegebene Basis-Adresse weicht ab."));
 
     mockMvc
@@ -420,7 +420,7 @@ class LlmModelControllerTest {
   @Test
   void testModelPassesTheDraftTemperatureToTheProbe() throws Exception {
     when(connectionTester.test(
-            "http://ollama:11434/v1", "phi3", null, null, BigDecimal.valueOf(0.2)))
+            "http://ollama:11434/v1", "phi3", null, null, null, BigDecimal.valueOf(0.2)))
         .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
 
     mockMvc
@@ -431,6 +431,26 @@ class LlmModelControllerTest {
                 .content(
                     "{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\","
                         + "\"temperature\":0.2}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true));
+  }
+
+  @Test
+  void testModelPassesTheEditedModelWithoutItsKeyMarker() throws Exception {
+    UUID storedModelId = UUID.randomUUID();
+    when(connectionTester.test("http://ollama:11434/v1", "phi3", null, null, storedModelId, null))
+        .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models/test")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\","
+                        + "\"storedModelId\":\""
+                        + storedModelId
+                        + "\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true));
   }

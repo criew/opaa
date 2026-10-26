@@ -116,6 +116,14 @@ public class LlmModelDiscoverer {
    * @throws NotFoundException 404 when {@code modelId} is set but no such model exists
    */
   public ModelDiscovery discover(String baseUrl, String apiKey, UUID modelId) {
+    return discover(baseUrl, apiKey, modelId, null);
+  }
+
+  /**
+   * {@link #discover(String, String, UUID)} for the model {@code storedModelId} being edited, whose
+   * stored endpoint passes the address check unchecked ({@link LlmModelConnectionTester#test}).
+   */
+  public ModelDiscovery discover(String baseUrl, String apiKey, UUID modelId, UUID storedModelId) {
     String key = access.effectiveApiKey(baseUrl, apiKey, modelId);
     URI modelsUri;
     try {
@@ -128,7 +136,8 @@ public class LlmModelDiscoverer {
       return ModelDiscovery.failed(
           Failure.INVALID_ADDRESS, "Die Basis-Adresse muss mit http:// oder https:// beginnen.");
     }
-    String blocked = access.blockedAddress(baseUrl, modelId);
+    String blocked =
+        access.blockedAddress(baseUrl, storedModelId != null ? storedModelId : modelId);
     if (blocked != null) {
       return ModelDiscovery.failed(Failure.INVALID_ADDRESS, blocked);
     }
