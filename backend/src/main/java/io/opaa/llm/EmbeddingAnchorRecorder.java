@@ -15,11 +15,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Takes the reference anchor of an installed model that has none (ADR-0061, Entscheidung 5): after
- * the installation, at the start and after a successful status probe, it embeds {@link
- * EmbeddingAnchor#TEXTS} with the installed client and stores them only while the row still has no
- * anchor and still names the same generation and address. So the anchor is there before an outage
- * asks for an endpoint change. One attempt at a time per instance, off the calling thread
- * (ADR-0053: "je Instanz"); the conditional write makes concurrent instances harmless.
+ * the installation, at the start and after the first successful embedding of the installed client,
+ * the status probe among them, it embeds {@link EmbeddingAnchor#TEXTS} with the installed client
+ * and stores them only while the row still has no anchor and still names the same generation and
+ * address. So the anchor is there before an outage asks for an endpoint change. One attempt at a
+ * time per instance, off the calling thread (ADR-0053: "je Instanz"); the conditional write makes
+ * concurrent instances harmless.
  */
 @DataFlow("embedding-model")
 @Component
@@ -48,6 +49,11 @@ public class EmbeddingAnchorRecorder {
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   void afterInstallation(EmbeddingModelInstalledEvent event) {
+    recordIfMissingInBackground();
+  }
+
+  @EventListener
+  void afterASuccessfulEmbedding(EmbeddingAnchorMissingEvent event) {
     recordIfMissingInBackground();
   }
 

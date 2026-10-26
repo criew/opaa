@@ -34,6 +34,7 @@ class InstalledEmbeddingModelTest {
           new SettingsEncryptor(new SettingsEncryptionProperties(null)),
           factory,
           models,
+          event -> {},
           now::get);
 
   @Test
@@ -90,6 +91,35 @@ class InstalledEmbeddingModelTest {
     model.invalidateAll();
     model.embed("drei");
     verify(factory, times(2)).create(any());
+  }
+
+  @Test
+  void theFirstSuccessfulEmbeddingOfAModelWithoutAnchorAsksOnceForIt() {
+    java.util.List<Object> published = new java.util.ArrayList<>();
+    InstalledEmbeddingModel announcing =
+        new InstalledEmbeddingModel(
+            repository,
+            new SettingsEncryptor(new SettingsEncryptionProperties(null)),
+            factory,
+            models,
+            published::add,
+            now::get);
+    when(repository.findInstalled()).thenReturn(Optional.of(settings()));
+    when(factory.create(any())).thenReturn(new FakeEmbeddingModel());
+
+    announcing.embed("eins");
+    announcing.embed("zwei");
+
+    assertThat(published).containsExactly(new EmbeddingAnchorMissingEvent(1));
+  }
+
+  @Test
+  void aClientCarriesTheGenerationOfTheRowItWasBuiltFrom() {
+    when(repository.findInstalled()).thenReturn(Optional.of(settings()));
+    when(factory.create(any())).thenReturn(new FakeEmbeddingModel());
+
+    assertThat(model.pin().generation()).isEqualTo(1);
+    assertThat(model.pin().maxInputTokens()).isEqualTo(4096);
   }
 
   private static EmbeddingModelSettings settings() {

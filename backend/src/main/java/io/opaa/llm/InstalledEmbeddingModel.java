@@ -17,6 +17,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -54,6 +55,7 @@ public class InstalledEmbeddingModel
   private final SettingsEncryptor settingsEncryptor;
   private final EmbeddingClientFactory clientFactory;
   private final EmbeddingModelService embeddingModels;
+  private final ApplicationEventPublisher events;
   private final LongSupplier nanoTime;
   private final AtomicReference<Installed> cache = new AtomicReference<>();
   private final AtomicLong invalidations = new AtomicLong();
@@ -66,8 +68,9 @@ public class InstalledEmbeddingModel
       EmbeddingModelSettingsRepository repository,
       SettingsEncryptor settingsEncryptor,
       EmbeddingClientFactory clientFactory,
-      EmbeddingModelService embeddingModels) {
-    this(repository, settingsEncryptor, clientFactory, embeddingModels, System::nanoTime);
+      EmbeddingModelService embeddingModels,
+      ApplicationEventPublisher events) {
+    this(repository, settingsEncryptor, clientFactory, embeddingModels, events, System::nanoTime);
   }
 
   InstalledEmbeddingModel(
@@ -75,7 +78,9 @@ public class InstalledEmbeddingModel
       SettingsEncryptor settingsEncryptor,
       EmbeddingClientFactory clientFactory,
       EmbeddingModelService embeddingModels,
+      ApplicationEventPublisher events,
       LongSupplier nanoTime) {
+    this.events = events;
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.clientFactory = clientFactory;
@@ -87,12 +92,28 @@ public class InstalledEmbeddingModel
 
   @Override
   public EmbeddingResponse call(EmbeddingRequest request) {
-    return installed().client().call(request);
+    Installed installed = installed();
+    EmbeddingResponse response = installed.client().call(request);
+    announceMissingAnchor(installed);
+    return response;
   }
 
   @Override
   public float[] embed(Document document) {
-    return installed().client().embed(document);
+    Installed installed = installed();
+    float[] vector = installed.client().embed(document);
+    announceMissingAnchor(installed);
+    return vector;
+  }
+
+  /**
+   * After the first successful embedding of a model without a reference anchor - the status probe
+   * among them - asks once per cached client for the anchor to be taken (ADR-0061, Entscheidung 5).
+   */
+  private void announceMissingAnchor(Installed installed) {
+    if (installed.anchorMissing().compareAndSet(true, false)) {
+      events.publishEvent(new EmbeddingAnchorMissingEvent(installed.generation()));
+    }
   }
 
   /** The size the vector table was created with; asks no endpoint. */
@@ -157,7 +178,8 @@ public class InstalledEmbeddingModel
             clientFactory.create(endpoint),
             settings.getDimensions(),
             settings.getMaxInputTokens(),
-            settings.getGeneration());
+            settings.getGeneration(),
+            new AtomicBoolean(!settings.hasReferenceAnchor()));
     if (invalidations.get() == seen) {
       cache.set(built);
     }
@@ -192,5 +214,9 @@ public class InstalledEmbeddingModel
   }
 
   private record Installed(
-      EmbeddingModel client, int dimensions, int maxInputTokens, long generation) {}
+      EmbeddingModel client,
+      int dimensions,
+      int maxInputTokens,
+      long generation,
+      AtomicBoolean anchorMissing) {}
 }

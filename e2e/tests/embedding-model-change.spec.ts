@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/auth'
 import type { APIRequestContext, Page } from '@playwright/test'
 
 /**
- * Der geführte Wechsel des Embedding-Modells über den vollen Stack (#3214, ADR-0061): Eintragen,
+ * Der geführte Wechsel des Embedding-Modells über den vollen Stack (ADR-0061): Eintragen,
  * Probeeinbettung, Vorschau, Bestätigung, Neueinbettung bis zum Umschalten, und der Wechsel nur
  * des Endpunkts ohne Neueinbettung.
  *
