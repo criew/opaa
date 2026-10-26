@@ -46,7 +46,9 @@ Vektorspalte und während eines Wechsels die der Zielspalte. Der Index ist veral
 Generation, Modellname oder Dimension der Modellzeile von denen der Vektorspalte abweichen. Jeder
 Modellwechsel vergibt eine neue Generation aus einer Folge ohne Wiedervergabe, ein Endpunktwechsel
 behält sie. Die Migration gibt dem Bestand die Generation 1, der Zielspalte einer laufenden
-Neueinbettung eine eigene, der Modellzeile die der Spalte, deren Name und Dimension sie nennt; die
+Neueinbettung eine eigene, der Modellzeile die der Spalte, deren Name und Dimension sie nennt. Passt
+die Modellzeile beim Start oder in der Migration zu keiner Spalte, bekommen sie und die neue
+Zielspalte eine neue Generation aus der Folge; Vektorspalte und Zielspalte tragen nie dieselbe. Die
 Folge beginnt nach der höchsten vergebenen Nummer. Jede Einbettung trägt die Generation des
 Modell-Clients, der sie erzeugt hat, und der Client-Cache ist nach ihr geschlüsselt. Begründung: Ein
 Wechsel auf eine andere Fassung oder Quantisierung unter gleichem Namen und gleicher Dimension sähe
@@ -67,17 +69,15 @@ Zwischenstand, der veralten könnte; was gilt, entscheidet die Transaktion.
 
 ### 4. Abbrechen, Verwerfen mit Nachfüllen, kein Rückweg nach dem Umschalten
 
-„Abbrechen“ pausiert den Lauf; das Eingebettete bleibt. „Verwerfen“ ist vor dem Umschalten möglich,
-nicht aber, solange ein laufender Lauf mit lebender Besitzerin den Index der Zielspalte baut; jedes
-Ende des Laufs löscht diesen Vermerk. Verwerfen setzt in einer Transaktion wie in Entscheidung 3 den
-Vorgänger zurück, entfernt die Zielspalte und beendet einen laufenden Lauf; die Vektorsuche läuft
-sofort wieder mit dem alten Modell. Chunks ohne alten Vektor füllt ein Lauf der Art **Nachfüllen**
-mit dem wiederhergestellten Modell nach, ohne Umschalten. Ein Lauf arbeitet nur, solange Besitzerin,
-Art und Generation im Index-Datensatz seine sind; eine Bestätigung beendet ein Nachfüllen in ihrer
-Transaktion. Nach dem Umschalten führt nur ein neuer Wechsel zurück, und die Bestätigung sagt das.
-Begründung: Bis zum Umschalten steht die alte Spalte ohnehin. Einen Indexbau ohne Transaktion
-abzubrechen wäre aufwendiger als abzuwarten, und ein Nachfüllen vor einer Neueinbettung nützt
-nichts.
+„Abbrechen“ pausiert den Lauf; das Eingebettete bleibt. „Verwerfen“ setzt vor dem Umschalten in
+einer Transaktion wie in Entscheidung 3 den Vorgänger zurück, entfernt die Zielspalte und beendet
+den Lauf; die Vektorsuche läuft sofort wieder mit dem alten Modell. Gesperrt ist es nur, solange ein
+laufender Lauf mit lebender Besitzerin den Index der Zielspalte baut. Chunks ohne alten Vektor füllt
+ein Lauf der Art **Nachfüllen** nach, ohne Umschalten; eine Bestätigung beendet ihn. Ein Lauf
+arbeitet nur, solange Besitzerin, Art und Generation im Index-Datensatz seine sind. Nach dem
+Umschalten führt nur ein neuer Wechsel zurück, und die Bestätigung sagt das. Begründung: Bis zum
+Umschalten steht die alte Spalte ohnehin. Einen Indexbau ohne Transaktion abzubrechen wäre
+aufwendiger als abzuwarten, und ein Nachfüllen vor einer Neueinbettung nützt nichts.
 
 ### 5. Endpunkt ohne Neueinbettung nur bei gleichem Modell
 
@@ -98,14 +98,13 @@ erhobener Anker friert den dann aktiven Endpunkt ein, auch wenn der schon eine a
 Bestätigung, Verwerfen und Endpunktwechsel gelingen nur, wenn alle lebenden Instanzen dieselbe
 Version melden, verglichen ohne Build-Metadaten. Ein Release-Rollback ist während eines Wechsels
 nicht vorgesehen, erst nach Umschalten oder Verwerfen. Modellzeile und Spaltenstand erfahren die
-Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5). Bindend ist die Datenbank: Eine
-Schreibanweisung schreibt nur, wenn die Generation ihrer Einbettung im Index-Datensatz die der
-gewählten Spalte ist, die Vektorabfrage sucht nur unter derselben Bedingung; die Prüfung gegen den
-Stand der Instanz fängt vorher den üblichen Fall. Passt die Generation nicht, bettet der Schreiber
-neu ein und die Vektorsuche liefert nichts. Nachläufe (Kontextpräfix, Nachzug, Änderung eines
-Metadatenschemas) bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die
-Busereignisse verpasst, darf auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die
-Spalte einer anderen Generation schreiben; eine ältere Instanz kennt die Generation nicht.
+Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5); bindend ist aber die Datenbank:
+Schreibanweisung und Vektorabfrage wirken nur, wenn die Generation ihrer Einbettung im
+Index-Datensatz die der gewählten Spalte ist. Sonst bettet der Schreiber neu ein, und die
+Vektorsuche liefert nichts. Nachläufe (Kontextpräfix, Nachzug, Änderung eines Metadatenschemas)
+bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die Busereignisse verpasst, darf
+auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die Spalte einer anderen
+Generation schreiben; eine ältere Instanz kennt die Generation nicht.
 
 ### 7. Vorschau ohne Inhalte und ohne Preis, mit festen Grenzen
 

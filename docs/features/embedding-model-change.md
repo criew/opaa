@@ -252,8 +252,9 @@ eines davon ab, ist der Index veraltet.
 - **Bestand.** Die Migration gibt Modellzeile und Vektorspalte die Generation 1. Steckt die
   Installation mitten in einer Neueinbettung, etwa nach dem bisherigen Eingriff in die Datenbank,
   bekommt die Zielspalte die Generation 2, und die Modellzeile bekommt die Generation der Spalte,
-  deren Modellname und Dimension sie nennt. Die Folge der Generationen beginnt nach der höchsten
-  vergebenen Nummer.
+  deren Modellname und Dimension sie nennt. Passt die Modellzeile zu keiner Spalte, etwa nach einem
+  Eingriff ohne Neustart, gilt die Regel des Startabgleichs unten. Die Folge der Generationen
+  beginnt nach der höchsten vergebenen Nummer.
 - **Vergabe.** Jede Bestätigung vergibt die nächste Generation aus dieser Folge, die nie eine Nummer
   zweimal ausgibt, auch nicht nach einem Verwerfen. Endpunktwechsel und Ersatz-Endpunkt behalten
   sie.
@@ -261,9 +262,12 @@ eines davon ab, ist der Index veraltet.
   überein, ist der Index aktuell; stimmen sie mit der Zielspalte überein, läuft ein Wechsel weiter.
   Sonst wurde die Modellzeile außerhalb des geführten Wegs geändert, etwa durch eine Rücksicherung
   oder einen Eingriff in die Datenbank; dann setzt der Startabgleich die Vektorsuche aus und legt
-  eine Zielspalte an, wie gebaut. Ein Wechsel unter gleichem Namen und gleicher Dimension wird so
-  beim Neustart nicht als „wieder das alte Modell" zurückgedreht, und ein Eingriff, der nur Name
-  oder Dimension ändert, wird weiter erkannt.
+  eine Zielspalte an, wie gebaut. Passt die Modellzeile beim Start oder in der Migration zu keiner
+  Spalte, bekommt sie eine neue Generation aus der Folge, und die Zielspalte bekommt dieselbe; auch
+  ein Eingriff, der nur Name oder Dimension ändert und die Generation stehen lässt, endet so mit
+  einer eigenen. Invariante: Vektorspalte und Zielspalte tragen nie dieselbe Generation. Ein Wechsel
+  unter gleichem Namen und gleicher Dimension wird so beim Neustart nicht als „wieder das alte
+  Modell" zurückgedreht, und ein Eingriff, der nur Name oder Dimension ändert, wird weiter erkannt.
 - **Einbettungen** tragen die Generation des Clients, der sie erzeugt hat. Der Client-Cache ist nach
   Generation geschlüsselt; ein Client, dessen Bau eine Invalidierung überholt hat, wird nicht
   übernommen.
@@ -456,6 +460,9 @@ Generation) ins Register des prozesslokalen Zustands.
 - Migration der Generationen, auch mitten in einer Neueinbettung nach einem Eingriff in die
   Datenbank
 - Eingriff, der nur Name oder Dimension der Modellzeile ändert, wird beim Start erkannt
+- Modellzeile, die beim Start oder in der Migration zu keiner Spalte passt: Modellzeile und
+  Zielspalte bekommen eine neue, gemeinsame Generation, verschieden von der der Vektorspalte; eine
+  Schreibanweisung mit der Generation der Vektorspalte schreibt nicht in die Zielspalte
 - Neustart nach der Bestätigung; Wechsel unter gleichem Namen und gleicher Dimension über einen
   Neustart
 - Endpunktwechsel mit und ohne Referenzanker, an der Grenze 0,99, Schlüssel bei anderem Host,
@@ -464,6 +471,14 @@ Generation) ins Register des prozesslokalen Zustands.
 - Schlüssel weder im Protokoll noch im Log
 - Grenzen der Aufrufe: erschöpfte Probe sperrt Endpunktwechsel und Verwerfen nicht
 - e2e: Wechsel in der Oberfläche bis zum Umschalten, mit zwei Instanzen
+
+**Hinweise für die Umsetzung:**
+
+- Liefert die bedingte Schreibanweisung „nichts geschrieben", rollt die ganze Transaktion des
+  Schreibers zurück, auch die Zeile des Volltexts; erst danach wird neu eingebettet und erneut
+  geschrieben.
+- Das Nachfüllen wählt seine Spalte nach der Art des Laufs, nicht danach, ob der Index veraltet ist;
+  die heutige Spaltenwahl richtet sich allein nach dem Veraltet-Zustand.
 
 **Veraltete Javadocs** (sagen „nicht über die Oberfläche" oder „Fingerabdruck hält die Identität
 gleich"): `EmbeddingIndexReconciler`, `EmbeddingIndexStateRefresh`, `EmbeddingModelService`,
