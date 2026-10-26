@@ -146,7 +146,7 @@
     },
     {
       "name": "RERANK_DISABLED_BY_ROLE_SWITCH",
-      "template": "reranking switched off through the rerank model role's own switch (opaa.rerank.enabled / OPAA_RERANK_ENABLED)"
+      "template": "reranking switched off through the rerank model role's own switch (model administration)"
     },
     {
       "name": "RERANK_NOTHING_TO_RERANK",

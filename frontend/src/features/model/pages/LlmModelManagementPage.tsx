@@ -15,12 +15,13 @@ import AreaTabs from '@/shared/ui/AreaTabs'
 import EmbeddingInfoTable from '../components/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
+import ModelRoleSection from '../components/ModelRoleSection'
 import { contentWidth } from '@/shared/theme/tokens'
 
-export type LlmModelTab = 'chat' | 'embedding'
+export type LlmModelTab = 'chat' | 'embedding' | 'rerank' | 'transcription'
 
 function isLlmModelTab(value: string | undefined): value is LlmModelTab {
-  return value === 'chat' || value === 'embedding'
+  return tabs.some((tab) => tab.value === value)
 }
 
 // „Chat-Modelle" instead of „Chat": the application's main area has that name too, and what is
@@ -28,6 +29,8 @@ function isLlmModelTab(value: string | undefined): value is LlmModelTab {
 const tabs: Array<{ value: LlmModelTab; label: string }> = [
   { value: 'chat', label: 'Chat-Modelle' },
   { value: 'embedding', label: 'Einbettung' },
+  { value: 'rerank', label: 'Reranking' },
+  { value: 'transcription', label: 'Spracheingabe' },
 ]
 
 /**
@@ -139,9 +142,9 @@ function EmbeddingInfoSection() {
 }
 
 /**
- * The system administration's model management in two areas: „Chat-Modelle" lists the
+ * The system administration's model management in four areas: „Chat-Modelle" lists the
  * models that answer questions; „Einbettung" names the model that carries the index - and that
- * deliberately cannot be changed.
+ * deliberately cannot be changed; „Reranking" and „Spracheingabe" hold the two optional roles.
  *
  * The areas are routes of their own (`/admin/models/chat`, `/admin/models/embedding`) as on the
  * other area pages: a link should land in the right area, and a reload should keep
@@ -185,7 +188,15 @@ export default function LlmModelManagementPage() {
           label="Bereiche der Modellverwaltung"
           idPrefix="models"
         >
-          {(value) => (value === 'chat' ? <ChatModelsSection /> : <EmbeddingInfoSection />)}
+          {(value) =>
+            value === 'chat' ? (
+              <ChatModelsSection />
+            ) : value === 'embedding' ? (
+              <EmbeddingInfoSection />
+            ) : (
+              <ModelRoleSection key={value} kind={value} />
+            )
+          }
         </AreaTabs>
       </Box>
     </Box>

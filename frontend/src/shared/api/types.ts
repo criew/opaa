@@ -383,6 +383,13 @@ export type OidcProviderTestRequest = components['schemas']['OidcProviderTestReq
 export type OidcProviderTestResponse = components['schemas']['OidcProviderTestResponse']
 export type OidcProviderImpactResponse = components['schemas']['OidcProviderImpactResponse']
 export type EmbeddingInfoResponse = components['schemas']['EmbeddingInfoResponse']
+export type RerankModelSettingsResponse = components['schemas']['RerankModelSettingsResponse']
+export type RerankModelSettingsRequest = components['schemas']['RerankModelSettingsRequest']
+export type TranscriptionModelSettingsResponse =
+  components['schemas']['TranscriptionModelSettingsResponse']
+export type TranscriptionModelSettingsRequest =
+  components['schemas']['TranscriptionModelSettingsRequest']
+export type ModelRoleTestRequest = components['schemas']['ModelRoleTestRequest']
 
 export type MailEncryption = components['schemas']['MailEncryption']
 export type MailSettingsResponse = components['schemas']['MailSettingsResponse']

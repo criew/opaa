@@ -33,6 +33,7 @@ import { accountHandlers } from '@/features/user/mocks/accountHandlers'
 import { identityProviderHandlers } from '@/features/identity-provider/mocks/identityProviderHandlers'
 // model
 import { modelHandlers } from '@/features/model/mocks/modelHandlers'
+import { modelRoleHandlers } from '@/features/model/mocks/modelRoleHandlers'
 // mail
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
@@ -109,6 +110,7 @@ export const handlers = [
   // identity-provider
   ...identityProviderHandlers,
   // model
+  ...modelRoleHandlers,
   ...modelHandlers,
   // mail
   ...mailHandlers,

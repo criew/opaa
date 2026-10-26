@@ -30,6 +30,7 @@ import {
 import { resetMockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 // model
 import { resetLlmModelMockState } from '@/features/model/mocks/modelHandlers'
+import { resetModelRoleMockState } from '@/features/model/mocks/modelRoleHandlers'
 // mail
 import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/mocks/mailFixtures'
 // branding
@@ -69,6 +70,7 @@ afterEach(() => {
   resetGrantMockState()
   resetChatMockState()
   resetLlmModelMockState()
+  resetModelRoleMockState()
   resetConnectionProfileMockState()
   resetConnectedAccountMockState()
   resetConnectionLogMockState()
