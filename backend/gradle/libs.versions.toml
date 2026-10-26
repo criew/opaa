@@ -48,6 +48,11 @@ snakeyaml = "2.7"
 # this module's own code now imports it directly rather than only through Spring AI's PgVectorStore.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
 pgvector = "0.1.6"
+# HTTP client under Spring AI's OpenAI clients; io.opaa.llm.ModelRedirectRefusal plugs an OkHttp
+# interceptor into them. Already on the classpath transitively via spring-ai-openai; declared
+# explicitly because io.opaa now calls okhttp3 directly. Must stay on the version spring-ai-openai
+# resolves to (`./gradlew dependencyInsight --dependency okhttp`), not a newer major line.
+okhttp = "4.12.0"
 # XLSX reader for io.opaa.format.file.tabular.TabularDocumentFormat (docs/features/ingestion-pipelines.md,
 # Teil 3, Punkt 3 - "erhaltene Tabellenstruktur"). Already on the classpath transitively via
 # spring-ai-tika-document-reader's tika-parsers-standard-package; declared explicitly because this
@@ -157,6 +162,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 tika-core = { module = "org.apache.tika:tika-core", version.ref = "tika-core" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 pgvector = { module = "com.pgvector:pgvector", version.ref = "pgvector" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi-ooxml" }
 poi-scratchpad = { module = "org.apache.poi:poi-scratchpad", version.ref = "poi-scratchpad" }
 mime4j-dom = { module = "org.apache.james:apache-mime4j-dom", version.ref = "mime4j" }

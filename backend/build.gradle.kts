@@ -139,6 +139,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.tika.core)
     implementation(libs.pgvector)
+    implementation(libs.okhttp)
     implementation(libs.postgresql)
     implementation(libs.poi.ooxml)
     implementation(libs.poi.scratchpad)

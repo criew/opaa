@@ -34,7 +34,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * the {@link InvalidationBus} announces a change of {@code llm_models} on any instance (ADR-0053,
  * Entscheidung 5); while the bus does not listen, every call builds a client of its own. {@link
  * #generation} guarantees that a build running across an invalidation is returned but never cached.
- * The decrypted access key lives only inside the built client.
+ * The decrypted access key lives only inside the built client, which follows no redirect ({@link
+ * ModelRedirectRefusal}).
  */
 @DataFlow("chat-model")
 @Component
@@ -226,7 +227,8 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     return OpenAiChatModel.builder()
         .options(options)
         .observationRegistry(observationRegistry)
-        .meterRegistry(meterRegistryProvider.getIfAvailable());
+        .meterRegistry(meterRegistryProvider.getIfAvailable())
+        .httpClientBuilderCustomizer(ModelRedirectRefusal.INSTANCE);
   }
 
   private LlmModel activeModel() {
