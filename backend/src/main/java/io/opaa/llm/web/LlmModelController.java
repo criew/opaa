@@ -12,6 +12,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.EmbeddingModelAdministration;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelDiscoverer;
@@ -46,16 +47,19 @@ public class LlmModelController {
   private final LlmModelService llmModelService;
   private final LlmModelConnectionTester connectionTester;
   private final EmbeddingInfoService embeddingInfoService;
+  private final EmbeddingModelAdministration embeddingAdministration;
   private final LlmModelDiscoverer discoverer;
 
   public LlmModelController(
       LlmModelService llmModelService,
       LlmModelConnectionTester connectionTester,
       EmbeddingInfoService embeddingInfoService,
+      EmbeddingModelAdministration embeddingAdministration,
       LlmModelDiscoverer discoverer) {
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
     this.embeddingInfoService = embeddingInfoService;
+    this.embeddingAdministration = embeddingAdministration;
     this.discoverer = discoverer;
   }
 
@@ -127,7 +131,19 @@ public class LlmModelController {
   @GetMapping("/embedding-info")
   public EmbeddingInfoResponse getEmbeddingInfo() {
     EmbeddingInfo info = embeddingInfoService.getEmbeddingInfo();
-    return new EmbeddingInfoResponse(info.provider(), info.model(), info.dimensions());
+    EmbeddingInfoResponse response =
+        new EmbeddingInfoResponse(info.provider(), info.model(), info.dimensions())
+            .baseUrl(info.baseUrl());
+    embeddingAdministration
+        .installed()
+        .ifPresent(
+            model ->
+                response
+                    .maxInputTokens(model.maxInputTokens())
+                    .apiKeySet(model.apiKeySet())
+                    .generation(model.generation())
+                    .anchorRecorded(model.anchorRecorded()));
+    return response;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

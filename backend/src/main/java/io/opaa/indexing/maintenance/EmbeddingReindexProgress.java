@@ -12,10 +12,15 @@ import io.opaa.indexing.chunk.EmbeddingIndexRecord;
  * @param current the model the vector search runs on
  * @param configured the model the configuration names
  * @param stale whether the two differ; the vector search is suspended while they do
- * @param running whether a run is working in this process right now
+ * @param running whether a run is working right now, here or on a live instance
  * @param totalChunks the chunks counted, see {@code privateLibrariesCounted}
- * @param embeddedChunks of those, the chunks with a vector of the configured model
+ * @param embeddedChunks of those, the chunks with a vector of the configured model, or after a
+ *     discard with a vector of the embedding column
  * @param privateLibrariesCounted whether the counts include the chunks of private libraries
+ * @param previous the model a discard goes back to; {@code null} while no change waits
+ * @param switching whether a live run builds the index of the target column; a discard waits
+ * @param withoutCurrentVector of the counted chunks, those without a vector of the model the search
+ *     runs on; after a discard the refill embeds them
  */
 public record EmbeddingReindexProgress(
     EmbeddingIdentity current,
@@ -25,4 +30,7 @@ public record EmbeddingReindexProgress(
     EmbeddingIndexRecord.Run lastRun,
     long totalChunks,
     long embeddedChunks,
-    boolean privateLibrariesCounted) {}
+    boolean privateLibrariesCounted,
+    EmbeddingIdentity previous,
+    boolean switching,
+    long withoutCurrentVector) {}

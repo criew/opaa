@@ -6,7 +6,6 @@ import io.opaa.directory.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.source.sharepoint.OneDriveTestSeam;
 import io.opaa.llm.EmbeddingClientFactory;
-import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.EmbeddingProbe;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetOwnershipHistoryRepository;
@@ -59,8 +58,7 @@ class OpaaTestBeans {
   @Bean
   @Primary
   EmbeddingProbe testEmbeddingProbe() {
-    return endpoint ->
-        new EmbeddingModelService.ProbeOutcome(true, null, FakeEmbeddingModel.DIMENSIONS);
+    return (endpoint, texts) -> FakeEmbeddingModel.probeOutcome(texts);
   }
 
   /**

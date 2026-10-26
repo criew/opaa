@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.pgvector.PGvector;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.VectorTable;
+import io.opaa.llm.EmbeddingClients;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.QueryProperties;
@@ -77,17 +78,19 @@ class VectorSearchHnswIntegrationTest {
 
   @BeforeEach
   void chunksAndAnHnswIndexExist() {
+    EmbeddingIndexState indexState = new EmbeddingIndexState();
     vectorSearchStage =
         new VectorSearchStage(
             new VectorChunkSearch(
                 jdbcTemplate,
                 transactionManager,
-                new NegatedFakeEmbeddingModel(),
+                EmbeddingClients.fixed(new NegatedFakeEmbeddingModel(), 8192),
+                indexState,
                 objectMapper,
                 new VectorIndexScanProperties(20000),
                 new PgVectorStoreProperties(),
                 vectorTable),
-            new EmbeddingIndexState());
+            indexState);
     for (int i = 0; i < LIBRARIES; i++) {
       UUID library = UUID.randomUUID();
       libraries.add(library);

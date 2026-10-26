@@ -240,6 +240,46 @@ final class AuditSelfDisclosurePayload {
         MALWARE_DETECTED);
     put(keys, Set.of(), EMBEDDING_REINDEX_STARTED, EMBEDDING_REINDEX_CANCELLED);
     put(keys, Set.of("status"), EMBEDDING_REINDEX_COMPLETED);
+    put(
+        keys,
+        Set.of(
+            "model",
+            "baseUrl",
+            "dimensions",
+            "maxInputTokens",
+            "generation",
+            "apiKeySet",
+            "apiKeyChange",
+            "totalChunks",
+            "privateLibrariesCounted",
+            "refillEnded"),
+        EMBEDDING_MODEL_CHANGED);
+    put(
+        keys,
+        Set.of(
+            "model",
+            "baseUrl",
+            "dimensions",
+            "maxInputTokens",
+            "generation",
+            "apiKeySet",
+            "runStatus",
+            "refillChunks",
+            "privateLibrariesCounted"),
+        EMBEDDING_MODEL_CHANGE_DISCARDED);
+    put(
+        keys,
+        Set.of(
+            "model",
+            "baseUrl",
+            "dimensions",
+            "maxInputTokens",
+            "generation",
+            "apiKeySet",
+            "apiKeyChange",
+            "similarity",
+            "duringChange"),
+        EMBEDDING_MODEL_ENDPOINT_CHANGED);
     put(keys, Set.of("fieldKey", "state", "origin"), DOCUMENT_METADATA_CHANGED);
     put(
         keys,

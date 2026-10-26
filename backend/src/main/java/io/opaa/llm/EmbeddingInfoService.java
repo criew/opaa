@@ -4,10 +4,10 @@ import org.springframework.ai.model.SpringAIModels;
 import org.springframework.stereotype.Service;
 
 /**
- * The installed embedding model for the read-only admin block, the instance register and the index
- * reconciliation (docs/features/llm-integration.md#sofortige-wirkung), read from {@code
- * embedding_model}. Deliberately read-only: a change requires a full re-index because existing
- * vectors become incomparable (ADR-0060, Entscheidung 10).
+ * The installed embedding model for the admin page, the instance register and the index
+ * reconciliation, read from {@code embedding_model}. Read-only: a change goes through {@link
+ * EmbeddingModelAdministration} and a re-embedding, since existing vectors become incomparable
+ * (ADR-0061).
  */
 @Service
 public class EmbeddingInfoService {
@@ -30,7 +30,8 @@ public class EmbeddingInfoService {
                     settings.getDimensions(),
                     ModelEndpointUri.containsCredentials(settings.getBaseUrl())
                         ? null
-                        : settings.getBaseUrl()))
+                        : settings.getBaseUrl(),
+                    settings.getGeneration()))
         .orElse(EmbeddingInfo.NOT_INSTALLED);
   }
 }

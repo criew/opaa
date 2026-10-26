@@ -42,6 +42,7 @@ class EmbeddingModelServiceTest {
   private final VectorTableCreator table = mock(VectorTableCreator.class);
   private final RecordedEmbeddingIndex index = mock(RecordedEmbeddingIndex.class);
   private final InstallationStatus status = mock(InstallationStatus.class);
+  private final EmbeddingGenerations generations = mock(EmbeddingGenerations.class);
   private final MockEnvironment environment =
       new MockEnvironment()
           .withProperty(DevelopmentEmbeddingConfiguration.MODE_PROPERTY, "dev")
@@ -62,7 +63,7 @@ class EmbeddingModelServiceTest {
   void anExistingTableIsTakenOverForTheRecordedModelWithTheSizeOfItsColumnAndWithoutAProbe() {
     givenTable(768, null);
     when(index.recorded())
-        .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("bge-m3", null)));
+        .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("bge-m3", null, 1, null)));
 
     assertThat(service(KEY).adoptIfMissing()).isTrue();
 
@@ -77,7 +78,8 @@ class EmbeddingModelServiceTest {
   void anEnvironmentThatNamesAnotherModelThanTheIndexTakesOverNothing() {
     givenTable(768, null);
     when(index.recorded())
-        .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("nomic-embed-text", null)));
+        .thenReturn(
+            Optional.of(new RecordedEmbeddingIndex.Recorded("nomic-embed-text", null, 1, null)));
 
     assertThat(service(KEY).adoptIfMissing()).isFalse();
 
@@ -89,7 +91,8 @@ class EmbeddingModelServiceTest {
   void theModelOfARunningReEmbeddingIsTakenOverWithTheSizeOfTheTargetColumn() {
     givenTable(768, 1024);
     when(index.recorded())
-        .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("nomic-embed-text", "bge-m3")));
+        .thenReturn(
+            Optional.of(new RecordedEmbeddingIndex.Recorded("nomic-embed-text", "bge-m3", 1, 2L)));
 
     assertThat(service(KEY).adoptIfMissing()).isTrue();
 
@@ -99,7 +102,8 @@ class EmbeddingModelServiceTest {
   @Test
   void withoutATableAProbeDecidesTheSizeAndTheTableIsCreated() {
     when(table.exists()).thenReturn(false);
-    when(probe.probe(any())).thenReturn(new EmbeddingModelService.ProbeOutcome(true, null, 384));
+    when(probe.probe(any(), any()))
+        .thenReturn(new EmbeddingModelService.ProbeOutcome(true, null, 384));
 
     assertThat(service(KEY).adoptIfMissing()).isTrue();
 
@@ -121,7 +125,7 @@ class EmbeddingModelServiceTest {
   @Test
   void aFailedProbeTakesOverNothing() {
     when(table.exists()).thenReturn(false);
-    when(probe.probe(any()))
+    when(probe.probe(any(), any()))
         .thenReturn(new EmbeddingModelService.ProbeOutcome(false, "nicht erreichbar", null));
 
     assertThat(service(KEY).adoptIfMissing()).isFalse();
@@ -145,7 +149,7 @@ class EmbeddingModelServiceTest {
   void aKeyWithoutTheSettingsKeyTakesOverNothing() {
     givenTable(1024, null);
     when(index.recorded())
-        .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("bge-m3", null)));
+        .thenReturn(Optional.of(new RecordedEmbeddingIndex.Recorded("bge-m3", null, 1, null)));
     environment.setProperty(DevelopmentEmbeddingConfiguration.API_KEY, "sk-geheim");
 
     assertThat(service(null).adoptIfMissing()).isFalse();
@@ -181,7 +185,8 @@ class EmbeddingModelServiceTest {
 
   @Test
   void aProbeOfMoreDimensionsThanTheIndexTakesFails() {
-    when(probe.probe(any())).thenReturn(new EmbeddingModelService.ProbeOutcome(true, null, 3072));
+    when(probe.probe(any(), any()))
+        .thenReturn(new EmbeddingModelService.ProbeOutcome(true, null, 3072));
 
     EmbeddingModelService.ProbeOutcome outcome =
         service(KEY)
@@ -217,6 +222,7 @@ class EmbeddingModelServiceTest {
         index,
         mock(ApplicationEventPublisher.class),
         status,
+        generations,
         mock(PlatformTransactionManager.class),
         Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
   }

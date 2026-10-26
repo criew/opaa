@@ -266,6 +266,46 @@ public final class AuditEventCatalog {
     put(keys, Set.of("status"), EMBEDDING_REINDEX_COMPLETED);
     put(
         keys,
+        Set.of(
+            "apiKeyChange",
+            "apiKeySet",
+            "baseUrl",
+            "dimensions",
+            "generation",
+            "maxInputTokens",
+            "model",
+            "privateLibrariesCounted",
+            "refillEnded",
+            "totalChunks"),
+        EMBEDDING_MODEL_CHANGED);
+    put(
+        keys,
+        Set.of(
+            "apiKeySet",
+            "baseUrl",
+            "dimensions",
+            "generation",
+            "maxInputTokens",
+            "model",
+            "privateLibrariesCounted",
+            "refillChunks",
+            "runStatus"),
+        EMBEDDING_MODEL_CHANGE_DISCARDED);
+    put(
+        keys,
+        Set.of(
+            "apiKeyChange",
+            "apiKeySet",
+            "baseUrl",
+            "dimensions",
+            "duringChange",
+            "generation",
+            "maxInputTokens",
+            "model",
+            "similarity"),
+        EMBEDDING_MODEL_ENDPOINT_CHANGED);
+    put(
+        keys,
         Set.of("deleted", "deletedCount", "requestedCount", "skippedCount"),
         UPLOAD_ORPHAN_ORIGINALS_DELETED);
     put(keys, Set.of("signature", "sourceType"), MALWARE_DETECTED);

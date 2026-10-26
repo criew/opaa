@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.knowledge.VectorTable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -37,11 +38,13 @@ class VectorStoreWriterTest {
 
   private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
   private final FullTextChunkStore fullTextChunkStore = mock(FullTextChunkStore.class);
+  private final EmbeddingIndexStore indexStore = indexStoreAtGeneration();
   private final VectorStoreWriter writer =
       new VectorStoreWriter(
           jdbcTemplate,
           fullTextChunkStore,
           new EmbeddingIndexState(),
+          indexStore,
           JsonMapper.builder().build(),
           new VectorTable("public", "vector_store"));
 
@@ -66,8 +69,8 @@ class VectorStoreWriterTest {
     int written =
         writer.rewriteEmbeddedChunks(
             List.of(stillStored, replaced, textChanged, alsoStillStored),
-            List.of(
-                new float[] {0.1f}, new float[] {0.2f}, new float[] {0.3f}, new float[] {0.4f}));
+            List.of(new float[] {0.1f}, new float[] {0.2f}, new float[] {0.3f}, new float[] {0.4f}),
+            GENERATION);
 
     ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<java.util.Collection<?>> rows =
@@ -100,7 +103,7 @@ class VectorStoreWriterTest {
         .thenReturn(List.of());
 
     writer.rewriteEmbeddedChunks(
-        List.of(ofSecond, ofFirst), List.of(new float[] {0.1f}, new float[] {0.2f}));
+        List.of(ofSecond, ofFirst), List.of(new float[] {0.1f}, new float[] {0.2f}), GENERATION);
 
     InOrder order = inOrder(jdbcTemplate);
     order
@@ -130,11 +133,19 @@ class VectorStoreWriterTest {
     // before it would hold row locks while waiting for the switch, and both would hang.
     List<Boolean> insideColumnLock = new java.util.ArrayList<>();
     RecordingIndexState state = new RecordingIndexState();
+    EmbeddingIndexStore recordingStore = mock(EmbeddingIndexStore.class);
+    when(recordingStore.lockGenerations())
+        .thenAnswer(
+            call -> {
+              insideColumnLock.add(state.writing);
+              return Optional.of(new EmbeddingIndexStore.Generations(GENERATION, null));
+            });
     VectorStoreWriter recordingWriter =
         new VectorStoreWriter(
             jdbcTemplate,
             fullTextChunkStore,
             state,
+            recordingStore,
             JsonMapper.builder().build(),
             new VectorTable("public", "vector_store"));
     Document chunk = chunk(UUID.randomUUID(), "noch da");
@@ -161,11 +172,11 @@ class VectorStoreWriterTest {
               return new int[][] {{1}};
             });
 
-    recordingWriter.rewriteEmbeddedChunks(List.of(chunk), List.of(new float[] {0.1f}));
+    recordingWriter.rewriteEmbeddedChunks(List.of(chunk), List.of(new float[] {0.1f}), GENERATION);
 
     assertThat(insideColumnLock)
-        .as("document lock, row lock and update")
-        .hasSize(3)
+        .as("generation lock, document lock, row lock and update")
+        .hasSize(4)
         .containsOnly(true);
   }
 
@@ -175,17 +186,26 @@ class VectorStoreWriterTest {
     private boolean writing;
 
     @Override
-    <T> T whileWriting(java.util.function.Function<String, T> write) {
+    <T> T whileWriting(java.util.function.Supplier<T> write) {
       return super.whileWriting(
-          column -> {
+          () -> {
             writing = true;
             try {
-              return write.apply(column);
+              return write.get();
             } finally {
               writing = false;
             }
           });
     }
+  }
+
+  private static final long GENERATION = 1;
+
+  private static EmbeddingIndexStore indexStoreAtGeneration() {
+    EmbeddingIndexStore store = mock(EmbeddingIndexStore.class);
+    when(store.lockGenerations())
+        .thenReturn(Optional.of(new EmbeddingIndexStore.Generations(GENERATION, null)));
+    return store;
   }
 
   @Test

@@ -10,6 +10,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -29,7 +30,8 @@ import tools.jackson.databind.ObjectMapper;
  * {@link EmbeddingProbe} as one {@code POST {baseUrl}/embeddings} over the OpenAI-compatible
  * protocol: {@link ModelEndpointAccess#newHttpClient()} follows no redirect, so a probe never
  * reaches an address the target check did not see. The whole exchange - connection, headers and
- * body - ends after {@value #TIMEOUT_SECONDS} seconds: a server that answers slowly is cut off by
+ * body - ends after {@value #TIMEOUT_SECONDS} seconds, {@value #THROUGHPUT_TIMEOUT_SECONDS} for
+ * more than {@value #ANCHOR_SIZED_REQUEST} texts: a server that answers slowly is cut off by
  * closing the client. The request is not repeated and reads at most {@value #MAX_RESPONSE_BYTES}
  * bytes of the answer. The log names status and failure class only, never a body or the key.
  */
@@ -37,9 +39,12 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 class HttpEmbeddingProbe implements EmbeddingProbe {
 
-  static final String PROBE_TEXT = "OPAA Probeeinbettung";
   static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
   static final long TIMEOUT_SECONDS = 10;
+  static final long THROUGHPUT_TIMEOUT_SECONDS = 30;
+
+  /** Up to this many texts a probe is a check, not a throughput measurement. */
+  static final int ANCHOR_SIZED_REQUEST = 3;
 
   private static final Logger log = LoggerFactory.getLogger(HttpEmbeddingProbe.class);
 
@@ -50,7 +55,9 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
   }
 
   @Override
-  public EmbeddingModelService.ProbeOutcome probe(EmbeddingEndpoint endpoint) {
+  public EmbeddingModelService.ProbeOutcome probe(EmbeddingEndpoint endpoint, List<String> texts) {
+    long timeoutSeconds =
+        texts.size() <= ANCHOR_SIZED_REQUEST ? TIMEOUT_SECONDS : THROUGHPUT_TIMEOUT_SECONDS;
     URI uri;
     try {
       uri = ModelEndpointUri.append(endpoint.baseUrl(), "/embeddings");
@@ -62,13 +69,13 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
     }
     String body =
         objectMapper.writeValueAsString(
-            Map.of("model", endpoint.modelIdentifier(), "input", List.of(PROBE_TEXT)));
+            Map.of("model", endpoint.modelIdentifier(), "input", List.copyOf(texts)));
     HttpRequest request;
     try {
       request =
           ModelEndpointAccess.authorized(
                   HttpRequest.newBuilder(uri)
-                      .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                      .timeout(Duration.ofSeconds(timeoutSeconds))
                       .header("Content-Type", "application/json")
                       .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)),
                   endpoint.apiKey())
@@ -80,13 +87,13 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
     ExecutorService exchange = Executors.newVirtualThreadPerTaskExecutor();
     try {
       Future<EmbeddingModelService.ProbeOutcome> outcome =
-          exchange.submit(() -> exchange(client, request, endpoint));
-      return outcome.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+          exchange.submit(() -> exchange(client, request, endpoint, texts.size()));
+      return outcome.get(timeoutSeconds, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       log.warn(
           "Probe embedding at {} took longer than {} s",
           ModelEndpointUri.withoutSecrets(endpoint.baseUrl()),
-          TIMEOUT_SECONDS);
+          timeoutSeconds);
       return failure("Die Verbindung ist in ein Zeitlimit gelaufen.");
     } catch (ExecutionException e) {
       log.warn(
@@ -105,8 +112,9 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
   }
 
   private EmbeddingModelService.ProbeOutcome exchange(
-      HttpClient client, HttpRequest request, EmbeddingEndpoint endpoint)
+      HttpClient client, HttpRequest request, EmbeddingEndpoint endpoint, int texts)
       throws InterruptedException {
+    long startedAt = System.nanoTime();
     try {
       HttpResponse<InputStream> response =
           client.send(request, HttpResponse.BodyHandlers.ofInputStream());
@@ -122,7 +130,7 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
         if (bytes.length > MAX_RESPONSE_BYTES) {
           return failure("Die Antwort der Probeeinbettung ist unerwartet groß.");
         }
-        return interpret(bytes);
+        return interpret(bytes, texts, System.nanoTime() - startedAt);
       }
     } catch (IOException e) {
       log.warn(
@@ -133,17 +141,29 @@ class HttpEmbeddingProbe implements EmbeddingProbe {
     }
   }
 
-  private EmbeddingModelService.ProbeOutcome interpret(byte[] bytes) {
-    JsonNode vector;
+  private EmbeddingModelService.ProbeOutcome interpret(byte[] bytes, int texts, long nanos) {
+    JsonNode data;
     try {
-      vector = objectMapper.readTree(bytes).path("data").path(0).path("embedding");
+      data = objectMapper.readTree(bytes).path("data");
     } catch (JacksonException e) {
       return failure("Die Antwort der Probeeinbettung ist kein gültiges JSON.");
     }
-    if (!vector.isArray() || vector.isEmpty()) {
-      return failure("Das Modell hat bei der Probeeinbettung keinen Vektor geliefert.");
+    List<float[]> vectors = new ArrayList<>(texts);
+    for (int i = 0; i < texts; i++) {
+      JsonNode vector = data.path(i).path("embedding");
+      if (!vector.isArray() || vector.isEmpty()) {
+        return failure("Das Modell hat bei der Probeeinbettung keinen Vektor geliefert.");
+      }
+      float[] values = new float[vector.size()];
+      for (int j = 0; j < values.length; j++) {
+        values[j] = (float) vector.get(j).asDouble();
+      }
+      if (!vectors.isEmpty() && vectors.getFirst().length != values.length) {
+        return failure("Das Modell hat Vektoren unterschiedlicher Länge geliefert.");
+      }
+      vectors.add(values);
     }
-    return new EmbeddingModelService.ProbeOutcome(true, null, vector.size());
+    return EmbeddingModelService.ProbeOutcome.succeeded(vectors, nanos);
   }
 
   private static String statusMessage(int status) {

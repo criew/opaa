@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -13,6 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.llm.EmbeddingClients;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +65,8 @@ class VectorChunkStoreTest {
 
     vectorChunkStore.addChunks(chunks);
 
-    verify(vectorStoreWriter).writeEmbeddedChunks(chunks, embeddings);
+    verify(vectorStoreWriter)
+        .writeEmbeddedChunks(chunks, embeddings, EmbeddingClients.INITIAL_GENERATION);
     verifyNoInteractions(vectorStore);
   }
 
@@ -132,12 +135,15 @@ class VectorChunkStoreTest {
     List<float[]> embeddings = List.of(new float[] {0.1f, 0.2f});
     when(embeddingModel.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))
         .thenReturn(embeddings);
-    when(vectorStoreWriter.rewriteEmbeddedChunks(chunks, embeddings)).thenReturn(1);
+    when(vectorStoreWriter.rewriteEmbeddedChunks(
+            chunks, embeddings, EmbeddingClients.INITIAL_GENERATION))
+        .thenReturn(1);
 
     assertThat(vectorChunkStore.reembedChunks(chunks).rewritten()).isEqualTo(1);
 
-    verify(vectorStoreWriter).rewriteEmbeddedChunks(chunks, embeddings);
-    verify(vectorStoreWriter, never()).writeEmbeddedChunks(anyList(), anyList());
+    verify(vectorStoreWriter)
+        .rewriteEmbeddedChunks(chunks, embeddings, EmbeddingClients.INITIAL_GENERATION);
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(anyList(), anyList(), anyLong());
     verifyNoInteractions(vectorStore);
   }
 

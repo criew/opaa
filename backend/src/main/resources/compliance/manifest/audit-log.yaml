@@ -623,6 +623,38 @@ auditEvents:
   - id: EMBEDDING_REINDEX_COMPLETED
     trigger: Eine Neueinbettung endet mit Umschaltung oder Fehler (Systemvorgang)
     payloadKeys: [status]
+  - id: EMBEDDING_MODEL_CHANGED
+    trigger: >-
+      Die Systemverwaltung bestätigt den Wechsel des Embedding-Modells; die Neueinbettung beginnt
+    details: >-
+      Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und
+      nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“, „geändert“ oder
+      „entfernt“ (apiKeyChange), nie mit dem Wert; die Zahl der Abschnitte wie auf der Seite
+      und ob ein laufendes Nachfüllen endete
+    payloadKeys:
+      [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model,
+       privateLibrariesCounted, refillEnded, totalChunks]
+  - id: EMBEDDING_MODEL_CHANGE_DISCARDED
+    trigger: >-
+      Die Systemverwaltung verwirft einen bestätigten Wechsel des Embedding-Modells vor dem
+      Umschalten
+    details: >-
+      Verworfenes und wiederhergestelltes Modell mit Generation, Status des beendeten Laufs und
+      die Zahl der nachzufüllenden Abschnitte
+    payloadKeys:
+      [apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model, privateLibrariesCounted,
+       refillChunks, runStatus]
+  - id: EMBEDDING_MODEL_ENDPOINT_CHANGED
+    trigger: >-
+      Die Systemverwaltung ändert Adresse, Zugangsschlüssel oder Eingabegrenze des
+      Embedding-Modells ohne Neueinbettung
+    details: >-
+      Adresse und Eingabegrenze vorher und nachher, der Schlüssel nur als „gesetzt ja/nein“ und
+      „gesetzt“, „geändert“ oder „entfernt“, die kleinste Ähnlichkeit der Probe zum Referenzanker
+      und ob ein Wechsel lief
+    payloadKeys:
+      [apiKeyChange, apiKeySet, baseUrl, dimensions, duringChange, generation, maxInputTokens,
+       model, similarity]
   - id: UPLOAD_ORPHAN_ORIGINALS_DELETED
     trigger: Verwaiste Originale werden aus der Originalablage entfernt
     details: Die entfernten Ablageorte

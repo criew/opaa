@@ -99,6 +99,9 @@ protokollereignisse#directory-sync-plan-discarded
 protokollereignisse#directory-sync-report-read
 protokollereignisse#directory-sync-run-completed
 protokollereignisse#document-metadata-changed
+protokollereignisse#embedding-model-change-discarded
+protokollereignisse#embedding-model-changed
+protokollereignisse#embedding-model-endpoint-changed
 protokollereignisse#embedding-reindex-cancelled
 protokollereignisse#embedding-reindex-completed
 protokollereignisse#embedding-reindex-started

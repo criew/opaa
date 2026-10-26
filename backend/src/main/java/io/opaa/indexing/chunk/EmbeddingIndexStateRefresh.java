@@ -3,19 +3,18 @@ package io.opaa.indexing.chunk;
 import io.opaa.indexing.chunk.EmbeddingIndexState.Snapshot;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.llm.EmbeddingInfo;
+import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.InstalledEmbeddingModel;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
  * Binds {@link EmbeddingIndexState} to the {@link InvalidationBus} (ADR-0053, Entscheidung 5): when
- * another instance switches the index to its target or marks it stale, this instance re-reads the
- * identity and the target from {@code embedding_index}, under the same exclusion as a local switch.
- * The configured identity stays this instance's own; the configuration fingerprint keeps it equal
- * on all instances. While the bus does not listen, the row is re-read at every check of the bus.
- *
- * <p>Before this instance reconciled - the embedding model was installed on another instance after
- * this one started - the row is taken as it is: the installing instance just wrote it for the
- * installed model.
+ * another instance changes the model row or the index record - a model change, a discard, a switch,
+ * an endpoint change - this instance re-reads both, under the same exclusion as a local switch. The
+ * configured identity is the one of the model row, never the one this instance started with. While
+ * the bus does not listen, both are re-read at every check of the bus.
  */
 @Component
 class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
@@ -25,15 +24,20 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
 
   private final EmbeddingIndexState state;
   private final EmbeddingIndexStore store;
+  private final EmbeddingInfoService embeddingInfoService;
 
-  EmbeddingIndexStateRefresh(EmbeddingIndexState state, EmbeddingIndexStore store) {
+  EmbeddingIndexStateRefresh(
+      EmbeddingIndexState state,
+      EmbeddingIndexStore store,
+      EmbeddingInfoService embeddingInfoService) {
     this.state = state;
     this.store = store;
+    this.embeddingInfoService = embeddingInfoService;
   }
 
   @Override
   public Set<String> invalidationTopics() {
-    return Set.of(INVALIDATION_TOPIC);
+    return Set.of(INVALIDATION_TOPIC, InstalledEmbeddingModel.INVALIDATION_TOPIC);
   }
 
   @Override
@@ -41,7 +45,7 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
     // read under the exclusion, so a switch of this instance cannot fall between read and replace
     state.exclusively(
         () -> {
-          Snapshot current = state.snapshot();
+          EmbeddingInfo info = embeddingInfoService.getEmbeddingInfo();
           store
               .load()
               .ifPresent(
@@ -49,10 +53,15 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
                       state.replace(
                           new Snapshot(
                               record.current(),
-                              current == null ? configuredOf(record) : current.configured(),
+                              info.installed() ? configuredOf(info) : configuredOf(record),
                               record.target())));
           return null;
         });
+  }
+
+  private static EmbeddingIdentity configuredOf(EmbeddingInfo info) {
+    return new EmbeddingIdentity(
+        info.model(), info.baseUrl(), info.dimensions(), info.generation());
   }
 
   private static EmbeddingIdentity configuredOf(EmbeddingIndexRecord record) {

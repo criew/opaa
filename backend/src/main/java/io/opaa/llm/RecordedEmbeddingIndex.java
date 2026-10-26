@@ -13,8 +13,10 @@ public interface RecordedEmbeddingIndex {
   /**
    * @param model the model the embedding column was built with; {@code null} when unknown
    * @param targetModel the model of a running re-embedding; {@code null} when the index is current
+   * @param generation the generation of the embedding column
+   * @param targetGeneration the generation of the target column; {@code null} when there is none
    */
-  record Recorded(String model, String targetModel) {}
+  record Recorded(String model, String targetModel, long generation, Long targetGeneration) {}
 
   /** The recorded identity, empty when no start recorded one. */
   Optional<Recorded> recorded();

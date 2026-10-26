@@ -52,6 +52,7 @@ class EmbeddingInfoServiceTest {
   }
 
   private static EmbeddingModelSettings installed(String baseUrl) {
-    return new EmbeddingModelSettings(baseUrl, "nomic-embed-text", null, 2048, 768, Instant.EPOCH);
+    return new EmbeddingModelSettings(
+        baseUrl, "nomic-embed-text", null, 2048, 768, Instant.EPOCH, 1, null);
   }
 }

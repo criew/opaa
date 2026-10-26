@@ -98,6 +98,17 @@ public class CurrentInstance implements SmartLifecycle {
         .noneMatch(instance -> InstanceVersion.compare(instance.version(), version.version()) > 0);
   }
 
+  /**
+   * Whether every live instance runs this instance's version, compared without build metadata, so
+   * two builds of the same version count as one. A step that every instance has to understand the
+   * same way, such as a change of the embedding model (ADR-0061, Entscheidung 6), waits for it.
+   */
+  public boolean allLiveInstancesRunThisVersion() {
+    return registry.instances().stream()
+        .filter(RegisteredInstance::alive)
+        .allMatch(instance -> InstanceVersion.compare(instance.version(), version.version()) == 0);
+  }
+
   @Override
   public void start() {
     UUID registered = UUID.randomUUID();

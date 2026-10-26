@@ -94,6 +94,6 @@ class InstalledEmbeddingModelTest {
 
   private static EmbeddingModelSettings settings() {
     return new EmbeddingModelSettings(
-        "http://ollama:11434/v1", "bge-m3", null, 4096, 1536, Instant.EPOCH);
+        "http://ollama:11434/v1", "bge-m3", null, 4096, 1536, Instant.EPOCH, 1, null);
   }
 }

@@ -311,7 +311,7 @@ class DocumentIngestServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> captor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStoreWriter).writeEmbeddedChunks(captor.capture(), any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(captor.capture(), any(), anyLong());
     return captor.getValue();
   }
 
@@ -343,7 +343,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.MALWARE_FOUND);
       verify(documentService, never()).parseDocument(any(Path.class));
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       verify(documentRepository)
           .markMalwareFound(
               documentId,
@@ -645,7 +645,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       // The initial PENDING row is a plain save; the final INDEXED transition is a conditional
       // UPDATE carrying the checksum, never a second save.
       verify(documentRepository, times(1)).save(any(Document.class));
@@ -687,7 +687,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       UUID documentId = savedDocument().getId();
       verify(documentRepository)
           .markFailedWithoutChunks(documentId, DocumentIngestService.NO_CONTENT_MESSAGE);
@@ -726,7 +726,7 @@ class DocumentIngestServiceTest {
       stubParsedInto(file, chunks("chunk1"));
       doThrow(new IllegalStateException("vector store unavailable"))
           .when(vectorStoreWriter)
-          .writeEmbeddedChunks(any(), any());
+          .writeEmbeddedChunks(any(), any(), anyLong());
 
       assertThatThrownBy(() -> service.ingest(localFile(file), null))
           .isInstanceOf(IllegalStateException.class);
@@ -754,7 +754,7 @@ class DocumentIngestServiceTest {
 
       // storeChunks already ran before the final update failed - the catch block must remove
       // exactly those chunks, keyed by this document's id, or they become orphaned.
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       UUID documentId = savedDocument().getId();
       verify(vectorStoreWriter).deleteChunksOfDocument(documentId);
       verify(documentRepository)
@@ -775,7 +775,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       UUID documentId = savedDocument().getId();
       verify(vectorStoreWriter).deleteChunksOfDocument(documentId);
       verify(documentRepository, times(1)).save(any(Document.class));
@@ -916,7 +916,7 @@ class DocumentIngestServiceTest {
       assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(documentService, never()).parseDocument(any());
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentRepository, never())
@@ -1125,7 +1125,7 @@ class DocumentIngestServiceTest {
       order.verify(documentRepository).markIndexedFromSource(any(), anyInt(), any(), any(), any());
       // A pure metadata correction: no re-parse, no re-embedding.
       verify(documentService, never()).parseDocument(any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
     }
 
     @Test
@@ -1415,7 +1415,7 @@ class DocumentIngestServiceTest {
       assertThat(savedByFilePath.get(attachmentUrl).getSourceEntryUrl())
           .isEqualTo("https://example.gov/artikel/erster-artikel");
       verify(documentRepository, never()).delete(any());
-      verify(vectorStoreWriter, times(1)).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, times(1)).writeEmbeddedChunks(any(), any(), anyLong());
     }
   }
 
@@ -1442,7 +1442,7 @@ class DocumentIngestServiceTest {
       assertThat(result).isEqualTo(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentService, never()).parseDocument(any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       assertThat(counter("skipped")).isEqualTo(1.0);
     }
 
@@ -1537,7 +1537,7 @@ class DocumentIngestServiceTest {
       assertThat(result).isEqualTo(DocumentIngestResult.QUOTA_EXCEEDED);
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentService, never()).parseDocument(any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       assertThat(counter("skipped")).isEqualTo(1.0);
     }
 
@@ -2152,7 +2152,7 @@ class DocumentIngestServiceTest {
       verify(storageQuotaService, never()).verdictFor(any(), anyLong());
       verify(documentRepository, never()).save(any(Document.class));
       assertThat(doc.getContentType()).isEqualTo("application/pdf");
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       verify(documentRepository)
           .markIndexedFromSource(
               eq(doc.getId()), eq(1), any(), eq("checksum-upload.pdf"), eq(null));
@@ -2195,7 +2195,7 @@ class DocumentIngestServiceTest {
 
       service.processUploadedFileAsync(upload(doc, file), null, released::incrementAndGet);
 
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       assertThat(released).hasValue(1);
     }
 
@@ -2227,7 +2227,7 @@ class DocumentIngestServiceTest {
 
       service.processUploadedFileAsync(upload(doc, file), null, null);
 
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       // Once to make room before the write (an existing row is always replaced), once to remove
       // what the failed run left behind.
       verify(vectorStoreWriter, times(2)).deleteChunksOfDocument(doc.getId());
@@ -2257,7 +2257,7 @@ class DocumentIngestServiceTest {
 
       service.processUploadedFileAsync(upload(doc, file), null, null);
 
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       verify(documentRepository)
           .markFailedWithoutChunks(
               doc.getId(), DocumentIngestService.NOT_EMBEDDABLE_MESSAGE + " (S. 4)");
@@ -2279,7 +2279,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(vectorStoreWriter).deleteChunksOfDocument(doc.getId());
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), anyLong());
       verify(documentRepository)
           .markIndexedFromSource(eq(doc.getId()), eq(1), any(), eq("same-checksum"), eq(null));
     }
@@ -2325,7 +2325,7 @@ class DocumentIngestServiceTest {
       assertThatThrownBy(() -> service.ingest(reindex(doc, file), null))
           .isInstanceOf(IllegalStateException.class);
 
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), anyLong());
       verify(documentRepository, never()).markFailed(any(), any());
       verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
       assertThat(counter("failed")).isEqualTo(1.0);
@@ -2342,7 +2342,7 @@ class DocumentIngestServiceTest {
       stubParsedInto(file, chunks("chunk1"));
       doThrow(new IllegalStateException("vector store unavailable"))
           .when(vectorStoreWriter)
-          .writeEmbeddedChunks(any(), any());
+          .writeEmbeddedChunks(any(), any(), anyLong());
 
       assertThatThrownBy(() -> service.ingest(reindex(doc, file), null))
           .isInstanceOf(IllegalStateException.class);
