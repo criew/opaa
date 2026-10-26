@@ -13,7 +13,7 @@ import {
   type RetentionValues,
 } from '../utils/retentionPeriod'
 import RetentionLoadState from './RetentionLoadState'
-import RetentionPauseNotice from './RetentionPauseNotice'
+import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 
 const FIELDS: RetentionField[] = [
   { key: 'deleteAfterDays', label: 'Löschen nach (Tage)', unit: 'days', min: 90, max: 3650 },

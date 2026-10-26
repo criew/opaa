@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
+Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0038](0038-steckbare-konnektoren.md) · ergänzt durch
 [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md) (OAuth-Kern und Geheimnisse des Zugangs),
@@ -119,8 +119,9 @@ Inaktivitätsschwelle gilt dort nicht).
   `dormant_since`); der Zustand bleibt abgeleitet. library liest den Beginn über
   `ConnectionLifecycle` für den Löschlauf (ADR-0049, Entscheidung 2). Die Übergabe eines lokalen
   Kontos (ADR-0033, Entscheidung 12) ist keine Deaktivierung.
-- **Inaktivitätsschwelle:** `opaa.connection.inactivity-threshold-days` (Vorgabe 90, Grenzen 30–365
-  als Konstanten in `ConnectionLifecycleProperties`, ein Wert außerhalb bricht den Start ab).
+- **Inaktivitätsschwelle:** Einstellung der Systemverwaltung in `connection_lifecycle_settings`
+  (Werkseinstellung 90, Grenzen 30–365 in `ConnectionLifecycleSetting` und als `CHECK`), je Aufruf
+  aus der Datenbank gelesen (ADR-0060, Entscheidung 1).
   `connected_accounts.last_used_at` hält die Herausgabe höchstens einmal je Tag fest, in eigener
   Transaktion mit `SKIP LOCKED`.
 - **Anbieterverwaltung**: `GET /api/v1/admin/oidc-providers/{id}/impact` nennt nur, ob
@@ -185,13 +186,13 @@ im Revisionsprotokoll.
 
 | Wert | Grenzen | Vorgabe | Ablage |
 |---|---|---|---|
-| Löschfrist privater Bibliotheken nach Deaktivierung | 1–90 Tage | 30 Tage | `opaa.connection.private-library-deletion-days`, Grenzen als Konstanten (`PrivateLibraryDeletionPeriod`) |
+| Löschfrist privater Bibliotheken nach Deaktivierung | 1–90 Tage | 30 Tage | Zeile in `connection_lifecycle_settings` mit `CHECK`, Grenzen in `ConnectionLifecycleSetting`, Änderung ist `CONNECTION_LIFECYCLE_SETTING_CHANGED` |
 | Aufbewahrung des Verbindungsprotokolls | 6–24 Monate | 12 Monate | Tabellenzeile mit `CHECK`, `PUT /api/v1/admin/connection-log/retention`, Änderung ist `CONNECTION_LOG_RETENTION_CHANGED` |
 | Warnung vor Token- und Secret-Ablauf | — | 14 Tage | fest (`ConnectionExpiryWatch`, einmal je Ende) |
-| Inaktivitätsschwelle für Verbindungen | 30–365 Tage | 90 Tage | `opaa.connection.inactivity-threshold-days`, Grenzen als Konstanten |
-| Schwellenwarnung abgelaufener Konten je Zugang | — | 10 | `opaa.connection.expired-connections.*` (`ExpiredConnectionWarningProperties`) |
+| Inaktivitätsschwelle für Verbindungen | 30–365 Tage | 90 Tage | wie die Löschfrist |
+| Schwellenwarnung abgelaufener Konten je Zugang | 1–1000 | 10 | wie die Löschfrist |
 
-Die Obergrenzen der Fristen sind weder per Konfiguration noch per SQL dehnbar. Begründung: Der
+Die Obergrenzen der Fristen sind weder in der Verwaltung noch per SQL dehnbar. Begründung: Der
 Inhalt einer privaten Bibliothek liegt weiter beim Anbieter, eine kurze Frist kostet nur einen Lauf;
 90 Tage sind die Grenze, die Personalrat und Datenschutz verlangen. Das Protokoll belegt die Nutzung
 persönlicher Verbindungen, nicht Rechte; zwölf Monate decken einen Prüfzyklus. Personalrat und

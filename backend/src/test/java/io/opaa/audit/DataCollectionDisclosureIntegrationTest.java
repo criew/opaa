@@ -276,6 +276,42 @@ class DataCollectionDisclosureIntegrationTest {
   }
 
   /**
+   * A threshold or period of the connections the administration set is told with its value and the
+   * time of its change, and as a deviation from the factory default.
+   */
+  @Test
+  void aSetThresholdOfTheConnectionsIsToldWithValueAndTimeOfChange() throws Exception {
+    Map<String, Integer> set =
+        Map.of(
+            "INACTIVITY_THRESHOLD_DAYS", 120,
+            "PRIVATE_LIBRARY_DELETION_DAYS", 14,
+            "EXPIRED_CONNECTION_WARNING_THRESHOLD", 25);
+    try {
+      set.forEach(
+          (setting, value) ->
+              jdbcTemplate.update(
+                  "INSERT INTO connection_lifecycle_settings (setting, setting_value, updated_at)"
+                      + " VALUES (?, ?, now())",
+                  setting,
+                  value));
+
+      JsonNode export = exportAsAdmin();
+
+      for (Map.Entry<String, Integer> entry : set.entrySet()) {
+        String key = "connection_lifecycle_settings.setting_value[" + entry.getKey() + "]";
+        JsonNode setting = setting(export, key);
+        assertThat(setting.path("effectiveValue").asString())
+            .as(key)
+            .isEqualTo(String.valueOf(entry.getValue()));
+        assertThat(setting.path("changedAt").isNull()).as(key + " has a time of change").isFalse();
+        assertThat(setting.path("deviates").asBoolean()).as(key + " deviates").isTrue();
+      }
+    } finally {
+      jdbcTemplate.update("DELETE FROM connection_lifecycle_settings");
+    }
+  }
+
+  /**
    * With a row of the administration the factory-default keys answer its value and time: a source
    * that ignored the row would report the factory default and fail here.
    */

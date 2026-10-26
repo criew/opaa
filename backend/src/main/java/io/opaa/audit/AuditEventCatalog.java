@@ -394,6 +394,10 @@ public final class AuditEventCatalog {
         Set.of("accessPath", "eventType", "from", "profileId", "to"),
         CONNECTION_LOG_ACCESSED);
     put(keys, Set.of("noProxy", "proxyUrl"), OUTBOUND_PROXY_CHANGED);
+    put(
+        keys,
+        Set.of("overridden", "setting", "settingValue"),
+        CONNECTION_LIFECYCLE_SETTING_CHANGED);
     put(keys, Set.of("reason"), LOCAL_SESSION_REVOKED);
     put(keys, Set.of(), LOCAL_PASSWORD_CHANGED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN);
     put(

@@ -112,6 +112,22 @@ class FactSheetRendererTest {
     assertThat(FactSheetRenderer.code("a|b")).isEqualTo("`a\\|b`");
   }
 
+  /** A key whose column holds one setting per row may name the unit in its row. */
+  @Test
+  void aRowNamingItsUnitIsReadInWords() {
+    assertThat(
+            DurationReading.of(
+                "90", "connection_lifecycle_settings.setting_value[INACTIVITY_THRESHOLD_DAYS]"))
+        .isEqualTo("90 Tage");
+    assertThat(DurationReading.of("7", "full_sync_rhythm_settings.interval_days[CONFLUENCE]"))
+        .isEqualTo("7 Tage");
+    assertThat(
+            DurationReading.of(
+                "10",
+                "connection_lifecycle_settings.setting_value[EXPIRED_CONNECTION_WARNING_THRESHOLD]"))
+        .isNull();
+  }
+
   @Test
   void durationsAreReadInWords() {
     assertThat(DurationReading.of("P7D", "x")).isEqualTo("7 Tage");

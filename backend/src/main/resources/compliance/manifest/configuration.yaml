@@ -152,13 +152,6 @@ settings:
       Ob die Verzeichnis-Synchronisation planmäßig läuft und Gruppen, Mitgliedschaften und
       Kontostatus aus dem Verzeichnis übernimmt
     bearings: [DATA, VISIBILITY]
-  - key: opaa.connection.expired-connections.warning-threshold
-    defaultValue: "10"
-    range: mindestens 1
-    effect: >-
-      Ab wie vielen abgelaufenen verbundenen Konten eines Zugangs die Übersicht der Administration
-      warnt
-    bearings: [EVALUATION]
   - key: opaa.external-access.reminder-lead-days
     defaultValue: "14"
     range: 0 schaltet die Erinnerung ab

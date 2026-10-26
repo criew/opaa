@@ -231,7 +231,8 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   der Schlüssel fest (Branding: OPAA-Standard, Kontingent und Vollabgleich-Rhythmus: Werkseinstellung, Vorlage:
   ausgelieferter Text, Mailserver-Feld: nicht gesetzt). Die Version steigt,
   wenn ein Schlüssel seine Bedeutung ändert oder entfällt, nicht für neue Abschnitte und Schlüssel.
-  Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLogRetention`,
+  Abschnitte heute: `auditRetention`, `branding` (ohne Bilder), `connectionLifecycle` (Tage oder
+  Anzahl, `null` für die Werkseinstellung), `connectionLogRetention`,
   `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
   Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates` (je Vorlage der Sprache
   `de` ein Schlüssel), `fullSyncRhythm` (je Quellart mit Rhythmus ein Schlüssel, Tage oder `null`),
@@ -664,9 +665,9 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
 | `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |
 | `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED` | `opaa.chat.locked-account-cleanup.enabled` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |
-| `OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD` | `opaa.connection.expired-connections.warning-threshold` | Anbindungen → Einstellungen |
-| `OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS` | `opaa.connection.inactivity-threshold-days` | Anbindungen → Einstellungen |
-| `OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS` | `opaa.connection.private-library-deletion-days` | Anbindungen → Einstellungen |
+| `OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD` | `opaa.connection.expired-connections.warning-threshold` | Anbindungen → Einstellungen; Werkseinstellung 10, Grenzen 1 bis 1000 im Code (`connection_lifecycle_settings`) |
+| `OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS` | `opaa.connection.inactivity-threshold-days` | Anbindungen → Einstellungen; Werkseinstellung 90, Grenzen 30 bis 365 Tage im Code |
+| `OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS` | `opaa.connection.private-library-deletion-days` | Anbindungen → Einstellungen; Werkseinstellung 30, Grenzen 1 bis 90 Tage im Code |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `opaa.directory-sync.change-threshold-fraction` | Verzeichnisabgleich, je Anbieter neben dem Intervall |
 | `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `opaa.external-access.reminder-lead-days` | Einstellungen der externen KI-Werkzeuge |
 | `OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` | `opaa.indexing.confluence.full-sync-interval` | Vorgabe der Installation in der Datenbank; je Bibliothek wie bisher |

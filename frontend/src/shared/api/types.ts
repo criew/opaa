@@ -143,6 +143,13 @@ export type FullSyncRhythmResponse = components['schemas']['FullSyncRhythmRespon
 export type MaskedNumber = components['schemas']['MaskedNumber']
 export type OutboundProxyRequest = components['schemas']['OutboundProxyRequest']
 export type OutboundProxyResponse = components['schemas']['OutboundProxyResponse']
+export type ConnectionLifecycleSettingKey = components['schemas']['ConnectionLifecycleSettingKey']
+export type ConnectionLifecycleSettingRequest =
+  components['schemas']['ConnectionLifecycleSettingRequest']
+export type ConnectionLifecycleSettingResponse =
+  components['schemas']['ConnectionLifecycleSettingResponse']
+export type ConnectionLifecycleSettingsResponse =
+  components['schemas']['ConnectionLifecycleSettingsResponse']
 export type PromptVariableType = components['schemas']['PromptVariableType']
 export type PromptVariable = components['schemas']['PromptVariable']
 export type PromptRequest = components['schemas']['PromptRequest']

@@ -289,6 +289,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getLockedAccountChatRetention",
             "getIncidentScopeRetention",
             "getOutboundProxy",
+            "getConnectionLifecycleSettings",
             "listMyCapabilities",
             "listMyConnectedAccounts",
             "listOwnDiagnosticContextEvents",

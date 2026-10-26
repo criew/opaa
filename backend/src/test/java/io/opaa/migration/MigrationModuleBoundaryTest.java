@@ -165,7 +165,8 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "connection_tokens",
                   "connection_person_states",
                   "connection_authorizations",
-                  "connection_grant_revocations")),
+                  "connection_grant_revocations",
+                  "connection_lifecycle_settings")),
           Map.entry(
               WORKSPACE,
               List.of(

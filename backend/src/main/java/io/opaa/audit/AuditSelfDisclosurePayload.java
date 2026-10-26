@@ -306,6 +306,10 @@ final class AuditSelfDisclosurePayload {
         PERMISSION_HISTORY_ACCESSED,
         CONNECTION_LOG_ACCESSED,
         OUTBOUND_PROXY_CHANGED);
+    put(
+        keys,
+        Set.of("overridden", "setting", "settingValue"),
+        CONNECTION_LIFECYCLE_SETTING_CHANGED);
     put(keys, Set.of("reason"), LOCAL_SESSION_REVOKED);
     put(keys, Set.of(), LOCAL_PASSWORD_CHANGED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN);
     put(keys, Set.of(), INSTALLATION_STEP_SAVED, INSTALLATION_STEP_CHECKED, INSTALLATION_COMPLETED);

@@ -77,7 +77,8 @@ data:
     retention:
       rule: >-
         Bis zur Trennung; nach 90 Tagen ohne Anmeldung ruhen die Verbindungen einer Person
-      settings: [opaa.connection.inactivity-threshold-days]
+      settings:
+        - connection_lifecycle_settings.setting_value[INACTIVITY_THRESHOLD_DAYS]
     visibility: [die Person selbst, SYSTEM_ADMIN (maskierte Zahlen je Profil)]
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
@@ -99,8 +100,8 @@ data:
     retention:
       rule: Bis die Person wieder aktiv ist oder gelöscht wird
       settings:
-        - opaa.connection.inactivity-threshold-days
-        - opaa.connection.private-library-deletion-days
+        - connection_lifecycle_settings.setting_value[INACTIVITY_THRESHOLD_DAYS]
+        - connection_lifecycle_settings.setting_value[PRIVATE_LIBRARY_DELETION_DAYS]
     visibility: [niemand über die Oberfläche]
     accessPaths: [EXPORT, DATABASE]
     deletion: Mit dem Konto
@@ -168,6 +169,7 @@ nonPersonalTables:
   connector_type_policies:
     [source_type, locked_at, updated_at, profile_required_at, own_address_stock]
   connection_log_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
+  connection_lifecycle_settings: [setting, setting_value, updated_at]
 settings:
   - key: connection_log_retention_settings.retention_months
     source: DATABASE
@@ -175,15 +177,35 @@ settings:
     range: 6 bis 24 Monate
     effect: Aufbewahrungsfrist des Verbindungsprotokolls
     bearings: [DATA]
-  - key: opaa.connection.inactivity-threshold-days
-    source: PROPERTY
+  - key: connection_lifecycle_settings.setting_value[INACTIVITY_THRESHOLD_DAYS]
+    source: DATABASE
     defaultValue: "90"
     range: 30 bis 365 Tage
     effect: Tage ohne Anmeldung, nach denen die Verbindungen einer Person ruhen
     bearings: [DATA, DATA_FLOW]
-  - key: opaa.connection.private-library-deletion-days
-    source: PROPERTY
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Anbindungen → Einstellungen keinen
+        eigenen Wert setzt
+  - key: connection_lifecycle_settings.setting_value[PRIVATE_LIBRARY_DELETION_DAYS]
+    source: DATABASE
     defaultValue: "30"
     range: 1 bis 90 Tage
     effect: Tage, nach denen private Bibliotheken einer deaktivierten Person gelöscht werden
     bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Anbindungen → Einstellungen keinen
+        eigenen Wert setzt
+  - key: connection_lifecycle_settings.setting_value[EXPIRED_CONNECTION_WARNING_THRESHOLD]
+    source: DATABASE
+    defaultValue: "10"
+    range: 1 bis 1000
+    effect: >-
+      Ab wie vielen abgelaufenen verbundenen Konten eines Zugangs die Übersicht der Administration
+      warnt
+    bearings: [EVALUATION]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Anbindungen → Einstellungen keinen
+        eigenen Wert setzt

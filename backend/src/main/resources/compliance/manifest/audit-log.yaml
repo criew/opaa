@@ -818,6 +818,11 @@ auditEvents:
   - id: OUTBOUND_PROXY_CHANGED
     trigger: Der hausweite Ausgangsproxy oder seine Ausnahmeliste ändert sich
     payloadKeys: [noProxy, proxyUrl]
+  - id: CONNECTION_LIFECYCLE_SETTING_CHANGED
+    trigger: >-
+      Eine Schwelle oder Frist der Verbindungen ändert sich: Inaktivitätsschwelle, Löschfrist
+      privater Bibliotheken oder Warnschwelle abgelaufener Konten
+    payloadKeys: [overridden, setting, settingValue]
   - id: LOCAL_SESSION_REVOKED
     trigger: Sitzungen eines lokalen Kontos werden fremdveranlasst beendet
     details: Grund in after; die eigene Abmeldung erzeugt keinen Eintrag
