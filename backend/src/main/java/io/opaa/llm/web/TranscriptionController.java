@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * #readBounded} into one array, which the client sends without copying and which is overwritten
  * once the call ends. No answer, no exception and no log line carries audio or recognised text, and
  * no person is named to the endpoint. At most {@code opaa.transcription.max-concurrent} recordings
- * are held at once, across the whole installation.
+ * are held at once on this instance (ADR-0053).
  */
 @RestController
 @RequestMapping("/api/v1/transcriptions")

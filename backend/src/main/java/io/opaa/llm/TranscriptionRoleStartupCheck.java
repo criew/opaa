@@ -7,12 +7,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 /**
- * Probes the transcription role once the application is up, off the event thread, and logs a
- * switched-on but unusable role at {@code ERROR}. The application starts either way.
+ * Probes the transcription role once the application is up and after every change in the model
+ * administration, off the event thread, and logs a switched-on but unusable role at {@code ERROR}.
+ * The application starts either way.
  */
 @Component
 class TranscriptionRoleStartupCheck implements ApplicationListener<ApplicationReadyEvent> {
@@ -35,6 +37,14 @@ class TranscriptionRoleStartupCheck implements ApplicationListener<ApplicationRe
   @Override
   public void onApplicationEvent(ApplicationReadyEvent event) {
     probeScheduler.schedule(this::probeAndReport, Instant.now(clock));
+  }
+
+  /** A role changed in the model administration is probed at once, off the request thread. */
+  @EventListener
+  void onSettingsChanged(ModelRoleSettingsChangedEvent event) {
+    if (event.role() == ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION) {
+      probeScheduler.schedule(this::probeAndReport, Instant.now(clock));
+    }
   }
 
   void probeAndReport() {

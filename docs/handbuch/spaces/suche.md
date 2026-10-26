@@ -531,8 +531,7 @@ Liste auf `top-k`. Ein Reranker liest Frage und Chunk gemeinsam und erkennt dadu
 Vektor- noch Wortübereinstimmung erfassen. Er ist für die Fälle da, in denen die richtige Fundstelle
 im Fenster liegt, aber nicht weit genug oben.
 
-Im Auslieferungsstand ist Reranking **aus** (`OPAA_RERANK_ENABLED=false`): Die Modellrolle ist
-gebaut, nicht aktiviert, weil sie einen eigenen Endpunkt braucht und auf einer CPU für den Dialog
+Ab Werk ist Reranking **aus**: Die Modellrolle ist gebaut, nicht eingeschaltet, weil sie einen eigenen Endpunkt braucht und auf einer CPU für den Dialog
 zu langsam ist.
 
 **Empfehlung:** Reranking einschalten, wo ein schneller Endpunkt zur Verfügung steht, also auf einer
@@ -1383,17 +1382,17 @@ Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Ru
 Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die
 Tatsache, dass die Verdichtung läuft — einen Schalter dafür gibt es bewusst nicht.
 
-Die Rerank-Rolle wird getrennt konfiguriert (`opaa.rerank.*`: Schalter, Basisadresse, Modell,
-Schlüssel, Zeitbudget), weil sie eine Installationsentscheidung über ein Modell ist, kein
-Suchparameter. Bei einem Reverse-Proxy muss dessen Antwort-Timeout mindestens dem Zeitbudget
+Die Rerank-Rolle wird getrennt festgelegt (Schalter, Basis-Adresse, Modell und Schlüssel unter
+Modelle → Reranking, das Zeitbudget `OPAA_RERANK_TIMEOUT` vom Betrieb), weil sie eine
+Installationsentscheidung über ein Modell ist, kein Suchparameter. Bei einem Reverse-Proxy muss dessen Antwort-Timeout mindestens dem Zeitbudget
 entsprechen.
 
 ### 10.4 Was nicht gebaut ist
 
 - **BM25** im Volltextpfad. Ob der Wechsel nötig ist, wird gemessen; die Eintrittsbedingung steht
   im Kapitel [Deployment](../betrieb/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
-- **Reranking und Vielfaltsauswahl als Default.** Beides ist gebaut und per Konfiguration
-  aktivierbar. Reranking ist ausgeliefert aus, weil es einen eigenen Endpunkt braucht, wird aber
+- **Reranking und Vielfaltsauswahl als Default.** Beides ist gebaut und
+  einschaltbar, Reranking unter Modelle → Reranking. Reranking ist ausgeliefert aus, weil es einen eigenen Endpunkt braucht, wird aber
   empfohlen, sobald ein schneller verfügbar ist (Stufe 8).
 - **Ableitung eines Filters aus der Frage** („nur Vermerke aus 2024"). Filter setzt die Person.
 - **Eine modellgestützte Belegprüfung** (Stufe 2). Die Belegprüfung bleibt deterministisch.

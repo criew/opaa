@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
@@ -46,6 +47,14 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
   @Override
   public void onApplicationEvent(ApplicationReadyEvent event) {
     probeScheduler.schedule(this::probeAndReport, Instant.now(clock));
+  }
+
+  /** A role changed in the model administration is probed at once, off the request thread. */
+  @EventListener
+  void onSettingsChanged(ModelRoleSettingsChangedEvent event) {
+    if (event.role() == ModelRoleSettingsChangedEvent.Role.RERANK) {
+      probeScheduler.schedule(this::probeAndReport, Instant.now(clock));
+    }
   }
 
   void probeAndReport() {

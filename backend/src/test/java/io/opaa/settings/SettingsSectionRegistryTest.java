@@ -34,6 +34,9 @@ class SettingsSectionRegistryTest {
           "embedding_model",
               "the embedding model: its vectors fill this installation's index; set by the"
                   + " installation, never changed by an import (ADR-0060, Entscheidung 10)",
+          "rerank_model", "the rerank model with address and key of this installation",
+          "transcription_model",
+              "the transcription model with address and key of this installation",
           "oidc_providers", "identity providers, the sign-in procedure of this installation",
           "directory_connectors", "directory access with the secret of a service account",
           "connection_profiles", "connection profiles with the secrets of their app registration",

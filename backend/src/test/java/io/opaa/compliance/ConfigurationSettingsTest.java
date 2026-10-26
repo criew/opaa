@@ -56,7 +56,7 @@ class ConfigurationSettingsTest {
         .contains(
             "llm_models.model_identifier",
             "embedding_model.model_identifier",
-            "opaa.rerank.model",
-            "opaa.transcription.model");
+            "rerank_model.model_identifier",
+            "transcription_model.model_identifier");
   }
 }

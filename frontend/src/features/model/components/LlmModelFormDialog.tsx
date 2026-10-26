@@ -130,7 +130,8 @@ export default function LlmModelFormDialog({
 
   /**
    * Resolves what to send for `apiKey` — the three-way convention of `LlmModelRequest`:
-   * omitted means unchanged, empty text means remove, anything else means set.
+   * omitted means unchanged, empty text means remove, anything else means set. An emptied field
+   * counts as untouched; only „Gespeicherten Schlüssel entfernen" sends the empty text.
    *
    * Connection test and model discovery get the same value, although the empty text means
    * something else there: they never save anything, and an omitted key lets them keep using
@@ -138,7 +139,7 @@ export default function LlmModelFormDialog({
    */
   function resolveApiKey(): string | undefined {
     if (apiKeyClearRequested) return ''
-    if (apiKeyTouched) return apiKeyInput.trim()
+    if (apiKeyTouched && apiKeyInput.trim() !== '') return apiKeyInput.trim()
     return undefined
   }
 

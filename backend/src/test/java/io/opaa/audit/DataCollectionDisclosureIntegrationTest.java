@@ -233,7 +233,13 @@ class DataCollectionDisclosureIntegrationTest {
           "locked_account_chat_cleanup_settings.enabled",
           "locked_account_chat_cleanup_settings.delete_after_days",
           "audit_incident_scope_retention_settings.retention_years",
-          "succession_settings.aging_threshold_months");
+          "succession_settings.aging_threshold_months",
+          "rerank_model.enabled",
+          "rerank_model.base_url",
+          "rerank_model.model_identifier",
+          "transcription_model.enabled",
+          "transcription_model.base_url",
+          "transcription_model.model_identifier");
 
   /**
    * Guards the ports: every {@code DATABASE} setting of the manifest has its owning module answer
@@ -324,17 +330,29 @@ class DataCollectionDisclosureIntegrationTest {
     jdbcTemplate.update(
         "INSERT INTO succession_settings (id, aging_threshold_months, updated_at)"
             + " VALUES (1, 6, now())");
+    jdbcTemplate.update(
+        "INSERT INTO rerank_model (id, enabled, base_url, model_identifier, updated_at)"
+            + " VALUES (1, true, 'http://reranker.example/v1', 'bge-reranker', now())");
+    jdbcTemplate.update(
+        "INSERT INTO transcription_model (id, enabled, base_url, model_identifier, language,"
+            + " updated_at) VALUES (1, true, 'http://stt.example/v1', 'whisper', 'de', now())");
 
     JsonNode export = exportAsAdmin();
 
     Map<String, String> expected =
-        Map.of(
-            "chat_auto_cleanup_settings.archive_after_days", "120",
-            "chat_auto_cleanup_settings.delete_after_days", "400",
-            "locked_account_chat_cleanup_settings.enabled", "false",
-            "locked_account_chat_cleanup_settings.delete_after_days", "500",
-            "audit_incident_scope_retention_settings.retention_years", "4",
-            "succession_settings.aging_threshold_months", "6");
+        Map.ofEntries(
+            Map.entry("chat_auto_cleanup_settings.archive_after_days", "120"),
+            Map.entry("chat_auto_cleanup_settings.delete_after_days", "400"),
+            Map.entry("locked_account_chat_cleanup_settings.enabled", "false"),
+            Map.entry("locked_account_chat_cleanup_settings.delete_after_days", "500"),
+            Map.entry("audit_incident_scope_retention_settings.retention_years", "4"),
+            Map.entry("succession_settings.aging_threshold_months", "6"),
+            Map.entry("rerank_model.enabled", "true"),
+            Map.entry("rerank_model.base_url", "http://reranker.example/v1"),
+            Map.entry("rerank_model.model_identifier", "bge-reranker"),
+            Map.entry("transcription_model.enabled", "true"),
+            Map.entry("transcription_model.base_url", "http://stt.example/v1"),
+            Map.entry("transcription_model.model_identifier", "whisper"));
     assertThat(expected.keySet()).isEqualTo(FACTORY_DEFAULT_KEYS);
     expected.forEach(
         (key, value) -> {

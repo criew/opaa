@@ -234,7 +234,8 @@ fun registerEvalHarnessTask(
         // Gradle does not forward -D properties into the forked test JVM: every property a harness
         // reads at runtime is copied here from the daemon's system properties. All of them are
         // optional, manually invoked knobs. The opaa.rerank.* and opaa.query.* entries are Spring
-        // properties of the forked application context. API keys are never on this list - a -D
+        // properties of the forked application context; the rerank model itself is stored from
+        // opaa.eval.rerankBaseUrl/-Model (EvalRerankModel). API keys are never on this list - a -D
         // value is visible in the process list; the chat model's key comes from
         // OPAA_EVAL_CHAT_API_KEY.
         listOf(
@@ -249,9 +250,8 @@ fun registerEvalHarnessTask(
             "opaa.eval.chatBaseUrl",
             "opaa.eval.chatModel",
             "opaa.eval.chatTemperature",
-            "opaa.rerank.enabled",
-            "opaa.rerank.base-url",
-            "opaa.rerank.model",
+            "opaa.eval.rerankBaseUrl",
+            "opaa.eval.rerankModel",
             "opaa.rerank.timeout",
             "opaa.query.rerank-candidate-count",
             "opaa.query.search-window-turns",

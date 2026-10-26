@@ -324,6 +324,9 @@ nonPersonalTables:
     - max_input_tokens
     - dimensions
     - installed_at
+  rerank_model: [id, enabled, base_url, model_identifier, api_key_ciphertext, updated_at]
+  transcription_model:
+    [id, enabled, base_url, model_identifier, api_key_ciphertext, language, updated_at]
   private_storage_quota_settings: [id, quota_bytes, updated_at]
   full_sync_rhythm_settings: [source_type, interval_days, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]

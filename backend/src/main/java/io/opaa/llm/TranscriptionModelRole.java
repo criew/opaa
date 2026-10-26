@@ -6,6 +6,7 @@ import io.opaa.instance.ScheduledRunLocks;
 import java.time.Clock;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +19,14 @@ import org.springframework.stereotype.Service;
  * The transcription model role, built like {@link RerankModelRole}: the one entry point for "may a
  * recording be transcribed?" and "what state is the role in?".
  *
+ * <p>Switch, address, model, key and language are the administration's ({@link ModelRoleEndpoints},
+ * ADR-0060, Entscheidung 10), read on every call; the feature speech-input is the operation's limit
+ * (ADR-0060, Entscheidung 2): switched off there, the role is off whatever is stored and contacts
+ * nobody.
+ *
  * <p>{@link #currentStatus()} and {@link #usable()} never probe; the state is kept current by
  * {@link #refresh()} at startup and on a schedule, and by every real call. The role is never fatal:
  * a broken endpoint hides dictation, it does not stop the application.
- *
- * <p>Switched off - by {@code OPAA_TRANSCRIPTION_ENABLED} or the feature speech-input - the role
- * contacts nobody.
  *
  * <p>The last known state is the installation's ({@link ModelRoleObservations}, ADR-0053,
  * Entscheidung 12): the instance holding the probe lock probes, every instance shows the microphone
@@ -32,37 +35,55 @@ import org.springframework.stereotype.Service;
  * budget divided by N.
  */
 @Service
-public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
+public class TranscriptionModelRole
+    implements TranscriptionRoleStatusProvider, TranscriptionRoleStatusResolver {
 
   private static final Logger log = LoggerFactory.getLogger(TranscriptionModelRole.class);
 
   private static final long PROBE_INTERVAL_MILLIS = 60_000;
 
   private final TranscriptionProperties properties;
+  private final Supplier<TranscriptionEndpoint> endpoints;
   private final TranscriptionClient client;
-  private final boolean switchedOn;
-  private final boolean baseUrlRejected;
+  private final boolean featureEnabled;
   private final ModelRoleObservations observations;
   private final Semaphore slots;
 
   /** A role whose state lives in this process only - for a context without a database. */
   public TranscriptionModelRole(
-      TranscriptionProperties properties, TranscriptionClient client, FeatureFlags featureFlags) {
+      TranscriptionProperties properties,
+      Supplier<TranscriptionEndpoint> endpoints,
+      TranscriptionClient client,
+      FeatureFlags featureFlags) {
     this(
-        properties, client, featureFlags, new ProcessLocalModelRoleObservations(Clock.systemUTC()));
+        properties,
+        endpoints,
+        client,
+        featureFlags,
+        new ProcessLocalModelRoleObservations(Clock.systemUTC()));
   }
 
   @Autowired
   public TranscriptionModelRole(
       TranscriptionProperties properties,
+      ModelRoleEndpoints endpoints,
+      TranscriptionClient client,
+      FeatureFlags featureFlags,
+      ModelRoleObservations observations) {
+    this(properties, endpoints::transcription, client, featureFlags, observations);
+  }
+
+  public TranscriptionModelRole(
+      TranscriptionProperties properties,
+      Supplier<TranscriptionEndpoint> endpoints,
       TranscriptionClient client,
       FeatureFlags featureFlags,
       ModelRoleObservations observations) {
     this.properties = properties;
+    this.endpoints = endpoints;
     this.observations = observations;
     this.client = client;
-    this.switchedOn = properties.enabled() && featureFlags.isEnabled(Feature.SPEECH_INPUT);
-    this.baseUrlRejected = ModelEndpointUri.containsCredentials(properties.baseUrl());
+    this.featureEnabled = featureFlags.isEnabled(Feature.SPEECH_INPUT);
     this.slots = new Semaphore(properties.maxConcurrent());
   }
 
@@ -86,6 +107,11 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
     void close();
   }
 
+  /** Whether the operation allows speech input at all (the feature speech-input). */
+  public boolean featureEnabled() {
+    return featureEnabled;
+  }
+
   /**
    * Takes one of {@link TranscriptionProperties#maxConcurrent()} slots without waiting. The cap
    * holds for this instance, never per person; hold the slot while the recording is in memory.
@@ -106,38 +132,52 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
 
   @Override
   public TranscriptionRoleStatus currentStatus() {
-    if (!switchedOn) {
+    return statusFor(endpoints.get());
+  }
+
+  /** The state of the role for {@code endpoint}, from the last known observation; never probes. */
+  @Override
+  public TranscriptionRoleStatus statusFor(TranscriptionEndpoint endpoint) {
+    if (!featureEnabled || !endpoint.enabled()) {
       return TranscriptionRoleStatus.disabled();
     }
-    if (baseUrlRejected) {
+    if (ModelEndpointUri.containsCredentials(endpoint.baseUrl())) {
       return new TranscriptionRoleStatus(
           TranscriptionRoleState.UNCONFIGURED,
           null,
-          emptyToNull(properties.model()),
-          "opaa.transcription.base-url carries credentials and was rejected",
+          emptyToNull(endpoint.model()),
+          "the stored base URL carries credentials and was rejected",
           false,
           true);
     }
-    if (!properties.bound()) {
+    if (!endpoint.bound()) {
       return new TranscriptionRoleStatus(
           TranscriptionRoleState.UNCONFIGURED,
-          emptyToNull(properties.baseUrl()),
-          emptyToNull(properties.model()),
-          "opaa.transcription.base-url and/or opaa.transcription.model are unset",
+          emptyToNull(endpoint.baseUrl()),
+          emptyToNull(endpoint.model()),
+          "no base URL and/or model is stored for the transcription role",
           false,
           false);
     }
     return observations
         .current(ModelRoleObservations.TRANSCRIPTION)
-        .filter(known -> known.isFor(properties.baseUrl(), properties.model()))
+        .filter(known -> known.isFor(endpoint.baseUrl(), endpoint.model()))
         .map(
             known ->
                 known.reachable()
-                    ? status(TranscriptionRoleState.READY, null, false)
+                    ? status(endpoint, TranscriptionRoleState.READY, null, false)
                     : status(
-                        TranscriptionRoleState.UNREACHABLE, known.diagnostic(), known.timedOut()))
+                        endpoint,
+                        TranscriptionRoleState.UNREACHABLE,
+                        known.diagnostic(),
+                        known.timedOut()))
         .orElseGet(
-            () -> status(TranscriptionRoleState.UNREACHABLE, "endpoint not probed yet", false));
+            () ->
+                status(
+                    endpoint,
+                    TranscriptionRoleState.UNREACHABLE,
+                    "endpoint not probed yet",
+                    false));
   }
 
   @Scheduled(
@@ -154,15 +194,20 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
 
   /** Probes the endpoint and records the result. Blocking; never on a request path. */
   public TranscriptionRoleStatus refresh() {
-    if (!switchedOn || baseUrlRejected || !properties.bound()) {
-      return currentStatus();
+    TranscriptionEndpoint endpoint = endpoints.get();
+    if (!callable(endpoint)) {
+      return statusFor(endpoint);
     }
-    TranscriptionClient.ProbeFailure failure = client.probe(properties);
+    TranscriptionClient.ProbeFailure failure = client.probe(endpoint, properties.timeout());
     TranscriptionRoleStatus probed =
         failure == null
-            ? status(TranscriptionRoleState.READY, null, false)
-            : status(TranscriptionRoleState.UNREACHABLE, failure.message(), failure.timedOut());
-    record(probed, true);
+            ? status(endpoint, TranscriptionRoleState.READY, null, false)
+            : status(
+                endpoint,
+                TranscriptionRoleState.UNREACHABLE,
+                failure.message(),
+                failure.timedOut());
+    record(endpoint, probed, true);
     return probed;
   }
 
@@ -187,35 +232,47 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
    * @throws TranscriptionClient.TranscriptionUnavailableException when the endpoint failed.
    */
   public String transcribe(byte[] audio, TranscriptionAudioFormat format) {
-    if (!usable()) {
-      throw new TranscriptionRoleUnusableException(
-          "transcription role is " + currentStatus().state());
+    TranscriptionEndpoint endpoint = endpoints.get();
+    TranscriptionRoleStatus status = statusFor(endpoint);
+    if (status.state() != TranscriptionRoleState.READY) {
+      throw new TranscriptionRoleUnusableException("transcription role is " + status.state());
     }
     try {
-      String text = client.transcribe(properties, audio, format);
-      record(status(TranscriptionRoleState.READY, null, false), false);
+      String text = client.transcribe(endpoint, properties.timeout(), audio, format);
+      record(endpoint, status(endpoint, TranscriptionRoleState.READY, null, false), false);
       return text;
     } catch (TranscriptionClient.TranscriptionUnavailableException e) {
       if (!e.answered()) {
-        record(status(TranscriptionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()), false);
+        record(
+            endpoint,
+            status(endpoint, TranscriptionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()),
+            false);
       }
       // Only the message: it is technical and content-free by contract, a stack trace adds nothing.
       log.warn(
           "Transcription call against {} failed: {}",
-          properties.describeWithoutSecrets(),
+          endpoint.describeWithoutSecrets(),
           e.getMessage());
       throw e;
     }
   }
 
+  private boolean callable(TranscriptionEndpoint endpoint) {
+    return featureEnabled
+        && endpoint.enabled()
+        && endpoint.bound()
+        && !ModelEndpointUri.containsCredentials(endpoint.baseUrl());
+  }
+
   /** Records an outcome; a store that cannot take it costs the record, never the recording. */
-  private void record(TranscriptionRoleStatus status, boolean probe) {
+  private void record(
+      TranscriptionEndpoint endpoint, TranscriptionRoleStatus status, boolean probe) {
     try {
       observations.record(
           ModelRoleObservations.TRANSCRIPTION,
           new ModelRoleObservations.ModelRoleObservation(
-              properties.baseUrl(),
-              properties.model(),
+              endpoint.baseUrl(),
+              endpoint.model(),
               status.state() == TranscriptionRoleState.READY,
               status.timedOut(),
               status.diagnostic(),
@@ -226,10 +283,13 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
     }
   }
 
-  private TranscriptionRoleStatus status(
-      TranscriptionRoleState state, String diagnostic, boolean timedOut) {
+  private static TranscriptionRoleStatus status(
+      TranscriptionEndpoint endpoint,
+      TranscriptionRoleState state,
+      String diagnostic,
+      boolean timedOut) {
     return new TranscriptionRoleStatus(
-        state, properties.baseUrl(), properties.model(), diagnostic, timedOut, false);
+        state, endpoint.baseUrl(), endpoint.model(), diagnostic, timedOut, false);
   }
 
   private static String emptyToNull(String value) {

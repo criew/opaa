@@ -59,8 +59,8 @@ class InstanceDisclosureAssemblerTest {
   void namesExactlyTheSettingsThatDeviateFromTheirDefault() {
     MockEnvironment environment =
         new MockEnvironment()
-            .withProperty("opaa.rerank.enabled", "true")
-            .withProperty("opaa.rerank.model", defaultOf("opaa.rerank.model"))
+            .withProperty("opaa.malware-scan.enabled", "true")
+            .withProperty("opaa.malware-scan.host", defaultOf("opaa.malware-scan.host"))
             .withProperty("opaa.demo.chat-import.enabled", "FALSE");
     InstanceStateSource audit =
         new InstanceStateSource() {
@@ -78,7 +78,7 @@ class InstanceDisclosureAssemblerTest {
     assertThat(disclosure.deviations())
         .extracting(SettingValue::key)
         .containsExactlyInAnyOrder(
-            "opaa.rerank.enabled", "audit_retention_settings.retention_months");
+            "opaa.malware-scan.enabled", "audit_retention_settings.retention_months");
     SettingValue retention = setting(disclosure, "audit_retention_settings.retention_months");
     assertThat(retention.source()).isEqualTo(SettingSource.DATABASE);
     assertThat(retention.defaultValue()).isEqualTo("36");
@@ -94,7 +94,7 @@ class InstanceDisclosureAssemblerTest {
         new InstanceStateSource() {
           @Override
           public Set<String> settingsDifferingBetweenInstances() {
-            return Set.of("opaa.rerank.enabled");
+            return Set.of("opaa.malware-scan.enabled");
           }
 
           @Override
@@ -106,12 +106,12 @@ class InstanceDisclosureAssemblerTest {
         };
     MockEnvironment podA =
         new MockEnvironment()
-            .withProperty("opaa.rerank.enabled", "true")
-            .withProperty("opaa.transcription.enabled", "true");
+            .withProperty("opaa.malware-scan.enabled", "true")
+            .withProperty("opaa.features.speech-input.enabled", "true");
     MockEnvironment podB =
         new MockEnvironment()
-            .withProperty("opaa.rerank.enabled", "false")
-            .withProperty("opaa.transcription.enabled", "true");
+            .withProperty("opaa.malware-scan.enabled", "false")
+            .withProperty("opaa.features.speech-input.enabled", "true");
 
     InstanceDisclosure fromA =
         assembler(podA, List.of(register)).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
@@ -120,10 +120,11 @@ class InstanceDisclosureAssemblerTest {
 
     assertThat(fromA.settings()).isEqualTo(fromB.settings());
     assertThat(fromA.instances()).isEqualTo(fromB.instances());
-    SettingValue differing = setting(fromA, "opaa.rerank.enabled");
+    SettingValue differing = setting(fromA, "opaa.malware-scan.enabled");
     assertThat(differing.sameOnAllInstances()).isFalse();
     assertThat(differing.effectiveValue()).isNull();
-    assertThat(setting(fromA, "opaa.transcription.enabled").effectiveValue()).isEqualTo("true");
+    assertThat(setting(fromA, "opaa.features.speech-input.enabled").effectiveValue())
+        .isEqualTo("true");
     assertThat(fromA.instances())
         .extracting(RunningInstance::version)
         .containsExactly("1.4.0", "1.5.0");
@@ -137,8 +138,8 @@ class InstanceDisclosureAssemblerTest {
     SettingValue retention = setting(disclosure, "audit_retention_settings.retention_months");
     assertThat(retention.effectiveValue()).isNull();
     assertThat(retention.deviates()).isFalse();
-    SettingValue rerank = setting(disclosure, "opaa.rerank.enabled");
-    assertThat(rerank.effectiveValue()).isNull();
+    SettingValue malwareScan = setting(disclosure, "opaa.malware-scan.enabled");
+    assertThat(malwareScan.effectiveValue()).isNull();
     assertThat(disclosure.deviations()).isEmpty();
   }
 

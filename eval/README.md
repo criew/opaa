@@ -589,8 +589,8 @@ Suchbedarf, die als „keine Suche" eingestuft wurden. Gesucht wird in beiden F�
 Richtung ist deshalb in keiner Rangmetrik sichtbar.
 
 **Der Schlüssel gehört ausschließlich in die Umgebungsvariable.** Ein `-D`-Wert steht in der
-Prozessliste — dieselbe Begründung, aus der `backend/build.gradle.kts` `opaa.rerank.api-key` bewusst
-aus seiner Weiterreichungsliste auslässt.
+Prozessliste — dieselbe Begründung, aus der der Rerank-Schlüssel nur über `OPAA_EVAL_RERANK_API_KEY` kommt und `backend/build.gradle.kts` keinen Schlüssel
+in seine Weiterreichungsliste aufnimmt.
 
 **Ein solcher Lauf setzt keine Baseline.** Der Festpunkt `chatModel` trägt die externe Kennung, jede
 committete Baseline ist damit unvergleichbar; der Lauf ist nicht deterministisch (gemessen: 10 von

@@ -6,6 +6,11 @@ import type {
   LlmModelResponse,
   LlmModelTestRequest,
   LlmModelTestResponse,
+  ModelRoleTestRequest,
+  RerankModelSettingsRequest,
+  RerankModelSettingsResponse,
+  TranscriptionModelSettingsRequest,
+  TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
@@ -78,6 +83,84 @@ export async function discoverLlmModels(
   try {
     const { data } = await client.post<LlmModelDiscoveryResponse>(
       '/v1/admin/models/discover',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// The rerank and transcription model roles: one stored entry each, SYSTEM_ADMIN only. apiKey
+// follows the same three-way convention as the chat models; a response carries apiKeySet only.
+export async function getRerankModelSettings(): Promise<RerankModelSettingsResponse> {
+  try {
+    const { data } = await client.get<RerankModelSettingsResponse>('/v1/admin/models/rerank')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateRerankModelSettings(
+  request: RerankModelSettingsRequest,
+): Promise<RerankModelSettingsResponse> {
+  try {
+    const { data } = await client.put<RerankModelSettingsResponse>(
+      '/v1/admin/models/rerank',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testRerankModel(
+  request: ModelRoleTestRequest,
+): Promise<LlmModelTestResponse> {
+  try {
+    const { data } = await client.post<LlmModelTestResponse>(
+      '/v1/admin/models/rerank/test',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getTranscriptionModelSettings(): Promise<TranscriptionModelSettingsResponse> {
+  try {
+    const { data } = await client.get<TranscriptionModelSettingsResponse>(
+      '/v1/admin/models/transcription',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateTranscriptionModelSettings(
+  request: TranscriptionModelSettingsRequest,
+): Promise<TranscriptionModelSettingsResponse> {
+  try {
+    const { data } = await client.put<TranscriptionModelSettingsResponse>(
+      '/v1/admin/models/transcription',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testTranscriptionModel(
+  request: ModelRoleTestRequest,
+): Promise<LlmModelTestResponse> {
+  try {
+    const { data } = await client.post<LlmModelTestResponse>(
+      '/v1/admin/models/transcription/test',
       request,
     )
     return data

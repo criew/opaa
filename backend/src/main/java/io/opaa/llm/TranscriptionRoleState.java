@@ -6,7 +6,7 @@ package io.opaa.llm;
  */
 public enum TranscriptionRoleState {
 
-  /** {@code OPAA_TRANSCRIPTION_ENABLED} or the feature speech-input is off. */
+  /** The switch of the model administration or the feature speech-input is off. */
   DISABLED,
 
   /** Switched on, configured, and the endpoint answered the last probe or call. */

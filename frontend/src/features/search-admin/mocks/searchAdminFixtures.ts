@@ -46,7 +46,7 @@ export const mockSearchStatus: SearchStatusResponse = {
       modelIdentifier: null,
       faulted: false,
       detail:
-        'Die Spracheingabe ist abgeschaltet (OPAA_TRANSCRIPTION_ENABLED oder die Funktion Spracheingabe). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung, kein Fehler.',
+        'Die Spracheingabe ist abgeschaltet (Modelle → Spracheingabe oder die Funktion Spracheingabe des Betriebs). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung, kein Fehler.',
     },
   ],
   searchPaths: [

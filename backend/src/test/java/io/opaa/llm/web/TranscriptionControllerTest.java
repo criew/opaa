@@ -16,6 +16,7 @@ import io.opaa.api.RequestLoggingFilter;
 import io.opaa.common.FeatureFlags;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.llm.TranscriptionClient;
+import io.opaa.llm.TranscriptionEndpoint;
 import io.opaa.llm.TranscriptionModelRole;
 import io.opaa.llm.TranscriptionProperties;
 import jakarta.servlet.http.HttpServletRequest;
@@ -129,18 +130,19 @@ class TranscriptionControllerTest {
   }
 
   private TranscriptionModelRole role(boolean enabled, Duration timeout) {
-    TranscriptionProperties properties =
-        new TranscriptionProperties(
+    TranscriptionEndpoint endpoint =
+        new TranscriptionEndpoint(
             enabled,
             "http://127.0.0.1:" + upstream.getAddress().getPort() + "/v1",
             "whisper",
             "",
-            "de",
-            MAX_AUDIO_BYTES,
-            timeout,
-            maxConcurrent);
+            "de");
     TranscriptionModelRole role =
-        new TranscriptionModelRole(properties, client, new FeatureFlags(new MockEnvironment()));
+        new TranscriptionModelRole(
+            new TranscriptionProperties(MAX_AUDIO_BYTES, timeout, maxConcurrent),
+            () -> endpoint,
+            client,
+            new FeatureFlags(new MockEnvironment()));
     role.refresh();
     return role;
   }

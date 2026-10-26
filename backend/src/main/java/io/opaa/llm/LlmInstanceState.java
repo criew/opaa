@@ -3,6 +3,7 @@ package io.opaa.llm;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import io.opaa.compliance.InstanceStateSource;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,8 +15,9 @@ import org.springframework.stereotype.Component;
  * The model roles of this instance for the disclosure: every managed chat model, the embedding
  * model and the rerank and transcription roles, each with address and model, never with its key. A
  * role sends data when it is switched on and bound, whether or not its endpoint answers right now.
- * The installed embedding model is a stored setting: address without credentials and model, with
- * the time it was installed.
+ * The installed embedding model and the rerank and transcription roles are stored settings: address
+ * without credentials and model, with the time they were stored; a role without a row answers its
+ * factory default (off, no address) without a time.
  */
 @Component
 class LlmInstanceState implements InstanceStateSource {
@@ -25,13 +27,19 @@ class LlmInstanceState implements InstanceStateSource {
   private final EmbeddingModelService embeddingModels;
   private final RerankRoleStatusProvider rerank;
   private final TranscriptionRoleStatusProvider transcription;
+  private final RerankModelSettingsRepository rerankRows;
+  private final TranscriptionModelSettingsRepository transcriptionRows;
 
   LlmInstanceState(
       LlmModelRepository models,
       EmbeddingInfoService embedding,
       EmbeddingModelService embeddingModels,
       RerankRoleStatusProvider rerank,
-      TranscriptionRoleStatusProvider transcription) {
+      TranscriptionRoleStatusProvider transcription,
+      RerankModelSettingsRepository rerankRows,
+      TranscriptionModelSettingsRepository transcriptionRows) {
+    this.rerankRows = rerankRows;
+    this.transcriptionRows = transcriptionRows;
     this.models = models;
     this.embedding = embedding;
     this.embeddingModels = embeddingModels;
@@ -65,7 +73,46 @@ class LlmInstanceState implements InstanceStateSource {
                   "embedding_model.model_identifier",
                   new StoredValue(installed.getModelIdentifier(), installed.getInstalledAt()));
             });
+    rerankRows
+        .findStored()
+        .ifPresentOrElse(
+            row ->
+                putRole(
+                    settings,
+                    "rerank_model",
+                    row.isEnabled(),
+                    row.getBaseUrl(),
+                    row.getModelIdentifier(),
+                    row.getUpdatedAt()),
+            () -> putRole(settings, "rerank_model", false, null, null, null));
+    transcriptionRows
+        .findStored()
+        .ifPresentOrElse(
+            row ->
+                putRole(
+                    settings,
+                    "transcription_model",
+                    row.isEnabled(),
+                    row.getBaseUrl(),
+                    row.getModelIdentifier(),
+                    row.getUpdatedAt()),
+            () -> putRole(settings, "transcription_model", false, null, null, null));
     return Map.copyOf(settings);
+  }
+
+  private static void putRole(
+      Map<String, StoredValue> stored,
+      String table,
+      boolean enabled,
+      String baseUrl,
+      String model,
+      Instant changedAt) {
+    stored.put(table + ".enabled", new StoredValue(String.valueOf(enabled), changedAt));
+    stored.put(
+        table + ".base_url",
+        new StoredValue(
+            baseUrl == null ? "" : ModelEndpointUri.withoutSecrets(baseUrl), changedAt));
+    stored.put(table + ".model_identifier", new StoredValue(model == null ? "" : model, changedAt));
   }
 
   @Override

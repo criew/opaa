@@ -201,7 +201,7 @@ Antwort — und wird ausdrücklich als solcher gekennzeichnet, nicht zu einem Mi
 > **Gebaut** (#1048/#1049): Der lexikalische Pfad läuft mit demselben Rechtefilter wie die
 > Vektorsuche und geht rangbasiert (Reciprocal Rank Fusion) in die Auswahl ein. Das **Reranking**
 > darunter ist seit #1050 als Modellrolle gebaut, aber per Voreinstellung abgeschaltet: Ohne
-> gesetztes `OPAA_RERANK_ENABLED` und ohne eingetragenen Rerank-Endpunkt geht die zusammengeführte
+> eingeschaltetes und eingetragenes Rerank-Modell (Modelle → Reranking) geht die zusammengeführte
 > Liste weiterhin ohne zweite Bewertungsstufe in die Antwort. Der gebaute Ablauf steht in
 > [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md), die Begründung und die gemessene
 > Wirkung in [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-3-fusion) und

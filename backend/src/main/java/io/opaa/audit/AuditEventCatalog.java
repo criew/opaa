@@ -361,6 +361,14 @@ public final class AuditEventCatalog {
     put(keys, Set.of("active"), LLM_MODEL_ACTIVATED, LLM_MODEL_DEACTIVATED);
     put(
         keys,
+        Set.of("apiKeyChange", "apiKeySet", "baseUrl", "enabled", "model"),
+        RERANK_MODEL_CHANGED);
+    put(
+        keys,
+        Set.of("apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model"),
+        TRANSCRIPTION_MODEL_CHANGED);
+    put(
+        keys,
         Set.of("revoked", "scopeGroupId", "validFrom", "validUntil"),
         DIAGNOSTIC_IMPERSONATION_GRANTED,
         DIAGNOSTIC_IMPERSONATION_REVOKED);

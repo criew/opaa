@@ -370,9 +370,9 @@ Vervollständigung ergänzt Geschwister-Chunks bereits ausgewählter Dokumente u
 endgültigen Rangfolge arbeiten, nicht auf einer, die der Reranker gleich wieder umsortiert
 (siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-4-reranking-als-modellrolle)).
 
-**Die Rolle ist per Voreinstellung aus.** `OPAA_RERANK_ENABLED` ist ein eigener, expliziter Schalter,
-getrennt von den Endpunktangaben `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` und
-`OPAA_RERANK_API_KEY` — „Reranking aus" soll eine Aussage der Betreiberin sein und nicht das
+**Die Rolle ist per Werkseinstellung aus.** Ihr Schalter unter Modelle → Reranking ist eigen und
+explizit, getrennt von Basis-Adresse, Modell und Schlüssel derselben Seite (ADR-0060,
+Entscheidung 10) — „Reranking aus" soll eine Aussage der Betreiberin sein und nicht das
 ununterscheidbare Ergebnis einer fehlenden Konfigurationszeile. Ein Widerspruch (Schalter an, Rolle
 unbelegt oder Endpunkt stumm) wird beim Start als Fehler geloggt und bleibt danach über
 `RerankRoleStatusProvider#currentStatus()` abfragbar — dem schmalen Vertrag, den die
@@ -604,7 +604,7 @@ Frage + Gesprächsfenster
    guaranteed-per-list jeder Liste fest, gedeckelt auf das Kandidatenbudget
         ↓
 5b. Reranking der Kandidatenmenge durch die Rerank-Modellrolle, zurück auf top-k
-    (per Voreinstellung aus: OPAA_RERANK_ENABLED)
+    (per Werkseinstellung aus: Modelle → Reranking)
         ↓
 5c. Relevanzschnitt nach Wert (per Voreinstellung aus: relevance-cutoff.mode fixed)
         ↓
@@ -709,7 +709,7 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   Pipeline-Pfad seither zwei der neun `literal_term_weak_embedding`-Fälle, die Hit Rate@5 dieser Klasse
   stieg von 0,556 auf 0,889). Die zweite Hälfte — ein Reranker für die Fälle, in denen die richtige
   Fundstelle im Fenster liegt, aber nicht weit genug oben — ist seit #1050 gebaut (Schritt 5b), aber
-  in der Auslieferungskonfiguration abgeschaltet; erst mit `OPAA_RERANK_ENABLED=true` wirkt sie auf
+  in der Auslieferungskonfiguration abgeschaltet; erst eingeschaltet unter Modelle → Reranking wirkt sie auf
   diesen Fall (Diagnose vollständig in #938).
 
 ### Etablierte Verfahren, die OPAA noch nicht nutzt

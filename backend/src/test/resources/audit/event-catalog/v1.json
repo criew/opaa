@@ -138,6 +138,7 @@
   "PROMPT_LIBRARY_CHANGED": ["changedFields"],
   "PROMPT_LIBRARY_CREATED": ["name"],
   "PROMPT_LIBRARY_DELETED": ["name", "promptsRemoved"],
+  "RERANK_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "enabled", "model"],
   "SEARCH_DIAGNOSIS_PROFILE_RUN": ["profileGroupId", "profileName", "spaceName"],
   "SELF_DISCLOSURE_EXPORT_FINISHED": ["abortCause", "bytes", "categories", "result", "sha256"],
   "SELF_DISCLOSURE_EXPORT_STARTED": ["categories"],
@@ -154,5 +155,6 @@
   "SYSTEM_ADMIN_ROLE_GRANTED": ["provider", "role"],
   "SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED": ["role", "tokenRole"],
   "SYSTEM_ADMIN_ROLE_REVOKED": ["provider", "role"],
+  "TRANSCRIPTION_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "enabled", "language", "model"],
   "UPLOAD_ORPHAN_ORIGINALS_DELETED": ["deleted", "deletedCount", "requestedCount", "skippedCount"]
 }

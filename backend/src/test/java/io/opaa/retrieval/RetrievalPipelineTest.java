@@ -90,7 +90,8 @@ class RetrievalPipelineTest {
         .containsExactlyElementsOf(pipeline.registeredStages());
     // Every stage but MMR, the reranker and the relevance cutoff runs: the shipped configuration
     // has mmr-lambda 1.0, at which MMR would only copy the lists, a rerank model role that is not
-    // usable (OPAA_RERANK_ENABLED off, #1050) and the cutoff mode fixed. A switched-off stage is
+    // usable (switched off in the model administration, #1050) and the cutoff mode fixed. A
+    // switched-off stage is
     // recorded, not omitted - that is the property this test exists for.
     Set<RetrievalStageName> switchedOff =
         Set.of(

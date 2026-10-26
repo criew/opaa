@@ -2,7 +2,7 @@
 # Merged with all other fragments at build time, see root.yaml.
 tags:
   - name: model
-    description: LLM and embedding model configuration.
+    description: Chat, embedding, rerank and transcription model configuration.
 paths:
   /api/v1/admin/models:
     get:
@@ -223,6 +223,149 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmbeddingInfoResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/rerank:
+    get:
+      operationId: getRerankModelSettings
+      tags: [model]
+      summary: Get the rerank model role (system admin only)
+      description: >
+        The rerank model of the installation (ADR-0060, Entscheidung 10): switch, address and model
+        from the database, the factory default (off, unbound) while nothing is stored. Never
+        carries the key, only apiKeySet. state is the role's last known condition, answered without
+        contacting the endpoint.
+      responses:
+        "200":
+          description: The rerank model role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RerankModelSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateRerankModelSettings
+      tags: [model]
+      summary: Change the rerank model role (system admin only)
+      description: >
+        Takes effect on every instance without a restart; a change is an audit event with the
+        values before and after, the key only as set, changed or removed. apiKey omitted keeps the
+        stored key, but only while the base address stays the same endpoint; an empty string
+        removes it. A switched-on role needs address and model. The address is checked against the
+        target address check of the operation (400 with code BLOCKED).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RerankModelSettingsRequest"
+      responses:
+        "200":
+          description: The rerank model role after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RerankModelSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/rerank/test:
+    post:
+      operationId: testRerankModel
+      tags: [model]
+      summary: Probe a rerank endpoint, saved or not yet saved (system admin only)
+      description: >
+        One rerank request with a single test document. apiKey omitted uses the stored key, only
+        for the stored endpoint (otherwise 400); an empty string sends none. The address is checked
+        against the target address check right before the request; redirects are not followed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelRoleTestRequest"
+      responses:
+        "200":
+          description: Test result - a 200 either way; success carries the outcome.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/transcription:
+    get:
+      operationId: getTranscriptionModelSettings
+      tags: [model]
+      summary: Get the transcription model role (system admin only)
+      description: >
+        The transcription model of the installation (ADR-0060, Entscheidung 10), like
+        getRerankModelSettings, with the language passed to the model. speechInputAvailable tells
+        whether the operation allows dictation at all (OPAA_FEATURES_SPEECH_INPUT_ENABLED).
+      responses:
+        "200":
+          description: The transcription model role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionModelSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateTranscriptionModelSettings
+      tags: [model]
+      summary: Change the transcription model role (system admin only)
+      description: >
+        As updateRerankModelSettings. Switching the role on is refused (400) while the operation
+        has switched off speech input; address, model and key may still be stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptionModelSettingsRequest"
+      responses:
+        "200":
+          description: The transcription model role after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionModelSettingsResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/transcription/test:
+    post:
+      operationId: testTranscriptionModel
+      tags: [model]
+      summary: Probe a transcription endpoint, saved or not yet saved (system admin only)
+      description: >
+        GET {baseUrl}/models, which sends no audio and costs nothing. Key rule and address check as
+        for testRerankModel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelRoleTestRequest"
+      responses:
+        "200":
+          description: Test result - a 200 either way; success carries the outcome.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -499,6 +642,168 @@ components:
             Whether the model can serve as a chat model. False for models that only embed (Ollama
             capabilities, or an identifier that plainly names an embedding, speech or image model);
             true when nothing speaks against it.
+
+    RerankModelSettingsResponse:
+      type: object
+      required: [enabled, apiKeySet, state, retiredVariables]
+      properties:
+        enabled:
+          type: boolean
+          description: The role's switch; false is the factory default.
+        baseUrl:
+          type: string
+          nullable: true
+          example: http://reranker:80
+        model:
+          type: string
+          nullable: true
+          example: BAAI/bge-reranker-v2-m3
+        apiKeySet:
+          type: boolean
+          description: Whether a key is stored - never the key itself.
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The last change; null while the factory default applies.
+        retiredVariables:
+          type: array
+          description: >
+            Former configuration variables of this role the answering instance still has set; they
+            are no longer read. Names only, never values.
+          items:
+            type: string
+
+    RerankModelSettingsRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Without the path /rerank and without userinfo. Required while enabled; empty unbinds.
+          example: http://reranker:80
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required while enabled.
+          example: BAAI/bge-reranker-v2-m3
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Write-only. Omitted (null) keeps the stored key for an unchanged endpoint; an empty
+            string removes it; any other value replaces it.
+
+    TranscriptionModelSettingsResponse:
+      type: object
+      required: [enabled, apiKeySet, language, state, speechInputAvailable, retiredVariables]
+      properties:
+        enabled:
+          type: boolean
+          description: The role's switch; false is the factory default.
+        baseUrl:
+          type: string
+          nullable: true
+          example: http://speaches:8000/v1
+        model:
+          type: string
+          nullable: true
+          example: Systran/faster-whisper-large-v3
+        apiKeySet:
+          type: boolean
+          description: Whether a key is stored - never the key itself.
+        language:
+          type: string
+          description: >
+            ISO-639-1 code passed to the model; empty lets the model detect the language. de is
+            the factory default.
+          example: de
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+        speechInputAvailable:
+          type: boolean
+          description: >
+            Whether the operation allows speech input (OPAA_FEATURES_SPEECH_INPUT_ENABLED); while
+            false the role stays off whatever is stored.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The last change; null while the factory default applies.
+        retiredVariables:
+          type: array
+          description: >
+            Former configuration variables of this role the answering instance still has set; they
+            are no longer read. Names only, never values.
+          items:
+            type: string
+
+    TranscriptionModelSettingsRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Without the path /audio/transcriptions and without userinfo. Required while enabled.
+          example: http://speaches:8000/v1
+        model:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required while enabled.
+          example: Systran/faster-whisper-large-v3
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Write-only. Omitted (null) keeps the stored key for an unchanged endpoint; an empty
+            string removes it; any other value replaces it.
+        language:
+          type: string
+          nullable: true
+          maxLength: 8
+          description: >
+            Two-letter ISO-639-1 code; an empty string lets the model detect the language, omitted
+            (null) keeps the stored language.
+          example: de
+
+    ModelRoleTestRequest:
+      type: object
+      description: >
+        A draft of a rerank or transcription endpoint. apiKey omitted uses the stored key of the
+        role, but only for its stored endpoint; an empty string sends no key.
+      required: [baseUrl, model]
+      properties:
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: http://reranker:80
+        model:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: BAAI/bge-reranker-v2-m3
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Plaintext key for this test only, never stored.
 
     EmbeddingInfoResponse:
       type: object

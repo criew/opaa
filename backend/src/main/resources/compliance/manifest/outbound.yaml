@@ -32,19 +32,28 @@ dataFlows:
   - id: rerank-model
     group: MODEL
     viaOutboundProxy: true
-    target: Der Rerank-Endpunkt, den der Betrieb konfiguriert
-    data: Suchanfrage und die Kandidaten-Textstellen
-    trigger: Jede Suche und Chat-Anfrage bei eingeschaltetem Reranking, Statusprüfung
-    switchOff: Abschaltbar, Voreinstellung aus
-    settings: [opaa.rerank.enabled, opaa.rerank.base-url]
+    target: Der Rerank-Endpunkt, den die Systemverwaltung in der Modellverwaltung hinterlegt
+    data: >-
+      Suchanfrage und die Kandidaten-Textstellen; beim Verbindungstest der Verwaltung eine
+      feste Probe ohne Inhalte
+    trigger: >-
+      Jede Suche und Chat-Anfrage bei eingeschaltetem Reranking, Statusprüfung, Verbindungstest in
+      der Modellverwaltung
+    switchOff: Abschaltbar in der Modellverwaltung, Voreinstellung aus
+    settings: [rerank_model.enabled, rerank_model.base_url]
   - id: transcription-model
     group: MODEL
     viaOutboundProxy: true
-    target: Der Transkriptions-Endpunkt, den der Betrieb konfiguriert
-    data: Die Sprachaufnahme einer Person
-    trigger: Spracheingabe im Chat
-    switchOff: Abschaltbar, Voreinstellung aus; zusätzlich über das Feature-Flag der Spracheingabe
-    settings: [opaa.transcription.enabled, opaa.transcription.base-url, opaa.features.speech-input.enabled]
+    target: Der Transkriptions-Endpunkt, den die Systemverwaltung in der Modellverwaltung hinterlegt
+    data: >-
+      Die Sprachaufnahme einer Person; Statusprüfung und Verbindungstest fragen nur die Modellliste
+      ab
+    trigger: Spracheingabe im Chat, Statusprüfung, Verbindungstest in der Modellverwaltung
+    switchOff: >-
+      Abschaltbar in der Modellverwaltung, Voreinstellung aus; zusätzlich über das Feature-Flag der
+      Spracheingabe
+    settings:
+      [transcription_model.enabled, transcription_model.base_url, opaa.features.speech-input.enabled]
   - id: model-endpoint
     group: MODEL
     viaOutboundProxy: true

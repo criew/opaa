@@ -23,9 +23,8 @@ class TranscriptionModelRoleTest {
 
   private final TranscriptionClient client = mock(TranscriptionClient.class);
 
-  private static TranscriptionProperties properties(boolean enabled, String baseUrl, String model) {
-    return new TranscriptionProperties(
-        enabled, baseUrl, model, "key", "de", 1024, Duration.ofSeconds(5), 2);
+  private static TranscriptionEndpoint endpoint(boolean enabled, String baseUrl, String model) {
+    return new TranscriptionEndpoint(enabled, baseUrl, model, "key", "de");
   }
 
   private static FeatureFlags speechInput(boolean on) {
@@ -33,13 +32,17 @@ class TranscriptionModelRoleTest {
         new MockEnvironment().withProperty("opaa.features.speech-input.enabled", "" + on));
   }
 
-  private TranscriptionModelRole role(TranscriptionProperties properties, boolean feature) {
-    return new TranscriptionModelRole(properties, client, speechInput(feature));
+  private TranscriptionModelRole role(TranscriptionEndpoint endpoint, boolean feature) {
+    return new TranscriptionModelRole(
+        new TranscriptionProperties(1024, Duration.ofSeconds(5), 2),
+        () -> endpoint,
+        client,
+        speechInput(feature));
   }
 
   @Test
   void switchedOffTheRoleIsDisabledAndContactsNobody() {
-    TranscriptionModelRole role = role(properties(false, "http://stt:8000/v1", "whisper"), true);
+    TranscriptionModelRole role = role(endpoint(false, "http://stt:8000/v1", "whisper"), true);
 
     assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.DISABLED);
     assertThat(role.usable()).isFalse();
@@ -48,7 +51,7 @@ class TranscriptionModelRoleTest {
 
   @Test
   void theFeatureFlagSwitchesTheRoleOffAsWell() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), false);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), false);
 
     assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.DISABLED);
     verifyNoInteractions(client);
@@ -56,7 +59,7 @@ class TranscriptionModelRoleTest {
 
   @Test
   void switchedOnWithoutEndpointIsUnconfigured() {
-    TranscriptionModelRole role = role(properties(true, "", ""), true);
+    TranscriptionModelRole role = role(endpoint(true, "", ""), true);
 
     assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.UNCONFIGURED);
     verifyNoInteractions(client);
@@ -65,7 +68,7 @@ class TranscriptionModelRoleTest {
   @Test
   void anAddressWithCredentialsIsRejectedAndNeverShown() {
     TranscriptionModelRole role =
-        role(properties(true, "https://user:pw@stt.example/v1", "whisper"), true);
+        role(endpoint(true, "https://user:pw@stt.example/v1", "whisper"), true);
 
     TranscriptionRoleStatus status = role.refresh();
 
@@ -77,8 +80,8 @@ class TranscriptionModelRoleTest {
 
   @Test
   void aSuccessfulProbeMakesTheRoleReady() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
-    when(client.probe(any())).thenReturn(null);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any(), any())).thenReturn(null);
 
     assertThat(role.usable()).isFalse();
     assertThat(role.refresh().state()).isEqualTo(TranscriptionRoleState.READY);
@@ -87,8 +90,8 @@ class TranscriptionModelRoleTest {
 
   @Test
   void aFailedProbeMakesTheRoleUnreachable() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
-    when(client.probe(any())).thenReturn(new ProbeFailure("request timed out", true));
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any(), any())).thenReturn(new ProbeFailure("request timed out", true));
 
     TranscriptionRoleStatus status = role.refresh();
 
@@ -99,7 +102,7 @@ class TranscriptionModelRoleTest {
 
   @Test
   void aRecordingIsNotSentWhileTheRoleIsNotReady() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
 
     assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionRoleUnusableException.class);
@@ -108,10 +111,10 @@ class TranscriptionModelRoleTest {
 
   @Test
   void aFailedCallMovesTheRoleToUnreachable() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
-    when(client.probe(any())).thenReturn(null);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any()))
+    when(client.transcribe(any(), any(), any(), any()))
         .thenThrow(new TranscriptionUnavailableException("connection refused", false));
 
     assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
@@ -122,10 +125,10 @@ class TranscriptionModelRoleTest {
   /** A recording comes from a person: its refusal must not hide dictation from everybody else. */
   @Test
   void aRecordingTheEndpointRefusesLeavesTheRoleReady() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
-    when(client.probe(any())).thenReturn(null);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any()))
+    when(client.transcribe(any(), any(), any(), any()))
         .thenThrow(new TranscriptionUnavailableException("HTTP 400", false, true))
         .thenThrow(new TranscriptionUnavailableException("HTTP 500", false, true))
         .thenThrow(new TranscriptionUnavailableException("no text", false, true));
@@ -139,10 +142,10 @@ class TranscriptionModelRoleTest {
 
   @Test
   void aTimedOutCallMovesTheRoleToUnreachable() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
-    when(client.probe(any())).thenReturn(null);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any()))
+    when(client.transcribe(any(), any(), any(), any()))
         .thenThrow(new TranscriptionUnavailableException("request timed out", true));
 
     assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
@@ -153,7 +156,7 @@ class TranscriptionModelRoleTest {
 
   @Test
   void theSlotsAreCappedForTheWholeInstallationAndFreedOnClose() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
 
     TranscriptionModelRole.Slot first = role.reserve();
     TranscriptionModelRole.Slot second = role.reserve();
@@ -169,10 +172,10 @@ class TranscriptionModelRoleTest {
 
   @Test
   void aSuccessfulCallReturnsTheText() {
-    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
-    when(client.probe(any())).thenReturn(null);
+    TranscriptionModelRole role = role(endpoint(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any(), any())).thenReturn(null);
     role.refresh();
-    when(client.transcribe(any(), any(), any())).thenReturn("Hallo");
+    when(client.transcribe(any(), any(), any(), any())).thenReturn("Hallo");
 
     assertThat(role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM)).isEqualTo("Hallo");
     assertThat(role.usable()).isTrue();

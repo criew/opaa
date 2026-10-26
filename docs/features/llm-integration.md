@@ -282,8 +282,8 @@ Abgelehnt statt stillschweigend entfernt: Wer Anmeldedaten einträgt, will, dass
 Ein stilles Entfernen nähme diese Absicht wortlos zurück und hinterließe einen Endpunkt, der ohne
 erkennbaren Grund mit „nicht authentifiziert" antwortet. Die Ablehnung sagt es stattdessen — und
 wiederholt den beanstandeten Anteil dabei nicht, weil die Fehlermeldung selbst wieder in Antwort und
-Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld (Chat-Rolle) bzw. in
-`OPAA_RERANK_API_KEY` (Rerank-Rolle); er wird als `Authorization`-Kopfzeile gesendet.
+Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld der Modellverwaltung (Chat-, Rerank- und
+Transkriptionsrolle); er wird als `Authorization`-Kopfzeile gesendet.
 
 Die Prüfung greift **beim Schreiben** — beim Anlegen und Ändern eines Modells, beim Verbindungstest,
 bei der einmaligen Übernahme aus der Umgebungskonfiguration und beim Start für die
@@ -372,7 +372,7 @@ gestrichenen Ideen:
 | [Vorgaben als Obergrenze](#vorgaben-als-obergrenze) aus System, Space, Bibliothek und Agent | Setzt Modellvorgaben an Spaces und Bibliotheken voraus, die es noch nicht gibt; die Schnittmengenregel hängt am Modelleintrag, der hier erst entsteht |
 | Auswahl eines Modells durch Nutzende im Chat | Ohne Obergrenze wäre eine freie Auswahl die Umgehung jeder späteren Beschränkung — die falsche Reihenfolge |
 | Freigabestatus, Datenklassen, Zuständigkeit, Nachfolge, Fähigkeiten am Eintrag | Felder ohne wirksame Verwendung; sie bekommen ihre Bedeutung erst mit den Vorgaben-Ebenen |
-| Voreinstellungen je Aufgabe — Zusammenfassung, Klassifizierung, Bildverständnis | Diese Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe vorhanden. **Reranking ist seit [#1050](https://github.com/criew/opaa/issues/1050) die Ausnahme**: Die Rerank-Rolle ist gebaut, aber über Umgebungsvariablen konfiguriert (`OPAA_RERANK_ENABLED`, `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL`, `OPAA_RERANK_API_KEY`) und nicht als verwalteter Eintrag — dieselbe Ebene wie die Einbettungsrolle, aus demselben Grund: eine Installationsentscheidung, keine laufende Verwaltungsaufgabe. Siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-4-reranking-als-modellrolle) |
+| Voreinstellungen je Aufgabe — Zusammenfassung, Klassifizierung, Bildverständnis | Diese Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe vorhanden. **Reranking ist seit [#1050](https://github.com/criew/opaa/issues/1050) die Ausnahme**: Die Rerank-Rolle ist gebaut und wie das Transkriptionsmodell ein einzelner Eintrag der Modellverwaltung (Reiter „Reranking" bzw. „Spracheingabe", ADR-0060, Entscheidung 10): Schalter, Basis-Adresse, Modell und Schlüssel aus der Datenbank, Timeout und Prüfabstand aus der Konfiguration. Eine Liste mehrerer Rerank-Modelle mit Auswahl wie beim Chat gibt es nicht. Siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-4-reranking-als-modellrolle) |
 | Verwaltbare Einbettungsmodelle | Erzwingt eine Neuindizierung, siehe oben |
 | Technische Durchsetzung, dass kein Aufruf das Haus verlässt | Hängt sinnvoll an den Vorgaben-Ebenen, nicht an einer einzelnen Modellliste |
 | [Grenzen und Kontingente](#grenzen-und-kontingente) | Eigener Themenbereich |

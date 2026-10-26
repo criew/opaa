@@ -368,7 +368,7 @@ public final class PipelineHarnessSupport {
           "the rerank model role is usable and opaa.query.rerank-candidate-count is "
               + queryProperties.rerankCandidateCount()
               + ", so this run would rerank - but the committed pipeline baseline describes the "
-              + "shipped configuration, in which reranking is off (OPAA_RERANK_ENABLED). Its "
+              + "shipped configuration, in which reranking is off (rerank_model). Its "
               + "numbers would be judged against that baseline as a code change. Measure "
               + "reranking as a named variant instead (eval/variants/*-reranking.json, "
               + "-Dopaa.eval.runVariantComparison=true), with the production configuration "

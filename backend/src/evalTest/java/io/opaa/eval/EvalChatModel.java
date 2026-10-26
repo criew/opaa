@@ -77,7 +77,7 @@ final class EvalChatModel {
   /**
    * The API key of that endpoint, <b>from the environment only</b>: a {@code -D} value is visible
    * in the process list, which is why {@code backend/build.gradle.kts} deliberately omits {@code
-   * opaa.rerank.api-key} from its passthrough list as well. Optional: an endpoint without
+   * a rerank key from its passthrough list as well. Optional: an endpoint without
    * authentication, such as an Ollama in the own network, runs without it.
    */
   private static final String API_KEY_ENVIRONMENT_VARIABLE = "OPAA_EVAL_CHAT_API_KEY";
