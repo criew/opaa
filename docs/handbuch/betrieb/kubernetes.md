@@ -524,8 +524,6 @@ Wegen:
 | `OPAA_UPLOAD_S3_SECRET_KEY` | `s3SecretKey` | bei `uploads.store: s3` | Geheimschlüssel des Objektspeichers |
 | `OPAA_OPENAI_EMBEDDING_API_KEY` | `embeddingApiKey` | nein | Schlüssel des Einbettungs-Endpunkts |
 | `OPAA_OPENAI_CHAT_API_KEY` | `chatApiKey` | nein | Schlüssel des ersten Chat-Modells; Startwert |
-| `OPAA_RERANK_API_KEY` | `rerankApiKey` | nein | Schlüssel des Rerank-Endpunkts |
-| `OPAA_TRANSCRIPTION_API_KEY` | `transcriptionApiKey` | nein | Schlüssel des Transkriptionsdienstes |
 | `OPAA_INITIAL_ADMIN_PASSWORD` | `initialAdminPassword` | nein | festes Anfangspasswort des ersten Systemverwalters statt eines erzeugten; Startwert |
 
 Die Verschlüsselungsschlüssel sind im Chart Pflicht, auch wenn noch nichts verschlüsselt gespeichert
@@ -599,13 +597,9 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `embedding.dimensions` | leer, Pflicht | `OPAA_PGVECTOR_DIMENSIONS` | Vektorbreite des Modells; nur für eine bestehende Vektorablage übernommen, sonst ermittelt die Probeeinbettung sie |
 | `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modelle.md#modell-wechseln)) |
 | `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` | Eingabegrenze des Endpunkts in Tokens, einmalig übernommen wie `embedding.baseUrl` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
-| `rerank.enabled` | `false` | `OPAA_RERANK_ENABLED` | schaltet Reranking ein; verlangt dann `baseUrl` und `model` |
-| `rerank.baseUrl`, `rerank.model` | leer | `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` | Rerank-Endpunkt ohne den Pfad `/rerank`, Modell |
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |
 | `rerank.probeInterval` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_PROBE_INTERVAL` | Abstand der Erreichbarkeitsprüfung ohne Fragen; bei einem bezahlten Endpunkt groß wählen, etwa `24h` |
-| `transcription.enabled` | `false` | `OPAA_TRANSCRIPTION_ENABLED` | schaltet die Spracheingabe ein; verlangt dann `baseUrl` und `model` ([Spracheingabe einschalten](modelle.md#spracheingabe-einschalten)) |
-| `transcription.baseUrl`, `transcription.model` | leer | `OPAA_TRANSCRIPTION_BASE_URL`, `OPAA_TRANSCRIPTION_MODEL` | Transkriptionsdienst ohne den Pfad `/audio/transcriptions`, Modell |
-| `transcription.language`, `.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_LANGUAGE`, `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | Sprache, größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei |
+| `transcription.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei. Endpunkt, Modell, Schlüssel und Sprache pflegt die Systemverwaltung unter Modelle → Spracheingabe, den Rerank-Endpunkt unter Modelle → Reranking |
 | `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
 | `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hostnamen interner Quellen, die die Adressprüfung passieren dürfen |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Hostnamen weiterer interner Identitätsanbieter; der Startanbieter ist immer erlaubt |

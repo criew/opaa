@@ -64,8 +64,8 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   5b). Die Variante wird dann als „nicht verwertbar" gemeldet statt als Messwert. Maßgeblich ist
   dabei nicht der Rollenzustand am Ende, sondern die Zahl der Aufrufe ohne verwertbare Rangfolge
   (`RerankModelRole#degradedCallCount`) vor und nach der Variante — eine Rolle, die ausfällt und
-  sich wieder fängt, sähe am Ende unauffällig aus. Ein Rerank-Vergleichslauf setzt deshalb `-Dopaa.rerank.enabled=true`,
-  `-Dopaa.rerank.base-url=…`, `-Dopaa.rerank.model=…` und — damit der Baseline-Pfad desselben
+  sich wieder fängt, sähe am Ende unauffällig aus. Ein Rerank-Vergleichslauf setzt deshalb `-Dopaa.eval.rerankBaseUrl=…`,
+  `-Dopaa.eval.rerankModel=…` (der Harness speichert damit das eingeschaltete Rerank-Modell, ohne Schlüssel) und — damit der Baseline-Pfad desselben
   Laufs weiter die ausgelieferte Konfiguration misst — `-Dopaa.query.rerank-candidate-count=0`.
 - `requiresReindex: true` markiert eine Variante, die ein anderes Embedding-Modell oder eine
   andere Chunking-Konfiguration bräuchte. Diese Variantenmechanik führt noch keinen Reindex je

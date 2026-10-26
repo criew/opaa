@@ -16,8 +16,8 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 |---|---|---|---|
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Modellverwaltung in der Oberfläche; die Umgebung nur beim allerersten Start | jederzeit, ohne Neustart; berührt den Index nicht |
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation, mit Probeeinbettung ([Embedding](#embedding)) | nicht über die Oberfläche; nur durch einen Eingriff des Betriebs mit anschließender Neueinbettung ([Modell wechseln](#modell-wechseln)) |
-| **Reranking** | ordnet die Kandidaten der Suche neu, optional | Umgebung (`OPAA_RERANK_*`) | jederzeit mit Neustart; aus ist die Voreinstellung |
-| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Umgebung (`OPAA_TRANSCRIPTION_*`) | jederzeit mit Neustart; aus ist die Voreinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
+| **Reranking** | ordnet die Kandidaten der Suche neu, optional | Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
+| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
 ## LLM-Anbieter
 
@@ -338,8 +338,9 @@ ein weiterer Start auch die fehlenden eingebettet hat.
 
 ## Reranking einschalten
 
-Reranking ist voreingestellt **aus** (`OPAA_RERANK_ENABLED=false`). Die Rolle braucht einen eigenen
-Endpunkt. **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
+Reranking ist ab Werk **aus**. Die Rolle braucht einen eigenen Endpunkt; die Systemverwaltung trägt
+ihn unter **Modelle → Reranking** ein ([Rerank- und Transkriptionsmodell in der
+Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)). **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
 Fundstellen, die im Kandidatenfenster liegen, aber nicht weit genug oben, nach vorn. Was die Stufe in
 der Suche tut, steht unter [Suche](../spaces/suche.md#stufe-8-reranking).
 
@@ -347,8 +348,7 @@ Zur Wahl des Endpunkts:
 
 - **GPU im Haus:** ein Rerank-Modell auf eigener GPU; die Daten bleiben im Netz.
 - **Gehosteter Dienst:** ein Endpunkt, der `POST {Basisadresse}/rerank` im erwarteten Format
-  beantwortet; welche Dienste das tun, steht bei `OPAA_RERANK_BASE_URL` in der
-  [Konfiguration](konfiguration.md). Er erhält Frage und Chunk-Texte der Kandidaten. Für
+  beantwortet, etwa vLLM, Text Embeddings Inference, Infinity, Jina, Cohere oder Voyage. Er erhält Frage und Chunk-Texte der Kandidaten. Für
   Behördendaten nur, wenn der Dienst datenschutzrechtlich zulässig ist; sonst bleibt der Endpunkt im
   eigenen Netz. Die Hinweise unter [LLM-Anbieter](#llm-anbieter) gelten für die Rerank-Rolle
   sinngemäß, auch dass es keine technische Sperre gibt.
@@ -356,8 +356,8 @@ Zur Wahl des Endpunkts:
   nicht taugt; das voreingestellte `OPAA_RERANK_TIMEOUT` lässt den Fall nur zu, damit er nicht als
   Ausfall erscheint.
 
-Zum Einschalten gehören drei Angaben zusammen: `OPAA_RERANK_ENABLED=true`, `OPAA_RERANK_BASE_URL` und
-`OPAA_RERANK_MODEL`. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
+Zum Einschalten gehören drei Angaben zusammen: der Schalter „Reranking einschalten", die
+Basis-Adresse ohne den Pfad `/rerank` und die Modell-Kennung. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
 fortlaufend auf der Seite „Suche & Indexierung"; die Suche läuft dann ohne Reranking weiter — ein
 Ausfall kostet die Sortierung, nie die Antwort.
 
@@ -382,13 +382,44 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > das Timeout jedes Proxys davor ([Netzwerkzugang](netz-und-sicherheit.md#netzwerkzugang)). Sonst endet die
 > Anfrage beim Client mit `504` oder einem Verbindungsabbruch, ohne Fehler im Backend-Log.
 
+## Rerank-Modell und Transkriptionsmodell in der Oberfläche
+
+Beide optionalen Rollen pflegt die Systemverwaltung unter **Modelle**, je in einem eigenen Reiter
+(„Reranking", „Spracheingabe"): Schalter, Basis-Adresse, Modell-Kennung, Zugangsschlüssel und für die
+Spracheingabe die Sprache. Ohne Eintrag gilt die Werkseinstellung: aus. Eine Änderung wirkt ohne
+Neustart auf allen Instanzen und steht mit Vorher und Nachher im Revisionsprotokoll
+(„Rerank-Modell", „Transkriptionsmodell"); der Schlüssel erscheint dort nur als gesetzt, geändert oder
+entfernt.
+
+- **Zugangsschlüssel:** Er wird verschlüsselt gespeichert und nie wieder angezeigt. Ein leeres Feld
+  lässt ihn unverändert, „Gespeicherten Schlüssel entfernen" löscht ihn. Ändert sich die
+  Basis-Adresse, folgt der gespeicherte Schlüssel nicht: Er ist neu einzugeben oder zu entfernen.
+- **Zieladressprüfung:** Die Basis-Adresse wird beim Speichern und vor jedem Verbindungstest gegen die
+  Zieladressprüfung des Betriebs geprüft. Eine interne Adresse, etwa ein Rerank-Dienst im eigenen
+  Netz, gibt der Betrieb über `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` frei.
+- **„Verbindung testen"** schickt eine Probe an den eingetragenen Endpunkt, ohne zu speichern: beim
+  Reranking eine Rerank-Anfrage mit einem Prüftext, bei der Spracheingabe `GET {Basis-Adresse}/models`
+  ohne Audio. Weiterleitungen folgt OPAA dabei nicht.
+- **Zustand:** Der Reiter zeigt, ob die Rolle aus ist, antwortet oder gestört ist, wie die Seite
+  „Suche & Indexierung".
+
+Timeouts, Prüfabstand und Lastgrenzen bleiben Sache des Betriebs (`OPAA_RERANK_TIMEOUT`,
+`OPAA_RERANK_PROBE_INTERVAL`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`,
+`OPAA_TRANSCRIPTION_MAX_CONCURRENT`). Die früheren Variablen `OPAA_RERANK_ENABLED`,
+`OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL`, `OPAA_RERANK_API_KEY` und `OPAA_TRANSCRIPTION_ENABLED`,
+`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest OPAA nicht mehr und übernimmt sie auch nicht; ist
+eine noch gesetzt, warnen der Start im Log und der Reiter der Rolle.
+
 ## Spracheingabe einschalten
 
 Mit der Spracheingabe spricht eine Person ihre Frage ein, statt sie zu tippen: Sie nimmt im Chat auf,
 beendet die Aufnahme, und der erkannte Text landet im Eingabefeld (Bedienung unter
 [Suche](../spaces/suche.md#frage-diktieren)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
-Sprache in Text umwandelt. Sie ist voreingestellt **aus** (`OPAA_TRANSCRIPTION_ENABLED=false`); ohne
-sie zeigt der Chat kein Mikrofon.
+Sprache in Text umwandelt. Sie ist ab Werk **aus**; ohne sie zeigt der Chat kein Mikrofon. Eingetragen wird sie unter
+**Modelle → Spracheingabe** ([Rerank- und Transkriptionsmodell in der
+Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)). Hat der Betrieb die Funktion mit
+`OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, lässt sich die Rolle dort nur vorbereiten,
+nicht einschalten.
 
 > **Ollama kann kein Audio.** Der Modellserver für Chat und Einbettung transkribiert nicht. Die
 > Spracheingabe braucht immer einen zweiten Dienst.
@@ -403,11 +434,11 @@ der openai-kompatiblen Schnittstelle bedienen:
 - `GET {Basis-Adresse}/models` dient OPAA als Erreichbarkeitsprüfung, beim Start und danach
   regelmäßig. Sie überträgt kein Audio und kostet bei Anbietern mit Abrechnung je Aufruf nichts.
 
-Einzutragen sind `OPAA_TRANSCRIPTION_ENABLED=true`, die Basis-Adresse ohne den Pfad
-`/audio/transcriptions` (`OPAA_TRANSCRIPTION_BASE_URL`, etwa `https://stt.landesverwaltung.de/v1`),
-die Modell-Kennung (`OPAA_TRANSCRIPTION_MODEL`) und, falls der Dienst ihn verlangt, der
-Zugangsschlüssel (`OPAA_TRANSCRIPTION_API_KEY`). Der Schlüssel steht nur in der Umgebung und nur im
-`Authorization`-Header der Anfrage, nie in der Datenbank, im Log oder einer Zustandsanzeige. Der
+Einzutragen sind unter **Modelle → Spracheingabe** der Schalter „Spracheingabe einschalten", die
+Basis-Adresse ohne den Pfad `/audio/transcriptions` (etwa `https://stt.landesverwaltung.de/v1`),
+die Modell-Kennung und, falls der Dienst ihn verlangt, der Zugangsschlüssel. Der Schlüssel liegt
+verschlüsselt in der Datenbank und geht nur in den `Authorization`-Header der Anfrage, nie in ein
+Log oder eine Zustandsanzeige. Der
 Aufruf geht über denselben [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und dieselben vertrauten
 Zertifizierungsstellen wie die übrigen Modellrollen; eine interne CA wird also wie dort ergänzt.
 
@@ -417,7 +448,7 @@ Fehlt eine Angabe oder antwortet der Dienst nicht, steht das im Log und fortlauf
 läuft weiter.
 
 **Was an den Dienst geht:** die Aufnahme, die Modell-Kennung, die Sprache
-(`OPAA_TRANSCRIPTION_LANGUAGE`) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
+(Feld „Sprache" unter Modelle → Spracheingabe; leer erkennt das Modell sie selbst) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
 kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von OPAA als Absender.
 **Was OPAA behält:** nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
 Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Das
@@ -464,11 +495,9 @@ volumes:
   speaches-models:
 ```
 
-```env
-OPAA_TRANSCRIPTION_ENABLED=true
-OPAA_TRANSCRIPTION_BASE_URL=http://speaches:8000/v1
-OPAA_TRANSCRIPTION_MODEL=Systran/faster-whisper-large-v3
-```
+Unter **Modelle → Spracheingabe** dann die Basis-Adresse `http://speaches:8000/v1` und die
+Modell-Kennung `Systran/faster-whisper-large-v3` eintragen. Weil `speaches` eine interne Adresse ist,
+gibt der Betrieb den Host vorher über `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` frei.
 
 speaches lädt ein Modell nicht von selbst; es wird einmal über
 `POST http://speaches:8000/v1/models/Systran/faster-whisper-large-v3` heruntergeladen, aus einem
@@ -480,7 +509,7 @@ Dokumentation der eingesetzten Version und ist vor dem Betrieb zu prüfen.
 
 Technisch funktioniert auch ein Cloud-Anbieter mit derselben Schnittstelle, etwa OpenAI
 (`https://api.openai.com/v1`) oder OpenRouter (`https://openrouter.ai/api/v1`); es ändert sich nur
-die Konfiguration. **Die Stimme verlässt dann das Haus.** Gesprochene Sprache ist ein biometrienahes
+die Angaben unter Modelle → Spracheingabe. **Die Stimme verlässt dann das Haus.** Gesprochene Sprache ist ein biometrienahes
 Datum und enthält oft Namen und Vorgänge Dritter; eine solche Anbindung braucht eine eigene
 datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Oberfläche weist nicht
 darauf hin, wohin die Aufnahme geht.
@@ -689,7 +718,7 @@ und im Protokoll des Backends.
 | Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)) |
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |
 | Reranking „nicht verfügbar" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking |
-| Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
+| Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Zustand unter Modelle → Spracheingabe oder Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
 | „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
@@ -697,5 +726,5 @@ und im Protokoll des Backends.
 
 ## Weiterführende Kapitel
 
-- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`-, `OPAA_RERANK_*`- und `OPAA_TRANSCRIPTION_*`-Variablen
+- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`-Variablen und die Lastgrenzen `OPAA_RERANK_*` und `OPAA_TRANSCRIPTION_*`
 - [Authentifizierung](authentifizierung.md)

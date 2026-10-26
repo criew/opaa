@@ -133,9 +133,9 @@ der lesenden Klasse als `sourceType`. Der Standardwert ist der aus dem Basisdoku
 Jeder Schlüssel ist eingeordnet, an der Komponente oder pauschal am Typ:
 
 ```java
-@NoDataImpact("credentials, timeouts and probing of the rerank role")
-@ConfigurationProperties(prefix = "opaa.rerank")
-public record RerankProperties(@DataImpact boolean enabled, @DataImpact String baseUrl, ...)
+@NoDataImpact("connection details and failure policy of the scanner")
+@ConfigurationProperties(prefix = "opaa.malware-scan")
+public record MalwareScanProperties(@DataImpact boolean enabled, @DataImpact String host, ...)
 ```
 
 **`@DataImpact`**, wenn der Standardwert bestimmt, was über Personen anfällt, wie lange es bleibt, wer es sieht, was
@@ -151,17 +151,18 @@ Markierung an eine andere lesende Klasse legen.
 
 Ein datenwirksamer Schlüssel steht unter `settings`, in der Datei des Bereichs, auf den er wirkt, sonst in
 `configuration.yaml`. Dort stehen auch die Standardmodelle: Modell und Adresse jeder Modellrolle
-(`spring.ai.openai.*.model`, `*.base-url`, `opaa.rerank.*`, `opaa.transcription.*`).
+(`spring.ai.openai.*.model`, `*.base-url`; die Rollen aus der Datenbank als `source: DATABASE`, etwa
+`rerank_model.base_url`).
 
 ```yaml
 settings:
-  - key: opaa.rerank.enabled
+  - key: opaa.malware-scan.enabled
     source: PROPERTY
     defaultValue: "false"
-    effect: Ob die Rerank-Rolle Suchtreffer samt Frage an ein Rerank-Modell sendet
+    effect: Ob jede Datei vor der Aufnahme in eine Bibliothek an den Virenscanner geht
     bearings: [DATA_FLOW]
     helm:
-      values: rerank.enabled
+      values: malwareScan.enabled
       defaultValue: "false"
 ```
 

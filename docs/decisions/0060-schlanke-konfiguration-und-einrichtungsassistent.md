@@ -167,7 +167,9 @@ eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
   brauchen die Antwortdatei.
 - Wer das Installations-Token aus dem Log liest, kann die Installation abschließen; Log-Zugriff ist
   damit so schutzwürdig wie heute beim Einmalpasswort.
-- Rerank- und Transkriptionsmodell brauchen eine Verwaltungsoberfläche, die es bisher nicht gibt.
+- Rerank- und Transkriptionsmodell pflegt die Systemverwaltung in eigenen Reitern der Modellverwaltung.
+  Ihre früheren Variablen übernimmt eine Installation von davor nicht (Entscheidung 1); der Start und
+  der Reiter der Rolle nennen sie, solange sie gesetzt sind.
 
 ## Verworfene Alternativen
 

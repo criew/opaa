@@ -282,8 +282,8 @@ Abgelehnt statt stillschweigend entfernt: Wer Anmeldedaten einträgt, will, dass
 Ein stilles Entfernen nähme diese Absicht wortlos zurück und hinterließe einen Endpunkt, der ohne
 erkennbaren Grund mit „nicht authentifiziert" antwortet. Die Ablehnung sagt es stattdessen — und
 wiederholt den beanstandeten Anteil dabei nicht, weil die Fehlermeldung selbst wieder in Antwort und
-Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld (Chat-Rolle) bzw. in
-`OPAA_RERANK_API_KEY` (Rerank-Rolle); er wird als `Authorization`-Kopfzeile gesendet.
+Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld der Modellverwaltung (Chat-, Rerank- und
+Transkriptionsrolle); er wird als `Authorization`-Kopfzeile gesendet.
 
 Die Prüfung greift **beim Schreiben** — beim Anlegen und Ändern eines Modells, beim Verbindungstest,
 bei der einmaligen Übernahme aus der Umgebungskonfiguration und beim Start für die
