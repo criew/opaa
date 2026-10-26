@@ -14,8 +14,8 @@ import io.opaa.auth.AccountUsability.State;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.connection.token.ConnectionLifecycleProperties;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.TestLifecycleSettings;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -45,7 +45,7 @@ class ConnectionLifecycleReconcilerTest {
           mock(ConnectionSecrets.class),
           users,
           usability,
-          ConnectionLifecycleProperties.defaults(),
+          TestLifecycleSettings.factoryDefaults(),
           mock(PlatformTransactionManager.class),
           Clock.systemUTC());
 

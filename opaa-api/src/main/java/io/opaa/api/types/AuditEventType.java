@@ -423,6 +423,12 @@ public enum AuditEventType {
    * before/after carry the proxy address and the exclusion list.
    */
   OUTBOUND_PROXY_CHANGED,
+  /**
+   * The system administration set one threshold or period of the connections, or returned it to the
+   * factory default; before/after carry the setting, its value in force (settingValue) and whether
+   * it is set.
+   */
+  CONNECTION_LIFECYCLE_SETTING_CHANGED,
 
   // Lokale Konten (ADR-0033, Entscheidung 13)
   /**

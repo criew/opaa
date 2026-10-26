@@ -1,8 +1,8 @@
 package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.connection.token.ConnectionSecrets;
-import io.opaa.connection.token.PrivateLibraryDeletionPeriod;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
@@ -15,6 +15,7 @@ import io.opaa.indexing.spi.SourceConnectionBlockedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -97,7 +98,7 @@ public class SourceBlocks {
   /** Looked up per call: the accounts above this package answer it. */
   private final ObjectProvider<DeactivationStarts> deactivations;
 
-  private final PrivateLibraryDeletionPeriod deletionPeriod;
+  private final ConnectionLifecycleSettings deletionPeriod;
   private final Clock clock;
 
   /** Without the deletion date: a deactivated owner's block names no day. */
@@ -125,7 +126,7 @@ public class SourceBlocks {
       ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors,
       ObjectProvider<DeactivationStarts> deactivations,
-      PrivateLibraryDeletionPeriod deletionPeriod,
+      ConnectionLifecycleSettings deletionPeriod,
       Clock clock) {
     this.deactivations = deactivations;
     this.deletionPeriod = deletionPeriod;
@@ -329,10 +330,16 @@ public class SourceBlocks {
     Map<UUID, SourceBlock> blocks = new HashMap<>();
     List<Facts> all = factsOf(libraries, considered);
     Map<UUID, Instant> starts = deactivationStartsOf(all, considered);
+    // read once per call, not per library; while the erasure pauses no day is named, it could lie
+    // in the past already (ADR-0060, Entscheidung 13)
+    Duration period =
+        starts.isEmpty() || !deletionPeriod.deletionPauses().isEmpty()
+            ? null
+            : deletionPeriod.privateLibraryDeletionPeriod();
     for (Facts facts : all) {
       facts
           .firstBlock(considered)
-          .map(block -> dated(block, facts, starts))
+          .map(block -> dated(block, facts, starts, period))
           .ifPresent(block -> blocks.put(facts.library().getId(), block));
     }
     return blocks;
@@ -355,15 +362,16 @@ public class SourceBlocks {
   }
 
   /** A deactivated owner's block with the day its content is erased from, where it is known. */
-  private SourceBlock dated(SourceBlock block, Facts facts, Map<UUID, Instant> starts) {
+  private SourceBlock dated(
+      SourceBlock block, Facts facts, Map<UUID, Instant> starts, Duration period) {
     if (block.reason() != Reason.OWNER_DEACTIVATED
         || !(facts.secretOwner() instanceof PersonOwned person)
+        || period == null
         || !starts.containsKey(person.userId())) {
       return block;
     }
     LocalDate deletedOn =
-        LocalDate.ofInstant(
-            starts.get(person.userId()).plus(deletionPeriod.period()), clock.getZone());
+        LocalDate.ofInstant(starts.get(person.userId()).plus(period), clock.getZone());
     return secretBlock(block.reason(), facts.profile(), person, deletedOn);
   }
 

@@ -4,6 +4,7 @@ export {
   ConnectAccountError,
 } from './api/connectedAccountApi'
 export { default as ConnectedAccountsSection } from './components/ConnectedAccountsSection'
+export { default as ConnectionLifecycleSection } from './components/ConnectionLifecycleSection'
 export { AUTH_METHOD_LABELS } from './components/connectionProfileLabels'
 export { default as ConnectionProfilesTab } from './components/ConnectionProfilesTab'
 export { default as ConnectorTypesTab } from './components/ConnectorTypesTab'

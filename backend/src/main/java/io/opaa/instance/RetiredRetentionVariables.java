@@ -26,6 +26,8 @@ public class RetiredRetentionVariables implements SmartLifecycle {
   public static final String LOCKED_ENABLED = "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED";
   public static final String LOCKED_DELETE = "OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS";
   public static final String INCIDENT_SCOPE_YEARS = "OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS";
+  public static final String PRIVATE_LIBRARY_DELETION =
+      "OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS";
 
   /** Every retired variable with the property it was bound to, in a fixed order. */
   public static final Map<String, String> PROPERTIES = properties();
@@ -38,6 +40,11 @@ public class RetiredRetentionVariables implements SmartLifecycle {
 
     /** The error a paused run logs, naming what to do; values are periods, never personal. */
     public String error(String run) {
+      return error(run, "Administration > Datenschutz");
+    }
+
+    /** {@link #error(String)} for a period the administration sets under {@code place}. */
+    public String error(String run, String place) {
       return run
           + ": deletion paused, "
           + variable
@@ -45,7 +52,9 @@ public class RetiredRetentionVariables implements SmartLifecycle {
           + retiredValue
           + " on a live instance but is no longer read and "
           + effectiveValue
-          + " applies; set a value under Administration > Datenschutz or remove the variable";
+          + " applies; set a value under "
+          + place
+          + " or remove the variable";
     }
   }
 
@@ -156,6 +165,7 @@ public class RetiredRetentionVariables implements SmartLifecycle {
     properties.put(LOCKED_ENABLED, "opaa.chat.locked-account-cleanup.enabled");
     properties.put(LOCKED_DELETE, "opaa.chat.locked-account-cleanup.delete-after-days");
     properties.put(INCIDENT_SCOPE_YEARS, "opaa.audit.incident-scope-retention-years");
+    properties.put(PRIVATE_LIBRARY_DELETION, "opaa.connection.private-library-deletion-days");
     return Collections.unmodifiableMap(properties);
   }
 

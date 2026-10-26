@@ -16,8 +16,9 @@ Verfügung.
 
 Die Datei ist JSON, mit Formatname, Formatversion, Zeitpunkt des Exports und je Bereich dessen
 wirksame Werte. Ein leerer Wert (`null`) hat je Angabe seine eigene Bedeutung: Beim Branding gilt
-der OPAA-Standard, beim Speicherkontingent, beim Vollabgleich-Rhythmus und bei den Fristen der Chats
-und der anlassbezogenen Klärungen die Werkseinstellung, bei einer E-Mail-Vorlage der
+der OPAA-Standard, beim Speicherkontingent, beim Vollabgleich-Rhythmus, bei den Fristen der Chats
+und der anlassbezogenen Klärungen und bei den Schwellen und Fristen der Verbindungen die
+Werkseinstellung, bei einer E-Mail-Vorlage der
 ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 
 | Bereich | Inhalt |
@@ -34,6 +35,7 @@ ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 | Ausgangsproxy | Proxy-Adresse und Ausnahmeliste |
 | Speicherkontingent privater Bibliotheken | der gesetzte Wert oder `null` für die Werkseinstellung |
 | Vollabgleich-Rhythmus | je Quellart die gesetzten Tage oder `null` für die Werkseinstellung |
+| Schwellen und Fristen der Verbindungen | Inaktivitätsschwelle, Löschfrist privater Bibliotheken und Warnschwelle abgelaufener Konten, je der gesetzte Wert oder `null` für die Werkseinstellung |
 | Externe KI-Werkzeuge | Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle, Einleitungstext |
 
 **Nicht in der Datei** stehen Passwörter und Schlüssel, auch nicht, ob einer hinterlegt ist, und
@@ -51,9 +53,10 @@ umlenken, was die Installation erreicht oder zulässt, oder Nachweise früher l�
 „Sicherheitsrelevant“ markiert: Mailserver und Absender, E-Mail-Vorlagen (ihre Links erreichen
 Eingeladene), Ausgangsproxy, Selbstregistrierung, Passwortlänge und Gültigkeit der Links, externe
 KI-Werkzeuge mit Netzbereichen, Ablauf und Kontingent, erlaubte Linkziele, jede
-Aufbewahrungs- und Löschfrist, auch die der Chats und der anlassbezogenen Klärungen, und der
-Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelöschtes noch auffindbar bleibt). Erst
-**Übernehmen** ändert die Installation, nach einer Rückfrage.
+Aufbewahrungs- und Löschfrist, auch die der Chats, der anlassbezogenen Klärungen und der privaten
+Bibliotheken, die Inaktivitätsschwelle der Verbindungen (sie hält Zugangsdaten abwesender Personen
+nutzbar) und der Vollabgleich-Rhythmus (er bestimmt, wie lange in der Quelle Gelöschtes noch
+auffindbar bleibt). Erst **Übernehmen** ändert die Installation, nach einer Rückfrage.
 
 - **Geprüft wird wie in der Verwaltung.** Jeder Wert geht durch denselben Weg wie eine Änderung im
   Formular, mit denselben Grenzen — Pflichtangaben, Längen, Anzahl der Einträge —, auch denen des

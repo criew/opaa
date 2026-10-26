@@ -2,6 +2,7 @@ package io.opaa.connection.profile;
 
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
+import io.opaa.connection.token.TestLifecycleSettings;
 import io.opaa.permission.GroupSizeProperties;
 import java.util.Map;
 
@@ -16,7 +17,7 @@ public final class TestPersonCounts {
 
   private static final PersonNumbers NUMBERS =
       new PersonNumbers(
-          NO_PERSONS, new GroupSizeProperties(5), ExpiredConnectionWarningProperties.defaults());
+          NO_PERSONS, new GroupSizeProperties(5), TestLifecycleSettings.factoryDefaults());
 
   private TestPersonCounts() {}
 
@@ -28,7 +29,7 @@ public final class TestPersonCounts {
   /** The masking over {@code persons}. */
   public static PersonNumbers numbersOver(PersonConnections persons) {
     return new PersonNumbers(
-        persons, new GroupSizeProperties(5), ExpiredConnectionWarningProperties.defaults());
+        persons, new GroupSizeProperties(5), TestLifecycleSettings.factoryDefaults());
   }
 
   public static ProfileCounts of(long connected, long expired) {

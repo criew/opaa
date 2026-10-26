@@ -1,6 +1,7 @@
 package io.opaa.connection.profile;
 
 import io.opaa.connection.profile.PersonConnections.StateCounts;
+import io.opaa.connection.token.ConnectionLifecycleSettings;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.PersonThreshold;
 import java.util.Collection;
@@ -8,8 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -25,36 +24,34 @@ import org.springframework.stereotype.Component;
 @Component
 public class PersonNumbers {
 
-  private static final Logger log = LoggerFactory.getLogger(PersonNumbers.class);
-
   private final PersonConnections persons;
   private final PersonThreshold threshold;
   private final int minimum;
-  private final int warningThreshold;
+  private final ConnectionLifecycleSettings settings;
 
   PersonNumbers(
       PersonConnections persons,
       GroupSizeProperties groupSize,
-      ExpiredConnectionWarningProperties warning) {
+      ConnectionLifecycleSettings settings) {
     this.persons = persons;
     this.threshold = new PersonThreshold(groupSize);
     this.minimum = threshold.minimum();
-    this.warningThreshold = warning.warningThreshold();
-    if (warningThreshold < minimum) {
-      log.warn(
-          "Expired-connections warning threshold {} is below the minimum group size {}: every"
-              + " connection profile for persons will show the warning",
-          warningThreshold,
-          minimum);
-    }
+    this.settings = settings;
+  }
+
+  /** The minimum group size the numbers are masked under. */
+  public int minimum() {
+    return minimum;
   }
 
   /** The masked numbers of each of {@code profileIds}, with one query for all. */
   public Map<UUID, ProfileCounts> countsOf(Collection<UUID> profileIds) {
     Map<UUID, StateCounts> raw = profileIds.isEmpty() ? Map.of() : persons.countsAmong(profileIds);
     Map<UUID, ProfileCounts> masked = new HashMap<>();
+    int warningThreshold = settings.expiredConnectionWarningThreshold();
     for (UUID profileId : profileIds) {
-      masked.put(profileId, mask(raw.getOrDefault(profileId, new StateCounts(0, 0))));
+      masked.put(
+          profileId, mask(raw.getOrDefault(profileId, new StateCounts(0, 0)), warningThreshold));
     }
     return masked;
   }
@@ -88,30 +85,38 @@ public class PersonNumbers {
   }
 
   ProfileCounts mask(StateCounts counts) {
+    return mask(counts, settings.expiredConnectionWarningThreshold());
+  }
+
+  /** {@code counts} masked, warning from {@code warningThreshold} admitted expired on. */
+  private ProfileCounts mask(StateCounts counts, int warningThreshold) {
     long connected = counts.connected();
     long expired = counts.expired();
     long total = connected + expired;
     if (!threshold.discloses(total)) {
       return new ProfileCounts(
-          PersonCount.fewerThan(minimum), PersonCount.fewerThan(minimum), admits(minimum - 1));
+          PersonCount.fewerThan(minimum),
+          PersonCount.fewerThan(minimum),
+          admits(minimum - 1, warningThreshold));
     }
     PersonCount told = PersonCount.exact(total);
     if (threshold.disclosesPart(expired, connected)) {
-      return new ProfileCounts(told, PersonCount.exact(expired), admits(expired));
+      return new ProfileCounts(told, PersonCount.exact(expired), admits(expired, warningThreshold));
     }
     if (total < 2L * minimum - 1) {
       // a few expired and a few connected overlap on this total, so any answer would split them
-      return new ProfileCounts(told, null, admits(total));
+      return new ProfileCounts(told, null, admits(total, warningThreshold));
     }
     if (expired < minimum) {
-      return new ProfileCounts(told, PersonCount.fewerThan(minimum), admits(minimum - 1));
+      return new ProfileCounts(
+          told, PersonCount.fewerThan(minimum), admits(minimum - 1, warningThreshold));
     }
     // untold: the connected are 0 to N-1, so the answer admits all of the total expired
-    return new ProfileCounts(told, null, admits(total));
+    return new ProfileCounts(told, null, admits(total, warningThreshold));
   }
 
   /** Whether an answer admitting up to {@code mostExpired} expired warns. */
-  private boolean admits(long mostExpired) {
+  private static boolean admits(long mostExpired, int warningThreshold) {
     return mostExpired >= warningThreshold;
   }
 

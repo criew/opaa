@@ -5,7 +5,7 @@ import { useRetentionSetting } from '../hooks/useRetentionSetting'
 import RetentionForm from './RetentionForm'
 import { periodLabel, type RetentionField, type RetentionValues } from '../utils/retentionPeriod'
 import RetentionLoadState from './RetentionLoadState'
-import RetentionPauseNotice from './RetentionPauseNotice'
+import RetentionPauseNotice from '@/shared/ui/feedback/RetentionPauseNotice'
 
 const FIELDS: RetentionField[] = [
   { key: 'archiveAfterDays', label: 'Archivieren nach (Tage)', unit: 'days', min: 90, max: 3650 },

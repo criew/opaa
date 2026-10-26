@@ -12,6 +12,11 @@ tags:
     description: >
       The house-wide outbound proxy every HTTP(S) connection of the backend goes through, and its
       exclusion list.
+  - name: connection-lifecycle
+    description: >
+      The installation-wide thresholds and periods of the connections: when a person's connections
+      rest, when the private libraries of a deactivated person are erased and from how many expired
+      accounts a profile warns.
 paths:
   /api/v1/me/connected-accounts:
     get:
@@ -659,6 +664,61 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/connection-lifecycle-settings:
+    get:
+      operationId: getConnectionLifecycleSettings
+      tags: [connection-lifecycle]
+      summary: Read the thresholds and periods of the connections (system admin only)
+      description: >
+        Every setting with the value in force, its factory default, its bounds and whether the
+        administration set its own value. Every run and every request reads the value from the
+        database, so a change holds on every instance from the next decision on.
+      responses:
+        "200":
+          description: The settings in force
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLifecycleSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/connection-lifecycle-settings/{setting}:
+    parameters:
+      - name: setting
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/ConnectionLifecycleSettingKey"
+    put:
+      operationId: updateConnectionLifecycleSetting
+      tags: [connection-lifecycle]
+      summary: Set one threshold or period of the connections (system admin only)
+      description: >
+        value null returns to the factory default. Bounds: INACTIVITY_THRESHOLD_DAYS 30 to 365,
+        PRIVATE_LIBRARY_DELETION_DAYS 1 to 90, EXPIRED_CONNECTION_WARNING_THRESHOLD 1 to 1000; a
+        value outside answers 400. Audited as CONNECTION_LIFECYCLE_SETTING_CHANGED with before and
+        after; a value equal to the one in force writes nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionLifecycleSettingRequest"
+      responses:
+        "200":
+          description: The setting in force after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionLifecycleSettingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/admin/mcp-servers:
     get:
@@ -2139,6 +2199,77 @@ components:
           format: date-time
           nullable: true
           description: When the settings were last changed; null while never set.
+
+    ConnectionLifecycleSettingKey:
+      type: string
+      description: >
+        INACTIVITY_THRESHOLD_DAYS - days without a sign-in after which a person's connections rest;
+        PRIVATE_LIBRARY_DELETION_DAYS - days the private libraries of a deactivated person are kept;
+        EXPIRED_CONNECTION_WARNING_THRESHOLD - expired connected accounts on one profile from which
+        the overview of the administration warns.
+      enum: [INACTIVITY_THRESHOLD_DAYS, PRIVATE_LIBRARY_DELETION_DAYS, EXPIRED_CONNECTION_WARNING_THRESHOLD]
+
+    ConnectionLifecycleSettingRequest:
+      type: object
+      properties:
+        value:
+          type: integer
+          format: int32
+          nullable: true
+          description: The new value; null (or absent) returns to the factory default.
+
+    ConnectionLifecycleSettingResponse:
+      type: object
+      required: [setting, value, defaultValue, minValue, maxValue, overridden, pausedBy]
+      properties:
+        setting:
+          $ref: "#/components/schemas/ConnectionLifecycleSettingKey"
+        value:
+          type: integer
+          format: int32
+          description: The value in force.
+        defaultValue:
+          type: integer
+          format: int32
+          description: The factory default that applies while the administration has set no value.
+        minValue:
+          type: integer
+          format: int32
+        maxValue:
+          type: integer
+          format: int32
+        overridden:
+          type: boolean
+          description: Whether the administration set its own value.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the administration last set its own value; null while the default applies.
+        pausedBy:
+          type: array
+          description: >-
+            Only for PRIVATE_LIBRARY_DELETION_DAYS: the retired variables a live instance still sets
+            to a longer period while the administration stored none (ADR-0060, Entscheidung 13);
+            while there is one, the erasure after the deletion period pauses. Empty otherwise.
+          items:
+            $ref: "#/components/schemas/RetentionPause"
+
+    ConnectionLifecycleSettingsResponse:
+      type: object
+      required: [settings, minimumGroupSize]
+      properties:
+        settings:
+          type: array
+          description: One entry per setting, in a fixed order.
+          items:
+            $ref: "#/components/schemas/ConnectionLifecycleSettingResponse"
+        minimumGroupSize:
+          type: integer
+          format: int32
+          description: >
+            The minimum group size of the operation; a warning threshold below it shows the warning
+            on every profile for persons.
 
     ConnectorTypeStateResponse:
       type: object
