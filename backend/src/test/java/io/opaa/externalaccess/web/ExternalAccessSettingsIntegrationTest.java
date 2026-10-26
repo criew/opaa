@@ -109,10 +109,12 @@ class ExternalAccessSettingsIntegrationTest {
     assertThat(reminderLead.days()).isEqualTo(30);
     List<Map<String, Object>> events = settingsEvents();
     assertThat(events).hasSize(1);
-    assertThat(String.valueOf(events.getFirst().get("before")))
-        .isEqualTo("{\"releaseReminderLeadDays\":14,\"releaseReminderLeadDaysOverridden\":false}");
-    assertThat(String.valueOf(events.getFirst().get("after")))
-        .isEqualTo("{\"releaseReminderLeadDays\":30,\"releaseReminderLeadDaysOverridden\":true}");
+    assertThat(json(events.getFirst().get("before")))
+        .isEqualTo(
+            Map.of("releaseReminderLeadDays", 14, "releaseReminderLeadDaysOverridden", false));
+    assertThat(json(events.getFirst().get("after")))
+        .isEqualTo(
+            Map.of("releaseReminderLeadDays", 30, "releaseReminderLeadDaysOverridden", true));
 
     putLead(30)
         .andExpect(status().isOk())
@@ -374,6 +376,15 @@ class ExternalAccessSettingsIntegrationTest {
                     + ",\"releaseReminderLeadDays\":"
                     + days
                     + "}"));
+  }
+
+  /** An audit column as a map: the database keeps no key order. */
+  private static Map<String, Object> json(Object column) {
+    return tools.jackson.databind.json.JsonMapper.builder()
+        .build()
+        .readValue(
+            String.valueOf(column),
+            new tools.jackson.core.type.TypeReference<Map<String, Object>>() {});
   }
 
   private List<Map<String, Object>> settingsEvents() {
