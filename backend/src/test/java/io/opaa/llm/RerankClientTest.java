@@ -300,6 +300,55 @@ class RerankClientTest {
   }
 
   /**
+   * A probe - the administration's test of a draft endpoint among them - neither teaches the
+   * spelling to the configured endpoint nor gets more than its budget across both spellings.
+   */
+  @Test
+  void aProbeLearnsNoSpellingAndSharesItsBudgetBetweenBothAttempts() {
+    List<String> bodies = Collections.synchronizedList(new ArrayList<>());
+    server.createContext(
+        "/v1/rerank",
+        exchange -> {
+          String body =
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+          bodies.add(body);
+          if (!body.contains("\"texts\"")) {
+            sleepQuietly(150);
+            exchange.sendResponseHeaders(422, -1);
+            exchange.close();
+            return;
+          }
+          sleepQuietly(150);
+          byte[] response = "[{\"index\":0,\"score\":0.5}]".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, response.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(response);
+          }
+        });
+
+    Call tight =
+        new Call(new RerankEndpoint(true, baseUrl, "bge-reranker", ""), Duration.ofMillis(250));
+    RerankClient.ProbeFailure failure = probe(tight);
+    assertThat(failure).isNotNull();
+    assertThat(failure.timedOut()).isTrue();
+
+    assertThat(probe(properties(""))).isNull();
+    int afterProbes = bodies.size();
+    assertThat(rerank(properties(""), "Frage", List.of("a"))).hasSize(1);
+    assertThat(bodies.subList(afterProbes, bodies.size()))
+        .as("the real call starts with the default spelling again")
+        .hasSize(2);
+  }
+
+  private static void sleepQuietly(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
    * A rerank endpoint may be a cloud provider - a trust boundary. An answer larger than this client
    * reads must degrade the query, not the process: the call sits on the request path of a user's
    * question, where an unbounded read would tie up a request thread and the heap.

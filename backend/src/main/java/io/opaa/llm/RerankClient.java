@@ -177,19 +177,41 @@ public class RerankClient {
    */
   public List<ScoredCandidate> rerank(
       RerankEndpoint endpoint, Duration timeout, String query, List<String> documents) {
+    return rerank(endpoint, timeout, query, documents, true);
+  }
+
+  /**
+   * Both spellings share {@code timeout}: the second request gets what the first left. Only a real
+   * call remembers the spelling, so a probe of a draft endpoint cannot teach the configured one.
+   */
+  private List<ScoredCandidate> rerank(
+      RerankEndpoint endpoint,
+      Duration timeout,
+      String query,
+      List<String> documents,
+      boolean learnDialect) {
     if (documents.isEmpty()) {
       return List.of();
     }
+    long startNanos = System.nanoTime();
     Dialect known = dialect.get();
     Dialect first = known == null ? Dialect.COHERE : known;
     try {
       List<ScoredCandidate> scored = send(endpoint, timeout, query, documents, first);
-      dialect.set(first);
+      if (learnDialect) {
+        dialect.set(first);
+      }
       return scored;
     } catch (SchemaMismatchException e) {
+      Duration remaining = timeout.minus(Duration.ofNanos(System.nanoTime() - startNanos));
+      if (remaining.isNegative() || remaining.isZero()) {
+        throw new RerankTimeoutException("no time left for the second request spelling", e);
+      }
       Dialect fallback = first.other();
-      List<ScoredCandidate> scored = send(endpoint, timeout, query, documents, fallback);
-      dialect.set(fallback);
+      List<ScoredCandidate> scored = send(endpoint, remaining, query, documents, fallback);
+      if (learnDialect) {
+        dialect.set(fallback);
+      }
       return scored;
     }
   }
@@ -254,7 +276,7 @@ public class RerankClient {
    */
   public ProbeFailure probe(RerankEndpoint endpoint, Duration timeout) {
     try {
-      rerank(endpoint, timeout, "Ping", List.of("Ping"));
+      rerank(endpoint, timeout, "Ping", List.of("Ping"), false);
       return null;
     } catch (RerankTimeoutException e) {
       return new ProbeFailure(e.getMessage(), true);

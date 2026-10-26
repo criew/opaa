@@ -26,8 +26,11 @@ import java.util.Objects;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * What the system administration does with the rerank and transcription model roles (ADR-0060,
@@ -95,6 +98,8 @@ public class ModelRoleAdministration {
   private final AuditEventRecorder auditEventRecorder;
   private final Environment environment;
   private final ApplicationEventPublisher events;
+  private final TransactionTemplate transactions;
+  private final JdbcTemplate jdbc;
   private final Clock clock;
 
   ModelRoleAdministration(
@@ -111,6 +116,8 @@ public class ModelRoleAdministration {
       AuditEventRecorder auditEventRecorder,
       Environment environment,
       ApplicationEventPublisher events,
+      PlatformTransactionManager transactionManager,
+      JdbcTemplate jdbc,
       Clock clock) {
     this.rerankRows = rerankRows;
     this.transcriptionRows = transcriptionRows;
@@ -125,6 +132,8 @@ public class ModelRoleAdministration {
     this.auditEventRecorder = auditEventRecorder;
     this.environment = environment;
     this.events = events;
+    this.transactions = new TransactionTemplate(transactionManager);
+    this.jdbc = jdbc;
     this.clock = clock;
   }
 
@@ -143,11 +152,11 @@ public class ModelRoleAdministration {
 
   /**
    * Stores the rerank role. {@code apiKey} {@code null} keeps the stored key for the same endpoint,
-   * blank removes it.
+   * blank removes it. The address is checked before the transaction opens, since the check resolves
+   * names; writers of the row are serialized by a table lock, so two first saves cannot collide.
    *
    * @throws FieldValidationException naming every violated field under {@code rerank.}
    */
-  @Transactional
   public RerankModelView changeRerank(
       UUID organizationId,
       UUID actorUserId,
@@ -161,6 +170,18 @@ public class ModelRoleAdministration {
     ModelEndpointRules.endpointErrors(RERANK, address, identifier, apiKey, enabled, errors);
     blockedAddressError(RERANK, address, errors);
     requireNoErrors(errors);
+    return transactions.execute(
+        status -> storeRerank(organizationId, actorUserId, enabled, address, identifier, apiKey));
+  }
+
+  private RerankModelView storeRerank(
+      UUID organizationId,
+      UUID actorUserId,
+      boolean enabled,
+      String address,
+      String identifier,
+      String apiKey) {
+    jdbc.execute("LOCK TABLE rerank_model IN SHARE ROW EXCLUSIVE MODE");
     RerankModelSettings existing = rerankRows.findStored().orElse(null);
     RerankModelSettings row =
         existing == null ? new RerankModelSettings(clock.instant()) : existing;
@@ -193,12 +214,11 @@ public class ModelRoleAdministration {
   }
 
   /**
-   * Stores the transcription role, as {@link #changeRerank}; {@code language} blank lets the model
-   * detect the language.
+   * Stores the transcription role, as {@link #changeRerank}. {@code language} {@code null} keeps
+   * the stored language, blank lets the model detect it.
    *
    * @throws FieldValidationException naming every violated field under {@code transcription.}
    */
-  @Transactional
   public TranscriptionModelView changeTranscription(
       UUID organizationId,
       UUID actorUserId,
@@ -209,17 +229,10 @@ public class ModelRoleAdministration {
       String language) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
-    String lang = trimmed(language).toLowerCase(Locale.ROOT);
-    TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
-    boolean stored = existing != null;
-    TranscriptionModelSettings row =
-        stored ? existing : new TranscriptionModelSettings(clock.instant());
+    String lang = language == null ? null : language.strip().toLowerCase(Locale.ROOT);
     List<FieldError> errors = new ArrayList<>();
-    if (enabled && !speechInputAvailable && !(stored && row.isEnabled())) {
-      errors.add(new FieldError(TRANSCRIPTION + ".enabled", "BLOCKED", SPEECH_INPUT_OFF));
-    }
     ModelEndpointRules.endpointErrors(TRANSCRIPTION, address, identifier, apiKey, enabled, errors);
-    if (!lang.isEmpty() && !lang.matches("[a-z]{2}")) {
+    if (lang != null && !lang.isEmpty() && !lang.matches("[a-z]{2}")) {
       errors.add(
           new FieldError(
               TRANSCRIPTION + ".language",
@@ -229,16 +242,39 @@ public class ModelRoleAdministration {
     }
     blockedAddressError(TRANSCRIPTION, address, errors);
     requireNoErrors(errors);
+    return transactions.execute(
+        status ->
+            storeTranscription(
+                organizationId, actorUserId, enabled, address, identifier, apiKey, lang));
+  }
+
+  private TranscriptionModelView storeTranscription(
+      UUID organizationId,
+      UUID actorUserId,
+      boolean enabled,
+      String address,
+      String identifier,
+      String apiKey,
+      String requestedLanguage) {
+    jdbc.execute("LOCK TABLE transcription_model IN SHARE ROW EXCLUSIVE MODE");
+    TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
+    boolean stored = existing != null;
+    TranscriptionModelSettings row =
+        stored ? existing : new TranscriptionModelSettings(clock.instant());
+    if (enabled && !speechInputAvailable && !(stored && row.isEnabled())) {
+      throw FieldValidationException.of(TRANSCRIPTION + ".enabled", "BLOCKED", SPEECH_INPUT_OFF);
+    }
+    String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
+    String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
     String previousCiphertext = row.getApiKeyCiphertext();
     String ciphertext =
         secretOf(TRANSCRIPTION, apiKey, row.getBaseUrl(), address, previousCiphertext);
-    String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
             && Objects.equals(row.getModelIdentifier(), emptyToNull(identifier))
             && Objects.equals(previousCiphertext, ciphertext)
-            && Objects.equals(storedLanguage, emptyToNull(lang));
+            && Objects.equals(storedLanguage, language);
     if (unchanged) {
       return transcriptionView(existing);
     }
@@ -248,7 +284,7 @@ public class ModelRoleAdministration {
         emptyToNull(address),
         emptyToNull(identifier),
         ciphertext,
-        emptyToNull(lang),
+        language,
         clock.instant());
     transcriptionRows.save(row);
     Map<String, Object> after = transcriptionPayload(row);

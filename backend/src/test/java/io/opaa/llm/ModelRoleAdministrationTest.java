@@ -19,7 +19,9 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The limits of the operation around the model roles (ADR-0060, Entscheidung 2): speech input
@@ -137,6 +139,8 @@ class ModelRoleAdministrationTest {
         audit,
         environment,
         mock(ApplicationEventPublisher.class),
+        mock(PlatformTransactionManager.class),
+        mock(JdbcTemplate.class),
         Clock.systemUTC());
   }
 }

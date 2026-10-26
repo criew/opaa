@@ -36,6 +36,7 @@ import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.scope.MetadataFilterExpressions;
+import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -377,6 +378,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   // Whether this run could rerank at all - a fact about the context, and the one
   // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
   @Autowired private RerankModelRole rerankModelRole;
+  @Autowired private SettingsEncryptor settingsEncryptor;
   @Autowired private ModelRoleEndpoints modelRoleEndpoints;
   // The production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
@@ -413,7 +415,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // because nothing has resolved a chat client yet (ActiveChatModelResolver builds lazily),
     // so no client can have been cached from the seeded row.
     EvalChatModel.installAsSystemwideActiveModel(jdbcTemplate, ollamaEndpoint());
-    EvalRerankModel.installIfRequested(jdbcTemplate, modelRoleEndpoints, rerankModelRole);
+    EvalRerankModel.installIfRequested(
+        jdbcTemplate, settingsEncryptor, modelRoleEndpoints, rerankModelRole);
     jdbcTemplate.update("DELETE FROM users WHERE email = 'eval-harness@example.com'");
     evalUserId = UUID.randomUUID();
     jdbcTemplate.update(

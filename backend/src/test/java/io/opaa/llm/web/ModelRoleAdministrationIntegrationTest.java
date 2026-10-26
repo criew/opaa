@@ -292,6 +292,28 @@ class ModelRoleAdministrationIntegrationTest {
         .containsEntry("language", "en")
         .containsEntry("enabled", true)
         .containsEntry("model", "whisper");
+
+    String withoutLanguage =
+        "{\"enabled\":true,\"baseUrl\":\"" + serverUrl + "/v1\",\"model\":\"whisper\"}";
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/transcription").with(devAdmin()).content(withoutLanguage))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.language").value("en"));
+    assertThat(events("TRANSCRIPTION_MODEL_CHANGED")).hasSize(1);
+
+    mockMvc
+        .perform(
+            put("/api/v1/admin/models/transcription")
+                .with(devAdmin())
+                .content(
+                    "{\"enabled\":true,\"baseUrl\":\""
+                        + serverUrl
+                        + "/v1\",\"model\":\"whisper\",\"language\":\"\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.language").value(""));
+    assertThat(json(events("TRANSCRIPTION_MODEL_CHANGED").get(1), "after"))
+        .containsEntry("language", "");
   }
 
   @Test

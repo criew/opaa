@@ -26,6 +26,9 @@ import {
 
 export type ModelRoleKind = 'rerank' | 'transcription'
 
+/** How long after a save the state is read again; the probe runs on the server meanwhile. */
+const RECHECK_DELAY_MS = 3000
+
 /** What the section shows of a stored role; the rerank role has no language. */
 type RoleSettings = Omit<
   TranscriptionModelSettingsResponse,
@@ -102,6 +105,8 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<LlmModelTestResponse | null>(null)
+  // A saved, switched-on role is probed right after the save; its state is read once more then.
+  const [checking, setChecking] = useState(false)
 
   function apply(stored: RoleSettings) {
     setSettings(stored)
@@ -126,10 +131,25 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
     }
   }, [kind])
 
-  /** Omitted keeps the stored key, empty removes it, anything else replaces it. */
+  useEffect(() => {
+    if (!checking) return
+    let current = true
+    const timer = setTimeout(() => {
+      load(kind)
+        .then((stored) => current && setSettings(stored))
+        .catch(() => undefined)
+        .finally(() => current && setChecking(false))
+    }, RECHECK_DELAY_MS)
+    return () => {
+      current = false
+      clearTimeout(timer)
+    }
+  }, [checking, kind])
+
+  /** An empty field keeps the stored key; only the remove button sends the empty text that removes it. */
   function resolveApiKey(): string | undefined {
     if (apiKeyClearRequested) return ''
-    if (apiKeyTouched) return apiKeyInput.trim()
+    if (apiKeyTouched && apiKeyInput.trim() !== '') return apiKeyInput.trim()
     return undefined
   }
 
@@ -149,6 +169,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
           ? await updateRerankModelSettings(common)
           : await updateTranscriptionModelSettings({ ...common, language: language.trim() })
       apply(saved)
+      setChecking(saved.enabled && saved.state !== 'ACTIVE')
       notify('Das Modell wurde gespeichert.', 'success')
     } catch (err) {
       setErrors(fieldErrorsOf(err))
@@ -206,7 +227,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
         </Alert>
       )}
       <Typography role="status" sx={{ fontSize: 13, mb: 2 }}>
-        Zustand: {STATE_TEXT[settings.state]}
+        Zustand: {checking ? 'Wird geprüft …' : STATE_TEXT[settings.state]}
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

@@ -777,7 +777,9 @@ components:
           type: string
           nullable: true
           maxLength: 8
-          description: Two-letter ISO-639-1 code, or empty to let the model detect the language.
+          description: >
+            Two-letter ISO-639-1 code; an empty string lets the model detect the language, omitted
+            (null) keeps the stored language.
           example: de
 
     ModelRoleTestRequest:

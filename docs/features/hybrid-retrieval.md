@@ -837,8 +837,9 @@ ausgäbe, statt sichtbar zu scheitern.
 >
 > - **Die Rerank-Rolle** (`io.opaa.llm.RerankModelRole`, `RerankProperties`, `RerankClient`) auf
 >   derselben Ebene wie Chat und Einbettung, angebunden über `POST {Basis-Adresse}/rerank`.
-> - **Der explizite Schalter** `OPAA_RERANK_ENABLED`, getrennt von `OPAA_RERANK_BASE_URL`,
->   `OPAA_RERANK_MODEL` und `OPAA_RERANK_API_KEY`. Voreinstellung: aus.
+> - **Der explizite Schalter**, getrennt von Basis-Adresse, Modell und Schlüssel. Voreinstellung:
+>   aus. Seit #3207 liegen alle vier in der Modellverwaltung (Reiter „Reranking", ADR-0060), nicht
+>   mehr in `OPAA_RERANK_*`.
 > - **Der Widerspruchszustand**: Startmeldung auf Fehler-Ebene *und* der fortlaufend abfragbare
 >   Zustand hinter `RerankRoleStatusProvider#currentStatus()` (vier Zustände: `DISABLED`,
 >   `READY`, `UNCONFIGURED`, `UNREACHABLE`). Die Administrationsseite aus
@@ -882,7 +883,7 @@ Ein Reranking, das ausbleibt, weil eine Umgebungsvariable falsch geschrieben wur
 genauso aus wie ein Reranking, das bewusst nicht gewollt ist: Die Suche antwortet, nur etwas
 schlechter. Diese Verwechselbarkeit wird konstruktiv ausgeschlossen.
 
-- **`OPAA_RERANK_ENABLED` ist ein expliziter Schalter.** Reranking aus heißt: Die Betreiberin hat es
+- **Der Schalter der Rerank-Rolle ist explizit.** Reranking aus heißt: Die Betreiberin hat es
   ausgeschaltet — nicht: eine Konfigurationszeile fehlt. Die Endpunktangaben bleiben davon getrennt;
   der Schalter drückt die Absicht aus, die Endpunktangaben das Wie.
 - **Ein Widerspruch wird beim Start gemeldet und nicht stillschweigend aufgelöst.** Ist der Schalter
@@ -895,7 +896,7 @@ schlechter. Diese Verwechselbarkeit wird konstruktiv ausgeschlossen.
 - **Auch das Erklärprotokoll unterscheidet die beiden Fälle.** Der Rollenzustand reist als
   `RerankAvailability` (abgeschaltet / an-aber-nicht-nutzbar / nutzbar) im `RetrievalContext` mit,
   nicht als Ja/Nein. Die Rerank-Stufe meldet `DISABLED` nur für eine Betreiberentscheidung
-  (`OPAA_RERANK_ENABLED=false` oder `rerank-candidate-count=0`) und `UNAVAILABLE` für die Störung —
+  (Schalter unter Modelle → Reranking aus oder `rerank-candidate-count=0`) und `UNAVAILABLE` für die Störung —
   sonst stünde genau die Verwechselbarkeit, die dieser Abschnitt ausschließt, im Diagnosewerkzeug.
   Ein leerer Kandidatensatz bekommt eine eigene Notiz, statt fälschlich die Rolle zu beschuldigen.
 - **Das Diagnosewerkzeug liest denselben Rollenzustand wie der Chatpfad.** Es erklärt sonst eine
@@ -932,7 +933,7 @@ Entscheidung fällt gegen die Verwaltungs-Evaldomäne und gegen das gemessene La
 > stehen — die Anforderungen unten gelten unverändert, sobald die Frage wieder aufgenommen wird.
 >
 > **Folge:** Es gibt keine Aktivierungsempfehlung, und es wird keine ausgesprochen. Reranking bleibt
-> voreingestellt **aus** (`OPAA_RERANK_ENABLED` steht auf `false`); ohne ausdrückliches Einschalten
+> ab Werk **aus** (Schalter unter Modelle → Reranking); ohne ausdrückliches Einschalten
 > durch einen Betreiber ändert sich am Verhalten der Suche nichts.
 >
 > **Was aus [#1050](https://github.com/criew/opaa/issues/1050) bereits bekannt ist:** Die Qualität
@@ -1212,19 +1213,17 @@ den seltenen begründeten Einzelfall — aber sie erscheinen **in keiner Adminis
 keiner Beraterdokumentation**. Ihre Voreinstellung ist gemessen, und das Messergebnis steht in der
 Spezifikation, nicht der Regler in der Oberfläche.
 
-**Ebene 2 — Installationsentscheidungen.** Umgebungsvariablen bzw. Compose-Konfiguration, gesetzt beim
-Aufsetzen: die Modellrollen einschließlich der neuen Rerank-Rolle (Endpunkt, Modellkennung, Schlüssel)
-und die Sprache der Analysekette. Das Ziel ist eine **Handvoll Zeilen**, und der Weg dorthin sind
+**Ebene 2 — Installationsentscheidungen.** Die Modellrollen einschließlich der Rerank-Rolle (Endpunkt,
+Modellkennung, Schlüssel), seit ADR-0060 in der Modellverwaltung statt in Umgebungsvariablen, und die
+Sprache der Analysekette. Das Ziel ist eine **Handvoll Zeilen**, und der Weg dorthin sind
 dokumentierte Profile statt einer Parameterliste:
 
 ```
 # Profil „ohne GPU" — Hybrid-Suche, kein Reranking
-OPAA_RERANK_ENABLED=false      # ausdrücklich aus, nicht bloß unkonfiguriert
+Modelle → Reranking: Schalter aus (ausdrücklich, nicht bloß unkonfiguriert)
 
 # Profil „mit GPU" — Hybrid-Suche mit Reranking
-OPAA_RERANK_ENABLED=true
-OPAA_RERANK_BASE_URL=http://ollama:11434/v1
-OPAA_RERANK_MODEL=bge-reranker-v2-m3
+Modelle → Reranking: Schalter an, Basis-Adresse http://reranker:80, Modell BAAI/bge-reranker-v2-m3
 ```
 
 Die Profile sind der eigentliche Liefergegenstand dieser Ebene. Eine Betreiberin soll entscheiden „wir
@@ -1254,7 +1253,7 @@ hier nur benannt, damit die Ebenenaufteilung vollständig ist.
 | Sprache der Analysekette | 2 | Hängt am Bestand; heute faktisch Deutsch |
 | Kandidatenzahl des Volltextpfads | 1 | Gemessen; niemand kann sie ohne Benchmark beurteilen |
 | Rerank-Kandidatenmenge (~50) | 1 | dito |
-| Rerank an/aus (`OPAA_RERANK_ENABLED`) | 2 | Expliziter Schalter, damit „aus" eine Absicht ist und kein unbemerkter Konfigurationsfehler |
+| Rerank an/aus (Modelle → Reranking) | 2 | Expliziter Schalter, damit „aus" eine Absicht ist und kein unbemerkter Konfigurationsfehler |
 | Kompositazerlegung an/aus | 1 | Gemessen; wird erst gebaut, wenn der Benchmark sie fordert |
 | Fusionsgewichte | — | Kein Parameter. RRF ist tuningfrei; eine Gewichtung entsteht erst mit einer Messgrundlage |
 

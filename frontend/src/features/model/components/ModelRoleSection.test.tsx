@@ -53,13 +53,61 @@ describe('ModelRoleSection', () => {
       model: 'bge-reranker',
       apiKey: 'sk-1',
     })
-    expect(
-      await screen.findByText('Zustand: Eingeschaltet, aber der Endpunkt antwortet noch nicht.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Zustand: Wird geprüft …')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await waitFor(() => expect(sent).toHaveLength(2))
     expect(sent[1]).not.toHaveProperty('apiKey')
+  })
+
+  it('reads the state once more after saving instead of showing the unprobed state', async () => {
+    const user = userEvent.setup()
+    captureRerankSave()
+    renderWithProviders(<ModelRoleSection kind="rerank" />)
+    await user.click(await screen.findByRole('switch', { name: 'Reranking einschalten' }))
+    await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://reranker:80')
+    await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-reranker')
+    server.use(
+      http.get('/api/v1/admin/models/rerank', () =>
+        HttpResponse.json({
+          ...factoryRerankModel(),
+          enabled: true,
+          baseUrl: 'http://reranker:80',
+          model: 'bge-reranker',
+          state: 'ACTIVE',
+        }),
+      ),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    expect(await screen.findByText('Zustand: Wird geprüft …')).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'Zustand: Eingeschaltet, der Endpunkt antwortet.',
+        {},
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the stored key when the typed key is cleared again', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('/api/v1/admin/models/rerank', () =>
+        HttpResponse.json({ ...factoryRerankModel(), apiKeySet: true }),
+      ),
+    )
+    const sent = captureRerankSave()
+    renderWithProviders(<ModelRoleSection kind="rerank" />)
+
+    const key = await screen.findByLabelText(/Zugangsschlüssel/)
+    await user.type(key, 'sk-1')
+    await user.clear(key)
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).not.toHaveProperty('apiKey')
   })
 
   it('shows the field errors of a refused save at their fields', async () => {
