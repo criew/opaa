@@ -147,7 +147,8 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
 - Je Netzadresse und Instanz gelten 300 Anfragen und 10 abgelehnte Tokens in 15 Minuten; danach
   `429`, auch mit dem richtigen Token.
 - Die Adresse des Chat-Modells durchläuft beim Speichern und vor dem Verbindungstest die
-  Zieladressprüfung (`OPAA_INDEXING_TARGET_VALIDATION_*`); ein gespeicherter Schlüssel bleibt nur
+  Adressprüfung der Modelle (`OPAA_MODEL_TARGET_VALIDATION_*`, getrennt von der Zielprüfung der
+  Quellen); ein gespeicherter Schlüssel bleibt nur
   bei unveränderter Adresse (Schema, Host, Port, Pfad).
 - Fehler kommen deutsch je Feld wie in der übrigen Verwaltung.
 - Nach dem Abschluss antwortet jede Operation `404`.
@@ -347,8 +348,10 @@ Konfiguration; Gruppe E entfällt oder wandert in die Datenbank.
 | E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 48 |
 | F | Experten-Feinabstimmung von Suche und Index (ADR-0060, Entscheidung 3) | 38 |
 
-Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_TOKEN` (Gruppe B) und
-`OPAA_INSTALLATION_ALLOWED_CIDRS` (Gruppe C).
+Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_TOKEN` (Gruppe B),
+`OPAA_INSTALLATION_ALLOWED_CIDRS` sowie `OPAA_MODEL_TARGET_VALIDATION_ENABLED` und
+`OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` (Gruppe C, die Adressprüfung der Modelle getrennt von der
+der Quellen).
 
 ### Gruppe A: Start und Infrastruktur (bleibt in der Konfiguration)
 
@@ -462,6 +465,8 @@ Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_
 | `OPAA_LOCAL_ADMIN_RESET` | `opaa.auth.local.admin-reset` |
 | `OPAA_MALWARE_SCAN_ON_UNAVAILABLE` | `opaa.malware-scan.on-unavailable` |
 | `OPAA_MINIMUM_GROUP_SIZE` | `opaa.permission.minimum-group-size` |
+| `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | `opaa.model.target-validation.allowlist` |
+| `OPAA_MODEL_TARGET_VALIDATION_ENABLED` | `opaa.model.target-validation.enabled` |
 | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | `opaa.auth.oidc.target-validation.allowlist` |
 | `OPAA_OIDC_TARGET_VALIDATION_ENABLED` | `opaa.auth.oidc.target-validation.enabled` |
 | `OPAA_UPLOAD_MAX_FILE_SIZE` | `spring.servlet.multipart.max-file-size` |

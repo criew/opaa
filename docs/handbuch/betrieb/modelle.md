@@ -58,6 +58,25 @@ Wie Ollama im Compose-Stapel oder im Cluster läuft, steht unter
 [Docker Compose](docker-compose.md#lokal-betriebenes-ollama-im-compose-stack) und
 [Kubernetes](kubernetes.md#modelle-im-cluster).
 
+## Adressprüfung der Modelle
+
+**Ein Modell im eigenen Netz** — Ollama im Compose-Stapel, ein Dienst im Cluster — liegt meist in
+einem internen Adressbereich, den die Adressprüfung ablehnt. Freigegeben wird es über eine eigene
+Liste, `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, getrennt von der Liste der Quellen
+(`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`): Ein Modell-Host dort ist kein erlaubtes Ziel der
+Konnektoren, und ein Quell-Host dort ist kein erlaubtes Modell. Ein Eintrag `host:port`
+(`ollama:11434`) gibt nur diesen Port frei, ein Eintrag ohne Port jeden Port des Hosts; deshalb den
+Port nennen.
+
+Geprüft wird jede Basis-Adresse, die Installation oder Modellverwaltung speichern, testen oder nach
+Modellen abfragen, für Chat-, Embedding-, Rerank- und Transkriptionsmodell gleich. In der
+Modellverwaltung bleibt eine schon gespeicherte Adresse unverändert speicher- und testbar, auch wenn
+die Liste ihren Host nicht (mehr) nennt; nur eine neue Adresse muss die Prüfung bestehen. Die
+Installation prüft jede Adresse, auch eine früher gespeicherte. Die Aufrufe im laufenden Betrieb
+prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Nennt nur die
+Liste der Quellen den Host eines gespeicherten Modells, warnt der Start im Log und nennt den
+Eintrag, der in die Liste der Modelle gehört.
+
 ## Chat-Modelle in der Oberfläche anlegen
 
 Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Modelle → Chat-Modelle** legt
@@ -72,15 +91,6 @@ verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
 
 **Im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` unter `OPAA_OPENAI_BASE_URL`
 als erstem Chat-Modell, ohne Zugangsschlüssel.
-
-**Ein Modell im eigenen Netz** — Ollama im Compose-Stapel, ein Dienst im Cluster — liegt meist in
-einem internen Adressbereich, den die Zielprüfung ablehnt. Freigegeben wird es über
-`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, dieselbe Liste wie für die Quellen der
-Wissensbibliotheken. **Ein dort eingetragener Modell-Host ist damit auch ein erlaubtes Ziel der
-Konnektoren:** Wer Bibliotheken anbinden darf, könnte ihn als Quelle eintragen und Antworten des
-Modellservers einlesen. Deshalb den Host mit seinem Port eintragen (`ollama:11434`), nicht einen
-ganzen Namens- oder Adressbereich, und den Modellserver selbst nur die Modell-Schnittstelle anbieten
-lassen.
 
 Das Formular führt in drei Abschnitten:
 
@@ -408,9 +418,10 @@ entfernt.
 - **Zugangsschlüssel:** Er wird verschlüsselt gespeichert und nie wieder angezeigt. Ein leeres Feld
   lässt ihn unverändert, „Gespeicherten Schlüssel entfernen" löscht ihn. Ändert sich die
   Basis-Adresse, folgt der gespeicherte Schlüssel nicht: Er ist neu einzugeben oder zu entfernen.
-- **Zieladressprüfung:** Die Basis-Adresse wird beim Speichern und vor jedem Verbindungstest gegen die
-  Zieladressprüfung des Betriebs geprüft. Eine interne Adresse, etwa ein Rerank-Dienst im eigenen
-  Netz, gibt der Betrieb über `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` frei.
+- **Adressprüfung:** Eine neue Basis-Adresse wird beim Speichern und vor jedem Verbindungstest gegen
+  die [Adressprüfung der Modelle](#adressprüfung-der-modelle) geprüft. Eine interne Adresse, etwa
+  ein Rerank-Dienst im eigenen Netz, gibt der Betrieb über `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
+  frei.
 - **„Verbindung testen"** schickt eine Probe an den eingetragenen Endpunkt, ohne zu speichern: beim
   Reranking eine Rerank-Anfrage mit einem Prüftext, bei der Spracheingabe `GET {Basis-Adresse}/models`
   ohne Audio. Weiterleitungen folgt OPAA dabei nicht.
@@ -511,7 +522,8 @@ volumes:
 
 Unter **Modelle → Spracheingabe** dann die Basis-Adresse `http://speaches:8000/v1` und die
 Modell-Kennung `Systran/faster-whisper-large-v3` eintragen. Weil `speaches` eine interne Adresse ist,
-gibt der Betrieb den Host vorher über `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` frei.
+gibt der Betrieb den Host vorher über `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` frei
+(`speaches:8000`).
 
 speaches lädt ein Modell nicht von selbst; es wird einmal über
 `POST http://speaches:8000/v1/models/Systran/faster-whisper-large-v3` heruntergeladen, aus einem
@@ -737,10 +749,11 @@ und im Protokoll des Backends.
 | „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
+| Die Basis-Adresse wird mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` abgelehnt | Der Host liegt im eigenen Netz und fehlt in der Liste der Modelle; ein Eintrag in der Liste der Quellen genügt nicht ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Chat oder Einbettung scheitern, Log: „answered HTTP 3xx with a redirect; redirects are not followed“ | Der Modellserver leitet weiter, etwa von `http` auf `https` oder auf einen anderen Pfad. Die Zieladresse direkt eintragen |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
 
 ## Weiterführende Kapitel
 
-- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`-Variablen und die Lastgrenzen `OPAA_RERANK_*` und `OPAA_TRANSCRIPTION_*`
+- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`-Variablen, die Lastgrenzen `OPAA_RERANK_*` und `OPAA_TRANSCRIPTION_*` und die Adressprüfung `OPAA_MODEL_TARGET_VALIDATION_*`
 - [Authentifizierung](authentifizierung.md)

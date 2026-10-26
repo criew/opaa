@@ -124,8 +124,9 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
 - **Zielprüfung** für jede Netzquelle, standardmäßig an: Loopback, Link-Local samt
   `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, geprüft nach der
   DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
-  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter
-  und Originalablage haben eigene Schalter derselben Prüfung.
+  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
+  Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
+  Eintrag in einer Liste öffnet keine der anderen.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
   werden immer geprüft.
 - **Grenze:** DNS-Rebinding wird nicht erkannt. Wer das ausschließen muss, beschränkt den Egress des

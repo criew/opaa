@@ -137,6 +137,18 @@ Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). 
 Embedding-Modell nicht über die Oberfläche wechseln; ein Wechsel verlangt eine Neuindexierung und
 ist ein eigenes Thema (Offen).
 
+Jede Modelladresse, die Installation oder Modellverwaltung speichern, testen oder nach Modellen
+abfragen, prüft eine eigene Adressprüfung der Modelle mit eigenem Schalter und eigener Allowlist
+(`OPAA_MODEL_TARGET_VALIDATION_ENABLED`, `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, Einträge `host`
+oder `host:port`), eine Grenze des Betriebs nach Entscheidung 2, für alle vier Rollen gleich, das
+Chat-Modell eingeschlossen. Sie ist von der Zielprüfung der Quellen getrennt: Ein Modell-Host wird
+kein erlaubtes Ziel der Konnektoren, ein Quell-Host kein erlaubtes Modell. In der Modellverwaltung
+bleibt eine gespeicherte Adresse unverändert speicher- und testbar; die Installation prüft jede.
+Aufrufe zur Laufzeit prüft sie nicht, damit eine enger gezogene Liste kein laufendes Modell
+abschaltet; nennt nur die Liste der Quellen den Host eines gespeicherten Modells, warnt der Start.
+Begründung: Wer Bibliotheken anbinden darf, soll den internen Modellserver nicht als Quelle lesen
+können, nur weil der Betrieb ihn für die Modelle freigegeben hat.
+
 ### 11. Jede Änderung einer Einstellung ist nachweisbar
 
 Jede Änderung einer fachlichen Einstellung über Oberfläche, REST-API oder Installation erzeugt einen
@@ -198,6 +210,11 @@ eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
   abpassen; die Datei beim Start ist deklarativ.
 - Grenzen des Betriebs in die Oberfläche holen — hebt die Trennung zwischen Betrieb und
   Systemverwaltung auf (Entscheidung 2).
+- Modelladressen gegen die Allowlist der Quellen prüfen — macht jeden freigegebenen Modellserver zum
+  erlaubten Ziel der Konnektoren (Entscheidung 10).
+- Übergang, in dem die Allowlist der Quellen Modelle eine Zeit lang weiter freigibt — keine
+  veröffentlichte Version prüfte Modelle gegen sie, und eine gespeicherte Adresse bleibt ohnehin
+  nutzbar; Startwarnung und Upgrade-Notiz genügen.
 - `410 Gone` nach dem Abschluss — bestätigt die Existenz des Endpunkts ohne Nutzen für den Betrieb.
 
 ## Offen
