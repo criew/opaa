@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { useConfirmStore } from '@/shared/stores/confirmStore'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
 import { server } from '@/test/server'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
@@ -49,6 +50,7 @@ describe('DirectorySyncThresholdSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       'bis zu 60 % entfernen und sperren, ohne dass jemand bestätigt',
     )
+    expect(useConfirmStore.getState().request?.tone).toBe('danger')
     await answerConfirm(user, question, 'Ändern')
 
     await waitFor(() => expect(sent).toEqual([{ changeThresholdPercent: 60 }]))
@@ -80,6 +82,7 @@ describe('DirectorySyncThresholdSection', () => {
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       'Läufe ab 30 % statt ab 60 % warten dann auf Bestätigung',
     )
+    expect(useConfirmStore.getState().request?.tone).toBe('danger')
     await answerConfirm(user, question, 'Werkseinstellung wiederherstellen')
 
     await waitFor(() => expect(sent).toEqual([{ changeThresholdPercent: null }]))
@@ -110,6 +113,10 @@ describe('DirectorySyncThresholdSection', () => {
     await user.clear(field)
     await user.type(field, '20')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'Plausibilitätsschwelle auf 20 % ändern?' }),
+    ).toBeVisible()
+    expect(useConfirmStore.getState().request?.tone).toBe('danger')
     await answerConfirm(user, 'Plausibilitätsschwelle auf 20 % ändern?', 'Ändern')
 
     expect(

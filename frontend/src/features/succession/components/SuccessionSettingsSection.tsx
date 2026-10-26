@@ -78,8 +78,10 @@ export default function SuccessionSettingsSection({ onSaved }: SuccessionSetting
             question: `Einträge ab ${monthsLabel(next)} als lange offen hervorheben?`,
             consequence:
               'Gilt ab dem nächsten Laden der Liste. Die Änderung steht im Revisionsprotokoll.',
+            danger: next < settings.agingThresholdMonths,
           })}
           confirmReset={(current, factory) => ({
+            danger: factory < current,
             consequence:
               'Gilt ab dem nächsten Laden der Liste. Die Änderung steht im Revisionsprotokoll.',
             warning:

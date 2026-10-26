@@ -80,9 +80,10 @@ export default function DirectorySyncThresholdSection() {
               next > settings.changeThresholdPercent
                 ? `Ein Lauf darf dann bis zu ${percentLabel(next)} entfernen und sperren, ohne dass jemand bestätigt. ${CHANGE_CONSEQUENCE}`
                 : `Läufe ab ${percentLabel(next)} warten dann auf Ihre Bestätigung. ${CHANGE_CONSEQUENCE}`,
-            danger: next > settings.changeThresholdPercent,
+            danger: true,
           })}
           confirmReset={(current, factory) => ({
+            danger: true,
             consequence: CHANGE_CONSEQUENCE,
             warning:
               factory < current

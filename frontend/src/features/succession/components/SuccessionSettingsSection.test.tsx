@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useConfirmStore } from '@/shared/stores/confirmStore'
 import { server } from '@/test/server'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import { resetMockSuccessionSettings } from '../mocks/successionHandlers'
@@ -26,7 +27,10 @@ describe('SuccessionSettingsSection', () => {
     await user.clear(field)
     await user.type(field, '6')
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    await answerConfirm(user, 'Einträge ab 6 Monate als lange offen hervorheben?', 'Ändern')
+    const question = 'Einträge ab 6 Monate als lange offen hervorheben?'
+    expect(await screen.findByRole('dialog', { name: question })).toBeVisible()
+    expect(useConfirmStore.getState().request?.tone).toBe('danger')
+    await answerConfirm(user, question, 'Ändern')
 
     expect(
       await screen.findByText('Eigener Wert: 6 Monate (Werkseinstellung: 12 Monate)'),

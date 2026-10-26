@@ -33,7 +33,7 @@ export interface FactoryDefaultNumberSettingProps {
   confirmReset: (
     current: number,
     factory: number,
-  ) => { consequence: string; warning: string | null }
+  ) => { consequence: string; warning: string | null; danger?: boolean }
   /** The announcement after a save, with the value now in force. */
   savedMessage: (value: number) => string
   /** The beginning of the announcement of a failed save, e.g. „Schwelle nicht gespeichert“. */
@@ -102,12 +102,12 @@ export default function FactoryDefaultNumberSetting({
 
   async function handleReset() {
     if (busy) return
-    const { consequence, warning } = confirmReset(value, defaultValue)
+    const { consequence, warning, danger } = confirmReset(value, defaultValue)
     const confirmed = await confirmAction({
       question: `Auf die Werkseinstellung von ${format(defaultValue)} zurücksetzen?`,
       consequence: warning ? `${warning} ${consequence}` : consequence,
       confirmLabel: 'Werkseinstellung wiederherstellen',
-      tone: warning ? 'danger' : 'caution',
+      tone: warning || danger ? 'danger' : 'caution',
     })
     if (confirmed) await save(null)
   }

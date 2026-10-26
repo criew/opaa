@@ -228,6 +228,28 @@ function SettingsForm({
   }
 
   async function save() {
+    const lead =
+      draft.releaseReminderLeadDays === null
+        ? settings.defaultReleaseReminderLeadDays
+        : Number(draft.releaseReminderLeadDays)
+    if (
+      Number.isInteger(lead) &&
+      lead < settings.releaseReminderLeadDays &&
+      !(await confirmAction({
+        question:
+          lead === 0
+            ? 'Erinnerung vor Ablauf einer Freigabe abschalten?'
+            : `Erinnerung erst ${daysLabel(lead)} vor Ablauf einer Freigabe?`,
+        consequence:
+          lead === 0
+            ? 'Freigaben erlöschen dann unangekündigt. Die Änderung steht im Revisionsprotokoll.'
+            : `Bisher kommt sie ${daysLabel(settings.releaseReminderLeadDays)} vorher. Die Änderung steht im Revisionsprotokoll.`,
+        confirmLabel: 'Speichern',
+        tone: 'danger',
+      }))
+    ) {
+      return
+    }
     setError(null)
     setFieldMessages({})
     setBusy(true)
