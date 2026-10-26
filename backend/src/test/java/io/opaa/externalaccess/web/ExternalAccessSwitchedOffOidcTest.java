@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
-import io.opaa.test.OpaaLocalAuthSeedTest;
+import io.opaa.test.OpaaLocalAdminRestrictionTest;
 import java.util.List;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * reading paths stay for signed-in persons; there an access-token value meets the bearer check of
  * the {@code oidc} chain and is refused like any other value it cannot read.
  */
-@OpaaLocalAuthSeedTest
+@OpaaLocalAdminRestrictionTest
 class ExternalAccessSwitchedOffOidcTest {
 
   private static final String SHAPED_VALUE =

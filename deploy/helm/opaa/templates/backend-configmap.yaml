@@ -36,17 +36,12 @@ data:
   {{- end }}
   OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS: {{ join "," .Values.trustedProxyCidrs | quote }}
   OPAA_LOCAL_ADMIN_ALLOWED_CIDRS: {{ join "," .Values.localAdminAllowedCidrs | quote }}
+  OPAA_INSTALLATION_ALLOWED_CIDRS: {{ join "," .Values.installationAllowedCidrs | quote }}
   OPAA_INDEXING_FILESYSTEM_ALLOWLIST: {{ include "opaa.filesystemAllowlist" . | quote }}
   OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.indexingAllowlist | quote }}
-  OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.identityProviderAllowlist | quote }}
-  OPAA_OPENAI_EMBEDDING_BASE_URL: {{ .Values.embedding.baseUrl | quote }}
-  OPAA_OPENAI_EMBEDDING_MODEL: {{ .Values.embedding.model | quote }}
-  OPAA_PGVECTOR_DIMENSIONS: {{ .Values.embedding.dimensions | quote }}
+  OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: {{ include "opaa.identityProviderAllowlist" . | quote }}
   {{- with .Values.embedding.timeout }}
   OPAA_OPENAI_EMBEDDING_TIMEOUT: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.embedding.maxInputTokens }}
-  OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS: {{ . | quote }}
   {{- end }}
   OPAA_RERANK_ENABLED: {{ .Values.rerank.enabled | quote }}
   {{- with .Values.rerank.baseUrl }}
@@ -122,26 +117,4 @@ data:
   {{- end }}
   {{- range $name, $flag := .Values.features }}
   OPAA_FEATURES_{{ $name | snakecase | upper }}_ENABLED: {{ $flag.enabled | quote }}
-  {{- end }}
-  # Bootstrap values - read on the first start only, see values.yaml.
-  OPAA_INITIAL_ADMIN_EMAIL: {{ .Values.bootstrap.initialAdmin.email | quote }}
-  {{- with .Values.bootstrap.chatModel.baseUrl }}
-  OPAA_OPENAI_CHAT_BASE_URL: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.bootstrap.chatModel.model }}
-  OPAA_OPENAI_CHAT_MODEL: {{ . | quote }}
-  {{- end }}
-  {{- with .Values.bootstrap.oidc }}
-  {{- if .issuerUri }}
-  OPAA_OIDC_ISSUER_URI: {{ .issuerUri | quote }}
-  {{- end }}
-  {{- if .clientId }}
-  OPAA_OIDC_CLIENT_ID: {{ .clientId | quote }}
-  {{- end }}
-  {{- if .authority }}
-  OPAA_OIDC_AUTHORITY: {{ .authority | quote }}
-  {{- end }}
-  {{- if .jwkSetUri }}
-  OPAA_OIDC_JWK_SET_URI: {{ .jwkSetUri | quote }}
-  {{- end }}
   {{- end }}

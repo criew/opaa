@@ -21,9 +21,8 @@ Nicht im Register steht, was schon über die Datenbank koordiniert und keinen Um
 Advisory-Locks, deren Namensräume das Verzeichnis `src/test/resources/db/advisory-lock-namespaces.yaml`
 führt (`AdvisoryLockNamespaceTest`); die signierte Vorschau-Kennung der Rechteübertragung
 (`PermissionTransferPreviewToken`);
-`uk_indexing_jobs_library_running` als Sperre gegen überlappende Läufe; Seed-Marker und die Start-Seeds
-unter der Advisory-Sperre `211` (`OidcProviderSeedRunner`, `LlmModelSeedRunner`, `LocalAdminSeeder` samt
-`OPAA_LOCAL_ADMIN_RESET`); die Migrationsregeln aus [migrationen.md](migrationen.md) (Expand/Contract,
+`uk_indexing_jobs_library_running` als Sperre gegen überlappende Läufe; die Startentscheidung der Installation
+und `OPAA_LOCAL_ADMIN_RESET` unter der Advisory-Sperre `211` (`InstallationService`, `LocalAdminReset`); die Migrationsregeln aus [migrationen.md](migrationen.md) (Expand/Contract,
 Verzeichnis der persistierten Enums, `lock_timeout`); OAuth-`state` in `connection_authorizations`; die
 bedingten `UPDATE`s von Refresh-Rotation, Action-Tokens und Fehlversuch-Sperre; Werte je Aufruf oder Lauf
 (`FileSync.downloadPool`, `LlmModelDiscoverer`, `SourceRequestMeter`, die virtuellen Threads von

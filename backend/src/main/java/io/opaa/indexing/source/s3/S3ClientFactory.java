@@ -165,7 +165,9 @@ public class S3ClientFactory {
             OutboundProxySelector.instance().proxyFor(endpoint).isPresent();
         for (String bucket : buckets) {
           targetAddressValidator.validateHost(
-              bucket + "." + endpoint.getHost(), throughOutboundProxy);
+              bucket + "." + endpoint.getHost(),
+              TargetAddressValidator.portOf(endpoint),
+              throughOutboundProxy);
         }
       }
     } catch (TargetAddressValidator.UnknownTargetHostException e) {

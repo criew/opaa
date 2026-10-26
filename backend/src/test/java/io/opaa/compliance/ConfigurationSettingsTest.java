@@ -54,7 +54,7 @@ class ConfigurationSettingsTest {
     assertThat(MANIFEST.settings())
         .extracting(ComplianceManifest.SettingEntry::key)
         .contains(
-            "spring.ai.openai.chat.model",
+            "llm_models.model_identifier",
             "embedding_model.model_identifier",
             "opaa.rerank.model",
             "opaa.transcription.model");

@@ -36,10 +36,8 @@ spring:
       # Chat is now resolved at runtime from the active io.opaa.llm.LlmModel row via
       # io.opaa.llm.ActiveChatModelResolver, built programmatically per request rather than once at
       # startup from this static autoconfiguration - so the ChatModel/ChatClient.Builder beans it
-      # would otherwise register are unused dead weight. spring.ai.openai.chat.* below is untouched
-      # by this exclusion: io.opaa.llm.LlmModelSeeder reads those properties directly via
-      # Environment#getProperty, not through this autoconfiguration's beans, so the one-time
-      # takeover into llm_models on first startup keeps working exactly as before.
+      # would otherwise register are unused dead weight. The first chat model comes from the
+      # installation (ADR-0060), in the dev mode from spring.ai.openai.base-url.
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
   jpa:
     hibernate:
@@ -111,12 +109,6 @@ spring:
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
       base-url: ${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}
-      chat:
-        api-key: ${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
-        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
-        model: ${OPAA_OPENAI_CHAT_MODEL:phi3:mini}
-        temperature: ${OPAA_OPENAI_CHAT_TEMPERATURE:}
-        max-tokens: ${OPAA_OPENAI_CHAT_MAX_TOKENS:8000}
       embedding:
         # Per embedding call; a batch of bge-m3 on CPU takes well over a minute. Address, model, key
         # and input limit are no configuration: they belong to the installed embedding model.
@@ -178,10 +170,6 @@ opaa:
     # No default mode on purpose: the active Spring profile ("oidc" or "dev")
     # sets it. Starting without one of those profiles fails fast, see
     # io.opaa.auth.AuthProfileGuard.
-    # Start value of the transition to the installation mode (ADR-0060): set in the "oidc" mode, a
-    # pending installation is completed from OPAA_INITIAL_ADMIN_*; empty, the installation mode
-    # starts. The "dev" profile below keeps admin@opaa.local, the address of dev-admin.
-    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:}
     # How old the sign-in behind a token (its auth_time) may be for an operation marked
     # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
     recent-login:
@@ -209,13 +197,12 @@ opaa:
       # counting as a replay for this long after its rotation (at most 60s, 0 switches it off):
       # the reload that discarded the rotation's answer (ADR-0033, Entscheidung 7).
       refresh-grace-period: ${OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD:20s}
-      # Bootstrap administrator (ADR-0033, Entscheidungen 5 and 9; LocalAdminSeeder): address from
-      # opaa.auth.initial-admin-email above (the "oidc" seed refuses the dev default). A set
-      # password is used as is without a forced change, empty means "generate and print once";
-      # "force" restores the account once at start-up; the CIDR list limits the sign-in of local
-      # SYSTEM_ADMIN accounts to those networks, empty means no restriction.
-      initial-admin-password: ${OPAA_INITIAL_ADMIN_PASSWORD:}
+      # Emergency account of the system administration (ADR-0033, Entscheidungen 5 and 9), created
+      # by the installation: "force" restores it once at start-up with a password printed once,
+      # or creates it under admin-reset-email where there is none (io.opaa.account.LocalAdminReset);
+      # the CIDR list limits the sign-in of local SYSTEM_ADMIN accounts, empty means no restriction.
       admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
+      admin-reset-email: ${OPAA_LOCAL_ADMIN_RESET_EMAIL:}
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
       # Lockout after failed sign-ins (Entscheidung 9; io.opaa.account.LocalAccountLockoutListener):
       # a fixed duration, no progressive extension; the counter returns to zero on success. The
@@ -324,18 +311,6 @@ opaa:
     excerpt-max-characters: ${OPAA_SEARCH_EXCERPT_MAX_CHARACTERS:1500}
     fetch-max-characters: ${OPAA_SEARCH_FETCH_MAX_CHARACTERS:200000}
     context-passages: ${OPAA_SEARCH_CONTEXT_PASSAGES:1}
-  # The embedding model is the row of embedding_model (ADR-0060, Entscheidung 10). These values are
-  # read only while that row is missing, to take over the model an installation from before
-  # ADR-0060 was configured with (io.opaa.llm.LegacyEmbeddingConfiguration); afterwards they have
-  # no effect. Empty means the former default (bge-m3, the shared OPAA_OPENAI_BASE_URL, 2048 input
-  # tokens, 1024 dimensions).
-  embedding:
-    takeover:
-      base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:}
-      model: ${OPAA_OPENAI_EMBEDDING_MODEL:}
-      api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:}
-      max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:}
-      dimensions: ${OPAA_PGVECTOR_DIMENSIONS:}
   # The rerank model role - on the same level as the chat and embedding roles. The switch is
   # deliberately separate from the endpoint fields: reranking being off must be an operator's
   # statement, not an indistinguishable consequence of a missing configuration line
@@ -883,8 +858,6 @@ spring:
   ai:
     openai:
       base-url: ${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}
-      chat:
-        base-url: ${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}}
 
 ---
 spring:
@@ -895,18 +868,9 @@ spring:
 opaa:
   auth:
     mode: oidc
-    # Bootstrap block (ADR-0025): read once, on the first start, to create the first provider row
-    # (io.opaa.auth.OidcProviderSeeder); afterwards the database leads and these values are
-    # not evaluated again - except by the address policy, whose allowlist always includes the
-    # hosts named here. OPAA_OIDC_BOOTSTRAP=force restores the environment provider once.
-    # Deliberately without defaults: a fresh installation that sets nothing must not seed an
-    # unreachable localhost provider that then cannot be disabled or deleted.
+    # The providers come from the installation and the Anbieterverwaltung (ADR-0060); the address
+    # check of every issuer and JWK set address is a limit of the operation.
     oidc:
-      authority: ${OPAA_OIDC_AUTHORITY:}
-      client-id: ${OPAA_OIDC_CLIENT_ID:}
-      issuer-uri: ${OPAA_OIDC_ISSUER_URI:}
-      jwk-set-uri: ${OPAA_OIDC_JWK_SET_URI:}
-      bootstrap: ${OPAA_OIDC_BOOTSTRAP:}
       target-validation:
         enabled: ${OPAA_OIDC_TARGET_VALIDATION_ENABLED:true}
         allowlist: ${OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST:}
@@ -926,8 +890,6 @@ opaa:
       reject-unlisted: true
   auth:
     mode: dev
-    # The dev-admin's address: it becomes the system administrator, as the shared default did.
-    initial-admin-email: ${OPAA_INITIAL_ADMIN_EMAIL:admin@opaa.local}
     local:
       # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known secret so bootRun and the backend
       # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
@@ -938,11 +900,13 @@ opaa:
       # refuses it even when copied over (SecretValidatorTest#rejectsTheShippedDevDefault).
       jwt-secret: ${OPAA_AUTH_JWT_SECRET:NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026}
     dev:
+      # The dev user with this address becomes the system administrator on its first request.
+      system-admin-email: admin@opaa.local
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
       default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}
       users:
-        # Matches opaa.auth.initial-admin-email of this profile, and is therefore
-        # provisioned as SYSTEM_ADMIN on first request.
+        # Matches opaa.auth.dev.system-admin-email, and is therefore provisioned as SYSTEM_ADMIN
+        # on first request.
         - subject: dev-admin
           email: admin@opaa.local
           display-name: Dev Admin

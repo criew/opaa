@@ -1,0 +1,12 @@
+{{- if include "opaa.installation.answerFileEnabled" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-installation" (include "opaa.backend.fullname" .) }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
+data:
+  # Applied by a start while the installation is pending, ignored afterwards (ADR-0060).
+  installation.json: |
+    {{- include "opaa.installation.answerFile" . | nindent 4 }}
+{{- end }}

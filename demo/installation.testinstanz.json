@@ -1,0 +1,28 @@
+{
+  "firstAdmin": {
+    "email": "admin@stadt-rheinfurt.example",
+    "displayName": "Systemverwaltung",
+    "passwordFile": "/run/opaa/installation/admin-password",
+    "requirePasswordChange": false
+  },
+  "signIn": {
+    "mode": "LOCAL_AND_OIDC",
+    "oidc": {
+      "issuerUri": "http://localhost:8180/realms/opaa",
+      "clientId": "opaa-frontend",
+      "jwkSetUri": "http://keycloak:8180/realms/opaa/protocol/openid-connect/certs"
+    }
+  },
+  "chatModel": {
+    "baseUrl": "https://api.anthropic.com/v1",
+    "model": "claude-haiku-4-5",
+    "apiKeyFile": "/run/opaa/installation/chat-api-key",
+    "maxTokens": 8000
+  },
+  "embeddingModel": {
+    "baseUrl": "http://host.docker.internal:11434/v1",
+    "model": "nomic-embed-text",
+    "apiKeyFile": null,
+    "maxInputTokens": 2048
+  }
+}

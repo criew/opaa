@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
  * address(es) fall into a loopback, link-local ({@code 169.254.169.254} included), private or
  * otherwise non-routable range - IPv4 and IPv6 alike, CGNAT, reserved, benchmarking, unique local
  * and NAT64 included. Checked before the first request and again on every redirect hop. {@code
- * enabled} is the operator's off switch, {@code allowlist} the per-host exception.
+ * enabled} is the operator's off switch, {@code allowlist} the exception: an entry {@code host}
+ * admits every port of the host, an entry {@code host:port} (IPv6 as {@code [addr]:port}) only that
+ * port - of a URI, or of a bare host whose caller names the port it connects to.
  *
  * <p>DNS rebinding is an accepted limitation: the vetted address and the one the client connects to
  * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
@@ -36,6 +38,8 @@ public class TargetAddressValidator {
    */
   public static final String ALLOWLIST_HINT =
       "Interne Adressen gibt der Betrieb über OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST frei.";
+
+  private static final int NO_PORT = -1;
 
   private final boolean enabled;
   private final List<String> allowedHosts;
@@ -76,7 +80,18 @@ public class TargetAddressValidator {
     if (host == null) {
       throw new TargetAddressBlockedException("Die Zieladresse enthält keinen gültigen Host.");
     }
+    if (isAllowed(host, effectivePort(uri))) {
+      return;
+    }
     checkHost(host, OutboundProxySelector.instance().proxyFor(uri).isPresent());
+  }
+
+  /** The port a client connects to: the URI's own, or the default of its scheme. */
+  private static int effectivePort(URI uri) {
+    if (uri.getPort() >= 0) {
+      return uri.getPort();
+    }
+    return uri.getScheme().equalsIgnoreCase("https") ? 443 : 80;
   }
 
   /**
@@ -92,21 +107,39 @@ public class TargetAddressValidator {
   }
 
   /**
+   * {@link #validateHost(String)} for a connection to {@code port}, so an allowlist entry {@code
+   * host:port} admits it; a negative port is none.
+   */
+  public void validateHost(String host, int port) throws IOException {
+    validateHost(host, port, false);
+  }
+
+  /** {@link #validateHost(String, boolean)} for a connection to {@code port}. */
+  public void validateHost(String host, int port, boolean throughOutboundProxy) throws IOException {
+    if (!enabled || host == null || isAllowed(host, port < 0 ? NO_PORT : port)) {
+      return;
+    }
+    checkHost(host, throughOutboundProxy);
+  }
+
+  /** The port a client connects to for {@code uri}: its own, or the default of its scheme. */
+  public static int portOf(URI uri) {
+    return effectivePort(uri);
+  }
+
+  /**
    * {@link #validateHost(String)} for a client whose route the caller decided itself: with {@code
    * throughOutboundProxy} the outbound proxy resolves the name, so a name that does not resolve
    * locally passes. Only a caller that actually hands its client that proxy may say so.
    */
   public void validateHost(String host, boolean throughOutboundProxy) throws IOException {
-    if (!enabled || host == null) {
+    if (!enabled || host == null || isAllowed(host, NO_PORT)) {
       return;
     }
     checkHost(host, throughOutboundProxy);
   }
 
   private void checkHost(String host, boolean throughOutboundProxy) throws IOException {
-    if (isAllowedHost(host)) {
-      return;
-    }
     InetAddress[] addresses;
     try {
       addresses = InetAddress.getAllByName(host);
@@ -138,8 +171,28 @@ public class TargetAddressValidator {
     }
   }
 
-  private boolean isAllowedHost(String host) {
-    return allowedHosts.stream().anyMatch(allowed -> allowed.equalsIgnoreCase(host));
+  /**
+   * Whether an entry admits {@code host} on {@code port}; {@link #NO_PORT} matches no port entry.
+   */
+  private boolean isAllowed(String host, int port) {
+    return allowedHosts.stream().anyMatch(entry -> admits(entry.trim(), host, port));
+  }
+
+  private static boolean admits(String entry, String host, int port) {
+    int colon = entry.lastIndexOf(':');
+    boolean bracketed = entry.startsWith("[");
+    boolean withPort =
+        colon > 0
+            && colon < entry.length() - 1
+            && entry.substring(colon + 1).chars().allMatch(Character::isDigit)
+            && (bracketed ? entry.charAt(colon - 1) == ']' : entry.indexOf(':') == colon);
+    if (!withPort) {
+      return entry.equalsIgnoreCase(host);
+    }
+    String name = host.indexOf(':') >= 0 && !host.startsWith("[") ? "[" + host + "]" : host;
+    return port != NO_PORT
+        && entry.substring(0, colon).equalsIgnoreCase(name)
+        && Integer.parseInt(entry.substring(colon + 1)) == port;
   }
 
   /** Package-private so {@code TargetAddressValidatorTest} can exercise it directly, per range. */

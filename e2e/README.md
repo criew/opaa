@@ -39,6 +39,12 @@ e2e/
     tests/*.spec.ts
   local-auth.env             Environment für den local-auth-Stack (Betriebsmodus oidc ohne Keycloak)
   docker-compose.local-auth.yml  Compose-Overlay: Mail-Fänger, öffentliche Basis-URL, weitere Grenzen
+  installation/              Antwortdateien der Ziele samt Passwortdateien (ADR-0060), schreibgeschützt
+                             unter /run/opaa/installation eingehängt (OPAA_INSTALLATION_DIR_HOST)
+  installation-assistant/        Konfiguration des Ziels "installation": das Szenario des
+    playwright.config.ts         Einrichtungs-Assistenten aus tests/ gegen einen Stack im Installationsmodus
+  installation.env           Environment des Installationsmodus (oidc, ohne Antwortdatei, Token gesetzt)
+  docker-compose.installation.yml  Compose-Overlay: ai-stub als Chat-Modell des Assistenten
   multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
     playwright.config.ts         Konfiguration, ohne Browser
     tests/*.spec.ts
@@ -801,22 +807,22 @@ pnpm run test:local-auth
 `pnpm run test:local-auth` (→ `scripts/run-e2e.mjs --target local-auth`) nutzt denselben
 Lebenszyklus wie die beiden anderen Ziele, mit drei Unterschieden:
 
-- **Betriebsmodus `oidc` ohne Keycloak.** `local-auth.env` setzt `SPRING_PROFILES_ACTIVE=docker,oidc`
-  und bewusst **keine** `OPAA_OIDC_*`-Variable. Eine Installation ohne jeden OIDC-Anbieter ist seit
-  ADR-0033 (Entscheidung 4) ein zulässiger Zustand und genau der, den ein Erststart hinterlässt:
-  `GET /api/v1/auth/config` liefert eine leere Anbieterliste und den Block `localAccounts`, und der
-  einzige Weg hinein ist die lokale Anmeldung.
+- **Betriebsmodus `oidc` ohne Keycloak.** `local-auth.env` setzt `SPRING_PROFILES_ACTIVE=docker,oidc`,
+  und die Antwortdatei `installation/local-auth.json` installiert nur lokale Konten (`LOCAL_ONLY`).
+  Eine Installation ohne jeden OIDC-Anbieter ist seit ADR-0033 (Entscheidung 4) ein zulässiger
+  Zustand: `GET /api/v1/auth/config` liefert eine leere Anbieterliste und den Block
+  `localAccounts`, und der einzige Weg hinein ist die lokale Anmeldung.
 - **Mail-Fänger statt Mailserver.** Das Compose-Profil `mail` bringt Mailpit mit (`--profile mail`).
   Sein SMTP-Zugang wird von Szenario 1 über die Oberfläche eingetragen — Mailserver sind eine
   Verwaltungseinstellung, keine Umgebungsvariable (ADR-0033, Entscheidung 10). Die Szenarien lesen
   Einladungs-, Rücksetz- und Bestätigungslinks über Mailpits HTTP-API zurück
   (`fixtures/mailpit.ts`); deren Port veröffentlicht der Stack auf dem Host, wie die `e2e`-Suite es
   für `ai-stub` tut.
-- **Kein Seed-Lauf.** Geprüft wird der Erststart: Das einzige Konto, das es zu Beginn gibt, ist das
-  Notanker-Konto, das das Backend selbst gesät hat; alle weiteren legt seine eigene Verwaltung an.
-  Sein Passwort steht fest in `local-auth.env` (`OPAA_INITIAL_ADMIN_PASSWORD`, der in ADR-0033
-  Entscheidung 5 dafür vorgesehene CI-Weg), damit kein Szenario das Einmalpasswort aus dem
-  Container-Log fischen muss.
+- **Kein Seed-Lauf.** Geprüft wird eine frische Installation: Das einzige Konto, das es zu Beginn
+  gibt, ist das erste Konto der Antwortdatei (das Notanker-Konto, ADR-0033 Entscheidung 5); alle
+  weiteren legt seine eigene Verwaltung an. Sein Passwort steht fest in
+  `installation/local-auth-admin-password`; `run-e2e.mjs` liest Adresse und Passwort aus der
+  Antwortdatei und gibt sie den Szenarien mit.
 
 Eigene Ports und ein eigenes Subnetz (`172.31.0.0/16`), damit der Lauf neben einem Dev-Stack und
 neben den beiden anderen Zielen stehen kann. Die Rate-Limits der Anmelde-Endpunkte sind im Overlay
@@ -848,7 +854,24 @@ davor läuft.
 
 `.github/workflows/local-auth-e2e.yml` fährt den Lauf nächtlich und auf Zuruf
 (`workflow_dispatch`), dazu an einem Pull Request über das Label `local-auth-suite` — kein Required
-Check, Muster der Confluence-Suite (#1171).
+Check, Muster der Confluence-Suite (#1171). Im selben Job folgt das Ziel `installation`.
+
+## Einrichtungs-Assistent (ADR-0060)
+
+```bash
+cd e2e
+pnpm run test:installation
+```
+
+`pnpm run test:installation` (→ `scripts/run-e2e.mjs --target installation`) startet den Stapel im
+Betriebsmodus `oidc` auf einer leeren Datenbank, **ohne** Antwortdatei und mit vorgegebenem
+`OPAA_INSTALLATION_TOKEN` aus `installation.env`; der Stapel bleibt im Installationsmodus. Gegen ihn
+läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, über die Konfiguration
+`installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
+Installationsmodus für immer beendet. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
+sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
+(`--pass-with-no-tests`). Eigene Ports und ein eigenes Subnetz (`172.27.0.0/16`); in
+`local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.
 
 ## Zwei Instanzen (#2952)
 

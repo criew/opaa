@@ -50,7 +50,8 @@ public final class S3RequestGuard implements ExecutionInterceptor {
      * client was built with, so a name only the outbound proxy resolves passes.
      */
     static TargetPolicy hostOnly(TargetAddressValidator validator, boolean throughOutboundProxy) {
-      return request -> validator.validateHost(request.host(), throughOutboundProxy);
+      return request ->
+          validator.validateHost(request.host(), request.port(), throughOutboundProxy);
     }
   }
 

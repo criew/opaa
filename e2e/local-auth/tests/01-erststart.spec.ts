@@ -15,7 +15,7 @@ import { clearMailbox, waitForMail } from "../../fixtures/mailpit";
  * Scenario 1 of #1543: the first start.
  *
  * The installation this runs against has no OIDC provider at all and exactly one account - the
- * bootstrap administrator the backend seeded itself (ADR-0033, Entscheidung 5). The journey is the
+ * bootstrap administrator of the answer file (ADR-0033, Entscheidung 5; ADR-0060). The journey is the
  * one the handbook chapter describes: sign in on the administrators' own route, set up the mail
  * server, prove it works with a test mail, then switch the local account management on.
  *
@@ -66,8 +66,8 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
       page.getByText("Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort."),
     ).toBeVisible();
 
-    // OPAA_INITIAL_ADMIN_PASSWORD is set in this stack, so the seed did not force a change
-    // (Entscheidung 5, the documented CI path) and the session starts right away.
+    // The answer file sets the password, so the installation forces no change and the session
+    // starts right away.
     await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });

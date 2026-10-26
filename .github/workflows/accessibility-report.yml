@@ -106,7 +106,9 @@ jobs:
           E2E_A11Y_RESULTS_DIR: ${{ runner.temp }}/accessibility-results/e2e
         run: |
           mkdir -p "$E2E_A11Y_RESULTS_DIR"
-          mapfile -t specs < <(grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename | sort)
+          # The set-up assistant runs only against a stack in installation mode (next but one step).
+          mapfile -t specs < <(grep -l 'expectNoSeriousA11yViolations(' tests/*.spec.ts | xargs -n1 basename \
+            | grep -vx 'installation-assistant.spec.ts' | sort)
           if ((${#specs[@]} == 0)); then
             echo "::error::Keine Spec-Datei unter e2e/tests ruft die axe-Prüfung auf"
             exit 1
@@ -138,6 +140,25 @@ jobs:
           echo "Suite beendet mit $rc"
           if [[ -f test-results/local-auth-results.json ]]; then
             cp test-results/local-auth-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
+          fi
+
+      # Same images as the local sign-in (Compose project opaa-local-auth): a stack in installation
+      # mode without answer file, against which the assistant's scenario completes the installation.
+      - name: axe-Szenarien des Einrichtungs-Assistenten
+        working-directory: e2e
+        env:
+          COMPOSE_PROJECT_NAME: opaa-local-auth
+          E2E_SKIP_BUILD: 'true'
+          E2E_A11Y_REPORT_ONLY: 'true'
+          E2E_A11Y_RESULTS_DIR: ${{ runner.temp }}/accessibility-results/installation
+        run: |
+          mkdir -p "$E2E_A11Y_RESULTS_DIR"
+          echo installation-assistant.spec.ts >"$E2E_A11Y_RESULTS_DIR/expected.txt"
+          rc=0
+          pnpm run test:installation || rc=$?
+          echo "Suite beendet mit $rc"
+          if [[ -f test-results/installation-results.json ]]; then
+            cp test-results/installation-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
           fi
 
       # Fails when a target or an expected spec file delivered no record or a target no Playwright

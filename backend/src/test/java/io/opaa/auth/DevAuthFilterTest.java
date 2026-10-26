@@ -27,6 +27,7 @@ class DevAuthFilterTest {
 
   private static final AuthProperties.DevAuth DEV_AUTH =
       new AuthProperties.DevAuth(
+          null,
           "opaa-dev",
           "dev-admin",
           List.of(

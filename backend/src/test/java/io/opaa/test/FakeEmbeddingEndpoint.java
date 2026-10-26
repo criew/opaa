@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Primary;
 
 /**
  * The embedding endpoint of the local-auth family: every client the application builds is a {@link
- * FakeEmbeddingModel}, so the takeover at start-up creates the vector table of the context's own
- * database at its width. The family keeps the real {@code InstalledEmbeddingModel} in front of it.
+ * FakeEmbeddingModel}, the size {@link TestInstallation} creates the vector table with, and every
+ * probe succeeds. The family keeps the real {@code InstalledEmbeddingModel} in front of it.
  */
 @TestConfiguration(proxyBeanMethods = false)
 class FakeEmbeddingEndpoint {

@@ -27,7 +27,6 @@ services:
       objectstore-seed:
         condition: service_completed_successfully
     environment:
-      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
       # test(demo) #232: the default 1s politeness delay between RSS detail-page/attachment
       # requests (opaa.indexing.rss.request-delay-ms) is meant for a real, foreign feed operator -
       # against demo-presse's own ~20-30 entries it only adds dead time to the smoke run.

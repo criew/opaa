@@ -73,6 +73,10 @@ documents/
 # Uploaded documents (#420)
 uploads/
 
+# Answer file and its secret files of a Compose installation; only the example is tracked
+/installation/*
+!/installation/installation.example.json
+
 # Claude
 /.claude/settings.local.json
 /.claude/settings.json

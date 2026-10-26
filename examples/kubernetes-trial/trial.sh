@@ -137,11 +137,17 @@ ensure_secrets() {
     openssl rand -base64 32 | tr -d '\n' >"$dir/OPAA_CREDENTIALS_ENCRYPTION_KEY"
     openssl rand -base64 32 | tr -d '\n' >"$dir/OPAA_SETTINGS_ENCRYPTION_KEY"
     openssl rand -hex 24 | tr -d '\n' >"$dir/OPAA_DB_PASSWORD"
-    openssl rand -hex 24 | tr -d '\n' >"$dir/OPAA_INITIAL_ADMIN_PASSWORD"
+    openssl rand -hex 24 | tr -d '\n' >"$dir/installation-admin-password"
     printf 'opaa-%s' "$(openssl rand -hex 6)" >"$dir/OPAA_UPLOAD_S3_ACCESS_KEY"
     openssl rand -hex 24 | tr -d '\n' >"$dir/OPAA_UPLOAD_S3_SECRET_KEY"
     k -n "$NAMESPACE" create secret generic opaa-secrets --from-file="$dir" >/dev/null
     echo "Geheimnisse von OPAA erzeugt (Secret opaa-secrets)."
+  elif [[ -z "$(k -n "$NAMESPACE" get secret opaa-secrets \
+    -o 'jsonpath={.data.installation-admin-password}')" ]]; then
+    # A trial set up before the answer file keeps its first password under the key the chart
+    # mounts as file; the installation itself is complete and ignores it.
+    k -n "$NAMESPACE" patch secret opaa-secrets --type merge -p "{\"data\":{\"installation-admin-password\":\"$(
+      k -n "$NAMESPACE" get secret opaa-secrets -o 'jsonpath={.data.OPAA_INITIAL_ADMIN_PASSWORD}')\"}}" >/dev/null
   fi
   if ! k -n "$SERVICES_NAMESPACE" get secret rustfs-credentials >/dev/null 2>&1; then
     dir="$(new_secret_dir rustfs-credentials)"
@@ -262,7 +268,7 @@ up() {
 OPAA:      $OPAA_URL
            Anmeldung über Keycloak: testuser / testpass oder maria.weber / RheinfurtDemo!2026
            Systemverwaltung: $OPAA_URL/login/system mit $ADMIN_EMAIL, Passwort:
-             kubectl -n $NAMESPACE get secret opaa-secrets -o jsonpath='{.data.OPAA_INITIAL_ADMIN_PASSWORD}' | base64 -d
+             kubectl -n $NAMESPACE get secret opaa-secrets -o jsonpath='{.data.installation-admin-password}' | base64 -d
 Keycloak:  $KEYCLOAK_URL (Verwaltung: admin, Passwort:
              kubectl -n $SERVICES_NAMESPACE get secret keycloak-admin -o jsonpath='{.data.password}' | base64 -d)
 Mailpit:   $(address mailpit.localhost)

@@ -7,34 +7,21 @@ settings:
   - key: spring.ai.openai.base-url
     defaultValue: http://localhost:11434/v1
     effect: >-
-      Gemeinsame Adresse des Chat-Modells, solange keine eigene gesetzt ist; die Voreinstellung
-      zeigt auf einen Modellserver auf demselben Rechner
+      Im Modus dev die Adresse des Chat-Modells, mit dem sich die Instanz selbst einrichtet; im
+      Betrieb kommt das Chat-Modell aus der Installation. Die Voreinstellung zeigt auf einen
+      Modellserver auf demselben Rechner
     bearings: [DATA_FLOW]
     notes:
       - "Profil docker: http://ollama:11434/v1"
-  - key: spring.ai.openai.chat.base-url
-    defaultValue: http://localhost:11434/v1
-    effect: Adresse des Chat-Modells, an das Fragen, Gesprächsverlauf und Fundstellen gehen
+  - key: llm_models.model_identifier
+    source: DATABASE
+    defaultValue: ""
+    effect: >-
+      Aktives Chat-Modell, das Antworten, Titel, Gesprächsnotizen und Teilfragen erzeugt; kommt aus
+      der Installation und wird in der Modellverwaltung geändert
     bearings: [DATA_FLOW]
-    helm:
-      values: bootstrap.chatModel.baseUrl
-      defaultValue: ""
     notes:
-      - "Profil docker: http://ollama:11434/v1"
-      - >-
-        Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
-        der Systemverwaltung
-  - key: spring.ai.openai.chat.model
-    defaultValue: phi3:mini
-    effect: Standard-Chatmodell, das Antworten, Titel, Gesprächsnotizen und Teilfragen erzeugt
-    bearings: [DATA_FLOW]
-    helm:
-      values: bootstrap.chatModel.model
-      defaultValue: ""
-    notes:
-      - >-
-        Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
-        der Systemverwaltung
+      - Im Modus dev richtet sich die Instanz mit phi3:mini unter spring.ai.openai.base-url ein
   - key: embedding_model.base_url
     source: DATABASE
     defaultValue: keine, Angabe der Installation

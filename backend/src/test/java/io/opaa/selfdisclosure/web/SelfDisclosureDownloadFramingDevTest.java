@@ -36,10 +36,10 @@ class SelfDisclosureDownloadFramingDevTest extends SelfDisclosureDownloadFraming
           "dev",
           null,
           new AuthProperties.DevAuth(
+              null,
               "opaa-dev",
               "dev-user",
-              List.of(new AuthProperties.DevUser("dev-user", "dev@example.org", "Dev"))),
-          null);
+              List.of(new AuthProperties.DevUser("dev-user", "dev@example.org", "Dev"))));
     }
   }
 

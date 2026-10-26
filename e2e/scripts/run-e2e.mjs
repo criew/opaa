@@ -19,6 +19,7 @@
 //   node scripts/run-e2e.mjs --target local-auth   # local sign-in (pnpm run test:local-auth)
 //   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
 //   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
+//   node scripts/run-e2e.mjs --target installation # set-up assistant (pnpm run test:installation)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -29,13 +30,17 @@
 // seed profile.
 //
 // The "local-auth" target (ADR-0033, #1543) starts the operating mode "oidc"
-// *without* Keycloak - an installation with no OIDC provider at all, which is
-// what a first start produces - plus the mail catcher of the "mail" profile,
-// and runs the specs under e2e/local-auth/tests/. It is the only target that
-// exercises a real sign-in (the regular suite runs the "dev" auth profile, see
-// ADR-0009), and the only one that runs *no* seed: the accounts under test are
-// the one the backend seeds itself and the ones its own administration
-// creates.
+// *without* Keycloak - installed from e2e/installation/local-auth.json with
+// local accounts only - plus the mail catcher of the "mail" profile, and runs
+// the specs under e2e/local-auth/tests/. It is the only target that exercises
+// a real sign-in (the regular suite runs the "dev" auth profile, see
+// ADR-0009), and runs *no* seed: the accounts under test are the first account
+// of the answer file and the ones its own administration creates.
+//
+// The "installation" target (ADR-0060) starts the operating mode "oidc" without
+// an answer file and with OPAA_INSTALLATION_TOKEN from e2e/installation.env, so
+// the stack stays in installation mode, and runs the set-up assistant's spec
+// e2e/tests/installation-assistant.spec.ts against it with E2E_INSTALLATION_TOKEN.
 
 import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -64,9 +69,9 @@ if (targetFlagIndex !== -1) {
     rawArgs.splice(targetFlagIndex, 2)
   }
 }
-if (!['e2e', 'demo', 'local-auth', 'multi-instance', 'offline'].includes(target)) {
+if (!['e2e', 'demo', 'local-auth', 'multi-instance', 'offline', 'installation'].includes(target)) {
   console.error(
-    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance" oder "offline")`,
+    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance", "offline" oder "installation")`,
   )
   process.exit(1)
 }
@@ -86,10 +91,11 @@ if (target === 'offline') {
 }
 const isDemo = target === 'demo'
 const isLocalAuth = target === 'local-auth'
+const isInstallation = target === 'installation'
 
 // The "demo" Compose profile's Keycloak realm (keycloak/realm-export.json) has a static
 // redirectUris list scoped to http://localhost:3000, and this run's own
-// OPAA_CSP_CONNECT_SRC_EXTRA/OPAA_OIDC_ISSUER_URI/OPAA_OIDC_AUTHORITY (e2e/demo-smoke.env) are all
+// OPAA_CSP_CONNECT_SRC_EXTRA (e2e/demo-smoke.env) and the issuer of e2e/installation/demo-smoke.json are
 // pinned to Keycloak's default port 8180 - unlike the "e2e" target, the *frontend* and *keycloak*
 // ports are therefore not freely relocatable without also editing the realm export and that env
 // file, so keycloakPort below is deliberately a fixed constant, not overridable via an env var the
@@ -99,15 +105,23 @@ const isLocalAuth = target === 'local-auth'
 // such static reference anywhere, so they reuse the "e2e" target's own non-default ports below -
 // avoids colliding with a developer's own local Postgres/backend on the same host, exactly like
 // the "e2e" target already does.
-const projectNames = { e2e: 'opaa-e2e', demo: 'opaa-demo-smoke', 'local-auth': 'opaa-local-auth' }
+const projectNames = {
+  e2e: 'opaa-e2e',
+  demo: 'opaa-demo-smoke',
+  'local-auth': 'opaa-local-auth',
+  installation: 'opaa-installation',
+}
 const composeProjectName = process.env.COMPOSE_PROJECT_NAME ?? projectNames[target]
 // Each target gets its own host ports so two of them - or one of them and a developer's own stack -
 // can run side by side. Only the "demo" target's frontend port is pinned (its Keycloak realm's
 // redirectUris, see the comment above).
-const backendPort = process.env.OPAA_BACKEND_PORT ?? (isLocalAuth ? '18082' : '18081')
+const backendPort =
+  process.env.OPAA_BACKEND_PORT ?? (isLocalAuth ? '18082' : isInstallation ? '18086' : '18081')
 const frontendPort =
-  process.env.OPAA_FRONTEND_PORT ?? (isDemo ? '3000' : isLocalAuth ? '13001' : '13000')
-const dbPort = process.env.OPAA_DB_PORT ?? (isLocalAuth ? '15433' : '15432')
+  process.env.OPAA_FRONTEND_PORT ??
+  (isDemo ? '3000' : isLocalAuth ? '13001' : isInstallation ? '13005' : '13000')
+const dbPort =
+  process.env.OPAA_DB_PORT ?? (isLocalAuth ? '15433' : isInstallation ? '15436' : '15432')
 // The mail catcher's own host ports (e2e/docker-compose.local-auth.yml): the scenarios read the
 // links out of its HTTP API from this Node/Playwright process, the same way the "e2e" target
 // reaches ai-stub's /last-chat-model directly.
@@ -132,11 +146,13 @@ const overlayFiles = {
   e2e: 'e2e/docker-compose.e2e.yml',
   demo: 'e2e/docker-compose.demo-smoke.yml',
   'local-auth': 'e2e/docker-compose.local-auth.yml',
+  installation: 'e2e/docker-compose.installation.yml',
 }
 const envFiles = {
   e2e: 'e2e/e2e.env',
   demo: 'e2e/demo-smoke.env',
   'local-auth': 'e2e/local-auth.env',
+  installation: 'e2e/installation.env',
 }
 const overlayFile = overlayFiles[target]
 const envFile = envFiles[target]
@@ -153,19 +169,28 @@ function envFileValue(key) {
   return match ? match[1].trim() : undefined
 }
 
-// ADR-0033, Entscheidung 5: the one account that exists on a first start. Its password is fixed in
-// e2e/local-auth.env (the documented CI path), so the scenarios can sign in with it instead of
-// scraping the one-time password out of the container log.
-const bootstrapAdmin = isLocalAuth
-  ? {
-      email: envFileValue('OPAA_INITIAL_ADMIN_EMAIL') ?? '',
-      password: envFileValue('OPAA_INITIAL_ADMIN_PASSWORD') ?? '',
-    }
-  : { email: '', password: '' }
+// The first account of the answer file the stack installs from (ADR-0060), read from the file
+// OPAA_INSTALLATION_ANSWER_FILE names and its password file, both under e2e/installation/.
+function answerFileAdmin() {
+  const inContainer = envFileValue('OPAA_INSTALLATION_ANSWER_FILE')
+  if (!inContainer) {
+    return { email: '', password: '' }
+  }
+  const onHost = (path) => join(e2eDir, 'installation', path.split('/').pop())
+  const { firstAdmin } = JSON.parse(readFileSync(onHost(inContainer), 'utf8'))
+  return {
+    email: firstAdmin.email,
+    password: readFileSync(onHost(firstAdmin.passwordFile), 'utf8').trim(),
+  }
+}
+
+// ADR-0033, Entscheidung 5: the one account that exists after the installation, with the fixed
+// password of the answer file, so the scenarios sign in without reading anything out of a log.
+const bootstrapAdmin = isLocalAuth || isDemo ? answerFileAdmin() : { email: '', password: '' }
 if (isLocalAuth && (!bootstrapAdmin.email || !bootstrapAdmin.password)) {
   console.error(
-    `${envFile} muss OPAA_INITIAL_ADMIN_EMAIL und OPAA_INITIAL_ADMIN_PASSWORD setzen - ` +
-      'ohne beide gibt es in diesem Ziel keinen Anmeldeweg.',
+    `${envFile} muss OPAA_INSTALLATION_ANSWER_FILE auf eine Antwortdatei unter e2e/installation/ ` +
+      'setzen - ohne sie gibt es in diesem Ziel keinen Anmeldeweg.',
   )
   process.exit(1)
 }
@@ -194,18 +219,28 @@ const composeEnv = {
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,
   OPAA_KEYCLOAK_PORT: keycloakPort,
+  // The answer files and their password files, mounted read-only at /run/opaa/installation.
+  OPAA_INSTALLATION_DIR_HOST: './e2e/installation',
   // docker-compose.yml fixes the network's subnet and the frontend's address in it (ADR-0033: the
   // backend trusts X-Forwarded-For only from that nginx); each stack gets its own range so it can
   // run next to a developer's own stack, and the matching OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS
   // stands in its env file. The backend port is bound to 127.0.0.1, which is where this script and
   // the seed reach it.
-  OPAA_COMPOSE_SUBNET: isDemo ? '172.30.0.0/16' : isLocalAuth ? '172.31.0.0/16' : '172.29.0.0/16',
+  OPAA_COMPOSE_SUBNET: isDemo
+    ? '172.30.0.0/16'
+    : isLocalAuth
+      ? '172.31.0.0/16'
+      : isInstallation
+        ? '172.27.0.0/16'
+        : '172.29.0.0/16',
   OPAA_COMPOSE_FRONTEND_ADDRESS: isDemo
     ? '172.30.0.10'
     : isLocalAuth
       ? '172.31.0.10'
-      : '172.29.0.10',
-  ...(isDemo || isLocalAuth
+      : isInstallation
+        ? '172.27.0.10'
+        : '172.29.0.10',
+  ...(isDemo || isLocalAuth || isInstallation
     ? {}
     : {
         OPAA_AI_STUB_PORT: aiStubPort,
@@ -239,7 +274,9 @@ function dumpLogs() {
       ? 'docker-compose.demo-smoke.log'
       : isLocalAuth
         ? 'docker-compose.local-auth.log'
-        : 'docker-compose.log',
+        : isInstallation
+          ? 'docker-compose.installation.log'
+          : 'docker-compose.log',
   )
   console.log(`\n> Saving container logs to ${logPath}`)
   const result = spawnSync('docker', [...composeArgs, 'logs', '--no-color', '--timestamps'], {
@@ -341,17 +378,15 @@ function runSeed() {
       '600',
     )
     // ADR-0033: the Keycloak "demo-admin" no longer becomes SYSTEM_ADMIN by itself; the
-    // seed grants the role through the local bootstrap administrator the backend seeded on its
-    // first start. Its address and fixed password live in e2e/demo-smoke.env, which only the
-    // Compose stack reads - hand the two values to the seed explicitly.
-    for (const [flag, key] of [
-      ['--local-admin-email', 'OPAA_INITIAL_ADMIN_EMAIL'],
-      ['--local-admin-password', 'OPAA_INITIAL_ADMIN_PASSWORD'],
-    ]) {
-      const value = envFileValue(key)
-      if (value) {
-        seedArgs.push(flag, value)
-      }
+    // seed grants the role through the first account of the answer file
+    // (e2e/installation/demo-smoke.json), which only the backend reads - hand it over explicitly.
+    if (bootstrapAdmin.email && bootstrapAdmin.password) {
+      seedArgs.push(
+        '--local-admin-email',
+        bootstrapAdmin.email,
+        '--local-admin-password',
+        bootstrapAdmin.password,
+      )
     }
   }
   // The seed prints non-ASCII progress lines; a Windows console codepage (cp1252) cannot encode
@@ -422,7 +457,10 @@ async function main() {
       ? // No keycloak and no rss-feed: this target's whole point is an installation without an
         // OIDC provider, and no scenario indexes anything.
         ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
-      : ['ai-stub', 'rss-feed', 'nextcloud', 'dropbox-stub', 'postgres', 'backend', 'frontend']
+      : isInstallation
+        ? // ai-stub is the chat model the assistant's check calls.
+          ['ai-stub', 'postgres', 'backend', 'frontend']
+        : ['ai-stub', 'rss-feed', 'nextcloud', 'dropbox-stub', 'postgres', 'backend', 'frontend']
   console.log(
     `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}` +
@@ -451,11 +489,11 @@ async function main() {
     return
   }
 
-  // The "local-auth" target runs no seed on purpose: a first start is the state under test, and
-  // the only account that exists at this point is the bootstrap administrator the backend seeded
-  // itself (ADR-0033, Entscheidung 5). Seeding with the dev-auth header would not even work here -
-  // this stack runs "oidc".
-  if (!isLocalAuth) {
+  // The "local-auth" target runs no seed on purpose: a fresh installation is the state under test,
+  // and the only account that exists at this point is the first account of the answer file
+  // (ADR-0033, Entscheidung 5). The "installation" target is not even installed yet. Seeding with
+  // the dev-auth header would not work in either - both stacks run "oidc".
+  if (!isLocalAuth && !isInstallation) {
     console.log(`> Seeding ${target} data profile (demo/seed/seed.py --profile ${target})`)
     const seedStatus = runSeed()
     if (seedStatus !== 0) {
@@ -482,13 +520,17 @@ async function main() {
     // can never be picked up by a bare `playwright test`.
     playwrightArgs.push('--config', 'local-auth/playwright.config.ts')
   }
+  if (isInstallation) {
+    // Its own config, without retries: completing the installation ends the installation mode.
+    playwrightArgs.push('--config', 'installation-assistant/playwright.config.ts')
+  }
   playwrightArgs.push(...extraTestArgs)
   const testStatus = run('pnpm', playwrightArgs, {
     cwd: e2eDir,
     env: {
       ...process.env,
       E2E_BASE_URL: baseUrl,
-      ...(isDemo || isLocalAuth
+      ...(isDemo || isLocalAuth || isInstallation
         ? {}
         : {
             E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}`,
@@ -510,6 +552,9 @@ async function main() {
             E2E_BOOTSTRAP_ADMIN_EMAIL: bootstrapAdmin.email,
             E2E_BOOTSTRAP_ADMIN_PASSWORD: bootstrapAdmin.password,
           }
+        : {}),
+      ...(isInstallation
+        ? { E2E_INSTALLATION_TOKEN: envFileValue('OPAA_INSTALLATION_TOKEN') ?? '' }
         : {}),
     },
   })

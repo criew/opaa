@@ -10,8 +10,8 @@ import type { Locator, Page } from '@playwright/test'
  * (Szenario 2, #758) sind nur im vollständigen Durchlauf überprüfbar.
  *
  * Zwei `describe`-Blöcke: Szenarien 1/2/4/6 teilen sich das eine im Compose-Stack seit dem
- * Seed-Lauf aktive Chat-Modell (io.opaa.llm.LlmModelSeedRunner übernimmt beim Erststart die
- * OPAA_OPENAI_*-Konfiguration aus e2e.env, die auf ai-stub zeigt - siehe #766/#767) und wechseln es
+ * Seed-Lauf aktive Chat-Modell (der Modus dev richtet sich beim Erststart mit phi3:mini unter
+ * OPAA_OPENAI_BASE_URL aus e2e.env ein, das auf ai-stub zeigt) und wechseln es
  * für die Dauer dieser Datei bewusst um, deshalb `test.describe.serial` mit erzwungener Reihenfolge
  * und geteiltem Zustand (`connectionTestModelId` u. a.). Szenarien 3 und 5 hängen an keinem
  * Zustand aus Szenario 1 - ein eigenes, nicht-serielles zweites `describe` verhindert, dass sie ihr

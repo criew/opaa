@@ -88,13 +88,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "spring.ai.vectorstore.pgvector.index-type=none",
       // The width FakeEmbeddingModel embeds at; the shipped default follows the default model.
       "spring.ai.vectorstore.pgvector.dimensions=1536",
-      // The seeded active chat model and the embedding endpoint: the application.yml default
-      // would be a model server running on the developer's machine, which tests would then really
-      // call. The blank legacy provider keeps LlmModelSeeder on spring.ai.openai.chat.* even if
-      // the developer's shell still carries OPAA_AI_CHAT_PROVIDER=ollama.
-      "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
-      "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL,
-      "OPAA_AI_CHAT_PROVIDER="
+      // The chat model the dev mode installs itself with and the embedding endpoint: the
+      // application.yml default would be a model server running on the developer's machine,
+      // which tests would then really call.
+      "spring.ai.openai.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
+      "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL
     })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, OpaaTestBeans.class})
@@ -121,9 +119,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public @interface OpaaIntegrationTest {
 
   /**
-   * The chat base URL of every test context, and therefore of the chat model {@code LlmModelSeeder}
-   * activates on first start: a host under {@code .invalid} (RFC 6761) never resolves, so a chat
-   * call fails at once instead of reaching a real model.
+   * The shared model address of every test context, and therefore of the chat model the test
+   * database installs itself with (ADR-0060): a host under {@code .invalid} (RFC 6761) never
+   * resolves, so a chat call fails at once instead of reaching a real model.
    */
   String CHAT_BASE_URL = "http://chat-model.invalid/v1";
 

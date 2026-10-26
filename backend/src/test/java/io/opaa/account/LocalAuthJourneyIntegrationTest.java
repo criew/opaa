@@ -10,16 +10,11 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
-import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
-import io.opaa.auth.LocalIssuer;
-import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.mail.MailSettingsService;
-import io.opaa.security.PasswordGenerator;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
@@ -27,7 +22,6 @@ import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaLocalAuthLinkTest;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
-import java.time.Clock;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
@@ -36,16 +30,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The composed journey of the local account management, as one regression anchor across the
@@ -54,19 +44,15 @@ import org.springframework.transaction.support.TransactionTemplate;
  * administrator locks it again, and the refresh token of the ended session is refused as a replay.
  *
  * <p>Every single step has its own test elsewhere - the issuer in {@link
- * LocalAuthFlowIntegrationTest}, the seed in {@link LocalAdminSeederIntegrationTest}, the
+ * LocalAuthFlowIntegrationTest}, the forced restart in {@link LocalAdminResetIntegrationTest}, the
  * administration in {@code LocalUserAdminIntegrationTest}, the self-service in {@link
  * LocalSelfServiceIntegrationTest}. What none of them covers is that the steps compose: that the
  * seeded administrator can actually invite, that an invitation redeemed by the person yields an
  * account which signs in, and that a lock reaches the session that very account opened a moment
  * earlier. A regression between two sub-systems shows up here and nowhere else.
  *
- * <p>The seed itself is exercised only through the one outcome this context can produce without a
- * property of its own: {@code opaa.auth.initial-admin-email} carries the shipped default here,
- * which {@link LocalAdminSeeder} refuses (ADR-0033, Entscheidung 5) - the first thing an operator
- * meets after an update. The seeded *state* is then built through the fixtures, because a different
- * address would be a class-local property and split the shared context (AGENTS.md,
- * Spring-Testkontexte).
+ * <p>The emergency account comes from the installation (ADR-0060, Entscheidung 8); its state is
+ * built through the fixtures here.
  */
 @OpaaLocalAuthLinkTest
 class LocalAuthJourneyIntegrationTest {
@@ -83,23 +69,11 @@ class LocalAuthJourneyIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
-  @Autowired private LocalAdminSeeder seeder;
-  @Autowired private LocalAdminSeedMarkerRepository seedMarker;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private LocalRefreshTokenRepository refreshTokens;
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
   @Autowired private JdbcTemplate jdbc;
-  @Autowired private AuthProperties authProperties;
-  @Autowired private LocalAuthProperties localAuthProperties;
-  @Autowired private OidcProviderRepository providers;
-  @Autowired private PasswordEncoder passwordEncoder;
-  @Autowired private PasswordPolicy passwordPolicy;
-  @Autowired private PasswordGenerator passwordGenerator;
-  @Autowired private AuditEventRecorder audit;
-  @Autowired private ApplicationEventPublisher events;
-  @Autowired private Clock clock;
-  @Autowired private PlatformTransactionManager transactionManager;
 
   private LocalAccountFixtures fixtures;
   private LocalAccount bootstrapAdmin;
@@ -115,29 +89,6 @@ class LocalAuthJourneyIntegrationTest {
   @AfterEach
   void tearDown() {
     fixtures.cleanUp();
-  }
-
-  @Test
-  void theShippedDefaultAddressIsRefusedByTheSeedAndNothingIsWritten() {
-    // The state of a first start: no bootstrap account yet and no marker from an earlier attempt -
-    // otherwise the seed skips before it ever looks at the address.
-    fixtures.cleanUp();
-    seedMarker.deleteAll();
-    assertThat(localAccountCount()).isZero();
-
-    // admin@opaa.local, the address the dev profile ships: it would become the sign-in name of a
-    // privileged account at a reachable form and is not deliverable.
-    LocalAdminSeeder.Outcome outcome =
-        new TransactionTemplate(transactionManager)
-            .execute(status -> seederWithAddress("admin@opaa.local").seedIfNeeded());
-
-    assertThat(outcome).isEqualTo(LocalAdminSeeder.Outcome.REJECTED);
-    assertThat(localAccountCount())
-        .as("a refused seed writes nothing at all, so a corrected address still works next start")
-        .isZero();
-    assertThat(seedMarker.seedAlreadyAttempted())
-        .as("no marker either - the next start has to try again")
-        .isFalse();
   }
 
   @Test
@@ -379,12 +330,6 @@ class LocalAuthJourneyIntegrationTest {
         userId, EnumSet.of(RevocationReason.REUSE_DETECTED));
   }
 
-  private long localAccountCount() {
-    return users.findAll().stream()
-        .filter(user -> LocalIssuer.URN.equals(user.getIssuer()))
-        .count();
-  }
-
   private static String body(MvcResult result) throws Exception {
     return result.getResponse().getContentAsString();
   }
@@ -422,24 +367,5 @@ class LocalAuthJourneyIntegrationTest {
           }
         });
     return out.append('}').toString();
-  }
-
-  /** The seed of this context with another start value, every other collaborator the real one. */
-  private LocalAdminSeeder seederWithAddress(String address) {
-    return new LocalAdminSeeder(
-        new AuthProperties(
-            authProperties.mode(), authProperties.oidc(), authProperties.dev(), address),
-        localAuthProperties,
-        users,
-        credentials,
-        refreshTokens,
-        providers,
-        seedMarker,
-        passwordEncoder,
-        passwordPolicy,
-        passwordGenerator,
-        audit,
-        events,
-        clock);
   }
 }

@@ -1,7 +1,7 @@
 # Value set of the two-instance test on kind (multi-instance-test.sh, ADR-0053): two backend pods
 # with the migration job, the chart's evaluation database, originals and the corpus in the object
-# store of multi-test, ai-stub as chat and embedding model, the bootstrap administrator with a fixed
-# password. The image tags are set by the script; the secrets are throwaway test values.
+# store of multi-test, ai-stub as chat and embedding model, the answer file with a fixed password of
+# the first account. The image tags are set by the script; the secrets are throwaway test values.
 publicBaseUrl: http://localhost:18180
 evaluationDatabase:
   enabled: true
@@ -14,10 +14,10 @@ evaluationDatabase:
 embedding:
   baseUrl: http://ai-stub.multi-test.svc.cluster.local:8089
   model: bge-m3
-  dimensions: 1024
 bootstrap:
   initialAdmin:
     email: systemverwaltung@opaa.example
+    requirePasswordChange: false
   chatModel:
     baseUrl: http://ai-stub.multi-test.svc.cluster.local:8089
     model: qwen2.5:3b
@@ -29,8 +29,11 @@ uploads:
 targetValidation:
   indexingAllowlist:
     - objectstore.multi-test.svc.cluster.local
-  identityProviderAllowlist:
+    # The chat and embedding model of the answer file; the installation checks their address like
+    # a source.
     - ai-stub.multi-test.svc.cluster.local
+  identityProviderAllowlist:
+    - ai-stub.multi-test.svc.cluster.local:8089
 secrets:
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
