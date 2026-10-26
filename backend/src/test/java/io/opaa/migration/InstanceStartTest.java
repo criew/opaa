@@ -267,7 +267,7 @@ class InstanceStartTest extends AbstractMigrationTest {
     return Map.of(
         "OPAA_INSTALLATION_ANSWER_FILE",
         answers.toString(),
-        "OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST",
+        "OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST",
         "127.0.0.1");
   }
 
