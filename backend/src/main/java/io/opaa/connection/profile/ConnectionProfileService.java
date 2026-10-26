@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -332,6 +333,7 @@ public class ConnectionProfileService {
     privateRelease.release(caller, profile, released);
     Map<String, Object> before = auditState(profile);
     String previousSecret = profile.getClientSecretCiphertext();
+    String previousSettings = profile.getConnectorSettings();
     ConnectionEndCause cause =
         change.addressChanged()
             ? ConnectionEndCause.ADDRESS_CHANGED
@@ -387,6 +389,9 @@ public class ConnectionProfileService {
               .toList());
     }
     Map<String, Object> after = auditStateAfter(profile, previousSecret);
+    after.put(
+        "connectorSettingsChanged",
+        changedConnectorSettingsKeys(previousSettings, profile.getConnectorSettings()));
     if (affected > 0) {
       after.put("connectionsDiscarded", affected);
     }
@@ -837,7 +842,11 @@ public class ConnectionProfileService {
     }
   }
 
-  /** Field names and non-secret values only; the secret appears as whether one is set. */
+  /**
+   * Field names and non-secret values only; the secret appears as whether one is set. Client ID,
+   * tenant and scopes appear with their value ({@code ""} when none is set), the connector defaults
+   * only by key: a default may name a person, such as the delegated account of Google Drive.
+   */
   static Map<String, Object> auditState(ConnectionProfile profile) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("name", profile.getName());
@@ -856,6 +865,10 @@ public class ConnectionProfileService {
     state.put("tenantSet", profile.getTenant() != null);
     state.put("scopesSet", profile.getScopes() != null);
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
+    state.put("clientId", Objects.toString(profile.getClientId(), ""));
+    state.put("tenant", Objects.toString(profile.getTenant(), ""));
+    state.put("scopes", Objects.toString(profile.getScopes(), ""));
+    state.put("connectorSettingsKeys", connectorSettingsKeys(profile.getConnectorSettings()));
     ProfileEndpoints endpoints = profile.getEndpoints();
     if (!endpoints.equals(ProfileEndpoints.NONE)) {
       state.put("authorizationEndpoint", Objects.toString(endpoints.authorization(), ""));
@@ -863,6 +876,27 @@ public class ConnectionProfileService {
       state.put("revocationEndpoint", Objects.toString(endpoints.revocation(), ""));
     }
     return state;
+  }
+
+  /**
+   * The keys of connector defaults whose value differs between {@code before} and {@code after}
+   * (stored JSON, {@code null} for none), added and removed ones included, in key order.
+   */
+  static List<String> changedConnectorSettingsKeys(String before, String after) {
+    Map<String, Object> was = connectorSettings(before);
+    Map<String, Object> is = connectorSettings(after);
+    Set<String> keys = new TreeSet<>(was.keySet());
+    keys.addAll(is.keySet());
+    return keys.stream().filter(key -> !Objects.equals(was.get(key), is.get(key))).toList();
+  }
+
+  private static List<String> connectorSettingsKeys(String stored) {
+    return connectorSettings(stored).keySet().stream().sorted().toList();
+  }
+
+  private static Map<String, Object> connectorSettings(String stored) {
+    ConnectorData data = ConnectorData.fromJson(stored);
+    return data == null ? Map.of() : data.asMap();
   }
 
   /**

@@ -168,6 +168,38 @@ gegen die Grenzen des Betriebs (Entscheidung 2) und ist ein Revisionsereignis. B
 die Einstellungen in der Datenbank, lassen sich Test und Produktion nicht mehr über die
 Konfiguration vergleichen.
 
+Übertragen werden auch je Quellart die Sperre und „Nur über Zugänge“, abgeglichen über den
+Schlüssel der Quellart. Beides enthält kein Geheimnis und geht durch die
+Schreibwege der Verwaltung. Weil Zugänge nicht übertragen werden, lehnt der Import „Nur über
+Zugänge“ ab, wenn in der Zielinstallation kein Zugang die Quellart übernehmen könnte.
+
+Nicht übertragen werden Bestände, die die Installation mit ihren eigenen Diensten verbinden oder
+festlegen, wer sich mit welcher Rolle anmeldet:
+
+- **Chat-, Rerank- und Transkriptionsmodell**: Ihre Adresse empfängt Chats und Spracheingaben, ein
+  Import lenkte diese Daten an ein neues Ziel. Der Schlüssel folgt keiner neuen Adresse, ein
+  übertragenes Modell stünde ohne Schlüssel da. Chat-Modelle haben keinen eindeutigen Namen, über
+  den sich abgleichen ließe. Das Embedding-Modell bleibt nach Entscheidung 10 außen vor.
+- **Identitätsanbieter und der Schalter der lokalen Konten**: Sie bilden das Anmeldeverfahren. Ein
+  Anbieter ordnet Werte seiner Claims den Systemrollen zu; ein Import könnte damit den Kreis der
+  Systemverwaltung erweitern. Ein ausgeschalteter Anbieter, ein anderer Standardanbieter oder
+  abgeschaltete lokale Konten könnten die Systemverwaltung aussperren. Ein Geheimnis haben
+  Identitätsanbieter nicht; der Grund ist die Anmeldung.
+- **Verzeichniszugänge**: Sie brauchen das Geheimnis eines Dienstkontos und hängen an einem
+  Identitätsanbieter, der selbst nicht übertragen wird.
+- **Zugänge**: App-Registrierung und Geheimnis gehören zur Installation, deren Adresse in die
+  Rücksprungadresse eingeht. Eine geänderte Adresse, ein anderer Mandant oder andere Scopes
+  verwerfen alle Geheimnisse und beenden die verbundenen Konten aller Personen.
+- **Konnektor-Freigabe** (die Anlegerechte je Quellart und Zugang): Sie verweist auf Gruppen und
+  Zugänge dieser Installation, die es in einer anderen so nicht gibt.
+- **Bilder des Brandings**: Sie dürfen größer sein als eine Einstellungsdatei und werden in der
+  Verwaltung hochgeladen.
+
+Ein Zugang protokolliert Client-ID, Mandant und Scopes mit ihren Werten vorher und nachher; sie
+sind keine Geheimnisse (Entscheidung 11). Von den Konnektor-Vorgaben nennt das Protokoll nur die
+gesetzten und die geänderten Schlüssel, nie ihre Werte: Eine Vorgabe kann eine Person nennen, etwa
+das Konto, in dessen Namen Google Drive gelesen wird.
+
 ### 13. Eine entfallene Lösch- oder Aufbewahrungsvariable bremst nur
 
 Wandert eine Lösch- oder Aufbewahrungsfrist aus der Konfiguration in die Datenbank, wird ihre

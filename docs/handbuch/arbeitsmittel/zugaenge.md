@@ -193,7 +193,10 @@ wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken/README.md), Absc
   muss ein neues Secret eintragen.
 - Endpunkte, an die Geheimnisse gehen, müssen `https://` verwenden.
 - Anlegen, Ändern, Löschen, Sperren, die Notabschaltung und jeder Anmeldetest stehen im
-  Revisionsprotokoll. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
+  Revisionsprotokoll, Client-ID, Mandant und Scopes mit vorherigem und neuem Wert. Von den
+  Vorgaben für den Konnektor steht dort nur, welche gesetzt sind und welche sich geändert haben,
+  ohne Wert: Eine Vorgabe wie das Konto, in dessen Namen Google Drive gelesen wird, kann eine
+  Person nennen. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
   getrennt wurden ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 12).
 
 ## 9. Konfiguration

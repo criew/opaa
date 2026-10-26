@@ -976,13 +976,19 @@ auditEvents:
       - tokenRateLimitPerHour
   - id: CONNECTION_PROFILE_CREATED
     trigger: Ein Verbindungsprofil wird angelegt
-    details: Das Client-Geheimnis nur als „gesetzt“ (clientSecretChange), nie mit dem Wert
+    details: >-
+      Client-ID, Mandant und Scopes mit ihrem Wert, von den Konnektor-Vorgaben nur die gesetzten
+      Schlüssel (connectorSettingsKeys), nie ihre Werte, denn eine Vorgabe kann eine Person nennen;
+      das Client-Geheimnis nur als „gesetzt“ (clientSecretChange), nie mit dem Wert. Bei einer Anmeldung mit Dienstkonto-Schlüssel ist die Client-ID die Adresse des Dienstkontos,
+      eines Funktionskontos.
     payloadKeys:
       - authMethod
       - authorizationEndpoint
+      - clientId
       - clientIdSet
       - clientSecretChange
       - clientSecretSet
+      - connectorSettingsKeys
       - connectorSettingsSet
       - issuer
       - kind
@@ -990,23 +996,31 @@ auditEvents:
       - ownership
       - responsibleGroupId
       - revocationEndpoint
+      - scopes
       - scopesSet
       - serverUrl
       - sourceType
+      - tenant
       - tenantSet
       - tokenEndpoint
   - id: CONNECTION_PROFILE_CHANGED
     trigger: Ein Verbindungsprofil wird geändert
     details: >-
-      Zahl der Verbindungen, die ihr Geheimnis verloren; das Client-Geheimnis nur als „gesetzt“,
-      „geändert“ oder „entfernt“ (clientSecretChange), nie mit dem Wert
+      Zahl der Verbindungen, die ihr Geheimnis verloren; Client-ID, Mandant und Scopes vorher und
+      nachher mit ihrem Wert, von den Konnektor-Vorgaben nur die gesetzten Schlüssel und die Liste
+      der geänderten Schlüssel (connectorSettingsChanged), nie ihre Werte; das Client-Geheimnis nur
+      als „gesetzt“, „geändert“ oder „entfernt“ (clientSecretChange), nie mit dem Wert. Bei einer Anmeldung mit Dienstkonto-Schlüssel ist die Client-ID die Adresse des Dienstkontos,
+      eines Funktionskontos.
     payloadKeys:
       - authMethod
       - authorizationEndpoint
+      - clientId
       - clientIdSet
       - clientSecretChange
       - clientSecretSet
       - connectionsDiscarded
+      - connectorSettingsChanged
+      - connectorSettingsKeys
       - connectorSettingsSet
       - issuer
       - kind
@@ -1014,19 +1028,28 @@ auditEvents:
       - ownership
       - responsibleGroupId
       - revocationEndpoint
+      - scopes
       - scopesSet
       - serverUrl
       - sourceType
+      - tenant
       - tenantSet
       - tokenEndpoint
   - id: CONNECTION_PROFILE_DELETED
     trigger: Ein Verbindungsprofil wird gelöscht
+    details: >-
+      Der Stand vor dem Löschen: Client-ID, Mandant und Scopes mit ihrem Wert, von den
+      Konnektor-Vorgaben nur die gesetzten Schlüssel, vom Client-Geheimnis nur, ob eines gesetzt war.
+      Bei einer Anmeldung mit Dienstkonto-Schlüssel ist die Client-ID die Adresse des Dienstkontos,
+      eines Funktionskontos.
     payloadKeys:
       - authMethod
       - authorizationEndpoint
+      - clientId
       - clientIdSet
       - clientSecretSet
       - connectionsRemoved
+      - connectorSettingsKeys
       - connectorSettingsSet
       - issuer
       - kind
@@ -1034,9 +1057,11 @@ auditEvents:
       - ownership
       - responsibleGroupId
       - revocationEndpoint
+      - scopes
       - scopesSet
       - serverUrl
       - sourceType
+      - tenant
       - tenantSet
       - tokenEndpoint
   - id: CONNECTION_PROFILE_DISCONNECTED
