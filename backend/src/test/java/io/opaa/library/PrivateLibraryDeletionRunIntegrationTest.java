@@ -302,6 +302,14 @@ class PrivateLibraryDeletionRunIntegrationTest {
             Map.of("OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS", "90"))) {
       assertThat(deletionRun.runOnce().erased()).isZero();
       assertThat(exists(library)).isTrue();
+      SourceBlock paused =
+          blocks
+              .blockOf(libraryRepository.findById(library).orElseThrow(), SourceBlocks.ALL)
+              .orElseThrow();
+      assertThat(paused.reason()).isEqualTo(Reason.OWNER_DEACTIVATED);
+      assertThat(paused.contentDeletedOn())
+          .as("no day already past while the erasure pauses")
+          .isNull();
 
       storeDeletionDays(30);
       assertThat(deletionRun.runOnce().erased()).isEqualTo(1);

@@ -182,23 +182,23 @@ describe('ConnectionLifecycleSection', () => {
     ).not.toHaveTextContent(/früher als bisher/)
   })
 
-  it('names why the erasure pauses and ends the pause by storing the shown value', async () => {
-    serve([
-      inactivity,
+  const paused: ConnectionLifecycleSettingResponse = {
+    ...deletion,
+    value: 30,
+    overridden: false,
+    pausedBy: [
       {
-        ...deletion,
-        value: 30,
-        overridden: false,
-        pausedBy: [
-          {
-            variable: 'OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS',
-            retiredValue: '90',
-            effectiveValue: '30',
-          },
-        ],
+        variable: 'OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS',
+        retiredValue: '90',
+        effectiveValue: '30',
       },
-      warning,
-    ])
+    ],
+  }
+  const ENDS_PAUSE =
+    /der nächste tägliche Lauf löscht private Bibliotheken, deren Frist danach abgelaufen ist/
+
+  it('ends the pause by storing the shown value only after a confirmation', async () => {
+    serve([inactivity, paused, warning])
     const sent = saveCapture()
     const user = userEvent.setup()
     renderWithProviders(<ConnectionLifecycleSection />)
@@ -207,9 +207,37 @@ describe('ConnectionLifecycleSection', () => {
     expect(screen.getByText('OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Angezeigten Wert festlegen' }))
 
+    const question = 'Löschfrist privater Bibliotheken auf 30 festlegen?'
+    expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(ENDS_PAUSE)
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(sent).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'Angezeigten Wert festlegen' }))
+    await answerConfirm(user, question, 'Wert festlegen')
     await waitFor(() =>
       expect(sent).toEqual([{ setting: 'PRIVATE_LIBRARY_DELETION_DAYS', body: { value: 30 } }]),
     )
+  })
+
+  it('warns that saving any value during a pause ends it, a longer one included', async () => {
+    serve([inactivity, paused, warning])
+    const sent = saveCapture()
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionLifecycleSection />)
+
+    const field = await screen.findByLabelText('Löschfrist privater Bibliotheken in Tagen')
+    await user.clear(field)
+    await user.type(field, '60')
+    await user.click(
+      screen.getByRole('button', { name: 'Löschfrist privater Bibliotheken speichern' }),
+    )
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Löschfrist privater Bibliotheken auf 60 ändern?',
+      }),
+    ).toHaveTextContent(ENDS_PAUSE)
+    expect(sent).toEqual([])
   })
 
   it('refuses a value outside the bounds before sending', async () => {
