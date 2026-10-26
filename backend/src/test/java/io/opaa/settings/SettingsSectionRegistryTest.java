@@ -47,6 +47,9 @@ class SettingsSectionRegistryTest {
           "directory_connectors",
               "directory access with the secret of a service account, bound to an identity"
                   + " provider that is not transferred either",
+          "capability_grants",
+              "capabilities granted to groups, the connector release per source type and profile"
+                  + " among them; they name groups and profiles of this installation",
           "connection_profiles",
               "connection profiles: app registration and secret of this installation; a changed"
                   + " address, tenant or scope discards every connected account");

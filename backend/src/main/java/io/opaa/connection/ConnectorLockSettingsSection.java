@@ -17,15 +17,13 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * The connector release per source type, matched by the type key: {@code <TYPE>.locked} for every
- * type that reaches a source, and {@code <TYPE>.profileRequired} ("Nur über Zugänge": {@code null}
- * for off, otherwise what happens to libraries with their own address) where the connector declares
- * profiles optional. Applied through {@link ConnectorLockService} and {@link
- * ProfileRequirementService}, which write and audit nothing for an unchanged value; profiles are no
- * part of the document, so a requirement nothing in this installation could take over is refused.
+ * Per source type its lock ({@code <TYPE>.locked}) and, where profiles are optional, "Nur über
+ * Zugänge" ({@code <TYPE>.profileRequired}), matched by the type key and applied through {@link
+ * ConnectorLockService} and {@link ProfileRequirementService}. Profiles are not transferred, so a
+ * requirement nothing here could take over is refused.
  */
 @Component
-class ConnectorReleaseSettingsSection implements SettingsSection {
+class ConnectorLockSettingsSection implements SettingsSection {
 
   private static final String LOCKED = ".locked";
   private static final String PROFILE_REQUIRED = ".profileRequired";
@@ -33,20 +31,19 @@ class ConnectorReleaseSettingsSection implements SettingsSection {
   private final ConnectorLockService locks;
   private final ProfileRequirementService requirements;
 
-  ConnectorReleaseSettingsSection(
-      ConnectorLockService locks, ProfileRequirementService requirements) {
+  ConnectorLockSettingsSection(ConnectorLockService locks, ProfileRequirementService requirements) {
     this.locks = locks;
     this.requirements = requirements;
   }
 
   @Override
   public String key() {
-    return "connectorRelease";
+    return "connectorLocks";
   }
 
   @Override
   public String label() {
-    return "Freigabe der Konnektoren";
+    return "Sperren und „Nur über Zugänge“";
   }
 
   @Override
@@ -64,7 +61,8 @@ class ConnectorReleaseSettingsSection implements SettingsSection {
         labels.put(
             type + PROFILE_REQUIRED,
             state.displayName()
-                + " nur über Zugänge (eigene Adressen: RUNS laufen weiter, LOCKED gesperrt)");
+                + " nur über Zugänge (nicht gesetzt: aus; RUNS: Bibliotheken mit eigener Adresse"
+                + " laufen weiter; LOCKED: sie werden gesperrt)");
       }
     }
     return labels;

@@ -38,8 +38,9 @@ export default function SettingsExportSection() {
       <Stack spacing={2} sx={{ maxWidth: 640, alignItems: 'flex-start' }}>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Passwörter und Schlüssel stehen nicht in der Datei, auch nicht, ob einer hinterlegt ist.
-          Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge und die Bilder des Brandings
-          gehören nicht dazu; die Freigabe der Konnektoren schon.
+          Modelle, Identitätsanbieter, Verzeichniszugänge, Zugänge, die Konnektor-Freigabe und die
+          Bilder des Brandings gehören nicht dazu; Sperren und „Nur über Zugänge“ der Quellarten
+          schon.
         </Typography>
         <BusyButton
           variant="outlined"

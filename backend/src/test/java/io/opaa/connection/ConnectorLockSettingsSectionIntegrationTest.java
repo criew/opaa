@@ -31,18 +31,18 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * The connector release in the settings document (ADR-0060, Entscheidung 12): per source type its
+ * The connector locks in the settings document (ADR-0060, Entscheidung 12): per source type its
  * lock and, where profiles are optional, "Nur über Zugänge", matched by the type key and applied
  * through the administration's write paths with their audit events. A requirement without a profile
  * that could take over refuses the whole document.
  */
 @OpaaIntegrationTest
-class ConnectorReleaseSettingsSectionIntegrationTest {
+class ConnectorLockSettingsSectionIntegrationTest {
 
   private static final String TYPE = "PROFILE_PROBE";
   private static final String LOCKED = TYPE + ".locked";
   private static final String REQUIRED = TYPE + ".profileRequired";
-  private static final String SECTION = "connectorRelease";
+  private static final String SECTION = "connectorLocks";
   private static final String EXPORT = "/api/v1/system/settings/export";
   private static final String PREVIEW = "/api/v1/system/settings/import/preview";
   private static final String IMPORT = "/api/v1/system/settings/import";
