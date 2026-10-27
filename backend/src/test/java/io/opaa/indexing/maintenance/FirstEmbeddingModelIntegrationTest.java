@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.SystemRole;
 import io.opaa.common.ConflictException;
+import io.opaa.indexing.chunk.EmbeddingIdentity;
 import io.opaa.indexing.chunk.EmbeddingIndexReconciler;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
@@ -192,6 +193,34 @@ class FirstEmbeddingModelIntegrationTest {
     assertThat(changes.probe(firstDraft(FIRST_MODEL)).succeeded()).isFalse();
   }
 
+  // regression guard: an index record of another model without chunks refused the first model
+  @Test
+  void anIndexRecordOfAnotherModelWithoutChunksGivesWayToTheFirstModel() {
+    jdbc.execute(
+        "CREATE TABLE vector_store (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), content text,"
+            + " metadata json, embedding vector("
+            + FakeEmbeddingModel.DIMENSIONS
+            + "))");
+    store.save(
+        new EmbeddingIndexRecord(
+            new EmbeddingIdentity("fremdes-modell", "http://127.0.0.1:18082/v1", 768, 7),
+            null,
+            EmbeddingIndexRecord.Run.NONE));
+
+    assertThat(changes.probe(firstDraft(FIRST_MODEL)).succeeded()).isTrue();
+    changes.confirm(
+        firstDraft(FIRST_MODEL), FakeEmbeddingModel.DIMENSIONS, adminId, Organization.DEFAULT_ID);
+
+    long generation =
+        jdbc.queryForObject("SELECT generation FROM embedding_model WHERE id = 1", Long.class);
+    EmbeddingIndexRecord record = store.load().orElseThrow();
+    assertThat(record.current().model()).isEqualTo(FIRST_MODEL);
+    assertThat(record.current().dimensions()).isEqualTo(FakeEmbeddingModel.DIMENSIONS);
+    assertThat(record.current().generation()).isEqualTo(generation);
+    assertThat(record.target()).isNull();
+    assertThat(state.isVectorSearchAvailableFor(generation)).isTrue();
+  }
+
   /**
    * Two instances fixing the first model at once: without the exclusion of this instance, only the
    * schema lock in the database orders them, and the second finds the row of the first.
@@ -279,11 +308,14 @@ class FirstEmbeddingModelIntegrationTest {
         .isOne();
   }
 
+  /** Sessions waiting for the schema lock of the vector table, (213, 0) as two int keys. */
   private long advisoryLockWaiters() {
     Long waiting =
         jdbc.queryForObject(
-            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
-            Long.class);
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
+                + " AND classid = ? AND objid = 0 AND objsubid = 2",
+            Long.class,
+            VectorIndexSchema.SCHEMA_LOCK_NAMESPACE);
     return waiting == null ? 0 : waiting;
   }
 
