@@ -41,6 +41,7 @@ test.describe('Einrichtungs-Assistent', () => {
 
     await enterToken(page, 'falsches-token-falsches-token-00')
     await expect(page.getByLabel('Token', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+    await expectStepEdgesFlush(page)
 
     await enterToken(page, INSTALLATION_TOKEN)
     await expect(stepHeading(page, 'Erstes Konto')).toBeVisible()
@@ -90,6 +91,11 @@ test.describe('Einrichtungs-Assistent', () => {
     }
     await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
     await expectStepEdgesFlush(page)
+    // At 320 px the forward action wraps below the back button and keeps the right edge.
+    const viewport = page.viewportSize()
+    await page.setViewportSize({ width: 320, height: 800 })
+    await expectStepEdgesFlush(page)
+    if (viewport) await page.setViewportSize(viewport)
     await page.getByRole('button', { name: 'Installation abschließen' }).click()
     await expect(stepHeading(page, 'Installation abgeschlossen')).toBeVisible()
 
