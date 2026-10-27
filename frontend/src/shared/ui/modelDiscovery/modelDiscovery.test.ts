@@ -3,6 +3,7 @@ import type { DiscoveredLlmModel } from '@/shared/api/types'
 import {
   describeModel,
   displayNameFor,
+  embeddingSuitable,
   ENDPOINT_PRESETS,
   presetOf,
   suggestedMaxTokens,
@@ -86,5 +87,21 @@ describe('describeModel', () => {
 
   it('says nothing it does not know', () => {
     expect(describeModel(model())).toEqual([])
+  })
+})
+
+describe('embeddingSuitable', () => {
+  it('follows the reported capabilities when there are any', () => {
+    expect(embeddingSuitable(model({ capabilities: ['embedding'] }))).toBe(true)
+    expect(embeddingSuitable(model({ identifier: 'bge-m3', capabilities: ['completion'] }))).toBe(
+      false,
+    )
+  })
+
+  it('falls back to the name and family of a model without capabilities', () => {
+    expect(embeddingSuitable(model({ identifier: 'text-embedding-3-small' }))).toBe(true)
+    expect(embeddingSuitable(model({ identifier: 'bge-m3' }))).toBe(true)
+    expect(embeddingSuitable(model({ identifier: 'custom', family: 'nomic-bert' }))).toBe(true)
+    expect(embeddingSuitable(model({ identifier: 'gpt-4o' }))).toBe(false)
   })
 })

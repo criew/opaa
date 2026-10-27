@@ -738,9 +738,10 @@ components:
           description: Whether the endpoint was recognized as Ollama and its details were read.
         models:
           type: array
+          maxItems: 500
           description: >
             The offered models, chat-suitable ones first, each group sorted by identifier. Empty on
-            failure.
+            failure. At most 500; entries beyond are left out.
           items:
             $ref: "#/components/schemas/DiscoveredLlmModel"
 
@@ -750,20 +751,26 @@ components:
       properties:
         identifier:
           type: string
-          description: The exact model identifier to send as "model", e.g. qwen3:8b.
+          maxLength: 200
+          description: >
+            The exact model identifier to send as "model", e.g. qwen3:8b. A listed identifier
+            longer than 200 characters is left out, as is a longer detail below.
           example: qwen3:8b
         family:
           type: string
+          maxLength: 200
           nullable: true
           description: Model family as reported by Ollama, e.g. qwen3.
           example: qwen3
         parameterSize:
           type: string
+          maxLength: 200
           nullable: true
           description: Parameter count as reported by Ollama, e.g. 8.2B.
           example: 8.2B
         quantization:
           type: string
+          maxLength: 200
           nullable: true
           description: Quantization level as reported by Ollama, e.g. Q4_K_M.
           example: Q4_K_M
@@ -782,11 +789,13 @@ components:
           example: 40960
         capabilities:
           type: array
+          maxItems: 32
           description: >
             Capabilities as reported by the endpoint (Ollama: completion, embedding, tools,
             vision, thinking, ...); empty when the endpoint reports none.
           items:
             type: string
+            maxLength: 200
         chatSuitable:
           type: boolean
           description: >

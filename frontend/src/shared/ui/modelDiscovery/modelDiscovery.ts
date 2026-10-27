@@ -111,6 +111,20 @@ export function describeModel(model: DiscoveredLlmModel): string[] {
   return parts
 }
 
+/** The role a discovered model is chosen for. */
+export type DiscoveryPurpose = 'chat' | 'embedding'
+
+const EMBEDDING_NAME = /embed|bge|bert|minilm|mpnet/i
+
+/**
+ * Whether a model can serve as the embedding model: reported capabilities decide when there are
+ * any, otherwise its identifier or family naming an embedding model.
+ */
+export function embeddingSuitable(model: DiscoveredLlmModel): boolean {
+  if (model.capabilities.length > 0) return model.capabilities.includes('embedding')
+  return EMBEDDING_NAME.test(`${model.identifier} ${model.family ?? ''}`)
+}
+
 export function formatTokens(tokens: number): string {
   return integer.format(tokens)
 }

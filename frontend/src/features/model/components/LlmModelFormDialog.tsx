@@ -10,13 +10,13 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel, LlmModelResponse } from '@/shared/api/types'
-import { testLlmModel } from '../api/modelApi'
+import { discoverLlmModels, testLlmModel } from '../api/modelApi'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import BaseUrlField from './BaseUrlField'
-import DiscoveryStatus from './DiscoveryStatus'
-import ModelIdentifierField from './ModelIdentifierField'
+import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
+import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierField'
 import {
   displayNameFor,
   formatTokens,
@@ -24,8 +24,8 @@ import {
   presetOf,
   suggestedMaxTokens,
   type EndpointPreset,
-} from './modelDiscovery'
-import { useModelDiscovery } from './useModelDiscovery'
+} from '@/shared/ui/modelDiscovery/modelDiscovery'
+import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
 
 export const REQUIRED_FIELDS_HINT =
   'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
@@ -107,7 +107,7 @@ export default function LlmModelFormDialog({
   const [contextLength, setContextLength] = useState<number | null>(null)
   // Only the result of the latest connection test counts, as in useModelDiscovery.
   const latestTest = useRef(0)
-  const discovery = useModelDiscovery()
+  const discovery = useModelDiscovery(discoverLlmModels)
   const addressRef = useRef<HTMLInputElement>(null)
 
   const isEdit = model !== null
@@ -181,8 +181,9 @@ export default function LlmModelFormDialog({
   }
 
   /**
-   * Fills in the preset's address. A host still to be confirmed (Ollama) is selected for
-   * overwriting and nothing is fetched yet; a keyed preset fetches at once if a key is typed.
+   * Fills in the preset's address; a host still to be confirmed (Ollama) is selected for
+   * overwriting. Nothing is fetched: a typed key may belong to another endpoint and is sent only
+   * on „Modelle abrufen“ or Enter.
    */
   function choosePreset(chosen: EndpointPreset) {
     changeBaseUrl(chosen.baseUrl)
@@ -196,9 +197,7 @@ export default function LlmModelFormDialog({
         input.focus()
         input.setSelectionRange(start, start + host.length)
       }, 0)
-      return
     }
-    if (chosen.needsKey && typedKey) runDiscovery(chosen.baseUrl)
   }
 
   function selectModel(selected: DiscoveredLlmModel) {
@@ -322,7 +321,8 @@ export default function LlmModelFormDialog({
               <BusyButton
                 variant="outlined"
                 busy={discovery.state.status === 'loading'}
-                busyAnnouncement="Modelle werden abgerufen"
+                // DiscoveryStatus announces the loading; the button stays silent.
+                busyAnnouncement=""
                 disabled={draft.baseUrl.trim() === ''}
                 onClick={() => runDiscovery()}
                 sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}

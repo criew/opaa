@@ -1,14 +1,19 @@
 package io.opaa.installation.web;
 
 import io.opaa.api.dto.InstallationAnswers;
+import io.opaa.api.dto.InstallationModelDiscoveryRequest;
 import io.opaa.api.dto.InstallationStatusResponse;
 import io.opaa.api.dto.InstallationStepRequest;
 import io.opaa.api.dto.InstallationStepState;
+import io.opaa.api.dto.LlmModelDiscoveryResponse;
 import io.opaa.common.ValidationException;
+import io.opaa.installation.InstallationModelDiscovery;
 import io.opaa.installation.InstallationService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.installation.InstallationStep;
 import io.opaa.installation.StepInput;
+import io.opaa.llm.web.LlmModelDiscoveryResponseMapper;
+import jakarta.validation.Valid;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,9 +34,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class InstallationController {
 
   private final InstallationService installation;
+  private final InstallationModelDiscovery modelDiscovery;
 
-  InstallationController(InstallationService installation) {
+  InstallationController(
+      InstallationService installation, InstallationModelDiscovery modelDiscovery) {
     this.installation = installation;
+    this.modelDiscovery = modelDiscovery;
   }
 
   @GetMapping
@@ -50,6 +58,14 @@ public class InstallationController {
   @PostMapping("/steps/{step}/check")
   public InstallationStepState checkInstallationStep(@PathVariable("step") String step) {
     return InstallationResponseMapper.toResponse(installation.check(parse(step)));
+  }
+
+  @PostMapping("/steps/{step}/discover")
+  public LlmModelDiscoveryResponse discoverInstallationModels(
+      @PathVariable("step") String step,
+      @Valid @RequestBody InstallationModelDiscoveryRequest body) {
+    return LlmModelDiscoveryResponseMapper.toResponse(
+        modelDiscovery.discover(parse(step), body.getBaseUrl(), body.getApiKey()));
   }
 
   @PostMapping("/answer-file")

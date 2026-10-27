@@ -21,6 +21,11 @@ export type InstallationStepState = Schemas['InstallationStepState']
 
 export type InstallationStatusResponse = Schemas['InstallationStatusResponse']
 
+export type InstallationModelDiscoveryRequest = Schemas['InstallationModelDiscoveryRequest']
+
+/** The steps whose endpoint lists its models. */
+export type ModelStepId = Extract<InstallationStepId, 'CHAT_MODEL' | 'EMBEDDING_MODEL'>
+
 /** The values a step's save sends, by step. */
 export interface StepInput {
   FIRST_ADMIN: InstallationFirstAdmin

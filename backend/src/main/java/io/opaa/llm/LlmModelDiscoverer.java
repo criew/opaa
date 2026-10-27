@@ -66,6 +66,15 @@ public class LlmModelDiscoverer {
   /** Ceiling per {@code /api/show} answer, which also carries template and license text. */
   private static final int MAX_DETAIL_BYTES = 1024 * 1024;
 
+  /** Entries of the list beyond this many are left out; the form offers no more. */
+  static final int MAX_MODELS = 500;
+
+  /** An identifier longer than this is left out, as is a longer detail. */
+  static final int MAX_TEXT_LENGTH = 200;
+
+  /** Capabilities and families of one model beyond this many are left out. */
+  static final int MAX_CAPABILITIES = 32;
+
   /** Models beyond this many keep their list entry but get no {@code /api/show} details. */
   private static final int MAX_DETAILED_MODELS = 100;
 
@@ -148,18 +157,22 @@ public class LlmModelDiscoverer {
       if (failure != null) {
         return failure;
       }
-      Map<String, Integer> listed = parseModelList(list.body());
+      Listed listed = parseModelList(list.body());
       if (listed == null) {
         return noModelList();
       }
-      OllamaDetails ollama = ollamaDetails(client, baseUrl, key, listed.keySet());
-      return ModelDiscovery.found(ollama != null, toModels(listed, ollama));
+      OllamaDetails ollama = ollamaDetails(client, baseUrl, key, listed.models().keySet());
+      return ModelDiscovery.found(
+          ollama != null, toModels(listed.models(), ollama), listed.truncated());
     } catch (BoundedStreams.LimitExceededException e) {
       return ModelDiscovery.failed(
           Failure.UNEXPECTED_RESPONSE,
           "Die Modellliste ist zu groß (mehr als " + MAX_RESPONSE_BYTES / (1024 * 1024) + " MiB).");
     } catch (IOException e) {
-      log.warn("Model discovery failed for {}: {}", modelsUri, e.getMessage());
+      log.warn(
+          "Model discovery failed for {}: {}",
+          ModelEndpointUri.withoutSecrets(baseUrl),
+          e.getClass().getSimpleName());
       return ModelDiscovery.failed(
           Failure.UNREACHABLE, ModelEndpointAccess.translateConnectionError(e));
     } catch (InterruptedException e) {
@@ -210,24 +223,31 @@ public class LlmModelDiscoverer {
         "Der Endpunkt bietet keine Modellliste an. Tragen Sie die Modell-Kennung von Hand ein.");
   }
 
+  /** The first {@link #MAX_MODELS} identifiers, and whether the endpoint listed more. */
+  private record Listed(Map<String, Integer> models, boolean truncated) {}
+
   /**
    * The identifiers of an OpenAI-style list ({@code {"data":[{"id":...}]}}) in their listed order,
    * each with the context length the entry reports, if any; {@code null} when the body is no such
-   * list.
+   * list. The order is the endpoint's: suitability is known only after Ollama's details.
    */
-  private Map<String, Integer> parseModelList(byte[] body) {
+  private Listed parseModelList(byte[] body) {
     JsonNode root = readJson(body);
     if (root == null || !root.path("data").isArray()) {
       return null;
     }
     Map<String, Integer> listed = new LinkedHashMap<>();
     for (JsonNode entry : root.path("data")) {
-      JsonNode id = entry.path("id");
-      if (id.isString() && !id.asString().isBlank()) {
-        listed.putIfAbsent(id.asString(), contextLengthOf(entry));
+      String id = text(entry.path("id"));
+      if (id == null || listed.containsKey(id)) {
+        continue;
       }
+      if (listed.size() >= MAX_MODELS) {
+        return new Listed(listed, true);
+      }
+      listed.put(id, contextLengthOf(entry));
     }
-    return listed;
+    return new Listed(listed, false);
   }
 
   private static Integer contextLengthOf(JsonNode entry) {
@@ -504,18 +524,25 @@ public class LlmModelDiscoverer {
     }
   }
 
+  /** A non-blank text of at most {@link #MAX_TEXT_LENGTH} characters, else {@code null}. */
   private static String text(JsonNode node) {
-    return node.isString() && !node.asString().isBlank() ? node.asString() : null;
+    if (!node.isString()) {
+      return null;
+    }
+    String value = node.asString();
+    return value.isBlank() || value.length() > MAX_TEXT_LENGTH ? null : value;
   }
 
+  /** At most {@link #MAX_CAPABILITIES} texts that {@link #text} accepts. */
   private static List<String> strings(JsonNode node) {
     if (!node.isArray()) {
       return List.of();
     }
     List<String> values = new ArrayList<>();
     for (JsonNode element : node) {
-      if (element.isString() && !element.asString().isBlank()) {
-        values.add(element.asString());
+      String value = text(element);
+      if (value != null && values.size() < MAX_CAPABILITIES) {
+        values.add(value);
       }
     }
     return List.copyOf(values);

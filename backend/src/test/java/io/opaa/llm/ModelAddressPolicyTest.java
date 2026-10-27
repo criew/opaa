@@ -21,6 +21,18 @@ class ModelAddressPolicyTest {
         .doesNotContain("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
   }
 
+  // regression guard: the refusal does not reveal whether an internal name resolves
+  @Test
+  void aBlockedAndAnUnresolvableHostAreRefusedWithTheSameSentence() {
+    ModelAddressPolicy policy = ModelAddressPolicy.allowing(List.of());
+
+    String blocked = policy.blockedReason("http://10.0.0.5/v1");
+    String unknown = policy.blockedReason("http://gibt-es-nicht.invalid/v1");
+
+    assertThat(unknown).isEqualTo(blocked);
+    assertThat(blocked).doesNotContain("10.0.0.5", "gesperrt", "DNS");
+  }
+
   @Test
   void anEntryWithoutPortReleasesEveryPortOfTheHost() {
     ModelAddressPolicy policy = ModelAddressPolicy.allowing(List.of("127.0.0.1"));

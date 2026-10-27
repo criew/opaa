@@ -1,18 +1,25 @@
 import { useId, useState } from 'react'
-import type { InstallationStepState, StepInput } from '../../api/types'
+import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
+import StatusLine from '@/shared/ui/StatusLine'
+import { formatTokens } from '@/shared/ui/modelDiscovery/modelDiscovery'
+import type {
+  InstallationModelDiscoveryRequest,
+  InstallationStepState,
+  StepInput,
+} from '../../api/types'
 import type { WizardResult } from '../../hooks/useInstallationWizard'
 import { useStepForm } from '../../hooks/useStepForm'
 import { apiKeyPart } from '../../utils/apiKey'
 import { STEP_INFO } from '../../utils/steps'
 import { compact, isBlank, urlError } from '../../utils/validation'
-import ApiKeyField from '../ApiKeyField'
 import FormField from '../FormField'
-import StatusLine from '@/shared/ui/StatusLine'
+import ModelEndpointFields from '../ModelEndpointFields'
 import StepFrame, { type StepNavigationProps } from '../StepFrame'
 
 interface EmbeddingModelStepProps extends StepNavigationProps {
   step: InstallationStepState
   submit: (values: StepInput['EMBEDDING_MODEL']) => Promise<WizardResult>
+  discover: (request: InstallationModelDiscoveryRequest) => Promise<LlmModelDiscoveryResponse>
 }
 
 const DEFAULT_MAX_INPUT_TOKENS = 2048
@@ -27,13 +34,15 @@ function maxInputTokensError(value: string): string | undefined {
 }
 
 /**
- * The model that turns documents and questions into vectors. Its check is a probe embedding,
- * which also fixes the vector size the completion creates the vector table with; the model
- * cannot be switched through the interface afterwards (ADR-0060, Entscheidung 10).
+ * The model that turns documents and questions into vectors, chosen from what its endpoint offers
+ * or typed by hand. Its check is a probe embedding, which also fixes the vector size the
+ * completion creates the vector table with; the model cannot be switched through the interface
+ * afterwards (ADR-0060, Entscheidung 10).
  */
 export default function EmbeddingModelStep({
   step,
   submit,
+  discover,
   onBack,
   onSkip,
 }: EmbeddingModelStepProps) {
@@ -46,6 +55,7 @@ export default function EmbeddingModelStep({
   const [maxInputTokens, setMaxInputTokens] = useState(
     stored?.maxInputTokens == null ? '' : String(stored.maxInputTokens),
   )
+  const [contextLength, setContextLength] = useState<number | null>(null)
   const form = useStepForm(step.checked ? null : step.checkMessage)
   const dimensions = step.checked ? stored?.dimensions : null
 
@@ -64,6 +74,8 @@ export default function EmbeddingModelStep({
       }),
     )
   }
+
+  const inputHint = `So viele Token nimmt der Dienst je Abschnitt an. Leer lassen für ${DEFAULT_MAX_INPUT_TOKENS}.`
 
   return (
     <StepFrame
@@ -85,42 +97,39 @@ export default function EmbeddingModelStep({
           detail="Mit dieser Vektorgröße legt der Abschluss den Suchindex an."
         />
       )}
-      <FormField
-        id={`${id}-base-url`}
-        label="Basis-Adresse"
-        inputMode="url"
-        value={baseUrl}
-        onChange={setBaseUrl}
-        error={form.errors.baseUrl}
-        hint="Etwa http://ollama:11434/v1, so wie das Backend den Dienst erreicht."
-      />
-      <FormField
-        id={`${id}-model`}
-        label="Modell-Kennung"
-        value={model}
-        onChange={setModel}
-        error={form.errors.model}
-        hint="Der Name, unter dem der Dienst das Modell führt, etwa bge-m3."
-      />
-      <ApiKeyField
-        id={`${id}-api-key`}
-        keyStored={Boolean(stored?.apiKeySet)}
-        value={apiKey}
-        onChange={setApiKey}
-        remove={removeKey}
-        onRemoveChange={setRemoveKey}
-        error={form.errors.apiKey}
-      />
-      <FormField
-        id={`${id}-max-input-tokens`}
-        label="Eingabegrenze (Token)"
-        optional
-        inputMode="numeric"
-        value={maxInputTokens}
-        onChange={setMaxInputTokens}
-        error={form.errors.maxInputTokens}
-        hint={`So viele Token nimmt der Dienst je Abschnitt an. Leer lassen für ${DEFAULT_MAX_INPUT_TOKENS}.`}
-      />
+      <ModelEndpointFields
+        purpose="embedding"
+        stored={stored}
+        baseUrl={baseUrl}
+        onBaseUrlChange={setBaseUrl}
+        apiKey={apiKey}
+        onApiKeyChange={setApiKey}
+        removeKey={removeKey}
+        onRemoveKeyChange={setRemoveKey}
+        model={model}
+        onModelChange={(identifier) => {
+          setModel(identifier)
+          setContextLength(null)
+        }}
+        onModelSelect={(selected) => setContextLength(selected.contextLength ?? null)}
+        errors={form.errors}
+        discover={discover}
+      >
+        <FormField
+          id={`${id}-max-input-tokens`}
+          label="Eingabegrenze (Token)"
+          optional
+          inputMode="numeric"
+          value={maxInputTokens}
+          onChange={setMaxInputTokens}
+          error={form.errors.maxInputTokens}
+          hint={
+            contextLength
+              ? `Der Endpunkt meldet ein Kontextfenster von ${formatTokens(contextLength)} Token; mehr nimmt das Modell nicht an. ${inputHint}`
+              : inputHint
+          }
+        />
+      </ModelEndpointFields>
     </StepFrame>
   )
 }

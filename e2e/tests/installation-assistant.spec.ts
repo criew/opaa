@@ -97,7 +97,13 @@ test.describe('Einrichtungs-Assistent', () => {
 
     await expect(stepHeading(page, 'Chat-Modell')).toBeVisible()
     await expectStepEdgesFlush(page)
+    await page.getByRole('radio', { name: /Eigene Adresse/ }).click()
     await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
+    await page.getByLabel('Basis-Adresse').press('Tab')
+    // The stub lists no models: the backend's discovery says so and the identifier is typed.
+    await expect(page.getByText(/bietet keine Modellliste an/)).toBeVisible()
+    await expectNoSeriousA11yViolations(page, 'Einrichtung: Chat-Modell ohne Modellliste')
+    await expectStepEdgesFlush(page)
     await page.getByLabel('Modell-Kennung').fill('ai-stub')
     await submitStep(page)
     await expect(stepHeading(page, 'Chat-Modell')).toBeHidden()

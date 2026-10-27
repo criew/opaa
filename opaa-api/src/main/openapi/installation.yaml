@@ -123,6 +123,54 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/installation/steps/{step}/discover:
+    parameters:
+      - $ref: "#/components/parameters/InstallationStepPath"
+    post:
+      operationId: discoverInstallationModels
+      tags: [installation]
+      security: []
+      summary: >
+        Lists the models an endpoint offers, for the steps CHAT_MODEL and EMBEDDING_MODEL (400 for
+        any other step), so the assistant can offer them for selection. Same discovery as
+        discoverLlmModels: the address check of models, no redirects, a short timeout and a bounded
+        response size, details from Ollama on the same origin; a refused address answers with
+        failure INVALID_ADDRESS. Nothing is saved, and the step's check stays as it is. apiKey
+        omitted uses the key saved with the step, but only for the same endpoint (scheme, host,
+        port, path), otherwise 400; an empty apiKey sends none. Per instance and for all clients
+        together, at most 30 discoveries in 10 minutes, then 429 with code MODEL_DISCOVERY_LIMIT
+        (the per-address budget of the installation API answers 429 without code). Same token
+        and network rules as getInstallation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstallationModelDiscoveryRequest"
+      responses:
+        "200":
+          description: >
+            Discovery result - a 200 either way; success and failure carry the outcome, as in
+            discoverLlmModels.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelDiscoveryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The client address lies outside OPAA_INSTALLATION_ALLOWED_CIDRS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/installation/answer-file:
     post:
       operationId: applyInstallationAnswerFile
@@ -431,6 +479,27 @@ components:
           description: >
             Vector size the last successful probe embedding returned; the completion creates the
             vector table with it. Absent until the check succeeded.
+
+    InstallationModelDiscoveryRequest:
+      type: object
+      description: The endpoint of a model step whose models are to be listed; nothing is saved.
+      required: [baseUrl]
+      properties:
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >
+            The OpenAI-compatible endpoint, e.g. http://ollama:11434/v1. Must not contain userinfo;
+            such an address is rejected with 400.
+          example: http://ollama:11434/v1
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Plaintext key for this request only, never stored. Omitted uses the key saved with the
+            step, only for its endpoint; empty sends none.
 
     InstallationAnswers:
       type: object

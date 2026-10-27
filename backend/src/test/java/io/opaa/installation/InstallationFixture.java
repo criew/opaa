@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -18,7 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * identity provider of the installation, its audit entries. The active chat model found before is
  * active again afterwards, and so is the embedding model: a pending installation has none, the
  * vector table of the context stays. {@code installation_state} itself comes back through {@code
- * SeededRowRestorer}. A local chat endpoint answers every probe with a completion.
+ * SeededRowRestorer}. A local chat endpoint answers every probe with a completion and lists two
+ * models, remembering the {@code Authorization} header of the last list request.
  */
 final class InstallationFixture implements AutoCloseable {
 
@@ -33,6 +35,7 @@ final class InstallationFixture implements AutoCloseable {
   private final List<UUID> activeBefore;
   private final List<Map<String, Object>> embeddingModelBefore;
   private final HttpServer chatEndpoint;
+  private final AtomicReference<String> lastModelsAuthorization = new AtomicReference<>();
 
   InstallationFixture(
       JdbcTemplate jdbc,
@@ -60,6 +63,19 @@ final class InstallationFixture implements AutoCloseable {
             out.write(body);
           }
         });
+    chatEndpoint.createContext(
+        "/v1/models",
+        exchange -> {
+          lastModelsAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          byte[] body =
+              "{\"object\":\"list\",\"data\":[{\"id\":\"qwen2.5:7b\"},{\"id\":\"bge-m3\"}]}"
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+          }
+        });
     chatEndpoint.start();
     accounts.cleanUp();
     jdbc.update("DELETE FROM audit_log WHERE actor_ref = ?", InstallationService.SYSTEM_ACTOR);
@@ -69,6 +85,11 @@ final class InstallationFixture implements AutoCloseable {
   /** The address of the local chat endpoint, as a chat model step names it. */
   String chatBaseUrl() {
     return "http://127.0.0.1:" + chatEndpoint.getAddress().getPort() + "/v1";
+  }
+
+  /** The {@code Authorization} header of the last model list request, {@code null} without. */
+  String lastModelsAuthorization() {
+    return lastModelsAuthorization.get();
   }
 
   /** A pending installation with {@link #TOKEN}, no saved step, and the status re-read. */

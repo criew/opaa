@@ -26,6 +26,27 @@ public record ModelDiscovery(
     models = List.copyOf(models);
   }
 
+  /**
+   * A list that holds only the first entries the endpoint reported when {@code truncated}; the
+   * message then says so.
+   */
+  public static ModelDiscovery found(
+      boolean ollama, List<DiscoveredModel> models, boolean truncated) {
+    if (!truncated) {
+      return found(ollama, models);
+    }
+    return new ModelDiscovery(
+        true,
+        null,
+        "Der Endpunkt meldet mehr als "
+            + models.size()
+            + " Modelle; angezeigt werden die ersten "
+            + models.size()
+            + " in seiner Reihenfolge.",
+        ollama,
+        models);
+  }
+
   public static ModelDiscovery found(boolean ollama, List<DiscoveredModel> models) {
     String message =
         switch (models.size()) {

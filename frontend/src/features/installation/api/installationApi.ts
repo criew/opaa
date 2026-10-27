@@ -1,9 +1,12 @@
 import axios from 'axios'
+import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import {
   STEP_REQUEST_KEY,
+  type InstallationModelDiscoveryRequest,
   type InstallationStatusResponse,
   type InstallationStepId,
   type InstallationStepState,
+  type ModelStepId,
   type StepInput,
 } from './types'
 
@@ -54,6 +57,23 @@ export async function checkInstallationStep(
   const { data } = await installationClient.post<InstallationStepState>(
     `/steps/${step}/check`,
     undefined,
+    bearer(token),
+  )
+  return data
+}
+
+/**
+ * Lists the models the endpoint of a model step offers; nothing is saved. An omitted key uses
+ * the one stored with the step, only for its address; an empty key sends none.
+ */
+export async function discoverInstallationModels(
+  token: string,
+  step: ModelStepId,
+  request: InstallationModelDiscoveryRequest,
+): Promise<LlmModelDiscoveryResponse> {
+  const { data } = await installationClient.post<LlmModelDiscoveryResponse>(
+    `/steps/${step}/discover`,
+    request,
     bearer(token),
   )
   return data

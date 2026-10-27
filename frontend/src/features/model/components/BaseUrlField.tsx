@@ -11,7 +11,7 @@ import {
   presetOf,
   type EndpointPreset,
   type EndpointPresetKey,
-} from './modelDiscovery'
+} from '@/shared/ui/modelDiscovery/modelDiscovery'
 
 export const BASE_URL_HELP_TEXT =
   'Vorlage wählen oder eigene OpenAI-kompatible Adresse eintragen. Bei Ollama den Host anpassen: ' +

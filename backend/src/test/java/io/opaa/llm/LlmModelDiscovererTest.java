@@ -32,6 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -434,6 +437,59 @@ class LlmModelDiscovererTest {
     assertThat(discovery.success()).isFalse();
     assertThat(discovery.failure()).isEqualTo(Failure.UNREACHABLE);
     assertThat(discovery.message()).isNotBlank();
+  }
+
+  // regression guard: a hostile endpoint cannot hand the form an unbounded list
+  @Test
+  void theListIsBoundedInCountAndInTheLengthOfEachEntry() {
+    StringBuilder data = new StringBuilder("{\"data\":[{\"id\":\"");
+    data.append("x".repeat(LlmModelDiscoverer.MAX_TEXT_LENGTH + 1)).append("\"}");
+    for (int i = 0; i < LlmModelDiscoverer.MAX_MODELS + 10; i++) {
+      data.append(",{\"id\":\"modell-").append(i).append("\"}");
+    }
+    respond("/v1/models", 200, data.append("]}").toString());
+
+    ModelDiscovery discovery = discoverer.discover(baseUrl, null, null);
+
+    assertThat(discovery.models()).hasSize(LlmModelDiscoverer.MAX_MODELS);
+    assertThat(discovery.message()).contains("die ersten 500");
+    assertThat(discovery.models())
+        .allSatisfy(
+            model ->
+                assertThat(model.identifier())
+                    .hasSizeLessThanOrEqualTo(LlmModelDiscoverer.MAX_TEXT_LENGTH));
+  }
+
+  @Test
+  void anOverlongDetailOfOllamaIsLeftOut() {
+    respond("/v1/models", 200, "{\"data\":[{\"id\":\"qwen3:8b\"}]}");
+    String long_ = "f".repeat(LlmModelDiscoverer.MAX_TEXT_LENGTH + 1);
+    respond(
+        "/api/tags",
+        200,
+        "{\"models\":[{\"name\":\"qwen3:8b\",\"details\":{\"family\":\""
+            + long_
+            + "\",\"parameter_size\":\"8.2B\",\"quantization_level\":\""
+            + long_
+            + "\"}}]}");
+
+    DiscoveredModel model = discoverer.discover(baseUrl, null, null).models().getFirst();
+
+    assertThat(model.family()).isNull();
+    assertThat(model.quantization()).isNull();
+    assertThat(model.parameterSize()).isEqualTo("8.2B");
+  }
+
+  // regression guard: a key in the query of an address never reaches the log
+  @Test
+  @ExtendWith(OutputCaptureExtension.class)
+  void theLogOfAnUnreachableAddressOmitsItsQuery(CapturedOutput output) {
+    server.stop(0);
+
+    discoverer.discover(baseUrl + "?api-key=sk-im-log-verboten", "sk-im-kopf-verboten", null);
+
+    assertThat(output.getAll()).contains("127.0.0.1");
+    assertThat(output.getAll()).doesNotContain("sk-im-log-verboten", "sk-im-kopf-verboten");
   }
 
   @Test

@@ -217,8 +217,99 @@ class InstallationApiIntegrationTest {
     mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isNotFound());
     mockMvc.perform(post(BASE + "/answer-file")).andExpect(status().isNotFound());
     mockMvc
+        .perform(
+            authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"" + fixture.chatBaseUrl() + "\"}"))
+        .andExpect(status().isNotFound());
+    mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(jsonPath("$.installationPending").value(false));
+  }
+
+  @Test
+  void theModelsOfAStepEndpointAreListedOnlyWithTheToken() throws Exception {
+    String body = "{\"baseUrl\":\"" + fixture.chatBaseUrl() + "\"}";
+
+    mockMvc
+        .perform(
+            post(BASE + "/steps/CHAT_MODEL/discover")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/steps/EMBEDDING_MODEL/discover"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(
+            jsonPath("$.models[*].identifier")
+                .value(org.hamcrest.Matchers.containsInAnyOrder("qwen2.5:7b", "bge-m3")));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM installation_steps", Integer.class))
+        .isZero();
+  }
+
+  // regression guard: the key goes to the endpoint only and never comes back
+  @Test
+  void theKeyReachesTheEndpointButNeverTheAnswer() throws Exception {
+    String key = "sk-installation-discovery-0123456789";
+
+    String answer =
+        mockMvc
+            .perform(
+                authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"baseUrl\":\""
+                            + fixture.chatBaseUrl()
+                            + "\",\"apiKey\":\""
+                            + key
+                            + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(fixture.lastModelsAuthorization()).isEqualTo("Bearer " + key);
+    assertThat(answer).doesNotContain(key);
+  }
+
+  @Test
+  void anEmptyKeySendsNone() throws Exception {
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"" + fixture.chatBaseUrl() + "\",\"apiKey\":\"\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true));
+
+    assertThat(fixture.lastModelsAuthorization()).isNull();
+  }
+
+  @Test
+  void aRefusedModelAddressIsAFailureOfTheDiscovery() throws Exception {
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"http://169.254.169.254/v1\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.failure").value("INVALID_ADDRESS"));
+  }
+
+  @Test
+  void onlyTheModelStepsDiscover() throws Exception {
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/steps/FIRST_ADMIN/discover"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"" + fixture.chatBaseUrl() + "\"}"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
