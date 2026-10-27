@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-26T05:07:53Z</updated>
+  <updated>2026-10-27T05:22:16Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 26. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-26.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-26.html</id>
+    <updated>2026-10-27T05:22:16Z</updated>
+    <summary type="text">Sonstiges:
+— Eigene Freigabeliste für Modell-Endpunkte eingeführt
+— Laufzeit-Clients für Chat und Embedding folgen keine Weiterleitungen
+— Fachliche Einstellungen aus Konfiguration in Datenbank migriert
+— Konzept für geführten Wechsel des Embedding-Modells dokumentiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 25. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-25.html"/>
@@ -890,26 +901,5 @@ Sonstiges:
 — Unterbrechung bei URL- und Feed-Konnektor beendet Lauf
 — Laufdeckel für 429-Wartezeiten bei Feed- und Webverzeichnis
 — Korpus-Generator reproduziert committeten Stand nicht byteidentisch</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Sonntag, 6. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-06.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-06.html</id>
-    <updated>2026-09-07T05:01:07Z</updated>
-    <summary type="text">feat: OIDC-Anbindung mit mehreren Identitätsanbietern:
-— OIDC-Anbindung mit mehreren Identitätsanbietern abgeschlossen
-— Anmeldeseite mit Anbieterwahl und Verwaltungsoberfläche umgesetzt
-— Claim-Zuordnung für Rollen, Gruppen, E-Mail je Anbieter implementiert
-— Mehranbieter-E2E-Tests und Betriebshandbuch fertiggestellt
-feat: S3-Konnektor als weiterer Quellentyp für S3-kompatible Objektspeicher:
-— S3-Konnektor als neuer Quellentyp konzipiert und Tickets angelegt
-— Datenmodell, Zugriffsschicht und Wizard-Schritt für S3 geplant
-— Push-Aktualisierung über S3-Ereignisbenachrichtigungen vorgesehen
-— Integrationstests gegen MinIO und Betriebshandbuch geplant
-Sonstiges:
-— npm-Verweise nach pnpm-Migration bereinigt
-— UI-Politur der OIDC-Oberflächen abgeschlossen
-— pnpm auf v12.3.4 aktualisiert
-— Retrieval-Regressionstests erkannt und dokumentiert</summary>
   </entry>
 </feed>
