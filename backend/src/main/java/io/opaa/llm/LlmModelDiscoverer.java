@@ -159,7 +159,10 @@ public class LlmModelDiscoverer {
           Failure.UNEXPECTED_RESPONSE,
           "Die Modellliste ist zu groß (mehr als " + MAX_RESPONSE_BYTES / (1024 * 1024) + " MiB).");
     } catch (IOException e) {
-      log.warn("Model discovery failed for {}: {}", modelsUri, e.getMessage());
+      log.warn(
+          "Model discovery failed for {}: {}",
+          ModelEndpointUri.withoutSecrets(baseUrl),
+          e.getClass().getSimpleName());
       return ModelDiscovery.failed(
           Failure.UNREACHABLE, ModelEndpointAccess.translateConnectionError(e));
     } catch (InterruptedException e) {

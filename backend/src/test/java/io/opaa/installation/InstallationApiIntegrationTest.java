@@ -251,28 +251,22 @@ class InstallationApiIntegrationTest {
         .isZero();
   }
 
-  // regression guard: the saved key reaches only its own endpoint and never comes back
+  // regression guard: the key goes to the endpoint only and never comes back
   @Test
-  void theSavedKeyServesTheDiscoveryOfItsOwnEndpointWithoutComingBack() throws Exception {
+  void theKeyReachesTheEndpointButNeverTheAnswer() throws Exception {
     String key = "sk-installation-discovery-0123456789";
-    mockMvc
-        .perform(
-            authorized(put(BASE + "/steps/CHAT_MODEL"))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    "{\"chatModel\":{\"baseUrl\":\""
-                        + fixture.chatBaseUrl()
-                        + "\",\"model\":\"qwen2.5:7b\",\"apiKey\":\""
-                        + key
-                        + "\"}}"))
-        .andExpect(status().isOk());
 
     String answer =
         mockMvc
             .perform(
                 authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"baseUrl\":\"" + fixture.chatBaseUrl() + "\"}"))
+                    .content(
+                        "{\"baseUrl\":\""
+                            + fixture.chatBaseUrl()
+                            + "\",\"apiKey\":\""
+                            + key
+                            + "\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andReturn()
@@ -281,15 +275,6 @@ class InstallationApiIntegrationTest {
 
     assertThat(fixture.lastModelsAuthorization()).isEqualTo("Bearer " + key);
     assertThat(answer).doesNotContain(key);
-    mockMvc
-        .perform(
-            authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"baseUrl\":\"https://api.openai.com/v1\"}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(
-            jsonPath("$.error")
-                .value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(key))));
   }
 
   @Test

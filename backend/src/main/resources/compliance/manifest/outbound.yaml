@@ -64,13 +64,22 @@ dataFlows:
   - id: model-endpoint
     group: MODEL
     viaOutboundProxy: true
-    target: Die Adresse eines Chat-Modells, die die Systemverwaltung im Formular angibt
+    target: >-
+      Die Adresse eines Chat-Modells, die die Systemverwaltung im Formular angibt, und im
+      Installationsassistenten die Adresse von Chat- oder Embedding-Modell, die die einrichtende
+      Person angibt
     data: >-
       Abruf der angebotenen Modelle, eine Testanfrage von einem Token; der hinterlegte API-Schlüssel
-      nur an die Herkunft des eigenen Modells
-    trigger: Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle
-    switchOff: Findet nur auf Handlung der Systemverwaltung statt
-    settings: [llm_models.base_url]
+      nur an die Herkunft des eigenen Modells, ein im Assistenten gespeicherter nur an dieselbe
+      Adresse. Keine personenbezogenen Daten
+    trigger: >-
+      Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle; Modellauswahl und
+      Prüfung des Chat-Modells im Installationsassistenten, nur mit dem Installations-Token und vor
+      dem Abschluss
+    switchOff: >-
+      Findet nur auf Handlung der Systemverwaltung oder der Person mit dem Installations-Token
+      statt; nach dem Abschluss der Installation gibt es den Abruf des Assistenten nicht mehr
+    settings: [llm_models.base_url, installation_steps.payload]
   - id: source-web
     group: CONNECTOR
     viaOutboundProxy: true

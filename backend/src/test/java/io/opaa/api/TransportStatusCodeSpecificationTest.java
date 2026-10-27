@@ -85,6 +85,7 @@ class TransportStatusCodeSpecificationTest {
           "getInstallation",
           "saveInstallationStep",
           "checkInstallationStep",
+          "discoverInstallationModels",
           "applyInstallationAnswerFile",
           "completeInstallation");
 
@@ -94,8 +95,9 @@ class TransportStatusCodeSpecificationTest {
    * the password change and the confirmation of a sign-in per authenticated account by {@code
    * LocalAuthRateLimiter}, the ticket and the download of the self-disclosure by the daily limit
    * and the starts per person in {@code self_disclosure_usage}, the installation API per client
-   * address by {@code InstallationAccessGuard}, and preview and import of the settings by the
-   * installation-wide counter of {@code SettingsTransferService}.
+   * address by {@code InstallationAccessGuard} (its model discovery also by {@code
+   * InstallationModelDiscovery}), and preview and import of the settings by the installation-wide
+   * counter of {@code SettingsTransferService}.
    */
   private static final Set<String> LIMITED_WITHOUT_A_PATH_RULE =
       Set.of(
@@ -110,6 +112,7 @@ class TransportStatusCodeSpecificationTest {
           "getInstallation",
           "saveInstallationStep",
           "checkInstallationStep",
+          "discoverInstallationModels",
           "applyInstallationAnswerFile",
           "completeInstallation",
           "previewSettingsImport",

@@ -6,12 +6,15 @@ import io.opaa.api.dto.LlmModelDiscoveryResponse;
 import io.opaa.llm.DiscoveredModel;
 import io.opaa.llm.ModelDiscovery;
 
-/** Maps a {@link ModelDiscovery} onto its generated response DTO; failures map by name. */
-final class LlmModelDiscoveryResponseMapper {
+/**
+ * Maps a {@link ModelDiscovery} onto its generated response DTO; failures map by name. The
+ * installation's discovery answers with the same DTO.
+ */
+public final class LlmModelDiscoveryResponseMapper {
 
   private LlmModelDiscoveryResponseMapper() {}
 
-  static LlmModelDiscoveryResponse toResponse(ModelDiscovery discovery) {
+  public static LlmModelDiscoveryResponse toResponse(ModelDiscovery discovery) {
     return new LlmModelDiscoveryResponse(
             discovery.success(),
             discovery.message(),
