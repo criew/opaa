@@ -638,6 +638,42 @@ public class OidcProviderService implements LocalAccountsSwitch {
     return switchLocalAccounts(organizationId, actorUserId, local, enabled);
   }
 
+  /**
+   * Switches the local account management on for the installation (ADR-0060, Entscheidung 9): the
+   * same row, audit event and change event as the management switch, recorded under the system
+   * process {@code actorRef} because no one has signed in yet. Runs inside the caller's
+   * transaction.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public OidcProvider enableLocalAccountsForInstallation(UUID organizationId, String actorRef) {
+    credentials.lockLocalAccountsInIdOrder();
+    OidcProvider local =
+        repository
+            .findLocalRow()
+            .orElseGet(
+                () ->
+                    repository.save(
+                        OidcProvider.localProvider(
+                            InitialAdministrator.LOCAL_PROVIDER_DISPLAY_NAME)));
+    if (local.isEnabled()) {
+      return local;
+    }
+    local.enable();
+    repository.save(local);
+    auditEventRecorder.recordSystemProcessAction(
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .actorRef(actorRef)
+            .type(AuditEventType.LOCAL_ACCOUNTS_ENABLED)
+            .object(AuditObjectType.SYSTEM_SETTING, local.getId(), objectLabel(local))
+            .before(Map.of("enabled", false))
+            .after(Map.of("enabled", true))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+    eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+    return local;
+  }
+
   /** Returns how many accounts actually had a session ended. */
   private int revokeRegularLocalSessions(UUID actorUserId) {
     Instant now = clock.instant();

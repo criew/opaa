@@ -620,6 +620,30 @@ class OidcProviderServiceTest {
   }
 
   @Test
+  void theInstallationSwitchesTheLocalAccountsOnAsItsSystemProcess() {
+    OidcProvider local = OidcProvider.localProvider("Lokale Konten");
+    when(repository.findLocalRow()).thenReturn(Optional.of(local));
+
+    OidcProvider on = service.enableLocalAccountsForInstallation(ORGANIZATION_ID, "installation");
+
+    assertThat(on.isEnabled()).isTrue();
+    verify(credentials).lockLocalAccountsInIdOrder();
+    verify(repository).save(local);
+    ArgumentCaptor<AuditEvent> audit = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder).recordSystemProcessAction(audit.capture());
+    assertThat(audit.getValue().eventType()).isEqualTo(AuditEventType.LOCAL_ACCOUNTS_ENABLED);
+    assertThat(audit.getValue().actorRef()).isEqualTo("installation");
+    assertThat(audit.getValue().objectId()).isEqualTo(local.getId());
+    assertThat(audit.getValue().before()).containsEntry("enabled", false);
+    assertThat(audit.getValue().after()).containsEntry("enabled", true);
+    verify(auditEventRecorder, never()).recordUserAction(any());
+    verify(eventPublisher).publishEvent(any(OidcProvidersChangedEvent.class));
+
+    service.enableLocalAccountsForInstallation(ORGANIZATION_ID, "installation");
+    verify(auditEventRecorder).recordSystemProcessAction(any());
+  }
+
+  @Test
   void disablingANonDefaultProviderIsAuditedAndPublished() {
     OidcProvider partner = provider("Partner", "https://idp.example/realms/b", true, false);
     when(repository.findById(partner.getId())).thenReturn(Optional.of(partner));

@@ -11,8 +11,8 @@ Identitätsanbieters.
 
 ## 1. Wann diese Verwaltung gebraucht wird
 
-Die lokale Benutzerverwaltung ist **abschaltbar und im Auslieferungszustand aus**. Zwei Lagen
-brauchen sie:
+Die lokale Benutzerverwaltung ist **abschaltbar**; der Abschluss der Installation schaltet sie
+ein. Zwei Lagen brauchen sie:
 
 - **Ein Haus ohne Identitätsanbieter** — oder eines, dessen Anbindung noch nicht steht. Dann ist sie
   der einzige Anmeldeweg.
@@ -20,8 +20,8 @@ brauchen sie:
   hereinkommt, ist immer ein lokales Konto. Es bleibt anmeldefähig, auch wenn die Verwaltung
   regulärer lokaler Konten aus ist.
 
-Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung) die Verwaltung im
-Regelbetrieb **aus** zu lassen: Lokale Konten laufen an den Ein- und Austrittsprozessen des Hauses
+Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung), die Verwaltung
+**nach der Einrichtung abzuschalten**: Lokale Konten laufen an den Ein- und Austrittsprozessen des Hauses
 vorbei, und jedes von ihnen ist ein Zugang, den niemand automatisch entzieht. Die Gegenmittel dazu
 stehen in Abschnitt 6.
 
