@@ -183,10 +183,12 @@ test.describe('Einrichtungs-Assistent', () => {
       'ai-stub-embedding',
     )
 
-    // Both models set, the chat shows no notice any more.
-    await page.goto('/chat')
-    await expect(page).toHaveURL(/\/chats\/new/)
-    await expect(page.getByRole('textbox').first()).toBeVisible()
+    // Both models set, the chat shows no notice any more once it has read the availability.
+    await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith('/api/v1/search/availability')),
+      page.goto('/chat'),
+    ])
+    await expect(page.getByRole('heading', { level: 1, name: 'Neuer Chat' })).toBeVisible()
     await expect(page.getByText(/Noch kein (Chat|Embedding)-Modell eingerichtet/)).toHaveCount(0)
   })
 })
