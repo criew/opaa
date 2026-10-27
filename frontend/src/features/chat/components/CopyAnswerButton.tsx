@@ -24,7 +24,7 @@ import {
 } from './copyFormats'
 import { loadOptionalChunk } from '@/shared/utils/optionalChunk'
 import { useClipboardCopy } from './useClipboardCopy'
-import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
+import { motion, radius } from '@/shared/theme/tokens'
 
 interface CopyAnswerButtonProps {
   content: string
@@ -58,7 +58,6 @@ function segmentSx(theme: Theme) {
       color: 'text.primary',
       bgcolor: alpha(accent, theme.palette.mode === 'dark' ? 0.12 : 0.05),
     },
-    '&.Mui-focusVisible': { boxShadow: `inset 0 0 0 2px ${alpha(accent, focusRingAlpha * 2)}` },
     '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
   }
 }
@@ -102,14 +101,21 @@ export default function CopyAnswerButton({
         borderRadius: `${radius.pill}px`,
         border: 1,
         borderColor: 'divider',
-        overflow: 'hidden',
       }}
     >
       <Tooltip title={copied ? 'Kopiert' : 'Als Markdown kopieren, ohne Fußnoten'}>
         <ButtonBase
           aria-label={copied ? 'Antwort kopiert' : 'Antwort kopieren'}
           onClick={() => copyMarkdown(answerAsMarkdown(content))}
-          sx={(theme) => ({ ...segmentSx(theme), gap: 0.75, pl: 1.25, pr: 1 })}
+          sx={(theme) => ({
+            ...segmentSx(theme),
+            // The segments round off the pill themselves instead of a clipping container, so the
+            // theme's focus ring stays whole around each of them.
+            borderRadius: `${radius.pill}px 0 0 ${radius.pill}px`,
+            gap: 0.75,
+            pl: 1.25,
+            pr: 1,
+          })}
         >
           {copied ? (
             <CheckIcon aria-hidden sx={{ fontSize: 15, color: 'primary.main' }} />
@@ -129,7 +135,11 @@ export default function CopyAnswerButton({
           aria-expanded={menuAnchor !== null}
           aria-controls={menuAnchor ? menuId : undefined}
           onClick={(event) => setMenuAnchor(event.currentTarget)}
-          sx={(theme) => ({ ...segmentSx(theme), px: 0.5 })}
+          sx={(theme) => ({
+            ...segmentSx(theme),
+            borderRadius: `0 ${radius.pill}px ${radius.pill}px 0`,
+            px: 0.5,
+          })}
         >
           <ExpandMoreIcon aria-hidden sx={{ fontSize: 18 }} />
         </ButtonBase>

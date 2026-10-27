@@ -16,6 +16,7 @@ import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import { Link as RouterLink } from 'react-router'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import { focusRingOffsetPx, focusRingWidthPx } from '@/shared/theme/tokens'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
@@ -118,6 +119,8 @@ const SEPARATOR = { content: '"·"', mx: 1, color: 'text.disabled' } as const
 
 /** Leads every figure; the one at the start of a line sits in the clipped gutter of the block. */
 const FIGURE_GUTTER = 20
+/** How far a focus ring reaches beyond its element (guidelines 4.4). */
+const FOCUS_RING_ROOM = focusRingWidthPx + focusRingOffsetPx
 const FIGURE_SEPARATOR = {
   content: '"·"',
   display: 'inline-block',
@@ -375,8 +378,14 @@ export default function AssetDetailHeader({
           sx={{
             display: 'block',
             overflow: 'hidden',
-            maxWidth: '100%',
-            flexBasis: status ? '100%' : { xs: '100%', sm: 'auto' },
+            // The clip box reaches as far out as a focus ring does, so a link's ring stays whole;
+            // the padding is taken back by the margin, and the 4 px stay inside the gutter.
+            p: `${FOCUS_RING_ROOM}px`,
+            m: `-${FOCUS_RING_ROOM}px`,
+            maxWidth: `calc(100% + ${2 * FOCUS_RING_ROOM}px)`,
+            flexBasis: status
+              ? `calc(100% + ${2 * FOCUS_RING_ROOM}px)`
+              : { xs: `calc(100% + ${2 * FOCUS_RING_ROOM}px)`, sm: 'auto' },
           }}
         >
           <Box

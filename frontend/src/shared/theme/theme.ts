@@ -8,7 +8,7 @@ import {
   blue,
   carbon,
   darkRoles,
-  focusRingAlpha,
+  focusRingOffsetPx,
   focusRingWidthPx,
   fontFamily,
   fontSize,
@@ -89,16 +89,22 @@ export function createRailTheme(appMode: PaletteMode, branding?: BrandingOverrid
 function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOverrides): Theme {
   const isDark = mode === 'dark'
   const { accent, accentSurface, accentHover, accentPress } = resolveAccent(roles, branding)
-  const focusRing = alpha(accent, focusRingAlpha)
-  // One focus ring for everything interactive, in both schemes (guidelines 4.4). Shared between
-  // the global rule and MuiButtonBase, which resets `outline` itself and would otherwise win.
-  const focusRingStyle = {
-    outline: `${focusRingWidthPx}px solid ${focusRing}`,
-    outlineOffset: '2px',
-  }
+  // One opaque focus ring for everything interactive, in both schemes (guidelines 4.4). MUI
+  // components draw it through `focusVisible` below, which also insets it where a scrolling
+  // container would clip it (menu items, list items, tabs); the global rule covers the rest.
+  const focusRingStyle = (color: string) => ({
+    outline: `${focusRingWidthPx}px solid ${color}`,
+    outlineOffset: `${focusRingOffsetPx}px`,
+  })
 
   return createTheme(
     {
+      focusVisible: {
+        outlineStyle: 'solid',
+        outlineColor: accent,
+        outlineWidth: focusRingWidthPx,
+        outlineOffset: focusRingOffsetPx,
+      },
       palette: {
         mode,
         primary: {
@@ -238,7 +244,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             body: {
               backgroundColor: roles.bg1,
             },
-            '*:focus-visible': focusRingStyle,
+            '*:focus-visible': focusRingStyle(accent),
             // Motion collapses to state changes; smooth scrolling becomes instant (guidelines 4.5).
             '@media (prefers-reduced-motion: reduce)': {
               '*, *::before, *::after': {
@@ -247,15 +253,6 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 transitionDuration: '0.01ms !important',
                 scrollBehavior: 'auto !important',
               },
-            },
-          },
-        },
-        MuiButtonBase: {
-          styleOverrides: {
-            root: {
-              // ButtonBase sets `outline: 0` at the same specificity as the global rule above and
-              // later in the sheet, so every button would lose its ring without this override.
-              '&:focus-visible, &.Mui-focusVisible': focusRingStyle,
             },
           },
         },
@@ -360,9 +357,9 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 borderColor: accent,
                 borderWidth: 1,
               },
-              '&.Mui-focused': {
-                boxShadow: `0 0 0 ${focusRingWidthPx}px ${focusRing}`,
-              },
+              // The ring stands outside the field like on every other element; the field's own
+              // outline turns accent as well.
+              '&.Mui-focused': focusRingStyle(accent),
               // An error outranks hover and focus: the outline stays danger, and focus shows as a
               // 2px danger outline plus a danger ring. The extra class (and `:not`) gives these
               // rules a higher specificity than the hover/focus rules above, independent of order.
@@ -374,9 +371,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 borderColor: roles.danger,
                 borderWidth: 2,
               },
-              '&.Mui-error.Mui-focused': {
-                boxShadow: `0 0 0 ${focusRingWidthPx}px ${alpha(roles.danger, focusRingAlpha)}`,
-              },
+              '&.Mui-error.Mui-focused': focusRingStyle(roles.danger),
             },
           },
         },
