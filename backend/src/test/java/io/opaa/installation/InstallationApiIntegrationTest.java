@@ -13,9 +13,11 @@ import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,10 +48,12 @@ class InstallationApiIntegrationTest {
   @Autowired private LocalCredentialsRepository credentials;
 
   private InstallationFixture fixture;
+  private LocalAccountFixtures accounts;
 
   @BeforeEach
   void setUp() throws Exception {
-    fixture = new InstallationFixture(jdbc, installation, status, accountsFactory.create());
+    accounts = accountsFactory.create();
+    fixture = new InstallationFixture(jdbc, installation, status, accounts);
   }
 
   @AfterEach
@@ -357,6 +361,88 @@ class InstallationApiIntegrationTest {
             jdbc.queryForObject(
                 "SELECT completion_source FROM installation_state WHERE id = 1", String.class))
         .isEqualTo("ANSWER_FILE_API");
+  }
+
+  // regression guard: the sign-in page offers the local sign-in once the installation completed
+  @Test
+  void aCompletionWithLocalAccountsOnlySwitchesTheLocalAccountsOn() throws Exception {
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/answer-file"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"firstAdmin\":"
+                        + firstAdminJson()
+                        + ",\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                        + "\"chatModel\":{\"baseUrl\":\""
+                        + fixture.chatBaseUrl()
+                        + "\",\"model\":\"qwen2.5:7b\"},"
+                        + embeddingModelPart()
+                        + "}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/v1/auth/config"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.providers").isEmpty())
+        .andExpect(jsonPath("$.localAccounts.enabled").value(true))
+        .andExpect(jsonPath("$.localAccounts.selfRegistrationEnabled").value(false))
+        // the reset setting is on by default; it stays unavailable while no public base URL is set,
+        // as in this context
+        .andExpect(jsonPath("$.localAccounts.passwordResetEnabled").value(false));
+    assertThat(auditTypes()).contains("LOCAL_ACCOUNTS_ENABLED");
+    // a regular local account passes the switch only while it is on
+    String email = "erstes-regulaeres-konto@installation.test.example";
+    accounts.activeUser(email);
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"email\":\""
+                        + email
+                        + "\",\"password\":\""
+                        + LocalAccountFixtures.PASSWORD
+                        + "\"}"))
+        .andExpect(status().isOk());
+  }
+
+  // regression guard: a provider comes on top of the local accounts, never instead of them
+  @Test
+  void aCompletionWithAProviderSwitchesTheLocalAccountsOnNextToIt() throws Exception {
+    String issuer =
+        "https://" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST + "/realms/" + UUID.randomUUID();
+    saveFirstAdmin().andExpect(status().isOk());
+    check("FIRST_ADMIN").andExpect(jsonPath("$.checked").value(true));
+    mockMvc
+        .perform(
+            authorized(put(BASE + "/steps/SIGN_IN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"signIn\":{\"mode\":\"LOCAL_AND_OIDC\",\"oidc\":{\"issuerUri\":\""
+                        + issuer
+                        + "\",\"clientId\":\"opaa\",\"jwkSetUri\":\""
+                        + issuer
+                        + "/protocol/openid-connect/certs\",\"displayName\":\"Verzeichnisdienst\"}}}"))
+        .andExpect(status().isOk());
+    // the connection test of the step needs a reachable issuer; only its outcome is stored here
+    jdbc.update(
+        "UPDATE installation_steps SET check_succeeded = true, check_message = 'geprüft',"
+            + " checked_at = now() WHERE step = 'SIGN_IN'");
+    saveChatModel().andExpect(status().isOk());
+    check("CHAT_MODEL").andExpect(jsonPath("$.checked").value(true));
+    saveEmbeddingModel().andExpect(status().isOk());
+    check("EMBEDDING_MODEL").andExpect(jsonPath("$.checked").value(true));
+
+    mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/v1/auth/config"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.providers.length()").value(1))
+        .andExpect(jsonPath("$.providers[0].issuerUri").value(issuer))
+        .andExpect(jsonPath("$.localAccounts.enabled").value(true));
+    assertThat(auditTypes()).contains("OIDC_PROVIDER_CREATED", "LOCAL_ACCOUNTS_ENABLED");
   }
 
   private ResultActions saveFirstAdmin() throws Exception {

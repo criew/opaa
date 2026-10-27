@@ -893,7 +893,7 @@ auditEvents:
     details: Weg des Abschlusses, Anmeldeverfahren und die übersprungenen optionalen Schritte
     payloadKeys: [signInMode, skippedSteps, source]
   - id: LOCAL_ACCOUNTS_ENABLED
-    trigger: Die lokale Kontenverwaltung wird eingeschaltet
+    trigger: Die lokale Kontenverwaltung wird eingeschaltet, durch die Systemverwaltung oder beim Abschluss der Installation
     payloadKeys: [enabled]
   - id: LOCAL_ACCOUNTS_DISABLED
     trigger: Die lokale Kontenverwaltung wird ausgeschaltet

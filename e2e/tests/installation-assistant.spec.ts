@@ -138,12 +138,13 @@ test.describe('Einrichtungs-Assistent', () => {
     await page.getByRole('link', { name: 'Zur Anmeldung' }).click()
     await expect(page).toHaveURL(/\/login/)
 
-    // The first account signs in; /login/system leads to the regular form once local accounts
-    // are on, so the route fits either state of the sign-in method.
-    await page.goto('/login/system')
-    await page.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
-    await page.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
-    await page.getByRole('button', { name: 'Anmelden' }).click()
+    // "Nur lokale Konten" leaves the local accounts switched on: the regular sign-in page carries
+    // the password form, and the first account signs in there.
+    const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
+    await expect(signIn).toBeVisible()
+    await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
+    await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
+    await signIn.getByRole('button', { name: 'Anmelden' }).click()
     await expect(page).toHaveURL(/\/chats\/new/, { timeout: 20_000 })
 
     // Without models the chat says so, and leads the system administration to them.

@@ -29,9 +29,10 @@ export const smtp = {
 /**
  * Signs in on the given form and waits until the app shell has taken over.
  *
- * `/login/system` is the route for local system administrators while the local account management is
- * switched off; it redirects to `/login` once it is on (ADR-0033, Entscheidung 5). A scenario
- * therefore has to pass the route that matches the state it put the installation in.
+ * The installation leaves the local account management on (ADR-0060, Entscheidung 9), so `/login`
+ * carries the form. `/login/system` renders its own form only while the management is switched off
+ * and otherwise redirects to `/login` (ADR-0033, Entscheidung 5), so an administrator's setup that
+ * passes it signs in either way.
  */
 export async function signIn(
   page: Page,
@@ -152,7 +153,11 @@ export async function configureSmtp(page: Page): Promise<void> {
   await expect(page.getByLabel("Server")).toHaveValue(smtp.host);
 }
 
-/** Switches the local account management on, confirming the consequence dialog. */
+/**
+ * Ensures the local account management is on. After the installation it already is, so this only
+ * acts once a scenario switched it off (05-abschalten.spec.ts) - the setups call it to stay runnable
+ * on their own after an aborted run of that scenario.
+ */
 export async function enableLocalAccounts(page: Page): Promise<void> {
   await openLocalAuthSettings(page);
   const toggle = page.getByRole("switch", { name: "Lokale Anmeldung aktiv" });

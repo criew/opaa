@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectNoSeriousA11yViolations } from "../../fixtures/a11y";
 import {
   acceptConfirmDialogs,
   bootstrapAdmin,
@@ -87,9 +88,28 @@ test.describe("Verwaltung abschalten: Nutzer-Sitzung endet, Verwalter bleibt", (
       user.getByRole("link", { name: "Anmeldung für die Systemverwaltung" }),
     ).toBeVisible();
 
-    // The administrators' own route is reachable again, and works.
+    // The administrators' own route is reachable again, and works. It only renders while the
+    // management is off, so its accessibility is checked here, in both schemes; the scheme is set
+    // before loading - see the first scenario of 07-barrierefreiheit.spec.ts for why.
     const adminAgainContext = await browser.newContext();
     const adminAgain = await adminAgainContext.newPage();
+    for (const scheme of ["light", "dark"] as const) {
+      await adminAgain.emulateMedia({ colorScheme: scheme });
+      await adminAgain.goto("/login/system");
+      await expect(
+        adminAgain.getByRole("form", { name: "Anmeldung für die Systemverwaltung" }),
+      ).toBeVisible();
+      await expect(
+        adminAgain.getByText(
+          "Nur für lokale Systemverwalter-Konten. Alle anderen Konten melden sich über die reguläre Anmeldung an.",
+        ),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        adminAgain,
+        `Anmeldung für die Systemverwaltung (${scheme})`,
+      );
+    }
+    await adminAgain.emulateMedia({ colorScheme: "light" });
     await signInSuccessfully(adminAgain, bootstrapAdmin.email, bootstrapAdmin.password, {
       route: "/login/system",
     });

@@ -469,6 +469,8 @@ public class InstallationService {
         admin.requirePasswordChange());
     StepRules.SignInPayload signIn =
         rules.signInPayload(saved.get(InstallationStep.SIGN_IN).getPayload());
+    // both sign-in methods include the local accounts; a provider comes on top of them
+    oidcProviders.enableLocalAccountsForInstallation(Organization.DEFAULT_ID, SYSTEM_ACTOR);
     if (signIn.mode() == StepInput.SignInMode.LOCAL_AND_OIDC) {
       StepInput.Oidc oidc = signIn.oidc();
       oidcProviders.createInitialProvider(

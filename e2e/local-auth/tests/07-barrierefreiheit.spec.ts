@@ -22,7 +22,7 @@ import { clearMailbox, linkPathIn, waitForMail } from "../../fixtures/mailpit";
  * own sign-in route, the sign-in page with the password form actually switched on, the forced
  * password change with its reason, and the two hand-over dialogs that carry a one-time secret.
  *
- * `/login/system` is checked in 01-erststart.spec.ts instead: it only renders while the management is
+ * `/login/system` is checked in 05-abschalten.spec.ts instead: it only renders while the management is
  * switched off, and that scenario is the one that runs in that state.
  *
  * Threshold and rule set come from the shared fixture (serious/critical fail, WCAG 2.1 AA).
