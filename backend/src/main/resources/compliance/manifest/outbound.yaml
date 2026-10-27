@@ -32,7 +32,9 @@ dataFlows:
       Indizierung, Neueinbettung nach einem Modellwechsel und Nachfüllen nach einem Verwerfen,
       jede Suche und jede Chat-Anfrage, Statusprüfung, Probeeinbettung bei der Installation, bei
       Modell- und Endpunktwechsel, Erhebung eines fehlenden Referenzankers
-    switchOff: Nicht abschaltbar, die Suche braucht Einbettungen; das Ziel legt die Installation fest
+    switchOff: >-
+      Nicht abschaltbar, die Suche braucht Einbettungen; das Ziel legt die Installation fest,
+      wechseln kann es die Systemverwaltung (Modell- oder Endpunktwechsel)
     settings: [embedding_model.base_url, embedding_model.model_identifier]
   - id: rerank-model
     group: MODEL
