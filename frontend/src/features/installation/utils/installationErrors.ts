@@ -56,12 +56,19 @@ export function installationFailure(err: unknown, fallback: string): Installatio
 
 const SECONDS_PER_MINUTE = 60
 
+/** The code of a 429 from the budget of model discoveries, not the API's per-address budget. */
+const DISCOVERY_LIMIT_CODE = 'MODEL_DISCOVERY_LIMIT'
+
 /**
- * The sentence for a model discovery past the installation's budget, with the wait the server's
- * `Retry-After` names; the identifier can always be typed by hand. `null` for any other failure.
+ * The sentence for a model discovery past its own budget, with the wait the server's
+ * `Retry-After` names; the identifier can always be typed by hand. `null` for any other failure,
+ * the per-address budget of the installation API included.
  */
 export function discoveryLimitMessage(err: unknown): string | null {
-  if (apiErrorStatus(err) !== 429) return null
+  const data = err instanceof AxiosError ? err.response?.data : null
+  if (apiErrorStatus(err) !== 429 || !isErrorResponse(data) || data.code !== DISCOVERY_LIMIT_CODE) {
+    return null
+  }
   const header = err instanceof AxiosError ? err.response?.headers?.['retry-after'] : undefined
   const seconds = Number(header)
   const minutes =

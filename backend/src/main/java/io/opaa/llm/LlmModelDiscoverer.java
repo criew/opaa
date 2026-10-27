@@ -69,7 +69,7 @@ public class LlmModelDiscoverer {
   /** Entries of the list beyond this many are left out; the form offers no more. */
   static final int MAX_MODELS = 500;
 
-  /** An identifier this long or longer is left out; a detail this long is dropped. */
+  /** An identifier longer than this is left out, as is a longer detail. */
   static final int MAX_TEXT_LENGTH = 200;
 
   /** Capabilities and families of one model beyond this many are left out. */
@@ -157,12 +157,13 @@ public class LlmModelDiscoverer {
       if (failure != null) {
         return failure;
       }
-      Map<String, Integer> listed = parseModelList(list.body());
+      Listed listed = parseModelList(list.body());
       if (listed == null) {
         return noModelList();
       }
-      OllamaDetails ollama = ollamaDetails(client, baseUrl, key, listed.keySet());
-      return ModelDiscovery.found(ollama != null, toModels(listed, ollama));
+      OllamaDetails ollama = ollamaDetails(client, baseUrl, key, listed.models().keySet());
+      return ModelDiscovery.found(
+          ollama != null, toModels(listed.models(), ollama), listed.truncated());
     } catch (BoundedStreams.LimitExceededException e) {
       return ModelDiscovery.failed(
           Failure.UNEXPECTED_RESPONSE,
@@ -222,27 +223,31 @@ public class LlmModelDiscoverer {
         "Der Endpunkt bietet keine Modellliste an. Tragen Sie die Modell-Kennung von Hand ein.");
   }
 
+  /** The first {@link #MAX_MODELS} identifiers, and whether the endpoint listed more. */
+  private record Listed(Map<String, Integer> models, boolean truncated) {}
+
   /**
    * The identifiers of an OpenAI-style list ({@code {"data":[{"id":...}]}}) in their listed order,
    * each with the context length the entry reports, if any; {@code null} when the body is no such
-   * list.
+   * list. The order is the endpoint's: suitability is known only after Ollama's details.
    */
-  private Map<String, Integer> parseModelList(byte[] body) {
+  private Listed parseModelList(byte[] body) {
     JsonNode root = readJson(body);
     if (root == null || !root.path("data").isArray()) {
       return null;
     }
     Map<String, Integer> listed = new LinkedHashMap<>();
     for (JsonNode entry : root.path("data")) {
-      if (listed.size() >= MAX_MODELS) {
-        break;
-      }
       String id = text(entry.path("id"));
-      if (id != null) {
-        listed.putIfAbsent(id, contextLengthOf(entry));
+      if (id == null || listed.containsKey(id)) {
+        continue;
       }
+      if (listed.size() >= MAX_MODELS) {
+        return new Listed(listed, true);
+      }
+      listed.put(id, contextLengthOf(entry));
     }
-    return listed;
+    return new Listed(listed, false);
   }
 
   private static Integer contextLengthOf(JsonNode entry) {

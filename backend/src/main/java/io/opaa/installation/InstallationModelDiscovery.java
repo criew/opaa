@@ -20,6 +20,13 @@ public class InstallationModelDiscovery {
   static final int MAX_DISCOVERIES = 30;
   static final int WINDOW_SECONDS = 600;
 
+  /** The code of a refusal by this budget, apart from the per-address budget of the API. */
+  static final String LIMIT_CODE = "MODEL_DISCOVERY_LIMIT";
+
+  private static final String LIMIT_MESSAGE =
+      "Zu viele Modellabrufe. Bitte später erneut versuchen; die Kennung lässt sich von Hand"
+          + " eintragen.";
+
   private static final String BUDGET_KEY = "installation";
 
   private final InstallationStateRepository states;
@@ -63,7 +70,7 @@ public class InstallationModelDiscovery {
     String key = effectiveKey(step, address, apiKey);
     RateLimitService.Decision decision = budget.tryAcquire(BUDGET_KEY);
     if (!decision.allowed()) {
-      throw new TooManyRequestsException(decision.retryAfterSeconds());
+      throw new TooManyRequestsException(LIMIT_MESSAGE, decision.retryAfterSeconds(), LIMIT_CODE);
     }
     return discoverer.discover(address, key, null);
   }

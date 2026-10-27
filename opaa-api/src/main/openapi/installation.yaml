@@ -137,9 +137,10 @@ paths:
         response size, details from Ollama on the same origin; a refused address answers with
         failure INVALID_ADDRESS. Nothing is saved, and the step's check stays as it is. apiKey
         omitted uses the key saved with the step, but only for the same endpoint (scheme, host,
-        port, path), otherwise 400; an empty apiKey sends none. Installation-wide per instance, at
-        most 30 discoveries in 10 minutes, then 429. Same token and network rules as
-        getInstallation.
+        port, path), otherwise 400; an empty apiKey sends none. Per instance and for all clients
+        together, at most 30 discoveries in 10 minutes, then 429 with code MODEL_DISCOVERY_LIMIT
+        (the per-address budget of the installation API answers 429 without code). Same token
+        and network rules as getInstallation.
       requestBody:
         required: true
         content:
