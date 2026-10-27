@@ -7,11 +7,15 @@ import { expectStepEdgesFlush } from '../fixtures/installation'
  * of scripts/run-e2e.mjs: operating mode oidc without answer file, the token preset through
  * OPAA_INSTALLATION_TOKEN and passed here as E2E_INSTALLATION_TOKEN, ai-stub:8089 on
  * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST. Every scenario of this file needs a fresh database, as
- * completing ends the installation mode for good.
+ * completing ends the installation mode for good. The scenario skips both optional model steps,
+ * signs in with the first account, meets the notices of the chat and sets the first chat and
+ * embedding model in the model administration (ADR-0061, Entscheidung 8).
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
+const ADMIN_EMAIL = 'it-betrieb@stadt.example'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
+const FIRST_CHAT_MODEL = 'Chat-Modell nach der Installation'
 
 if (INSTALLATION_TOKEN === '') {
   throw new Error('E2E_INSTALLATION_TOKEN is not set: run the target "installation" of run-e2e.mjs')
@@ -74,7 +78,7 @@ test.describe('Einrichtungs-Assistent', () => {
     await expect(stepHeading(page, 'Erstes Konto')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Pflichtschritte' })).toBeVisible()
     await expectStepEdgesFlush(page)
-    await page.getByLabel('E-Mail-Adresse').fill('it-betrieb@stadt.example')
+    await page.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
     await page.getByLabel('Anzeigename').fill('Systemverwaltung')
     await page.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
     await page.getByLabel('Passwort wiederholen', { exact: true }).fill(ADMIN_PASSWORD)
@@ -104,24 +108,23 @@ test.describe('Einrichtungs-Assistent', () => {
     await expect(page.getByText(/bietet keine Modellliste an/)).toBeVisible()
     await expectNoSeriousA11yViolations(page, 'Einrichtung: Chat-Modell ohne Modellliste')
     await expectStepEdgesFlush(page)
-    await page.getByLabel('Modell-Kennung').fill('ai-stub')
-    await submitStep(page)
-    await expect(stepHeading(page, 'Chat-Modell')).toBeHidden()
-
-    // The probe embedding against the stub decides the vector size the completion creates.
+    // Both model steps are optional: an installation whose model endpoint is not released yet
+    // skips them, and the entered address is discarded unsaved.
+    await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
+    const skip = page.getByRole('button', { name: 'Überspringen' })
+    await skip.click()
     await expect(stepHeading(page, 'Embedding-Modell')).toBeVisible()
     await expectStepEdgesFlush(page)
-    await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
-    await page.getByLabel('Modell-Kennung').fill('ai-stub-embedding')
-    await submitStep(page)
-    await expect(stepHeading(page, 'Embedding-Modell')).toBeHidden()
+    await skip.click()
 
     // The remaining steps are those the backend lists; optional ones are skipped.
-    const skip = page.getByRole('button', { name: 'Überspringen' })
     while (!(await stepHeading(page, 'Abschluss').isVisible())) {
       await expectStepEdgesFlush(page)
       await skip.click()
     }
+    const summary = page.getByRole('list', { name: 'Stand der Schritte' })
+    await expect(summary.getByText('Wird übersprungen')).not.toHaveCount(0)
+    await expect(page.getByText(/Übersprungen: .*Chat-Modell, Embedding-Modell/)).toBeVisible()
     await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
     await expectStepEdgesFlush(page)
     // At 320 px the forward action wraps below the back button and keeps the right edge.
@@ -134,5 +137,55 @@ test.describe('Einrichtungs-Assistent', () => {
 
     await page.getByRole('link', { name: 'Zur Anmeldung' }).click()
     await expect(page).toHaveURL(/\/login/)
+
+    // The first account signs in; /login/system leads to the regular form once local accounts
+    // are on, so the route fits either state of the sign-in method.
+    await page.goto('/login/system')
+    await page.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
+    await page.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
+    await page.getByRole('button', { name: 'Anmelden' }).click()
+    await expect(page).toHaveURL(/\/chats\/new/, { timeout: 20_000 })
+
+    // Without models the chat says so, and leads the system administration to them.
+    await expect(page.getByText(/Noch kein Chat-Modell eingerichtet/)).toBeVisible()
+    await expect(page.getByText(/Noch kein Embedding-Modell eingerichtet/)).toBeVisible()
+    await expectNoSeriousA11yViolations(page, 'Chat ohne Modelle')
+    await page.getByRole('link', { name: 'Chat-Modell einrichten' }).click()
+    await expect(page).toHaveURL(/\/admin\/models\/chat$/)
+    await expect(page.getByText(/noch kein Chat-Modell aktiv/)).toBeVisible()
+
+    // The first chat model, created and activated without a restart.
+    await page.getByRole('button', { name: 'Neues Modell' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Anzeigename', { exact: false }).fill(FIRST_CHAT_MODEL)
+    await dialog.getByLabel('Basis-Adresse', { exact: false }).fill(CHAT_MODEL_URL)
+    await dialog.getByLabel('Modell-Kennung', { exact: false }).fill('ai-stub')
+    await dialog.getByRole('button', { name: 'Anlegen' }).click()
+    await expect(dialog).toBeHidden()
+    const row = page.getByRole('row', { name: new RegExp(FIRST_CHAT_MODEL) })
+    await row.getByRole('button', { name: `Aktionen für „${FIRST_CHAT_MODEL}“` }).click()
+    await page
+      .getByRole('menu', { name: `Aktionen für „${FIRST_CHAT_MODEL}“` })
+      .getByRole('menuitem', { name: 'Aktiv setzen' })
+      .click()
+    await expect(row.getByText('Aktiv', { exact: true })).toBeVisible()
+
+    // The first embedding model: probe, then the vector table of its size, no re-embedding.
+    await page.goto('/admin/models/embedding')
+    await expect(page.getByText(/noch kein Embedding-Modell eingerichtet/)).toBeVisible()
+    await page.getByLabel('Basis-Adresse', { exact: false }).fill(CHAT_MODEL_URL)
+    await page.getByLabel('Modell-Kennung', { exact: false }).fill('ai-stub-embedding')
+    await page.getByRole('button', { name: 'Probeeinbettung' }).click()
+    await page.getByRole('button', { name: 'Embedding-Modell festlegen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Festlegen' }).click()
+    await expect(page.getByRole('table', { name: 'Einbettungsmodell' })).toContainText(
+      'ai-stub-embedding',
+    )
+
+    // Both models set, the chat shows no notice any more.
+    await page.goto('/chat')
+    await expect(page).toHaveURL(/\/chats\/new/)
+    await expect(page.getByRole('textbox').first()).toBeVisible()
+    await expect(page.getByText(/Noch kein (Chat|Embedding)-Modell eingerichtet/)).toHaveCount(0)
   })
 })
