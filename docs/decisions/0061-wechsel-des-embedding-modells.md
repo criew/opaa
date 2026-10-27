@@ -23,7 +23,9 @@ Modellname und Dimension; ein Schreiber bettet ein, bevor er die Spalte wählt, 
 prüft den Stand der Spalten nicht gegen das Modell, mit dem sie die Frage eingebettet hat.
 
 Ein Wechsel nur des Endpunkts, etwa auf einen Ersatzserver bei einem Ausfall, ist heute ebenfalls
-ein Datenbankeingriff. Issue #3214, Spezifikation: [Wechsel des
+ein Datenbankeingriff. Eine Installation darf ihr Embedding-Modell überspringen (ADR-0060,
+Entscheidung 6); dann gibt es weder Modellzeile noch Vektortabelle noch Index-Datensatz, und der
+Wechsel, der alle drei voraussetzt, greift nicht. Issue #3214, Spezifikation: [Wechsel des
 Embedding-Modells](../features/embedding-model-change.md).
 
 ## Entscheidung
@@ -118,9 +120,24 @@ fest begrenzt. Begründung: Vor der Bestätigung geht kein Inhalt an den neuen E
 die Tarife nicht, und eine Probe darf den Endpunkt nicht als Lastquelle missbrauchen lassen; im
 Ausfall dürfen verbrauchte Proben weder Endpunktwechsel noch Verwerfen aussperren.
 
+### 8. Das erste Modell auf demselben Weg, ohne Neueinbettung
+
+Ohne installiertes Modell nennt die Probe den Entwurf `INITIAL`, ohne Vorschau, und die Bestätigung
+legt das erste Modell fest: in einer Transaktion unter dem exklusiven Schemalock der Vektortabelle,
+mit derselben Wartegrenze und derselben Versionsprüfung aller lebenden Instanzen wie ein Wechsel,
+die Vektortabelle mit der Dimension der erneuten Probe, die Modellzeile mit einer neuen Generation
+aus der Folge und dem Referenzanker der Probe, und den Index-Datensatz dieses Modells. Was unter dem
+Lock entschieden wird, liest sie aus der Datenbank: Steht inzwischen eine Modellzeile, antwortet
+sie `409`. Es gibt keinen Vorgänger, keine Zielspalte und keinen Lauf; Bus und Trigger auf
+Modellzeile und Index-Datensatz bringen die übrigen Instanzen ohne Neustart nach, der Startabgleich
+findet danach ein passendes Paar. Begründung: Der Wechsel setzt Zeile, Spalte und Datensatz voraus
+und bestünde sonst aus Sonderfällen; ein eigener Pfad unter denselben Sperren hält das erste
+Festlegen genau einmal und nebenläufigkeitsfest, ohne die Regeln des Wechsels aufzuweichen.
+
 ## Konsequenzen
 
-- Der Datenbankeingriff für Modell- und Endpunktwechsel entfällt im Handbuch. Der Startabgleich
+- Der Datenbankeingriff für Modell- und Endpunktwechsel entfällt im Handbuch, ebenso das
+  Neuaufsetzen einer Installation, die ihr Embedding-Modell übersprungen hat. Der Startabgleich
   bleibt als Schutz, etwa nach einer Rücksicherung mit abweichender Modellzeile.
 - Während eines Wechsels findet die Suche nur über die Volltextsuche; die Antwortqualität sinkt für
   die angekündigte Dauer.
@@ -151,3 +168,7 @@ Ausfall dürfen verbrauchte Proben weder Endpunktwechsel noch Verwerfen aussperr
   schützte nichts.
 - Kostenvorschau in Euro — OPAA kennt keine Tarife; Tokens lassen sich mit dem eigenen Tarif
   rechnen.
+- Das erste Modell als Wechsel von einem leeren Platzhaltermodell — verlangte eine Modellzeile ohne
+  Modell und eine Vektortabelle ohne Dimension, die jeder Leser ausnehmen müsste.
+- Inhalte vor dem ersten Embedding-Modell annehmen und später nachbetten — die Abschnitte liegen in
+  der Vektortabelle, die es dann noch nicht gibt; Indexierung und Upload warten stattdessen.

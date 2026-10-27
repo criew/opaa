@@ -98,8 +98,8 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 │  ✓ Installations-Token        Pflicht                                │
 │  ✓ Erstes Konto               Pflicht                                │
 │  ● Anmeldeverfahren           Pflicht                                │
-│  ○ Chat-Modell                Pflicht                                │
-│  ○ Embedding-Modell           Pflicht                                │
+│  ○ Chat-Modell                optional · später unter Modelle        │
+│  ○ Embedding-Modell           optional · später unter Modelle        │
 │  ○ Ausgangsproxy              optional · später unter Anbindungen     │
 │  ○ E-Mail-Versand             optional · später unter E-Mail          │
 │  ○ Branding                   optional · später unter Allgemein       │
@@ -113,18 +113,22 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Installations-Token | ja | Token | Hash-Vergleich | — |
 | Erstes Konto | ja | E-Mail-Adresse, Anzeigename, Passwort nach der Passwortregel | Adresse zustellbar formatiert, nicht `admin@opaa.local` | Benutzer (Notanker-Konto, ADR-0033) |
 | Anmeldeverfahren | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Discovery und JWK-Set erreichbar, Adressprüfung | Identitätsanbieter |
-| Chat-Modell | ja | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
-| Embedding-Modell | ja | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
+| Chat-Modell | optional | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
+| Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | SMTP-Server, Absender | Testnachricht | E-Mail |
 | Branding | optional | Produktname, Farbe | — | Allgemein & Branding |
-| Abschluss | ja | Zusammenfassung | alle Pflichtschritte geprüft | — |
+| Abschluss | ja | Zusammenfassung | alle Pflichtschritte und gespeicherten optionalen Schritte geprüft | — |
 
 - Jeder Schritt wird beim „Prüfen und weiter“ gespeichert. Ein neu geöffneter Assistent setzt beim
   ersten offenen Schritt fort und zeigt die gespeicherten Werte (Geheimnisse nur als „gesetzt“).
 - Ein Pflichtschritt ist erst grün, wenn seine Prüfung gelungen ist. Ändert sich ein Wert, verfällt
   die Prüfung.
-- Der Abschluss legt `vector_store` mit der Dimension aus der Probeeinbettung an, setzt den Zustand
+- Ohne Chat- oder Embedding-Modell ist die Installation regulär nutzbar; beide legt die
+  Systemverwaltung später in der Modellverwaltung fest (ADR-0060, Entscheidungen 6 und 10; ADR-0061,
+  Entscheidung 8).
+- Der Abschluss legt `vector_store` mit der Dimension aus der Probeeinbettung an, sofern das
+  Embedding-Modell nicht übersprungen ist, setzt den Zustand
   auf „installiert“ und verwirft Token und Zwischenstand. Danach meldet sich die Person mit dem
   ersten Konto an.
 

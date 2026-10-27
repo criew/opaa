@@ -205,6 +205,10 @@ nginx (`nginxinc/nginx-unprivileged`), lauffähig unter Pod Security Standard `r
 | `upload-store` | den S3-Objektspeicher der Originalablage |
 | `mail` | den letzten SMTP-Versand |
 
+Ohne eingerichtetes Chat- oder Embedding-Modell melden `chat-model`, `embedding-model` und
+`vector-store` `UNKNOWN` mit dem Detail `NOT_CONFIGURED`; das ist ein regulärer Zustand einer
+Installation, die ihre Modelle noch nicht festgelegt hat ([Installation](installation.md#ohne-modelle-installiert)).
+
 <a id="sanftes-herunterfahren"></a>
 
 ## Graceful Shutdown
