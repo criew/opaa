@@ -123,7 +123,11 @@ Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der
 verwirft Token und Zwischenstand. Vor dem Abschluss gibt es keine Vektorablage; ein späterer Wechsel
 des Embedding-Modells läuft in der Modellverwaltung, mit Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
-und Passwort; alle Instanzen übernehmen das ohne Neustart. Jeder Schritt, jede Prüfung, das
+und Passwort; alle Instanzen übernehmen das ohne Neustart. Mit den lokalen Konten steht „Passwort
+vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](e-mail.md) eingerichtet sind,
+auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein Funktionspostfach der IT
+wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
+[Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) ab. Jeder Schritt, jede Prüfung, das
 Einschalten der lokalen Konten und der Abschluss stehen im Revisionsprotokoll.
 
 ## Einrichtungs-Assistent im Browser

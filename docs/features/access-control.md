@@ -330,8 +330,8 @@ Löschen darf nur der im Space als Verantwortlicher hinterlegte Nutzer oder ein 
 Benutzer authentifizieren sich über:
 
 - **Single Sign-On (SSO)** — OIDC (empfohlen für den Regelbetrieb; SAML nur über eine Föderation)
-- **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus;
-  das Konto der Systemverwaltung ist immer ein lokales Konto)
+- **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus,
+  der Abschluss der Installation schaltet sie ein; das Konto der Systemverwaltung ist immer ein lokales Konto)
 - **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für externe KI-Werkzeuge
   über den MCP-Server; entschieden am 18.09.2026, noch nicht gebaut. Nur lesend, mit Pflicht-Ablauf,
   installationsweit abschaltbar und nur für Bibliotheken, die dafür ausdrücklich freigegeben sind —

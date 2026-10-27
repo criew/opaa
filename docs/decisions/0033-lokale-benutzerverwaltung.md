@@ -371,7 +371,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 - **Schwieriger:** Das Backend verwaltet erstmals Sitzungszustand und ein Signaturgeheimnis,
   begrenzt auf den lokalen Issuer. Lokale Konten laufen am Verzeichnis vorbei — Inaktivitätssperre,
   Anlagegrund, Ablauf, Wiedervorlage machen das beherrschbar; das Handbuch empfiehlt, die Verwaltung
-  im Regelbetrieb aus zu lassen. **Bestandsinstallationen haben nach dem Update einen Startabbruch,
+  neben einem Identitätsanbieter nach der Einrichtung abzuschalten. **Bestandsinstallationen haben nach dem Update einen Startabbruch,
   bis `OPAA_AUTH_JWT_SECRET` gesetzt ist**; hinter einem Proxy brauchen sie
   `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (sonst teilen sich alle Clients einen Rate-Limit-Topf), dazu
   `OPAA_PUBLIC_BASE_URL` und einen echten Wert für `OPAA_INITIAL_ADMIN_EMAIL`, die Adresse des

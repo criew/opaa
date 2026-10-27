@@ -20,8 +20,8 @@ ein. Zwei Lagen brauchen sie:
   hereinkommt, ist immer ein lokales Konto. Es bleibt anmeldefähig, auch wenn die Verwaltung
   regulärer lokaler Konten aus ist.
 
-Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung) die Verwaltung im
-Regelbetrieb **aus** zu lassen: Lokale Konten laufen an den Ein- und Austrittsprozessen des Hauses
+Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung), die Verwaltung
+**nach der Einrichtung abzuschalten**: Lokale Konten laufen an den Ein- und Austrittsprozessen des Hauses
 vorbei, und jedes von ihnen ist ein Zugang, den niemand automatisch entzieht. Die Gegenmittel dazu
 stehen in Abschnitt 6.
 

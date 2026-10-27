@@ -502,7 +502,8 @@ Das Konto bleibt anmeldefähig und ist **gegenüber Verwaltungsakten unverletzli
 Befristen, Herabsetzen der Rolle, die Übergabe an einen Identitätsanbieter sowie ein von der
 Verwaltung gesetztes Passwort oder ein Rücksetzlink werden immer abgelehnt — ein Ablaufdatum würde den
 Notweg sonst still schließen, ein ersetztes Passwort das versiegelte wertlos machen. Sein Passwort
-ändert das Konto nach der Anmeldung selbst; ohne Anmeldung setzt es nur die Notfallprozedur neu. Von
+ändert das Konto nach der Anmeldung selbst; ohne Anmeldung setzen es die Notfallprozedur oder,
+solange „Passwort vergessen" verfügbar ist, ein Rücksetzlink an seine eigene Adresse neu. Von
 der Sperre nach Inaktivität ist es ausgenommen, die Sperre nach Fehlversuchen gilt auch für es.
 **Jede Anmeldung mit ihm steht im Nachweisprotokoll** und löst eine Nachricht an alle übrigen
 Systemverwalter aus. Erkannt wird es an einer internen Markierung, nicht an der Adresse; Adresse und
