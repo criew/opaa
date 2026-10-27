@@ -111,10 +111,6 @@ public class EmbeddingModelChangeService {
           + " eingerichtet. Ein erstes Modell würde sie ungeprüft übernehmen; die Abhilfe nennt das"
           + " Handbuch unter Modelle, Fehlerbilder.";
 
-  static final String INDEX_OF_ANOTHER_MODEL =
-      "Der Vektorindex nennt ein anderes Embedding-Modell, aber es ist keines eingerichtet. Die"
-          + " Abhilfe nennt das Handbuch unter Modelle, Fehlerbilder.";
-
   static final String LOCK_NOT_GRANTED =
       "Die Vektortabelle ist gerade belegt, etwa durch den Aufbau des Vektorindex. Bitte in"
           + " einigen Minuten erneut versuchen.";
@@ -334,8 +330,9 @@ public class EmbeddingModelChangeService {
    * Sets the first embedding model of an installation without one: the vector table of {@code
    * dimensions}, the model row under {@code generation} with its anchor, and the index record of
    * that model, all in one transaction; there are no chunks, so no run starts. Refused when a model
-   * was installed meanwhile, when the table already holds chunks, and when an index record names
-   * another model: such chunks belong to a model nobody knows, and taking them over is no choice.
+   * was installed meanwhile and when the table already holds chunks: they belong to a model nobody
+   * knows, and taking them over is no choice. An index record of another model without chunks puts
+   * no vector at stake and is overwritten, a run of that model with it.
    */
   private EmbeddingReindexProgress installFirst(
       Resolved resolved,
@@ -351,11 +348,8 @@ public class EmbeddingModelChangeService {
           if (schema.hasChunks()) {
             throw new ConflictException(CHUNKS_WITHOUT_MODEL);
           }
+          // without chunks no vector is at stake: a record of another model is overwritten
           Optional<EmbeddingIndexRecord> recorded = store.loadForUpdate();
-          if (recorded.isPresent()
-              && !resolved.endpoint().modelIdentifier().equals(recorded.get().current().model())) {
-            throw new ConflictException(INDEX_OF_ANOTHER_MODEL);
-          }
           Change change = models.installFirst(resolved, dimensions, anchor, generation);
           EmbeddingIdentity first =
               new EmbeddingIdentity(
@@ -363,7 +357,11 @@ public class EmbeddingModelChangeService {
                   resolved.endpoint().baseUrl(),
                   dimensions,
                   generation);
-          Run run = recorded.map(EmbeddingIndexRecord::run).orElse(Run.NONE);
+          Run run =
+              recorded
+                  .filter(r -> resolved.endpoint().modelIdentifier().equals(r.current().model()))
+                  .map(EmbeddingIndexRecord::run)
+                  .orElse(Run.NONE);
           store.save(new EmbeddingIndexRecord(first, null, run));
           Map<String, Object> after = new LinkedHashMap<>(change.after());
           after.put("initial", true);

@@ -127,11 +127,11 @@ legt das erste Modell fest: in einer Transaktion unter dem exklusiven Schemalock
 mit derselben Wartegrenze und derselben Versionsprüfung aller lebenden Instanzen wie ein Wechsel,
 die Vektortabelle mit der Dimension der erneuten Probe, die Modellzeile mit einer neuen Generation
 aus der Folge und dem Referenzanker der Probe, und den Index-Datensatz dieses Modells. Was unter dem
-Lock entschieden wird, liest sie aus der Datenbank: Steht inzwischen eine Modellzeile, enthält die
-Vektortabelle schon Abschnitte oder nennt ein Index-Datensatz ein anderes Modell, antwortet sie
-`409`; schon die Probe meldet Abschnitte ohne Modellzeile als Fehlschlag. Solche Abschnitte gehören zu
-einem Modell, das niemand mehr kennt; sie still zu übernehmen hieße, Vektoren verschiedener Modelle
-zu vergleichen. Es gibt keinen Vorgänger, keine Zielspalte und keinen Lauf; Bus und Trigger auf
+Lock entschieden wird, liest sie aus der Datenbank: Steht inzwischen eine Modellzeile oder enthält
+die Vektortabelle schon Abschnitte, antwortet sie `409`; schon die Probe meldet Abschnitte ohne
+Modellzeile als Fehlschlag. Solche Abschnitte gehören zu einem Modell, das niemand mehr kennt; sie
+still zu übernehmen hieße, Vektoren verschiedener Modelle zu vergleichen. Ein Index-Datensatz eines
+anderen Modells ohne Abschnitte setzt keinen Vektor aufs Spiel und wird überschrieben. Es gibt keinen Vorgänger, keine Zielspalte und keinen Lauf; Bus und Trigger auf
 Modellzeile und Index-Datensatz bringen die übrigen Instanzen ohne Neustart nach, der Startabgleich
 findet danach ein passendes Paar. Begründung: Der Wechsel setzt Zeile, Spalte und Datensatz voraus
 und bestünde sonst aus Sonderfällen; ein eigener Pfad unter denselben Sperren hält das erste
