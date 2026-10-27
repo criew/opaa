@@ -143,7 +143,8 @@ jobs:
           fi
 
       # Same images as the local sign-in (Compose project opaa-local-auth): a stack in installation
-      # mode without answer file, against which the assistant's scenario completes the installation.
+      # mode without answer file, against which the assistant's scenario completes the installation,
+      # once per variant of the spec, each with a JSON report of its own; merged into one report.
       - name: axe-Szenarien des Einrichtungs-Assistenten
         working-directory: e2e
         env:
@@ -157,8 +158,11 @@ jobs:
           rc=0
           pnpm run test:installation || rc=$?
           echo "Suite beendet mit $rc"
-          if [[ -f test-results/installation-results.json ]]; then
-            cp test-results/installation-results.json "$E2E_A11Y_RESULTS_DIR/playwright.json"
+          shopt -s nullglob
+          reports=(test-results/installation-*-results.json)
+          if (( ${#reports[@]} > 0 )); then
+            jq -s '{suites: (map(.suites // []) | add)}' "${reports[@]}" \
+              > "$E2E_A11Y_RESULTS_DIR/playwright.json"
           fi
 
       # Fails when a target or an expected spec file delivered no record or a target no Playwright

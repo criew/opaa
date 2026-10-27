@@ -8,7 +8,7 @@ import { defineConfig, devices } from "@playwright/test";
  * No retries: completing the installation ends the installation mode for good, so a second attempt
  * would meet a different state than the one the scenario was written for. For the same reason the
  * runner starts one stack per variant of the spec and names it in E2E_INSTALLATION_VARIANT, which
- * keeps the traces and the HTML report of each variant apart.
+ * keeps the traces, the HTML and the JSON report of each variant apart.
  */
 const variant = process.env.E2E_INSTALLATION_VARIANT
   ? `-${process.env.E2E_INSTALLATION_VARIANT}`
@@ -30,7 +30,7 @@ export default defineConfig({
     ? [
         ["list"],
         ["html", { open: "never", outputFolder: `../playwright-report-installation${variant}` }],
-        ["json", { outputFile: "../test-results/installation-results.json" }],
+        ["json", { outputFile: `../test-results/installation${variant}-results.json` }],
       ]
     : [["list"]],
   use: {

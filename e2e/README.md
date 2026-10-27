@@ -873,8 +873,9 @@ einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspring
 E-Mail-Versand und endet mit der Anmeldung des ersten Kontos auf der regulären Anmeldeseite,
 `@mail-filled` richtet ihn gegen den Mailpit des Stapels ein (Profil `mail`, `mailpit:1025` in
 `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`) und liest die Testnachricht über `E2E_MAILPIT_BASE_URL`
-zurück. Traces und HTML-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
-`playwright-report-installation-<variante>`). In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
+zurück. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
+`playwright-report-installation-<variante>`, `test-results/installation-<variante>-results.json`);
+der Barrierefreiheitsbericht führt die JSON-Berichte zusammen. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
 sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
 (`--pass-with-no-tests`). Eigene Ports und ein eigenes Subnetz (`172.27.0.0/16`); in
 `local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.
