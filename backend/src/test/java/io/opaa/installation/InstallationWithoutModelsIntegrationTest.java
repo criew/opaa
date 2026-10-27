@@ -139,8 +139,12 @@ class InstallationWithoutModelsIntegrationTest {
   // store DOWN, although the installation may skip its embedding model
   @Test
   void aStartWithoutAnEmbeddingModelIsARegularState(CapturedOutput output) throws Exception {
-    saveAndCheckTheMandatorySteps();
-    mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
+    // a completed installation without an embedding model, however it got there
+    jdbc.update(
+        "UPDATE installation_state SET status = 'COMPLETED', completion_source = 'INSTALLATION_API',"
+            + " completed_at = clock_timestamp(), token_hash = NULL, token_source = NULL"
+            + " WHERE id = 1");
+    status.reload();
     int before = output.getAll().length();
 
     startup.run();
