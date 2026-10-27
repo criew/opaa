@@ -868,7 +868,12 @@ Betriebsmodus `oidc` auf einer leeren Datenbank, **ohne** Antwortdatei und mit v
 `OPAA_INSTALLATION_TOKEN` aus `installation.env`; der Stapel bleibt im Installationsmodus. Gegen ihn
 läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, über die Konfiguration
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
-Installationsmodus für immer beendet. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
+Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zwei Varianten, je auf
+einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspringt den optionalen Schritt
+E-Mail-Versand, `@mail-filled` richtet ihn gegen den Mailpit des Stapels ein (Profil `mail`,
+`mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`) und liest die Testnachricht über
+`E2E_MAILPIT_BASE_URL` zurück. Traces und HTML-Bericht liegen je Variante getrennt
+(`test-results/installation-<variante>`, `playwright-report-installation-<variante>`). In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
 sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
 (`--pass-with-no-tests`). Eigene Ports und ein eigenes Subnetz (`172.27.0.0/16`); in
 `local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.

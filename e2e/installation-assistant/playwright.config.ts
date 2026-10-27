@@ -6,8 +6,14 @@ import { defineConfig, devices } from "@playwright/test";
  * installation), which passes E2E_BASE_URL and E2E_INSTALLATION_TOKEN.
  *
  * No retries: completing the installation ends the installation mode for good, so a second attempt
- * would meet a different state than the one the scenario was written for.
+ * would meet a different state than the one the scenario was written for. For the same reason the
+ * runner starts one stack per variant of the spec and names it in E2E_INSTALLATION_VARIANT, which
+ * keeps the traces and the HTML report of each variant apart.
  */
+const variant = process.env.E2E_INSTALLATION_VARIANT
+  ? `-${process.env.E2E_INSTALLATION_VARIANT}`
+  : "";
+
 export default defineConfig({
   testDir: "../tests",
   testMatch: "installation-assistant.spec.ts",
@@ -19,11 +25,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
-  outputDir: "../test-results/installation",
+  outputDir: `../test-results/installation${variant}`,
   reporter: process.env.CI
     ? [
         ["list"],
-        ["html", { open: "never", outputFolder: "../playwright-report-installation" }],
+        ["html", { open: "never", outputFolder: `../playwright-report-installation${variant}` }],
         ["json", { outputFile: "../test-results/installation-results.json" }],
       ]
     : [["list"]],
