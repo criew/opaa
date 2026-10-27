@@ -23,6 +23,7 @@ import io.opaa.metadata.DocumentMetadataService;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,6 +39,14 @@ import tools.jackson.databind.json.JsonMapper;
 class ContextPrefixRerunServiceTest {
 
   private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+
+  @BeforeEach
+  void theVectorTableExists() {
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT to_regclass(?) IS NOT NULL"), eq(Boolean.class), any()))
+        .thenReturn(true);
+  }
+
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final DocumentMetadataService metadataService = mock(DocumentMetadataService.class);
   private final VectorChunkStore vectorChunkStore = mock(VectorChunkStore.class);

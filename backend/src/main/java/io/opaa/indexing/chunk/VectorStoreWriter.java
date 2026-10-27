@@ -64,6 +64,7 @@ public class VectorStoreWriter {
   private final EmbeddingIndexStore indexStore;
   private final ObjectMapper objectMapper;
   private final String vectorStoreTable;
+  private final VectorTable vectorTable;
 
   public VectorStoreWriter(
       JdbcTemplate jdbcTemplate,
@@ -78,6 +79,7 @@ public class VectorStoreWriter {
     this.indexStore = indexStore;
     this.objectMapper = objectMapper;
     this.vectorStoreTable = vectorTable.qualifiedName();
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -221,6 +223,9 @@ public class VectorStoreWriter {
    * caller's transaction or, without one, of the statement.
    */
   public void deleteChunksOfDocument(UUID documentId) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return;
+    }
     jdbcTemplate.update(
         "DELETE FROM "
             + vectorStoreTable
@@ -230,6 +235,11 @@ public class VectorStoreWriter {
             + DOCUMENT_LOCK_CONDITION,
         documentId.toString(),
         documentId.toString());
+  }
+
+  /** Whether the vector table exists; before the first embedding model it does not. */
+  public boolean tableExists() {
+    return vectorTable.existsIn(jdbcTemplate);
   }
 
   /** Takes the document lock for the rest of the current transaction. */
@@ -294,6 +304,9 @@ public class VectorStoreWriter {
    * characters - what the model step reads for a document whose file is not being parsed anyway.
    */
   public String documentText(UUID documentId, int limit) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return "";
+    }
     List<String> texts =
         jdbcTemplate.query(
             "SELECT content FROM "
@@ -325,6 +338,9 @@ public class VectorStoreWriter {
   @Transactional
   public int updateDocumentMetadata(
       UUID documentId, Map<String, Object> values, Set<String> keysToClear) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return 0;
+    }
     String sql =
         "UPDATE "
             + vectorStoreTable
@@ -382,8 +398,10 @@ public class VectorStoreWriter {
   public int deleteAllOf(UUID libraryId, Collection<UUID> documentIds) {
     String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
     int removed =
-        jdbcTemplate.update(
-            "DELETE FROM " + vectorStoreTable + chunksOf(), libraryId.toString(), documents);
+        vectorTable.existsIn(jdbcTemplate)
+            ? jdbcTemplate.update(
+                "DELETE FROM " + vectorStoreTable + chunksOf(), libraryId.toString(), documents)
+            : 0;
     jdbcTemplate.update(
         "DELETE FROM chunk_full_text WHERE library_id = ? OR document_id = ANY (?::uuid[])",
         libraryId,
@@ -395,11 +413,13 @@ public class VectorStoreWriter {
   public long countAllOf(UUID libraryId, Collection<UUID> documentIds) {
     String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
     Long vectors =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM " + vectorStoreTable + chunksOf(),
-            Long.class,
-            libraryId.toString(),
-            documents);
+        vectorTable.existsIn(jdbcTemplate)
+            ? jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM " + vectorStoreTable + chunksOf(),
+                Long.class,
+                libraryId.toString(),
+                documents)
+            : Long.valueOf(0);
     Long fullText =
         jdbcTemplate.queryForObject(
             "SELECT count(*) FROM chunk_full_text WHERE library_id = ?"

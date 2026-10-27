@@ -61,6 +61,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   private final VectorChunkStore vectorChunkStore;
   private final ObjectMapper objectMapper;
   private final String vectorStoreTable;
+  private final VectorTable vectorTable;
   private final FeatureFlags featureFlags;
   private final IndexingMetrics metrics;
   private final TransactionTemplate transactionTemplate;
@@ -91,6 +92,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
     this.vectorChunkStore = vectorChunkStore;
     this.objectMapper = objectMapper;
     this.vectorStoreTable = vectorTable.qualifiedName();
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -258,6 +260,9 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   }
 
   private List<StoredChunk> storedChunksOf(UUID documentId) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return List.of();
+    }
     return jdbcTemplate.query(
         "SELECT id, content, metadata FROM "
             + vectorStoreTable

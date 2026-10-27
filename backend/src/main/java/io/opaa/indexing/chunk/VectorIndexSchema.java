@@ -62,7 +62,11 @@ public class VectorIndexSchema {
         column);
   }
 
+  /** Whether the table holds a chunk; {@code false} without a table. */
   public boolean hasChunks() {
+    if (!table.existsIn(jdbcTemplate)) {
+      return false;
+    }
     return Boolean.TRUE.equals(
         jdbcTemplate.queryForObject(
             "SELECT EXISTS (SELECT 1 FROM " + table.qualifiedName() + ")", Boolean.class));
@@ -75,6 +79,9 @@ public class VectorIndexSchema {
   /** {@link ChunkCounts} for {@code column}, split by the library a chunk belongs to. */
   public ChunkCounts chunkCounts(String column) {
     long[] counts = new long[4];
+    if (!table.existsIn(jdbcTemplate)) {
+      return new ChunkCounts(0, 0, 0, 0);
+    }
     jdbcTemplate.query(
         "SELECT coalesce(a.owner_only, false) AS private_library, count(*) AS total,"
             + " count(*) FILTER (WHERE v."
@@ -98,6 +105,9 @@ public class VectorIndexSchema {
   /** {@link TextLengths} of every stored chunk, split like {@link #chunkCounts}. */
   public TextLengths textLengths() {
     long[] lengths = new long[2];
+    if (!table.existsIn(jdbcTemplate)) {
+      return new TextLengths(0, 0);
+    }
     jdbcTemplate.query(
         "SELECT coalesce(a.owner_only, false) AS private_library,"
             + " coalesce(sum(length(v.content)), 0) AS characters FROM "
@@ -129,8 +139,11 @@ public class VectorIndexSchema {
     jdbcTemplate.execute("SET LOCAL lock_timeout = '" + SWITCH_LOCK_TIMEOUT + "'");
   }
 
-  /** Chunks without a vector in {@code column}. */
+  /** Chunks without a vector in {@code column}; 0 without a table. */
   public long chunksWithout(String column) {
+    if (!table.existsIn(jdbcTemplate)) {
+      return 0;
+    }
     Long count =
         jdbcTemplate.queryForObject(
             "SELECT count(*) FROM " + table.qualifiedName() + " WHERE " + column + " IS NULL",
