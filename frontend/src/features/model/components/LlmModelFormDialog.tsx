@@ -10,13 +10,13 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel, LlmModelResponse } from '@/shared/api/types'
-import { testLlmModel } from '../api/modelApi'
+import { discoverLlmModels, testLlmModel } from '../api/modelApi'
 import { useLlmModelStore } from '../stores/llmModelStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import BaseUrlField from './BaseUrlField'
-import DiscoveryStatus from './DiscoveryStatus'
-import ModelIdentifierField from './ModelIdentifierField'
+import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
+import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierField'
 import {
   displayNameFor,
   formatTokens,
@@ -24,8 +24,8 @@ import {
   presetOf,
   suggestedMaxTokens,
   type EndpointPreset,
-} from './modelDiscovery'
-import { useModelDiscovery } from './useModelDiscovery'
+} from '@/shared/ui/modelDiscovery/modelDiscovery'
+import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
 
 export const REQUIRED_FIELDS_HINT =
   'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
@@ -107,7 +107,7 @@ export default function LlmModelFormDialog({
   const [contextLength, setContextLength] = useState<number | null>(null)
   // Only the result of the latest connection test counts, as in useModelDiscovery.
   const latestTest = useRef(0)
-  const discovery = useModelDiscovery()
+  const discovery = useModelDiscovery(discoverLlmModels)
   const addressRef = useRef<HTMLInputElement>(null)
 
   const isEdit = model !== null
