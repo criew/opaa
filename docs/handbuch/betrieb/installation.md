@@ -116,12 +116,15 @@ zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
 [Notanker-Konto](authentifizierung.md#erststart-und-systemverwalter-konto) an, mit dem gewählten
 Passwort: aus dem Assistenten ohne erzwungenen Wechsel, aus einer Antwortdatei mit Wechsel bei der
 ersten Anmeldung, solange `requirePasswordChange` nicht `false` ist. Er richtet das
-Anmeldeverfahren ein (ein OIDC-Anbieter wird Standardanbieter), aktiviert das Chat-Modell, legt das
+Anmeldeverfahren ein: Er schaltet in beiden Verfahren die
+[lokale Benutzerverwaltung](authentifizierung.md#lokale-benutzerverwaltung) ein, und ein OIDC-Anbieter
+wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung und
 verwirft Token und Zwischenstand. Vor dem Abschluss gibt es keine Vektorablage; ein späterer Wechsel
 des Embedding-Modells läuft in der Modellverwaltung, mit Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
-meldet sich die Person mit dem ersten Konto an. Jeder Schritt, jede Prüfung und der Abschluss stehen
-im Revisionsprotokoll.
+meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
+und Passwort; alle Instanzen übernehmen das ohne Neustart. Jeder Schritt, jede Prüfung, das
+Einschalten der lokalen Konten und der Abschluss stehen im Revisionsprotokoll.
 
 ## Einrichtungs-Assistent im Browser
 

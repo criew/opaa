@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-27 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -69,7 +69,8 @@ Vorher/Nachher der geänderten Schlüssel.
 
 `oidc_providers.provider_type` (`OIDC | LOCAL`; `LOCAL ⇒ is_default = false`, höchstens eine
 `LOCAL`-Zeile, nicht löschbar, Issuer nicht änderbar, ohne Adressprüfung). Ihr `enabled` ist der
-Schalter der lokalen Verwaltung (Standard `false`, Audit `LOCAL_ACCOUNTS_ENABLED/_DISABLED`);
+Schalter der lokalen Verwaltung (Standard `false`, eingeschaltet vom Abschluss der Installation nach
+ADR-0060, Entscheidung 9; Audit `LOCAL_ACCOUNTS_ENABLED/_DISABLED`);
 `GET /api/v1/auth/config` führt sie als `localAccounts { enabled, selfRegistrationEnabled,
 passwordResetEnabled, passwordMinLength }`. Gegenüber ADR-0025, Entscheidung 3: `is_default` steuert
 nur noch Anmeldevorschlag und Löschschutz (der Verzeichnisabgleich hängt an der

@@ -493,7 +493,7 @@ Die Adresse muss ein zustellbares Postfach sein, am besten ein Funktionspostfach
 
 **Das Notanker-Konto ist ein Notfallzugangsmittel, kein Arbeitskonto.**
 
-1. **Einmal anmelden** und prüfen, dass das Konto funktioniert.
+1. **Einmal anmelden**, auf der regulären Anmeldeseite, und prüfen, dass das Konto funktioniert.
 2. **Persönliche Verwalterkonten anlegen**, je Person eines
    ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md)); die tägliche Arbeit läuft über diese Konten.
 3. **Das Passwort versiegelt hinterlegen**, dort, wo das Haus andere Notfallzugänge verwahrt.
@@ -515,15 +515,17 @@ Systemverwalter, auch wenn die Adresse übereinstimmt; es bezeichnet nur das Not
 ## Lokale Benutzerverwaltung
 
 Lokale Konten sind Konten, die OPAA selbst führt, mit E-Mail-Adresse und Passwort. Ihre Verwaltung ist
-**ein Schalter unter Administration → Benutzer → Einstellungen** und im Auslieferungszustand **aus**.
+**ein Schalter unter Administration → Benutzer → Einstellungen**. Der Abschluss der
+[Installation](installation.md) schaltet ihn **ein**, mit „nur lokale Konten" wie mit einem
+Identitätsanbieter; das Revisionsprotokoll hält es unter der Installation fest.
 Was sie im Alltag leistet — anlegen, einladen, sperren, zurücksetzen, befristen, Selbstregistrierung —,
 steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md). Für den Betrieb zählt:
 
 - **Abgeschaltet heißt: nur Systemverwalter.** Reguläre lokale Konten melden sich nicht an, laufende
   Sitzungen enden beim nächsten Aufruf mit „Die Anmeldung mit Konten dieser Installation wurde
   abgeschaltet". Lokale Systemverwalter melden sich weiter über `/login/system` an.
-- **Empfehlung: im Regelbetrieb aus.** Wer einen Identitätsanbieter betreibt, lässt reguläre lokale
-  Konten aus und befristet die Systemverwalterkonten. Lokale Konten laufen am Verzeichnis und damit am
+- **Empfehlung: im Regelbetrieb aus.** Wer einen Identitätsanbieter betreibt, schaltet reguläre
+  lokale Konten nach der Einrichtung ab und befristet die Systemverwalterkonten. Lokale Konten laufen am Verzeichnis und damit am
   Austrittsprozess vorbei; Pflicht-Anlass, Ablaufdatum, Sperre nach Inaktivität, Erinnerungen und die
   vierteljährliche Wiedervorlage machen das beherrschbar, ersetzen den Prozess aber nicht.
 - **Vorher organisatorisch klären:** Drei Punkte gehören in eine Dienstvereinbarung oder vergleichbare

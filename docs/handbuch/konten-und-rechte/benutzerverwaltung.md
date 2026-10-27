@@ -11,8 +11,8 @@ Identitätsanbieters.
 
 ## 1. Wann diese Verwaltung gebraucht wird
 
-Die lokale Benutzerverwaltung ist **abschaltbar und im Auslieferungszustand aus**. Zwei Lagen
-brauchen sie:
+Die lokale Benutzerverwaltung ist **abschaltbar**; der Abschluss der Installation schaltet sie
+ein. Zwei Lagen brauchen sie:
 
 - **Ein Haus ohne Identitätsanbieter** — oder eines, dessen Anbindung noch nicht steht. Dann ist sie
   der einzige Anmeldeweg.

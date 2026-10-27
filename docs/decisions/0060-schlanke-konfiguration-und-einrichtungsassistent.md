@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
+Akzeptiert · zuletzt geändert 2026-10-27 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
 
 ## Kontext
 
@@ -114,7 +114,10 @@ ausfällt.
 ### 9. Anmeldeverfahren aus dem Assistenten
 
 Der Assistent legt das Anmeldeverfahren fest: nur lokale Konten, oder zusätzlich ein
-OIDC-Identitätsanbieter mit Verbindungstest als Standardanbieter. `OPAA_OIDC_ISSUER_URI`,
+OIDC-Identitätsanbieter mit Verbindungstest als Standardanbieter. Der Abschluss schaltet in beiden
+Fällen die lokalen Konten ein (Schalter aus ADR-0033, Entscheidung 4), über
+`OidcProviderService#enableLocalAccountsForInstallation`, auditiert als `LOCAL_ACCOUNTS_ENABLED`
+unter dem Systemprozess der Installation. `OPAA_OIDC_ISSUER_URI`,
 `OPAA_OIDC_CLIENT_ID`, `OPAA_OIDC_JWK_SET_URI`, `OPAA_OIDC_AUTHORITY` und `OPAA_OIDC_BOOTSTRAP`
 entfallen, ebenso die Erlaubnis ihrer Hosts in der Adressprüfung; deren Allowlist ist allein
 `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`. Ein Eintrag `host:port` gibt nur diesen Port frei, ein
