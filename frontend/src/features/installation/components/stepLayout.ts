@@ -1,3 +1,5 @@
+import { fontSize, fontWeight, letterSpacing, lineHeight } from '@/shared/theme/tokens'
+
 /**
  * The vertical rhythm of the assistant in MUI spacing steps (8px each, so every value lies on the
  * 4px grid of guidelines 4.1): lines that belong together sit close, groups stand apart.
@@ -11,17 +13,18 @@ export const STEP_RHYTHM = {
   betweenGroups: 3,
   /** A field and the quiet action that belongs to it, e.g. removing a stored key. */
   fieldToOwnAction: 1,
-  /** Last field to the action bar, and the bar's divider to its buttons. */
+  /** Last field to the action bar. */
   toActions: 4,
+  /** The action bar's divider to its buttons. */
   actionsDivider: 2,
 } as const
 
 /** The step's title (h2), scale step xl with the heading line height and tracking (guidelines 3). */
 export const STEP_TITLE_SX = {
-  fontSize: 24,
-  fontWeight: 600,
-  lineHeight: 1.25,
-  letterSpacing: '-0.02em',
+  fontSize: fontSize.xl,
+  fontWeight: fontWeight.semibold,
+  lineHeight: lineHeight.snug,
+  letterSpacing: letterSpacing.tight,
 } as const
 
 /**
