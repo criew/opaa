@@ -29,6 +29,24 @@ function stepHeading(page: Page, name: string) {
   return page.getByRole('heading', { level: 2, name })
 }
 
+/** The field's outer box, including an end adornment such as the show/hide toggle. */
+function fieldBox(page: Page, label: string) {
+  return page
+    .getByLabel(label, { exact: true })
+    .locator('xpath=ancestor::div[contains(@class, "MuiInputBase-root")][1]')
+}
+
+/** Every field of the step ends on the same right edge as the step's primary action. */
+async function expectFieldsFlushWithAction(page: Page, labels: string[], action: string) {
+  const actionBox = await page.getByRole('button', { name: action }).boundingBox()
+  expect(actionBox).not.toBeNull()
+  for (const label of labels) {
+    const box = await fieldBox(page, label).boundingBox()
+    expect(box, label).not.toBeNull()
+    expect(box!.x + box!.width, label).toBeCloseTo(actionBox!.x + actionBox!.width, 0)
+  }
+}
+
 test.describe('Einrichtungs-Assistent', () => {
   test('führt vom Token bis zum Abschluss und setzt nach Neuladen fort', async ({ page }) => {
     // Any address leads to the assistant while the installation is pending.
@@ -36,6 +54,7 @@ test.describe('Einrichtungs-Assistent', () => {
     await expect(page).toHaveURL(/\/installation$/)
     await expect(stepHeading(page, 'Installations-Token')).toBeVisible()
     await expectNoSeriousA11yViolations(page, 'Einrichtung: Token')
+    await expectFieldsFlushWithAction(page, ['Token'], 'Token prüfen')
 
     await enterToken(page, 'falsches-token-falsches-token-00')
     await expect(page.getByLabel('Token', { exact: true })).toHaveAttribute('aria-invalid', 'true')
@@ -43,6 +62,11 @@ test.describe('Einrichtungs-Assistent', () => {
     await enterToken(page, INSTALLATION_TOKEN)
     await expect(stepHeading(page, 'Erstes Konto')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Pflichtschritte' })).toBeVisible()
+    await expectFieldsFlushWithAction(
+      page,
+      ['E-Mail-Adresse', 'Anzeigename', 'Passwort', 'Passwort wiederholen'],
+      'Prüfen und weiter',
+    )
     await page.getByLabel('E-Mail-Adresse').fill('it-betrieb@stadt.example')
     await page.getByLabel('Anzeigename').fill('Systemverwaltung')
     await page.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
