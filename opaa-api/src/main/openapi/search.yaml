@@ -217,12 +217,15 @@ paths:
       operationId: getSearchAvailability
       tags: [search]
       summary: >
-        Which search paths currently answer - for the hint in the chat that the search is
-        limited.
+        Which search paths and models currently answer - for the hints in the chat that the search
+        is limited or that a model is not set up yet.
       description: >
         Installation-wide and without any content. The vector search is SUSPENDED while the vector
         index was built with another embedding model than the configured one and has not yet been
-        re-embedded; the full-text search keeps answering then.
+        re-embedded; the full-text search keeps answering then. chatModelConfigured and
+        embeddingModelConfigured are false while the installation has no active chat model or no
+        embedding model; questions, indexing, upload and search are refused with 503 and the codes
+        CHAT_MODEL_NOT_CONFIGURED or EMBEDDING_MODEL_NOT_CONFIGURED then.
       responses:
         "200":
           description: The current availability
@@ -412,7 +415,7 @@ components:
   schemas:
     SearchAvailabilityResponse:
       type: object
-      required: [vectorSearch]
+      required: [vectorSearch, chatModelConfigured, embeddingModelConfigured]
       properties:
         vectorSearch:
           type: string
@@ -420,6 +423,14 @@ components:
           description: >
             SUSPENDED while the vector index waits for its re-embedding under the configured
             embedding model; answers then come from the full-text search alone.
+        chatModelConfigured:
+          type: boolean
+          description: Whether a chat model is active; without one the chat answers no question.
+        embeddingModelConfigured:
+          type: boolean
+          description: >
+            Whether an embedding model is installed; without one there is no index, and indexing,
+            upload and search are refused.
 
     QueryRequest:
       type: object

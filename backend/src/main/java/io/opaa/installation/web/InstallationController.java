@@ -16,6 +16,7 @@ import io.opaa.llm.web.LlmModelDiscoveryResponseMapper;
 import jakarta.validation.Valid;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,6 +54,11 @@ public class InstallationController {
     InstallationStep parsed = parse(step);
     return InstallationResponseMapper.toResponse(
         installation.save(InstallationRequestMapper.toInput(parsed, body)));
+  }
+
+  @DeleteMapping("/steps/{step}")
+  public InstallationStepState skipInstallationStep(@PathVariable("step") String step) {
+    return InstallationResponseMapper.toResponse(installation.skip(parse(step)));
   }
 
   @PostMapping("/steps/{step}/check")

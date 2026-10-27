@@ -145,6 +145,36 @@ public class InstallationService {
   }
 
   /**
+   * Skips an optional step: discards its saved values and their check, so the completion goes on
+   * without it. A step that was never saved stays as it is.
+   *
+   * @throws ConflictException for a mandatory step
+   */
+  @Transactional
+  public InstallationOverview.StepState skip(InstallationStep step) {
+    lockPending();
+    if (step.isMandatory()) {
+      throw new ConflictException(
+          "Der Schritt "
+              + step.name()
+              + " ist ein Pflichtschritt und lässt sich nicht überspringen.");
+    }
+    steps
+        .findForUpdate(step)
+        .ifPresent(
+            record -> {
+              Map<String, Object> before = auditSummary(step, record);
+              steps.delete(record);
+              steps.flush();
+              record(
+                  AuditEventType.INSTALLATION_STEP_SAVED,
+                  before,
+                  Map.of("step", step.name(), "skipped", true));
+            });
+    return new InstallationOverview.StepState(step, false, false, false, null, null);
+  }
+
+  /**
    * Runs the check of a saved step and stores its outcome. The check talks to the network, so it
    * runs outside every transaction and lock; only its outcome is stored under them, and only for
    * the values it checked.
@@ -178,9 +208,11 @@ public class InstallationService {
   }
 
   /**
-   * Completes the installation from its checked steps.
+   * Completes the installation from its checked steps; a skipped optional step leaves its model
+   * out.
    *
-   * @throws ConflictException when a mandatory step is not saved or not successfully checked
+   * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
+   *     optional step is saved but not successfully checked
    */
   @Transactional
   public InstallationOverview complete(CompletionSource source) {
@@ -200,6 +232,7 @@ public class InstallationService {
         status -> {
           InstallationState state = lockPending();
           storeAnswers(checked);
+          dropSkippedOptionalSteps(checked);
           return completeLocked(state, source);
         });
   }
@@ -248,6 +281,7 @@ public class InstallationService {
                 return false;
               }
               storeAnswers(checked);
+              dropSkippedOptionalSteps(checked);
               completeLocked(state, CompletionSource.ANSWER_FILE_STARTUP);
               return true;
             }));
@@ -306,6 +340,20 @@ public class InstallationService {
       checked.add(new Checked(step, stored.get(i), outcome));
     }
     return checked;
+  }
+
+  /**
+   * Discards a saved optional step the answers leave out: an answer file without it skips it, as
+   * the assistant does. The caller holds the locks.
+   */
+  private void dropSkippedOptionalSteps(List<Checked> checked) {
+    for (InstallationStep step : InstallationStep.values()) {
+      boolean answered = checked.stream().anyMatch(answer -> answer.step() == step);
+      if (!step.isMandatory() && !answered) {
+        steps.findForUpdate(step).ifPresent(steps::delete);
+      }
+    }
+    steps.flush();
   }
 
   /** Saves the checked answers with their outcomes; the caller holds the locks. */
@@ -403,6 +451,14 @@ public class InstallationService {
               + open.stream().map(Enum::name).collect(Collectors.joining(", "))
               + ".");
     }
+    List<InstallationStep> unchecked = uncheckedOptionalSteps(saved);
+    if (!unchecked.isEmpty()) {
+      throw new ConflictException(
+          "Ein ausgefüllter optionaler Schritt muss erfolgreich geprüft sein; bitte prüfen oder"
+              + " überspringen: "
+              + unchecked.stream().map(Enum::name).collect(Collectors.joining(", "))
+              + ".");
+    }
     InstallationStepRecord adminStep = saved.get(InstallationStep.FIRST_ADMIN);
     StepRules.FirstAdminPayload admin = rules.firstAdminPayload(adminStep.getPayload());
     initialAdministrator.create(
@@ -426,7 +482,39 @@ public class InstallationService {
               OidcClaimMapping.keycloakDefaults()));
     }
     InstallationStepRecord modelStep = saved.get(InstallationStep.CHAT_MODEL);
-    StepRules.ChatModelPayload model = rules.chatModelPayload(modelStep.getPayload());
+    if (modelStep != null) {
+      installChatModel(modelStep);
+    }
+    InstallationStepRecord embeddingStep = saved.get(InstallationStep.EMBEDDING_MODEL);
+    if (embeddingStep != null) {
+      installEmbeddingModel(embeddingStep);
+    }
+    steps.deleteAllInBatch();
+    List<String> skipped =
+        Arrays.stream(InstallationStep.values())
+            .filter(step -> !step.isMandatory() && !saved.containsKey(step))
+            .map(Enum::name)
+            .toList();
+    markCompleted(
+        state,
+        source,
+        Map.of(
+            "source", source.name(), "signInMode", signIn.mode().name(), "skippedSteps", skipped));
+    return new InstallationOverview(false, true, List.of());
+  }
+
+  /** The optional steps that are saved but not successfully checked; they block the completion. */
+  private static List<InstallationStep> uncheckedOptionalSteps(
+      Map<InstallationStep, InstallationStepRecord> saved) {
+    return Arrays.stream(InstallationStep.values())
+        .filter(step -> !step.isMandatory())
+        .filter(step -> saved.get(step) != null && !saved.get(step).isCheckSucceeded())
+        .toList();
+  }
+
+  /** The chat model of the step, created active in the completion's transaction. */
+  private void installChatModel(InstallationStepRecord step) {
+    StepRules.ChatModelPayload model = rules.chatModelPayload(step.getPayload());
     llmModels.installActiveModel(
         Organization.DEFAULT_ID,
         SYSTEM_ACTOR,
@@ -435,12 +523,7 @@ public class InstallationService {
         model.model(),
         model.temperature(),
         StepRules.maxTokens(model),
-        modelStep.getSecret());
-    installEmbeddingModel(saved.get(InstallationStep.EMBEDDING_MODEL));
-    steps.deleteAllInBatch();
-    markCompleted(
-        state, source, Map.of("source", source.name(), "signInMode", signIn.mode().name()));
-    return new InstallationOverview(false, true, List.of());
+        step.getSecret());
   }
 
   /**
@@ -511,9 +594,7 @@ public class InstallationService {
                             step, step.isMandatory(), false, false, null, null))
             .toList();
     boolean completable =
-        states.stream()
-            .filter(InstallationOverview.StepState::mandatory)
-            .allMatch(s -> s.checked());
+        states.stream().allMatch(s -> s.checked() || (!s.mandatory() && !s.saved()));
     return new InstallationOverview(true, completable, states);
   }
 

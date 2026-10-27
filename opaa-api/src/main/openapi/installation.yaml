@@ -78,6 +78,46 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+    delete:
+      operationId: skipInstallationStep
+      tags: [installation]
+      security: []
+      summary: >
+        Skips an optional step: discards its saved values and their check, so the completion goes
+        on without it. A step that was never saved stays as it is. A mandatory step cannot be
+        skipped (409). Same token and network rules as getInstallation.
+      responses:
+        "200":
+          description: Step skipped; it is no longer saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstallationStepState"
+        "400":
+          description: Unknown step
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The client address lies outside OPAA_INSTALLATION_ALLOWED_CIDRS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The step is mandatory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/installation/steps/{step}/check:
     parameters:
       - $ref: "#/components/parameters/InstallationStepPath"
@@ -179,8 +219,9 @@ paths:
       summary: >
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
-        from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. Same token
-        and network rules as getInstallation.
+        from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel and
+        embeddingModel are optional; leaving one out skips its step and discards values saved for
+        it before. Same token and network rules as getInstallation.
       requestBody:
         required: true
         content:
@@ -225,7 +266,9 @@ paths:
         instances: creates the first system administration account, the sign-in method, the chat
         model and the embedding model with the vector table of its probed size from the checked
         steps, discards the token and the saved steps and switches every instance to normal
-        operation. Same token and network rules as getInstallation.
+        operation. A skipped optional step leaves its model out: without the embedding model there
+        is no vector table until the model administration sets the first one. Same token and
+        network rules as getInstallation.
       responses:
         "200":
           description: Installation completed
@@ -250,7 +293,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: A mandatory step is not saved or not successfully checked
+          description: >
+            A mandatory step is not saved or not successfully checked, or an optional step is saved
+            but not successfully checked
           content:
             application/json:
               schema:
@@ -273,8 +318,9 @@ components:
       type: string
       description: >
         A step of the installation. FIRST_ADMIN is the first system administration account (the
-        local emergency account of ADR-0033), SIGN_IN the sign-in method, CHAT_MODEL the chat
-        model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10).
+        local emergency account of ADR-0033), SIGN_IN the sign-in method, both mandatory;
+        CHAT_MODEL the chat model and EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung
+        10), both optional.
       enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL]
 
     InstallationSignInMode:
@@ -293,7 +339,8 @@ components:
           description: Always true while this API answers; the completion answers with false.
         completable:
           type: boolean
-          description: Whether every mandatory step is saved and successfully checked.
+          description: >
+            Whether every mandatory step and every saved optional step is successfully checked.
         steps:
           type: array
           items:
@@ -307,6 +354,9 @@ components:
           $ref: "#/components/schemas/InstallationStep"
         mandatory:
           type: boolean
+          description: >
+            False for an optional step, which can be skipped; once saved it must be checked like a
+            mandatory one.
         saved:
           type: boolean
         checked:
@@ -508,8 +558,9 @@ components:
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
         that the API cannot read files of the backend. Parts of later steps (outboundProxy, mail,
-        branding) are not evaluated by this version.
-      required: [firstAdmin, signIn, chatModel, embeddingModel]
+        branding) are not evaluated by this version. chatModel and embeddingModel are optional;
+        without one its step is skipped.
+      required: [firstAdmin, signIn]
       properties:
         firstAdmin:
           $ref: "#/components/schemas/InstallationFirstAdmin"

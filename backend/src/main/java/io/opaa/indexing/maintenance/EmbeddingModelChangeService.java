@@ -56,7 +56,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The guided change of the embedding model (ADR-0061): the probe with its preview, the confirmed
- * model change, its discard before the switch, and the endpoint change of the same model.
+ * model change, its discard before the switch, and the endpoint change of the same model. An
+ * installation without an embedding model sets its first one through the same probe and
+ * confirmation, under the same locks and version check: the table, the model row and the index
+ * record are created in one transaction, and nothing is re-embedded.
  *
  * <p>Confirmation, discard and endpoint change decide under the schema lock of the vector table
  * from the {@code embedding_index} row locked in the database, never from this instance's state,
@@ -219,7 +222,8 @@ public class EmbeddingModelChangeService {
    * Changes the embedding model to {@code draft} and starts the re-embedding as a run of this
    * instance; the vector search is suspended from the commit until the switch. An index without a
    * chunk takes the new model at once. A refill still running ends: the re-embedding embeds every
-   * chunk anyway.
+   * chunk anyway. Without an installed model the draft becomes the first one ({@link
+   * #installFirst}).
    *
    * @param expectedDimensions the size the preview named; another one is refused
    * @throws ConflictException when a change waits for its switch, the probe names another size or
@@ -253,6 +257,10 @@ public class EmbeddingModelChangeService {
     }
     float[] anchor = EmbeddingModelAdministration.anchorOf(probed);
     long generation = models.nextGeneration();
+    if (comparison.kind() == Kind.INITIAL) {
+      return installFirst(
+          resolved, comparison, probed.dimensions(), anchor, generation, userId, organizationId);
+    }
     return locked(
         () -> {
           models.requireUnchanged(resolved, comparison);
@@ -303,6 +311,39 @@ public class EmbeddingModelChangeService {
               change.before(),
               after);
           return snapshot;
+        });
+  }
+
+  /**
+   * Sets the first embedding model of an installation without one: the vector table of {@code
+   * dimensions}, the model row under {@code generation} with its anchor, and the index record of
+   * that model, all in one transaction; there are no chunks, so no run starts. Refused when a model
+   * was installed meanwhile.
+   */
+  private EmbeddingReindexProgress installFirst(
+      Resolved resolved,
+      Comparison comparison,
+      int dimensions,
+      float[] anchor,
+      long generation,
+      UUID userId,
+      UUID organizationId) {
+    return locked(
+        () -> {
+          models.requireUnchanged(resolved, comparison);
+          Change change = models.installFirst(resolved, dimensions, anchor, generation);
+          EmbeddingIdentity first =
+              new EmbeddingIdentity(
+                  resolved.endpoint().modelIdentifier(),
+                  resolved.endpoint().baseUrl(),
+                  dimensions,
+                  generation);
+          Run run = store.loadForUpdate().map(EmbeddingIndexRecord::run).orElse(Run.NONE);
+          store.save(new EmbeddingIndexRecord(first, null, run));
+          Map<String, Object> after = new LinkedHashMap<>(change.after());
+          after.put("initial", true);
+          record(userId, organizationId, AuditEventType.EMBEDDING_MODEL_CHANGED, null, after);
+          return new Snapshot(first, first, null);
         });
   }
 

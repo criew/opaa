@@ -625,14 +625,16 @@ auditEvents:
     payloadKeys: [status]
   - id: EMBEDDING_MODEL_CHANGED
     trigger: >-
-      Die Systemverwaltung bestätigt den Wechsel des Embedding-Modells; die Neueinbettung beginnt
+      Die Systemverwaltung bestätigt den Wechsel des Embedding-Modells, und die Neueinbettung
+      beginnt, oder legt das erste Embedding-Modell einer Installation ohne eines fest
     details: >-
       Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und
       nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“, „geändert“ oder
       „entfernt“ (apiKeyChange), nie mit dem Wert; die Zahl der Abschnitte wie auf der Seite
-      und ob ein laufendes Nachfüllen endete
+      und ob ein laufendes Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit
+      initial
     payloadKeys:
-      [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model,
+      [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, initial, maxInputTokens, model,
        privateLibrariesCounted, refillEnded, totalChunks]
   - id: EMBEDDING_MODEL_CHANGE_DISCARDED
     trigger: >-
@@ -878,17 +880,18 @@ auditEvents:
   - id: LOCAL_BOOTSTRAP_ACCOUNT_LOGIN
     trigger: Erfolgreiche Anmeldung mit dem Notanker-Konto
   - id: INSTALLATION_STEP_SAVED
-    trigger: Ein Schritt der Erstinstallation wird gespeichert
+    trigger: Ein Schritt der Erstinstallation wird gespeichert oder ein optionaler übersprungen
     details: >-
       Schritt und Werte vorher und nachher, ohne die Adresse des ersten Kontos und ohne Passwort
-      oder Schlüssel, nur ob eines gesetzt ist
-    payloadKeys: [apiKeySet, baseUrl, issuerUri, model, passwordSet, signInMode, step]
+      oder Schlüssel, nur ob eines gesetzt ist; ein übersprungener Schritt mit skipped
+    payloadKeys: [apiKeySet, baseUrl, issuerUri, model, passwordSet, signInMode, skipped, step]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
     payloadKeys: [step, succeeded]
   - id: INSTALLATION_COMPLETED
     trigger: Die Erstinstallation wird abgeschlossen, genau einmal je Installation
-    payloadKeys: [signInMode, source]
+    details: Weg des Abschlusses, Anmeldeverfahren und die übersprungenen optionalen Schritte
+    payloadKeys: [signInMode, skippedSteps, source]
   - id: LOCAL_ACCOUNTS_ENABLED
     trigger: Die lokale Kontenverwaltung wird eingeschaltet
     payloadKeys: [enabled]

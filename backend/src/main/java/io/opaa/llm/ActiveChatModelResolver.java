@@ -64,8 +64,8 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
   private final AtomicInteger buildCount = new AtomicInteger();
 
   /**
-   * Whether the "no active model" condition was already logged since it last cleared: one ERROR per
-   * state change, not per request on this hot path.
+   * Whether the "no active model" condition was already logged since it last cleared: one INFO per
+   * state change, not per request on this hot path. No chat model is a regular state, no outage.
    */
   private final AtomicBoolean noActiveModelLogged = new AtomicBoolean(false);
 
@@ -235,9 +235,9 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     List<LlmModel> active = repository.findAllByActiveTrue();
     if (active.isEmpty()) {
       if (noActiveModelLogged.compareAndSet(false, true)) {
-        log.error(
-            "No active chat model configured - every chat request will fail until a SYSTEM_ADMIN"
-                + " activates one via the model administration screen.");
+        log.info(
+            "No active chat model is set up: chat requests are refused with a notice until a"
+                + " SYSTEM_ADMIN activates one in the model administration");
       }
       throw new NoActiveChatModelException();
     }
@@ -246,7 +246,7 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
 
   /**
    * Drops both cached clients after the change committed, advances {@link #generation} so a build
-   * in flight is not cached, and re-arms the "no active model" ERROR.
+   * in flight is not cached, and re-arms the "no active model" notice in the log.
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   void onActiveModelChanged(ActiveChatModelChangedEvent event) {

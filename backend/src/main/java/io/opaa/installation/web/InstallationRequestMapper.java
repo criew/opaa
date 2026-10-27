@@ -10,9 +10,13 @@ import io.opaa.api.dto.InstallationStepRequest;
 import io.opaa.common.FieldValidationException;
 import io.opaa.installation.InstallationStep;
 import io.opaa.installation.StepInput;
+import java.util.ArrayList;
 import java.util.List;
 
-/** The requests of the installation API as {@link StepInput}s; a missing part is a field error. */
+/**
+ * The requests of the installation API as {@link StepInput}s; a missing part is a field error,
+ * except the optional model parts of the answers, whose absence skips their step.
+ */
 final class InstallationRequestMapper {
 
   private static final String REQUIRED = "REQUIRED";
@@ -33,11 +37,16 @@ final class InstallationRequestMapper {
     if (body == null) {
       throw missing("firstAdmin");
     }
-    return List.of(
-        firstAdmin(body.getFirstAdmin()),
-        signIn(body.getSignIn()),
-        chatModel(body.getChatModel()),
-        embeddingModel(body.getEmbeddingModel()));
+    List<StepInput> inputs = new ArrayList<>();
+    inputs.add(firstAdmin(body.getFirstAdmin()));
+    inputs.add(signIn(body.getSignIn()));
+    if (body.getChatModel() != null) {
+      inputs.add(chatModel(body.getChatModel()));
+    }
+    if (body.getEmbeddingModel() != null) {
+      inputs.add(embeddingModel(body.getEmbeddingModel()));
+    }
+    return List.copyOf(inputs);
   }
 
   private static StepInput firstAdmin(InstallationFirstAdmin admin) {

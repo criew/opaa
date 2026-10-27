@@ -10,6 +10,7 @@ import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
+import io.opaa.llm.EmbeddingModelNotInstalledException;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Map;
@@ -183,7 +184,10 @@ public class SourceEventIntake {
         batches.remove(batch.id());
         return;
       }
-      running = indexingJobService.isJobRunning(library.getId(), library.getOrganizationId());
+      // without an embedding model no run starts; the batch waits like one behind a running run
+      running =
+          indexingJobService.isJobRunning(library.getId(), library.getOrganizationId())
+              || indexingJobService.isEmbeddingModelMissing();
     } catch (RuntimeException e) {
       // a lookup that fails (database briefly away) must not lose the batch - it goes back as one
       // more deferral, so a lasting outage still ends at the bound; failing that, its lease ends
@@ -219,7 +223,7 @@ public class SourceEventIntake {
       job =
           indexingJobService.startJob(
               library.getId(), library.getOrganizationId(), JobTriggerSource.WEBHOOK, runMode);
-    } catch (ConflictException e) {
+    } catch (ConflictException | EmbeddingModelNotInstalledException e) {
       defer(target, batch);
       return;
     }

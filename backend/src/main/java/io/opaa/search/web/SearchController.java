@@ -8,6 +8,8 @@ import io.opaa.api.dto.SearchableLibrary;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
+import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.LlmModelService;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import io.opaa.search.PassageFetchService;
 import io.opaa.search.SearchService;
@@ -36,23 +38,34 @@ public class SearchController {
   private final SearchService searchService;
   private final PassageFetchService passageFetchService;
   private final EmbeddingIndexState embeddingIndexState;
+  private final LlmModelService chatModels;
+  private final EmbeddingModelService embeddingModels;
 
   public SearchController(
       SearchService searchService,
       PassageFetchService passageFetchService,
-      EmbeddingIndexState embeddingIndexState) {
+      EmbeddingIndexState embeddingIndexState,
+      LlmModelService chatModels,
+      EmbeddingModelService embeddingModels) {
     this.searchService = searchService;
     this.passageFetchService = passageFetchService;
     this.embeddingIndexState = embeddingIndexState;
+    this.chatModels = chatModels;
+    this.embeddingModels = embeddingModels;
   }
 
-  /** Whether the vector search answers; the chat shows a hint while it does not. */
+  /**
+   * Whether the vector search answers and whether chat and embedding model are set up; the chat
+   * shows a hint while one of them is not.
+   */
   @GetMapping("/availability")
   public SearchAvailabilityResponse availability() {
     return new SearchAvailabilityResponse(
         embeddingIndexState.isVectorSearchAvailable()
             ? SearchAvailabilityResponse.VectorSearchEnum.AVAILABLE
-            : SearchAvailabilityResponse.VectorSearchEnum.SUSPENDED);
+            : SearchAvailabilityResponse.VectorSearchEnum.SUSPENDED,
+        chatModels.hasActiveModel(),
+        embeddingModels.installed().isPresent());
   }
 
   @PostMapping

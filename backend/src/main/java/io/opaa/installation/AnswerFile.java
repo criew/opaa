@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
@@ -14,7 +15,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
  * Entscheidung 7). Its secrets are never plain text: the password and the model key are files,
- * typically mounted from a secret, read when the file is applied. Parts of later steps are ignored.
+ * typically mounted from a secret, read when the file is applied. Parts of later steps are ignored;
+ * {@code chatModel} and {@code embeddingModel} are optional, and a file without one skips its step.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -71,14 +73,12 @@ record AnswerFile(
 
   /** The steps of the file, with the secrets read from their files. */
   List<StepInput> steps() {
-    if (firstAdmin == null || signIn == null || chatModel == null || embeddingModel == null) {
-      throw new ValidationException(
-          "Die Antwortdatei braucht die Angaben firstAdmin, signIn, chatModel und"
-              + " embeddingModel.");
+    if (firstAdmin == null || signIn == null) {
+      throw new ValidationException("Die Antwortdatei braucht die Angaben firstAdmin und signIn.");
     }
     if (firstAdmin.password() != null
-        || chatModel.apiKey() != null
-        || embeddingModel.apiKey() != null) {
+        || (chatModel != null && chatModel.apiKey() != null)
+        || (embeddingModel != null && embeddingModel.apiKey() != null)) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
               + " verweisen auf eine Datei, etwa aus einem Secret.");
@@ -87,14 +87,6 @@ record AnswerFile(
       throw new ValidationException("firstAdmin.passwordFile fehlt in der Antwortdatei.");
     }
     String password = secret(firstAdmin.passwordFile(), "firstAdmin.passwordFile");
-    String apiKey =
-        chatModel.apiKeyFile() == null || chatModel.apiKeyFile().isBlank()
-            ? ""
-            : secret(chatModel.apiKeyFile(), "chatModel.apiKeyFile");
-    String embeddingApiKey =
-        embeddingModel.apiKeyFile() == null || embeddingModel.apiKeyFile().isBlank()
-            ? ""
-            : secret(embeddingModel.apiKeyFile(), "embeddingModel.apiKeyFile");
     StepInput.Oidc oidc =
         signIn.oidc() == null
             ? null
@@ -103,24 +95,37 @@ record AnswerFile(
                 signIn.oidc().clientId(),
                 signIn.oidc().jwkSetUri(),
                 signIn.oidc().displayName());
-    return List.of(
+    List<StepInput> steps = new ArrayList<>();
+    steps.add(
         new StepInput.FirstAdmin(
             firstAdmin.email(),
             firstAdmin.displayName(),
             password,
-            !Boolean.FALSE.equals(firstAdmin.requirePasswordChange())),
-        new StepInput.SignIn(signIn.mode(), oidc),
-        new StepInput.ChatModel(
-            chatModel.baseUrl(),
-            chatModel.model(),
-            apiKey,
-            chatModel.temperature(),
-            chatModel.maxTokens()),
-        new StepInput.EmbeddingModel(
-            embeddingModel.baseUrl(),
-            embeddingModel.model(),
-            embeddingApiKey,
-            embeddingModel.maxInputTokens()));
+            !Boolean.FALSE.equals(firstAdmin.requirePasswordChange())));
+    steps.add(new StepInput.SignIn(signIn.mode(), oidc));
+    if (chatModel != null) {
+      steps.add(
+          new StepInput.ChatModel(
+              chatModel.baseUrl(),
+              chatModel.model(),
+              keyOf(chatModel.apiKeyFile(), "chatModel.apiKeyFile"),
+              chatModel.temperature(),
+              chatModel.maxTokens()));
+    }
+    if (embeddingModel != null) {
+      steps.add(
+          new StepInput.EmbeddingModel(
+              embeddingModel.baseUrl(),
+              embeddingModel.model(),
+              keyOf(embeddingModel.apiKeyFile(), "embeddingModel.apiKeyFile"),
+              embeddingModel.maxInputTokens()));
+    }
+    return List.copyOf(steps);
+  }
+
+  /** The model key from {@code path}; an absent path sends none. */
+  private static String keyOf(String path, String field) {
+    return path == null || path.isBlank() ? "" : secret(path, field);
   }
 
   /** The file's content without the trailing line break a mounted secret usually carries. */

@@ -93,9 +93,9 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
     if (embeddingInfoService.getEmbeddingInfo().installed()) {
       reconcile();
     } else {
-      log.warn(
-          "No embedding model is installed: there is no vector table yet, indexing and search are"
-              + " refused until the installation chooses one");
+      log.info(
+          "No embedding model is installed: there is no vector table yet; indexing, upload and"
+              + " search answer with a notice until one is set");
     }
     running = true;
   }

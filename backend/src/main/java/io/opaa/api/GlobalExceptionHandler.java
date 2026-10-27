@@ -441,6 +441,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ServiceUnavailableException.class)
   public ResponseEntity<ErrorResponse> handleServiceUnavailableException(
       ServiceUnavailableException ex) {
+    if (ex.getCode() != null) {
+      ErrorResponse body = error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+      body.setCode(ex.getCode());
+      return respond(ex, HttpStatus.SERVICE_UNAVAILABLE, body);
+    }
     if (ex.retryAfterSeconds() > 0) {
       return respond(
           ex,

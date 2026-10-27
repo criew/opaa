@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.NoActiveChatModelException;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
@@ -28,20 +29,23 @@ class ChatHealthIndicatorTest {
   }
 
   @Test
-  void reportsDownWhenNoModelIsActive() {
+  void reportsDownWhenTheActiveModelCannotBeRead() {
     ActiveChatModelResolver resolver = mock(ActiveChatModelResolver.class);
-    when(resolver.resolveDescription()).thenThrow(new NoActiveChatModelExceptionForTest());
+    when(resolver.resolveDescription()).thenThrow(new IllegalStateException("database gone"));
+    ChatHealthIndicator indicator = new ChatHealthIndicator(resolver);
+
+    assertThat(indicator.health().getStatus()).isEqualTo(Status.DOWN);
+  }
+
+  @Test
+  void reportsUnknownAndNotConfiguredWithoutAnActiveModel() {
+    ActiveChatModelResolver resolver = mock(ActiveChatModelResolver.class);
+    when(resolver.resolveDescription()).thenThrow(mock(NoActiveChatModelException.class));
     ChatHealthIndicator indicator = new ChatHealthIndicator(resolver);
 
     Health health = indicator.health();
 
-    assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+    assertThat(health.getStatus()).isEqualTo(Status.UNKNOWN);
+    assertThat(health.getDetails()).containsEntry("chatModel", "NOT_CONFIGURED");
   }
-
-  /**
-   * {@code io.opaa.llm.NoActiveChatModelException} has a package-private constructor - {@link
-   * ActiveChatModelResolver} is its only intended thrower - so this test-only stand-in exercises
-   * "no active model" without needing package access to {@code io.opaa.llm}.
-   */
-  private static final class NoActiveChatModelExceptionForTest extends RuntimeException {}
 }

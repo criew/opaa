@@ -63,6 +63,7 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
@@ -305,6 +306,7 @@ class LibraryDocumentServiceTest {
         mock(SourceSyncStateRepository.class),
         mock(io.opaa.instance.CurrentInstance.class),
         malwareScanService,
+        mock(EmbeddingModelService.class),
         Clock.systemUTC());
   }
 
@@ -1832,6 +1834,7 @@ class LibraryDocumentServiceTest {
             mock(SourceSyncStateRepository.class),
             mock(io.opaa.instance.CurrentInstance.class),
             MalwareScanService.disabled(),
+            mock(EmbeddingModelService.class),
             Clock.systemUTC());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

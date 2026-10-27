@@ -8,7 +8,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,6 +23,8 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.llm.EmbeddingModelNotInstalledException;
+import io.opaa.llm.EmbeddingModelService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -50,6 +54,7 @@ class IndexingJobServiceTest {
   @Mock private AssetRepository assetRepository;
   @Mock private CurrentInstance currentInstance;
   @Mock private InstanceRegistry instanceRegistry;
+  @Mock private EmbeddingModelService embeddingModels;
   private IndexingJobService service;
 
   @BeforeEach
@@ -66,7 +71,8 @@ class IndexingJobServiceTest {
         clock,
         databaseClock,
         currentInstance,
-        instanceRegistry);
+        instanceRegistry,
+        embeddingModels);
   }
 
   @Test
@@ -182,6 +188,23 @@ class IndexingJobServiceTest {
     service.startJob(libraryId, UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     verify(indexingJobRepository).deleteAllByIdInBatch(List.of(runs.get(11).getId()));
+  }
+
+  @Test
+  void startJobIsRefusedWithoutAnEmbeddingModelBeforeAnythingIsWritten() {
+    doThrow(mock(EmbeddingModelNotInstalledException.class))
+        .when(embeddingModels)
+        .requireInstalled();
+
+    assertThatThrownBy(
+            () ->
+                service.startJob(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    JobTriggerSource.MANUAL,
+                    IndexingRunMode.FULL))
+        .isInstanceOf(EmbeddingModelNotInstalledException.class);
+    verifyNoInteractions(indexingJobRepository);
   }
 
   @Test
