@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 import { expectStepEdgesFlush } from '../fixtures/installation'
 
@@ -30,6 +30,33 @@ function stepHeading(page: Page, name: string) {
   return page.getByRole('heading', { level: 2, name })
 }
 
+/** The danger role per scheme (frontend/src/shared/theme/tokens.ts) as computed by the browser. */
+const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 99, 105)' } as const
+
+/**
+ * A field in error keeps the danger outline while it holds the focus, in both schemes: focus
+ * widens the outline to 2px instead of repainting it in the accent. Hover keeps it too.
+ */
+async function expectFocusedErrorOutline(field: Locator) {
+  await expect(field).toBeFocused()
+  await expect(field).toHaveAttribute('aria-invalid', 'true')
+  const outline = field
+    .locator('xpath=ancestor::*[contains(@class,"MuiOutlinedInput-root")][1]')
+    .locator('.MuiOutlinedInput-notchedOutline')
+  for (const scheme of ['light', 'dark'] as const) {
+    await field.page().emulateMedia({ colorScheme: scheme })
+    await expect(outline).toHaveCSS('border-top-color', DANGER[scheme])
+    await expect(outline).toHaveCSS('border-top-width', '2px')
+  }
+  await field.page().emulateMedia({ colorScheme: 'light' })
+  // Without focus, hovering keeps the danger outline as well.
+  await field.blur()
+  await field.hover()
+  await expect(field).not.toBeFocused()
+  await expect(outline).toHaveCSS('border-top-color', DANGER.light)
+  await field.page().emulateMedia({ colorScheme: null })
+}
+
 test.describe('Einrichtungs-Assistent', () => {
   test('führt vom Token bis zum Abschluss und setzt nach Neuladen fort', async ({ page }) => {
     // Any address leads to the assistant while the installation is pending.
@@ -40,7 +67,7 @@ test.describe('Einrichtungs-Assistent', () => {
     await expectStepEdgesFlush(page)
 
     await enterToken(page, 'falsches-token-falsches-token-00')
-    await expect(page.getByLabel('Token', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+    await expectFocusedErrorOutline(page.getByLabel('Token', { exact: true }))
     await expectStepEdgesFlush(page)
 
     await enterToken(page, INSTALLATION_TOKEN)

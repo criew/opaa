@@ -300,6 +300,7 @@ Gruppen deutlich getrennt (24–48).
 
 Sichtbarer Fokusring für jedes interaktive Element: 3 px in `accent` mit 32 % Deckung
 (`0 0 0 3px rgba(18,144,239,0.32)`) zusätzlich zum Rahmen, in beiden Schemata deutlich.
+Einzige Abweichung: Ein Formularfeld mit Fehler trägt Rahmen und Ring in `danger` (5.2).
 Fokus wird nie unterdrückt, nur gestaltet. Umsetzung: Issue #585; Prüfung:
 [Barrierefreiheits-Richtlinie](./accessibility.md).
 
@@ -341,7 +342,11 @@ das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder t
 sichtbare Beschriftung, sondern Platzhalter plus `aria-label` (Muster: Mockup-Suchfelder).
 Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring. Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
-(Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7).
+(Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7). Der Fehlerrahmen bleibt
+auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahmen in `danger`
+plus Fokusring in `danger` mit 32 % Deckung, für Textfelder, Auswahllisten und Autocomplete
+gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
+behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
 Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
 
