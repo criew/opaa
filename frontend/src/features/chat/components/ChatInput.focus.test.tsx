@@ -53,4 +53,33 @@ describe.each([
     expect(style.boxShadow.toLowerCase()).toBe(`inset 0 0 0 1px ${roles.accent.toLowerCase()}`)
     expect(contrastRatio(roles.accent, roles.bg1)).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
   })
+
+  it('keeps the resting frame while a button of the row holds the focus', async () => {
+    render(
+      <ThemeProvider theme={createAppTheme(mode)}>
+        <MemoryRouter>
+          <ChatInput onSend={vi.fn()} />
+        </MemoryRouter>
+      </ThemeProvider>,
+    )
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const frame = input.closest('.MuiTextField-root')?.parentElement as HTMLElement
+    const resting = getComputedStyle(frame).borderColor
+    // Text enables the send button, the one button of the row that is always rendered.
+    await userEvent.type(input, 'Frage')
+    const button = screen.getByRole('button', { name: 'Senden' })
+    expect(frame).toContainElement(button)
+
+    for (
+      let presses = 0;
+      presses < MAX_TAB_PRESSES && document.activeElement !== button;
+      presses++
+    ) {
+      await userEvent.tab()
+    }
+    expect(button).toHaveFocus()
+
+    // The button shows its own ring; a second indicator on the frame would mark two places.
+    expect(getComputedStyle(frame).borderColor).toBe(resting)
+  })
 })
