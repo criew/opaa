@@ -13,6 +13,7 @@ import { clearMailbox, mailCount, waitForMail } from '../fixtures/mailpit'
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
+const ADMIN_EMAIL = 'it-betrieb@stadt.example'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
 const TEST_RECIPIENT = 'it-betrieb@stadt.example'
 
@@ -114,7 +115,7 @@ test.describe('Einrichtungs-Assistent', () => {
       await expect(stepHeading(page, 'Erstes Konto')).toBeVisible()
       await expect(page.getByRole('list', { name: 'Pflichtschritte' })).toBeVisible()
       await expectStepEdgesFlush(page)
-      await page.getByLabel('E-Mail-Adresse').fill('it-betrieb@stadt.example')
+      await page.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
       await page.getByLabel('Anzeigename').fill('Systemverwaltung')
       await page.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
       await page.getByLabel('Passwort wiederholen', { exact: true }).fill(ADMIN_PASSWORD)
@@ -181,6 +182,15 @@ test.describe('Einrichtungs-Assistent', () => {
 
       await page.getByRole('link', { name: 'Zur Anmeldung' }).click()
       await expect(page).toHaveURL(/\/login/)
+
+      // "Nur lokale Konten" leaves the local accounts switched on: the regular sign-in page carries
+      // the password form, and the first account signs in there.
+      const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
+      await expect(signIn).toBeVisible()
+      await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
+      await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
+      await signIn.getByRole('button', { name: 'Anmelden' }).click()
+      await expect(page).toHaveURL(/\/chat/, { timeout: 20_000 })
     },
   )
 

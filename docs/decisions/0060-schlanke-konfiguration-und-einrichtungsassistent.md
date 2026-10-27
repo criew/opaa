@@ -120,7 +120,13 @@ ausfällt.
 ### 9. Anmeldeverfahren aus dem Assistenten
 
 Der Assistent legt das Anmeldeverfahren fest: nur lokale Konten, oder zusätzlich ein
-OIDC-Identitätsanbieter mit Verbindungstest als Standardanbieter. `OPAA_OIDC_ISSUER_URI`,
+OIDC-Identitätsanbieter mit Verbindungstest als Standardanbieter. Der Abschluss schaltet in beiden
+Fällen die lokalen Konten ein (Schalter aus ADR-0033, Entscheidung 4), über
+`OidcProviderService#enableLocalAccountsForInstallation`, auditiert als `LOCAL_ACCOUNTS_ENABLED`
+unter dem Systemprozess der Installation. Damit gilt die Voreinstellung „Passwort vergessen“ an; der
+Rücksetzweg ist verfügbar, sobald `OPAA_PUBLIC_BASE_URL` und der Mailversand eingerichtet sind, auch
+für das Notanker-Konto über dessen Postfach — deshalb ein Funktionspostfach, und den Rücksetzweg
+bei Bedarf in der Verwaltung abschalten. `OPAA_OIDC_ISSUER_URI`,
 `OPAA_OIDC_CLIENT_ID`, `OPAA_OIDC_JWK_SET_URI`, `OPAA_OIDC_AUTHORITY` und `OPAA_OIDC_BOOTSTRAP`
 entfallen, ebenso die Erlaubnis ihrer Hosts in der Adressprüfung; deren Allowlist ist allein
 `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`. Ein Eintrag `host:port` gibt nur diesen Port frei, ein

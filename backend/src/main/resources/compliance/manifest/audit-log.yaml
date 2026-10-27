@@ -900,7 +900,7 @@ auditEvents:
     details: Herkunft, Anmeldeverfahren und ob der Abschluss den E-Mail-Versand einschaltete
     payloadKeys: [mailEnabled, signInMode, source]
   - id: LOCAL_ACCOUNTS_ENABLED
-    trigger: Die lokale Kontenverwaltung wird eingeschaltet
+    trigger: Die lokale Kontenverwaltung wird eingeschaltet, durch die Systemverwaltung oder beim Abschluss der Installation
     payloadKeys: [enabled]
   - id: LOCAL_ACCOUNTS_DISABLED
     trigger: Die lokale Kontenverwaltung wird ausgeschaltet

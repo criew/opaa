@@ -419,7 +419,9 @@ dabei `UP`. Zwei Wege führen hinaus:
   Die Hinweise nach `helm install` warnen, wenn die Netzbereiche ohne `trustedProxyCidrs` gesetzt
   sind; dasselbe gilt für `localAdminAllowedCidrs`.
 
-Die Anmeldung läuft danach über `<publicBaseUrl>/login/system` mit dem ersten Konto. Was dann zu tun
+Die Anmeldung läuft danach über `<publicBaseUrl>/login` mit dem ersten Konto; der Abschluss hat die
+lokale Benutzerverwaltung eingeschaltet. Den Weg für Systemverwalter bei abgeschalteter Verwaltung
+beschreibt die [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#1-wann-diese-verwaltung-gebraucht-wird). Was dann zu tun
 ist (persönliche Verwalterkonten anlegen, Notanker versiegeln), steht unter
 [Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto). Nach
 dem Abschluss gehören das Passwort (`secrets.initialAdminPassword` bzw. der Schlüssel
