@@ -32,6 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -434,6 +437,18 @@ class LlmModelDiscovererTest {
     assertThat(discovery.success()).isFalse();
     assertThat(discovery.failure()).isEqualTo(Failure.UNREACHABLE);
     assertThat(discovery.message()).isNotBlank();
+  }
+
+  // regression guard: a key in the query of an address never reaches the log
+  @Test
+  @ExtendWith(OutputCaptureExtension.class)
+  void theLogOfAnUnreachableAddressOmitsItsQuery(CapturedOutput output) {
+    server.stop(0);
+
+    discoverer.discover(baseUrl + "?api-key=sk-im-log-verboten", "sk-im-kopf-verboten", null);
+
+    assertThat(output.getAll()).contains("127.0.0.1");
+    assertThat(output.getAll()).doesNotContain("sk-im-log-verboten", "sk-im-kopf-verboten");
   }
 
   @Test
