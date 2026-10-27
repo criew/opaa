@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.opaa.api.types.MailEncryption;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -14,13 +15,18 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
- * Entscheidung 7). Its secrets are never plain text: the password and the model key are files,
- * typically mounted from a secret, read when the file is applied. Parts of later steps are ignored;
- * {@code chatModel} and {@code embeddingModel} are optional, and a file without one skips its step.
+ * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
+ * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
+ * embeddingModel} and {@code mail} are optional: a file without one skips its step, without {@code
+ * mail} sending stays off. Parts of later steps are ignored.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
-    FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel, EmbeddingModel embeddingModel) {
+    FirstAdmin firstAdmin,
+    SignIn signIn,
+    ChatModel chatModel,
+    EmbeddingModel embeddingModel,
+    Mail mail) {
 
   /** Upper bound of a secret file; a password or a key is far shorter. */
   static final long MAX_SECRET_BYTES = 8 * 1024;
@@ -56,6 +62,18 @@ record AnswerFile(
   record EmbeddingModel(
       String baseUrl, String model, String apiKeyFile, String apiKey, Integer maxInputTokens) {}
 
+  /** The mail server; without {@code passwordFile} it connects without a password. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record Mail(
+      String host,
+      Integer port,
+      MailEncryption encryption,
+      String username,
+      String passwordFile,
+      String password,
+      String fromAddress,
+      String fromName) {}
+
   /** Reads and parses the file; the message of a failure names the file, never its content. */
   static AnswerFile read(Path file, JsonMapper json) {
     String text = readBounded(file, MAX_FILE_BYTES, "Die Antwortdatei");
@@ -78,7 +96,8 @@ record AnswerFile(
     }
     if (firstAdmin.password() != null
         || (chatModel != null && chatModel.apiKey() != null)
-        || (embeddingModel != null && embeddingModel.apiKey() != null)) {
+        || (embeddingModel != null && embeddingModel.apiKey() != null)
+        || (mail != null && mail.password() != null)) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
               + " verweisen auf eine Datei, etwa aus einem Secret.");
@@ -120,10 +139,21 @@ record AnswerFile(
               keyOf(embeddingModel.apiKeyFile(), "embeddingModel.apiKeyFile"),
               embeddingModel.maxInputTokens()));
     }
+    if (mail != null) {
+      steps.add(
+          new StepInput.Mail(
+              mail.host(),
+              mail.port(),
+              mail.encryption(),
+              mail.username(),
+              keyOf(mail.passwordFile(), "mail.passwordFile"),
+              mail.fromAddress(),
+              mail.fromName()));
+    }
     return List.copyOf(steps);
   }
 
-  /** The model key from {@code path}; an absent path sends none. */
+  /** The secret from the file at {@code path}; an absent path sends none. */
   private static String keyOf(String path, String field) {
     return path == null || path.isBlank() ? "" : secret(path, field);
   }

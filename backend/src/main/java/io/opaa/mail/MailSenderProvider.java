@@ -75,7 +75,16 @@ public class MailSenderProvider {
     return new Transport(rebuilt.sender(), rebuilt.from());
   }
 
-  private JavaMailSender build(MailSettingsSnapshot snapshot) {
+  /**
+   * A transport for {@code settings} that are not the stored ones, built anew and never cached, so
+   * a check of settings someone is still entering never changes what the stored settings send
+   * through. Bounded by the same {@link SmtpProperties} timeouts.
+   */
+  public Transport transportFor(MailSettingsSnapshot settings) {
+    return new Transport(build(settings), settings);
+  }
+
+  private JavaMailSenderImpl build(MailSettingsSnapshot snapshot) {
     JavaMailSenderImpl sender = new JavaMailSenderImpl();
     sender.setHost(snapshot.host());
     if (snapshot.port() != null) {

@@ -11,6 +11,7 @@ import {
 import type {
   InstallationModelDiscoveryRequest,
   InstallationStatusResponse,
+  InstallationStepCheckRequest,
   InstallationStepId,
   ModelStepId,
   StepInput,
@@ -109,20 +110,22 @@ export function useInstallationWizard() {
   )
 
   /**
-   * Saves the step (unless `values` is `null`: nothing changed, only check again) and checks it.
-   * A failed check keeps the step open and returns the backend's sentence about it.
+   * Saves the step (unless `values` is `null`: nothing changed, only check again) and checks it,
+   * with `checkOptions` such as the test recipient of the mail step. A failed check keeps the
+   * step open and returns the backend's sentence about it.
    */
   const submitStep = useCallback(
     async <S extends InstallationStepId>(
       step: S,
       values: StepInput[S] | null,
+      checkOptions?: InstallationStepCheckRequest,
     ): Promise<WizardResult> => {
       const token = state.token
       if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
       let result: WizardResult = { ok: true }
       try {
         if (values) await saveInstallationStep(token, step, values)
-        const checked = await checkInstallationStep(token, step)
+        const checked = await checkInstallationStep(token, step, checkOptions)
         if (!checked.checked) result = failed(checked.checkMessage ?? CHECK_FAILED)
       } catch (err) {
         const failure = installationFailure(err, values ? SAVE_FAILED : CHECK_FAILED)

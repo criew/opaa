@@ -1,5 +1,6 @@
 package io.opaa.installation;
 
+import io.opaa.api.types.MailEncryption;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -32,6 +33,17 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
 
   public record ChatModel(
       String baseUrl, String model, boolean apiKeySet, BigDecimal temperature, int maxTokens)
+      implements SavedValues {}
+
+  /** The mail server; {@code passwordSet} says whether a password is saved, never which. */
+  public record Mail(
+      String host,
+      int port,
+      MailEncryption encryption,
+      String username,
+      boolean passwordSet,
+      String fromAddress,
+      String fromName)
       implements SavedValues {}
 
   /** {@code dimensions} is the vector size of the last successful probe embedding, else null. */

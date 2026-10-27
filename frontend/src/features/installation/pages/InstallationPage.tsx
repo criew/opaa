@@ -7,6 +7,7 @@ import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import type {
   InstallationModelDiscoveryRequest,
   InstallationStatusResponse,
+  InstallationStepCheckRequest,
   InstallationStepId,
   InstallationStepState,
   ModelStepId,
@@ -20,6 +21,7 @@ import TokenStep from '../components/TokenStep'
 import ChatModelStep from '../components/steps/ChatModelStep'
 import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
+import MailStep from '../components/steps/MailStep'
 import SignInStep from '../components/steps/SignInStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
 import { findStep, previousView, viewOrder, type WizardView } from '../utils/steps'
@@ -56,6 +58,7 @@ function progressOf(
 type Submit = <S extends InstallationStepId>(
   step: S,
   values: StepInput[S] | null,
+  checkOptions?: InstallationStepCheckRequest,
 ) => Promise<WizardResult>
 
 type Discover = (
@@ -65,6 +68,7 @@ type Discover = (
 
 interface StepViewProps {
   step: InstallationStepState
+  publicBaseUrlConfigured: boolean
   submit: Submit
   skip: (step: InstallationStepId) => Promise<WizardResult>
   discover: Discover
@@ -72,8 +76,15 @@ interface StepViewProps {
 }
 
 /** The form of one step; an optional step is skipped through the API, which records it. */
-function StepView({ step, submit, skip, discover, onBack }: StepViewProps) {
-  const nav = { onBack, onSkip: step.mandatory ? undefined : () => void skip(step.step) }
+function StepView({
+  step,
+  publicBaseUrlConfigured,
+  submit,
+  skip,
+  discover,
+  onBack,
+}: StepViewProps) {
+  const nav = { onBack, onSkip: step.mandatory ? undefined : () => skip(step.step) }
   const discoverChat = useCallback(
     (request: InstallationModelDiscoveryRequest) => discover('CHAT_MODEL', request),
     [discover],
@@ -103,6 +114,16 @@ function StepView({ step, submit, skip, discover, onBack }: StepViewProps) {
           submit={(v) => submit('EMBEDDING_MODEL', v)}
           discover={discoverEmbedding}
           {...nav}
+        />
+      )
+    case 'MAIL':
+      return (
+        <MailStep
+          step={step}
+          publicBaseUrlConfigured={publicBaseUrlConfigured}
+          submit={(v, options) => submit('MAIL', v, options)}
+          skip={() => skip('MAIL')}
+          onBack={onBack}
         />
       )
   }
@@ -160,6 +181,7 @@ export default function InstallationPage() {
         <StepView
           key={step.step}
           step={step}
+          publicBaseUrlConfigured={installation.publicBaseUrlConfigured}
           submit={wizard.submitStep}
           skip={wizard.skipStep}
           discover={wizard.discoverModels}

@@ -3,9 +3,11 @@ package io.opaa.installation.web;
 import io.opaa.api.dto.InstallationAnswers;
 import io.opaa.api.dto.InstallationModelDiscoveryRequest;
 import io.opaa.api.dto.InstallationStatusResponse;
+import io.opaa.api.dto.InstallationStepCheckRequest;
 import io.opaa.api.dto.InstallationStepRequest;
 import io.opaa.api.dto.InstallationStepState;
 import io.opaa.api.dto.LlmModelDiscoveryResponse;
+import io.opaa.common.PublicBaseUrl;
 import io.opaa.common.ValidationException;
 import io.opaa.installation.InstallationModelDiscovery;
 import io.opaa.installation.InstallationService;
@@ -35,16 +37,21 @@ public class InstallationController {
 
   private final InstallationService installation;
   private final InstallationModelDiscovery modelDiscovery;
+  private final PublicBaseUrl publicBaseUrl;
 
   InstallationController(
-      InstallationService installation, InstallationModelDiscovery modelDiscovery) {
+      InstallationService installation,
+      InstallationModelDiscovery modelDiscovery,
+      PublicBaseUrl publicBaseUrl) {
     this.installation = installation;
     this.modelDiscovery = modelDiscovery;
+    this.publicBaseUrl = publicBaseUrl;
   }
 
   @GetMapping
   public InstallationStatusResponse getInstallation() {
-    return InstallationResponseMapper.toResponse(installation.overview());
+    return InstallationResponseMapper.toResponse(
+        installation.overview(), publicBaseUrl.isConfigured());
   }
 
   @PutMapping("/steps/{step}")
@@ -56,8 +63,11 @@ public class InstallationController {
   }
 
   @PostMapping("/steps/{step}/check")
-  public InstallationStepState checkInstallationStep(@PathVariable("step") String step) {
-    return InstallationResponseMapper.toResponse(installation.check(parse(step)));
+  public InstallationStepState checkInstallationStep(
+      @PathVariable("step") String step,
+      @Valid @RequestBody(required = false) InstallationStepCheckRequest body) {
+    return InstallationResponseMapper.toResponse(
+        installation.check(parse(step), body == null ? null : body.getTestRecipient()));
   }
 
   @PostMapping("/steps/{step}/skip")
@@ -78,13 +88,14 @@ public class InstallationController {
       @RequestBody InstallationAnswers body) {
     List<StepInput> inputs = InstallationRequestMapper.toInputs(body);
     return InstallationResponseMapper.toResponse(
-        installation.applyAnswers(inputs, CompletionSource.ANSWER_FILE_API));
+        installation.applyAnswers(inputs, CompletionSource.ANSWER_FILE_API),
+        publicBaseUrl.isConfigured());
   }
 
   @PostMapping("/complete")
   public InstallationStatusResponse completeInstallation() {
     return InstallationResponseMapper.toResponse(
-        installation.complete(CompletionSource.INSTALLATION_API));
+        installation.complete(CompletionSource.INSTALLATION_API), publicBaseUrl.isConfigured());
   }
 
   private static InstallationStep parse(String step) {

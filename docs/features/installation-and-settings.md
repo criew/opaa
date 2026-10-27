@@ -116,7 +116,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Chat-Modell | optional | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
 | Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
-| E-Mail-Versand | optional | SMTP-Server, Absender | Testnachricht | E-Mail |
+| E-Mail-Versand | optional | Server, Port, Verschlüsselung, Zugangsdaten, Absender (Regeln der Mail-Verwaltung) | Adressprüfung der Installation; Verbindung und Anmeldung ohne Versand, auf Wunsch Testnachricht an eine angegebene Adresse | E-Mail |
 | Branding | optional | Produktname, Farbe | — | Allgemein & Branding |
 | Abschluss | ja | Zusammenfassung | alle Pflichtschritte und gespeicherten optionalen Schritte geprüft | — |
 
@@ -203,8 +203,9 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- Angaben späterer Schritte (`outboundProxy`, `mail`, `branding`) wertet diese Version noch nicht
-  aus.
+- `chatModel`, `embeddingModel` und `mail` sind optional; ein fehlender Teil überspringt seinen
+  Schritt, ohne `mail` bleibt der Versand aus. Angaben späterer Schritte
+  (`outboundProxy`, `branding`) wertet diese Version noch nicht aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.

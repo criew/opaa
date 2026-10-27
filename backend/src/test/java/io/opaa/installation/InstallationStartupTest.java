@@ -229,7 +229,7 @@ class InstallationStartupTest {
   private InstallationStartup startup(String mode, String token, String answerFile) {
     return new InstallationStartup(
         installation,
-        new InstallationProperties(token, List.of(), answerFile),
+        new InstallationProperties(token, List.of(), answerFile, null),
         new AuthProperties(mode, null, null),
         status,
         adminReset,
@@ -254,7 +254,7 @@ class InstallationStartupTest {
     InstallationStartup startup =
         new InstallationStartup(
             installation,
-            new InstallationProperties(null, List.of("10.0.0.0/8"), null),
+            new InstallationProperties(null, List.of("10.0.0.0/8"), null, null),
             new AuthProperties("oidc", null, null),
             status,
             adminReset,

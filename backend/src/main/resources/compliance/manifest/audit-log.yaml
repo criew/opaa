@@ -883,19 +883,26 @@ auditEvents:
     trigger: Ein Schritt der Erstinstallation wird gespeichert
     details: >-
       Schritt und Werte vorher und nachher, ohne die Adresse des ersten Kontos und ohne Passwort
-      oder Schlüssel, nur ob eines gesetzt ist
-    payloadKeys: [apiKeySet, baseUrl, issuerUri, model, passwordSet, signInMode, step]
+      oder Schlüssel, nur ob eines gesetzt ist; beim Mailserver Server, Port, Verschlüsselung,
+      Benutzername des Mailservers und Absenderadresse
+    payloadKeys: [apiKeySet, baseUrl, encryption, fromAddress, host, issuerUri, model, passwordSet,
+      port, signInMode, step, username]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
-    payloadKeys: [step, succeeded]
+    details: >-
+      Beim Mailserver auch, ob eine Testnachricht verlangt war; die Adresse der Testnachricht steht
+      nicht im Protokoll
+    payloadKeys: [step, succeeded, testMail]
   - id: INSTALLATION_STEP_SKIPPED
     trigger: Ein optionaler Schritt der Erstinstallation wird übersprungen
     details: Schritt und ob dabei gespeicherte Angaben verworfen wurden
     payloadKeys: [discarded, step]
   - id: INSTALLATION_COMPLETED
     trigger: Die Erstinstallation wird abgeschlossen, genau einmal je Installation
-    details: Weg des Abschlusses, Anmeldeverfahren und die übersprungenen optionalen Schritte
-    payloadKeys: [signInMode, skippedSteps, source]
+    details: >-
+      Herkunft, Anmeldeverfahren, die übersprungenen optionalen Schritte und ob der Abschluss den
+      E-Mail-Versand einschaltete
+    payloadKeys: [mailEnabled, signInMode, skippedSteps, source]
   - id: LOCAL_ACCOUNTS_ENABLED
     trigger: Die lokale Kontenverwaltung wird eingeschaltet, durch die Systemverwaltung oder beim Abschluss der Installation
     payloadKeys: [enabled]

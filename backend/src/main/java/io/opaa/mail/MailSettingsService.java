@@ -15,16 +15,14 @@ import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.security.SettingsEncryptor;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Pattern;
+import java.util.function.BiConsumer;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -70,20 +68,6 @@ public class MailSettingsService implements InvalidationSubscriber {
   static final String SETTINGS_OBJECT_ID = "mail-settings";
 
   static final String SETTINGS_OBJECT_LABEL = "E-Mail-Versand";
-
-  static final int MAX_HOST_LENGTH = 255;
-  static final int MAX_USERNAME_LENGTH = 255;
-  static final int MAX_PASSWORD_LENGTH = 255;
-  static final int MAX_FROM_ADDRESS_LENGTH = 320;
-  static final int MAX_FROM_NAME_LENGTH = 120;
-  static final String TOO_LONG = "TOO_LONG";
-  static final String PASSWORD_REQUIRED = "PASSWORD_REQUIRED";
-
-  /** Deliberately permissive - the mail server is the authority on what it accepts. */
-  private static final Pattern MAIL_ADDRESS = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
-
-  private static final int MIN_PORT = 1;
-  private static final int MAX_PORT = 65535;
 
   private final MailSettingsRepository repository;
   private final SettingsEncryptor settingsEncryptor;
@@ -149,14 +133,39 @@ public class MailSettingsService implements InvalidationSubscriber {
   @Transactional
   public MailSettings updateSettings(
       UUID organizationId, UUID actorUserId, MailSettingsUpdate update) {
+    return replace(
+        update,
+        actorUserId,
+        (before, after) -> recordChange(organizationId, actorUserId, before, after));
+  }
+
+  /**
+   * {@link #updateSettings} for the completion of the installation: the same rules, recorded under
+   * the system process {@code systemActor} instead of a person, in the caller's transaction.
+   */
+  @Transactional
+  public MailSettings installSettings(
+      UUID organizationId, String systemActor, MailSettingsUpdate update) {
+    return replace(
+        update,
+        null,
+        (before, after) ->
+            auditEventRecorder.recordSystemProcessAction(
+                changeEvent(organizationId, before, after).actorRef(systemActor).build()));
+  }
+
+  private MailSettings replace(
+      MailSettingsUpdate update,
+      UUID actorUserId,
+      BiConsumer<Map<String, Object>, Map<String, Object>> recorder) {
     requireWithinBounds(update);
-    String host = trimmedOrNull(update.host());
+    String host = MailSettingsRules.trimmedOrNull(update.host());
     Integer port = validatedPort(update.port());
-    String username = trimmedOrNull(update.username());
-    String fromAddress = validatedAddress(trimmedOrNull(update.fromAddress()));
-    String fromName = trimmedOrNull(update.fromName());
+    String username = MailSettingsRules.trimmedOrNull(update.username());
+    String fromAddress = validatedAddress(MailSettingsRules.trimmedOrNull(update.fromAddress()));
+    String fromName = MailSettingsRules.trimmedOrNull(update.fromName());
     MailEncryption encryption =
-        update.encryption() == null ? MailEncryption.STARTTLS : update.encryption();
+        update.encryption() == null ? MailSettingsRules.DEFAULT_ENCRYPTION : update.encryption();
 
     MailSettings settings = requireRow();
     String passwordCiphertext =
@@ -184,7 +193,7 @@ public class MailSettingsService implements InvalidationSubscriber {
     // Nothing changed: no entry, the same rule reset() follows - an audit trail full of no-ops is
     // an audit trail nobody reads.
     if (!before.equals(after)) {
-      recordChange(organizationId, actorUserId, before, after);
+      recorder.accept(before, after);
     }
     eventPublisher.publishEvent(new MailSettingsChangedEvent());
     return settings;
@@ -285,44 +294,34 @@ public class MailSettingsService implements InvalidationSubscriber {
     if (!kept || stored.getPasswordCiphertext() == null) {
       return;
     }
-    boolean newTarget =
-        !Objects.equals(stored.getHost(), host)
-            || !Objects.equals(stored.getPort(), port)
-            || !Objects.equals(stored.getUsername(), username)
-            || stored.getEncryption() != encryption;
-    if (newTarget) {
+    if (!MailSettingsRules.sameTarget(
+        stored.getHost(),
+        stored.getPort(),
+        stored.getUsername(),
+        stored.getEncryption(),
+        host,
+        port,
+        username,
+        encryption)) {
       throw FieldValidationException.of(
           "password",
-          PASSWORD_REQUIRED,
-          "Server, Port, Zugangsname oder Verschlüsselung ändern sich: Das gespeicherte Passwort"
-              + " geht nicht an ein neues Ziel. Bitte das Passwort neu eingeben oder leeren.");
+          MailSettingsRules.PASSWORD_REQUIRED,
+          MailSettingsRules.PASSWORD_FOLLOWS_TARGET);
     }
   }
 
   /** The lengths the columns and the request schema allow, each refused on its own field. */
   private static void requireWithinBounds(MailSettingsUpdate update) {
-    List<FieldError> errors = new ArrayList<>();
-    requireLength(errors, "host", "Der SMTP-Server", update.host(), MAX_HOST_LENGTH);
-    requireLength(errors, "username", "Der Zugangsname", update.username(), MAX_USERNAME_LENGTH);
-    requireLength(errors, "password", "Das Passwort", update.password(), MAX_PASSWORD_LENGTH);
-    requireLength(
-        errors,
-        "fromAddress",
-        "Die Absenderadresse",
-        update.fromAddress(),
-        MAX_FROM_ADDRESS_LENGTH);
-    requireLength(errors, "fromName", "Der Absendername", update.fromName(), MAX_FROM_NAME_LENGTH);
+    List<FieldError> errors =
+        MailSettingsRules.lengthErrors(
+            "",
+            update.host(),
+            update.username(),
+            update.password(),
+            update.fromAddress(),
+            update.fromName());
     if (!errors.isEmpty()) {
       throw new FieldValidationException("Eine Angabe des Mailversands ist zu lang.", errors);
-    }
-  }
-
-  private static void requireLength(
-      List<FieldError> errors, String field, String label, String value, int maxLength) {
-    if (value != null && value.trim().length() > maxLength) {
-      errors.add(
-          new FieldError(
-              field, TOO_LONG, label + " darf höchstens " + maxLength + " Zeichen lang sein."));
     }
   }
 
@@ -346,45 +345,32 @@ public class MailSettingsService implements InvalidationSubscriber {
       return;
     }
     if (host == null) {
-      throw new ValidationException("Ohne SMTP-Server kann der Versand nicht eingeschaltet werden");
+      throw new ValidationException(MailSettingsRules.HOST_MISSING);
     }
     if (port == null) {
-      throw new ValidationException("Ohne Port kann der Versand nicht eingeschaltet werden");
+      throw new ValidationException(MailSettingsRules.PORT_MISSING);
     }
     if (fromAddress == null) {
-      throw new ValidationException(
-          "Ohne Absenderadresse kann der Versand nicht eingeschaltet werden");
+      throw new ValidationException(MailSettingsRules.FROM_ADDRESS_MISSING);
     }
   }
 
   private static Integer validatedPort(Integer port) {
-    if (port == null) {
-      return null;
-    }
-    if (port < MIN_PORT || port > MAX_PORT) {
-      throw new ValidationException(
-          "Der Port muss zwischen " + MIN_PORT + " und " + MAX_PORT + " liegen");
-    }
+    MailSettingsRules.portProblem(port)
+        .ifPresent(
+            problem -> {
+              throw new ValidationException(problem);
+            });
     return port;
   }
 
   private static String validatedAddress(String address) {
-    if (address == null) {
-      return null;
-    }
-    if (!MAIL_ADDRESS.matcher(address).matches()) {
-      throw new ValidationException(
-          "Die Absenderadresse muss eine E-Mail-Adresse sein, zum Beispiel opaa@example.org");
-    }
+    MailSettingsRules.fromAddressProblem(address)
+        .ifPresent(
+            problem -> {
+              throw new ValidationException(problem);
+            });
     return address;
-  }
-
-  private static String trimmedOrNull(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private void recordChange(
@@ -393,18 +379,21 @@ public class MailSettingsService implements InvalidationSubscriber {
       Map<String, Object> before,
       Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(organizationId)
-            .actor(actorUserId)
-            .type(AuditEventType.MAIL_SETTINGS_CHANGED)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                UUID.nameUUIDFromBytes(SETTINGS_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
-                SETTINGS_OBJECT_LABEL)
-            .before(before)
-            .after(after)
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+        changeEvent(organizationId, before, after).actor(actorUserId).build());
+  }
+
+  private static AuditEvent.Builder changeEvent(
+      UUID organizationId, Map<String, Object> before, Map<String, Object> after) {
+    return AuditEvent.builder()
+        .organizationId(organizationId)
+        .type(AuditEventType.MAIL_SETTINGS_CHANGED)
+        .object(
+            AuditObjectType.SYSTEM_SETTING,
+            UUID.nameUUIDFromBytes(SETTINGS_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
+            SETTINGS_OBJECT_LABEL)
+        .before(before)
+        .after(after)
+        .outcome(AuditOutcome.SUCCESS);
   }
 
   /**

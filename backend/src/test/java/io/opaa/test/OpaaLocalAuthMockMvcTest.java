@@ -67,6 +67,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // The installation classes run their chat endpoint on loopback; every other address stays
       // under the target address check.
       "opaa.model.target-validation.allowlist=127.0.0.1",
+      // Likewise the mail server of the installation's mail step, an in-JVM GreenMail on a port
+      // outside the usual SMTP ports, which the assistant reaches only through an exact entry.
+      "opaa.installation.mail-target-allowlist=127.0.0.1:"
+          + OpaaLocalAuthMockMvcTest.INSTALLATION_MAIL_PORT,
       // Same model addresses as the canonical signature: never a reachable model. This family
       // has no FakeEmbeddingModel bean; its embedding clients come from FakeEmbeddingEndpoint.
       "spring.ai.openai.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
@@ -88,4 +92,7 @@ public @interface OpaaLocalAuthMockMvcTest {
 
   /** The host every OIDC provider fixture of this family uses; see the allowlist above. */
   String PROVIDER_HOST = "idp.test.example";
+
+  /** The port the installation's mail tests bind their SMTP server to; see the allowlist above. */
+  int INSTALLATION_MAIL_PORT = 3025;
 }

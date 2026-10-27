@@ -9,8 +9,12 @@ import {
   mockDiscoveryRequests,
   mockInstallationState,
   setMockInstallationPending,
+  mockSkippedSteps,
+  mockTestRecipients,
+  setMockPublicBaseUrlConfigured,
   updateMockStep,
   withMockEmbeddingStep,
+  withoutMockStep,
 } from '../mocks/installationFixtures'
 import InstallationPage from './InstallationPage'
 
@@ -114,7 +118,7 @@ describe('InstallationPage', () => {
     expect(within(optional).getByText('Chat-Modell')).toBeInTheDocument()
     expect(within(mandatory).queryByText('Anmeldeverfahren')).not.toBeInTheDocument()
     expect(within(optional).getByText('Anmeldeverfahren')).toBeInTheDocument()
-    expect(screen.getByText('Schritt 2 von 5')).toBeInTheDocument()
+    expect(screen.getByText('Schritt 2 von 6')).toBeInTheDocument()
     expect(within(mandatory).getByRole('button', { name: /Erstes Konto/ })).toHaveAttribute(
       'aria-current',
       'step',
@@ -128,8 +132,69 @@ describe('InstallationPage', () => {
     expect(mockInstallationState().steps.find((s) => s.step === 'SIGN_IN')?.saved).toBe(false)
   })
 
+  describe('skipping an optional step', () => {
+    async function openOptionalSignIn(user: UserEvent) {
+      updateMockStep('SIGN_IN', { mandatory: false })
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Erstes Konto')
+      const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
+      await user.click(within(optional).getByRole('button', { name: /Anmeldeverfahren/ }))
+      await stepHeading('Anmeldeverfahren')
+    }
+
+    it('names a refused skip at the step and keeps it open', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/:step/skip', () =>
+          HttpResponse.json(
+            { error: 'Zu viele Anfragen', status: 429, timestamp: new Date().toISOString() },
+            { status: 429 },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openOptionalSignIn(user)
+
+      await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Anfragen oder Fehlversuche von dieser Adresse',
+      )
+      expect(screen.getByRole('heading', { level: 2, name: 'Anmeldeverfahren' })).toBeVisible()
+    })
+
+    it('sends one skip although the button is pressed twice', async () => {
+      let skips = 0
+      let release: () => void = () => {}
+      server.use(
+        http.post('/api/v1/installation/steps/:step/skip', async () => {
+          skips += 1
+          await new Promise<void>((resolve) => {
+            release = resolve
+          })
+          updateMockStep('SIGN_IN', { saved: false, checked: false })
+          return HttpResponse.json(mockInstallationState().steps.find((s) => s.step === 'SIGN_IN'))
+        }),
+      )
+      const user = userEvent.setup()
+      await openOptionalSignIn(user)
+
+      const skip = screen.getByRole('button', { name: 'Überspringen' })
+      await user.click(skip)
+      await waitFor(() => expect(skips).toBe(1))
+      expect(skip).toHaveAttribute('aria-busy', 'true')
+      await user.click(skip)
+      release()
+
+      expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
+      expect(skips).toBe(1)
+    })
+  })
+
   it('shows no optional group while the API lists only mandatory steps', async () => {
     updateMockStep('CHAT_MODEL', { mandatory: true })
+    withoutMockStep('MAIL')
     const user = userEvent.setup()
     renderPage()
     await stepHeading('Installations-Token')
@@ -228,13 +293,19 @@ describe('InstallationPage', () => {
     await user.type(baseUrl, 'http://ollama:11434/v1')
     await submitStep(user)
 
+    // The optional mail step is skipped through the API, which records it.
+    expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
+    expect(mockSkippedSteps()).toEqual(['MAIL'])
+    expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
     expect(mockInstallationState().completable).toBe(true)
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 
     expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toHaveAttribute('href', '/login')
-  })
+    // Every step of the assistant in one test, the optional one included: above the default limit.
+  }, 15_000)
 
   it('completes without the model steps once they are skipped', async () => {
     withMockEmbeddingStep()
@@ -254,17 +325,21 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(2)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(3)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
+    expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 
     expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
   })
 
   it('discards a model step whose check failed when it is skipped', async () => {
+    withoutMockStep('MAIL')
     updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
     updateMockStep('SIGN_IN', { saved: true, checked: true })
     updateMockStep('CHAT_MODEL', {
@@ -386,7 +461,7 @@ describe('InstallationPage', () => {
     ).toBeInTheDocument()
     await submitStep(user)
 
-    await stepHeading('Abschluss')
+    await stepHeading('E-Mail-Versand')
     const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
     expect(chatModel?.chatModel?.apiKeySet).toBe(false)
   })
@@ -518,7 +593,7 @@ describe('InstallationPage', () => {
       expect(modelField()).toHaveValue('qwen3:8b')
       await submitStep(user)
 
-      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
       const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
       expect(chatModel?.chatModel).toMatchObject({
         baseUrl: 'http://ollama:11434/v1',
@@ -537,7 +612,7 @@ describe('InstallationPage', () => {
       await user.type(modelField(), 'mein-modell')
       await submitStep(user)
 
-      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
       const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
       expect(chatModel?.chatModel?.model).toBe('mein-modell')
     })
@@ -770,7 +845,7 @@ describe('InstallationPage', () => {
       await user.type(field('Eingabegrenze (Token) (optional)'), '8192')
       await submitStep(user)
 
-      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
       const embedding = mockInstallationState().steps.find((s) => s.step === 'EMBEDDING_MODEL')
       expect(embedding?.embeddingModel).toMatchObject({ maxInputTokens: 8192, dimensions: 1024 })
 
@@ -799,6 +874,206 @@ describe('InstallationPage', () => {
       const suitable = within(listbox).getByRole('group', { name: 'Für die Einbettung geeignet' })
       expect(within(suitable).getByRole('option', { name: /nomic-embed-text/ })).toBeInTheDocument()
       expect(mockDiscoveryRequests().at(-1)).toMatchObject({ step: 'EMBEDDING_MODEL' })
+    })
+  })
+
+  describe('with the optional mail step', () => {
+    beforeEach(() => {
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openMailStep(user: UserEvent) {
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
+      await user.click(within(nav).getByRole('button', { name: /E-Mail-Versand/ }))
+      return stepHeading('E-Mail-Versand')
+    }
+
+    it('says it is optional and names the missing fields with the sentences of the administration', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      expect(screen.getByText('Optional · später unter E-Mail')).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('list', { name: 'Optionale Schritte' })).getByText(
+          'Nicht eingerichtet',
+        ),
+      ).toBeInTheDocument()
+      await submitStep(user)
+
+      expect(field('Server')).toHaveAccessibleDescription(
+        'Ohne SMTP-Server kann der Versand nicht eingeschaltet werden',
+      )
+      expect(field('Port')).toHaveAccessibleDescription(
+        'Ohne Port kann der Versand nicht eingeschaltet werden',
+      )
+      expect(field('Absenderadresse')).toHaveAccessibleDescription(
+        'Ohne Absenderadresse kann der Versand nicht eingeschaltet werden',
+      )
+      expect(mockInstallationState().steps.find((s) => s.step === 'MAIL')?.saved).toBe(false)
+    })
+
+    it('checks the server, sends the test message only to the address typed and is taken over', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Benutzername (optional)'), 'opaa')
+      await user.type(field('Passwort (optional)'), 'Mail-Passwort')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await user.type(field('Testnachricht an (optional)'), 'it-betrieb@stadt.example')
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(mockTestRecipients()).toEqual(['it-betrieb@stadt.example'])
+      const mail = mockInstallationState().steps.find((s) => s.step === 'MAIL')
+      expect(mail).toMatchObject({ checked: true })
+      expect(mail?.mail).toMatchObject({
+        host: 'smtp.stadt.example',
+        port: 587,
+        encryption: 'STARTTLS',
+        passwordSet: true,
+      })
+      expect(
+        screen.getByText(/E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet/),
+      ).toBeInTheDocument()
+    })
+
+    it('holds up the completion after a failed check until the step is skipped', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.kaputt.example')
+      await user.type(field('Port'), '25')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Die Verbindung zum Mailserver ist fehlgeschlagen',
+      )
+      expect(mockInstallationState().completable).toBe(false)
+      await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(mockSkippedSteps()).toEqual(['MAIL'])
+      expect(mockInstallationState().completable).toBe(true)
+    })
+
+    it('asks for the password again once a stored one would go to another server', async () => {
+      updateMockStep('MAIL', {
+        saved: true,
+        checked: true,
+        mail: {
+          host: 'smtp.stadt.example',
+          port: 587,
+          encryption: 'STARTTLS',
+          username: 'opaa',
+          passwordSet: true,
+          fromAddress: 'opaa@stadt.example',
+        },
+      })
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      expect(screen.getByRole('button', { name: 'Passwort ersetzen' })).toBeInTheDocument()
+      const host = field('Server')
+      await user.clear(host)
+      await user.type(host, 'smtp.anderes.example')
+      await submitStep(user)
+
+      const replace = screen.getByRole('button', { name: 'Passwort ersetzen' })
+      expect(replace).toHaveAccessibleDescription(
+        'Server, Port, Benutzername oder Verschlüsselung ändern sich: Bitte das Passwort neu eingeben oder löschen.',
+      )
+      expect(mockInstallationState().steps.find((s) => s.step === 'MAIL')?.mail?.host).toBe(
+        'smtp.stadt.example',
+      )
+    })
+
+    it('names the budget of test messages and says the check works without one', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/MAIL/check', () =>
+          HttpResponse.json(
+            {
+              error: 'Zu viele Testnachrichten.',
+              status: 429,
+              code: 'MAIL_TEST_LIMIT',
+              timestamp: new Date().toISOString(),
+            },
+            { status: 429, headers: { 'Retry-After': '120' } },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await user.type(field('Testnachricht an (optional)'), 'it-betrieb@stadt.example')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Testnachrichten. Bitte in etwa 2 Minuten erneut versuchen; ohne Testnachricht lässt sich der Mailserver weiter prüfen.',
+      )
+    })
+
+    it('names the budget of mail checks as such', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/MAIL/check', () =>
+          HttpResponse.json(
+            {
+              error: 'Zu viele Prüfungen.',
+              status: 429,
+              code: 'MAIL_CHECK_LIMIT',
+              timestamp: new Date().toISOString(),
+            },
+            { status: 429 },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Prüfungen des Mailservers. Bitte in einigen Minuten erneut versuchen.',
+      )
+    })
+
+    it('takes one mailbox as test recipient, never a list', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Absenderadresse'), 'a@b.c,d.e.f')
+      await user.type(field('Testnachricht an (optional)'), 'a@b.c,d.e.f')
+      await submitStep(user)
+
+      expect(field('Absenderadresse')).toHaveAccessibleDescription(
+        'Die Absenderadresse muss eine E-Mail-Adresse sein, zum Beispiel opaa@example.org',
+      )
+      expect(field('Testnachricht an (optional)')).toHaveAttribute('aria-invalid', 'true')
+      expect(mockTestRecipients()).toEqual([])
+    })
+
+    it('says that links in mails stay unusable without the public address', async () => {
+      setMockPublicBaseUrlConfigured(false)
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      expect(screen.getByText('Öffentliche Adresse fehlt')).toBeInTheDocument()
     })
   })
 })

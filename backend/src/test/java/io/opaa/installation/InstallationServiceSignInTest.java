@@ -16,6 +16,7 @@ import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
+import io.opaa.mail.MailSettingsService;
 import io.opaa.organization.Organization;
 import java.time.Clock;
 import java.time.Instant;
@@ -48,7 +49,8 @@ class InstallationServiceSignInTest {
   @BeforeEach
   void setUp() {
     when(states.findForUpdate()).thenReturn(Optional.of(InstallationState.pending(NOW)));
-    StepRules real = new StepRules(null, null, null, null, JsonMapper.builder().build(), null);
+    StepRules real =
+        new StepRules(null, null, null, null, JsonMapper.builder().build(), null, null);
     when(rules.firstAdminPayload(any()))
         .thenAnswer(call -> real.firstAdminPayload(call.getArgument(0)));
     when(rules.signInPayload(any())).thenAnswer(call -> real.signInPayload(call.getArgument(0)));
@@ -66,6 +68,7 @@ class InstallationServiceSignInTest {
             oidcProviders,
             mock(LlmModelService.class),
             mock(EmbeddingModelService.class),
+            mock(MailSettingsService.class),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),

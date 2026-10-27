@@ -4,6 +4,7 @@ import {
   STEP_REQUEST_KEY,
   type InstallationModelDiscoveryRequest,
   type InstallationStatusResponse,
+  type InstallationStepCheckRequest,
   type InstallationStepId,
   type InstallationStepState,
   type ModelStepId,
@@ -49,13 +50,28 @@ export async function saveInstallationStep<S extends InstallationStepId>(
 /**
  * Runs the check of the stored values, e.g. the connection test of a model. A failed check is
  * no error of the call: the returned state says `checked: false` and why in `checkMessage`.
+ * `options` carries the test recipient of the mail step.
  */
 export async function checkInstallationStep(
   token: string,
   step: InstallationStepId,
+  options?: InstallationStepCheckRequest,
 ): Promise<InstallationStepState> {
   const { data } = await installationClient.post<InstallationStepState>(
     `/steps/${step}/check`,
+    options,
+    bearer(token),
+  )
+  return data
+}
+
+/** Skips an optional step: its saved values are discarded, and the completion leaves it out. */
+export async function skipInstallationStep(
+  token: string,
+  step: InstallationStepId,
+): Promise<InstallationStepState> {
+  const { data } = await installationClient.post<InstallationStepState>(
+    `/steps/${step}/skip`,
     undefined,
     bearer(token),
   )
@@ -74,19 +90,6 @@ export async function discoverInstallationModels(
   const { data } = await installationClient.post<LlmModelDiscoveryResponse>(
     `/steps/${step}/discover`,
     request,
-    bearer(token),
-  )
-  return data
-}
-
-/** Skips an optional step: its saved values are discarded, and the completion leaves it out. */
-export async function skipInstallationStep(
-  token: string,
-  step: InstallationStepId,
-): Promise<InstallationStepState> {
-  const { data } = await installationClient.post<InstallationStepState>(
-    `/steps/${step}/skip`,
-    undefined,
     bearer(token),
   )
   return data

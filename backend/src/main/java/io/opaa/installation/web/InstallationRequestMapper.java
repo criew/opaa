@@ -4,6 +4,7 @@ import io.opaa.api.dto.InstallationAnswers;
 import io.opaa.api.dto.InstallationChatModel;
 import io.opaa.api.dto.InstallationEmbeddingModel;
 import io.opaa.api.dto.InstallationFirstAdmin;
+import io.opaa.api.dto.InstallationMail;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationStepRequest;
@@ -30,6 +31,7 @@ final class InstallationRequestMapper {
       case SIGN_IN -> signIn(request.getSignIn());
       case CHAT_MODEL -> chatModel(request.getChatModel());
       case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
+      case MAIL -> mail(request.getMail());
     };
   }
 
@@ -45,6 +47,11 @@ final class InstallationRequestMapper {
     }
     if (body.getEmbeddingModel() != null) {
       inputs.add(embeddingModel(body.getEmbeddingModel()));
+    }
+    if (body.getMail() != null) {
+      InstallationMail mail = body.getMail();
+      // An answer names its password or none; there is no saved one to keep.
+      inputs.add(mailInput(mail, mail.getPassword() == null ? "" : mail.getPassword()));
     }
     return List.copyOf(inputs);
   }
@@ -92,6 +99,24 @@ final class InstallationRequestMapper {
     }
     return new StepInput.EmbeddingModel(
         model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getMaxInputTokens());
+  }
+
+  private static StepInput mail(InstallationMail mail) {
+    if (mail == null) {
+      throw missing("mail");
+    }
+    return mailInput(mail, mail.getPassword());
+  }
+
+  private static StepInput mailInput(InstallationMail mail, String password) {
+    return new StepInput.Mail(
+        mail.getHost(),
+        mail.getPort(),
+        mail.getEncryption(),
+        mail.getUsername(),
+        password,
+        mail.getFromAddress(),
+        mail.getFromName());
   }
 
   private static FieldValidationException missing(String field) {

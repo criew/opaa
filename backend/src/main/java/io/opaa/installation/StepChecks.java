@@ -4,15 +4,19 @@ import io.opaa.auth.OidcProviderConnectionTester;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
+import io.opaa.mail.MailConnectionTester;
+import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.SettingsEncryptor;
 import org.springframework.stereotype.Component;
 
 /**
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
- * administration runs for an identity provider and a chat model, and a probe embedding for the
- * embedding model, which also yields its vector size (Entscheidung 10). A model address is checked
- * against the address check of models again right before the probe. The outcome is German and
- * user-facing; a failed check is a result, never an exception.
+ * administration runs for an identity provider and a chat model, a probe embedding for the
+ * embedding model, which also yields its vector size (Entscheidung 10), and a connection to the
+ * mail server that sends nothing unless a test recipient is named. A model address and a mail
+ * server are checked against the address check of the installation again right before the
+ * connection. The outcome is German and user-facing; a failed check is a result, never an
+ * exception.
  */
 @Component
 class StepChecks {
@@ -30,6 +34,8 @@ class StepChecks {
 
   private static final String UNREADABLE_KEY =
       "Der gespeicherte Zugangsschlüssel ist nicht lesbar; bitte den Schlüssel erneut eingeben.";
+  private static final String UNREADABLE_PASSWORD =
+      "Das gespeicherte Passwort ist nicht lesbar; bitte das Passwort erneut eingeben.";
 
   private final StepRules rules;
   private final OidcProviderConnectionTester oidcTester;
@@ -37,6 +43,7 @@ class StepChecks {
   private final SettingsEncryptor settingsEncryptor;
   private final ModelAddressPolicy modelAddresses;
   private final EmbeddingModelService embeddingModels;
+  private final MailConnectionTester mailTester;
 
   StepChecks(
       StepRules rules,
@@ -44,16 +51,22 @@ class StepChecks {
       LlmModelConnectionTester chatTester,
       SettingsEncryptor settingsEncryptor,
       ModelAddressPolicy modelAddresses,
-      EmbeddingModelService embeddingModels) {
+      EmbeddingModelService embeddingModels,
+      MailConnectionTester mailTester) {
     this.rules = rules;
     this.oidcTester = oidcTester;
     this.chatTester = chatTester;
     this.settingsEncryptor = settingsEncryptor;
     this.modelAddresses = modelAddresses;
     this.embeddingModels = embeddingModels;
+    this.mailTester = mailTester;
   }
 
-  Outcome check(InstallationStep step, String payload, String secret) {
+  /**
+   * Checks the saved values of {@code step}; {@code testRecipient} is read by {@link
+   * InstallationStep#MAIL} only, where a non-blank one also receives the test message.
+   */
+  Outcome check(InstallationStep step, String payload, String secret, String testRecipient) {
     return switch (step) {
       case FIRST_ADMIN ->
           secret == null
@@ -62,6 +75,7 @@ class StepChecks {
       case SIGN_IN -> signIn(rules.signInPayload(payload));
       case CHAT_MODEL -> chatModel(rules.chatModelPayload(payload), secret);
       case EMBEDDING_MODEL -> embeddingModel(rules.embeddingModelPayload(payload), secret);
+      case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
     };
   }
 
@@ -102,5 +116,20 @@ class StepChecks {
       return new Outcome(false, UNREADABLE_KEY);
     }
     return new Outcome(outcome.succeeded(), outcome.message(), outcome.dimensions());
+  }
+
+  private Outcome mail(StepRules.MailPayload mail, String secret, String testRecipient) {
+    String blocked = rules.blockedMailServer(mail);
+    if (blocked != null) {
+      return new Outcome(false, blocked);
+    }
+    MailSettingsSnapshot settings;
+    try {
+      settings = rules.mailSettings(mail, secret);
+    } catch (IllegalStateException e) {
+      return new Outcome(false, UNREADABLE_PASSWORD);
+    }
+    MailConnectionTester.Outcome outcome = mailTester.test(settings, testRecipient);
+    return new Outcome(outcome.succeeded(), outcome.message());
   }
 }

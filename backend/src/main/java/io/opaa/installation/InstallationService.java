@@ -9,7 +9,9 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
 import io.opaa.directory.OidcProviderDraft;
@@ -19,7 +21,10 @@ import io.opaa.installation.InstallationState.TokenSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
+import io.opaa.mail.MailSettingsRules;
+import io.opaa.mail.MailSettingsService;
 import io.opaa.organization.Organization;
+import io.opaa.ratelimit.RateLimitService;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -46,7 +51,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The installation of a fresh instance (ADR-0060). Every write takes the row lock of {@code
  * installation_state}, then the start-up lock {@code 211}, in that order everywhere, so steps,
  * checks, completion and the emergency reset of all instances run one after another. The completion
- * succeeds once; every later call answers {@link NotFoundException}.
+ * succeeds once; every later call answers {@link NotFoundException}. Checks of the mail step and
+ * its test messages have budgets per instance (ADR-0053), for all clients together; the answer file
+ * read at start-up is not counted.
  */
 @Service
 public class InstallationService {
@@ -71,6 +78,28 @@ public class InstallationService {
   static final int DEVELOPMENT_CHAT_MAX_TOKENS = 8000;
   static final String DEVELOPMENT_CHAT_BASE_URL_PROPERTY = "spring.ai.openai.base-url";
 
+  static final int MAX_TEST_MAILS = 10;
+  static final int TEST_MAIL_WINDOW_SECONDS = 600;
+
+  /** The code of a refusal by the budget of test messages, apart from the API's own budget. */
+  static final String TEST_MAIL_LIMIT_CODE = "MAIL_TEST_LIMIT";
+
+  private static final String TEST_MAIL_LIMIT_MESSAGE =
+      "Zu viele Testnachrichten. Bitte später erneut versuchen; die Prüfung ohne Testnachricht"
+          + " ist weiter möglich.";
+  private static final String TEST_MAIL_BUDGET_KEY = "installation-test-mail";
+
+  static final int MAX_MAIL_CHECKS = 30;
+  static final int MAIL_CHECK_WINDOW_SECONDS = 600;
+
+  /** The code of a refusal by the budget of mail checks, with or without test message. */
+  static final String MAIL_CHECK_LIMIT_CODE = "MAIL_CHECK_LIMIT";
+
+  private static final String MAIL_CHECK_LIMIT_MESSAGE =
+      "Zu viele Prüfungen des Mailservers. Bitte später erneut versuchen.";
+  private static final String MAIL_CHECK_BUDGET_KEY = "installation-mail-check";
+  private static final String TEST_RECIPIENT = "testRecipient";
+
   private static final Logger log = LoggerFactory.getLogger(InstallationService.class);
 
   private final InstallationStateRepository states;
@@ -81,12 +110,17 @@ public class InstallationService {
   private final OidcProviderService oidcProviders;
   private final LlmModelService llmModels;
   private final EmbeddingModelService embeddingModels;
+  private final MailSettingsService mailSettings;
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
   private final Clock clock;
   private final Environment environment;
   private final TransactionTemplate transactions;
+  private final RateLimitService testMailBudget =
+      new RateLimitService(MAX_TEST_MAILS, TEST_MAIL_WINDOW_SECONDS);
+  private final RateLimitService mailCheckBudget =
+      new RateLimitService(MAX_MAIL_CHECKS, MAIL_CHECK_WINDOW_SECONDS);
 
   InstallationService(
       InstallationStateRepository states,
@@ -97,6 +131,7 @@ public class InstallationService {
       OidcProviderService oidcProviders,
       LlmModelService llmModels,
       EmbeddingModelService embeddingModels,
+      MailSettingsService mailSettings,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
@@ -111,6 +146,7 @@ public class InstallationService {
     this.oidcProviders = oidcProviders;
     this.llmModels = llmModels;
     this.embeddingModels = embeddingModels;
+    this.mailSettings = mailSettings;
     this.audit = audit;
     this.users = users;
     this.status = status;
@@ -147,14 +183,23 @@ public class InstallationService {
     return state(saveLocked(input));
   }
 
+  /** {@link #check(InstallationStep, String)} without a test message. */
+  public InstallationOverview.StepState check(InstallationStep step) {
+    return check(step, null);
+  }
+
   /**
    * Runs the check of a saved step and stores its outcome. The check talks to the network, so it
    * runs outside every transaction and lock; only its outcome is stored under them, and only for
-   * the values it checked.
+   * the values it checked. A non-blank {@code testRecipient}, for {@link InstallationStep#MAIL}
+   * only, also receives the test message; it is neither stored nor audited.
    *
    * @throws ConflictException when the step is not saved, or was saved anew during the check
+   * @throws ValidationException for a test recipient of another step or one that is no address
+   * @throws TooManyRequestsException past the budget of test messages
    */
-  public InstallationOverview.StepState check(InstallationStep step) {
+  public InstallationOverview.StepState check(InstallationStep step, String testRecipient) {
+    String recipient = testRecipient(step, testRecipient);
     Saved saved =
         transactions.execute(
             status -> {
@@ -164,7 +209,17 @@ public class InstallationService {
                   .map(record -> new Saved(record.getPayload(), record.getSecret()))
                   .orElseThrow(() -> notSaved(step));
             });
-    StepChecks.Outcome outcome = checks.check(step, saved.payload(), saved.secret());
+    if (step == InstallationStep.MAIL) {
+      acquireMailCheck();
+    }
+    if (recipient != null) {
+      RateLimitService.Decision decision = testMailBudget.tryAcquire(TEST_MAIL_BUDGET_KEY);
+      if (!decision.allowed()) {
+        throw new TooManyRequestsException(
+            TEST_MAIL_LIMIT_MESSAGE, decision.retryAfterSeconds(), TEST_MAIL_LIMIT_CODE);
+      }
+    }
+    StepChecks.Outcome outcome = checks.check(step, saved.payload(), saved.secret(), recipient);
     return transactions.execute(
         status -> {
           lockPending();
@@ -176,7 +231,7 @@ public class InstallationService {
                     + step.name()
                     + " wurde während der Prüfung neu gespeichert; bitte erneut prüfen.");
           }
-          return state(recordOutcome(record, outcome));
+          return state(recordOutcome(record, outcome, recipient != null));
         });
   }
 
@@ -216,6 +271,9 @@ public class InstallationService {
    * @throws ConflictException naming the step whose check failed; nothing is saved then
    */
   public InstallationOverview applyAnswers(List<StepInput> inputs, CompletionSource source) {
+    if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MAIL)) {
+      acquireMailCheck();
+    }
     List<Checked> checked = checkAnswers(inputs);
     return transactions.execute(
         status -> {
@@ -283,6 +341,51 @@ public class InstallationService {
     }
   }
 
+  /**
+   * The trimmed test recipient, or {@code null} for none.
+   *
+   * @throws ValidationException for a recipient of a step other than {@link InstallationStep#MAIL}
+   * @throws FieldValidationException for a recipient that is no mail address
+   */
+  private static String testRecipient(InstallationStep step, String testRecipient) {
+    String recipient = MailSettingsRules.trimmedOrNull(testRecipient);
+    if (recipient == null) {
+      return null;
+    }
+    if (step != InstallationStep.MAIL) {
+      throw new ValidationException("Eine Testnachricht gibt es nur im Schritt MAIL.");
+    }
+    if (recipient.length() > MailSettingsRules.MAX_FROM_ADDRESS_LENGTH) {
+      throw FieldValidationException.of(
+          TEST_RECIPIENT,
+          MailSettingsRules.TOO_LONG,
+          "Die Adresse der Testnachricht darf höchstens "
+              + MailSettingsRules.MAX_FROM_ADDRESS_LENGTH
+              + " Zeichen lang sein.");
+    }
+    if (!MailSettingsRules.isMailAddress(recipient)) {
+      throw FieldValidationException.of(
+          TEST_RECIPIENT,
+          "INVALID",
+          "Die Adresse der Testnachricht muss eine E-Mail-Adresse sein, zum Beispiel"
+              + " it-betrieb@stadt.example.");
+    }
+    return recipient;
+  }
+
+  /**
+   * Takes one connection to a mail server from the budget of this instance, for all clients.
+   *
+   * @throws TooManyRequestsException past the budget
+   */
+  private void acquireMailCheck() {
+    RateLimitService.Decision decision = mailCheckBudget.tryAcquire(MAIL_CHECK_BUDGET_KEY);
+    if (!decision.allowed()) {
+      throw new TooManyRequestsException(
+          MAIL_CHECK_LIMIT_MESSAGE, decision.retryAfterSeconds(), MAIL_CHECK_LIMIT_CODE);
+    }
+  }
+
   /** One answer, validated as it will be stored, with the outcome of its check. */
   private record Checked(
       InstallationStep step, StepRules.Stored stored, StepChecks.Outcome outcome) {}
@@ -319,7 +422,7 @@ public class InstallationService {
     for (int i = 0; i < inputs.size(); i++) {
       InstallationStep step = inputs.get(i).step();
       StepChecks.Outcome outcome =
-          checks.check(step, stored.get(i).payload(), stored.get(i).secret());
+          checks.check(step, stored.get(i).payload(), stored.get(i).secret(), null);
       if (!outcome.succeeded()) {
         throw new ConflictException(
             "Schritt " + step.name() + " der Antwortdatei: " + outcome.message());
@@ -337,7 +440,7 @@ public class InstallationService {
     Set<InstallationStep> answered = EnumSet.noneOf(InstallationStep.class);
     for (Checked answer : checked) {
       answered.add(answer.step());
-      recordOutcome(storeLocked(answer.step(), answer.stored()), answer.outcome());
+      recordOutcome(storeLocked(answer.step(), answer.stored()), answer.outcome(), false);
     }
     Arrays.stream(InstallationStep.values())
         .filter(step -> !step.isMandatory() && !answered.contains(step))
@@ -413,7 +516,7 @@ public class InstallationService {
   }
 
   private InstallationStepRecord recordOutcome(
-      InstallationStepRecord record, StepChecks.Outcome outcome) {
+      InstallationStepRecord record, StepChecks.Outcome outcome, boolean testMail) {
     InstallationStep step = record.getStep();
     if (outcome.succeeded() && outcome.dimensions() != null) {
       record.recordCheckedValues(
@@ -421,10 +524,13 @@ public class InstallationService {
     }
     record.recordCheck(outcome.succeeded(), outcome.message(), clock.instant());
     steps.save(record);
-    record(
-        AuditEventType.INSTALLATION_STEP_CHECKED,
-        null,
-        Map.of("step", step.name(), "succeeded", outcome.succeeded()));
+    Map<String, Object> after = new LinkedHashMap<>();
+    after.put("step", step.name());
+    after.put("succeeded", outcome.succeeded());
+    if (step == InstallationStep.MAIL) {
+      after.put("testMail", testMail);
+    }
+    record(AuditEventType.INSTALLATION_STEP_CHECKED, null, after);
     return record;
   }
 
@@ -474,6 +580,13 @@ public class InstallationService {
     if (embeddingStep != null) {
       installEmbeddingModel(embeddingStep);
     }
+    InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
+    if (mailStep != null) {
+      mailSettings.installSettings(
+          Organization.DEFAULT_ID,
+          SYSTEM_ACTOR,
+          rules.mailSettingsUpdate(rules.mailPayload(mailStep.getPayload()), mailStep.getSecret()));
+    }
     steps.deleteAllInBatch();
     List<String> skipped =
         Arrays.stream(InstallationStep.values())
@@ -484,7 +597,14 @@ public class InstallationService {
         state,
         source,
         Map.of(
-            "source", source.name(), "signInMode", signIn.mode().name(), "skippedSteps", skipped));
+            "source",
+            source.name(),
+            "signInMode",
+            signIn.mode().name(),
+            "skippedSteps",
+            skipped,
+            "mailEnabled",
+            mailStep != null));
     return new InstallationOverview(false, true, List.of());
   }
 
@@ -622,6 +742,14 @@ public class InstallationService {
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.Mail mail -> {
+        summary.put("host", mail.host());
+        summary.put("port", mail.port());
+        summary.put("encryption", mail.encryption().name());
+        summary.put("username", mail.username() == null ? "-" : mail.username());
+        summary.put("passwordSet", mail.passwordSet());
+        summary.put("fromAddress", mail.fromAddress());
       }
     }
     return summary;

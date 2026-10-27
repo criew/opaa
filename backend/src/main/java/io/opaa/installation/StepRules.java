@@ -2,6 +2,7 @@ package io.opaa.installation;
 
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
+import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
 import io.opaa.common.FieldValidationException;
@@ -10,18 +11,23 @@ import io.opaa.common.ValidationException;
 import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
+import io.opaa.mail.MailSettingsRules;
+import io.opaa.mail.MailSettingsService;
+import io.opaa.mail.MailSettingsSnapshot;
+import io.opaa.mail.MailSettingsUpdate;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The rules of each step (ADR-0060, Entscheidung 6): what a saved step must satisfy, how it is
- * stored and how it is read back. A password leaves this class only as a hash and a model key only
- * encrypted; the payload JSON carries no secret.
+ * stored and how it is read back. The password of the first account leaves this class only as a
+ * hash, a model key and the mail password only encrypted; the payload JSON carries no secret.
  */
 @Component
 class StepRules {
@@ -36,6 +42,10 @@ class StepRules {
   static final BigDecimal MAX_TEMPERATURE = new BigDecimal("2");
 
   private static final String INVALID = "INVALID";
+
+  /** A host name or address: no whitespace and no control character, so no forged log line. */
+  private static final Pattern MAIL_HOST = Pattern.compile("[^\\s\\p{Cntrl}]+");
+
   private static final String REQUIRED = "REQUIRED";
   private static final String TOO_LONG = "TOO_LONG";
   static final int MAX_ADDRESS = ModelEndpointRules.MAX_ADDRESS;
@@ -67,12 +77,22 @@ class StepRules {
     }
   }
 
+  /** The mail server without its password; {@code encryption} is never {@code null}. */
+  record MailPayload(
+      String host,
+      Integer port,
+      MailEncryption encryption,
+      String username,
+      String fromAddress,
+      String fromName) {}
+
   private final PasswordPolicy passwordPolicy;
   private final PasswordEncoder passwordEncoder;
   private final SettingsEncryptor settingsEncryptor;
   private final OidcAddressPolicy addressPolicy;
   private final JsonMapper json;
   private final ModelAddressPolicy modelAddresses;
+  private final InstallationMailTargets mailTargets;
 
   StepRules(
       PasswordPolicy passwordPolicy,
@@ -80,13 +100,15 @@ class StepRules {
       SettingsEncryptor settingsEncryptor,
       OidcAddressPolicy addressPolicy,
       JsonMapper json,
-      ModelAddressPolicy modelAddresses) {
+      ModelAddressPolicy modelAddresses,
+      InstallationMailTargets mailTargets) {
     this.passwordPolicy = passwordPolicy;
     this.passwordEncoder = passwordEncoder;
     this.settingsEncryptor = settingsEncryptor;
     this.addressPolicy = addressPolicy;
     this.json = json;
     this.modelAddresses = modelAddresses;
+    this.mailTargets = mailTargets;
   }
 
   /**
@@ -103,6 +125,7 @@ class StepRules {
       case StepInput.SignIn signIn -> signIn(signIn);
       case StepInput.ChatModel model -> chatModel(model, previousPayload, previousSecret);
       case StepInput.EmbeddingModel model -> embeddingModel(model, previousPayload, previousSecret);
+      case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
     };
   }
 
@@ -131,7 +154,57 @@ class StepRules {
             maxInputTokens(model),
             model.dimensions());
       }
+      case MAIL -> {
+        MailPayload mail = mailPayload(payload);
+        yield new InstallationOverview.Mail(
+            mail.host(),
+            mail.port(),
+            mail.encryption(),
+            mail.username(),
+            secret != null,
+            mail.fromAddress(),
+            mail.fromName());
+      }
     };
+  }
+
+  MailPayload mailPayload(String payload) {
+    return json.readValue(payload, MailPayload.class);
+  }
+
+  /** The saved mail server as the check connects with it, its password decrypted. */
+  MailSettingsSnapshot mailSettings(MailPayload mail, String secret) {
+    return new MailSettingsSnapshot(
+        true,
+        mail.host(),
+        mail.port(),
+        mail.username(),
+        settingsEncryptor.decrypt(secret),
+        mail.encryption(),
+        mail.fromAddress(),
+        mail.fromName());
+  }
+
+  /**
+   * The saved mail server as the completion stores it, sending switched on; without a saved
+   * password none is stored.
+   */
+  MailSettingsUpdate mailSettingsUpdate(MailPayload mail, String secret) {
+    String password = settingsEncryptor.decrypt(secret);
+    return new MailSettingsUpdate(
+        true,
+        mail.host(),
+        mail.port(),
+        mail.username(),
+        password == null ? "" : password,
+        mail.encryption(),
+        mail.fromAddress(),
+        mail.fromName());
+  }
+
+  /** Why the mail server of a saved step is refused now, or {@code null}. */
+  String blockedMailServer(MailPayload mail) {
+    return mailTargets.blockedReason(mail.host(), mail.port());
   }
 
   FirstAdminPayload firstAdminPayload(String payload) {
@@ -292,6 +365,116 @@ class StepRules {
         json.writeValueAsString(
             new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null)),
         secret);
+  }
+
+  /**
+   * The rules of the mail settings of the administration ({@link MailSettingsRules}), with every
+   * field the completion needs to switch sending on required, and the target address check of the
+   * installation on top.
+   */
+  private Stored mail(StepInput.Mail input, String previousPayload, String previousSecret) {
+    List<FieldError> errors =
+        new ArrayList<>(
+            MailSettingsRules.lengthErrors(
+                "mail.",
+                input.host(),
+                input.username(),
+                input.password(),
+                input.fromAddress(),
+                input.fromName()));
+    String host = MailSettingsRules.trimmedOrNull(input.host());
+    Integer port = input.port();
+    String username = MailSettingsRules.trimmedOrNull(input.username());
+    String fromAddress = MailSettingsRules.trimmedOrNull(input.fromAddress());
+    String fromName = MailSettingsRules.trimmedOrNull(input.fromName());
+    MailEncryption encryption =
+        input.encryption() == null ? MailSettingsRules.DEFAULT_ENCRYPTION : input.encryption();
+    if (host == null) {
+      errors.add(error("mail.host", REQUIRED, MailSettingsRules.HOST_MISSING));
+    } else if (!MAIL_HOST.matcher(host).matches()) {
+      errors.add(
+          error(
+              "mail.host",
+              INVALID,
+              "Der SMTP-Server ist ein Rechnername oder eine Adresse, ohne Leer- und"
+                  + " Steuerzeichen."));
+    }
+    if (MailSettingsService.PASSWORD_MASK.equals(input.password())) {
+      errors.add(
+          error(
+              "mail.password",
+              INVALID,
+              "„"
+                  + MailSettingsService.PASSWORD_MASK
+                  + "“ steht in der Verwaltung für ein unverändertes Passwort und lässt sich nicht"
+                  + " als Passwort setzen."));
+    }
+    if (port == null) {
+      errors.add(error("mail.port", REQUIRED, MailSettingsRules.PORT_MISSING));
+    } else {
+      MailSettingsRules.portProblem(port)
+          .ifPresent(problem -> errors.add(error("mail.port", INVALID, problem)));
+    }
+    if (fromAddress == null) {
+      errors.add(error("mail.fromAddress", REQUIRED, MailSettingsRules.FROM_ADDRESS_MISSING));
+    } else {
+      MailSettingsRules.fromAddressProblem(fromAddress)
+          .ifPresent(problem -> errors.add(error("mail.fromAddress", INVALID, problem)));
+    }
+    if (errors.isEmpty()) {
+      String blocked = mailTargets.blockedReason(host, port);
+      if (blocked != null) {
+        String field =
+            InstallationMailTargets.PORT_REFUSED.equals(blocked) ? "mail.port" : "mail.host";
+        errors.add(error(field, "BLOCKED", blocked));
+      }
+    }
+    requireNoErrors(errors);
+    MailPayload payload = new MailPayload(host, port, encryption, username, fromAddress, fromName);
+    return new Stored(
+        json.writeValueAsString(payload),
+        mailSecret(input.password(), previousPayload, previousSecret, payload));
+  }
+
+  /**
+   * The mail password to store: a new one encrypted, an empty one removed, none kept from {@code
+   * previousSecret} only for the same host, port, user name and encryption.
+   */
+  private String mailSecret(
+      String password, String previousPayload, String previousSecret, MailPayload next) {
+    if (password == null) {
+      if (previousSecret == null) {
+        return null;
+      }
+      MailPayload previous = mailPayload(previousPayload);
+      if (!MailSettingsRules.sameTarget(
+          previous.host(),
+          previous.port(),
+          previous.username(),
+          previous.encryption(),
+          next.host(),
+          next.port(),
+          next.username(),
+          next.encryption())) {
+        throw FieldValidationException.of(
+            "mail.password",
+            MailSettingsRules.PASSWORD_REQUIRED,
+            MailSettingsRules.PASSWORD_FOLLOWS_TARGET);
+      }
+      return previousSecret;
+    }
+    if (password.isEmpty()) {
+      return null;
+    }
+    try {
+      return settingsEncryptor.encrypt(password);
+    } catch (IllegalStateException e) {
+      throw FieldValidationException.of(
+          "mail.password",
+          INVALID,
+          "Das Passwort kann nicht gespeichert werden: OPAA_SETTINGS_ENCRYPTION_KEY ist nicht"
+              + " gesetzt oder ungültig.");
+    }
   }
 
   /** The rules of a model's address, identifier and key ({@link ModelEndpointRules}). */

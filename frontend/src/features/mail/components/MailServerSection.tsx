@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -21,25 +20,19 @@ import { useMailStore } from '../stores/mailStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import PageSection from '@/shared/ui/PageSection'
+import PublicBaseUrlMissingAlert from '@/shared/ui/smtp/PublicBaseUrlMissingAlert'
+import {
+  SMTP_ENCRYPTION_OPTIONS,
+  SMTP_LABELS,
+  SMTP_TEXTS,
+  parseSmtpPort,
+  smtpTargetChanged,
+} from '@/shared/ui/smtp/smtpSettings'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 
 /** Mirrors `MailSettingsService.PASSWORD_MASK`: sending it back means „unverändert". */
 const PASSWORD_MASK = '***'
-
-const encryptionOptions: Array<{ value: MailEncryption; label: string; hint: string }> = [
-  {
-    value: 'NONE',
-    label: 'Keine',
-    hint: 'Unverschlüsseltes SMTP — nur im eigenen, sicheren Netz.',
-  },
-  {
-    value: 'STARTTLS',
-    label: 'STARTTLS',
-    hint: 'Verschlüsselung wird nach dem Verbindungsaufbau verlangt, nicht still übersprungen.',
-  },
-  { value: 'SSL', label: 'SSL/TLS', hint: 'Verschlüsselt ab dem ersten Byte (meist Port 465).' },
-]
 
 interface FormState {
   enabled: boolean
@@ -120,16 +113,18 @@ export default function MailServerSection() {
   const currentSettings: MailSettingsResponse = settings
 
   const update = (patch: Partial<FormState>) => setForm({ ...currentForm, ...patch })
-  const portNumber = form.port.trim() === '' ? null : Number(form.port)
-  const isPortValid =
-    portNumber === null || (Number.isInteger(portNumber) && portNumber > 0 && portNumber <= 65535)
+  const portNumber = parseSmtpPort(form.port)
+  const isPortValid = !Number.isNaN(portNumber ?? 0)
   const canEnable = form.host.trim() !== '' && portNumber !== null && form.fromAddress.trim() !== ''
-  // A stored password goes only to the server, port, account and encryption it was entered for.
-  const connectionChanged =
-    (form.host.trim() || null) !== (settings.host ?? null) ||
-    portNumber !== (settings.port ?? null) ||
-    (form.username.trim() || null) !== (settings.username ?? null) ||
-    form.encryption !== settings.encryption
+  const connectionChanged = smtpTargetChanged(
+    {
+      host: settings.host ?? null,
+      port: settings.port ?? null,
+      username: settings.username ?? null,
+      encryption: settings.encryption,
+    },
+    { host: form.host, port: portNumber, username: form.username, encryption: form.encryption },
+  )
   const passwordNeeded =
     settings.passwordSet && connectionChanged && !clearPassword && form.password === ''
 
@@ -184,15 +179,7 @@ export default function MailServerSection() {
     <Box>
       <MailStatusCard settings={settings} />
 
-      {!settings.publicBaseUrlConfigured && (
-        <Alert severity="warning" sx={{ mb: 2.5 }}>
-          <AlertTitle>Öffentliche Adresse fehlt</AlertTitle>
-          OPAA_PUBLIC_BASE_URL ist nicht gesetzt. Einladungen, Rücksetzlinks und Bestätigungen
-          enthalten dann keinen brauchbaren Link — die betroffenen Wege bleiben abgeschaltet. Tragen
-          Sie die Adresse, unter der diese Installation erreichbar ist, in der Umgebung der
-          Bereitstellung ein; im Browser ist sie bewusst nicht änderbar.
-        </Alert>
-      )}
+      {!settings.publicBaseUrlConfigured && <PublicBaseUrlMissingAlert sx={{ mb: 2.5 }} />}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -211,43 +198,35 @@ export default function MailServerSection() {
             }
             label="Versand aktiv"
           />
-          {form.enabled && !canEnable && (
-            <Alert severity="info">
-              Zum Einschalten werden Server, Port und Absenderadresse gebraucht.
-            </Alert>
-          )}
+          {form.enabled && !canEnable && <Alert severity="info">{SMTP_TEXTS.enableNeeds}</Alert>}
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
-              label="Server"
+              label={SMTP_LABELS.host}
               value={form.host}
               onChange={(e) => update({ host: e.target.value })}
-              helperText="Rechnername oder Adresse des Mailservers, zum Beispiel smtp.intern.example."
+              helperText={SMTP_TEXTS.hostHint}
               sx={{ flexGrow: 1 }}
             />
             <TextField
-              label="Port"
+              label={SMTP_LABELS.port}
               value={form.port}
               onChange={(e) => update({ port: e.target.value })}
               error={!isPortValid}
-              helperText={
-                isPortValid
-                  ? 'Üblich: 587 (STARTTLS), 465 (SSL/TLS), 25.'
-                  : 'Bitte eine Portnummer zwischen 1 und 65535 angeben.'
-              }
+              helperText={isPortValid ? SMTP_TEXTS.portHint : SMTP_TEXTS.portInvalid}
               sx={{ width: { xs: '100%', sm: 160 } }}
             />
           </Stack>
 
           <TextField
             select
-            label="Verschlüsselung"
+            label={SMTP_LABELS.encryption}
             value={form.encryption}
             onChange={(e) => update({ encryption: e.target.value as MailEncryption })}
-            helperText={encryptionOptions.find((o) => o.value === form.encryption)?.hint}
+            helperText={SMTP_ENCRYPTION_OPTIONS.find((o) => o.value === form.encryption)?.hint}
             fullWidth
           >
-            {encryptionOptions.map((option) => (
+            {SMTP_ENCRYPTION_OPTIONS.map((option) => (
               <MenuItem key={option.value} value={option.value}>
                 {option.label}
               </MenuItem>
@@ -256,14 +235,14 @@ export default function MailServerSection() {
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
-              label="Benutzername (optional)"
+              label={`${SMTP_LABELS.username} (optional)`}
               value={form.username}
               onChange={(e) => update({ username: e.target.value })}
-              helperText="Leer lassen, wenn der Server ohne Anmeldung annimmt."
+              helperText={SMTP_TEXTS.usernameHint}
               sx={{ flexGrow: 1 }}
             />
             <TextField
-              label="Passwort"
+              label={SMTP_LABELS.password}
               type="password"
               value={form.password}
               onChange={(e) => {
@@ -279,10 +258,10 @@ export default function MailServerSection() {
                 (clearPassword
                   ? 'Das gespeicherte Passwort wird beim Speichern gelöscht.'
                   : passwordNeeded
-                    ? 'Server, Port, Benutzername oder Verschlüsselung ändern sich: Bitte das Passwort neu eingeben oder löschen.'
+                    ? SMTP_TEXTS.passwordFollowsTarget
                     : settings.passwordSet
-                      ? 'Ein Passwort ist hinterlegt. Leer lassen lässt es unverändert, solange Server, Port, Benutzername und Verschlüsselung gleich bleiben.'
-                      : 'Es ist kein Passwort hinterlegt.')
+                      ? SMTP_TEXTS.passwordStored
+                      : SMTP_TEXTS.passwordNone)
               }
               sx={{ flexGrow: 1 }}
             />
@@ -306,17 +285,17 @@ export default function MailServerSection() {
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField
-              label="Absenderadresse"
+              label={SMTP_LABELS.fromAddress}
               value={form.fromAddress}
               onChange={(e) => update({ fromAddress: e.target.value })}
-              helperText="Die Adresse, unter der OPAA versendet."
+              helperText={SMTP_TEXTS.fromAddressHint}
               sx={{ flexGrow: 1 }}
             />
             <TextField
-              label="Absendername (optional)"
+              label={`${SMTP_LABELS.fromName} (optional)`}
               value={form.fromName}
               onChange={(e) => update({ fromName: e.target.value })}
-              helperText="Erscheint im Postfach vor der Adresse."
+              helperText={SMTP_TEXTS.fromNameHint}
               sx={{ flexGrow: 1 }}
             />
           </Stack>

@@ -18,6 +18,7 @@ export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   SIGN_IN: { label: 'Anmeldeverfahren', laterUnder: 'Identitätsanbieter' },
   CHAT_MODEL: { label: 'Chat-Modell', laterUnder: 'Modelle' },
   EMBEDDING_MODEL: { label: 'Embedding-Modell', laterUnder: 'Modelle' },
+  MAIL: { label: 'E-Mail-Versand', laterUnder: 'E-Mail' },
 }
 
 export const TOKEN_LABEL = 'Installations-Token'

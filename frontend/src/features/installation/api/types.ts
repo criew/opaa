@@ -14,6 +14,12 @@ export type InstallationChatModelView = Schemas['InstallationChatModelView']
 export type InstallationEmbeddingModel = Schemas['InstallationEmbeddingModel']
 export type InstallationEmbeddingModelView = Schemas['InstallationEmbeddingModelView']
 
+export type InstallationMail = Schemas['InstallationMail']
+export type InstallationMailView = Schemas['InstallationMailView']
+
+/** Options of a check; only the mail step reads one. */
+export type InstallationStepCheckRequest = Schemas['InstallationStepCheckRequest']
+
 /** The steps the API lists, in its order; the token is not one of them. */
 export type InstallationStepId = Schemas['InstallationStep']
 
@@ -32,6 +38,7 @@ export interface StepInput {
   SIGN_IN: InstallationSignIn
   CHAT_MODEL: InstallationChatModel
   EMBEDDING_MODEL: InstallationEmbeddingModel
+  MAIL: InstallationMail
 }
 
 /** The part of `InstallationStepRequest` that carries a step's values. */
@@ -40,7 +47,5 @@ export const STEP_REQUEST_KEY = {
   SIGN_IN: 'signIn',
   CHAT_MODEL: 'chatModel',
   EMBEDDING_MODEL: 'embeddingModel',
-} as const satisfies Record<
-  InstallationStepId,
-  keyof Schemas['InstallationStepRequest'] | 'embeddingModel'
->
+  MAIL: 'mail',
+} as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>

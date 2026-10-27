@@ -17,7 +17,12 @@ public enum InstallationStep {
    * the vector table with (ADR-0060, Entscheidung 10). Optional: without it there is no vector
    * table until the model administration sets the first model (ADR-0061).
    */
-  EMBEDDING_MODEL(false);
+  EMBEDDING_MODEL(false),
+  /**
+   * The mail server, optional: the completion stores it and switches sending on; skipped, sending
+   * stays off (ADR-0033, Entscheidung 10).
+   */
+  MAIL(false);
 
   private final boolean mandatory;
 
