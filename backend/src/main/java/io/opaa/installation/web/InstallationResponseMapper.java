@@ -3,6 +3,7 @@ package io.opaa.installation.web;
 import io.opaa.api.dto.InstallationChatModelView;
 import io.opaa.api.dto.InstallationEmbeddingModelView;
 import io.opaa.api.dto.InstallationFirstAdminView;
+import io.opaa.api.dto.InstallationMailView;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationSignInMode;
@@ -17,10 +18,16 @@ final class InstallationResponseMapper {
 
   private InstallationResponseMapper() {}
 
-  static InstallationStatusResponse toResponse(InstallationOverview overview) {
+  /**
+   * {@code publicBaseUrlConfigured} is a property of the deployment ({@code OPAA_PUBLIC_BASE_URL}),
+   * not of the installation, so the controller passes it in.
+   */
+  static InstallationStatusResponse toResponse(
+      InstallationOverview overview, boolean publicBaseUrlConfigured) {
     return new InstallationStatusResponse(
         overview.pending(),
         overview.completable(),
+        publicBaseUrlConfigured,
         overview.steps().stream().map(InstallationResponseMapper::toResponse).toList());
   }
 
@@ -52,6 +59,18 @@ final class InstallationResponseMapper {
                 model.baseUrl(), model.model(), model.apiKeySet(), model.maxInputTokens());
         view.setDimensions(model.dimensions());
         response.setEmbeddingModel(view);
+      }
+      case InstallationOverview.Mail mail -> {
+        InstallationMailView view =
+            new InstallationMailView(
+                mail.host(),
+                mail.port(),
+                mail.encryption(),
+                mail.passwordSet(),
+                mail.fromAddress());
+        view.setUsername(mail.username());
+        view.setFromName(mail.fromName());
+        response.setMail(view);
       }
     }
     return response;

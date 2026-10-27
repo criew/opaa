@@ -166,6 +166,9 @@ opaa:
     token: ${OPAA_INSTALLATION_TOKEN:}
     allowed-cidrs: ${OPAA_INSTALLATION_ALLOWED_CIDRS:}
     answer-file: ${OPAA_INSTALLATION_ANSWER_FILE:}
+    # Mail servers the installation's MAIL step may reach on internal addresses; entries host or
+    # host:port. The administration checks no mail server address.
+    mail-target-allowlist: ${OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST:}
   auth:
     # No default mode on purpose: the active Spring profile ("oidc" or "dev")
     # sets it. Starting without one of those profiles fails fast, see

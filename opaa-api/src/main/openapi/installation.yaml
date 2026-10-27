@@ -87,10 +87,21 @@ paths:
       security: []
       summary: >
         Runs the check of a saved step: the rules of the first account, the connection test of the
-        identity provider (discovery and JWK set) or of the chat model, or the probe embedding of
-        the embedding model, which also determines its vector size. The outcome is stored with the
-        step and returned; a failed check is no error of the call. Same token and network rules
-        as getInstallation.
+        identity provider (discovery and JWK set) or of the chat model, the probe embedding of the
+        embedding model, which also determines its vector size, or for MAIL a connection to the
+        mail server with sign-in when a user name is set, without sending anything. For MAIL only,
+        testRecipient additionally sends the test message to that address; per instance and for
+        all clients together at most 10 test messages in 10 minutes, then 429 with code
+        MAIL_TEST_LIMIT. Every wait on the mail server is bounded by OPAA_MAIL_CONNECT_TIMEOUT,
+        OPAA_MAIL_READ_TIMEOUT and OPAA_MAIL_WRITE_TIMEOUT. The outcome is stored with the step and
+        returned; a failed check is no error of the call. Same token and network rules as
+        getInstallation.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstallationStepCheckRequest"
       responses:
         "200":
           description: Check run; its outcome is part of the step state
@@ -99,11 +110,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/InstallationStepState"
         "400":
-          description: Unknown step
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/ValidationError"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -120,6 +127,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/installation/steps/{step}/skip:
+    parameters:
+      - $ref: "#/components/parameters/InstallationStepPath"
+    post:
+      operationId: skipInstallationStep
+      tags: [installation]
+      security: []
+      summary: >
+        Skips an optional step (400 for a mandatory one): discards its saved values and their
+        check, so the completion leaves what the step would set as it is - for MAIL, sending stays
+        off. A skipped step does not hold up the completion; a saved optional step does until its
+        check succeeded or it is skipped. Recorded in the audit log, also when nothing was saved.
+        Same token and network rules as getInstallation.
+      responses:
+        "200":
+          description: Step skipped; its state is unsaved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstallationStepState"
+        "400":
+          description: Unknown or mandatory step
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The client address lies outside OPAA_INSTALLATION_ALLOWED_CIDRS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -179,8 +225,9 @@ paths:
       summary: >
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
-        from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. Same token
-        and network rules as getInstallation.
+        from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. An optional
+        part left out counts as skipped and discards what the assistant saved for it; the check of
+        mail sends no test message. Same token and network rules as getInstallation.
       requestBody:
         required: true
         content:
@@ -224,8 +271,9 @@ paths:
         Completes the installation exactly once, under a database lock, even with several
         instances: creates the first system administration account, the sign-in method, the chat
         model and the embedding model with the vector table of its probed size from the checked
-        steps, discards the token and the saved steps and switches every instance to normal
-        operation. Same token and network rules as getInstallation.
+        steps, takes a checked MAIL step over into the mail settings and switches sending on,
+        discards the token and the saved steps and switches every instance to normal operation.
+        Same token and network rules as getInstallation.
       responses:
         "200":
           description: Installation completed
@@ -250,7 +298,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: A mandatory step is not saved or not successfully checked
+          description: >
+            A mandatory step is not saved or not successfully checked, or an optional step is
+            saved but not successfully checked
           content:
             application/json:
               schema:
@@ -274,8 +324,9 @@ components:
       description: >
         A step of the installation. FIRST_ADMIN is the first system administration account (the
         local emergency account of ADR-0033), SIGN_IN the sign-in method, CHAT_MODEL the chat
-        model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10).
-      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL]
+        model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10); these four are
+        mandatory. MAIL, the mail server for sending (ADR-0033, Entscheidung 10), is optional.
+      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL, MAIL]
 
     InstallationSignInMode:
       type: string
@@ -286,14 +337,21 @@ components:
 
     InstallationStatusResponse:
       type: object
-      required: [pending, completable, steps]
+      required: [pending, completable, publicBaseUrlConfigured, steps]
       properties:
         pending:
           type: boolean
           description: Always true while this API answers; the completion answers with false.
         completable:
           type: boolean
-          description: Whether every mandatory step is saved and successfully checked.
+          description: >
+            Whether every mandatory step is saved and successfully checked, and every saved
+            optional step as well.
+        publicBaseUrlConfigured:
+          type: boolean
+          description: >
+            Whether OPAA_PUBLIC_BASE_URL is set; without it no mail carries a usable link, as on
+            the mail settings of the administration.
         steps:
           type: array
           items:
@@ -324,6 +382,8 @@ components:
           $ref: "#/components/schemas/InstallationChatModelView"
         embeddingModel:
           $ref: "#/components/schemas/InstallationEmbeddingModelView"
+        mail:
+          $ref: "#/components/schemas/InstallationMailView"
 
     InstallationStepRequest:
       type: object
@@ -337,6 +397,21 @@ components:
           $ref: "#/components/schemas/InstallationChatModel"
         embeddingModel:
           $ref: "#/components/schemas/InstallationEmbeddingModel"
+        mail:
+          $ref: "#/components/schemas/InstallationMail"
+
+    InstallationStepCheckRequest:
+      type: object
+      description: Options of a check; only MAIL knows one (400 for any other step).
+      properties:
+        testRecipient:
+          type: string
+          nullable: true
+          maxLength: 320
+          description: >
+            Sends the test message to this address after the connection succeeded. Never stored
+            and never part of the audit log. Absent or empty sends nothing.
+          example: it-betrieb@stadt.example
 
     InstallationFirstAdmin:
       type: object
@@ -507,8 +582,8 @@ components:
         All values of the answer file in one request (docs/features/installation-and-settings.md).
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
-        that the API cannot read files of the backend. Parts of later steps (outboundProxy, mail,
-        branding) are not evaluated by this version.
+        that the API cannot read files of the backend. mail is optional; without it sending stays
+        off. Parts of later steps (outboundProxy, branding) are not evaluated by this version.
       required: [firstAdmin, signIn, chatModel, embeddingModel]
       properties:
         firstAdmin:
@@ -519,3 +594,68 @@ components:
           $ref: "#/components/schemas/InstallationChatModel"
         embeddingModel:
           $ref: "#/components/schemas/InstallationEmbeddingModel"
+        mail:
+          $ref: "#/components/schemas/InstallationMail"
+
+    InstallationMail:
+      type: object
+      description: >
+        The mail server OPAA sends through (ADR-0033, Entscheidung 10), with the rules of the mail
+        settings of the administration. Unlike there, the host must pass the target address check
+        of the installation: an internal mail server needs its host or host:port on
+        OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
+      required: [host, port, fromAddress]
+      properties:
+        host:
+          type: string
+          maxLength: 255
+          example: smtp.stadt.example
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          example: 587
+        encryption:
+          $ref: "#/components/schemas/MailEncryption"
+        username:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: Empty connects without signing in.
+        password:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: >
+            Stored encrypted; omitted keeps a password saved before, but only for the same host,
+            port, user name and encryption; empty removes it.
+        fromAddress:
+          type: string
+          maxLength: 320
+          example: opaa@stadt.example
+        fromName:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: OPAA
+
+    InstallationMailView:
+      type: object
+      required: [host, port, encryption, passwordSet, fromAddress]
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+        encryption:
+          $ref: "#/components/schemas/MailEncryption"
+        username:
+          type: string
+          nullable: true
+        passwordSet:
+          type: boolean
+        fromAddress:
+          type: string
+        fromName:
+          type: string
+          nullable: true

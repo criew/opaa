@@ -16,6 +16,7 @@ import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
+import io.opaa.mail.MailSettingsService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -55,6 +56,7 @@ class InstallationServiceCheckTest {
             mock(OidcProviderService.class),
             mock(LlmModelService.class),
             embeddingModels,
+            mock(MailSettingsService.class),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),
@@ -72,7 +74,7 @@ class InstallationServiceCheckTest {
     when(steps.findById(InstallationStep.EMBEDDING_MODEL)).thenReturn(Optional.of(checked));
     when(steps.findForUpdate(InstallationStep.EMBEDDING_MODEL))
         .thenReturn(Optional.of(savedMeanwhile));
-    when(checks.check(eq(InstallationStep.EMBEDDING_MODEL), any(), any()))
+    when(checks.check(eq(InstallationStep.EMBEDDING_MODEL), any(), any(), any()))
         .thenReturn(new StepChecks.Outcome(true, "erfolgreich", 1024));
 
     assertThatThrownBy(() -> service.check(InstallationStep.EMBEDDING_MODEL))
@@ -84,7 +86,7 @@ class InstallationServiceCheckTest {
   @Test
   void theCompletionRefusesAnEmbeddingModelWithoutAProbedSize() {
     JsonMapper json = JsonMapper.builder().build();
-    StepRules real = new StepRules(null, null, null, null, json, null);
+    StepRules real = new StepRules(null, null, null, null, json, null, null);
     List<InstallationStepRecord> saved =
         List.of(
             checkedRecord(

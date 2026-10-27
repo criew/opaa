@@ -67,6 +67,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // The installation classes run their chat endpoint on loopback; every other address stays
       // under the target address check.
       "opaa.model.target-validation.allowlist=127.0.0.1",
+      // Likewise the mail server of the installation's mail step, an in-JVM GreenMail.
+      "opaa.installation.mail-target-allowlist=127.0.0.1",
       // Same model addresses as the canonical signature: never a reachable model. This family
       // has no FakeEmbeddingModel bean; its embedding clients come from FakeEmbeddingEndpoint.
       "spring.ai.openai.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,

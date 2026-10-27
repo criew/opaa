@@ -97,7 +97,7 @@ class InstallationStartupRaceIntegrationTest {
   private InstallationStartup startup(Path answers) {
     return new InstallationStartup(
         installation,
-        new InstallationProperties(null, List.of(), answers.toString()),
+        new InstallationProperties(null, List.of(), answers.toString(), null),
         authProperties,
         status,
         adminReset,

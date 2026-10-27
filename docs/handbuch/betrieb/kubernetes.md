@@ -703,6 +703,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `bootstrap.chatModel.apiKeyInSecret` | `false` | `chatModel.apiKeyFile` | liest den Schlüssel des Chat-Modells aus dem Secret (`installation-chat-api-key`); mit `secrets.chatApiKey` gilt das von selbst |
 | `bootstrap.chatModel.temperature`, `.maxTokens` | leer (Vorgaben der Modellverwaltung) | `chatModel.temperature`, `chatModel.maxTokens` | Temperatur und Antwortlänge |
 | `installationAllowedCidrs` | leer | `OPAA_INSTALLATION_ALLOWED_CIDRS` | Netze, aus denen die Installations-API antwortet; leer heißt ohne Einschränkung |
+| `installationMailTargetAllowlist` | leer | `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` | Mailserver im eigenen Netz, die der optionale Schritt E-Mail-Versand des Assistenten erreichen darf (`host` oder `host:port`); leer heißt: einen internen Mailserver erst nach der Installation in der Verwaltung eintragen |
 
 ### Backend
 

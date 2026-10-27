@@ -447,10 +447,23 @@ public final class AuditEventCatalog {
     put(keys, Set.of(), LOCAL_PASSWORD_CHANGED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN);
     put(
         keys,
-        Set.of("apiKeySet", "baseUrl", "issuerUri", "model", "passwordSet", "signInMode", "step"),
+        Set.of(
+            "apiKeySet",
+            "baseUrl",
+            "encryption",
+            "fromAddress",
+            "host",
+            "issuerUri",
+            "model",
+            "passwordSet",
+            "port",
+            "signInMode",
+            "step",
+            "username"),
         INSTALLATION_STEP_SAVED);
-    put(keys, Set.of("step", "succeeded"), INSTALLATION_STEP_CHECKED);
-    put(keys, Set.of("signInMode", "source"), INSTALLATION_COMPLETED);
+    put(keys, Set.of("step", "succeeded", "testMail"), INSTALLATION_STEP_CHECKED);
+    put(keys, Set.of("discarded", "step"), INSTALLATION_STEP_SKIPPED);
+    put(keys, Set.of("mailEnabled", "signInMode", "source"), INSTALLATION_COMPLETED);
     put(keys, Set.of("passwordSource", "state"), LOCAL_ADMIN_SEEDED);
     put(keys, Set.of("passwordSource", "recreated"), LOCAL_ADMIN_RESET);
     put(keys, Set.of("enabled"), LOCAL_ACCOUNTS_ENABLED);

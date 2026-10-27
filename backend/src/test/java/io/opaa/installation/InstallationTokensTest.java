@@ -52,16 +52,17 @@ class InstallationTokensTest {
 
   @Test
   void aConfiguredTokenMustBeStrong() {
-    assertThatThrownBy(() -> new InstallationProperties("kurz", List.of(), null))
+    assertThatThrownBy(() -> new InstallationProperties("kurz", List.of(), null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_INSTALLATION_TOKEN");
-    assertThat(new InstallationProperties("  ", List.of(), " ").hasConfiguredToken()).isFalse();
-    assertThat(new InstallationProperties("  ", List.of(), " ").hasAnswerFile()).isFalse();
+    assertThat(new InstallationProperties("  ", List.of(), " ", null).hasConfiguredToken())
+        .isFalse();
+    assertThat(new InstallationProperties("  ", List.of(), " ", null).hasAnswerFile()).isFalse();
   }
 
   @Test
   void aMistypedNetworkStopsTheStart() {
-    assertThatThrownBy(() -> new InstallationProperties(null, List.of("10.0.0.0/33"), null))
+    assertThatThrownBy(() -> new InstallationProperties(null, List.of("10.0.0.0/33"), null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("OPAA_INSTALLATION_ALLOWED_CIDRS");
   }

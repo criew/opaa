@@ -112,7 +112,7 @@ public class MailTestService {
    * mail that greets "Erika Mustermann" reads like a template, not like the mail the recipient will
    * actually get.
    */
-  private Map<String, Object> variables(MailTemplateKey key, String displayName) {
+  Map<String, Object> variables(MailTemplateKey key, String displayName) {
     Map<String, Object> variables = new HashMap<>(templateService.sampleValues(key, null));
     if (StringUtils.hasText(displayName) && key.placeholders().contains("displayName")) {
       variables.put("displayName", displayName);

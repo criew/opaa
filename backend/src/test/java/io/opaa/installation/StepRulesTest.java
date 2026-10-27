@@ -7,10 +7,12 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
+import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.ModelAddressPolicy;
+import io.opaa.mail.MailSettingsRules;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
@@ -28,6 +30,7 @@ class StepRulesTest {
 
   private static final String KEY = "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=";
   private static final String PASSWORD = "Erstes-Konto-der-Installation-2026";
+  private static final String MAIL_PASSWORD = "Passwort-des-Mailservers";
 
   private final PasswordEncoder encoder = new PasswordEncoderConfiguration().passwordEncoder();
   private final SettingsEncryptor encryptor =
@@ -40,7 +43,8 @@ class StepRulesTest {
           encryptor,
           addressPolicy,
           JsonMapper.builder().build(),
-          ModelAddressPolicy.allowing(List.of("ollama", "ollama.example.org")));
+          ModelAddressPolicy.allowing(List.of("ollama", "ollama.example.org")),
+          InstallationTestMailTargets.LOOPBACK);
 
   @Test
   void theFirstAccountIsStoredWithItsPasswordHashOnly() {
@@ -208,7 +212,8 @@ class StepRulesTest {
             encryptor,
             addressPolicy,
             JsonMapper.builder().build(),
-            ModelAddressPolicy.allowing(List.of("127.0.0.1:11434")));
+            ModelAddressPolicy.allowing(List.of("127.0.0.1:11434")),
+            InstallationTestMailTargets.LOOPBACK);
 
     assertThat(
             withPort
@@ -319,6 +324,120 @@ class StepRulesTest {
                         "embeddingModel.model",
                         "embeddingModel.apiKey",
                         "embeddingModel.maxInputTokens"));
+  }
+
+  @Test
+  void theMailServerIsStoredWithItsPasswordEncryptedOnly() {
+    StepRules.Stored stored =
+        rules.toStored(mail("127.0.0.1", "kennung", MAIL_PASSWORD), null, null);
+
+    assertThat(stored.payload()).contains("127.0.0.1").doesNotContain(MAIL_PASSWORD);
+    assertThat(stored.secret()).startsWith("enc:").doesNotContain(MAIL_PASSWORD);
+    assertThat(encryptor.decrypt(stored.secret())).isEqualTo(MAIL_PASSWORD);
+    InstallationOverview.Mail view =
+        (InstallationOverview.Mail)
+            rules.view(InstallationStep.MAIL, stored.payload(), stored.secret());
+    assertThat(view.passwordSet()).isTrue();
+    assertThat(view.encryption()).isEqualTo(MailEncryption.NONE);
+  }
+
+  @Test
+  void theMailServerNeedsServerPortAndSenderWithTheSentencesOfTheAdministration() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.Mail(" ", null, null, null, null, "opaa", null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(
+                        FieldValidationException.FieldError::field,
+                        FieldValidationException.FieldError::message)
+                    .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(
+                            "mail.host", MailSettingsRules.HOST_MISSING),
+                        org.assertj.core.groups.Tuple.tuple(
+                            "mail.port", MailSettingsRules.PORT_MISSING),
+                        org.assertj.core.groups.Tuple.tuple(
+                            "mail.fromAddress",
+                            MailSettingsRules.fromAddressProblem("opaa").orElseThrow())));
+  }
+
+  // regression guard: the installation's mail check reaches no internal address unless released
+  @Test
+  void anInternalMailServerIsRefusedUntilTheOperatorReleasesIt() {
+    assertThatThrownBy(() -> rules.toStored(mail("10.20.30.40", null, null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .singleElement()
+                    .satisfies(
+                        error -> {
+                          assertThat(error.field()).isEqualTo("mail.host");
+                          assertThat(error.code()).isEqualTo("BLOCKED");
+                          assertThat(error.message())
+                              .contains("OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST");
+                        }));
+  }
+
+  @Test
+  void aSavedMailPasswordStaysOnlyWithTheSameTargetAndAnEmptyOneRemovesIt() {
+    StepRules.Stored first =
+        rules.toStored(mail("127.0.0.1", "kennung", MAIL_PASSWORD), null, null);
+
+    StepRules.Stored kept =
+        rules.toStored(
+            new StepInput.Mail(
+                "127.0.0.1",
+                2525,
+                MailEncryption.NONE,
+                "kennung",
+                null,
+                "opaa@stadt.example",
+                "Neuer Name"),
+            first.payload(),
+            first.secret());
+    assertThat(kept.secret()).isEqualTo(first.secret());
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.Mail(
+                        "127.0.0.1",
+                        2525,
+                        MailEncryption.STARTTLS,
+                        "kennung",
+                        null,
+                        "opaa@stadt.example",
+                        null),
+                    first.payload(),
+                    first.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(
+                        FieldValidationException.FieldError::field,
+                        FieldValidationException.FieldError::code,
+                        FieldValidationException.FieldError::message)
+                    .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(
+                            "mail.password",
+                            MailSettingsRules.PASSWORD_REQUIRED,
+                            MailSettingsRules.PASSWORD_FOLLOWS_TARGET)));
+
+    assertThat(
+            rules
+                .toStored(mail("127.0.0.1", "kennung", ""), first.payload(), first.secret())
+                .secret())
+        .isNull();
+  }
+
+  private static StepInput.Mail mail(String host, String username, String password) {
+    return new StepInput.Mail(
+        host, 2525, MailEncryption.NONE, username, password, " opaa@stadt.example ", "OPAA");
   }
 
   @Test

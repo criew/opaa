@@ -56,7 +56,8 @@ class InstallationModelDiscoveryTest {
           encryptor,
           mock(OidcAddressPolicy.class),
           json,
-          policy);
+          policy,
+          InstallationTestMailTargets.LOOPBACK);
   private final InstallationStateRepository states = mock(InstallationStateRepository.class);
   private final InstallationStepRepository steps = mock(InstallationStepRepository.class);
   private final AtomicReference<String> authorization = new AtomicReference<>();

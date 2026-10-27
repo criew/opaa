@@ -240,15 +240,21 @@ dataFlows:
   - id: mail
     group: MAIL
     viaOutboundProxy: false
-    target: Der Mailserver (SMTP), den die Systemverwaltung einträgt
+    target: >-
+      Der Mailserver (SMTP), den die Systemverwaltung einträgt, und im Installationsassistenten der
+      Mailserver, den die einrichtende Person angibt
     data: >-
       E-Mail-Adresse und Name der Empfängerin oder des Empfängers, Inhalt der Benachrichtigung
-      (Einladung, Kennwort, Zugangslinks, Erinnerungen, Testmail)
+      (Einladung, Kennwort, Zugangslinks, Erinnerungen, Testmail); bei der Prüfung im Assistenten
+      nur Verbindungsaufbau und Anmeldung, eine Testmail nur an die dort angegebene Adresse
     trigger: >-
       Einladung und Kennwortvorgänge lokaler Konten, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende
-      Freigaben für externe KI-Werkzeuge, Testmail
-    switchOff: Abschaltbar, Voreinstellung aus
-    settings: [mail_settings.enabled, mail_settings.host]
+      Freigaben für externe KI-Werkzeuge, Testmail; im Installationsassistenten die Prüfung des
+      Schritts E-Mail-Versand, nur mit dem Installations-Token und vor dem Abschluss
+    switchOff: >-
+      Abschaltbar, Voreinstellung aus; der Abschluss der Installation schaltet den Versand nur ein,
+      wenn der Schritt E-Mail-Versand geprüft und nicht übersprungen ist
+    settings: [mail_settings.enabled, mail_settings.host, installation_steps.payload]
   - id: original-store
     group: STORAGE
     viaOutboundProxy: false
