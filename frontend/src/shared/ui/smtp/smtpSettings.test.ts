@@ -25,6 +25,9 @@ describe('smtpSettings', () => {
   it('accepts what has the form of a mail address', () => {
     expect(isMailAddress(' it@stadt.example ')).toBe(true)
     expect(isMailAddress('it@stadt')).toBe(false)
+    for (const list of ['a@b.c,d.e.f', 'a@b.c;d.e', 'OPAA <a@b.c>', 'a@b.c>', '"a"@b.c']) {
+      expect(isMailAddress(list)).toBe(false)
+    }
   })
 
   it('sees another target in a changed server, port, account or encryption only', () => {

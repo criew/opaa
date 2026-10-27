@@ -59,8 +59,11 @@ export const SMTP_TEXTS = {
 
 const MIN_PORT = 1
 const MAX_PORT = 65535
-/** Deliberately permissive, as in the backend: the mail server decides what it accepts. */
-const MAIL_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/**
+ * Deliberately permissive, as in the backend - the mail server decides what it accepts - but one
+ * mailbox only: no list separator and no display-name syntax.
+ */
+const MAIL_ADDRESS = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/
 
 /** The port typed into a field: `null` when empty, `NaN` when it is no port. */
 export function parseSmtpPort(value: string): number | null {

@@ -918,6 +918,78 @@ describe('InstallationPage', () => {
       )
     })
 
+    it('names the budget of test messages and says the check works without one', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/MAIL/check', () =>
+          HttpResponse.json(
+            {
+              error: 'Zu viele Testnachrichten.',
+              status: 429,
+              code: 'MAIL_TEST_LIMIT',
+              timestamp: new Date().toISOString(),
+            },
+            { status: 429, headers: { 'Retry-After': '120' } },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await user.type(field('Testnachricht an (optional)'), 'it-betrieb@stadt.example')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Testnachrichten. Bitte in etwa 2 Minuten erneut versuchen; ohne Testnachricht lässt sich der Mailserver weiter prüfen.',
+      )
+    })
+
+    it('names the budget of mail checks as such', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/MAIL/check', () =>
+          HttpResponse.json(
+            {
+              error: 'Zu viele Prüfungen.',
+              status: 429,
+              code: 'MAIL_CHECK_LIMIT',
+              timestamp: new Date().toISOString(),
+            },
+            { status: 429 },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Prüfungen des Mailservers. Bitte in einigen Minuten erneut versuchen.',
+      )
+    })
+
+    it('takes one mailbox as test recipient, never a list', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Absenderadresse'), 'a@b.c,d.e.f')
+      await user.type(field('Testnachricht an (optional)'), 'a@b.c,d.e.f')
+      await submitStep(user)
+
+      expect(field('Absenderadresse')).toHaveAccessibleDescription(
+        'Die Absenderadresse muss eine E-Mail-Adresse sein, zum Beispiel opaa@example.org',
+      )
+      expect(field('Testnachricht an (optional)')).toHaveAttribute('aria-invalid', 'true')
+      expect(mockTestRecipients()).toEqual([])
+    })
+
     it('says that links in mails stay unusable without the public address', async () => {
       setMockPublicBaseUrlConfigured(false)
       const user = userEvent.setup()
