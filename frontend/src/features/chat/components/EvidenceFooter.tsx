@@ -9,7 +9,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import { describeEvidenceSummary } from '@/shared/ui/markdown/citations'
 import { citationMarkSx } from '@/shared/ui/markdown/citationMark'
-import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
+import { motion, radius } from '@/shared/theme/tokens'
 
 /** Footnote marks shown in the button before the rest folds into "+n". */
 const VISIBLE_MARKS = 3
@@ -92,10 +92,7 @@ export default function EvidenceFooter({ citations, onOpen, actions }: EvidenceF
                   '&:active': {
                     bgcolor: alpha(accent, theme.palette.mode === 'dark' ? 0.18 : 0.1),
                   },
-                  '&.Mui-focusVisible': {
-                    borderColor: accent,
-                    boxShadow: `0 0 0 3px ${alpha(accent, focusRingAlpha)}`,
-                  },
+                  '&.Mui-focusVisible': { borderColor: accent },
                   '@media (prefers-reduced-motion: reduce)': {
                     '&, & .evidence-mark, & .evidence-arrow': { transition: 'none' },
                     '&:hover .evidence-mark, &:hover .evidence-arrow': { transform: 'none' },

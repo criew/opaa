@@ -6,7 +6,6 @@ import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
 import ButtonBase from '@mui/material/ButtonBase'
 import Tooltip from '@mui/material/Tooltip'
-import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -24,7 +23,7 @@ import {
   unwrapBracketedMarkers,
 } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
-import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
+import { fontFamily, motion } from '../../theme/tokens'
 import { useLinkTargetsStore } from '../../linkTargets/linkTargetsStore'
 import { isAllowedLinkTarget } from './linkPolicy'
 import 'highlight.js/styles/github-dark.css'
@@ -148,9 +147,6 @@ function renderCitationGroup(
                 '&:hover, &[aria-describedby]': {
                   background: citationMarkColors(theme).filledSurface,
                   color: citationMarkColors(theme).filledText,
-                },
-                '&.Mui-focusVisible': {
-                  boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, focusRingAlpha)}`,
                 },
                 '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
               })}

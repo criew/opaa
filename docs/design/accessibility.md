@@ -61,7 +61,8 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 ### 2.2 Sichtbarer Fokus
 
 - [ ] Jedes fokussierbare Element zeigt den Fokusring des Designsystems
-      ([Guidelines 4.4](./guidelines.md)) — in beiden Farbschemata deutlich sichtbar.
+      ([Guidelines 4.4](./guidelines.md)) — in beiden Farbschemata deutlich sichtbar und nicht von
+      einem Behälter mit `overflow: hidden` abgeschnitten.
 - [ ] Fokus wird nie per `outline: none` ohne gleichwertigen Ersatz unterdrückt.
 - [ ] _WCAG 2.2, Ziel — 2.4.11 Fokus nicht verdeckt:_ Ein fokussiertes Element wird nie ganz von
       eigenen Ebenen verdeckt (feste Kopf- und Fußleisten, Popup-Benachrichtigungen, Cookie- oder
@@ -90,7 +91,11 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
       `success`): nur über die Rolle, nie aufgehellt oder unter gesenkter Deckkraft, auch nicht
       als Begründung an einem gesperrten Element ([Guidelines 2.4](./guidelines.md)).
 - [ ] UI-Komponenten und grafische Kennzeichen (Rahmen von Eingabefeldern, Icons,
-      Fokusring, Diagramme) ≥ 3:1.
+      Fokusring, Diagramme) ≥ 3:1. Der Fokusring ist deckend und hält 3:1 gegen jede Fläche, an
+      die er grenzt: Grund, erhöhte und gedämpfte Fläche, getönte Auswahl- und Hinweisflächen;
+      an Akzentflächen über den Abstand zum Element ([Guidelines 4.4](./guidelines.md)).
+      Umrandete Eingaben zeigen den Fokus stattdessen über ihren 2 px breiten Rahmen in `accent`
+      bzw. `danger` (≥ 4,5:1). Eigene Fokusstile mit Transparenz sind ausgeschlossen.
 - [ ] Beide Farbschemata geprüft. Die Rollen-Kombinationen aus
       [Guidelines 2.2](./guidelines.md) gelten als nachgewiesen; jede andere Kombination
       wird im PR belegt.

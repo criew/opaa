@@ -159,7 +159,7 @@ andere Rolle.
   Sekundärspalte auf `bg-2`, Aktivkarte auf `bg-1` mit `border-strong`-Rahmen. Auch hier liegt
   die Zustandsfläche unter 3:1 — getragen wird der Zustand wie bei der Rail über Textfarbe,
   Schriftgewicht und `aria-current`. Das **„Global"-Badge** leitet sich mit 10 % (Fläche) und
-  40 % (Rahmen) aus dem Akzent ab — analog zum 32-%-Fokusring aus 4.4 — und folgt damit einem
+  40 % (Rahmen) aus dem Akzent ab und folgt damit einem
   Branding-Override; der Geltungsbereich steht immer als sichtbarer Text im Chip, nie nur als
   Farbe.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
@@ -298,10 +298,43 @@ Gruppen deutlich getrennt (24–48).
 
 ### 4.4 Fokus
 
-Sichtbarer Fokusring für jedes interaktive Element: 3 px in `accent` mit 32 % Deckung
-(`0 0 0 3px rgba(18,144,239,0.32)`) zusätzlich zum Rahmen, in beiden Schemata deutlich.
-Einzige Abweichung: Ein Formularfeld mit Fehler trägt Rahmen und Ring in `danger` (5.2).
-Fokus wird nie unterdrückt, nur gestaltet. Umsetzung: Issue #585; Prüfung:
+Sichtbarer Fokusring für jedes interaktive Element: eine **deckende Linie von 2 px in `accent`
+mit 2 px Abstand** zum Element (`outline: 2px solid` plus `outline-offset: 2px`), in beiden
+Schemata gleich. Fokus wird nie unterdrückt, nur gestaltet.
+
+**Ausnahme: umrandete Eingaben.** Formularfelder, Auswahllisten, Autocomplete und der Eingaberahmen
+des Chats zeigen den Fokus nur über ihren eigenen Rahmen: 2 px in `accent`, mit Fehler 2 px in
+`danger` (5.2), ohne Ring. Ein Ring um das Feld liefe durch das Label, das auf der oberen Kante
+sitzt. Der Rahmen erreicht als `accent` bzw. `danger` 4,5:1 gegen `bg-1` bis `bg-3` und wechselt
+gegenüber der Ruhe Farbe und Breite.
+
+Warum so:
+
+- **Deckend, weil der Ring ein grafisches Kennzeichen ist.** Er braucht 3:1 gegen jede Farbe, an
+  die er grenzt (2.4). `accent` erreicht als Textfarbe 4,5:1 gegen `bg-1` bis `bg-3` jedes
+  Schemas; eine deckende Linie in `accent` erbt diesen Nachweis, auch für eine konfigurierte
+  Hausfarbe, die je Schema abgeleitet wird (7). Ein halbtransparenter Ring nimmt die Farbe der
+  Fläche an und blieb mit 32 % Deckung bei etwa 1,6:1.
+- **Mit Abstand, weil Akzentflächen den Ring sonst schlucken.** Auf einer primären Schaltfläche
+  träfe `accent` auf `accent-surface`, also auf sich selbst. Der Abstand zeigt den Grund, auf dem
+  das Element steht, und der Ring grenzt innen wie außen an diesen Grund. In gefüllten Hinweisen
+  und Popup-Benachrichtigungen legt MUI unter Abstand und Ring einen 4 px breiten Schatten in
+  `bg-1`: Der Abstand und die Innenkante des Rings liegen auf `bg-1`, die Außenkante grenzt an die
+  Füllfarbe des Hinweises. Diesen Fall deckt der Kontrasttest nicht ab.
+- **Kein weicher Außenring.** Ein Schleier außen an der Linie senkt deren Kontrast genau an der
+  Kante, an der er gemessen wird; in `danger` fiel er dort unter 3:1.
+- **Nach innen, wo ein Behälter abschneidet.** Menüeinträge, Listeneinträge, Reiter, Optionen
+  einer Vorschlagsliste und Zeilen in scrollenden Bereichen tragen den Ring innerhalb ihrer
+  Fläche (negativer Abstand); er grenzt dann an deren eigene Füllung, auch getönt bei Auswahl oder
+  Hover, und hält dort ebenfalls 3:1. Ein Behälter, der Text kürzt, lässt um seinen Inhalt
+  4 px Raum für den Ring.
+- **Ohne Layoutversatz.** `outline` nimmt keinen Platz ein. Der Rahmen eines Felds ist absolut
+  positioniert und wird ohne Versatz breiter; der Eingaberahmen des Chats legt das zweite Pixel
+  als inneren Schatten an (`focusFrameStyle`).
+
+Umsetzung: `focusVisible` im MUI-Theme und `*:focus-visible` für alle übrigen Elemente
+(`frontend/src/shared/theme/theme.ts`), Werte in `tokens.ts`; Nachweis gegen alle Flächenrollen in
+`frontend/src/shared/theme/focusRing.contrast.test.ts`. Prüfung:
 [Barrierefreiheits-Richtlinie](./accessibility.md).
 
 ### 4.5 Bewegung
@@ -340,11 +373,12 @@ schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radiu
 Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
 das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
 sichtbare Beschriftung, sondern Platzhalter plus `aria-label` (Muster: Mockup-Suchfelder).
-Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring. Fehler:
+Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
+Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 (Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7). Der Fehlerrahmen bleibt
 auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahmen in `danger`
-plus Fokusring in `danger` mit 32 % Deckung, für Textfelder, Auswahllisten und Autocomplete
+ohne Fokusring, für Textfelder, Auswahllisten und Autocomplete
 gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
 behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
@@ -710,7 +744,8 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Akzentfarbe nur über die Rollen `accent`/`accent-surface`; die Fläche gefüllter Aktionen wird
   aus der konfigurierten Farbe abgeleitet (#634): unverändert, wenn Weiß darauf 4,5:1 erreicht,
   sonst in −8-%-Schritten abgedunkelt (höchstens sechs Schritte). Hover (−8 %), Aktiv (−16 %)
-  und Fokusring (32 % Deckung) werden berechnet, nicht aus Blau-800/900 fest verdrahtet.
+  und Fokusring (deckend in der abgeleiteten Textfarbe, 4.4) werden berechnet, nicht aus
+  Blau-800/900 fest verdrahtet.
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 

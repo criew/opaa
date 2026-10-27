@@ -33,8 +33,6 @@ export default function ErrorSummary({
         pl: 2,
         py: 1,
         mb: 3,
-        outline: 'none',
-        '&:focus-visible': { boxShadow: (t) => `0 0 0 3px ${t.palette.primary.main}52` },
       }}
     >
       <Typography

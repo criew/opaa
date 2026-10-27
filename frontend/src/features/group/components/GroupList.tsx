@@ -163,7 +163,6 @@ function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
           whiteSpace: 'nowrap',
           cursor: 'help',
           borderRadius: 0.5,
-          '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: 1 },
         }}
       >
         {short}

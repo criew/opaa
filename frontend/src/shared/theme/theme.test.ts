@@ -369,13 +369,15 @@ describe('createAppTheme', () => {
     expect(branded.palette.primary.dark).toBe(plain.palette.primary.dark)
   })
 
-  test('ButtonBase re-applies the focus ring that MUI resets with outline: 0', () => {
+  // ButtonBase resets `outline: 0`; MUI only draws a ring on it when theme.focusVisible is set.
+  test('ButtonBase gets the focus ring through theme.focusVisible', () => {
     const theme = createAppTheme('light')
-    const root = theme.components?.MuiButtonBase?.styleOverrides?.root as Record<string, unknown>
-    const ring = root['&:focus-visible, &.Mui-focusVisible'] as Record<string, string>
 
-    expect(ring.outline).toMatch(/^3px solid /)
-    expect(ring.outlineOffset).toBe('2px')
+    expect(theme.focusVisible).toMatchObject({
+      outlineStyle: 'solid',
+      outlineWidth: 2,
+      outlineColor: lightRoles.accent,
+    })
   })
 
   test('the deDE MUI locale replaces English component defaults (#784)', () => {

@@ -30,7 +30,7 @@ import type {
 } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import type { OpenableDocument } from '@/features/library'
-import { fontFamily } from '@/shared/theme/tokens'
+import { focusRingWidthPx, fontFamily } from '@/shared/theme/tokens'
 import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 
 interface SourceEvidenceDrawerProps {
@@ -384,10 +384,8 @@ export default function SourceEvidenceDrawer({
                     ),
                     boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}`,
                   }),
-                  '&:focus-visible': {
-                    outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
-                    outlineOffset: '-2px',
-                  },
+                  // Inset: the panel scrolls and would clip a ring outside the full-bleed row.
+                  '&:focus-visible': { outlineOffset: `-${focusRingWidthPx}px` },
                 })}
               >
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>

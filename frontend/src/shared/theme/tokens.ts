@@ -346,9 +346,13 @@ export const shadow = {
   overlay: '0 8px 24px rgba(1, 32, 66, 0.10)',
 } as const
 
-/** Focus ring opacity over the accent color (guidelines 4.4). */
-export const focusRingAlpha = 0.32
-export const focusRingWidthPx = 3
+/**
+ * Focus ring (guidelines 4.4): an opaque accent line, so it keeps 3:1 against every surface the
+ * accent is proven on. The offset leaves a gap of the ground between ring and element, which
+ * keeps the ring visible on filled accent surfaces.
+ */
+export const focusRingWidthPx = 2
+export const focusRingOffsetPx = 2
 
 /** Motion (guidelines 4.5): only transform/opacity, reduced motion collapses to state swaps. */
 export const motion = {
