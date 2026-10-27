@@ -143,11 +143,13 @@ function EmbeddingInfoSection() {
       {/* No heading of its own: the tab is already called „Einbettung", and „Einbettungsmodell"
          below it would be the same statement a second time. The area is named via the tab
          its panel points to. */}
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
-        Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
-        bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
-        Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.
-      </Typography>
+      {embeddingInfo?.model !== null && (
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
+          Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
+          bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
+          Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.
+        </Typography>
+      )}
       {embeddingInfo && !embeddingInfo.model ? (
         <>
           <Alert severity="warning" sx={{ mb: 3, maxWidth: '80ch' }}>
