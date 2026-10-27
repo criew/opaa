@@ -345,7 +345,8 @@ Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 (Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7). Der Fehlerrahmen bleibt
 auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahmen in `danger`
 plus Fokusring in `danger` mit 32 % Deckung, für Textfelder, Auswahllisten und Autocomplete
-gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`).
+gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
+behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".
 Zugangsdaten immer als Kennwortfeld, nie im Klartext zurückgespiegelt.
 
