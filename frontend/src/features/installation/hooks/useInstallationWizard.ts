@@ -6,6 +6,7 @@ import {
   discoverInstallationModels,
   getInstallation,
   saveInstallationStep,
+  skipInstallationStep,
 } from '../api/installationApi'
 import type {
   InstallationModelDiscoveryRequest,
@@ -49,6 +50,7 @@ const CHECK_FAILED = 'Die Prüfung ist fehlgeschlagen.'
 const COMPLETE_FAILED = 'Die Installation konnte nicht abgeschlossen werden.'
 const LOAD_FAILED = 'Der Stand der Einrichtung konnte nicht geladen werden.'
 const DISCOVERY_FAILED = 'Die Modelle konnten nicht abgerufen werden.'
+const SKIP_FAILED = 'Der Schritt konnte nicht übersprungen werden.'
 
 function failed(message: string): WizardResult {
   return { ok: false, failure: { kind: 'other', message, fieldErrors: [] } }
@@ -133,6 +135,33 @@ export function useInstallationWizard() {
     [state.token, leaveOn, refresh],
   )
 
+  /**
+   * Skips an optional step and moves on. Values saved for it are discarded first, so a failed
+   * check no longer blocks the completion; a step never saved is left as it is.
+   */
+  const skipStep = useCallback(
+    async (step: InstallationStepId, saved: boolean): Promise<WizardResult> => {
+      const token = state.token
+      if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
+      if (saved) {
+        try {
+          await skipInstallationStep(token, step)
+        } catch (err) {
+          const failure = installationFailure(err, SKIP_FAILED)
+          if (!leaveOn(failure)) await refresh(token, () => step)
+          return { ok: false, failure }
+        }
+        await refresh(token, (installation) => nextView(installation, step))
+        return { ok: true }
+      }
+      setState((current) =>
+        current.installation ? { ...current, view: nextView(current.installation, step) } : current,
+      )
+      return { ok: true }
+    },
+    [state.token, leaveOn, refresh],
+  )
+
   const complete = useCallback(async (): Promise<WizardResult> => {
     const token = state.token
     if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
@@ -173,5 +202,5 @@ export function useInstallationWizard() {
     setState((current) => ({ ...current, view }))
   }, [])
 
-  return { ...state, submitToken, submitStep, discoverModels, complete, goTo }
+  return { ...state, submitToken, submitStep, skipStep, discoverModels, complete, goTo }
 }

@@ -9,7 +9,7 @@ import {
   STEP_STATUS_LABEL,
   STEP_STATUS_TONE,
   SUMMARY_LABEL,
-  openMandatorySteps,
+  openSteps,
   stepStatus,
 } from '../utils/steps'
 import StepFrame, { type StepNavigationProps } from './StepFrame'
@@ -28,7 +28,8 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
   const hintId = useId()
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const open = openMandatorySteps(installation)
+  const open = openSteps(installation)
+  const skipped = installation.steps.filter((s) => !s.mandatory && !s.saved)
   const blocked = !installation.completable
 
   async function handleSubmit() {
@@ -47,11 +48,18 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
       description={
         blocked ? (
           <span id={hintId}>
-            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte geprüft sind.
+            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte und alle
+            ausgefüllten optionalen Schritte geprüft sind.
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
-          'Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto, Anmeldeverfahren und Modell an und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.'
+          <>
+            Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto, Anmeldeverfahren und die
+            geprüften Modelle an und beendet die Einrichtung; danach melden Sie sich mit dem ersten
+            Konto an. Das Token verliert seine Gültigkeit.
+            {skipped.length > 0 &&
+              ` Übersprungen: ${skipped.map((s) => STEP_INFO[s.step].label).join(', ')}. Ohne Chat-Modell beantwortet der Chat keine Fragen, ohne Embedding-Modell gibt es keinen Suchindex; beides legt die Systemverwaltung später unter Modelle fest.`}
+          </>
         )
       }
       failure={failure}
@@ -66,6 +74,7 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
       <Box component="ul" aria-label="Stand der Schritte" sx={{ m: 0, p: 0 }}>
         {installation.steps.map((s) => {
           const status = stepStatus(s)
+          const willSkip = !s.mandatory && !s.saved
           return (
             <Box
               component="li"
@@ -88,7 +97,10 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
                   {s.mandatory ? ' · Pflicht' : ' · optional'}
                 </Typography>
               </Typography>
-              <StateDot tone={STEP_STATUS_TONE[status]} label={STEP_STATUS_LABEL[status]} />
+              <StateDot
+                tone={willSkip ? 'neutral' : STEP_STATUS_TONE[status]}
+                label={willSkip ? 'Wird übersprungen' : STEP_STATUS_LABEL[status]}
+              />
             </Box>
           )
         })}

@@ -21,10 +21,10 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
     { step: 'SIGN_IN', mandatory: true, saved: false, checked: false },
-    { step: 'CHAT_MODEL', mandatory: true, saved: false, checked: false },
+    { step: 'CHAT_MODEL', mandatory: false, saved: false, checked: false },
   ]
   return withEmbedding
-    ? [...steps, { step: 'EMBEDDING_MODEL', mandatory: true, saved: false, checked: false }]
+    ? [...steps, { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false }]
     : steps
 }
 
@@ -84,7 +84,7 @@ export function setMockInstallationPending(pending: boolean) {
 export function mockInstallationState(): InstallationStatusResponse {
   return {
     pending: true,
-    completable: mockSteps.every((s) => !s.mandatory || s.checked),
+    completable: mockSteps.every((s) => s.checked || (!s.mandatory && !s.saved)),
     steps: mockSteps,
   }
 }

@@ -281,6 +281,79 @@ describe('LlmModelManagementPage', () => {
     expect(within(panel).queryByRole('button', { name: 'Wechsel starten' })).not.toBeInTheDocument()
   })
 
+  it('sets the first embedding model of an installation without one', async () => {
+    signInAs('SYSTEM_ADMIN')
+    let installed = false
+    let changeRequest: unknown = null
+    server.use(
+      http.get('/api/v1/admin/models/embedding-info', () =>
+        HttpResponse.json(
+          installed
+            ? {
+                provider: 'openai',
+                model: 'bge-m3',
+                dimensions: 1024,
+                baseUrl: 'http://ollama:11434/v1',
+                maxInputTokens: 2048,
+                apiKeySet: false,
+              }
+            : { provider: 'openai', model: null, dimensions: 0, baseUrl: null },
+        ),
+      ),
+      http.post('/api/v1/admin/models/embedding/probe', () =>
+        HttpResponse.json({
+          succeeded: true,
+          message: 'Probeeinbettung erfolgreich: Das Modell liefert Vektoren mit 1024 Dimensionen.',
+          dimensions: 1024,
+          kind: 'INITIAL',
+        }),
+      ),
+      http.post('/api/v1/admin/models/embedding/change', async ({ request }) => {
+        changeRequest = await request.json()
+        installed = true
+        return HttpResponse.json({
+          current: { model: 'bge-m3', dimensions: 1024, generation: 2 },
+          configured: { model: 'bge-m3', dimensions: 1024, generation: 2 },
+          stale: false,
+          running: false,
+          totalChunks: 0,
+          embeddedChunks: 0,
+          privateLibrariesCounted: true,
+          switching: false,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+
+    renderEmbedding()
+
+    expect(await screen.findByText(/noch kein Embedding-Modell eingerichtet/)).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Einbettungsmodell' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Embedding-Modell festlegen' })).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/Basis-Adresse/), 'http://ollama:11434/v1')
+    await user.type(screen.getByLabelText(/Modell-Kennung/), 'bge-m3')
+    await user.click(screen.getByRole('button', { name: 'Probeeinbettung' }))
+    await user.click(await screen.findByRole('button', { name: 'Embedding-Modell festlegen' }))
+    await answerConfirm(user, /als Embedding-Modell festlegen/, 'Festlegen')
+
+    expect(await screen.findByRole('table', { name: 'Einbettungsmodell' })).toBeInTheDocument()
+    expect(changeRequest).toMatchObject({
+      baseUrl: 'http://ollama:11434/v1',
+      model: 'bge-m3',
+      expectedDimensions: 1024,
+      apiKey: '',
+    })
+  })
+
+  it('says that no chat model is active while none is', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(http.get('/api/v1/admin/models', () => HttpResponse.json([])))
+
+    renderChat()
+
+    expect(await screen.findByText(/noch kein Chat-Modell aktiv/)).toBeInTheDocument()
+  })
+
   it('creates a model without an API key without a validation error', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

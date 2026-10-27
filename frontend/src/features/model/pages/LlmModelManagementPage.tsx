@@ -82,6 +82,13 @@ function ChatModelsSection() {
         </Alert>
       )}
 
+      {!isLoading && !error && !models.some((model) => model.active) && (
+        <Alert severity="warning" sx={{ mb: 2, maxWidth: '80ch' }}>
+          Es ist noch kein Chat-Modell aktiv. Bis eines angelegt und aktiviert ist, beantwortet der
+          Chat keine Fragen; die Personen sehen dort einen Hinweis.
+        </Alert>
+      )}
+
       {isLoading ? (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
           Modelle werden geladen …
@@ -141,7 +148,15 @@ function EmbeddingInfoSection() {
         bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
         Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.
       </Typography>
-      {embeddingInfo ? (
+      {embeddingInfo && !embeddingInfo.model ? (
+        <>
+          <Alert severity="warning" sx={{ mb: 3, maxWidth: '80ch' }}>
+            Es ist noch kein Embedding-Modell eingerichtet. Ohne es gibt es keinen Suchindex:
+            Indexierung, Upload und Suche stehen erst bereit, wenn das erste Modell festgelegt ist.
+          </Alert>
+          <EmbeddingChangeSection info={embeddingInfo} onChanged={() => void loadEmbeddingInfo()} />
+        </>
+      ) : embeddingInfo ? (
         <>
           <EmbeddingInfoTable info={embeddingInfo} />
           <Box sx={{ mt: 3 }}>

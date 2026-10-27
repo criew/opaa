@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InstallationStatusResponse, InstallationStepState } from '../api/types'
-import {
-  nextView,
-  openMandatorySteps,
-  previousView,
-  resumeView,
-  stepMeta,
-  stepStatus,
-} from './steps'
+import { nextView, openSteps, previousView, resumeView, stepMeta, stepStatus } from './steps'
 
 function step(
   id: InstallationStepState['step'],
@@ -54,7 +47,16 @@ describe('installation steps', () => {
       step('CHAT_MODEL', true, true, false),
       step('SIGN_IN', false),
     ])
-    expect(openMandatorySteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
+    expect(openSteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
+  })
+
+  it('names a saved optional step whose check is owed, but not a skipped one', () => {
+    const installation = state([
+      step('FIRST_ADMIN', true, true, true),
+      step('CHAT_MODEL', false, true, false, 'Verbindung abgelehnt'),
+      step('EMBEDDING_MODEL', false),
+    ])
+    expect(openSteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
   })
 
   it('tells a failed check apart from a step that is stored but not yet checked', () => {

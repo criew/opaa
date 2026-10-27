@@ -82,7 +82,7 @@ export default function EmbeddingModelStep({
       title={STEP_INFO.EMBEDDING_MODEL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.EMBEDDING_MODEL.laterUnder}
-      description="Das Modell, das Dokumente und Fragen für die Suche in Vektoren übersetzt. Die Prüfung ist eine Probeeinbettung; sie legt die Vektorgröße fest. Nach dem Abschluss lässt sich das Modell nicht mehr über die Oberfläche wechseln."
+      description="Das Modell, das Dokumente und Fragen für die Suche in Vektoren übersetzt. Die Prüfung ist eine Probeeinbettung; sie legt die Vektorgröße fest. Ohne Embedding-Modell gibt es keinen Suchindex, bis die Systemverwaltung eines unter Modelle festlegt; ein späterer Wechsel bettet alle Abschnitte neu ein."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Probeeinbettung läuft"

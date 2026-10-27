@@ -79,6 +79,18 @@ export async function discoverInstallationModels(
   return data
 }
 
+/** Skips an optional step: its saved values and their check are discarded. */
+export async function skipInstallationStep(
+  token: string,
+  step: InstallationStepId,
+): Promise<InstallationStepState> {
+  const { data } = await installationClient.delete<InstallationStepState>(
+    `/steps/${step}`,
+    bearer(token),
+  )
+  return data
+}
+
 /** Completes the installation; the API answers 404 on every instance afterwards. */
 export async function completeInstallation(token: string): Promise<void> {
   await installationClient.post('/complete', undefined, bearer(token))

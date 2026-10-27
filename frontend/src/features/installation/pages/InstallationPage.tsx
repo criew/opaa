@@ -22,7 +22,7 @@ import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import SignInStep from '../components/steps/SignInStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
-import { findStep, nextView, previousView, viewOrder, type WizardView } from '../utils/steps'
+import { findStep, previousView, viewOrder, type WizardView } from '../utils/steps'
 
 /**
  * The sign-in page is left with a full load on purpose: the application then reads its
@@ -68,12 +68,13 @@ interface StepViewProps {
   submit: Submit
   discover: Discover
   onBack?: () => void
-  onNext: () => void
+  /** Optional steps only: on without the step, discarding values saved for it. */
+  onSkip: () => void
 }
 
 /** The form of one step; an optional step can be skipped. */
-function StepView({ step, submit, discover, onBack, onNext }: StepViewProps) {
-  const nav = { onBack, onSkip: step.mandatory ? undefined : onNext }
+function StepView({ step, submit, discover, onBack, onSkip }: StepViewProps) {
+  const nav = { onBack, onSkip: step.mandatory ? undefined : onSkip }
   const discoverChat = useCallback(
     (request: InstallationModelDiscoveryRequest) => discover('CHAT_MODEL', request),
     [discover],
@@ -163,7 +164,7 @@ export default function InstallationPage() {
           submit={wizard.submitStep}
           discover={wizard.discoverModels}
           onBack={onBack}
-          onNext={() => wizard.goTo(nextView(installation, step.step))}
+          onSkip={() => void wizard.skipStep(step.step, step.saved)}
         />
       ) : (
         <SummaryStep installation={installation} complete={wizard.complete} onBack={onBack} />

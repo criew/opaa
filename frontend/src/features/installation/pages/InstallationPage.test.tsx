@@ -48,6 +48,12 @@ async function fillFirstAdmin(user: UserEvent, email = 'it-betrieb@stadt.example
   await user.type(field('Passwort wiederholen'), PASSWORD)
 }
 
+async function openFromStepList(user: UserEvent, label: string) {
+  const nav = screen.getByRole('navigation', { name: 'Schritte der Einrichtung' })
+  await user.click(within(nav).getByRole('button', { name: new RegExp(label) }))
+  await stepHeading(label)
+}
+
 async function submitStep(user: UserEvent) {
   await user.click(screen.getByRole('button', { name: 'Prüfen und weiter' }))
 }
@@ -105,7 +111,7 @@ describe('InstallationPage', () => {
     const mandatory = screen.getByRole('list', { name: 'Pflichtschritte' })
     const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
     expect(within(mandatory).getByText('Erstes Konto')).toBeInTheDocument()
-    expect(within(mandatory).getByText('Chat-Modell')).toBeInTheDocument()
+    expect(within(optional).getByText('Chat-Modell')).toBeInTheDocument()
     expect(within(mandatory).queryByText('Anmeldeverfahren')).not.toBeInTheDocument()
     expect(within(optional).getByText('Anmeldeverfahren')).toBeInTheDocument()
     expect(screen.getByText('Schritt 2 von 5')).toBeInTheDocument()
@@ -123,6 +129,7 @@ describe('InstallationPage', () => {
   })
 
   it('shows no optional group while the API lists only mandatory steps', async () => {
+    updateMockStep('CHAT_MODEL', { mandatory: true })
     const user = userEvent.setup()
     renderPage()
     await stepHeading('Installations-Token')
@@ -229,6 +236,66 @@ describe('InstallationPage', () => {
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toHaveAttribute('href', '/login')
   })
 
+  it('completes without the model steps once they are skipped', async () => {
+    withMockEmbeddingStep()
+    const user = userEvent.setup()
+    renderPage()
+    await stepHeading('Installations-Token')
+    await enterToken(user)
+    await stepHeading('Erstes Konto')
+    await fillFirstAdmin(user)
+    await submitStep(user)
+    await stepHeading('Anmeldeverfahren')
+    await submitStep(user)
+
+    expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+
+    expect(await stepHeading('Abschluss')).toBeInTheDocument()
+    const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
+    expect(within(summary).getAllByText('Wird übersprungen')).toHaveLength(2)
+    expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
+
+    expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
+  })
+
+  it('discards a model step whose check failed when it is skipped', async () => {
+    updateMockStep('FIRST_ADMIN', { saved: true, checked: true })
+    updateMockStep('SIGN_IN', { saved: true, checked: true })
+    updateMockStep('CHAT_MODEL', {
+      saved: true,
+      checked: false,
+      checkMessage: 'Das Modell antwortet nicht: Verbindung abgelehnt.',
+      chatModel: {
+        baseUrl: 'http://kaputt:11434/v1',
+        model: 'qwen2.5:7b',
+        apiKeySet: false,
+        maxTokens: 8000,
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await stepHeading('Installations-Token')
+    await enterToken(user)
+    expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
+    expect(mockInstallationState().completable).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+
+    expect(await stepHeading('Abschluss')).toBeInTheDocument()
+    expect(mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')?.saved).toBe(false)
+    expect(mockInstallationState().completable).toBe(true)
+    expect(screen.getByRole('button', { name: 'Installation abschließen' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
   it('refuses the completion while a mandatory step is open and names it', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -241,9 +308,7 @@ describe('InstallationPage', () => {
 
     const action = await screen.findByRole('button', { name: 'Installation abschließen' })
     expect(action).toHaveAttribute('aria-disabled', 'true')
-    expect(action).toHaveAccessibleDescription(
-      /Offen: Erstes Konto, Anmeldeverfahren, Chat-Modell\./,
-    )
+    expect(action).toHaveAccessibleDescription(/Offen: Erstes Konto, Anmeldeverfahren\./)
     await user.click(action)
     expect(screen.queryByText('Installation abgeschlossen')).not.toBeInTheDocument()
   })
@@ -405,7 +470,10 @@ describe('InstallationPage', () => {
       renderPage()
       await stepHeading('Installations-Token')
       await enterToken(user)
-      await stepHeading('Chat-Modell')
+      // Every mandatory step is checked: the assistant resumes at the summary, the optional
+      // chat model step stays reachable from the step list.
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Chat-Modell')
     }
 
     function modelField() {
@@ -640,7 +708,11 @@ describe('InstallationPage', () => {
         },
       })
       const user = userEvent.setup()
-      await openChatModelStep(user)
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      // A saved optional step whose check is owed is where the assistant resumes.
+      await stepHeading('Chat-Modell')
 
       // Reopened with its stored endpoint, the step fetches the list with the stored key.
       expect(await screen.findByText(/Modelle gefunden\./)).toBeInTheDocument()
@@ -682,9 +754,10 @@ describe('InstallationPage', () => {
       await stepHeading('Installations-Token')
       await enterToken(user)
 
-      expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
-      const mandatory = screen.getByRole('list', { name: 'Pflichtschritte' })
-      expect(within(mandatory).getByText('Embedding-Modell')).toBeInTheDocument()
+      await stepHeading('Abschluss')
+      const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
+      expect(within(optional).getByText('Embedding-Modell')).toBeInTheDocument()
+      await openFromStepList(user, 'Embedding-Modell')
 
       await user.type(field('Basis-Adresse'), 'http://kaputt:11434/v1')
       await user.type(field('Modell-Kennung'), 'bge-m3')
@@ -711,7 +784,8 @@ describe('InstallationPage', () => {
       renderPage()
       await stepHeading('Installations-Token')
       await enterToken(user)
-      await stepHeading('Embedding-Modell')
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Embedding-Modell')
 
       const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
       expect(within(providers).queryByRole('radio', { name: /Anthropic/ })).not.toBeInTheDocument()
