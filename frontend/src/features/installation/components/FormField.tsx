@@ -55,7 +55,11 @@ export default function FormField({
         error={Boolean(error)}
         helperText={error ?? hint}
         disabled={disabled}
-        slotProps={{ htmlInput: { inputMode, spellCheck: false } }}
+        slotProps={{
+          htmlInput: { inputMode, spellCheck: false },
+          // Hint and error start on the left edge of label and field.
+          formHelperText: { sx: { mx: 0 } },
+        }}
       />
     </Box>
   )

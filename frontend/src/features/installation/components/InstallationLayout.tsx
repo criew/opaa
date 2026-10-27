@@ -6,6 +6,7 @@ import BrandMark from '@/shared/ui/BrandMark'
 import PageHeading, { MAIN_CONTENT_ID } from '@/shared/ui/a11y/PageHeading'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import { STEP_RHYTHM } from './stepLayout'
 
 interface InstallationLayoutProps {
   /** „Schritt n von m", where the assistant has steps to count. */
@@ -39,7 +40,8 @@ export default function InstallationLayout({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 2,
-          px: { xs: 2.5, md: 5 },
+          // The mark starts on the step list's edge (its group titles sit 24px in).
+          px: 3,
           py: 2.5,
           borderBottom: 1,
           borderColor: 'divider',
@@ -77,13 +79,18 @@ export default function InstallationLayout({
         <Box
           component="main"
           id={MAIN_CONTENT_ID}
-          sx={{ px: { xs: 2.5, md: 6 }, py: { xs: 3, md: 5 } }}
+          sx={{ px: { xs: 3, md: 6 }, py: { xs: 3, md: 5 } }}
         >
           <Box sx={{ maxWidth: 640 }}>
             <PageHeading
               title={`${productName} einrichten`}
               variant="h5"
-              sx={{ fontSize: 13, fontWeight: 500, color: 'text.secondary', mb: 1.5 }}
+              sx={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'text.secondary',
+                mb: STEP_RHYTHM.pageToStep,
+              }}
             />
             {children}
           </Box>

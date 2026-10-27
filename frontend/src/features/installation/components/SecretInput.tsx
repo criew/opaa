@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography'
 import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
 
 interface SecretInputProps {
   id: string
@@ -97,6 +98,8 @@ export default function SecretInput({
         helperText={error ?? hint}
         slotProps={{
           htmlInput: { spellCheck: false },
+          // Hint and error start on the left edge of label and field.
+          formHelperText: { sx: { mx: 0 } },
           input: {
             endAdornment: (
               <InputAdornment position="end">
@@ -123,7 +126,7 @@ export default function SecretInput({
         <Button
           size="small"
           variant="text"
-          sx={{ mt: 0.5 }}
+          sx={{ mt: STEP_RHYTHM.fieldToOwnAction, ...EDGE_ALIGNED_TEXT_BUTTON_SX }}
           onClick={() => {
             onChange('')
             setReplacing(false)
