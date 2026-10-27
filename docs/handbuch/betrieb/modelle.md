@@ -124,9 +124,10 @@ Das Formular führt in drei Abschnitten:
    ([Kubernetes](kubernetes.md#networkpolicies)). Der Zugangsschlüssel ist optional; er wird
    verschlüsselt gespeichert und nie wieder angezeigt.
 2. **Modell.** „Modelle abrufen" (oder Enter im Adressfeld) fragt den Endpunkt nach seinen Modellen
-   (`GET {Basis-Adresse}/models`); die Vorlagen für OpenAI und Anthropic rufen sofort ab, wenn ein
-   Schlüssel eingetragen ist, die Ollama-Vorlage nie, weil der Host erst zu bestätigen ist. Die
-   Kennung ist danach eine durchsuchbare Auswahl. Hinter einem Ollama zeigt jede Zeile zusätzlich
+   (`GET {Basis-Adresse}/models`). Die Wahl einer Vorlage ruft nicht von selbst ab, damit ein
+   eingetragener Schlüssel nicht an eine andere Adresse geht. Die Kennung ist danach eine
+   durchsuchbare Auswahl. Meldet der Endpunkt mehr als 500 Modelle, zeigt die Auswahl die ersten
+   500 in seiner Reihenfolge und sagt das; Kennungen über 200 Zeichen fallen weg. Hinter einem Ollama zeigt jede Zeile zusätzlich
    Parameterzahl, Größe, Kontextlänge und Fähigkeiten (Werkzeuge, Bilder, Denkmodus); andere Server
    liefern meist nur die Kennungen. Reine Einbettungsmodelle stehen in der Gruppe „Nicht für den Chat
    geeignet" und sind nicht wählbar. Eine Kennung lässt sich immer von Hand eintragen, auch wenn ein
@@ -795,7 +796,8 @@ und im Protokoll des Backends.
 
 | Meldung | Bedeutung |
 |---|---|
-| Host nicht gefunden, Verbindung abgelehnt, Zeitlimit, Zertifikat | Der Endpunkt ist von OPAA aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers |
+| „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ | Der Host liegt in einem internen Bereich und fehlt in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, oder sein Name lässt sich nicht auflösen. Beides ergibt bewusst denselben Satz, damit die Meldung nicht verrät, ob ein interner Name existiert; die genaue Ursache nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise des Hosts prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
+| Verbindung abgelehnt, Zeitlimit, Zertifikat, Host nicht gefunden (bei freigegebenem Host) | Der Endpunkt ist von OPAA aus nicht erreichbar. Es zählt das Netz des Backends, nicht das des Browsers |
 | Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht |
 | keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an; die Kennung von Hand eintragen |
 | Der Endpunkt meldet keine Modelle | Die Liste ist leer; bei Ollama ist noch kein Modell geladen (`ollama pull …`) |
@@ -832,7 +834,7 @@ und im Protokoll des Backends.
 | „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
-| Die Basis-Adresse wird mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` abgelehnt | Der Host liegt im eigenen Netz und fehlt in der Liste der Modelle; ein Eintrag in der Liste der Quellen genügt nicht ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
+| „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Entweder liegt der Host im eigenen Netz und fehlt in der Liste der Modelle (ein Eintrag in der Liste der Quellen genügt nicht), oder der Name lässt sich nicht auflösen, etwa wegen eines Tippfehlers. Welches von beidem, steht in der WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Chat oder Einbettung scheitern, Log: „answered HTTP 3xx with a redirect; redirects are not followed“ | Der Modellserver leitet weiter, etwa von `http` auf `https` oder auf einen anderen Pfad. Die Zieladresse direkt eintragen |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
 
