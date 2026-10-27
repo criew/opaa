@@ -1,11 +1,19 @@
 import { useCallback, useState } from 'react'
+import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import {
   checkInstallationStep,
   completeInstallation,
+  discoverInstallationModels,
   getInstallation,
   saveInstallationStep,
 } from '../api/installationApi'
-import type { InstallationStatusResponse, InstallationStepId, StepInput } from '../api/types'
+import type {
+  InstallationModelDiscoveryRequest,
+  InstallationStatusResponse,
+  InstallationStepId,
+  ModelStepId,
+  StepInput,
+} from '../api/types'
 import { installationFailure, type InstallationFailure } from '../utils/installationErrors'
 import { nextView, resumeView, type WizardView } from '../utils/steps'
 
@@ -36,6 +44,7 @@ const SAVE_FAILED = 'Die Angaben konnten nicht gespeichert werden.'
 const CHECK_FAILED = 'Die Prüfung ist fehlgeschlagen.'
 const COMPLETE_FAILED = 'Die Installation konnte nicht abgeschlossen werden.'
 const LOAD_FAILED = 'Der Stand der Einrichtung konnte nicht geladen werden.'
+const DISCOVERY_FAILED = 'Die Modelle konnten nicht abgerufen werden.'
 
 function failed(message: string): WizardResult {
   return { ok: false, failure: { kind: 'other', message, fieldErrors: [] } }
@@ -134,9 +143,31 @@ export function useInstallationWizard() {
     }
   }, [state.token, leaveOn, refresh])
 
+  /**
+   * The model list of a model step's endpoint. A wrong token or a completed installation leaves
+   * the step flow as any other action does; every other failure is the error the step shows.
+   */
+  const discoverModels = useCallback(
+    async (
+      step: ModelStepId,
+      request: InstallationModelDiscoveryRequest,
+    ): Promise<LlmModelDiscoveryResponse> => {
+      const token = state.token
+      if (!token) throw new Error(DISCOVERY_FAILED)
+      try {
+        return await discoverInstallationModels(token, step, request)
+      } catch (err) {
+        const failure = installationFailure(err, DISCOVERY_FAILED)
+        leaveOn(failure)
+        throw new Error(failure.message, { cause: err })
+      }
+    },
+    [state.token, leaveOn],
+  )
+
   const goTo = useCallback((view: WizardView) => {
     setState((current) => ({ ...current, view }))
   }, [])
 
-  return { ...state, submitToken, submitStep, complete, goTo }
+  return { ...state, submitToken, submitStep, discoverModels, complete, goTo }
 }

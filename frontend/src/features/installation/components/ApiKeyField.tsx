@@ -13,6 +13,8 @@ interface ApiKeyFieldProps {
   remove: boolean
   onRemoveChange: (remove: boolean) => void
   error?: string
+  /** What the field asks for; by default that a service without key needs none. */
+  hint?: string
 }
 
 /**
@@ -27,6 +29,7 @@ export default function ApiKeyField({
   remove,
   onRemoveChange,
   error,
+  hint = 'Leer lassen, wenn der Dienst keinen Schlüssel verlangt.',
 }: ApiKeyFieldProps) {
   return (
     <>
@@ -39,7 +42,7 @@ export default function ApiKeyField({
         onChange={onChange}
         stored={keyStored && !remove}
         error={error}
-        hint="Leer lassen, wenn der Dienst keinen Schlüssel verlangt."
+        hint={hint}
       />
       {keyStored && (
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: -1 }}>

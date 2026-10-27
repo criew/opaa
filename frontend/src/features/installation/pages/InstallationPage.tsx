@@ -1,11 +1,15 @@
+import { useCallback } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { LOGIN_ROUTE } from '@/shared/routes'
+import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
 import type {
+  InstallationModelDiscoveryRequest,
   InstallationStatusResponse,
   InstallationStepId,
   InstallationStepState,
+  ModelStepId,
   StepInput,
 } from '../api/types'
 import InstallationLayout from '../components/InstallationLayout'
@@ -53,26 +57,52 @@ type Submit = <S extends InstallationStepId>(
   values: StepInput[S] | null,
 ) => Promise<WizardResult>
 
+type Discover = (
+  step: ModelStepId,
+  request: InstallationModelDiscoveryRequest,
+) => Promise<LlmModelDiscoveryResponse>
+
 interface StepViewProps {
   step: InstallationStepState
   submit: Submit
+  discover: Discover
   onBack?: () => void
   onNext: () => void
 }
 
 /** The form of one step; an optional step can be skipped. */
-function StepView({ step, submit, onBack, onNext }: StepViewProps) {
+function StepView({ step, submit, discover, onBack, onNext }: StepViewProps) {
   const nav = { onBack, onSkip: step.mandatory ? undefined : onNext }
+  const discoverChat = useCallback(
+    (request: InstallationModelDiscoveryRequest) => discover('CHAT_MODEL', request),
+    [discover],
+  )
+  const discoverEmbedding = useCallback(
+    (request: InstallationModelDiscoveryRequest) => discover('EMBEDDING_MODEL', request),
+    [discover],
+  )
   switch (step.step) {
     case 'FIRST_ADMIN':
       return <FirstAdminStep step={step} submit={(v) => submit('FIRST_ADMIN', v)} {...nav} />
     case 'SIGN_IN':
       return <SignInStep step={step} submit={(v) => submit('SIGN_IN', v)} {...nav} />
     case 'CHAT_MODEL':
-      return <ChatModelStep step={step} submit={(v) => submit('CHAT_MODEL', v)} {...nav} />
+      return (
+        <ChatModelStep
+          step={step}
+          submit={(v) => submit('CHAT_MODEL', v)}
+          discover={discoverChat}
+          {...nav}
+        />
+      )
     case 'EMBEDDING_MODEL':
       return (
-        <EmbeddingModelStep step={step} submit={(v) => submit('EMBEDDING_MODEL', v)} {...nav} />
+        <EmbeddingModelStep
+          step={step}
+          submit={(v) => submit('EMBEDDING_MODEL', v)}
+          discover={discoverEmbedding}
+          {...nav}
+        />
       )
   }
 }
@@ -130,6 +160,7 @@ export default function InstallationPage() {
           key={step.step}
           step={step}
           submit={wizard.submitStep}
+          discover={wizard.discoverModels}
           onBack={onBack}
           onNext={() => wizard.goTo(nextView(installation, step.step))}
         />
