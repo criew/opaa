@@ -66,6 +66,12 @@ public class LlmModelDiscoverer {
   /** Ceiling per {@code /api/show} answer, which also carries template and license text. */
   private static final int MAX_DETAIL_BYTES = 1024 * 1024;
 
+  /** Entries of the list beyond this many are left out; the form offers no more. */
+  static final int MAX_MODELS = 500;
+
+  /** An identifier this long or longer is left out; a detail this long is dropped. */
+  static final int MAX_TEXT_LENGTH = 200;
+
   /** Models beyond this many keep their list entry but get no {@code /api/show} details. */
   private static final int MAX_DETAILED_MODELS = 100;
 

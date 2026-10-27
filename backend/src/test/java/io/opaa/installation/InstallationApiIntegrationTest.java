@@ -278,6 +278,19 @@ class InstallationApiIntegrationTest {
   }
 
   @Test
+  void anEmptyKeySendsNone() throws Exception {
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/steps/CHAT_MODEL/discover"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"" + fixture.chatBaseUrl() + "\",\"apiKey\":\"\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true));
+
+    assertThat(fixture.lastModelsAuthorization()).isNull();
+  }
+
+  @Test
   void aRefusedModelAddressIsAFailureOfTheDiscovery() throws Exception {
     mockMvc
         .perform(
