@@ -137,6 +137,15 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
 - **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
   prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
   `https://`; alles Weitere prüft OPAA wie oben beschrieben.
+- **Modelle auswählen.** In den Schritten Chat-Modell und Embedding-Modell wählt man zuerst den
+  Anbieter (Ollama, OpenAI, beim Chat auch Anthropic, oder „Eigene Adresse“); die Vorlage trägt
+  die Basis-Adresse ein. Sobald Adresse und, wo nötig, API-Schlüssel stehen, ruft der Assistent
+  die Modelle ab, die der Endpunkt anbietet, und bietet sie unter „Modell-Kennung“ zur Auswahl an,
+  bei Ollama mit Größe und Kontextlänge; „Modelle abrufen“ wiederholt den Abruf. Es ist derselbe
+  Abruf wie in der Modellverwaltung, mit derselben Adressprüfung, ohne Weiterleitungen und mit
+  begrenzter Wartezeit. Liefert der Endpunkt keine Liste oder ist er nicht erreichbar, sagt der
+  Assistent warum, und die Kennung wird von Hand eingetragen. Ein gespeicherter Schlüssel gilt
+  auch hier nur für die gespeicherte Adresse. Die Zahl der Abrufe ist je Instanz begrenzt.
 - **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
