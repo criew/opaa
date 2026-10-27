@@ -1,7 +1,6 @@
 package io.opaa.installation;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -102,7 +101,7 @@ class InstallationWithoutModelsIntegrationTest {
         .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("CHAT_MODEL")));
 
     mockMvc
-        .perform(authorized(delete(BASE + "/steps/CHAT_MODEL")))
+        .perform(authorized(post(BASE + "/steps/CHAT_MODEL/skip")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.saved").value(false));
 
@@ -113,8 +112,8 @@ class InstallationWithoutModelsIntegrationTest {
   @Test
   void aMandatoryStepCannotBeSkipped() throws Exception {
     mockMvc
-        .perform(authorized(delete(BASE + "/steps/FIRST_ADMIN")))
-        .andExpect(status().isConflict());
+        .perform(authorized(post(BASE + "/steps/FIRST_ADMIN/skip")))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

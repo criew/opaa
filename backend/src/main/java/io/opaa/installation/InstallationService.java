@@ -11,6 +11,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TransactionCallbacks;
+import io.opaa.common.ValidationException;
 import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
@@ -24,11 +25,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -145,36 +148,6 @@ public class InstallationService {
   }
 
   /**
-   * Skips an optional step: discards its saved values and their check, so the completion goes on
-   * without it. A step that was never saved stays as it is.
-   *
-   * @throws ConflictException for a mandatory step
-   */
-  @Transactional
-  public InstallationOverview.StepState skip(InstallationStep step) {
-    lockPending();
-    if (step.isMandatory()) {
-      throw new ConflictException(
-          "Der Schritt "
-              + step.name()
-              + " ist ein Pflichtschritt und lässt sich nicht überspringen.");
-    }
-    steps
-        .findForUpdate(step)
-        .ifPresent(
-            record -> {
-              Map<String, Object> before = auditSummary(step, record);
-              steps.delete(record);
-              steps.flush();
-              record(
-                  AuditEventType.INSTALLATION_STEP_SAVED,
-                  before,
-                  Map.of("step", step.name(), "skipped", true));
-            });
-    return new InstallationOverview.StepState(step, false, false, false, null, null);
-  }
-
-  /**
    * Runs the check of a saved step and stores its outcome. The check talks to the network, so it
    * runs outside every transaction and lock; only its outcome is stored under them, and only for
    * the values it checked.
@@ -208,6 +181,22 @@ public class InstallationService {
   }
 
   /**
+   * Skips an optional step: discards what is saved for it, so the completion leaves what the step
+   * would set as it is. Audited also when nothing was saved.
+   *
+   * @throws ValidationException for a mandatory step
+   */
+  @Transactional
+  public InstallationOverview.StepState skip(InstallationStep step) {
+    if (step.isMandatory()) {
+      throw new ValidationException("Ein Pflichtschritt lässt sich nicht überspringen.");
+    }
+    lockPending();
+    discardLocked(step);
+    return unsavedState(step);
+  }
+
+  /**
    * Completes the installation from its checked steps; a skipped optional step leaves its model
    * out.
    *
@@ -232,7 +221,6 @@ public class InstallationService {
         status -> {
           InstallationState state = lockPending();
           storeAnswers(checked);
-          dropSkippedOptionalSteps(checked);
           return completeLocked(state, source);
         });
   }
@@ -281,7 +269,6 @@ public class InstallationService {
                 return false;
               }
               storeAnswers(checked);
-              dropSkippedOptionalSteps(checked);
               completeLocked(state, CompletionSource.ANSWER_FILE_STARTUP);
               return true;
             }));
@@ -343,24 +330,28 @@ public class InstallationService {
   }
 
   /**
-   * Discards a saved optional step the answers leave out: an answer file without it skips it, as
-   * the assistant does. The caller holds the locks.
+   * Saves the checked answers with their outcomes and skips every optional step the answers leave
+   * out, so the completion applies exactly the answers; the caller holds the locks.
    */
-  private void dropSkippedOptionalSteps(List<Checked> checked) {
-    for (InstallationStep step : InstallationStep.values()) {
-      boolean answered = checked.stream().anyMatch(answer -> answer.step() == step);
-      if (!step.isMandatory() && !answered) {
-        steps.findForUpdate(step).ifPresent(steps::delete);
-      }
-    }
-    steps.flush();
-  }
-
-  /** Saves the checked answers with their outcomes; the caller holds the locks. */
   private void storeAnswers(List<Checked> checked) {
+    Set<InstallationStep> answered = EnumSet.noneOf(InstallationStep.class);
     for (Checked answer : checked) {
+      answered.add(answer.step());
       recordOutcome(storeLocked(answer.step(), answer.stored()), answer.outcome());
     }
+    Arrays.stream(InstallationStep.values())
+        .filter(step -> !step.isMandatory() && !answered.contains(step))
+        .forEach(this::discardLocked);
+  }
+
+  /** Deletes what is saved for {@code step} and records the skip; the caller holds the locks. */
+  private void discardLocked(InstallationStep step) {
+    Optional<InstallationStepRecord> saved = steps.findForUpdate(step);
+    saved.ifPresent(steps::delete);
+    record(
+        AuditEventType.INSTALLATION_STEP_SKIPPED,
+        null,
+        Map.of("step", step.name(), "discarded", saved.isPresent()));
   }
 
   /**
@@ -441,22 +432,14 @@ public class InstallationService {
     Map<InstallationStep, InstallationStepRecord> saved = savedSteps();
     List<InstallationStep> open =
         Arrays.stream(InstallationStep.values())
-            .filter(InstallationStep::isMandatory)
-            .filter(step -> saved.get(step) == null || !saved.get(step).isCheckSucceeded())
+            .filter(step -> isOpen(step, saved.get(step)))
             .toList();
     if (!open.isEmpty()) {
       throw new ConflictException(
-          "Die Installation lässt sich erst abschließen, wenn jeder Pflichtschritt geprüft ist."
+          "Die Installation lässt sich erst abschließen, wenn jeder Pflichtschritt geprüft ist"
+              + " und jeder gespeicherte optionale Schritt geprüft oder übersprungen."
               + " Offen: "
               + open.stream().map(Enum::name).collect(Collectors.joining(", "))
-              + ".");
-    }
-    List<InstallationStep> unchecked = uncheckedOptionalSteps(saved);
-    if (!unchecked.isEmpty()) {
-      throw new ConflictException(
-          "Ein ausgefüllter optionaler Schritt muss erfolgreich geprüft sein; bitte prüfen oder"
-              + " überspringen: "
-              + unchecked.stream().map(Enum::name).collect(Collectors.joining(", "))
               + ".");
     }
     InstallationStepRecord adminStep = saved.get(InstallationStep.FIRST_ADMIN);
@@ -505,13 +488,15 @@ public class InstallationService {
     return new InstallationOverview(false, true, List.of());
   }
 
-  /** The optional steps that are saved but not successfully checked; they block the completion. */
-  private static List<InstallationStep> uncheckedOptionalSteps(
-      Map<InstallationStep, InstallationStepRecord> saved) {
-    return Arrays.stream(InstallationStep.values())
-        .filter(step -> !step.isMandatory())
-        .filter(step -> saved.get(step) != null && !saved.get(step).isCheckSucceeded())
-        .toList();
+  /**
+   * Whether {@code step} holds up the completion: a mandatory step until it is checked, an optional
+   * one while it is saved but not checked.
+   */
+  private static boolean isOpen(InstallationStep step, InstallationStepRecord saved) {
+    if (step.isMandatory()) {
+      return saved == null || !saved.isCheckSucceeded();
+    }
+    return saved != null && !saved.isCheckSucceeded();
   }
 
   /** The chat model of the step, created active in the completion's transaction. */
@@ -588,16 +573,15 @@ public class InstallationService {
     Map<InstallationStep, InstallationStepRecord> saved = savedSteps();
     List<InstallationOverview.StepState> states =
         Arrays.stream(InstallationStep.values())
-            .map(
-                step ->
-                    saved.containsKey(step)
-                        ? state(saved.get(step))
-                        : new InstallationOverview.StepState(
-                            step, step.isMandatory(), false, false, null, null))
+            .map(step -> saved.containsKey(step) ? state(saved.get(step)) : unsavedState(step))
             .toList();
     boolean completable =
-        states.stream().allMatch(s -> s.checked() || (!s.mandatory() && !s.saved()));
+        Arrays.stream(InstallationStep.values()).noneMatch(step -> isOpen(step, saved.get(step)));
     return new InstallationOverview(true, completable, states);
+  }
+
+  private static InstallationOverview.StepState unsavedState(InstallationStep step) {
+    return new InstallationOverview.StepState(step, step.isMandatory(), false, false, null, null);
   }
 
   private Map<InstallationStep, InstallationStepRecord> savedSteps() {

@@ -62,18 +62,19 @@ export function findStep(
 }
 
 /**
- * The steps whose check is still owed: every mandatory one, and an optional one once it is saved.
- * The installation completes only without any; an unsaved optional step is skipped.
+ * The steps that hold up the completion, as the backend decides it: a mandatory step until it is
+ * checked, an optional one while it is saved but not checked (check it again or skip it).
  */
 export function openSteps(state: InstallationStatusResponse): InstallationStepState[] {
-  return state.steps.filter((s) => !s.checked && (s.mandatory || s.saved))
+  return state.steps.filter((s) => (s.mandatory ? !s.checked : s.saved && !s.checked))
 }
 
-export type StepStatus = 'checked' | 'failed' | 'unchecked' | 'open'
+export type StepStatus = 'checked' | 'failed' | 'unchecked' | 'open' | 'notSet'
 
+/** An optional step without saved values is no gap: the completion leaves it out. */
 export function stepStatus(step: InstallationStepState): StepStatus {
   if (step.checked) return 'checked'
-  if (!step.saved) return 'open'
+  if (!step.saved) return step.mandatory ? 'open' : 'notSet'
   return step.checkMessage ? 'failed' : 'unchecked'
 }
 
@@ -82,6 +83,7 @@ export const STEP_STATUS_LABEL: Record<StepStatus, string> = {
   failed: 'Prüfung fehlgeschlagen',
   unchecked: 'Gespeichert, Prüfung offen',
   open: 'Offen',
+  notSet: 'Nicht eingerichtet',
 }
 
 export const STEP_STATUS_TONE = {
@@ -89,6 +91,7 @@ export const STEP_STATUS_TONE = {
   failed: 'error',
   unchecked: 'warning',
   open: 'neutral',
+  notSet: 'neutral',
 } as const satisfies Record<StepStatus, string>
 
 /** The meta line beside a step's title: mandatory or optional, and where it can be changed. */

@@ -79,13 +79,14 @@ export async function discoverInstallationModels(
   return data
 }
 
-/** Skips an optional step: its saved values and their check are discarded. */
+/** Skips an optional step: its saved values are discarded, and the completion leaves it out. */
 export async function skipInstallationStep(
   token: string,
   step: InstallationStepId,
 ): Promise<InstallationStepState> {
-  const { data } = await installationClient.delete<InstallationStepState>(
-    `/steps/${step}`,
+  const { data } = await installationClient.post<InstallationStepState>(
+    `/steps/${step}/skip`,
+    undefined,
     bearer(token),
   )
   return data

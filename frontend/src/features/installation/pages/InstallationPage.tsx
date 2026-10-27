@@ -66,15 +66,14 @@ type Discover = (
 interface StepViewProps {
   step: InstallationStepState
   submit: Submit
+  skip: (step: InstallationStepId) => Promise<WizardResult>
   discover: Discover
   onBack?: () => void
-  /** Optional steps only: on without the step, discarding values saved for it. */
-  onSkip: () => void
 }
 
-/** The form of one step; an optional step can be skipped. */
-function StepView({ step, submit, discover, onBack, onSkip }: StepViewProps) {
-  const nav = { onBack, onSkip: step.mandatory ? undefined : onSkip }
+/** The form of one step; an optional step is skipped through the API, which records it. */
+function StepView({ step, submit, skip, discover, onBack }: StepViewProps) {
+  const nav = { onBack, onSkip: step.mandatory ? undefined : () => void skip(step.step) }
   const discoverChat = useCallback(
     (request: InstallationModelDiscoveryRequest) => discover('CHAT_MODEL', request),
     [discover],
@@ -162,9 +161,9 @@ export default function InstallationPage() {
           key={step.step}
           step={step}
           submit={wizard.submitStep}
+          skip={wizard.skipStep}
           discover={wizard.discoverModels}
           onBack={onBack}
-          onSkip={() => void wizard.skipStep(step.step, step.saved)}
         />
       ) : (
         <SummaryStep installation={installation} complete={wizard.complete} onBack={onBack} />

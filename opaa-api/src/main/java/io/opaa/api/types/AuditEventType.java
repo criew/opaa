@@ -502,6 +502,11 @@ public enum AuditEventType {
   /** The check of a step of the pending installation ran; {@code after} names step and outcome. */
   INSTALLATION_STEP_CHECKED,
   /**
+   * An optional step of the pending installation was skipped; its saved values, if any, are
+   * discarded, and the completion leaves what it would set as it is. {@code after} names the step.
+   */
+  INSTALLATION_STEP_SKIPPED,
+  /**
    * The installation was completed, exactly once per installation; {@code after} names how it was
    * completed and the sign-in method.
    */

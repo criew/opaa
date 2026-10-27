@@ -76,7 +76,7 @@ Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an ders
 Pflichtschritte sind erstes Systemverwaltungskonto und Anmeldeverfahren, jeweils mit erfolgreicher
 Prüfung. Alle übrigen Schritte sind optional und später in der Verwaltung erreichbar, auch
 Chat-Modell und Embedding-Modell. Ein optionaler Schritt lässt sich überspringen; „Überspringen“
-verwirft dabei gespeicherte Angaben samt Prüfung (`DELETE` auf den Schritt). Ist er gespeichert,
+verwirft dabei gespeicherte Angaben samt Prüfung (`POST …/skip`). Ist er gespeichert,
 muss seine Prüfung gelungen sein (Verbindungstest, Probeeinbettung). Der Abschluss ist eine
 Transaktion unter einem Advisory-Lock und gelingt nur, wenn jeder Pflichtschritt und jeder
 gespeicherte optionale Schritt geprüft ist; ein übersprungener Modellschritt legt kein Modell an.

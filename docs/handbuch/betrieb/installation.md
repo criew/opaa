@@ -86,7 +86,7 @@ verwerfen die Prüfung des Schritts.
 | Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
 
 **Optionale Schritte** lassen sich überspringen, etwa wenn der Modellendpunkt noch nicht
-freigeschaltet ist. `DELETE /api/v1/installation/steps/<Schritt>` überspringt einen optionalen
+freigeschaltet ist. `POST /api/v1/installation/steps/<Schritt>/skip` überspringt einen optionalen
 Schritt und verwirft dabei gespeicherte Angaben samt Prüfung. Ist ein optionaler Schritt
 gespeichert, muss seine Prüfung gelungen sein, sonst lässt sich die Installation nicht abschließen.
 Was ohne Chat- oder Embedding-Modell geht und was nicht, steht unter
@@ -181,7 +181,7 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Abschluss.
 - **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte und alle
   gespeicherten optionalen Schritte geprüft sind; bis dahin nennt die Seite die offenen. Übersprungene
-  Schritte stehen dort als „Wird übersprungen“. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
+  Schritte stehen dort als „Nicht eingerichtet“. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
   inzwischen jemand anders abgeschlossen, etwa über eine Antwortdatei, zeigt der Assistent
   „Bereits eingerichtet“.
 
@@ -258,7 +258,7 @@ Prüfungen, alles oder nichts.
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
 | `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder optionale überspringen; die Meldung nennt sie |
-| `409` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
+| `400` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
 | Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
 | Prüfung des Embedding-Modells „… der Vektorindex nimmt höchstens 2000 auf" | das Modell liefert mehr Dimensionen, als der Vektorindex aufnimmt | ein anderes Embedding-Modell wählen |
 | `404` | die Installation ist abgeschlossen | anmelden mit dem ersten Konto |

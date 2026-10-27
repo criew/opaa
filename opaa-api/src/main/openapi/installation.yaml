@@ -78,46 +78,6 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
-    delete:
-      operationId: skipInstallationStep
-      tags: [installation]
-      security: []
-      summary: >
-        Skips an optional step: discards its saved values and their check, so the completion goes
-        on without it. A step that was never saved stays as it is. A mandatory step cannot be
-        skipped (409). Same token and network rules as getInstallation.
-      responses:
-        "200":
-          description: Step skipped; it is no longer saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/InstallationStepState"
-        "400":
-          description: Unknown step
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          description: The client address lies outside OPAA_INSTALLATION_ALLOWED_CIDRS
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          description: The step is mandatory
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "429":
-          $ref: "#/components/responses/TooManyRequests"
-
   /api/v1/installation/steps/{step}/check:
     parameters:
       - $ref: "#/components/parameters/InstallationStepPath"
@@ -160,6 +120,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/installation/steps/{step}/skip:
+    parameters:
+      - $ref: "#/components/parameters/InstallationStepPath"
+    post:
+      operationId: skipInstallationStep
+      tags: [installation]
+      security: []
+      summary: >
+        Skips an optional step (400 for a mandatory one): discards its saved values and their
+        check, so the completion leaves what the step would set as it is - for CHAT_MODEL and
+        EMBEDDING_MODEL, no model is set up. A skipped step does not hold up the completion; a
+        saved optional step does until its check succeeded or it is skipped. Recorded in the audit
+        log, also when nothing was saved. Same token and network rules as getInstallation.
+      responses:
+        "200":
+          description: Step skipped; its state is unsaved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstallationStepState"
+        "400":
+          description: Unknown or mandatory step
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The client address lies outside OPAA_INSTALLATION_ALLOWED_CIDRS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 

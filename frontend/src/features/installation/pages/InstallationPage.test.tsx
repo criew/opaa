@@ -257,7 +257,7 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Wird übersprungen')).toHaveLength(2)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(2)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 

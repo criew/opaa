@@ -136,27 +136,21 @@ export function useInstallationWizard() {
   )
 
   /**
-   * Skips an optional step and moves on. Values saved for it are discarded first, so a failed
-   * check no longer blocks the completion; a step never saved is left as it is.
+   * Skips an optional step: the backend discards what was saved for it and records the skip, and
+   * the assistant moves on. A failure keeps the step open with its sentence.
    */
   const skipStep = useCallback(
-    async (step: InstallationStepId, saved: boolean): Promise<WizardResult> => {
+    async (step: InstallationStepId): Promise<WizardResult> => {
       const token = state.token
       if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
-      if (saved) {
-        try {
-          await skipInstallationStep(token, step)
-        } catch (err) {
-          const failure = installationFailure(err, SKIP_FAILED)
-          if (!leaveOn(failure)) await refresh(token, () => step)
-          return { ok: false, failure }
-        }
-        await refresh(token, (installation) => nextView(installation, step))
-        return { ok: true }
+      try {
+        await skipInstallationStep(token, step)
+      } catch (err) {
+        const failure = installationFailure(err, SKIP_FAILED)
+        if (!leaveOn(failure)) await refresh(token, () => step)
+        return { ok: false, failure }
       }
-      setState((current) =>
-        current.installation ? { ...current, view: nextView(current.installation, step) } : current,
-      )
+      await refresh(token, (installation) => nextView(installation, step))
       return { ok: true }
     },
     [state.token, leaveOn, refresh],

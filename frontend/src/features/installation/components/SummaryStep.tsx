@@ -48,8 +48,8 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
       description={
         blocked ? (
           <span id={hintId}>
-            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte und alle
-            ausgefüllten optionalen Schritte geprüft sind.
+            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte geprüft sind und
+            jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist.
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
@@ -74,7 +74,6 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
       <Box component="ul" aria-label="Stand der Schritte" sx={{ m: 0, p: 0 }}>
         {installation.steps.map((s) => {
           const status = stepStatus(s)
-          const willSkip = !s.mandatory && !s.saved
           return (
             <Box
               component="li"
@@ -97,10 +96,7 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
                   {s.mandatory ? ' · Pflicht' : ' · optional'}
                 </Typography>
               </Typography>
-              <StateDot
-                tone={willSkip ? 'neutral' : STEP_STATUS_TONE[status]}
-                label={willSkip ? 'Wird übersprungen' : STEP_STATUS_LABEL[status]}
-              />
+              <StateDot tone={STEP_STATUS_TONE[status]} label={STEP_STATUS_LABEL[status]} />
             </Box>
           )
         })}

@@ -123,7 +123,7 @@ test.describe('Einrichtungs-Assistent', () => {
       await skip.click()
     }
     const summary = page.getByRole('list', { name: 'Stand der Schritte' })
-    await expect(summary.getByText('Wird übersprungen')).not.toHaveCount(0)
+    await expect(summary.getByText('Nicht eingerichtet')).not.toHaveCount(0)
     await expect(page.getByText(/Übersprungen: .*Chat-Modell, Embedding-Modell/)).toBeVisible()
     await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
     await expectStepEdgesFlush(page)

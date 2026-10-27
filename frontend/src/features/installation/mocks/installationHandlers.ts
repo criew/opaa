@@ -33,7 +33,7 @@ import {
  *   `fieldErrors`) and discards the step's check,
  * - a check answers 200 either way; for addresses containing {@link MOCK_UNREACHABLE_MARKER} it
  *   reports `checked: false` with a `checkMessage`,
- * - skipping discards a saved optional step and refuses a mandatory one (409),
+ * - skipping discards a saved optional step and refuses a mandatory one (400),
  * - completing refuses (409) while a mandatory or a saved optional step is unchecked.
  */
 const BASE = '/api/v1/installation'
@@ -181,12 +181,12 @@ export const installationHandlers = [
     return HttpResponse.json(findStep(step.step))
   }),
 
-  http.delete(`${BASE}/steps/:step`, ({ request, params }) => {
+  http.post(`${BASE}/steps/:step/skip`, ({ request, params }) => {
     const refused = refusal(request)
     if (refused) return refused
     const step = findStep(String(params.step))
     if (!step) return error(400, 'Unbekannter Schritt')
-    if (step.mandatory) return error(409, 'Ein Pflichtschritt lässt sich nicht überspringen.')
+    if (step.mandatory) return error(400, 'Ein Pflichtschritt lässt sich nicht überspringen.')
     updateMockStep(step.step, {
       saved: false,
       checked: false,
