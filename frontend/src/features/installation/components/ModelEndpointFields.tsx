@@ -196,7 +196,7 @@ export default function ModelEndpointFields({
               tiles={tiles}
               value={provider}
               onChange={chooseProvider}
-              columns={tiles.length === 3 ? 3 : 2}
+              columns={2}
             />
           </Box>
           <FormField
@@ -237,7 +237,7 @@ export default function ModelEndpointFields({
               busyAnnouncement="Modelle werden abgerufen"
               unavailable={!plan.request}
               onClick={() => fetchModels(plan, true)}
-              sx={{ flexShrink: 0, whiteSpace: 'nowrap', ml: { sm: 'auto' } }}
+              sx={{ flexShrink: 0, whiteSpace: 'nowrap', ml: 'auto' }}
             >
               Modelle abrufen
             </BusyButton>
