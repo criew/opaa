@@ -108,9 +108,9 @@ export default function StepFrame({
         </Alert>
       )}
 
-      <Stack spacing={2.25} sx={{ maxWidth: 480 }}>
-        {children}
-      </Stack>
+      {/* Fields take the full width of the step, so they end on the right edge of the primary
+          action below; the reading width comes from the layout's column. */}
+      <Stack spacing={2.25}>{children}</Stack>
 
       <Box
         sx={{
