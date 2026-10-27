@@ -73,12 +73,15 @@ dataFlows:
       nur an die Herkunft des eigenen Modells, ein im Assistenten gespeicherter nur an dieselbe
       Adresse. Keine personenbezogenen Daten
     trigger: >-
-      Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle; Modellauswahl und
-      Prüfung des Chat-Modells im Installationsassistenten, nur mit dem Installations-Token und vor
-      dem Abschluss
+      Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle; im
+      Installationsassistenten der Modellabruf in den Schritten Chat- und Embedding-Modell (beim
+      Verlassen von Adresse oder Schlüssel, auf „Modelle abrufen“ und beim Öffnen eines
+      gespeicherten Modellschritts) und die Prüfung des Chat-Modells, nur mit dem
+      Installations-Token und vor dem Abschluss
     switchOff: >-
       Findet nur auf Handlung der Systemverwaltung oder der Person mit dem Installations-Token
-      statt; nach dem Abschluss der Installation gibt es den Abruf des Assistenten nicht mehr
+      statt, im Assistenten auch beim Öffnen eines gespeicherten Modellschritts; nach dem Abschluss
+      der Installation gibt es den Abruf des Assistenten nicht mehr
     settings: [llm_models.base_url, installation_steps.payload]
   - id: source-web
     group: CONNECTOR

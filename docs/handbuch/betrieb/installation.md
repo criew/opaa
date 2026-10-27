@@ -139,13 +139,15 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   `https://`; alles Weitere prüft OPAA wie oben beschrieben.
 - **Modelle auswählen.** In den Schritten Chat-Modell und Embedding-Modell wählt man zuerst den
   Anbieter (Ollama, OpenAI, beim Chat auch Anthropic, oder „Eigene Adresse“); die Vorlage trägt
-  die Basis-Adresse ein. Sobald Adresse und, wo nötig, API-Schlüssel stehen, ruft der Assistent
-  die Modelle ab, die der Endpunkt anbietet, und bietet sie unter „Modell-Kennung“ zur Auswahl an,
-  bei Ollama mit Größe und Kontextlänge; „Modelle abrufen“ wiederholt den Abruf. Es ist derselbe
-  Abruf wie in der Modellverwaltung, mit derselben Adressprüfung, ohne Weiterleitungen und mit
-  begrenzter Wartezeit. Liefert der Endpunkt keine Liste oder ist er nicht erreichbar, sagt der
-  Assistent warum, und die Kennung wird von Hand eingetragen. Ein gespeicherter Schlüssel gilt
-  auch hier nur für die gespeicherte Adresse. Die Zahl der Abrufe ist je Instanz begrenzt.
+  die Basis-Adresse ein. Verlässt man Adresse oder API-Schlüssel und steht beides, wo nötig, ruft
+  der Assistent die Modelle ab, die der Endpunkt anbietet, und bietet sie unter „Modell-Kennung“
+  zur Auswahl an, bei Ollama mit Größe und Kontextlänge; ebenso beim Öffnen eines gespeicherten
+  Modellschritts. „Modelle abrufen“ wiederholt den Abruf. Es ist derselbe Abruf wie in der
+  Modellverwaltung, mit derselben Adressprüfung, ohne Weiterleitungen und mit begrenzter
+  Wartezeit. Liefert der Endpunkt keine Liste oder ist er nicht erreichbar, sagt der Assistent
+  warum, und die Kennung wird von Hand eingetragen. Ein getippter Schlüssel geht nie an einen
+  anderen Anbieter; ein gespeicherter gilt nur für die gespeicherte Adresse. Je Instanz sind
+  30 Modellabrufe des Assistenten in 10 Minuten möglich, für alle Clients zusammen.
 - **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
@@ -228,7 +230,7 @@ Prüfungen, alles oder nichts.
 | `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse | `Retry-After` abwarten; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Schritt ist nicht gespeichert oder nicht erfolgreich geprüft | offene Schritte prüfen; die Meldung nennt sie |
 | Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
 | Prüfung des Embedding-Modells „… der Vektorindex nimmt höchstens 2000 auf" | das Modell liefert mehr Dimensionen, als der Vektorindex aufnimmt | ein anderes Embedding-Modell wählen |
@@ -249,7 +251,8 @@ Instanzen setzen alle oder keine `OPAA_INSTALLATION_TOKEN`, mit demselben Wert:*
 ohne die Variable, ersetzt sie das gesetzte Token durch ein erzeugtes und schreibt es ins Log (mit
 einer Warnung); startet eine mit anderem Wert, gilt das zuletzt gestartete.
 
-Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten.
+Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten; je
+Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen.
 
 ## Weiterführende Kapitel
 
