@@ -195,8 +195,11 @@ class InstallationModelDiscoveryTest {
       discovery.discover(InstallationStep.CHAT_MODEL, "http://169.254.169.254/v1", null);
     }
 
+    // The code tells this budget apart from the per-address budget of the installation API.
     assertThatThrownBy(() -> discovery.discover(InstallationStep.CHAT_MODEL, baseUrl, null))
-        .isInstanceOf(TooManyRequestsException.class);
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            refused -> assertThat(refused.getCode()).isEqualTo("MODEL_DISCOVERY_LIMIT"));
     assertThat(requests).hasValue(0);
   }
 

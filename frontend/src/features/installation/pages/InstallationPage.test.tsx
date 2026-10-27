@@ -508,6 +508,24 @@ describe('InstallationPage', () => {
       expect(leaked).toEqual([])
     })
 
+    // regression guard: a typed key does not follow a hand-edited address on its own
+    it('does not fetch on its own with a typed key once the address moved elsewhere', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://vllm:8000/v1')
+      await user.type(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }), 'sk-fuer-vllm')
+      const address = field('Basis-Adresse')
+      await user.clear(address)
+      await user.type(address, 'http://anderer:8000/v1')
+      await user.tab()
+
+      expect(
+        mockDiscoveryRequests().filter((request) => request.baseUrl.includes('anderer')),
+      ).toEqual([])
+      expect(screen.getByText(/für eine andere Adresse eingegeben/)).toBeInTheDocument()
+    })
+
     it('lets the arrow keys move through the providers without fetching or leaving', async () => {
       const user = userEvent.setup()
       await openChatModelStep(user)
@@ -556,7 +574,12 @@ describe('InstallationPage', () => {
       server.use(
         http.post('/api/v1/installation/steps/:step/discover', () =>
           HttpResponse.json(
-            { error: 'Zu viele Anfragen', status: 429, timestamp: new Date().toISOString() },
+            {
+              error: 'Zu viele Modellabrufe',
+              status: 429,
+              code: 'MODEL_DISCOVERY_LIMIT',
+              timestamp: new Date().toISOString(),
+            },
             { status: 429, headers: { 'Retry-After': '120' } },
           ),
         ),
@@ -570,6 +593,25 @@ describe('InstallationPage', () => {
       expect(await screen.findByText(/Zu viele Modellabrufe/)).toHaveTextContent(
         /2 Minuten.*von Hand/,
       )
+    })
+
+    it('names the per-address budget of the installation API as such', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/:step/discover', () =>
+          HttpResponse.json(
+            { error: 'Zu viele Anfragen', status: 429, timestamp: new Date().toISOString() },
+            { status: 429, headers: { 'Retry-After': '120' } },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://vllm:8000/v1')
+      await user.tab()
+
+      expect(await screen.findByText(/Zu viele Anfragen oder Fehlversuche/)).toBeInTheDocument()
+      expect(screen.queryByText(/Zu viele Modellabrufe/)).not.toBeInTheDocument()
     })
 
     it('announces the outcome in one lasting status region', async () => {

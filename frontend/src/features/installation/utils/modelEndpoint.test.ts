@@ -57,6 +57,19 @@ describe('discoveryPlan', () => {
     })
   })
 
+  // regression guard: a typed key does not follow a hand-edited address on its own
+  it('sends a typed key on its own only to the origin it was typed for', () => {
+    const typed = { apiKey: 'sk-1', keyOrigin: 'http://vllm:8000' }
+    expect(discoveryPlan(entries({ ...typed, baseUrl: 'http://vllm:8000/v1' })).automatic).toBe(
+      true,
+    )
+
+    const moved = discoveryPlan(entries({ ...typed, baseUrl: 'http://anderer:8000/v1' }))
+    expect(moved.automatic).toBe(false)
+    expect(moved.request).toEqual({ baseUrl: 'http://anderer:8000/v1', apiKey: 'sk-1' })
+    expect(moved.hint).toMatch(/für eine andere Adresse eingegeben/)
+  })
+
   it('waits for the key a provider needs, but fetches when asked', () => {
     const plan = discoveryPlan(
       entries({ baseUrl: 'https://api.openai.com/v1', provider: 'openai' }),

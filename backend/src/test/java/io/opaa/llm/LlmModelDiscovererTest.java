@@ -452,6 +452,7 @@ class LlmModelDiscovererTest {
     ModelDiscovery discovery = discoverer.discover(baseUrl, null, null);
 
     assertThat(discovery.models()).hasSize(LlmModelDiscoverer.MAX_MODELS);
+    assertThat(discovery.message()).contains("die ersten 500");
     assertThat(discovery.models())
         .allSatisfy(
             model ->
