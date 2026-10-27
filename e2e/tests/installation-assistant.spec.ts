@@ -35,7 +35,7 @@ const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 99, 105)' } as const
 
 /**
  * A field in error keeps the danger outline while it holds the focus, in both schemes: focus
- * widens the outline to 2px instead of repainting it in the accent.
+ * widens the outline to 2px instead of repainting it in the accent. Hover keeps it too.
  */
 async function expectFocusedErrorOutline(field: Locator) {
   await expect(field).toBeFocused()
@@ -48,6 +48,12 @@ async function expectFocusedErrorOutline(field: Locator) {
     await expect(outline).toHaveCSS('border-top-color', DANGER[scheme])
     await expect(outline).toHaveCSS('border-top-width', '2px')
   }
+  await field.page().emulateMedia({ colorScheme: 'light' })
+  // Without focus, hovering keeps the danger outline as well.
+  await field.blur()
+  await field.hover()
+  await expect(field).not.toBeFocused()
+  await expect(outline).toHaveCSS('border-top-color', DANGER.light)
   await field.page().emulateMedia({ colorScheme: null })
 }
 
