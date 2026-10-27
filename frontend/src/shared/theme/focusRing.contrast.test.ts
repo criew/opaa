@@ -49,8 +49,12 @@ function outlinedInputRule(theme: Theme, selector: string): Record<string, unkno
   return (root[selector] ?? {}) as Record<string, unknown>
 }
 
-/** Surfaces a focused element can sit on or carry itself (an inset ring borders the item's fill). */
-function surfaces(theme: Theme, roles: SchemeRoles): Array<[string, string]> {
+/**
+ * Surfaces a focused element can sit on or carry itself (an inset ring borders the item's fill).
+ * The rail only knows its three grounds - its tiles fill with bg-2/bg-3, and its menus render in
+ * the app theme - so the selection and alert tints are app surfaces only.
+ */
+function surfaces(theme: Theme, roles: SchemeRoles, appSurfaces: boolean): Array<[string, string]> {
   const accent = theme.palette.primary.main
   const { selectedOpacity, hoverOpacity } = theme.palette.action
   const tinted: Array<[string, string]> = [
@@ -72,6 +76,7 @@ function surfaces(theme: Theme, roles: SchemeRoles): Array<[string, string]> {
     ['bg-2', roles.bg2],
     ['bg-3', roles.bg3],
   ]
+  if (!appSurfaces) return grounds
   return [
     ...grounds,
     ...grounds.flatMap(([groundName, ground]) =>
@@ -84,15 +89,25 @@ function surfaces(theme: Theme, roles: SchemeRoles): Array<[string, string]> {
   ]
 }
 
-const SETS: Array<[string, () => Theme, SchemeRoles]> = [
-  ['light', () => createAppTheme('light'), lightRoles],
-  ['dark', () => createAppTheme('dark'), darkRoles],
-  ['rail (light app)', () => createRailTheme('light'), railRoles],
-  ['light, house colour', () => createAppTheme('light', { primaryColor: '#1153EE' }), lightRoles],
-  ['dark, house colour', () => createAppTheme('dark', { primaryColor: '#1153EE' }), darkRoles],
+const SETS: Array<[string, () => Theme, SchemeRoles, boolean]> = [
+  ['light', () => createAppTheme('light'), lightRoles, true],
+  ['dark', () => createAppTheme('dark'), darkRoles, true],
+  ['rail (light app)', () => createRailTheme('light'), railRoles, false],
+  [
+    'light, house colour',
+    () => createAppTheme('light', { primaryColor: '#1153EE' }),
+    lightRoles,
+    true,
+  ],
+  [
+    'dark, house colour',
+    () => createAppTheme('dark', { primaryColor: '#1153EE' }),
+    darkRoles,
+    true,
+  ],
 ]
 
-describe.each(SETS)('focus ring (%s)', (_label, build, roles) => {
+describe.each(SETS)('focus ring (%s)', (_label, build, roles, appSurfaces) => {
   it('is an opaque line of at least 2px', () => {
     const ring = globalRing(build())
     expect(decomposeColor(ring.color).values[3] ?? 1, `ring colour ${ring.color}`).toBe(1)
@@ -102,7 +117,7 @@ describe.each(SETS)('focus ring (%s)', (_label, build, roles) => {
   it('reaches 3:1 against every surface focus occurs on', () => {
     const theme = build()
     const ring = globalRing(theme)
-    for (const [name, surface] of surfaces(theme, roles)) {
+    for (const [name, surface] of surfaces(theme, roles, appSurfaces)) {
       const painted = flatten(ring.color, surface)
       expect(getContrastRatio(painted, surface), `ring on ${name}`).toBeGreaterThanOrEqual(
         UI_CONTRAST_MINIMUM,
