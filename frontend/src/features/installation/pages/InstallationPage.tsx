@@ -14,6 +14,7 @@ import type {
 } from '../api/types'
 import InstallationLayout from '../components/InstallationLayout'
 import StepList from '../components/StepList'
+import { STEP_RHYTHM, STEP_TITLE_SX } from '../components/stepLayout'
 import SummaryStep from '../components/SummaryStep'
 import TokenStep from '../components/TokenStep'
 import ChatModelStep from '../components/steps/ChatModelStep'
@@ -30,13 +31,13 @@ import { findStep, nextView, previousView, viewOrder, type WizardView } from '..
 function Outcome({ heading, message }: { heading: string; message: string }) {
   return (
     <InstallationLayout>
-      <Typography component="h2" sx={{ fontSize: 22, fontWeight: 600 }}>
+      <Typography component="h2" sx={STEP_TITLE_SX}>
         {heading}
       </Typography>
-      <Alert severity="success" sx={{ mt: 2 }}>
+      <Alert severity="success" sx={{ mt: STEP_RHYTHM.betweenGroups }}>
         {message}
       </Alert>
-      <Button variant="contained" href={LOGIN_ROUTE} sx={{ mt: 3 }}>
+      <Button variant="contained" href={LOGIN_ROUTE} sx={{ mt: STEP_RHYTHM.toActions }}>
         Zur Anmeldung
       </Button>
     </InstallationLayout>

@@ -75,9 +75,11 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
                 display: 'flex',
                 justifyContent: 'space-between',
                 gap: 2,
-                py: 1.25,
+                py: 1.5,
                 borderBottom: 1,
                 borderColor: 'divider',
+                // The action bar's divider closes the list; a second rule would double it.
+                '&:last-of-type': { borderBottom: 0 },
               }}
             >
               <Typography sx={{ fontSize: 14 }}>

@@ -24,6 +24,7 @@ import {
 import type { FieldErrors } from '../utils/validation'
 import ApiKeyField from './ApiKeyField'
 import FormField from './FormField'
+import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
 
 const TILE_TEXT: Record<ProviderKey, { description: string; icon: ReactNode }> = {
   ollama: {
@@ -188,7 +189,7 @@ export default function ModelEndpointFields({
         <SectionHead component="h3" id={`${id}-endpoint`}>
           Endpunkt
         </SectionHead>
-        <Stack spacing={2.25}>
+        <Stack spacing={STEP_RHYTHM.betweenGroups}>
           <Box>
             <FieldLabel id={providerLabelId}>Anbieter</FieldLabel>
             <ChoiceTileGroup<ProviderKey>
@@ -219,25 +220,18 @@ export default function ModelEndpointFields({
             error={errors.apiKey}
             hint={needsKey ? KEY_HINT_NEEDED : undefined}
           />
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: { xs: 'wrap', sm: 'nowrap' },
-              alignItems: 'flex-start',
-              gap: 1.5,
-            }}
-          >
-            {/* The status's own top margin belongs to the admin dialog; here the row spaces it. */}
-            <Box sx={{ flex: '1 1 260px', minWidth: 0, '&& > *': { mt: 0 } }}>
-              <DiscoveryStatus state={discovery.state} idleHint={plan.hint} purpose={purpose} />
-            </Box>
+          {/* The outcome of the discovery and its quiet action on the left field edge; the
+              status's own top margin belongs to the admin dialog, the step's rhythm spaces it. */}
+          <Box sx={{ '&& > :first-of-type': { mt: 0 } }}>
+            <DiscoveryStatus state={discovery.state} idleHint={plan.hint} purpose={purpose} />
             <BusyButton
-              variant="outlined"
+              size="small"
+              variant="text"
               busy={loading}
               busyAnnouncement="Modelle werden abgerufen"
               unavailable={!plan.request}
               onClick={() => fetchModels(plan, true)}
-              sx={{ flexShrink: 0, whiteSpace: 'nowrap', ml: 'auto' }}
+              sx={{ ...EDGE_ALIGNED_TEXT_BUTTON_SX, mt: STEP_RHYTHM.fieldToOwnAction }}
             >
               Modelle abrufen
             </BusyButton>
@@ -245,11 +239,11 @@ export default function ModelEndpointFields({
         </Stack>
       </Box>
 
-      <Box component="section" aria-labelledby={`${id}-model`} sx={{ pt: 1.5 }}>
+      <Box component="section" aria-labelledby={`${id}-model`}>
         <SectionHead component="h3" id={`${id}-model`}>
           Modell
         </SectionHead>
-        <Stack spacing={2.25}>
+        <Stack spacing={STEP_RHYTHM.betweenGroups}>
           <ModelIdentifierField
             id={`${id}-model-identifier`}
             labelAbove

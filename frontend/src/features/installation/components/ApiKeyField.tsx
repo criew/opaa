@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import SecretInput from './SecretInput'
+import { EDGE_ALIGNED_TEXT_BUTTON_SX, STEP_RHYTHM } from './stepLayout'
 
 interface ApiKeyFieldProps {
   id: string
@@ -32,7 +33,7 @@ export default function ApiKeyField({
   hint = 'Leer lassen, wenn der Dienst keinen Schlüssel verlangt.',
 }: ApiKeyFieldProps) {
   return (
-    <>
+    <Box>
       <SecretInput
         id={id}
         label="API-Schlüssel"
@@ -45,7 +46,15 @@ export default function ApiKeyField({
         hint={hint}
       />
       {keyStored && (
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: -1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1,
+            mt: STEP_RHYTHM.fieldToOwnAction,
+          }}
+        >
           {remove && (
             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
               Der gespeicherte Schlüssel wird beim Speichern entfernt.
@@ -54,6 +63,7 @@ export default function ApiKeyField({
           <Button
             size="small"
             variant="text"
+            sx={EDGE_ALIGNED_TEXT_BUTTON_SX}
             onClick={() => {
               onRemoveChange(!remove)
               onChange('')
@@ -63,6 +73,6 @@ export default function ApiKeyField({
           </Button>
         </Box>
       )}
-    </>
+    </Box>
   )
 }

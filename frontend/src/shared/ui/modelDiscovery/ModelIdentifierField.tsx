@@ -158,6 +158,8 @@ export default function ModelIdentifierField({
           helperText={error ?? hint}
           slotProps={{
             ...params.slotProps,
+            // With the label above, hint and error start on the field's left edge like the label.
+            formHelperText: labelAbove ? { sx: { mx: 0 } } : undefined,
             htmlInput: {
               ...params.slotProps.htmlInput,
               spellCheck: false,

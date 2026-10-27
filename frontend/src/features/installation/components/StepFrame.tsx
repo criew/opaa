@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { fontFamily } from '@/shared/theme/tokens'
 import { stepMeta } from '../utils/steps'
+import { STEP_RHYTHM, STEP_TITLE_SX } from './stepLayout'
 
 /** The way out of a step besides submitting it. */
 export interface StepNavigationProps {
@@ -80,37 +81,38 @@ export default function StepFrame({
           fontWeight: 500,
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
-          color: 'text.secondary',
-          mb: 0.75,
+          // Eyebrow above a heading in accent (guidelines 3.3); the step's state stays in words.
+          color: 'primary.main',
+          mb: STEP_RHYTHM.withinHeading,
         }}
       >
         {stepMeta(mandatory, laterUnder)}
       </Typography>
-      <Typography
-        id={headingId}
-        ref={headingRef}
-        tabIndex={-1}
-        component="h2"
-        sx={{ fontSize: 22, fontWeight: 600, lineHeight: 1.3 }}
-      >
+      <Typography id={headingId} ref={headingRef} tabIndex={-1} component="h2" sx={STEP_TITLE_SX}>
         {title}
       </Typography>
       <Typography
         component="div"
-        sx={{ fontSize: 14, color: 'text.secondary', mt: 1, mb: 3, maxWidth: '62ch' }}
+        sx={{
+          fontSize: 14,
+          color: 'text.secondary',
+          mt: STEP_RHYTHM.withinHeading,
+          mb: STEP_RHYTHM.betweenGroups,
+          maxWidth: '62ch',
+        }}
       >
         {description}
       </Typography>
 
       {failure && (
-        <Alert severity="error" sx={{ mb: 2.5 }}>
+        <Alert severity="error" sx={{ mb: STEP_RHYTHM.betweenGroups }}>
           {failure}
         </Alert>
       )}
 
-      <Stack spacing={2.25} sx={{ maxWidth: 480 }}>
-        {children}
-      </Stack>
+      {/* Fields take the full width of the step, so they end on the right edge of the primary
+          action below; the layout's column sets that width. */}
+      <Stack spacing={STEP_RHYTHM.betweenGroups}>{children}</Stack>
 
       <Box
         sx={{
@@ -118,8 +120,8 @@ export default function StepFrame({
           flexWrap: 'wrap',
           alignItems: 'center',
           gap: 1.5,
-          mt: 4,
-          pt: 2,
+          mt: STEP_RHYTHM.toActions,
+          pt: STEP_RHYTHM.actionsDivider,
           borderTop: 1,
           borderColor: 'divider',
         }}
@@ -129,22 +131,33 @@ export default function StepFrame({
             Zurück
           </Button>
         )}
-        <Box sx={{ flex: 1 }} />
-        {onSkip && (
-          <Button variant="text" onClick={onSkip} disabled={busy}>
-            Überspringen
-          </Button>
-        )}
-        <BusyButton
-          type="submit"
-          variant="contained"
-          busy={busy}
-          busyAnnouncement={busyAnnouncement}
-          unavailable={unavailable}
-          aria-describedby={describedBy}
+        {/* The forward actions keep to the right edge, also when they wrap below the back button. */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: 1.5,
+            ml: 'auto',
+          }}
         >
-          {busy ? 'Wird geprüft …' : submitLabel}
-        </BusyButton>
+          {onSkip && (
+            <Button variant="text" onClick={onSkip} disabled={busy}>
+              Überspringen
+            </Button>
+          )}
+          <BusyButton
+            type="submit"
+            variant="contained"
+            busy={busy}
+            busyAnnouncement={busyAnnouncement}
+            unavailable={unavailable}
+            aria-describedby={describedBy}
+          >
+            {busy ? 'Wird geprüft …' : submitLabel}
+          </BusyButton>
+        </Box>
       </Box>
     </Box>
   )

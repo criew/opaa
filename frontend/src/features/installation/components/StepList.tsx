@@ -80,7 +80,7 @@ function Entry({ label, status, tone, current, onSelect }: EntryProps) {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
-    gap: 1.25,
+    gap: 1.5,
     width: '100%',
     py: 1,
     px: 1.5,
@@ -122,7 +122,7 @@ function GroupTitle({ id, children }: { id: string; children: string }) {
         textTransform: 'uppercase',
         color: 'text.secondary',
         mt: 2.5,
-        mb: 0.75,
+        mb: 1,
         px: 1.5,
       }}
     >
