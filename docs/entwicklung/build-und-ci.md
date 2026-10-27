@@ -171,8 +171,9 @@ Datenbank, unter Docker Compose und auf kind. Sie sprechen die API beider Instan
 | `04-neustart-der-anderen-instanz` | Indexierungslauf und Upload von A überstehen den Neustart von B (ai-stub hält die Einbettungen von A bis dahin zurück) |
 | `05-rolling-update` | Update von n−1 auf n in der Reihenfolge des Handbuchs unter Last: keine Fehlerantwort, jede Mail der Outbox genau einmal; auf kind danach `kubectl rollout restart` unter Last |
 | `06-pool-unter-last` | mehr gleichzeitige Anfragen als Pool-Verbindungen, darunter gezählte Anmeldungen und neue Konten: kein Fehler, keine Instanz über Pool + 1 Verbindungen |
+| `07-wechsel-des-embedding-modells` | Wechsel des Embedding-Modells auf A bestätigt gilt sofort auf B, eine zweite Bestätigung auf B scheitert mit `409`, Verwerfen auf B gilt auf A; ein Wechsel auf B schaltet um, und beide führen das neue Modell |
 
-Zwei Phasen, je mit leerer Datenbank: `fresh` startet die aktuelle Version (01–04, 06), `rolling`
+Zwei Phasen, je mit leerer Datenbank: `fresh` startet die aktuelle Version (01–04, 06, 07), `rolling`
 startet die Vorgängerversion und lässt Szenario 05 auf die aktuelle aktualisieren.
 
 **Vorgängerversion n−1** (`e2e/scripts/previous-version.mjs`):

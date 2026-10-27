@@ -41,6 +41,14 @@ class EmbeddingInfoServiceTest {
   }
 
   @Test
+  void reportsTheBaseUrlWithoutQueryAndFragment() {
+    when(models.installed())
+        .thenReturn(Optional.of(installed("https://llm.example.invalid/v1?api-key=geheim#teil")));
+
+    assertThat(service.getEmbeddingInfo().baseUrl()).isEqualTo("https://llm.example.invalid/v1");
+  }
+
+  @Test
   void reportsNoModelBeforeOneIsInstalled() {
     when(models.installed()).thenReturn(Optional.empty());
 
@@ -52,6 +60,7 @@ class EmbeddingInfoServiceTest {
   }
 
   private static EmbeddingModelSettings installed(String baseUrl) {
-    return new EmbeddingModelSettings(baseUrl, "nomic-embed-text", null, 2048, 768, Instant.EPOCH);
+    return new EmbeddingModelSettings(
+        baseUrl, "nomic-embed-text", null, 2048, 768, Instant.EPOCH, 1, null);
   }
 }

@@ -113,7 +113,10 @@ class TransportStatusCodeSpecificationTest {
           "applyInstallationAnswerFile",
           "completeInstallation",
           "previewSettingsImport",
-          "importSettings");
+          "importSettings",
+          "probeEmbeddingModelChange",
+          "startEmbeddingModelChange",
+          "changeEmbeddingModelEndpoint");
 
   private static final Set<String> HTTP_METHODS =
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");

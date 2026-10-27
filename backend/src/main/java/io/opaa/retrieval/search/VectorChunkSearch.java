@@ -2,14 +2,15 @@ package io.opaa.retrieval.search;
 
 import com.pgvector.PGvector;
 import io.opaa.compliance.DataFlow;
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.VectorTable;
+import io.opaa.llm.EmbeddingClients;
 import io.opaa.retrieval.VectorIndexScanProperties;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentMetadata;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.pgvector.PgVectorFilterExpressionConverter;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
@@ -32,6 +33,11 @@ import tools.jackson.databind.ObjectMapper;
  * distance order the relaxed scan gives up. The settings are set after the query embedding exists,
  * so no connection is held during the embedding call. They last until the transaction ends: this
  * search's own, or a caller's it joins.
+ *
+ * <p>The query is embedded with one pinned client and searched only while its generation is the one
+ * of the embedding column, checked against this instance's state and again in the query against
+ * {@code embedding_index}; otherwise the search finds nothing and the full-text search answers
+ * alone (ADR-0061, Entscheidung 6).
  */
 @DataFlow("embedding-model")
 @Component
@@ -47,7 +53,8 @@ public class VectorChunkSearch {
 
   private final JdbcTemplate jdbcTemplate;
   private final TransactionTemplate transactionTemplate;
-  private final EmbeddingModel embeddingModel;
+  private final EmbeddingClients clients;
+  private final EmbeddingIndexState indexState;
   private final ObjectMapper objectMapper;
   private final VectorIndexScanProperties scanProperties;
   private final PgDistanceType distanceType;
@@ -58,7 +65,8 @@ public class VectorChunkSearch {
   VectorChunkSearch(
       JdbcTemplate jdbcTemplate,
       PlatformTransactionManager transactionManager,
-      EmbeddingModel embeddingModel,
+      EmbeddingClients clients,
+      EmbeddingIndexState indexState,
       ObjectMapper objectMapper,
       VectorIndexScanProperties scanProperties,
       PgVectorStoreProperties pgVector,
@@ -66,7 +74,8 @@ public class VectorChunkSearch {
     this.jdbcTemplate = jdbcTemplate;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.transactionTemplate.setReadOnly(true);
-    this.embeddingModel = embeddingModel;
+    this.clients = clients;
+    this.indexState = indexState;
     this.objectMapper = objectMapper;
     this.scanProperties = scanProperties;
     this.distanceType = pgVector.getDistanceType();
@@ -81,7 +90,11 @@ public class VectorChunkSearch {
    * embeddings).
    */
   public List<Document> similaritySearch(SearchRequest request) {
-    PGvector queryEmbedding = new PGvector(embeddingModel.embed(request.getQuery()));
+    EmbeddingClients.Pinned pinned = clients.pin();
+    PGvector queryEmbedding = new PGvector(pinned.client().embed(request.getQuery()));
+    if (!indexState.isVectorSearchAvailableFor(pinned.generation())) {
+      return List.of();
+    }
     String sql = searchSql(request);
     double maxDistance = 1 - request.getSimilarityThreshold();
     int efSearch = Math.max(DEFAULT_EF_SEARCH, request.getTopK());
@@ -108,6 +121,8 @@ public class VectorChunkSearch {
                     .build();
               },
               queryEmbedding,
+              pinned.generation(),
+              pinned.generation(),
               request.getTopK(),
               maxDistance);
         });
@@ -120,10 +135,14 @@ public class VectorChunkSearch {
    * threshold drive the scan to its tuple limit.
    */
   private String searchSql(SearchRequest request) {
+    // The generation is compared once per query; without an index row nothing is recorded yet.
     String filter =
-        request.getFilterExpression() == null
-            ? ""
-            : " WHERE " + filterConverter.convertExpression(request.getFilterExpression());
+        " WHERE coalesce((SELECT generation FROM embedding_index WHERE id = 1), ?) = ?"
+            + (request.getFilterExpression() == null
+                ? ""
+                : " AND ("
+                    + filterConverter.convertExpression(request.getFilterExpression())
+                    + ")");
     // PgVectorStore reports inner-product distance shifted by one; ordering by the raw operator
     // keeps the index usable and the order unchanged.
     String distance =

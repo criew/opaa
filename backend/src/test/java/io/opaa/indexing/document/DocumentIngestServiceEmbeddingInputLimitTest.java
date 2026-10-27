@@ -3,6 +3,7 @@ package io.opaa.indexing.document;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -238,7 +239,7 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> written =
         ArgumentCaptor.forClass(List.class);
-    verify(writer, atLeastOnce()).writeEmbeddedChunks(written.capture(), any());
+    verify(writer, atLeastOnce()).writeEmbeddedChunks(written.capture(), any(), anyLong());
     return written.getAllValues().stream()
         .flatMap(List::stream)
         .sorted(

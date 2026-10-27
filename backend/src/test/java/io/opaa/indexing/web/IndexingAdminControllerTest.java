@@ -610,9 +610,10 @@ class IndexingAdminControllerTest {
   }
 
   private static EmbeddingReindexProgress staleProgress(boolean running) {
-    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", "http://ollama:11434/v1", 1024);
+    EmbeddingIdentity configured =
+        new EmbeddingIdentity("bge-m3", "http://ollama:11434/v1", 1024, 1);
     return new EmbeddingReindexProgress(
-        new EmbeddingIdentity("nomic-embed-text", "http://ollama:11434/v1", 768),
+        new EmbeddingIdentity("nomic-embed-text", "http://ollama:11434/v1", 768, 1),
         configured,
         true,
         running,
@@ -622,10 +623,16 @@ class IndexingAdminControllerTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             null,
+            null,
+            EmbeddingIndexRecord.RunKind.REEMBED,
+            1L,
             null),
         2474,
         1200,
-        false);
+        false,
+        null,
+        false,
+        0);
   }
 
   @Test

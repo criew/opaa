@@ -132,6 +132,7 @@ class EmbeddingIndexReconcilerIntegrationTest {
     reconciler.reconcile();
     assertThat(state.isStale()).isTrue();
     recordIndexModel(CONFIGURED_MODEL, 1536);
+    recordIndexGenerationOfTheModelRow();
 
     reconciler.reconcile();
 
@@ -162,6 +163,7 @@ class EmbeddingIndexReconcilerIntegrationTest {
     recordIndexModel("text-embedding-3-small", 1536);
     reconciler.reconcile();
     jdbcTemplate.update("UPDATE embedding_index SET model = ?", CONFIGURED_MODEL);
+    recordIndexGenerationOfTheModelRow();
     UUID newer = liveInstanceOfVersion("99.0.0");
     try {
       reconciler.reconcile();
@@ -215,6 +217,13 @@ class EmbeddingIndexReconcilerIntegrationTest {
         version,
         version);
     return id;
+  }
+
+  /** The embedding column as built under the generation the model row carries now. */
+  private void recordIndexGenerationOfTheModelRow() {
+    jdbcTemplate.update(
+        "UPDATE embedding_index SET generation = (SELECT generation FROM embedding_model),"
+            + " target_generation = NULL");
   }
 
   private void recordIndexModel(String model, int dimensions) {

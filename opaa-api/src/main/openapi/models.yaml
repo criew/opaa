@@ -217,12 +217,11 @@ paths:
     get:
       operationId: getEmbeddingInfo
       tags: [model]
-      summary: Get the current embedding model configuration (system admin only)
+      summary: Get the installed embedding model (system admin only)
       description: >
-        Read-only. Unlike chat models, the embedding model is not managed through this API -
-        a change requires a full re-index because existing vectors become incomparable
-        (docs/features/llm-integration.md#sofortige-wirkung), so it stays a configuration value,
-        not a writable admin resource.
+        The embedding model row of the installation, without its key. A change goes through the
+        guided model change with a re-embedding, or the endpoint change of the same model
+        (ADR-0061, docs/features/embedding-model-change.md).
       responses:
         "200":
           description: Current embedding configuration
@@ -232,6 +231,132 @@ paths:
                 $ref: "#/components/schemas/EmbeddingInfoResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/models/embedding/probe:
+    post:
+      operationId: probeEmbeddingModelChange
+      tags: [model]
+      summary: Probe a draft of the embedding model and preview its change (system admin only)
+      description: >
+        Embeds fixed probe texts with the draft and compares the vectors with the reference anchor
+        of the installed model. kind ENDPOINT_CHANGE means the same model at another endpoint,
+        changeable without a re-embedding; MODEL_CHANGE comes with a preview - chunks, estimated
+        tokens, duration from a throughput probe with artificial texts, and storage. No content of
+        a library reaches the draft's endpoint, nothing is stored and nothing is audited. apiKey
+        omitted uses the stored key, only for the stored endpoint (otherwise 400); an empty string
+        sends none. An address other than the stored endpoint passes the address check of models
+        (400 with code BLOCKED). Probes and confirmations share an installation-wide limit (429).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmbeddingModelDraft"
+      responses:
+        "200":
+          description: The probe; succeeded false names the failure in message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingModelProbeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/admin/models/embedding/change:
+    post:
+      operationId: startEmbeddingModelChange
+      tags: [model]
+      summary: Confirm a change of the embedding model and start the re-embedding (system admin only)
+      description: >
+        Probes the draft again and refuses another size than expectedDimensions (409), then sets the
+        model and its key under a new generation, keeps the previous model and starts the
+        re-embedding in one transaction. The vector search is suspended from now until the switch;
+        after the switch the previous vectors are gone. Refused while another change waits for its
+        switch, while the instances run different versions, or when the vector table stays locked
+        (409, can be repeated). A running refill ends. Recorded in the audit log as
+        EMBEDDING_MODEL_CHANGED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmbeddingModelChangeRequest"
+      responses:
+        "200":
+          description: The change was confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      operationId: discardEmbeddingModelChange
+      tags: [model]
+      summary: Discard a confirmed change before its switch (system admin only)
+      description: >
+        The previous model applies again, the target column goes, a running re-embedding ends and
+        the vector search resumes at once. Chunks written since the confirmation without a vector
+        of the previous model are refilled by a run of this instance. Refused while the switch is
+        under way, when nothing waits to be discarded, while the instances run different versions,
+        or when the vector table stays locked (409). Recorded as EMBEDDING_MODEL_CHANGE_DISCARDED.
+      responses:
+        "200":
+          description: The change was discarded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/models/embedding/endpoint:
+    put:
+      operationId: changeEmbeddingModelEndpoint
+      tags: [model]
+      summary: Move the embedding model to another endpoint without a re-embedding (system admin only)
+      description: >
+        Only for the same model name and size whose probe vectors are at least 0.99 similar to the
+        reference anchor; during a change for the target model while its run is stopped. Without a
+        stored anchor the stored endpoint is probed for one. Refused while a run works, for another
+        model, or while the instances run different versions (409). The key rule and the address
+        check are those of the probe. Has its own installation-wide limit (429). Recorded as
+        EMBEDDING_MODEL_ENDPOINT_CHANGED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmbeddingModelDraft"
+      responses:
+        "200":
+          description: The endpoint was changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/admin/models/rerank:
     get:
@@ -834,8 +959,8 @@ components:
     EmbeddingInfoResponse:
       type: object
       description: >
-        The embedding model actually configured, read-only - see
-        docs/features/llm-integration.md#sofortige-wirkung for why it is not editable here.
+        The installed embedding model, never with its key - see
+        docs/features/embedding-model-change.md for how it changes.
       required: [provider, model, dimensions]
       properties:
         provider:
@@ -849,3 +974,145 @@ components:
           type: integer
           description: Vector dimensionality of the configured pgvector store.
           example: 1536
+        baseUrl:
+          type: string
+          nullable: true
+          description: The endpoint; null when it carries credentials.
+        maxInputTokens:
+          type: integer
+          nullable: true
+          description: The input limit of the endpoint, in tokens.
+        apiKeySet:
+          type: boolean
+          nullable: true
+          description: Whether a key is stored.
+        generation:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            The generation of the model; a model change gives a new one, an endpoint change keeps it.
+        anchorRecorded:
+          type: boolean
+          nullable: true
+          description: >
+            Whether the reference anchor an endpoint change is compared with is stored. Without it
+            the stored endpoint is probed for one.
+        index:
+          $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+
+    EmbeddingModelDraft:
+      type: object
+      required: [baseUrl, model]
+      properties:
+        baseUrl:
+          type: string
+          maxLength: 500
+        model:
+          type: string
+          maxLength: 200
+        apiKey:
+          type: string
+          format: password
+          writeOnly: true
+          nullable: true
+          maxLength: 2000
+          description: >
+            Omitted keeps the stored key, only for the stored endpoint; an empty string means no key.
+            Never returned.
+        maxInputTokens:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 1000000
+          description: The input limit of the endpoint in tokens; omitted for 2048.
+
+    EmbeddingModelChangeRequest:
+      allOf:
+        - $ref: "#/components/schemas/EmbeddingModelDraft"
+        - type: object
+          required: [expectedDimensions]
+          properties:
+            expectedDimensions:
+              type: integer
+              minimum: 1
+              description: The vector size the probe and the preview named.
+
+    EmbeddingModelChangeKind:
+      type: string
+      description: >
+        MODEL_CHANGE - another model, size or version; changing it re-embeds every chunk.
+        ENDPOINT_CHANGE - the installed model at another endpoint; it changes without a re-embedding.
+      enum: [MODEL_CHANGE, ENDPOINT_CHANGE]
+
+    EmbeddingModelProbeResponse:
+      type: object
+      required: [succeeded]
+      properties:
+        succeeded:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+          description: German result of the probe.
+        dimensions:
+          type: integer
+          nullable: true
+        kind:
+          $ref: "#/components/schemas/EmbeddingModelChangeKind"
+        similarity:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            The smallest cosine similarity of the probe vectors to the reference anchor; null for
+            another model or size, or when no anchor could be had.
+        preview:
+          $ref: "#/components/schemas/EmbeddingModelChangePreview"
+
+    EmbeddingModelChangePreview:
+      type: object
+      required:
+        [
+          totalChunks,
+          privateLibrariesCounted,
+          estimatedTokens,
+          estimatedSeconds,
+          rateMeasured,
+          storageLowerBytes,
+          storageUpperBytes,
+          currentTableBytes,
+        ]
+      properties:
+        totalChunks:
+          type: integer
+          format: int64
+        privateLibrariesCounted:
+          type: boolean
+          description: >
+            Whether the numbers include private libraries; only from the minimum group size.
+        estimatedTokens:
+          type: integer
+          format: int64
+          description: The text length of the chunks divided by four characters per token.
+        estimatedSeconds:
+          type: integer
+          format: int64
+        rateMeasured:
+          type: boolean
+          description: >
+            Whether the duration comes from the throughput probe of the new endpoint; otherwise from
+            the configured estimate.
+        storageLowerBytes:
+          type: integer
+          format: int64
+          description: The new vectors and their index.
+        storageUpperBytes:
+          type: integer
+          format: int64
+          description: >
+            The lower bound plus today's vector table with its indexes, since the re-embedding
+            writes every row anew.
+        currentTableBytes:
+          type: integer
+          format: int64

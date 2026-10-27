@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,9 +26,11 @@ import org.springframework.stereotype.Component;
  * EmbeddingModelNotInstalledException}, so nothing is embedded into a vector table that does not
  * exist yet.
  *
- * <p>The row is written once and not changed afterwards, so the client is cached from the first
- * call that finds it; the absence is never cached. The {@link io.opaa.instance.InvalidationBus}
- * drops the client when the row changes on any instance (ADR-0053, Entscheidung 5).
+ * <p>The client is cached from the first call that finds the row, together with the row's
+ * generation; the absence is never cached. The {@link io.opaa.instance.InvalidationBus} drops the
+ * client when the row changes on any instance (ADR-0053, Entscheidung 5), and a client built from a
+ * row read before such an invalidation is used for its one call but never cached, so the cache
+ * never holds a model the row no longer names.
  *
  * <p>A completed installation of the {@code dev} mode without a model - its self-installation at
  * the start found the endpoint unreachable - tries it again on use, at most once per backoff
@@ -36,7 +40,8 @@ import org.springframework.stereotype.Component;
  */
 @DataFlow("embedding-model")
 @Component
-public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubscriber {
+public class InstalledEmbeddingModel
+    implements EmbeddingModel, EmbeddingClients, InvalidationSubscriber {
 
   /** The topic the trigger on {@code embedding_model} announces. */
   public static final String INVALIDATION_TOPIC = "embedding-model";
@@ -50,8 +55,10 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
   private final SettingsEncryptor settingsEncryptor;
   private final EmbeddingClientFactory clientFactory;
   private final EmbeddingModelService embeddingModels;
+  private final ApplicationEventPublisher events;
   private final LongSupplier nanoTime;
   private final AtomicReference<Installed> cache = new AtomicReference<>();
+  private final AtomicLong invalidations = new AtomicLong();
   private final AtomicBoolean takeoverRunning = new AtomicBoolean();
   private volatile long nextTakeover;
   private volatile Duration retry = FIRST_RETRY;
@@ -61,8 +68,9 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
       EmbeddingModelSettingsRepository repository,
       SettingsEncryptor settingsEncryptor,
       EmbeddingClientFactory clientFactory,
-      EmbeddingModelService embeddingModels) {
-    this(repository, settingsEncryptor, clientFactory, embeddingModels, System::nanoTime);
+      EmbeddingModelService embeddingModels,
+      ApplicationEventPublisher events) {
+    this(repository, settingsEncryptor, clientFactory, embeddingModels, events, System::nanoTime);
   }
 
   InstalledEmbeddingModel(
@@ -70,7 +78,9 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
       SettingsEncryptor settingsEncryptor,
       EmbeddingClientFactory clientFactory,
       EmbeddingModelService embeddingModels,
+      ApplicationEventPublisher events,
       LongSupplier nanoTime) {
+    this.events = events;
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.clientFactory = clientFactory;
@@ -82,12 +92,28 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
 
   @Override
   public EmbeddingResponse call(EmbeddingRequest request) {
-    return installed().client().call(request);
+    Installed installed = installed();
+    EmbeddingResponse response = installed.client().call(request);
+    announceMissingAnchor(installed);
+    return response;
   }
 
   @Override
   public float[] embed(Document document) {
-    return installed().client().embed(document);
+    Installed installed = installed();
+    float[] vector = installed.client().embed(document);
+    announceMissingAnchor(installed);
+    return vector;
+  }
+
+  /**
+   * After the first successful embedding of a model without a reference anchor - the status probe
+   * among them - asks once per cached client for the anchor to be taken (ADR-0061, Entscheidung 5).
+   */
+  private void announceMissingAnchor(Installed installed) {
+    if (installed.anchorMissing().compareAndSet(true, false)) {
+      events.publishEvent(new EmbeddingAnchorMissingEvent(installed.generation()));
+    }
   }
 
   /**
@@ -112,12 +138,19 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
   }
 
   @Override
+  public Pinned pin() {
+    Installed installed = installed();
+    return new Pinned(installed.client(), installed.generation(), installed.maxInputTokens());
+  }
+
+  @Override
   public Set<String> invalidationTopics() {
     return Set.of(INVALIDATION_TOPIC);
   }
 
   @Override
   public void invalidateAll() {
+    invalidations.incrementAndGet();
     cache.set(null);
   }
 
@@ -126,6 +159,7 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
     if (cached != null) {
       return cached;
     }
+    long seen = invalidations.get();
     EmbeddingModelSettings settings =
         repository
             .findInstalled()
@@ -135,12 +169,12 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
                     embeddingModels.missingAfterInstallation()
                         ? EmbeddingModelNotInstalledException.afterInstallation()
                         : EmbeddingModelNotInstalledException.pending());
-    return build(settings);
+    return build(settings, seen);
   }
 
-  private synchronized Installed build(EmbeddingModelSettings settings) {
+  private synchronized Installed build(EmbeddingModelSettings settings, long seen) {
     Installed cached = cache.get();
-    if (cached != null) {
+    if (cached != null && cached.fingerprint().equals(settings.fingerprint())) {
       return cached;
     }
     EmbeddingEndpoint endpoint =
@@ -151,11 +185,19 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
             settings.getMaxInputTokens());
     Installed built =
         new Installed(
-            clientFactory.create(endpoint), settings.getDimensions(), settings.getMaxInputTokens());
-    cache.set(built);
+            clientFactory.create(endpoint),
+            settings.getDimensions(),
+            settings.getMaxInputTokens(),
+            settings.getGeneration(),
+            settings.fingerprint(),
+            new AtomicBoolean(!settings.hasReferenceAnchor()));
+    if (invalidations.get() == seen) {
+      cache.set(built);
+    }
     log.info(
-        "Built embedding client for model '{}' at {}",
+        "Built embedding client for model '{}' (generation {}) at {}",
         settings.getModelIdentifier(),
+        settings.getGeneration(),
         ModelEndpointUri.withoutSecrets(settings.getBaseUrl()));
     return built;
   }
@@ -182,5 +224,11 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
     }
   }
 
-  private record Installed(EmbeddingModel client, int dimensions, int maxInputTokens) {}
+  private record Installed(
+      EmbeddingModel client,
+      int dimensions,
+      int maxInputTokens,
+      long generation,
+      String fingerprint,
+      AtomicBoolean anchorMissing) {}
 }

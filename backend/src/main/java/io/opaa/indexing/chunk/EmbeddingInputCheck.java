@@ -14,12 +14,15 @@ import java.util.Map;
  *     silent cut can neither be shown nor ruled out
  * @param cutVectors the vector the endpoint returned for an overlong input it cut instead of
  *     refusing, keyed by the input text; only a path that cannot split writes one
+ * @param generation the generation of the model that embedded {@code vectors}; they may be reused
+ *     only under the same one
  */
 public record EmbeddingInputCheck(
     Map<String, float[]> vectors,
     List<Overlong> overlong,
     List<Integer> unverified,
-    Map<String, float[]> cutVectors) {
+    Map<String, float[]> cutVectors,
+    long generation) {
 
   /**
    * One chunk the endpoint proved too long.

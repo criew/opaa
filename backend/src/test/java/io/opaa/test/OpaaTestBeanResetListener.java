@@ -44,6 +44,10 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
         .awaitDelivery(BUS_DELIVERY_TIMEOUT);
     Mockito.reset(testContext.getApplicationContext().getBean(ChatModel.class));
     testContext.getApplicationContext().getBean(FakeDirectoryClient.class).reset();
+    testContext
+        .getApplicationContext()
+        .getBeanProvider(FakeEmbeddingProbe.class)
+        .ifAvailable(FakeEmbeddingProbe::reset);
     FakeGraphServer.resetShared();
     if (testContext.getApplicationContext().getBean(EmbeddingModel.class)
         instanceof FakeEmbeddingModel embeddingModel) {

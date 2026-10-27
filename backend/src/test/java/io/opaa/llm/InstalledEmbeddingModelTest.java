@@ -41,6 +41,7 @@ class InstalledEmbeddingModelTest {
           new SettingsEncryptor(new SettingsEncryptionProperties(null)),
           factory,
           models,
+          event -> {},
           now::get);
 
   @Test
@@ -131,8 +132,69 @@ class InstalledEmbeddingModelTest {
         .isEqualTo("Satzung > §4\n\nAntragsfrist drei Monate");
   }
 
+  @Test
+  void theFirstSuccessfulEmbeddingOfAModelWithoutAnchorAsksOnceForIt() {
+    java.util.List<Object> published = new java.util.ArrayList<>();
+    InstalledEmbeddingModel announcing =
+        new InstalledEmbeddingModel(
+            repository,
+            new SettingsEncryptor(new SettingsEncryptionProperties(null)),
+            factory,
+            models,
+            published::add,
+            now::get);
+    when(repository.findInstalled()).thenReturn(Optional.of(settings()));
+    when(factory.create(any())).thenReturn(new FakeEmbeddingModel());
+
+    announcing.embed("eins");
+    announcing.embed("zwei");
+
+    assertThat(published).containsExactly(new EmbeddingAnchorMissingEvent(1));
+  }
+
+  @Test
+  void aClientCarriesTheGenerationOfTheRowItWasBuiltFrom() {
+    when(repository.findInstalled()).thenReturn(Optional.of(settings()));
+    when(factory.create(any())).thenReturn(new FakeEmbeddingModel());
+
+    assertThat(model.pin().generation()).isEqualTo(1);
+    assertThat(model.pin().maxInputTokens()).isEqualTo(4096);
+  }
+
+  // regression guard for ADR-0061, Entscheidung 5: an endpoint change keeps the generation, so a
+  // client cached meanwhile must not stand in for the row of the new address
+  @Test
+  void aClientCachedMeanwhileForAnotherAddressOfTheSameGenerationIsNotTaken() {
+    EmbeddingModelSettings moved =
+        new EmbeddingModelSettings(
+            "http://ollama-neu:11434/v1", "bge-m3", null, 4096, 1536, Instant.EPOCH, 1, null);
+    java.util.concurrent.atomic.AtomicInteger reads =
+        new java.util.concurrent.atomic.AtomicInteger();
+    when(repository.findInstalled())
+        .thenAnswer(
+            invocation -> {
+              if (reads.incrementAndGet() == 1) {
+                // another caller builds and caches the client of the old address in between
+                model.dimensions();
+                return Optional.of(moved);
+              }
+              return Optional.of(settings());
+            });
+    java.util.List<String> built = new java.util.ArrayList<>();
+    when(factory.create(any()))
+        .thenAnswer(
+            invocation -> {
+              built.add(invocation.<EmbeddingEndpoint>getArgument(0).baseUrl());
+              return new FakeEmbeddingModel();
+            });
+
+    model.embed("eins");
+
+    assertThat(built).containsExactly("http://ollama:11434/v1", "http://ollama-neu:11434/v1");
+  }
+
   private static EmbeddingModelSettings settings() {
     return new EmbeddingModelSettings(
-        "http://ollama:11434/v1", "bge-m3", null, 4096, 1536, Instant.EPOCH);
+        "http://ollama:11434/v1", "bge-m3", null, 4096, 1536, Instant.EPOCH, 1, null);
   }
 }

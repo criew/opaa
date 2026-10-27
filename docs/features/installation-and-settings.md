@@ -357,10 +357,6 @@ Je Teilschritt ein Sub-Issue an #3160:
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Wechsel des Embedding-Modells nach der Installation: Konzept in
-  [Wechsel des Embedding-Modells](./embedding-model-change.md) (ADR-0061), noch nicht gebaut. Bis
-  dahin ist er ein Eingriff des Betriebs in `embedding_model` bei angehaltenen Instanzen; der
-  Startabgleich und die Neueinbettung übernehmen danach wie bisher.
 - Experten-Feinabstimmung (Gruppe F) später mit Messung und Leitplanken in der Verwaltung?
 
 ---

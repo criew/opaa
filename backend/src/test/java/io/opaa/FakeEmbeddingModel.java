@@ -1,5 +1,6 @@
 package io.opaa;
 
+import io.opaa.llm.EmbeddingModelService;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.ai.embedding.Embedding;
@@ -74,7 +75,13 @@ public class FakeEmbeddingModel implements EmbeddingModel {
     return DIMENSIONS;
   }
 
-  private float[] generateFakeEmbedding() {
+  /** A successful probe of {@code texts}, one vector of this fake per text. */
+  public static EmbeddingModelService.ProbeOutcome probeOutcome(List<String> texts) {
+    return EmbeddingModelService.ProbeOutcome.succeeded(
+        texts.stream().map(text -> generateFakeEmbedding()).toList(), 1_000_000L);
+  }
+
+  private static float[] generateFakeEmbedding() {
     float[] embedding = new float[DIMENSIONS];
     for (int i = 0; i < embedding.length; i++) {
       embedding[i] = (float) Math.sin(i * 0.01);

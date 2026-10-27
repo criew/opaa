@@ -19,7 +19,9 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
 - **Die Vektortabelle** legt nicht die Migration an, sondern der Abschluss der Installation, mit
   der Dimension, die die Probeeinbettung des Embedding-Modells ergibt. Eine bestehende Installation
   behält ihre Vektortabelle. Nach einem Wechsel des Embedding-Modells stellt die Neueinbettung sie
-  auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)).
+  auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)); bis dahin stehen alte und neue
+  Vektoren nebeneinander, und den Platz der alten gibt PostgreSQL erst frei, wenn die Zeilen neu
+  geschrieben werden.
 - **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
   Migrationsvorgang der Datenbank mit Sicherung und Wiederherstellung, kein Image-Update: Das
   Datenverzeichnis ist nicht aufwärtskompatibel.

@@ -375,6 +375,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
           mock(org.springframework.jdbc.core.JdbcTemplate.class),
           mock(FullTextChunkStore.class),
           new io.opaa.indexing.chunk.EmbeddingIndexState(),
+          mock(io.opaa.indexing.chunk.EmbeddingIndexStore.class),
           mock(tools.jackson.databind.ObjectMapper.class),
           new io.opaa.knowledge.VectorTable("public", "vector_store"));
       this.concurrencyProof = concurrencyProof;
@@ -382,7 +383,9 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
 
     @Override
     public void writeEmbeddedChunks(
-        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
+        List<org.springframework.ai.document.Document> chunks,
+        List<float[]> embeddings,
+        long generation) {
       int current = concurrentWriteCalls.incrementAndGet();
       maxConcurrentWriteCalls.updateAndGet(max -> Math.max(max, current));
       threadNames.add(Thread.currentThread().getName());
@@ -411,13 +414,16 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
           mock(org.springframework.jdbc.core.JdbcTemplate.class),
           mock(FullTextChunkStore.class),
           new io.opaa.indexing.chunk.EmbeddingIndexState(),
+          mock(io.opaa.indexing.chunk.EmbeddingIndexStore.class),
           mock(tools.jackson.databind.ObjectMapper.class),
           new io.opaa.knowledge.VectorTable("public", "vector_store"));
     }
 
     @Override
     public void writeEmbeddedChunks(
-        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
+        List<org.springframework.ai.document.Document> chunks,
+        List<float[]> embeddings,
+        long generation) {
       throw new RuntimeException("embedding call blew up");
     }
   }

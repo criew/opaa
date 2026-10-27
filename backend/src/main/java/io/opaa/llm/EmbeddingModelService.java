@@ -8,6 +8,7 @@ import io.opaa.security.SettingsEncryptor;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Clock;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -22,8 +23,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * The embedding model of the installation (ADR-0060, Entscheidung 10): the probe embedding that
  * determines the vector size, and the installation that stores the model and creates {@code
- * vector_store} with that size in one transaction. Installed once; there is no way to change it
- * through the administration, since every stored vector depends on it.
+ * vector_store} with that size in one transaction. A later change goes through {@link
+ * EmbeddingModelAdministration} and a re-embedding (ADR-0061).
  *
  * <p>The {@code dev} mode installs its model itself ({@link #adoptIfMissing}) under the schema lock
  * of the vector table (ADR-0053: "Sperre"): with an existing table only when its configuration
@@ -35,17 +36,35 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class EmbeddingModelService {
 
-  /** The text of the probe embedding. */
-  static final String PROBE_TEXT = HttpEmbeddingProbe.PROBE_TEXT;
-
   private static final Logger log = LoggerFactory.getLogger(EmbeddingModelService.class);
 
   /**
    * The outcome of a probe embedding, with a German message for the person installing.
    *
    * @param dimensions the vector size the model returned; {@code null} unless it succeeded
+   * @param vectors one vector per probe text, empty unless it succeeded
+   * @param elapsedNanos how long the request took; {@code 0} when unknown
    */
-  public record ProbeOutcome(boolean succeeded, String message, Integer dimensions) {
+  public record ProbeOutcome(
+      boolean succeeded,
+      String message,
+      Integer dimensions,
+      List<float[]> vectors,
+      long elapsedNanos) {
+
+    public ProbeOutcome {
+      vectors = vectors == null ? List.of() : List.copyOf(vectors);
+    }
+
+    /** An outcome without vectors, for a probe that only reports the size. */
+    public ProbeOutcome(boolean succeeded, String message, Integer dimensions) {
+      this(succeeded, message, dimensions, List.of(), 0);
+    }
+
+    /** A success with {@code vectors}, all of the same width. */
+    public static ProbeOutcome succeeded(List<float[]> vectors, long elapsedNanos) {
+      return new ProbeOutcome(true, null, vectors.getFirst().length, vectors, elapsedNanos);
+    }
 
     static ProbeOutcome failure(String message) {
       return new ProbeOutcome(false, message, null);
@@ -60,6 +79,7 @@ public class EmbeddingModelService {
   private final RecordedEmbeddingIndex recordedIndex;
   private final ApplicationEventPublisher events;
   private final InstallationStatus installationStatus;
+  private final EmbeddingGenerations generations;
   private final TransactionTemplate transactions;
   private final Clock clock;
 
@@ -72,6 +92,7 @@ public class EmbeddingModelService {
       RecordedEmbeddingIndex recordedIndex,
       ApplicationEventPublisher events,
       InstallationStatus installationStatus,
+      EmbeddingGenerations generations,
       PlatformTransactionManager transactionManager,
       Clock clock) {
     this.repository = repository;
@@ -82,6 +103,7 @@ public class EmbeddingModelService {
     this.recordedIndex = recordedIndex;
     this.events = events;
     this.installationStatus = installationStatus;
+    this.generations = generations;
     this.transactions = new TransactionTemplate(transactionManager);
     this.clock = clock;
   }
@@ -98,16 +120,16 @@ public class EmbeddingModelService {
   }
 
   /**
-   * Embeds a probe text with {@code endpoint} and reports the vector size it returned. A failure is
-   * a result, never an exception; the message names what to check. Call it outside any transaction:
-   * it waits for the network.
+   * Embeds the texts of {@link EmbeddingAnchor#TEXTS} with {@code endpoint} and reports the vector
+   * size and the vectors it returned. A failure is a result, never an exception; the message names
+   * what to check. Call it outside any transaction: it waits for the network.
    */
   public ProbeOutcome probe(EmbeddingEndpoint endpoint) {
     String addressProblem = addressProblem(endpoint.baseUrl());
     if (addressProblem != null) {
       return ProbeOutcome.failure(addressProblem);
     }
-    ProbeOutcome outcome = probe.probe(endpoint);
+    ProbeOutcome outcome = probe.probe(endpoint, EmbeddingAnchor.TEXTS);
     if (!outcome.succeeded()) {
       return ProbeOutcome.failure(
           "Die Probeeinbettung ist fehlgeschlagen: "
@@ -126,7 +148,9 @@ public class EmbeddingModelService {
     return new ProbeOutcome(
         true,
         "Probeeinbettung erfolgreich: Das Modell liefert Vektoren mit " + size + " Dimensionen.",
-        size);
+        size,
+        outcome.vectors(),
+        outcome.elapsedNanos());
   }
 
   /**
@@ -156,7 +180,7 @@ public class EmbeddingModelService {
       vectorTable.dropEmpty();
     }
     vectorTable.createIfAbsent(dimensions);
-    return store(endpoint, dimensions);
+    return store(endpoint, dimensions, generations.next());
   }
 
   /**
@@ -203,18 +227,22 @@ public class EmbeddingModelService {
       return true;
     }
     Integer dimensions;
+    long generation;
     if (vectorTable.exists()) {
       dimensions = dimensionsOfExistingIndex(endpoint);
+      generation = generationOfExistingIndex(endpoint);
     } else if (probed != null) {
       dimensions = probed;
+      generation = generations.next();
       vectorTable.createIfAbsent(dimensions);
     } else {
       dimensions = null;
+      generation = 0;
     }
     if (dimensions == null) {
       return false;
     }
-    store(endpoint, dimensions);
+    store(endpoint, dimensions, generation);
     log.info(
         "Installed the embedding model '{}' of the dev mode at {} ({} dimensions) into"
             + " embedding_model",
@@ -259,6 +287,23 @@ public class EmbeddingModelService {
     return null;
   }
 
+  /**
+   * The generation of the column the configured model's vectors are in, so the self-installation
+   * matches the index instead of starting a re-embedding; the initial one when nothing is recorded.
+   */
+  private long generationOfExistingIndex(EmbeddingEndpoint endpoint) {
+    return recordedIndex
+        .recorded()
+        .map(
+            index ->
+                index.targetModel() != null
+                        && index.targetModel().equals(endpoint.modelIdentifier())
+                        && index.targetGeneration() != null
+                    ? index.targetGeneration()
+                    : index.generation())
+        .orElse(EmbeddingClients.INITIAL_GENERATION);
+  }
+
   private Integer probeForTakeover(EmbeddingEndpoint endpoint) {
     ProbeOutcome outcome = probe(endpoint);
     if (!outcome.succeeded()) {
@@ -271,7 +316,12 @@ public class EmbeddingModelService {
     return outcome.dimensions();
   }
 
-  private EmbeddingModelSettings store(EmbeddingEndpoint endpoint, int dimensions) {
+  /**
+   * Stores the model without a reference anchor; the anchor is taken from the installed endpoint
+   * right after ({@link EmbeddingAnchorRecorder}), since the installation step keeps only the size.
+   */
+  private EmbeddingModelSettings store(
+      EmbeddingEndpoint endpoint, int dimensions, long generation) {
     EmbeddingModelSettings settings =
         repository.save(
             new EmbeddingModelSettings(
@@ -280,7 +330,9 @@ public class EmbeddingModelService {
                 settingsEncryptor.encrypt(endpoint.apiKey()),
                 endpoint.maxInputTokens(),
                 dimensions,
-                clock.instant()));
+                clock.instant(),
+                generation,
+                null));
     events.publishEvent(new EmbeddingModelInstalledEvent(endpoint.modelIdentifier(), dimensions));
     return settings;
   }

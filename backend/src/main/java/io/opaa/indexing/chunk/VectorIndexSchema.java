@@ -92,6 +92,43 @@ public class VectorIndexSchema {
     return new ChunkCounts(counts[0], counts[1], counts[2], counts[3]);
   }
 
+  /** The text length of the chunks of shared and of private libraries, in characters. */
+  public record TextLengths(long shared, long privateLibraries) {}
+
+  /** {@link TextLengths} of every stored chunk, split like {@link #chunkCounts}. */
+  public TextLengths textLengths() {
+    long[] lengths = new long[2];
+    jdbcTemplate.query(
+        "SELECT coalesce(a.owner_only, false) AS private_library,"
+            + " coalesce(sum(length(v.content)), 0) AS characters FROM "
+            + table.qualifiedName()
+            + " v LEFT JOIN assets a ON a.id::text = v.metadata->>'"
+            + VectorChunkStore.LIBRARY_ID_METADATA_KEY
+            + "' GROUP BY 1",
+        rs -> {
+          lengths[rs.getBoolean("private_library") ? 1 : 0] = rs.getLong("characters");
+        });
+    return new TextLengths(lengths[0], lengths[1]);
+  }
+
+  /** The size of the vector table with its indexes and TOAST, in bytes; 0 without a table. */
+  public long tableBytes() {
+    Long bytes =
+        jdbcTemplate.queryForObject(
+            "SELECT coalesce(pg_total_relation_size(to_regclass(?)), 0)",
+            Long.class,
+            table.qualifiedName());
+    return bytes == null ? 0 : bytes;
+  }
+
+  /**
+   * Limits how long the statements of the caller's transaction wait for a table lock, as the switch
+   * does; a change that does not get its lock in time fails and can be repeated.
+   */
+  public void limitLockWait() {
+    jdbcTemplate.execute("SET LOCAL lock_timeout = '" + SWITCH_LOCK_TIMEOUT + "'");
+  }
+
   /** Chunks without a vector in {@code column}. */
   public long chunksWithout(String column) {
     Long count =
@@ -180,7 +217,7 @@ public class VectorIndexSchema {
     return Boolean.TRUE.equals(
         transactionTemplate.execute(
             status -> {
-              jdbcTemplate.execute("SET LOCAL lock_timeout = '" + SWITCH_LOCK_TIMEOUT + "'");
+              limitLockWait();
               lockSchemaChanges();
               if (!stillWanted.getAsBoolean()) {
                 return false;

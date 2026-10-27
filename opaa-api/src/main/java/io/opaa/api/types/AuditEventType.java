@@ -305,6 +305,22 @@ public enum AuditEventType {
    */
   EMBEDDING_REINDEX_COMPLETED,
   /**
+   * The system administration confirmed a change of the embedding model (ADR-0061): model, address,
+   * size and generation before and after, the key only as set, changed, removed or kept. The
+   * re-embedding starts with it; the vector search is suspended until the switch.
+   */
+  EMBEDDING_MODEL_CHANGED,
+  /**
+   * The system administration discarded a confirmed change of the embedding model before its
+   * switch; the previous model applies again, chunks written meanwhile are refilled.
+   */
+  EMBEDDING_MODEL_CHANGE_DISCARDED,
+  /**
+   * The installed embedding model - during a change the target model - moved to another endpoint
+   * without a re-embedding, with the smallest similarity of its probe to the reference anchor.
+   */
+  EMBEDDING_MODEL_ENDPOINT_CHANGED,
+  /**
    * Explicitly named orphaned originals - stored originals no document row of the library points to
    * - were removed from the upload storage (ADR-0030, "Konsequenzen"). Recorded per triggering
    * call, not per original, mirroring {@link #INDEXING_PIPELINE_REINDEX_TRIGGERED}; the payload

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
@@ -28,8 +29,11 @@ import tools.jackson.databind.ObjectMapper;
  * Without that split, concurrent sub-batches could exceed HikariCP's pool and starve the query
  * path.
  *
- * <p>The vector goes to the column {@link EmbeddingIndexState} names: the embedding column, or the
- * target column while the index is stale.
+ * <p>The vector goes to the column of the generation it was embedded under, as the database names
+ * it under the schema lock held shared until commit ({@link EmbeddingIndexStore#lockGenerations}):
+ * the embedding column, or the target column of a running model change. A generation no column
+ * carries fails the write with {@link EmbeddingGenerationChangedException} before anything is
+ * written, the full-text row included (ADR-0061, Entscheidung 6).
  *
  * <p>Schema and table name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
  * {@code PgVectorStore} binds; {@code id-type} is assumed {@code UUID}, as elsewhere.
@@ -57,6 +61,7 @@ public class VectorStoreWriter {
   private final JdbcTemplate jdbcTemplate;
   private final FullTextChunkStore fullTextChunkStore;
   private final EmbeddingIndexState indexState;
+  private final EmbeddingIndexStore indexStore;
   private final ObjectMapper objectMapper;
   private final String vectorStoreTable;
 
@@ -64,11 +69,13 @@ public class VectorStoreWriter {
       JdbcTemplate jdbcTemplate,
       FullTextChunkStore fullTextChunkStore,
       EmbeddingIndexState indexState,
+      EmbeddingIndexStore indexStore,
       ObjectMapper objectMapper,
       VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.fullTextChunkStore = fullTextChunkStore;
     this.indexState = indexState;
+    this.indexStore = indexStore;
     this.objectMapper = objectMapper;
     this.vectorStoreTable = vectorTable.qualifiedName();
   }
@@ -79,9 +86,13 @@ public class VectorStoreWriter {
    * via {@link FullTextChunkStore#indexChunks}. {@code embeddings} must be positionally aligned
    * with {@code chunks} (index i of one corresponds to index i of the other) - the contract {@link
    * EmbeddingModel#embed(List, EmbeddingOptions, BatchingStrategy)} already guarantees.
+   *
+   * @param generation the generation of the model that embedded them
+   * @throws EmbeddingGenerationChangedException when no column carries {@code generation}
    */
   @Transactional
-  public void writeEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
+  public void writeEmbeddedChunks(
+      List<Document> chunks, List<float[]> embeddings, long generation) {
     if (chunks.isEmpty()) {
       return;
     }
@@ -96,25 +107,27 @@ public class VectorStoreWriter {
     }
 
     indexState.whileWriting(
-        column ->
-            jdbcTemplate.batchUpdate(
-                upsertSql(column),
-                zipped,
-                zipped.size(),
-                (ps, entry) -> {
-                  UUID id = UUID.fromString(entry.chunk().getId());
-                  String content = entry.chunk().getText();
-                  String metadataJson = toJson(entry.chunk().getMetadata());
-                  PGvector embedding = new PGvector(entry.embedding());
+        () -> {
+          ColumnChoice choice = columnFor(generation);
+          return jdbcTemplate.batchUpdate(
+              upsertSql(choice),
+              zipped,
+              zipped.size(),
+              (ps, entry) -> {
+                UUID id = UUID.fromString(entry.chunk().getId());
+                String content = entry.chunk().getText();
+                String metadataJson = toJson(entry.chunk().getMetadata());
+                PGvector embedding = new PGvector(entry.embedding());
 
-                  ps.setObject(1, id);
-                  ps.setString(2, content);
-                  ps.setString(3, metadataJson);
-                  ps.setObject(4, embedding);
-                  ps.setString(5, content);
-                  ps.setString(6, metadataJson);
-                  ps.setObject(7, embedding);
-                }));
+                ps.setObject(1, id);
+                ps.setString(2, content);
+                ps.setString(3, metadataJson);
+                ps.setObject(4, embedding);
+                ps.setString(5, content);
+                ps.setString(6, metadataJson);
+                ps.setObject(7, embedding);
+              });
+        });
     fullTextChunkStore.indexChunks(chunks);
   }
 
@@ -132,19 +145,23 @@ public class VectorStoreWriter {
    * take the same document lock before their first row, so they wait instead of deadlocking; a
    * library-wide delete holding a row fails this write at once instead of deadlocking with it.
    *
+   * @param generation the generation of the model that embedded them
    * @return how many chunks were still stored and got their new vector
    * @throws org.springframework.dao.CannotAcquireLockException when another writer holds one of the
    *     vector rows; nothing is written then
+   * @throws EmbeddingGenerationChangedException when no column carries {@code generation}
    */
   @Transactional
-  public int rewriteEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
+  public int rewriteEmbeddedChunks(
+      List<Document> chunks, List<float[]> embeddings, long generation) {
     if (chunks.isEmpty()) {
       return 0;
     }
     // The column lock comes first, before any database lock: the column switch holds it while it
     // waits for the table, so a writer holding row locks while asking for it would hang the switch.
     List<Document> stillStored =
-        indexState.whileWriting(column -> rewriteStoredChunks(column, chunks, embeddings));
+        indexState.whileWriting(
+            () -> rewriteStoredChunks(columnFor(generation).column(), chunks, embeddings));
     fullTextChunkStore.indexChunks(stillStored);
     return stillStored.size();
   }
@@ -221,18 +238,44 @@ public class VectorStoreWriter {
   }
 
   /**
-   * The upsert into {@code column}. Into the target column of a stale index, the embedding column
-   * keeps its vector of the previous model only while the chunk text stays the same; a new text
-   * clears it, and a new chunk has none.
+   * The column of {@code generation} and whether the other column exists, decided by the database
+   * under the shared schema lock; without a row (before the first reconciliation) the embedding
+   * column.
    */
-  private String upsertSql(String column) {
+  private ColumnChoice columnFor(long generation) {
+    Optional<EmbeddingIndexStore.Generations> generations = indexStore.lockGenerations();
+    if (generations.isEmpty()) {
+      return new ColumnChoice(EmbeddingIndexState.EMBEDDING_COLUMN, null);
+    }
+    String column = generations.get().columnFor(generation);
+    if (column == null) {
+      throw new EmbeddingGenerationChangedException(generation);
+    }
+    String other =
+        generations.get().target() == null
+            ? null
+            : EmbeddingIndexState.TARGET_COLUMN.equals(column)
+                ? EmbeddingIndexState.EMBEDDING_COLUMN
+                : EmbeddingIndexState.TARGET_COLUMN;
+    return new ColumnChoice(column, other);
+  }
+
+  /** The column a vector goes to and the other vector column, {@code null} when there is none. */
+  private record ColumnChoice(String column, String other) {}
+
+  /**
+   * The upsert into the chosen column. The other column keeps its vector only while the chunk text
+   * stays the same; a new text clears it, and a new chunk has none.
+   */
+  private String upsertSql(ColumnChoice choice) {
+    String column = choice.column();
     String clearStale =
-        EmbeddingIndexState.TARGET_COLUMN.equals(column)
+        choice.other() != null
             ? ", "
-                + EmbeddingIndexState.EMBEDDING_COLUMN
+                + choice.other()
                 + " = CASE WHEN existing.content IS DISTINCT FROM EXCLUDED.content THEN NULL"
                 + " ELSE existing."
-                + EmbeddingIndexState.EMBEDDING_COLUMN
+                + choice.other()
                 + " END"
             : "";
     return "INSERT INTO "

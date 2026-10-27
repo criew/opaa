@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0060 (Entscheidung 10) und ADR-0053 (Entscheidung 8)
+Akzeptiert · zuletzt geändert 2026-10-27 · ergänzt ADR-0060 (Entscheidung 10) und ADR-0053 (Entscheidung 8)
 
 ## Kontext
 
@@ -88,23 +88,23 @@ mindestens 0,99 sein. Der Anker entsteht mit Installation oder Modellwechsel und
 Endpunktwechsel erhalten; fehlt er, erhebt ihn die erste gelungene Einbettung des Modells. Ein
 gespeicherter Schlüssel bleibt nur bei derselben Adresse (Schema, Host, Port, Pfad), wie in der
 Modellverwaltung. Bei angehaltenem Lauf eines Wechsels gilt dasselbe für das Zielmodell, als
-Ersatz-Endpunkt. Begründung: Derselbe Name kann hinter einem anderen Server eine andere Fassung
+Ersatz-Endpunkt. Geschrieben wird nur, wenn die Modellzeile unter dem Schemalock noch die ist, gegen
+die geprüft und verglichen wurde; sonst `409`. Dasselbe gilt für die Bestätigung. Begründung: Derselbe Name kann hinter einem anderen Server eine andere Fassung
 bedeuten; ein fester Anker lässt keine Drift über viele Wechsel zu. Der Schutz zielt auf Versehen:
 Ein Endpunkt, der die öffentlichen Probetexte gezielt vortäuscht, besteht ihn, und ein nachträglich
 erhobener Anker friert den dann aktiven Endpunkt ein, auch wenn der schon eine andere Fassung war.
 
 ### 6. Mehrinstanzbetrieb: gleiche Version, Generation beim Schreiben und Lesen
 
-Bestätigung, Verwerfen und Endpunktwechsel gelingen nur, wenn alle lebenden Instanzen dieselbe
-Version melden, verglichen ohne Build-Metadaten. Ein Release-Rollback ist während eines Wechsels
-nicht vorgesehen, erst nach Umschalten oder Verwerfen. Modellzeile und Spaltenstand erfahren die
-Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5); bindend ist aber die Datenbank:
-Schreibanweisung und Vektorabfrage wirken nur, wenn die Generation ihrer Einbettung im
-Index-Datensatz die der gewählten Spalte ist. Sonst bettet der Schreiber neu ein, und die
-Vektorsuche liefert nichts. Nachläufe (Kontextpräfix, Nachzug, Änderung eines Metadatenschemas)
+Bestätigung, Verwerfen und Endpunktwechsel verlangen dieselbe Version aller lebenden Instanzen,
+ohne Build-Metadaten, geprüft auch unter dem Lock; ein Release-Rollback erst nach Umschalten oder
+Verwerfen. Bindend ist die Datenbank, nicht der Bus: Schreiben und Vektorabfrage wirken nur, wenn
+die Generation ihrer Einbettung im Index-Datensatz die der gewählten Spalte ist. Schreiber halten
+den Schemalock der Vektortabelle geteilt bis zum Commit, Wechsel, Umschalten und Startabgleich
+exklusiv; die Warteschlange ist fair. Eine Zielgeneration ohne Zielmodell nach dem abgeschlossenen
+Umschalten einer älteren Instanz übernimmt der Abgleich, sobald der Bus sie meldet. Nachläufe
 bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die Busereignisse verpasst, darf
-auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die Spalte einer anderen
-Generation schreiben; eine ältere Instanz kennt die Generation nicht.
+keinen Vektor in die Spalte einer anderen Generation schreiben; eine ältere kennt keine Generation.
 
 ### 7. Vorschau ohne Inhalte und ohne Preis, mit festen Grenzen
 
@@ -144,6 +144,8 @@ Ausfall dürfen verbrauchte Proben weder Endpunktwechsel noch Verwerfen aussperr
 - Verwerfen ohne Nachfüllen — ließe die seit der Bestätigung geschriebenen Chunks bis zur nächsten
   Indexierung ihres Dokuments ohne Vektor.
 - Indexbau beim Verwerfen abbrechen — braucht das Beenden einer fremden Datenbanksitzung.
+- Indexzeile `FOR SHARE` statt geteiltem Schemalock — neue Share-Anforderer überholen den wartenden
+  Wechsel und hungern ihn aus, und Startabgleich und Schreiber sperren in anderer Reihenfolge.
 - Anker bei jedem Endpunktwechsel neu setzen — ließe eine schrittweise Drift zu (Entscheidung 5).
 - Sperre der Nachläufe während eines Wechsels — sie schreiben bereits in die Zielspalte, die Sperre
   schützte nichts.

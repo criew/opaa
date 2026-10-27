@@ -28,6 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The application as separate processes against one database, the way a rolling update starts it:
@@ -350,11 +351,25 @@ class InstanceStartTest extends AbstractMigrationTest {
       embeddingEndpoint.createContext(
           "/v1/embeddings",
           exchange -> {
-            exchange.getRequestBody().readAllBytes();
+            int inputs =
+                Math.max(
+                    1,
+                    JsonMapper.builder()
+                        .build()
+                        .readTree(exchange.getRequestBody().readAllBytes())
+                        .path("input")
+                        .size());
+            List<String> data = new ArrayList<>();
+            for (int i = 0; i < inputs; i++) {
+              data.add(
+                  "{\"object\":\"embedding\",\"index\":"
+                      + i
+                      + ",\"embedding\":[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]}");
+            }
             byte[] body =
-                ("{\"object\":\"list\",\"model\":\"stub\",\"data\":[{\"object\":\"embedding\","
-                        + "\"index\":0,\"embedding\":[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]}],"
-                        + "\"usage\":{\"prompt_tokens\":1,\"total_tokens\":1}}")
+                ("{\"object\":\"list\",\"model\":\"stub\",\"data\":["
+                        + String.join(",", data)
+                        + "],\"usage\":{\"prompt_tokens\":1,\"total_tokens\":1}}")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, body.length);

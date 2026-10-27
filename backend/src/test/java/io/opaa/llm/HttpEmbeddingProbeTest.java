@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +21,8 @@ import tools.jackson.databind.json.JsonMapper;
  * vector size, follows no redirect and reads no oversized answer.
  */
 class HttpEmbeddingProbeTest {
+
+  private static final List<String> ONE_TEXT = List.of("OPAA Probeeinbettung");
 
   private final HttpEmbeddingProbe probe = new HttpEmbeddingProbe(JsonMapper.builder().build());
   private HttpServer server;
@@ -50,7 +53,7 @@ class HttpEmbeddingProbeTest {
         });
 
     EmbeddingModelService.ProbeOutcome outcome =
-        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-geheim", 2048));
+        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-geheim", 2048), ONE_TEXT);
 
     assertThat(outcome.succeeded()).isTrue();
     assertThat(outcome.dimensions()).isEqualTo(3);
@@ -81,7 +84,7 @@ class HttpEmbeddingProbeTest {
           });
 
       EmbeddingModelService.ProbeOutcome outcome =
-          probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048));
+          probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048), ONE_TEXT);
 
       assertThat(outcome.succeeded()).isFalse();
       assertThat(elsewhereContacted.get()).isFalse();
@@ -94,7 +97,10 @@ class HttpEmbeddingProbeTest {
   void aRefusedKeyAndAnOversizedAnswerFail() {
     server.createContext("/v1/embeddings", exchange -> send(exchange, 401, "{}"));
 
-    assertThat(probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-falsch", 2048)).message())
+    assertThat(
+            probe
+                .probe(new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-falsch", 2048), ONE_TEXT)
+                .message())
         .contains("HTTP 401");
 
     server.removeContext("/v1/embeddings");
@@ -102,7 +108,8 @@ class HttpEmbeddingProbeTest {
         "/v1/embeddings",
         exchange -> send(exchange, 200, "x".repeat(HttpEmbeddingProbe.MAX_RESPONSE_BYTES + 10)));
 
-    assertThat(probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048)).succeeded())
+    assertThat(
+            probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048), ONE_TEXT).succeeded())
         .isFalse();
   }
 
@@ -138,7 +145,7 @@ class HttpEmbeddingProbeTest {
     long start = System.nanoTime();
 
     EmbeddingModelService.ProbeOutcome outcome =
-        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048));
+        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", null, 2048), ONE_TEXT);
 
     assertThat(outcome.succeeded()).isFalse();
     assertThat(java.time.Duration.ofNanos(System.nanoTime() - start))
@@ -156,7 +163,8 @@ class HttpEmbeddingProbeTest {
         });
 
     EmbeddingModelService.ProbeOutcome outcome =
-        probe.probe(new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-eins\r\nX-Evil: 1", 2048));
+        probe.probe(
+            new EmbeddingEndpoint(baseUrl, "bge-m3", "sk-eins\r\nX-Evil: 1", 2048), ONE_TEXT);
 
     assertThat(outcome.succeeded()).isFalse();
     assertThat(outcome.message()).contains("unzulässige Zeichen");

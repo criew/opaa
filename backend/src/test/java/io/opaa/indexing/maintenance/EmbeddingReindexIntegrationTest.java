@@ -17,6 +17,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.indexing.chunk.EmbeddingIndexReconciler;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.Run;
+import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunKind;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunStatus;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.indexing.chunk.EmbeddingIndexStore;
@@ -33,6 +34,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.VectorTable;
+import io.opaa.llm.EmbeddingModelAdministration;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
@@ -98,6 +100,7 @@ class EmbeddingReindexIntegrationTest {
   @Autowired private VectorTable vectorTable;
   @Autowired private Clock clock;
   @Autowired private InstanceRegistry instanceRegistry;
+  @Autowired private EmbeddingModelAdministration modelAdministration;
 
   private KnowledgeLibrary library;
   private UUID ownerId;
@@ -246,7 +249,9 @@ class EmbeddingReindexIntegrationTest {
     rerunService.reembedInPlace(reembedded);
     Document fresh = indexed("satzung-c.md");
 
-    jdbcTemplate.update("UPDATE embedding_index SET model = 'bge-m3'");
+    jdbcTemplate.update(
+        "UPDATE embedding_index SET model = 'bge-m3',"
+            + " generation = (SELECT generation FROM embedding_model)");
     reconciler.reconcile();
 
     assertThat(state.isStale()).isFalse();
@@ -392,6 +397,7 @@ class EmbeddingReindexIntegrationTest {
             jdbcTemplate,
             libraryRepository,
             personThreshold,
+            modelAdministration,
             vectorTable,
             clock,
             identity,
@@ -435,7 +441,15 @@ class EmbeddingReindexIntegrationTest {
     store.save(
         record.withRun(
             new Run(
-                RunStatus.RUNNING, Instant.now(), ownerId, Organization.DEFAULT_ID, null, null)));
+                RunStatus.RUNNING,
+                Instant.now(),
+                ownerId,
+                Organization.DEFAULT_ID,
+                null,
+                null,
+                RunKind.REEMBED,
+                record.target() == null ? null : record.target().generation(),
+                null)));
   }
 
   /**
