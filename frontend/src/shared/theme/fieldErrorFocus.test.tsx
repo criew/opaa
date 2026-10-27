@@ -72,6 +72,19 @@ describe.each([
     expect(outlineOf(renderFocused(mode, name, false)).borderColor).toBe(asRgb(roles.accent))
   })
 
+  it('leaves a disabled field in error with the grey disabled outline', () => {
+    render(
+      <ThemeProvider theme={createAppTheme(mode)}>
+        <TextField label="Adresse" error disabled helperText="Hinweis" />
+      </ThemeProvider>,
+    )
+    const root = screen.getByRole('textbox').closest('.MuiOutlinedInput-root') as HTMLElement
+    expect(root).toHaveClass('Mui-error')
+    expect(root).toHaveClass('Mui-disabled')
+
+    expect(outlineOf(root).borderColor).toBe(createAppTheme(mode).palette.action.disabled)
+  })
+
   it('keeps the floating label in danger under focus', () => {
     renderFocused(mode, 'TextField', true)
 
