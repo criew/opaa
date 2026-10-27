@@ -46,7 +46,9 @@ export function installationFailure(err: unknown, fallback: string): Installatio
   if (status === 401) return { kind: 'token', message: TOKEN_REJECTED, fieldErrors: [] }
   if (status === 404) return { kind: 'installed', message: INSTALLED, fieldErrors: [] }
   if (status === 403) return { kind: 'other', message: NETWORK_REFUSED, fieldErrors: [] }
-  if (status === 429) return { kind: 'other', message: TOO_MANY_ATTEMPTS, fieldErrors: [] }
+  if (status === 429) {
+    return { kind: 'other', message: mailLimitMessage(err) ?? TOO_MANY_ATTEMPTS, fieldErrors: [] }
+  }
   if (err instanceof AxiosError && status === null) {
     const message = err.code === AxiosError.ECONNABORTED ? TIMED_OUT : UNREACHABLE
     return { kind: 'other', message, fieldErrors: [] }
@@ -59,25 +61,47 @@ const SECONDS_PER_MINUTE = 60
 /** The code of a 429 from the budget of model discoveries, not the API's per-address budget. */
 const DISCOVERY_LIMIT_CODE = 'MODEL_DISCOVERY_LIMIT'
 
+/** The codes of a 429 from the budgets of the mail step, apart from the API's own budget. */
+const MAIL_TEST_LIMIT_CODE = 'MAIL_TEST_LIMIT'
+const MAIL_CHECK_LIMIT_CODE = 'MAIL_CHECK_LIMIT'
+
+/** The code of a refusal by a budget of its own, or `null`. */
+function limitCode(err: unknown): string | null {
+  const data = err instanceof AxiosError ? err.response?.data : null
+  return apiErrorStatus(err) === 429 && isErrorResponse(data) ? (data.code ?? null) : null
+}
+
+/** How long to wait, from the server's `Retry-After`, in words. */
+function waitOf(err: unknown): string {
+  const header = err instanceof AxiosError ? err.response?.headers?.['retry-after'] : undefined
+  const seconds = Number(header)
+  const minutes =
+    Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds / SECONDS_PER_MINUTE) : null
+  if (minutes === null) return 'in einigen Minuten'
+  return minutes === 1 ? 'in etwa 1 Minute' : `in etwa ${minutes} Minuten`
+}
+
+/**
+ * The sentence for a check of the mail step past one of its budgets: the test messages, after which
+ * the check without one still works, or the checks themselves. `null` for any other failure.
+ */
+function mailLimitMessage(err: unknown): string | null {
+  const code = limitCode(err)
+  if (code === MAIL_TEST_LIMIT_CODE) {
+    return `Zu viele Testnachrichten. Bitte ${waitOf(err)} erneut versuchen; ohne Testnachricht lässt sich der Mailserver weiter prüfen.`
+  }
+  if (code === MAIL_CHECK_LIMIT_CODE) {
+    return `Zu viele Prüfungen des Mailservers. Bitte ${waitOf(err)} erneut versuchen.`
+  }
+  return null
+}
+
 /**
  * The sentence for a model discovery past its own budget, with the wait the server's
  * `Retry-After` names; the identifier can always be typed by hand. `null` for any other failure,
  * the per-address budget of the installation API included.
  */
 export function discoveryLimitMessage(err: unknown): string | null {
-  const data = err instanceof AxiosError ? err.response?.data : null
-  if (apiErrorStatus(err) !== 429 || !isErrorResponse(data) || data.code !== DISCOVERY_LIMIT_CODE) {
-    return null
-  }
-  const header = err instanceof AxiosError ? err.response?.headers?.['retry-after'] : undefined
-  const seconds = Number(header)
-  const minutes =
-    Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds / SECONDS_PER_MINUTE) : null
-  const wait =
-    minutes === null
-      ? 'in einigen Minuten'
-      : minutes === 1
-        ? 'in etwa 1 Minute'
-        : `in etwa ${minutes} Minuten`
-  return `Zu viele Modellabrufe. Bitte ${wait} erneut versuchen; die Kennung lässt sich von Hand eintragen.`
+  if (limitCode(err) !== DISCOVERY_LIMIT_CODE) return null
+  return `Zu viele Modellabrufe. Bitte ${waitOf(err)} erneut versuchen; die Kennung lässt sich von Hand eintragen.`
 }

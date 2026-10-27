@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { fontFamily } from '@/shared/theme/tokens'
+import type { WizardResult } from '../hooks/useInstallationWizard'
 import { stepMeta } from '../utils/steps'
 import { STEP_RHYTHM, STEP_TITLE_SX } from './stepLayout'
 
@@ -13,8 +14,11 @@ import { STEP_RHYTHM, STEP_TITLE_SX } from './stepLayout'
 export interface StepNavigationProps {
   /** Back to the previous step without saving; absent on the first step. */
   onBack?: () => void
-  /** Optional steps only: on to the next step without saving. */
-  onSkip?: () => void
+  /**
+   * Optional steps only: skips the step through the API. While it runs the step refuses further
+   * actions; a failure stays on the step with its sentence, like a failed check.
+   */
+  onSkip?: () => Promise<WizardResult>
 }
 
 interface StepFrameProps extends StepNavigationProps {
@@ -62,6 +66,10 @@ export default function StepFrame({
 }: StepFrameProps) {
   const headingId = useId()
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const [skipping, setSkipping] = useState(false)
+  const [skipFailure, setSkipFailure] = useState<string | null>(null)
+  const working = busy || skipping
+  const shownFailure = skipFailure ?? failure
 
   useEffect(() => {
     if (focusHeading) headingRef.current?.focus()
@@ -69,7 +77,19 @@ export default function StepFrame({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!busy && !unavailable) onSubmit()
+    if (!working && !unavailable) {
+      setSkipFailure(null)
+      onSubmit()
+    }
+  }
+
+  async function handleSkip() {
+    if (!onSkip || working) return
+    setSkipping(true)
+    setSkipFailure(null)
+    const result = await onSkip()
+    setSkipping(false)
+    if (!result.ok) setSkipFailure(result.failure.message || null)
   }
 
   return (
@@ -104,9 +124,9 @@ export default function StepFrame({
         {description}
       </Typography>
 
-      {failure && (
+      {shownFailure && (
         <Alert severity="error" sx={{ mb: STEP_RHYTHM.betweenGroups }}>
-          {failure}
+          {shownFailure}
         </Alert>
       )}
 
@@ -127,7 +147,7 @@ export default function StepFrame({
         }}
       >
         {onBack && (
-          <Button variant="outlined" onClick={onBack} disabled={busy}>
+          <Button variant="outlined" onClick={onBack} disabled={working}>
             Zurück
           </Button>
         )}
@@ -143,16 +163,22 @@ export default function StepFrame({
           }}
         >
           {onSkip && (
-            <Button variant="text" onClick={onSkip} disabled={busy}>
+            <BusyButton
+              variant="text"
+              onClick={() => void handleSkip()}
+              busy={skipping}
+              busyAnnouncement="Schritt wird übersprungen"
+              unavailable={busy}
+            >
               Überspringen
-            </Button>
+            </BusyButton>
           )}
           <BusyButton
             type="submit"
             variant="contained"
             busy={busy}
             busyAnnouncement={busyAnnouncement}
-            unavailable={unavailable}
+            unavailable={unavailable || skipping}
             aria-describedby={describedBy}
           >
             {busy ? 'Wird geprüft …' : submitLabel}

@@ -600,6 +600,11 @@ localAdminAllowedCidrs: []
 # (OPAA_INSTALLATION_ALLOWED_CIDRS), judged like localAdminAllowedCidrs. Empty: no restriction.
 installationAllowedCidrs: []
 
+# Mail servers the installation assistant's optional mail step may reach on internal addresses
+# (OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST), each host or host:port. Empty: an internal mail server
+# is entered after the installation under Administration -> E-Mail, which checks no address.
+installationMailTargetAllowlist: []
+
 networkPolicy:
   # Ingress to the backend: only from the frontend pods and the peers below. The pod of helm test
   # reaches the backend through the frontend, see frontendIngress.

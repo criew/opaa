@@ -745,6 +745,14 @@
         "description": "IPv4 or IPv6 address or CIDR range"
       }
     },
+    "installationMailTargetAllowlist": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "description": "host or host:port of a mail server on an internal address"
+      }
+    },
     "networkPolicy": {
       "type": "object",
       "additionalProperties": false,

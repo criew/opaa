@@ -9,7 +9,8 @@ import {
   STEP_STATUS_LABEL,
   STEP_STATUS_TONE,
   SUMMARY_LABEL,
-  openMandatorySteps,
+  findStep,
+  openSteps,
   stepStatus,
 } from '../utils/steps'
 import StepFrame, { type StepNavigationProps } from './StepFrame'
@@ -28,8 +29,14 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
   const hintId = useId()
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const open = openMandatorySteps(installation)
+  const open = openSteps(installation)
   const blocked = !installation.completable
+  const mail = findStep(installation, 'MAIL')
+  const mailSentence = !mail
+    ? ''
+    : mail.checked
+      ? ' Der E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet.'
+      : ' Der E-Mail-Versand bleibt aus; er lässt sich später unter „Administration → E-Mail“ einrichten.'
 
   async function handleSubmit() {
     if (blocked) return
@@ -47,11 +54,12 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
       description={
         blocked ? (
           <span id={hintId}>
-            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte geprüft sind.
+            Abschließen lässt sich die Installation erst, wenn alle Pflichtschritte geprüft sind und
+            jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist.
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
-          'Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto, Anmeldeverfahren und Modell an und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.'
+          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto, Anmeldeverfahren und Modell an und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${mailSentence}`
         )
       }
       failure={failure}

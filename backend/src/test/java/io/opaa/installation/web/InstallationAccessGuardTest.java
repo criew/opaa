@@ -80,7 +80,7 @@ class InstallationAccessGuardTest {
 
   private InstallationAccessGuard guard(List<String> cidrs) {
     return new InstallationAccessGuard(
-        installation, addresses, new InstallationProperties(null, cidrs, null));
+        installation, addresses, new InstallationProperties(null, cidrs, null, null));
   }
 
   private static MockHttpServletRequest request(String address, String token) {

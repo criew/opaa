@@ -100,13 +100,17 @@ data:
           excluded: >-
             Zwischenstand vor dem ersten Konto; Adresse, Anzeigename und Passwort-Hash des ersten
             Kontos stehen hier nur bis zum Abschluss der Installation und gehen dann in dessen
-            Konto über
-    storage: Anwendungsdatenbank; Passwort nur als Hash, Modellschlüssel verschlüsselt
+            Konto über; ebenso Mailserver, Zugangsname und Absender des Schritts E-Mail-Versand,
+            die in die Mail-Einstellungen übergehen. Die Adresse einer Testmail wird nicht
+            gespeichert
+    storage: >-
+      Anwendungsdatenbank; Passwort des ersten Kontos nur als Hash, Modellschlüssel und
+      Passwort des Mailservers verschlüsselt
     retention:
       rule: Bis zum Abschluss der Installation; der Abschluss löscht jede Zeile
       settings: []
     visibility:
-      - wer das Installations-Token kennt, über die Installations-API (ohne Passwort und Schlüssel)
+      - wer das Installations-Token kennt, über die Installations-API (ohne Passwörter und Schlüssel)
     accessPaths: [API, DATABASE]
     deletion: Mit dem Abschluss der Installation
     evaluations: keine

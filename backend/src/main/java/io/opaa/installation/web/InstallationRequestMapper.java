@@ -4,12 +4,14 @@ import io.opaa.api.dto.InstallationAnswers;
 import io.opaa.api.dto.InstallationChatModel;
 import io.opaa.api.dto.InstallationEmbeddingModel;
 import io.opaa.api.dto.InstallationFirstAdmin;
+import io.opaa.api.dto.InstallationMail;
 import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationStepRequest;
 import io.opaa.common.FieldValidationException;
 import io.opaa.installation.InstallationStep;
 import io.opaa.installation.StepInput;
+import java.util.ArrayList;
 import java.util.List;
 
 /** The requests of the installation API as {@link StepInput}s; a missing part is a field error. */
@@ -26,6 +28,7 @@ final class InstallationRequestMapper {
       case SIGN_IN -> signIn(request.getSignIn());
       case CHAT_MODEL -> chatModel(request.getChatModel());
       case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
+      case MAIL -> mail(request.getMail());
     };
   }
 
@@ -33,11 +36,19 @@ final class InstallationRequestMapper {
     if (body == null) {
       throw missing("firstAdmin");
     }
-    return List.of(
-        firstAdmin(body.getFirstAdmin()),
-        signIn(body.getSignIn()),
-        chatModel(body.getChatModel()),
-        embeddingModel(body.getEmbeddingModel()));
+    List<StepInput> inputs =
+        new ArrayList<>(
+            List.of(
+                firstAdmin(body.getFirstAdmin()),
+                signIn(body.getSignIn()),
+                chatModel(body.getChatModel()),
+                embeddingModel(body.getEmbeddingModel())));
+    if (body.getMail() != null) {
+      InstallationMail mail = body.getMail();
+      // An answer names its password or none; there is no saved one to keep.
+      inputs.add(mailInput(mail, mail.getPassword() == null ? "" : mail.getPassword()));
+    }
+    return List.copyOf(inputs);
   }
 
   private static StepInput firstAdmin(InstallationFirstAdmin admin) {
@@ -83,6 +94,24 @@ final class InstallationRequestMapper {
     }
     return new StepInput.EmbeddingModel(
         model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getMaxInputTokens());
+  }
+
+  private static StepInput mail(InstallationMail mail) {
+    if (mail == null) {
+      throw missing("mail");
+    }
+    return mailInput(mail, mail.getPassword());
+  }
+
+  private static StepInput mailInput(InstallationMail mail, String password) {
+    return new StepInput.Mail(
+        mail.getHost(),
+        mail.getPort(),
+        mail.getEncryption(),
+        mail.getUsername(),
+        password,
+        mail.getFromAddress(),
+        mail.getFromName());
   }
 
   private static FieldValidationException missing(String field) {

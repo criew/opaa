@@ -17,6 +17,13 @@ const STEPS_STORAGE_KEY = 'opaa.mockInstallationSteps'
 /** The vector size the mock's probe embedding reports. */
 export const MOCK_EMBEDDING_DIMENSIONS = 1024
 
+const MAIL_STEP: InstallationStepState = {
+  step: 'MAIL',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
@@ -24,8 +31,42 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
     { step: 'CHAT_MODEL', mandatory: true, saved: false, checked: false },
   ]
   return withEmbedding
-    ? [...steps, { step: 'EMBEDDING_MODEL', mandatory: true, saved: false, checked: false }]
-    : steps
+    ? [
+        ...steps,
+        { step: 'EMBEDDING_MODEL', mandatory: true, saved: false, checked: false },
+        MAIL_STEP,
+      ]
+    : [...steps, MAIL_STEP]
+}
+
+let publicBaseUrlConfigured = true
+
+/** Whether the mock reports `OPAA_PUBLIC_BASE_URL` as set; true unless a test says otherwise. */
+export function setMockPublicBaseUrlConfigured(configured: boolean) {
+  publicBaseUrlConfigured = configured
+}
+
+/** One check the mock answered with a test recipient, as the assistant sent it. */
+let testRecipients: string[] = []
+
+export function recordMockTestRecipient(recipient: string) {
+  testRecipients = [...testRecipients, recipient]
+}
+
+/** The test recipients since the last reset, oldest first. */
+export function mockTestRecipients(): readonly string[] {
+  return testRecipients
+}
+
+let skippedSteps: string[] = []
+
+export function recordMockSkip(step: string) {
+  skippedSteps = [...skippedSteps, step]
+}
+
+/** The steps skipped through the API since the last reset, oldest first. */
+export function mockSkippedSteps(): readonly string[] {
+  return skippedSteps
 }
 
 /** Adds the embedding model step, as an API that lists it does (`?mockInstallation=embedding`). */
@@ -84,7 +125,8 @@ export function setMockInstallationPending(pending: boolean) {
 export function mockInstallationState(): InstallationStatusResponse {
   return {
     pending: true,
-    completable: mockSteps.every((s) => !s.mandatory || s.checked),
+    completable: mockSteps.every((s) => s.checked || (!s.mandatory && !s.saved)),
+    publicBaseUrlConfigured,
     steps: mockSteps,
   }
 }
@@ -94,6 +136,12 @@ export function updateMockStep(
   patch: Partial<InstallationStepState>,
 ) {
   mockSteps = mockSteps.map((s) => (s.step === step ? { ...s, ...patch } : s))
+  remember(mockSteps)
+}
+
+/** Drops a step from the list, as an API that does not know it. */
+export function withoutMockStep(step: InstallationStepState['step']) {
+  mockSteps = mockSteps.filter((s) => s.step !== step)
   remember(mockSteps)
 }
 
@@ -131,6 +179,9 @@ export function mockDiscoveryRequests(): readonly MockDiscoveryRequest[] {
 export function resetMockInstallation() {
   pendingOverride = null
   discoveryRequests = []
+  testRecipients = []
+  skippedSteps = []
+  publicBaseUrlConfigured = true
   mockSteps = initialSteps()
   try {
     window.sessionStorage.removeItem(STEPS_STORAGE_KEY)

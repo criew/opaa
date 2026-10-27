@@ -1,11 +1,12 @@
 package io.opaa.installation;
 
+import io.opaa.api.types.MailEncryption;
 import java.math.BigDecimal;
 
 /**
  * The values of one step as the installation API or the answer file hands them in, secrets in plain
- * text. They live only for the call: {@link InstallationService} stores the password as a hash and
- * the model key encrypted.
+ * text. They live only for the call: {@link InstallationService} stores the password of the first
+ * account as a hash, the model key and the mail password encrypted.
  */
 public sealed interface StepInput {
 
@@ -63,6 +64,41 @@ public sealed interface StepInput {
     @Override
     public InstallationStep step() {
       return InstallationStep.EMBEDDING_MODEL;
+    }
+  }
+
+  /**
+   * The mail server. {@code password}: {@code null} keeps a password saved before, but only for the
+   * same host, port, user name and encryption; an empty value removes it.
+   */
+  record Mail(
+      String host,
+      Integer port,
+      MailEncryption encryption,
+      String username,
+      String password,
+      String fromAddress,
+      String fromName)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.MAIL;
+    }
+
+    /** Without the password, which must reach no log line. */
+    @Override
+    public String toString() {
+      return "Mail[host="
+          + host
+          + ", port="
+          + port
+          + ", encryption="
+          + encryption
+          + ", username="
+          + username
+          + ", password="
+          + (password == null ? "null" : "***")
+          + "]";
     }
   }
 

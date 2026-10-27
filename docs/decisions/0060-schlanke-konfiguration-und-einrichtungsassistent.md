@@ -75,8 +75,14 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
 Pflichtschritte sind erstes Systemverwaltungskonto, Anmeldeverfahren, Chat-Modell und
 Embedding-Modell, jeweils mit erfolgreicher Prüfung (Verbindungstest, Probeeinbettung). Alle übrigen
-Schritte sind optional und später in der Verwaltung erreichbar. Der Abschluss ist eine Transaktion
-unter einem Advisory-Lock und gelingt nur, wenn jeder Pflichtschritt geprüft ist. Danach antwortet
+Schritte sind optional und später in der Verwaltung erreichbar, heute der E-Mail-Versand. Ein
+optionaler Schritt wird übersprungen, indem die API seinen Zwischenstand verwirft; das ist ein
+Revisionsereignis. Ein übersprungener optionaler Schritt hält den Abschluss nicht auf, ein
+gespeicherter erst, wenn seine Prüfung gelungen ist: Der Abschluss übernimmt nie ungeprüfte Werte.
+Der Abschluss ist eine Transaktion unter einem Advisory-Lock und gelingt nur, wenn jeder
+Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein geprüfter E-Mail-Versand geht
+mit den Regeln der Mail-Verwaltung in deren Einstellungen über und schaltet den Versand ein; ohne ihn
+bleibt der Versand aus. Danach antwortet
 jede Operation der Installations-API `404`, auf jeder Instanz. Begründung für `404`: Der Endpunkt
 verrät nach dem Abschluss nicht, dass es ihn gibt, wie der MCP-Endpunkt bei geschlossenem Kanal.
 
@@ -85,7 +91,8 @@ verrät nach dem Abschluss nicht, dass es ihn gibt, wie der MCP-Endpunkt bei ges
 Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
-abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort, Modellschlüssel) nie im Klartext,
+abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort des ersten Kontos, Modellschlüssel,
+Passwort des Mailservers) nie im Klartext,
 sondern als Verweis auf eine Datei, damit sie aus Secrets kommen; über die API kommen sie im Rumpf
 der Anfrage wie in den einzelnen Schritten. Das erste Konto aus der Antwortdatei muss sein Passwort
 bei der ersten Anmeldung wechseln, solange die Datei nicht `requirePasswordChange: false` sagt; so
@@ -223,6 +230,25 @@ entfernte Variable beendet die Pause; der Lauf meldet jede Pause als Fehler im L
 zeigt sie an. Begründung: Ein Update darf nicht unwiderruflich früher löschen, als der Betrieb
 eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
 
+### 14. Mailserver im Assistenten: Zielprüfung, Ports, feste Fehlerklassen und Budgets
+
+Den Mailserver des optionalen Schritts E-Mail-Versand prüft die Installation beim Speichern und vor
+jeder Prüfung gegen eine eigene Allowlist (`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`, Einträge `host`
+oder `host:port`), eine Grenze des Betriebs nach Entscheidung 2, getrennt von den Allowlists der
+Modelle und der Quellen. Ohne Eintrag sind nur die Ports 25, 465, 587 und 2525 erreichbar; ein
+anderer Port braucht einen Eintrag mit genau diesem `host:port`. Die Prüfung baut eine Verbindung auf
+und meldet sich an, sendet aber nichts, und ihr Ergebnis nennt nur eine von vier festen Klassen (nicht
+erreichbar, TLS fehlgeschlagen, Anmeldung abgelehnt, antwortet nicht wie ein Mailserver); die Ursache
+steht nur im Log, ohne Passwort. Eine Testnachricht geht nur an eine Adresse, die im Schritt angegeben
+wird. Prüfungen und Testnachrichten haben je Instanz ein eigenes Budget. Die Mail-Verwaltung prüft
+Mailserver-Adressen weiterhin nicht. Begründung: In der Verwaltung trägt nur die Systemverwaltung den
+Mailserver ein, und ein interner Server ist der Regelfall. In der Installation ist das Token die
+einzige Hürde; ohne Prüfung reichte der Verbindungsaufbau weiter ins interne Netz als der
+Modellabruf, freie Ports und genaue Fehlertexte machten die Prüfung zu einem Portscanner mit
+Dienstkennung, und eine Testnachricht an eine frei wählbare Adresse machte ein internes Relais von
+außen nutzbar. Ein interner Mailserver braucht deshalb dieselbe Freigabe des Betriebs wie ein internes
+Modell, oder er wird nach der Installation in der Verwaltung eingetragen.
+
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
@@ -249,6 +275,12 @@ eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
   abpassen; die Datei beim Start ist deklarativ.
 - Grenzen des Betriebs in die Oberfläche holen — hebt die Trennung zwischen Betrieb und
   Systemverwaltung auf (Entscheidung 2).
+- Mailserver im Assistenten nur über ein Budget begrenzen, ohne Adressprüfung — jede Adresse und jeder
+  Port im internen Netz bliebe mit dem Token erreichbar, nur langsamer (Entscheidung 14).
+- Freie Ports mit den Fehlertexten des Mailservers — die Prüfung verriete, welche Dienste auf einem
+  freigegebenen Host laufen (Entscheidung 14).
+- Mailserver gegen die Allowlist der Modelle prüfen — machte jeden freigegebenen Modellserver zum
+  erlaubten Mailserver und umgekehrt (Entscheidung 14).
 - Modelladressen gegen die Allowlist der Quellen prüfen — macht jeden freigegebenen Modellserver zum
   erlaubten Ziel der Konnektoren (Entscheidung 10).
 - Übergang, in dem die Allowlist der Quellen Modelle eine Zeit lang weiter freigibt — keine

@@ -154,7 +154,7 @@ class InstallationAccessFilterTest {
         new InstallationAccessGuard(
             installation,
             new TrustedProxyClientIpResolver(trustedProxies),
-            new InstallationProperties(null, allowed, null));
+            new InstallationProperties(null, allowed, null, null));
     return new InstallationAccessFilter(guard, JsonMapper.builder().build(), Clock.systemUTC());
   }
 

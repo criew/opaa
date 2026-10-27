@@ -1,10 +1,12 @@
 package io.opaa.installation;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,10 +14,12 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
+import io.opaa.mail.MailSettingsService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -55,6 +59,7 @@ class InstallationServiceCheckTest {
             mock(OidcProviderService.class),
             mock(LlmModelService.class),
             embeddingModels,
+            mock(MailSettingsService.class),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),
@@ -72,7 +77,7 @@ class InstallationServiceCheckTest {
     when(steps.findById(InstallationStep.EMBEDDING_MODEL)).thenReturn(Optional.of(checked));
     when(steps.findForUpdate(InstallationStep.EMBEDDING_MODEL))
         .thenReturn(Optional.of(savedMeanwhile));
-    when(checks.check(eq(InstallationStep.EMBEDDING_MODEL), any(), any()))
+    when(checks.check(eq(InstallationStep.EMBEDDING_MODEL), any(), any(), any()))
         .thenReturn(new StepChecks.Outcome(true, "erfolgreich", 1024));
 
     assertThatThrownBy(() -> service.check(InstallationStep.EMBEDDING_MODEL))
@@ -81,10 +86,31 @@ class InstallationServiceCheckTest {
     verify(steps, never()).save(any());
   }
 
+  // regression guard: connections to mail servers from the installation are bounded per instance
+  @Test
+  void checksOfTheMailStepHaveABudgetAlsoWithoutTestMessage() {
+    InstallationStepRecord mail = record(InstallationStep.MAIL, "{\"host\":\"smtp\"}");
+    when(steps.findById(InstallationStep.MAIL)).thenReturn(Optional.of(mail));
+    when(steps.findForUpdate(InstallationStep.MAIL)).thenReturn(Optional.of(mail));
+    when(checks.check(eq(InstallationStep.MAIL), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+
+    for (int i = 0; i < InstallationService.MAX_MAIL_CHECKS; i++) {
+      service.check(InstallationStep.MAIL);
+    }
+
+    assertThatThrownBy(() -> service.check(InstallationStep.MAIL))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(InstallationService.MAIL_CHECK_LIMIT_CODE));
+    verify(checks, times(InstallationService.MAX_MAIL_CHECKS))
+        .check(eq(InstallationStep.MAIL), any(), any(), any());
+  }
+
   @Test
   void theCompletionRefusesAnEmbeddingModelWithoutAProbedSize() {
     JsonMapper json = JsonMapper.builder().build();
-    StepRules real = new StepRules(null, null, null, null, json, null);
+    StepRules real = new StepRules(null, null, null, null, json, null, null);
     List<InstallationStepRecord> saved =
         List.of(
             checkedRecord(

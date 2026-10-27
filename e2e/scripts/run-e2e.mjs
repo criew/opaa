@@ -41,6 +41,8 @@
 // an answer file and with OPAA_INSTALLATION_TOKEN from e2e/installation.env, so
 // the stack stays in installation mode, and runs the set-up assistant's spec
 // e2e/tests/installation-assistant.spec.ts against it with E2E_INSTALLATION_TOKEN.
+// Completing ends the installation mode for good, so each variant of the spec
+// (INSTALLATION_VARIANTS, one tag each) runs against a stack of its own.
 
 import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -124,9 +126,15 @@ const dbPort =
   process.env.OPAA_DB_PORT ?? (isLocalAuth ? '15433' : isInstallation ? '15436' : '15432')
 // The mail catcher's own host ports (e2e/docker-compose.local-auth.yml): the scenarios read the
 // links out of its HTTP API from this Node/Playwright process, the same way the "e2e" target
-// reaches ai-stub's /last-chat-model directly.
-const mailpitWebPort = process.env.OPAA_MAILPIT_WEB_PORT ?? '18025'
-const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? '11025'
+// reaches ai-stub's /last-chat-model directly. The "installation" target has ports of its own.
+const mailpitWebPort =
+  process.env.OPAA_MAILPIT_WEB_PORT ?? (isInstallation ? '18026' : '18025')
+const mailpitSmtpPort =
+  process.env.OPAA_MAILPIT_SMTP_PORT ?? (isInstallation ? '11026' : '11025')
+const usesMailpit = isLocalAuth || isInstallation
+
+// The variants of the installation spec, each selected by its tag and run against a fresh stack.
+const INSTALLATION_VARIANTS = ['@mail-skipped', '@mail-filled']
 // test(e2e) #760: ai-stub's own host-published port (docker-compose.e2e.yml), so a scenario can
 // call its GET /last-chat-model directly from the Node/Playwright process - see that file's own
 // comment. Only relevant for the "e2e" target; the ai-stub stand-ins of the "demo" and "local-auth"
@@ -199,7 +207,7 @@ const composeArgs = [
   ...(isDemo ? ['--profile', 'demo'] : []),
   // The mail catcher is profile-gated in docker-compose.yml so a plain `docker compose up`
   // never starts it; naming the service in the `up` call below would not start it without this.
-  ...(isLocalAuth ? ['--profile', 'mail'] : []),
+  ...(isLocalAuth || isInstallation ? ['--profile', 'mail'] : []),
   '-f',
   'docker-compose.yml',
   '-f',
@@ -247,7 +255,7 @@ const composeEnv = {
         OPAA_NEXTCLOUD_PORT: nextcloudPort,
         OPAA_DROPBOX_STUB_PORT: dropboxStubPort,
       }),
-  ...(isLocalAuth
+  ...(usesMailpit
     ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
     : {}),
 }
@@ -431,7 +439,9 @@ function prepareBindMounts() {
   }
 }
 
-async function main() {
+/** One stack from a clean slate, its tests and its teardown; returns the exit status. */
+async function runStack(variantArgs = [], variantEnv = {}) {
+  tornDown = false
   prepareBindMounts()
   console.log(`> Starting from a clean slate (docker compose -p ${composeProjectName} down -v)`)
   run('docker', [...composeArgs, 'down', '-v', '--remove-orphans'], { env: composeEnv })
@@ -458,13 +468,13 @@ async function main() {
         // OIDC provider, and no scenario indexes anything.
         ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
       : isInstallation
-        ? // ai-stub is the chat model the assistant's check calls.
-          ['ai-stub', 'postgres', 'backend', 'frontend']
+        ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server.
+          ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
         : ['ai-stub', 'rss-feed', 'nextcloud', 'dropbox-stub', 'postgres', 'backend', 'frontend']
   console.log(
     `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}` +
-      (isLocalAuth ? `, mailpit on ${mailpitSmtpPort}/${mailpitWebPort}` : ''),
+      (usesMailpit ? `, mailpit on ${mailpitSmtpPort}/${mailpitWebPort}` : ''),
   )
   const upArgs = [...composeArgs, 'up', '-d', ...services]
   if (!skipBuild) {
@@ -475,8 +485,7 @@ async function main() {
     console.error('docker compose up failed')
     dumpLogs()
     teardown()
-    process.exitCode = upStatus
-    return
+    return upStatus
   }
 
   console.log(`> Waiting for ${readyUrl} to become reachable`)
@@ -485,8 +494,7 @@ async function main() {
     console.error('Stack did not become ready within 120s')
     dumpLogs()
     teardown()
-    process.exitCode = 1
-    return
+    return 1
   }
 
   // The "local-auth" target runs no seed on purpose: a fresh installation is the state under test,
@@ -500,8 +508,7 @@ async function main() {
       console.error('Seed run failed')
       dumpLogs()
       teardown()
-      process.exitCode = seedStatus
-      return
+      return seedStatus
     }
   }
 
@@ -524,12 +531,13 @@ async function main() {
     // Its own config, without retries: completing the installation ends the installation mode.
     playwrightArgs.push('--config', 'installation-assistant/playwright.config.ts')
   }
-  playwrightArgs.push(...extraTestArgs)
+  playwrightArgs.push(...variantArgs, ...extraTestArgs)
   const testStatus = run('pnpm', playwrightArgs, {
     cwd: e2eDir,
     env: {
       ...process.env,
       E2E_BASE_URL: baseUrl,
+      ...variantEnv,
       ...(isDemo || isLocalAuth || isInstallation
         ? {}
         : {
@@ -554,7 +562,10 @@ async function main() {
           }
         : {}),
       ...(isInstallation
-        ? { E2E_INSTALLATION_TOKEN: envFileValue('OPAA_INSTALLATION_TOKEN') ?? '' }
+        ? {
+            E2E_INSTALLATION_TOKEN: envFileValue('OPAA_INSTALLATION_TOKEN') ?? '',
+            E2E_MAILPIT_BASE_URL: `http://localhost:${mailpitWebPort}`,
+          }
         : {}),
     },
   })
@@ -564,7 +575,24 @@ async function main() {
   }
 
   teardown()
-  process.exitCode = testStatus
+  return testStatus
+}
+
+/** Runs the target once, or the installation target once per variant, each on a fresh stack. */
+async function main() {
+  if (!isInstallation) {
+    process.exitCode = await runStack()
+    return
+  }
+  let failed = 0
+  for (const tag of INSTALLATION_VARIANTS) {
+    console.log(`\n> Installation variant ${tag}`)
+    const status = await runStack(['--grep', tag], {
+      E2E_INSTALLATION_VARIANT: tag.replace(/^@/, ''),
+    })
+    failed = failed || status
+  }
+  process.exitCode = failed
 }
 
 main().catch((error) => {

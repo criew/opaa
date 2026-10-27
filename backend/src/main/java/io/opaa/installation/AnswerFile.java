@@ -1,24 +1,31 @@
 package io.opaa.installation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.opaa.api.types.MailEncryption;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
- * Entscheidung 7). Its secrets are never plain text: the password and the model key are files,
- * typically mounted from a secret, read when the file is applied. Parts of later steps are ignored.
+ * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
+ * typically mounted from a secret, read when the file is applied. {@code mail} is optional; without
+ * it sending stays off. Parts of later steps are ignored.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
-    FirstAdmin firstAdmin, SignIn signIn, ChatModel chatModel, EmbeddingModel embeddingModel) {
+    FirstAdmin firstAdmin,
+    SignIn signIn,
+    ChatModel chatModel,
+    EmbeddingModel embeddingModel,
+    Mail mail) {
 
   /** Upper bound of a secret file; a password or a key is far shorter. */
   static final long MAX_SECRET_BYTES = 8 * 1024;
@@ -54,6 +61,18 @@ record AnswerFile(
   record EmbeddingModel(
       String baseUrl, String model, String apiKeyFile, String apiKey, Integer maxInputTokens) {}
 
+  /** The mail server; without {@code passwordFile} it connects without a password. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record Mail(
+      String host,
+      Integer port,
+      MailEncryption encryption,
+      String username,
+      String passwordFile,
+      String password,
+      String fromAddress,
+      String fromName) {}
+
   /** Reads and parses the file; the message of a failure names the file, never its content. */
   static AnswerFile read(Path file, JsonMapper json) {
     String text = readBounded(file, MAX_FILE_BYTES, "Die Antwortdatei");
@@ -78,7 +97,8 @@ record AnswerFile(
     }
     if (firstAdmin.password() != null
         || chatModel.apiKey() != null
-        || embeddingModel.apiKey() != null) {
+        || embeddingModel.apiKey() != null
+        || (mail != null && mail.password() != null)) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
               + " verweisen auf eine Datei, etwa aus einem Secret.");
@@ -103,24 +123,42 @@ record AnswerFile(
                 signIn.oidc().clientId(),
                 signIn.oidc().jwkSetUri(),
                 signIn.oidc().displayName());
-    return List.of(
-        new StepInput.FirstAdmin(
-            firstAdmin.email(),
-            firstAdmin.displayName(),
-            password,
-            !Boolean.FALSE.equals(firstAdmin.requirePasswordChange())),
-        new StepInput.SignIn(signIn.mode(), oidc),
-        new StepInput.ChatModel(
-            chatModel.baseUrl(),
-            chatModel.model(),
-            apiKey,
-            chatModel.temperature(),
-            chatModel.maxTokens()),
-        new StepInput.EmbeddingModel(
-            embeddingModel.baseUrl(),
-            embeddingModel.model(),
-            embeddingApiKey,
-            embeddingModel.maxInputTokens()));
+    List<StepInput> steps =
+        new ArrayList<>(
+            List.of(
+                new StepInput.FirstAdmin(
+                    firstAdmin.email(),
+                    firstAdmin.displayName(),
+                    password,
+                    !Boolean.FALSE.equals(firstAdmin.requirePasswordChange())),
+                new StepInput.SignIn(signIn.mode(), oidc),
+                new StepInput.ChatModel(
+                    chatModel.baseUrl(),
+                    chatModel.model(),
+                    apiKey,
+                    chatModel.temperature(),
+                    chatModel.maxTokens()),
+                new StepInput.EmbeddingModel(
+                    embeddingModel.baseUrl(),
+                    embeddingModel.model(),
+                    embeddingApiKey,
+                    embeddingModel.maxInputTokens())));
+    if (mail != null) {
+      String mailPassword =
+          mail.passwordFile() == null || mail.passwordFile().isBlank()
+              ? ""
+              : secret(mail.passwordFile(), "mail.passwordFile");
+      steps.add(
+          new StepInput.Mail(
+              mail.host(),
+              mail.port(),
+              mail.encryption(),
+              mail.username(),
+              mailPassword,
+              mail.fromAddress(),
+              mail.fromName()));
+    }
+    return List.copyOf(steps);
   }
 
   /** The file's content without the trailing line break a mounted secret usually carries. */

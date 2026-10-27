@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InstallationStatusResponse, InstallationStepState } from '../api/types'
-import {
-  nextView,
-  openMandatorySteps,
-  previousView,
-  resumeView,
-  stepMeta,
-  stepStatus,
-} from './steps'
+import { nextView, openSteps, previousView, resumeView, stepMeta, stepStatus } from './steps'
 
 function step(
   id: InstallationStepState['step'],
@@ -20,7 +13,12 @@ function step(
 }
 
 function state(steps: InstallationStepState[]): InstallationStatusResponse {
-  return { pending: true, completable: steps.every((s) => !s.mandatory || s.checked), steps }
+  return {
+    pending: true,
+    completable: steps.every((s) => !s.mandatory || s.checked),
+    publicBaseUrlConfigured: true,
+    steps,
+  }
 }
 
 describe('installation steps', () => {
@@ -48,13 +46,23 @@ describe('installation steps', () => {
     expect(previousView(installation, 'FIRST_ADMIN')).toBeNull()
   })
 
-  it('names the mandatory steps still open', () => {
+  it('names the mandatory steps still open and a saved optional step not yet checked', () => {
     const installation = state([
       step('FIRST_ADMIN', true, true, true),
       step('CHAT_MODEL', true, true, false),
       step('SIGN_IN', false),
     ])
-    expect(openMandatorySteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
+    expect(openSteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
+    const failedMail = state([
+      step('FIRST_ADMIN', true, true, true),
+      step('MAIL', false, true, false, 'Verbindung abgelehnt'),
+    ])
+    expect(openSteps(failedMail).map((s) => s.step)).toEqual(['MAIL'])
+  })
+
+  it('shows an optional step without saved values as not set up, not as a gap', () => {
+    expect(stepStatus(step('MAIL', false))).toBe('notSet')
+    expect(stepStatus(step('MAIL', false, true, false, 'Verbindung abgelehnt'))).toBe('failed')
   })
 
   it('tells a failed check apart from a step that is stored but not yet checked', () => {

@@ -153,6 +153,44 @@ public class MailService {
     }
   }
 
+  /**
+   * {@link #send} through {@code transport} instead of the stored settings, for settings still
+   * being entered. The outcome is not written to the stored settings, whose send status it does not
+   * describe, and nothing here logs: the caller decides what of a failure reaches a log line. A
+   * {@link SendResult.Failed} carries the cause without any address. Never throws.
+   */
+  public SendResult sendThrough(
+      MailSenderProvider.Transport transport,
+      MailTemplateKey key,
+      Locale locale,
+      String recipient,
+      Map<String, Object> variables) {
+    if (!StringUtils.hasText(recipient)) {
+      return new SendResult.Failed("Keine Empfängeradresse vorhanden");
+    }
+    RenderedMail mail;
+    try {
+      mail = templates.render(key, MailTemplateService.localeTag(locale), variables);
+    } catch (RuntimeException e) {
+      return new SendResult.Failed(
+          MailRecipients.maskAddresses(
+              "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage()));
+    }
+    try {
+      transport.sender().send(compose(transport.sender(), transport.settings(), recipient, mail));
+    } catch (Exception e) {
+      return new SendResult.Failed(maskedCauseOf(e));
+    }
+    return new SendResult.Sent(recipient);
+  }
+
+  /**
+   * The cause of a failed connection or send without an address in it, as {@link #send} reports it.
+   */
+  static String maskedCauseOf(Exception e) {
+    return MailRecipients.maskAddresses(causeOf(e));
+  }
+
   private SendResult attemptSend(
       MailTemplateKey key, Locale locale, String recipient, Map<String, Object> variables) {
     if (!StringUtils.hasText(recipient)) {

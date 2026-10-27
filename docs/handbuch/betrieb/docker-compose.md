@@ -326,7 +326,9 @@ docker compose --profile mail up -d mailpit
 
 Die abgefangenen Nachrichten liegen unter `http://localhost:8025`. Unter „Administration → E-Mail →
 SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`, keine Zugangsdaten
-([E-Mail-Versand](e-mail.md)).
+([E-Mail-Versand](e-mail.md)). Dieselben Angaben nimmt auch der Schritt E-Mail-Versand des
+Einrichtungs-Assistenten an, wenn `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST=mailpit:1025` in
+`.env.docker` steht ([Installation](installation.md#schritte)).
 
 ## Mehrere Backend-Instanzen
 

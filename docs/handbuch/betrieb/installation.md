@@ -3,7 +3,8 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung, Anmeldeverfahren, Chat-Modell, Embedding-Modell. Bis dahin steht sie im
+der Systemverwaltung, Anmeldeverfahren, Chat-Modell, Embedding-Modell, auf Wunsch der Mailserver für
+den [E-Mail-Versand](e-mail.md). Bis dahin steht sie im
 **Installationsmodus** und bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
@@ -76,7 +77,8 @@ lehnt es ab.
 
 Jeder Aufruf trägt das Token als `Authorization: Bearer <Token>`. Jeder Schritt wird einzeln
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
-verwerfen die Prüfung des Schritts.
+verwerfen die Prüfung des Schritts. Die ersten vier Schritte sind Pflicht, der E-Mail-Versand ist
+optional.
 
 | Schritt | Angaben | Prüfung | Später änderbar |
 |---|---|---|---|
@@ -84,6 +86,7 @@ verwerfen die Prüfung des Schritts.
 | Anmeldeverfahren (`SIGN_IN`) | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
 | Chat-Modell (`CHAT_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
 | Embedding-Modell (`EMBEDDING_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung", mit Neueinbettung ([Modell wechseln](modelle.md#modell-wechseln)) |
+| E-Mail-Versand (`MAIL`), optional | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -93,13 +96,24 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json
   https://opaa.example.org/api/v1/installation/steps/SIGN_IN
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   https://opaa.example.org/api/v1/installation/steps/SIGN_IN/check
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  https://opaa.example.org/api/v1/installation/steps/MAIL/skip
 curl -X POST -H "Authorization: Bearer $TOKEN" https://opaa.example.org/api/v1/installation/complete
 ```
 
-Das Passwort speichert OPAA nur als Hash, den Zugangsschlüssel verschlüsselt mit
-`OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie gesetzt sind. Ein gespeicherter
-Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich bleibt (Schema, Host, Port,
-Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt ihn.
+**Optionale Schritte.** Ein optionaler Schritt lässt sich überspringen (`POST …/steps/MAIL/skip`):
+OPAA verwirft dann, was für ihn gespeichert war, und der Abschluss lässt ihn aus. Ein übersprungener
+oder nie geöffneter optionaler Schritt hält den Abschluss nicht auf; ein gespeicherter dagegen schon,
+bis seine Prüfung gelingt oder er übersprungen wird. Die Testnachricht des E-Mail-Versands verlangt
+die Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"}`); die Adresse
+wird weder gespeichert noch protokolliert.
+
+Das Passwort des ersten Kontos speichert OPAA nur als Hash, Zugangsschlüssel und Passwort des
+Mailservers verschlüsselt mit `OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie
+gesetzt sind. Ein gespeicherter Schlüssel bleibt nur, solange die Basis-Adresse des Modells gleich
+bleibt (Schema, Host, Port, Pfad); wer die Adresse ändert, gibt den Schlüssel neu ein oder entfernt
+ihn. Ebenso geht ein gespeichertes Passwort des Mailservers nicht an einen anderen Server, Port,
+Benutzernamen oder eine andere Verschlüsselung.
 
 **Adressprüfung der Modelle.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
 Adressen von Chat- und Embedding-Modell beim Speichern und unmittelbar vor Verbindungstest und
@@ -111,24 +125,43 @@ sich nicht und liest nur eine begrenzte Antwort. Zwischen Prüfung und Anfrage l
 Hostnamen erneut auf; wer den Namensdienst des Modells kontrolliert, könnte die Anfrage in diesem
 Moment noch umlenken. Einen festen Endpunkt im eigenen Netz trifft das nicht.
 
-**Der Abschluss** gelingt, wenn jeder Schritt erfolgreich geprüft ist, und genau einmal, auch wenn
-zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
+**Adressprüfung der Mailserver.** Aus demselben Grund prüft die Installation den Mailserver des
+Schritts E-Mail-Versand beim Speichern und unmittelbar vor der Prüfung: Ein Server, der in einen
+internen, Loopback- oder Link-Local-Bereich auflöst, wird abgelehnt, ohne dass eine Verbindung
+entsteht. Ein Mailserver im eigenen Netz, der Regelfall, braucht dafür einen Eintrag in
+`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`, am besten als `host:port`, damit kein anderer Port des
+Hosts erreichbar wird. Ohne Eintrag nimmt der Assistent nur die üblichen SMTP-Ports an (siehe
+[Konfiguration](#konfiguration)); ein anderer Port, etwa `mailpit:1025` im Compose-Stapel, braucht
+einen Eintrag mit genau diesem Host und Port. Wer den Server nicht freigeben will, überspringt den
+Schritt und trägt ihn nach der Installation unter „Administration → E-Mail“ ein; dort findet keine
+Adressprüfung statt. Eine gescheiterte Prüfung nennt nur, ob der Server nicht erreichbar ist, die
+Verschlüsselung scheiterte, die Anmeldung abgelehnt wurde oder er nicht wie ein Mailserver antwortet;
+die genaue Ursache steht im Log (WARN „Installation mail check failed“), ohne Passwort. Die Prüfung
+wartet höchstens so lange, wie `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT` und
+`OPAA_MAIL_WRITE_TIMEOUT` erlauben ([E-Mail-Versand](e-mail.md)); Prüfungen und Testnachrichten
+sind je Instanz begrenzt.
+
+**Der Abschluss** gelingt, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt
+erfolgreich geprüft ist, und genau einmal, auch wenn zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
 [Notanker-Konto](authentifizierung.md#erststart-und-systemverwalter-konto) an, mit dem gewählten
 Passwort: aus dem Assistenten ohne erzwungenen Wechsel, aus einer Antwortdatei mit Wechsel bei der
 ersten Anmeldung, solange `requirePasswordChange` nicht `false` ist. Er richtet das
 Anmeldeverfahren ein: Er schaltet in beiden Verfahren die
 [lokale Benutzerverwaltung](authentifizierung.md#lokale-benutzerverwaltung) ein, und ein OIDC-Anbieter
 wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
-Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung und
-verwirft Token und Zwischenstand. Vor dem Abschluss gibt es keine Vektorablage; ein späterer Wechsel
+Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung,
+übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
+Versand ein und verwirft Token und Zwischenstand. Ist der E-Mail-Versand übersprungen, bleibt er aus.
+Vor dem Abschluss gibt es keine Vektorablage; ein späterer Wechsel
 des Embedding-Modells läuft in der Modellverwaltung, mit Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
 und Passwort; alle Instanzen übernehmen das ohne Neustart. Mit den lokalen Konten steht „Passwort
 vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](e-mail.md) eingerichtet sind,
 auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein Funktionspostfach der IT
 wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
-[Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) ab. Jeder Schritt, jede Prüfung, das
-Einschalten der lokalen Konten und der Abschluss stehen im Revisionsprotokoll.
+[Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) ab. Jeder Schritt, jede Prüfung,
+jedes Überspringen, das Einschalten der lokalen Konten und der Abschluss stehen im
+Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.
 
 ## Einrichtungs-Assistent im Browser
 
@@ -139,8 +172,9 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
 
 - **Schrittliste.** Links stehen die Schritte mit ihrem Zustand: „Geprüft“, „Prüfung fehlgeschlagen“
   (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
-  „Offen“. Pflichtschritte und optionale Schritte stehen in getrennten Gruppen; optionale lassen
-  sich mit „Überspringen“ auslassen. Heute sind alle Schritte Pflicht.
+  „Offen“, ein optionaler Schritt ohne Angaben als „Nicht eingerichtet“. Pflichtschritte und
+  optionale Schritte stehen in getrennten Gruppen; über dem Titel eines optionalen Schritts steht
+  „Optional · später unter …“, und „Überspringen“ lässt ihn aus.
 - **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
   prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
   `https://`; alles Weitere prüft OPAA wie oben beschrieben.
@@ -161,14 +195,22 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
 - **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
+- **E-Mail-Versand.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
+  E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
+  senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Fehlt
+  `OPAA_PUBLIC_BASE_URL`, weist der Schritt wie die Verwaltung darauf hin, dass Links in E-Mails
+  unbrauchbar bleiben. Scheitert die Prüfung, lässt sich der Schritt korrigieren oder überspringen;
+  „Überspringen“ verwirft die Angaben. Der Abschluss nennt, ob er den Versand einschaltet.
 - **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
-  gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“. Wer das erste Konto
+  gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“, ein gespeichertes
+  Passwort des Mailservers „Gespeichertes Passwort löschen“. Wer das erste Konto
   nachträglich ändert, gibt das Passwort erneut ein; unverändert wird es nur noch einmal geprüft.
 - **Unterbrechen und fortsetzen.** Der Browser behält das Token nur, solange die Seite offen ist.
   Nach Neuladen oder an einem anderen Rechner gibt man es erneut ein und landet beim ersten
   Pflichtschritt, der noch nicht geprüft ist, sonst beim Abschluss.
 - **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
-  sind; bis dahin nennt die Seite die offenen. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
+  sind und ein ausgefüllter optionaler Schritt geprüft oder übersprungen ist; bis dahin nennt die
+  Seite die offenen. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
   inzwischen jemand anders abgeschlossen, etwa über eine Antwortdatei, zeigt der Assistent
   „Bereits eingerichtet“.
 
@@ -204,6 +246,15 @@ Prüfungen, alles oder nichts.
     "model": "bge-m3",
     "apiKeyFile": null,
     "maxInputTokens": 8192
+  },
+  "mail": {
+    "host": "smtp.stadt.example",
+    "port": 587,
+    "encryption": "STARTTLS",
+    "username": "opaa",
+    "passwordFile": "/run/secrets/opaa-mail-password",
+    "fromAddress": "opaa@stadt.example",
+    "fromName": "OPAA"
   }
 }
 ```
@@ -226,7 +277,12 @@ Prüfungen, alles oder nichts.
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten;
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
-- Angaben späterer Schritte (`outboundProxy`, `mail`, `branding`) wertet diese Version nicht aus.
+- **E-Mail-Versand:** Der Abschnitt `mail` ist optional. Fehlt er, gilt der Schritt als
+  übersprungen und der Versand bleibt aus; was der Assistent vorher dafür gespeichert hatte, wird
+  verworfen. Mit ihm prüft OPAA Adresse und Verbindung wie im Assistenten, ohne Testnachricht, und
+  der Abschluss schaltet den Versand ein. Das Passwort steht als `passwordFile`; ohne es meldet sich
+  OPAA nicht an.
+- Angaben späterer Schritte (`outboundProxy`, `branding`) wertet diese Version nicht aus.
 - Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens
   ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
@@ -238,10 +294,20 @@ Prüfungen, alles oder nichts.
 | `401` „Das Installations-Token fehlt oder ist ungültig." | Token fehlt oder falsch | Token aus dem Log oder `OPAA_INSTALLATION_TOKEN` nehmen |
 | `400` am Feld Basis-Adresse „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`; im Assistenten dieselbe Meldung beim Modellabruf | die Modelladresse liegt in einem gesperrten Bereich, oder ihr Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`) | erst die Schreibweise des Hosts prüfen, dann Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` freigeben |
 | `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
+| `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
+| `400` am Feld Port „Im Assistenten sind die Ports 25, 465, 587 und 2525 zugelassen …“ | ein anderer Port ohne Eintrag mit genau diesem `host:port` | Port prüfen, oder `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` eintragen |
+| `400` am Feld Server, Absenderadresse, Passwort oder Testnachricht | Leer- oder Steuerzeichen im Server; mehr als ein Postfach in einer Adresse (`,` `;` `<` `>` `"`); `***` als Passwort, das in der Verwaltung „unverändert“ bedeutet | Eingabe korrigieren |
+| `400` am Feld Passwort „Server, Port, Zugangsname oder Verschlüsselung ändern sich …“ | das gespeicherte Passwort des Mailservers folgt keinem neuen Ziel | Passwort neu eingeben oder löschen |
+| Prüfung des E-Mail-Versands „Der Mailserver ist nicht erreichbar …“ | falscher Server oder Port, Name nicht auflösbar, Verbindung abgelehnt oder Timeout beim Verbindungsaufbau | Server und Port prüfen, im Compose-Stapel den Servicenamen verwenden |
+| Prüfung „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | STARTTLS nicht angeboten oder TLS-Handshake gescheitert | Verschlüsselung passend zum Port wählen ([Fehlerbilder des E-Mail-Versands](e-mail.md#fehlerbilder)) |
+| Prüfung „Der Mailserver hat die Anmeldung abgelehnt …“ | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen |
+| Prüfung „Der Server antwortet nicht wie ein Mailserver …“ | unter Server und Port läuft kein SMTP-Dienst, oder er antwortet nicht in der Wartezeit | Port und Verschlüsselung prüfen; die Ursache nennt die WARN-Zeile „Installation mail check failed“ |
+| Prüfung „… Der Mailserver hat die Testnachricht nicht angenommen.“ | die Verbindung gelang, der Server lehnte die Nachricht ab, etwa den Absender oder den Empfänger | Absenderadresse und Empfänger prüfen; die Ursache nennt die WARN-Zeile „Installation test message refused“ |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
-| `409` beim Abschluss | ein Schritt ist nicht gespeichert oder nicht erfolgreich geprüft | offene Schritte prüfen; die Meldung nennt sie |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
+| `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder den optionalen überspringen; die Meldung nennt sie |
+| `400` beim Überspringen | der Schritt ist Pflicht | — |
 | Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
 | Prüfung des Embedding-Modells „… der Vektorindex nimmt höchstens 2000 auf" | das Modell liefert mehr Dimensionen, als der Vektorindex aufnimmt | ein anderes Embedding-Modell wählen |
 | `404` | die Installation ist abgeschlossen | anmelden mit dem ersten Konto |
@@ -254,8 +320,9 @@ Prüfungen, alles oder nichts.
 | `OPAA_INSTALLATION_TOKEN` | leer: erzeugt und einmal ins Log geschrieben | Installations-Token, mindestens 32 Zeichen |
 | `OPAA_INSTALLATION_ALLOWED_CIDRS` | leer: keine Beschränkung | Netzbereiche, aus denen die Installations-API antwortet |
 | `OPAA_INSTALLATION_ANSWER_FILE` | leer: keine | Pfad der Antwortdatei, die ein Start anwendet |
+| `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` | leer: kein interner Mailserver | Mailserver im eigenen Netz, die der Schritt E-Mail-Versand erreichen darf, je `host` oder `host:port` |
 
-Die drei Variablen gelten je Instanz und wirken nur, solange die Installation offen ist; nach dem
+Die vier Variablen gelten je Instanz und wirken nur, solange die Installation offen ist; nach dem
 Abschluss lassen sie sich entfernen, ohne dass ein Rolling Update daran scheitert. **Bei mehreren
 Instanzen setzen alle oder keine `OPAA_INSTALLATION_TOKEN`, mit demselben Wert:** Startet eine Instanz
 ohne die Variable, ersetzt sie das gesetzte Token durch ein erzeugtes und schreibt es ins Log (mit
@@ -263,8 +330,11 @@ einer Warnung); startet eine mit anderem Wert, gilt das zuletzt gestartete.
 
 Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten; je
 Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen; höchstens 500
-Modelle je Abruf.
+Modelle je Abruf; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und 10 Testnachrichten in
+10 Minuten, für alle Clients zusammen (die Antwortdatei beim Start zählt nicht), und ohne Eintrag in
+`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25, 465, 587 und 2525.
 
 ## Weiterführende Kapitel
 
-- [Konfiguration](konfiguration.md), [Authentifizierung](authentifizierung.md), [Modelle](modelle.md)
+- [Konfiguration](konfiguration.md), [Authentifizierung](authentifizierung.md), [Modelle](modelle.md),
+  [E-Mail-Versand](e-mail.md)
