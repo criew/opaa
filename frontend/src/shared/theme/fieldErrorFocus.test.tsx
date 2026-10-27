@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { alpha, ThemeProvider } from '@mui/material/styles'
+import { ThemeProvider } from '@mui/material/styles'
 import Autocomplete from '@mui/material/Autocomplete'
 import FormControl from '@mui/material/FormControl'
 import MenuItem from '@mui/material/MenuItem'
@@ -8,11 +8,14 @@ import TextField from '@mui/material/TextField'
 import type { ReactElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { createAppTheme } from './theme'
-import { darkRoles, focusRingAlpha, focusRingWidthPx, lightRoles } from './tokens'
+import { darkRoles, lightRoles } from './tokens'
 import { contrastRatio } from '../utils/contrast'
 
 /** WCAG 1.4.11: a field's outline and focus indicator need 3:1 against the field surface. */
 const NON_TEXT_CONTRAST_MINIMUM = 3
+
+/** Guidelines 4.4: the opaque focus ring, here in danger. jsdom keeps the authored shorthand. */
+const RING = (color: string) => `2px solid ${color.toLowerCase()}`
 
 /** `#CE2C31` → `rgb(206, 44, 49)`: jsdom returns computed colours in this form. */
 function asRgb(hex: string): string {
@@ -63,13 +66,13 @@ describe.each([
     expect(outline.borderColor).toBe(asRgb(roles.danger))
     // Focus stays visible on the error outline: wider than the 1px resting line.
     expect(outline.borderWidth).toBe('2px')
-    expect(getComputedStyle(root).boxShadow).toBe(
-      `0 0 0 ${focusRingWidthPx}px ${alpha(roles.danger, focusRingAlpha)}`,
-    )
+    expect(getComputedStyle(root).outline.toLowerCase()).toBe(RING(roles.danger))
   })
 
   it.each(Object.keys(FIELDS))('%s keeps the accent outline without an error', (name) => {
-    expect(outlineOf(renderFocused(mode, name, false)).borderColor).toBe(asRgb(roles.accent))
+    const root = renderFocused(mode, name, false)
+    expect(outlineOf(root).borderColor).toBe(asRgb(roles.accent))
+    expect(getComputedStyle(root).outline.toLowerCase()).toBe(RING(roles.accent))
   })
 
   it('leaves a disabled field in error with the grey disabled outline', () => {
